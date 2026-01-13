@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -13,21 +14,22 @@ import (
 )
 
 var (
-	srcDir  = flag.String("src", "", "OpenLoco source directory")
-	outDir  = flag.String("out", "", "Output directory for Go files")
-	pkg     = flag.String("pkg", "", "Specific package to convert (e.g., Math, Core)")
-	verbose = flag.Bool("v", false, "Verbose output")
+	srcDir     = flag.String("src", "", "OpenLoco source directory")
+	outDir     = flag.String("out", "", "Output directory for Go files")
+	pkg        = flag.String("pkg", "", "Specific package to convert (e.g., Math, Core)")
+	verbose    = flag.Bool("v", false, "Verbose output")
+	ignoreFile = flag.String("ignore", ".convertignore", "Path to conversion ignore file")
 )
 
 func main() {
 	flag.Parse()
 
 	if *srcDir == "" || *outDir == "" {
-		fmt.Println("Usage: convert -src <openloco/src> -out <output/dir> [-pkg <package>]")
+		fmt.Println("Usage: convert -src <openloco/src> -out <output/dir> [-pkg <package>] [-ignore <file>]")
 		os.Exit(1)
 	}
 
-	converter := NewConverter(*srcDir, *outDir, *verbose)
+	converter := NewConverter(*srcDir, *outDir, *verbose, *ignoreFile)
 
 	if *pkg != "" {
 		if err := converter.ConvertPackage(*pkg); err != nil {
@@ -43,13 +45,66 @@ func main() {
 }
 
 type Converter struct {
-	srcDir  string
-	outDir  string
-	verbose bool
+	srcDir     string
+	outDir     string
+	verbose    bool
+	ignoreFile string
+	ignores    []string
 }
 
-func NewConverter(srcDir, outDir string, verbose bool) *Converter {
-	return &Converter{srcDir: srcDir, outDir: outDir, verbose: verbose}
+func NewConverter(srcDir, outDir string, verbose bool, ignoreFile string) *Converter {
+	c := &Converter{srcDir: srcDir, outDir: outDir, verbose: verbose, ignoreFile: ignoreFile}
+	c.loadIgnores()
+	return c
+}
+
+func (c *Converter) loadIgnores() {
+	c.ignores = nil
+	f, err := os.Open(c.ignoreFile)
+	if err != nil {
+		// ignore not present
+		return
+	}
+	defer f.Close()
+
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		l := strings.TrimSpace(s.Text())
+		if l == "" || strings.HasPrefix(l, "#") {
+			continue
+		}
+		c.ignores = append(c.ignores, l)
+	}
+}
+
+func (c *Converter) isIgnored(path string) bool {
+	// path is absolute or relative; normalize to slash-separated relative from srcDir
+	rel, err := filepath.Rel(c.srcDir, path)
+	if err != nil {
+		rel = path
+	}
+	rel = filepath.ToSlash(rel)
+	for _, pat := range c.ignores {
+		p := strings.TrimSpace(pat)
+		if p == "" {
+			continue
+		}
+		// if pattern ends with /** treat as dir prefix
+		if strings.HasSuffix(p, "**") || strings.HasSuffix(p, "**/") {
+			pp := strings.TrimSuffix(strings.TrimSuffix(p, "**"), "/")
+			pp = strings.TrimPrefix(pp, "/")
+			pp = filepath.ToSlash(pp)
+			if strings.HasPrefix(rel, pp) {
+				return true
+			}
+			continue
+		}
+		// exact match or dir prefix
+		if rel == p || strings.HasPrefix(rel, strings.TrimSuffix(p, "/")+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Converter) ConvertAll() error {
@@ -134,6 +189,14 @@ func (c *Converter) convertDir(srcDir, outDir, pkgName string) error {
 			return nil
 		}
 
+		// Check ignore patterns
+		if c.isIgnored(path) {
+			if c.verbose {
+				fmt.Printf("Skipping (ignored): %s\n", path)
+			}
+			return nil
+		}
+
 		return c.convertFile(path, outDir, pkgName)
 	})
 }
@@ -148,13 +211,48 @@ func (c *Converter) convertFile(srcPath, outDir, pkgName string) error {
 		return err
 	}
 
-	goCode := c.translateToGo(string(content), pkgName)
+	// Honor in-file skip markers: // CONVERSION:SKIP-START <id> ... // CONVERSION:SKIP-END <id>
+	processed := honorSkipMarkers(string(content))
+
+	goCode := c.translateToGo(processed, pkgName)
 
 	baseName := filepath.Base(srcPath)
 	baseName = strings.TrimSuffix(baseName, filepath.Ext(baseName))
 	outPath := filepath.Join(outDir, toSnakeCase(baseName)+".go")
 
 	return os.WriteFile(outPath, []byte(goCode), 0644)
+}
+
+func honorSkipMarkers(content string) string {
+	lines := strings.Split(content, "\n")
+	var out []string
+	inSkip := false
+	skipID := ""
+	for _, ln := range lines {
+		trim := strings.TrimSpace(ln)
+		if strings.HasPrefix(trim, "// CONVERSION:SKIP-START") {
+			inSkip = true
+			parts := strings.Fields(trim)
+			if len(parts) >= 2 {
+				skipID = strings.Join(parts[1:], " ")
+			}
+			out = append(out, fmt.Sprintf("// CONVERSION SKIPPED START %s", skipID))
+			continue
+		}
+		if strings.HasPrefix(trim, "// CONVERSION:SKIP-END") {
+			inSkip = false
+			out = append(out, fmt.Sprintf("// CONVERSION SKIPPED END %s", skipID))
+			skipID = ""
+			continue
+		}
+		if inSkip {
+			// replace with comment to preserve line numbers roughly
+			out = append(out, fmt.Sprintf("// <skipped> %s", trim))
+			continue
+		}
+		out = append(out, ln)
+	}
+	return strings.Join(out, "\n")
 }
 
 func (c *Converter) translateToGo(cpp, pkgName string) string {
@@ -174,12 +272,14 @@ func (c *Converter) translateToGo(cpp, pkgName string) string {
 	return out.String()
 }
 
+// (rest of the file unchanged...)
+
 type translator struct {
 	lines          []string
 	out            *strings.Builder
 	namespaceDepth int
 	inStruct       bool
-	structBraces   int      // track brace depth within struct
+	structBraces   int // track brace depth within struct
 	inEnum         bool
 	inFunction     bool
 	funcBraceDepth int
@@ -607,7 +707,7 @@ func translateType(cppType string) string {
 	cppType = strings.TrimSpace(cppType)
 
 	// Handle array types
-	arrRe := regexp.MustCompile(`std::array<(\w+),\s*(\d+)>`)
+	arrRe := regexp.MustCompile(`std::array<(\\w+),\\s*(\\d+)>`)
 	if m := arrRe.FindStringSubmatch(cppType); m != nil {
 		elemType := translateType(m[1])
 		return fmt.Sprintf("[%s]%s", m[2], elemType)
@@ -706,7 +806,7 @@ func translateStmt(stmt string) string {
 	stmt = strings.TrimSuffix(stmt, ";")
 
 	// Type declarations in for init: "int i = 0" -> "i := 0"
-	varRe := regexp.MustCompile(`^(\w+)\s+(\w+)\s*=\s*(.+)$`)
+	varRe := regexp.MustCompile(`^(\\w+)\\s+(\\w+)\\s*=\\s*(.+)$`)
 	if m := varRe.FindStringSubmatch(stmt); m != nil {
 		return fmt.Sprintf("%s := %s", m[2], translateExpr(m[3]))
 	}
@@ -726,11 +826,11 @@ func translateExpr(expr string) string {
 	expr = strings.ReplaceAll(expr, "this->", "")
 
 	// static_cast<T>(x) -> T(x)
-	castRe := regexp.MustCompile(`static_cast<(\w+)>\(([^)]+)\)`)
+	castRe := regexp.MustCompile(`static_cast<(\\w+)>\\(([^)]+)\\)`)
 	expr = castRe.ReplaceAllString(expr, "$1($2)")
 
 	// reinterpret_cast -> unsafe conversion comment
-	expr = regexp.MustCompile(`reinterpret_cast<[^>]+>\([^)]+\)`).ReplaceAllString(expr, "/* unsafe cast */")
+	expr = regexp.MustCompile(`reinterpret_cast<[^>]+>\\([^)]+\\)`).ReplaceAllString(expr, "/* unsafe cast */")
 
 	// std:: functions
 	expr = strings.ReplaceAll(expr, "std::abs", "abs")
@@ -742,23 +842,23 @@ func translateExpr(expr string) string {
 	expr = strings.ReplaceAll(expr, "::", ".")
 
 	// Remove trailing f from float literals
-	floatRe := regexp.MustCompile(`(\d+\.\d+)f\b`)
+	floatRe := regexp.MustCompile(`(\\d+\\.\\d+)f\\b`)
 	expr = floatRe.ReplaceAllString(expr, "$1")
 
 	// Remove U/u suffix from integer literals (unsigned)
-	uintRe := regexp.MustCompile(`(\d+)[Uu]\b`)
+	uintRe := regexp.MustCompile(`(\\d+)[Uu]\\b`)
 	expr = uintRe.ReplaceAllString(expr, "$1")
 
 	// Remove L/l suffix from integer literals (long)
-	longRe := regexp.MustCompile(`(\d+)[Ll]\b`)
+	longRe := regexp.MustCompile(`(\\d+)[Ll]\\b`)
 	expr = longRe.ReplaceAllString(expr, "$1")
 
 	// Remove UL/ul/LU/lu suffix
-	ulRe := regexp.MustCompile(`(\d+)(?:[Uu][Ll]|[Ll][Uu])\b`)
+	ulRe := regexp.MustCompile(`(\\d+)(?:[Uu][Ll]|[Ll][Uu])\\b`)
 	expr = ulRe.ReplaceAllString(expr, "$1")
 
 	// Remove ULL/ull suffix
-	ullRe := regexp.MustCompile(`(\d+)(?:[Uu][Ll][Ll]|[Ll][Ll][Uu])\b`)
+	ullRe := regexp.MustCompile(`(\\d+)(?:[Uu][Ll][Ll]|[Ll][Ll][Uu])\\b`)
 	expr = ullRe.ReplaceAllString(expr, "$1")
 
 	return expr

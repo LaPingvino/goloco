@@ -1,0 +1,10 @@
+# Paths to exclude from mechanical conversion
+# Use relative paths from the OpenLoco src root, e.g. OpenLoco/src/Math/SomeFile.hpp
+
+# Exclude packages we've implemented manually
+OpenLoco/src/Math/**
+OpenLoco/src/Core/**
+
+# Keep conversion tool from touching doc or platform scripts
+scripts/**
+.github/**
