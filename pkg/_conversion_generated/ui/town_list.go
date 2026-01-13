@@ -1,0 +1,1098 @@
+package ui
+
+// AUTO-GENERATED FROM C++ - WILL NOT COMPILE
+// This is a mechanical translation that needs manual fixing
+
+// #include "Audio/Audio.h"
+// #include "Config.h"
+// #include "GameCommands/Buildings/CreateBuilding.h"
+// #include "GameCommands/Buildings/RemoveBuilding.h"
+// #include "GameCommands/GameCommands.h"
+// #include "GameCommands/Town/CreateTown.h"
+// #include "GameState.h"
+// #include "Graphics/Colour.h"
+// #include "Graphics/ImageIds.h"
+// #include "Graphics/RenderTarget.h"
+// #include "Graphics/TextRenderer.h"
+// #include "Input.h"
+// #include "Localisation/FormatArguments.hpp"
+// #include "Localisation/Formatting.h"
+// #include "Localisation/StringIds.h"
+// #include "Map/MapSelection.h"
+// #include "Map/SurfaceElement.h"
+// #include "Map/TileManager.h"
+// #include "Objects/BuildingObject.h"
+// #include "Objects/InterfaceSkinObject.h"
+// #include "Objects/ObjectManager.h"
+// #include "SceneManager.h"
+// #include "Ui/Dropdown.h"
+// #include "Ui/ScrollView.h"
+// #include "Ui/ToolManager.h"
+// #include "Ui/ViewportInteraction.h"
+// #include "Ui/Widget.h"
+// #include "Ui/Widgets/CaptionWidget.h"
+// #include "Ui/Widgets/ColourButtonWidget.h"
+// #include "Ui/Widgets/DropdownWidget.h"
+// #include "Ui/Widgets/FrameWidget.h"
+// #include "Ui/Widgets/ImageButtonWidget.h"
+// #include "Ui/Widgets/LabelWidget.h"
+// #include "Ui/Widgets/PanelWidget.h"
+// #include "Ui/Widgets/ScrollViewWidget.h"
+// #include "Ui/Widgets/TabWidget.h"
+// #include "Ui/Widgets/TableHeaderWidget.h"
+// #include "Ui/WindowManager.h"
+// #include "World/Town.h"
+// #include "World/TownManager.h"
+// #include <OpenLoco/Core/Numerics.hpp>
+// namespace OpenLoco::Ui::Windows::TownList
+// static currency32_t _buildingPlacementCost; // 0x01135C34
+// static World::Pos3 _buildingGhostPos;       // 0x01135C50
+// static bool _buildingGhostPlaced;           // 0x01135C60
+// static Colour _buildingColour;              // 0x01135C61
+// static uint8_t _buildingGhostType;          // 0x01135C62
+// static uint8_t _buildingRotation;           // 0x01135C63
+// static uint8_t _buildingGhostRotation;      // 0x01135C64
+// static uint8_t _buildingVariation;          // 0x01135C65
+// static uint8_t _townSize;                   // 0x01135C66
+// namespace Common
+type Widx int
+
+const (
+	Frame Widx = iota
+	Caption
+	Close_button
+	Panel
+	Tab_town_list
+	Tab_build_town
+	Tab_build_buildings
+	Tab_build_misc_buildings
+)
+// func MakeCommonWidgets(frameWidth int32, frameHeight int32, windowCaptionId StringId) any
+// return makeWidgets(
+// Widgets::Frame({ 0, 0 }, { frameWidth, frameHeight }, WindowColour::primary),
+// Widgets::Caption({ 1, 1 }, { frameWidth - 2, 13 }, Widgets::Caption::Style::whiteText, WindowColour::primary, windowCaptionId),
+// Widgets::ImageButton({ frameWidth - 15, 2 }, { 13, 13 }, WindowColour::primary, ImageIds::close_button, StringIds::tooltip_close_window),
+// Widgets::Panel({ 0, 41 }, { frameWidth, 155 }, WindowColour::secondary),
+// Widgets::Tab({ 3, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_town_list),
+// Widgets::Tab({ 34, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_build_town),
+// Widgets::Tab({ 65, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_build_buildings),
+// Widgets::Tab({ 96, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_build_misc_buildings));
+// func PrepareDraw(self Window) 
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func RefreshTownList(self Window) 
+// namespace TownList
+// static constexpr Ui::Size kWindowSize = { 600, 197 };
+// static constexpr Ui::Size kMaxDimensions = { 600, 900 };
+// static constexpr Ui::Size kMinDimensions = { 192, 100 };
+const RowHeight uint8 = 10
+type Widx int
+
+const (
+	Sort_town_name Widx = 8
+	Sort_town_type
+	Sort_town_population
+	Sort_town_stations
+	Scrollview
+	Status_bar
+)
+// static constexpr auto widgets = makeWidgets(
+// Common::makeCommonWidgets(600, 197, StringIds::title_towns),
+// Widgets::TableHeader({ 4, 43 }, { 200, 12 }, WindowColour::secondary, Widget::kContentNull, StringIds::tooltip_sort_by_name),
+// Widgets::TableHeader({ 204, 43 }, { 80, 12 }, WindowColour::secondary, Widget::kContentNull, StringIds::tooltip_sort_town_type),
+// Widgets::TableHeader({ 284, 43 }, { 70, 12 }, WindowColour::secondary, Widget::kContentNull, StringIds::tooltip_sort_population),
+// Widgets::TableHeader({ 354, 43 }, { 70, 12 }, WindowColour::secondary, Widget::kContentNull, StringIds::tooltip_sort_stations),
+// Widgets::ScrollView({ 3, 56 }, { 594, 126 }, WindowColour::secondary, 2),
+// Widgets::Label({ 4, kWindowSize.height - 17 }, { kWindowSize.width - kResizeHandleSize, 10 }, WindowColour::secondary, ContentAlign::left, StringIds::black_stringid)
+// );
+type SortMode int
+
+const (
+	Name SortMode = iota
+	Type
+	Population
+	Stations
+)
+// // 0x00499F53
+// func PrepareDraw(self Ui::Window) 
+// Common::prepareDraw(self);
+// self.widgets[widx::scrollview].right = self.width - 4;
+// self.widgets[widx::scrollview].bottom = self.height - 14;
+// self.widgets[widx::status_bar].right = self.width - kResizeHandleSize - 1;
+// // Reposition header buttons
+// self.widgets[widx::sort_town_name].right = std::min(203, self.width - 8);
+// self.widgets[widx::sort_town_type].left = std::min(204, self.width - 8);
+// self.widgets[widx::sort_town_type].right = std::min(283, self.width - 8);
+// self.widgets[widx::sort_town_population].left = std::min(284, self.width - 8);
+// self.widgets[widx::sort_town_population].right = std::min(353, self.width - 8);
+// self.widgets[widx::sort_town_stations].left = std::min(354, self.width - 8);
+// self.widgets[widx::sort_town_stations].right = std::min(423, self.width - 8);
+// // Set header button captions
+// self.widgets[widx::sort_town_name].text = self.sortMode == SortMode::Name ? StringIds::table_header_name_desc : StringIds::table_header_name;
+// self.widgets[widx::sort_town_type].text = self.sortMode == SortMode::Type ? StringIds::table_header_town_type_desc : StringIds::table_header_town_type;
+// self.widgets[widx::sort_town_population].text = self.sortMode == SortMode::Population ? StringIds::table_header_population_desc : StringIds::table_header_population;
+// self.widgets[widx::sort_town_stations].text = self.sortMode == SortMode::Stations ? StringIds::table_header_stations_desc : StringIds::table_header_stations;
+// Widget::leftAlignTabs(self, Common::widx::tab_town_list, Common::widx::tab_build_misc_buildings);
+// // Reposition status bar
+// auto& widget = self.widgets[widx::status_bar];
+// widget.top = self.height - 12;
+// widget.bottom = self.height - 2;
+// // Set status bar text
+// orphan member: FormatArguments args{ widget.textArgs };
+// args.push(self.var_83C == 1 ? StringIds::status_towns_singular : StringIds::status_towns_plural);
+// args.push(self.var_83C);
+// // 0x0049A0F8
+// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// const auto& rt = drawingCtx.currentRenderTarget();
+// auto tr = Gfx::TextRenderer(drawingCtx);
+// auto shade = Colours::getShade(self.getColour(WindowColour::secondary).c(), 3);
+// drawingCtx.clearSingle(shade);
+// uint16_t yPos = 0;
+// for (uint16_t i = 0; i < self.var_83C; i++)
+// const auto townId = TownId(self.rowInfo[i]);
+// // Skip items outside of view, or irrelevant to the current filter.
+// if (yPos + kRowHeight < rt.y || yPos >= yPos + kRowHeight + rt.height || townId == TownId::null)
+// yPos += kRowHeight;
+// continue;
+// StringId text_colour_id = StringIds::black_stringid;
+// // Highlight selection.
+// if (townId == TownId(self.rowHover))
+// drawingCtx.drawRect(0, yPos, self.width, kRowHeight, enumValue(ExtColour::unk30), Gfx::RectFlags::transparent);
+// text_colour_id = StringIds::wcolour2_stringid;
+// if (townId == TownId::null)
+// continue;
+// auto town = TownManager::get(townId);
+// // Town Name
+// orphan member: FormatArguments args{};
+// args.push(town->name);
+// auto point = Point(0, yPos);
+// tr.drawStringLeftClipped(point, 198, Colour::black, text_colour_id, args);
+// // Town Type
+// orphan member: FormatArguments args{};
+// args.push(town->getTownSizeString());
+// auto point = Point(200, yPos);
+// tr.drawStringLeftClipped(point, 278, Colour::black, text_colour_id, args);
+// // Town Population
+// orphan member: FormatArguments args{};
+// args.push(StringIds::int_32);
+// args.push(town->population);
+// auto point = Point(280, yPos);
+// tr.drawStringLeftClipped(point, 68, Colour::black, text_colour_id, args);
+// // Town Stations
+// orphan member: FormatArguments args{};
+// args.push(StringIds::int_32);
+// args.push<int32_t>(town->numStations);
+// auto point = Point(350, yPos);
+// tr.drawStringLeftClipped(point, 68, Colour::black, text_colour_id, args);
+// yPos += kRowHeight;
+// // 0x0049A0A7
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// self.draw(drawingCtx);
+// Common::drawTabs(self, drawingCtx);
+// // 0x0049A27F
+// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// switch (widgetIndex)
+// case Common::widx::close_button:
+// WindowManager::close(&self);
+// break;
+// case Common::widx::tab_town_list:
+// case Common::widx::tab_build_town:
+// case Common::widx::tab_build_buildings:
+// case Common::widx::tab_build_misc_buildings:
+// Common::switchTab(self, widgetIndex);
+// break;
+// case widx::sort_town_name:
+// case widx::sort_town_type:
+// case widx::sort_town_population:
+// case widx::sort_town_stations:
+// auto sortMode = widgetIndex - widx::sort_town_name;
+// if (self.sortMode == sortMode)
+// return;
+// self.sortMode = sortMode;
+// self.invalidate();
+// self.var_83C = 0;
+// self.rowHover = -1;
+// Common::refreshTownList(self);
+// break;
+// // 0x0049A56D
+// func OnScrollMouseDown(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// uint16_t currentRow = y / kRowHeight;
+// if (currentRow > self.var_83C)
+// return;
+// int16_t currentTown = self.rowInfo[currentRow];
+// if (currentTown == -1)
+// return;
+// Town::open(currentTown);
+// // 0x0049A532
+// func OnScrollMouseOver(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// self.flags &= ~(WindowFlags::notScrollView);
+// uint16_t currentRow = y / kRowHeight;
+// int16_t currentTown = -1;
+// if (currentRow < self.var_83C)
+// currentTown = self.rowInfo[currentRow];
+// if (self.rowHover == currentTown)
+// return;
+// self.rowHover = currentTown;
+// self.invalidate();
+// // 0x00499EC9
+// func OrderByName(lhs OpenLoco::Town, rhs OpenLoco::Town) bool
+// char lhsString[256] = { 0 };
+// StringManager::formatString(lhsString, lhs.name);
+// char rhsString[256] = { 0 };
+// StringManager::formatString(rhsString, rhs.name);
+// func Strcmp(lhsString, rhsString) return
+// // 0x00499F28
+// func OrderByPopulation(lhs OpenLoco::Town, rhs OpenLoco::Town) bool
+// auto lhsPopulation = lhs.population;
+// auto rhsPopulation = rhs.population;
+// return rhsPopulation < lhsPopulation;
+// // 0x00499F0A Left this in to match the x86 code. can be replaced with orderByPopulation
+// func OrderByType(lhs OpenLoco::Town, rhs OpenLoco::Town) bool
+// auto lhsSize = lhs.size;
+// auto rhsSize = rhs.size;
+// if (rhsSize != lhsSize)
+// return rhsSize < lhsSize;
+// else
+// func OrderByPopulation(lhs, rhs) return
+// // 0x00499F3B
+// func OrderByStations(lhs OpenLoco::Town, rhs OpenLoco::Town) bool
+// auto lhsStations = lhs.numStations;
+// auto rhsStations = rhs.numStations;
+// return rhsStations < lhsStations;
+// // 0x00499EC9, 0x00499F0A, 0x00499F28, 0x00499F3B
+// func GetOrder(mode SortMode, lhs OpenLoco::Town, rhs OpenLoco::Town) bool
+// switch (mode)
+// case SortMode::Name:
+// func OrderByName(lhs, rhs) return
+// case SortMode::Type:
+// func OrderByType(lhs, rhs) return
+// case SortMode::Population:
+// func OrderByPopulation(lhs, rhs) return
+// case SortMode::Stations:
+// func OrderByStations(lhs, rhs) return
+// orphan member: return false;
+// // 0x00499E0B
+// func UpdateTownList(self Window) 
+// TownId chosenTown = TownId::null;
+// for (auto& town : TownManager::towns())
+// if ((town.flags & TownFlags::sorted) != TownFlags::none)
+// continue;
+// if (chosenTown == TownId::null)
+// chosenTown = town.id();
+// continue;
+// if (getOrder(SortMode(self.sortMode), town, *TownManager::get(chosenTown)))
+// chosenTown = town.id();
+// if (chosenTown != TownId::null)
+// bool shouldInvalidate = false;
+// TownManager::get(chosenTown)->flags |= TownFlags::sorted;
+// if (chosenTown != TownId(self.rowInfo[self.rowCount]))
+// self.rowInfo[self.rowCount] = enumValue(chosenTown);
+// shouldInvalidate = true;
+// self.rowCount += 1;
+// if (self.rowCount > self.var_83C)
+// self.var_83C = self.rowCount;
+// shouldInvalidate = true;
+// if (shouldInvalidate)
+// self.invalidate();
+// else
+// if (self.var_83C != self.rowCount)
+// self.var_83C = self.rowCount;
+// self.invalidate();
+// Common::refreshTownList(self);
+// // 0x0049A4A0
+// func OnUpdate(self Window) 
+// self.frameNo++;
+// self.callPrepareDraw();
+// WindowManager::invalidateWidget(WindowType::townList, self.number, self.currentTab + Common::widx::tab_town_list);
+// // Add three towns every tick.
+// updateTownList(self);
+// updateTownList(self);
+// updateTownList(self);
+// // 0x0049A4D0
+// func Event_08(self Window) 
+// self.flags |= WindowFlags::notScrollView;
+// // 0x0049A4D8
+// func Event_09(self Window) 
+// if (!self.hasFlags(WindowFlags::notScrollView))
+// return;
+// if (self.rowHover == -1)
+// return;
+// self.rowHover = -1;
+// self.invalidate();
+// // 0x0049A4FA
+// func GetScrollSize(self Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// scrollHeight = kRowHeight * self.var_83C;
+// // 0x00491841
+// static std::optional<FormatArguments> tooltip([[maybe_unused]] Ui::Window& window, [[maybe_unused]] WidgetIndex_t widgetIndex, [[maybe_unused]] const WidgetId id)
+// orphan member: FormatArguments args{};
+// args.push(StringIds::tooltip_scroll_town_list);
+// orphan member: return args;
+// // 0x004919A4
+// static Ui::CursorId cursor(Window& self, WidgetIndex_t widgetIdx, [[maybe_unused]] const WidgetId id, [[maybe_unused]] int16_t xPos, int16_t yPos, Ui::CursorId fallback)
+// if (widgetIdx != widx::scrollview)
+// orphan member: return fallback;
+// uint16_t currentIndex = yPos / kRowHeight;
+// if (currentIndex < self.var_83C && self.rowInfo[currentIndex] != -1)
+// return CursorId::handPointer;
+// orphan member: return fallback;
+// // 0x0049A37E
+// func TabReset(self Window) 
+// self.minWidth = kMinDimensions.width;
+// self.minHeight = kMinDimensions.height;
+// self.maxWidth = kMaxDimensions.width;
+// self.maxHeight = kMaxDimensions.height;
+// self.width = kWindowSize.width;
+// self.height = kWindowSize.height;
+// self.var_83C = 0;
+// self.rowHover = -1;
+// Common::refreshTownList(self);
+// static constexpr WindowEventList kEvents = {
+// .onMouseUp = onMouseUp,
+// .onUpdate = onUpdate,
+// .event_08 = event_08,
+// .event_09 = event_09,
+// .getScrollSize = getScrollSize,
+// .scrollMouseDown = onScrollMouseDown,
+// .scrollMouseOver = onScrollMouseOver,
+// .tooltip = tooltip,
+// .cursor = cursor,
+// .prepareDraw = prepareDraw,
+// .draw = draw,
+// .drawScroll = drawScroll,
+// static const WindowEventList& getEvents()
+// orphan member: return kEvents;
+// // 0x00499C83
+// Window* open()
+// auto window = WindowManager::bringToFront(WindowType::townList, 0);
+// if (window != nullptr)
+// window->callOnMouseUp(Common::widx::tab_town_list, window->widgets[Common::widx::tab_town_list].id);
+// else
+// // 0x00499CFC
+// auto origin = Ui::Point(Ui::width() - TownList::kWindowSize.width, 30);
+// window = WindowManager::createWindow(
+// WindowType::townList,
+// origin,
+// TownList::kWindowSize,
+// WindowFlags::resizable,
+// TownList::getEvents());
+// window->number = 0;
+// window->currentTab = 0;
+// window->frameNo = 0;
+// window->sortMode = 0;
+// window->var_83C = 0;
+// window->rowHover = -1;
+// Common::refreshTownList(*window);
+// WindowManager::moveOtherWindowsDown(*window);
+// window->minWidth = TownList::kMinDimensions.width;
+// window->minHeight = TownList::kMinDimensions.height;
+// window->maxWidth = TownList::kMaxDimensions.width;
+// window->maxHeight = TownList::kMaxDimensions.height;
+// window->flags |= WindowFlags::resizable;
+// auto skin = ObjectManager::get<InterfaceSkinObject>();
+// window->setColour(WindowColour::primary, skin->windowTitlebarColour);
+// window->setColour(WindowColour::secondary, skin->windowColour);
+// // 0x00499CFC end
+// window->width = TownList::kWindowSize.width;
+// window->height = TownList::kWindowSize.height;
+// window->invalidate();
+// window->setWidgets(TownList::widgets);
+// if (SceneManager::isEditorMode() || SceneManager::isSandboxMode())
+// window->disabledWidgets = 0;
+// else
+// window->disabledWidgets |= (1 << Common::widx::tab_build_town) | (1 << Common::widx::tab_build_buildings) | (1 << Common::widx::tab_build_misc_buildings);
+// window->activatedWidgets = 0;
+// window->holdableWidgets = 0;
+// window->callOnResize();
+// window->callPrepareDraw();
+// window->initScrollWidgets();
+// orphan member: return window;
+// // 0x00496B50
+// func Reset() 
+// getGameState().lastBuildingOption = 0xFF;
+// getGameState().lastMiscBuildingOption = 0xFF;
+// _buildingRotation = 2;
+// _townSize = 3;
+// // 0x00499DAE
+// func RemoveTown(townId TownId) 
+// auto* window = WindowManager::find(WindowType::townList);
+// if (window == nullptr)
+// return;
+// for (auto i = 0; i < window->var_83C; i++)
+// if (window->rowInfo[i] == enumValue(townId))
+// window->rowInfo[i] = -1;
+// namespace BuildTowns
+// static constexpr Ui::Size kWindowSize = { 220, 87 };
+type Widx int
+
+const (
+	Current_size Widx = 8
+	Select_size
+)
+// static constexpr auto widgets = makeWidgets(
+// Common::makeCommonWidgets(220, 87, StringIds::title_build_new_towns),
+// Widgets::dropdownWidgets({ 100, 45 }, { 117, 12 }, WindowColour::secondary, Widget::kContentNull, StringIds::tooltip_select_town_size)
+// );
+// constexpr StringId townSizeNames[9] = {
+// StringIds::town_size_1,
+// StringIds::town_size_2,
+// StringIds::town_size_3,
+// StringIds::town_size_4,
+// StringIds::town_size_5,
+// StringIds::town_size_6,
+// StringIds::town_size_7,
+// StringIds::town_size_8,
+// // 0x0049A59A
+// func PrepareDraw(self Ui::Window) 
+// Common::prepareDraw(self);
+// Widget::leftAlignTabs(self, Common::widx::tab_town_list, Common::widx::tab_build_misc_buildings);
+// self.widgets[widx::current_size].text = townSizeNames[_townSize - 1];
+// // 0x0049A627
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// auto tr = Gfx::TextRenderer(drawingCtx);
+// self.draw(drawingCtx);
+// Common::drawTabs(self, drawingCtx);
+// auto point = Point(self.x + 3, self.y + self.widgets[widx::current_size].top + 1);
+// tr.drawStringLeft(point, Colour::black, StringIds::town_size_label);
+// point = Point(self.x + 3, self.y + self.height - 13);
+// tr.drawStringLeft(point, Colour::black, StringIds::select_town_size);
+// // 0x0049A675
+// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// switch (widgetIndex)
+// case Common::widx::close_button:
+// WindowManager::close(&self);
+// break;
+// case Common::widx::tab_town_list:
+// case Common::widx::tab_build_town:
+// case Common::widx::tab_build_buildings:
+// case Common::widx::tab_build_misc_buildings:
+// Common::switchTab(self, widgetIndex);
+// break;
+// // 0x0049A7F2
+// func OnUpdate(self Window) 
+// self.frameNo++;
+// self.callPrepareDraw();
+// WindowManager::invalidateWidget(WindowType::townList, self.number, self.currentTab + Common::widx::tab_town_list);
+// if ((!Input::hasFlag(Input::Flags::toolActive)) || self.type != ToolManager::getToolWindowType() || self.number != ToolManager::getToolWindowNumber())
+// WindowManager::close(&self);
+// // 0x0049A697
+// func OnDropdown(self Window, widgetIndex Ui::WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// if (widgetIndex != widx::select_size)
+// return;
+// if (itemIndex != -1)
+// itemIndex++;
+// _townSize = itemIndex;
+// self.invalidate();
+// // 0x0049A7C1
+// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// Ui::Windows::Main::hideGridlines();
+// // 0x0049A710
+// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// World::mapInvalidateSelectionRect();
+// World::resetMapSelectionFlag(World::MapSelectionFlags::enable);
+// auto mapPos = Ui::ViewportInteraction::getSurfaceOrWaterLocFromUi({ x, y });
+// if (mapPos)
+// World::setMapSelectionFlags(World::MapSelectionFlags::enable);
+// World::setMapSelectionCorner(MapSelectionType::full);
+// World::setMapSelectionArea(*mapPos, *mapPos);
+// World::mapInvalidateSelectionRect();
+// // 0x0049A75E
+// func OnToolDown(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// auto mapPos = Ui::ViewportInteraction::getSurfaceOrWaterLocFromUi({ x, y });
+// if (mapPos)
+// GameCommands::setErrorTitle(StringIds::error_cant_build_this_here);
+// GameCommands::TownPlacementArgs placementArgs;
+// placementArgs.pos = *mapPos;
+// placementArgs.size = _townSize;
+// if (GameCommands::doCommand(placementArgs, GameCommands::Flags::apply) != GameCommands::FAILURE)
+// Audio::playSound(Audio::SoundId::construct, GameCommands::getPosition());
+// // 0x0049A69E
+// func PopulateTownSizeSelect(self Window, widget [[maybe_unused]] Widget) 
+// auto& currentSizeWidget = self.widgets[widx::current_size];
+// Dropdown::show(self.x + currentSizeWidget.left, self.y + currentSizeWidget.top, currentSizeWidget.width() - 2, currentSizeWidget.height(), self.getColour(WindowColour::secondary), 8, (1 << 7));
+// for (size_t i = 0; i < std::size(townSizeNames); ++i)
+// Dropdown::add(i, townSizeNames[i]);
+// Dropdown::setHighlightedItem(_townSize - 1);
+// // 0x0049A690
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// if (widgetIndex == widx::select_size)
+// populateTownSizeSelect(self, &self.widgets[widgetIndex]);
+// // 0x0049A844
+// func OnResize(self Window) 
+// self.setSize(kWindowSize, kWindowSize);
+// // 0x0049A7C7
+// func OnClose(self Window) 
+// if (ToolManager::isToolActive(self.type, self.number))
+// ToolManager::toolCancel();
+// // 0x0049A3BE
+// func TabReset(self Window) 
+// self.minWidth = kWindowSize.width;
+// self.minHeight = kWindowSize.height;
+// self.maxWidth = kWindowSize.width;
+// self.maxWidth = kWindowSize.height;
+// self.width = kWindowSize.width;
+// self.height = kWindowSize.height;
+// ToolManager::toolSet(self, Common::widx::tab_build_town, CursorId::placeTown);
+// Input::setFlag(Input::Flags::flag6);
+// Ui::Windows::Main::showGridlines();
+// static constexpr WindowEventList kEvents = {
+// .onClose = onClose,
+// .onMouseUp = onMouseUp,
+// .onResize = onResize,
+// .onMouseDown = onMouseDown,
+// .onDropdown = onDropdown,
+// .onUpdate = onUpdate,
+// .onToolUpdate = onToolUpdate,
+// .onToolDown = onToolDown,
+// .onToolAbort = onToolAbort,
+// .prepareDraw = prepareDraw,
+// .draw = draw,
+// static const WindowEventList& getEvents()
+// orphan member: return kEvents;
+// namespace BuildBuildings
+// static constexpr Ui::Size kWindowSize = { 600, 172 };
+const RowHeight uint8 = 112
+type Widx int
+
+const (
+	Scrollview Widx = 8
+	Rotate_object
+	Object_colour
+)
+// static constexpr auto widgets = makeWidgets(
+// Common::makeCommonWidgets(640, 172, StringIds::title_build_new_buildings),
+// Widgets::ScrollView({ 2, 45 }, { 573, 112 }, WindowColour::secondary, 2),
+// Widgets::ImageButton({ 575, 46 }, { 24, 24 }, WindowColour::secondary, ImageIds::rotate_object, StringIds::rotate_object_90),
+// Widgets::ColourButton({ 579, 91 }, { 16, 16 }, WindowColour::secondary, Widget::kContentNull, StringIds::tooltip_object_colour)
+// );
+// // 0x0049A8A6
+// func PrepareDraw(self Ui::Window) 
+// self.widgets[widx::object_colour].image = Widget::kImageIdColourSet | Gfx::recolour(ImageIds::colour_swatch_recolourable, _buildingColour);
+// self.widgets[widx::object_colour].hidden = true;
+// if (self.rowHover != -1)
+// auto buildingObj = ObjectManager::get<BuildingObject>(self.rowHover);
+// if (buildingObj->colours != 0)
+// self.widgets[widx::object_colour].hidden = false;
+// Common::prepareDraw(self);
+// self.widgets[widx::scrollview].right = self.width - 26;
+// self.widgets[widx::scrollview].bottom = self.height - 14;
+// self.widgets[widx::rotate_object].left = self.width - 25;
+// self.widgets[widx::rotate_object].right = self.width - 2;
+// self.widgets[widx::object_colour].left = self.width - 21;
+// self.widgets[widx::object_colour].right = self.width - 6;
+// self.widgets[Common::widx::caption].text = StringIds::title_build_new_buildings;
+// if (self.currentTab == Common::widx::tab_build_misc_buildings - Common::widx::tab_town_list)
+// self.widgets[Common::widx::caption].text = StringIds::title_build_new_misc_buildings;
+// Widget::leftAlignTabs(self, Common::widx::tab_town_list, Common::widx::tab_build_misc_buildings);
+// // 0x0049A9C2
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// auto tr = Gfx::TextRenderer(drawingCtx);
+// self.draw(drawingCtx);
+// Common::drawTabs(self, drawingCtx);
+// auto buildingId = self.var_846;
+// if (buildingId == 0xFFFF)
+// buildingId = self.rowHover;
+// if (buildingId == 0xFFFF)
+// return;
+// auto buildingObj = ObjectManager::get<BuildingObject>(buildingId);
+// orphan member: FormatArguments args{};
+// args.push(buildingObj->name);
+// auto point = Point(self.x + 3, self.y + self.height - 13);
+// tr.drawStringLeftClipped(point, self.width - 19, Colour::black, StringIds::black_stringid, args);
+// // 0x0049AB31
+// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// switch (widgetIndex)
+// case Common::widx::close_button:
+// WindowManager::close(&self);
+// break;
+// case Common::widx::tab_town_list:
+// case Common::widx::tab_build_town:
+// case Common::widx::tab_build_buildings:
+// case Common::widx::tab_build_misc_buildings:
+// Common::switchTab(self, widgetIndex);
+// break;
+// case widx::rotate_object:
+// if (_buildingRotation < 3)
+// _buildingRotation++;
+// else
+// _buildingRotation = 0;
+// self.invalidate();
+// break;
+// // 0x0049AD51
+// func OnUpdate(self Window) 
+// if (!Input::hasFlag(Input::Flags::rightMousePressed))
+// auto cursor = Input::getMouseLocation();
+// auto xPos = cursor.x;
+// auto yPos = cursor.y;
+// Window* activeWindow = WindowManager::findAt(xPos, yPos);
+// if (activeWindow == &self)
+// xPos -= self.x;
+// xPos += 26;
+// yPos -= self.y;
+// if ((yPos < 42) || (xPos <= self.width))
+// xPos = cursor.x;
+// yPos = cursor.y;
+// WidgetIndex_t activeWidget = self.findWidgetAt(xPos, yPos);
+// if (activeWidget > Common::widx::panel)
+// self.expandContentCounter += 1;
+// if (self.expandContentCounter >= 8)
+// auto y = std::min(self.scrollAreas[0].contentHeight - 1 + 60, 500);
+// if (Ui::height() < 600)
+// y = std::min(y, 276);
+// self.minWidth = kWindowSize.width;
+// self.minHeight = y;
+// self.maxWidth = kWindowSize.width;
+// self.maxHeight = y;
+// else
+// if (Input::state() != Input::State::scrollLeft)
+// self.minWidth = kWindowSize.width;
+// self.minHeight = kWindowSize.height;
+// self.maxWidth = kWindowSize.width;
+// self.maxHeight = kWindowSize.height;
+// else
+// self.expandContentCounter = 0;
+// if (Input::state() != Input::State::scrollLeft)
+// self.minWidth = kWindowSize.width;
+// self.minHeight = kWindowSize.height;
+// self.maxWidth = kWindowSize.width;
+// self.maxHeight = kWindowSize.height;
+// self.frameNo++;
+// self.callPrepareDraw();
+// WindowManager::invalidateWidget(WindowType::townList, self.number, self.currentTab + Common::widx::tab_town_list);
+// if (!ToolManager::isToolActive(self.type, self.number))
+// WindowManager::close(&self);
+// // 0x0049AB59
+// func OnDropdown(self Window, widgetIndex Ui::WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// if (widgetIndex != widx::object_colour)
+// return;
+// if (itemIndex == -1)
+// return;
+// _buildingColour = static_cast<Colour>(Dropdown::getItemArgument(itemIndex, 2));
+// self.invalidate();
+// // 0x0049B37F
+// func RemoveBuildingGhost() 
+// if (_buildingGhostPlaced)
+// GameCommands::BuildingRemovalArgs args;
+// args.pos = _buildingGhostPos;
+// GameCommands::doCommand(args, GameCommands::Flags::apply | GameCommands::Flags::noErrorWindow | GameCommands::Flags::noPayment | GameCommands::Flags::ghost);
+// _buildingGhostPlaced = false;
+// // 0x0049AD46
+// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// removeBuildingGhost();
+// Ui::Windows::Main::hideGridlines();
+// // 0x0049B32A
+// func PlaceBuildingGhost(placementArgs GameCommands::BuildingPlacementArgs) currency32_t
+// removeBuildingGhost();
+// auto res = GameCommands::doCommand(placementArgs, GameCommands::Flags::apply | GameCommands::Flags::preventBuildingClearing | GameCommands::Flags::noErrorWindow | GameCommands::Flags::noPayment | GameCommands::Flags::ghost);
+// if (res != GameCommands::FAILURE)
+// _buildingGhostPos = placementArgs.pos;
+// _buildingGhostType = placementArgs.type;
+// _buildingGhostRotation = placementArgs.rotation;
+// _buildingGhostPlaced = true;
+// orphan member: return res;
+// // 0x0049B3B2
+// static std::optional<GameCommands::BuildingPlacementArgs> getBuildingPlacementArgsFromCursor(const int16_t x, const int16_t y)
+// auto* townListWnd = WindowManager::find(WindowType::townList);
+// if (townListWnd == nullptr)
+// return {};
+// if (townListWnd->currentTab != (Common::widx::tab_build_misc_buildings - Common::widx::tab_town_list) && townListWnd->currentTab != (Common::widx::tab_build_buildings - Common::widx::tab_town_list))
+// return {};
+// if (townListWnd->rowHover == -1)
+// return {};
+// const auto pos = ViewportInteraction::getSurfaceOrWaterLocFromUi({ x, y }); // ax,cx
+// if (!pos)
+// return {};
+// GameCommands::BuildingPlacementArgs args;
+// args.rotation = (_buildingRotation - WindowManager::getCurrentRotation()) & 0x3; // bh
+// args.colour = _buildingColour;
+// auto tile = World::TileManager::get(*pos);
+// const auto* surface = tile.surface();
+// if (surface == nullptr)
+// return {};
+// auto z = surface->baseHeight(); // di
+// if (surface->slope())
+// z += 16;
+// args.pos = World::Pos3(pos->x, pos->y, z);
+// args.type = townListWnd->rowHover;   // dl
+// args.variation = _buildingVariation; // dh
+// if (SceneManager::isEditorMode())
+// args.buildImmediately = true; // bh
+// return { args };
+// // 0x0049ABF0
+// func OnToolUpdate(self Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// World::mapInvalidateSelectionRect();
+// World::resetMapSelectionFlag(World::MapSelectionFlags::enable);
+// auto placementArgs = getBuildingPlacementArgsFromCursor(x, y);
+// if (!placementArgs)
+// removeBuildingGhost();
+// return;
+// // Always show buildings, not scaffolding, for ghost placements.
+// placementArgs->buildImmediately = true;
+// World::setMapSelectionFlags(World::MapSelectionFlags::enable);
+// World::setMapSelectionCorner(MapSelectionType::full);
+// auto* building = ObjectManager::get<BuildingObject>(placementArgs->type);
+// auto posB = World::Pos2(placementArgs->pos) + (building->hasFlags(BuildingObjectFlags::largeTile) ? World::Pos2(32, 32) : World::Pos2(0, 0));
+// World::setMapSelectionArea(placementArgs->pos, posB);
+// World::mapInvalidateSelectionRect();
+// if (_buildingGhostPlaced)
+// if (_buildingGhostPos == placementArgs->pos && _buildingGhostRotation == placementArgs->rotation && _buildingGhostType == placementArgs->type)
+// return;
+// removeBuildingGhost();
+// auto cost = placeBuildingGhost(*placementArgs);
+// if (cost != _buildingPlacementCost)
+// _buildingPlacementCost = cost;
+// self.invalidate();
+// // 0x0049ACBD
+// func OnToolDown(self Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// removeBuildingGhost();
+// auto placementArgs = getBuildingPlacementArgsFromCursor(x, y);
+// if (placementArgs)
+// GameCommands::setErrorTitle(StringIds::error_cant_build_this_here);
+// if (GameCommands::doCommand(*placementArgs, GameCommands::Flags::apply | GameCommands::Flags::preventBuildingClearing) != GameCommands::FAILURE)
+// Audio::playSound(Audio::SoundId::construct, GameCommands::getPosition());
+// uint8_t variation = 0;
+// if (self.rowHover != -1)
+// auto* buildingObj = ObjectManager::get<BuildingObject>(self.rowHover);
+// variation = (_buildingVariation + 1) % buildingObj->numVariations;
+// _buildingVariation = variation;
+// // 0x0049AB52
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// if (widgetIndex == widx::object_colour)
+// auto obj = ObjectManager::get<BuildingObject>(self.rowHover);
+// Dropdown::showColour(&self, &self.widgets[widgetIndex], obj->colours, _buildingColour, self.getColour(WindowColour::secondary));
+// // 0x0049B2B5
+// func UpdateActiveThumb(self Window) 
+// int32_t scrollWidth = 0, scrollHeight = 0;
+// self.callGetScrollSize(0, scrollWidth, scrollHeight);
+// self.scrollAreas[0].contentHeight = scrollHeight;
+// auto i = 0;
+// for (; i <= self.var_83C; i++)
+// if (self.rowInfo[i] == self.rowHover)
+// break;
+// if (i >= self.var_83C)
+// i = 0;
+// i = (i / 5) * kRowHeight;
+// self.scrollAreas[0].contentOffsetY = i;
+// Ui::ScrollView::updateThumbs(self, widx::scrollview);
+// // 0x0049AF98
+// func OnResize(self Window) 
+// self.invalidate();
+// Ui::Size kMinWindowSize = { self.minWidth, self.minHeight };
+// Ui::Size kMaxWindowSize = { self.maxWidth, self.maxHeight };
+// bool hasResized = self.setSize(kMinWindowSize, kMaxWindowSize);
+// if (hasResized)
+// updateActiveThumb(self);
+// // 0x0049AE83
+// func GetScrollSize(self Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// scrollHeight = (4 + self.var_83C) / 5;
+// if (scrollHeight == 0)
+// scrollHeight += 1;
+// scrollHeight *= kRowHeight;
+// // 0x0049ABBB
+// static std::optional<FormatArguments> tooltip([[maybe_unused]] Ui::Window& window, [[maybe_unused]] WidgetIndex_t widgetIndex, [[maybe_unused]] const WidgetId id)
+// orphan member: FormatArguments args{};
+// args.push(StringIds::tooltip_scroll_building_list);
+// orphan member: return args;
+// // 0x0049AA1C
+// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// const auto& rt = drawingCtx.currentRenderTarget();
+// auto shade = Colours::getShade(self.getColour(WindowColour::secondary).c(), 3);
+// drawingCtx.clearSingle(shade);
+// uint16_t xPos = 0;
+// uint16_t yPos = 0;
+// for (uint16_t i = 0; i < self.var_83C; i++)
+// if (yPos + kRowHeight < rt.y)
+// xPos += kRowHeight;
+// if (xPos >= kRowHeight * 5) // full row
+// xPos = 0;
+// yPos += kRowHeight;
+// continue;
+// func If(rt.height yPos > rt.y +) else
+// break;
+// if (self.rowInfo[i] != self.rowHover)
+// if (self.rowInfo[i] == self.var_846)
+// drawingCtx.drawRectInset(xPos, yPos, kRowHeight, kRowHeight, self.getColour(WindowColour::secondary), Gfx::RectInsetFlags::colourLight);
+// else
+// drawingCtx.drawRectInset(xPos, yPos, kRowHeight, kRowHeight, self.getColour(WindowColour::secondary), (Gfx::RectInsetFlags::colourLight | Gfx::RectInsetFlags::borderInset));
+// auto buildingObj = ObjectManager::get<BuildingObject>(self.rowInfo[i]);
+// auto clipped = Gfx::clipRenderTarget(rt, Ui::Rect(xPos + 1, yPos + 1, 110, 110));
+// if (clipped)
+// drawingCtx.pushRenderTarget(*clipped);
+// auto colour = _buildingColour;
+// if (self.rowHover != self.rowInfo[i])
+// auto bit = Numerics::bitScanReverse(buildingObj->colours);
+// colour = bit == -1 ? Colour::black : static_cast<Colour>(bit);
+// buildingObj->drawBuilding(drawingCtx, _buildingRotation, 56, 96, colour);
+// drawingCtx.popRenderTarget();
+// xPos += kRowHeight;
+// if (xPos >= kRowHeight * 5) // full row
+// xPos = 0;
+// yPos += kRowHeight;
+// // 0x0049B304
+// func UpdateBuildingColours(self Window) 
+// if (self.rowHover != -1)
+// auto buildingObj = ObjectManager::get<BuildingObject>(self.rowHover);
+// if (buildingObj->colours != 0)
+// auto bit = Numerics::bitScanReverse(buildingObj->colours);
+// auto colour = bit == -1 ? Colour::black : static_cast<Colour>(bit);
+// _buildingColour = colour;
+// func GetRowIndex(x int16, y int16) int
+// return (x / 112) + (y / 112) * 5;
+// // 0x0049AEFD
+// func OnScrollMouseDown(self Ui::Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// auto index = getRowIndex(x, y);
+// for (auto i = 0; i < self.var_83C; i++)
+// auto rowInfo = self.rowInfo[i];
+// index--;
+// if (index < 0)
+// self.rowHover = rowInfo;
+// if (self.currentTab == Common::widx::tab_build_misc_buildings - Common::widx::tab_town_list)
+// getGameState().lastMiscBuildingOption = static_cast<uint8_t>(rowInfo);
+// else
+// getGameState().lastBuildingOption = static_cast<uint8_t>(rowInfo);
+// updateBuildingColours(self);
+// int32_t pan = (self.width >> 1) + self.x;
+// Audio::playSound(Audio::SoundId::clickDown, pan);
+// self.expandContentCounter = -16;
+// _buildingPlacementCost = GameCommands::FAILURE;
+// _buildingVariation = 0;
+// self.invalidate();
+// break;
+// // 0x0049AEBA
+// func OnScrollMouseOver(self Ui::Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// auto index = getRowIndex(x, y);
+// uint16_t rowInfo = y;
+// auto i = 0;
+// for (; i < self.var_83C; i++)
+// rowInfo = self.rowInfo[i];
+// index--;
+// if (index < 0)
+// self.var_846 = rowInfo;
+// self.invalidate();
+// break;
+// // 0x0049ABC5
+// func OnClose(self Window) 
+// if (ToolManager::isToolActive(self.type, self.number))
+// ToolManager::toolCancel();
+// // 0x0049AEA1
+// func Event_08(self Window) 
+// if (self.var_846 != 0xFFFF)
+// self.var_846 = 0xFFFF;
+// self.invalidate();
+// // 0x0049B206
+// func UpdateBuildingList(self Window) 
+// auto buildingCount = 0;
+// for (auto i = 0; i < 128; i++)
+// auto buildingObj = ObjectManager::get<BuildingObject>(i);
+// if (buildingObj == nullptr)
+// continue;
+// if (self.currentTab == Common::widx::tab_build_misc_buildings - Common::widx::tab_town_list)
+// if (!buildingObj->hasFlags(BuildingObjectFlags::miscBuilding))
+// continue;
+// if (buildingObj->hasFlags(BuildingObjectFlags::isHeadquarters))
+// continue;
+// else
+// if (buildingObj->hasFlags(BuildingObjectFlags::miscBuilding))
+// continue;
+// self.rowInfo[buildingCount] = i;
+// buildingCount++;
+// self.var_83C = buildingCount;
+// auto rowHover = -1;
+// auto lastSelectedBuilding = getGameState().lastBuildingOption;
+// if (self.currentTab == Common::widx::tab_build_misc_buildings - Common::widx::tab_town_list)
+// lastSelectedBuilding = getGameState().lastMiscBuildingOption;
+// if (lastSelectedBuilding != 0xFF)
+// for (auto i = 0; i <= self.var_83C; i++)
+// if (lastSelectedBuilding == self.rowInfo[i])
+// rowHover = lastSelectedBuilding;
+// break;
+// if (rowHover == -1 && self.var_83C != 0)
+// rowHover = self.rowInfo[0];
+// self.rowHover = rowHover;
+// updateActiveThumb(self);
+// updateBuildingColours(self);
+// // 0x0049A3FF
+// func TabReset(self Window) 
+// self.minWidth = kWindowSize.width;
+// self.minHeight = kWindowSize.height;
+// self.maxWidth = kWindowSize.width;
+// self.maxWidth = kWindowSize.height;
+// self.width = kWindowSize.width;
+// self.height = kWindowSize.height;
+// auto tab = Common::widx::tab_build_buildings;
+// if (self.currentTab == Common::widx::tab_build_misc_buildings - Common::widx::tab_town_list)
+// tab = Common::widx::tab_build_misc_buildings;
+// ToolManager::toolSet(self, tab, CursorId::placeBuilding);
+// Input::setFlag(Input::Flags::flag6);
+// Ui::Windows::Main::showGridlines();
+// _buildingGhostPlaced = 0;
+// _buildingPlacementCost = GameCommands::FAILURE;
+// self.var_83C = 0;
+// self.rowHover = -1;
+// self.var_846 = 0xFFFFU;
+// updateBuildingList(self);
+// updateBuildingColours(self);
+// _buildingVariation = 0;
+// static constexpr WindowEventList kEvents = {
+// .onClose = onClose,
+// .onMouseUp = onMouseUp,
+// .onResize = onResize,
+// .onMouseDown = onMouseDown,
+// .onDropdown = onDropdown,
+// .onUpdate = onUpdate,
+// .event_08 = event_08,
+// .onToolUpdate = onToolUpdate,
+// .onToolDown = onToolDown,
+// .onToolAbort = onToolAbort,
+// .getScrollSize = getScrollSize,
+// .scrollMouseDown = onScrollMouseDown,
+// .scrollMouseOver = onScrollMouseOver,
+// .tooltip = tooltip,
+// .prepareDraw = prepareDraw,
+// .draw = draw,
+// .drawScroll = drawScroll,
+// static const WindowEventList& getEvents()
+// orphan member: return kEvents;
+// func Rotate(self Window) bool
+// if (self.currentTab >= Common::widx::tab_build_buildings - Common::widx::tab_town_list)
+// if (!self.isDisabled(BuildBuildings::widx::rotate_object))
+// if (!self.widgets[BuildBuildings::widx::rotate_object].hidden)
+// self.callOnMouseUp(BuildBuildings::widx::rotate_object, self.widgets[BuildBuildings::widx::rotate_object].id);
+// orphan member: return true;
+// orphan member: return false;
+// namespace Common
+type TabInformation struct {
+// std::span<const Widget> widgets;
+// const widx widgetIndex;
+// const WindowEventList& events;
+}
+// // clang-format off
+// static TabInformation tabInformationByTabOffset[] = {
+// { TownList::widgets,       widx::tab_town_list,            TownList::getEvents()       },
+// { BuildTowns::widgets,     widx::tab_build_town,           BuildTowns::getEvents()     },
+// { BuildBuildings::widgets, widx::tab_build_buildings,      BuildBuildings::getEvents() },
+// { BuildBuildings::widgets, widx::tab_build_misc_buildings, BuildBuildings::getEvents() },
+// // clang-format on
+// func PrepareDraw(self Window) 
+// // Activate the current tab
+// self.activatedWidgets &= ~((1ULL << tab_town_list) | (1ULL << tab_build_town) | (1ULL << tab_build_buildings) | (1ULL << tab_build_misc_buildings));
+// self.activatedWidgets |= (1ULL << Common::tabInformationByTabOffset[self.currentTab].widgetIndex);
+// self.widgets[Common::widx::frame].right = self.width - 1;
+// self.widgets[Common::widx::frame].bottom = self.height - 1;
+// self.widgets[Common::widx::panel].right = self.width - 1;
+// self.widgets[Common::widx::panel].bottom = self.height - 1;
+// self.widgets[Common::widx::caption].right = self.width - 2;
+// self.widgets[Common::widx::close_button].left = self.width - 15;
+// self.widgets[Common::widx::close_button].right = self.width - 3;
+// // 0x0049B054
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// auto skin = ObjectManager::get<InterfaceSkinObject>();
+// // Town List Tab
+// uint32_t imageId = skin->img;
+// imageId += InterfaceSkin::ImageIds::toolbar_menu_towns;
+// Widget::drawTab(self, drawingCtx, imageId, widx::tab_town_list);
+// // Build New Towns Tab
+// static constexpr uint32_t buildNewTownsImageIds[] = {
+// InterfaceSkin::ImageIds::build_town_frame_0,
+// InterfaceSkin::ImageIds::build_town_frame_1,
+// InterfaceSkin::ImageIds::build_town_frame_2,
+// InterfaceSkin::ImageIds::build_town_frame_3,
+// InterfaceSkin::ImageIds::build_town_frame_4,
+// InterfaceSkin::ImageIds::build_town_frame_5,
+// InterfaceSkin::ImageIds::build_town_frame_6,
+// InterfaceSkin::ImageIds::build_town_frame_7,
+// InterfaceSkin::ImageIds::build_town_frame_8,
+// InterfaceSkin::ImageIds::build_town_frame_9,
+// InterfaceSkin::ImageIds::build_town_frame_10,
+// InterfaceSkin::ImageIds::build_town_frame_11,
+// InterfaceSkin::ImageIds::build_town_frame_12,
+// InterfaceSkin::ImageIds::build_town_frame_13,
+// InterfaceSkin::ImageIds::build_town_frame_14,
+// InterfaceSkin::ImageIds::build_town_frame_15,
+// uint32_t imageId = skin->img;
+// if (self.currentTab == widx::tab_build_town - widx::tab_town_list)
+// imageId += buildNewTownsImageIds[(self.frameNo / 2) % std::size(buildNewTownsImageIds)];
+// else
+// imageId += buildNewTownsImageIds[0];
+// Widget::drawTab(self, drawingCtx, imageId, widx::tab_build_town);
+// // Build New Buildings Tab
+// static constexpr uint32_t buildBuildingsImageIds[] = {
+// InterfaceSkin::ImageIds::build_buildings_frame_0,
+// InterfaceSkin::ImageIds::build_buildings_frame_1,
+// InterfaceSkin::ImageIds::build_buildings_frame_2,
+// InterfaceSkin::ImageIds::build_buildings_frame_3,
+// InterfaceSkin::ImageIds::build_buildings_frame_4,
+// InterfaceSkin::ImageIds::build_buildings_frame_5,
+// InterfaceSkin::ImageIds::build_buildings_frame_6,
+// InterfaceSkin::ImageIds::build_buildings_frame_7,
+// InterfaceSkin::ImageIds::build_buildings_frame_8,
+// InterfaceSkin::ImageIds::build_buildings_frame_9,
+// InterfaceSkin::ImageIds::build_buildings_frame_10,
+// InterfaceSkin::ImageIds::build_buildings_frame_11,
+// InterfaceSkin::ImageIds::build_buildings_frame_12,
+// InterfaceSkin::ImageIds::build_buildings_frame_13,
+// InterfaceSkin::ImageIds::build_buildings_frame_14,
+// InterfaceSkin::ImageIds::build_buildings_frame_15,
+// uint32_t imageId = skin->img;
+// if (self.currentTab == widx::tab_build_buildings - widx::tab_town_list)
+// imageId += buildBuildingsImageIds[(self.frameNo / 2) % std::size(buildBuildingsImageIds)];
+// else
+// imageId += buildBuildingsImageIds[0];
+// Widget::drawTab(self, drawingCtx, imageId, widx::tab_build_buildings);
+// // Build New Misc Buildings Tab
+// static constexpr uint32_t buildMiscBuildingsImageIds[] = {
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_0,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_1,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_2,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_3,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_4,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_5,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_6,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_7,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_8,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_9,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_10,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_11,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_12,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_13,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_14,
+// InterfaceSkin::ImageIds::build_misc_buildings_frame_15,
+// uint32_t imageId = skin->img;
+// if (self.currentTab == widx::tab_build_misc_buildings - widx::tab_town_list)
+// imageId += buildMiscBuildingsImageIds[(self.frameNo / 2) % std::size(buildMiscBuildingsImageIds)];
+// else
+// imageId += buildMiscBuildingsImageIds[0];
+// Widget::drawTab(self, drawingCtx, imageId, widx::tab_build_misc_buildings);
+// // 0x0049A2E2
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// if (ToolManager::isToolActive(self.type, self.number))
+// ToolManager::toolCancel();
+// self.currentTab = widgetIndex - widx::tab_town_list;
+// self.frameNo = 0;
+// self.flags &= ~(WindowFlags::beingResized);
+// self.viewportRemove(0);
+// const auto& tabInfo = tabInformationByTabOffset[widgetIndex - widx::tab_town_list];
+// self.holdableWidgets = 0;
+// self.eventHandlers = &tabInfo.events;
+// self.activatedWidgets = 0;
+// self.setWidgets(tabInfo.widgets);
+// if (SceneManager::isEditorMode() || SceneManager::isSandboxMode())
+// self.disabledWidgets = 0;
+// else
+// self.disabledWidgets |= (1 << Common::widx::tab_build_town) | (1 << Common::widx::tab_build_buildings) | (1 << Common::widx::tab_build_misc_buildings);
+// self.invalidate();
+// if (self.currentTab == widx::tab_town_list - widx::tab_town_list)
+// TownList::tabReset(self);
+// if (self.currentTab == widx::tab_build_town - widx::tab_town_list)
+// BuildTowns::tabReset(self);
+// if (self.currentTab == widx::tab_build_buildings - widx::tab_town_list || self.currentTab == widx::tab_build_misc_buildings - widx::tab_town_list)
+// BuildBuildings::tabReset(self);
+// self.callOnResize();
+// self.callPrepareDraw();
+// self.initScrollWidgets();
+// self.invalidate();
+// self.moveInsideScreenEdges();
+// // 0x00499DDE
+// func RefreshTownList(self Window) 
+// self.rowCount = 0;
+// for (auto& town : TownManager::towns())
+// town.flags &= ~TownFlags::sorted;

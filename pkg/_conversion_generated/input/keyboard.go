@@ -1,0 +1,309 @@
+package input
+
+// AUTO-GENERATED FROM C++ - WILL NOT COMPILE
+// This is a mechanical translation that needs manual fixing
+
+// #include "Audio/Audio.h"
+// #include "Config.h"
+// #include "Entities/EntityManager.h"
+// #include "GameCommands/Cheats/Cheat.h"
+// #include "GameCommands/GameCommands.h"
+// #include "Input.h"
+// #include "Input/Shortcuts.h"
+// #include "Intro.h"
+// #include "Localisation/StringIds.h"
+// #include "Logging.h"
+// #include "SceneManager.h"
+// #include "Tutorial.h"
+// #include "Ui.h"
+// #include "Ui/Screenshot.h"
+// #include "Ui/WindowManager.h"
+// #include "Vehicles/Vehicle.h"
+// #include "World/CompanyManager.h"
+// #include <Localisation/Conversion.h>
+// #include <Localisation/Unicode.h>
+// #include <OpenLoco/Core/BitSet.hpp>
+// #include <OpenLoco/Engine/Input/ShortcutManager.h>
+// #include <SDL2/SDL_keyboard.h>
+// #include <cstdint>
+// #include <functional>
+// #include <optional>
+// using namespace OpenLoco::Ui;
+// using namespace OpenLoco::GameCommands;
+// namespace OpenLoco::Input
+type Key struct {
+	KeyCode uint32
+	CharCode uint32
+}
+// func NormalKey() 
+// func Cheat() 
+// func Loc_4BECDE() 
+// func Loc_4BED04() 
+// func Loc_4BED79() 
+// static KeyModifier _keyModifier;
+// static std::string _cheatBuffer; // 0x0011364A5
+// static std::array<Key, 64> _keyQueue;
+// static uint32_t _keyQueueLastWrite;
+// static uint32_t _keyQueueReadIndex;
+// static uint32_t _keyQueueWriteIndex;
+// static BitSet<SDL_NUM_SCANCODES> _keyboardState;
+// static bool _hasKeyboardState = false;
+// static const std::pair<std::string, std::function<void()>> kCheats[] = {
+// { "DRIVER", loc_4BECDE },
+// { "SHUNT", loc_4BED04 },
+// { "FREECASH", loc_4BED79 }
+// func HasKeyModifier(modifier KeyModifier) bool
+// KeyModifier keyModifier = _keyModifier;
+// return (keyModifier & modifier) != KeyModifier::none;
+// func GetKeyModifier() KeyModifier
+// orphan member: return _keyModifier;
+// func Loc_4BECDE() 
+// SceneManager::addSceneFlags(SceneManager::Flags::driverCheatEnabled);
+// Audio::playSound(Audio::SoundId::clickPress, Ui::width() / 2);
+// func Loc_4BED04() 
+// if (!SceneManager::isDriverCheatEnabled())
+// return;
+// // Only works when DRIVER mode is active
+// for (auto i = (int32_t)WindowManager::count() - 1; i >= 0; i--)
+// auto w = WindowManager::get(i);
+// if (w->type != WindowType::vehicle)
+// continue;
+// auto t = EntityManager::get<Vehicles::VehicleBase>(EntityId(w->number));
+// if (t == nullptr)
+// continue;
+// if (t->owner != CompanyManager::getControllingId())
+// continue;
+// if (t->getTransportMode() != TransportMode::rail)
+// continue;
+// GameCommands::VehicleApplyShuntCheatArgs args;
+// args.head = EntityId(w->number);
+// GameCommands::doCommand(args, GameCommands::Flags::apply);
+// Audio::playSound(Audio::SoundId::clickPress, Ui::width() / 2);
+// return;
+// func Loc_4BED79() 
+// GameCommands::doCommand(GameCommands::ApplyFreeCashCheatArgs(), GameCommands::Flags::apply);
+// Audio::playSound(Audio::SoundId::clickPress, Ui::width() / 2);
+// func Loc_4BEFEF() 
+// switch (Tutorial::state())
+// case Tutorial::State::none:
+// break;
+// case Tutorial::State::playing:
+// _keyModifier = static_cast<KeyModifier>(Tutorial::nextInput());
+// if (!hasKeyModifier(KeyModifier::unknown))
+// return;
+// Windows::ToolTip::closeAndReset();
+// auto tutStringId = Tutorial::nextString();
+// auto main = WindowManager::getMainWindow();
+// auto cursor = getMouseLocation();
+// Windows::ToolTip::update(main, 0, tutStringId, cursor.x, cursor.y);
+// break;
+// case Tutorial::State::recording:
+// // Vanilla had tutorial recording here at 0x004BF005
+// // as tutorials are fixed mouse position there isn't much
+// // point implementing this code as per vanilla.
+// break;
+// // 0x0040477F
+// func ReadKeyboardState() 
+// _hasKeyboardState = false;
+// // Reset state.
+// _keyboardState.reset();
+// orphan member: int numKeys;
+// auto sdlKeyboardState = SDL_GetKeyboardState(&numKeys);
+// if (sdlKeyboardState != nullptr)
+// for (int scanCode = 0; scanCode < numKeys; scanCode++)
+// bool isDown = sdlKeyboardState[scanCode] != 0;
+// if (!isDown)
+// continue;
+// _keyboardState.set(scanCode, true);
+// _hasKeyboardState = 1;
+// // 0x00406FBA
+// func EnqueueKey(keycode uint32) 
+// uint32_t writeIndex = _keyQueueWriteIndex;
+// auto nextWriteIndex = static_cast<uint32_t>((writeIndex + 1) % std::size(_keyQueue));
+// if (nextWriteIndex == _keyQueueReadIndex)
+// return;
+// _keyQueueLastWrite = writeIndex;
+// _keyQueue[writeIndex] = { keycode, 0 };
+// _keyQueueWriteIndex = nextWriteIndex;
+// // 0x00406FBA
+// func HandleKeyInput(keycode uint32) 
+// enqueueKey(keycode);
+// switch (keycode)
+// case SDLK_RETURN:
+// case SDLK_BACKSPACE:
+// case SDLK_DELETE:
+// char c[] = { (char)keycode, '\0' };
+// enqueueText(c);
+// break;
+// func EnqueueText(text byte) 
+// using namespace Localisation;
+// if (text == nullptr || text[0] == '\0')
+// return;
+// uint32_t index = _keyQueueLastWrite;
+// auto unsignedText = reinterpret_cast<const uint8_t*>(text);
+// _keyQueue[index].charCode = convertUnicodeToLoco(readCodePoint(&unsignedText));
+// // 0x00407028
+// static std::optional<Key> getNextKey()
+// uint32_t readIndex = _keyQueueReadIndex;
+// if (readIndex == _keyQueueWriteIndex)
+// return std::nullopt;
+// const auto nextKey = _keyQueue[readIndex];
+// readIndex++;
+// // Wrap around at _keyQueue size
+// readIndex %= std::size(_keyQueue);
+// _keyQueueReadIndex = readIndex;
+// orphan member: return nextKey;
+// func TryShortcut(sc Shortcut, keyCode uint32, modifiers KeyModifier) bool
+// auto cfg = OpenLoco::Config::get();
+// if (cfg.shortcuts[sc].keyCode == keyCode && cfg.shortcuts[sc].modifiers == modifiers)
+// ShortcutManager::execute(sc);
+// orphan member: return true;
+// orphan member: return false;
+// // 0x004BEC5B
+// func ProcessKeyboardInput() 
+// cheat();
+// normalKey();
+// // 0x004BEC5B
+// func Cheat() 
+// // Used to handle INSERT cheat
+// if (_keyboardState[SDL_SCANCODE_INSERT] || _keyboardState[SDL_SCANCODE_LALT] || _keyboardState[SDL_SCANCODE_RALT])
+// if (hasKeyModifier(KeyModifier::cheat))
+// return;
+// else
+// _keyModifier |= KeyModifier::cheat;
+// _cheatBuffer.clear();
+// return;
+// if (!hasKeyModifier(KeyModifier::cheat))
+// return;
+// _keyModifier = _keyModifier & (~KeyModifier::cheat);
+// if (SceneManager::isTitleMode())
+// return;
+// for (const auto& cheat : kCheats)
+// if (strcmp(_cheatBuffer.c_str(), cheat.first.c_str()) == 0)
+// cheat.second();
+// break;
+// // 0x004BEDA0
+// func NormalKey() 
+// while (true)
+// auto nextKey = getNextKey();
+// if (!nextKey.has_value())
+// loc_4BEFEF();
+// break;
+// if (nextKey->keyCode == SDLK_LSHIFT || nextKey->keyCode == SDLK_RSHIFT)
+// continue;
+// if (nextKey->keyCode == SDLK_LCTRL || nextKey->keyCode == SDLK_RCTRL)
+// continue;
+// if (hasKeyModifier(KeyModifier::cheat))
+// if (nextKey->charCode >= 'a' && nextKey->charCode <= 'z')
+// nextKey->charCode = toupper(nextKey->charCode);
+// if (nextKey->charCode >= 'A' && nextKey->charCode <= 'Z')
+// _cheatBuffer += nextKey->charCode;
+// continue;
+// if (WindowManager::callKeyUpEventBackToFront(nextKey->charCode, nextKey->keyCode))
+// continue;
+// if (tryShortcut(Shortcut::screenshot, nextKey->keyCode, _keyModifier))
+// continue;
+// if (Tutorial::state() == Tutorial::State::playing)
+// Tutorial::stop();
+// continue;
+// if (tryShortcut(Shortcut::openDebugWindow, nextKey->keyCode, _keyModifier))
+// continue;
+// if (!SceneManager::isTitleMode())
+// for (const auto& shortcut : ShortcutManager::getList())
+// if (tryShortcut(shortcut.id, nextKey->keyCode, _keyModifier))
+// break;
+// continue;
+// if (Intro::state() == Intro::State::displayNotice)
+// Intro::state(Intro::State::end);
+// continue;
+// if (Intro::isActive())
+// Intro::state(Intro::State::displayNoticeBegin);
+// if (tryShortcut(Shortcut::sendMessage, nextKey->keyCode, _keyModifier))
+// continue;
+// if (tryShortcut(Shortcut::screenshot, nextKey->keyCode, _keyModifier))
+// continue;
+// if (tryShortcut(Shortcut::showOptionsWindow, nextKey->keyCode, _keyModifier))
+// continue;
+// func EdgeScroll() 
+// if (!Ui::hasInputFocus())
+// return;
+// if (Tutorial::state() != Tutorial::State::none)
+// return;
+// if (!Config::get().edgeScrolling)
+// return;
+// if (Input::state() != State::normal && Input::state() != State::dropdownActive)
+// return;
+// if (hasKeyModifier(KeyModifier::shift) || hasKeyModifier(KeyModifier::control))
+// return;
+// Ui::Point delta = { 0, 0 };
+// auto cursor = getCursorPosScaled();
+// if (cursor.x == 0)
+// delta.x -= Config::get().edgeScrollingSpeed;
+// if (cursor.x >= Ui::width() - 1)
+// delta.x += Config::get().edgeScrollingSpeed;
+// if (cursor.y == 0)
+// delta.y -= Config::get().edgeScrollingSpeed;
+// if (cursor.y >= Ui::height() - 1)
+// delta.y += Config::get().edgeScrollingSpeed;
+// if (delta.x == 0 && delta.y == 0)
+// return;
+// auto main = WindowManager::getMainWindow();
+// if (main->hasFlags(WindowFlags::viewportNoScrolling))
+// return;
+// if (SceneManager::isTitleMode())
+// return;
+// auto viewport = main->viewports[0];
+// if (viewport == nullptr)
+// return;
+// delta.x *= 1 << viewport->zoom;
+// delta.y *= 1 << viewport->zoom;
+// main->viewportConfigurations[0].savedViewX += delta.x;
+// main->viewportConfigurations[0].savedViewY += delta.y;
+// Input::setFlag(Flags::viewportScrolling);
+// func KeyScroll() 
+// if (Tutorial::state() != Tutorial::State::none)
+// return;
+// if (WindowManager::getCurrentModalType() != WindowType::undefined)
+// return;
+// if (WindowManager::find(WindowType::textInput) != nullptr)
+// return;
+// Ui::Point delta = { 0, 0 };
+// if (_keyboardState[SDL_SCANCODE_LEFT])
+// delta.x -= Config::get().edgeScrollingSpeed;
+// if (_keyboardState[SDL_SCANCODE_UP])
+// delta.y -= Config::get().edgeScrollingSpeed;
+// if (_keyboardState[SDL_SCANCODE_DOWN])
+// delta.y += Config::get().edgeScrollingSpeed;
+// if (_keyboardState[SDL_SCANCODE_RIGHT])
+// delta.x += Config::get().edgeScrollingSpeed;
+// if (delta.x == 0 && delta.y == 0)
+// return;
+// auto main = WindowManager::getMainWindow();
+// if (main->hasFlags(WindowFlags::viewportNoScrolling))
+// return;
+// if (SceneManager::isTitleMode())
+// return;
+// auto viewport = main->viewports[0];
+// if (viewport == nullptr)
+// return;
+// delta.x *= 1 << viewport->zoom;
+// delta.y *= 1 << viewport->zoom;
+// main->viewportConfigurations[0].savedViewX += delta.x;
+// main->viewportConfigurations[0].savedViewY += delta.y;
+// Input::setFlag(Flags::viewportScrolling);
+// // 0x004BE92A
+// func HandleKeyboard() 
+// handleScreenshotCountdown();
+// edgeScroll();
+// _keyModifier = _keyModifier & ~(KeyModifier::shift | KeyModifier::control | KeyModifier::unknown);
+// if (!_hasKeyboardState)
+// return;
+// if (_keyboardState[SDL_SCANCODE_LSHIFT])
+// _keyModifier |= KeyModifier::shift;
+// if (_keyboardState[SDL_SCANCODE_RSHIFT])
+// _keyModifier |= KeyModifier::shift;
+// if (_keyboardState[SDL_SCANCODE_LCTRL])
+// _keyModifier |= KeyModifier::control;
+// if (_keyboardState[SDL_SCANCODE_RCTRL])
+// _keyModifier |= KeyModifier::control;
+// keyScroll();

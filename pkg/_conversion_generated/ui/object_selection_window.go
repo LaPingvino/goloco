@@ -1,0 +1,1117 @@
+package ui
+
+// AUTO-GENERATED FROM C++ - WILL NOT COMPILE
+// This is a mechanical translation that needs manual fixing
+
+// #include "Audio/Audio.h"
+// #include "Config.h"
+// #include "GameCommands/GameCommands.h"
+// #include "Graphics/Colour.h"
+// #include "Graphics/Gfx.h"
+// #include "Graphics/ImageIds.h"
+// #include "Graphics/RenderTarget.h"
+// #include "Graphics/TextRenderer.h"
+// #include "Input.h"
+// #include "Localisation/FormatArguments.hpp"
+// #include "Localisation/Formatting.h"
+// #include "Localisation/StringIds.h"
+// #include "Logging.h"
+// #include "Objects/AirportObject.h"
+// #include "Objects/BridgeObject.h"
+// #include "Objects/BuildingObject.h"
+// #include "Objects/CargoObject.h"
+// #include "Objects/CliffEdgeObject.h"
+// #include "Objects/CompetitorObject.h"
+// #include "Objects/CurrencyObject.h"
+// #include "Objects/DockObject.h"
+// #include "Objects/HillShapesObject.h"
+// #include "Objects/IndustryObject.h"
+// #include "Objects/InterfaceSkinObject.h"
+// #include "Objects/LandObject.h"
+// #include "Objects/LevelCrossingObject.h"
+// #include "Objects/ObjectIndex.h"
+// #include "Objects/ObjectManager.h"
+// #include "Objects/RegionObject.h"
+// #include "Objects/RoadExtraObject.h"
+// #include "Objects/RoadObject.h"
+// #include "Objects/RoadStationObject.h"
+// #include "Objects/ScaffoldingObject.h"
+// #include "Objects/SnowObject.h"
+// #include "Objects/StreetLightObject.h"
+// #include "Objects/TrackExtraObject.h"
+// #include "Objects/TrackObject.h"
+// #include "Objects/TrainSignalObject.h"
+// #include "Objects/TrainStationObject.h"
+// #include "Objects/TreeObject.h"
+// #include "Objects/TunnelObject.h"
+// #include "Objects/VehicleObject.h"
+// #include "Objects/WallObject.h"
+// #include "Objects/WaterObject.h"
+// #include "SceneManager.h"
+// #include "Ui/Dropdown.h"
+// #include "Ui/TextInput.h"
+// #include "Ui/Widget.h"
+// #include "Ui/Widgets/ButtonWidget.h"
+// #include "Ui/Widgets/CaptionWidget.h"
+// #include "Ui/Widgets/DropdownWidget.h"
+// #include "Ui/Widgets/FrameWidget.h"
+// #include "Ui/Widgets/ImageButtonWidget.h"
+// #include "Ui/Widgets/PanelWidget.h"
+// #include "Ui/Widgets/ScrollViewWidget.h"
+// #include "Ui/Widgets/TabWidget.h"
+// #include "Ui/Widgets/TextBoxWidget.h"
+// #include "Ui/Window.h"
+// #include "Ui/WindowManager.h"
+// #include "World/CompanyManager.h"
+// #include <OpenLoco/Core/EnumFlags.hpp>
+// #include <OpenLoco/Core/FileSystem.hpp>
+// #include <OpenLoco/Diagnostics/Logging.h>
+// #include <array>
+// #include <numeric>
+// #include <ranges>
+// #include <vector>
+// using namespace OpenLoco::Diagnostics;
+// namespace OpenLoco::Ui::Windows::ObjectSelectionWindow
+const RowHeight int = 12
+// static constexpr Ui::Size kWindowSizeMin = { 600, 398 };
+// static constexpr Ui::Size kWindowSizeMax = { 2000, 2000 };
+// static constexpr Ui::Point kObjectPreviewOffset = { 56, 56 };
+// static constexpr Ui::Size kObjectPreviewSize = { 114, 114 };
+const DescriptionRowHeight uint8 = 10
+type ObjectTabFlags int
+
+const (
+	None ObjectTabFlags = 0
+	AlwaysHidden ObjectTabFlags = 1 << 0
+	Advanced ObjectTabFlags = 1 << 1
+	HideInGame ObjectTabFlags = 1 << 2
+	HideInEditor ObjectTabFlags = 1 << 3
+	ShowEvenIfSingular ObjectTabFlags = 1 << 4
+	FilterByVehicleType ObjectTabFlags = 1 << 5
+)
+// OPENLOCO_ENABLE_ENUM_OPERATORS(ObjectTabFlags);
+type SubTabInfo struct {
+	Name StringId
+	ObjectType ObjectType
+	VehicleType VehicleType
+	BaseImage uint32
+	AnimationLength uint8
+	AnimationDivisor uint8
+	Flags ObjectTabFlags
+}
+type MainTabInfo struct {
+	Name StringId
+	ObjectType ObjectType
+	Image uint32
+// std::span<const SubTabInfo> subTabs;
+	Flags ObjectTabFlags
+}
+// // clang-format off
+// static constexpr std::array kWorldRegionSubTabs{
+// SubTabInfo{ StringIds::object_world_region, ObjectType::region,    {}, ImageIds::tab_object_world,      1, 1, ObjectTabFlags::none     },
+// SubTabInfo{ StringIds::object_currency,     ObjectType::currency,  {}, ImageIds::tab_object_currency,   1, 1, ObjectTabFlags::advanced },
+// SubTabInfo{ StringIds::object_town_names,   ObjectType::townNames, {}, ImageIds::tab_object_town_names, 1, 1, ObjectTabFlags::advanced },
+// static constexpr std::array kVehicleSubTabs{
+// SubTabInfo{ StringIds::object_vehicles, ObjectType::vehicle, VehicleType::train,    InterfaceSkin::ImageIds::tab_vehicle_train_frame0,    8, 1, ObjectTabFlags::none },
+// SubTabInfo{ StringIds::object_vehicles, ObjectType::vehicle, VehicleType::bus,      InterfaceSkin::ImageIds::tab_vehicle_bus_frame0,      8, 1, ObjectTabFlags::none },
+// SubTabInfo{ StringIds::object_vehicles, ObjectType::vehicle, VehicleType::truck,    InterfaceSkin::ImageIds::tab_vehicle_truck_frame0,    8, 1, ObjectTabFlags::none },
+// SubTabInfo{ StringIds::object_vehicles, ObjectType::vehicle, VehicleType::tram,     InterfaceSkin::ImageIds::tab_vehicle_tram_frame0,     8, 1, ObjectTabFlags::none },
+// SubTabInfo{ StringIds::object_vehicles, ObjectType::vehicle, VehicleType::aircraft, InterfaceSkin::ImageIds::tab_vehicle_aircraft_frame0, 8, 2, ObjectTabFlags::none },
+// SubTabInfo{ StringIds::object_vehicles, ObjectType::vehicle, VehicleType::ship,     InterfaceSkin::ImageIds::tab_vehicle_ship_frame0,     8, 3, ObjectTabFlags::none },
+// static constexpr std::array kLandSubTabs{
+// SubTabInfo{ StringIds::object_land,                ObjectType::land,       {}, ImageIds::tab_object_landscape, 1, 1, ObjectTabFlags::advanced                                },
+// SubTabInfo{ StringIds::object_trees,               ObjectType::tree,       {}, ImageIds::tab_object_trees,     1, 1, ObjectTabFlags::advanced                                },
+// SubTabInfo{ StringIds::object_water,               ObjectType::water,      {}, ImageIds::tab_object_water,     1, 1, ObjectTabFlags::advanced                                },
+// SubTabInfo{ StringIds::object_walls,               ObjectType::wall,       {}, ImageIds::tab_object_walls,     1, 1, ObjectTabFlags::advanced                                },
+// SubTabInfo{ StringIds::object_map_generation_data, ObjectType::hillShapes, {}, ImageIds::tab_object_map,       1, 1, ObjectTabFlags::advanced                                },
+// SubTabInfo{ StringIds::object_snow,                ObjectType::snow,       {}, ImageIds::tab_object_snow,      1, 1, ObjectTabFlags::advanced                                },
+// SubTabInfo{ StringIds::object_climate,             ObjectType::climate,    {}, ImageIds::tab_object_climate,   1, 1, ObjectTabFlags::advanced                                },
+// SubTabInfo{ StringIds::object_cliffs,              ObjectType::cliffEdge,  {}, ImageIds::tab_object_cliff,     1, 1, ObjectTabFlags::advanced | ObjectTabFlags::alwaysHidden },
+// static constexpr std::array kTrackSubTabs{
+// SubTabInfo{ StringIds::object_tracks,         ObjectType::track,        {}, ImageIds::tab_object_track,          1, 1, ObjectTabFlags::advanced                                      },
+// SubTabInfo{ StringIds::object_track_stations, ObjectType::trainStation, {}, ImageIds::tab_object_track_stations, 1, 1, ObjectTabFlags::advanced                                      },
+// SubTabInfo{ StringIds::object_track_extras,   ObjectType::trackExtra,   {}, ImageIds::tab_object_track_mods,     1, 1, ObjectTabFlags::advanced | ObjectTabFlags::showEvenIfSingular },
+// SubTabInfo{ StringIds::object_signals,        ObjectType::trackSignal,  {}, ImageIds::tab_object_signals,        1, 1, ObjectTabFlags::advanced                                      },
+// static constexpr std::array kRoadSubTabs{
+// SubTabInfo{ StringIds::object_roads,          ObjectType::road,          {}, ImageIds::tab_object_road,            1, 1, ObjectTabFlags::advanced                                      },
+// SubTabInfo{ StringIds::object_road_stations,  ObjectType::roadStation,   {}, ImageIds::tab_object_road_stations,   1, 1, ObjectTabFlags::advanced                                      },
+// SubTabInfo{ StringIds::object_road_extras,    ObjectType::roadExtra,     {}, ImageIds::tab_object_road_mods,       1, 1, ObjectTabFlags::advanced | ObjectTabFlags::showEvenIfSingular },
+// SubTabInfo{ StringIds::object_level_crossing, ObjectType::levelCrossing, {}, ImageIds::tab_object_level_crossings, 1, 1, ObjectTabFlags::advanced                                      },
+// SubTabInfo{ StringIds::object_street_lights,  ObjectType::streetLight,   {}, ImageIds::tab_object_streetlights,    1, 1, ObjectTabFlags::advanced                                      },
+// static constexpr std::array kBuildingSubTabs{
+// SubTabInfo{ StringIds::object_buildings,   ObjectType::building,    {}, ImageIds::tab_object_buildings,    1, 1, ObjectTabFlags::advanced                                },
+// SubTabInfo{ StringIds::object_industries,  ObjectType::industry,    {}, ImageIds::tab_object_industries,   1, 1, ObjectTabFlags::advanced                                },
+// SubTabInfo{ StringIds::object_scaffolding, ObjectType::scaffolding, {}, ImageIds::tab_object_construction, 1, 1, ObjectTabFlags::advanced                                },
+// SubTabInfo{ StringIds::object_cargo,       ObjectType::cargo,       {}, ImageIds::tab_object_cargo,        1, 1, ObjectTabFlags::advanced | ObjectTabFlags::alwaysHidden },
+// static constexpr std::array kMiscSubTabs{
+// SubTabInfo{ StringIds::object_interface_styles,      ObjectType::interfaceSkin, {}, ImageIds::tab_object_settings,  1, 1, ObjectTabFlags::advanced                                },
+// SubTabInfo{ StringIds::object_scenario_descriptions, ObjectType::scenarioText,  {}, ImageIds::tab_object_scenarios, 1, 1, ObjectTabFlags::advanced | ObjectTabFlags::alwaysHidden },
+// SubTabInfo{ StringIds::object_animation_effects,     ObjectType::steam,         {}, ImageIds::tab_object_smoke,     1, 1, ObjectTabFlags::advanced | ObjectTabFlags::alwaysHidden },
+// SubTabInfo{ StringIds::object_sounds,                ObjectType::sound,         {}, ImageIds::tab_object_audio,     1, 1, ObjectTabFlags::advanced | ObjectTabFlags::alwaysHidden },
+// static constexpr std::array kMainTabInfo{
+// MainTabInfo{ StringIds::object_world_region,     ObjectType::region,        ImageIds::tab_object_world,     kWorldRegionSubTabs, ObjectTabFlags::none                                    },
+// MainTabInfo{ StringIds::object_vehicles,         ObjectType::vehicle,       ImageIds::tab_object_vehicles,  kVehicleSubTabs,     ObjectTabFlags::advanced                                },
+// MainTabInfo{ StringIds::object_land,             ObjectType::land,          ImageIds::tab_object_landscape, kLandSubTabs,        ObjectTabFlags::advanced                                },
+// MainTabInfo{ StringIds::object_tracks,           ObjectType::track,         ImageIds::tab_object_track,     kTrackSubTabs,       ObjectTabFlags::advanced                                },
+// MainTabInfo{ StringIds::object_roads,            ObjectType::road,          ImageIds::tab_object_road,      kRoadSubTabs,        ObjectTabFlags::advanced                                },
+// MainTabInfo{ StringIds::object_airports,         ObjectType::airport,       ImageIds::tab_object_airports,  {},                  ObjectTabFlags::advanced                                },
+// MainTabInfo{ StringIds::object_docks,            ObjectType::dock,          ImageIds::tab_object_docks,     {},                  ObjectTabFlags::advanced                                },
+// MainTabInfo{ StringIds::object_buildings,        ObjectType::building,      ImageIds::tab_object_buildings, kBuildingSubTabs,    ObjectTabFlags::advanced                                },
+// MainTabInfo{ StringIds::object_bridges,          ObjectType::bridge,        ImageIds::tab_object_bridges,   {},                  ObjectTabFlags::advanced                                },
+// MainTabInfo{ StringIds::object_tunnels,          ObjectType::tunnel,        ImageIds::tab_object_tunnels,   {},                  ObjectTabFlags::advanced | ObjectTabFlags::alwaysHidden },
+// MainTabInfo{ StringIds::object_interface_styles, ObjectType::interfaceSkin, ImageIds::tab_object_settings,  kMiscSubTabs,        ObjectTabFlags::advanced                                },
+// MainTabInfo{ StringIds::object_company_owners,   ObjectType::competitor,    ImageIds::tab_object_companies, {},                  ObjectTabFlags::hideInEditor                            },
+// // clang-format on
+type TabPosition = uint8
+// // Used for TabObjectEntry::display
+type Visibility int
+
+const (
+	Hidden Visibility = 0
+	Shown Visibility = 1
+)
+// // Used for Window::filterLevel
+type FilterLevel int
+
+const (
+	Beginner FilterLevel = 0
+	Advanced FilterLevel = 1
+	Expert FilterLevel = 2
+)
+// // Used for Window::var_858
+type FilterFlags int
+
+const (
+	None FilterFlags = 0
+	Vanilla FilterFlags = 1 << 0
+	OpenLoco FilterFlags = 1 << 1
+	Custom FilterFlags = 1 << 2
+)
+// OPENLOCO_ENABLE_ENUM_OPERATORS(FilterFlags);
+type TabObjectEntry struct {
+// ObjectManager::ObjectIndexId index;
+// ObjectManager::ObjectIndexEntry object;
+	Display Visibility
+}
+// static std::vector<TabObjectEntry> _tabObjectList;
+// static uint16_t _numVisibleObjectsListed;
+// static bool _filterByVehicleType = false;
+// static VehicleType _currentVehicleType;
+// static Ui::TextInput::InputSession inputSession;
+// func AssignTabPositions(self Window) 
+type Widx int
+
+const (
+	Frame Widx = iota
+	Caption
+	CloseButton
+	Panel
+	PrimaryTab1
+	PrimaryTab2
+	PrimaryTab3
+	PrimaryTab4
+	PrimaryTab5
+	PrimaryTab6
+	PrimaryTab7
+	PrimaryTab8
+	PrimaryTab9
+	PrimaryTab10
+	PrimaryTab11
+	PrimaryTab12
+	FilterLabel
+	FilterDropdown
+	TextInput
+	ClearButton
+	SecondaryTab1
+	SecondaryTab2
+	SecondaryTab3
+	SecondaryTab4
+	SecondaryTab5
+	SecondaryTab6
+	SecondaryTab7
+	SecondaryTab8
+	ScrollviewFrame
+	Scrollview
+	ObjectImage
+)
+const MaxNumPrimaryTabs uint8 = 12
+const MaxNumSecondaryTabs uint8 = 8
+// static constexpr auto widgets = makeWidgets(
+// Widgets::Frame({ 0, 0 }, { 600, 398 }, WindowColour::primary),
+// Widgets::Caption({ 1, 1 }, { 598, 13 }, Widgets::Caption::Style::whiteText, WindowColour::primary, StringIds::title_object_selection),
+// Widgets::ImageButton({ 585, 2 }, { 13, 13 }, WindowColour::primary, ImageIds::close_button, StringIds::tooltip_close_window),
+// Widgets::Panel({ 0, 41 }, { 600, 357 }, WindowColour::secondary),
+// // Primary tab area
+// Widgets::Tab({ 3, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 34, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 65, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 96, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 127, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 158, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 189, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 220, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 251, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 282, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 313, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 344, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// // Filter options
+// Widgets::dropdownWidgets({ 492, 20 }, { 100, 12 }, WindowColour::primary, StringIds::wcolour2_stringid),
+// Widgets::TextBox({ 4, 45 }, { 246, 14 }, WindowColour::secondary),
+// Widgets::Button({ 254, 45 }, { 38, 14 }, WindowColour::secondary, StringIds::clearInput),
+// // Secondary tabs
+// Widgets::Tab({ 3, 62 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 34, 62 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 65, 62 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 96, 62 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 127, 62 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 158, 62 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 189, 62 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// Widgets::Tab({ 220, 62 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
+// // Scroll and preview areas
+// Widgets::Panel({ 3, 83 }, { 290, 303 }, WindowColour::secondary),
+// Widgets::ScrollView({ 4, 85 }, { 288, 300 }, WindowColour::secondary, Scrollbars::vertical),
+// Widgets::ImageButton({ 391, 45 }, kObjectPreviewSize, WindowColour::secondary)
+// );
+// template<typename TTabInfo>
+// func ShouldShowTab(tabInfo TTabInfo, filterLevel FilterLevel) bool
+// const ObjectTabFlags tabFlags = tabInfo.flags;
+// if (filterLevel == FilterLevel::expert)
+// orphan member: return true;
+// if ((tabFlags & ObjectTabFlags::alwaysHidden) != ObjectTabFlags::none)
+// orphan member: return false;
+// // Skip all types that don't have any objects
+// auto numObjectsForType = ObjectManager::getNumAvailableObjectsByType(tabInfo.objectType);
+// if (numObjectsForType == 0)
+// orphan member: return false;
+// // Skip certain object types that only have one entry in game
+// if ((tabFlags & ObjectTabFlags::showEvenIfSingular) == ObjectTabFlags::none && numObjectsForType == 1)
+// orphan member: return false;
+// // Hide advanced object types in beginner mode
+// if (filterLevel == FilterLevel::beginner && (tabFlags & ObjectTabFlags::advanced) != ObjectTabFlags::none)
+// orphan member: return false;
+// if (SceneManager::isEditorMode() && (tabFlags & ObjectTabFlags::hideInEditor) != ObjectTabFlags::none)
+// orphan member: return false;
+// if (!SceneManager::isEditorMode() && (tabFlags & ObjectTabFlags::hideInGame) != ObjectTabFlags::none)
+// orphan member: return false;
+// orphan member: return true;
+// func ShouldShowPrimaryTab(index uint8, filterLevel FilterLevel) bool
+// func ShouldShowTab(kMainTabInfo[index], filterLevel) return
+// func ShouldShowSubTab(subTabs any /* std::span<SubTabInfo> */ , index uint8, filterLevel FilterLevel) bool
+// func ShouldShowTab(subTabs[index], filterLevel) return
+// // 0x00473154
+// func AssignTabPositions(self Window) 
+// auto xPos = 3;
+// for (auto i = 0U; i < kMainTabInfo.size(); i++)
+// auto widgetIndex = widx::primaryTab1 + i;
+// if (shouldShowPrimaryTab(i, FilterLevel(self->filterLevel)))
+// self->disabledWidgets &= ~(1ULL << widgetIndex);
+// self->widgets[widgetIndex].hidden = false;
+// self->widgets[widgetIndex].left = xPos;
+// self->widgets[widgetIndex].right = xPos + 31;
+// xPos = self->widgets[widgetIndex].right;
+// else
+// self->disabledWidgets |= (1ULL << widgetIndex);
+// self->widgets[widgetIndex].hidden = true;
+// func Contains(a string, b string) bool
+// return std::search(a.begin(), a.end(), b.begin(), b.end(), [](char a, char b) {
+// func Tolower(a) return
+// })
+// != a.end();
+// static std::optional<VehicleType> getVehicleTypeFromObject(TabObjectEntry& entry)
+// auto& displayData = entry.object._displayData;
+// if (displayData.vehicleSubType == 0xFF)
+// Logging::info("Could not load determine vehicle type for object '{}', skipping", entry.object._header.getName());
+// return std::nullopt;
+// return static_cast<VehicleType>(displayData.vehicleSubType);
+// func ApplyFilterToObjectList(filterFlags FilterFlags) 
+// std::string_view pattern = inputSession.buffer;
+// _numVisibleObjectsListed = 0;
+// for (auto& entry : _tabObjectList)
+// // Apply vanilla/custom object filters
+// const bool isVanillaObj = entry.object._header.isVanilla();
+// const bool isOpenLocoObj = entry.object._header.getSourceGame() == SourceGame::openLoco;
+// const bool isCustomObj = !isVanillaObj && !isOpenLocoObj;
+// if (isVanillaObj && (filterFlags & FilterFlags::vanilla) == FilterFlags::none)
+// entry.display = Visibility::hidden;
+// continue;
+// if (isOpenLocoObj && (filterFlags & FilterFlags::openLoco) == FilterFlags::none)
+// entry.display = Visibility::hidden;
+// continue;
+// if (isCustomObj && (filterFlags & FilterFlags::custom) == FilterFlags::none)
+// entry.display = Visibility::hidden;
+// continue;
+// if (_filterByVehicleType)
+// auto vehicleType = getVehicleTypeFromObject(entry);
+// if (vehicleType != _currentVehicleType)
+// entry.display = Visibility::hidden;
+// continue;
+// if (pattern.empty())
+// entry.display = Visibility::shown;
+// _numVisibleObjectsListed++;
+// continue;
+// const std::string_view name = entry.object._name;
+// const auto filename = fs::u8path(entry.object._filepath).filename().u8string();
+// const bool containsName = contains(name, pattern);
+// const bool containsFileName = contains(filename, pattern);
+// entry.display = containsName || containsFileName ? Visibility::shown : Visibility::hidden;
+// if (entry.display == Visibility::shown)
+// _numVisibleObjectsListed++;
+// func PopulateTabObjectList(objectType ObjectType, filterFlags FilterFlags) 
+// _tabObjectList.clear();
+// const auto objects = ObjectManager::getAvailableObjects(objectType);
+// _tabObjectList.reserve(objects.size());
+// for (auto& [index, object] : objects)
+// auto entry = TabObjectEntry{ index, object, Visibility::shown };
+// _tabObjectList.emplace_back(std::move(entry));
+// applyFilterToObjectList(filterFlags);
+// // 0x00472BBC
+// static ObjectManager::ObjIndexPair getFirstAvailableSelectedObject(const ObjectManager::ObjectIndexSelection& selection)
+// for (auto& entry : _tabObjectList)
+// if ((selection.objectFlags[entry.index] & ObjectManager::SelectedObjectsFlags::selected) != ObjectManager::SelectedObjectsFlags::none)
+// return { static_cast<int16_t>(entry.index), entry.object };
+// if (_tabObjectList.size() > 0)
+// return { static_cast<int16_t>(_tabObjectList[0].index), _tabObjectList[0].object };
+// return { ObjectManager::kNullObjectIndex, ObjectManager::ObjectIndexEntry{} };
+// static const WindowEventList& getEvents();
+// func SwitchPrimaryTab(self Window, tabIndex uint8) 
+// func SwitchTabByObjectType(self Window, objectType ObjectType) 
+// static Ui::Window* internalOpen(std::optional<ObjectType> optionalObjectType)
+// auto window = WindowManager::bringToFront(WindowType::objectSelection);
+// if (window != nullptr)
+// orphan member: return window;
+// auto& selection = ObjectManager::prepareSelectionList(true);
+// window = WindowManager::createWindowCentred(WindowType::objectSelection, { kWindowSizeMin }, WindowFlags::resizable, getEvents());
+// window->setWidgets(widgets);
+// window->setSize(kWindowSizeMin, kWindowSizeMax);
+// window->initScrollWidgets();
+// window->frameNo = 0;
+// window->rowHover = -1;
+// window->filterLevel = enumValue(SceneManager::isEditorMode() ? FilterLevel::beginner : FilterLevel::advanced);
+// window->var_858 = enumValue(FilterFlags::vanilla | FilterFlags::openLoco | FilterFlags::custom);
+// window->currentSecondaryTab = 0;
+// window->object = nullptr;
+// assignTabPositions(window);
+// static_assert(kMainTabInfo[0].objectType == ObjectType::region);
+// populateTabObjectList(ObjectType::region, FilterFlags(window->var_858));
+// ObjectManager::freeTemporaryObject();
+// auto objIndex = getFirstAvailableSelectedObject(selection);
+// if (objIndex.index != ObjectManager::kNullObjectIndex)
+// window->rowHover = objIndex.index;
+// window->object = reinterpret_cast<std::byte*>(&objIndex.object._header);
+// ObjectManager::loadTemporaryObject(objIndex.object._header);
+// auto skin = ObjectManager::get<InterfaceSkinObject>();
+// window->setColour(WindowColour::primary, skin->windowTitlebarColour);
+// window->setColour(WindowColour::secondary, skin->windowColour);
+// inputSession = Ui::TextInput::InputSession();
+// inputSession.calculateTextOffset(widgets[widx::textInput].width());
+// if (optionalObjectType.has_value())
+// ObjectType objectType = optionalObjectType.value();
+// window->filterLevel = enumValue(FilterLevel::advanced);
+// assignTabPositions(window);
+// switchTabByObjectType(*window, objectType);
+// // If in play mode, the object selection window should be modal and pause the game to prevent issues.
+// if (!SceneManager::isEditorMode())
+// WindowManager::setCurrentModalType(WindowType::objectSelection);
+// SceneManager::setPauseFlag(PauseFlags::objectSelection);
+// WindowManager::invalidate(WindowType::timeToolbar);
+// Audio::pauseSound();
+// orphan member: return window;
+// // 0x00472A20
+// Ui::Window* open()
+func InternalOpen({}) return {
+}
+// Window& openInTab(ObjectType objectType)
+// auto& window = *internalOpen(objectType);
+// orphan member: return window;
+// func OnResize(self Window) 
+// // Resize basic window
+// self.widgets[widx::frame].right = self.width - 1;
+// self.widgets[widx::frame].bottom = self.height - 1;
+// self.widgets[widx::panel].right = self.width - 1;
+// self.widgets[widx::panel].bottom = self.height - 1;
+// self.widgets[widx::caption].right = self.width - 2;
+// self.widgets[widx::closeButton].left = self.width - 15;
+// self.widgets[widx::closeButton].right = self.width - 3;
+// // Reposition filter label/dropdown
+// self.widgets[widx::filterLabel].right = self.width - 8;
+// self.widgets[widx::filterLabel].left = self.widgets[widx::filterLabel].right - 100;
+// self.widgets[widx::filterDropdown].right = self.widgets[widx::filterLabel].right - 1;
+// self.widgets[widx::filterDropdown].left = self.widgets[widx::filterDropdown].right - 12;
+// // Resize text input field and clear button
+// self.widgets[widx::textInput].right = self.width / 2 - 54;
+// self.widgets[widx::clearButton].left = self.widgets[widx::textInput].right + 4;
+// self.widgets[widx::clearButton].right = self.widgets[widx::clearButton].left + 38;
+// Widget::leftAlignTabs(self, widx::secondaryTab1, widx::secondaryTab8, 30);
+// // Resize scroll view to take up the full window height, leaving room for a status line
+// self.widgets[widx::scrollview].bottom = self.height - 14;
+// self.widgets[widx::scrollview].right = self.width / 2 - 12;
+// self.widgets[widx::scrollviewFrame].bottom = self.widgets[widx::scrollview].bottom + 1;
+// self.widgets[widx::scrollviewFrame].right = self.widgets[widx::scrollview].right + 1;
+// const auto& currentTab = kMainTabInfo[self.currentTab];
+// const auto& subTabs = currentTab.subTabs;
+// const bool showSecondaryTabs = !subTabs.empty() && FilterLevel(self.filterLevel) != FilterLevel::beginner;
+// // Secondary tabs reduce the amount of space for the scroll view
+// if (showSecondaryTabs)
+// self.widgets[widx::scrollview].top = 62 + 28;
+// self.widgets[widx::scrollviewFrame].hidden = false;
+// self.widgets[widx::scrollviewFrame].top = self.widgets[widx::scrollview].top - 2;
+// else
+// self.widgets[widx::scrollview].top = 62;
+// self.widgets[widx::scrollviewFrame].hidden = true;
+// // Reposition preview area in the centre of the second half
+// self.widgets[widx::objectImage].left = self.width / 4 * 3 - kObjectPreviewSize.width / 2;
+// self.widgets[widx::objectImage].right = self.widgets[widx::objectImage].left + kObjectPreviewSize.width;
+// // 0x004733AC
+// func PrepareDraw(self Ui::Window) 
+// self.activatedWidgets = (1 << widx::objectImage);
+// self.widgets[widx::closeButton].hidden = false;
+// if (SceneManager::isEditorMode())
+// self.widgets[widx::closeButton].hidden = true;
+// self.activatedWidgets |= 1ULL << (widx::primaryTab1 + self.currentTab);
+// const auto& currentTab = kMainTabInfo[self.currentTab];
+// const auto& subTabs = currentTab.subTabs;
+// const bool showSecondaryTabs = !subTabs.empty() && FilterLevel(self.filterLevel) != FilterLevel::beginner;
+var FilterLevelStringIds = [3]StringId{
+// StringIds::objSelectionFilterBeginner,
+// StringIds::objSelectionFilterAdvanced,
+// StringIds::objSelectionFilterExpert,
+// auto& widget = self.widgets[widx::filterLabel];
+// orphan member: FormatArguments args{ widget.textArgs };
+// args.push(kFilterLevelStringIds[self.filterLevel]);
+// // Update page title
+// auto args = FormatArguments(self.widgets[widx::caption].textArgs);
+// if (showSecondaryTabs)
+// args.push(subTabs[self.currentSecondaryTab].name);
+// else
+// args.push(kMainTabInfo[self.currentTab].name);
+// // Toggle secondary tabs
+// for (auto i = 0U; i < kMaxNumSecondaryTabs; i++)
+// const auto widgetIndex = i + widx::secondaryTab1;
+// const bool subTabIsVisible = showSecondaryTabs && i < subTabs.size() && shouldShowSubTab(subTabs, i, FilterLevel(self.filterLevel));
+// if (subTabIsVisible)
+// self.disabledWidgets &= ~(1ULL << widgetIndex);
+// else
+// self.disabledWidgets |= (1ULL << widgetIndex);
+// if (self.currentSecondaryTab == i)
+// self.activatedWidgets |= 1ULL << widgetIndex;
+// else
+// self.activatedWidgets &= ~(1ULL << widgetIndex);
+// // 0x0047328D
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// for (auto i = 0U; i < kMaxNumPrimaryTabs; i++)
+// auto widgetIndex = i + widx::primaryTab1;
+// if (self.widgets[widgetIndex].hidden)
+// continue;
+// auto image = Gfx::recolour(kMainTabInfo[i].image, Colour::mutedSeaGreen);
+// Widget::drawTab(self, drawingCtx, image, widgetIndex);
+// func DrawSecondaryTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// const auto& currentTab = kMainTabInfo[self.currentTab];
+// const auto& subTabs = currentTab.subTabs;
+// const bool showSecondaryTabs = !subTabs.empty();
+// if (!showSecondaryTabs)
+// return;
+// auto skin = ObjectManager::get<InterfaceSkinObject>();
+// for (auto i = 0U; i < subTabs.size(); i++)
+// auto widgetIndex = i + widx::secondaryTab1;
+// if (self.widgets[widgetIndex].hidden)
+// continue;
+// auto& tabData = subTabs[i];
+// auto frame = 0;
+// if (self.currentSecondaryTab == i)
+// frame = (self.frameNo >> tabData.animationDivisor) % tabData.animationLength;
+// auto baseImage = currentTab.objectType == ObjectType::vehicle ? skin->img : 0;
+// auto image = Gfx::recolour(baseImage + tabData.baseImage + frame, CompanyManager::getCompanyColour(CompanyId::neutral));
+// Widget::drawTab(self, drawingCtx, image, widgetIndex);
+// template<typename T>
+// func CallDrawPreviewImage(drawingCtx Gfx::DrawingContext, drawingOffset Ui::Point, objectPtr Object) 
+// auto object = reinterpret_cast<const T*>(&objectPtr);
+// object->drawPreviewImage(drawingCtx, drawingOffset.x, drawingOffset.y);
+// // 0x00473579
+// func DrawPreviewImage(header ObjectHeader, drawingCtx Gfx::DrawingContext, x int16, y int16, objectPtr Object) 
+// auto type = header.getType();
+// // Clip the draw area to simplify image draw
+// Ui::Point drawAreaPos = Ui::Point{ x, y } - kObjectPreviewOffset;
+// const auto& rt = drawingCtx.currentRenderTarget();
+// auto clipped = Gfx::clipRenderTarget(rt, Ui::Rect(drawAreaPos.x, drawAreaPos.y, kObjectPreviewSize.width - 2, kObjectPreviewSize.height - 2));
+// if (!clipped)
+// return;
+// drawingCtx.pushRenderTarget(*clipped);
+// switch (type)
+// case ObjectType::interfaceSkin:
+// callDrawPreviewImage<InterfaceSkinObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::currency:
+// callDrawPreviewImage<CurrencyObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::cliffEdge:
+// callDrawPreviewImage<CliffEdgeObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::water:
+// callDrawPreviewImage<WaterObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::land:
+// callDrawPreviewImage<LandObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::wall:
+// callDrawPreviewImage<WallObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::trackSignal:
+// callDrawPreviewImage<TrainSignalObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::levelCrossing:
+// callDrawPreviewImage<LevelCrossingObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::streetLight:
+// callDrawPreviewImage<StreetLightObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::tunnel:
+// callDrawPreviewImage<TunnelObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::bridge:
+// callDrawPreviewImage<BridgeObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::trainStation:
+// callDrawPreviewImage<TrainStationObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::trackExtra:
+// callDrawPreviewImage<TrackExtraObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::track:
+// callDrawPreviewImage<TrackObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::roadStation:
+// callDrawPreviewImage<RoadStationObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::roadExtra:
+// callDrawPreviewImage<RoadExtraObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::road:
+// callDrawPreviewImage<RoadObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::airport:
+// callDrawPreviewImage<AirportObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::dock:
+// callDrawPreviewImage<DockObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::vehicle:
+// callDrawPreviewImage<VehicleObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::tree:
+// callDrawPreviewImage<TreeObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::snow:
+// callDrawPreviewImage<SnowObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::hillShapes:
+// callDrawPreviewImage<HillShapesObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::building:
+// callDrawPreviewImage<BuildingObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::scaffolding:
+// callDrawPreviewImage<ScaffoldingObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::industry:
+// callDrawPreviewImage<IndustryObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::region:
+// callDrawPreviewImage<RegionObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// case ObjectType::competitor:
+// callDrawPreviewImage<CompetitorObject>(drawingCtx, kObjectPreviewOffset, objectPtr);
+// break;
+// default:
+// // null
+// break;
+// drawingCtx.popRenderTarget();
+// template<typename T>
+// func CallDrawDescription(drawingCtx Gfx::DrawingContext, x int16, y int16, width int16, objectPtr Object) 
+// auto object = reinterpret_cast<const T*>(&objectPtr);
+// object->drawDescription(drawingCtx, x, y, width);
+// func DrawDescription(header ObjectHeader, self Window, drawingCtx Gfx::DrawingContext, x int16, y int16, objectPtr Object) 
+// int16_t width = self->x + self->width - x;
+// int16_t height = self->y + self->height - y;
+// // Clip the draw area to simplify image draw
+// const auto& rt = drawingCtx.currentRenderTarget();
+// auto clipped = Gfx::clipRenderTarget(rt, Ui::Rect(x, y, width, height));
+// if (!clipped)
+// return;
+// drawingCtx.pushRenderTarget(*clipped);
+// switch (header.getType())
+// case ObjectType::levelCrossing:
+// callDrawDescription<LevelCrossingObject>(drawingCtx, 0, 0, width, objectPtr);
+// break;
+// case ObjectType::trainStation:
+// callDrawDescription<TrainStationObject>(drawingCtx, 0, 0, width, objectPtr);
+// break;
+// case ObjectType::roadStation:
+// callDrawDescription<RoadStationObject>(drawingCtx, 0, 0, width, objectPtr);
+// break;
+// case ObjectType::airport:
+// callDrawDescription<AirportObject>(drawingCtx, 0, 0, width, objectPtr);
+// break;
+// case ObjectType::dock:
+// callDrawDescription<DockObject>(drawingCtx, 0, 0, width, objectPtr);
+// break;
+// case ObjectType::vehicle:
+// callDrawDescription<VehicleObject>(drawingCtx, 0, 0, width, objectPtr);
+// break;
+// case ObjectType::building:
+// callDrawDescription<BuildingObject>(drawingCtx, 0, 0, width, objectPtr);
+// break;
+// case ObjectType::competitor:
+// callDrawDescription<CompetitorObject>(drawingCtx, 0, 0, width, objectPtr);
+// break;
+// default:
+// // null
+// break;
+// drawingCtx.popRenderTarget();
+// func DrawDatDetails(indexEntry ObjectManager::ObjectIndexEntry, self Window, drawingCtx Gfx::DrawingContext, x int16, y int16) 
+// int16_t width = self->x + self->width - x;
+// int16_t height = self->y + self->height - y;
+// // Clip the draw area to simplify image draw
+// const auto& rt = drawingCtx.currentRenderTarget();
+// auto clipped = Gfx::clipRenderTarget(rt, Ui::Rect(x, y, width, height));
+// if (!clipped)
+// return;
+// drawingCtx.pushRenderTarget(*clipped);
+// auto tr = Gfx::TextRenderer(drawingCtx);
+// // Draw object filename
+// auto filename = fs::u8path(indexEntry._filepath).filename().u8string();
+// auto buffer = const_cast<char*>(StringManager::getString(StringIds::buffer_1250));
+// strncpy(buffer, filename.c_str(), filename.length() + 1);
+// orphan member: FormatArguments args{};
+// args.push<StringId>(StringIds::buffer_1250);
+// auto point = Point(18, height - kDescriptionRowHeight * 3 - 4);
+// tr.drawStringLeft(point, Colour::black, StringIds::object_selection_filename, args);
+// drawingCtx.popRenderTarget();
+// func DrawSearchBox(self Window, drawingCtx Gfx::DrawingContext) 
+// char* textBuffer = (char*)StringManager::getString(StringIds::buffer_2039);
+// strncpy(textBuffer, inputSession.buffer.c_str(), 256);
+// auto& widget = widgets[widx::textInput];
+// const auto& rt = drawingCtx.currentRenderTarget();
+// auto clipped = Gfx::clipRenderTarget(rt, Ui::Rect(widget.left + 1 + self.x, widget.top + 1 + self.y, widget.width() - 2, widget.height() - 2));
+// if (!clipped)
+// return;
+// drawingCtx.pushRenderTarget(*clipped);
+// orphan member: FormatArguments args{};
+// args.push(StringIds::buffer_2039);
+// auto tr = Gfx::TextRenderer(drawingCtx);
+// // Draw search box input buffer
+// Ui::Point position = { inputSession.xOffset, 1 };
+// tr.drawStringLeft(position, Colour::black, StringIds::black_stringid, args);
+// // Draw search box cursor, blinking
+// if (Input::isFocused(self.type, self.number, widx::textInput) && (inputSession.cursorFrame % 32) < 16)
+// // We draw the string again to figure out where the cursor should go; position.x will be adjusted
+// textBuffer[inputSession.cursorPosition] = '\0';
+// position = { inputSession.xOffset, 1 };
+// position = tr.drawStringLeft(position, Colour::black, StringIds::black_stringid, args);
+// drawingCtx.fillRect(position.x, position.y, position.x, position.y + 9, Colours::getShade(self.getColour(WindowColour::secondary).c(), 9), Gfx::RectFlags::none);
+// drawingCtx.popRenderTarget();
+// // 0x004733F5
+// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// // Extend background frame with a solid colour
+// // TODO: this should not be needed
+// if (Config::get().windowFrameStyle == Config::WindowFrameStyle::background)
+// drawingCtx.fillRectInset(self.x, self.y + 20, self.x + self.width - 1, self.y + 20 + 60, self.getColour(WindowColour::primary), Gfx::RectInsetFlags::none);
+// self.draw(drawingCtx);
+// drawTabs(self, drawingCtx);
+// drawSecondaryTabs(self, drawingCtx);
+// drawSearchBox(self, drawingCtx);
+// auto tr = Gfx::TextRenderer(drawingCtx);
+// bool doDefault = true;
+// if (self.object != nullptr)
+// auto& objectHeader = ObjectManager::getObjectInIndex(self.rowHover)._header;
+// if (objectHeader.getType() != ObjectType::townNames && objectHeader.getType() != ObjectType::climate)
+// doDefault = false;
+// if (doDefault)
+// auto widget = self.widgets[widx::objectImage];
+// auto colour = Colours::getShade(self.getColour(WindowColour::secondary).c(), 5);
+// drawingCtx.drawRect(self.x + widget.left, self.y + widget.top, widget.width(), widget.height(), colour, Gfx::RectFlags::none);
+// else
+// auto widget = self.widgets[widx::objectImage];
+// auto colour = Colours::getShade(self.getColour(WindowColour::secondary).c(), 0);
+// drawingCtx.drawRect(self.x + widget.left + 1, self.y + widget.top + 1, widget.width() - 2, widget.height() - 2, colour, Gfx::RectFlags::none);
+// orphan member: ObjectType type{};
+// auto& currentTab = kMainTabInfo[self.currentTab];
+// if (!currentTab.subTabs.empty())
+// type = currentTab.subTabs[self.currentSecondaryTab].objectType;
+// else
+// type = currentTab.objectType;
+// auto& selection = ObjectManager::getCurrentSelectionList();
+// auto args = FormatArguments();
+// args.push(selection.selectionMetaData.numSelectedObjects[enumValue(type)]);
+// args.push(ObjectManager::getMaxObjects(type));
+// auto point = Point(self.x + 3, self.y + self.height - 12);
+// tr.drawStringLeft(point, Colour::black, StringIds::num_selected_num_max, args);
+// if (self.rowHover == -1)
+// return;
+// auto* temporaryObject = ObjectManager::getTemporaryObject();
+// if (temporaryObject == nullptr)
+// return;
+// auto& objectHeader = ObjectManager::getObjectInIndex(self.rowHover)._header;
+// drawPreviewImage(
+// objectHeader,
+// drawingCtx,
+// self.widgets[widx::objectImage].midX() + self.x,
+// self.widgets[widx::objectImage].midY() + self.y,
+// *temporaryObject);
+// auto x = self.widgets[widx::objectImage].midX() + self.x;
+// auto y = self.widgets[widx::objectImage].bottom + 3 + self.y;
+// auto width = self.width - self.widgets[widx::scrollview].right - 6;
+// auto buffer = const_cast<char*>(StringManager::getString(StringIds::buffer_2039));
+// *buffer++ = ControlCodes::windowColour2;
+// strncpy(buffer, ObjectManager::getObjectInIndex(self.rowHover)._name.c_str(), 510);
+// auto point = Point(x, y);
+// tr.drawStringCentredClipped(point, width, Colour::black, StringIds::buffer_2039);
+// auto& objHeader = ObjectManager::getObjectInIndex(self.rowHover)._header;
+// drawDescription(
+// objHeader,
+// &self,
+// drawingCtx,
+// self.widgets[widx::scrollview].right + self.x + 4,
+// y + kDescriptionRowHeight,
+// *temporaryObject);
+// drawDatDetails(
+// ObjectManager::getObjectInIndex(self.rowHover),
+// &self,
+// drawingCtx,
+// self.widgets[widx::scrollview].right + self.x + 4,
+// y + kDescriptionRowHeight);
+// // 0x0047361D
+// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, uint32) 
+// const auto& rt = drawingCtx.currentRenderTarget();
+// auto tr = Gfx::TextRenderer(drawingCtx);
+// drawingCtx.clearSingle(Colours::getShade(self.getColour(WindowColour::secondary).c(), 4));
+// if (ObjectManager::getNumInstalledObjects() == 0)
+// return;
+// const auto& selection = ObjectManager::getCurrentSelectionList();
+// int y = 0;
+// for (auto& entry : _tabObjectList)
+// if (entry.display == Visibility::hidden)
+// continue;
+// if (y + kRowHeight < rt.y)
+// y += kRowHeight;
+// continue;
+// func If(rt.height y > rt.y +) else
+// break;
+// Gfx::RectInsetFlags flags = Gfx::RectInsetFlags::colourLight | Gfx::RectInsetFlags::fillDarker | Gfx::RectInsetFlags::borderInset;
+// drawingCtx.fillRectInset(2, y, 11, y + 10, self.getColour(WindowColour::secondary), flags);
+// uint8_t textColour = ControlCodes::Colour::black;
+// auto objectPtr = self.object;
+// if (objectPtr != nullptr)
+// auto& hoverObject = ObjectManager::getObjectInIndex(self.rowHover)._header;
+// if (entry.object._header == hoverObject)
+// drawingCtx.fillRect(0, y, self.width, y + kRowHeight - 1, enumValue(ExtColour::unk30), Gfx::RectFlags::transparent);
+// textColour = ControlCodes::windowColour2;
+// using namespace ObjectManager;
+// if ((selection.objectFlags[entry.index] & SelectedObjectsFlags::selected) != SelectedObjectsFlags::none)
+// auto x = 2;
+// tr.setCurrentFont(Gfx::Font::m2);
+// if (textColour != ControlCodes::windowColour2)
+// tr.setCurrentFont(Gfx::Font::m1);
+// auto checkColour = self.getColour(WindowColour::secondary).opaque();
+// if ((selection.objectFlags[entry.index] & (SelectedObjectsFlags::inUse | SelectedObjectsFlags::requiredByAnother | SelectedObjectsFlags::alwaysRequired)) != ObjectManager::SelectedObjectsFlags::none)
+// checkColour = checkColour.inset();
+// static constexpr char strCheckmark[] = "\xAC";
+// auto point = Point(x, y);
+// tr.drawString(point, checkColour, strCheckmark);
+// char buffer[512]{};
+// buffer[0] = textColour;
+// strncpy(&buffer[1], entry.object._name.c_str(), 510);
+// tr.setCurrentFont(Gfx::Font::medium_bold);
+// auto point = Point(15, y);
+// tr.drawString(point, Colour::black, buffer);
+// y += kRowHeight;
+// func SwitchTabByObjectType(self Window, objectType ObjectType) 
+// auto targetTab = 0;
+// auto targetSubTab = 0;
+// auto targetType = ObjectType::region;
+// for (auto i = 0U; i < kMaxNumPrimaryTabs; i++)
+// if (!shouldShowPrimaryTab(i, FilterLevel(self.filterLevel)))
+// continue;
+// auto& mainTabInfo = kMainTabInfo[i];
+// if (objectType == mainTabInfo.objectType)
+// targetTab = i;
+// targetType = objectType;
+// break;
+// auto& subTabs = mainTabInfo.subTabs;
+// if (subTabs.empty())
+// continue;
+// for (auto j = 0U; j < subTabs.size(); j++)
+// if (!shouldShowTab(subTabs[j], FilterLevel(self.var_858)))
+// continue;
+// if (objectType == subTabs[j].objectType)
+// targetTab = i;
+// targetSubTab = j;
+// targetType = objectType;
+// break;
+// if (targetSubTab != 0)
+// break;
+// self.currentTab = targetTab;
+// self.currentSecondaryTab = targetSubTab;
+// populateTabObjectList(targetType, FilterFlags(self.var_858));
+// // 0x00473A13
+// func TryCloseWindow() bool
+// auto& selection = ObjectManager::getCurrentSelectionList();
+// const auto res = ObjectManager::validateObjectSelection(selection.objectFlags);
+// if (!res.has_value())
+// // All okay selection is good!
+// auto* w = WindowManager::find(WindowType::objectSelection);
+// if (w != nullptr)
+// WindowManager::close(w);
+// orphan member: return true;
+// else
+// // Selection was bad so throw up an error message
+// // and switch tabs to the bad type
+// Windows::Error::open(StringIds::invalid_selection_of_objects, GameCommands::getErrorText());
+// auto* w = WindowManager::find(WindowType::objectSelection);
+// if (w != nullptr)
+// // TODO: switch modes as needed?
+// auto objectType = res.value();
+// switchTabByObjectType(*w, objectType);
+// w->rowHover = -1;
+// w->object = nullptr;
+// w->scrollAreas[0].contentWidth = 0;
+// ObjectManager::freeTemporaryObject();
+// w->invalidate();
+// auto objIndex = getFirstAvailableSelectedObject(selection);
+// if (objIndex.index != ObjectManager::kNullObjectIndex)
+// w->rowHover = objIndex.index;
+// w->object = reinterpret_cast<std::byte*>(&objIndex.object._header);
+// ObjectManager::loadTemporaryObject(objIndex.object._header);
+// orphan member: return false;
+// func SwitchPrimaryTab(self Window, tabIndex uint8) 
+// self.currentTab = tabIndex;
+// self.currentSecondaryTab = 0;
+// const auto& currentTab = kMainTabInfo[self.currentTab];
+// _filterByVehicleType = currentTab.objectType == ObjectType::vehicle;
+// _currentVehicleType = VehicleType::train;
+// auto objectType = kMainTabInfo[tabIndex].objectType;
+// populateTabObjectList(objectType, FilterFlags(self.var_858));
+// self.rowHover = -1;
+// self.object = nullptr;
+// self.scrollAreas[0].contentWidth = 0;
+// ObjectManager::freeTemporaryObject();
+// auto& curSelection = ObjectManager::getCurrentSelectionList();
+// auto objIndex = getFirstAvailableSelectedObject(curSelection);
+// if (objIndex.index != ObjectManager::kNullObjectIndex)
+// self.rowHover = objIndex.index;
+// self.object = reinterpret_cast<std::byte*>(&objIndex.object._header);
+// ObjectManager::loadTemporaryObject(objIndex.object._header);
+// applyFilterToObjectList(FilterFlags(self.var_858));
+// self.initScrollWidgets();
+// self.invalidate();
+// // 0x004737BA
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// switch (widgetIndex)
+// case widx::closeButton:
+// tryCloseWindow();
+// break;
+// case widx::primaryTab1:
+// case widx::primaryTab2:
+// case widx::primaryTab3:
+// case widx::primaryTab4:
+// case widx::primaryTab5:
+// case widx::primaryTab6:
+// case widx::primaryTab7:
+// case widx::primaryTab8:
+// case widx::primaryTab9:
+// case widx::primaryTab10:
+// case widx::primaryTab11:
+// case widx::primaryTab12:
+// auto clickedTab = widgetIndex - widx::primaryTab1;
+// switchPrimaryTab(self, clickedTab);
+// break;
+// case widx::clearButton:
+// inputSession.clearInput();
+// applyFilterToObjectList(FilterFlags(self.var_858));
+// self.initScrollWidgets();
+// self.invalidate();
+// break;
+// case widx::secondaryTab1:
+// case widx::secondaryTab2:
+// case widx::secondaryTab3:
+// case widx::secondaryTab4:
+// case widx::secondaryTab5:
+// case widx::secondaryTab6:
+// case widx::secondaryTab7:
+// case widx::secondaryTab8:
+// auto& subTabs = kMainTabInfo[self.currentTab].subTabs;
+// auto previousSubType = subTabs[self.currentSecondaryTab].objectType;
+// self.currentSecondaryTab = widgetIndex - widx::secondaryTab1;
+// auto currentSubType = subTabs[self.currentSecondaryTab].objectType;
+// _currentVehicleType = static_cast<VehicleType>(self.currentSecondaryTab);
+// // Do we need to reload the object list?
+// auto flags = FilterFlags(self.var_858);
+// if (previousSubType != currentSubType)
+// populateTabObjectList(subTabs[self.currentSecondaryTab].objectType, flags);
+// applyFilterToObjectList(flags);
+// self.initScrollWidgets();
+// self.invalidate();
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// if (widgetIndex == widx::filterDropdown)
+// auto& dropdown = self.widgets[widx::filterLabel];
+// Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), 7, 0);
+// Dropdown::add(0, StringIds::dropdown_stringid, StringIds::objSelectionFilterBeginner);
+// Dropdown::add(1, StringIds::dropdown_stringid, StringIds::objSelectionFilterAdvanced);
+// Dropdown::add(2, StringIds::dropdown_stringid, StringIds::objSelectionFilterExpert);
+// Dropdown::add(3, 0);
+// Dropdown::add(4, StringIds::dropdown_without_checkmark, StringIds::objSelectionFilterVanilla);
+// Dropdown::add(5, StringIds::dropdown_without_checkmark, StringIds::objSelectionFilterOpenLoco);
+// Dropdown::add(6, StringIds::dropdown_without_checkmark, StringIds::objSelectionFilterCustom);
+// // Mark current level
+// Dropdown::setItemSelected(self.filterLevel);
+// // Show vanilla objects?
+// if ((FilterFlags(self.var_858) & FilterFlags::vanilla) != FilterFlags::none)
+// Dropdown::setItemSelected(4);
+// // Show OpenLoco objects?
+// if ((FilterFlags(self.var_858) & FilterFlags::openLoco) != FilterFlags::none)
+// Dropdown::setItemSelected(5);
+// // Show custom objects?
+// if ((FilterFlags(self.var_858) & FilterFlags::custom) != FilterFlags::none)
+// Dropdown::setItemSelected(6);
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// if (widgetIndex != widx::filterDropdown)
+// return;
+// if (itemIndex < 0)
+// self.filterLevel = (self.filterLevel ^ 1) % 3;
+// assignTabPositions(&self);
+// // Switch level?
+// func If(2 any /* itemIndex >= 0 itemIndex <= */ ) else
+// // Keep track of currently selected object type
+// auto& currentTab = kMainTabInfo[self.currentTab];
+// auto currentObjectType = currentTab.objectType;
+// if (!currentTab.subTabs.empty())
+// auto& currentSubType = currentTab.subTabs[self.currentSecondaryTab];
+// currentObjectType = currentSubType.objectType;
+// self.filterLevel = itemIndex;
+// assignTabPositions(&self);
+// // Switch back to previously selected object type, if possible
+// switchTabByObjectType(self, currentObjectType);
+// func If(4 itemIndex ==) else
+// self.var_858 = enumValue(FilterFlags(self.var_858) ^ FilterFlags::vanilla);
+// auto objectType = kMainTabInfo[self.currentTab].objectType;
+// populateTabObjectList(objectType, FilterFlags(self.var_858));
+// func If(5 itemIndex ==) else
+// self.var_858 = enumValue(FilterFlags(self.var_858) ^ FilterFlags::openLoco);
+// auto objectType = kMainTabInfo[self.currentTab].objectType;
+// populateTabObjectList(objectType, FilterFlags(self.var_858));
+// func If(6 itemIndex ==) else
+// self.var_858 = enumValue(FilterFlags(self.var_858) ^ FilterFlags::custom);
+// auto objectType = kMainTabInfo[self.currentTab].objectType;
+// populateTabObjectList(objectType, FilterFlags(self.var_858));
+// self.invalidate();
+// // 0x004738ED
+// func GetScrollSize(self [[maybe_unused]] Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// scrollHeight = _numVisibleObjectsListed * kRowHeight;
+// // 0x00473900
+// static std::optional<FormatArguments> tooltip([[maybe_unused]] Ui::Window& window, [[maybe_unused]] WidgetIndex_t widgetIndex, [[maybe_unused]] const WidgetId id)
+// orphan member: FormatArguments args{};
+// args.push(StringIds::tooltip_object_list);
+// orphan member: return args;
+// // 0x00472B54
+// static ObjectManager::ObjIndexPair getObjectFromSelection([[maybe_unused]] Window* self, int16_t& y)
+// for (auto& entry : _tabObjectList)
+// if (entry.display == Visibility::hidden)
+// continue;
+// y -= kRowHeight;
+// if (y < 0)
+// return { static_cast<int16_t>(entry.index), entry.object };
+// return { ObjectManager::kNullObjectIndex, ObjectManager::ObjectIndexEntry{} };
+// // 0x0047390A
+// func OnScrollMouseOver(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// auto objIndex = getObjectFromSelection(&self, y);
+// if (objIndex.index == self.rowHover || objIndex.index == ObjectManager::kNullObjectIndex)
+// return;
+// self.rowHover = objIndex.index;
+// self.object = reinterpret_cast<std::byte*>(&objIndex.object._header);
+// ObjectManager::freeTemporaryObject();
+// if (objIndex.index != ObjectManager::kNullObjectIndex)
+// ObjectManager::loadTemporaryObject(objIndex.object._header);
+// self.invalidate();
+// // 0x00473948
+// func OnScrollMouseDown(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// auto objIndex = getObjectFromSelection(&self, y);
+// auto index = objIndex.index;
+// auto object = objIndex.object._header;
+// if (index == ObjectManager::kNullObjectIndex)
+// return;
+// self.invalidate();
+// Audio::playSound(Audio::SoundId::clickDown, Input::getMouseLocation().x);
+// auto type = objIndex.object._header.getType();
+// auto& curSelection = ObjectManager::getCurrentSelectionList();
+// if (ObjectManager::getMaxObjects(type) == 1)
+// if ((curSelection.objectFlags[index] & ObjectManager::SelectedObjectsFlags::selected) == ObjectManager::SelectedObjectsFlags::none)
+// auto [oldIndex, oldObject] = ObjectManager::getActiveObject(type, curSelection.objectFlags);
+// if (oldIndex != ObjectManager ::kNullObjectIndex)
+// curSelection.selectObject(ObjectManager::SelectObjectModes::defaultDeselect, oldObject._header);
+// auto mode = ObjectManager::SelectObjectModes::defaultDeselect;
+// if ((curSelection.objectFlags[index] & ObjectManager::SelectedObjectsFlags::selected) == ObjectManager::SelectedObjectsFlags::none)
+// mode = ObjectManager::SelectObjectModes::defaultSelect;
+// bool success = curSelection.selectObject(mode, object);
+// if (success)
+// return;
+// auto errorTitle = StringIds::error_unable_to_select_object;
+// if ((mode & ObjectManager::SelectObjectModes::select) == ObjectManager::SelectObjectModes::none)
+// errorTitle = StringIds::error_unable_to_deselect_object;
+// Ui::Windows::Error::open(errorTitle, GameCommands::getErrorText());
+// // 0x004739DD
+// func OnClose(self [[maybe_unused]] Window) 
+// auto& selection = ObjectManager::getCurrentSelectionList();
+// ObjectManager::unloadUnselectedSelectionListObjects(selection.objectFlags);
+// ObjectManager::loadSelectionListObjects(selection.objectFlags);
+// ObjectManager::reloadAll();
+// ObjectManager::freeTemporaryObject();
+// if (!SceneManager::isEditorMode())
+// // Make new selection available in-game.
+// ObjectManager::updateYearly2();
+// ObjectManager::updateTerraformObjects();
+// Gfx::loadCurrency();
+// Gfx::loadDefaultPalette();
+// Gfx::invalidateScreen();
+// CompanyManager::determineAvailableVehicles();
+// WindowManager::invalidate(WindowType::buildVehicle);
+// // Stop being modal and unpause game.
+// WindowManager::setCurrentModalType(WindowType::undefined);
+// SceneManager::unsetPauseFlag(PauseFlags::objectSelection);
+// WindowManager::invalidate(WindowType::timeToolbar);
+// Audio::unpauseSound();
+// ObjectManager::freeSelectionList();
+// // 0x00473A04
+// func OnUpdate(self Window) 
+// WindowManager::invalidateWidget(WindowType::objectSelection, self.number, widx::objectImage);
+// inputSession.cursorFrame++;
+// if ((inputSession.cursorFrame % 16) == 0)
+// WindowManager::invalidateWidget(WindowType::objectSelection, self.number, widx::textInput);
+// func KeyUp(w Window, charCode uint32, keyCode uint32) bool
+// if (!Input::isFocused(w.type, w.number, widx::textInput))
+// orphan member: return false;
+// if (!inputSession.handleInput(charCode, keyCode))
+// orphan member: return false;
+// int containerWidth = widgets[widx::textInput].width() - 2;
+// if (inputSession.needsReoffsetting(containerWidth))
+// inputSession.calculateTextOffset(containerWidth);
+// inputSession.cursorFrame = 0;
+// applyFilterToObjectList(FilterFlags(w.var_858));
+// w.initScrollWidgets();
+// w.invalidate();
+// orphan member: return true;
+// static constexpr WindowEventList kEvents = {
+// .onClose = onClose,
+// .onMouseUp = onMouseUp,
+// .onResize = onResize,
+// .onMouseDown = onMouseDown,
+// .onDropdown = onDropdown,
+// .onUpdate = onUpdate,
+// .getScrollSize = getScrollSize,
+// .scrollMouseDown = onScrollMouseDown,
+// .scrollMouseOver = onScrollMouseOver,
+// .tooltip = tooltip,
+// .prepareDraw = prepareDraw,
+// .draw = draw,
+// .drawScroll = drawScroll,
+// .keyUp = keyUp,
+// static const WindowEventList& getEvents()
+// orphan member: return kEvents;
