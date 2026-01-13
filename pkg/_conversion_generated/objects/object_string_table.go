@@ -9,7 +9,8 @@ package objects
 // forward: struct LoadedObjectHandle;
 // namespace OpenLoco::ObjectManager
 type StringTableResult struct {
-	Str StringId
+	Str         StringId
 	TableLength uint32
 }
+
 // func LoadStringTable(data any /* std::span<std::byte> */ , handle LoadedObjectHandle, index uint8) StringTableResult

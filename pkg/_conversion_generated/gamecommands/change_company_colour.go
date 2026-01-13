@@ -6,17 +6,19 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type ChangeCompanyColourSchemeArgs struct {
-// ChangeCompanyColourSchemeArgs() = default;
+	// ChangeCompanyColourSchemeArgs() = default;
 	// method: explicit ChangeCompanyColourSchemeArgs(const registers& regs)
-// : companyId(CompanyId(regs.dl))
-// , isPrimary()
-// , value(regs.al)
-// , colourType(regs.cl)
-// , setColourMode(regs.dh)
-// if (!setColourMode)
-// isPrimary = regs.ah == 0;
+	// : companyId(CompanyId(regs.dl))
+	// , isPrimary()
+	// , value(regs.al)
+	// , colourType(regs.cl)
+	// , setColourMode(regs.dh)
+	// if (!setColourMode)
+	// isPrimary = regs.ah == 0;
 }
+
 const ChangeCompanyColourSchemeArgsCommand any = GameCommand.changeCompanyColourScheme
+
 // orphan member: CompanyId companyId;
 // orphan member: bool isPrimary;
 // orphan member: uint8_t value;
@@ -34,4 +36,4 @@ const ChangeCompanyColourSchemeArgsCommand any = GameCommand.changeCompanyColour
 // func If(setColourMode) else
 // regs.al = value; // [ 0, 1 ] -- off or on
 // orphan member: return regs;
-// func ChangeCompanyColour(regs registers) 
+// func ChangeCompanyColour(regs registers)

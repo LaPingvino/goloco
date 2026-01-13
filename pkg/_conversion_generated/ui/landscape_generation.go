@@ -47,14 +47,15 @@ package ui
 // static constexpr Ui::Size kLandTabSize = { 366, 252 };
 const RowHeight uint8 = 22
 const MaxLandObjects int = ObjectManager.getMaxObjects(ObjectType.land)
+
 // namespace Common
 type Widx int
 
 const (
-	Frame Widx = 0
-	Caption Widx = 1
+	Frame        Widx = 0
+	Caption      Widx = 1
 	Close_button Widx = 2
-	Panel Widx = 3
+	Panel        Widx = 3
 	Tab_options
 	Tab_land
 	Tab_water
@@ -63,12 +64,14 @@ const (
 	Tab_industries
 	Generate_now
 )
+
 type ResetLandscapeMode int
 
 const (
-	Generate_now ResetLandscapeMode = 0
+	Generate_now         ResetLandscapeMode = 0
 	Use_random_landscape ResetLandscapeMode = 1
 )
+
 // func MakeCommonWidgets(frame_height int32, window_caption_id StringId) any
 // return makeWidgets(
 // Widgets::Frame({ 0, 0 }, { 366, frame_height }, WindowColour::primary),
@@ -83,9 +86,9 @@ const (
 // Widgets::Tab({ 158, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_landscape_generation_industries),
 // Widgets::Button({ 196, frame_height - 17 }, { 160, 12 }, WindowColour::secondary, StringIds::button_generate_landscape, StringIds::tooltip_generate_random_landscape));
 // // Defined at the bottom of this file.
-// func SwitchTabWidgets(window Window) 
-// func SwitchTab(window Window, widgetIndex WidgetIndex_t) 
-// func ConfirmResetLandscape(promptType ResetLandscapeMode) 
+// func SwitchTabWidgets(window Window)
+// func SwitchTab(window Window, widgetIndex WidgetIndex_t)
+// func ConfirmResetLandscape(promptType ResetLandscapeMode)
 // if (Scenario::getOptions().madeAnyChanges)
 // // 'Are you sure?' confirmation prompt
 // orphan member: StringId titleId;
@@ -103,7 +106,7 @@ const (
 // Scenario::generateLandscape();
 // else
 // Scenario::eraseLandscape();
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::close_button:
 // WindowManager::close(&self);
@@ -120,7 +123,7 @@ const (
 // confirmResetLandscape(ResetLandscapeMode::generate_now);
 // break;
 // // 0x0043ECA4
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // // Options tab
 // static constexpr uint32_t optionTabImageIds[] = {
@@ -153,10 +156,10 @@ const (
 // // Industries tab
 // const uint32_t imageId = skin->img + InterfaceSkin::ImageIds::toolbar_menu_industries;
 // Widget::drawTab(self, drawingCtx, imageId, widx::tab_industries);
-// func Draw(window Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Window, drawingCtx Gfx::DrawingContext)
 // window.draw(drawingCtx);
 // drawTabs(window, drawingCtx);
-// func PrepareDraw(window Window) 
+// func PrepareDraw(window Window)
 // window.widgets[widx::frame].right = window.width - 1;
 // window.widgets[widx::frame].bottom = window.height - 1;
 // window.widgets[widx::panel].right = window.width - 1;
@@ -174,7 +177,7 @@ const (
 // window.disabledWidgets |= (1 << widx::generate_now);
 // else
 // window.disabledWidgets &= ~(1 << widx::generate_now);
-// func Update(window Window) 
+// func Update(window Window)
 // window.frameNo++;
 // window.callPrepareDraw();
 // WindowManager::invalidateWidget(WindowType::landscapeGeneration, window.number, window.currentTab + widx::tab_options);
@@ -201,6 +204,7 @@ const (
 	HeightmapFileLabel
 	BrowseHeightmapFile
 )
+
 // // clang-format off
 // const uint64_t holdable_widgets =
 // (1 << widx::start_year_up) |
@@ -234,7 +238,7 @@ const (
 // // TODO: static memory for state is a bit hacky
 // static std::string _pngFilename{};
 // // 0x0043DB76
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // auto& options = Scenario::getOptions();
 // // Start year info
@@ -293,7 +297,7 @@ const (
 // else
 // self.activatedWidgets &= ~(1 << widx::generate_when_game_starts);
 // // 0x0043E1BA
-// func OnDropdown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // switch (widgetIndex)
 // case widx::heightMapDropdown:
 // if (itemIndex != -1)
@@ -301,7 +305,7 @@ const (
 // window.invalidate();
 // break;
 // // 0x0043DC83
-// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& options = Scenario::getOptions();
 // switch (widgetIndex)
 // case widx::start_year_up:
@@ -330,7 +334,7 @@ const (
 // Dropdown::setHighlightedItem(static_cast<uint8_t>(options.generator));
 // break;
 // // 0x0043DC58
-// func OnMouseUp(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::generate_when_game_starts:
 // if ((Scenario::getOptions().scenarioFlags & Scenario::ScenarioFlags::landscapeGenerationDone) == Scenario::ScenarioFlags::none)
@@ -406,6 +410,7 @@ const (
 	HillsEdgeOfMap
 	Scrollview
 )
+
 // const uint64_t holdable_widgets = (1 << widx::min_land_height_up) | (1 << widx::min_land_height_down) | (1 << widx::hill_density_up) | (1 << widx::hill_density_down);
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(252, StringIds::title_landscape_generation_land),
@@ -428,11 +433,11 @@ const (
 // StringIds::land_distribution_in_small_random_areas,
 // StringIds::land_distribution_in_large_random_areas,
 // StringIds::land_distribution_around_cliffs,
-var LandDropdownWidth = 190 // auto
-var LandDropdownLeft = 150 // auto
+var LandDropdownWidth = 190                                    // auto
+var LandDropdownLeft = 150                                     // auto
 var LandDropdownRight = kLandDropdownLeft + kLandDropdownWidth // auto
 // // 0x0043E01C
-// func DrawScroll(window Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(window Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // uint16_t yPos = 0;
@@ -469,7 +474,7 @@ var LandDropdownRight = kLandDropdownLeft + kLandDropdownWidth // auto
 // tr.drawStringLeft(point, Colour::black, StringIds::dropdown);
 // yPos += kRowHeight;
 // // 0x0043E2AC
-// func GetScrollSize(window [[maybe_unused]] Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(window [[maybe_unused]] Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = 0;
 // for (uint16_t i = 0; i < kMaxLandObjects; i++)
 // auto landObject = ObjectManager::get<LandObject>(i);
@@ -483,7 +488,7 @@ var LandDropdownRight = kLandDropdownLeft + kLandDropdownWidth // auto
 // StringIds::half_mountains_half_hills,
 // StringIds::half_mountains_half_flat,
 // // 0x0043E1BA
-// func OnDropdown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // switch (widgetIndex)
 // case widx::topography_style_btn:
 // if (itemIndex != -1)
@@ -496,7 +501,7 @@ var LandDropdownRight = kLandDropdownLeft + kLandDropdownWidth // auto
 // window.invalidate();
 // break;
 // // 0x0043E173
-// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& options = Scenario::getOptions();
 // switch (widgetIndex)
 // case widx::min_land_height_up:
@@ -524,7 +529,7 @@ var LandDropdownRight = kLandDropdownLeft + kLandDropdownWidth // auto
 // // After changing any of the options, invalidate the window.
 // window.invalidate();
 // // 0x0043E14E
-// func OnMouseUp(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::hillsEdgeOfMap:
 // Scenario::getOptions().scenarioFlags ^= Scenario::ScenarioFlags::hillsEdgeOfMap;
@@ -545,7 +550,7 @@ var LandDropdownRight = kLandDropdownLeft + kLandDropdownWidth // auto
 // orphan member: return i;
 // return -1;
 // // 0x0043E1CF
-// func ScrollMouseDown(window Window, xPos int16, yPos int16, scrollIndex [[maybe_unused]] uint8_t) 
+// func ScrollMouseDown(window Window, xPos int16, yPos int16, scrollIndex [[maybe_unused]] uint8_t)
 // int16_t landIndex = scrollPosToLandIndex(xPos, yPos);
 // if (landIndex == -1)
 // return;
@@ -559,7 +564,7 @@ var LandDropdownRight = kLandDropdownLeft + kLandDropdownWidth // auto
 // Dropdown::add(i, StringIds::dropdown_stringid, landDistributionLabelIds[i]);
 // Dropdown::setItemSelected(enumValue(Scenario::getOptions().landDistributionPatterns[landIndex]));
 // // 0x0043DEBF
-// func PrepareDraw(window Window) 
+// func PrepareDraw(window Window)
 // Common::prepareDraw(window);
 // auto& options = Scenario::getOptions();
 // auto args = FormatArguments(window.widgets[widx::hill_density].textArgs);
@@ -577,7 +582,7 @@ var LandDropdownRight = kLandDropdownLeft + kLandDropdownWidth // auto
 // args.push(StringIds::tooltip_scroll_list);
 // orphan member: return args;
 // // 0x0043E3D9
-// func Update(window Window) 
+// func Update(window Window)
 // Common::update(window);
 // auto dropdown = WindowManager::find(WindowType::dropdown, 0);
 // if (dropdown == nullptr && window.rowHover != -1)
@@ -625,6 +630,7 @@ const (
 	Meander_rate_down
 	Meander_rate_up
 )
+
 // // clang-format off
 // const uint64_t holdable_widgets = (1ULL << widx::sea_level_up) | (1ULL << widx::sea_level_down) |
 // (1ULL << widx::num_riverbeds_down) | (1ULL << widx::num_riverbeds_up) |
@@ -649,7 +655,7 @@ const (
 // Widgets::stepperWidgets({ 256, 132 }, { 100, 12 }, WindowColour::secondary, StringIds::min_land_height_units)
 // );
 // // 0x0043E173
-// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& gameState = getGameState();
 // auto& options = Scenario::getOptions();
 // switch (widgetIndex)
@@ -695,7 +701,7 @@ const (
 // // After changing any of the options, invalidate the window.
 // window.invalidate();
 // // 0x0043DEBF
-// func PrepareDraw(window Window) 
+// func PrepareDraw(window Window)
 // Common::prepareDraw(window);
 // auto& gameState = getGameState();
 // auto& options = Scenario::getOptions();
@@ -756,6 +762,7 @@ const (
 	Max_altitude_for_trees_down
 	Max_altitude_for_trees_up
 )
+
 // const uint64_t holdable_widgets = (1ULL << widx::number_of_forests_up) | (1ULL << widx::number_of_forests_down) | (1ULL << widx::min_forest_radius_up) | (1ULL << widx::min_forest_radius_down) | (1ULL << widx::max_forest_radius_up) | (1ULL << widx::max_forest_radius_down) | (1ULL << widx::min_forest_density_up) | (1ULL << widx::min_forest_density_down) | (1ULL << widx::max_forest_density_up) | (1 << widx::max_forest_density_down) | (1ULL << widx::number_random_trees_up) | (1ULL << widx::number_random_trees_down) | (1ULL << widx::min_altitude_for_trees_up) | (1ULL << widx::min_altitude_for_trees_down) | (1ULL << widx::max_altitude_for_trees_down) | (1ULL << widx::max_altitude_for_trees_up);
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(217, StringIds::title_landscape_generation_forests),
@@ -777,7 +784,7 @@ const (
 // Widgets::stepperWidgets({ 256, 157 }, { 100, 12 }, WindowColour::secondary, StringIds::max_altitude_for_trees_height)
 // );
 // // 0x0043E670
-// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& options = Scenario::getOptions();
 // switch (widgetIndex)
 // case widx::number_of_forests_up:
@@ -846,7 +853,7 @@ const (
 // // After changing any of the options, invalidate the window.
 // window.invalidate();
 // // 0x0043E44F
-// func PrepareDraw(window Window) 
+// func PrepareDraw(window Window)
 // Common::prepareDraw(window);
 // auto& options = Scenario::getOptions();
 // auto args = FormatArguments(window.widgets[widx::number_of_forests].textArgs);
@@ -889,6 +896,7 @@ const (
 	Max_town_size
 	Max_town_size_btn
 )
+
 // const uint64_t holdable_widgets = (1 << widx::number_of_towns_up) | (1 << widx::number_of_towns_down);
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(217, StringIds::title_landscape_generation_towns),
@@ -907,13 +915,13 @@ const (
 // StringIds::town_size_7,
 // StringIds::town_size_8,
 // // 0x0043EA28
-// func OnDropdown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex != widx::max_town_size_btn || itemIndex == -1)
 // return;
 // Scenario::getOptions().maxTownSize = itemIndex + 1;
 // window.invalidate();
 // // 0x0043EA0D
-// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& options = Scenario::getOptions();
 // switch (widgetIndex)
 // case widx::number_of_towns_up:
@@ -939,7 +947,7 @@ const (
 // Dropdown::setHighlightedItem(options.maxTownSize - 1);
 // break;
 // // 0x0043E90D
-// func PrepareDraw(window Window) 
+// func PrepareDraw(window Window)
 // Common::prepareDraw(window);
 // auto args = FormatArguments(window.widgets[widx::number_of_towns].textArgs);
 // args.push<uint16_t>(Scenario::getOptions().numberOfTowns);
@@ -963,6 +971,7 @@ const (
 	Check_allow_industries_close_down
 	Check_allow_industries_start_up
 )
+
 // const uint64_t holdable_widgets = 0;
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(217, StringIds::title_landscape_generation_industries),
@@ -976,13 +985,13 @@ const (
 // StringIds::industry_size_medium,
 // StringIds::industry_size_high,
 // // 0x0043EBF8
-// func OnDropdown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex != widx::num_industries_btn || itemIndex == -1)
 // return;
 // Scenario::getOptions().numberOfIndustries = itemIndex;
 // window.invalidate();
 // // 0x0043EBF1
-// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::num_industries_btn:
 // Widget& target = window.widgets[widx::num_industries];
@@ -1000,7 +1009,7 @@ const (
 // window.invalidate();
 // break;
 // // 0x0043EAEB
-// func PrepareDraw(window Window) 
+// func PrepareDraw(window Window)
 // Common::prepareDraw(window);
 // window.widgets[widx::num_industries].text = numIndustriesLabels[Scenario::getOptions().numberOfIndustries];
 // window.activatedWidgets &= ~((1 << widx::check_allow_industries_close_down) | (1 << widx::check_allow_industries_start_up));
@@ -1018,7 +1027,7 @@ const (
 // static const WindowEventList& getEvents()
 // orphan member: return kEvents;
 // namespace Common
-// func SwitchTabWidgets(window Window) 
+// func SwitchTabWidgets(window Window)
 // window->activatedWidgets = 0;
 // static std::span<const Widget> widgetCollectionsByTabId[] = {
 // Options::widgets,
@@ -1040,7 +1049,7 @@ const (
 // window->activatedWidgets &= ~((1 << tab_options) | (1 << tab_land) | (1 << tab_water) | (1 << tab_forests) | (1 << tab_towns) | (1 << tab_industries));
 // window->activatedWidgets |= (1ULL << tabWidgetIdxByTabId[window->currentTab]);
 // // 0x0043DC98
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // self.currentTab = widgetIndex - widx::tab_options;

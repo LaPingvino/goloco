@@ -6,16 +6,18 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type WallPlacementArgs struct {
-// WallPlacementArgs() = default;
+	// WallPlacementArgs() = default;
 	// method: explicit WallPlacementArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.di)
-// , rotation(regs.dl)
-// , type(regs.bh)
-// , primaryColour(static_cast<Colour>(regs.dh))
-// , secondaryColour(static_cast<Colour>(regs.bp & 0x1F))
-// , tertiaryColour(static_cast<Colour>((regs.bp >> 8) & 0x1F))
+	// : pos(regs.ax, regs.cx, regs.di)
+	// , rotation(regs.dl)
+	// , type(regs.bh)
+	// , primaryColour(static_cast<Colour>(regs.dh))
+	// , secondaryColour(static_cast<Colour>(regs.bp & 0x1F))
+	// , tertiaryColour(static_cast<Colour>((regs.bp >> 8) & 0x1F))
 }
+
 const WallPlacementArgsCommand any = GameCommand.createWall
+
 // World::Pos3 pos;
 // orphan member: uint8_t rotation;
 // orphan member: uint8_t type;
@@ -32,4 +34,4 @@ const WallPlacementArgsCommand any = GameCommand.createWall
 // regs.bp = enumValue(secondaryColour) | (enumValue(tertiaryColour) << 8);
 // regs.bh = type;
 // orphan member: return regs;
-// func CreateWall(regs registers) 
+// func CreateWall(regs registers)

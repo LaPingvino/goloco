@@ -56,8 +56,8 @@ package objects
 type LoadedObjectIndex = int
 type LandObjectFlags int
 
-const (
-)
+const ()
+
 // namespace OpenLoco::ObjectManager
 // func GetMaxObjects(type ObjectType) int
 // // 0x004FE250
@@ -98,6 +98,7 @@ const (
 // Limits::kMaxScenarioTextObjects
 // return counts[(size_t)type];
 const MaxObjects int = 859
+
 // Object* getAny(const LoadedObjectHandle& handle);
 // template<typename T>
 // const T* get()
@@ -110,30 +111,33 @@ const MaxObjects int = 859
 type ObjectHeader2 struct {
 	DecodedFileSize uint32
 }
+
 // static_assert(sizeof(ObjectHeader2) == 0x4);
 type ObjectHeader3 struct {
-	NumImages uint32
-	Intelligence uint8
-	Aggressiveness uint8
+	NumImages       uint32
+	Intelligence    uint8
+	Aggressiveness  uint8
 	Competitiveness uint8
-	VehicleSubType uint8
-// uint8_t pad_08[0x4];
+	VehicleSubType  uint8
+	// uint8_t pad_08[0x4];
 }
+
 // static_assert(sizeof(ObjectHeader3) == 0xC);
 type LoadObjectsResult struct {
 	Success bool
-// std::vector<ObjectHeader> problemObjects;
+	// std::vector<ObjectHeader> problemObjects;
 }
 type DependentObjects struct {
-// std::vector<ObjectHeader> required;
-// std::vector<ObjectHeader> willLoad;
+	// std::vector<ObjectHeader> required;
+	// std::vector<ObjectHeader> willLoad;
 }
 type TempLoadMetaData struct {
-	FileSizeHeader ObjectHeader2
-	DisplayData ObjectHeader3
+	FileSizeHeader   ObjectHeader2
+	DisplayData      ObjectHeader3
 	DependentObjects DependentObjects
 }
-// func FreeTemporaryObject() 
+
+// func FreeTemporaryObject()
 // std::optional<TempLoadMetaData> loadTemporaryObject(const ObjectHeader& header);
 // Object* getTemporaryObject();
 // func IsTemporaryObjectLoad() bool
@@ -141,29 +145,29 @@ type TempLoadMetaData struct {
 // // Calls findObjectHandle and if can't find performs a secondary check with slightly looser
 // // definitions of what a matching custom header is (no checksum, partial flags)
 // std::optional<LoadedObjectHandle> findObjectHandleFuzzy(const ObjectHeader& header);
-// func ReloadAll() 
+// func ReloadAll()
 // ObjectHeader& getHeader(const LoadedObjectHandle& handle);
 // std::vector<ObjectHeader> getHeaders();
 // func LoadAll(objects any /* std::span<ObjectHeader> */ ) LoadObjectsResult
-// func WritePackedObjects(fs SawyerStreamWriter, packedObjects []ObjectHeader) 
-// func UnloadAll() 
+// func WritePackedObjects(fs SawyerStreamWriter, packedObjects []ObjectHeader)
+// func UnloadAll()
 // // Only unloads the entry (clears entry for packing does not free)
-// func Unload(handle LoadedObjectHandle) 
+// func Unload(handle LoadedObjectHandle)
 // // Unloads and frees the entry
-// func Unload(header ObjectHeader) 
+// func Unload(header ObjectHeader)
 // func Load(header ObjectHeader) bool
 // func TryInstallObject(object ObjectHeader, data any /* std::span<std::byte> */ ) bool
 // func GetByteLength(handle LoadedObjectHandle) int
-// func DrawGenericDescription(drawingCtx Gfx::DrawingContext, rowPosition Ui::Point, designed uint16, obsolete uint16) 
-// func UpdateRoadObjectIdFlags() 
-// func UpdateDefaultLevelCrossingType() 
-// func UpdateYearly2() 
-// func UpdateTerraformObjects() 
-// func UpdateLastTrackTypeOption() 
+// func DrawGenericDescription(drawingCtx Gfx::DrawingContext, rowPosition Ui::Point, designed uint16, obsolete uint16)
+// func UpdateRoadObjectIdFlags()
+// func UpdateDefaultLevelCrossingType()
+// func UpdateYearly2()
+// func UpdateTerraformObjects()
+// func UpdateLastTrackTypeOption()
 // std::span<LandObjectFlags> getLandObjectFlagsCache();
 // // Calls function with the handle (LoadedObjectHandle) of each loaded object
 // template<typename Function>
-// func ForEachLoadedObject(func Function) 
+// func ForEachLoadedObject(func Function)
 // for (uint8_t objectTypeU = 0; objectTypeU < kMaxObjectTypes; ++objectTypeU)
 // const auto objectType = static_cast<ObjectType>(objectTypeU);
 // for (LoadedObjectId i = 0U; i < getMaxObjects(objectType); ++i)

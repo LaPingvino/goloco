@@ -14,6 +14,7 @@ const (
 	Ipv4
 	Ipv6
 )
+
 type SocketStatus int
 
 const (
@@ -24,6 +25,7 @@ const (
 	Connected
 	Listening
 )
+
 type NetworkReadPacket int
 
 const (
@@ -32,12 +34,14 @@ const (
 	MoreData
 	Disconnected
 )
+
 // /**
 // * Represents an address and port.
 // */
 type INetworkEndpoint struct {
-// virtual ~INetworkEndpoint()
+	// virtual ~INetworkEndpoint()
 }
+
 // virtual Protocol getProtocol() const = 0;
 // virtual std::string getIpAddress() const = 0;
 // virtual std::string getHostname() const = 0;
@@ -47,21 +51,22 @@ type INetworkEndpoint struct {
 // * Represents a UDP socket / listener.
 // */
 type IUdpSocket struct {
-// virtual ~IUdpSocket() = default;
-// virtual SocketStatus getStatus() const = 0;
-// virtual const char* getError() const = 0;
-// virtual const char* getHostName() const = 0;
-// virtual Protocol getProtocol() const = 0;
-// virtual std::string getIpAddress() const = 0;
-// virtual void listen(Protocol procotol, uint16_t port) = 0;
-// virtual void listen(Protocol procotol, const std::string& address, uint16_t port) = 0;
-// virtual size_t sendData(Protocol protocol, const std::string& address, uint16_t port, const void* buffer, size_t size) = 0;
-// virtual size_t sendData(const INetworkEndpoint& destination, const void* buffer, size_t size) = 0;
-// virtual NetworkReadPacket receiveData(
-// void* buffer, size_t size, size_t* sizeReceived, std::unique_ptr<INetworkEndpoint>* sender)
-// = 0;
-// virtual void close() = 0;
+	// virtual ~IUdpSocket() = default;
+	// virtual SocketStatus getStatus() const = 0;
+	// virtual const char* getError() const = 0;
+	// virtual const char* getHostName() const = 0;
+	// virtual Protocol getProtocol() const = 0;
+	// virtual std::string getIpAddress() const = 0;
+	// virtual void listen(Protocol procotol, uint16_t port) = 0;
+	// virtual void listen(Protocol procotol, const std::string& address, uint16_t port) = 0;
+	// virtual size_t sendData(Protocol protocol, const std::string& address, uint16_t port, const void* buffer, size_t size) = 0;
+	// virtual size_t sendData(const INetworkEndpoint& destination, const void* buffer, size_t size) = 0;
+	// virtual NetworkReadPacket receiveData(
+	// void* buffer, size_t size, size_t* sizeReceived, std::unique_ptr<INetworkEndpoint>* sender)
+	// = 0;
+	// virtual void close() = 0;
 }
+
 // namespace Socket
 // [[nodiscard]] std::unique_ptr<IUdpSocket> createUdp();
 // std::unique_ptr<INetworkEndpoint> resolve(Protocol protocol, const std::string& address, uint16_t port);

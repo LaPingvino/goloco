@@ -24,9 +24,9 @@ package ui
 // static char _errorText[512];         // 0x009C64B3
 // static uint16_t _linebreakCount;     // 0x009C66B3
 // static CompanyId _errorCompetitorId; // 0x009C68EC
-var MinWidth = 70 // auto
-var MaxWidth = 250 // auto
-var Padding = 4 // auto
+var MinWidth = 70       // auto
+var MaxWidth = 250      // auto
+var Padding = 4         // auto
 var CompetitorSize = 64 // auto
 // namespace Common
 // static const WindowEventList& getEvents();
@@ -36,6 +36,7 @@ type Widx int
 const (
 	Frame Widx = iota
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Widgets::Panel({ 0, 0 }, { 200, 42 }, WindowColour::primary)
 // );
@@ -46,6 +47,7 @@ const (
 	Frame Widx = iota
 	InnerFrame
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Widgets::Panel({ 0, 0 }, { 250, 70 }, WindowColour::primary),
 // Widgets::Wt3Widget({ 3, 3 }, { 64, 64 }, WindowColour::secondary)
@@ -62,7 +64,7 @@ const (
 // ptr++;
 // StringManager::formatString(ptr, message, args);
 // orphan member: return ptr;
-// func CreateErrorWindow(title StringId, message StringId, suppressErrorSound bool) 
+// func CreateErrorWindow(title StringId, message StringId, suppressErrorSound bool)
 // WindowManager::close(WindowType::error);
 // char* buffer = _errorText;
 // auto args = FormatArguments::common();
@@ -109,19 +111,19 @@ const (
 // int32_t pan = (error->width / 2) + error->x;
 // Audio::playSound(Audio::SoundId::error, pan);
 // // 0x00431A8A
-// func Open(title StringId, message StringId) 
+// func Open(title StringId, message StringId)
 // _errorCompetitorId = CompanyId::null;
 // createErrorWindow(title, message, false);
-// func OpenQuiet(title StringId, message StringId) 
+// func OpenQuiet(title StringId, message StringId)
 // _errorCompetitorId = CompanyId::null;
 // createErrorWindow(title, message, true);
 // // 0x00431908
-// func OpenWithCompetitor(title StringId, message StringId, competitorId CompanyId) 
+// func OpenWithCompetitor(title StringId, message StringId, competitorId CompanyId)
 // _errorCompetitorId = competitorId;
 // createErrorWindow(title, message, false);
 // namespace Common
 // // 0x00431C05
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto colour = AdvancedColour(Colour::white).translucent(); // self.colours[0];
@@ -143,7 +145,7 @@ const (
 // auto point = Point(self.x + (self.width - kCompetitorSize) / 2 + kCompetitorSize + kPadding, self.y + 20);
 // tr.drawStringCentredRaw(point, _linebreakCount, colour, &_errorText[0]);
 // // 0x00431E1B
-// func OnPeriodicUpdate(self Ui::Window) 
+// func OnPeriodicUpdate(self Ui::Window)
 // self.var_846++;
 // if (self.var_846 >= 7)
 // WindowManager::close(&self);

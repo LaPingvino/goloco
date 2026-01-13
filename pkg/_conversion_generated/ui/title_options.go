@@ -35,7 +35,7 @@ package ui
 // window->setColour(WindowColour::primary, AdvancedColour(Colour::mutedSeaGreen).translucent());
 // window->setColour(WindowColour::secondary, AdvancedColour(Colour::mutedSeaGreen).translucent());
 // orphan member: return window;
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // // Draw widgets.
 // window.draw(drawingCtx);
@@ -46,7 +46,7 @@ package ui
 // auto args = FormatArguments{ argsBuf };
 // args.push(StringIds::options);
 // tr.drawStringCentredWrapped(origin, window.width, Colour::white, StringIds::outlined_wcolour2_stringid, args);
-// func OnMouseUp(window [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (Intro::isActive())
 // return;
 // switch (widgetIndex)

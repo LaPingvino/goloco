@@ -61,7 +61,7 @@ package ui
 // * @param value @<cx>
 // * @param callingWidget @<dx>
 // */
-// func OpenTextInput(caller Ui::Window, title StringId, message StringId, value StringId, callingWidget int, valueArgs FormatArgumentsView, inputSize uint32) 
+// func OpenTextInput(caller Ui::Window, title StringId, message StringId, value StringId, callingWidget int, valueArgs FormatArgumentsView, inputSize uint32)
 // _title = title;
 // _message = message;
 // _callingWindowType = caller->type;
@@ -108,7 +108,7 @@ package ui
 // * @param type @<cl>
 // * @param number @<dx>
 // */
-// func Sub_4CE6C9(type WindowType, number WindowNumber_t) 
+// func Sub_4CE6C9(type WindowType, number WindowNumber_t)
 // auto window = WindowManager::find(WindowType::textInput, 0);
 // if (window == nullptr)
 // return;
@@ -117,12 +117,12 @@ package ui
 // /**
 // * 0x004CE6F2
 // */
-// func Cancel() 
+// func Cancel()
 // WindowManager::close(WindowType::textInput);
 // /**
 // * 0x004CE6FF
 // */
-// func Sub_4CE6FF() 
+// func Sub_4CE6FF()
 // auto window = WindowManager::find(WindowType::textInput);
 // if (window == nullptr)
 // return;
@@ -134,7 +134,7 @@ package ui
 // *
 // * @param window @<esi>
 // */
-// func PrepareDraw(self Ui::Window) 
+// func PrepareDraw(self Ui::Window)
 // self.widgets[Widx::title].text = _title;
 // memcpy(self.widgets[Widx::title].textArgs.data(), _formatArgs.data(), 16);
 // const uint16_t numCharacters = static_cast<uint16_t>(inputSession.buffer.length());
@@ -148,7 +148,7 @@ package ui
 // * @param window @<esi>
 // * @param context @<edi>
 // */
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // window.draw(drawingCtx);
@@ -180,7 +180,7 @@ package ui
 // drawingCtx.fillRect(cursorPos.x, cursorPos.y, cursorPos.x, cursorPos.y + 9, Colours::getShade(window.getColour(WindowColour::secondary).c(), 9), Gfx::RectFlags::none);
 // drawingCtx.popRenderTarget();
 // // 0x004CE8B6
-// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Widx::close:
 // WindowManager::close(&window);
@@ -193,7 +193,7 @@ package ui
 // WindowManager::close(&window);
 // break;
 // // 0x004CE8FA
-// func OnUpdate(window Ui::Window) 
+// func OnUpdate(window Ui::Window)
 // inputSession.cursorFrame++;
 // if ((inputSession.cursorFrame % 16) == 0)
 // window.invalidate();

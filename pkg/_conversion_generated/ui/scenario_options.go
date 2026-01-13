@@ -52,6 +52,7 @@ const (
 	Tab_finances
 	Tab_scenario
 )
+
 // func MakeCommonWidgets(frameHeight int32, windowCaptionId StringId) any
 // return makeWidgets(
 // Widgets::Frame({ 0, 0 }, { 366, frameHeight }, WindowColour::primary),
@@ -63,12 +64,12 @@ const (
 // Widgets::Tab({ 65, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_financial_options),
 // Widgets::Tab({ 96, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_scenario_options));
 // // 0x00440082
-// func Update(window Window) 
+// func Update(window Window)
 // window.frameNo++;
 // window.callPrepareDraw();
 // WindowManager::invalidateWidget(WindowType::scenarioOptions, window.number, window.currentTab + widx::tab_challenge);
 // // 0x004400A4
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // // Challenge tab
 // static constexpr uint32_t challengeTabImageIds[] = {
@@ -125,11 +126,11 @@ const (
 // if (!self.widgets[widx::tab_scenario].hidden)
 // const uint32_t imageId = skin->img + InterfaceSkin::ImageIds::tab_scenario_details;
 // Widget::drawTab(self, drawingCtx, imageId, widx::tab_scenario);
-// func Draw(window Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Window, drawingCtx Gfx::DrawingContext)
 // window.draw(drawingCtx);
 // drawTabs(window, drawingCtx);
-// func PrepareDraw(self Window) 
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func PrepareDraw(self Window)
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // namespace Challenge
 type Widx int
 
@@ -148,6 +149,7 @@ const (
 	Time_limit_value_down
 	Time_limit_value_up
 )
+
 // const uint64_t holdableWidgets = (1 << widx::objective_value_down) | (1 << widx::objective_value_up) | (1 << widx::time_limit_value_down) | (1 << widx::time_limit_value_up);
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(197, StringIds::title_scenario_challenge),
@@ -160,7 +162,7 @@ const (
 // Widgets::stepperWidgets({ 256, 112 }, { 100, 12 }, WindowColour::secondary, StringIds::time_limit_years_value)
 // );
 // // 0x0043FC91
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // Common::draw(window, drawingCtx);
 // auto point = Point(window.x + 5, window.y + widgets[widx::check_time_limit].bottom + 10);
@@ -175,9 +177,10 @@ const (
 // StringIds::objective_achieve_a_certain_performance_index,
 // StringIds::objective_deliver_a_certain_amount_of_cargo,
 const MaxCargoObjects uint8 = uint8_t(ObjectManager.getMaxObjects(ObjectType.cargo))
+
 // static int16_t cargoByDropdownIndex[kMaxCargoObjects] = { -1 };
 // // 0x0043FD51
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (itemIndex == -1)
 // return;
 // switch (widgetIndex)
@@ -189,7 +192,7 @@ const MaxCargoObjects uint8 = uint8_t(ObjectManager.getMaxObjects(ObjectType.car
 // Scenario::getObjective().deliveredCargoType = cargoByDropdownIndex[itemIndex];
 // self.invalidate();
 // // 0x0043FD14
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::objective_type_btn:
 // Widget& target = self.widgets[widx::objective_type];
@@ -268,7 +271,7 @@ const MaxCargoObjects uint8 = uint8_t(ObjectManager.getMaxObjects(ObjectType.car
 // self.invalidate();
 // break;
 // // 0x0043FCED
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -292,7 +295,7 @@ const MaxCargoObjects uint8 = uint8_t(ObjectManager.getMaxObjects(ObjectType.car
 // self.invalidate();
 // break;
 // // 0x0043FB0C
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.widgets[widx::objective_type].text = objectiveTypeLabelIds[enumValue(Scenario::getObjective().type)];
 // self.widgets[widx::objective_cargo].hidden = true;
@@ -406,6 +409,7 @@ const (
 	Player_forbid_aircraft
 	Player_forbid_ships
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(327, StringIds::title_company_options),
 // Widgets::stepperWidgets({ 256, 52 }, { 100, 12 }, WindowColour::secondary, StringIds::max_competing_companies_value),
@@ -431,7 +435,7 @@ const (
 // );
 // const uint64_t holdableWidgets = (1ULL << widx::max_competing_companies_down) | (1ULL << widx::max_competing_companies_up) | (1ULL << widx::delay_before_competing_companies_start_down) | (1ULL << widx::delay_before_competing_companies_start_up);
 // // 0x0043F4EB
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // Common::draw(window, drawingCtx);
 // auto point = Point(window.x + 10, window.y + widgets[widx::max_competing_companies].top + 1);
@@ -450,7 +454,7 @@ const (
 // StringIds::preference_medium,
 // StringIds::preference_high,
 // // 0x0043F67C
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (itemIndex == -1)
 // return;
 // auto& state = getGameState();
@@ -466,7 +470,7 @@ const (
 // break;
 // self.invalidate();
 // // 0x0043F639
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& state = getGameState();
 // switch (widgetIndex)
 // case widx::max_competing_companies_down:
@@ -507,7 +511,7 @@ const (
 // Dropdown::setItemSelected(state.preferredAICompetitiveness);
 // break;
 // // 0x0043F60C
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& state = getGameState();
 // switch (widgetIndex)
 // case Common::widx::close_button:
@@ -553,7 +557,7 @@ const (
 // WindowManager::invalidate(WindowType::vehicleList);
 // break;
 // // 0x0043F40C
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // auto args = FormatArguments(self.widgets[widx::max_competing_companies].textArgs);
 // args.push<uint16_t>(CompanyManager::getMaxCompetingCompanies());
@@ -590,6 +594,7 @@ const (
 	Loan_interest_rate_down
 	Loan_interest_rate_up
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(217, StringIds::title_financial_options),
 // Widgets::stepperWidgets({ 256, 52 }, { 100, 12 }, WindowColour::secondary, StringIds::starting_loan_value),
@@ -598,7 +603,7 @@ const (
 // );
 // const uint64_t holdableWidgets = (1 << widx::starting_loan_down) | (1 << widx::starting_loan_up) | (1 << widx::max_loan_size_down) | (1 << widx::max_loan_size_up) | (1 << widx::loan_interest_rate_down) | (1 << widx::loan_interest_rate_up);
 // // 0x0043F97D
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // Common::draw(window, drawingCtx);
 // auto point = Point(window.x + 10, window.y + widgets[widx::starting_loan].top + 1);
@@ -607,7 +612,7 @@ const (
 // tr.drawStringLeft(point, Colour::black, StringIds::max_loan_size);
 // point.y = window.y + widgets[widx::loan_interest_rate].top + 1;
 // tr.drawStringLeft(point, Colour::black, StringIds::loan_interest_rate);
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& state = getGameState();
 // switch (widgetIndex)
 // case widx::starting_loan_down:
@@ -633,7 +638,7 @@ const (
 // state.loanInterestRate = std::min<uint16_t>(state.loanInterestRate + 1, Scenario::kMaxLoanInterestUnits);
 // break;
 // self.invalidate();
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -645,7 +650,7 @@ const (
 // Common::switchTab(self, widgetIndex);
 // break;
 // // 0x0043F8CF
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // auto args = FormatArguments(self.widgets[widx::starting_loan].textArgs);
 // uint32_t loanSizeInCurrency = CompanyManager::getInflationAdjustedStartingLoan();
@@ -673,6 +678,7 @@ const (
 	Scenario_group_btn
 	Change_details_btn
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(217, StringIds::title_scenario_options),
 // Widgets::Button({ 281, 52 }, { 75, 12 }, WindowColour::secondary, StringIds::change),
@@ -681,7 +687,7 @@ const (
 // );
 // const uint64_t holdableWidgets = 0;
 // // 0x0043F004
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // Common::draw(window, drawingCtx);
 // // Prepare scenario name text.
@@ -725,12 +731,12 @@ const (
 // StringIds::scenario_group_challenging,
 // StringIds::scenario_group_expert,
 // // 0x0043F14B
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex == widx::scenario_group_btn && itemIndex != -1)
 // Scenario::getOptions().difficulty = itemIndex;
 // self.invalidate();
 // // 0x0043F140
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (widgetIndex == widx::scenario_group_btn)
 // Widget& target = self.widgets[widx::scenario_group];
 // Dropdown::show(self.x + target.left, self.y + target.top, target.width() - 4, target.height(), self.getColour(WindowColour::secondary), std::size(scenarioGroupLabelIds), 0x80);
@@ -738,7 +744,7 @@ const (
 // Dropdown::add(i, StringIds::dropdown_stringid, scenarioGroupLabelIds[i]);
 // Dropdown::setItemSelected(Scenario::getOptions().difficulty);
 // // 0x0043F11F
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -762,17 +768,17 @@ const (
 // TextInput::openTextInput(&self, StringIds::scenario_details_title, StringIds::enter_description_of_this_scenario, StringIds::buffer_2039, widgetIndex, {}, inputSize);
 // break;
 // // 0x0043EF8B
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.widgets[widx::scenario_group].text = scenarioGroupLabelIds[Scenario::getOptions().difficulty];
-// func UnloadScenarioTextObjects() 
+// func UnloadScenarioTextObjects()
 // if (ObjectManager::get<ScenarioTextObject>() == nullptr)
 // return;
 // LoadedObjectHandle handle = { ObjectType::scenarioText, 0 };
 // auto header = ObjectManager::getHeader(handle);
 // ObjectManager::unload(header);
 // // 0x0043F156
-// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte) 
+// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte)
 // switch (callingWidget)
 // case widx::change_name_btn:
 // strncpy(Scenario::getOptions().scenarioName, input, sizeof(Scenario::Options::scenarioName) - 1);
@@ -798,11 +804,12 @@ const (
 // orphan member: return kEvents;
 // namespace Common
 type TabInformation struct {
-// std::span<const Widget> widgets;
-// const widx widgetIndex;
-// const WindowEventList& events;
-// const uint64_t* holdableWidgets;
+	// std::span<const Widget> widgets;
+	// const widx widgetIndex;
+	// const WindowEventList& events;
+	// const uint64_t* holdableWidgets;
 }
+
 // // clang-format off
 // static TabInformation tabInformationByTabOffset[] = {
 // { Challenge::widgets,   widx::tab_challenge,  Challenge::getEvents(),   &Challenge::holdableWidgets },
@@ -810,7 +817,7 @@ type TabInformation struct {
 // { Finances::widgets,    widx::tab_finances,   Finances::getEvents(),    &Finances::holdableWidgets },
 // { ScenarioTab::widgets, widx::tab_scenario,   ScenarioTab::getEvents(), &ScenarioTab::holdableWidgets }
 // // clang-format on
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // // Activate the current tab.
 // self.activatedWidgets &= ~((1 << widx::tab_challenge) | (1 << widx::tab_companies) | (1 << widx::tab_finances) | (1 << widx::tab_scenario));
 // widx widgetIndex = tabInformationByTabOffset[self.currentTab].widgetIndex;
@@ -825,7 +832,7 @@ type TabInformation struct {
 // self.widgets[Common::widx::panel].right = self.width - 1;
 // self.widgets[Common::widx::panel].bottom = self.height - 1;
 // // 0x0043F16B
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // TextInput::sub_4CE6C9(self.type, self.number);

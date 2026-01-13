@@ -8,22 +8,24 @@ package ui
 // #include <string>
 // namespace OpenLoco::Ui::TextInput
 const TextboxPadding int16 = 4
+
 type InputSession struct {
-// std::string buffer;    // 0x011369A0
+	// std::string buffer;    // 0x011369A0
 	CursorPosition int
-	XOffset int16
-	CursorFrame uint8
-	InputLenLimit uint32
-// InputSession() = default;
-// InputSession(const std::string initialString, uint32_t inputSize)
-// buffer = initialString;
-// cursorPosition = buffer.length();
-// cursorFrame = 0;
-// xOffset = 0;
-// inputLenLimit = inputSize;
+	XOffset        int16
+	CursorFrame    uint8
+	InputLenLimit  uint32
+	// InputSession() = default;
+	// InputSession(const std::string initialString, uint32_t inputSize)
+	// buffer = initialString;
+	// cursorPosition = buffer.length();
+	// cursorFrame = 0;
+	// xOffset = 0;
+	// inputLenLimit = inputSize;
 }
+
 // func HandleInput(charCode uint32, keyCode uint32) bool
 // func NeedsReoffsetting(containerWidth int16) bool
-// func CalculateTextOffset(containerWidth int16) 
-// func ClearInput() 
-// func SanitizeInput() 
+// func CalculateTextOffset(containerWidth int16)
+// func ClearInput()
+// func SanitizeInput()

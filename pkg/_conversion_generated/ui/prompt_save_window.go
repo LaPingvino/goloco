@@ -33,6 +33,7 @@ const (
 	DontSaveButton
 	CancelButton
 )
+
 // static constexpr auto _widgets = makeWidgets(
 // Widgets::Panel({ 0, 0 }, { 260, 48 }, WindowColour::primary),
 // Widgets::Caption({ 1, 1 }, { 258, 13 }, Widgets::Caption::Style::boxed, WindowColour::primary, StringIds::empty),
@@ -79,10 +80,10 @@ const (
 // StringIds::prompt_save_before_quitting_alt,
 // window->widgets[widx::promptLabel].text = kTypeToPrompt.at(enumValue(savePromptType));
 // orphan member: return window;
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // // 0x0043C3F4
-// func OnMouseUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::closeButton:
 // case widx::cancelButton:
@@ -101,7 +102,7 @@ const (
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
 // break;
 // // 0x0043C577
-// func OnClose(self [[maybe_unused]] Window) 
+// func OnClose(self [[maybe_unused]] Window)
 // SceneManager::unsetPauseFlag(PauseFlags::promptSave);
 // Audio::unpauseSound();
 // WindowManager::invalidate(WindowType::timeToolbar);

@@ -6,17 +6,19 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type TreePlacementArgs struct {
-// TreePlacementArgs() = default;
+	// TreePlacementArgs() = default;
 	// method: explicit TreePlacementArgs(const registers& regs)
-// : pos(regs.ax, regs.cx)
-// , rotation(regs.di & 0x3)
-// , type(regs.bh)
-// , quadrant(regs.dl)
-// , colour(static_cast<Colour>(regs.dh & 0x1F))
-// , buildImmediately(regs.di & 0x8000)
-// , requiresFullClearance(regs.di & 0x4000)
+	// : pos(regs.ax, regs.cx)
+	// , rotation(regs.di & 0x3)
+	// , type(regs.bh)
+	// , quadrant(regs.dl)
+	// , colour(static_cast<Colour>(regs.dh & 0x1F))
+	// , buildImmediately(regs.di & 0x8000)
+	// , requiresFullClearance(regs.di & 0x4000)
 }
+
 const TreePlacementArgsCommand any = GameCommand.createTree
+
 // World::Pos2 pos;
 // orphan member: uint8_t rotation;
 // orphan member: uint8_t type;
@@ -33,4 +35,4 @@ const TreePlacementArgsCommand any = GameCommand.createTree
 // regs.di = rotation | (buildImmediately ? 0x8000 : 0) | (requiresFullClearance ? 0x4000 : 0);
 // regs.bh = type;
 // orphan member: return regs;
-// func CreateTree(regs registers) 
+// func CreateTree(regs registers)

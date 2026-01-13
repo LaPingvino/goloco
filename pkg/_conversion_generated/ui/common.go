@@ -16,7 +16,7 @@ package ui
 // #include "World/CompanyManager.h"
 // namespace OpenLoco::Ui::Windows::NewsWindow
 // orphan member: NewsState _nState{};
-// func CreateNewsWindow(kWindowSize Ui::Size, widgets any /* std::span<Widget> */ , colour AdvancedColour, isOld bool, flags WindowFlags) 
+// func CreateNewsWindow(kWindowSize Ui::Size, widgets any /* std::span<Widget> */ , colour AdvancedColour, isOld bool, flags WindowFlags)
 // _nState.slideInHeight = 5;
 // int16_t y = Ui::height() - _nState.slideInHeight;
 // if (SceneManager::getGameSpeed() != GameSpeed::Normal || isOld)
@@ -36,7 +36,7 @@ package ui
 // _nState.savedView[1].clear();
 // Common::initViewports(*window);
 // // 0x00428F8B
-// func Open(messageIndex MessageId) 
+// func Open(messageIndex MessageId)
 // bool isOld = false;
 // auto news = MessageManager::get(messageIndex);
 // if (news == nullptr)
@@ -89,7 +89,7 @@ package ui
 var Colour = AdvancedColour(Colour.mutedDarkRed).translucent() // auto
 // createNewsWindow(News1::kWindowSize, News1::getWidgets(), colour, isOld, flags);
 // // 0x0042AC27
-// func OpenLastMessage() 
+// func OpenLastMessage()
 // if (MessageManager::getActiveIndex() != MessageId::null)
 // auto message = MessageManager::get(MessageManager::getActiveIndex());
 // if (message->isActive())
@@ -103,6 +103,6 @@ var Colour = AdvancedColour(Colour.mutedDarkRed).translucent() // auto
 // message->setUserSelected();
 // message->timeActive++;
 // NewsWindow::open(MessageId(MessageManager::getNumMessages() - 1));
-// func Close(self Window) 
+// func Close(self Window)
 // // Only affects the newspaper view; the ticker ignores this widget
 // self->callOnMouseUp(Common::close_button, self->widgets[Common::close_button].id);

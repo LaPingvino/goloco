@@ -32,14 +32,15 @@ package input
 // using namespace OpenLoco::GameCommands;
 // namespace OpenLoco::Input
 type Key struct {
-	KeyCode uint32
+	KeyCode  uint32
 	CharCode uint32
 }
-// func NormalKey() 
-// func Cheat() 
-// func Loc_4BECDE() 
-// func Loc_4BED04() 
-// func Loc_4BED79() 
+
+// func NormalKey()
+// func Cheat()
+// func Loc_4BECDE()
+// func Loc_4BED04()
+// func Loc_4BED79()
 // static KeyModifier _keyModifier;
 // static std::string _cheatBuffer; // 0x0011364A5
 // static std::array<Key, 64> _keyQueue;
@@ -57,10 +58,10 @@ type Key struct {
 // return (keyModifier & modifier) != KeyModifier::none;
 // func GetKeyModifier() KeyModifier
 // orphan member: return _keyModifier;
-// func Loc_4BECDE() 
+// func Loc_4BECDE()
 // SceneManager::addSceneFlags(SceneManager::Flags::driverCheatEnabled);
 // Audio::playSound(Audio::SoundId::clickPress, Ui::width() / 2);
-// func Loc_4BED04() 
+// func Loc_4BED04()
 // if (!SceneManager::isDriverCheatEnabled())
 // return;
 // // Only works when DRIVER mode is active
@@ -80,10 +81,10 @@ type Key struct {
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
 // Audio::playSound(Audio::SoundId::clickPress, Ui::width() / 2);
 // return;
-// func Loc_4BED79() 
+// func Loc_4BED79()
 // GameCommands::doCommand(GameCommands::ApplyFreeCashCheatArgs(), GameCommands::Flags::apply);
 // Audio::playSound(Audio::SoundId::clickPress, Ui::width() / 2);
-// func Loc_4BEFEF() 
+// func Loc_4BEFEF()
 // switch (Tutorial::state())
 // case Tutorial::State::none:
 // break;
@@ -103,7 +104,7 @@ type Key struct {
 // // point implementing this code as per vanilla.
 // break;
 // // 0x0040477F
-// func ReadKeyboardState() 
+// func ReadKeyboardState()
 // _hasKeyboardState = false;
 // // Reset state.
 // _keyboardState.reset();
@@ -117,7 +118,7 @@ type Key struct {
 // _keyboardState.set(scanCode, true);
 // _hasKeyboardState = 1;
 // // 0x00406FBA
-// func EnqueueKey(keycode uint32) 
+// func EnqueueKey(keycode uint32)
 // uint32_t writeIndex = _keyQueueWriteIndex;
 // auto nextWriteIndex = static_cast<uint32_t>((writeIndex + 1) % std::size(_keyQueue));
 // if (nextWriteIndex == _keyQueueReadIndex)
@@ -126,7 +127,7 @@ type Key struct {
 // _keyQueue[writeIndex] = { keycode, 0 };
 // _keyQueueWriteIndex = nextWriteIndex;
 // // 0x00406FBA
-// func HandleKeyInput(keycode uint32) 
+// func HandleKeyInput(keycode uint32)
 // enqueueKey(keycode);
 // switch (keycode)
 // case SDLK_RETURN:
@@ -135,7 +136,7 @@ type Key struct {
 // char c[] = { (char)keycode, '\0' };
 // enqueueText(c);
 // break;
-// func EnqueueText(text byte) 
+// func EnqueueText(text byte)
 // using namespace Localisation;
 // if (text == nullptr || text[0] == '\0')
 // return;
@@ -160,11 +161,11 @@ type Key struct {
 // orphan member: return true;
 // orphan member: return false;
 // // 0x004BEC5B
-// func ProcessKeyboardInput() 
+// func ProcessKeyboardInput()
 // cheat();
 // normalKey();
 // // 0x004BEC5B
-// func Cheat() 
+// func Cheat()
 // // Used to handle INSERT cheat
 // if (_keyboardState[SDL_SCANCODE_INSERT] || _keyboardState[SDL_SCANCODE_LALT] || _keyboardState[SDL_SCANCODE_RALT])
 // if (hasKeyModifier(KeyModifier::cheat))
@@ -183,7 +184,7 @@ type Key struct {
 // cheat.second();
 // break;
 // // 0x004BEDA0
-// func NormalKey() 
+// func NormalKey()
 // while (true)
 // auto nextKey = getNextKey();
 // if (!nextKey.has_value())
@@ -224,7 +225,7 @@ type Key struct {
 // continue;
 // if (tryShortcut(Shortcut::showOptionsWindow, nextKey->keyCode, _keyModifier))
 // continue;
-// func EdgeScroll() 
+// func EdgeScroll()
 // if (!Ui::hasInputFocus())
 // return;
 // if (Tutorial::state() != Tutorial::State::none)
@@ -260,7 +261,7 @@ type Key struct {
 // main->viewportConfigurations[0].savedViewX += delta.x;
 // main->viewportConfigurations[0].savedViewY += delta.y;
 // Input::setFlag(Flags::viewportScrolling);
-// func KeyScroll() 
+// func KeyScroll()
 // if (Tutorial::state() != Tutorial::State::none)
 // return;
 // if (WindowManager::getCurrentModalType() != WindowType::undefined)
@@ -292,7 +293,7 @@ type Key struct {
 // main->viewportConfigurations[0].savedViewY += delta.y;
 // Input::setFlag(Flags::viewportScrolling);
 // // 0x004BE92A
-// func HandleKeyboard() 
+// func HandleKeyboard()
 // handleScreenshotCountdown();
 // edgeScroll();
 // _keyModifier = _keyModifier & ~(KeyModifier::shift | KeyModifier::control | KeyModifier::unknown);

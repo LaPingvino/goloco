@@ -27,6 +27,7 @@ const (
 	CloseBtn
 	Panel
 )
+
 // static constexpr Ui::Size kWindowSize = { 441, 91 };
 // static constexpr auto widgets = makeWidgets(
 // Widgets::Frame({ 0, 0 }, { 441, 91 }, WindowColour::primary),
@@ -50,27 +51,27 @@ const (
 // window->setColour(WindowColour::primary, Colour::black);
 // window->setColour(WindowColour::secondary, Colour::black);
 // orphan member: return window;
-// func SetText(text string) 
+// func SetText(text string)
 // _text = text;
 // WindowManager::invalidate(WindowType::networkStatus);
-// func SetText(text string, cbClose CloseCallback) 
+// func SetText(text string, cbClose CloseCallback)
 // _text = text;
 // _cbClose = cbClose;
 // WindowManager::invalidate(WindowType::networkStatus);
-// func Close() 
+// func Close()
 // WindowManager::close(WindowType::networkStatus);
 // Gfx::invalidateScreen();
-// func OnClose(window [[maybe_unused]] Ui::Window) 
+// func OnClose(window [[maybe_unused]] Ui::Window)
 // if (_cbClose)
 // _cbClose();
-// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Widx::closeBtn:
 // WindowManager::close(&window);
 // break;
-// func PrepareDraw(self [[maybe_unused]] Window) 
+// func PrepareDraw(self [[maybe_unused]] Window)
 // StringManager::setString(StringIds::buffer_1250, _text.c_str());
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // auto origin = Point(self.x + (self.width / 2), self.y + (self.height / 2));

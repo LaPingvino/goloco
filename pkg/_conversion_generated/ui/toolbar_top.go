@@ -77,9 +77,10 @@ const (
 	QuitToMenu
 	QuitToDesktop
 )
+
 // static const WindowEventList& getEvents();
 // // 0x00438B26
-// func Open() 
+// func Open()
 // auto window = WindowManager::createWindow(
 // WindowType::topToolbar,
 // { 0, 0 },
@@ -97,7 +98,7 @@ const (
 // window->setColour(WindowColour::tertiary, skin->topToolbarTertiaryColour);
 // window->setColour(WindowColour::quaternary, skin->topToolbarQuaternaryColour);
 // // 0x0043B0F7
-// func LoadsaveMenuMouseDown(window Window, widgetIndex WidgetIndex_t) 
+// func LoadsaveMenuMouseDown(window Window, widgetIndex WidgetIndex_t)
 // auto d = Dropdown::create()
 // .below(*window, widgetIndex)
 // .item(LoadSaveDropdownId::loadGame, StringIds::menu_load_game)
@@ -123,7 +124,7 @@ const (
 // .highlight(LoadSaveDropdownId::saveGame)
 // .show();
 // // 0x0043B1C4
-// func PrepareSaveGame() 
+// func PrepareSaveGame()
 // ToolManager::toolCancel();
 // if (SceneManager::isNetworked())
 // if (GameCommands::getUpdatingCompanyId() == CompanyManager::getControllingId())
@@ -142,13 +143,13 @@ const (
 // flags = S5::SaveFlags::packCustomObjects;
 // if (!S5::exportGameStateToFile(path, flags))
 // Error::open(StringIds::error_game_save_failed, StringIds::null);
-// func StartOrCloseServer() 
+// func StartOrCloseServer()
 // if (SceneManager::isNetworked())
 // Network::close();
 // else
 // Network::openServer();
 // // 0x0043B154
-// func LoadsaveMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16) 
+// func LoadsaveMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16)
 // auto id = Dropdown::getSelectedItem<LoadSaveDropdownId>(itemIndex);
 // if (!id)
 // return;
@@ -194,7 +195,7 @@ const (
 // GameCommands::doCommand(quitToDesktopArgs, GameCommands::Flags::apply);
 // break;
 // // 0x0043B04B
-// func AudioMenuMouseDown(window Window, widgetIndex WidgetIndex_t) 
+// func AudioMenuMouseDown(window Window, widgetIndex WidgetIndex_t)
 // Dropdown::add(0, StringIds::dropdown_without_checkmark, StringIds::menu_mute);
 // Dropdown::add(1, StringIds::dropdown_without_checkmark, StringIds::menu_play_music);
 // Dropdown::add(2, 0);
@@ -206,7 +207,7 @@ const (
 // Dropdown::setItemSelected(1);
 // Dropdown::setHighlightedItem(0);
 // // 0x0043B0B8
-// func AudioMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16) 
+// func AudioMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16)
 // if (itemIndex == -1)
 // itemIndex = Dropdown::getHighlightedItem();
 // switch (itemIndex)
@@ -224,7 +225,7 @@ const (
 // case 3:
 // Options::openMusicSettings();
 // break;
-// func CheatsMenuMouseDown(window Window, widgetIndex WidgetIndex_t) 
+// func CheatsMenuMouseDown(window Window, widgetIndex WidgetIndex_t)
 // Dropdown::add(0, StringIds::cheats);
 // Dropdown::add(1, StringIds::tile_inspector);
 // Dropdown::add(2, StringIds::open_scenario_options);
@@ -240,7 +241,7 @@ const (
 // Dropdown::setItemSelected(6);
 // if (SceneManager::isDriverCheatEnabled())
 // Dropdown::setItemSelected(7);
-// func CheatsMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16) 
+// func CheatsMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16)
 // if (itemIndex == -1)
 // itemIndex = 0;
 // switch (itemIndex)
@@ -275,7 +276,7 @@ const (
 // SceneManager::removeSceneFlags(SceneManager::Flags::driverCheatEnabled);
 // break;
 // // 0x0043A2B0
-// func RailroadMenuMouseDown(window Window, widgetIndex WidgetIndex_t) 
+// func RailroadMenuMouseDown(window Window, widgetIndex WidgetIndex_t)
 // // Load dropdown objects removing any that are not unlocked.
 // // Note: This is not using player company id! This looks odd.
 // _railroadMenuObjects = companyGetAvailableRailTracks(GameCommands::getUpdatingCompanyId());
@@ -302,7 +303,7 @@ const (
 // Dropdown::showBelow(window, widgetIndex, _railroadMenuObjects.size(), 25, (1 << 6));
 // Dropdown::setHighlightedItem(highlightedItem);
 // // 0x0043A39F
-// func RailroadMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16) 
+// func RailroadMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16)
 // if (itemIndex == -1)
 // itemIndex = Dropdown::getHighlightedItem();
 // if (itemIndex == -1)
@@ -310,7 +311,7 @@ const (
 // uint8_t objIndex = _railroadMenuObjects[itemIndex];
 // Construction::openWithFlags(objIndex);
 // // 0x0043A965
-// func PortMenuMouseDown(window Window, widgetIndex WidgetIndex_t) 
+// func PortMenuMouseDown(window Window, widgetIndex WidgetIndex_t)
 // uint8_t ddIndex = 0;
 // auto interface = ObjectManager::get<InterfaceSkinObject>();
 // if (getGameState().lastAirport != 0xFF)
@@ -329,7 +330,7 @@ const (
 // ddIndex++;
 // Dropdown::setHighlightedItem(ddIndex);
 // // 0x0043AA0A
-// func PortMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16) 
+// func PortMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16)
 // if (itemIndex == -1)
 // itemIndex = Dropdown::getHighlightedItem();
 // _lastPortOption = Dropdown::getMenuOption(itemIndex);
@@ -338,12 +339,13 @@ const (
 // func If(1 _lastPortOption ==) else
 // Construction::openWithFlags(1U << 30);
 type VehicleTypeInterfaceParam struct {
-	Image uint32
-	BuildImage uint32
+	Image       uint32
+	BuildImage  uint32
 	BuildString StringId
 	NumSingular StringId
-	NumPlural StringId
+	NumPlural   StringId
 }
+
 // // clang-format off
 // static const std::map<VehicleType, VehicleTypeInterfaceParam> VehicleTypeInterfaceParameters{
 // { VehicleType::bus,      { InterfaceSkin::ImageIds::vehicle_buses_frame_0,      InterfaceSkin::ImageIds::build_vehicle_bus_frame_0,      StringIds::build_buses,    StringIds::num_buses_singular,     StringIds::num_buses_plural } },
@@ -354,7 +356,7 @@ type VehicleTypeInterfaceParam struct {
 // { VehicleType::truck,    { InterfaceSkin::ImageIds::vehicle_trucks_frame_0,    InterfaceSkin::ImageIds::build_vehicle_truck_frame_0,    StringIds::build_trucks,   StringIds::num_trucks_singular,    StringIds::num_trucks_plural } },
 // // clang-format on
 // // 0x0043AD1F
-// func BuildVehiclesMenuMouseDown(window Window, widgetIndex WidgetIndex_t) 
+// func BuildVehiclesMenuMouseDown(window Window, widgetIndex WidgetIndex_t)
 // auto company = CompanyManager::get(CompanyManager::getControllingId());
 // uint16_t availableVehicles = company->availableVehicles;
 // auto companyColour = CompanyManager::getPlayerCompanyColour();
@@ -371,7 +373,7 @@ type VehicleTypeInterfaceParam struct {
 // Dropdown::showBelow(window, widgetIndex, ddIndex, 25, (1 << 6));
 // Dropdown::setHighlightedItem(enumValue(getGameState().lastBuildVehiclesOption));
 // // 0x0043ADC7
-// func BuildVehiclesMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16) 
+// func BuildVehiclesMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16)
 // if (itemIndex == -1)
 // itemIndex = Dropdown::getHighlightedItem();
 // if (itemIndex == -1)
@@ -381,7 +383,7 @@ type VehicleTypeInterfaceParam struct {
 // getGameState().lastBuildVehiclesOption = vehicleType;
 // BuildVehicle::openByType(vehicleType);
 // // 0x0043ABCB
-// func VehiclesMenuMouseDown(window Window, widgetIndex WidgetIndex_t) 
+// func VehiclesMenuMouseDown(window Window, widgetIndex WidgetIndex_t)
 // auto player_company_id = CompanyManager::getControllingId();
 // auto company = CompanyManager::get(player_company_id);
 // uint16_t availableVehicles = company->availableVehicles;
@@ -413,7 +415,7 @@ type VehicleTypeInterfaceParam struct {
 // Dropdown::showBelow(window, widgetIndex, ddIndex, 25, (1 << 6));
 // Dropdown::setHighlightedItem(static_cast<uint8_t>(getGameState().lastVehicleType));
 // // 0x0043ACEF
-// func VehiclesMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16) 
+// func VehiclesMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16)
 // if (itemIndex == -1)
 // itemIndex = Dropdown::getHighlightedItem();
 // if (itemIndex == -1)
@@ -422,7 +424,7 @@ type VehicleTypeInterfaceParam struct {
 // getGameState().lastVehicleType = vehicleType;
 // VehicleList::open(CompanyManager::getControllingId(), vehicleType);
 // // 0x0043A4E9
-// func StationsMenuMouseDown(window Window, widgetIndex WidgetIndex_t) 
+// func StationsMenuMouseDown(window Window, widgetIndex WidgetIndex_t)
 // auto interface = ObjectManager::get<InterfaceSkinObject>();
 // uint32_t sprite_base = interface->img;
 // // Apply company colour.
@@ -436,14 +438,14 @@ type VehicleTypeInterfaceParam struct {
 // Dropdown::showBelow(window, widgetIndex, 5, 25, (1 << 6));
 // Dropdown::setHighlightedItem(0);
 // // 0x0043A596
-// func StationsMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16) 
+// func StationsMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16)
 // if (itemIndex == -1)
 // itemIndex = Dropdown::getHighlightedItem();
 // if (itemIndex > 4)
 // return;
 // StationList::open(CompanyManager::getControllingId(), itemIndex);
 // // 0x0043A071
-// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::Widx::loadsave_menu:
 // loadsaveMenuMouseDown(&window, widgetIndex);
@@ -472,7 +474,7 @@ type VehicleTypeInterfaceParam struct {
 // default:
 // Common::onMouseDown(&window, widgetIndex);
 // break;
-// func OnDropdown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // switch (widgetIndex)
 // case Common::Widx::loadsave_menu:
 // loadsaveMenuDropdown(&window, widgetIndex, itemIndex);
@@ -502,7 +504,7 @@ type VehicleTypeInterfaceParam struct {
 // Common::onDropdown(&window, widgetIndex, itemIndex);
 // break;
 // // 0x00439DE4
-// func Draw(window Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Window, drawingCtx Gfx::DrawingContext)
 // Common::draw(window, drawingCtx);
 // const auto companyColour = CompanyManager::getPlayerCompanyColour();
 // if (!window.widgets[Common::Widx::railroad_menu].hidden)
@@ -562,7 +564,7 @@ type VehicleTypeInterfaceParam struct {
 // fg_image++;
 // drawingCtx.drawImage(x, y, fg_image);
 // // 0x00439BCB
-// func PrepareDraw(window Window) 
+// func PrepareDraw(window Window)
 // auto interface = ObjectManager::get<InterfaceSkinObject>();
 // if (!Audio::isAudioEnabled())
 // window.activatedWidgets |= (1 << Common::Widx::audio_menu);

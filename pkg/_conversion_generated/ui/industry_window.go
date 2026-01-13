@@ -51,6 +51,7 @@ const (
 	Tab_production_2
 	Tab_transported
 )
+
 // func MakeCommonWidgets(frameWidth int32, frameHeight int32, windowCaptionId StringId) any
 // return makeWidgets(
 // Widgets::Frame({ 0, 0 }, { frameWidth, frameHeight }, WindowColour::primary),
@@ -62,15 +63,15 @@ const (
 // Widgets::Tab({ 65, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_production_graph),
 // Widgets::Tab({ 96, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_statistics));
 // // Defined at the bottom of this file.
-// func PrepareDraw(self Window) 
-// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte) 
-// func Update(self Window) 
-// func RenameIndustryPrompt(self Window, widgetIndex WidgetIndex_t) 
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
-// func SetDisabledWidgets(self Window) 
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func PrepareDraw(self Window)
+// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte)
+// func Update(self Window)
+// func RenameIndustryPrompt(self Window, widgetIndex WidgetIndex_t)
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
+// func SetDisabledWidgets(self Window)
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // namespace Industry
 // static constexpr Ui::Size kWindowSize = { 223, 137 };
 // static constexpr Ui::Size kMinWindowSize = { 192, 137 };
@@ -83,6 +84,7 @@ const (
 	Centre_on_viewport
 	Demolish_industry
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(223, 137, StringIds::title_town),
 // Widgets::Viewport({ 3, 44 }, { 195, 80 }, WindowColour::secondary, Widget::kContentUnk),
@@ -91,7 +93,7 @@ const (
 // Widgets::ImageButton({ 198, 44 }, { 24, 24 }, WindowColour::secondary, ImageIds::rubbish_bin, StringIds::demolish_this_industry)
 // );
 // // 0x00455ADD
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.widgets[widx::viewport].right = self.width - 26;
 // self.widgets[widx::viewport].bottom = self.height - 14;
@@ -111,7 +113,7 @@ const (
 // self.widgets[widx::centre_on_viewport].top = self.widgets[widx::viewport].bottom - 24;
 // Widget::leftAlignTabs(self, Common::widx::tab_industry, Common::widx::tab_transported);
 // // 0x00455C22
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -125,7 +127,7 @@ const (
 // auto width = widget->width();
 // tr.drawStringLeftClipped(point, width, Colour::black, StringIds::black_stringid, args);
 // // 0x00455C86
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::caption:
 // Common::renameIndustryPrompt(self, widgetIndex);
@@ -152,9 +154,9 @@ const (
 // break;
 // Audio::playSound(Audio::SoundId::demolish, GameCommands::getPosition());
 // break;
-// func InitViewport(self Window) 
+// func InitViewport(self Window)
 // // 0x00455F1A
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(kMinWindowSize, kMaxWindowSize);
 // if (self.viewports[0] != nullptr)
 // uint16_t newWidth = self.width - 30;
@@ -170,7 +172,7 @@ const (
 // self.savedView.clear();
 // initViewport(self);
 // // 0x00456C36
-// func InitViewport(self Window) 
+// func InitViewport(self Window)
 // if (self.currentTab != Common::widx::tab_industry - Common::widx::tab_industry)
 // return;
 // self.callPrepareDraw();
@@ -252,11 +254,11 @@ const (
 // static constexpr Ui::Size kMinWindowSize = { 299, 282 };
 // static constexpr Ui::Size kMaxWindowSize = { 299, 337 };
 // // 0x00455FD9
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // Widget::leftAlignTabs(self, Common::widx::tab_industry, Common::widx::tab_transported);
 // // 0x0045654F
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(kMinWindowSize, kMaxWindowSize);
 // static constexpr WindowEventList kEvents = {
 // .onMouseUp = Common::onMouseUp,
@@ -274,11 +276,11 @@ const (
 // Common::makeCommonWidgets(222, 136, StringIds::title_industry_monthly_production)
 // );
 // // 0x0045626F
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // Widget::leftAlignTabs(self, Common::widx::tab_industry, Common::widx::tab_transported);
 // // 0x004565FF
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(kMinWindowSize, kMaxWindowSize);
 // static constexpr WindowEventList kEvents = {
 // .onMouseUp = Common::onMouseUp,
@@ -295,11 +297,11 @@ const (
 // Common::makeCommonWidgets(300, 126, StringIds::title_statistics)
 // );
 // // 0x00456665
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // Widget::leftAlignTabs(self, Common::widx::tab_industry, Common::widx::tab_transported);
 // // 0x00456705
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -344,7 +346,7 @@ const (
 // origin = tr.drawStringLeftWrapped(origin, 290, Colour::black, StringIds::transported_cargo, args);
 // cargoNumber++;
 // // 0x004569C2
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(kWindowSize, kWindowSize);
 // static constexpr WindowEventList kEvents = {
 // .onMouseUp = Common::onMouseUp,
@@ -357,16 +359,17 @@ const (
 // orphan member: return kEvents;
 // namespace Common
 type TabInformation struct {
-// std::span<const Widget> widgets;
-// const widx widgetIndex;
-// const WindowEventList& events;
+	// std::span<const Widget> widgets;
+	// const widx widgetIndex;
+	// const WindowEventList& events;
 }
+
 // static TabInformation tabInformationByTabOffset[] = {
 // { Industry::widgets, widx::tab_industry, Industry::getEvents() },
 // { Production2::widgets, widx::tab_production, Production::getEvents() },
 // { Production2::widgets, widx::tab_production_2, Production2::getEvents() },
 // { Transported::widgets, widx::tab_transported, Transported::getEvents() }
-// func SetDisabledWidgets(self Window) 
+// func SetDisabledWidgets(self Window)
 // auto industryObj = ObjectManager::get<IndustryObject>(IndustryManager::get(IndustryId(self.number))->objectId);
 // auto disabledWidgets = 0;
 // if (industryObj->producedCargoType[0] == kCargoTypeNull)
@@ -375,7 +378,7 @@ type TabInformation struct {
 // disabledWidgets |= (1 << Common::widx::tab_production_2);
 // self.disabledWidgets = disabledWidgets;
 // // 0x00456079
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -433,7 +436,7 @@ type TabInformation struct {
 // else
 // month = MonthId(static_cast<int8_t>(month) - 1);
 // // 0x004565B5, 0x00456505
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::caption:
 // Common::renameIndustryPrompt(self, widgetIndex);
@@ -447,7 +450,7 @@ type TabInformation struct {
 // case Common::widx::tab_transported:
 // Common::switchTab(self, widgetIndex);
 // break;
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // // Activate the current tab.
 // self.activatedWidgets &= ~((1ULL << widx::tab_industry) | (1ULL << widx::tab_production) | (1ULL << widx::tab_production_2) | (1ULL << widx::tab_transported));
 // widx widgetIndex = tabInformationByTabOffset[self.currentTab].widgetIndex;
@@ -466,7 +469,7 @@ type TabInformation struct {
 // self.widgets[Common::widx::panel].right = self.width - 1;
 // self.widgets[Common::widx::panel].bottom = self.height - 1;
 // // 0x00455CBC
-// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte) 
+// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte)
 // if (callingWidget != Common::widx::caption)
 // return;
 // if (strlen(input) == 0)
@@ -481,12 +484,12 @@ type TabInformation struct {
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
 // args.nameBufferIndex = 0;
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
-// func Update(self Window) 
+// func Update(self Window)
 // self.frameNo++;
 // self.callPrepareDraw();
 // WindowManager::invalidate(WindowType::industry, self.number);
 // // 0x00455D81
-// func RenameIndustryPrompt(self Window, widgetIndex WidgetIndex_t) 
+// func RenameIndustryPrompt(self Window, widgetIndex WidgetIndex_t)
 // auto industry = IndustryManager::get(IndustryId(self.number));
 // if (!SceneManager::isEditorMode() && !SceneManager::isSandboxMode())
 // if (!industry->hasFlags(IndustryFlags::flag_04))
@@ -502,7 +505,7 @@ type TabInformation struct {
 // args2.push(industry->town);
 // TextInput::openTextInput(&self, StringIds::title_industry_name, StringIds::prompt_enter_new_industry_name, industry->name, widgetIndex, args2);
 // // 0x00455CC7
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // TextInput::sub_4CE6C9(self.type, self.number);
@@ -524,7 +527,7 @@ type TabInformation struct {
 // self.initScrollWidgets();
 // self.invalidate();
 // self.moveInsideScreenEdges();
-// func DrawProductionTab(self Window, drawingCtx Gfx::DrawingContext, productionTabNumber uint8) 
+// func DrawProductionTab(self Window, drawingCtx Gfx::DrawingContext, productionTabNumber uint8)
 // static constexpr uint32_t productionTabImageIds[] = {
 // InterfaceSkin::ImageIds::tab_production_frame0,
 // InterfaceSkin::ImageIds::tab_production_frame1,
@@ -556,7 +559,7 @@ type TabInformation struct {
 // drawingCtx.drawImage(xPos + 18, yPos + 14, caroObj->unitInlineSprite);
 // Widget::drawTab(self, drawingCtx, Widget::kContentUnk, tab);
 // // 0x00456A98
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // // Industry tab
 // uint32_t imageId = skin->img;

@@ -8,12 +8,13 @@ package economy
 // namespace OpenLoco
 type Currency32_t = int32
 type Currency48_t struct {
-// uint32_t var_00 = 0;
-// int16_t var_04 = 0;
+	// uint32_t var_00 = 0;
+	// int16_t var_04 = 0;
 	// method: constexpr currency48_t() = default;
 	// method: constexpr currency48_t(int32_t currency)
-// : currency48_t(static_cast<int64_t>(currency))
+	// : currency48_t(static_cast<int64_t>(currency))
 }
+
 // func Currency48_t(currency int64) constexpr
 // var_00 = currency & 0xFFFFFFFF;
 // var_04 = (currency >> 32) & 0xFFFF;

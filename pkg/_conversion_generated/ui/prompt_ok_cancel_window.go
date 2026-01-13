@@ -31,6 +31,7 @@ const (
 	OkButton
 	CancelButton
 )
+
 // static constexpr auto _widgets = makeWidgets(
 // Widgets::Panel({ 0, 0 }, { 280, 92 }, WindowColour::primary),
 // Widgets::Caption({ 1, 1 }, { 278, 13 }, Widgets::Caption::Style::boxed, WindowColour::primary),
@@ -88,12 +89,12 @@ const (
 // default:
 // orphan member: return false;
 // // 0x00447093
-// func PrepareDraw(self [[maybe_unused]] Window) 
+// func PrepareDraw(self [[maybe_unused]] Window)
 // // Prepare description string for drawing.
 // char* buffer_2039 = const_cast<char*>(StringManager::getString(StringIds::buffer_2039));
 // strncpy(&buffer_2039[0], _descriptionBuffer, 512);
 // // 0x004470FD
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::closeButton:
 // case widx::cancelButton:
@@ -104,7 +105,7 @@ const (
 // WindowManager::close(self.type);
 // break;
 // // 0x004470AA
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // orphan member: FormatArguments args{};

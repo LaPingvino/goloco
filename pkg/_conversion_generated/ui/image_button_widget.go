@@ -8,11 +8,13 @@ package ui
 type ImageButton struct {
 	Public // embedded
 	// method: constexpr ImageButton(WidgetId id, Point origin, Size size, WindowColour colour, uint32_t content = Widget::kContentNull, StringId tooltip = StringIds::null)
-// : Widget(id, origin, size, kWidgetType, colour, content, tooltip)
-// events.draw = &draw;
-// contentAlign = ContentAlign::center;
+	// : Widget(id, origin, size, kWidgetType, colour, content, tooltip)
+	// events.draw = &draw;
+	// contentAlign = ContentAlign::center;
 }
+
 const ImageButtonWidgetType any = WidgetType.buttonWithImage
+
 // func ImageButton(origin Point, size Size, colour WindowColour, Widget::kContentNull uint32_t content =, StringIds::null StringId tooltip =) constexpr
 // : ImageButton(WidgetId::none, origin, size, colour, content, tooltip)
-// func Draw(drawingCtx Gfx::DrawingContext, widget Widget, widgetState WidgetState) 
+// func Draw(drawingCtx Gfx::DrawingContext, widget Widget, widgetState WidgetState)

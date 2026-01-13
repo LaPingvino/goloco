@@ -17,23 +17,26 @@ package effects
 type EffectType int
 
 const (
-	Exhaust EffectType = 0
-	RedGreenCurrency EffectType = 1
-	WindowCurrency EffectType = 2
+	Exhaust              EffectType = 0
+	RedGreenCurrency     EffectType = 1
+	WindowCurrency       EffectType = 2
 	VehicleCrashParticle EffectType = 3
-	ExplosionCloud EffectType = 4
-	Splash EffectType = 5
-	Fireball EffectType = 6
-	ExplosionSmoke EffectType = 7
-	Smoke EffectType = 8 // Smoke from broken down train
+	ExplosionCloud       EffectType = 4
+	Splash               EffectType = 5
+	Fireball             EffectType = 6
+	ExplosionSmoke       EffectType = 7
+	Smoke                EffectType = 8 // Smoke from broken down train
 )
+
 type EffectEntity struct {
 	EntityBase // embedded
-// template<typename TType, EffectType TClass>
-// TType* as() const
-// return subType == TClass ? (TType*)this : nullptr;
+	// template<typename TType, EffectType TClass>
+	// TType* as() const
+	// return subType == TClass ? (TType*)this : nullptr;
 }
+
 const EffectEntityBaseType any = EntityBaseType.effect
+
 // public:
 // orphan member: EffectType subType;
 func GetSubType() EffectType {
@@ -49,4 +52,5 @@ func GetSubType() EffectType {
 	// Smoke* asSmoke() const { return as<Smoke, EffectType::smoke>(); }
 	// void update();
 }
+
 // static_assert(sizeof(EffectEntity) <= sizeof(Entity));

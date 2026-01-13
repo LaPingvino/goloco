@@ -67,6 +67,7 @@ const (
 	Tab_build_buildings
 	Tab_build_misc_buildings
 )
+
 // func MakeCommonWidgets(frameWidth int32, frameHeight int32, windowCaptionId StringId) any
 // return makeWidgets(
 // Widgets::Frame({ 0, 0 }, { frameWidth, frameHeight }, WindowColour::primary),
@@ -77,15 +78,16 @@ const (
 // Widgets::Tab({ 34, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_build_town),
 // Widgets::Tab({ 65, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_build_buildings),
 // Widgets::Tab({ 96, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_build_misc_buildings));
-// func PrepareDraw(self Window) 
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
-// func RefreshTownList(self Window) 
+// func PrepareDraw(self Window)
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
+// func RefreshTownList(self Window)
 // namespace TownList
 // static constexpr Ui::Size kWindowSize = { 600, 197 };
 // static constexpr Ui::Size kMaxDimensions = { 600, 900 };
 // static constexpr Ui::Size kMinDimensions = { 192, 100 };
 const RowHeight uint8 = 10
+
 type Widx int
 
 const (
@@ -96,6 +98,7 @@ const (
 	Scrollview
 	Status_bar
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(600, 197, StringIds::title_towns),
 // Widgets::TableHeader({ 4, 43 }, { 200, 12 }, WindowColour::secondary, Widget::kContentNull, StringIds::tooltip_sort_by_name),
@@ -113,8 +116,9 @@ const (
 	Population
 	Stations
 )
+
 // // 0x00499F53
-// func PrepareDraw(self Ui::Window) 
+// func PrepareDraw(self Ui::Window)
 // Common::prepareDraw(self);
 // self.widgets[widx::scrollview].right = self.width - 4;
 // self.widgets[widx::scrollview].bottom = self.height - 14;
@@ -142,7 +146,7 @@ const (
 // args.push(self.var_83C == 1 ? StringIds::status_towns_singular : StringIds::status_towns_plural);
 // args.push(self.var_83C);
 // // 0x0049A0F8
-// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto shade = Colours::getShade(self.getColour(WindowColour::secondary).c(), 3);
@@ -186,11 +190,11 @@ const (
 // tr.drawStringLeftClipped(point, 68, Colour::black, text_colour_id, args);
 // yPos += kRowHeight;
 // // 0x0049A0A7
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
 // // 0x0049A27F
-// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -215,7 +219,7 @@ const (
 // Common::refreshTownList(self);
 // break;
 // // 0x0049A56D
-// func OnScrollMouseDown(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseDown(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // uint16_t currentRow = y / kRowHeight;
 // if (currentRow > self.var_83C)
 // return;
@@ -224,7 +228,7 @@ const (
 // return;
 // Town::open(currentTown);
 // // 0x0049A532
-// func OnScrollMouseOver(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseOver(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // self.flags &= ~(WindowFlags::notScrollView);
 // uint16_t currentRow = y / kRowHeight;
 // int16_t currentTown = -1;
@@ -272,7 +276,7 @@ const (
 // func OrderByStations(lhs, rhs) return
 // orphan member: return false;
 // // 0x00499E0B
-// func UpdateTownList(self Window) 
+// func UpdateTownList(self Window)
 // TownId chosenTown = TownId::null;
 // for (auto& town : TownManager::towns())
 // if ((town.flags & TownFlags::sorted) != TownFlags::none)
@@ -300,7 +304,7 @@ const (
 // self.invalidate();
 // Common::refreshTownList(self);
 // // 0x0049A4A0
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo++;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(WindowType::townList, self.number, self.currentTab + Common::widx::tab_town_list);
@@ -309,10 +313,10 @@ const (
 // updateTownList(self);
 // updateTownList(self);
 // // 0x0049A4D0
-// func Event_08(self Window) 
+// func Event_08(self Window)
 // self.flags |= WindowFlags::notScrollView;
 // // 0x0049A4D8
-// func Event_09(self Window) 
+// func Event_09(self Window)
 // if (!self.hasFlags(WindowFlags::notScrollView))
 // return;
 // if (self.rowHover == -1)
@@ -320,7 +324,7 @@ const (
 // self.rowHover = -1;
 // self.invalidate();
 // // 0x0049A4FA
-// func GetScrollSize(self Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(self Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = kRowHeight * self.var_83C;
 // // 0x00491841
 // static std::optional<FormatArguments> tooltip([[maybe_unused]] Ui::Window& window, [[maybe_unused]] WidgetIndex_t widgetIndex, [[maybe_unused]] const WidgetId id)
@@ -336,7 +340,7 @@ const (
 // return CursorId::handPointer;
 // orphan member: return fallback;
 // // 0x0049A37E
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.minWidth = kMinDimensions.width;
 // self.minHeight = kMinDimensions.height;
 // self.maxWidth = kMaxDimensions.width;
@@ -407,13 +411,13 @@ const (
 // window->initScrollWidgets();
 // orphan member: return window;
 // // 0x00496B50
-// func Reset() 
+// func Reset()
 // getGameState().lastBuildingOption = 0xFF;
 // getGameState().lastMiscBuildingOption = 0xFF;
 // _buildingRotation = 2;
 // _townSize = 3;
 // // 0x00499DAE
-// func RemoveTown(townId TownId) 
+// func RemoveTown(townId TownId)
 // auto* window = WindowManager::find(WindowType::townList);
 // if (window == nullptr)
 // return;
@@ -428,6 +432,7 @@ const (
 	Current_size Widx = 8
 	Select_size
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(220, 87, StringIds::title_build_new_towns),
 // Widgets::dropdownWidgets({ 100, 45 }, { 117, 12 }, WindowColour::secondary, Widget::kContentNull, StringIds::tooltip_select_town_size)
@@ -442,12 +447,12 @@ const (
 // StringIds::town_size_7,
 // StringIds::town_size_8,
 // // 0x0049A59A
-// func PrepareDraw(self Ui::Window) 
+// func PrepareDraw(self Ui::Window)
 // Common::prepareDraw(self);
 // Widget::leftAlignTabs(self, Common::widx::tab_town_list, Common::widx::tab_build_misc_buildings);
 // self.widgets[widx::current_size].text = townSizeNames[_townSize - 1];
 // // 0x0049A627
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -456,7 +461,7 @@ const (
 // point = Point(self.x + 3, self.y + self.height - 13);
 // tr.drawStringLeft(point, Colour::black, StringIds::select_town_size);
 // // 0x0049A675
-// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -468,14 +473,14 @@ const (
 // Common::switchTab(self, widgetIndex);
 // break;
 // // 0x0049A7F2
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo++;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(WindowType::townList, self.number, self.currentTab + Common::widx::tab_town_list);
 // if ((!Input::hasFlag(Input::Flags::toolActive)) || self.type != ToolManager::getToolWindowType() || self.number != ToolManager::getToolWindowNumber())
 // WindowManager::close(&self);
 // // 0x0049A697
-// func OnDropdown(self Window, widgetIndex Ui::WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex Ui::WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex != widx::select_size)
 // return;
 // if (itemIndex != -1)
@@ -483,10 +488,10 @@ const (
 // _townSize = itemIndex;
 // self.invalidate();
 // // 0x0049A7C1
-// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // Ui::Windows::Main::hideGridlines();
 // // 0x0049A710
-// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // World::mapInvalidateSelectionRect();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enable);
 // auto mapPos = Ui::ViewportInteraction::getSurfaceOrWaterLocFromUi({ x, y });
@@ -496,7 +501,7 @@ const (
 // World::setMapSelectionArea(*mapPos, *mapPos);
 // World::mapInvalidateSelectionRect();
 // // 0x0049A75E
-// func OnToolDown(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolDown(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // auto mapPos = Ui::ViewportInteraction::getSurfaceOrWaterLocFromUi({ x, y });
 // if (mapPos)
 // GameCommands::setErrorTitle(StringIds::error_cant_build_this_here);
@@ -506,25 +511,25 @@ const (
 // if (GameCommands::doCommand(placementArgs, GameCommands::Flags::apply) != GameCommands::FAILURE)
 // Audio::playSound(Audio::SoundId::construct, GameCommands::getPosition());
 // // 0x0049A69E
-// func PopulateTownSizeSelect(self Window, widget [[maybe_unused]] Widget) 
+// func PopulateTownSizeSelect(self Window, widget [[maybe_unused]] Widget)
 // auto& currentSizeWidget = self.widgets[widx::current_size];
 // Dropdown::show(self.x + currentSizeWidget.left, self.y + currentSizeWidget.top, currentSizeWidget.width() - 2, currentSizeWidget.height(), self.getColour(WindowColour::secondary), 8, (1 << 7));
 // for (size_t i = 0; i < std::size(townSizeNames); ++i)
 // Dropdown::add(i, townSizeNames[i]);
 // Dropdown::setHighlightedItem(_townSize - 1);
 // // 0x0049A690
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (widgetIndex == widx::select_size)
 // populateTownSizeSelect(self, &self.widgets[widgetIndex]);
 // // 0x0049A844
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(kWindowSize, kWindowSize);
 // // 0x0049A7C7
-// func OnClose(self Window) 
+// func OnClose(self Window)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // // 0x0049A3BE
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.minWidth = kWindowSize.width;
 // self.minHeight = kWindowSize.height;
 // self.maxWidth = kWindowSize.width;
@@ -551,6 +556,7 @@ const (
 // namespace BuildBuildings
 // static constexpr Ui::Size kWindowSize = { 600, 172 };
 const RowHeight uint8 = 112
+
 type Widx int
 
 const (
@@ -558,6 +564,7 @@ const (
 	Rotate_object
 	Object_colour
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(640, 172, StringIds::title_build_new_buildings),
 // Widgets::ScrollView({ 2, 45 }, { 573, 112 }, WindowColour::secondary, 2),
@@ -565,7 +572,7 @@ const (
 // Widgets::ColourButton({ 579, 91 }, { 16, 16 }, WindowColour::secondary, Widget::kContentNull, StringIds::tooltip_object_colour)
 // );
 // // 0x0049A8A6
-// func PrepareDraw(self Ui::Window) 
+// func PrepareDraw(self Ui::Window)
 // self.widgets[widx::object_colour].image = Widget::kImageIdColourSet | Gfx::recolour(ImageIds::colour_swatch_recolourable, _buildingColour);
 // self.widgets[widx::object_colour].hidden = true;
 // if (self.rowHover != -1)
@@ -584,7 +591,7 @@ const (
 // self.widgets[Common::widx::caption].text = StringIds::title_build_new_misc_buildings;
 // Widget::leftAlignTabs(self, Common::widx::tab_town_list, Common::widx::tab_build_misc_buildings);
 // // 0x0049A9C2
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -599,7 +606,7 @@ const (
 // auto point = Point(self.x + 3, self.y + self.height - 13);
 // tr.drawStringLeftClipped(point, self.width - 19, Colour::black, StringIds::black_stringid, args);
 // // 0x0049AB31
-// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -618,7 +625,7 @@ const (
 // self.invalidate();
 // break;
 // // 0x0049AD51
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // if (!Input::hasFlag(Input::Flags::rightMousePressed))
 // auto cursor = Input::getMouseLocation();
 // auto xPos = cursor.x;
@@ -661,7 +668,7 @@ const (
 // if (!ToolManager::isToolActive(self.type, self.number))
 // WindowManager::close(&self);
 // // 0x0049AB59
-// func OnDropdown(self Window, widgetIndex Ui::WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex Ui::WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex != widx::object_colour)
 // return;
 // if (itemIndex == -1)
@@ -669,14 +676,14 @@ const (
 // _buildingColour = static_cast<Colour>(Dropdown::getItemArgument(itemIndex, 2));
 // self.invalidate();
 // // 0x0049B37F
-// func RemoveBuildingGhost() 
+// func RemoveBuildingGhost()
 // if (_buildingGhostPlaced)
 // GameCommands::BuildingRemovalArgs args;
 // args.pos = _buildingGhostPos;
 // GameCommands::doCommand(args, GameCommands::Flags::apply | GameCommands::Flags::noErrorWindow | GameCommands::Flags::noPayment | GameCommands::Flags::ghost);
 // _buildingGhostPlaced = false;
 // // 0x0049AD46
-// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // removeBuildingGhost();
 // Ui::Windows::Main::hideGridlines();
 // // 0x0049B32A
@@ -718,7 +725,7 @@ const (
 // args.buildImmediately = true; // bh
 // return { args };
 // // 0x0049ABF0
-// func OnToolUpdate(self Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // World::mapInvalidateSelectionRect();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enable);
 // auto placementArgs = getBuildingPlacementArgsFromCursor(x, y);
@@ -742,7 +749,7 @@ const (
 // _buildingPlacementCost = cost;
 // self.invalidate();
 // // 0x0049ACBD
-// func OnToolDown(self Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolDown(self Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // removeBuildingGhost();
 // auto placementArgs = getBuildingPlacementArgsFromCursor(x, y);
 // if (placementArgs)
@@ -755,12 +762,12 @@ const (
 // variation = (_buildingVariation + 1) % buildingObj->numVariations;
 // _buildingVariation = variation;
 // // 0x0049AB52
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (widgetIndex == widx::object_colour)
 // auto obj = ObjectManager::get<BuildingObject>(self.rowHover);
 // Dropdown::showColour(&self, &self.widgets[widgetIndex], obj->colours, _buildingColour, self.getColour(WindowColour::secondary));
 // // 0x0049B2B5
-// func UpdateActiveThumb(self Window) 
+// func UpdateActiveThumb(self Window)
 // int32_t scrollWidth = 0, scrollHeight = 0;
 // self.callGetScrollSize(0, scrollWidth, scrollHeight);
 // self.scrollAreas[0].contentHeight = scrollHeight;
@@ -774,7 +781,7 @@ const (
 // self.scrollAreas[0].contentOffsetY = i;
 // Ui::ScrollView::updateThumbs(self, widx::scrollview);
 // // 0x0049AF98
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.invalidate();
 // Ui::Size kMinWindowSize = { self.minWidth, self.minHeight };
 // Ui::Size kMaxWindowSize = { self.maxWidth, self.maxHeight };
@@ -782,7 +789,7 @@ const (
 // if (hasResized)
 // updateActiveThumb(self);
 // // 0x0049AE83
-// func GetScrollSize(self Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(self Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = (4 + self.var_83C) / 5;
 // if (scrollHeight == 0)
 // scrollHeight += 1;
@@ -793,7 +800,7 @@ const (
 // args.push(StringIds::tooltip_scroll_building_list);
 // orphan member: return args;
 // // 0x0049AA1C
-// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto shade = Colours::getShade(self.getColour(WindowColour::secondary).c(), 3);
 // drawingCtx.clearSingle(shade);
@@ -828,7 +835,7 @@ const (
 // xPos = 0;
 // yPos += kRowHeight;
 // // 0x0049B304
-// func UpdateBuildingColours(self Window) 
+// func UpdateBuildingColours(self Window)
 // if (self.rowHover != -1)
 // auto buildingObj = ObjectManager::get<BuildingObject>(self.rowHover);
 // if (buildingObj->colours != 0)
@@ -838,7 +845,7 @@ const (
 // func GetRowIndex(x int16, y int16) int
 // return (x / 112) + (y / 112) * 5;
 // // 0x0049AEFD
-// func OnScrollMouseDown(self Ui::Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseDown(self Ui::Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t)
 // auto index = getRowIndex(x, y);
 // for (auto i = 0; i < self.var_83C; i++)
 // auto rowInfo = self.rowInfo[i];
@@ -858,7 +865,7 @@ const (
 // self.invalidate();
 // break;
 // // 0x0049AEBA
-// func OnScrollMouseOver(self Ui::Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseOver(self Ui::Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t)
 // auto index = getRowIndex(x, y);
 // uint16_t rowInfo = y;
 // auto i = 0;
@@ -870,16 +877,16 @@ const (
 // self.invalidate();
 // break;
 // // 0x0049ABC5
-// func OnClose(self Window) 
+// func OnClose(self Window)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // // 0x0049AEA1
-// func Event_08(self Window) 
+// func Event_08(self Window)
 // if (self.var_846 != 0xFFFF)
 // self.var_846 = 0xFFFF;
 // self.invalidate();
 // // 0x0049B206
-// func UpdateBuildingList(self Window) 
+// func UpdateBuildingList(self Window)
 // auto buildingCount = 0;
 // for (auto i = 0; i < 128; i++)
 // auto buildingObj = ObjectManager::get<BuildingObject>(i);
@@ -911,7 +918,7 @@ const (
 // updateActiveThumb(self);
 // updateBuildingColours(self);
 // // 0x0049A3FF
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.minWidth = kWindowSize.width;
 // self.minHeight = kWindowSize.height;
 // self.maxWidth = kWindowSize.width;
@@ -961,10 +968,11 @@ const (
 // orphan member: return false;
 // namespace Common
 type TabInformation struct {
-// std::span<const Widget> widgets;
-// const widx widgetIndex;
-// const WindowEventList& events;
+	// std::span<const Widget> widgets;
+	// const widx widgetIndex;
+	// const WindowEventList& events;
 }
+
 // // clang-format off
 // static TabInformation tabInformationByTabOffset[] = {
 // { TownList::widgets,       widx::tab_town_list,            TownList::getEvents()       },
@@ -972,7 +980,7 @@ type TabInformation struct {
 // { BuildBuildings::widgets, widx::tab_build_buildings,      BuildBuildings::getEvents() },
 // { BuildBuildings::widgets, widx::tab_build_misc_buildings, BuildBuildings::getEvents() },
 // // clang-format on
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // // Activate the current tab
 // self.activatedWidgets &= ~((1ULL << tab_town_list) | (1ULL << tab_build_town) | (1ULL << tab_build_buildings) | (1ULL << tab_build_misc_buildings));
 // self.activatedWidgets |= (1ULL << Common::tabInformationByTabOffset[self.currentTab].widgetIndex);
@@ -984,7 +992,7 @@ type TabInformation struct {
 // self.widgets[Common::widx::close_button].left = self.width - 15;
 // self.widgets[Common::widx::close_button].right = self.width - 3;
 // // 0x0049B054
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // // Town List Tab
 // uint32_t imageId = skin->img;
@@ -1063,7 +1071,7 @@ type TabInformation struct {
 // imageId += buildMiscBuildingsImageIds[0];
 // Widget::drawTab(self, drawingCtx, imageId, widx::tab_build_misc_buildings);
 // // 0x0049A2E2
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // self.currentTab = widgetIndex - widx::tab_town_list;
@@ -1092,7 +1100,7 @@ type TabInformation struct {
 // self.invalidate();
 // self.moveInsideScreenEdges();
 // // 0x00499DDE
-// func RefreshTownList(self Window) 
+// func RefreshTownList(self Window)
 // self.rowCount = 0;
 // for (auto& town : TownManager::towns())
 // town.flags &= ~TownFlags::sorted;

@@ -22,6 +22,7 @@ type Widx int
 const (
 	Frame Widx = iota
 )
+
 // static constexpr Ui::Size kWindowSize = { 140, 29 };
 // static constexpr auto widgets = makeWidgets(
 // Widgets::Wt3Widget({ 0, 0 }, kWindowSize, WindowColour::primary)
@@ -43,10 +44,10 @@ const (
 // window->setColour(WindowColour::secondary, AdvancedColour(skin->mapTooltipCargoColour).translucent());
 // orphan member: return window;
 // // 0x00439B3D
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // self.widgets[Widx::frame].right = self.width - 1;
 // // 0x00439B4A
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // static constexpr StringId titleStringIds[] = {
 // StringIds::tutorial_1_title,
 // StringIds::tutorial_2_title,

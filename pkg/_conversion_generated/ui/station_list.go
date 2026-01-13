@@ -38,13 +38,14 @@ package ui
 // static constexpr Ui::Size kMaxDimensions = { 640, 1200 };
 // static constexpr Ui::Size kMinDimensions = { 192, 100 };
 const RowHeight uint8 = 10
+
 type Widx int
 
 const (
-	Frame Widx = 0
-	Caption Widx = 1
+	Frame        Widx = 0
+	Caption      Widx = 1
 	Close_button Widx = 2
-	Panel Widx = 3
+	Panel        Widx = 3
 	Tab_all_stations
 	Tab_rail_stations
 	Tab_road_stations
@@ -58,6 +59,7 @@ const (
 	Scrollview
 	Status_bar
 )
+
 // static constexpr auto _widgets = makeWidgets(
 // Widgets::Frame({ 0, 0 }, { 600, 197 }, WindowColour::primary),
 // Widgets::Caption({ 1, 1 }, { 598, 13 }, Widgets::Caption::Style::colourText, WindowColour::primary, StringIds::stringid_all_stations),
@@ -77,11 +79,12 @@ const (
 // Widgets::Label({ 4, kWindowSize.height - 12 }, { kWindowSize.width - kResizeHandleSize, 10 }, WindowColour::secondary, ContentAlign::left, StringIds::black_stringid)
 // );
 type TabDetails struct {
-	WidgetIndex widx
+	WidgetIndex   widx
 	WindowTitleId StringId
-	ImageId uint32
-	StationMask StationFlags
+	ImageId       uint32
+	StationMask   StationFlags
 }
+
 // static TabDetails tabInformationByType[] = {
 // { tab_all_stations, StringIds::stringid_all_stations, InterfaceSkin::ImageIds::all_stations, StationFlags::allModes },
 // { tab_rail_stations, StringIds::stringid_rail_stations, InterfaceSkin::ImageIds::rail_stations, StationFlags::transportModeRail },
@@ -96,8 +99,9 @@ const (
 	TotalUnitsWaiting
 	CargoAccepted
 )
+
 // // 0x004910E8
-// func RefreshStationList(window Window) 
+// func RefreshStationList(window Window)
 // window->rowCount = 0;
 // for (auto& station : StationManager::stations())
 // if (station.owner == CompanyId(window->number))
@@ -150,7 +154,7 @@ const (
 // func OrderByAccepts(lhs, rhs) return
 // orphan member: return false;
 // // 0x0049111A
-// func UpdateStationList(window Window) 
+// func UpdateStationList(window Window)
 // StationId edi = StationId::null;
 // for (auto& station : StationManager::stations())
 // if (station.owner != CompanyId(window->number))
@@ -186,7 +190,7 @@ const (
 // window->invalidate();
 // refreshStationList(window);
 // // 0x004910AB
-// func RemoveStationFromList(stationId StationId) 
+// func RemoveStationFromList(stationId StationId)
 // auto* station = StationManager::get(stationId);
 // auto* window = WindowManager::find(WindowType::stationList, enumValue(station->owner));
 // if (window != nullptr)
@@ -249,10 +253,10 @@ const (
 // return CursorId::handPointer;
 // orphan member: return fallback;
 // // 0x0049196F
-// func Event_08(window Window) 
+// func Event_08(window Window)
 // window.flags |= WindowFlags::notScrollView;
 // // 0x00491977
-// func Event_09(window Window) 
+// func Event_09(window Window)
 // if (!window.hasFlags(WindowFlags::notScrollView))
 // return;
 // if (window.rowHover == -1)
@@ -260,7 +264,7 @@ const (
 // window.rowHover = -1;
 // window.invalidate();
 // // 0x00491344
-// func PrepareDraw(window Ui::Window) 
+// func PrepareDraw(window Ui::Window)
 // // Reset active tab.
 // window.activatedWidgets &= ~((1 << tab_all_stations) | (1 << tab_rail_stations) | (1 << tab_road_stations) | (1 << tab_airports) | (1 << tab_ship_ports));
 // window.activatedWidgets |= (1ULL << tabInformationByType[window.currentTab].widgetIndex);
@@ -308,7 +312,7 @@ const (
 // args.push(window.var_83C == 1 ? StringIds::status_num_stations_singular : StringIds::status_num_stations_plural);
 // args.push<uint16_t>(window.var_83C);
 // // 0x0049157F
-// func DrawScroll(window Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(window Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto shade = Colours::getShade(window.getColour(WindowColour::secondary).c(), 4);
@@ -368,14 +372,14 @@ const (
 // tr.drawStringLeftClipped(point, 118, Colour::black, text_colour_id, args);
 // yPos += kRowHeight;
 // // 00491A76
-// func DrawTabs(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func DrawTabs(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // auto companyColour = CompanyManager::getCompanyColour(CompanyId(self.number));
 // for (const auto& tab : tabInformationByType)
 // uint32_t image = Gfx::recolour(skin->img + tab.imageId, companyColour);
 // Widget::drawTab(self, drawingCtx, image, tab.widgetIndex);
 // // 0x004914D8
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets and tabs.
 // self.draw(drawingCtx);
 // drawTabs(self, drawingCtx);
@@ -387,7 +391,7 @@ const (
 // uint16_t y = self.y + self.widgets[widx::company_select].top + 1;
 // drawingCtx.drawImage(x, y, image);
 // // 0x004917BB
-// func OnDropdown(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex != widx::company_select)
 // return;
 // if (itemIndex == -1)
@@ -413,11 +417,11 @@ const (
 // window.initScrollWidgets();
 // window.invalidate();
 // // 0x004917B0
-// func OnMouseDown(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (widgetIndex == widx::company_select)
 // Dropdown::populateCompanySelect(&window, &window.widgets[widgetIndex]);
 // // 0x00491785
-// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::close_button:
 // WindowManager::close(&window);
@@ -454,7 +458,7 @@ const (
 // refreshStationList(&window);
 // break;
 // // 0x00491A0C
-// func OnScrollMouseDown(window Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseDown(window Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // uint16_t currentRow = y / kRowHeight;
 // if (currentRow > window.var_83C)
 // return;
@@ -463,7 +467,7 @@ const (
 // return;
 // Station::open(currentStation);
 // // 0x004919D1
-// func OnScrollMouseOver(window Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseOver(window Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // window.flags &= ~(WindowFlags::notScrollView);
 // uint16_t currentRow = y / kRowHeight;
 // int16_t currentStation = -1;
@@ -474,7 +478,7 @@ const (
 // window.rowHover = currentStation;
 // window.invalidate();
 // // 0x0049193F
-// func OnUpdate(window Window) 
+// func OnUpdate(window Window)
 // window.frameNo++;
 // window.callPrepareDraw();
 // WindowManager::invalidateWidget(WindowType::stationList, window.number, window.currentTab + 4);
@@ -483,7 +487,7 @@ const (
 // updateStationList(&window);
 // updateStationList(&window);
 // // 0x00491999
-// func GetScrollSize(window Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(window Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = kRowHeight * window.var_83C;
 // // 0x00491841
 // static std::optional<FormatArguments> tooltip([[maybe_unused]] Ui::Window& window, [[maybe_unused]] WidgetIndex_t widgetIndex, [[maybe_unused]] const WidgetId id)

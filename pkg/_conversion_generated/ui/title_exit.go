@@ -38,13 +38,13 @@ package ui
 // window->setColour(WindowColour::primary, AdvancedColour(Colour::mutedSeaGreen).translucent());
 // window->setColour(WindowColour::secondary, AdvancedColour(Colour::mutedSeaGreen).translucent());
 // orphan member: return window;
-// func PrepareDraw(self Ui::Window) 
+// func PrepareDraw(self Ui::Window)
 // auto exitString = StringManager::getString(StringIds::title_exit_game);
 // self.width = Gfx::TextRenderer::getStringWidthNewLined(Gfx::Font::medium_bold, exitString) + 10;
 // self.x = Ui::width() - self.width;
 // self.widgets[Widx::exit_button].right = self.width;
 // // 0x00439236
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // // Draw widgets.
 // window.draw(drawingCtx);
@@ -53,7 +53,7 @@ package ui
 // Ui::Point origin = { x, y };
 // tr.drawStringCentredWrapped(origin, window.width, Colour::black, StringIds::title_exit_game);
 // // 0x00439268
-// func OnMouseUp(window [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (Intro::isActive())
 // return;
 // switch (widgetIndex)

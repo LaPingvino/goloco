@@ -43,8 +43,8 @@ var PausedStatusTextDuration = 30 // auto
 // normal_speed_btn,
 // fast_forward_btn,
 // extra_fast_forward_btn,
-// func FormatChallenge(args FormatArguments) 
-// func SendChatMessage(str byte) 
+// func FormatChallenge(args FormatArguments)
+// func SendChatMessage(str byte)
 // static constexpr auto _widgets = makeWidgets(
 // Widgets::Wt3Widget({ 0, 0 }, { 140, 29 }, WindowColour::primary),
 // Widgets::Wt3Widget({ 2, 2 }, { 136, 25 }, WindowColour::primary),
@@ -73,7 +73,7 @@ var PausedStatusTextDuration = 30 // auto
 // window->setColour(WindowColour::secondary, AdvancedColour(skin->timeToolbarColour).translucent());
 // orphan member: return window;
 // // 0x004396A4
-// func PrepareDraw(window [[maybe_unused]] Window) 
+// func PrepareDraw(window [[maybe_unused]] Window)
 // window.widgets[Widx::inner_frame].hidden = true;
 // window.widgets[Widx::pause_btn].image = Gfx::recolour(ImageIds::speed_pause);
 // window.widgets[Widx::normal_speed_btn].image = Gfx::recolour(ImageIds::speed_normal);
@@ -112,7 +112,7 @@ var PausedStatusTextDuration = 30 // auto
 // InterfaceSkin::ImageIds::toolbar_menu_map_south,
 // InterfaceSkin::ImageIds::toolbar_menu_map_east,
 // // 0x004397BE
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // Widget& frame = self.widgets[Widx::outer_frame];
 // drawingCtx.drawRect(self.x + frame.left, self.y + frame.top, frame.width(), frame.height(), enumValue(ExtColour::unk34), Gfx::RectFlags::transparent);
@@ -135,7 +135,7 @@ var PausedStatusTextDuration = 30 // auto
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // drawingCtx.drawImage(self.x + _widgets[Widx::map_chat_menu].left - 2, self.y + _widgets[Widx::map_chat_menu].top - 1, skin->img + map_sprites_by_rotation[WindowManager::getCurrentRotation()]);
 // // 0x004398FB
-// func OnMouseUp(window [[maybe_unused]] Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window [[maybe_unused]] Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Widx::date_btn:
 // MessageWindow::open();
@@ -153,7 +153,7 @@ var PausedStatusTextDuration = 30 // auto
 // GameCommands::doCommand(GameCommands::SetGameSpeedArgs{ GameSpeed::ExtraFastForward }, GameCommands::Flags::apply);
 // break;
 // // 0x0043A67F
-// func MapMouseDown(self Ui::Window, widgetIndex WidgetIndex_t) 
+// func MapMouseDown(self Ui::Window, widgetIndex WidgetIndex_t)
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // if (SceneManager::isNetworked())
 // Dropdown::add(0, StringIds::menu_sprite_stringid, { (uint32_t)skin->img + InterfaceSkin::ImageIds::phone, StringIds::chat_send_message });
@@ -164,14 +164,14 @@ var PausedStatusTextDuration = 30 // auto
 // Dropdown::add(0, StringIds::menu_sprite_stringid, { (uint32_t)skin->img + map_sprites_by_rotation[WindowManager::getCurrentRotation()], StringIds::menu_map });
 // Dropdown::showBelow(self, widgetIndex, 1, 25, (1 << 6));
 // Dropdown::setHighlightedItem(0);
-// func BeginSendChatMessage(self Window) 
+// func BeginSendChatMessage(self Window)
 // const auto* opponent = CompanyManager::getOpponent();
 // auto args = FormatArguments::common();
 // args.push(opponent->name);
 // // TODO: convert this to a builder pattern, with chainable functions to set the different string ids and arguments
 // TextInput::openTextInput(&self, StringIds::chat_title, StringIds::chat_instructions, StringIds::empty, Widx::map_chat_menu, args);
 // // 0x0043A72F
-// func MapDropdown(self Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16) 
+// func MapDropdown(self Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16)
 // if (itemIndex == -1)
 // itemIndex = Dropdown::getHighlightedItem();
 // if (SceneManager::isNetworked())
@@ -188,13 +188,13 @@ var PausedStatusTextDuration = 30 // auto
 // MapWindow::open();
 // break;
 // // 0x043992E
-// func OnMouseDown(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Widx::map_chat_menu:
 // mapMouseDown(&window, widgetIndex);
 // break;
 // // 0x439939
-// func OnDropdown(w Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, item_index int16) 
+// func OnDropdown(w Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, item_index int16)
 // switch (widgetIndex)
 // case Widx::map_chat_menu:
 // mapDropdown(&w, widgetIndex, item_index);
@@ -215,7 +215,7 @@ var PausedStatusTextDuration = 30 // auto
 // break;
 // orphan member: return args;
 // // 0x0043995C
-// func FormatChallenge(args FormatArguments) 
+// func FormatChallenge(args FormatArguments)
 // args.push(getCurrentDay());
 // auto playerCompany = CompanyManager::get(CompanyManager::getControllingId());
 // if ((playerCompany->challengeFlags & CompanyFlags::challengeCompleted) != CompanyFlags::none)
@@ -237,17 +237,17 @@ var PausedStatusTextDuration = 30 // auto
 // else
 // args.push(StringIds::empty);
 // // 0x00439A15
-// func TextInput(w [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, str byte) 
+// func TextInput(w [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, str byte)
 // switch (widgetIndex)
 // case Widx::map_chat_menu:
 // sendChatMessage(str);
 // break;
-// func SendChatMessage(string byte) 
+// func SendChatMessage(string byte)
 // Network::sendChatMessage(string);
-// func InvalidateFrame() 
+// func InvalidateFrame()
 // redrawScheduled = true;
 // // 0x00439AD9
-// func OnUpdate(w Window) 
+// func OnUpdate(w Window)
 // w.var_854 += 1;
 // if (w.var_854 >= 24)
 // w.var_854 = 0;

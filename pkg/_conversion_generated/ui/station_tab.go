@@ -62,7 +62,7 @@ package ui
 // orphan member: return widgets;
 // orphan member: WindowEventList events;
 // // 0x0049E228
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& cState = getConstructionState();
 // switch (widgetIndex)
 // case Common::widx::close_button:
@@ -81,7 +81,7 @@ package ui
 // self.invalidate();
 // break;
 // template<typename obj_type>
-// func AddStationsToDropdown(stationCount uint8) 
+// func AddStationsToDropdown(stationCount uint8)
 // auto& cState = getConstructionState();
 // for (auto stationIndex = 0; stationIndex < stationCount; stationIndex++)
 // auto station = cState.stationList[stationIndex];
@@ -90,7 +90,7 @@ package ui
 // auto obj = ObjectManager::get<obj_type>(station);
 // Dropdown::add(stationIndex, obj->name);
 // // 0x0049E249
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& cState = getConstructionState();
 // switch (widgetIndex)
 // case widx::station_dropdown:
@@ -117,7 +117,7 @@ package ui
 // ToolManager::toolSet(self, widgetIndex, CursorId::placeStation);
 // break;
 // // 0x0049E256
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // auto& cState = getConstructionState();
 // if (widgetIndex == widx::station_dropdown)
 // if (itemIndex == -1)
@@ -135,10 +135,10 @@ package ui
 // Scenario::getConstruction().trainStations[cState.trackType] = selectedStation;
 // self.invalidate();
 // // 0x0049E437
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // Common::onUpdate(&self, GhostVisibilityFlags::station);
 // // 0x0049FF4B
-// func RemoveStationGhost() 
+// func RemoveStationGhost()
 // auto& cState = getConstructionState();
 // if (Common::hasGhostVisibilityFlag(GhostVisibilityFlags::station))
 // if (World::hasMapSelectionFlag(World::MapSelectionFlags::catchmentArea))
@@ -169,7 +169,7 @@ package ui
 // args.type = cState.stationGhostType;
 // GameCommands::doCommand(args, GameCommands::Flags::apply | GameCommands::Flags::noErrorWindow | GameCommands::Flags::noPayment | GameCommands::Flags::ghost);
 // Common::unsetGhostVisibilityFlag(GhostVisibilityFlags::station);
-// func SetMapSelectedTilesFromRange(range World::TilePosRangeView) 
+// func SetMapSelectedTilesFromRange(range World::TilePosRangeView)
 // resetMapSelectionFreeFormTiles();
 // for (const auto& pos : range)
 // addMapSelectionFreeFormTile(World::toWorldSpace(pos));
@@ -183,14 +183,14 @@ package ui
 // static std::optional<GameCommands::RoadStationPlacementArgs> getRoadStationPlacementArgs(const World::Pos2 pos, const World::RoadElement* roadEl);
 // static std::optional<GameCommands::TrainStationPlacementArgs> getTrainStationPlacementArgs(const World::Pos2 pos, const World::TrackElement* trackEl);
 // // 0x004A4CF9
-// func OnToolUpdateFail() 
+// func OnToolUpdateFail()
 // auto& cState = getConstructionState();
 // removeConstructionGhosts();
 // if (cState.stationCost != 0x80000000U)
 // cState.stationCost = 0x80000000U;
 // Ui::WindowManager::invalidate(Ui::WindowType::construction);
 // // 0x004A4F3B
-// func OnToolUpdateAirport(mousePos Ui::Point) 
+// func OnToolUpdateAirport(mousePos Ui::Point)
 // World::mapInvalidateMapSelectionFreeFormTiles();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enable | World::MapSelectionFlags::enableConstruct | World::MapSelectionFlags::enableConstructionArrow);
 // const auto args = getAirportPlacementArgsFromCursor(mousePos.x, mousePos.y);
@@ -230,7 +230,7 @@ package ui
 // cState.constructingStationAcceptedCargoTypes = res.accepted;
 // cState.constructingStationProducedCargoTypes = res.produced;
 // // 0x004A5158
-// func OnToolUpdateDock(mousePos Ui::Point) 
+// func OnToolUpdateDock(mousePos Ui::Point)
 // World::mapInvalidateMapSelectionFreeFormTiles();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enable | World::MapSelectionFlags::enableConstruct | World::MapSelectionFlags::enableConstructionArrow);
 // const auto args = getDockPlacementArgsFromCursor(mousePos.x, mousePos.y);
@@ -270,7 +270,7 @@ package ui
 // cState.constructingStationAcceptedCargoTypes = res.accepted;
 // cState.constructingStationProducedCargoTypes = res.produced;
 // // 0x004A4D21
-// func OnToolUpdateRoadStation(mousePos Ui::Point) 
+// func OnToolUpdateRoadStation(mousePos Ui::Point)
 // const auto args = getRoadStationPlacementArgsFromCursor(mousePos.x, mousePos.y);
 // if (!args.has_value())
 // onToolUpdateFail();
@@ -316,7 +316,7 @@ package ui
 // cState.constructingStationAcceptedCargoTypes = res.accepted;
 // cState.constructingStationProducedCargoTypes = res.produced;
 // // 0x004A4B2E
-// func OnToolUpdateTrainStation(mousePos Ui::Point) 
+// func OnToolUpdateTrainStation(mousePos Ui::Point)
 // const auto args = getTrainStationPlacementArgsFromCursor(mousePos.x, mousePos.y);
 // if (!args.has_value())
 // onToolUpdateFail();
@@ -355,7 +355,7 @@ package ui
 // cState.constructingStationAcceptedCargoTypes = res.accepted;
 // cState.constructingStationProducedCargoTypes = res.produced;
 // // 0x0049E421
-// func OnToolUpdate(Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != widx::image)
 // return;
 // if (_isDragging)
@@ -371,14 +371,14 @@ package ui
 // onToolUpdateRoadStation({ x, y });
 // else
 // onToolUpdateTrainStation({ x, y });
-// func OnToolDown(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolDown(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // auto res = ViewportInteraction::getMapCoordinatesFromPos(x, y, ~(ViewportInteraction::InteractionItemFlags::surface | ViewportInteraction::InteractionItemFlags::water));
 // auto& interaction = res.first;
 // if (interaction.type == ViewportInteraction::InteractionItem::noInteraction)
 // return;
 // _toolPosInitial = World::toTileSpace(interaction.pos);
 // _isDragging = false;
-// func OnToolDrag(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t) 
+// func OnToolDrag(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t)
 // mapInvalidateSelectionRect();
 // removeConstructionGhosts();
 // auto res = ViewportInteraction::getMapCoordinatesFromPos(x, y, ~(ViewportInteraction::InteractionItemFlags::surface | ViewportInteraction::InteractionItemFlags::water));
@@ -422,7 +422,7 @@ package ui
 // placementArgs.pos = World::Pos3(pos.x, pos.y, maxBaseZ * World::kSmallZStep);
 // return { placementArgs };
 // // 0x004A5550
-// func OnToolUpAirport(x int16, y int16) 
+// func OnToolUpAirport(x int16, y int16)
 // removeConstructionGhosts();
 // const auto args = getAirportPlacementArgsFromCursor(x, y);
 // if (!args)
@@ -503,7 +503,7 @@ package ui
 // placementArgs.rotation = 0;
 // return { placementArgs };
 // // 0x004A55AB
-// func OnToolUpDock(x int16, y int16) 
+// func OnToolUpDock(x int16, y int16)
 // removeConstructionGhosts();
 // const auto args = getDockPlacementArgsFromCursor(x, y);
 // if (!args)
@@ -546,7 +546,7 @@ package ui
 // placementArgs.type = cState.lastSelectedStationType;
 // return { placementArgs };
 // // 0x004A548F
-// func OnToolUpRoadStation(x int16, y int16) 
+// func OnToolUpRoadStation(x int16, y int16)
 // removeConstructionGhosts();
 // const auto args = getRoadStationPlacementArgsFromCursor(x, y);
 // if (!args)
@@ -590,7 +590,7 @@ package ui
 // placementArgs.type = cState.lastSelectedStationType;
 // return { placementArgs };
 // // 0x004A5390
-// func OnToolUpTrainStation(x int16, y int16) 
+// func OnToolUpTrainStation(x int16, y int16)
 // removeConstructionGhosts();
 // const auto args = getTrainStationPlacementArgsFromCursor(x, y);
 // if (!args)
@@ -606,7 +606,7 @@ package ui
 // return;
 // if (GameCommands::doCommand(*args, GameCommands::Flags::apply) != GameCommands::FAILURE)
 // Audio::playSound(Audio::SoundId::construct, GameCommands::getPosition());
-// func OnToolUpSingle(x int16, y int16) 
+// func OnToolUpSingle(x int16, y int16)
 // auto& cState = getConstructionState();
 // if (cState.byte_1136063 & (1 << 7))
 // onToolUpAirport(x, y);
@@ -631,7 +631,7 @@ package ui
 // if (auto args = getTrainStationPlacementArgs(pos, nullptr))
 // return GameCommands::doCommand(*args, GameCommands::Flags::apply);
 // return GameCommands::FAILURE;
-// func OnToolUpMultiple() 
+// func OnToolUpMultiple()
 // mapInvalidateSelectionRect();
 // removeConstructionGhosts();
 // World::resetMapSelectionFlags();
@@ -655,19 +655,19 @@ package ui
 // // Leave the tool active, but make ghost piece visible for the next round
 // _isDragging = false;
 // // 0x0049E42C
-// func OnToolUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != widx::image)
 // return;
 // if (_isDragging)
 // onToolUpMultiple();
 // else
 // onToolUpSingle(x, y);
-// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (widgetIndex != widx::image)
 // return;
 // _isDragging = false;
 // // 0x0049DD39
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(&self);
 // self.widgets[widx::rotate].hidden = true;
 // auto captionArgs = FormatArguments(self.widgets[Common::widx::caption].textArgs);
@@ -694,7 +694,7 @@ package ui
 // self.widgets[widx::station].text = trainStationObject->name;
 // Common::repositionTabs(&self);
 // // 0x0049DE40
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -784,7 +784,7 @@ package ui
 // auto cargoObj = ObjectManager::get<CargoObject>(i);
 // drawingCtx.drawImage(origin.x, origin.y, cargoObj->unitInlineSprite);
 // origin.x += 10;
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.callOnMouseDown(Station::widx::image, self.widgets[Station::widx::image].id);
 // static constexpr WindowEventList kEvents = {
 // .onClose = Common::onClose,
@@ -802,7 +802,7 @@ package ui
 // const WindowEventList& getEvents()
 // orphan member: return kEvents;
 // // 0x0049E1F1
-// func Sub_49E1F1(id StationId) 
+// func Sub_49E1F1(id StationId)
 // auto w = WindowManager::find(WindowType::construction);
 // if (w != nullptr && w->currentTab == 1)
 // auto& cState = getConstructionState();

@@ -6,15 +6,17 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type RoadStationRemovalArgs struct {
-// RoadStationRemovalArgs() = default;
+	// RoadStationRemovalArgs() = default;
 	// method: explicit RoadStationRemovalArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.di)
-// , rotation(regs.bh & 0x3)
-// , roadId(regs.dl & 0xF)
-// , index(regs.dh & 0x3)
-// , roadObjectId(regs.bp & 0xF)
+	// : pos(regs.ax, regs.cx, regs.di)
+	// , rotation(regs.bh & 0x3)
+	// , roadId(regs.dl & 0xF)
+	// , index(regs.dh & 0x3)
+	// , roadObjectId(regs.bp & 0xF)
 }
+
 const RoadStationRemovalArgsCommand any = GameCommand.removeRoadStation
+
 // World::Pos3 pos;
 // orphan member: uint8_t rotation;
 // orphan member: uint8_t roadId;
@@ -30,4 +32,4 @@ const RoadStationRemovalArgsCommand any = GameCommand.removeRoadStation
 // regs.dh = index;
 // regs.bp = roadObjectId;
 // orphan member: return regs;
-// func RemoveRoadStation(regs registers) 
+// func RemoveRoadStation(regs registers)

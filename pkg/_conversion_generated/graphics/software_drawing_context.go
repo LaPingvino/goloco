@@ -14,13 +14,13 @@ package graphics
 // namespace OpenLoco::Gfx
 // forward: struct SoftwareDrawingContextState;
 type SoftwareDrawingContext struct {
-// std::unique_ptr<SoftwareDrawingContextState> _state;
-// SoftwareDrawingContext();
-// ~SoftwareDrawingContext() override;
+	// std::unique_ptr<SoftwareDrawingContextState> _state;
+	// SoftwareDrawingContext();
+	// ~SoftwareDrawingContext() override;
 	// method: void reset();
 	// method: void pushRenderTarget(const RenderTarget& rt) override;
 	// method: void popRenderTarget() override;
-// const RenderTarget& currentRenderTarget() const override;
+	// const RenderTarget& currentRenderTarget() const override;
 	// method: void clear(uint32_t fill) override;
 	// method: void clearSingle(uint8_t paletteId) override;
 	// method: void fillRect(int16_t left, int16_t top, int16_t right, int16_t bottom, uint8_t colour, RectFlags flags) override;

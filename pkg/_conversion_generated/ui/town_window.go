@@ -51,6 +51,7 @@ const (
 	Tab_population
 	Tab_company_ratings
 )
+
 // func MakeCommonWidgets(frameWidth int32, frameHeight int32, windowCaptionId StringId) any
 // return makeWidgets(
 // Widgets::Frame({ 0, 0 }, { frameWidth, frameHeight }, WindowColour::primary),
@@ -61,12 +62,12 @@ const (
 // Widgets::Tab({ 34, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_population_graph),
 // Widgets::Tab({ 65, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_town_ratings_each_company));
 // // Defined at the bottom of this file.
-// func PrepareDraw(self Window) 
-// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte) 
-// func Update(self Window) 
-// func RenameTownPrompt(self Window, widgetIndex WidgetIndex_t) 
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func PrepareDraw(self Window)
+// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte)
+// func Update(self Window)
+// func RenameTownPrompt(self Window, widgetIndex WidgetIndex_t)
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // namespace Town
 type Widx int
 
@@ -77,6 +78,7 @@ const (
 	Expand_town
 	Demolish_town
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(223, 161, StringIds::title_town),
 // Widgets::Viewport({ 3, 44 }, { 195, 104 }, WindowColour::secondary, Widget::kContentUnk),
@@ -86,7 +88,7 @@ const (
 // Widgets::ImageButton({ 198, 68 }, { 24, 24 }, WindowColour::secondary, ImageIds::rubbish_bin, StringIds::demolish_this_town)
 // );
 // // 0x00498EAF
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.widgets[widx::viewport].right = self.width - 26;
 // self.widgets[widx::viewport].bottom = self.height - 14;
@@ -110,7 +112,7 @@ const (
 // self.widgets[widx::centre_on_viewport].top = self.widgets[widx::viewport].bottom - 24;
 // Widget::leftAlignTabs(self, Common::widx::tab_town, Common::widx::tab_company_ratings);
 // // 0x00498FFE
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -123,7 +125,7 @@ const (
 // auto point = Point(self.x + widget.left - 1, self.y + widget.top - 1);
 // tr.drawStringLeftClipped(point, width, Colour::black, StringIds::status_town_population, args);
 // // 0x00499079
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::caption:
 // Common::renameTownPrompt(self, widgetIndex);
@@ -169,9 +171,9 @@ const (
 // if (GameCommands::doCommand(args, GameCommands::Flags::apply) != GameCommands::FAILURE)
 // Audio::playSound(Audio::SoundId::demolish, GameCommands::getPosition());
 // break;
-// func InitViewport(self Window) 
+// func InitViewport(self Window)
 // // 0x004993A5
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // // Call to sub_498E9B has been deliberately omitted.
 // self.setSize({ 192, 161 }, { 600, 440 });
 // if (self.viewports[0] != nullptr)
@@ -188,7 +190,7 @@ const (
 // self.savedView.clear();
 // initViewport(self);
 // // 0x00499A87
-// func InitViewport(self Window) 
+// func InitViewport(self Window)
 // if (self.currentTab != 0)
 // return;
 // self.callPrepareDraw();
@@ -272,10 +274,10 @@ const (
 // Common::makeCommonWidgets(223, 161, StringIds::title_town_population)
 // );
 // // 0x00499469
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // // 0x004994F9
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
@@ -324,7 +326,7 @@ const (
 // yearSkip = 0;
 // drawingCtx.popRenderTarget();
 // // 0x004996AC
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::caption:
 // Common::renameTownPrompt(self, widgetIndex);
@@ -338,7 +340,7 @@ const (
 // Common::switchTab(self, widgetIndex);
 // break;
 // // 0x004996F6
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // // Call to sub_498E9B has been deliberately omitted.
 // self.setSize({ 299, 172 }, { 299, 327 });
 // static constexpr WindowEventList kEvents = {
@@ -355,10 +357,10 @@ const (
 // Common::makeCommonWidgets(340, 208, StringIds::title_town_local_authority)
 // );
 // // 0x00499761
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // // 0x004997F1
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -390,7 +392,7 @@ const (
 // tr.drawStringLeftClipped(point, self.width - 12, Colour::black, StringIds::town_rating_company_percentage_rank, args);
 // point.y += 10;
 // // 0x004998E7
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::caption:
 // Common::renameTownPrompt(self, widgetIndex);
@@ -404,7 +406,7 @@ const (
 // Common::switchTab(self, widgetIndex);
 // break;
 // // 0x00499936
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // // Call to sub_498E9B has been deliberately omitted.
 // self.setSize({ 340, 208 }, { 340, 208 });
 // static constexpr WindowEventList kEvents = {
@@ -418,17 +420,18 @@ const (
 // orphan member: return kEvents;
 // namespace Common
 type TabInformation struct {
-// std::span<const Widget> widgets;
-// const widx widgetIndex;
-// const WindowEventList& events;
+	// std::span<const Widget> widgets;
+	// const widx widgetIndex;
+	// const WindowEventList& events;
 }
+
 // // clang-format off
 // static TabInformation tabInformationByTabOffset[] = {
 // { Town::widgets,           widx::tab_town,            Town::getEvents()           },
 // { Population::widgets,     widx::tab_population,      Population::getEvents()     },
 // { CompanyRatings::widgets, widx::tab_company_ratings, CompanyRatings::getEvents() }
 // // clang-format on
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // // Activate the current tab.
 // self.activatedWidgets &= ~((1 << widx::tab_town) | (1 << widx::tab_population) | (1 << widx::tab_company_ratings));
 // widx widgetIndex = tabInformationByTabOffset[self.currentTab].widgetIndex;
@@ -445,7 +448,7 @@ type TabInformation struct {
 // self.widgets[Common::widx::panel].right = self.width - 1;
 // self.widgets[Common::widx::panel].bottom = self.height - 1;
 // // 0x00499287
-// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte) 
+// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte)
 // if (callingWidget != Common::widx::caption)
 // return;
 // if (strlen(input) == 0)
@@ -460,11 +463,11 @@ type TabInformation struct {
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
 // args.nameBufferIndex = 0;
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
-// func Update(self Window) 
+// func Update(self Window)
 // self.frameNo++;
 // self.callPrepareDraw();
 // WindowManager::invalidate(WindowType::town, self.number);
-// func RenameTownPrompt(self Window, widgetIndex WidgetIndex_t) 
+// func RenameTownPrompt(self Window, widgetIndex WidgetIndex_t)
 // auto town = TownManager::get(TownId(self.number));
 // orphan member: FormatArguments args{};
 // args.skip(8);
@@ -472,7 +475,7 @@ type TabInformation struct {
 // args.push(town->name);
 // TextInput::openTextInput(&self, StringIds::title_town_name, StringIds::prompt_type_new_town_name, town->name, widgetIndex, args);
 // // 0x004991BC
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // TextInput::sub_4CE6C9(self.type, self.number);
@@ -495,7 +498,7 @@ type TabInformation struct {
 // self.invalidate();
 // self.moveInsideScreenEdges();
 // // 0x004999E1
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // // Town tab
 // const uint32_t imageId = skin->img + InterfaceSkin::ImageIds::toolbar_menu_towns;

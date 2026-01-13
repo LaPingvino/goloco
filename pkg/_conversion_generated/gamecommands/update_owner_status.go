@@ -7,11 +7,13 @@ package gamecommands
 // #include "World/Company.h"
 // namespace OpenLoco::GameCommands
 type UpdateOwnerStatusArgs struct {
-// UpdateOwnerStatusArgs() = default;
+	// UpdateOwnerStatusArgs() = default;
 	// method: explicit UpdateOwnerStatusArgs(const registers& regs)
-// : ownerStatus(regs.ax, regs.cx)
+	// : ownerStatus(regs.ax, regs.cx)
 }
+
 const UpdateOwnerStatusArgsCommand any = GameCommand.updateOwnerStatus
+
 // orphan member: OwnerStatus ownerStatus;
 // explicit operator registers() const
 // orphan member: registers regs;
@@ -20,4 +22,4 @@ const UpdateOwnerStatusArgsCommand any = GameCommand.updateOwnerStatus
 // regs.ax = res[0];
 // regs.cx = res[1];
 // orphan member: return regs;
-// func UpdateOwnerStatus(regs registers) 
+// func UpdateOwnerStatus(regs registers)

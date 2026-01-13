@@ -76,9 +76,10 @@ package ui
 // slope_down = 6,
 // steep_slope_down = 8,
 type TrackPieceId struct {
-	Id uint8
+	Id       uint8
 	Rotation uint8
 }
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(138, 276, StringIds::stringid_2),
 // Widgets::ImageButton({ 3, 45 }, { 22, 24 }, WindowColour::secondary, ImageIds::construction_left_hand_curve_very_small, StringIds::tooltip_left_hand_curve_very_small),
@@ -125,13 +126,13 @@ type TrackPieceId struct {
 // static std::optional<TrackPieceId> getRoadPieceId(uint8_t trackPiece, uint8_t gradient, uint8_t rotation);
 // static std::optional<TrackPieceId> getTrackPieceId(uint8_t trackPiece, uint8_t gradient, uint8_t rotation);
 // // 0x0049B50C
-// func Reset() 
+// func Reset()
 // Scenario::resetTrackObjects();
 // getGameState().lastAirport = 0xFF;
 // getGameState().lastShipPort = 0xFF;
 // getGameState().pickupDirection = 0;
 // // 0x004A18D4
-// func Sub_4A18D4(alternateRoadObjId uint8) 
+// func Sub_4A18D4(alternateRoadObjId uint8)
 // if (alternateRoadObjId == 0xFF)
 // return;
 // auto& cState = getConstructionState();
@@ -152,7 +153,7 @@ type TrackPieceId struct {
 // Common::sub_4A3A50();
 // break;
 // // 0x0049FA10
-// func ConstructRoad() 
+// func ConstructRoad()
 // auto& cState = getConstructionState();
 // cState.trackCost = GameCommands::FAILURE;
 // cState.byte_1136076 = 0;
@@ -204,7 +205,7 @@ type TrackPieceId struct {
 // if (cState.lastSelectedTrackPiece >= 9)
 // cState.lastSelectedTrackPiece = 0;
 // // 0x0049F93A
-// func ConstructTrack() 
+// func ConstructTrack()
 // auto& cState = getConstructionState();
 // cState.trackCost = GameCommands::FAILURE;
 // cState.byte_1136076 = 0;
@@ -241,7 +242,7 @@ type TrackPieceId struct {
 // if (cState.lastSelectedTrackPiece >= 9)
 // cState.lastSelectedTrackPiece = 0;
 // // 0x0049F92D
-// func ConstructTrackOrRoad(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t) 
+// func ConstructTrackOrRoad(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t)
 // auto& cState = getConstructionState();
 // if (cState.trackType & (1 << 7))
 // constructRoad();
@@ -249,7 +250,7 @@ type TrackPieceId struct {
 // constructTrack();
 // activateSelectedConstructionWidgets();
 // // 0x004A012E
-// func RemoveTrack() 
+// func RemoveTrack()
 // auto& cState = getConstructionState();
 // cState.trackCost = GameCommands::FAILURE;
 // cState.byte_1136076 = 0;
@@ -301,7 +302,7 @@ type TrackPieceId struct {
 // cState.lastSelectedTrackGradient = 0;
 // activateSelectedConstructionWidgets();
 // // 0x004A02F2
-// func RemoveRoad() 
+// func RemoveRoad()
 // auto& cState = getConstructionState();
 // cState.trackCost = GameCommands::FAILURE;
 // cState.byte_1136076 = 0;
@@ -353,14 +354,14 @@ type TrackPieceId struct {
 // cState.lastSelectedTrackGradient = 0;
 // activateSelectedConstructionWidgets();
 // // 0x004A0121
-// func RemoveTrack(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t) 
+// func RemoveTrack(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t)
 // auto& cState = getConstructionState();
 // if (cState.trackType & (1 << 7))
 // removeRoad();
 // else
 // removeTrack();
 // // 0x0049D3F6
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& cState = getConstructionState();
 // switch (widgetIndex)
 // case Common::widx::close_button:
@@ -446,14 +447,14 @@ type TrackPieceId struct {
 // && !trackObj.hasTraitFlags(Track::TrackTraitFlags::slopedCurve))
 // unusedWidgets |= (1 << widx::steep_slope_down) | (1 << widx::steep_slope_up);
 // orphan member: return unusedWidgets;
-// func SetMapSelectedTilesFromPiece(pieces any /* std::span<TrackData::PreviewTrack> */ , origin World::Pos2, rotation uint8) 
+// func SetMapSelectedTilesFromPiece(pieces any /* std::span<TrackData::PreviewTrack> */ , origin World::Pos2, rotation uint8)
 // resetMapSelectionFreeFormTiles();
 // for (const auto& piece : pieces)
 // if (piece.hasFlags(World::TrackData::PreviewTrackFlags::diagonal))
 // continue;
 // addMapSelectionFreeFormTile(origin + Math::Vector::rotate(World::Pos2{ piece.x, piece.y }, rotation));
 // mapInvalidateMapSelectionFreeFormTiles();
-// func ActivateSelectedRoadWidgets(window Window) 
+// func ActivateSelectedRoadWidgets(window Window)
 // World::mapInvalidateMapSelectionFreeFormTiles();
 // World::setMapSelectionFlags(World::MapSelectionFlags::enableConstruct | World::MapSelectionFlags::unk_03);
 // auto& cState = getConstructionState();
@@ -573,7 +574,7 @@ type TrackPieceId struct {
 // activatedWidgets |= 1ULL << trackGradient;
 // window->activatedWidgets = activatedWidgets;
 // window->invalidate();
-// func ActivateSelectedTrackWidgets(window Window) 
+// func ActivateSelectedTrackWidgets(window Window)
 // World::mapInvalidateMapSelectionFreeFormTiles();
 // World::setMapSelectionFlags(World::MapSelectionFlags::enableConstruct | World::MapSelectionFlags::unk_03);
 // auto& cState = getConstructionState();
@@ -714,7 +715,7 @@ type TrackPieceId struct {
 // window->activatedWidgets = activatedWidgets;
 // window->invalidate();
 // // 0x0049F1B5
-// func ActivateSelectedConstructionWidgets() 
+// func ActivateSelectedConstructionWidgets()
 // auto window = WindowManager::find(WindowType::construction);
 // if (window == nullptr)
 // return;
@@ -1021,7 +1022,7 @@ type TrackPieceId struct {
 // rotation &= 3;
 // orphan member: return TrackPieceId{ id, rotation };
 // // 0x0049DAA5
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // auto disabledWidgets = self.disabledWidgets;
 // auto& cState = getConstructionState();
 // if (!cState.constructionHover)
@@ -1062,7 +1063,7 @@ type TrackPieceId struct {
 // break;
 // self.setDisabledWidgetsAndInvalidate(disabledWidgets);
 // // 0x0049d600 (based on)
-// func ChangeTrackPiece(trackPiece uint8, slope bool) 
+// func ChangeTrackPiece(trackPiece uint8, slope bool)
 // auto& cState = getConstructionState();
 // cState.byte_113603A = TrackPiece::null;
 // removeConstructionGhosts();
@@ -1073,7 +1074,7 @@ type TrackPieceId struct {
 // cState.trackCost = GameCommands::FAILURE;
 // activateSelectedConstructionWidgets();
 // // 0x0049D83A
-// func BridgeDropdown(self Window) 
+// func BridgeDropdown(self Window)
 // auto& cState = getConstructionState();
 // auto bridgeCount = 0;
 // for (; bridgeCount < 9; bridgeCount++)
@@ -1107,7 +1108,7 @@ type TrackPieceId struct {
 // args.push<uint16_t>(bridgeObj->maxHeight);
 // Dropdown::add(i, StringIds::dropdown_bridge_stats, args);
 // // 0x0049D42F
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& cState = getConstructionState();
 // switch (widgetIndex)
 // case widx::left_hand_curve:
@@ -1194,7 +1195,7 @@ type TrackPieceId struct {
 // removeTrack(&self, widgetIndex);
 // break;
 // // 0x0049D4EA
-// func OnDropdown(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // auto& cState = getConstructionState();
 // if (widgetIndex == widx::bridge_dropdown)
 // if (itemIndex != -1)
@@ -1209,8 +1210,8 @@ type TrackPieceId struct {
 // static std::optional<GameCommands::TrackPlacementArgs> getTrackPlacementArgs(const World::Pos3& pos, const uint8_t trackPiece, const uint8_t gradient, const uint8_t rotation);
 // func PlaceRoadGhost(args GameCommands::RoadPlacementArgs) uint32
 // func PlaceTrackGhost(args GameCommands::TrackPlacementArgs) uint32
-// func Sub_4A193B() 
-// func UpdateConstructionArrow() 
+// func Sub_4A193B()
+// func UpdateConstructionArrow()
 // auto& cState = getConstructionState();
 // cState.constructionArrowFrameNum = cState.constructionArrowFrameNum - 1;
 // if (cState.constructionArrowFrameNum == 0xFF)
@@ -1225,7 +1226,7 @@ type TrackPieceId struct {
 // // Places/removes the ghost, gets price, resets active widgets, updates the construction arrow
 // // Ideally only construction arrow should be updated here the reason for doing the rest every update
 // // instead of only in toolUpdate is unknown (but probably just to catch edge cases)
-// func UpdateConstruction() 
+// func UpdateConstruction()
 // auto& cState = getConstructionState();
 // if (cState.constructionHover)
 // return;
@@ -1251,7 +1252,7 @@ type TrackPieceId struct {
 // removeTrackGhosts();
 // updateConstructionArrow();
 // // 0x0049DCA2
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo++;
 // self.callPrepareDraw();
 // WindowManager::invalidate(WindowType::construction, self.number);
@@ -1299,7 +1300,7 @@ type TrackPieceId struct {
 // const auto& trackPiece = trackPieces[elTrack->sequenceIndex()];
 // const auto startHeight = elTrack->baseHeight() - trackPiece.z;
 // return { std::make_pair(startHeight, elTrack->trackId()) };
-// func ConstructionLoop(mapPos Pos2, maxRetries uint32, height int16) 
+// func ConstructionLoop(mapPos Pos2, maxRetries uint32, height int16)
 // auto& cState = getConstructionState();
 // while (true)
 // cState.constructionHover = false;
@@ -1376,7 +1377,7 @@ type TrackPieceId struct {
 // func GetMinPieceHeight(piece any /* std::span<TrackData::PreviewTrack> */ ) int16
 // return std::ranges::min_element(piece, {}, &TrackData::PreviewTrack::z)->z;
 // // 0x004A193B
-// func Sub_4A193B() 
+// func Sub_4A193B()
 // auto& cState = getConstructionState();
 // auto& returnState = GameCommands::getLegacyReturnState();
 // for (const auto bridgeType : cState.bridgeList)
@@ -1386,7 +1387,7 @@ type TrackPieceId struct {
 // cState.lastSelectedBridge = bridgeType;
 // return;
 // // 0x004A006C
-// func RemoveTrackGhosts() 
+// func RemoveTrackGhosts()
 // auto& cState = getConstructionState();
 // if (Common::hasGhostVisibilityFlag(GhostVisibilityFlags::track))
 // if (_ghostRemovalTrackObjectId & (1 << 7))
@@ -1506,7 +1507,7 @@ type TrackPieceId struct {
 // args.unkFlags = 0;
 // orphan member: return args;
 // template<typename GetPlacementArgsFunc, typename PlaceGhostFunc>
-// func ConstructionGhostLoop(mapPos Pos3, maxRetries uint32, getPlacementArgs GetPlacementArgsFunc, placeGhost PlaceGhostFunc) 
+// func ConstructionGhostLoop(mapPos Pos3, maxRetries uint32, getPlacementArgs GetPlacementArgsFunc, placeGhost PlaceGhostFunc)
 // auto& cState = getConstructionState();
 // cState.x = mapPos.x;
 // cState.y = mapPos.y;
@@ -1537,7 +1538,7 @@ type TrackPieceId struct {
 // return;
 // // 0x004A1968
 // template<typename TGetPieceId, typename TTryMakeJunction, typename TGetPiece, typename GetPlacementArgsFunc, typename PlaceGhostFunc>
-// func OnToolUpdateSingle(x int16, y int16, getPieceId TGetPieceId, tryMakeJunction TTryMakeJunction, getPiece TGetPiece, getPlacementArgs GetPlacementArgsFunc, placeGhost PlaceGhostFunc) 
+// func OnToolUpdateSingle(x int16, y int16, getPieceId TGetPieceId, tryMakeJunction TTryMakeJunction, getPiece TGetPiece, getPlacementArgs GetPlacementArgsFunc, placeGhost PlaceGhostFunc)
 // auto& cState = getConstructionState();
 // World::mapInvalidateMapSelectionFreeFormTiles();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enable | World::MapSelectionFlags::enableConstruct | World::MapSelectionFlags::enableConstructionArrow);
@@ -1581,7 +1582,7 @@ type TrackPieceId struct {
 // constructionGhostLoop({ constructPos.x, constructPos.y, constructHeight }, maxRetries, getPlacementArgs, placeGhost);
 // World::mapInvalidateMapSelectionFreeFormTiles();
 // // 0x0049DC8C
-// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != widx::construct)
 // return;
 // if (_isDragging)
@@ -1593,14 +1594,14 @@ type TrackPieceId struct {
 // onToolUpdateSingle(x, y, getRoadPieceId, tryMakeRoadJunctionAtLoc, TrackData::getRoadPiece, getRoadPlacementArgs, placeRoadGhost);
 // else
 // onToolUpdateSingle(x, y, getTrackPieceId, tryMakeTrackJunctionAtLoc, TrackData::getTrackPiece, getTrackPlacementArgs, placeTrackGhost);
-// func OnToolDown(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolDown(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // auto res = ViewportInteraction::getMapCoordinatesFromPos(x, y, ~(ViewportInteraction::InteractionItemFlags::surface | ViewportInteraction::InteractionItemFlags::water));
 // auto& interaction = res.first;
 // if (interaction.type == ViewportInteraction::InteractionItem::noInteraction)
 // return;
 // _toolPosInitial = World::toTileSpace(interaction.pos);
 // _isDragging = false;
-// func OnToolDrag(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t) 
+// func OnToolDrag(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t)
 // mapInvalidateSelectionRect();
 // removeConstructionGhosts();
 // auto res = ViewportInteraction::getMapCoordinatesFromPos(x, y, ~(ViewportInteraction::InteractionItemFlags::surface | ViewportInteraction::InteractionItemFlags::water));
@@ -1616,7 +1617,7 @@ type TrackPieceId struct {
 // setMapSelectionArea(toWorldSpace(_toolPosInitial), toWorldSpace(_toolPosDrag));
 // mapInvalidateSelectionRect();
 // template<typename TGetPieceId, typename TTryMakeJunction, typename TGetPiece>
-// func OnToolUpSingle(x int16, y int16, getPieceId TGetPieceId, tryMakeJunction TTryMakeJunction, getPiece TGetPiece) 
+// func OnToolUpSingle(x int16, y int16, getPieceId TGetPieceId, tryMakeJunction TTryMakeJunction, getPiece TGetPiece)
 // mapInvalidateMapSelectionFreeFormTiles();
 // removeConstructionGhosts();
 // auto& cState = getConstructionState();
@@ -1656,7 +1657,7 @@ type TrackPieceId struct {
 // // Height should never go negative
 // constructHeight = std::max<int16_t>(0, constructHeight);
 // constructionLoop(constructPos, maxRetries, constructHeight);
-// func OnToolUpMultiple(self Window, widgetIndex WidgetIndex_t) 
+// func OnToolUpMultiple(self Window, widgetIndex WidgetIndex_t)
 // mapInvalidateSelectionRect();
 // removeConstructionGhosts();
 // World::resetMapSelectionFlags();
@@ -1686,7 +1687,7 @@ type TrackPieceId struct {
 // // Leave the tool active, but make ghost piece visible for the next round
 // _isDragging = false;
 // // 0x0049DC97
-// func OnToolUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != widx::construct)
 // return;
 // auto& cState = getConstructionState();
@@ -1696,7 +1697,7 @@ type TrackPieceId struct {
 // onToolUpSingle(x, y, getRoadPieceId, tryMakeRoadJunctionAtLoc, TrackData::getRoadPiece);
 // else
 // onToolUpSingle(x, y, getTrackPieceId, tryMakeTrackJunctionAtLoc, TrackData::getTrackPiece);
-// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (widgetIndex != widx::construct)
 // return;
 // _isDragging = false;
@@ -1706,7 +1707,7 @@ type TrackPieceId struct {
 // Ui::ToolTip::setTooltipTimeout(2000);
 // orphan member: return fallback;
 // // 0x0049CE79
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(&self);
 // auto args = FormatArguments(self.widgets[Common::widx::caption].textArgs);
 // auto& cState = getConstructionState();
@@ -1735,7 +1736,7 @@ type TrackPieceId struct {
 // orphan member: return args;
 // // 0x004A0AE5
 // // flags : 0x00522095
-// func DrawTrack(pos World::Pos3, selectedMods uint16, trackType uint8, trackPieceId uint8, direction uint8, flags TrackRoadPreviewFlags, drawingCtx Gfx::DrawingContext) 
+// func DrawTrack(pos World::Pos3, selectedMods uint16, trackType uint8, trackPieceId uint8, direction uint8, flags TrackRoadPreviewFlags, drawingCtx Gfx::DrawingContext)
 // const auto backupSelectionFlags = World::getMapSelectionFlags();
 // const auto backupConstructionArrow = getConstructionArrow();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enableConstructionArrow);
@@ -1800,7 +1801,7 @@ type TrackPieceId struct {
 // setConstructionArrow(backupConstructionArrow);
 // // 0x00478F1F
 // // flags : 0x00522095
-// func DrawRoad(pos World::Pos3, selectedMods uint16, roadType uint8, roadPieceId uint8, direction uint8, flags TrackRoadPreviewFlags, drawingCtx Gfx::DrawingContext) 
+// func DrawRoad(pos World::Pos3, selectedMods uint16, roadType uint8, roadPieceId uint8, direction uint8, flags TrackRoadPreviewFlags, drawingCtx Gfx::DrawingContext)
 // const auto backupSelectionFlags = World::getMapSelectionFlags();
 // const auto backupConstructionArrow = getConstructionArrow();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enableConstructionArrow);
@@ -1871,7 +1872,7 @@ type TrackPieceId struct {
 // World::setMapSelectionFlags(backupSelectionFlags);
 // setConstructionArrow(backupConstructionArrow);
 // // 0x0049D38A and 0x0049D16B
-// func DrawCostString(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawCostString(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto x = self->widgets[widx::construct].midX();
 // x += self->x;
@@ -1889,7 +1890,7 @@ type TrackPieceId struct {
 // args.push<uint32_t>(cState.roadCost);
 // tr.drawStringCentred(Point(x, y), Colour::black, StringIds::build_cost, args);
 // // 0x0049D106
-// func DrawTrackCost(self Window, clipped Gfx::RenderTarget, drawingCtx Gfx::DrawingContext, pos Point, width uint16, height uint16) 
+// func DrawTrackCost(self Window, clipped Gfx::RenderTarget, drawingCtx Gfx::DrawingContext, pos Point, width uint16, height uint16)
 // width >>= 1;
 // height >>= 1;
 // height += 16;
@@ -1910,7 +1911,7 @@ type TrackPieceId struct {
 // drawingCtx.popRenderTarget();
 // drawCostString(self, drawingCtx);
 // // 0x0049D325
-// func DrawRoadCost(self Window, clipped Gfx::RenderTarget, drawingCtx Gfx::DrawingContext, pos Point, width uint16, height uint16) 
+// func DrawRoadCost(self Window, clipped Gfx::RenderTarget, drawingCtx Gfx::DrawingContext, pos Point, width uint16, height uint16)
 // width >>= 1;
 // height >>= 1;
 // height += 16;
@@ -1931,7 +1932,7 @@ type TrackPieceId struct {
 // drawingCtx.popRenderTarget();
 // drawCostString(self, drawingCtx);
 // // 0x0049CF36
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
 // auto& cState = getConstructionState();
@@ -2012,7 +2013,7 @@ type TrackPieceId struct {
 // drawTrackCost(&self, &*clipped, drawingCtx, pos, width, height);
 // else
 // drawCostString(&self, drawingCtx);
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // auto& cState = getConstructionState();
 // if (cState.constructionHover)
 // cState.constructionHover = false;
@@ -2036,32 +2037,32 @@ type TrackPieceId struct {
 // .draw = draw,
 // const WindowEventList& getEvents()
 // orphan member: return kEvents;
-// func PreviousTrackPiece(self Window) 
+// func PreviousTrackPiece(self Window)
 // WidgetIndex_t prev = self.prevAvailableWidgetInRange(widx::left_hand_curve_very_small, widx::s_bend_dual_track_right);
 // if (prev != -1)
 // self.callOnMouseDown(prev, self.widgets[prev].id);
-// func NextTrackPiece(self Window) 
+// func NextTrackPiece(self Window)
 // WidgetIndex_t next = self.nextAvailableWidgetInRange(widx::left_hand_curve_very_small, widx::s_bend_dual_track_right);
 // if (next != -1)
 // self.callOnMouseDown(next, self.widgets[next].id);
-// func PreviousSlope(self Window) 
+// func PreviousSlope(self Window)
 // WidgetIndex_t prev = self.prevAvailableWidgetInRange(widx::steep_slope_down, widx::steep_slope_up);
 // if (prev != -1)
 // self.callOnMouseDown(prev, self.widgets[prev].id);
-// func NextSlope(self Window) 
+// func NextSlope(self Window)
 // WidgetIndex_t next = self.nextAvailableWidgetInRange(widx::steep_slope_down, widx::steep_slope_up);
 // if (next != -1)
 // self.callOnMouseDown(next, self.widgets[next].id);
-// func BuildAtCurrentPos(self Window) 
+// func BuildAtCurrentPos(self Window)
 // if (self.currentTab != Common::widx::tab_construction - Common::widx::tab_construction)
 // return;
 // auto& cState = getConstructionState();
 // if (!cState.constructionHover)
 // self.callOnMouseUp(widx::construct, self.widgets[widx::construct].id);
-// func RemoveAtCurrentPos(self Window) 
+// func RemoveAtCurrentPos(self Window)
 // if (self.currentTab == Common::widx::tab_construction - Common::widx::tab_construction)
 // self.callOnMouseUp(widx::remove, self.widgets[widx::remove].id);
-// func SelectPosition(self Window) 
+// func SelectPosition(self Window)
 // if (self.currentTab != Common::widx::tab_construction - Common::widx::tab_construction)
 // return;
 // auto& cState = getConstructionState();

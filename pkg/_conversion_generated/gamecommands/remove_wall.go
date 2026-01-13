@@ -6,12 +6,14 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type WallRemovalArgs struct {
-// WallRemovalArgs() = default;
+	// WallRemovalArgs() = default;
 	// method: explicit WallRemovalArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.dh * World::kSmallZStep)
-// , rotation(regs.dl)
+	// : pos(regs.ax, regs.cx, regs.dh * World::kSmallZStep)
+	// , rotation(regs.dl)
 }
+
 const WallRemovalArgsCommand any = GameCommand.removeWall
+
 // World::Pos3 pos;
 // orphan member: uint8_t rotation;
 // explicit operator registers() const
@@ -21,4 +23,4 @@ const WallRemovalArgsCommand any = GameCommand.removeWall
 // regs.dh = pos.z / World::kSmallZStep;
 // regs.dl = rotation;
 // orphan member: return regs;
-// func RemoveWall(regs registers) 
+// func RemoveWall(regs registers)

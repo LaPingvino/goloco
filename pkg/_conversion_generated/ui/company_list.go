@@ -38,7 +38,7 @@ package ui
 // namespace OpenLoco::Ui::Windows::CompanyList
 // static uint16_t _hoverItemTicks;     // 0x009C68C7
 // static GraphSettings _graphSettings; // 0x0113DC7A
-var LegendMargin = 6 // auto
+var LegendMargin = 6  // auto
 var LegendWidth = 100 // auto
 var WindowPadding = 4 // auto
 // namespace Common
@@ -59,6 +59,7 @@ const (
 	Tab_payment_rates
 	Tab_speed_records
 )
+
 // func MakeCommonWidgets(frameWidth int32, frameHeight int32, windowCaptionId StringId) any
 // return makeWidgets(
 // Widgets::Frame({ 0, 0 }, { frameWidth, frameHeight }, WindowColour::primary),
@@ -72,16 +73,17 @@ const (
 // Widgets::Tab({ 127, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tab_company_values),
 // Widgets::Tab({ 158, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tab_cargo_payment_rates),
 // Widgets::Tab({ 189, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tab_speed_records));
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
-// func OnUpdate(self Window) 
-// func PrepareDraw(self Window) 
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
-// func RefreshCompanyList(self Window) 
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
-// func DrawGraphAndLegend(self Window, drawingCtx Gfx::DrawingContext) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
+// func OnUpdate(self Window)
+// func PrepareDraw(self Window)
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
+// func RefreshCompanyList(self Window)
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
+// func DrawGraphAndLegend(self Window, drawingCtx Gfx::DrawingContext)
 // namespace CompanyList
 // static constexpr Ui::Size kWindowSize = { 640, 272 };
 const RowHeight uint8 = 25
+
 type Widx int
 
 const (
@@ -92,6 +94,7 @@ const (
 	Scrollview
 	Status_bar
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(640, 272, StringIds::title_company_list),
 // Widgets::TableHeader({ 4, 43 }, { 175, 12 }, WindowColour::secondary, ImageIds::null, StringIds::tooltip_sort_company_name),
@@ -109,8 +112,9 @@ const (
 	Performance
 	Value
 )
+
 // // 0x004360A2
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -138,7 +142,7 @@ const (
 // Common::refreshCompanyList(self);
 // break;
 // // 0x004363CB
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(Common::kMinWindowSize, Common::kMaxWindowSize);
 // // 0x00437BA0
 // func OrderByName(lhs OpenLoco::Company, rhs OpenLoco::Company) bool
@@ -179,7 +183,7 @@ const (
 // func OrderByValue(lhs, rhs) return
 // orphan member: return false;
 // // 0x00437AE2
-// func UpdateCompanyList(self Window) 
+// func UpdateCompanyList(self Window)
 // CompanyId chosenCompany = CompanyId::null;
 // for (auto& company : CompanyManager::companies())
 // if ((company.challengeFlags & CompanyFlags::sorted) != CompanyFlags::none)
@@ -207,7 +211,7 @@ const (
 // self.invalidate();
 // Common::refreshCompanyList(self);
 // // 0x004362C0
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo++;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(WindowType::companyList, self.number, self.currentTab + Common::widx::tab_company_list);
@@ -217,10 +221,10 @@ const (
 // updateCompanyList(self);
 // updateCompanyList(self);
 // // 0x004362F7
-// func Event_08(self Window) 
+// func Event_08(self Window)
 // self.flags |= WindowFlags::notScrollView;
 // // 0x004362FF
-// func Event_09(self Window) 
+// func Event_09(self Window)
 // if (!self.hasFlags(WindowFlags::notScrollView))
 // return;
 // if (self.rowHover == -1)
@@ -228,10 +232,10 @@ const (
 // self.rowHover = -1;
 // self.invalidate();
 // // 0x00436321
-// func GetScrollSize(self Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(self Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = self.var_83C * kRowHeight;
 // // 0x004363A0
-// func OnScrollMouseDown(self Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseDown(self Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // uint16_t currentRow = y / kRowHeight;
 // if (currentRow > self.var_83C)
 // return;
@@ -240,7 +244,7 @@ const (
 // return;
 // CompanyWindow::open(currentCompany);
 // // 0x00436361
-// func OnScrollMouseOver(self Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseOver(self Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // self.flags &= ~(WindowFlags::notScrollView);
 // uint16_t currentRow = y / kRowHeight;
 // int16_t currentCompany = -1;
@@ -264,7 +268,7 @@ const (
 // return CursorId::handPointer;
 // orphan member: return fallback;
 // // 0x00435D07
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.widgets[widx::scrollview].right = self.width - 4;
 // self.widgets[widx::scrollview].bottom = self.height - 14;
@@ -291,11 +295,11 @@ const (
 // args.push(self.var_83C == 1 ? StringIds::company_singular : StringIds::companies_plural);
 // args.push(self.var_83C);
 // // 0x00435E56
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
 // // 0x00435EA7
-// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto colour = Colours::getShade(self.getColour(WindowColour::secondary).c(), 3);
@@ -347,7 +351,7 @@ const (
 // auto point = Point(530, yBottom - 1);
 // tr.drawStringLeftClipped(point, 98, Colour::black, stringId, args);
 // // 0x00436198
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.minWidth = Common::kMinWindowSize.width;
 // self.minHeight = Common::kMinWindowSize.height;
 // self.maxWidth = Common::kMaxWindowSize.width;
@@ -406,7 +410,7 @@ const (
 // window->activatedWidgets = 0;
 // window->initScrollWidgets();
 // orphan member: return window;
-// func RemoveCompany(id CompanyId) 
+// func RemoveCompany(id CompanyId)
 // auto* w = WindowManager::find(WindowType::companyList);
 // if (w != nullptr)
 // for (auto i = 0; i < w->var_83C; i++)
@@ -414,7 +418,7 @@ const (
 // w->rowInfo[i] = -1;
 // WindowManager::invalidate(WindowType::companyList);
 // // 0x00435C69
-// func OpenPerformanceIndexes() 
+// func OpenPerformanceIndexes()
 // auto window = open();
 // window->callOnMouseUp(Common::widx::tab_performance, window->widgets[Common::widx::tab_performance].id);
 // namespace CompanyPerformance
@@ -423,10 +427,10 @@ const (
 // Common::makeCommonWidgets(635, 322, StringIds::title_company_performance)
 // );
 // // 0x004366D7
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(kWindowSize, Common::kMaxWindowSize);
 // // 0x00436490
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
 // _graphSettings.left = self.x + 4;
@@ -462,7 +466,7 @@ const (
 // _graphSettings.flags = GraphFlags::dataFrontToBack;
 // Common::drawGraphAndLegend(self, drawingCtx);
 // // 0x004361D8
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.minWidth = kWindowSize.width;
 // self.minHeight = kWindowSize.height;
 // self.maxWidth = kWindowSize.width;
@@ -483,10 +487,10 @@ const (
 // Common::makeCommonWidgets(635, 322, StringIds::title_company_cargo_units)
 // );
 // // 0x004369FB
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(kWindowSize, Common::kMaxWindowSize);
 // // 0x004367B4
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
 // _graphSettings.left = self.x + 4;
@@ -522,7 +526,7 @@ const (
 // _graphSettings.flags = GraphFlags::dataFrontToBack;
 // Common::drawGraphAndLegend(self, drawingCtx);
 // // 0x00436201
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.minWidth = kWindowSize.width;
 // self.minHeight = kWindowSize.height;
 // self.maxWidth = kWindowSize.width;
@@ -543,10 +547,10 @@ const (
 // Common::makeCommonWidgets(635, 322, StringIds::title_cargo_distance_graphs)
 // );
 // // 0x00436D1F
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(kWindowSize, Common::kMaxWindowSize);
 // // 0x00436AD8
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
 // _graphSettings.left = self.x + 4;
@@ -582,7 +586,7 @@ const (
 // _graphSettings.flags = GraphFlags::dataFrontToBack;
 // Common::drawGraphAndLegend(self, drawingCtx);
 // // 0x00436227
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.minWidth = kWindowSize.width;
 // self.minHeight = kWindowSize.height;
 // self.maxWidth = kWindowSize.width;
@@ -603,10 +607,10 @@ const (
 // Common::makeCommonWidgets(685, 322, StringIds::title_company_values)
 // );
 // // 0x00437043
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(kWindowSize, Common::kMaxWindowSize);
 // // 0x00436DFC
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
 // _graphSettings.left = self.x + 4;
@@ -642,7 +646,7 @@ const (
 // _graphSettings.flags = GraphFlags::dataFrontToBack;
 // Common::drawGraphAndLegend(self, drawingCtx);
 // // 0x0043624D
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.minWidth = kWindowSize.width;
 // self.minHeight = kWindowSize.height;
 // self.maxWidth = kWindowSize.width;
@@ -663,7 +667,7 @@ const (
 // Common::makeCommonWidgets(495, 342, StringIds::title_cargo_payment_rates)
 // );
 // // 0x0043737D
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(kWindowSize, Common::kMaxWindowSize);
 // // 0x004F9442
 // static constexpr Colour _cargoLineColour[32] = {
@@ -700,7 +704,7 @@ const (
 // Colour::mutedRed,
 // Colour::grey,
 // // 0x00437949
-// func DrawGraphLegend(self Window, drawingCtx Gfx::DrawingContext, x int16, y int16) 
+// func DrawGraphLegend(self Window, drawingCtx Gfx::DrawingContext, x int16, y int16)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto cargoCount = 0;
 // for (uint8_t i = 0; i < ObjectManager::getMaxObjects(ObjectType::cargo); i++)
@@ -721,7 +725,7 @@ const (
 // y += 10;
 // cargoCount++;
 // // 0x00437120
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -783,7 +787,7 @@ const (
 // auto point = Point(self.x + canvasMidX, self.height + self.y - 13);
 // tr.drawStringCentred(point, Colour::black, StringIds::cargo_transit_time);
 // // 0x004379F2
-// func SetLegendHover(self Window, x int16, y int16) 
+// func SetLegendHover(self Window, x int16, y int16)
 // uint32_t selectedCargo = 0;
 // if (!Input::hasFlag(Input::Flags::rightMousePressed))
 // const auto location = Input::getMouseLocation2();
@@ -808,7 +812,7 @@ const (
 // if (self->var_854 != 0)
 // self->invalidate();
 // // 0x00436273
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.minWidth = kWindowSize.width;
 // self.minHeight = kWindowSize.height;
 // self.maxWidth = kWindowSize.width;
@@ -830,10 +834,10 @@ const (
 // Common::makeCommonWidgets(495, 169, StringIds::title_speed_records)
 // );
 // // 0x00437591
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(kWindowSize, kWindowSize);
 // // 0x0043745A
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -878,10 +882,11 @@ const (
 // orphan member: return kEvents;
 // namespace Common
 type TabInformation struct {
-// std::span<const Widget> widgets;
-// const widx widgetIndex;
-// const WindowEventList& events;
+	// std::span<const Widget> widgets;
+	// const widx widgetIndex;
+	// const WindowEventList& events;
 }
+
 // // clang-format off
 // static TabInformation tabInformationByTabOffset[] = {
 // { CompanyList::widgets,         widx::tab_company_list,   CompanyList::getEvents()         },
@@ -893,7 +898,7 @@ type TabInformation struct {
 // { CompanySpeedRecords::widgets, widx::tab_speed_records,  CompanySpeedRecords::getEvents() },
 // // clang-format on
 // // 0x0043667B
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -908,7 +913,7 @@ type TabInformation struct {
 // Common::switchTab(self, widgetIndex);
 // break;
 // // 0x004378BA
-// func SetLegendHover(self Window, x int16, y int16) 
+// func SetLegendHover(self Window, x int16, y int16)
 // uint32_t selectedCompany = 0;
 // if (!Input::hasFlag(Input::Flags::rightMousePressed))
 // const auto location = Input::getMouseLocation2();
@@ -928,7 +933,7 @@ type TabInformation struct {
 // if (self->var_854 != 0)
 // self->invalidate();
 // // 0x00437570
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo++;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(WindowType::companyList, self.number, self.currentTab + Common::widx::tab_company_list);
@@ -949,7 +954,7 @@ type TabInformation struct {
 // case widx::tab_speed_records:
 // break;
 // // 0x00436419
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // // Activate the current tab
 // self.activatedWidgets &= ~((1ULL << tab_cargo_distance) | (1ULL << tab_cargo_units) | (1ULL << tab_company_list) | (1ULL << tab_payment_rates) | (1ULL << tab_performance) | (1ULL << tab_speed_records) | (1ULL << tab_values));
 // self.activatedWidgets |= (1ULL << Common::tabInformationByTabOffset[self.currentTab].widgetIndex);
@@ -961,7 +966,7 @@ type TabInformation struct {
 // self.widgets[Common::widx::close_button].left = self.width - 15;
 // self.widgets[Common::widx::close_button].right = self.width - 3;
 // // 0x004360FA
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // self.currentTab = widgetIndex - widx::tab_company_list;
@@ -999,7 +1004,7 @@ type TabInformation struct {
 // self.invalidate();
 // self.moveInsideScreenEdges();
 // // 0x00437637
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // // Company List Tab
@@ -1092,12 +1097,12 @@ type TabInformation struct {
 // imageId = Gfx::recolour(imageId, self.getColour(WindowColour::secondary).c());
 // Widget::drawTab(self, drawingCtx, imageId, widx::tab_speed_records);
 // // 0x00437AB6
-// func RefreshCompanyList(self Window) 
+// func RefreshCompanyList(self Window)
 // self.rowCount = 0;
 // for (auto& company : CompanyManager::companies())
 // company.challengeFlags &= ~CompanyFlags::sorted;
 // // 0x00437810
-// func DrawGraphLegend(self Window, drawingCtx Gfx::DrawingContext, x int16, y int16) 
+// func DrawGraphLegend(self Window, drawingCtx Gfx::DrawingContext, x int16, y int16)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto companyCount = 0;
 // for (auto& company : CompanyManager::companies())
@@ -1115,7 +1120,7 @@ type TabInformation struct {
 // y += 10;
 // companyCount++;
 // // 0x004365E4
-// func DrawGraphAndLegend(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawGraphAndLegend(self Window, drawingCtx Gfx::DrawingContext)
 // auto totalMonths = (getCurrentYear() * 12) + static_cast<uint16_t>(getCurrentMonth());
 // _graphSettings.xAxisRange = totalMonths;
 // _graphSettings.xAxisStepSize = 1;

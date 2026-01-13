@@ -12,16 +12,18 @@ package objects
 // namespace Gfx
 // forward: class DrawingContext;
 type CurrencyObject struct {
-	Name StringId
+	Name         StringId
 	PrefixSymbol StringId
 	SuffixSymbol StringId
-	ObjectIcon uint32
-	Separator uint8
-	Factor uint8
+	ObjectIcon   uint32
+	Separator    uint8
+	Factor       uint8
 	// method: bool validate() const;
 	// method: void load(const LoadedObjectHandle& handle, std::span<const std::byte> data, ObjectManager::DependentObjects*);
 	// method: void unload();
 	// method: void drawPreviewImage(Gfx::DrawingContext& drawingCtx, const int16_t x, const int16_t y) const;
 }
+
 const CurrencyObjectObjectType any = ObjectType.currency
+
 // static_assert(sizeof(CurrencyObject) == 0xC);

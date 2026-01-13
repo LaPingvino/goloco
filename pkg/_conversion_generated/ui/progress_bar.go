@@ -28,6 +28,7 @@ const (
 	Caption
 	Panel
 )
+
 // static constexpr Ui::Size kWindowSize = { 350, 47 };
 // static constexpr auto widgets = makeWidgets(
 // Widgets::Frame({ 0, 0 }, { 350, 47 }, WindowColour::primary),
@@ -37,7 +38,7 @@ const (
 // static std::string _captionString;
 // static uint8_t _progressBarStyle = 0; // 0x005233C8
 // static uint8_t _progressBarValue = 0; // 0x011370A8
-// func SetProgress(value uint8) 
+// func SetProgress(value uint8)
 // static const WindowEventList& getEvents();
 // // 0x004CF6E2
 // Window* open(std::string_view captionString)
@@ -56,27 +57,27 @@ const (
 // setProgress(0);
 // orphan member: return window;
 // // 0x004CF74E
-// func Close() 
+// func Close()
 // SceneManager::removeSceneFlags(SceneManager::Flags::progressBarActive);
 // WindowManager::close(WindowType::progressBar);
 // Gfx::invalidateScreen();
 // _progressBarStyle ^= 1;
 // // 0x004CF76D
-// func SetProgress(value uint8) 
+// func SetProgress(value uint8)
 // if (_progressBarValue == value)
 // return;
 // _progressBarValue = value;
 // WindowManager::invalidate(WindowType::progressBar);
 // Gfx::renderAndUpdate();
 // // 0x004CF78A
-// func PrepareDraw(self [[maybe_unused]] Window) 
+// func PrepareDraw(self [[maybe_unused]] Window)
 // // Keep the window centered.
 // self.x = (Ui::width() / 2) - (self.width / 2);
 // self.y = std::max(28, (Ui::height() / 2) - (self.height / 2));
 // char* buffer = const_cast<char*>(StringManager::getString(StringIds::buffer_1250));
 // strncpy(buffer, _captionString.c_str(), 256);
 // // 004CF7A0
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // self.draw(drawingCtx);
 // auto clipped = Gfx::clipRenderTarget(rt, Ui::Rect(self.x + 2, self.y + 17, self.width - 5, self.height - 19));

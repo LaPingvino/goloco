@@ -8,7 +8,7 @@ package worldmap
 type ModSection int
 
 const (
-	Single ModSection = 0
-	Block ModSection = 1
+	Single       ModSection = 0
+	Block        ModSection = 1
 	AllConnected ModSection = 2
 )

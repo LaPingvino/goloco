@@ -8,11 +8,12 @@ package audio
 // namespace OpenLoco::Audio
 type VehicleChannel struct {
 	Channel Channel
-// EntityId _vehicleId = EntityId::null;
+	// EntityId _vehicleId = EntityId::null;
 	SoundId SoundId
-// VehicleChannel(const Channel& channel)
-// : _channel(channel)
+	// VehicleChannel(const Channel& channel)
+	// : _channel(channel)
 }
+
 func IsFree() bool {
 	// EntityId getId() const { return _vehicleId; }
 	// void begin(EntityId vid);

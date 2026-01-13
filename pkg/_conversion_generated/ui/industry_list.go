@@ -60,6 +60,7 @@ const (
 	Tab_industry_list
 	Tab_new_industry
 )
+
 // func MakeCommonWidgets(frameWidth int32, frameHeight int32, windowCaptionId StringId) any
 // return makeWidgets(
 // Widgets::Frame({ 0, 0 }, { frameWidth, frameHeight }, WindowColour::primary),
@@ -68,15 +69,16 @@ const (
 // Widgets::Panel({ 0, 41 }, { frameWidth, 154 }, WindowColour::secondary),
 // Widgets::Tab({ 3, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_industries_list),
 // Widgets::Tab({ 34, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_fund_new_industries));
-// func RefreshIndustryList(self Window) 
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
-// func PrepareDraw(self Window) 
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func RefreshIndustryList(self Window)
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
+// func PrepareDraw(self Window)
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // namespace IndustryList
 // static constexpr Ui::Size kWindowSize = { 759, 197 };
 // static constexpr Ui::Size kMaxDimensions = { 759, 900 };
 // static constexpr Ui::Size kMinDimensions = { 192, 100 };
 const RowHeight uint8 = 10
+
 type Widx int
 
 const (
@@ -87,6 +89,7 @@ const (
 	Scrollview
 	Status_bar
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(600, 197, StringIds::title_industries),
 // Widgets::TableHeader({ 4, 44 }, { 199, 11 }, WindowColour::secondary, Widget::kContentNull, StringIds::sort_industry_name),
@@ -104,8 +107,9 @@ const (
 	ProductionTransported
 	ProductionLastMonth
 )
+
 // // 0x00457B94
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.widgets[widx::scrollview].right = self.width - 4;
 // self.widgets[widx::scrollview].bottom = self.height - 14;
@@ -136,11 +140,11 @@ const (
 // args.push(self.var_83C == 1 ? StringIds::status_num_industries_singular : StringIds::status_num_industries_plural);
 // args.push(self.var_83C);
 // // 0x00457CD9
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
 // // 0x00457EC4
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -163,7 +167,7 @@ const (
 // Common::refreshIndustryList(&self);
 // break;
 // // 0x00458172
-// func OnScrollMouseDown(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseDown(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // uint16_t currentRow = y / kRowHeight;
 // if (currentRow > self.var_83C)
 // return;
@@ -172,7 +176,7 @@ const (
 // return;
 // Industry::open(currentIndustry);
 // // 0x00458140
-// func OnScrollMouseOver(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseOver(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // self.flags &= ~(WindowFlags::notScrollView);
 // uint16_t currentRow = y / kRowHeight;
 // int16_t currentIndustry = -1;
@@ -247,7 +251,7 @@ const (
 // func OrderByProductionLastMonth(lhs, rhs) return
 // orphan member: return false;
 // // 0x00457991
-// func UpdateIndustryList(self Window) 
+// func UpdateIndustryList(self Window)
 // auto chosenIndustry = IndustryId::null;
 // for (auto& industry : IndustryManager::industries())
 // if (industry.hasFlags(IndustryFlags::sorted))
@@ -276,7 +280,7 @@ const (
 // self->invalidate();
 // Common::refreshIndustryList(self);
 // // 0x004580AE
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo++;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(WindowType::industryList, self.number, self.currentTab + Common::widx::tab_industry_list);
@@ -290,10 +294,10 @@ const (
 // args.push(StringIds::tooltip_scroll_industry_list);
 // orphan member: return args;
 // // 0x00458108
-// func GetScrollSize(self Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(self Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = kRowHeight * self.var_83C;
 // // 0x00457D2A
-// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto shade = Colours::getShade(self.getColour(WindowColour::secondary).c(), 4);
@@ -350,10 +354,10 @@ const (
 // return CursorId::handPointer;
 // orphan member: return fallback;
 // // 0x004580DE
-// func Event_08(self Window) 
+// func Event_08(self Window)
 // self.flags |= WindowFlags::notScrollView;
 // // 0x004580E6
-// func Event_09(self Window) 
+// func Event_09(self Window)
 // if (!self.hasFlags(WindowFlags::notScrollView))
 // return;
 // if (self.rowHover == -1)
@@ -361,7 +365,7 @@ const (
 // self.rowHover = -1;
 // self.invalidate();
 // // 0x00457FCA
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.invalidate();
 // self.minWidth = kMinDimensions.width;
 // self.minHeight = kMinDimensions.height;
@@ -428,10 +432,10 @@ const (
 // window->callPrepareDraw();
 // window->initScrollWidgets();
 // orphan member: return window;
-// func Reset() 
+// func Reset()
 // getGameState().lastIndustryOption = 0xFF;
 // // 0x0045792A
-// func RemoveIndustry(id IndustryId) 
+// func RemoveIndustry(id IndustryId)
 // auto* wnd = WindowManager::find(WindowType::industryList);
 // if (wnd == nullptr)
 // return;
@@ -443,17 +447,19 @@ const (
 // namespace NewIndustries
 // static constexpr Ui::Size kWindowSize = { 578, 172 };
 const RowHeight uint8 = 112
+
 type Widx int
 
 const (
 	Scrollview Widx = 6
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(577, 171, StringIds::title_fund_new_industries),
 // Widgets::ScrollView({ 3, 45 }, { 549, 111 }, WindowColour::secondary, Scrollbars::vertical)
 // );
 // // 0x0045819F
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.widgets[widx::scrollview].right = self.width - 4;
 // self.widgets[widx::scrollview].bottom = self.height - 14;
@@ -464,7 +470,7 @@ const (
 // self.widgets[Common::widx::caption].text = StringIds::title_fund_new_industries;
 // self.widgets[Common::widx::tab_new_industry].tooltip = StringIds::tooltip_fund_new_industries;
 // // 0x0045826C
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -497,7 +503,7 @@ const (
 // auto width = self.width - 19 - widthOffset;
 // tr.drawStringLeftClipped(point, width, Colour::black, StringIds::black_stringid, args);
 // // 0x0045843A
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -509,7 +515,7 @@ const (
 // func GetRowIndex(x int16, y int16) int
 // return (x / 112) + (y / kRowHeight) * 5;
 // // 0x00458966
-// func OnScrollMouseDown(self Ui::Window, x int16, y int16, scrollIndex [[maybe_unused]] uint8_t) 
+// func OnScrollMouseDown(self Ui::Window, x int16, y int16, scrollIndex [[maybe_unused]] uint8_t)
 // auto index = getRowIndex(x, y);
 // for (auto i = 0; i < self.var_83C; i++)
 // auto rowInfo = self.rowInfo[i];
@@ -524,7 +530,7 @@ const (
 // self.invalidate();
 // break;
 // // 0x00458721
-// func OnScrollMouseOver(self Ui::Window, x int16, y int16, scrollIndex [[maybe_unused]] uint8_t) 
+// func OnScrollMouseOver(self Ui::Window, x int16, y int16, scrollIndex [[maybe_unused]] uint8_t)
 // auto index = getRowIndex(x, y);
 // uint16_t rowInfo = 0xFFFF;
 // auto i = 0;
@@ -564,7 +570,7 @@ const (
 // ptr = StringManager::formatString(ptr, StringIds::industry_requires);
 // ptr = industryObj->getRequiredCargoString(ptr);
 // // 0x004585B8
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // if (!Input::hasFlag(Input::Flags::rightMousePressed))
 // auto cursor = Input::getMouseLocation();
 // auto xPos = cursor.x;
@@ -612,13 +618,13 @@ const (
 // args.push(StringIds::tooltip_scroll_new_industry_list);
 // orphan member: return args;
 // // 0x004586EA
-// func GetScrollSize(self Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(self Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = (4 + self.var_83C) / 5;
 // if (scrollHeight == 0)
 // scrollHeight += 1;
 // scrollHeight *= kRowHeight;
 // // 0x00458352
-// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto shade = Colours::getShade(self.getColour(WindowColour::secondary).c(), 4);
 // drawingCtx.clearSingle(shade);
@@ -649,12 +655,12 @@ const (
 // xPos = 0;
 // yPos += kRowHeight;
 // // 0x00458708
-// func Event_08(self Window) 
+// func Event_08(self Window)
 // if (self.var_846 != 0xFFFF)
 // self.var_846 = 0xFFFF;
 // self.invalidate();
 // // 0x00458C09
-// func RemoveIndustryGhost() 
+// func RemoveIndustryGhost()
 // if (_industryGhostPlaced)
 // _industryGhostPlaced = false;
 // GameCommands::IndustryRemovalArgs args;
@@ -691,7 +697,7 @@ const (
 // args.buildImmediately = true; // bh
 // return { args };
 // // 0x0045848A
-// func OnToolUpdate(self Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // World::mapInvalidateSelectionRect();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enable);
 // auto placementArgs = getIndustryPlacementArgsFromCursor(x, y);
@@ -713,7 +719,7 @@ const (
 // _industryPlacementCost = cost;
 // self.invalidate();
 // // 0x0045851F
-// func OnToolDown(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolDown(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // removeIndustryGhost();
 // auto placementArgs = getIndustryPlacementArgsFromCursor(x, y);
 // if (placementArgs)
@@ -723,15 +729,15 @@ const (
 // gPrng2().randNext();
 // _placementPrng = gPrng2();
 // // 0x004585AD
-// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // removeIndustryGhost();
 // Ui::Windows::Main::hideGridlines();
 // // 0x0045845F
-// func OnClose(self Window) 
+// func OnClose(self Window)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // // 0x00458B51
-// func UpdateActiveThumb(self Window) 
+// func UpdateActiveThumb(self Window)
 // int32_t scrollWidth = 0, scrollHeight = 0;
 // self.callGetScrollSize(0, scrollWidth, scrollHeight);
 // self.scrollAreas[0].contentHeight = scrollHeight;
@@ -745,7 +751,7 @@ const (
 // self.scrollAreas[0].contentOffsetY = i;
 // Ui::ScrollView::updateThumbs(self, widx::scrollview);
 // // 0x00458AAF
-// func UpdateBuildableIndustries(self Window) 
+// func UpdateBuildableIndustries(self Window)
 // auto industryCount = 0;
 // for (uint16_t i = 0; i < ObjectManager::getMaxObjects(ObjectType::industry); i++)
 // auto industryObj = ObjectManager::get<IndustryObject>(i);
@@ -773,7 +779,7 @@ const (
 // self.rowHover = rowHover;
 // updateActiveThumb(self);
 // // 0x00457FFE
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.minWidth = NewIndustries::kWindowSize.width;
 // self.minHeight = NewIndustries::kWindowSize.height;
 // self.maxWidth = NewIndustries::kWindowSize.width;
@@ -790,7 +796,7 @@ const (
 // gPrng2().randNext();
 // _placementPrng = gPrng2();
 // // 0x004589E8
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.invalidate();
 // Ui::Size kMinWindowSize = { self.minWidth, self.minHeight };
 // Ui::Size kMaxWindowSize = { self.maxWidth, self.maxHeight };
@@ -817,15 +823,16 @@ const (
 // orphan member: return kEvents;
 // namespace Common
 type TabInformation struct {
-// std::span<const Widget> widgets;
-// const widx widgetIndex;
-// const WindowEventList& events;
+	// std::span<const Widget> widgets;
+	// const widx widgetIndex;
+	// const WindowEventList& events;
 }
+
 // static TabInformation tabInformationByTabOffset[] = {
 // { IndustryList::widgets, widx::tab_industry_list, IndustryList::getEvents() },
 // { NewIndustries::widgets, widx::tab_new_industry, NewIndustries::getEvents() },
 // // 0x00457B94
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // // Activate the current tab..
 // self.activatedWidgets &= ~((1ULL << tab_industry_list) | (1ULL << tab_new_industry));
 // self.activatedWidgets |= (1ULL << tabInformationByTabOffset[self.currentTab].widgetIndex);
@@ -837,7 +844,7 @@ type TabInformation struct {
 // self.widgets[Common::widx::close_button].left = self.width - 15;
 // self.widgets[Common::widx::close_button].right = self.width - 3;
 // // 0x00457F27
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // self.currentTab = widgetIndex - widx::tab_industry_list;
@@ -859,7 +866,7 @@ type TabInformation struct {
 // self.invalidate();
 // self.moveInsideScreenEdges();
 // // 0x00458A57
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // // Industry List Tab
 // uint32_t imageId = skin->img;
@@ -890,7 +897,7 @@ type TabInformation struct {
 // imageId += fundNewIndustriesImageIds[0];
 // Widget::drawTab(self, drawingCtx, imageId, widx::tab_new_industry);
 // // 0x00457964
-// func RefreshIndustryList(window Window) 
+// func RefreshIndustryList(window Window)
 // window->rowCount = 0;
 // for (auto& industry : IndustryManager::industries())
 // industry.flags &= ~IndustryFlags::sorted;

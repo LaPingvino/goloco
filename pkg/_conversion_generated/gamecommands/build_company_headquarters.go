@@ -6,14 +6,16 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type HeadquarterPlacementArgs struct {
-// HeadquarterPlacementArgs() = default;
+	// HeadquarterPlacementArgs() = default;
 	// method: explicit HeadquarterPlacementArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.di)
-// , rotation(regs.bh & 0x3)
-// , type(regs.dl)
-// , buildImmediately(regs.bh & 0x80)
+	// : pos(regs.ax, regs.cx, regs.di)
+	// , rotation(regs.bh & 0x3)
+	// , type(regs.dl)
+	// , buildImmediately(regs.bh & 0x80)
 }
+
 const HeadquarterPlacementArgsCommand any = GameCommand.buildCompanyHeadquarters
+
 // World::Pos3 pos;
 // orphan member: uint8_t rotation;
 // orphan member: uint8_t type;
@@ -26,4 +28,4 @@ const HeadquarterPlacementArgsCommand any = GameCommand.buildCompanyHeadquarters
 // regs.dx = type;
 // regs.bh = rotation | (buildImmediately ? 0x80 : 0);
 // orphan member: return regs;
-// func BuildCompanyHeadquarters(regs registers) 
+// func BuildCompanyHeadquarters(regs registers)

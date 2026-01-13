@@ -50,6 +50,7 @@ package ui
 // tab_towns,
 // // this should be 1 more than the number of widgets defined above in commonWidgets
 const NextWidx uint32 = 8
+
 // func MakeCommonWidgets(frameWidth int32, frameHeight int32, windowCaptionId StringId) any
 // return makeWidgets(
 // Widgets::Frame({ 0, 0 }, { frameWidth, frameHeight }, WindowColour::primary),
@@ -60,7 +61,7 @@ const NextWidx uint32 = 8
 // Widgets::Tab({ 34, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
 // Widgets::Tab({ 65, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab),
 // Widgets::Tab({ 96, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab));
-// func DrawTabs(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func DrawTabs(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // // Finances tab
 // static constexpr uint32_t financesTabImageIds[] = {
@@ -111,7 +112,7 @@ const NextWidx uint32 = 8
 // // Towns tab
 // const uint32_t imageId = skin->img + InterfaceSkin::ImageIds::toolbar_menu_towns;
 // Widget::drawTab(self, drawingCtx, imageId, Widx::tab_towns);
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // namespace Finances
 // static constexpr Ui::Size kWindowSize = { 250, 210 };
 // namespace Widx
@@ -173,7 +174,7 @@ const NextWidx uint32 = 8
 // | (1 << Widx::day_step_increase);
 // static currency32_t _cashIncreaseStep = 10'000;
 // static Date _date;
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // self.activatedWidgets = (1 << Common::Widx::tab_finances);
 // // Add cash step label and value
 // auto& widget = self.widgets[Widx::cash_step_value];
@@ -196,11 +197,11 @@ const NextWidx uint32 = 8
 // auto& widget = self.widgets[Widx::day_step_value];
 // orphan member: FormatArguments args{ widget.textArgs };
 // args.push(_date.day + 1); // +1 since days in game are 0-based, but IRL they are 1-based
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets and tabs.
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
-// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::Widx::close_button:
 // WindowManager::close(self.type);
@@ -235,7 +236,7 @@ const NextWidx uint32 = 8
 // break;
 // func ClampDayToMonth(date Date) int32
 // return std::max<int32_t>(0, std::min<int32_t>(getMonthTotalDay(date.year, date.month) - 1, date.day));
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // const auto stepSize = Input::getClickRepeatStepSize();
 // const auto cashStepSize = stepSize * 1'000;
 // const auto timeStepSize = stepSize;
@@ -268,11 +269,11 @@ const NextWidx uint32 = 8
 // break;
 // _date.day = clampDayToMonth(_date);
 // WindowManager::invalidate(WindowType::cheats);
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(self.type, self.number, Common::Widx::tab_finances);
-// func InitDate() 
+// func InitDate()
 // _date = getCurrentDate();
 // static constexpr WindowEventList kEvents = {
 // .onMouseUp = onMouseUp,
@@ -307,7 +308,7 @@ const NextWidx uint32 = 8
 // Widgets::Button({ 10, 164 }, { kWindowSize.width - 20, 12 }, WindowColour::secondary, StringIds::completeChallenge)
 // );
 // static CompanyId _targetCompanyId{};
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // self.activatedWidgets = (1 << Common::Widx::tab_companies);
 // if (_targetCompanyId == CompanyManager::getControllingId())
 // self.disabledWidgets |= (1 << Widx::switch_company_button) | (1 << Widx::acquire_company_assets_button);
@@ -322,11 +323,11 @@ const NextWidx uint32 = 8
 // auto args = FormatArguments(widget.textArgs);
 // auto company = CompanyManager::get(_targetCompanyId);
 // args.push(company->name);
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets and tabs.
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
-// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::Widx::close_button:
 // WindowManager::close(self.type);
@@ -372,16 +373,16 @@ const NextWidx uint32 = 8
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
 // WindowManager::invalidate(WindowType::playerInfoToolbar);
 // return;
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (widgetIndex == Widx::target_company_dropdown_btn)
 // Dropdown::populateCompanySelect(&self, &self.widgets[widgetIndex - 1]);
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (itemIndex == -1)
 // return;
 // if (widgetIndex == Widx::target_company_dropdown_btn)
 // _targetCompanyId = Dropdown::getCompanyIdFromSelection(itemIndex);
 // self.invalidate();
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(self.type, self.number, Common::Widx::tab_finances);
@@ -413,7 +414,7 @@ const NextWidx uint32 = 8
 // Widgets::Checkbox({ 10, 116 }, { 200, 12 }, WindowColour::secondary, StringIds::display_locked_vehicles, StringIds::tooltip_display_locked_vehicles),
 // Widgets::Checkbox({ 25, 130 }, { 200, 12 }, WindowColour::secondary, StringIds::allow_building_locked_vehicles, StringIds::tooltip_build_locked_vehicles)
 // );
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // self.activatedWidgets = (1 << Common::Widx::tab_vehicles);
 // if (Config::get().displayLockedVehicles)
 // self.activatedWidgets |= (1 << Widx::checkbox_display_locked_vehicles);
@@ -425,11 +426,11 @@ const NextWidx uint32 = 8
 // self.activatedWidgets |= (1 << Widx::checkbox_build_locked_vehicles);
 // else
 // self.activatedWidgets &= ~(1 << Widx::checkbox_build_locked_vehicles);
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets and tabs.
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
-// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::Widx::close_button:
 // WindowManager::close(self.type);
@@ -474,7 +475,7 @@ const NextWidx uint32 = 8
 // WindowManager::invalidateWidget(self.type, self.number, Widx::checkbox_build_locked_vehicles);
 // WindowManager::invalidate(WindowType::buildVehicle);
 // break;
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(self.type, self.number, Common::Widx::tab_vehicles);
@@ -502,13 +503,13 @@ const NextWidx uint32 = 8
 // Widgets::Button({ 10, 78 }, { (kWindowSize.width - 26) / 2, 12 }, WindowColour::secondary, StringIds::cheat_ratings_to_min),
 // Widgets::Button({ 3 + (kWindowSize.width / 2), 78 }, { (kWindowSize.width - 26) / 2, 12 }, WindowColour::secondary, StringIds::cheat_ratings_to_max)
 // );
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // self.activatedWidgets = (1 << Common::Widx::tab_towns);
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets and tabs.
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
-// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::Widx::close_button:
 // WindowManager::close(self.type);
@@ -551,7 +552,7 @@ const NextWidx uint32 = 8
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
 // WindowManager::invalidate(WindowType::town);
 // return;
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(self.type, self.number, Common::Widx::tab_towns);
@@ -582,12 +583,13 @@ const NextWidx uint32 = 8
 // orphan member: return window;
 // namespace Common
 type TabInformation struct {
-// std::span<const Widget> widgets;
+	// std::span<const Widget> widgets;
 	WidgetIndex WidgetIndex_t
-// const WindowEventList& events;
-// const uint64_t* holdableWidgets;
-// Ui::Size kWindowSize;
+	// const WindowEventList& events;
+	// const uint64_t* holdableWidgets;
+	// Ui::Size kWindowSize;
 }
+
 // // clang-format off
 // static TabInformation tabInformationByTabOffset[] = {
 // { Finances::_widgets,  Widx::tab_finances,  Finances::getEvents(),  &Finances::holdableWidgets, Finances::kWindowSize  },
@@ -595,7 +597,7 @@ type TabInformation struct {
 // { Vehicles::_widgets,  Widx::tab_vehicles,  Vehicles::getEvents(),  nullptr,                    Vehicles::kWindowSize  },
 // { Towns::_widgets,     Widx::tab_towns,     Towns::getEvents(),     nullptr,                    Towns::kWindowSize     },
 // // clang-format on
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // self.currentTab = widgetIndex - Widx::tab_finances;
 // self.frameNo = 0;
 // auto tabInfo = tabInformationByTabOffset[self.currentTab];

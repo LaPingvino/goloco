@@ -6,16 +6,18 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type SignalRemovalArgs struct {
-// SignalRemovalArgs() = default;
+	// SignalRemovalArgs() = default;
 	// method: explicit SignalRemovalArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.di)
-// , rotation(regs.bh & 0x3)
-// , trackId(regs.dl & 0x3F)
-// , index(regs.dh & 0xF)
-// , trackObjType(regs.bp & 0xF)
-// , flags(regs.edi >> 16)
+	// : pos(regs.ax, regs.cx, regs.di)
+	// , rotation(regs.bh & 0x3)
+	// , trackId(regs.dl & 0x3F)
+	// , index(regs.dh & 0xF)
+	// , trackObjType(regs.bp & 0xF)
+	// , flags(regs.edi >> 16)
 }
+
 const SignalRemovalArgsCommand any = GameCommand.removeSignal
+
 // World::Pos3 pos;
 // orphan member: uint8_t rotation;
 // orphan member: uint8_t trackId;
@@ -32,4 +34,4 @@ const SignalRemovalArgsCommand any = GameCommand.removeSignal
 // regs.dh = index;
 // regs.bp = trackObjType;
 // orphan member: return regs;
-// func RemoveSignal(regs registers) 
+// func RemoveSignal(regs registers)

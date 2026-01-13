@@ -23,7 +23,7 @@ package ui
 // std::span<const Widget> getWidgets()
 // orphan member: return widgets;
 // // 0x00429EA2
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (widgetIndex != 0)
 // return;
 // if (MessageManager::getActiveIndex() == MessageId::null)
@@ -36,7 +36,7 @@ package ui
 // WindowManager::close(&self);
 // open(activeMessageIndex);
 // // 0x00429FE4
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // auto y = Ui::height() - kWindowSize.height + 1;
 // auto x = Ui::width() - kWindowSize.width - 27;
 // auto height = kWindowSize.height - 1;
@@ -48,7 +48,7 @@ package ui
 // self.height = height;
 // self.invalidate();
 // // 0x00429EEB
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // auto cursor = Input::getMouseLocation2();
 // auto window = WindowManager::findAtAlt(cursor.x, cursor.y);
 // if (window == &self)
@@ -92,7 +92,7 @@ package ui
 // MessageManager::setActiveIndex(MessageId::null);
 // WindowManager::close(&self);
 // // 0x00429DAA
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // if (self.var_852 != 0)
 // return;
 // if ((SceneManager::getPauseFlags() & PauseFlags::browsePrompt) != PauseFlags::none)

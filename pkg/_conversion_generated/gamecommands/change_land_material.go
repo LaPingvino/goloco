@@ -6,13 +6,15 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type ChangeLandMaterialArgs struct {
-// ChangeLandMaterialArgs() = default;
+	// ChangeLandMaterialArgs() = default;
 	// method: explicit ChangeLandMaterialArgs(const registers& regs)
-// : pointA(regs.ax, regs.cx)
-// , pointB(regs.di, regs.bp)
-// , landType(regs.dl)
+	// : pointA(regs.ax, regs.cx)
+	// , pointB(regs.di, regs.bp)
+	// , landType(regs.dl)
 }
+
 const ChangeLandMaterialArgsCommand any = GameCommand.changeLandMaterial
+
 // World::Pos2 pointA;
 // World::Pos2 pointB;
 // orphan member: uint8_t landType;
@@ -24,4 +26,4 @@ const ChangeLandMaterialArgsCommand any = GameCommand.changeLandMaterial
 // regs.bp = pointB.y;
 // regs.dl = landType;
 // orphan member: return regs;
-// func ChangeLandMaterial(regs registers) 
+// func ChangeLandMaterial(regs registers)

@@ -23,6 +23,7 @@ package ui
 // static constexpr Ui::Size kWindowSize = { 500, 312 };
 const RowHeight uint8 = 10
 const NumSongs uint16 = 31
+
 // namespace Widx
 // enum
 // frame,
@@ -38,7 +39,7 @@ const NumSongs uint16 = 31
 // Widgets::ScrollView({ 4, 18 }, { kWindowSize.width - 8, 289 }, WindowColour::secondary, Ui::Scrollbars::vertical));
 // static const WindowEventList& getEvents();
 // // 0x0043B4AF
-// func Open() 
+// func Open()
 // if (WindowManager::bringToFront(WindowType::aboutMusic) != nullptr)
 // return;
 // auto window = WindowManager::createWindowCentred(
@@ -52,13 +53,13 @@ const NumSongs uint16 = 31
 // window->setColour(WindowColour::primary, interface->windowTitlebarColour);
 // window->setColour(WindowColour::secondary, interface->windowOptionsColour);
 // // 0x0043BFB0
-// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Widx::close:
 // WindowManager::close(window.type);
 // break;
 // // 0x0043BFBB
-// func GetScrollSize(Ui::Window, uint32, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(Ui::Window, uint32, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = numSongs * (kRowHeight * 3 + 4);
 // // 0x0043BFC0
 // static std::optional<FormatArguments> tooltip(Ui::Window&, WidgetIndex_t, [[maybe_unused]] const WidgetId id)
@@ -66,11 +67,11 @@ const NumSongs uint16 = 31
 // args.push(StringIds::tooltip_scroll_credits_list);
 // orphan member: return args;
 // // 0x0043B8B8
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets.
 // window.draw(drawingCtx);
 // // 0x0043B8BE
-// func DrawScroll(Ui::Window, drawingCtx Gfx::DrawingContext, uint32) 
+// func DrawScroll(Ui::Window, drawingCtx Gfx::DrawingContext, uint32)
 // static const std::pair<StringId, StringId> stringsToDraw[numSongs] = {
 // { StringIds::locomotion_title, StringIds::locomotion_title_credit },
 // { StringIds::long_dusty_road, StringIds::long_dusty_road_credit },

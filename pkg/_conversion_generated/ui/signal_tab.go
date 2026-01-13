@@ -39,7 +39,7 @@ package ui
 // orphan member: return widgets;
 // orphan member: WindowEventList events;
 // // 0x0049E64E
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -51,7 +51,7 @@ package ui
 // Common::switchTab(self, widgetIndex);
 // break;
 // // 0x0049E669
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& cState = getConstructionState();
 // switch (widgetIndex)
 // case widx::signal_dropdown:
@@ -82,7 +82,7 @@ package ui
 // ToolManager::toolSet(self, widgetIndex, CursorId::placeSignal);
 // break;
 // // 0x0049E67C
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex != widx::signal_dropdown)
 // return;
 // auto& cState = getConstructionState();
@@ -91,7 +91,7 @@ package ui
 // Scenario::getConstruction().signals[cState.trackType] = cState.signalList[itemIndex];
 // self.invalidate();
 // // 0x0049E76F
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // Common::onUpdate(&self, GhostVisibilityFlags::signal);
 // // 0x004A417A
 // // false for left, true for right
@@ -132,7 +132,7 @@ package ui
 // cState.signalGhostTrackObjId = args.trackObjType;
 // orphan member: return res;
 // // 0x0049FEF6
-// func RemoveSignalGhost() 
+// func RemoveSignalGhost()
 // if (Common::hasGhostVisibilityFlag(GhostVisibilityFlags::signal))
 // auto& cState = getConstructionState();
 // GameCommands::SignalRemovalArgs args;
@@ -145,7 +145,7 @@ package ui
 // GameCommands::doCommand(args, GameCommands::Flags::apply | GameCommands::Flags::noErrorWindow | GameCommands::Flags::noPayment | GameCommands::Flags::ghost);
 // Common::unsetGhostVisibilityFlag(GhostVisibilityFlags::signal);
 // // 0x0049E745
-// func OnToolUpdate(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != widx::single_direction && widgetIndex != widx::both_directions)
 // return;
 // const bool isBothDirections = widgetIndex == widx::both_directions;
@@ -171,7 +171,7 @@ package ui
 // cState.signalCost = cost;
 // self.invalidate();
 // // 0x0049E75A
-// func OnToolUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != widx::single_direction && widgetIndex != widx::both_directions)
 // return;
 // removeConstructionGhosts();
@@ -189,7 +189,7 @@ package ui
 // return;
 // Audio::playSound(Audio::SoundId::construct, GameCommands::getPosition());
 // // 0x0049E499
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(&self);
 // auto& cState = getConstructionState();
 // auto trackObj = ObjectManager::get<TrackObject>(cState.trackType);
@@ -199,7 +199,7 @@ package ui
 // self.widgets[widx::signal].text = trainSignalObject->name;
 // Common::repositionTabs(&self);
 // // 0x0049E501
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -225,7 +225,7 @@ package ui
 // args.push<uint32_t>(cState.signalCost);
 // auto point = Point(self.x + 69, self.widgets[widx::single_direction].bottom + self.y + 5);
 // tr.drawStringCentred(point, Colour::black, StringIds::build_cost, args);
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.callOnMouseDown(Signal::widx::both_directions, self.widgets[Signal::widx::both_directions].id);
 // static constexpr WindowEventList kEvents = {
 // .onClose = Common::onClose,

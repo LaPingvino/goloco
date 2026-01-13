@@ -23,13 +23,14 @@ type Widx int
 const (
 	Text Widx = iota
 )
+
 // // 0x005234F4
 // static constexpr auto _widgets = makeWidgets(
 // Widgets::Wt3Widget({ 0, 0 }, { 200, 30 }, WindowColour::primary)
 // );
 // static const WindowEventList& getEvents();
 // // 0x004CEEA7
-// func Open() 
+// func Open()
 // _mapTooltipTimeout++;
 // auto cursor = Input::getMouseLocation();
 // static Ui::Point tooltipLocation = {};
@@ -66,18 +67,18 @@ const (
 // auto* skin = ObjectManager::get<InterfaceSkinObject>();
 // window->setColour(WindowColour::secondary, skin->mapTooltipObjectColour);
 // window->setColour(WindowColour::tertiary, skin->mapTooltipCargoColour);
-// func SetOwner(company CompanyId) 
+// func SetOwner(company CompanyId)
 // _mapTooltipOwner = company;
 // func GetTooltipTimeout() uint16
 // orphan member: return _mapTooltipTimeout;
-// func Reset() 
+// func Reset()
 // setOwner(CompanyId::null);
 // FormatArguments::mapToolTip(StringIds::null);
 // // 0x004CF13B
-// func Update(self Window) 
+// func Update(self Window)
 // self.invalidate();
 // // 0x004CF010
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto args = FormatArguments::mapToolTip();
 // func ArgsWrap(args) FormatArgumentsView

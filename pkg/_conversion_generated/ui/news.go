@@ -11,16 +11,17 @@ package ui
 // #include "World/Company.h"
 // namespace OpenLoco::Ui::Windows::NewsWindow
 type NewsState struct {
-// SavedView savedView[2];
-	SlideInHeight int32
+	// SavedView savedView[2];
+	SlideInHeight     int32
 	NumCharsToDisplay uint16
 }
 type SubjectType int
 
 const (
-	CompanyFace SubjectType = -2
+	CompanyFace  SubjectType = -2
 	VehicleImage SubjectType = -3
 )
+
 // extern NewsState _nState;
 // namespace Common
 type Widx int
@@ -33,6 +34,7 @@ const (
 	Viewport1Button
 	Viewport2Button
 )
+
 // template<typename TFrameWidget>
 // func MakeCommonWidgets(frameWidth int32, frameHeight int32) any
 // return makeWidgets(
@@ -43,7 +45,7 @@ const (
 // Widgets::ImageButton({ 2, frameHeight - 75 }, { 180, 75 }, WindowColour::primary),
 // Widgets::ImageButton({ 2, frameHeight - 75 }, { 180, 75 }, WindowColour::primary));
 // const WindowEventList& getEvents();
-// func InitViewports(self Window) 
+// func InitViewports(self Window)
 // namespace News1
 // static constexpr Ui::Size kWindowSize = { 360, 117 };
 // std::span<const Widget> getWidgets();
@@ -57,5 +59,6 @@ type Widx int
 const (
 	Frame Widx = iota
 )
+
 // std::span<const Widget> getWidgets();
 // const WindowEventList& getEvents();

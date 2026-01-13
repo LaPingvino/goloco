@@ -14,19 +14,21 @@ package objects
 // forward: class DrawingContext;
 type RoadExtraObject struct {
 	Name StringId
-// World::Track::RoadTraitFlags roadPieces; // 0x02
-	PaintStyle uint8
-	CostIndex uint8
+	// World::Track::RoadTraitFlags roadPieces; // 0x02
+	PaintStyle      uint8
+	CostIndex       uint8
 	BuildCostFactor int16
-	SellCostFactor int16
-	Image uint32
-	Var_0E uint32
+	SellCostFactor  int16
+	Image           uint32
+	Var_0E          uint32
 	// method: void drawPreviewImage(Gfx::DrawingContext& drawingCtx, const int16_t x, const int16_t y) const;
 	// method: bool validate() const;
 	// method: void load(const LoadedObjectHandle& handle, std::span<const std::byte> data, ObjectManager::DependentObjects*);
 	// method: void unload();
 }
+
 const RoadExtraObjectObjectType any = ObjectType.roadExtra
+
 // static_assert(sizeof(RoadExtraObject) == 0x12);
 // namespace RoadExtraObj::ImageIds
 // // Note: Style imageIds are relative to 0x0A so you need to +8 to get its

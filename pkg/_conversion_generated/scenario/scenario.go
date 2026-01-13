@@ -14,11 +14,12 @@ const (
 // forward: class FormatArguments;
 // forward: struct ClimateObject;
 )
+
 // namespace OpenLoco::ObjectManager
 type SelectedObjectsFlags int
 
-const (
-)
+const ()
+
 // namespace OpenLoco::Scenario
 // forward: struct Objective;
 // forward: struct ObjectiveProgress;
@@ -30,6 +31,7 @@ const (
 	Spring Season = 2
 	Summer Season = 3
 )
+
 // // NB: kMinYear has been changed to 1800 in OpenLoco; Locomotion uses 1900.
 const MinYear uint16 = 1800
 const MaxYear uint16 = 2100
@@ -79,23 +81,24 @@ const MinNumTrees uint16 = 0
 const MaxNumTrees uint16 = 20000
 const MinAltitudeTrees uint8 = 0
 const MaxAltitudeTrees uint8 = 40
+
 // func NextSeason(season Season) Season
-// func InitialiseSnowLine() 
-// func UpdateSnowLine(currentDayOfYear int32) 
+// func InitialiseSnowLine()
+// func UpdateSnowLine(currentDayOfYear int32)
 // // 0x00525FB4
 // World::SmallZ getCurrentSnowLine();
-// func SetCurrentSnowLine(snowline World::SmallZ) 
+// func SetCurrentSnowLine(snowline World::SmallZ)
 // // 0x00525FB5
 // func GetCurrentSeason() Season
-// func SetCurrentSeason(season Season) 
-// func UpdateSeason(currentDayOfYear int32, climateObj ClimateObject) 
-// func Reset() 
-// func Sub_4748D4() 
-// func Sub_4969E0(al uint8) 
-// func EraseLandscape() 
-// func GenerateLandscape() 
-// func InitialiseDate(year uint16) 
-// func InitialiseDate(year uint16, month OpenLoco::MonthId, day uint8) 
+// func SetCurrentSeason(season Season)
+// func UpdateSeason(currentDayOfYear int32, climateObj ClimateObject)
+// func Reset()
+// func Sub_4748D4()
+// func Sub_4969E0(al uint8)
+// func EraseLandscape()
+// func GenerateLandscape()
+// func InitialiseDate(year uint16)
+// func InitialiseDate(year uint16, month OpenLoco::MonthId, day uint8)
 // /**
 // * Loads the given scenario file, but does not initialise any game state.
 // */
@@ -108,8 +111,8 @@ const MaxAltitudeTrees uint8 = 40
 // * Resets the game state (e.g. companies, year, money etc.) for starting a new scenario.
 // */
 // [[noreturn]] void start();
-// func FormatChallengeArguments(objective Objective, progress ObjectiveProgress, args FormatArguments) 
-// func Sub_46115C() 
-// func LoadPreferredCurrencyAlways() 
-// func LoadPreferredCurrencyNewGame() 
-// func DrawScenarioMiniMapImage() 
+// func FormatChallengeArguments(objective Objective, progress ObjectiveProgress, args FormatArguments)
+// func Sub_46115C()
+// func LoadPreferredCurrencyAlways()
+// func LoadPreferredCurrencyNewGame()
+// func DrawScenarioMiniMapImage()

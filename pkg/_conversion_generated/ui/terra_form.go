@@ -64,16 +64,17 @@ package ui
 type Widx int
 
 const (
-	Frame Widx = 0
-	Caption Widx = 1
+	Frame        Widx = 0
+	Caption      Widx = 1
 	Close_button Widx = 2
-	Panel Widx = 3
+	Panel        Widx = 3
 	Tab_clear_area
 	Tab_adjust_land
 	Tab_adjust_water
 	Tab_plant_trees
 	Tab_build_walls
 )
+
 // func MakeCommonWidgets(frameWidth int32, frameHeight int32, windowCaptionId StringId) any
 // return makeWidgets(
 // Widgets::Frame({ 0, 0 }, { frameWidth, frameHeight }, WindowColour::primary),
@@ -85,13 +86,13 @@ const (
 // Widgets::Tab({ 3, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_adjust_water),
 // Widgets::Tab({ 3, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_plant_trees),
 // Widgets::Tab({ 3, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_build_walls));
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
-// func PrepareDraw(self Window) 
-// func OnUpdate(self Window) 
-// func OnResize(self Window, height uint8) 
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
-// func Sub_4A69DD() 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
+// func PrepareDraw(self Window)
+// func OnUpdate(self Window)
+// func OnResize(self Window, height uint8)
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
+// func Sub_4A69DD()
 type GhostPlacedFlags int
 
 const (
@@ -99,6 +100,7 @@ const (
 	Tree GhostPlacedFlags = 1 << 0
 	Wall GhostPlacedFlags = 1 << 1
 )
+
 // OPENLOCO_ENABLE_ENUM_OPERATORS(GhostPlacedFlags);
 // static int16_t _adjustToolSize;                             // 0x0050A000
 // static uint8_t _adjustLandToolSize;                         // 0x009C870E
@@ -127,6 +129,7 @@ const (
 // static constexpr Ui::Size kWindowSize = { 634, 162 };
 const RowHeight uint8 = 102
 const ColumnWidth uint8 = 66
+
 type Widx int
 
 const (
@@ -136,6 +139,7 @@ const (
 	Plant_cluster_selected
 	Plant_cluster_random
 )
+
 // const uint64_t holdableWidgets = 0;
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(634, 162, StringIds::title_plant_trees),
@@ -152,8 +156,9 @@ const (
 	Selected
 	Random
 )
+
 // // 0x004BB6B2
-// func UpdateTreeColours(self Window) 
+// func UpdateTreeColours(self Window)
 // if (self.rowHover != -1)
 // auto treeObj = ObjectManager::get<TreeObject>(self.rowHover);
 // if (treeObj->colours != 0)
@@ -161,7 +166,7 @@ const (
 // auto colour = bit == -1 ? Colour::black : static_cast<Colour>(bit);
 // _treeColour = colour;
 // // 0x004BC4B7
-// func UpdateActiveThumb(self Window) 
+// func UpdateActiveThumb(self Window)
 // int32_t scrollWidth = 0, scrollHeight = 0;
 // self.callGetScrollSize(0, scrollWidth, scrollHeight);
 // self.scrollAreas[0].contentHeight = scrollHeight;
@@ -175,7 +180,7 @@ const (
 // self.scrollAreas[0].contentOffsetY = i;
 // Ui::ScrollView::updateThumbs(self, widx::scrollview);
 // // 0x004BB63F
-// func RefreshTreeList(self Window) 
+// func RefreshTreeList(self Window)
 // auto treeCount = 0;
 // for (uint16_t i = 0; i < ObjectManager::getMaxObjects(ObjectType::tree); i++)
 // auto treeObj = ObjectManager::get<TreeObject>(i);
@@ -195,13 +200,13 @@ const (
 // self.rowHover = rowHover;
 // updateActiveThumb(self);
 // updateTreeColours(self);
-// func RemoveTreeGhost() 
+// func RemoveTreeGhost()
 // // 0x004BBB0A
-// func OnClose(self [[maybe_unused]] Window) 
+// func OnClose(self [[maybe_unused]] Window)
 // removeTreeGhost();
 // Ui::Windows::Main::hideGridlines();
 // // 0x004BBC7D
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // ToolManager::toolSet(self, Common::widx::panel, CursorId::plantTree);
 // Input::setFlag(Input::Flags::flag6);
 // _terraformGhostPlacedFlags = Common::GhostPlacedFlags::none;
@@ -211,7 +216,7 @@ const (
 // refreshTreeList(self);
 // updateTreeColours(self);
 // // 0x004BBAB5
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -242,7 +247,7 @@ const (
 // _treeClusterType = treeCluster::random;
 // self.invalidate();
 // // 0x004BBFBD
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.invalidate();
 // Ui::Size kMinWindowSize = { self.minWidth, self.minHeight };
 // Ui::Size kMaxWindowSize = { self.maxWidth, self.maxHeight };
@@ -250,12 +255,12 @@ const (
 // if (hasResized)
 // updateActiveThumb(self);
 // // 0x004BBAEA
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (widgetIndex == widx::object_colour && self.rowHover != -1)
 // auto obj = ObjectManager::get<TreeObject>(self.rowHover);
 // Dropdown::showColour(&self, &self.widgets[widgetIndex], obj->colours, _treeColour, self.getColour(WindowColour::secondary));
 // // 0x004BBAF5
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex != widx::object_colour)
 // return;
 // if (itemIndex == -1)
@@ -263,7 +268,7 @@ const (
 // _treeColour = static_cast<Colour>(Dropdown::getHighlightedItem());
 // self.invalidate();
 // // 0x004BBDA5
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // if (!Input::hasFlag(Input::Flags::toolActive))
 // WindowManager::close(&self);
 // if (ToolManager::getToolWindowType() != WindowType::terraform)
@@ -308,12 +313,12 @@ const (
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(WindowType::terraform, self.number, self.currentTab + Common::widx::tab_clear_area);
 // // 0x004BBEDF
-// func Event_08(self Window) 
+// func Event_08(self Window)
 // if (self.var_846 != 0xFFFFU)
 // self.var_846 = 0xFFFFU;
 // self.invalidate();
 // // 0x004BD297 (bits of)
-// func RemoveTreeGhost() 
+// func RemoveTreeGhost()
 // if ((_terraformGhostPlacedFlags & Common::GhostPlacedFlags::tree) != Common::GhostPlacedFlags::none)
 // _terraformGhostPlacedFlags = _terraformGhostPlacedFlags & ~Common::GhostPlacedFlags::tree;
 // GameCommands::TreeRemovalArgs args;
@@ -355,7 +360,7 @@ const (
 // args.buildImmediately = true;
 // return { args };
 // // 0x004BBB15
-// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != Common::widx::panel)
 // return;
 // World::mapInvalidateSelectionRect();
@@ -380,7 +385,7 @@ const (
 // _terraformGhostTreeRotationFlag = placementArgs->rotation | (placementArgs->buildImmediately ? 0x8000 : 0);
 // _lastTreeCost = placeTreeGhost(*placementArgs);
 // // 0x004BBB20
-// func OnToolDown(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolDown(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != Common::widx::panel)
 // return;
 // removeTreeGhost();
@@ -416,10 +421,10 @@ const (
 // if (SceneManager::isEditorMode())
 // GameCommands::setUpdatingCompanyId(previousId);
 // break;
-// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // removeTreeGhost();
 // // 0x004BBEC1
-// func GetScrollSize(self Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(self Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = (self.var_83C + 8) / 9;
 // if (scrollHeight == 0)
 // scrollHeight += 1;
@@ -427,7 +432,7 @@ const (
 // func GetRowIndex(x int16, y int16) int
 // return (x / kColumnWidth) + (y / kRowHeight) * 9;
 // // 0x004BBF3B
-// func ScrollMouseDown(self Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func ScrollMouseDown(self Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t)
 // auto index = getRowIndex(x, y);
 // for (auto i = 0; i < self.var_83C; i++)
 // auto rowInfo = self.rowInfo[i];
@@ -443,7 +448,7 @@ const (
 // self.invalidate();
 // break;
 // // 0x004BBEF8
-// func ScrollMouseOver(self Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func ScrollMouseOver(self Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t)
 // auto index = getRowIndex(x, y);
 // uint16_t rowInfo = y;
 // auto i = 0;
@@ -460,7 +465,7 @@ const (
 // args.push(StringIds::tooltip_scroll_trees_list);
 // orphan member: return args;
 // // 0x004BB756
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.activatedWidgets &= ~((1ULL << widx::plant_cluster_selected) | (1ULL << widx::plant_cluster_random));
 // if (_treeClusterType == treeCluster::selected)
@@ -489,7 +494,7 @@ const (
 // self.widgets[widx::plant_cluster_random].right = self.width - 2;
 // Widget::leftAlignTabs(self, Common::widx::tab_clear_area, Common::widx::tab_build_walls);
 // // 0x004BB8C9
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -516,7 +521,7 @@ const (
 // auto point = Point(self.x + 3, self.y + self.height - 13);
 // auto width = self.width - 19;
 // tr.drawStringLeftClipped(point, width, Colour::black, StringIds::black_stringid, args);
-// func DrawTreeThumb(treeObj TreeObject, drawingCtx Gfx::DrawingContext) 
+// func DrawTreeThumb(treeObj TreeObject, drawingCtx Gfx::DrawingContext)
 // uint32_t image = treeObj->getTreeGrowthDisplayOffset() * treeObj->numRotations;
 // auto rotation = (treeObj->numRotations - 1) & _treeRotation;
 // image += rotation;
@@ -530,7 +535,7 @@ const (
 // image = Gfx::recolour(image, colour);
 // drawingCtx.drawImage(32, 96, image);
 // // 0x004BB982
-// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto shade = Colours::getShade(self.getColour(WindowColour::secondary).c(), 3);
 // drawingCtx.clearSingle(shade);
@@ -629,6 +634,7 @@ const (
 	Decrease_area
 	Increase_area
 )
+
 // const uint64_t holdableWidgets = (1 << decrease_area) | (1 << increase_area);
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(130, 105, StringIds::clear_area),
@@ -637,19 +643,19 @@ const (
 // Widgets::ImageButton({ 80 + 16, 72 }, { 16, 16 }, WindowColour::secondary, Gfx::recolour(ImageIds::increase_tool_area, Colour::white), StringIds::tooltip_increase_clear_area)
 // );
 // // 0x004BC671
-// func OnClose(self [[maybe_unused]] Window) 
+// func OnClose(self [[maybe_unused]] Window)
 // Ui::Windows::Main::hideGridlines();
 // // 0x004BBBC7
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // ToolManager::toolSet(self, Common::widx::panel, CursorId::bulldozerTool);
 // Input::setFlag(Input::Flags::flag6);
 // _raiseLandCost = 0x80000000;
 // _adjustToolSize = _clearAreaToolSize;
 // // 0x004BC7C6
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // Common::onResize(self, 105);
 // // 0x004BC65C
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::decrease_area:
 // _adjustToolSize--;
@@ -666,7 +672,7 @@ const (
 // self.invalidate();
 // break;
 // // 0x004BC677
-// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // World::mapInvalidateSelectionRect();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enable);
 // uint32_t cost = 0x80000000;
@@ -684,7 +690,7 @@ const (
 // if (cost != _raiseLandCost)
 // _raiseLandCost = cost;
 // WindowManager::invalidate(WindowType::terraform);
-// func ClearLand(flags uint8) 
+// func ClearLand(flags uint8)
 // if (World::hasMapSelectionFlag(World::MapSelectionFlags::enable))
 // auto [pointA, pointB] = World::getMapSelectionArea();
 // Pos2 centre = (pointA + pointB) / 2;
@@ -695,24 +701,24 @@ const (
 // args.pointB = pointB;
 // GameCommands::doCommand(args, flags);
 // // 0x004BC689
-// func OnToolDown(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t) 
+// func OnToolDown(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t)
 // if (widgetIndex != Common::widx::panel)
 // return;
 // clearLand(Flags::apply);
 // // 0x004BC682
-// func ToolDrag(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t) 
+// func ToolDrag(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t)
 // if (widgetIndex != Common::widx::panel)
 // return;
 // auto window = WindowManager::find(WindowType::error);
 // if (window == nullptr)
 // clearLand(Flags::apply);
 // // 0x004BC701
-// func ToolUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t) 
+// func ToolUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t)
 // if (widgetIndex == Common::widx::panel)
 // World::mapInvalidateSelectionRect();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enable);
 // // 0x004BC555
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.activatedWidgets |= (1ULL << widx::tool_area);
 // if (_adjustToolSize <= 10)
@@ -721,7 +727,7 @@ const (
 // self.widgets[widx::tool_area].image = Widget::kContentNull;
 // Widget::leftAlignTabs(self, Common::widx::tab_clear_area, Common::widx::tab_build_walls);
 // // 0x004BC5E7
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -769,6 +775,7 @@ const (
 	Paint_mode
 	Land_material
 )
+
 // const uint64_t holdableWidgets = (1 << decrease_area) | (1 << increase_area);
 // static bool isMountainMode = false;
 // static bool isPaintMode = false;
@@ -782,10 +789,10 @@ const (
 // Widgets::ImageButton({ 112, 94 }, { 20, 20 }, WindowColour::primary)
 // );
 // // 0x004BC9D1
-// func OnClose(self [[maybe_unused]] Window) 
+// func OnClose(self [[maybe_unused]] Window)
 // Ui::Windows::Main::hideGridlines();
 // // 0x004BBBF7
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // if (isPaintMode)
 // ToolManager::toolSet(self, widx::paint_mode, CursorId::landTool);
 // func If(isMountainMode) else
@@ -803,14 +810,14 @@ const (
 // _adjustToolSize = _adjustLandToolSize;
 // break;
 // // 0x004BCBF8
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // if (SceneManager::isEditorMode())
 // Common::onResize(self, 115);
 // else
 // // CHANGE: Resizes window to allow Dropdown and cost string to be drawn separately
 // Common::onResize(self, 140);
 // // 0x004BCB47
-// func ShowDropdown(self Window, widgetIndex WidgetIndex_t) 
+// func ShowDropdown(self Window, widgetIndex WidgetIndex_t)
 // auto landCount = 0;
 // for (auto i = 0; i < 32; i++)
 // auto landObj = ObjectManager::get<LandObject>(i);
@@ -835,7 +842,7 @@ const (
 // Dropdown::add(landIndex, 0xFFFE, args);
 // landIndex++;
 // // 0x004BC9A7
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::land_material:
 // showDropdown(&self, widgetIndex);
@@ -854,7 +861,7 @@ const (
 // _adjustLandToolSize = _adjustToolSize;
 // self.invalidate();
 // break;
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -879,7 +886,7 @@ const (
 // self.invalidate();
 // break;
 // // 0x004BC9C6
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex != widx::land_material)
 // return;
 // if (itemIndex == -1)
@@ -932,14 +939,14 @@ const (
 // args.corner = World::getMapSelectionCorner();
 // cost = GameCommands::doCommand(args, flags);
 // orphan member: return cost;
-// func SetAdjustCost(raiseCost uint32, lowerCost uint32) 
+// func SetAdjustCost(raiseCost uint32, lowerCost uint32)
 // if (_raiseLandCost == raiseCost)
 // if (_lowerLandCost == lowerCost)
 // return;
 // _raiseLandCost = raiseCost;
 // _lowerLandCost = lowerCost;
 // WindowManager::invalidate(WindowType::terraform, 0);
-// func OnPaintToolUpdate(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, x int16, y int16) 
+// func OnPaintToolUpdate(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, x int16, y int16)
 // World::mapInvalidateSelectionRect();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enable);
 // uint32_t cost = 0x80000000;
@@ -957,7 +964,7 @@ const (
 // if (cost != _raiseLandCost)
 // _raiseLandCost = cost;
 // WindowManager::invalidate(WindowType::terraform);
-// func OnAdjustLandToolUpdate(widgetIndex [[maybe_unused]] OpenLoco::Ui::WidgetIndex_t, x int16, y int16) 
+// func OnAdjustLandToolUpdate(widgetIndex [[maybe_unused]] OpenLoco::Ui::WidgetIndex_t, x int16, y int16)
 // uint16_t xPos = 0;
 // World::mapInvalidateSelectionRect();
 // if (ToolManager::getToolCursor() != CursorId::upDownArrow)
@@ -987,7 +994,7 @@ const (
 // raiseCost = raiseLand(Flags::allowNegativeCashFlow);
 // setAdjustCost(raiseCost, lowerCost);
 // // 0x004BC9D7
-// func OnToolUpdate(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // switch (widgetIndex)
 // case widx::paint_mode:
 // onPaintToolUpdate(self, widgetIndex, x, y);
@@ -996,7 +1003,7 @@ const (
 // case Common::widx::panel:
 // onAdjustLandToolUpdate(widgetIndex, x, y);
 // break;
-// func PaintLand() 
+// func PaintLand()
 // // CHANGE: Allows the player to change land type outside of the scenario editor.
 // if (_adjustToolSize != 0)
 // if (_lastSelectedLand != 0xFF)
@@ -1008,7 +1015,7 @@ const (
 // args.landType = _lastSelectedLand;
 // GameCommands::doCommand(args, Flags::apply);
 // // 0x004BC9ED
-// func OnToolDown(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t) 
+// func OnToolDown(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t)
 // switch (widgetIndex)
 // case widx::paint_mode:
 // paintLand();
@@ -1020,7 +1027,7 @@ const (
 // ToolManager::setToolCursor(CursorId::upDownArrow);
 // break;
 // // 0x004BC9E2
-// func ToolDrag(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func ToolDrag(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // switch (widgetIndex)
 // case widx::paint_mode:
 // auto window = WindowManager::find(WindowType::error);
@@ -1060,7 +1067,7 @@ const (
 // _lowerLandCost = 0x80000000;
 // break;
 // // 0x004BCA5D
-// func ToolUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t) 
+// func ToolUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t)
 // switch (widgetIndex)
 // case widx::mountain_mode:
 // case widx::paint_mode:
@@ -1070,7 +1077,7 @@ const (
 // ToolManager::setToolCursor(CursorId::landTool);
 // break;
 // // 0x004BC83B
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.activatedWidgets |= (1ULL << widx::tool_area);
 // if (isMountainMode)
@@ -1091,7 +1098,7 @@ const (
 // self.widgets[widx::land_material].hidden = true;
 // Widget::leftAlignTabs(self, Common::widx::tab_clear_area, Common::widx::tab_build_walls);
 // // 0x004BC909
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -1163,6 +1170,7 @@ const (
 	Decrease_area
 	Increase_area
 )
+
 // const uint64_t holdableWidgets = (1 << decrease_area) | (1 << increase_area);
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(130, 105, StringIds::title_adjust_water),
@@ -1171,20 +1179,20 @@ const (
 // Widgets::ImageButton({ 80 + 16, 72 }, { 16, 16 }, WindowColour::secondary, Gfx::recolour(ImageIds::increase_tool_area, Colour::white), StringIds::tooltip_increase_adjust_water_area)
 // );
 // // 0x004BCDAE
-// func OnClose(self [[maybe_unused]] Window) 
+// func OnClose(self [[maybe_unused]] Window)
 // Ui::Windows::Main::hideGridlines();
 // // 0x004BBC46
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // ToolManager::toolSet(self, Common::widx::panel, CursorId::waterTool);
 // Input::setFlag(Input::Flags::flag6);
 // _raiseWaterCost = 0x80000000;
 // _lowerWaterCost = 0x80000000;
 // _adjustToolSize = _adjustWaterToolSize;
 // // 0x004BCEB4
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // Common::onResize(self, 115);
 // // 0x004BCD9D
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::decrease_area:
 // _adjustToolSize--;
@@ -1200,7 +1208,7 @@ const (
 // _adjustWaterToolSize = _adjustToolSize;
 // self.invalidate();
 // break;
-// func SetAdjustCost(raiseCost uint32, lowerCost uint32) 
+// func SetAdjustCost(raiseCost uint32, lowerCost uint32)
 // if (_raiseWaterCost == raiseCost)
 // if (_lowerWaterCost == lowerCost)
 // return;
@@ -1210,7 +1218,7 @@ const (
 // func RaiseWater(flags uint8) uint32
 // func LowerWater(flags uint8) uint32
 // // 0x004BCDB4
-// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != Common::widx::panel)
 // return;
 // World::mapInvalidateSelectionRect();
@@ -1232,7 +1240,7 @@ const (
 // else
 // setAdjustCost(raiseWater(0), lowerWater(0));
 // // 0x004BCDCA
-// func OnToolDown(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t) 
+// func OnToolDown(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t)
 // if (widgetIndex != Common::widx::panel)
 // return;
 // if (!World::hasMapSelectionFlag(World::MapSelectionFlags::enable))
@@ -1257,7 +1265,7 @@ const (
 // args.pointB = pointB;
 // return GameCommands::doCommand(args, flags);
 // // 0x004BCDBF
-// func ToolDrag(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func ToolDrag(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != Common::widx::panel)
 // return;
 // auto window = WindowManager::findAt(x, y);
@@ -1290,13 +1298,13 @@ const (
 // _raiseWaterCost = 0x80000000;
 // _lowerWaterCost = 0x80000000;
 // // 0x004BCDE8
-// func ToolUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t) 
+// func ToolUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t)
 // if (widgetIndex == Common::widx::panel)
 // World::mapInvalidateSelectionRect();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enable);
 // ToolManager::setToolCursor(CursorId::waterTool);
 // // 0x004BCC6D
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.activatedWidgets |= (1ULL << widx::tool_area);
 // if (_adjustToolSize <= 10)
@@ -1305,7 +1313,7 @@ const (
 // self.widgets[widx::tool_area].image = Widget::kContentNull;
 // Widget::leftAlignTabs(self, Common::widx::tab_clear_area, Common::widx::tab_build_walls);
 // // 0x004BCCFF
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -1350,18 +1358,20 @@ const (
 // namespace BuildWalls
 // static constexpr Ui::Size kWindowSize = { 418, 108 };
 const RowHeight uint8 = 48
+
 type Widx int
 
 const (
 	Scrollview Widx = 9
 )
+
 // const uint64_t holdableWidgets = 0;
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(418, 108, StringIds::title_build_walls),
 // Widgets::ScrollView({ 2, 45 }, { 391, 48 }, WindowColour::secondary, Scrollbars::vertical)
 // );
 // // 0x004BC506
-// func UpdateActiveThumb(self Window) 
+// func UpdateActiveThumb(self Window)
 // int32_t scrollWidth = 0, scrollHeight = 0;
 // self.callGetScrollSize(0, scrollWidth, scrollHeight);
 // self.scrollAreas[0].contentHeight = scrollHeight;
@@ -1375,7 +1385,7 @@ const (
 // self.scrollAreas[0].contentOffsetY = i;
 // Ui::ScrollView::updateThumbs(self, widx::scrollview);
 // // 0x004BB6D5
-// func RefreshWallList(self Window) 
+// func RefreshWallList(self Window)
 // auto wallCount = 0;
 // for (uint16_t i = 0; i < ObjectManager::getMaxObjects(ObjectType::wall); i++)
 // auto wallObj = ObjectManager::get<WallObject>(i);
@@ -1394,13 +1404,13 @@ const (
 // rowHover = self.rowInfo[0];
 // self.rowHover = rowHover;
 // updateActiveThumb(self);
-// func RemoveWallGhost() 
+// func RemoveWallGhost()
 // // 0x004BC21C
-// func OnClose(self [[maybe_unused]] Window) 
+// func OnClose(self [[maybe_unused]] Window)
 // removeWallGhost();
 // Ui::Windows::Main::hideGridlines();
 // // 0x004BBCBF
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // ToolManager::toolSet(self, Common::widx::panel, CursorId::placeFence);
 // Input::setFlag(Input::Flags::flag6);
 // _terraformGhostPlacedFlags = Common::GhostPlacedFlags::none;
@@ -1408,7 +1418,7 @@ const (
 // self.rowHover = -1;
 // refreshWallList(self);
 // // 0x004BC44B
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.invalidate();
 // Ui::Size kMinWindowSize = { self.minWidth, self.minHeight };
 // Ui::Size kMaxWindowSize = { self.maxWidth, self.maxHeight };
@@ -1416,7 +1426,7 @@ const (
 // if (hasResized)
 // updateActiveThumb(self);
 // // 0x004BC23D
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // if (!Input::hasFlag(Input::Flags::toolActive))
 // WindowManager::close(&self);
 // if (ToolManager::getToolWindowType() != WindowType::terraform)
@@ -1461,12 +1471,12 @@ const (
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(WindowType::terraform, self.number, self.currentTab + Common::widx::tab_clear_area);
 // // 0x004BC377
-// func Event_08(self Window) 
+// func Event_08(self Window)
 // if (self.var_846 != 0xFFFFU)
 // self.var_846 = 0xFFFFU;
 // self.invalidate();
 // // 0x004BD297 (bits of)
-// func RemoveWallGhost() 
+// func RemoveWallGhost()
 // if ((_terraformGhostPlacedFlags & Common::GhostPlacedFlags::wall) != Common::GhostPlacedFlags::none)
 // _terraformGhostPlacedFlags = _terraformGhostPlacedFlags & ~Common::GhostPlacedFlags::wall;
 // GameCommands::WallRemovalArgs args;
@@ -1474,7 +1484,7 @@ const (
 // args.rotation = _terraformGhostRotation;
 // GameCommands::doCommand(args, GameCommands::Flags::apply | GameCommands::Flags::noErrorWindow | GameCommands::Flags::noPayment | GameCommands::Flags::ghost);
 // // 0x004BD4C8
-// func PlaceWallGhost(placementArgs GameCommands::WallPlacementArgs) 
+// func PlaceWallGhost(placementArgs GameCommands::WallPlacementArgs)
 // removeWallGhost();
 // if (GameCommands::doCommand(placementArgs, GameCommands::Flags::apply | GameCommands::Flags::noErrorWindow | GameCommands::Flags::noPayment | GameCommands::Flags::ghost) != GameCommands::FAILURE)
 // _terraformGhostPos = placementArgs.pos;
@@ -1503,7 +1513,7 @@ const (
 // args.tertiaryColour = Colour::black;
 // return { args };
 // // 0x004BC227
-// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != Common::widx::panel)
 // return;
 // World::mapInvalidateSelectionRect();
@@ -1524,7 +1534,7 @@ const (
 // _terraformGhostRotation = placementArgs->rotation;
 // placeWallGhost(*placementArgs);
 // // 0x004BC232
-// func OnToolDown(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolDown(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != Common::widx::panel)
 // return;
 // removeWallGhost();
@@ -1533,10 +1543,10 @@ const (
 // GameCommands::setErrorTitle(StringIds::error_cant_build_this_here);
 // if (GameCommands::doCommand(*placementArgs, GameCommands::Flags::apply) != GameCommands::FAILURE)
 // Audio::playSound(Audio::SoundId::construct, GameCommands::getPosition());
-// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // removeWallGhost();
 // // 0x004BC359
-// func GetScrollSize(self Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(self Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = (self.var_83C + 9) / 10;
 // if (scrollHeight == 0)
 // scrollHeight += 1;
@@ -1544,7 +1554,7 @@ const (
 // func GetRowIndex(x int16, y int16) int
 // return (x / 40) + (y / kRowHeight) * 10;
 // // 0x004BC3D3
-// func ScrollMouseDown(self Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func ScrollMouseDown(self Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t)
 // auto index = getRowIndex(x, y);
 // for (auto i = 0; i < self.var_83C; i++)
 // auto rowInfo = self.rowInfo[i];
@@ -1558,7 +1568,7 @@ const (
 // self.invalidate();
 // break;
 // // 0x004BC390
-// func ScrollMouseOver(self Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func ScrollMouseOver(self Window, x int16, y int16, scroll_index [[maybe_unused]] uint8_t)
 // auto index = getRowIndex(x, y);
 // uint16_t rowInfo = 0xFFFF;
 // auto i = 0;
@@ -1577,13 +1587,13 @@ const (
 // args.push(StringIds::tooltip_scroll_walls_list);
 // orphan member: return args;
 // // 0x004BC029
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.widgets[widx::scrollview].right = self.width - 4;
 // self.widgets[widx::scrollview].bottom = self.height - 14;
 // Widget::leftAlignTabs(self, Common::widx::tab_clear_area, Common::widx::tab_build_walls);
 // // 0x004BC0C2
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -1601,7 +1611,7 @@ const (
 // args.push(wallObj->name);
 // tr.drawStringLeftClipped(point, width, Colour::black, StringIds::black_stringid, args);
 // // 0x004BC11C
-// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto shade = Colours::getShade(self.getColour(WindowColour::secondary).c(), 3);
 // drawingCtx.clearSingle(shade);
@@ -1643,11 +1653,12 @@ const (
 // orphan member: return kEvents;
 // namespace Common
 type TabInformation struct {
-// std::span<const Widget> widgets;
-// const widx widgetIndex;
-// const WindowEventList& events;
-// const uint64_t holdableWidgets;
+	// std::span<const Widget> widgets;
+	// const widx widgetIndex;
+	// const WindowEventList& events;
+	// const uint64_t holdableWidgets;
 }
+
 // // clang-format off
 // static TabInformation tabInformationByTabOffset[] = {
 // { ClearArea::widgets,   widx::tab_clear_area,   ClearArea::getEvents(),   ClearArea::holdableWidgets },
@@ -1656,7 +1667,7 @@ type TabInformation struct {
 // { PlantTrees::widgets,  widx::tab_plant_trees,  PlantTrees::getEvents(),  PlantTrees::holdableWidgets },
 // { BuildWalls::widgets,  widx::tab_build_walls,  BuildWalls::getEvents(),  BuildWalls::holdableWidgets },
 // // clang-format on
-// func OnResize(self Window, height uint8) 
+// func OnResize(self Window, height uint8)
 // self.flags |= WindowFlags::resizable;
 // /*auto width = 130;
 // if (isEditorMode())
@@ -1666,7 +1677,7 @@ type TabInformation struct {
 // Ui::Size kWindowSize = { width, height };
 // self.setSize(kWindowSize, kWindowSize);
 // // 0x004BC78A, 0x004BCB0B
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // if (!Input::hasFlag(Input::Flags::toolActive))
 // WindowManager::close(&self);
 // if (ToolManager::getToolWindowType() != WindowType::terraform)
@@ -1675,7 +1686,7 @@ type TabInformation struct {
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(WindowType::terraform, self.number, self.currentTab + Common::widx::tab_clear_area);
 // // 0x004BCD82
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -1687,7 +1698,7 @@ type TabInformation struct {
 // case Common::widx::tab_plant_trees:
 // Common::switchTab(self, widgetIndex);
 // break;
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // // Activate the current tab..
 // self.activatedWidgets &= ~((1ULL << tab_adjust_land) | (1ULL << tab_adjust_water) | (1ULL << tab_build_walls) | (1ULL << tab_clear_area) | (1ULL << tab_plant_trees));
 // self.activatedWidgets |= (1ULL << tabInformationByTabOffset[self.currentTab].widgetIndex);
@@ -1699,7 +1710,7 @@ type TabInformation struct {
 // self.widgets[widx::close_button].left = self.width - 15;
 // self.widgets[widx::close_button].right = self.width - 3;
 // // 0x004BCF7F
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // // Clear Land Tab
 // uint32_t imageId = skin->img;
@@ -1724,7 +1735,7 @@ type TabInformation struct {
 // imageId += InterfaceSkin::ImageIds::toolbar_menu_build_walls;
 // Widget::drawTab(self, drawingCtx, imageId, widx::tab_build_walls);
 // // 0x004BBB2B
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // self.currentTab = widgetIndex - widx::tab_clear_area;
@@ -1763,28 +1774,28 @@ type TabInformation struct {
 // self.invalidate();
 // self.moveInsideScreenEdges();
 // // 0x004A69DD
-// func Sub_4A69DD() 
+// func Sub_4A69DD()
 // auto* window = WindowManager::find(WindowType::construction);
 // if (window != nullptr)
 // Ui::Windows::Construction::removeConstructionGhosts();
 // // 0x004BB566
-// func OpenClearArea() 
+// func OpenClearArea()
 // auto terraformWindow = open();
 // terraformWindow->callOnMouseUp(Common::widx::tab_clear_area, terraformWindow->widgets[Common::widx::tab_clear_area].id);
 // // 0x004BB546
-// func OpenAdjustLand() 
+// func OpenAdjustLand()
 // auto terraformWindow = open();
 // terraformWindow->callOnMouseUp(Common::widx::tab_adjust_land, terraformWindow->widgets[Common::widx::tab_adjust_land].id);
 // // 0x004BB556
-// func OpenAdjustWater() 
+// func OpenAdjustWater()
 // auto terraformWindow = open();
 // terraformWindow->callOnMouseUp(Common::widx::tab_adjust_water, terraformWindow->widgets[Common::widx::tab_adjust_water].id);
 // // 0x004BB4A3
-// func OpenPlantTrees() 
+// func OpenPlantTrees()
 // auto terraformWindow = open();
 // terraformWindow->callOnMouseUp(Common::widx::tab_plant_trees, terraformWindow->widgets[Common::widx::tab_plant_trees].id);
 // // 0x004BB576
-// func OpenBuildWalls() 
+// func OpenBuildWalls()
 // auto terraformWindow = open();
 // terraformWindow->callOnMouseUp(Common::widx::tab_build_walls, terraformWindow->widgets[Common::widx::tab_build_walls].id);
 // func Rotate(self Window) bool
@@ -1794,16 +1805,16 @@ type TabInformation struct {
 // self.callOnMouseUp(PlantTrees::widx::rotate_object, self.widgets[PlantTrees::widx::rotate_object].id);
 // orphan member: return true;
 // orphan member: return false;
-// func SetAdjustLandToolSize(size uint8) 
+// func SetAdjustLandToolSize(size uint8)
 // _adjustLandToolSize = size;
-// func SetAdjustWaterToolSize(size uint8) 
+// func SetAdjustWaterToolSize(size uint8)
 // _adjustWaterToolSize = size;
-// func SetClearAreaToolSize(size uint8) 
+// func SetClearAreaToolSize(size uint8)
 // _clearAreaToolSize = size;
-// func SetLastPlacedTree(elTree World::TreeElement) 
+// func SetLastPlacedTree(elTree World::TreeElement)
 // _lastPlacedTree = elTree;
 // // 0x004BAEC4
-// func ResetLastSelections() 
+// func ResetLastSelections()
 // _treeRotation = 2;
 // auto& gameState = getGameState();
 // gameState.lastTreeOption = 0xFF;

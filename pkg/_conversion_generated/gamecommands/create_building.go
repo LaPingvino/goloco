@@ -6,16 +6,18 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type BuildingPlacementArgs struct {
-// BuildingPlacementArgs() = default;
+	// BuildingPlacementArgs() = default;
 	// method: explicit BuildingPlacementArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.di)
-// , rotation(regs.bh & 0x3)
-// , type(regs.dl)
-// , variation(regs.dh)
-// , colour(static_cast<Colour>((regs.edi >> 16) & 0x1F))
-// , buildImmediately(regs.bh & 0x80)
+	// : pos(regs.ax, regs.cx, regs.di)
+	// , rotation(regs.bh & 0x3)
+	// , type(regs.dl)
+	// , variation(regs.dh)
+	// , colour(static_cast<Colour>((regs.edi >> 16) & 0x1F))
+	// , buildImmediately(regs.bh & 0x80)
 }
+
 const BuildingPlacementArgsCommand any = GameCommand.createBuilding
+
 // World::Pos3 pos;
 // orphan member: uint8_t rotation;
 // orphan member: uint8_t type;
@@ -31,4 +33,4 @@ const BuildingPlacementArgsCommand any = GameCommand.createBuilding
 // regs.dh = variation;
 // regs.bh = rotation | (buildImmediately ? 0x80 : 0);
 // orphan member: return regs;
-// func CreateBuilding(regs registers) 
+// func CreateBuilding(regs registers)

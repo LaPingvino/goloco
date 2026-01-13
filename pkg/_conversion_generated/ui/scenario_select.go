@@ -58,7 +58,7 @@ package ui
 var RowHeight = 24 // auto
 // static bool _warnOnce = false;
 // // 0x00443807
-// func InitTabs(self Window) 
+// func InitTabs(self Window)
 // uint16_t xPos = 3;
 // for (int i = 0; i < 5; i++)
 // Widget& widget = self->widgets[widx::tab0 + i];
@@ -70,7 +70,7 @@ var RowHeight = 24 // auto
 // else
 // widget.hidden = true;
 // // 0x00443946
-// func InitList(self Window) 
+// func InitList(self Window)
 // if (self->info == 0xFFFFFFFF)
 // return;
 // using namespace ScenarioManager;
@@ -111,11 +111,11 @@ var RowHeight = 24 // auto
 // initList(self);
 // orphan member: return self;
 // // 0x00443995
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // self.activatedWidgets &= ~((1 << widx::tab0) | (1 << widx::tab1) | (1 << widx::tab2) | (1 << widx::tab3) | (1 << widx::tab4));
 // self.activatedWidgets |= (1ULL << (self.currentTab + static_cast<uint8_t>(widx::tab0)));
 // // 0x004439AF
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // // Extend background frame with a solid colour
 // // TODO: this should not be needed
@@ -245,7 +245,7 @@ var RowHeight = 24 // auto
 // competitionStringId = scenarioInfo->competingCompanyDelay == 1 ? StringIds::competition_not_starting_for_month : StringIds::competition_not_starting_for_months;
 // tr.drawStringLeft(Point(x, y), Colour::black, competitionStringId, args);
 // // 0x00443D02
-// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, uint32) 
+// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, uint32)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto colour = Colours::getShade(self.getColour(WindowColour::secondary).c(), 4);
@@ -292,13 +292,13 @@ var RowHeight = 24 // auto
 // tr.drawStringCentred(point, Colour::black, formatStringId, args);
 // y += kRowHeight;
 // // 0x00443E9B
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::close:
 // WindowManager::close(&self);
 // break;
 // // 0x00443EA6
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::tab0:
 // case widx::tab1:
@@ -321,10 +321,10 @@ var RowHeight = 24 // auto
 // initList(&self);
 // break;
 // // 0x00443EF6
-// func GetScrollSize(self Window, uint32, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(self Window, uint32, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = ScenarioManager::getScenarioCountByCategory(self.currentTab) * kRowHeight;
 // // 0x00443F32
-// func OnScrollMouseDown(self Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseDown(self Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // auto scenarioCount = ScenarioManager::getScenarioCountByCategory(self.currentTab);
 // auto index = y / kRowHeight;
 // if (index > scenarioCount)
@@ -339,7 +339,7 @@ var RowHeight = 24 // auto
 // else
 // Scenario::loadAndStart(scenarioInfo->filename);
 // // 0x00443FB2
-// func OnScrollMouseOver(self Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseOver(self Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // auto scenarioCount = ScenarioManager::getScenarioCountByCategory(self.currentTab);
 // auto index = y / kRowHeight;
 // if (index > scenarioCount)

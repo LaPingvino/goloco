@@ -20,7 +20,7 @@ package ui
 // );
 // static const WindowEventList& getEvents();
 // // 0x00438A6C, 0x0043CB9F
-// func Open() 
+// func Open()
 // const int32_t uiWidth = Ui::width();
 // const int32_t uiHeight = Ui::height();
 // auto window = WindowManager::createWindow(
@@ -41,17 +41,17 @@ package ui
 // ZoomLevel::full,
 // { (World::kMapRows * World::kTileSize) / 2 - 1, (World::kMapRows * World::kTileSize) / 2 - 1, 480 });
 // // 0x0043B2E4
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // window.draw(drawingCtx);
 // // 0x00468FD3
-// func ShowGridlines() 
+// func ShowGridlines()
 // auto window = WindowManager::getMainWindow();
 // if (window == nullptr || window->viewports[0]->hasFlags(ViewportFlags::gridlines_on_landscape))
 // return;
 // window->viewports[0]->flags |= ViewportFlags::gridlines_on_landscape;
 // window->invalidate();
 // // 0x00468FFE
-// func HideGridlines() 
+// func HideGridlines()
 // if (!Config::get().gridlinesOnLandscape)
 // auto window = WindowManager::getMainWindow();
 // if (window == nullptr || !window->viewports[0]->hasFlags(ViewportFlags::gridlines_on_landscape))
@@ -59,20 +59,20 @@ package ui
 // window->viewports[0]->flags &= ~ViewportFlags::gridlines_on_landscape;
 // window->invalidate();
 // // 0x004793C4
-// func ShowDirectionArrows() 
+// func ShowDirectionArrows()
 // auto mainWindow = WindowManager::getMainWindow();
 // if (mainWindow == nullptr || mainWindow->viewports[0]->hasFlags(ViewportFlags::one_way_direction_arrows))
 // return;
 // mainWindow->viewports[0]->flags |= ViewportFlags::one_way_direction_arrows;
 // mainWindow->invalidate();
 // // 0x004793EF
-// func HideDirectionArrows() 
+// func HideDirectionArrows()
 // auto mainWindow = WindowManager::getMainWindow();
 // if (mainWindow == nullptr || !mainWindow->viewports[0]->hasFlags(ViewportFlags::one_way_direction_arrows))
 // return;
 // mainWindow->viewports[0]->flags &= ~ViewportFlags::one_way_direction_arrows;
 // mainWindow->invalidate();
-// func ViewportFocusOnEntity(main Window, targetEntity EntityId) 
+// func ViewportFocusOnEntity(main Window, targetEntity EntityId)
 // if (main.viewports[0] == nullptr)
 // return;
 // main.viewportConfigurations[0].viewportTargetSprite = targetEntity;
@@ -85,7 +85,7 @@ package ui
 // orphan member: return false;
 // return main.viewportConfigurations[0].viewportTargetSprite != EntityId::null;
 // // Stop following the followed entity, leaving the viewport centred on it.
-// func ViewportUnfocusFromEntity(main Window) 
+// func ViewportUnfocusFromEntity(main Window)
 // if (main.viewports[0] == nullptr)
 // return;
 // if (main.viewportConfigurations[0].viewportTargetSprite == EntityId::null)

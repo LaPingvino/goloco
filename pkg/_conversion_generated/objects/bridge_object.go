@@ -18,37 +18,40 @@ package objects
 type BridgeObjectFlags int
 
 const (
-	None BridgeObjectFlags = 0
+	None    BridgeObjectFlags = 0
 	HasRoof BridgeObjectFlags = 1 << 0
 )
+
 // OPENLOCO_ENABLE_ENUM_OPERATORS(BridgeObjectFlags);
 type BridgeObject struct {
-	Name StringId
-	Flags BridgeObjectFlags
-	Pad_03 uint8
-	ClearHeight uint16
-	DeckDepth int16
-	SpanLength uint8
+	Name          StringId
+	Flags         BridgeObjectFlags
+	Pad_03        uint8
+	ClearHeight   uint16
+	DeckDepth     int16
+	SpanLength    uint8
 	PillarSpacing uint8
-	MaxSpeed Speed16
-// World::MicroZ maxHeight;                         // 0x0C MicroZ!
-	CostIndex uint8
-	BaseCostFactor int16
+	MaxSpeed      Speed16
+	// World::MicroZ maxHeight;                         // 0x0C MicroZ!
+	CostIndex        uint8
+	BaseCostFactor   int16
 	HeightCostFactor int16
-	SellCostFactor int16
-// World::Track::CommonTraitFlags disabledTrackCfg; // 0x14
-	Image uint32
+	SellCostFactor   int16
+	// World::Track::CommonTraitFlags disabledTrackCfg; // 0x14
+	Image              uint32
 	TrackNumCompatible uint8
-// uint8_t trackMods[7];                            // 0x1B
+	// uint8_t trackMods[7];                            // 0x1B
 	RoadNumCompatible uint8
-// uint8_t roadMods[7];                             // 0x23
+	// uint8_t roadMods[7];                             // 0x23
 	DesignedYear uint16
 	// method: void drawPreviewImage(Gfx::DrawingContext& drawingCtx, const int16_t x, const int16_t y) const;
 	// method: bool validate() const;
 	// method: void load(const LoadedObjectHandle& handle, std::span<const std::byte> data, ObjectManager::DependentObjects*);
 	// method: void unload();
 }
+
 const BridgeObjectObjectType any = ObjectType.bridge
+
 // static_assert(sizeof(BridgeObject) == 0x2C);
 // namespace Bridge::ImageIds
 // // Unlike most objects bridges have a fixed number
@@ -68,6 +71,7 @@ const RoofEdge0 uint32 = 7
 const RoofEdge1 uint32 = 8
 const RoofEdge2 uint32 = 9
 const RoofEdge3 uint32 = 10
+
 // // Front facing edge with any support header
 const DeckBaseWithSupportHeaderEdge3 uint32 = 11
 const DeckWallEdge3 uint32 = 12
@@ -142,6 +146,7 @@ const SupportHeaderRhsSWspan3 uint32 = 80
 const DeckWallLhsSWspan3 uint32 = 81
 const DeckWallRhsSWspan3 uint32 = 82
 const RoofSWspan3 uint32 = 83
+
 // // The following are of the form:
 // // deckBase [slope] [rotation] [index]
 // // deckWall [side] [slope] [rotation] [index]
@@ -184,6 +189,7 @@ const DeckWallRhsSteepSlopeSW uint32 = 116
 const DeckBaseSteepSlopeNW uint32 = 117
 const DeckWallLhsSteepSlopeNW uint32 = 118
 const DeckWallRhsSteepSlopeNW uint32 = 119
+
 // // Even though this is on a sloped curve it is only
 // // ever a flat piece as there isn't an up/down variation
 const DeckBaseSlopedCurveEdge0 uint32 = 120

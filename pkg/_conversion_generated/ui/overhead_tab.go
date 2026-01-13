@@ -50,7 +50,7 @@ package ui
 // orphan member: return widgets;
 // orphan member: WindowEventList events;
 // // 0x0049EBD1
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& cState = getConstructionState();
 // switch (widgetIndex)
 // case Common::widx::close_button:
@@ -73,7 +73,7 @@ package ui
 // self.invalidate();
 // break;
 // // 0x0049EBFC
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // auto& cState = getConstructionState();
 // switch (widgetIndex)
 // case widx::track_dropdown:
@@ -94,7 +94,7 @@ package ui
 // ToolManager::toolSet(self, widgetIndex, CursorId::crosshair);
 // break;
 // // 0x0049EC09
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex != widx::track_dropdown)
 // return;
 // if (itemIndex != -1)
@@ -102,7 +102,7 @@ package ui
 // cState.lastSelectedTrackModSection = static_cast<Track::ModSection>(itemIndex);
 // self.invalidate();
 // // 0x0049ECD1
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // Common::onUpdate(&self, GhostVisibilityFlags::overhead);
 // static std::optional<GameCommands::RoadModsPlacementArgs> getRoadModsPlacementArgsFromCursor(const int16_t x, const int16_t y)
 // auto [interaction, viewport] = ViewportInteraction::getMapCoordinatesFromPos(x, y, ~(ViewportInteraction::InteractionItemFlags::roadAndTram));
@@ -139,7 +139,7 @@ package ui
 // args.modSection = cState.lastSelectedTrackModSection;
 // return { args };
 // // 0x0049FF0
-// func RemoveTrackModsGhost() 
+// func RemoveTrackModsGhost()
 // auto& cState = getConstructionState();
 // if (Common::hasGhostVisibilityFlag(GhostVisibilityFlags::overhead))
 // if (cState.modGhostTrackObjId & (1 << 7))
@@ -186,7 +186,7 @@ package ui
 // cState.modGhostTrackObjId = args.trackObjType;
 // orphan member: return res;
 // // 0x0049EC15
-// func OnToolUpdate(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != widx::image)
 // return;
 // auto& cState = getConstructionState();
@@ -231,7 +231,7 @@ package ui
 // cState.modCost = cost;
 // self.invalidate();
 // // 0x0049EC20
-// func OnToolUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUp(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != widx::image)
 // return;
 // removeConstructionGhosts();
@@ -260,7 +260,7 @@ package ui
 // if (res == GameCommands::FAILURE || res == 0)
 // return;
 // Audio::playSound(Audio::SoundId::construct, GameCommands::getPosition());
-// func SetCheckbox(self Window, checkboxIndex WidgetIndex_t, name StringId) 
+// func SetCheckbox(self Window, checkboxIndex WidgetIndex_t, name StringId)
 // auto widgetIndex = checkboxIndex + widx::checkbox_1;
 // self->widgets[widgetIndex].hidden = false;
 // self->widgets[widgetIndex].text = name;
@@ -268,7 +268,7 @@ package ui
 // if (cState.lastSelectedMods & (1 << checkboxIndex))
 // self->activatedWidgets |= (1ULL << widgetIndex);
 // // 0x0049E7D3
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(&self);
 // self.activatedWidgets &= ~(1 << widx::checkbox_1 | 1 << widx::checkbox_2 | 1 << widx::checkbox_3 | 1 << widx::checkbox_4);
 // self.widgets[widx::checkbox_1].hidden = true;
@@ -313,7 +313,7 @@ package ui
 // self.widgets[widx::track].text = modString[enumValue(cState.lastSelectedTrackModSection)];
 // Common::repositionTabs(&self);
 // // 0x0049EA3E
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
 // auto& cState = getConstructionState();
@@ -347,7 +347,7 @@ package ui
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto point = Point(self.x + 69, self.widgets[widx::image].bottom + self.y + 4);
 // tr.drawStringCentred(point, Colour::black, StringIds::build_cost, args);
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.callOnMouseDown(Overhead::widx::image, self.widgets[Overhead::widx::image].id);
 // static constexpr WindowEventList kEvents = {
 // .onClose = Common::onClose,

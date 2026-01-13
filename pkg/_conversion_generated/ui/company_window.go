@@ -73,6 +73,7 @@ const (
 	Tab_challenge
 	Company_select
 )
+
 // func MakeCommonWidgets(frameWidth int32, frameHeight int32, windowCaptionId StringId) any
 // return makeWidgets(
 // Widgets::Frame({ 0, 0 }, { frameWidth, frameHeight }, WindowColour::primary),
@@ -87,24 +88,24 @@ const (
 // Widgets::Tab({ 158, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_company_challenge_for_this_game),
 // Widgets::ImageButton({ 0, 14 }, { 26, 26 }, WindowColour::primary, ImageIds::null, StringIds::tooltip_select_company));
 // // 0x004343FC
-// func DisableChallengeTab(self Window) 
+// func DisableChallengeTab(self Window)
 // self->disabledWidgets = 0;
 // if (CompanyId(self->number) != CompanyManager::getControllingId())
 // self->disabledWidgets |= (1 << widx::tab_challenge);
 // // 0x00431E9B
-// func EnableRenameByCaption(self Window) 
+// func EnableRenameByCaption(self Window)
 // if (SceneManager::isEditorMode() || CompanyId(self->number) == CompanyManager::getControllingId())
 // self->disabledWidgets &= ~(1ULL << caption);
 // else
 // self->disabledWidgets |= (1ULL << caption);
 // // Defined at the bottom of this file.
-// func RenameCompanyPrompt(self Window, widgetIndex WidgetIndex_t) 
-// func RenameCompany(self Window, input byte) 
-// func SwitchCompany(self Window, itemIndex int16) 
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
-// func SwitchTabWidgets(self Window) 
-// func DrawCompanySelect(self Window, drawingCtx Gfx::DrawingContext) 
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func RenameCompanyPrompt(self Window, widgetIndex WidgetIndex_t)
+// func RenameCompany(self Window, input byte)
+// func SwitchCompany(self Window, itemIndex int16)
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
+// func SwitchTabWidgets(self Window)
+// func DrawCompanySelect(self Window, drawingCtx Gfx::DrawingContext)
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // namespace Status
 // static constexpr Ui::Size kWindowSize = { 270, 182 };
 type Widx int
@@ -116,6 +117,7 @@ const (
 	Face
 	Change_owner_name
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(270, 182, StringIds::title_company),
 // Widgets::Label({ 3, 160 }, { 242, 21 }, WindowColour::secondary, ContentAlign::center),
@@ -125,7 +127,7 @@ const (
 // Widgets::ImageButton({ 154, 124 }, { 112, 22 }, WindowColour::secondary, Widget::kContentNull, StringIds::tooltip_change_owner_name)
 // );
 // // 0x00431EBB
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::switchTabWidgets(&self);
 // // Set company name in title.
 // auto company = CompanyManager::get(CompanyId(self.number));
@@ -163,7 +165,7 @@ const (
 // self.widgets[widx::centre_on_viewport].top = self.widgets[widx::viewport].bottom - 24;
 // Widget::leftAlignTabs(self, Common::widx::tab_status, Common::widx::tab_challenge);
 // // 0x00432055
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -217,7 +219,7 @@ const (
 // StringIds::black_stringid,
 // args);
 // // 0x00432244
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::caption:
 // Common::renameCompanyPrompt(&self, widgetIndex);
@@ -244,15 +246,15 @@ const (
 // TextInput::openTextInput(&self, StringIds::title_name_owner, StringIds::prompt_enter_new_name_for_owner, company->ownerName, widgetIndex, {});
 // break;
 // // 0x00432283
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (widgetIndex == Common::widx::company_select)
 // Dropdown::populateCompanySelect(&self, &self.widgets[widgetIndex]);
 // // 0x0043228E
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex == Common::widx::company_select)
 // Common::switchCompany(&self, itemIndex);
 // // 0x004325DF
-// func RenameCompanyOwnerName(self Window, input byte) 
+// func RenameCompanyOwnerName(self Window, input byte)
 // if (strlen(input) == 0)
 // return;
 // GameCommands::setErrorTitle(StringIds::cannot_change_owner_name);
@@ -283,18 +285,18 @@ const (
 // StringManager::formatString(buffer, StringIds::company_owner_name_transport, args);
 // Common::renameCompany(self, buffer);
 // // 0x004322F6
-// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte) 
+// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte)
 // if (callingWidget == Common::widx::caption)
 // Common::renameCompany(&self, input);
 // func If(widx::change_owner_name callingWidget ==) else
 // renameCompanyOwnerName(&self, input);
 // // 0x0043270A
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidate(WindowType::company, self.number);
 // // 0x00432724
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // Common::enableRenameByCaption(&self);
 // self.setSize(Status::kWindowSize, { 640, 400 });
 // if (self.viewports[0] != nullptr)
@@ -307,7 +309,7 @@ const (
 // viewport->viewHeight = proposedDims.height << viewport->zoom;
 // self.savedView.clear();
 // self.callViewportRotate();
-// func Sub_434336(self Window, view SavedView) 
+// func Sub_434336(self Window, view SavedView)
 // if (self->viewports[0] != nullptr)
 // return;
 // auto& widget = self->widgets[widx::viewport];
@@ -317,25 +319,25 @@ const (
 // ViewportManager::create(self, 0, origin, size, self->savedView.zoomLevel, view.entityId);
 // else
 // ViewportManager::create(self, 0, origin, size, self->savedView.zoomLevel, view.getPos());
-// func Sub_434223(self Window, view SavedView, vpFlags ViewportFlags) 
+// func Sub_434223(self Window, view SavedView, vpFlags ViewportFlags)
 // self->savedView = view;
 // sub_434336(self, view);
 // self->viewports[0]->flags |= vpFlags;
 // self->invalidate();
-// func DifferentViewportSettings(self Window, view SavedView) 
+// func DifferentViewportSettings(self Window, view SavedView)
 // auto vpFlags = self->viewports[0]->flags;
 // self->viewportRemove(0);
 // sub_434223(self, view, vpFlags);
-// func NoViewportPresent(self Window, view SavedView) 
+// func NoViewportPresent(self Window, view SavedView)
 // ViewportFlags vpFlags = ViewportFlags::none;
 // if (Config::get().gridlinesOnLandscape)
 // vpFlags |= ViewportFlags::gridlines_on_landscape;
 // sub_434223(self, view, vpFlags);
-// func InvalidViewport(self Window) 
+// func InvalidViewport(self Window)
 // self->viewportRemove(0);
 // self->invalidate();
 // // 0x004327C8
-// func ViewportRotate(self Window) 
+// func ViewportRotate(self Window)
 // if (self.currentTab != 0)
 // return;
 // self.callPrepareDraw();
@@ -462,6 +464,7 @@ const (
 	Rotate_hq
 	Centre_on_viewport
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(340, 194, StringIds::title_company_details),
 // Widgets::Viewport({ 219, 54 }, { 96, 120 }, WindowColour::secondary, Widget::kContentUnk),
@@ -470,7 +473,7 @@ const (
 // Widgets::ImageButton({ 0, 0 }, { 24, 24 }, WindowColour::secondary, ImageIds::centre_viewport, StringIds::move_main_view_to_show_this)
 // );
 // // 0x004327CF
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::switchTabWidgets(&self);
 // // Set company name.
 // auto company = CompanyManager::get(CompanyId(self.number));
@@ -501,7 +504,7 @@ const (
 // self.widgets[widx::centre_on_viewport].left = self.widgets[widx::viewport].right - 24;
 // self.widgets[widx::centre_on_viewport].top = self.widgets[widx::viewport].bottom - 24;
 // Widget::leftAlignTabs(self, Common::widx::tab_status, Common::widx::tab_challenge);
-// func DrawAIdetails(drawingCtx Gfx::DrawingContext, x int32, y int32, company OpenLoco::Company) 
+// func DrawAIdetails(drawingCtx Gfx::DrawingContext, x int32, y int32, company OpenLoco::Company)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // const auto competitor = ObjectManager::get<CompetitorObject>(company.competitorId);
 // orphan member: FormatArguments args{};
@@ -530,7 +533,7 @@ const (
 // StringIds::company_details_aircraft_count,
 // StringIds::company_details_ships_count,
 // // 0x00432919
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -578,7 +581,7 @@ const (
 // auto width = widget.width() - 2;
 // tr.drawStringCentredWrapped(loc, width, Colour::black, StringIds::not_yet_constructed);
 // // 0x00432BDD
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::caption:
 // Common::renameCompanyPrompt(&self, widgetIndex);
@@ -597,10 +600,10 @@ const (
 // case widx::centre_on_viewport:
 // self.viewportCentreMain();
 // break;
-// func RotateHQGhost90Deg() 
+// func RotateHQGhost90Deg()
 // _headquarterConstructionRotation = (_headquarterConstructionRotation + 1) & 3;
 // // 0x00432C08
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::company_select:
 // Dropdown::populateCompanySelect(&self, &self.widgets[widgetIndex]);
@@ -613,17 +616,17 @@ const (
 // rotateHQGhost90Deg();
 // break;
 // // 0x00432C19
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex == Common::widx::company_select)
 // Common::switchCompany(&self, itemIndex);
-// func OnTabSwitch() 
+// func OnTabSwitch()
 // _headquarterConstructionRotation = (WindowManager::getCurrentRotation() + 2) & 3;
 // // 0x00432C24
-// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte) 
+// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte)
 // if (callingWidget == Common::widx::caption)
 // Common::renameCompany(&self, input);
 // // 0x00434E94
-// func RemoveHeadquarterGhost() 
+// func RemoveHeadquarterGhost()
 // if (_headquarterGhost.has_value())
 // auto flags = GameCommands::Flags::apply | GameCommands::Flags::noErrorWindow | GameCommands::Flags::noPayment | GameCommands::Flags::ghost;
 // GameCommands::HeadquarterRemovalArgs args;
@@ -631,7 +634,7 @@ const (
 // GameCommands::doCommand(args, flags);
 // _headquarterGhost = std::nullopt;
 // // 0x00434E3F
-// func PlaceHeadquarterGhost(args GameCommands::HeadquarterPlacementArgs) 
+// func PlaceHeadquarterGhost(args GameCommands::HeadquarterPlacementArgs)
 // removeHeadquarterGhost();
 // auto flags = GameCommands::Flags::apply | GameCommands::Flags::preventBuildingClearing | GameCommands::Flags::noErrorWindow | GameCommands::Flags::noPayment | GameCommands::Flags::ghost;
 // if (GameCommands::doCommand(args, flags) != GameCommands::FAILURE)
@@ -665,7 +668,7 @@ const (
 // args.buildImmediately = true; // bh
 // return { args };
 // // 0x00432CA1
-// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // World::mapInvalidateSelectionRect();
 // World::resetMapSelectionFlag(World::MapSelectionFlags::enable);
 // auto placementArgs = getHeadquarterPlacementArgsFromCursor(x, y);
@@ -692,7 +695,7 @@ const (
 // // regs.dx = widgetIndex;
 // // regs.ax = mouseX;
 // // regs.bx = mouseY;
-// func OnToolDown(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, mouseX int16, mouseY int16) 
+// func OnToolDown(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId, mouseX int16, mouseY int16)
 // removeHeadquarterGhost();
 // auto placementArgs = getHeadquarterPlacementArgsFromCursor(mouseX, mouseY);
 // if (!placementArgs)
@@ -703,23 +706,23 @@ const (
 // if (commandResult != GameCommands::FAILURE)
 // ToolManager::toolCancel();
 // // 0x00432D7A
-// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnToolAbort(self [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // removeHeadquarterGhost();
 // Ui::Windows::Main::hideGridlines();
-// func OnClose(self Window) 
+// func OnClose(self Window)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // // 0x0432D85
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidate(WindowType::company, self.number);
 // // 0x00432D9F
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // Common::enableRenameByCaption(&self);
 // self.setSize(kWindowSize);
 // self.callViewportRotate();
-// func Sub_434377(self Window, view SavedView) 
+// func Sub_434377(self Window, view SavedView)
 // if (self->viewports[0] != nullptr)
 // return;
 // auto& widget = self->widgets[widx::viewport];
@@ -729,7 +732,7 @@ const (
 // self->flags |= WindowFlags::viewportNoScrolling;
 // self->invalidate();
 // // 0x00432E08
-// func ViewportRotate(self Window) 
+// func ViewportRotate(self Window)
 // if (self.currentTab != Common::tab_details - Common::tab_status)
 // return;
 // self.callPrepareDraw();
@@ -824,6 +827,7 @@ const (
 	Secondary_colour_aircraft
 	Secondary_colour_ships
 )
+
 // // clang-format off
 // constexpr uint64_t allMainColours = {
 // (1ULL << widx::main_colour_scheme) |
@@ -897,7 +901,7 @@ const (
 // Widgets::ColourButton({ 239, 231 }, { 16, 16 }, WindowColour::secondary, Widget::kContentNull, StringIds::tooltip_select_secondary_colour)
 // );
 // // 0x00432E0F
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::switchTabWidgets(&self);
 // // Set company name.
 // auto company = CompanyManager::get(CompanyId(self.number));
@@ -918,10 +922,11 @@ const (
 // // Set company's secondary colour
 // self.widgets[widx::secondary_colour_scheme].image = Widget::kImageIdColourSet | Gfx::recolour(ImageIds::colour_swatch_recolourable, company->mainColours.secondary);
 type ColourSchemeTuple struct {
-	Checkbox WidgetIndex_t
-	Primary WidgetIndex_t
+	Checkbox  WidgetIndex_t
+	Primary   WidgetIndex_t
 	Secondary WidgetIndex_t
 }
+
 // // clang-format off
 // static constexpr ColourSchemeTuple tuples[] =
 // { widx::check_steam_locomotives,     widx::main_colour_steam_locomotives,     widx::secondary_colour_steam_locomotives },
@@ -952,7 +957,7 @@ type ColourSchemeTuple struct {
 // else
 // self.disabledWidgets |= (allColourChecks | allMainColours | allSecondaryColours);
 // // 0x00432F9A
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -971,7 +976,7 @@ type ColourSchemeTuple struct {
 // Colour::black,
 // StringIds::special_colour_schemes_used_for);
 // // 0x00433032
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::caption:
 // Common::renameCompanyPrompt(&self, widgetIndex);
@@ -1010,7 +1015,7 @@ type ColourSchemeTuple struct {
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
 // break;
 // // 0x00433067
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::company_select:
 // Dropdown::populateCompanySelect(&self, &self.widgets[widgetIndex]);
@@ -1058,11 +1063,11 @@ type ColourSchemeTuple struct {
 // Dropdown::showColour(&self, &self.widgets[widgetIndex], availableColours, selectedColour, self.getColour(WindowColour::secondary));
 // break;
 // // 0x00433092
-// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte) 
+// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte)
 // if (callingWidget == Common::widx::caption)
 // Common::renameCompany(&self, input);
 // // 0x0043309D
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // switch (widgetIndex)
 // case Common::widx::company_select:
 // Common::switchCompany(&self, itemIndex);
@@ -1116,12 +1121,12 @@ type ColourSchemeTuple struct {
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
 // break;
 // // 0x0043325F
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidate(WindowType::company, self.number);
 // // 0x00433279
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // Common::enableRenameByCaption(&self);
 // self.setSize(kWindowSize);
 // static constexpr WindowEventList kEvents = {
@@ -1147,6 +1152,7 @@ const (
 	Loan_autopay
 )
 const ExpenditureColumnWidth uint16 = 128
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(636, 319, StringIds::title_company_finances),
 // Widgets::ScrollView({ 133, 45 }, { 499, 215 }, WindowColour::secondary, Scrollbars::horizontal),
@@ -1155,7 +1161,7 @@ const ExpenditureColumnWidth uint16 = 128
 // );
 // const uint64_t holdableWidgets = (1 << widx::loan_decrease) | (1 << widx::loan_increase);
 // // 0x004332E4
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::switchTabWidgets(&self);
 // auto company = CompanyManager::get(CompanyId(self.number));
 // // Set company name.
@@ -1185,7 +1191,7 @@ const ExpenditureColumnWidth uint16 = 128
 // self.activatedWidgets &= ~(1ULL << Finances::widx::loan_autopay);
 // Widget::leftAlignTabs(self, Common::widx::tab_status, Common::widx::tab_challenge);
 // // 0x004333D0
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -1281,7 +1287,7 @@ const ExpenditureColumnWidth uint16 = 128
 // Colour::black,
 // StringIds::profit_from_vehicles,
 // args);
-// func DrawFinanceYear(drawingCtx Gfx::DrawingContext, x int16, y int16, columnYear uint16, currentYear uint16) 
+// func DrawFinanceYear(drawingCtx Gfx::DrawingContext, x int16, y int16, columnYear uint16, currentYear uint16)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // orphan member: FormatArguments args{};
 // args.push(StringIds::uint16_raw);
@@ -1314,7 +1320,7 @@ const ExpenditureColumnWidth uint16 = 128
 // args);
 // y += 10;
 // orphan member: return sum;
-// func DrawFinanceSum(drawingCtx Gfx::DrawingContext, x int16, y int16, sum currency48_t) 
+// func DrawFinanceSum(drawingCtx Gfx::DrawingContext, x int16, y int16, sum currency48_t)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto mainFormat = StringIds::black_stringid;
 // auto sumFormat = StringIds::plus_currency48;
@@ -1329,7 +1335,7 @@ const ExpenditureColumnWidth uint16 = 128
 // tr.drawStringRight(point, Colour::black, mainFormat, args);
 // drawingCtx.fillRect(x - expenditureColumnWidth + 10, y - 2, x, y - 2, PaletteIndex::black0, Gfx::RectFlags::none);
 // // 0x0043361E
-// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // int16_t y = 47 - self.widgets[widx::scrollview].top + 14;
 // for (uint8_t i = 0; i < static_cast<uint8_t>(ExpenditureType::Count); i++)
 // // Add zebra stripes to even labels.
@@ -1351,7 +1357,7 @@ const ExpenditureColumnWidth uint16 = 128
 // drawFinanceSum(drawingCtx, x, y, sum);
 // x += expenditureColumnWidth;
 // // 0x00433819
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::caption:
 // Common::renameCompanyPrompt(&self, widgetIndex);
@@ -1372,7 +1378,7 @@ const ExpenditureColumnWidth uint16 = 128
 // company->challengeFlags ^= CompanyFlags::autopayLoan;
 // break;
 // // 0x0043383E
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::company_select:
 // Dropdown::populateCompanySelect(&self, &self.widgets[widgetIndex]);
@@ -1394,14 +1400,14 @@ const ExpenditureColumnWidth uint16 = 128
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
 // break;
 // // 0x0043385D
-// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte) 
+// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte)
 // if (callingWidget == Common::widx::caption)
 // Common::renameCompany(&self, input);
 // // 0x004C8DBF
 // // For the finances the most recent data on the scroll view is the data
 // // most off to the right of the scroll. This function moves to the last
 // // page of data as far to the right of the scroll.
-// func ScrollToLatestData(self Window) 
+// func ScrollToLatestData(self Window)
 // self.initScrollWidgets();
 // self.scrollAreas[0].contentOffsetX = 0x7FFF;
 // self.scrollAreas[0].contentWidth = 0;
@@ -1416,13 +1422,13 @@ const ExpenditureColumnWidth uint16 = 128
 // self.scrollAreas[0].contentOffsetX = std::min<int16_t>(x, newOffset);
 // ScrollView::updateThumbs(self, widx::scrollview);
 // // 0x00433868
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex == Common::widx::company_select)
 // Common::switchCompany(&self, itemIndex);
 // scrollToLatestData(self);
 // self.invalidate();
 // // 0x0043386F
-// func GetScrollSize(self Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth int32, scrollHeight [[maybe_unused]] int32_t) 
+// func GetScrollSize(self Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth int32, scrollHeight [[maybe_unused]] int32_t)
 // const auto& company = CompanyManager::get(CompanyId(self.number));
 // scrollWidth = company->numExpenditureYears * expenditureColumnWidth;
 // // 0x00433887
@@ -1431,12 +1437,12 @@ const ExpenditureColumnWidth uint16 = 128
 // args.push(StringIds::tooltip_scroll_list);
 // orphan member: return args;
 // // 0x0043399D
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidate(WindowType::company, self.number);
 // // 0x004339B7
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // Common::enableRenameByCaption(&self);
 // self.setSize(kWindowSize);
 // static constexpr WindowEventList kEvents = {
@@ -1481,7 +1487,7 @@ const ExpenditureColumnWidth uint16 = 128
 // Common::makeCommonWidgets(240, 382, StringIds::title_company_cargo_delivered)
 // );
 // // 0x00433A22
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::switchTabWidgets(&self);
 // // Set company name.
 // auto company = CompanyManager::get(CompanyId(self.number));
@@ -1498,7 +1504,7 @@ const ExpenditureColumnWidth uint16 = 128
 // self.widgets[Common::widx::company_select].left = self.width - 28;
 // Widget::leftAlignTabs(self, Common::widx::tab_status, Common::widx::tab_challenge);
 // // 0x00433ACD
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -1529,7 +1535,7 @@ const ExpenditureColumnWidth uint16 = 128
 // auto point = Point(self.x + 10, y);
 // tr.drawStringLeft(point, Colour::black, StringIds::cargo_delivered_none);
 // // 0x00433BE6
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::caption:
 // Common::renameCompanyPrompt(&self, widgetIndex);
@@ -1546,24 +1552,24 @@ const ExpenditureColumnWidth uint16 = 128
 // Common::switchTab(self, widgetIndex);
 // break;
 // // 0x00433C0B
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (widgetIndex == Common::widx::company_select)
 // Dropdown::populateCompanySelect(&self, &self.widgets[widgetIndex]);
 // // 0x00433C16
-// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte) 
+// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte)
 // if (callingWidget == Common::widx::caption)
 // Common::renameCompany(&self, input);
 // // 0x00433C21
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // if (widgetIndex == Common::widx::company_select)
 // Common::switchCompany(&self, itemIndex);
 // // 0x00433C7D
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidate(WindowType::company, self.number);
 // // 0x00433C97
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // Common::enableRenameByCaption(&self);
 // uint16_t cargoHeight = 0;
 // const auto company = CompanyManager::get(CompanyId(self.number));
@@ -1591,7 +1597,7 @@ const ExpenditureColumnWidth uint16 = 128
 // Common::makeCommonWidgets(320, 182, StringIds::title_company_challenge)
 // );
 // // 0x00433D39
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::switchTabWidgets(&self);
 // // Set company name.
 // auto company = CompanyManager::get(CompanyId(self.number));
@@ -1609,7 +1615,7 @@ const ExpenditureColumnWidth uint16 = 128
 // self.widgets[Common::widx::company_select].hidden = true;
 // Widget::leftAlignTabs(self, Common::widx::tab_status, Common::widx::tab_challenge);
 // // 0x00433DEB
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
@@ -1663,7 +1669,7 @@ const ExpenditureColumnWidth uint16 = 128
 // tr.drawStringLeftWrapped(point, self.width + 10, Colour::black, StringIds::time_remaining_years_months, args);
 // return;
 // // 0x00433FFE
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::caption:
 // Common::renameCompanyPrompt(&self, widgetIndex);
@@ -1680,16 +1686,16 @@ const ExpenditureColumnWidth uint16 = 128
 // Common::switchTab(self, widgetIndex);
 // break;
 // // 0x00434023
-// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte) 
+// func TextInput(self Window, callingWidget WidgetIndex_t, id [[maybe_unused]] WidgetId, input byte)
 // if (callingWidget == Common::widx::caption)
 // Common::renameCompany(&self, input);
 // // 0x0043402E
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidate(WindowType::company, self.number);
 // // 0x00434048
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // self.setSize(kWindowSize);
 // static constexpr WindowEventList kEvents = {
 // .onMouseUp = onMouseUp,
@@ -1723,11 +1729,12 @@ const ExpenditureColumnWidth uint16 = 128
 // orphan member: return window;
 // namespace Common
 type TabInformation struct {
-// std::span<const Widget> widgets;
-// const widx widgetIndex;
-// const WindowEventList& events;
-// const Ui::Size* kWindowSize;
+	// std::span<const Widget> widgets;
+	// const widx widgetIndex;
+	// const WindowEventList& events;
+	// const Ui::Size* kWindowSize;
 }
+
 // // clang-format off
 // static TabInformation tabInformationByTabOffset[] = {
 // { Status::widgets,         widx::tab_status,          Status::getEvents(),         &Status::kWindowSize },
@@ -1737,7 +1744,7 @@ type TabInformation struct {
 // { CargoDelivered::widgets, widx::tab_cargo_delivered, CargoDelivered::getEvents(), &CargoDelivered::kWindowSize },
 // { Challenge::widgets,      widx::tab_challenge,       Challenge::getEvents(),      &Challenge::kWindowSize }
 // // clang-format on
-// func SwitchCompany(self Window, itemIndex int16) 
+// func SwitchCompany(self Window, itemIndex int16)
 // if (itemIndex == -1)
 // return;
 // CompanyId companyId = Dropdown::getCompanyIdFromSelection(itemIndex);
@@ -1753,7 +1760,7 @@ type TabInformation struct {
 // self->owner = companyId;
 // Common::disableChallengeTab(self);
 // self->invalidate();
-// func SwitchTabWidgets(self Window) 
+// func SwitchTabWidgets(self Window)
 // self->activatedWidgets = 0;
 // static std::span<const Widget> widgetCollectionsByTabId[] = {
 // Status::widgets,
@@ -1775,7 +1782,7 @@ type TabInformation struct {
 // self->activatedWidgets &= ~((1 << tab_status) | (1 << tab_details) | (1 << tab_colour_scheme) | (1 << tab_finances) | (1 << tab_cargo_delivered) | (1 << tab_challenge));
 // self->activatedWidgets |= (1ULL << tabWidgetIdxByTabId[self->currentTab]);
 // // 0x0043230B
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // TextInput::sub_4CE6C9(self.type, self.number);
@@ -1804,11 +1811,11 @@ type TabInformation struct {
 // if (tabInfo.widgetIndex == widx::tab_finances)
 // Finances::scrollToLatestData(self);
 // // 0x0043252E
-// func RenameCompanyPrompt(self Window, widgetIndex WidgetIndex_t) 
+// func RenameCompanyPrompt(self Window, widgetIndex WidgetIndex_t)
 // auto company = CompanyManager::get(CompanyId(self->number));
 // TextInput::openTextInput(self, StringIds::title_name_company, StringIds::prompt_enter_new_company_name, company->name, widgetIndex, {});
 // // 0x0043254F
-// func RenameCompany(self Window, input byte) 
+// func RenameCompany(self Window, input byte)
 // if (strlen(input) == 0)
 // return;
 // GameCommands::setErrorTitle(StringIds::cannot_rename_this_company);
@@ -1821,7 +1828,7 @@ type TabInformation struct {
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
 // args.bufferIndex = 0;
 // GameCommands::doCommand(args, GameCommands::Flags::apply);
-// func DrawCompanySelect(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawCompanySelect(self Window, drawingCtx Gfx::DrawingContext)
 // const auto company = CompanyManager::get(CompanyId(self->number));
 // const auto competitor = ObjectManager::get<CompetitorObject>(company->competitorId);
 // // Draw company owner face.
@@ -1830,7 +1837,7 @@ type TabInformation struct {
 // const uint16_t y = self->y + self->widgets[Common::widx::company_select].top + 1;
 // drawingCtx.drawImage(x, y, image);
 // // 0x00434413
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // // Status tab
 // const uint32_t imageId = skin->img + InterfaceSkin::ImageIds::tab_company;

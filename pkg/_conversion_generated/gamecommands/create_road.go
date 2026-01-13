@@ -6,17 +6,19 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type RoadPlacementArgs struct {
-// RoadPlacementArgs() = default;
+	// RoadPlacementArgs() = default;
 	// method: explicit RoadPlacementArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.di)
-// , rotation(regs.bh & 0x3)
-// , roadId(regs.dh & 0xF)
-// , mods(regs.edi >> 16)
-// , bridge((regs.edx >> 24) & 0xFF)
-// , roadObjectId(regs.dl)
-// , unkFlags((regs.edx >> 16) & 0xFF)
+	// : pos(regs.ax, regs.cx, regs.di)
+	// , rotation(regs.bh & 0x3)
+	// , roadId(regs.dh & 0xF)
+	// , mods(regs.edi >> 16)
+	// , bridge((regs.edx >> 24) & 0xFF)
+	// , roadObjectId(regs.dl)
+	// , unkFlags((regs.edx >> 16) & 0xFF)
 }
+
 const RoadPlacementArgsCommand any = GameCommand.createRoad
+
 // World::Pos3 pos;
 // orphan member: uint8_t rotation;
 // orphan member: uint8_t roadId;
@@ -32,4 +34,4 @@ const RoadPlacementArgsCommand any = GameCommand.createRoad
 // regs.bh = rotation;
 // regs.edx = roadObjectId | (roadId << 8) | (unkFlags << 16) | (bridge << 24);
 // orphan member: return regs;
-// func CreateRoad(regs registers) 
+// func CreateRoad(regs registers)

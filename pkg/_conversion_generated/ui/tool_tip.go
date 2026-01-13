@@ -28,38 +28,38 @@ package ui
 // static Ui::Point _tooltipCursor;
 // static uint16_t _tooltipTimeout;
 // static bool _52336E;
-// func SetWindowType(wndType WindowType) 
+// func SetWindowType(wndType WindowType)
 // _tooltipWindowType = wndType;
 // func GetWindowType() WindowType
 // orphan member: return _tooltipWindowType;
-// func SetWindowNumber(wndNumber WindowNumber_t) 
+// func SetWindowNumber(wndNumber WindowNumber_t)
 // _tooltipWindowNumber = wndNumber;
 // func GetWindowNumber() WindowNumber_t
 // orphan member: return _tooltipWindowNumber;
-// func SetWidgetIndex(widx WidgetIndex_t) 
+// func SetWidgetIndex(widx WidgetIndex_t)
 // _tooltipWidgetIndex = widx;
 // func GetWidgetIndex() WidgetIndex_t
 // orphan member: return _tooltipWidgetIndex;
-// func SetNotShownTicks(ticks uint16) 
+// func SetNotShownTicks(ticks uint16)
 // _tooltipNotShownTicks = ticks;
 // func GetNotShownTicks() uint16
 // orphan member: return _tooltipNotShownTicks;
 // func GetCurrentStringId() StringId
 // orphan member: return _currentTooltipStringId;
-// func SetCurrentStringId(stringId StringId) 
+// func SetCurrentStringId(stringId StringId)
 // _currentTooltipStringId = stringId;
 // // 0x00439BB1
 // func IsTimeTooltip() bool
 // return _tooltipWindowType == WindowType::timeToolbar && _tooltipWidgetIndex == 3;
 // Ui::Point getTooltipMouseLocation()
 // orphan member: return _tooltipCursor;
-// func SetTooltipMouseLocation(loc Ui::Point) 
+// func SetTooltipMouseLocation(loc Ui::Point)
 // _tooltipCursor = loc;
 // func GetTooltipTimeout() uint16
 // orphan member: return _tooltipTimeout;
-// func SetTooltipTimeout(tooltipTimeout uint16) 
+// func SetTooltipTimeout(tooltipTimeout uint16)
 // _tooltipTimeout = tooltipTimeout;
-// func Set_52336E(value bool) 
+// func Set_52336E(value bool)
 // _52336E = value;
 // namespace OpenLoco::Ui::Windows::ToolTip
 // static char _text[512];          // 0x01136D90
@@ -69,12 +69,13 @@ type Widx int
 const (
 	Text Widx = iota
 )
+
 // // 0x005234CC
 // static constexpr auto _widgets = makeWidgets(
 // Widgets::Wt3Widget({ 0, 0 }, { 200, 32 }, WindowColour::primary)
 // );
 // static const WindowEventList& getEvents();
-// func Common(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] int32_t, stringId StringId, cursorX int16, cursorY int16, args FormatArguments) 
+// func Common(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] int32_t, stringId StringId, cursorX int16, cursorY int16, args FormatArguments)
 // StringManager::formatString(_text, stringId, args);
 // const auto font = Gfx::Font::medium_bold;
 // int16_t strWidth = Gfx::TextRenderer::getStringWidthNewLined(font, _text);
@@ -103,7 +104,7 @@ const (
 // tooltip->widgets[widx::text].bottom = height;
 // Ui::ToolTip::setNotShownTicks(0);
 // // 0x004C906B
-// func Open(window Ui::Window, widgetIndex int32, cursorX int32, cursorY int32) 
+// func Open(window Ui::Window, widgetIndex int32, cursorX int32, cursorY int32)
 // WindowManager::close(WindowType::tooltip, 0);
 // if (window == nullptr || widgetIndex == kWidgetIndexNull)
 // return;
@@ -122,7 +123,7 @@ const (
 // Ui::ToolTip::setCurrentStringId(StringIds::null);
 // common(window, widgetIndex, window->widgets[widgetIndex].tooltip, cursorX, cursorY, *toolArgs);
 // // 0x004C9216
-// func Update(window Ui::Window, widgetIndex int32, stringId StringId, cursorX int32, cursorY int32) 
+// func Update(window Ui::Window, widgetIndex int32, stringId StringId, cursorX int32, cursorY int32)
 // WindowManager::close(WindowType::tooltip, 0);
 // Ui::ToolTip::setWindowType(window->type);
 // Ui::ToolTip::setWindowNumber(window->number);
@@ -136,7 +137,7 @@ const (
 // Ui::ToolTip::setCurrentStringId(stringId);
 // common(window, widgetIndex, stringId, cursorX, cursorY, *toolArgs);
 // // 0x004C9397
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // const auto x = window.x;
 // const auto y = window.y;
@@ -155,15 +156,15 @@ const (
 // auto point = Point(((width + 1) / 2) + x - 1, y + 1);
 // tr.drawStringCentredRaw(point, _lineBreakCount, Colour::black, _text);
 // // 0x004C94F7
-// func OnClose(window [[maybe_unused]] Ui::Window) 
+// func OnClose(window [[maybe_unused]] Ui::Window)
 // auto str337 = const_cast<char*>(StringManager::getString(StringIds::buffer_337));
 // str337[0] = '\0';
 // // 0x004C94FF
-// func Update(window [[maybe_unused]] Ui::Window) 
+// func Update(window [[maybe_unused]] Ui::Window)
 // if (Ui::ToolTip::_52336E == false)
 // Ui::ToolTip::setNotShownTicks(0);
 // // 0x004C87B5
-// func CloseAndReset() 
+// func CloseAndReset()
 // Ui::WindowManager::close(WindowType::tooltip, 0);
 // Ui::ToolTip::setTooltipTimeout(0);
 // Ui::ToolTip::setWindowType(WindowType::undefined);

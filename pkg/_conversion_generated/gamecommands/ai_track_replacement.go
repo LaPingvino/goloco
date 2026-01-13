@@ -6,15 +6,17 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type AiTrackReplacementArgs struct {
-// AiTrackReplacementArgs() = default;
+	// AiTrackReplacementArgs() = default;
 	// method: explicit AiTrackReplacementArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.di)
-// , rotation(regs.bh & 0x3)
-// , trackId(regs.dl)
-// , sequenceIndex(regs.dh)
-// , trackObjectId(regs.bp)
+	// : pos(regs.ax, regs.cx, regs.di)
+	// , rotation(regs.bh & 0x3)
+	// , trackId(regs.dl)
+	// , sequenceIndex(regs.dh)
+	// , trackObjectId(regs.bp)
 }
+
 const AiTrackReplacementArgsCommand any = GameCommand.aiTrackReplacement
+
 // World::Pos3 pos;
 // orphan member: uint8_t rotation;
 // orphan member: uint8_t trackId;
@@ -30,4 +32,4 @@ const AiTrackReplacementArgsCommand any = GameCommand.aiTrackReplacement
 // regs.dh = sequenceIndex;
 // regs.bp = trackObjectId;
 // orphan member: return regs;
-// func AiTrackReplacement(regs registers) 
+// func AiTrackReplacement(regs registers)

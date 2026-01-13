@@ -42,13 +42,14 @@ package ui
 type Widx int
 
 const (
-	Frame Widx = 0
-	Caption Widx = 1
+	Frame        Widx = 0
+	Caption      Widx = 1
 	Close_button Widx = 2
-	Panel Widx = 3
+	Panel        Widx = 3
 	Tab_messages
 	Tab_settings
 )
+
 // func MakeCommonWidgets(frameWidth int32, frameHeight int32, windowCaptionId StringId) any
 // return makeWidgets(
 // Widgets::Frame({ 0, 0 }, { frameWidth, frameHeight }, WindowColour::primary),
@@ -57,10 +58,10 @@ const (
 // Widgets::Panel({ 0, 41 }, { 366, 175 }, WindowColour::secondary),
 // Widgets::Tab({ 3, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_recent_messages),
 // Widgets::Tab({ 34, 15 }, { 31, 27 }, WindowColour::secondary, ImageIds::tab, StringIds::tooltip_message_options));
-// func PrepareDraw(self Window) 
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
-// func OnUpdate(self Window) 
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func PrepareDraw(self Window)
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
+// func OnUpdate(self Window)
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // namespace Messages
 // static constexpr Ui::Size kMinWindowSize = { 366, 217 };
 // static constexpr Ui::Size kMaxWindowSize = { 366, 1200 };
@@ -70,12 +71,13 @@ type Widx int
 const (
 	Scrollview Widx = 6
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(366, 217, StringIds::title_messages),
 // Widgets::ScrollView({ 3, 45 }, { 360, 146 }, WindowColour::secondary, Scrollbars::vertical)
 // );
 // // 0x0042A6F5
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -85,7 +87,7 @@ const (
 // Common::switchTab(self, widgetIndex);
 // break;
 // // 0x0042A95A
-// func OnResize(self Window) 
+// func OnResize(self Window)
 // auto scrollview = self.widgets[widx::scrollview];
 // auto scrollarea = self.scrollAreas[0];
 // auto y = scrollarea.contentHeight - scrollview.height() - 1;
@@ -95,10 +97,10 @@ const (
 // Ui::ScrollView::updateThumbs(self, widx::scrollview);
 // self.invalidate();
 // // 0x0042A847
-// func Event_08(self Window) 
+// func Event_08(self Window)
 // self.flags |= WindowFlags::notScrollView;
 // // 0x0042A84F
-// func Event_09(self Window) 
+// func Event_09(self Window)
 // if (!self.hasFlags(WindowFlags::notScrollView))
 // return;
 // if (self.rowHover == -1)
@@ -106,10 +108,10 @@ const (
 // self.rowHover = -1;
 // self.invalidate();
 // // 0x0042A871
-// func GetScrollSize(self [[maybe_unused]] Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(self [[maybe_unused]] Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = MessageManager::getNumMessages() * messageHeight;
 // // 0x0042A8B9
-// func ScrollMouseDown(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scrollIndex [[maybe_unused]] uint8_t) 
+// func ScrollMouseDown(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scrollIndex [[maybe_unused]] uint8_t)
 // auto messageIndex = y / messageHeight;
 // if (messageIndex >= MessageManager::getNumMessages())
 // return;
@@ -128,7 +130,7 @@ const (
 // int32_t pan = self.width / 2 + self.x;
 // Audio::playSound(Audio::SoundId::clickDown, pan);
 // // 0x0042A87C
-// func ScrollMouseOver(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scrollIndex [[maybe_unused]] uint8_t) 
+// func ScrollMouseOver(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scrollIndex [[maybe_unused]] uint8_t)
 // self.flags &= ~(WindowFlags::notScrollView);
 // auto messageIndex = y / messageHeight;
 // auto messageId = 0xFFFF;
@@ -143,16 +145,16 @@ const (
 // args.push(StringIds::tooltip_scroll_message_list);
 // orphan member: return args;
 // // 0x0042A545
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // self.widgets[widx::scrollview].right = self.width - 4;
 // self.widgets[widx::scrollview].bottom = self.height - 14;
 // // 0x0042A5CC
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
 // // 0x0042A5D7
-// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // auto colour = Colours::getShade(self.getColour(WindowColour::secondary).c(), 4);
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
@@ -185,7 +187,7 @@ const (
 // tr.drawStringLeftWrapped(point, width, Colour::black, stringId, args);
 // height += messageHeight;
 // // 0x0042A7B9
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.minWidth = kMinWindowSize.width;
 // self.minHeight = kMinWindowSize.height;
 // self.maxWidth = kMaxWindowSize.width;
@@ -209,7 +211,7 @@ const (
 // static const WindowEventList& getEvents()
 // orphan member: return kEvents;
 // // 0x0042A3FF
-// func Open() 
+// func Open()
 // auto window = WindowManager::bringToFront(WindowType::messages);
 // if (window != nullptr)
 // if (ToolManager::isToolActive(window->type, window->number))
@@ -282,6 +284,7 @@ const (
 	Advice_dropdown
 	PlaySoundEffects
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Common::makeCommonWidgets(366, 155, StringIds::title_messages),
 // Widgets::Label({ 4, 47 }, { 230, 12 }, WindowColour::secondary, ContentAlign::left, StringIds::company_major_news),
@@ -299,7 +302,7 @@ const (
 // Widgets::Checkbox({ 4, 137 }, { 346, 12 }, WindowColour::secondary, StringIds::playNewsSoundEffects, StringIds::playNewsSoundEffectsTip)
 // );
 // // 0x0042AA84
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::widx::close_button:
 // WindowManager::close(&self);
@@ -318,7 +321,7 @@ const (
 // StringIds::message_ticker,
 // StringIds::message_window,
 // // 0x0042AA9F
-// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::company_major_news_dropdown:
 // case widx::competitor_major_news_dropdown:
@@ -342,7 +345,7 @@ const (
 // Dropdown::setItemSelected(static_cast<size_t>(currentItem));
 // break;
 // // 0x0042AAAC
-// func OnDropdown(self [[maybe_unused]] Window, widgetIndex Ui::WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self [[maybe_unused]] Window, widgetIndex Ui::WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // switch (widgetIndex)
 // case widx::company_major_news_dropdown:
 // case widx::competitor_major_news_dropdown:
@@ -359,7 +362,7 @@ const (
 // Config::write();
 // Gfx::invalidateScreen();
 // break;
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // Common::prepareDraw(self);
 // if (Config::get().audio.playNewsSounds)
 // self.activatedWidgets |= (1 << widx::playSoundEffects);
@@ -370,11 +373,11 @@ const (
 // auto setting = static_cast<uint8_t>(Config::get().newsSettings[i]);
 // self.widgets[widgetIndex].text = kNewsDropdownStringIds[setting];
 // // 0x0042AA02
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // Common::drawTabs(self, drawingCtx);
 // // 0x0042A7E8
-// func TabReset(self Window) 
+// func TabReset(self Window)
 // self.minWidth = kWindowSize.width;
 // self.minHeight = kWindowSize.height;
 // self.maxWidth = kWindowSize.width;
@@ -392,14 +395,15 @@ const (
 // orphan member: return kEvents;
 // namespace Common
 type TabInformation struct {
-// std::span<const Widget> widgets;
-// const widx widgetIndex;
-// const WindowEventList& events;
+	// std::span<const Widget> widgets;
+	// const widx widgetIndex;
+	// const WindowEventList& events;
 }
+
 // static TabInformation tabInformationByTabOffset[] = {
 // { Messages::widgets, widx::tab_messages, Messages::getEvents() },
 // { Settings::widgets, widx::tab_settings, Settings::getEvents() },
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // // Activate the current tab..
 // self.activatedWidgets &= ~((1ULL << tab_messages) | (1ULL << tab_settings));
 // self.activatedWidgets |= (1ULL << tabInformationByTabOffset[self.currentTab].widgetIndex);
@@ -411,7 +415,7 @@ type TabInformation struct {
 // self.widgets[Common::widx::close_button].left = self.width - 15;
 // self.widgets[Common::widx::close_button].right = self.width - 3;
 // // 0x0042A716
-// func SwitchTab(self Window, widgetIndex WidgetIndex_t) 
+// func SwitchTab(self Window, widgetIndex WidgetIndex_t)
 // if (ToolManager::isToolActive(self.type, self.number))
 // ToolManager::toolCancel();
 // self.currentTab = widgetIndex - widx::tab_messages;
@@ -435,7 +439,7 @@ type TabInformation struct {
 // self.invalidate();
 // self.moveInsideScreenEdges();
 // // 0x0042AB92
-// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext) 
+// func DrawTabs(self Window, drawingCtx Gfx::DrawingContext)
 // auto skin = ObjectManager::get<InterfaceSkinObject>();
 // // Message Tab
 // uint32_t imageId = skin->img;
@@ -446,7 +450,7 @@ type TabInformation struct {
 // imageId += InterfaceSkin::ImageIds::tab_message_settings;
 // Widget::drawTab(self, drawingCtx, imageId, widx::tab_settings);
 // // 0x0042A826 and 0x0042AB6A
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo++;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(WindowType::messages, self.number, self.currentTab + Common::widx::tab_messages);

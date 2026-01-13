@@ -20,6 +20,7 @@ type Widx int
 const (
 	Frame Widx = iota
 )
+
 // // 0x00522504
 // static constexpr auto widgets = makeWidgets(
 // Widgets::Wt3Widget({ 0, 0 }, { 150, 60 }, WindowColour::primary)
@@ -28,7 +29,7 @@ const (
 // static EntityId _dragVehicleHead = EntityId::null;          // 0x01136156
 // static const WindowEventList& getEvents();
 // // 0x004B3B7E
-// func Open(car Vehicles::Car) 
+// func Open(car Vehicles::Car)
 // WindowManager::close(WindowType::dragVehiclePart);
 // _dragCarComponent = car.front;
 // _dragVehicleHead = car.front->head;
@@ -42,10 +43,10 @@ const (
 // self->setWidgets(widgets);
 // self->widgets[widx::frame].right = width - 1;
 // Input::windowPositionBegin(Ui::ToolTip::getTooltipMouseLocation().x, Ui::ToolTip::getTooltipMouseLocation().y, self, widx::frame);
-// func OnClose(self [[maybe_unused]] Window) 
+// func OnClose(self [[maybe_unused]] Window)
 // _dragCarComponent = nullptr;
 // _dragVehicleHead = EntityId::null;
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // if (WindowManager::find(WindowType::vehicle, enumValue(_dragVehicleHead)) == nullptr)
 // // Parent window no longer exists; close ourselves
 // WindowManager::close(&self);
@@ -56,7 +57,7 @@ const (
 // self.height = 60;
 // return CursorId::dragHand;
 // // 0x004B6271
-// func OnMove(self Window, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t) 
+// func OnMove(self Window, x [[maybe_unused]] int16_t, y [[maybe_unused]] int16_t)
 // const auto height = self.height;
 // self.height = 0; // Set to zero so that skipped in window find
 // Vehicle::Details::scrollDragEnd(Input::getScrollLastLocation());
@@ -65,7 +66,7 @@ const (
 // WindowManager::invalidate(WindowType::vehicle, enumValue(_dragVehicleHead));
 // WindowManager::close(&self);
 // // 0x004B6197
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto clipped = Gfx::clipRenderTarget(rt, Ui::Rect(self.x, self.y, self.width, self.height));
 // if (clipped)

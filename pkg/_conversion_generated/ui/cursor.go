@@ -14,56 +14,58 @@ const RawBlack byte = 'X'
 const CursorDimSize uint16 = 32
 const RawCursorSize uint16 = cursorDimSize * cursorDimSize
 const EncodedCursorSize uint16 = rawCursorSize / 8
+
 type Cursor struct {
 	X int
 	Y int
-// uint8_t data[encodedCursorSize]{};
-// uint8_t mask[encodedCursorSize]{};
-// static Cursor blank;
-// static Cursor upArrow;
-// static Cursor upDownArrow;
-// static Cursor busy;
-// static Cursor diagonalArrows;
-// static Cursor picker;        // 124
-// static Cursor plantTree;     // 131
-// static Cursor placeFountain; // 127
-// static Cursor placeStatue;   // 128
-// static Cursor placeBench;    // 129
-// static Cursor crosshair;     // 130
-// static Cursor placeTrashBin; // 132
-// static Cursor placeLantern;  // 133
-// static Cursor placeFence;    // 138
-// static Cursor placeFlowers;  // 137
-// static Cursor placePath;     // 139
-// static Cursor landTool;      // 141
-// static Cursor waterTool;     // 142
-// static Cursor placeHome;     // 143
-// static Cursor placeVolcano;  // 144
-// static Cursor footsteps;     // 145
-// static Cursor brush;         // 158
-// static Cursor placeBanner;   // 159
-// static Cursor openHand;      // 161
-// static Cursor dragHand;      // 160
-// static Cursor placeTrain;    // 163
-// static Cursor placeTrainAlt; // 162
-// static Cursor placeBus;      // 173
-// static Cursor placeBusAlt;   // 172
-// static Cursor placeTruck;    // 178
-// static Cursor placeTruckAlt; // 177
-// static Cursor placeTram;     // 175
-// static Cursor placeTramAlt;  // 176
-// static Cursor placePlane;    // 180
-// static Cursor placeShip;     // 179
-// static Cursor inwardArrows;
-// static Cursor placeTown;     // 169
-// static Cursor placeBuilding; // 168
-// static Cursor placeFactory;  // 170
-// static Cursor bulldozerTool; // 184
-// static Cursor placeSignal;   // 185
-// static Cursor placeHQ;       // 186
-// static Cursor placeStation;  // 189
+	// uint8_t data[encodedCursorSize]{};
+	// uint8_t mask[encodedCursorSize]{};
+	// static Cursor blank;
+	// static Cursor upArrow;
+	// static Cursor upDownArrow;
+	// static Cursor busy;
+	// static Cursor diagonalArrows;
+	// static Cursor picker;        // 124
+	// static Cursor plantTree;     // 131
+	// static Cursor placeFountain; // 127
+	// static Cursor placeStatue;   // 128
+	// static Cursor placeBench;    // 129
+	// static Cursor crosshair;     // 130
+	// static Cursor placeTrashBin; // 132
+	// static Cursor placeLantern;  // 133
+	// static Cursor placeFence;    // 138
+	// static Cursor placeFlowers;  // 137
+	// static Cursor placePath;     // 139
+	// static Cursor landTool;      // 141
+	// static Cursor waterTool;     // 142
+	// static Cursor placeHome;     // 143
+	// static Cursor placeVolcano;  // 144
+	// static Cursor footsteps;     // 145
+	// static Cursor brush;         // 158
+	// static Cursor placeBanner;   // 159
+	// static Cursor openHand;      // 161
+	// static Cursor dragHand;      // 160
+	// static Cursor placeTrain;    // 163
+	// static Cursor placeTrainAlt; // 162
+	// static Cursor placeBus;      // 173
+	// static Cursor placeBusAlt;   // 172
+	// static Cursor placeTruck;    // 178
+	// static Cursor placeTruckAlt; // 177
+	// static Cursor placeTram;     // 175
+	// static Cursor placeTramAlt;  // 176
+	// static Cursor placePlane;    // 180
+	// static Cursor placeShip;     // 179
+	// static Cursor inwardArrows;
+	// static Cursor placeTown;     // 169
+	// static Cursor placeBuilding; // 168
+	// static Cursor placeFactory;  // 170
+	// static Cursor bulldozerTool; // 184
+	// static Cursor placeSignal;   // 185
+	// static Cursor placeHQ;       // 186
+	// static Cursor placeStation;  // 189
 	// method: constexpr Cursor(int x, int y, std::string_view bitmap);
 }
+
 // constexpr Cursor::Cursor(int x, int y, std::string_view bitmap)
 // : x(x)
 // , y(y)

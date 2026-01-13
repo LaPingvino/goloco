@@ -25,6 +25,7 @@ package ui
 // namespace OpenLoco::Ui::Windows::ObjectLoadError
 // static constexpr Ui::Size kWindowSize = { 360, 238 };
 const RowHeight uint8 = 12
+
 // static std::vector<ObjectHeader> _loadErrorObjectsList;
 type Widx int
 
@@ -38,6 +39,7 @@ const (
 	ChecksumHeader
 	Scrollview
 )
+
 // static constexpr auto _widgets = makeWidgets(
 // Widgets::Frame({ 0, 0 }, { 360, 238 }, WindowColour::primary),
 // Widgets::Caption({ 1, 1 }, { 358, 13 }, Widgets::Caption::Style::whiteText, WindowColour::primary, StringIds::objectErrorWindowTitle),
@@ -69,7 +71,7 @@ const (
 // window->rowCount = static_cast<uint16_t>(_loadErrorObjectsList.size());
 // window->rowHover = -1;
 // orphan member: return window;
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets
 // self.draw(drawingCtx);
 // // Draw explanatory text
@@ -148,7 +150,7 @@ const (
 // return StringIds::object_scenario_descriptions;
 // default:
 // return StringIds::empty;
-// func DrawScroll(window Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(window Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // const auto shade = Colours::getShade(window.getColour(WindowColour::secondary).c(), 4);
@@ -194,14 +196,14 @@ const (
 // typePos.y = y;
 // tr.drawStringLeftWrapped(typePos, typeWidth, window.getColour(WindowColour::secondary), textColourId, args);
 // y += kRowHeight;
-// func GetScrollSize(window Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(window Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = kRowHeight * window.rowCount;
-// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Widx::close:
 // WindowManager::close(window.type);
 // break;
-// func OnScrollMouseOver(window Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseOver(window Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // uint16_t currentTrack = y / kRowHeight;
 // if (currentTrack > window.rowCount || currentTrack == window.rowHover)
 // return;

@@ -5,24 +5,26 @@ package gamecommands
 
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
-// func ChangeCompanyFace(regs registers) 
+// func ChangeCompanyFace(regs registers)
 type ChangeCompanyFaceArgs struct {
-// ChangeCompanyFaceArgs() = default;
+	// ChangeCompanyFaceArgs() = default;
 	// method: explicit ChangeCompanyFaceArgs(const registers& regs)
-// : companyId(CompanyId(regs.bh))
-// , objHeader()
-// uint8_t objData[sizeof(ObjectHeader)]{};
-// uint8_t* objPtr = objData;
-// std::memcpy(objPtr, &regs.eax, sizeof(uint32_t));
-// objPtr += sizeof(uint32_t);
-// std::memcpy(objPtr, &regs.ecx, sizeof(uint32_t));
-// objPtr += sizeof(uint32_t);
-// std::memcpy(objPtr, &regs.edx, sizeof(uint32_t));
-// objPtr += sizeof(uint32_t);
-// std::memcpy(objPtr, &regs.edi, sizeof(uint32_t));
-// std::memcpy(&objHeader, objData, sizeof(objData));
+	// : companyId(CompanyId(regs.bh))
+	// , objHeader()
+	// uint8_t objData[sizeof(ObjectHeader)]{};
+	// uint8_t* objPtr = objData;
+	// std::memcpy(objPtr, &regs.eax, sizeof(uint32_t));
+	// objPtr += sizeof(uint32_t);
+	// std::memcpy(objPtr, &regs.ecx, sizeof(uint32_t));
+	// objPtr += sizeof(uint32_t);
+	// std::memcpy(objPtr, &regs.edx, sizeof(uint32_t));
+	// objPtr += sizeof(uint32_t);
+	// std::memcpy(objPtr, &regs.edi, sizeof(uint32_t));
+	// std::memcpy(&objHeader, objData, sizeof(objData));
 }
+
 const ChangeCompanyFaceArgsCommand any = GameCommand.changeCompanyFace
+
 // orphan member: CompanyId companyId;
 // orphan member: ObjectHeader objHeader;
 // explicit operator registers() const

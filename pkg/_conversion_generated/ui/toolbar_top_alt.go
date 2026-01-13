@@ -56,7 +56,7 @@ package ui
 // );
 // static const WindowEventList& getEvents();
 // // 0x0043CC2C
-// func Open() 
+// func Open()
 // auto window = WindowManager::createWindow(
 // WindowType::topToolbar,
 // { 0, 0 },
@@ -77,7 +77,7 @@ package ui
 // window->setColour(WindowColour::tertiary, skin->topToolbarTertiaryColour);
 // window->setColour(WindowColour::quaternary, skin->topToolbarQuaternaryColour);
 // // 0x0043D638
-// func LoadsaveMenuMouseDown(window Window, widgetIndex WidgetIndex_t) 
+// func LoadsaveMenuMouseDown(window Window, widgetIndex WidgetIndex_t)
 // Dropdown::add(0, StringIds::load_landscape);
 // Dropdown::add(1, StringIds::save_landscape);
 // Dropdown::add(2, 0);
@@ -91,7 +91,7 @@ package ui
 // Dropdown::showBelow(window, widgetIndex, 9, 0);
 // Dropdown::setHighlightedItem(1);
 // // 0x0043D695
-// func LoadsaveMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16) 
+// func LoadsaveMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16)
 // if (itemIndex == -1)
 // itemIndex = Dropdown::getHighlightedItem();
 // switch (itemIndex)
@@ -141,14 +141,14 @@ package ui
 // GameCommands::doCommand(quitToDesktopArgs, GameCommands::Flags::apply);
 // break;
 // // 0x0043D789
-// func AudioMenuMouseDown(window Window, widgetIndex WidgetIndex_t) 
+// func AudioMenuMouseDown(window Window, widgetIndex WidgetIndex_t)
 // Dropdown::add(0, StringIds::dropdown_without_checkmark, StringIds::menu_mute);
 // Dropdown::showBelow(window, widgetIndex, 1, 0);
 // if (!Audio::isAudioEnabled())
 // Dropdown::setItemSelected(0);
 // Dropdown::setHighlightedItem(0);
 // // 0x0043D7C1
-// func AudioMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16) 
+// func AudioMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16)
 // if (itemIndex == -1)
 // itemIndex = Dropdown::getHighlightedItem();
 // switch (itemIndex)
@@ -156,7 +156,7 @@ package ui
 // Audio::toggleSound();
 // break;
 // // 0x004402BC
-// func MapGenerationMenuMouseDown(window Window, widgetIndex WidgetIndex_t) 
+// func MapGenerationMenuMouseDown(window Window, widgetIndex WidgetIndex_t)
 // Dropdown::add(0, StringIds::landscape_generation_options);
 // auto numItems = 1;
 // if (Config::get().cheatsMenuEnabled)
@@ -165,7 +165,7 @@ package ui
 // Dropdown::showBelow(window, widgetIndex, numItems, 0);
 // Dropdown::setHighlightedItem(0);
 // // 0x004402DA
-// func MapGenerationMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16) 
+// func MapGenerationMenuDropdown(window [[maybe_unused]] Window, widgetIndex [[maybe_unused]] WidgetIndex_t, itemIndex int16)
 // if (itemIndex == -1)
 // itemIndex = Dropdown::getHighlightedItem();
 // switch (itemIndex)
@@ -176,7 +176,7 @@ package ui
 // TileInspector::open();
 // break;
 // // 0x0043D541
-// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Common::Widx::loadsave_menu:
 // loadsaveMenuMouseDown(&window, widgetIndex);
@@ -191,7 +191,7 @@ package ui
 // Common::onMouseDown(&window, widgetIndex);
 // break;
 // // 0x0043D5A6
-// func OnDropdown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(window Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // switch (widgetIndex)
 // case Common::Widx::loadsave_menu:
 // loadsaveMenuDropdown(&window, widgetIndex, itemIndex);
@@ -206,7 +206,7 @@ package ui
 // Common::onDropdown(&window, widgetIndex, itemIndex);
 // break;
 // // 0x0043D2F3
-// func PrepareDraw(window Window) 
+// func PrepareDraw(window Window)
 // uint32_t x = std::max(640, Ui::width()) - 1;
 // Common::rightAlignTabs(&window, x, { Common::Widx::towns_menu });
 // x -= 11;

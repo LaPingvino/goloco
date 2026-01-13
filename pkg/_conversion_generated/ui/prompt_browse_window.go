@@ -47,6 +47,7 @@ const (
 	Landscape
 	Heightmap
 )
+
 type Widx int
 
 const (
@@ -59,6 +60,7 @@ const (
 	Ok_button
 	Scrollview
 )
+
 // static constexpr auto widgets = makeWidgets(
 // Widgets::Frame({ 0, 0 }, { 500, 380 }, WindowColour::primary),
 // Widgets::Caption({ 1, 1 }, { 498, 13 }, Widgets::Caption::Style::whiteText, WindowColour::primary, StringIds::empty),
@@ -84,16 +86,16 @@ const (
 // static std::vector<fs::path> _files;
 // static fs::path getDirectory(const fs::path& path);
 // static std::string getBasename(const fs::path& path);
-// func DrawSavePreview(window Ui::Window, drawingCtx Gfx::DrawingContext, x int32, y int32, width int32, height int32, saveInfo S5::SaveDetails) 
-// func DrawLandscapePreview(window Ui::Window, drawingCtx Gfx::DrawingContext, x int32, y int32, width int32, height int32) 
-// func DrawTextInput(window Ui::Window, drawingCtx Gfx::DrawingContext, text byte, caret int32, showCaret bool) 
-// func UpOneLevel() 
-// func ChangeDirectory(path fs::path) 
-// func ProcessFileForLoadSave(window Window) 
-// func ProcessFileForLoadSave(window Window, entry fs::path) 
-// func ProcessFileForDelete(self Window, entry fs::path) 
-// func RefreshDirectoryList() 
-// func LoadFileDetails(self Window) 
+// func DrawSavePreview(window Ui::Window, drawingCtx Gfx::DrawingContext, x int32, y int32, width int32, height int32, saveInfo S5::SaveDetails)
+// func DrawLandscapePreview(window Ui::Window, drawingCtx Gfx::DrawingContext, x int32, y int32, width int32, height int32)
+// func DrawTextInput(window Ui::Window, drawingCtx Gfx::DrawingContext, text byte, caret int32, showCaret bool)
+// func UpOneLevel()
+// func ChangeDirectory(path fs::path)
+// func ProcessFileForLoadSave(window Window)
+// func ProcessFileForLoadSave(window Window, entry fs::path)
+// func ProcessFileForDelete(self Window, entry fs::path)
+// func RefreshDirectoryList()
+// func LoadFileDetails(self Window)
 // func FilenameContainsInvalidChars() bool
 // static const WindowEventList& getEvents();
 // // 0x00445AB9
@@ -156,17 +158,17 @@ const (
 // return success ? _targetPath : std::nullopt;
 // return std::nullopt;
 // // 0x00447174
-// func FreeFileDetails() 
+// func FreeFileDetails()
 // _previewSaveDetails.reset();
 // // 0x0044647C
-// func OnClose(Window) 
+// func OnClose(Window)
 // _files.clear();
 // freeFileDetails();
 // // 0x004467F6
-// func OnResize(window Window) 
+// func OnResize(window Window)
 // window.capSize(400, 300, 640, 800);
 // // 0x00446465
-// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::close_button:
 // _currentDirectory.clear();
@@ -183,17 +185,17 @@ const (
 // processFileForLoadSave(&window);
 // break;
 // // 0x004467E1
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // if (!Input::isFocused(self.type, self.number, widx::text_filename))
 // return;
 // inputSession.cursorFrame++;
 // if ((inputSession.cursorFrame & 0x0F) == 0)
 // WindowManager::invalidateWidget(self.type, self.number, widx::text_filename);
 // // 0x004464A1
-// func GetScrollSize(window Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(window Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = static_cast<int32_t>(window.rowHeight * _files.size());
 // // 0x004464F7
-// func OnScrollMouseDown(self Window, x [[maybe_unused]] int16_t, y int16, scrollIndex [[maybe_unused]] uint8_t) 
+// func OnScrollMouseDown(self Window, x [[maybe_unused]] int16_t, y int16, scrollIndex [[maybe_unused]] uint8_t)
 // auto index = size_t(y / self.rowHeight);
 // if (index >= _files.size())
 // return;
@@ -215,7 +217,7 @@ const (
 // else
 // processFileForDelete(&self, entry);
 // // 0x004464B1
-// func OnScrollMouseOver(self Window, x [[maybe_unused]] int16_t, y int16, scrollIndex [[maybe_unused]] uint8_t) 
+// func OnScrollMouseOver(self Window, x [[maybe_unused]] int16_t, y int16, scrollIndex [[maybe_unused]] uint8_t)
 // if (WindowManager::getCurrentModalType() != WindowType::fileBrowserPrompt)
 // return;
 // auto index = y / self.rowHeight;
@@ -232,7 +234,7 @@ const (
 // args.push(StringIds::tooltip_scroll_list);
 // orphan member: return args;
 // // 0x00445C8F
-// func PrepareDraw(self Ui::Window) 
+// func PrepareDraw(self Ui::Window)
 // self.widgets[widx::frame].right = self.width - 1;
 // self.widgets[widx::frame].bottom = self.height - 1;
 // self.widgets[widx::panel].right = self.width - 1;
@@ -294,7 +296,7 @@ const (
 // args.push(buffer);
 // orphan member: return args;
 // // 0x00445E38
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // window.draw(drawingCtx);
 // auto folder = &_displayFolderBuffer[0];
@@ -340,7 +342,7 @@ const (
 // bool showCaret = Input::isFocused(window.type, window.number, widx::text_filename) && (inputSession.cursorFrame & 0x10) == 0;
 // drawTextInput(&window, drawingCtx, inputSession.buffer.c_str(), static_cast<int32_t>(inputSession.cursorPosition), showCaret);
 // drawingCtx.popRenderTarget();
-// func DrawSavePreview(window Ui::Window, drawingCtx Gfx::DrawingContext, x int32, y int32, width int32, height int32, saveInfo S5::SaveDetails) 
+// func DrawSavePreview(window Ui::Window, drawingCtx Gfx::DrawingContext, x int32, y int32, width int32, height int32, saveInfo S5::SaveDetails)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // drawingCtx.fillRectInset(x, y, x + width, y + height, window.getColour(WindowColour::secondary), Gfx::RectInsetFlags::borderInset | Gfx::RectInsetFlags::fillNone);
 // auto imageId = 0;
@@ -382,7 +384,7 @@ const (
 // auto args = FormatArguments{ argsBuf };
 // args.push(progress);
 // tr.drawStringLeftWrapped(point, maxWidth, Colour::black, stringId, args);
-// func DrawLandscapePreview(window Ui::Window, drawingCtx Gfx::DrawingContext, x int32, y int32, width int32, height int32) 
+// func DrawLandscapePreview(window Ui::Window, drawingCtx Gfx::DrawingContext, x int32, y int32, width int32, height int32)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // drawingCtx.fillRectInset(x, y, x + width, y + height, window.getColour(WindowColour::secondary), Gfx::RectInsetFlags::borderInset | Gfx::RectInsetFlags::fillNone);
 // if ((_previewScenarioOptions->scenarioFlags & Scenario::ScenarioFlags::landscapeGenerationDone) != Scenario::ScenarioFlags::none)
@@ -405,7 +407,7 @@ const (
 // drawingCtx.drawImage(x, y, imageId);
 // auto origin = Ui::Point(x + 64, y + 60);
 // tr.drawStringCentredWrapped(origin, 128, Colour::black, StringIds::randomly_generated_landscape);
-// func DrawTextInput(window Ui::Window, drawingCtx Gfx::DrawingContext, text byte, caret int32, showCaret bool) 
+// func DrawTextInput(window Ui::Window, drawingCtx Gfx::DrawingContext, text byte, caret int32, showCaret bool)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // // Draw text box text
 // Ui::Point origin = { 0, 1 };
@@ -427,7 +429,7 @@ const (
 // func IsRootPath(entry fs::path) bool
 // return (entry == entry.root_path());
 // // 0x00446314
-// func DrawScroll(window Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(window Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // // Background
@@ -494,7 +496,7 @@ const (
 // baseName = "";
 // orphan member: return baseName;
 // // 0x00446A93
-// func RefreshDirectoryList() 
+// func RefreshDirectoryList()
 // // All our filters are probably *.something so just truncate the *
 // // and treat as an extension filter
 // auto filterExtension = std::string(_filter);
@@ -527,7 +529,7 @@ const (
 // return a.stem() < b.stem();
 // });
 // // 0x00446E2F
-// func UpOneLevel() 
+// func UpOneLevel()
 // // Showing drive letters?
 // if (_currentDirectory.empty())
 // return;
@@ -538,7 +540,7 @@ const (
 // // Going up one level (compensating for trailing slashes).
 // changeDirectory(_currentDirectory.parent_path().parent_path());
 // // 0x00446E62
-// func ChangeDirectory(newDir fs::path) 
+// func ChangeDirectory(newDir fs::path)
 // _currentDirectory = newDir / "";
 // refreshDirectoryList();
 // // 0x00446F1D
@@ -573,13 +575,13 @@ const (
 // default:
 // return S5::extensionSC5;
 // // 0x00446574
-// func ProcessFileForLoadSave(self Window) 
+// func ProcessFileForLoadSave(self Window)
 // // Create full path to target file.
 // fs::path path = _currentDirectory / inputSession.buffer;
 // // Append extension to filename.
 // path += getExtensionFromFileType(_fileType);
 // processFileForLoadSave(self, path);
-// func ProcessFileForLoadSave(self Window, path fs::path) 
+// func ProcessFileForLoadSave(self Window, path fs::path)
 // if (_type == browse_type::save)
 // if (filenameContainsInvalidChars())
 // Error::open(StringIds::error_invalid_filename);
@@ -619,7 +621,7 @@ const (
 // // Close browse window to continue saving.
 // WindowManager::close(self);
 // // 0x004466CA
-// func ProcessFileForDelete(self Window, entry fs::path) 
+// func ProcessFileForDelete(self Window, entry fs::path)
 // // Create full path to target file.
 // fs::path path = _currentDirectory / entry.stem();
 // path += getExtensionFromFileType(_fileType);
@@ -640,7 +642,7 @@ const (
 // refreshDirectoryList();
 // self->invalidate();
 // // 0x00446E87
-// func LoadFileDetails(self Window) 
+// func LoadFileDetails(self Window)
 // freeFileDetails();
 // if (self->var_85A == -1)
 // return;

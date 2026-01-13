@@ -6,15 +6,17 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type VehiclePlacementArgs struct {
-// VehiclePlacementArgs() = default;
+	// VehiclePlacementArgs() = default;
 	// method: explicit VehiclePlacementArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.dx * World::kSmallZStep)
-// , trackAndDirection(regs.bp)
-// , trackProgress(regs.ebx >> 16)
-// , head(EntityId(regs.di))
-// , convertGhost((regs.ebx & 0xFFFF0000) == 0xFFFF0000)
+	// : pos(regs.ax, regs.cx, regs.dx * World::kSmallZStep)
+	// , trackAndDirection(regs.bp)
+	// , trackProgress(regs.ebx >> 16)
+	// , head(EntityId(regs.di))
+	// , convertGhost((regs.ebx & 0xFFFF0000) == 0xFFFF0000)
 }
+
 const VehiclePlacementArgsCommand any = GameCommand.vehiclePlace
+
 // World::Pos3 pos;
 // orphan member: uint16_t trackAndDirection;
 // orphan member: uint16_t trackProgress;
@@ -29,4 +31,4 @@ const VehiclePlacementArgsCommand any = GameCommand.vehiclePlace
 // regs.dx = pos.z / World::kSmallZStep;
 // regs.ebx = convertGhost ? 0xFFFF0000 : (trackProgress << 16);
 // orphan member: return regs;
-// func VehiclePlace(regs registers) 
+// func VehiclePlace(regs registers)

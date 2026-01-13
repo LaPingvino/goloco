@@ -17,49 +17,52 @@ const (
 	Effect
 	Null EntityBaseType = 0xFF
 )
+
 type Pitch int
 
 const (
-// //                               actual angle (for trig)
-	Flat Pitch = 0
-	Up6deg Pitch = 1
-	Up12deg Pitch = 2
-	Up18deg Pitch = 3
-	Up25deg Pitch = 4
-	Down6deg Pitch = 5
+	// //                               actual angle (for trig)
+	Flat      Pitch = 0
+	Up6deg    Pitch = 1
+	Up12deg   Pitch = 2
+	Up18deg   Pitch = 3
+	Up25deg   Pitch = 4
+	Down6deg  Pitch = 5
 	Down12deg Pitch = 6
 	Down18deg Pitch = 7
 	Down25deg Pitch = 8
-	Up10deg Pitch = 9
+	Up10deg   Pitch = 9
 	Down10deg Pitch = 10
-	Up20deg Pitch = 11
+	Up20deg   Pitch = 11
 	Down20deg Pitch = 12
 )
+
 type EntityBase struct {
-	BaseType EntityBaseType
+	BaseType         EntityBaseType
 	LinkedListOffset uint8
-	Id EntityId
-	NextQuadrantId EntityId
-	NextEntityId EntityId
-	LlPreviousId EntityId
-// World::Pos3 position;
-	Owner CompanyId
+	Id               EntityId
+	NextQuadrantId   EntityId
+	NextEntityId     EntityId
+	LlPreviousId     EntityId
+	// World::Pos3 position;
+	Owner                CompanyId
 	SpriteHeightNegative uint8
 	SpriteHeightPositive uint8
-	SpriteWidth uint8
-	SpriteYaw uint8
-	SpritePitch Pitch
-	SpriteLeft int16
-	SpriteTop int16
-	SpriteRight int16
-	SpriteBottom int16
-	Name StringId
+	SpriteWidth          uint8
+	SpriteYaw            uint8
+	SpritePitch          Pitch
+	SpriteLeft           int16
+	SpriteTop            int16
+	SpriteRight          int16
+	SpriteBottom         int16
+	Name                 StringId
 	// method: void moveTo(const World::Pos3& loc);
 	// method: void invalidateSprite();
-// template<typename T>
+	// template<typename T>
 	// method: bool isBase() const
-// return baseType == T::kBaseType;
+	// return baseType == T::kBaseType;
 }
+
 // template<typename BaseType>
 // BaseType* asBase()
 // return isBase<BaseType>() ? reinterpret_cast<BaseType*>(this) : nullptr;
@@ -70,6 +73,7 @@ type EntityBase struct {
 // // Max size of a Entity. Use when needing to know Entity size
 type Entity struct {
 	EntityBase // embedded
-// uint8_t pad_24[0x80 - 0x20];
+	// uint8_t pad_24[0x80 - 0x20];
 }
+
 // static_assert(sizeof(Entity) == 0x80);

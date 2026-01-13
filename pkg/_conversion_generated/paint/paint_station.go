@@ -10,5 +10,5 @@ package paint
 // forward: struct StationElement;
 // namespace OpenLoco::Paint
 // forward: struct PaintSession;
-// func PaintStation(session PaintSession, elStation World::StationElement) 
-// func PaintStationCargo(session PaintSession, elStation World::StationElement, flags uint8, cargoTypes uint32, any /* std::span<std::array<World::Pos3 */ , cargoOffsets 2>>, offsetZ int16, boundBoxOffset World::Pos3, boundBoxSize World::Pos3) 
+// func PaintStation(session PaintSession, elStation World::StationElement)
+// func PaintStationCargo(session PaintSession, elStation World::StationElement, flags uint8, cargoTypes uint32, any /* std::span<std::array<World::Pos3 */ , cargoOffsets 2>>, offsetZ int16, boundBoxOffset World::Pos3, boundBoxSize World::Pos3)

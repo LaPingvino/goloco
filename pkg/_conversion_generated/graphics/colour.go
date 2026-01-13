@@ -9,74 +9,75 @@ type PaletteIndex_t = uint8
 type Colour int
 
 const (
-	Black Colour = 0
-	Grey Colour = 1
-	White Colour = 2
-	MutedDarkPurple Colour = 3
-	MutedPurple Colour = 4
-	Purple Colour = 5
-	DarkBlue Colour = 6
-	Blue Colour = 7
-	MutedDarkTeal Colour = 8
-	MutedTeal Colour = 9
-	DarkGreen Colour = 10
-	MutedSeaGreen Colour = 11
-	MutedGrassGreen Colour = 12
-	Green Colour = 13
+	Black             Colour = 0
+	Grey              Colour = 1
+	White             Colour = 2
+	MutedDarkPurple   Colour = 3
+	MutedPurple       Colour = 4
+	Purple            Colour = 5
+	DarkBlue          Colour = 6
+	Blue              Colour = 7
+	MutedDarkTeal     Colour = 8
+	MutedTeal         Colour = 9
+	DarkGreen         Colour = 10
+	MutedSeaGreen     Colour = 11
+	MutedGrassGreen   Colour = 12
+	Green             Colour = 13
 	MutedAvocadoGreen Colour = 14
-	MutedOliveGreen Colour = 15
-	Yellow Colour = 16
-	DarkYellow Colour = 17
-	Orange Colour = 18
-	Amber Colour = 19
-	DarkOrange Colour = 20
-	MutedDarkYellow Colour = 21
-	MutedYellow Colour = 22
-	Brown Colour = 23
-	MutedOrange Colour = 24
-	MutedDarkRed Colour = 25
-	DarkRed Colour = 26
-	Red Colour = 27
-	DarkPink Colour = 28
-	Pink Colour = 29
-	MutedRed Colour = 30
+	MutedOliveGreen   Colour = 15
+	Yellow            Colour = 16
+	DarkYellow        Colour = 17
+	Orange            Colour = 18
+	Amber             Colour = 19
+	DarkOrange        Colour = 20
+	MutedDarkYellow   Colour = 21
+	MutedYellow       Colour = 22
+	Brown             Colour = 23
+	MutedOrange       Colour = 24
+	MutedDarkRed      Colour = 25
+	DarkRed           Colour = 26
+	Red               Colour = 27
+	DarkPink          Colour = 28
+	Pink              Colour = 29
+	MutedRed          Colour = 30
 	Max
 )
+
 type ExtColour int
 
 const (
-	Black ExtColour = 0
-	Grey ExtColour = 1
-	White ExtColour = 2
-	MutedDarkPurple ExtColour = 3
-	MutedPurple ExtColour = 4
-	Purple ExtColour = 5
-	DarkBlue ExtColour = 6
-	Blue ExtColour = 7
-	MutedDarkTeal ExtColour = 8
-	MutedTeal ExtColour = 9
-	DarkGreen ExtColour = 10
-	MutedSeaGreen ExtColour = 11
-	MutedGrassGreen ExtColour = 12
-	Green ExtColour = 13
+	Black             ExtColour = 0
+	Grey              ExtColour = 1
+	White             ExtColour = 2
+	MutedDarkPurple   ExtColour = 3
+	MutedPurple       ExtColour = 4
+	Purple            ExtColour = 5
+	DarkBlue          ExtColour = 6
+	Blue              ExtColour = 7
+	MutedDarkTeal     ExtColour = 8
+	MutedTeal         ExtColour = 9
+	DarkGreen         ExtColour = 10
+	MutedSeaGreen     ExtColour = 11
+	MutedGrassGreen   ExtColour = 12
+	Green             ExtColour = 13
 	MutedAvocadoGreen ExtColour = 14
-	MutedOliveGreen ExtColour = 15
-	Yellow ExtColour = 16
-	DarkYellow ExtColour = 17
-	Orange ExtColour = 18
-	Amber ExtColour = 19
-	DarkOrange ExtColour = 20
-	MutedDarkYellow ExtColour = 21
-	MutedYellow ExtColour = 22
-	Brown ExtColour = 23
-	MutedOrange ExtColour = 24
-	MutedDarkRed ExtColour = 25
-	DarkRed ExtColour = 26
-	Red ExtColour = 27
-	DarkPink ExtColour = 28
-	Pink ExtColour = 29
-	MutedRed ExtColour = 30
-// // First 30 are inherited from Colour
+	MutedOliveGreen   ExtColour = 15
+	Yellow            ExtColour = 16
+	DarkYellow        ExtColour = 17
+	Orange            ExtColour = 18
+	Amber             ExtColour = 19
+	DarkOrange        ExtColour = 20
+	MutedDarkYellow   ExtColour = 21
+	MutedYellow       ExtColour = 22
+	Brown             ExtColour = 23
+	MutedOrange       ExtColour = 24
+	MutedDarkRed      ExtColour = 25
+	DarkRed           ExtColour = 26
+	Red               ExtColour = 27
+	DarkPink          ExtColour = 28
+	Pink              ExtColour = 29
+	MutedRed          ExtColour = 30
+	// // First 30 are inherited from Colour
 	Clear ExtColour = 31
 	Water ExtColour = 32
 	Unk21
@@ -195,18 +196,21 @@ const (
 	Unk92
 	Max
 )
+
 type AdvancedColour struct {
-// Colour _c = Colour::black;
+	// Colour _c = Colour::black;
 	// method: constexpr AdvancedColour() = default;
 	// method: constexpr AdvancedColour(const Colour c)
-// : _c(c)
+	// : _c(c)
 }
+
 const AdvancedColourOutlineFlag uint8 = 1 << 5
 const AdvancedColourInsetFlag uint8 = 1 << 6
 const AdvancedColourTranslucentFlag uint8 = 1 << 7
 const AdvancedColourFd uint8 = 0xFD
 const AdvancedColourFe uint8 = 0xFE
 const AdvancedColourFf uint8 = 0xFF
+
 // constexpr explicit operator Colour() const { return static_cast<Colour>(enumValue(_c) & ~(outlineFlag | insetFlag | translucentFlag)); }
 // // Returns the Colour without any additional flags set.
 // [[nodiscard]] constexpr Colour c() const { return static_cast<Colour>(*this); }
@@ -239,7 +243,7 @@ const AdvancedColourFf uint8 = 0xFF
 // [[nodiscard]] constexpr bool isFD() const { return enumValue(_c) == fd; }
 // static_assert(sizeof(AdvancedColour) == 1);
 // namespace Colours
-// func InitColourMap() 
+// func InitColourMap()
 // func GetShade(colour Colour, shade uint8) PaletteIndex_t
 // func GetTranslucent(colour Colour) ExtColour
 // func GetTranslucent(colour Colour, shade uint8) ExtColour
@@ -247,6 +251,7 @@ const AdvancedColourFf uint8 = 0xFF
 // func GetGlass(colour Colour) ExtColour
 func ToExt(c Colour) ExtColour {
 }
+
 // namespace PaletteIndex
 // // All indexes are of the form {swatch colour name}{shade}
 // // Shades are from dark 0x0 to light 0xB

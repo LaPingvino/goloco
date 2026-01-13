@@ -6,14 +6,16 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type VehicleAirPlacementArgs struct {
-// VehicleAirPlacementArgs() = default;
+	// VehicleAirPlacementArgs() = default;
 	// method: explicit VehicleAirPlacementArgs(const registers& regs)
-// : stationId(StationId(regs.bp))
-// , airportNode(regs.dl)
-// , head(EntityId(regs.di))
-// , convertGhost((regs.ebx & 0xFFFF0000) == 0xFFFF0000)
+	// : stationId(StationId(regs.bp))
+	// , airportNode(regs.dl)
+	// , head(EntityId(regs.di))
+	// , convertGhost((regs.ebx & 0xFFFF0000) == 0xFFFF0000)
 }
+
 const VehicleAirPlacementArgsCommand any = GameCommand.vehiclePlaceAir
+
 // orphan member: StationId stationId;
 // orphan member: uint8_t airportNode;
 // orphan member: EntityId head;
@@ -25,4 +27,4 @@ const VehicleAirPlacementArgsCommand any = GameCommand.vehiclePlaceAir
 // regs.dl = airportNode;
 // regs.ebx = convertGhost ? 0xFFFF0000 : 0;
 // orphan member: return regs;
-// func VehiclePlaceAir(regs registers) 
+// func VehiclePlaceAir(regs registers)

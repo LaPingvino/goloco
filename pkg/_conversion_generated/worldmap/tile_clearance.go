@@ -14,8 +14,8 @@ package worldmap
 // namespace OpenLoco::World::TileManager
 type ElementPositionFlags int
 
-const (
-)
+const ()
+
 // namespace OpenLoco::World::TileClearance
 type ClearFuncResult int
 
@@ -26,11 +26,12 @@ const (
 	NoCollision
 	CollisionRemoved
 )
-// func SetCollisionErrorMessage(el World::TileElement) 
+
+// func SetCollisionErrorMessage(el World::TileElement)
 // func ApplyClearAtAllHeights(pos World::Pos2, baseZ uint8, clearZ uint8, qt QuarterTile, el any /* std::function<ClearFuncResult(TileElement */ ) bool
 // func ApplyClearAtStandardHeight(pos World::Pos2, baseZ uint8, clearZ uint8, qt QuarterTile, el any /* std::function<ClearFuncResult(TileElement */ ) bool
 // func CanConstructAt(pos World::Pos2, baseZ uint8, clearZ uint8, qt QuarterTile) bool
-type RemovedBuildings = any /* sfl::small_set<World::Pos3, 128, LessThanPos3> */ 
+type RemovedBuildings = any /* sfl::small_set<World::Pos3, 128, LessThanPos3> */
 // // Removes Buildings and Trees but everything else is a collision
 // func ClearWithDefaultCollision(el World::TileElement, pos World::Pos2, removedBuildings RemovedBuildings, flags uint8, cost currency32_t) ClearFuncResult
 // // Removes Buildings and Trees but everything else is **NOT** a collision

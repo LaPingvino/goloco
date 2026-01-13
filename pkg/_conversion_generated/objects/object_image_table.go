@@ -10,6 +10,7 @@ type ImageTableResult struct {
 	ImageOffset uint32
 	TableLength uint32
 }
+
 // func LoadImageTable(data any /* std::span<std::byte> */ ) ImageTableResult
 // func GetTotalNumImages() uint32
-// func SetTotalNumImages(count uint32) 
+// func SetTotalNumImages(count uint32)

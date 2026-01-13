@@ -46,9 +46,9 @@ package ui
 // #include "Ui/WindowManager.h"
 // #include <cassert>
 // namespace OpenLoco::Ui::Windows::Options
-// func TabOnMouseUp(self Window, wi WidgetIndex_t) 
-// func DisableTabsByCurrentScene(self Window) 
-// func SetPreferredCurrencyNameBuffer() 
+// func TabOnMouseUp(self Window, wi WidgetIndex_t)
+// func DisableTabsByCurrentScene(self Window)
+// func SetPreferredCurrencyNameBuffer()
 // std::vector<ObjectManager::SelectedObjectsFlags> _objectListSelection; // 0x011364A0
 // // TODO: This shouldn't be required but its due to how the lifetime
 // // of the string needs to exist beyond a prepare draw function and
@@ -56,13 +56,14 @@ package ui
 // // strings or widgets can store dynamically allocated strings.
 // static std::string _chosenLanguage;
 type AvailableCurrency struct {
-// std::string name;
+	// std::string name;
 	Header ObjectHeader
-// ObjectManager::ObjectIndexId index;
+	// ObjectManager::ObjectIndexId index;
 }
+
 // // We need to keep a copy due to lifetimes
 // static sfl::small_vector<AvailableCurrency, 10> _availableCurrencies;
-// func PopulateAvailableCurrencies() 
+// func PopulateAvailableCurrencies()
 // _availableCurrencies.clear();
 // for (auto& object : ObjectManager::getAvailableObjects(ObjectType::currency))
 // _availableCurrencies.push_back(AvailableCurrency{ object.object._name, object.object._header, object.index });
@@ -92,7 +93,8 @@ const (
 	Company
 	Miscellaneous
 )
-// func PrepareDraw(self Window) 
+
+// func PrepareDraw(self Window)
 // self.activatedWidgets = 1ULL << (self.currentTab + 4);
 // self.disabledWidgets = 0;
 // self.widgets[Widx::frame].right = self.width - 1;
@@ -161,7 +163,7 @@ const (
 // // Company tab
 // const uint32_t imageId = skin->img + InterfaceSkin::ImageIds::tab_company;
 // self.widgets[Widx::tab_company].image = imageId;
-// func OnClose(self [[maybe_unused]] Window) 
+// func OnClose(self [[maybe_unused]] Window)
 // ObjectManager::freeTemporaryObject();
 // func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) bool
 // switch (wi)
@@ -226,7 +228,7 @@ var TabWidth = 31 // auto
 // Widgets::Checkbox({ 10, 127 }, { 174, 12 }, WindowColour::secondary, StringIds::option_show_fps_counter, StringIds::option_show_fps_counter_tooltip)
 // );
 // // 0x004BFB8C
-// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (Common::onMouseUp(self, wi, id))
 // return;
 // switch (wi)
@@ -236,14 +238,14 @@ var TabWidth = 31 // auto
 // OpenLoco::Config::write();
 // Gfx::invalidateScreen();
 // return;
-// func ScreenModeToggleEnabled(self Window) 
+// func ScreenModeToggleEnabled(self Window)
 // if (Config::get().display.mode == Config::ScreenMode::fullscreen)
 // self.disabledWidgets &= ~(1ULL << Widx::display_resolution) | (1ULL << Widx::display_resolution_btn);
 // self.disabledWidgets &= ~((1ULL << Widx::display_resolution) | (1ULL << Widx::display_resolution_btn));
 // else
 // self.disabledWidgets |= ((1ULL << Widx::display_resolution) | (1ULL << Widx::display_resolution_btn));
 // self.disabledWidgets |= (1ULL << Widx::display_resolution) | (1ULL << Widx::display_resolution_btn);
-// func ScreenModeMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t) 
+// func ScreenModeMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t)
 // auto& dropdown = self.widgets[Widx::screen_mode];
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), 3, 0x80);
 // Dropdown::add(0, StringIds::dropdown_stringid, StringIds::options_mode_windowed);
@@ -251,7 +253,7 @@ var TabWidth = 31 // auto
 // Dropdown::add(2, StringIds::dropdown_stringid, StringIds::options_mode_fullscreen_window);
 // auto selection = static_cast<uint16_t>(Config::get().display.mode);
 // Dropdown::setItemSelected(selection);
-// func ScreenModeDropdown(self [[maybe_unused]] Window, selection int16) 
+// func ScreenModeDropdown(self [[maybe_unused]] Window, selection int16)
 // if (selection == -1)
 // return;
 // auto new_mode = static_cast<Config::ScreenMode>(selection);
@@ -259,7 +261,7 @@ var TabWidth = 31 // auto
 // return;
 // Ui::setDisplayMode(new_mode);
 // // 0x004C0026
-// func ResolutionMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t) 
+// func ResolutionMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t)
 // std::vector<Resolution> resolutions = getFullscreenResolutions();
 // auto& dropdown = self.widgets[Widx::display_resolution];
 // Dropdown::showText2(self.x + dropdown.left, self.y + dropdown.top, dropdown.width(), dropdown.height(), self.getColour(WindowColour::secondary), resolutions.size(), 0x80);
@@ -269,12 +271,12 @@ var TabWidth = 31 // auto
 // if (cfg.display.fullscreenResolution.width == resolutions[i].width && cfg.display.fullscreenResolution.height == resolutions[i].height)
 // Dropdown::setItemSelected((int16_t)i);
 // // 0x004C00F4
-// func ResolutionDropdown(self [[maybe_unused]] Window, index int16) 
+// func ResolutionDropdown(self [[maybe_unused]] Window, index int16)
 // if (index == -1)
 // return;
 // std::vector<Resolution> resolutions = getFullscreenResolutions();
 // Ui::setDisplayMode(Config::ScreenMode::fullscreen, { resolutions[index].width, resolutions[index].height });
-// func FrameLimitMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t) 
+// func FrameLimitMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t)
 // auto& dropdown = self.widgets[Widx::frame_limit];
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width(), dropdown.height(), self.getColour(WindowColour::secondary), 3, 0x80);
 // Dropdown::add(0, StringIds::dropdown_stringid, StringIds::frameRateLimitInternal);
@@ -284,7 +286,7 @@ var TabWidth = 31 // auto
 // if (Config::get().uncapFPS)
 // activeItem = Config::get().display.vsync ? 1 : 2;
 // Dropdown::setItemSelected(activeItem);
-// func FrameLimitDropdown(self Window, itemIndex int16) 
+// func FrameLimitDropdown(self Window, itemIndex int16)
 // if (itemIndex == -1)
 // return;
 // auto& config = Config::get();
@@ -305,10 +307,10 @@ var TabWidth = 31 // auto
 // if (drawingEngine.setVSync(config.display.vsync))
 // Config::write();
 // WindowManager::invalidateWidget(self.type, self.number, Widx::frame_limit);
-// func DisplayScaleMouseDown(self [[maybe_unused]] Window, wi [[maybe_unused]] WidgetIndex_t, adjust_by float32) 
+// func DisplayScaleMouseDown(self [[maybe_unused]] Window, wi [[maybe_unused]] WidgetIndex_t, adjust_by float32)
 // OpenLoco::Ui::adjustWindowScale(adjust_by);
 // // 0x004BFBB7
-// func OnMouseDown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (wi)
 // case Widx::screen_mode_btn:
 // screenModeMouseDown(self, wi);
@@ -326,7 +328,7 @@ var TabWidth = 31 // auto
 // frameLimitMouseDown(self, wi);
 // break;
 // // 0x004BFBE8
-// func OnDropdown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId, item_index int16) 
+// func OnDropdown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId, item_index int16)
 // switch (wi)
 // case Widx::screen_mode_btn:
 // screenModeDropdown(self, item_index);
@@ -338,12 +340,12 @@ var TabWidth = 31 // auto
 // frameLimitDropdown(self, item_index);
 // break;
 // // 0x004C01F5
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(self.type, self.number, self.currentTab + 4);
 // // 0x004BFA04
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // assert(self.currentTab == Common::tab::display);
 // Common::prepareDraw(self);
 // StringId screenModeStringId = StringIds::empty;
@@ -381,10 +383,10 @@ var TabWidth = 31 // auto
 // self.disabledWidgets |= (1ULL << Widx::display_scale_up_btn);
 // screenModeToggleEnabled(self);
 // // 0x004BFAF9
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets.
 // self.draw(drawingCtx);
-// func ApplyScreenModeRestrictions(self Window) 
+// func ApplyScreenModeRestrictions(self Window)
 // if (Config::get().display.mode != Config::ScreenMode::fullscreen)
 // self.disabledWidgets = (1ULL << Display::Widx::display_resolution) | (1ULL << Display::Widx::display_resolution_btn);
 // Display::screenModeToggleEnabled(self);
@@ -443,7 +445,7 @@ var TabWidth = 31 // auto
 // Widgets::dropdownWidgets({ 235, 194 }, { 154, 12 }, WindowColour::secondary, StringIds::empty, StringIds::windowFrameStyleTip)
 // );
 // // 0x004BFB8C
-// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (Common::onMouseUp(self, wi, id))
 // return;
 // switch (wi)
@@ -476,14 +478,14 @@ var TabWidth = 31 // auto
 // Config::write();
 // Gfx::invalidateScreen();
 // // 0x004BFE2E
-// func ConstructionMarkerMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t) 
+// func ConstructionMarkerMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t)
 // auto& dropdown = self.widgets[Widx::construction_marker];
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), 2, 0x80);
 // Dropdown::add(0, StringIds::dropdown_stringid, StringIds::white);
 // Dropdown::add(1, StringIds::dropdown_stringid, StringIds::translucent);
 // Dropdown::setItemSelected(Config::get().constructionMarker);
 // // 0x004BFE98
-// func ConstructionMarkerDropdown(ax int16) 
+// func ConstructionMarkerDropdown(ax int16)
 // if (ax == -1)
 // return;
 // if (ax == Config::get().constructionMarker)
@@ -493,7 +495,7 @@ var TabWidth = 31 // auto
 // OpenLoco::Config::write();
 // Gfx::invalidateScreen();
 // // 0x004BFEBE
-// func VehicleZoomMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t) 
+// func VehicleZoomMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t)
 // auto& dropdown = self.widgets[Widx::vehicles_min_scale];
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), 4, 0x80);
 // Dropdown::add(0, StringIds::dropdown_stringid, StringIds::full_scale);
@@ -502,7 +504,7 @@ var TabWidth = 31 // auto
 // Dropdown::add(3, StringIds::dropdown_stringid, StringIds::eighth_scale);
 // Dropdown::setItemSelected(Config::get().vehiclesMinScale);
 // // 0x004BFF4C
-// func VehicleZoomDropdown(ax int16) 
+// func VehicleZoomDropdown(ax int16)
 // if (ax == -1)
 // return;
 // if (ax == Config::get().vehiclesMinScale)
@@ -512,7 +514,7 @@ var TabWidth = 31 // auto
 // OpenLoco::Config::write();
 // Gfx::invalidateScreen();
 // // 0x004BFF72
-// func StationNamesScaleMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t) 
+// func StationNamesScaleMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t)
 // auto& dropdown = self.widgets[Widx::station_names_min_scale];
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), 4, 0x80);
 // Dropdown::add(0, StringIds::dropdown_stringid, StringIds::full_scale);
@@ -521,7 +523,7 @@ var TabWidth = 31 // auto
 // Dropdown::add(3, StringIds::dropdown_stringid, StringIds::eighth_scale);
 // Dropdown::setItemSelected(Config::get().stationNamesMinScale);
 // // 0x004C0000
-// func StationNamesScaleDropdown(ax int16) 
+// func StationNamesScaleDropdown(ax int16)
 // if (ax == -1)
 // return;
 // if (ax == Config::get().stationNamesMinScale)
@@ -530,14 +532,14 @@ var TabWidth = 31 // auto
 // cfg.stationNamesMinScale = ax;
 // OpenLoco::Config::write();
 // Gfx::invalidateScreen();
-// func WindowFrameStyleMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t) 
+// func WindowFrameStyleMouseDown(self Window, wi [[maybe_unused]] WidgetIndex_t)
 // auto& dropdown = self.widgets[Widx::window_frame_style];
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), 3, 0x80);
 // Dropdown::add(0, StringIds::dropdown_stringid, StringIds::windowFrameStyleGradient);
 // Dropdown::add(1, StringIds::dropdown_stringid, StringIds::windowFrameStyleSolid);
 // Dropdown::add(2, StringIds::dropdown_stringid, StringIds::windowFrameStyleTranslucent);
 // Dropdown::setItemSelected(enumValue(Config::get().windowFrameStyle));
-// func WindowFrameStyleDropdown(selectedItem int16) 
+// func WindowFrameStyleDropdown(selectedItem int16)
 // if (selectedItem == -1)
 // return;
 // if (selectedItem == enumValue(Config::get().windowFrameStyle))
@@ -547,7 +549,7 @@ var TabWidth = 31 // auto
 // OpenLoco::Config::write();
 // Gfx::invalidateScreen();
 // // 0x004BFBB7
-// func OnMouseDown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (wi)
 // case Widx::construction_marker_btn:
 // constructionMarkerMouseDown(self, wi);
@@ -562,7 +564,7 @@ var TabWidth = 31 // auto
 // windowFrameStyleMouseDown(self, wi);
 // break;
 // // 0x004BFBE8
-// func OnDropdown(self [[maybe_unused]] Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId, item_index int16) 
+// func OnDropdown(self [[maybe_unused]] Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId, item_index int16)
 // switch (wi)
 // case Widx::construction_marker_btn:
 // constructionMarkerDropdown(item_index);
@@ -577,12 +579,12 @@ var TabWidth = 31 // auto
 // windowFrameStyleDropdown(item_index);
 // break;
 // // 0x004C01F5
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(self.type, self.number, self.currentTab + 4);
 // // 0x004BFA04
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // assert(self.currentTab == Common::tab::rendering);
 // Common::prepareDraw(self);
 // if (Config::get().constructionMarker)
@@ -610,7 +612,7 @@ var TabWidth = 31 // auto
 // if (Config::get().showAiPlanningAsGhosts)
 // self.activatedWidgets |= (1ULL << Widx::show_company_ai_planning);
 // // 0x004BFAF9
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets.
 // self.draw(drawingCtx);
 // static constexpr WindowEventList kEvents = {
@@ -625,12 +627,12 @@ var TabWidth = 31 // auto
 // orphan member: return kEvents;
 // namespace AudioTab
 // // Some widget positions in pixels
-var SoundGroupOffset = 49 // auto
-var SoundGroupLastItemOffset = 30 // auto
-var SoundGroupHeight = kSoundGroupLastItemOffset + 19 // auto
+var SoundGroupOffset = 49                                        // auto
+var SoundGroupLastItemOffset = 30                                // auto
+var SoundGroupHeight = kSoundGroupLastItemOffset + 19            // auto
 var MusicGroupOffset = kSoundGroupOffset + kSoundGroupHeight + 4 // auto
-var MusicGroupLastItemOffset = 73 // auto
-var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
+var MusicGroupLastItemOffset = 73                                // auto
+var MusicGroupHeight = kMusicGroupLastItemOffset + 19            // auto
 // static constexpr Ui::Size kWindowSize = { 366, 49 + kSoundGroupHeight + 4 + kMusicGroupHeight + 4 };
 // namespace Widx
 // enum
@@ -665,19 +667,19 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // Widgets::Slider({ 256, kMusicGroupOffset + 35 - 6 }, { 109, 24 }, WindowColour::secondary, Widget::kContentNull, StringIds::set_music_volume_tip),
 // Widgets::dropdownWidgets({ 10, kMusicGroupOffset + 58 }, { 346, 12 }, WindowColour::secondary, StringIds::stringid),
 // Widgets::Button({ 183, kMusicGroupOffset + kMusicGroupLastItemOffset }, { 173, 12 }, WindowColour::secondary, StringIds::edit_music_selection, StringIds::edit_music_selection_tip));
-// func AudioDeviceMouseDown(self Window) 
-// func AudioDeviceDropdown(self Window, itemIndex int16) 
-// func PlayTitleMusicOnMouseUp(self Window) 
-// func CurrentlyPlayingMouseDown(self Window) 
-// func CurrentlyPlayingDropdown(self Window, itemIndex int16) 
-// func StopMusic(self Window) 
-// func PlayMusic(self Window) 
-// func PlayNextSong(self Window) 
-// func VolumeMouseDown(self Window) 
-// func MusicPlaylistMouseDown(self Window) 
-// func MusicPlaylistDropdown(self Window, itemIndex int16) 
+// func AudioDeviceMouseDown(self Window)
+// func AudioDeviceDropdown(self Window, itemIndex int16)
+// func PlayTitleMusicOnMouseUp(self Window)
+// func CurrentlyPlayingMouseDown(self Window)
+// func CurrentlyPlayingDropdown(self Window, itemIndex int16)
+// func StopMusic(self Window)
+// func PlayMusic(self Window)
+// func PlayNextSong(self Window)
+// func VolumeMouseDown(self Window)
+// func MusicPlaylistMouseDown(self Window)
+// func MusicPlaylistDropdown(self Window, itemIndex int16)
 // // 0x004C0217, 0x004C0217
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // assert(self.currentTab == Common::tab::audio);
 // Common::prepareDraw(self);
 // // Audio device
@@ -722,14 +724,14 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // if (Config::get().audio.playTitleMusic)
 // self.activatedWidgets |= (1ULL << Widx::play_title_music);
 // // 0x004C02F5, 0x004C05F9
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets.
 // self.draw(drawingCtx);
 // // TODO: Move this in Slider widget.
 // drawingCtx.drawImage(self.x + self.widgets[Widx::music_volume].left, self.y + self.widgets[Widx::music_volume].top, Gfx::recolour(ImageIds::volume_slider_track, self.getColour(WindowColour::secondary).c()));
 // int16_t x = 90 + (Config::get().audio.mainVolume / 32);
 // drawingCtx.drawImage(self.x + self.widgets[Widx::music_volume].left + x, self.y + self.widgets[Widx::music_volume].top, Gfx::recolour(ImageIds::volume_slider_thumb, self.getColour(WindowColour::secondary).c()));
-// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (Common::onMouseUp(self, wi, id))
 // return;
 // switch (wi)
@@ -748,7 +750,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // case Widx::edit_selection:
 // MusicSelection::open();
 // return;
-// func OnMouseDown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (wi)
 // case Widx::audio_device_btn:
 // audioDeviceMouseDown(self);
@@ -762,7 +764,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // case Widx::music_volume:
 // volumeMouseDown(self);
 // break;
-// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // switch (widgetIndex)
 // case Widx::audio_device_btn:
 // audioDeviceDropdown(self, itemIndex);
@@ -774,7 +776,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // currentlyPlayingDropdown(self, itemIndex);
 // break;
 // // 0x004C043D
-// func AudioDeviceMouseDown(self Window) 
+// func AudioDeviceMouseDown(self Window)
 // const auto& devices = Audio::getDevices();
 // if (devices.size() != 0)
 // auto& dropdown = self.widgets[Widx::audio_device];
@@ -786,7 +788,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // if (currentDevice != std::numeric_limits<size_t>().max())
 // Dropdown::setItemSelected((int16_t)currentDevice);
 // // 0x004C04CA
-// func AudioDeviceDropdown(self Window, itemIndex int16) 
+// func AudioDeviceDropdown(self Window, itemIndex int16)
 // if (itemIndex != -1)
 // Audio::setDevice(itemIndex);
 // // Start playing the title screen music again if applicable (Fix for #2689)
@@ -794,7 +796,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // if (SceneManager::isTitleMode() && config.audio.playTitleMusic)
 // Audio::playMusic(Environment::PathId::css5, config.audio.mainVolume, true);
 // WindowManager::invalidateWidget(self.type, self.number, Widx::audio_device);
-// func PlayTitleMusicOnMouseUp(self Window) 
+// func PlayTitleMusicOnMouseUp(self Window)
 // auto& cfg = Config::get();
 // cfg.audio.playTitleMusic = !cfg.audio.playTitleMusic;
 // Config::write();
@@ -806,7 +808,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // else
 // Audio::stopMusic();
 // // 0x004C0875
-// func CurrentlyPlayingMouseDown(self Window) 
+// func CurrentlyPlayingMouseDown(self Window)
 // auto tracks = Jukebox::makeSelectedPlaylist();
 // auto& dropdown = self.widgets[Widx::currently_playing];
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), tracks.size(), 0x80);
@@ -817,26 +819,26 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // if (track == Jukebox::getCurrentTrack())
 // Dropdown::setItemSelected(index);
 // // 0x004C09F8
-// func CurrentlyPlayingDropdown(self Window, ax int16) 
+// func CurrentlyPlayingDropdown(self Window, ax int16)
 // if (ax == -1)
 // return;
 // auto track = Jukebox::makeSelectedPlaylist().at(ax);
 // if (Jukebox::requestTrack(track))
 // self.invalidate();
 // // 0x004C0778
-// func StopMusic(self Window) 
+// func StopMusic(self Window)
 // if (Jukebox::disableMusic())
 // self.invalidate();
 // // 0x004C07A4
-// func PlayMusic(self Window) 
+// func PlayMusic(self Window)
 // if (Jukebox::enableMusic())
 // self.invalidate();
 // // 0x004C07C4
-// func PlayNextSong(self Window) 
+// func PlayNextSong(self Window)
 // if (Jukebox::skipCurrentTrack())
 // self.invalidate();
 // // 0x004C072A
-// func VolumeMouseDown(self Window) 
+// func VolumeMouseDown(self Window)
 // Input::setClickRepeatTicks(31);
 // auto mousePos = Input::getScrollLastLocation();
 // int x = mousePos.x - self.x - self.widgets[Widx::music_volume].left - 10;
@@ -844,7 +846,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // Audio::setBgmVolume((x * 32) - 2560);
 // self.invalidate();
 // // 0x004C07E4
-// func MusicPlaylistMouseDown(self Window) 
+// func MusicPlaylistMouseDown(self Window)
 // auto& dropdown = self.widgets[Widx::music_playlist];
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), 3, 0x80);
 // Dropdown::add(0, StringIds::dropdown_stringid, StringIds::play_only_music_from_current_era);
@@ -852,7 +854,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // Dropdown::add(2, StringIds::dropdown_stringid, StringIds::play_custom_music_selection);
 // Dropdown::setItemSelected(enumValue(Config::get().audio.playlist));
 // // 0x004C084A
-// func MusicPlaylistDropdown(self Window, index int16) 
+// func MusicPlaylistDropdown(self Window, index int16)
 // if (index == -1)
 // return;
 // auto& cfg = Config::get().audio;
@@ -863,7 +865,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // Audio::revalidateCurrentTrack();
 // WindowManager::close(WindowType::musicSelection);
 // // 0x004C04E0, 0x004C0A37
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(self.type, self.number, self.currentTab + 4);
@@ -913,20 +915,20 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // Widgets::Checkbox({ 10, 134 }, { 346, 12 }, WindowColour::secondary, StringIds::use_preferred_currency_new_game, StringIds::use_preferred_currency_new_game_tip),
 // Widgets::Checkbox({ 10, 148 }, { 346, 12 }, WindowColour::secondary, StringIds::use_preferred_currency_always, StringIds::use_preferred_currency_always_tip)
 // );
-// func LanguageMouseDown(self Window) 
-// func LanguageDropdown(self Window, itemIndex int16) 
-// func CurrencyMouseDown(self Window) 
-// func CurrencyDropdown(self Window, itemIndex int16) 
-// func PreferredCurrencyMouseDown(self Window) 
-// func PreferredCurrencyDropdown(self Window, itemIndex int16) 
-// func PreferredCurrencyNewGameMouseUp(self Window) 
-// func PreferredCurrencyAlwaysMouseUp(self Window) 
-// func DistanceSpeedMouseDown(self Window) 
-// func DistanceSpeedDropdown(self Window, itemIndex int16) 
-// func HeightsLabelsMouseDown(self Window) 
-// func HeightsLabelsDropdown(self Window, itemIndex int16) 
+// func LanguageMouseDown(self Window)
+// func LanguageDropdown(self Window, itemIndex int16)
+// func CurrencyMouseDown(self Window)
+// func CurrencyDropdown(self Window, itemIndex int16)
+// func PreferredCurrencyMouseDown(self Window)
+// func PreferredCurrencyDropdown(self Window, itemIndex int16)
+// func PreferredCurrencyNewGameMouseUp(self Window)
+// func PreferredCurrencyAlwaysMouseUp(self Window)
+// func DistanceSpeedMouseDown(self Window)
+// func DistanceSpeedDropdown(self Window, itemIndex int16)
+// func HeightsLabelsMouseDown(self Window)
+// func HeightsLabelsDropdown(self Window, itemIndex int16)
 // // 0x004C0A59
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // assert(self.currentTab == Common::tab::regional);
 // Common::prepareDraw(self);
 // auto args = FormatArguments(self.widgets[Widx::language].textArgs);
@@ -953,10 +955,10 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // self.disabledWidgets |= (1ULL << Widx::currency);
 // self.disabledWidgets |= (1ULL << Widx::currency_btn);
 // // 0x004C0B5B
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets.
 // self.draw(drawingCtx);
-// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (Common::onMouseUp(self, wi, id))
 // return;
 // switch (wi)
@@ -967,7 +969,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // preferredCurrencyAlwaysMouseUp(self);
 // return;
 // // 0x004BFBB7
-// func OnMouseDown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (wi)
 // case Widx::language_btn:
 // languageMouseDown(self);
@@ -985,7 +987,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // preferredCurrencyMouseDown(self);
 // break;
 // // 0x004C0C4A
-// func OnDropdown(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16) 
+// func OnDropdown(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, itemIndex int16)
 // switch (widgetIndex)
 // case Widx::language_btn:
 // languageDropdown(self, itemIndex);
@@ -1002,7 +1004,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // case Widx::preferred_currency_btn:
 // preferredCurrencyDropdown(self, itemIndex);
 // break;
-// func LanguageMouseDown(self Window) 
+// func LanguageMouseDown(self Window)
 // const auto lds = Localisation::getLanguageDescriptors();
 // uint8_t numLanguages = static_cast<uint8_t>(lds.size());
 // auto& dropdown = self.widgets[Widx::language];
@@ -1013,7 +1015,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // Dropdown::add(index - 1, StringIds::dropdown_stringptr, (char*)ld.nativeName.c_str());
 // if (ld.locale == current_language)
 // Dropdown::setItemSelected(index - 1);
-// func LanguageDropdown(self Window, itemIndex int16) 
+// func LanguageDropdown(self Window, itemIndex int16)
 // if (itemIndex == -1)
 // self.invalidate();
 // return;
@@ -1028,7 +1030,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // // Rebuild the scenario index to use the new language.
 // ScenarioManager::loadIndex(true);
 // // 0x004C0C73
-// func CurrencyMouseDown(self Window) 
+// func CurrencyMouseDown(self Window)
 // auto& dropdown = self.widgets[Widx::currency];
 // auto numItems = ObjectManager::getNumAvailableObjectsByType(ObjectType::currency);
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), numItems, 0x80);
@@ -1039,7 +1041,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // if ((_objectListSelection[object.index] & ObjectManager::SelectedObjectsFlags::selected) != ObjectManager::SelectedObjectsFlags::none)
 // Dropdown::setItemSelected(index);
 // // 0x004C0D33
-// func CurrencyDropdown(self Window, itemIndex int16) 
+// func CurrencyDropdown(self Window, itemIndex int16)
 // if (itemIndex == -1)
 // self.invalidate();
 // return;
@@ -1057,7 +1059,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // break;
 // self.invalidate();
 // // 0x004C0DCF
-// func PreferredCurrencyMouseDown(self Window) 
+// func PreferredCurrencyMouseDown(self Window)
 // auto& dropdown = self.widgets[Widx::preferred_currency];
 // auto numItems = ObjectManager::getNumAvailableObjectsByType(ObjectType::currency);
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), numItems, 0x80);
@@ -1068,7 +1070,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // if (OpenLoco::Config::get().preferredCurrency == object.header)
 // Dropdown::setItemSelected(index);
 // // 0x004C0E82
-// func PreferredCurrencyDropdown(self Window, itemIndex int16) 
+// func PreferredCurrencyDropdown(self Window, itemIndex int16)
 // if (itemIndex == -1)
 // self.invalidate();
 // return;
@@ -1085,13 +1087,13 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // break;
 // self.invalidate();
 // // 0x004C0F14
-// func PreferredCurrencyNewGameMouseUp(self Window) 
+// func PreferredCurrencyNewGameMouseUp(self Window)
 // auto& cfg = OpenLoco::Config::get();
 // cfg.usePreferredCurrencyForNewGames ^= true;
 // Config::write();
 // self.invalidate();
 // // 0x004C0F27
-// func PreferredCurrencyAlwaysMouseUp(self Window) 
+// func PreferredCurrencyAlwaysMouseUp(self Window)
 // auto& cfg = OpenLoco::Config::get();
 // cfg.usePreferredCurrencyAlways ^= true;
 // Config::write();
@@ -1099,14 +1101,14 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // ObjectManager::markOnlyLoadedObjects(_objectListSelection);
 // self.invalidate();
 // // 0x004C0F49
-// func DistanceSpeedMouseDown(self Window) 
+// func DistanceSpeedMouseDown(self Window)
 // auto& dropdown = self.widgets[Widx::distance_speed];
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), 2, 0x80);
 // Dropdown::add(0, StringIds::dropdown_stringid, StringIds::imperial);
 // Dropdown::add(1, StringIds::dropdown_stringid, StringIds::metric);
 // Dropdown::setItemSelected(static_cast<uint8_t>(Config::get().measurementFormat));
 // // 0x004C0FB3
-// func DistanceSpeedDropdown(self [[maybe_unused]] Window, itemIndex int16) 
+// func DistanceSpeedDropdown(self [[maybe_unused]] Window, itemIndex int16)
 // if (itemIndex == -1)
 // return;
 // auto& cfg = Config::get();
@@ -1118,7 +1120,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // Config::write();
 // Gfx::invalidateScreen();
 // // 0x004C0FFA
-// func HeightsLabelsMouseDown(self Window) 
+// func HeightsLabelsMouseDown(self Window)
 // auto& dropdown = self.widgets[Widx::heights];
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), 2, 0x80);
 // Dropdown::add(0, StringIds::dropdown_stringid, StringIds::height_units);
@@ -1128,7 +1130,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // selectedItem = 1;
 // Dropdown::setItemSelected(selectedItem);
 // // 0x004C106C
-// func HeightsLabelsDropdown(self [[maybe_unused]] Window, index int16) 
+// func HeightsLabelsDropdown(self [[maybe_unused]] Window, index int16)
 // if (index == -1)
 // return;
 // auto& cfg = Config::get();
@@ -1140,7 +1142,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // Config::write();
 // Gfx::invalidateScreen();
 // // 0x004C1195
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(self.type, self.number, self.currentTab + 4);
@@ -1169,11 +1171,11 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // Widgets::Checkbox({ 10, 79 }, { 346, 12 }, WindowColour::secondary, StringIds::invert_right_mouse_dragging, StringIds::tooltip_invert_right_mouse_dragging),
 // Widgets::Button({ 26, 94 }, { 160, 12 }, WindowColour::secondary, StringIds::customise_keys, StringIds::customise_keys_tip)
 // );
-// func EdgeScrollingMouseUp(self Window) 
-// func ZoomToCursorMouseUp(self Window) 
-// func InvertRightMouseViewPan(self Window) 
-// func OpenKeyboardShortcuts() 
-// func PrepareDraw(self Window) 
+// func EdgeScrollingMouseUp(self Window)
+// func ZoomToCursorMouseUp(self Window)
+// func InvertRightMouseViewPan(self Window)
+// func OpenKeyboardShortcuts()
+// func PrepareDraw(self Window)
 // assert(self.currentTab == Common::tab::controls);
 // Common::prepareDraw(self);
 // self.activatedWidgets &= ~(1ULL << Widx::edge_scrolling | 1ULL << Widx::zoom_to_cursor | 1ULL << Widx::invertRightMouseViewPan);
@@ -1184,10 +1186,10 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // if (Config::get().invertRightMouseViewPan)
 // self.activatedWidgets |= (1ULL << Widx::invertRightMouseViewPan);
 // // 0x004C113F
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // // 0x004C114A
-// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (Common::onMouseUp(self, wi, id))
 // return;
 // switch (wi)
@@ -1204,26 +1206,26 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // invertRightMouseViewPan(self);
 // break;
 // // 0x004C117A
-// func EdgeScrollingMouseUp(self Window) 
+// func EdgeScrollingMouseUp(self Window)
 // auto& cfg = OpenLoco::Config::get();
 // cfg.edgeScrolling = !cfg.edgeScrolling;
 // Config::write();
 // self.invalidate();
-// func ZoomToCursorMouseUp(self Window) 
+// func ZoomToCursorMouseUp(self Window)
 // auto& cfg = OpenLoco::Config::get();
 // cfg.zoomToCursor = !cfg.zoomToCursor;
 // Config::write();
 // self.invalidate();
-// func InvertRightMouseViewPan(self Window) 
+// func InvertRightMouseViewPan(self Window)
 // auto& cfg = OpenLoco::Config::get();
 // cfg.invertRightMouseViewPan = !cfg.invertRightMouseViewPan;
 // Config::write();
 // self.invalidate();
 // // 0x004C118D
-// func OpenKeyboardShortcuts() 
+// func OpenKeyboardShortcuts()
 // KeyboardShortcuts::open();
 // // 0x004C1195
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(self.type, self.number, self.currentTab + 4);
@@ -1262,7 +1264,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // // Preferred owner preview
 // Widgets::ImageButton({ 345, 59 }, { 66, 66 }, WindowColour::secondary, Widget::kContentNull)
 // );
-// func LoadPreferredFace(self Window) 
+// func LoadPreferredFace(self Window)
 // if (WindowManager::getCurrentModalType() == WindowType::companyFaceSelection)
 // self.object = nullptr;
 // return;
@@ -1282,7 +1284,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // cfg.preferredOwnerFace = kEmptyObjectHeader;
 // Config::write();
 // self.object = nullptr;
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // assert(self.currentTab == Common::tab::company);
 // Common::prepareDraw(self);
 // if (Config::get().usePreferredOwnerName)
@@ -1312,33 +1314,33 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // args.push(competitor->name);
 // self.widgets[Widx::ownerFacePreview].image = ImageId(competitor->images[0]).withIndexOffset(1).withPrimary(Colour::black).toUInt32();
 // loadPreferredFace(self);
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // // 0x004C1319
-// func ChangePreferredName(self Window) 
+// func ChangePreferredName(self Window)
 // auto buffer = (char*)StringManager::getString(StringIds::buffer_2039);
 // const char* playerName = Config::get().preferredOwnerName.c_str();
 // strcpy(buffer, playerName);
 // buffer[strlen(playerName)] = '\0';
 // TextInput::openTextInput(&self, StringIds::preferred_owner_name, StringIds::enter_preferred_owner_name, StringIds::buffer_2039, Widx::usePreferredOwnerName, {});
 // // 0x004C135F
-// func UsePreferredOwnerNameMouseUp(self Window) 
+// func UsePreferredOwnerNameMouseUp(self Window)
 // auto& cfg = Config::get();
 // cfg.usePreferredOwnerName ^= true;
 // Config::write();
 // self.invalidate();
 // if (cfg.usePreferredOwnerName && cfg.preferredOwnerName.empty())
 // changePreferredName(self);
-// func ChangePreferredFace(self Window) 
+// func ChangePreferredFace(self Window)
 // CompanyFaceSelection::open(CompanyId::neutral, self.type);
-// func UsePreferredOwnerFaceMouseUp(self Window) 
+// func UsePreferredOwnerFaceMouseUp(self Window)
 // auto& cfg = Config::get();
 // cfg.usePreferredOwnerFace ^= true;
 // Config::write();
 // self.invalidate();
 // if (cfg.usePreferredOwnerFace && cfg.preferredOwnerFace == kEmptyObjectHeader)
 // changePreferredFace(self);
-// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (Common::onMouseUp(self, wi, id))
 // return;
 // switch (wi)
@@ -1356,7 +1358,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // changePreferredFace(self);
 // break;
 // // 0x004C1342
-// func SetPreferredName(self Window, str byte) 
+// func SetPreferredName(self Window, str byte)
 // auto& cfg = Config::get();
 // cfg.preferredOwnerName = str;
 // if (cfg.preferredOwnerName.empty())
@@ -1364,13 +1366,13 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // Config::write();
 // self.invalidate();
 // // 0x004C1304
-// func TextInput(self Window, i WidgetIndex_t, id [[maybe_unused]] WidgetId, str byte) 
+// func TextInput(self Window, i WidgetIndex_t, id [[maybe_unused]] WidgetId, str byte)
 // switch (i)
 // case Widx::usePreferredOwnerName:
 // setPreferredName(self, str);
 // break;
 // // 0x004C139C
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(self.type, self.number, self.currentTab + 4);
@@ -1426,14 +1428,14 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // Widgets::stepperWidgets({ 250, 226 }, { 156, 12 }, WindowColour::secondary, StringIds::empty),
 // Widgets::Checkbox({ 10, 241 }, { 400, 12 }, WindowColour::secondary, StringIds::export_plugin_objects, StringIds::export_plugin_objects_tip)
 // );
-// func EnableCheatsToolbarButtonMouseUp(self Window) 
-// func DisableVehicleBreakdownsMouseUp(self Window) 
-// func TrainsReverseAtSignalsMouseUp(self Window) 
-// func DisableAICompaniesMouseUp(self Window) 
-// func DisableTownExpansionMouseUp(self Window) 
-// func ExportPluginObjectsMouseUp(self Window) 
+// func EnableCheatsToolbarButtonMouseUp(self Window)
+// func DisableVehicleBreakdownsMouseUp(self Window)
+// func TrainsReverseAtSignalsMouseUp(self Window)
+// func DisableAICompaniesMouseUp(self Window)
+// func DisableTownExpansionMouseUp(self Window)
+// func ExportPluginObjectsMouseUp(self Window)
 // // 0x004C11B7
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // assert(self.currentTab == Common::tab::miscellaneous);
 // Common::prepareDraw(self);
 // if (Config::get().cheatsMenuEnabled)
@@ -1453,7 +1455,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // if (Config::get().exportObjectsWithSaves)
 // self.activatedWidgets |= (1ULL << Widx::export_plugin_objects);
 // self.widgets[Widx::export_plugin_objects].hidden = !ObjectManager::getCustomObjectsInIndexStatus();
-// func DrawDropdownContent(self Window, drawingCtx Gfx::DrawingContext, widgetIndex WidgetIndex_t, stringId StringId, value int32) 
+// func DrawDropdownContent(self Window, drawingCtx Gfx::DrawingContext, widgetIndex WidgetIndex_t, stringId StringId, value int32)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto& widget = self.widgets[widgetIndex];
 // orphan member: FormatArguments args{};
@@ -1462,7 +1464,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // auto point = Point(self.x + widget.left + 1, self.y + widget.top + 1);
 // tr.drawStringLeft(point, Colour::black, StringIds::black_stringid, args);
 // // 0x004C1282
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // // Value for autosave frequency
 // auto freq = Config::get().autosaveFrequency;
@@ -1481,20 +1483,20 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // // Value for autosave amount
 // auto scale = Config::get().autosaveAmount;
 // drawDropdownContent(self, drawingCtx, Widx::autosave_amount, StringIds::int_32, scale);
-// func ChangeAutosaveAmount(self Window, delta int32) 
+// func ChangeAutosaveAmount(self Window, delta int32)
 // auto& cfg = Config::get();
 // auto newValue = std::clamp(cfg.autosaveAmount + delta, 1, 24);
 // if (cfg.autosaveAmount != newValue)
 // cfg.autosaveAmount = newValue;
 // Config::write();
 // self.invalidate();
-// func ChangeAutosaveFrequency(self Window, value int32) 
+// func ChangeAutosaveFrequency(self Window, value int32)
 // auto& cfg = Config::get();
 // if (cfg.autosaveFrequency != value)
 // cfg.autosaveFrequency = value;
 // Config::write();
 // self.invalidate();
-// func ShowAutosaveFrequencyDropdown(self Window, wi WidgetIndex_t) 
+// func ShowAutosaveFrequencyDropdown(self Window, wi WidgetIndex_t)
 // auto dropdown = self.widgets[wi];
 // Dropdown::show(self.x + dropdown.left, self.y + dropdown.top, dropdown.width() - 4, dropdown.height(), self.getColour(WindowColour::secondary), 5, 0x80);
 // // Add pre-defined entries
@@ -1524,7 +1526,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // break;
 // if (selected)
 // Dropdown::setItemSelected(*selected);
-// func HandleAutosaveFrequencyDropdown(self Window, index int32) 
+// func HandleAutosaveFrequencyDropdown(self Window, index int32)
 // switch (index)
 // case 0:
 // changeAutosaveFrequency(self, 0);
@@ -1542,7 +1544,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // changeAutosaveFrequency(self, 12);
 // break;
 // // 0x004C12D2
-// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // if (Common::onMouseUp(self, wi, id))
 // return;
 // switch (wi)
@@ -1572,7 +1574,7 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // case Widx::export_plugin_objects:
 // exportPluginObjectsMouseUp(self);
 // break;
-// func OnMouseDown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (wi)
 // case Widx::autosave_frequency_btn:
 // showAutosaveFrequencyDropdown(self, Widx::autosave_frequency);
@@ -1583,44 +1585,44 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // case Widx::autosave_amount_up_btn:
 // changeAutosaveAmount(self, 1);
 // break;
-// func OnDropdown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId, item_index int16) 
+// func OnDropdown(self Window, wi WidgetIndex_t, id [[maybe_unused]] WidgetId, item_index int16)
 // switch (wi)
 // case Widx::autosave_frequency_btn:
 // handleAutosaveFrequencyDropdown(self, item_index);
 // break;
-// func EnableCheatsToolbarButtonMouseUp(self Window) 
+// func EnableCheatsToolbarButtonMouseUp(self Window)
 // auto& cfg = OpenLoco::Config::get();
 // cfg.cheatsMenuEnabled = !cfg.cheatsMenuEnabled;
 // Config::write();
 // self.invalidate();
 // WindowManager::invalidate(WindowType::topToolbar);
-// func DisableVehicleBreakdownsMouseUp(self Window) 
+// func DisableVehicleBreakdownsMouseUp(self Window)
 // auto& cfg = OpenLoco::Config::get();
 // cfg.breakdownsDisabled = !cfg.breakdownsDisabled;
 // Config::write();
 // self.invalidate();
-// func TrainsReverseAtSignalsMouseUp(self Window) 
+// func TrainsReverseAtSignalsMouseUp(self Window)
 // auto& cfg = OpenLoco::Config::get();
 // cfg.trainsReverseAtSignals = !cfg.trainsReverseAtSignals;
 // Config::write();
 // self.invalidate();
-// func DisableAICompaniesMouseUp(self Window) 
+// func DisableAICompaniesMouseUp(self Window)
 // auto& cfg = OpenLoco::Config::get();
 // cfg.companyAIDisabled = !cfg.companyAIDisabled;
 // Config::write();
 // self.invalidate();
-// func DisableTownExpansionMouseUp(self Window) 
+// func DisableTownExpansionMouseUp(self Window)
 // auto& cfg = OpenLoco::Config::get();
 // cfg.townGrowthDisabled = !cfg.townGrowthDisabled;
 // Config::write();
 // self.invalidate();
-// func ExportPluginObjectsMouseUp(self Window) 
+// func ExportPluginObjectsMouseUp(self Window)
 // auto& cfg = Config::get();
 // cfg.exportObjectsWithSaves ^= true;
 // Config::write();
 // self.invalidate();
 // // 0x004C139C
-// func OnUpdate(self Window) 
+// func OnUpdate(self Window)
 // self.frameNo += 1;
 // self.callPrepareDraw();
 // WindowManager::invalidateWidget(self.type, self.number, self.currentTab + 4);
@@ -1634,16 +1636,16 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // .draw = draw,
 // static const WindowEventList& getEvents()
 // orphan member: return kEvents;
-// func PrepareObjectSelectionList() 
+// func PrepareObjectSelectionList()
 // _objectListSelection.resize(ObjectManager::getNumInstalledObjects());
 // ObjectManager::markOnlyLoadedObjects(_objectListSelection);
-// func DisableTabsByCurrentScene(self Window) 
+// func DisableTabsByCurrentScene(self Window)
 // self.disabledWidgets &= ~(1ULL << Common::Widx::tab_regional);
 // if (SceneManager::isEditorMode() && Scenario::getOptions().editorStep == EditorController::Step::objectSelection)
 // self.disabledWidgets |= 1ULL << Common::Widx::tab_regional;
 // Widget::leftAlignTabs(self, Common::Widx::tab_display, Common::Widx::tab_miscellaneous);
 // // 0x004C1519 & 0x00474911
-// func SetPreferredCurrencyNameBuffer() 
+// func SetPreferredCurrencyNameBuffer()
 // const auto res = ObjectManager::findObjectInIndex(Config::get().preferredCurrency);
 // if (res.has_value())
 // auto buffer = const_cast<char*>(StringManager::getString(StringIds::preferred_currency_buffer));
@@ -1685,10 +1687,11 @@ var MusicGroupHeight = kMusicGroupLastItemOffset + 19 // auto
 // window->callOnMouseUp(Common::Widx::tab_audio, window->widgets[Common::Widx::tab_audio].id);
 // orphan member: return window;
 type TabInformation struct {
-// std::span<const Widget> widgets;
-// const WindowEventList& events;
-// Ui::Size kWindowSize;
+	// std::span<const Widget> widgets;
+	// const WindowEventList& events;
+	// Ui::Size kWindowSize;
 }
+
 // // clang-format off
 // static TabInformation kTabInformationByTabOffset[] = {
 // { Display::_widgets,   Display::getEvents(),   Display::kWindowSize  },
@@ -1700,7 +1703,7 @@ type TabInformation struct {
 // { Misc::_widgets,      Misc::getEvents(),      Misc::kWindowSize     },
 // // clang-format on
 // // 0x004BFC11
-// func TabOnMouseUp(self Window, wi WidgetIndex_t) 
+// func TabOnMouseUp(self Window, wi WidgetIndex_t)
 // ToolManager::toolCancel(self.type, self.number);
 // TextInput::sub_4CE6C9(self.type, self.number);
 // self.currentTab = wi - Common::Widx::tab_display;

@@ -6,13 +6,15 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type PortPlacementArgs struct {
-// PortPlacementArgs() = default;
+	// PortPlacementArgs() = default;
 	// method: explicit PortPlacementArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.di)
-// , rotation(regs.bh)
-// , type(regs.dl)
+	// : pos(regs.ax, regs.cx, regs.di)
+	// , rotation(regs.bh)
+	// , type(regs.dl)
 }
+
 const PortPlacementArgsCommand any = GameCommand.createPort
+
 // World::Pos3 pos;
 // orphan member: uint8_t rotation;
 // orphan member: uint8_t type;
@@ -24,4 +26,4 @@ const PortPlacementArgsCommand any = GameCommand.createPort
 // regs.bh = rotation;
 // regs.dl = type;
 // orphan member: return regs;
-// func CreatePort(regs registers) 
+// func CreatePort(regs registers)

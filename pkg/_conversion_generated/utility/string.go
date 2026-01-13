@@ -62,7 +62,7 @@ package utility
 // WideCharToMultiByte(CP_UTF8, 0, src.data(), srcLen, result.data(), sizeReq, nullptr, nullptr);
 // orphan member: return result;
 // #else
-type Convert_typeX = any /* std::codecvt_utf8<wchar_t> */ 
+type Convert_typeX = any /* std::codecvt_utf8<wchar_t> */
 // std::wstring_convert<convert_typeX, wchar_t> converterX;
 // std::string out = converterX.to_bytes(src.data());
 // std::cout << __PRETTY_FUNCTION__ << " " << out << "\n";

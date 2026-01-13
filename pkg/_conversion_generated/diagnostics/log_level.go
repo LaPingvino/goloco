@@ -15,7 +15,9 @@ const (
 	Verbose
 	All
 )
+
 type LevelMask = uint32
+
 // template<typename... TArgs>
 // func GetLevelMask(args TArgs...) LevelMask
 // orphan member: LevelMask mask{};

@@ -25,14 +25,16 @@ const (
 	Id_12
 	Portuguese
 	Blank LocoLanguageId = 254
-	End LocoLanguageId = 255
+	End   LocoLanguageId = 255
 )
+
 type LanguageDescriptor struct {
-// std::string locale;
-// std::string englishName;
-// std::string nativeName;
+	// std::string locale;
+	// std::string englishName;
+	// std::string nativeName;
 	LocoOriginalId LocoLanguageId
 }
-// func EnumerateLanguages() 
+
+// func EnumerateLanguages()
 // std::span<const LanguageDescriptor> getLanguageDescriptors();
 // const LanguageDescriptor& getDescriptorForLanguage(std::string_view targetLocale);

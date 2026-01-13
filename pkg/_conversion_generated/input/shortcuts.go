@@ -62,5 +62,6 @@ const (
 	GameSpeedExtraFastForward
 	OpenDebugWindow
 )
+
 // namespace Shortcuts
-// func Initialize() 
+// func Initialize()

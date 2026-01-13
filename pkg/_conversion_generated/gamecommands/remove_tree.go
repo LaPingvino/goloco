@@ -6,13 +6,15 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type TreeRemovalArgs struct {
-// TreeRemovalArgs() = default;
+	// TreeRemovalArgs() = default;
 	// method: explicit TreeRemovalArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.dl * World::kSmallZStep)
-// , type(regs.dh)
-// , elementType(regs.bh)
+	// : pos(regs.ax, regs.cx, regs.dl * World::kSmallZStep)
+	// , type(regs.dh)
+	// , elementType(regs.bh)
 }
+
 const TreeRemovalArgsCommand any = GameCommand.removeTree
+
 // World::Pos3 pos;
 // orphan member: uint8_t type;
 // orphan member: uint8_t elementType;
@@ -24,4 +26,4 @@ const TreeRemovalArgsCommand any = GameCommand.removeTree
 // regs.dh = type;
 // regs.bh = elementType;
 // orphan member: return regs;
-// func RemoveTree(regs registers) 
+// func RemoveTree(regs registers)

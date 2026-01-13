@@ -6,15 +6,17 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type TrackRemovalArgs struct {
-// TrackRemovalArgs() = default;
+	// TrackRemovalArgs() = default;
 	// method: explicit TrackRemovalArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.di)
-// , rotation(regs.bh & 0x3)
-// , trackId(regs.dl & 0x3F)
-// , index(regs.dh)
-// , trackObjectId(regs.ebp)
+	// : pos(regs.ax, regs.cx, regs.di)
+	// , rotation(regs.bh & 0x3)
+	// , trackId(regs.dl & 0x3F)
+	// , index(regs.dh)
+	// , trackObjectId(regs.ebp)
 }
+
 const TrackRemovalArgsCommand any = GameCommand.removeTrack
+
 // World::Pos3 pos;
 // orphan member: uint8_t rotation;
 // orphan member: uint8_t trackId;
@@ -30,4 +32,4 @@ const TrackRemovalArgsCommand any = GameCommand.removeTrack
 // regs.dh = index;
 // regs.ebp = trackObjectId;
 // orphan member: return regs;
-// func RemoveTrack(regs registers) 
+// func RemoveTrack(regs registers)

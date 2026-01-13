@@ -36,10 +36,10 @@ package ui
 // player,
 // company_value,
 // performanceIndex
-// func PerformanceIndexMouseUp() 
-// func CompanyValueTooltip(args FormatArguments) 
-// func PerformanceIndexTooltip(args FormatArguments) 
-// func CompanyValueMouseUp() 
+// func PerformanceIndexMouseUp()
+// func CompanyValueTooltip(args FormatArguments)
+// func PerformanceIndexTooltip(args FormatArguments)
+// func CompanyValueMouseUp()
 // // 0x00509d08
 // static constexpr auto _widgets = makeWidgets(
 // Widgets::Wt3Widget({ 0, 0 }, { 140, 29 }, WindowColour::primary),
@@ -51,7 +51,7 @@ package ui
 // std::vector<const Company*> _sortedCompanies;
 // static bool _redrawScheduled = false; // _50A004 (first bit)
 // // 0x43AA4C
-// func PlayerMouseDown(self Ui::Window, widgetIndex WidgetIndex_t) 
+// func PlayerMouseDown(self Ui::Window, widgetIndex WidgetIndex_t)
 // _sortedCompanies.clear();
 // for (const auto& c : CompanyManager::companies())
 // _sortedCompanies.push_back(&c);
@@ -97,7 +97,7 @@ package ui
 // Dropdown::setHighlightedItem(highlightIndex);
 // Dropdown::setFlags(Dropdown::Flags::unk2);
 // // 0x43AB87
-// func PlayerDropdownClick(itemIndex int16) 
+// func PlayerDropdownClick(itemIndex int16)
 // if (itemIndex == -1)
 // itemIndex = Dropdown::getHighlightedItem();
 // // If its index is bigger than the list then its the company list extra item
@@ -125,10 +125,10 @@ package ui
 // window->setColour(WindowColour::secondary, AdvancedColour(skin->playerInfoToolbarColour).translucent());
 // orphan member: return window;
 // // 0x004393E7
-// func PrepareDraw(window Window) 
+// func PrepareDraw(window Window)
 // window.widgets[Widx::inner_frame].hidden = true;
 // // 0x43944B
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // Widget& frame = window.widgets[Widx::outer_frame];
 // drawingCtx.drawRect(window.x + frame.left, window.y + frame.top, frame.width(), frame.height(), enumValue(ExtColour::unk34), Gfx::RectFlags::transparent);
@@ -167,7 +167,7 @@ package ui
 // auto point = Point(x, window.y + frame.top + 14);
 // tr.drawStringCentred(point, colour, performanceString, args);
 // // 0x004395A4
-// func OnMouseUp(window [[maybe_unused]] Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window [[maybe_unused]] Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Widx::company_value:
 // companyValueMouseUp();
@@ -176,22 +176,22 @@ package ui
 // performanceIndexMouseUp();
 // break;
 // // 0x004395B1
-// func OnMouseDown(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Widx::player:
 // playerMouseDown(&window, widgetIndex);
 // break;
 // // 0x004395BC
-// func OnDropdown(w [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, item_index int16) 
+// func OnDropdown(w [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, item_index int16)
 // switch (widgetIndex)
 // case Widx::player:
 // playerDropdownClick(item_index);
 // break;
 // // 0x4395C7
-// func CompanyValueMouseUp() 
+// func CompanyValueMouseUp()
 // CompanyWindow::openFinances(CompanyManager::getControllingId());
 // // 0x4395D6
-// func PerformanceIndexMouseUp() 
+// func PerformanceIndexMouseUp()
 // CompanyList::openPerformanceIndexes();
 // // 0x004395DE
 // static Ui::CursorId onCursor([[maybe_unused]] Ui::Window& window, WidgetIndex_t widgetIndex, [[maybe_unused]] const WidgetId id, [[maybe_unused]] int16_t xPos, [[maybe_unused]] int16_t yPos, Ui::CursorId fallback)
@@ -212,18 +212,18 @@ package ui
 // performanceIndexTooltip(args);
 // break;
 // orphan member: return args;
-// func CompanyValueTooltip(args FormatArguments) 
+// func CompanyValueTooltip(args FormatArguments)
 // auto playerCompany = CompanyManager::get(CompanyManager::getControllingId());
 // args.push(playerCompany->companyValueHistory[0]);
 // args.push(playerCompany->vehicleProfit);
 // // 0x439643
-// func PerformanceIndexTooltip(args FormatArguments) 
+// func PerformanceIndexTooltip(args FormatArguments)
 // auto playerCompany = CompanyManager::get(CompanyManager::getControllingId());
 // formatPerformanceIndex(playerCompany->performanceIndex, args);
-// func InvalidateFrame() 
+// func InvalidateFrame()
 // _redrawScheduled = true;
 // // 0x00439670
-// func OnUpdate(w Window) 
+// func OnUpdate(w Window)
 // w.var_854++;
 // if (w.var_854 >= 24)
 // w.var_854 = 0;

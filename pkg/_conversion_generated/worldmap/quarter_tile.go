@@ -7,9 +7,10 @@ package worldmap
 // namespace OpenLoco::World
 type QuarterTile struct {
 	Val uint8
-// explicit constexpr QuarterTile(uint8_t tileQuarter, uint8_t zQuarter)
-// : _val(tileQuarter | (zQuarter << 4))
+	// explicit constexpr QuarterTile(uint8_t tileQuarter, uint8_t zQuarter)
+	// : _val(tileQuarter | (zQuarter << 4))
 }
+
 // explicit constexpr QuarterTile(uint8_t tileAndZQuarter)
 // : _val(tileAndZQuarter)
 // // Rotate both of the values amount. Returns new RValue QuarterTile

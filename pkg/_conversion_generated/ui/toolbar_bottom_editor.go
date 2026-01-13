@@ -23,6 +23,7 @@ const (
 	Next_button
 )
 const WindowHeight uint16 = 32
+
 // static constexpr auto _widgets = makeWidgets(
 // Widgets::Wt3Widget({ 0, 0 }, { 200, 34 }, WindowColour::primary),
 // Widgets::ImageButton({ 2, 2 }, { 196, 30 }, WindowColour::primary),
@@ -35,7 +36,7 @@ const WindowHeight uint16 = 32
 // { EditorController::Step::scenarioOptions, StringIds::editor_step_options },
 // { EditorController::Step::saveScenario, StringIds::editor_step_save },
 // // 0x0043CE21
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // self.widgets[widx::next_frame].hidden = false;
 // self.widgets[widx::next_button].hidden = false;
 // if (EditorController::canGoBack())
@@ -50,7 +51,7 @@ const WindowHeight uint16 = 32
 // self.widgets[widx::next_button].left = self.widgets[widx::next_frame].left + 2;
 // self.widgets[widx::next_button].right = self.widgets[widx::next_frame].right - 2;
 // // 0x0043CE65
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // Widget& previous = self.widgets[widx::previous_frame];
 // Widget& next = self.widgets[widx::next_frame];
@@ -85,7 +86,7 @@ const WindowHeight uint16 = 32
 // point = Point(self.x + x, self.y + y + 10);
 // tr.drawStringCentred(point, textColour, _stepNames[EditorController::getNextStep()]);
 // // 0x0043D0ED
-// func OnMouseUp(Window, i WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(Window, i WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (i)
 // case widx::previous_button:
 // EditorController::goToPreviousStep();
@@ -100,7 +101,7 @@ const WindowHeight uint16 = 32
 // static const WindowEventList& getEvents()
 // orphan member: return kEvents;
 // // 0x0043CCCD
-// func Open() 
+// func Open()
 // const auto origin = Ui::Point(0, Ui::height() - kWindowHeight);
 // const auto windowSize = Ui::Size(Ui::width(), kWindowHeight);
 // auto window = WindowManager::createWindow(

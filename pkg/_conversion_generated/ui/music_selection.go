@@ -29,10 +29,11 @@ package ui
 // static constexpr Ui::Size kWindowSizeMin = { 300, 100 };
 // static constexpr Ui::Size kWindowSizeMax = { 800, 800 };
 // static constexpr Ui::Size kWindowSizeDefault = { 360, 238 };
-var ColumnYearsWidth = 75 // auto
+var ColumnYearsWidth = 75   // auto
 var StatusBarClearance = 13 // auto
-var Padding = 4 // auto
+var Padding = 4             // auto
 const RowHeight uint8 = 12
+
 // // TODO: make this an attribute of the Music Selection window object rather than static
 // static std::vector<Jukebox::MusicId> playlist;
 type Widx int
@@ -47,6 +48,7 @@ const (
 	Scrollview
 	Status_bar
 )
+
 // static constexpr auto _widgets = makeWidgets(
 // Widgets::Frame({ 0, 0 }, { kWindowSizeDefault.width, kWindowSizeDefault.height }, WindowColour::primary),
 // Widgets::Caption({ 1, 1 }, { kWindowSizeDefault.width - 2, 13 }, Widgets::Caption::Style::whiteText, WindowColour::primary, StringIds::music_selection_title),
@@ -58,7 +60,7 @@ const (
 // Widgets::Label({ kPadding, kWindowSizeDefault.height - 12 }, { kWindowSizeMin.width - kResizeHandleSize - kPadding, 11 }, WindowColour::secondary, ContentAlign::left, StringIds::black_stringid)
 // );
 // static const WindowEventList& getEvents();
-// func SetSortMode(window Ui::Window, sortMode Jukebox::MusicSortMode) 
+// func SetSortMode(window Ui::Window, sortMode Jukebox::MusicSortMode)
 // window.sortMode = static_cast<uint16_t>(sortMode);
 // playlist = Jukebox::makeAllMusicPlaylist(sortMode);
 // // Set table header button captions
@@ -80,7 +82,7 @@ const (
 // window.widgets[widx::sort_years].text = StringIds::table_header_years_desc;
 // break;
 // // Cycles window.sortMode: (MusicSortMode::original or other) → order1 → order2 → MusicSortMode::original
-// func CycleSortMode(window Ui::Window, order1 Jukebox::MusicSortMode, order2 Jukebox::MusicSortMode) 
+// func CycleSortMode(window Ui::Window, order1 Jukebox::MusicSortMode, order2 Jukebox::MusicSortMode)
 // auto oldSortMode = Jukebox::MusicSortMode(window.sortMode);
 // auto newSortMode = order1;
 // if (oldSortMode == order2)
@@ -89,7 +91,7 @@ const (
 // newSortMode = order2;
 // setSortMode(window, newSortMode);
 // window.invalidate();
-// func UpdateStatusBar(self Ui::Window, numTracksSelected uint16) 
+// func UpdateStatusBar(self Ui::Window, numTracksSelected uint16)
 // orphan member: FormatArguments args{ self.widgets[widx::status_bar].textArgs };
 // args.push(numTracksSelected == 1 ? StringIds::status_music_tracks_selected_singular : StringIds::status_music_tracks_selected_plural);
 // args.push(numTracksSelected);
@@ -115,7 +117,7 @@ const (
 // uint16_t numTracksSelected = std::ranges::count(Config::get().audio.customJukebox, true);
 // updateStatusBar(*window, numTracksSelected);
 // orphan member: return window;
-// func OnResize(self Ui::Window) 
+// func OnResize(self Ui::Window)
 // self.setSize(kWindowSizeMin, kWindowSizeMax);
 // // Resize & reposition widgets
 // self.widgets[widx::frame].right = self.width - 1;
@@ -134,11 +136,11 @@ const (
 // self.widgets[widx::status_bar].bottom = self.height - 2;
 // self.widgets[widx::status_bar].right = self.width - kResizeHandleSize - kPadding;
 // // 0x004C165D
-// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(window Ui::Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets.
 // window.draw(drawingCtx);
 // // 0x004C1663
-// func DrawScroll(window Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(window Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // // Horizontal offsets of columns within the scrollview widget.
 // const auto columnTitleOffset = 15;
 // const auto columnYearsOffset = window.widgets[widx::sort_years].left - 5;
@@ -202,10 +204,10 @@ const (
 // tr.drawStringLeft(point, window.getColour(WindowColour::secondary), textColour, args);
 // y += kRowHeight;
 // // 0x004C176C
-// func GetScrollSize(window [[maybe_unused]] Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(window [[maybe_unused]] Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = kRowHeight * Jukebox::kNumMusicTracks;
 // // 0x004C1757
-// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(window Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::close:
 // WindowManager::close(window.type);
@@ -217,7 +219,7 @@ const (
 // cycleSortMode(window, Jukebox::MusicSortMode::yearsDescending, Jukebox::MusicSortMode::yearsAscending);
 // break;
 // // 0x004C1799
-// func OnScrollMouseDown(window Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseDown(window Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // const uint16_t currentRow = y / kRowHeight;
 // if (currentRow > window.rowCount)
 // return;
@@ -235,14 +237,14 @@ const (
 // Audio::revalidateCurrentTrack();
 // window.invalidate();
 // // 0x004C1771
-// func OnScrollMouseOver(window Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseOver(window Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // uint16_t currentRow = y / kRowHeight;
 // if (currentRow > window.rowCount || currentRow == window.rowHover)
 // return;
 // window.rowHover = currentRow;
 // window.invalidate();
 // // 0x004C17E3
-// func OnUpdate(window Window) 
+// func OnUpdate(window Window)
 // auto optionsWindow = WindowManager::find(WindowType::options);
 // if (optionsWindow == nullptr || optionsWindow->currentTab != Options::kTabOffsetMusic)
 // WindowManager::close(&window);

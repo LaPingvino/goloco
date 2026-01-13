@@ -7,17 +7,19 @@ package gamecommands
 // #include "Map/Track/TrackModSection.h"
 // namespace OpenLoco::GameCommands
 type TrackModsRemovalArgs struct {
-// TrackModsRemovalArgs() = default;
+	// TrackModsRemovalArgs() = default;
 	// method: explicit TrackModsRemovalArgs(const registers& regs)
-// : pos(regs.ax, regs.cx, regs.di)
-// , rotation(regs.bh & 0x3)
-// , trackId(regs.dl & 0x3F)
-// , index(regs.dh & 0x3)
-// , type((regs.edi >> 16) & 0xF)
-// , trackObjType(regs.ebp & 0xFF)
-// , modSection(static_cast<World::Track::ModSection>((regs.ebp >> 16) & 0xFF))
+	// : pos(regs.ax, regs.cx, regs.di)
+	// , rotation(regs.bh & 0x3)
+	// , trackId(regs.dl & 0x3F)
+	// , index(regs.dh & 0x3)
+	// , type((regs.edi >> 16) & 0xF)
+	// , trackObjType(regs.ebp & 0xFF)
+	// , modSection(static_cast<World::Track::ModSection>((regs.ebp >> 16) & 0xFF))
 }
+
 const TrackModsRemovalArgsCommand any = GameCommand.removeTrackMod
+
 // World::Pos3 pos;
 // orphan member: uint8_t rotation;
 // orphan member: uint8_t trackId;
@@ -35,4 +37,4 @@ const TrackModsRemovalArgsCommand any = GameCommand.removeTrackMod
 // regs.edi = pos.z | (type << 16);
 // regs.ebp = trackObjType | (enumValue(modSection) << 16);
 // orphan member: return regs;
-// func RemoveTrackMod(regs registers) 
+// func RemoveTrackMod(regs registers)

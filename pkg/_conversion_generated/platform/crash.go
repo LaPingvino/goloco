@@ -70,7 +70,7 @@ package platform
 // orphan member: return exHandler;
 // #else
 // orphan member: return nullptr;
-// func Shutdown(exHandler [[maybe_unused]] Handle) 
+// func Shutdown(exHandler [[maybe_unused]] Handle)
 // if (exHandler == nullptr)
 // return;
 // delete static_cast<google_breakpad::ExceptionHandler*>(exHandler);

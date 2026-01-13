@@ -5,7 +5,8 @@ package graphics
 
 // #include <array>
 // #include <cstdint>
-const UNUSED_IMG = (x) (x)
+const UNUSED_IMG = (x)(x)
+
 // namespace OpenLoco::ImageIds
 const Null uint32 = 0xFFFFFFFF
 const Default_palette uint32 = 304
@@ -2725,6 +2726,7 @@ const SnowMaskCoverage4Slope15 uint32 = 3894
 const SnowMaskCoverage4Slope16 uint32 = 3895
 const SnowMaskCoverage4Slope17 uint32 = 3896
 const SnowMaskCoverage4Slope18 uint32 = 3897
+
 // func GetNumberCircle(num uint8) uint32
 // constexpr std::array numbers = {
 // number_circle_00,

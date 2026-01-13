@@ -47,7 +47,7 @@ package ui
 // window->setColour(WindowColour::primary, skin->windowTitlebarColour);
 // window->setColour(WindowColour::secondary, skin->windowOptionsColour);
 // orphan member: return window;
-// func EditShortcut(charCode [[maybe_unused]] uint32_t, keyCode uint32) 
+// func EditShortcut(charCode [[maybe_unused]] uint32_t, keyCode uint32)
 // if (keyCode == SDLK_UP)
 // return;
 // if (keyCode == SDLK_DOWN)
@@ -76,7 +76,7 @@ package ui
 // WindowManager::invalidate(WindowType::keyboardShortcuts);
 // Config::write();
 // // 0x004BE8DF
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // self.draw(drawingCtx);
 // orphan member: FormatArguments args{};
@@ -84,7 +84,7 @@ package ui
 // auto point = Ui::Point(self.x + 140, self.y + 32);
 // tr.drawStringCentredWrapped(point, 272, Colour::black, StringIds::change_keyboard_shortcut_desc, args);
 // // 0x004BE821
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Widx::close:
 // WindowManager::close(&self);

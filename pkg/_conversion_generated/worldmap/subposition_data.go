@@ -9,14 +9,15 @@ package worldmap
 // namespace OpenLoco
 type Pitch int
 
-const (
-)
+const ()
+
 // namespace OpenLoco::World::TrackData
 type MoveInfo struct {
-// World::Pos3 loc; // 0x00
-	Yaw uint8
+	// World::Pos3 loc; // 0x00
+	Yaw   uint8
 	Pitch Pitch
 }
+
 // static_assert(sizeof(MoveInfo) == 0x8);
 // std::span<const MoveInfo> getTrackSubPositon(const uint16_t trackAndDirection);
 // std::span<const MoveInfo> getRoadSubPositon(const uint16_t trackAndDirection);

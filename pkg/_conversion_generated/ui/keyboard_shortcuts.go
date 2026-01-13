@@ -27,6 +27,7 @@ package ui
 // using namespace OpenLoco::Input;
 // namespace OpenLoco::Ui::Windows::KeyboardShortcuts
 const RowHeight int = 10
+
 // static constexpr auto _widgets = makeWidgets(
 // Widgets::Frame({ 0, 0 }, { 360, 238 }, WindowColour::primary),
 // Widgets::Caption({ 1, 1 }, { 358, 13 }, Widgets::Caption::Style::whiteText, WindowColour::primary, StringIds::keyboard_shortcuts),
@@ -43,7 +44,7 @@ const RowHeight int = 10
 // panel,
 // list,
 // reset_keys_btn,
-// func ResetShortcuts(self Window) 
+// func ResetShortcuts(self Window)
 // static const WindowEventList& getEvents();
 // // 0x004BE6C7
 // Window* open()
@@ -62,10 +63,10 @@ const RowHeight int = 10
 // window->rowHover = -1;
 // orphan member: return window;
 // // 0x004BE726
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // // Draw widgets.
 // self.draw(drawingCtx);
-// func GetBindingString(keyCode uint32, buffer byte, bufferLength int) 
+// func GetBindingString(keyCode uint32, buffer byte, bufferLength int)
 // static const std::unordered_map<uint32_t, StringId> keysToString = { {
 // { SDLK_BACKSPACE, StringIds::keyboard_backspace },
 // { SDLK_TAB, StringIds::keyboard_tab },
@@ -110,7 +111,7 @@ const RowHeight int = 10
 // const char* sdlBuffer = SDL_GetKeyName(keyCode);
 // strncpy(buffer, sdlBuffer, bufferLength - 1);
 // // 0x004BE72C
-// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // auto colour = self.getColour(WindowColour::secondary).c();
@@ -151,7 +152,7 @@ const RowHeight int = 10
 // tr.drawStringLeft(point, Colour::black, format, formatter);
 // yPos += kRowHeight;
 // // 0x004BE821
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case Widx::close_button:
 // WindowManager::close(&self);
@@ -160,7 +161,7 @@ const RowHeight int = 10
 // resetShortcuts(&self);
 // return;
 // // 0x004BE832
-// func ResetShortcuts(self Window) 
+// func ResetShortcuts(self Window)
 // Config::resetShortcuts();
 // self->invalidate();
 // // 0x004BE844
@@ -169,10 +170,10 @@ const RowHeight int = 10
 // args.push(StringIds::tooltip_scroll_list);
 // orphan member: return args;
 // // 0x004BE84E
-// func GetScrollSize(self Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(self Ui::Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = self.rowCount * kRowHeight;
 // // 0x004BE853
-// func OnScrollMouseOver(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseOver(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // auto row = y / kRowHeight;
 // if (row >= self.rowCount)
 // return;
@@ -180,7 +181,7 @@ const RowHeight int = 10
 // self.rowHover = row;
 // self.invalidate();
 // // 0x004BE87B
-// func OnScrollMouseDown(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func OnScrollMouseDown(self Ui::Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // auto row = y / kRowHeight;
 // if (row >= self.rowCount)
 // return;

@@ -6,13 +6,15 @@ package gamecommands
 // #include "GameCommands/GameCommands.h"
 // namespace OpenLoco::GameCommands
 type AirportPlacementArgs struct {
-// AirportPlacementArgs() = default;
+	// AirportPlacementArgs() = default;
 	// method: explicit AirportPlacementArgs(const registers regs)
-// : pos(regs.ax, regs.cx, regs.di)
-// , rotation(regs.bh)
-// , type(regs.dl)
+	// : pos(regs.ax, regs.cx, regs.di)
+	// , rotation(regs.bh)
+	// , type(regs.dl)
 }
+
 const AirportPlacementArgsCommand any = GameCommand.createAirport
+
 // World::Pos3 pos;
 // orphan member: uint8_t rotation;
 // orphan member: uint8_t type;
@@ -24,4 +26,4 @@ const AirportPlacementArgsCommand any = GameCommand.createAirport
 // regs.bh = rotation;
 // regs.dl = type;
 // orphan member: return regs;
-// func CreateAirport(regs registers) 
+// func CreateAirport(regs registers)

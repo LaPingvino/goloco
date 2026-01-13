@@ -6,10 +6,10 @@ package worldmap
 const (
 	MapColumns   = 384
 	MapRows      = 384
-	TileSize     = 32     // World units per tile
-	SmallZStep   = 4      // Height units per small Z step
-	MicroZStep   = 16     // Height units per micro Z step
-	TileElemSize = 8      // Bytes per tile element
+	TileSize     = 32 // World units per tile
+	SmallZStep   = 4  // Height units per small Z step
+	MicroZStep   = 16 // Height units per micro Z step
+	TileElemSize = 8  // Bytes per tile element
 )
 
 // SmallZ is a compressed height value (4 units per step)

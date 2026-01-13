@@ -37,6 +37,7 @@ package ui
 // static WindowType _callingWindowType;
 // static constexpr Ui::Size kWindowSize = { 400, 272 };
 const RowHeight int16 = 10
+
 type Widx int
 
 const (
@@ -47,6 +48,7 @@ const (
 	Scrollview
 	Face_frame
 )
+
 // // 0x509680
 // static constexpr auto widgets = makeWidgets(
 // Widgets::Frame({ 0, 0 }, kWindowSize, WindowColour::primary),
@@ -58,10 +60,10 @@ const (
 // );
 // static const WindowEventList& getEvents();
 // static std::vector<uint32_t> _inUseCompetitors;
-// func PopulateCompetitorList() 
+// func PopulateCompetitorList()
 // _competitorList = ObjectManager::getAvailableObjects(ObjectType::competitor);
 // // 0x00434F52
-// func Open(id CompanyId, callingWindowType WindowType) 
+// func Open(id CompanyId, callingWindowType WindowType)
 // auto* self = WindowManager::bringToFront(WindowType::companyFaceSelection, 0);
 // populateCompetitorList();
 // if (self != nullptr)
@@ -87,7 +89,7 @@ const (
 // else
 // _inUseCompetitors.clear();
 // // 0x004352A4
-// func OnClose(self [[maybe_unused]] Window) 
+// func OnClose(self [[maybe_unused]] Window)
 // ObjectManager::freeTemporaryObject();
 // WindowManager::setCurrentModalType(WindowType::undefined);
 // if (_callingWindowType == WindowType::options)
@@ -98,13 +100,13 @@ const (
 // WindowManager::invalidate(WindowType::options);
 // _competitorList.clear();
 // // 0x435299
-// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::close_button:
 // WindowManager::close(&self);
 // break;
 // // 0x4352BB
-// func GetScrollSize(self [[maybe_unused]] Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(self [[maybe_unused]] Window, scrollIndex [[maybe_unused]] uint32_t, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // scrollHeight = static_cast<int32_t>(_competitorList.size()) * kRowHeight;
 // func IsInUseCompetitor(objIndex uint32) bool
 // return std::find(_inUseCompetitors.begin(), _inUseCompetitors.end(), objIndex) != _inUseCompetitors.end();
@@ -116,7 +118,7 @@ const (
 // return { ObjectManager::kNullObjectIndex, ObjectManager::ObjectIndexEntry{} };
 // return _competitorList[rowIndex];
 // // 0x00435314
-// func ScrollMouseDown(self Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func ScrollMouseDown(self Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // const auto objRow = getObjectFromSelection(y);
 // if (objRow.index == ObjectManager::kNullObjectIndex)
 // return;
@@ -137,7 +139,7 @@ const (
 // Config::write();
 // WindowManager::close(&self);
 // // 0x004352C7
-// func ScrollMouseOver(self Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t) 
+// func ScrollMouseOver(self Window, x [[maybe_unused]] int16_t, y int16, scroll_index [[maybe_unused]] uint8_t)
 // auto objRow = getObjectFromSelection(y);
 // if (self.rowHover == objRow.index)
 // return;
@@ -155,7 +157,7 @@ const (
 // args.push(StringIds::tooltip_scroll_list);
 // orphan member: return args;
 // // 0x434FE8
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // if (_callingWindowType == WindowType::company)
 // self.widgets[widx::caption].text = StringIds::company_face_selection_title;
 // const auto company = CompanyManager::get(self.owner);
@@ -164,7 +166,7 @@ const (
 // else
 // self.widgets[widx::caption].text = StringIds::selectPreferredCompanyOwnerFace;
 // // 0x435003
-// func Draw(self Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Window, drawingCtx Gfx::DrawingContext)
 // self.draw(drawingCtx);
 // if (self.rowHover == -1)
 // return;
@@ -188,7 +190,7 @@ const (
 // // There was code for displaying competitor stats if window opened with none
 // // playing company. But that ability is disabled from the company window.
 // // 0x00435152
-// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t) 
+// func DrawScroll(self Window, drawingCtx Gfx::DrawingContext, scrollIndex [[maybe_unused]] uint32_t)
 // const auto& rt = drawingCtx.currentRenderTarget();
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // drawingCtx.clearSingle(Colours::getShade(self.getColour(WindowColour::secondary).c(), 4));

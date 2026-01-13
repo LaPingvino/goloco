@@ -9,7 +9,7 @@ package graphics
 // #include "Graphics/RenderTarget.h"
 // namespace OpenLoco::Gfx
 // template<DrawBlendOp TBlendOp, uint8_t TZoomLevel>
-// func DrawRLESprite(rt RenderTarget, args DrawSpriteArgs) 
+// func DrawRLESprite(rt RenderTarget, args DrawSpriteArgs)
 // auto src0 = args.sourceImage.offset;
 // const auto srcX = args.srcPos.x;
 // auto srcY = args.srcPos.y;

@@ -93,7 +93,7 @@ package ui
 // Widgets::ScrollView({ 4, 60 }, { kWindowSize.width - 8, 103 }, WindowColour::secondary, Ui::Scrollbars::vertical),
 // Widgets::GroupBox({ 4, 165 }, { kWindowSize.width - 8, 30 }, WindowColour::secondary, StringIds::tile_element_data)
 // );
-// func ActivateMapSelectionTool(self Window) 
+// func ActivateMapSelectionTool(self Window)
 // ToolManager::toolSet(self, widx::panel, CursorId::crosshair);
 // Input::setFlag(Input::Flags::flag6);
 // static const WindowEventList& getEvents();
@@ -116,12 +116,12 @@ package ui
 // window->setColour(WindowColour::secondary, skin->windowColour);
 // activateMapSelectionTool(*window);
 // orphan member: return window;
-// func PrepareDraw(self Window) 
+// func PrepareDraw(self Window)
 // if (ToolManager::isToolActive(WindowType::tileInspector))
 // self.activatedWidgets |= (1 << widx::select);
 // else
 // self.activatedWidgets &= ~(1 << widx::select);
-// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext) 
+// func Draw(self Ui::Window, drawingCtx Gfx::DrawingContext)
 // auto tr = Gfx::TextRenderer(drawingCtx);
 // // Draw widgets.
 // self.draw(drawingCtx);
@@ -244,7 +244,7 @@ package ui
 // auto company = CompanyManager::get(ownerId);
 // return company->name;
 // return StringIds::empty;
-// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, uint32) 
+// func DrawScroll(self Ui::Window, drawingCtx Gfx::DrawingContext, uint32)
 // if (_currentPosition == TilePos2(0, 0))
 // return;
 // const auto& rt = drawingCtx.currentRenderTarget();
@@ -314,7 +314,7 @@ package ui
 // tr.drawString(point, Colour::white, strCheckmark);
 // rowNum++;
 // yPos += self.rowHeight;
-// func ScrollMouseDown(self Window, x [[maybe_unused]] int16_t, y int16, scrollIndex [[maybe_unused]] uint8_t) 
+// func ScrollMouseDown(self Window, x [[maybe_unused]] int16_t, y int16, scrollIndex [[maybe_unused]] uint8_t)
 // auto index = y / self.rowHeight;
 // if (index >= self.rowCount)
 // return;
@@ -322,14 +322,14 @@ package ui
 // self.selectedTileIndex = index;
 // self.invalidate();
 // return;
-// func ScrollMouseOver(self Window, x [[maybe_unused]] int16_t, y int16, scrollIndex [[maybe_unused]] uint8_t) 
+// func ScrollMouseOver(self Window, x [[maybe_unused]] int16_t, y int16, scrollIndex [[maybe_unused]] uint8_t)
 // auto index = y / self.rowHeight;
 // if (index >= self.rowCount)
 // return;
 // if (self.rowHover != index)
 // self.rowHover = index;
 // self.invalidate();
-// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseUp(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::close:
 // WindowManager::close(self.type);
@@ -337,7 +337,7 @@ package ui
 // case widx::select:
 // activateMapSelectionTool(self);
 // break;
-// func OnMouseDown(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId) 
+// func OnMouseDown(self Ui::Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId)
 // switch (widgetIndex)
 // case widx::xPosDecrease:
 // _currentPosition.x = std::clamp<coord_t>(_currentPosition.x - 1, 1, World::kMapColumns);
@@ -355,12 +355,12 @@ package ui
 // _currentPosition.y = std::clamp<coord_t>(_currentPosition.y + 1, 1, World::kMapRows);
 // self.invalidate();
 // break;
-// func GetScrollSize(self Ui::Window, uint32, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32) 
+// func GetScrollSize(self Ui::Window, uint32, scrollWidth [[maybe_unused]] int32_t, scrollHeight int32)
 // if (_currentPosition == TilePos2(0, 0))
 // scrollHeight = 0;
 // return;
 // scrollHeight = self.rowCount * self.rowHeight;
-// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolUpdate(self [[maybe_unused]] Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != widx::panel)
 // return;
 // World::mapInvalidateSelectionRect();
@@ -368,7 +368,7 @@ package ui
 // auto res = Ui::ViewportInteraction::getSurfaceLocFromUi({ x, y });
 // if (res)
 // World::setMapSelectionSingleTile(res->first);
-// func OnToolDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16) 
+// func OnToolDown(self Window, widgetIndex WidgetIndex_t, id [[maybe_unused]] WidgetId, x int16, y int16)
 // if (widgetIndex != widx::panel || !World::hasMapSelectionFlag(World::MapSelectionFlags::enable))
 // return;
 // auto res = Ui::ViewportInteraction::getSurfaceLocFromUi({ x, y });
@@ -380,7 +380,7 @@ package ui
 // self.rowHover = -1;
 // self.selectedTileIndex = 0;
 // self.invalidate();
-// func OnClose(self [[maybe_unused]] Window) 
+// func OnClose(self [[maybe_unused]] Window)
 // ToolManager::toolCancel();
 // static constexpr WindowEventList kEvents = {
 // .onClose = onClose,

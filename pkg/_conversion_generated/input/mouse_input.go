@@ -40,20 +40,20 @@ package input
 // using namespace OpenLoco::Ui::ViewportInteraction;
 // using namespace OpenLoco::World;
 // namespace OpenLoco::Input
-// func StateScrollLeft(cx MouseButton, edx WidgetIndex_t, window Ui::Window, widget Ui::Widget, x int32, y int32) 
-// func StateScrollRight(button MouseButton) 
-// func StateResizing(button MouseButton, x int32, y int32) 
-// func StateWidgetPressed(button MouseButton, x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t) 
-// func StateNormal(state MouseButton, x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t) 
-// func StateNormalHover(x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t) 
-// func StateNormalLeft(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t) 
-// func StateNormalRight(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t) 
-// func StatePositioningWindow(button MouseButton, x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t) 
-// func WindowPositionEnd() 
-// func WindowResizeBegin(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t) 
-// func ViewportDragBegin(w Window) 
-// func ScrollDragBegin(x int32, y int32, pWindow Window, index WidgetIndex_t) 
-// func WidgetOverFlatbuttonInvalidate() 
+// func StateScrollLeft(cx MouseButton, edx WidgetIndex_t, window Ui::Window, widget Ui::Widget, x int32, y int32)
+// func StateScrollRight(button MouseButton)
+// func StateResizing(button MouseButton, x int32, y int32)
+// func StateWidgetPressed(button MouseButton, x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t)
+// func StateNormal(state MouseButton, x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t)
+// func StateNormalHover(x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t)
+// func StateNormalLeft(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t)
+// func StateNormalRight(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t)
+// func StatePositioningWindow(button MouseButton, x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t)
+// func WindowPositionEnd()
+// func WindowResizeBegin(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t)
+// func ViewportDragBegin(w Window)
+// func ScrollDragBegin(x int32, y int32, pWindow Window, index WidgetIndex_t)
+// func WidgetOverFlatbuttonInvalidate()
 // static bool _pendingMouseInputUpdate; // 0x00525324
 // static MouseButton _lastKnownButtonState;
 // static Ui::Point _cursorPressed;
@@ -97,7 +97,8 @@ package input
 // { Ui::ScrollPart::vscrollbarTrackBottom, StringIds::tooltip_scroll_down_fast },
 // { Ui::ScrollPart::vscrollbarThumb, StringIds::tooltip_scroll_up_down },
 const DropdownItemUndefined int32 = -1
-// func InitMouse() 
+
+// func InitMouse()
 // _pressedWindowType = Ui::WindowType::undefined;
 // Ui::ToolTip::setNotShownTicks(0xFFFFU);
 // _hoverWindowType = Ui::WindowType::undefined;
@@ -105,16 +106,16 @@ const DropdownItemUndefined int32 = -1
 // _mousePosX = 0;
 // _mousePosY = 0;
 // World::resetMapSelectionFlags();
-// func MoveMouse(x int32, y int32, relX int32, relY int32) 
+// func MoveMouse(x int32, y int32, relX int32, relY int32)
 // _cursor = { x, y };
 // _mouseDeltaX += relX;
 // _mouseDeltaY += relY;
-// func ProcessMouseMovement() 
+// func ProcessMouseMovement()
 // _mousePosX += _mouseDeltaX;
 // _mousePosY += _mouseDeltaY;
 // _mouseDeltaX = 0;
 // _mouseDeltaY = 0;
-// func MouseWheel(wheel int) 
+// func MouseWheel(wheel int)
 // _cursorWheel += wheel;
 // func IsHovering(type Ui::WindowType) bool
 // return _hoverWindowType == type;
@@ -152,7 +153,7 @@ const DropdownItemUndefined int32 = -1
 // func IsPressed(type, number) return
 // Ui::WidgetIndex_t getPressedWidgetIndex()
 // orphan member: return _pressedWidgetIndex;
-// func SetPressedWidgetIndex(index Ui::WidgetIndex_t) 
+// func SetPressedWidgetIndex(index Ui::WidgetIndex_t)
 // _pressedWidgetIndex = index;
 // func IsFocused(type Ui::WindowType, number Ui::WindowNumber_t) bool
 // if (!hasFlag(Flags::widgetFocused))
@@ -164,16 +165,16 @@ const DropdownItemUndefined int32 = -1
 // orphan member: return true;
 // func IsFocused(type Ui::WindowType, number Ui::WindowNumber_t, index Ui::WidgetIndex_t) bool
 // func IsFocused(type, number) return
-// func SetFocus(type Ui::WindowType, number Ui::WindowNumber_t, index Ui::WidgetIndex_t) 
+// func SetFocus(type Ui::WindowType, number Ui::WindowNumber_t, index Ui::WidgetIndex_t)
 // _focusedWindowType = type;
 // _focusedWindowNumber = number;
 // _focusedWidgetIndex = index;
 // setFlag(Flags::widgetFocused);
-// func ResetFocus() 
+// func ResetFocus()
 // _focusedWindowType = WindowType::undefined;
 // resetFlag(Flags::widgetFocused);
 // // 0x004C6E65
-// func UpdateCursorPosition() 
+// func UpdateCursorPosition()
 // switch (Tutorial::state())
 // case Tutorial::State::none:
 // _cursor2 = _cursor;
@@ -190,12 +191,12 @@ const DropdownItemUndefined int32 = -1
 // break;
 // func GetHoveredStationId() StationId
 // orphan member: return _hoveredStationId;
-// func SetHoveredStationId(stationId StationId) 
+// func SetHoveredStationId(stationId StationId)
 // _hoveredStationId = stationId;
-// func StateViewportLeft(cx MouseButton, x int32, y int32) 
-// func StateViewportRight(cx MouseButton, x int32, y int32) 
+// func StateViewportLeft(cx MouseButton, x int32, y int32)
+// func StateViewportRight(cx MouseButton, x int32, y int32)
 // // 0x004C7174
-// func HandleMouse(x int32, y int32, button MouseButton) 
+// func HandleMouse(x int32, y int32, button MouseButton)
 // _lastKnownButtonState = button;
 // Ui::Window* window = WindowManager::findAt(x, y);
 // // TODO: I think window can never be null, there is always a main window,
@@ -252,7 +253,7 @@ const DropdownItemUndefined int32 = -1
 // break;
 // // 0x004C7334
 // // Left-clicking on a view of the game world (e.g. using terraforming tools, clicking vehicles, buildings, labels)
-// func StateViewportLeft(button MouseButton, x int32, y int32) 
+// func StateViewportLeft(button MouseButton, x int32, y int32)
 // auto window = WindowManager::find(_dragWindowType, _dragWindowNumber);
 // if (window == nullptr)
 // Input::state(State::reset);
@@ -324,7 +325,7 @@ const DropdownItemUndefined int32 = -1
 // break;
 // // 0x004C74BB
 // // Right mouse dragging in viewports, such as the main display of the game world.
-// func StateViewportRight(button MouseButton, x int32, y int32) 
+// func StateViewportRight(button MouseButton, x int32, y int32)
 // auto window = WindowManager::find(_dragWindowType, _dragWindowNumber);
 // if (window == nullptr)
 // Input::state(State::reset);
@@ -368,7 +369,7 @@ const DropdownItemUndefined int32 = -1
 // default:
 // break;
 // // 0x004C71F6
-// func StateScrollLeft(button MouseButton, widgetIndex WidgetIndex_t, window Ui::Window, widget Ui::Widget, x int32, y int32) 
+// func StateScrollLeft(button MouseButton, widgetIndex WidgetIndex_t, window Ui::Window, widget Ui::Widget, x int32, y int32)
 // switch (button)
 // case MouseButton::released:
 // if (widgetIndex != _pressedWidgetIndex || window->type != _pressedWindowType || window->number != _pressedWindowNumber)
@@ -387,7 +388,7 @@ const DropdownItemUndefined int32 = -1
 // // regs.ax = x;
 // // regs.bx = y;
 // // Right mouse dragging in scrollview widgets.
-// func StateScrollRight(button MouseButton) 
+// func StateScrollRight(button MouseButton)
 // auto window = WindowManager::find(_dragWindowType, _dragWindowNumber);
 // if (window == nullptr)
 // Input::state(State::reset);
@@ -413,7 +414,7 @@ const DropdownItemUndefined int32 = -1
 // func GetLastKnownButtonState() MouseButton
 // orphan member: return _lastKnownButtonState;
 // // 0x004C7722
-// func StateResizing(button MouseButton, x int32, y int32) 
+// func StateResizing(button MouseButton, x int32, y int32)
 // auto w = WindowManager::find(_dragWindowType, _dragWindowNumber);
 // if (w == nullptr)
 // state(State::reset);
@@ -484,7 +485,7 @@ const DropdownItemUndefined int32 = -1
 // _dragLast.x = x;
 // _dragLast.y = y;
 // // 0x004C7903
-// func StatePositioningWindow(button MouseButton, x int32, y int32, window [[maybe_unused]] Ui::Window, widget [[maybe_unused]] Ui::Widget, widgetIndex [[maybe_unused]] Ui::WidgetIndex_t) 
+// func StatePositioningWindow(button MouseButton, x int32, y int32, window [[maybe_unused]] Ui::Window, widget [[maybe_unused]] Ui::Widget, widgetIndex [[maybe_unused]] Ui::WidgetIndex_t)
 // auto w = WindowManager::find(_dragWindowType, _dragWindowNumber);
 // if (w == nullptr)
 // state(State::reset);
@@ -519,7 +520,7 @@ const DropdownItemUndefined int32 = -1
 // break;
 // default:
 // break;
-// func DropdownRegisterSelection(item int16) 
+// func DropdownRegisterSelection(item int16)
 // auto window = WindowManager::find(_pressedWindowType, _pressedWindowNumber);
 // if (window == nullptr)
 // return;
@@ -537,7 +538,7 @@ const DropdownItemUndefined int32 = -1
 // if (WindowManager::getCurrentModalType() == Ui::WindowType::undefined || WindowManager::getCurrentModalType() == window->type)
 // window->callOnDropdown(_pressedWidgetIndex, window->widgets[_pressedWidgetIndex].id, item);
 // // 0x004C7AE7
-// func StateWidgetPressed(button MouseButton, x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t) 
+// func StateWidgetPressed(button MouseButton, x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t)
 // _cursorPressed = { x, y };
 // auto pressedWindow = WindowManager::find(_pressedWindowType, _pressedWindowNumber);
 // if (pressedWindow == nullptr)
@@ -633,7 +634,7 @@ const DropdownItemUndefined int32 = -1
 // Ui::Dropdown::setHighlightedItem(*item);
 // WindowManager::invalidate(Ui::WindowType::dropdown, 0);
 // // 0x004C8048
-// func StateNormal(state MouseButton, x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t) 
+// func StateNormal(state MouseButton, x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t)
 // switch (state)
 // case MouseButton::leftPressed:
 // stateNormalLeft(x, y, window, widgetIndex);
@@ -647,7 +648,7 @@ const DropdownItemUndefined int32 = -1
 // default:
 // break;
 // // 0x004C8098
-// func StateNormalHover(x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t) 
+// func StateNormalHover(x int32, y int32, window Ui::Window, widget Ui::Widget, widgetIndex Ui::WidgetIndex_t)
 // Ui::WindowType windowType = Ui::WindowType::undefined;
 // Ui::WindowNumber_t windowNumber = 0;
 // if (window != nullptr)
@@ -702,7 +703,7 @@ const DropdownItemUndefined int32 = -1
 // Ui::ToolTip::setTooltipTimeout(0);
 // Ui::ToolTip::setTooltipMouseLocation({ x, y });
 // // 0x004C84BE
-// func StateNormalLeft(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t) 
+// func StateNormalLeft(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t)
 // Ui::WindowType windowType = Ui::WindowType::undefined;
 // Ui::WindowNumber_t windowNumber = 0;
 // if (window != nullptr)
@@ -773,7 +774,7 @@ const DropdownItemUndefined int32 = -1
 // window->callOnMouseDown(widgetIndex, window->widgets[widgetIndex].id);
 // break;
 // // 0x004C834A
-// func StateNormalRight(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t) 
+// func StateNormalRight(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t)
 // Ui::WindowType windowType = Ui::WindowType::undefined;
 // Ui::WindowNumber_t windowNumber = 0;
 // if (window != nullptr)
@@ -815,7 +816,7 @@ const DropdownItemUndefined int32 = -1
 // setFlag(Flags::rightMousePressed);
 // break;
 // // 0x004C877D
-// func WindowPositionBegin(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t) 
+// func WindowPositionBegin(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t)
 // state(State::positioningWindow);
 // _pressedWidgetIndex = widgetIndex;
 // _dragLast.x = x;
@@ -823,14 +824,14 @@ const DropdownItemUndefined int32 = -1
 // _dragWindowType = window->type;
 // _dragWindowNumber = window->number;
 // _5233A9 = false;
-// func WindowPositionEnd() 
+// func WindowPositionEnd()
 // state(State::normal);
 // Ui::ToolTip::setTooltipTimeout(0);
 // Ui::ToolTip::setWidgetIndex(_pressedWidgetIndex);
 // Ui::ToolTip::setWindowType(_dragWindowType);
 // Ui::ToolTip::setWindowNumber(_dragWindowNumber);
 // // 0x004C85D1
-// func WindowResizeBegin(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t) 
+// func WindowResizeBegin(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t)
 // state(State::resizing);
 // _pressedWidgetIndex = widgetIndex;
 // _dragLast.x = x;
@@ -838,13 +839,13 @@ const DropdownItemUndefined int32 = -1
 // _dragWindowType = window->type;
 // _dragWindowNumber = window->number;
 // window->flags &= ~Ui::WindowFlags::finishedResize;
-// func ViewportDragBegin(w Window) 
+// func ViewportDragBegin(w Window)
 // w->flags &= ~Ui::WindowFlags::scrollingToLocation;
 // state(State::viewportRight);
 // _dragWindowType = w->type;
 // _dragWindowNumber = w->number;
 // _ticksSinceDragStart = 0;
-// func ScrollDragBegin(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t) 
+// func ScrollDragBegin(x int32, y int32, window Ui::Window, widgetIndex Ui::WidgetIndex_t)
 // state(State::scrollRight);
 // _dragLast.x = x;
 // _dragLast.y = y;
@@ -855,7 +856,7 @@ const DropdownItemUndefined int32 = -1
 // _dragScrollIndex = window->getScrollDataIndex(widgetIndex);
 // Ui::hideCursor();
 // startCursorDrag();
-// func WidgetOverFlatbuttonInvalidate() 
+// func WidgetOverFlatbuttonInvalidate()
 // Ui::WindowType windowType = _hoverWindowType;
 // Ui::WidgetIndex_t widgetIdx = _hoverWidgetIdx;
 // Ui::WindowNumber_t windowNumber = _hoverWindowNumber;
@@ -870,7 +871,7 @@ const DropdownItemUndefined int32 = -1
 // && (oldWidget->type == Ui::WidgetType::buttonWithColour || oldWidget->type == Ui::WidgetType::buttonWithImage))
 // WindowManager::invalidateWidget(windowType, windowNumber, widgetIdx);
 // // 0x004CD47A
-// func ProcessMouseOver(x int32, y int32) 
+// func ProcessMouseOver(x int32, y int32)
 // bool skipItem = false;
 // Ui::CursorId cursorId = Ui::CursorId::pointer;
 // Windows::MapToolTip::reset();
@@ -948,7 +949,7 @@ const DropdownItemUndefined int32 = -1
 // orphan member: return _cursorPressed;
 // Ui::Point getDragLastLocation()
 // orphan member: return _dragLast;
-// func SetDragLastLocation(pos Ui::Point) 
+// func SetDragLastLocation(pos Ui::Point)
 // _dragLast = pos;
 // Ui::Point getScrollLastLocation()
 // orphan member: return _scrollLast;
@@ -957,17 +958,18 @@ const DropdownItemUndefined int32 = -1
 // func GetClickRepeatStepSize() uint32
 // // Each 100 ticks increases step size by a factor of 10
 // return static_cast<uint32_t>(std::pow(10, getClickRepeatTicks() / 100));
-// func SetClickRepeatTicks(ticks uint16) 
+// func SetClickRepeatTicks(ticks uint16)
 // _clickRepeatTicks = ticks;
 // func IsRightMouseButtonDown() bool
 // orphan member: return _rightMouseButtonDown;
-// func SetRightMouseButtonDown(status bool) 
+// func SetRightMouseButtonDown(status bool)
 // _rightMouseButtonDown = status;
 // // 0x00113E9E0
 // static std::queue<QueuedMouseInput> _mouseQueue;
 // // 0x00406FEC
-// func EnqueueMouseButton(input QueuedMouseInput) 
+// func EnqueueMouseButton(input QueuedMouseInput)
 const MouseQueueSize uint32 = 64
+
 // if (_mouseQueue.size() >= kMouseQueueSize)
 // return;
 // _mouseQueue.push(input);
@@ -1063,7 +1065,7 @@ const MouseQueueSize uint32 = 64
 // y = Tutorial::nextInput();
 // return MouseButton::released;
 // // 0x004C6202
-// func ProcessMouseWheel() 
+// func ProcessMouseWheel()
 // int wheel = 0;
 // for (; _cursorWheel > 0; _cursorWheel--)
 // wheel -= 17;
@@ -1089,15 +1091,15 @@ const MouseQueueSize uint32 = 64
 // WindowManager::wheelInput(wheel);
 // Ui::WindowType getPressedWindowType()
 // orphan member: return _pressedWindowType;
-// func SetPressedWindowType(wndType Ui::WindowType) 
+// func SetPressedWindowType(wndType Ui::WindowType)
 // _pressedWindowType = wndType;
 // Ui::WindowNumber_t getPressedWindowNumber()
 // orphan member: return _pressedWindowNumber;
-// func SetPressedWindowNumber(wndNumber Ui::WindowNumber_t) 
+// func SetPressedWindowNumber(wndNumber Ui::WindowNumber_t)
 // _pressedWindowNumber = wndNumber;
 // func HasPendingMouseInputUpdate() bool
 // orphan member: return _pendingMouseInputUpdate;
-// func ClearPendingMouseInputUpdate() 
+// func ClearPendingMouseInputUpdate()
 // _pendingMouseInputUpdate = false;
-// func SetPendingMouseInputUpdate() 
+// func SetPendingMouseInputUpdate()
 // _pendingMouseInputUpdate = true;

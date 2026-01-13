@@ -10,9 +10,9 @@ package diagnostics
 // #include <fmt/format.h>
 // namespace OpenLoco::Diagnostics::Logging
 var ColourInfo = fmt.fg(fmt.color.light_gray) // auto
-var ColourWarning = fmt.fg(fmt.color.yellow) // auto
-var ColourError = fmt.fg(fmt.color.red) // auto
-var ColourVerbose = fmt.fg(fmt.color.gray) // auto
+var ColourWarning = fmt.fg(fmt.color.yellow)  // auto
+var ColourError = fmt.fg(fmt.color.red)       // auto
+var ColourVerbose = fmt.fg(fmt.color.gray)    // auto
 // LogTerminal::LogTerminal()
 // _vt100Enabled = Platform::enableVT100TerminalMode();
 // static FILE* getOutputStream(Level level)

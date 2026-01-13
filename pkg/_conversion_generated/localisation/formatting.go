@@ -16,12 +16,15 @@ package localisation
 // // Arguments (1 byte): uint8_t
 const MoveX uint8 = 1
 const AdjustPalette uint8 = 2
+
 // // 3-4 Not used
 const OneArgBegin uint8 = moveX
 const OneArgEnd uint8 = 4 + 1
+
 // // Arguments: none
 const Newline uint8 = 5
 const NewlineSmaller uint8 = 6
+
 // namespace Font
 const Small uint8 = 7
 const Large uint8 = 8
@@ -35,16 +38,21 @@ const WindowColour3 uint8 = 15
 const WindowColour4 uint8 = 16
 const NoArgBegin uint8 = newline
 const NoArgEnd uint8 = windowColour4 + 1
+
 // // Arguments (2 bytes): int8_t, int8_t
 const NewlineXY uint8 = 17
+
 // // 18-22 Not used
 const TwoArgBegin uint8 = newlineXY
 const TwoArgEnd uint8 = 22 + 1
+
 // // Arguments (4 bytes): uint32_t
 const InlineSpriteStr uint8 = 23
+
 // // 24-31 Not used
 const FourArgBegin uint8 = inlineSpriteStr
 const FourArgEnd uint8 = 31 + 1
+
 // // Arguments in Args buffer
 // // Note:
 // // Pre formatString:
@@ -73,6 +81,7 @@ const Distance uint8 = 123 + 17
 const Height uint8 = 123 + 18
 const Power uint8 = 123 + 19
 const InlineSpriteArgs uint8 = 123 + 20
+
 // namespace Colour
 // // Arguments: none
 const Black uint8 = 144
@@ -89,16 +98,18 @@ const PaleGold uint8 = 154
 const LightPink uint8 = 155
 const PearlAqua uint8 = 156
 const PaleSilver uint8 = 157
+
 // namespace DateModifier
 const Dmy_full uint8 = 0
 const My_full uint8 = 4
 const My_abbr uint8 = 5
 const Raw_my_abbr uint8 = 8
+
 // namespace OpenLoco
 type MonthId int
 
-const (
-)
+const ()
+
 // namespace OpenLoco::StringManager
 // char* formatString(char* buffer, StringId id);
 // char* formatString(char* buffer, size_t bufferLen, StringId id);

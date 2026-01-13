@@ -9,7 +9,8 @@ type ScreenshotType int
 
 const (
 	Regular ScreenshotType = 0
-	Giant ScreenshotType = 1
+	Giant   ScreenshotType = 1
 )
-// func TriggerScreenshotCountdown(numTicks int8, type ScreenshotType) 
-// func HandleScreenshotCountdown() 
+
+// func TriggerScreenshotCountdown(numTicks int8, type ScreenshotType)
+// func HandleScreenshotCountdown()

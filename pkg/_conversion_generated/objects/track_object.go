@@ -17,47 +17,50 @@ package objects
 type TrackObjectFlags int
 
 const (
-	None TrackObjectFlags = 0
-	HasRackRail TrackObjectFlags = 1 << 0
+	None          TrackObjectFlags = 0
+	HasRackRail   TrackObjectFlags = 1 << 0
 	NoSlipSurface TrackObjectFlags = 1 << 1
-	IsRoad TrackObjectFlags = 1 << 2
-	Unk_04 TrackObjectFlags = 1 << 4
+	IsRoad        TrackObjectFlags = 1 << 2
+	Unk_04        TrackObjectFlags = 1 << 4
 )
+
 // OPENLOCO_ENABLE_ENUM_OPERATORS(TrackObjectFlags);
 type TrackObject struct {
 	Name StringId
-// World::Track::TrackTraitFlags trackPieces;        // 0x02
-// World::Track::TrackTraitFlags stationTrackPieces; // 0x04
-	Var_06 uint8
+	// World::Track::TrackTraitFlags trackPieces;        // 0x02
+	// World::Track::TrackTraitFlags stationTrackPieces; // 0x04
+	Var_06        uint8
 	NumCompatible uint8
-	NumMods uint8
-	NumSignals uint8
-// uint8_t mods[4];           // 0x0A
-	Signals uint16
+	NumMods       uint8
+	NumSignals    uint8
+	// uint8_t mods[4];           // 0x0A
+	Signals          uint16
 	CompatibleTracks uint16
-	CompatibleRoads uint16
-	BuildCostFactor int16
-	SellCostFactor int16
+	CompatibleRoads  uint16
+	BuildCostFactor  int16
+	SellCostFactor   int16
 	TunnelCostFactor int16
-	CostIndex uint8
-	Tunnel uint8
-	CurveSpeed Speed16
-	Image uint32
-	Flags TrackObjectFlags
-	NumBridges uint8
-// uint8_t bridges[7];        // 0x25
+	CostIndex        uint8
+	Tunnel           uint8
+	CurveSpeed       Speed16
+	Image            uint32
+	Flags            TrackObjectFlags
+	NumBridges       uint8
+	// uint8_t bridges[7];        // 0x25
 	NumStations uint8
-// uint8_t stations[7];       // 0x2D
+	// uint8_t stations[7];       // 0x2D
 	DisplayOffset uint8
-	Pad_35 uint8
+	Pad_35        uint8
 	// method: void drawPreviewImage(Gfx::DrawingContext& drawingCtx, const int16_t x, const int16_t y) const;
 	// method: bool validate() const;
 	// method: void load(const LoadedObjectHandle& handle, std::span<const std::byte> data, ObjectManager::DependentObjects* dependencies);
 	// method: void unload();
 	// method: constexpr bool hasFlags(TrackObjectFlags flagsToTest) const
-// return (flags & flagsToTest) != TrackObjectFlags::none;
+	// return (flags & flagsToTest) != TrackObjectFlags::none;
 }
+
 const TrackObjectObjectType any = ObjectType.track
+
 // func HasTraitFlags(flagsToTest World::Track::TrackTraitFlags) bool
 // return (trackPieces & flagsToTest) != World::Track::TrackTraitFlags::none;
 // static_assert(sizeof(TrackObject) == 0x36);
@@ -80,6 +83,7 @@ const UiPreviewImage14 uint32 = 14
 const UiPreviewImage15 uint32 = 15
 const UiPickupFromTrack uint32 = 16
 const UiPlaceOnTrack uint32 = 17
+
 // // Assumes rotational symmetry
 // // k{TrackId}{sequenceIndex}[type]{direction}
 // // type = Ballast, Sleeper, Rail

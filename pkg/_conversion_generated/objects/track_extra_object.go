@@ -14,19 +14,21 @@ package objects
 // forward: class DrawingContext;
 type TrackExtraObject struct {
 	Name StringId
-// World::Track::TrackTraitFlags trackPieces; // 0x02
-	PaintStyle uint8
-	CostIndex uint8
+	// World::Track::TrackTraitFlags trackPieces; // 0x02
+	PaintStyle      uint8
+	CostIndex       uint8
 	BuildCostFactor int16
-	SellCostFactor int16
-	Image uint32
-	Var_0E uint32
+	SellCostFactor  int16
+	Image           uint32
+	Var_0E          uint32
 	// method: void drawPreviewImage(Gfx::DrawingContext& drawingCtx, const int16_t x, const int16_t y) const;
 	// method: bool validate() const;
 	// method: void load(const LoadedObjectHandle& handle, std::span<const std::byte> data, ObjectManager::DependentObjects*);
 	// method: void unload();
 }
+
 const TrackExtraObjectObjectType any = ObjectType.trackExtra
+
 // static_assert(sizeof(TrackExtraObject) == 0x12);
 // namespace TrackExtraObj::ImageIds
 // // Note: Style imageIds are relative to 0x0A so you need to +8 to get its
@@ -240,6 +242,7 @@ const RightCurveVerySmall0NE uint32 = 204
 const RightCurveVerySmall0SE uint32 = 205
 const RightCurveVerySmall0SW uint32 = 206
 const RightCurveVerySmall0NW uint32 = 207
+
 // namespace Style1
 const Straight0NE uint32 = 0
 const Straight0SE uint32 = 1
