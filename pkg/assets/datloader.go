@@ -15,16 +15,7 @@ import (
 // ErrG1NotFound is returned when no G1 header is found in the file.
 var ErrG1NotFound = errors.New("G1 header not found")
 
-// G1Header represents the minimal fields we care about from the G1 header.
-// The full OpenLoco header has many fields; we only expose what's needed
-// for initial discovery: a magic and an element count/offset.
-// This struct mirrors the on-disk layout (little endian) where applicable.
-
-// NOTE: This is a placeholder; future work will expand the fields.
-type G1Header struct {
-	Magic [4]byte
-	// other fields omitted
-}
+// Note: G1Header and related types are defined in g1.go
 
 // LoadDatFile opens the provided path and returns its contents as a reader.
 // Future functions will parse the reader to extract G1 image tables.

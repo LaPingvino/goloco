@@ -8,18 +8,32 @@ import (
 	"math"
 )
 
-// World holds a small tile grid and a single entity for a minimal playable slice.
+// G1 sprite indices for terrain (from OpenLoco ImageIds.h)
+const (
+	SpriteIDSurfaceSmooth3Slope0 = 3746 // Flat grass terrain
+	SpriteIDSurfaceSmooth1Slope0 = 3765 // Alternative flat terrain
+)
+
+// TileType represents different terrain types
+type TileType int
+
+const (
+	TileGrass TileType = iota
+	TileDirt
+	TileWater
+)
+
+// World holds a tile grid for an isometric game world
 type World struct {
 	renderer *render.Renderer
 	width    int
 	height   int
-	tiles    [][]color.RGBA
-	// tile size in pixels
-	ts int
-	// cache images per unique tile color
-	tileCache map[color.RGBA]*ebiten.Image
-	// optional atlas tile name to use for drawing (if non-empty)
-	tileImgName string
+	tiles    [][]TileType
+	// isometric tile dimensions (standard 2:1 ratio)
+	tileW int // tile width in pixels (64)
+	tileH int // tile height in pixels (32)
+	// cache colored diamond images per tile type (fallback if no G1)
+	tileCache map[TileType]*ebiten.Image
 	// camera offset in pixels
 	camX float64
 	camY float64
@@ -35,82 +49,87 @@ type World struct {
 	moveFromY    int
 	moveToX      int
 	moveToY      int
-	moveProgress float64 // 0.0..1.0
-	moveSpeed    float64 // fraction per update
+	moveProgress float64
+	moveSpeed    float64
 }
 
 func NewWorld(r *render.Renderer) *World {
 	w := &World{
-		renderer: r,
-		width:    20,
-		height:   15,
-		// isometric tile size (width, height)
-		ts:        64,
-		tiles:     make([][]color.RGBA, 15),
-		tileCache: make(map[color.RGBA]*ebiten.Image),
+		renderer:  r,
+		width:     20,
+		height:    15,
+		tileW:     64, // standard isometric tile width (matches G1 terrain sprites)
+		tileH:     16, // standard isometric tile height (matches G1 terrain sprites)
+		tiles:     make([][]TileType, 15),
+		tileCache: make(map[TileType]*ebiten.Image),
 		playerX:   10,
 		playerY:   7,
-		moveSpeed: 0.25, // progress per Update call
+		moveSpeed: 0.15,
 	}
+
+	// Initialize tiles with some variety
 	for y := 0; y < w.height; y++ {
-		w.tiles[y] = make([]color.RGBA, w.width)
+		w.tiles[y] = make([]TileType, w.width)
 		for x := 0; x < w.width; x++ {
-			if (x+y)%2 == 0 {
-				w.tiles[y][x] = color.RGBA{R: 0x70, G: 0xB0, B: 0x70, A: 0xFF}
+			// Create some terrain variety
+			if x < 2 || y < 2 || x >= w.width-2 || y >= w.height-2 {
+				w.tiles[y][x] = TileWater
+			} else if (x+y)%7 == 0 {
+				w.tiles[y][x] = TileDirt
 			} else {
-				w.tiles[y][x] = color.RGBA{R: 0x60, G: 0xA0, B: 0x60, A: 0xFF}
+				w.tiles[y][x] = TileGrass
 			}
 		}
 	}
-	// if renderer has an atlas loaded, pick the first PNG as tile image
-	if w.renderer != nil && w.renderer.Atlas != nil {
-		for name := range w.renderer.Atlas.Images {
-			w.tileImgName = name
-			break
-		}
-	}
-	// initialize player pixel position at tile center
-	w.playerPX = float64(w.playerX * w.ts)
-	w.playerPY = float64(w.playerY * w.ts)
+
+	// Initialize player screen position
+	w.playerPX, w.playerPY = w.tileToScreen(w.playerX, w.playerY)
 	return w
 }
 
+// tileToScreen converts tile coordinates to screen pixel coordinates
+func (w *World) tileToScreen(tileX, tileY int) (float64, float64) {
+	// Isometric projection:
+	// screenX = (tileX - tileY) * tileW/2
+	// screenY = (tileX + tileY) * tileH/2
+	screenX := float64((tileX-tileY)*w.tileW/2) + float64(w.width*w.tileW/4)
+	screenY := float64((tileX+tileY)*w.tileH/2) + 50 // 50px top margin
+	return screenX, screenY
+}
+
 func (w *World) Update() {
-	// advance movement tween
 	if w.moving {
 		w.moveProgress += w.moveSpeed
 		if w.moveProgress >= 1.0 {
-			// finish movement
 			w.playerX = w.moveToX
 			w.playerY = w.moveToY
-			w.playerPX = float64(w.playerX * w.ts)
-			w.playerPY = float64(w.playerY * w.ts)
+			w.playerPX, w.playerPY = w.tileToScreen(w.playerX, w.playerY)
 			w.moving = false
 			w.moveProgress = 0
 		} else {
-			// interpolate pixel position between from and to
-			fx := float64(w.moveFromX * w.ts)
-			fy := float64(w.moveFromY * w.ts)
-			tx := float64(w.moveToX * w.ts)
-			ty := float64(w.moveToY * w.ts)
-			// smoothstep interpolation
+			// Smoothstep interpolation
 			t := w.moveProgress
 			t = t * t * (3 - 2*t)
-			w.playerPX = fx + (tx-fx)*t
-			w.playerPY = fy + (ty-fy)*t
+
+			fromX, fromY := w.tileToScreen(w.moveFromX, w.moveFromY)
+			toX, toY := w.tileToScreen(w.moveToX, w.moveToY)
+			w.playerPX = fromX + (toX-fromX)*t
+			w.playerPY = fromY + (toY-fromY)*t
 		}
 	}
 }
 
 func (w *World) HandleInput(dx, dy int) {
-	// start movement only if not already moving
 	if w.moving {
 		return
 	}
 	nx := w.playerX + dx
 	ny := w.playerY + dy
 	if nx >= 0 && nx < w.width && ny >= 0 && ny < w.height {
-		// initiate tween
+		// Don't walk on water
+		if w.tiles[ny][nx] == TileWater {
+			return
+		}
 		w.moveFromX = w.playerX
 		w.moveFromY = w.playerY
 		w.moveToX = nx
@@ -120,73 +139,165 @@ func (w *World) HandleInput(dx, dy int) {
 	}
 }
 
-func (w *World) imageForColor(c color.RGBA) *ebiten.Image {
-	if img, ok := w.tileCache[c]; ok {
+// getTileImage returns the appropriate image for a tile type
+func (w *World) getTileImage(tt TileType) *ebiten.Image {
+	// Try to get from G1 sprites first
+	if w.renderer != nil && w.renderer.G1 != nil {
+		var spriteIdx int
+		switch tt {
+		case TileGrass:
+			spriteIdx = SpriteIDSurfaceSmooth3Slope0
+		case TileDirt:
+			spriteIdx = SpriteIDSurfaceSmooth1Slope0
+		case TileWater:
+			// Use a different sprite or fall back
+			spriteIdx = SpriteIDSurfaceSmooth3Slope0 + 10 // Just use a different grass variant for now
+		}
+		if img := w.renderer.GetSprite(spriteIdx); img != nil {
+			return img
+		}
+	}
+
+	// Try atlas next
+	if w.renderer != nil && w.renderer.Atlas != nil {
+		var name string
+		switch tt {
+		case TileGrass:
+			name = "grass.png"
+		case TileDirt:
+			name = "dirt.png"
+		case TileWater:
+			name = "water.png"
+		}
+		if img := w.renderer.Atlas.Get(name); img != nil {
+			return img
+		}
+	}
+
+	// Fall back to cached colored diamond
+	if img, ok := w.tileCache[tt]; ok {
 		return img
 	}
-	img := ebiten.NewImage(w.ts, w.ts)
-	img.Fill(c)
-	w.tileCache[c] = img
+
+	// Create a diamond-shaped tile
+	img := w.createDiamondTile(tt)
+	w.tileCache[tt] = img
+	return img
+}
+
+// createDiamondTile creates a simple diamond-shaped tile image
+func (w *World) createDiamondTile(tt TileType) *ebiten.Image {
+	img := ebiten.NewImage(w.tileW, w.tileH)
+
+	var mainColor, darkColor, lightColor color.RGBA
+	switch tt {
+	case TileGrass:
+		mainColor = color.RGBA{80, 160, 80, 255}
+		darkColor = color.RGBA{60, 140, 60, 255}
+		lightColor = color.RGBA{100, 180, 100, 255}
+	case TileDirt:
+		mainColor = color.RGBA{139, 90, 43, 255}
+		darkColor = color.RGBA{100, 65, 30, 255}
+		lightColor = color.RGBA{170, 120, 70, 255}
+	case TileWater:
+		mainColor = color.RGBA{64, 120, 192, 255}
+		darkColor = color.RGBA{40, 90, 160, 255}
+		lightColor = color.RGBA{100, 160, 220, 255}
+	}
+
+	centerX := w.tileW / 2
+	centerY := w.tileH / 2
+
+	for y := 0; y < w.tileH; y++ {
+		var halfWidth int
+		if y < centerY {
+			halfWidth = (y * centerX) / centerY
+		} else {
+			halfWidth = ((w.tileH - 1 - y) * centerX) / centerY
+		}
+
+		for x := centerX - halfWidth; x <= centerX+halfWidth; x++ {
+			if x < 0 || x >= w.tileW {
+				continue
+			}
+
+			var c color.RGBA
+			if y < centerY {
+				if x < centerX {
+					c = lightColor
+				} else {
+					c = mainColor
+				}
+			} else {
+				if x < centerX {
+					c = mainColor
+				} else {
+					c = darkColor
+				}
+			}
+
+			img.Set(x, y, c)
+		}
+	}
+
 	return img
 }
 
 func (w *World) Draw(screen *ebiten.Image) {
-	// determine camera such that player is centered (player screen pos computed via iso)
 	sw, sh := screen.Size()
-	// compute player screen position via isometric projection
-	pxInt, pyInt := render.TileToScreen(w.playerX, w.playerY, w.ts, w.ts/2, w.width*w.ts/2, 40)
-	px := float64(pxInt) + float64(w.ts)/2
-	py := float64(pyInt) + float64(w.ts)/2
-	w.camX = px - float64(sw)/2
-	w.camY = py - float64(sh)/2
-	// clamp (allow larger ranges since iso extents differ)
-	maxCamX := float64((w.width + w.height) * w.ts / 2)
-	maxCamY := float64((w.width + w.height) * w.ts / 2)
-	if w.camX < 0 {
-		w.camX = 0
-	}
-	if w.camY < 0 {
-		w.camY = 0
-	}
-	if maxCamX > 0 && w.camX > maxCamX {
-		w.camX = maxCamX
-	}
-	if maxCamY > 0 && w.camY > maxCamY {
-		w.camY = maxCamY
-	}
 
-	// draw tiles in depth order (x + y) for isometric layering
-	originX := w.width * w.ts / 2
-	originY := 40 // small top offset
-	for depth := 0; depth <= w.width+w.height; depth++ {
+	// Center camera on player
+	w.camX = w.playerPX - float64(sw)/2 + float64(w.tileW)/2
+	w.camY = w.playerPY - float64(sh)/2 + float64(w.tileH)/2
+
+	// Draw tiles in depth order (back to front)
+	for depth := 0; depth < w.width+w.height; depth++ {
 		for y := 0; y < w.height; y++ {
 			x := depth - y
 			if x < 0 || x >= w.width {
 				continue
 			}
-			col := w.tiles[y][x]
-			// convert tile coords to screen using isometric helper
-			sx, sy := render.TileToScreen(x, y, w.ts, w.ts/2, originX, originY)
-			// apply camera
-			xp := float64(sx) - w.camX
-			yp := float64(sy) - w.camY
-			if w.tileImgName != "" && w.renderer != nil && w.renderer.Atlas != nil {
-				img := w.renderer.Atlas.Get(w.tileImgName)
-				if img != nil {
-					op := &ebiten.DrawImageOptions{}
-					op.GeoM.Translate(math.Floor(xp), math.Floor(yp))
-					screen.DrawImage(img, op)
-					continue
+
+			tt := w.tiles[y][x]
+
+			// Get the appropriate sprite index for this tile type
+			var spriteIdx int
+			switch tt {
+			case TileGrass:
+				spriteIdx = SpriteIDSurfaceSmooth3Slope0
+			case TileDirt:
+				spriteIdx = SpriteIDSurfaceSmooth1Slope0
+			case TileWater:
+				spriteIdx = SpriteIDSurfaceSmooth3Slope0 + 10
+			}
+
+			screenX, screenY := w.tileToScreen(x, y)
+			drawX := screenX - w.camX
+			drawY := screenY - w.camY
+
+			// Try to draw G1 sprite with proper offset
+			if w.renderer != nil && w.renderer.G1 != nil {
+				if img := w.renderer.GetSprite(spriteIdx); img != nil {
+					_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteIdx)
+					if ok {
+						op := &ebiten.DrawImageOptions{}
+						op.GeoM.Translate(math.Floor(drawX+float64(xOff)), math.Floor(drawY+float64(yOff)))
+						screen.DrawImage(img, op)
+						continue
+					}
 				}
 			}
-			img := w.imageForColor(col)
+
+			// Fall back to generated tile
+			tileImg := w.getTileImage(tt)
 			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(math.Floor(xp), math.Floor(yp))
-			screen.DrawImage(img, op)
+			op.GeoM.Translate(math.Floor(drawX), math.Floor(drawY))
+			screen.DrawImage(tileImg, op)
 		}
 	}
-	// draw player as red square (use ebitenutil for convenience)
+
+	// Draw player as a small red marker
 	playerDrawX := w.playerPX - w.camX
-	playerDrawY := w.playerPY - w.camY
-	ebitenutil.DrawRect(screen, playerDrawX, playerDrawY, float64(w.ts), float64(w.ts), color.RGBA{R: 0xFF, G: 0x22, B: 0x22, A: 0xFF})
+	playerDrawY := w.playerPY - w.camY - 16 // Raise above ground
+	ebitenutil.DrawRect(screen, playerDrawX, playerDrawY, 16, 16, color.RGBA{255, 50, 50, 220})
 }

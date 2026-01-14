@@ -12,7 +12,11 @@ import (
 // Atlas holds loaded images mapped by filename.
 type Atlas struct {
 	Images map[string]*ebiten.Image
+	Sprites map[uint32]*ebiten.Image // sprite ID to image
 }
+
+// Global atlas instance
+var globalAtlas *Atlas
 
 // LoadAtlasFromDir loads all PNGs under dir (non-recursive) into an Atlas.
 func LoadAtlasFromDir(dir string) (*Atlas, error) {
@@ -20,7 +24,10 @@ func LoadAtlasFromDir(dir string) (*Atlas, error) {
 	if err != nil {
 		return nil, err
 	}
-	at := &Atlas{Images: make(map[string]*ebiten.Image)}
+	at := &Atlas{
+		Images: make(map[string]*ebiten.Image),
+		Sprites: make(map[uint32]*ebiten.Image),
+	}
 	for _, fi := range files {
 		if fi.IsDir() {
 			continue
@@ -41,6 +48,9 @@ func LoadAtlasFromDir(dir string) (*Atlas, error) {
 		e := ebiten.NewImageFromImage(img)
 		at.Images[fi.Name()] = e
 	}
+
+	// Set as global atlas
+	globalAtlas = at
 	return at, nil
 }
 
@@ -50,4 +60,25 @@ func (a *Atlas) Get(name string) *ebiten.Image {
 		return nil
 	}
 	return a.Images[name]
+}
+
+// GetSprite returns the ebiten image for the given sprite ID, or nil if not found.
+func (a *Atlas) GetSprite(id uint32) *ebiten.Image {
+	if a == nil {
+		return nil
+	}
+	return a.Sprites[id]
+}
+
+// GetGlobalSprite returns a sprite from the global atlas
+func GetGlobalSprite(id uint32) *ebiten.Image {
+	if globalAtlas == nil {
+		return nil
+	}
+	return globalAtlas.GetSprite(id)
+}
+
+// SetGlobalAtlas sets the global atlas instance
+func SetGlobalAtlas(a *Atlas) {
+	globalAtlas = a
 }

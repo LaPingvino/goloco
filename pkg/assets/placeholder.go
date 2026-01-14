@@ -8,78 +8,151 @@ import (
 	"path/filepath"
 )
 
-// GeneratePlaceholderAtlas creates a simple test sprite atlas with basic tiles
-// This is used for development/testing before real asset extraction is working
+// GeneratePlaceholderAtlas creates isometric diamond-shaped tiles for testing
 func GeneratePlaceholderAtlas(outputPath string) error {
-	// Create output directory
+	// Create output directories
 	err := os.MkdirAll(outputPath, 0755)
 	if err != nil {
 		return err
 	}
-
-	// Create a simple 1024x1024 atlas with a grid of basic sprites
-	atlas := image.NewRGBA(image.Rect(0, 0, 1024, 1024))
-
-	// Fill with background (light gray)
-	bgColor := color.RGBA{200, 200, 200, 255}
-	for y := 0; y < 1024; y++ {
-		for x := 0; x < 1024; x++ {
-			atlas.SetRGBA(x, y, bgColor)
-		}
-	}
-
-	// Draw a grid of 64x64 tiles (16x16 grid = 256 tiles)
-	tileSize := 64
-	colors := []color.RGBA{
-		{100, 200, 100, 255}, // green
-		{100, 150, 200, 255}, // blue
-		{200, 100, 100, 255}, // red
-		{200, 200, 100, 255}, // yellow
-		{150, 100, 150, 255}, // purple
-		{100, 200, 200, 255}, // cyan
-	}
-
-	for ty := 0; ty < 16; ty++ {
-		for tx := 0; tx < 16; tx++ {
-			colorIdx := (tx + ty*16) % len(colors)
-			col := colors[colorIdx]
-
-			// Draw tile
-			x0 := tx * tileSize
-			y0 := ty * tileSize
-			for y := y0; y < y0+tileSize && y < 1024; y++ {
-				for x := x0; x < x0+tileSize && x < 1024; x++ {
-					atlas.SetRGBA(x, y, col)
-				}
-			}
-
-			// Draw border
-			borderColor := color.RGBA{50, 50, 50, 255}
-			for i := 0; i < tileSize; i++ {
-				if x0+i < 1024 {
-					atlas.SetRGBA(x0+i, y0, borderColor)
-					atlas.SetRGBA(x0+i, y0+tileSize-1, borderColor)
-				}
-				if y0+i < 1024 {
-					atlas.SetRGBA(x0, y0+i, borderColor)
-					atlas.SetRGBA(x0+tileSize-1, y0+i, borderColor)
-				}
-			}
-		}
-	}
-
-	// Save atlas as PNG
-	outFile := filepath.Join(outputPath, "placeholder_atlas.png")
-	f, err := os.Create(outFile)
+	extractedPath := filepath.Join(outputPath, "extracted")
+	err = os.MkdirAll(extractedPath, 0755)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
-	err = png.Encode(f, atlas)
+	// Create isometric diamond tiles (64 wide x 32 tall - standard 2:1 ratio)
+	tileW := 64
+	tileH := 32
+
+	// Generate grass tile (green diamond)
+	grassTile := createDiamondTile(tileW, tileH,
+		color.RGBA{80, 160, 80, 255},  // main color
+		color.RGBA{60, 140, 60, 255},  // darker edge
+		color.RGBA{100, 180, 100, 255}) // lighter highlight
+	err = savePNG(filepath.Join(extractedPath, "grass.png"), grassTile)
+	if err != nil {
+		return err
+	}
+
+	// Generate dirt tile (brown diamond)
+	dirtTile := createDiamondTile(tileW, tileH,
+		color.RGBA{139, 90, 43, 255},  // main color
+		color.RGBA{100, 65, 30, 255},  // darker edge
+		color.RGBA{170, 120, 70, 255}) // lighter highlight
+	err = savePNG(filepath.Join(extractedPath, "dirt.png"), dirtTile)
+	if err != nil {
+		return err
+	}
+
+	// Generate water tile (blue diamond)
+	waterTile := createDiamondTile(tileW, tileH,
+		color.RGBA{64, 120, 192, 255}, // main color
+		color.RGBA{40, 90, 160, 255},  // darker edge
+		color.RGBA{100, 160, 220, 255}) // lighter highlight
+	err = savePNG(filepath.Join(extractedPath, "water.png"), waterTile)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// createDiamondTile creates an isometric diamond-shaped tile
+func createDiamondTile(w, h int, mainColor, darkColor, lightColor color.RGBA) *image.RGBA {
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+
+	// Fill with transparent
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			img.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
+		}
+	}
+
+	// Diamond shape: for each row, calculate the horizontal extent
+	// At y=0, we're at the top point (center)
+	// At y=h/2, we're at the widest point (full width)
+	// At y=h, we're at the bottom point (center)
+	centerX := w / 2
+	centerY := h / 2
+
+	for y := 0; y < h; y++ {
+		// Calculate horizontal extent at this row
+		var halfWidth int
+		if y < centerY {
+			// Top half: expanding from center
+			halfWidth = (y * centerX) / centerY
+		} else {
+			// Bottom half: contracting to center
+			halfWidth = ((h - 1 - y) * centerX) / centerY
+		}
+
+		for x := centerX - halfWidth; x <= centerX+halfWidth; x++ {
+			if x < 0 || x >= w {
+				continue
+			}
+
+			// Determine color based on position (simple shading)
+			var c color.RGBA
+			if y < centerY {
+				// Top half - use lighter color on left, main on right
+				if x < centerX {
+					c = lightColor
+				} else {
+					c = mainColor
+				}
+			} else {
+				// Bottom half - use main on left, darker on right
+				if x < centerX {
+					c = mainColor
+				} else {
+					c = darkColor
+				}
+			}
+
+			// Edge detection for outline
+			isEdge := false
+			if y < centerY {
+				expectedHalfWidth := (y * centerX) / centerY
+				if x == centerX-expectedHalfWidth || x == centerX+expectedHalfWidth {
+					isEdge = true
+				}
+			} else {
+				expectedHalfWidth := ((h - 1 - y) * centerX) / centerY
+				if x == centerX-expectedHalfWidth || x == centerX+expectedHalfWidth {
+					isEdge = true
+				}
+			}
+
+			if isEdge {
+				// Draw darker outline
+				c = color.RGBA{
+					uint8(max(0, int(c.R)-40)),
+					uint8(max(0, int(c.G)-40)),
+					uint8(max(0, int(c.B)-40)),
+					255,
+				}
+			}
+
+			img.SetRGBA(x, y, c)
+		}
+	}
+
+	return img
+}
+
+func savePNG(path string, img *image.RGBA) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return png.Encode(f, img)
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
