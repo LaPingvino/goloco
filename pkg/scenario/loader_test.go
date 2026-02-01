@@ -344,6 +344,29 @@ func TestParseLandObjectOrder_name_trimming(t *testing.T) {
 	}
 }
 
+func TestParseLandObjectOrder_space_padded_names(t *testing.T) {
+	// On-disk ObjectHeader names are space-padded to 8 bytes (e.g. "GRASS1  ").
+	// The parser must trim trailing spaces so the name matches the Objects map key.
+	totalSlots := landSlotStart + landSlotCount
+	buf := make([]byte, totalSlots*objectHeaderSize)
+	for i := range buf {
+		buf[i] = 0xFF
+	}
+
+	// Write a land header with space-padded name "GRASS1  " at slot 0
+	off := landSlotStart * objectHeaderSize
+	buf[off] = objectTypeLand // flags low byte = type
+	buf[off+1] = 0
+	buf[off+2] = 0
+	buf[off+3] = 0
+	copy(buf[off+4:off+12], []byte("GRASS1  ")) // space-padded
+
+	order := parseLandObjectOrder(buf)
+	if order[0] != "GRASS1" {
+		t.Errorf("order[0] = %q, want %q (trailing spaces not trimmed)", order[0], "GRASS1")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // terrain type mapping
 // ---------------------------------------------------------------------------

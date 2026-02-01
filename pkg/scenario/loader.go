@@ -386,10 +386,11 @@ func parseLandObjectOrder(data []byte) []string {
 			continue
 		}
 
-		// Extract 8-byte name, trimming trailing nulls/0xFF
+		// Extract 8-byte name, trimming trailing nulls, 0xFF, and spaces.
+		// The name field is space-padded to 8 bytes in the on-disk header.
 		raw := hdr[4:12]
 		nameEnd := 8
-		for nameEnd > 0 && (raw[nameEnd-1] == 0 || raw[nameEnd-1] == 0xFF) {
+		for nameEnd > 0 && (raw[nameEnd-1] == 0 || raw[nameEnd-1] == 0xFF || raw[nameEnd-1] == ' ') {
 			nameEnd--
 		}
 		order[i] = string(raw[:nameEnd])

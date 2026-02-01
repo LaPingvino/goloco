@@ -331,9 +331,9 @@ func (w *World) Draw(screen *ebiten.Image) {
 			if w.renderer != nil && w.renderer.ObjMgr != nil {
 				land := w.renderer.ObjMgr.GetLandObjectByIndex(int(t.terrainIndex))
 				if land != nil {
-					const flatSpriteIdx = 57 // objects.TerrainFlatImageOffset — zoom-0 flat terrain
-					if img := w.renderer.GetObjectSprite(land, flatSpriteIdx); img != nil {
-						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, flatSpriteIdx)
+					spriteIdx := land.GetFlatTerrainSpriteIndex()
+					if img := w.renderer.GetObjectSprite(land, spriteIdx); img != nil {
+						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, spriteIdx)
 						if ok {
 							op := &ebiten.DrawImageOptions{}
 							op.GeoM.Scale(scale, scale)
