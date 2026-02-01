@@ -1,10 +1,21 @@
-// Command batch_ai_impl processes essential functions and generates Go implementations using opencode CLI
+// Command batch_ai_impl processes essential functions and generates Go implementations using opencode CLI.
+//
+// Key design decisions learned from previous runs:
+//   - Output goes to a staging file (_generated_<name>.go) so duplicates cannot accumulate.
+//   - Functions that already exist in the target package are skipped entirely.
+//   - The prompt includes a snapshot of existing types/signatures in the target package so the
+//     model can use real names instead of inventing stub APIs.
+//   - After generation, `go build` is attempted on the target package.  If it fails the error
+//     output is fed back to the model for one retry before giving up.
 package main
 
 import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,7 +32,14 @@ var (
 	concurrency = flag.Int("concurrent", 3, "Number of concurrent opencode requests")
 	model       = flag.String("model", "github-copilot/gpt-5-mini", "Model to use")
 	verbose     = flag.Bool("v", false, "Verbose output")
+	// moduleRoot is the root of the Go module (where go.mod lives).  Defaults to two levels up
+	// from the output dir when running from the repo root.
+	moduleRoot = flag.String("module-root", ".", "Path to Go module root (contains go.mod)")
 )
+
+// ---------------------------------------------------------------------------
+// Data types
+// ---------------------------------------------------------------------------
 
 type FunctionSpec struct {
 	ID            string   `json:"id"`
@@ -43,447 +61,329 @@ type FunctionDatabase struct {
 	Functions []FunctionSpec `json:"functions"`
 }
 
+type ProcessResult struct {
+	Function string
+	Success  bool
+	Error    error
+	Skipped  bool
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
 func main() {
 	flag.Parse()
 
-	// Load functions database
 	db, err := loadFunctionDatabase(*functionsDB)
 	if err != nil {
 		fmt.Printf("Error loading database: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("📚 Loaded %d functions from database\n", len(db.Functions))
+	fmt.Printf("Loaded %d functions from database\n", len(db.Functions))
 
-	// Filter by tier
 	functions := filterByTier(db.Functions, *tier)
-	fmt.Printf("🎯 Processing tier %d: %d functions\n\n", *tier, len(functions))
+	fmt.Printf("Processing tier %d: %d functions\n\n", *tier, len(functions))
 
 	if *dryRun {
 		fmt.Println("=== DRY RUN - Functions that would be processed ===")
 		for i, fn := range functions {
-			fmt.Printf("[%d] Priority %d: %s -> %s/%s\n", i+1, fn.Priority, fn.Function, fn.GoPackage, fn.GoFile)
+			exists := functionExistsInPackage(fn)
+			status := ""
+			if exists {
+				status = " [SKIP — already exists]"
+			}
+			fmt.Printf("[%d] Priority %d: %s -> %s/%s%s\n", i+1, fn.Priority, fn.Function, fn.GoPackage, fn.GoFile, status)
 			fmt.Printf("    Complexity: %s, Est. tokens: %d\n", fn.Complexity, fn.EstimatedToks)
 			fmt.Printf("    Description: %s\n\n", fn.Description)
 		}
 		return
 	}
 
-	// Process functions with concurrency control
 	results := make(chan ProcessResult, len(functions))
 	sem := make(chan struct{}, *concurrency)
 	var wg sync.WaitGroup
 
-	fmt.Printf("🤖 Using model: %s\n", *model)
-	fmt.Printf("⚡ Concurrency: %d parallel requests\n\n", *concurrency)
+	fmt.Printf("Using model: %s\n", *model)
+	fmt.Printf("Concurrency: %d parallel requests\n\n", *concurrency)
 
 	for i, fn := range functions {
 		wg.Add(1)
-		sem <- struct{}{} // Acquire semaphore
+		sem <- struct{}{}
 
 		go func(idx int, fn FunctionSpec) {
 			defer wg.Done()
-			defer func() { <-sem }() // Release semaphore
+			defer func() { <-sem }()
 
 			if *verbose {
-				fmt.Printf("🔄 [%d/%d] Starting: %s\n", idx+1, len(functions), fn.Function)
+				fmt.Printf("[%d/%d] Starting: %s\n", idx+1, len(functions), fn.Function)
 			}
 
-			result := processFunction(fn, *openlocoSrc, *outputDir)
+			result := processFunction(fn)
 			results <- result
 		}(i, fn)
 	}
 
-	// Wait for all to complete
 	go func() {
 		wg.Wait()
 		close(results)
 	}()
 
-	// Collect results
-	successful := 0
-	failed := 0
-	failedFuncs := []string{}
+	successful, failed, skipped := 0, 0, 0
+	var failedFuncs []string
 
 	for result := range results {
-		if result.Success {
+		switch {
+		case result.Skipped:
+			skipped++
+			fmt.Printf("⏭  %s (already exists)\n", result.Function)
+		case result.Success:
 			successful++
 			fmt.Printf("✅ %s\n", result.Function)
-		} else {
+		default:
 			failed++
 			failedFuncs = append(failedFuncs, result.Function)
 			fmt.Printf("❌ %s: %v\n", result.Function, result.Error)
 		}
 	}
 
-	fmt.Printf("\n" + strings.Repeat("=", 50) + "\n")
-	fmt.Printf("📊 Summary\n")
-	fmt.Printf(strings.Repeat("=", 50) + "\n")
-	fmt.Printf("✅ Successful: %d/%d\n", successful, len(functions))
-	fmt.Printf("❌ Failed: %d/%d\n", failed, len(functions))
+	fmt.Printf("\n%s\nSummary: %d ok  %d skipped  %d failed  (of %d)\n%s\n",
+		strings.Repeat("=", 50), successful, skipped, failed, len(functions), strings.Repeat("=", 50))
 
 	if len(failedFuncs) > 0 {
-		fmt.Printf("\n⚠️  Failed functions:\n")
+		fmt.Printf("\nFailed functions:\n")
 		for _, fn := range failedFuncs {
 			fmt.Printf("   - %s\n", fn)
 		}
 	}
+}
 
-	if successful > 0 {
-		fmt.Printf("\n✨ Generated code in: %s/\n", *outputDir)
-		fmt.Printf("🔨 Next step: go build ./pkg/...\n")
+// ---------------------------------------------------------------------------
+// Processing pipeline
+// ---------------------------------------------------------------------------
+
+func processFunction(fn FunctionSpec) ProcessResult {
+	// 1. Skip if the function already exists in the target package.
+	if functionExistsInPackage(fn) {
+		return ProcessResult{Function: fn.Function, Skipped: true}
 	}
-}
 
-type ProcessResult struct {
-	Function string
-	Success  bool
-	Error    error
-}
-
-func processFunction(fn FunctionSpec, srcDir, outDir string) ProcessResult {
-	// 1. Extract C++ implementation
-	cppCode, err := extractCppCode(filepath.Join(srcDir, fn.CppFile), fn.Function)
+	// 2. Extract C++ source for the target function.
+	cppCode, err := extractCppCode(filepath.Join(*openlocoSrc, fn.CppFile), fn.Function)
 	if err != nil {
-		return ProcessResult{fn.Function, false, fmt.Errorf("extract C++: %w", err)}
+		return ProcessResult{Function: fn.Function, Success: false, Error: fmt.Errorf("extract C++: %w", err)}
 	}
 
-	// 2. Build prompt for opencode
-	prompt := buildPrompt(fn, cppCode, "")
+	// 3. Collect existing package context (types, signatures) for the prompt.
+	pkgContext := collectPackageContext(fn.GoPackage)
 
-	// 3. Call opencode CLI with retry logic
-	var implementation string
-	var callErr error
-	maxRetries := 2
+	// 4. Build prompt and call the model.
+	prompt := buildPrompt(fn, cppCode, pkgContext, "")
+	implementation, err := callOpencode(prompt)
+	if err != nil {
+		return ProcessResult{Function: fn.Function, Success: false, Error: fmt.Errorf("opencode: %w", err)}
+	}
 
-	for attempt := 0; attempt <= maxRetries; attempt++ {
-		implementation, callErr = callOpencode(prompt)
-		if callErr != nil {
-			return ProcessResult{fn.Function, false, fmt.Errorf("opencode: %w", callErr)}
-		}
-
-		// Validate the implementation
-		validationError := validateImplementation(implementation, fn)
-		if validationError == "" {
-			// Success!
-			break
-		}
-
-		// If this was the last attempt, fail
-		if attempt == maxRetries {
-			return ProcessResult{fn.Function, false, fmt.Errorf("validation failed after %d attempts: %s", maxRetries+1, validationError)}
-		}
-
-		// Retry with feedback
+	// 5. Write to a staging file and attempt to build.
+	stagingFile := writeStagingFile(fn, implementation)
+	buildErr := tryBuild(fn.GoPackage)
+	if buildErr != "" {
+		// One retry: feed build errors back to the model.
 		if *verbose {
-			fmt.Printf("   ⚠️  Attempt %d failed validation, retrying with feedback...\n", attempt+1)
+			fmt.Printf("   Build failed for %s, retrying with error feedback...\n", fn.Function)
 		}
-		prompt = buildPrompt(fn, cppCode, validationError)
-	}
-
-	// 4. Write Go file
-	err = writeGoFile(fn, implementation, outDir)
-	if err != nil {
-		return ProcessResult{fn.Function, false, fmt.Errorf("write file: %w", err)}
-	}
-
-	return ProcessResult{fn.Function, true, nil}
-}
-
-// validateImplementation checks if the generated code meets basic requirements
-func validateImplementation(code string, fn FunctionSpec) string {
-	trimmed := strings.TrimSpace(code)
-
-	if trimmed == "" {
-		return "Generated code is empty"
-	}
-
-	if strings.Contains(trimmed, "WRITE YOUR IMPLEMENTATION HERE") {
-		return "Generated code contains placeholder text"
-	}
-
-	// Check if it's just a comment
-	lines := strings.Split(trimmed, "\n")
-	nonCommentLines := 0
-	for _, line := range lines {
-		l := strings.TrimSpace(line)
-		if l != "" && !strings.HasPrefix(l, "//") {
-			nonCommentLines++
+		prompt = buildPrompt(fn, cppCode, pkgContext, buildErr)
+		implementation, err = callOpencode(prompt)
+		if err != nil {
+			os.Remove(stagingFile)
+			return ProcessResult{Function: fn.Function, Success: false, Error: fmt.Errorf("opencode retry: %w", err)}
+		}
+		stagingFile = writeStagingFile(fn, implementation)
+		buildErr = tryBuild(fn.GoPackage)
+		if buildErr != "" {
+			os.Remove(stagingFile)
+			return ProcessResult{Function: fn.Function, Success: false, Error: fmt.Errorf("build after retry: %s", buildErr)}
 		}
 	}
 
-	if nonCommentLines == 0 {
-		return "Generated code contains only comments"
-	}
-
-	// Check if it contains function signature (should be body only)
-	if strings.Contains(trimmed, "func "+extractFunctionName(fn.GoSignature)) {
-		return "Generated code includes function signature - should be body only (code between { and })"
-	}
-
-	// Check if it contains package declaration
-	if strings.HasPrefix(trimmed, "package ") {
-		return "Generated code includes package declaration - should be body only"
-	}
-
-	return ""
+	return ProcessResult{Function: fn.Function, Success: true}
 }
 
-func extractFunctionName(signature string) string {
-	// Extract function name from signature like "func GetShade(..."
-	if strings.HasPrefix(signature, "func ") {
-		rest := strings.TrimPrefix(signature, "func ")
-		if idx := strings.Index(rest, "("); idx > 0 {
-			return rest[:idx]
-		}
-	}
-	return ""
-}
+// ---------------------------------------------------------------------------
+// Skip-existing check
+// ---------------------------------------------------------------------------
 
-func callOpencode(prompt string) (string, error) {
-	// Create an isolated temporary directory for this specific opencode call
-	// This prevents opencode from accessing or modifying the main project
-	tmpDir, err := os.MkdirTemp("", "opencode-workspace-*")
+// functionExistsInPackage returns true if any .go file in the target package
+// already declares a function whose name matches the one in GoSignature.
+func functionExistsInPackage(fn FunctionSpec) bool {
+	name := extractFunctionName(fn.GoSignature)
+	if name == "" {
+		return false
+	}
+	pkgDir := filepath.Join(*outputDir, fn.GoPackage)
+	entries, err := os.ReadDir(pkgDir)
 	if err != nil {
-		return "", fmt.Errorf("create temp dir: %w", err)
+		return false
 	}
-	defer os.RemoveAll(tmpDir)
-
-	// Write the prompt to a file in the isolated directory
-	promptFile := filepath.Join(tmpDir, "prompt.md")
-	if err := os.WriteFile(promptFile, []byte(prompt), 0644); err != nil {
-		return "", fmt.Errorf("write prompt: %w", err)
-	}
-
-	// Create a stub Go file where opencode can write the output
-	stubFile := filepath.Join(tmpDir, "output.go")
-	stubContent := `package main
-
-// WRITE YOUR IMPLEMENTATION HERE
-`
-	if err := os.WriteFile(stubFile, []byte(stubContent), 0644); err != nil {
-		return "", fmt.Errorf("write stub: %w", err)
-	}
-
-	// Call opencode with isolated workspace
-	// Message must come BEFORE -f flag (positional arguments come first)
-	cmd := exec.Command("opencode", "run",
-		"-m", *model,
-		"--format", "json",
-		"Read prompt.md and write the Go function implementation to output.go. Include ONLY the function implementation, no package declaration.",
-		"-f", promptFile)
-
-	// Set working directory to the isolated temp dir
-	cmd.Dir = tmpDir
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("execute opencode: %w\nOutput: %s", err, string(output))
-	}
-
-	// First try to parse from JSON output (opencode returns code as text)
-	implementation, err := parseOpencodeOutput(string(output))
-	if err == nil && implementation != "" {
-		return implementation, nil
-	}
-
-	// Fallback: check if opencode wrote to the file
-	generatedCode, readErr := os.ReadFile(stubFile)
-	if readErr == nil {
-		cleaned := cleanupGeneratedCode(string(generatedCode))
-		if cleaned != "" && cleaned != "// WRITE YOUR IMPLEMENTATION HERE" {
-			return cleaned, nil
-		}
-	}
-
-	// Neither method worked
-	if err != nil {
-		return "", fmt.Errorf("parse JSON: %w", err)
-	}
-	return "", fmt.Errorf("no code generated")
-}
-
-func parseOpencodeOutput(jsonOutput string) (string, error) {
-	// opencode outputs JSON events, we need to extract the code from tool_use events
-	lines := strings.Split(jsonOutput, "\n")
-
-	var extractedCode string
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
+	fset := token.NewFileSet()
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
 			continue
 		}
-
-		var event struct {
-			Type string `json:"type"`
-			Part struct {
-				Type  string `json:"type"`
-				Tool  string `json:"tool"`
-				State struct {
-					Input struct {
-						Content string `json:"content"`
-					} `json:"input"`
-				} `json:"state"`
-			} `json:"part"`
+		// Skip staging files from previous incomplete runs
+		if strings.HasPrefix(e.Name(), "_generated_") {
+			continue
 		}
-
-		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			continue // Skip non-JSON lines
+		path := filepath.Join(pkgDir, e.Name())
+		f, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			continue
 		}
-
-		// Look for tool_use events with write tool (opencode generates files)
-		if event.Type == "tool_use" && event.Part.Tool == "write" {
-			content := event.Part.State.Input.Content
-			if content != "" {
-				extractedCode = content
-				break
+		for _, decl := range f.Decls {
+			if fd, ok := decl.(*ast.FuncDecl); ok && fd.Name.Name == name {
+				return true
 			}
 		}
 	}
-
-	if extractedCode == "" {
-		// Fallback: try to extract from text events
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if line == "" {
-				continue
-			}
-
-			var textEvent struct {
-				Type string `json:"type"`
-				Part struct {
-					Type string `json:"type"`
-					Text string `json:"text"`
-				} `json:"part"`
-			}
-
-			if err := json.Unmarshal([]byte(line), &textEvent); err != nil {
-				continue
-			}
-
-			if textEvent.Type == "text" && textEvent.Part.Text != "" {
-				text := textEvent.Part.Text
-
-				// Check if text looks like code (starts with { or has code-like patterns)
-				trimmed := strings.TrimSpace(text)
-				if strings.HasPrefix(trimmed, "{") ||
-				   (strings.Contains(trimmed, "\n\t") && (strings.Contains(trimmed, "return") || strings.Contains(trimmed, "func"))) {
-					// This looks like raw code
-					extractedCode = text
-					break
-				}
-
-				// Try to extract code blocks from markdown
-				if strings.Contains(text, "```") {
-					extracted := extractCodeBlock(text)
-					if extracted != "" {
-						extractedCode = extracted
-						break
-					}
-				}
-			}
-		}
-	}
-
-	if extractedCode == "" {
-		return "", fmt.Errorf("no code generated in output")
-	}
-
-	// Clean up the code
-	code := cleanupGeneratedCode(extractedCode)
-	return code, nil
+	return false
 }
 
-func extractCodeBlock(text string) string {
-	// Extract code from markdown code blocks
-	parts := strings.Split(text, "```")
-	if len(parts) >= 3 {
-		code := parts[1]
-		// Remove language identifier if present
-		if strings.HasPrefix(code, "go\n") {
-			code = strings.TrimPrefix(code, "go\n")
+// ---------------------------------------------------------------------------
+// Package context snapshot
+// ---------------------------------------------------------------------------
+
+// collectPackageContext reads all .go files in the target package and extracts
+// type declarations, function signatures, and constants so the model can
+// reference real names instead of inventing APIs.
+func collectPackageContext(goPackage string) string {
+	pkgDir := filepath.Join(*outputDir, goPackage)
+	entries, err := os.ReadDir(pkgDir)
+	if err != nil {
+		return ""
+	}
+
+	var buf strings.Builder
+	fset := token.NewFileSet()
+
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasPrefix(e.Name(), "_") {
+			continue
 		}
-		return strings.TrimSpace(code)
+		path := filepath.Join(pkgDir, e.Name())
+		f, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			continue
+		}
+		for _, decl := range f.Decls {
+			start := fset.Position(decl.Pos())
+			end := fset.Position(decl.End())
+			data, readErr := os.ReadFile(start.Filename)
+			if readErr != nil {
+				continue
+			}
+			// Convert byte offsets (1-based line/col from token.Position)
+			src := string(data)
+			lines := strings.Split(src, "\n")
+			startLine := start.Line - 1
+			endLine := end.Line - 1
+			if startLine < 0 {
+				startLine = 0
+			}
+			if endLine >= len(lines) {
+				endLine = len(lines) - 1
+			}
+			snippet := strings.Join(lines[startLine:endLine+1], "\n")
+			buf.WriteString(snippet)
+			buf.WriteString("\n\n")
+		}
+	}
+	return buf.String()
+}
+
+// ---------------------------------------------------------------------------
+// Staging file and build validation
+// ---------------------------------------------------------------------------
+
+// stagingFileName returns the path for a generated staging file.
+// Format: pkg/<package>/_generated_<sanitised-function-name>.go
+func stagingFileName(fn FunctionSpec) string {
+	safe := strings.NewReplacer("::", "_", ".", "_", " ", "_").Replace(fn.Function)
+	return filepath.Join(*outputDir, fn.GoPackage, "_generated_"+safe+".go")
+}
+
+// writeStagingFile writes the complete .go file (package decl + imports stub + function)
+// to a staging path and returns that path.
+func writeStagingFile(fn FunctionSpec, implementation string) string {
+	path := stagingFileName(fn)
+
+	var buf strings.Builder
+	buf.WriteString(fmt.Sprintf("package %s\n\n", fn.GoPackage))
+	buf.WriteString("// Code generated by batch_ai_impl; DO NOT EDIT.\n")
+	buf.WriteString("// Source: " + fn.CppFile + " " + fn.Function + "\n\n")
+	buf.WriteString(fn.GoSignature + " {\n")
+
+	for _, line := range strings.Split(implementation, "\n") {
+		if line != "" {
+			buf.WriteString("\t" + line + "\n")
+		} else {
+			buf.WriteString("\n")
+		}
+	}
+	buf.WriteString("}\n")
+
+	os.WriteFile(path, []byte(buf.String()), 0644)
+	return path
+}
+
+// tryBuild runs `go build` on the target package and returns the compiler
+// error output as a string, or "" on success.
+func tryBuild(goPackage string) string {
+	cmd := exec.Command("go", "build", "./pkg/"+goPackage+"/...")
+	cmd.Dir = *moduleRoot
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return string(out)
 	}
 	return ""
 }
 
-func cleanupGeneratedCode(code string) string {
-	// Remove package declaration if present (we'll add it ourselves)
-	lines := strings.Split(code, "\n")
-	var cleanedLines []string
-
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		// Skip package declarations
-		if strings.HasPrefix(trimmed, "package ") {
-			continue
-		}
-		cleanedLines = append(cleanedLines, line)
-	}
-
-	code = strings.Join(cleanedLines, "\n")
-	code = strings.TrimSpace(code)
-
-	return code
-}
+// ---------------------------------------------------------------------------
+// C++ extraction
+// ---------------------------------------------------------------------------
 
 func extractCppCode(filePath, functionName string) (string, error) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		// Try without src prefix
-		altPath := strings.Replace(filePath, "src/OpenLoco/src/", "", 1)
-		content, err = os.ReadFile(altPath)
-		if err != nil {
-			return "", err
-		}
+		return "", err
 	}
 
 	lines := strings.Split(string(content), "\n")
 
-	// Extract just the simple function name (e.g., "getShade" from "Colour::getShade")
 	simpleName := functionName
-	if strings.Contains(functionName, "::") {
-		parts := strings.Split(functionName, "::")
-		simpleName = parts[len(parts)-1]
+	if idx := strings.LastIndex(functionName, "::"); idx >= 0 {
+		simpleName = functionName[idx+2:]
 	}
 
-	// Find the function - be liberal with matching
-	// Look for the simple name followed by an opening parenthesis
 	for i, line := range lines {
-		// Skip pure comment lines
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") {
 			continue
 		}
-
-		// Look for function name + opening paren (function definition or call)
 		if strings.Contains(line, simpleName) && strings.Contains(line, "(") {
-			// Extract generous context: 50 lines before to help LLM understand context
 			contextStart := i - 50
 			if contextStart < 0 {
 				contextStart = 0
 			}
-
-			// Find where the function ends (matching braces)
 			endLine := findFunctionEnd(lines, i)
 			if endLine == -1 {
-				// If we can't find the end, take a generous chunk
 				endLine = i + 100
 				if endLine >= len(lines) {
 					endLine = len(lines) - 1
 				}
 			}
-
-			// Extract everything from context start to function end
-			// This includes namespace declarations, helper functions, constants, etc.
-			// The LLM will filter out what's not needed
-			contextLines := lines[contextStart : endLine+1]
-			extracted := strings.Join(contextLines, "\n")
-
-			// Add a marker to help the LLM identify the target function
-			marker := fmt.Sprintf("// TARGET FUNCTION: %s\n// Look for the function '%s' in the code below.\n// Convert ONLY that function to Go.\n\n", functionName, simpleName)
-
+			extracted := strings.Join(lines[contextStart:endLine+1], "\n")
+			marker := fmt.Sprintf("// TARGET FUNCTION: %s\n// Convert ONLY '%s' to Go.\n\n", functionName, simpleName)
 			return marker + extracted, nil
 		}
 	}
@@ -491,15 +391,11 @@ func extractCppCode(filePath, functionName string) (string, error) {
 	return "", fmt.Errorf("function %s not found in %s", functionName, filePath)
 }
 
-// findFunctionEnd finds the closing brace of a function starting at startLine
 func findFunctionEnd(lines []string, startLine int) int {
 	braceCount := 0
 	inFunction := false
-
-	for i := startLine; i < len(lines); i++ {
-		line := lines[i]
-
-		for _, ch := range line {
+	for i := startLine; i < len(lines) && i-startLine <= 200; i++ {
+		for _, ch := range lines[i] {
 			if ch == '{' {
 				braceCount++
 				inFunction = true
@@ -510,117 +406,203 @@ func findFunctionEnd(lines []string, startLine int) int {
 				}
 			}
 		}
-
-		// Safety limit - don't go beyond 200 lines
-		if i-startLine > 200 {
-			return i
-		}
 	}
-
 	return -1
 }
 
+// ---------------------------------------------------------------------------
+// Prompt building
+// ---------------------------------------------------------------------------
 
+func buildPrompt(fn FunctionSpec, cppCode, pkgContext, buildErrors string) string {
+	var p strings.Builder
 
-func buildPrompt(fn FunctionSpec, cppCode string, feedback string) string {
-	var prompt strings.Builder
+	p.WriteString("# Port OpenLoco C++ Function to Go\n\n")
 
-	prompt.WriteString("# Port OpenLoco C++ Function to Go\n\n")
-
-	// If there's feedback from a previous attempt, include it prominently
-	if feedback != "" {
-		prompt.WriteString("## ⚠️ IMPORTANT FEEDBACK FROM PREVIOUS ATTEMPT\n")
-		prompt.WriteString("Your previous response had this issue:\n")
-		prompt.WriteString(fmt.Sprintf("**%s**\n\n", feedback))
-		prompt.WriteString("Please fix this in your response.\n\n")
+	if buildErrors != "" {
+		p.WriteString("## BUILD ERRORS FROM PREVIOUS ATTEMPT\n")
+		p.WriteString("Your previous output produced these compiler errors. Fix them.\n\n")
+		p.WriteString("```\n" + buildErrors + "```\n\n")
 	}
 
-	prompt.WriteString("## Task\n")
-	prompt.WriteString(fmt.Sprintf("Implement this function in idiomatic Go for the goloco project.\n\n"))
+	p.WriteString("## Task\n")
+	p.WriteString("Implement the function below in idiomatic Go for the goloco project.\n\n")
 
-	prompt.WriteString("## Go Function Signature\n```go\n")
-	prompt.WriteString(fn.GoSignature + "\n")
-	prompt.WriteString("```\n\n")
+	p.WriteString("## Go Function Signature\n```go\n")
+	p.WriteString(fn.GoSignature + "\n```\n\n")
 
-	prompt.WriteString("## Original C++ Implementation\n```cpp\n")
-	prompt.WriteString(cppCode + "\n")
-	prompt.WriteString("```\n\n")
+	p.WriteString("## Original C++ Implementation\n```cpp\n")
+	p.WriteString(cppCode + "\n```\n\n")
 
-	prompt.WriteString("## Description\n")
-	prompt.WriteString(fn.Description + "\n\n")
+	p.WriteString("## Description\n")
+	p.WriteString(fn.Description + "\n\n")
+
+	if pkgContext != "" {
+		p.WriteString("## Existing Package Context\n")
+		p.WriteString("These types and functions already exist in the target package.\n")
+		p.WriteString("Use them — do NOT invent replacements.\n\n")
+		p.WriteString("```go\n" + pkgContext + "\n```\n\n")
+	}
 
 	if len(fn.Dependencies) > 0 {
-		prompt.WriteString("## Available Dependencies (Already Implemented)\n")
+		p.WriteString("## Available Dependencies\n")
 		for _, dep := range fn.Dependencies {
-			prompt.WriteString(fmt.Sprintf("- `%s`\n", dep))
+			p.WriteString("- `" + dep + "`\n")
 		}
-		prompt.WriteString("\n")
+		p.WriteString("\n")
 	}
 
-	prompt.WriteString("## Requirements\n")
-	prompt.WriteString("1. Translate the C++ logic to idiomatic Go\n")
-	prompt.WriteString("2. Use Go naming conventions (UpperCase exports, camelCase internal)\n")
-	prompt.WriteString("3. Handle errors with Go's error type where appropriate\n")
-	prompt.WriteString("4. Output ONLY the function body (code between `{` and `}`)\n")
-	prompt.WriteString("5. Do NOT include the function signature or package declaration\n")
-	prompt.WriteString("6. Add brief comments only for complex/non-obvious logic\n")
-	prompt.WriteString("7. If types don't exist, use reasonable stub types (we'll define them later)\n\n")
+	p.WriteString("## Requirements\n")
+	p.WriteString("1. Translate the C++ logic to idiomatic Go.\n")
+	p.WriteString("2. Use Go naming conventions (UpperCase exports, camelCase internal).\n")
+	p.WriteString("3. Return errors with Go's error type where appropriate.\n")
+	p.WriteString("4. Output ONLY the function body — the code between `{` and `}`.\n")
+	p.WriteString("5. Do NOT include the function signature, package declaration, or import statements.\n")
+	p.WriteString("6. Only add comments for non-obvious logic.\n")
+	p.WriteString("7. Use ONLY types and functions from the existing package context above.\n")
+	p.WriteString("   If something genuinely does not exist, use a simple stub (e.g. `log.Println(\"stub\")`).\n\n")
 
-	prompt.WriteString("## Output Format\n")
-	prompt.WriteString("Return ONLY the Go function body. No signature, no package, no explanations.\n")
-	prompt.WriteString("Just the code that goes between the opening `{` and closing `}`.\n")
+	p.WriteString("## Output Format\n")
+	p.WriteString("Return ONLY the function body. Nothing else.\n")
 
-	if feedback != "" {
-		prompt.WriteString("\n**REMINDER: Fix the issue mentioned in the feedback above!**\n")
-	}
-
-	return prompt.String()
+	return p.String()
 }
 
-func writeGoFile(fn FunctionSpec, implementation, outDir string) error {
-	// Create package directory
-	pkgDir := filepath.Join(outDir, fn.GoPackage)
-	os.MkdirAll(pkgDir, 0755)
+// ---------------------------------------------------------------------------
+// opencode integration
+// ---------------------------------------------------------------------------
 
-	filePath := filepath.Join(pkgDir, fn.GoFile)
+func callOpencode(prompt string) (string, error) {
+	tmpDir, err := os.MkdirTemp("", "opencode-workspace-*")
+	if err != nil {
+		return "", fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
 
-	// Check if file exists
-	var existingContent string
-	if content, err := os.ReadFile(filePath); err == nil {
-		existingContent = string(content)
+	promptFile := filepath.Join(tmpDir, "prompt.md")
+	if err := os.WriteFile(promptFile, []byte(prompt), 0644); err != nil {
+		return "", fmt.Errorf("write prompt: %w", err)
 	}
 
-	// Build complete function
-	var fileContent strings.Builder
+	stubFile := filepath.Join(tmpDir, "output.go")
+	os.WriteFile(stubFile, []byte("package main\n\n// WRITE YOUR IMPLEMENTATION HERE\n"), 0644)
 
-	if existingContent == "" {
-		// New file
-		fileContent.WriteString(fmt.Sprintf("package %s\n\n", fn.GoPackage))
-		fileContent.WriteString("// Auto-generated by batch_ai_impl using opencode + GPT-5-mini\n")
-		fileContent.WriteString("// Original: " + fn.CppFile + "\n\n")
-	} else {
-		// Append to existing
-		fileContent.WriteString(existingContent)
-		fileContent.WriteString("\n\n")
+	cmd := exec.Command("opencode", "run",
+		"-m", *model,
+		"--format", "json",
+		"Read prompt.md and write the Go function implementation to output.go. Include ONLY the function body, no package declaration or signature.",
+		"-f", promptFile)
+	cmd.Dir = tmpDir
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("execute opencode: %w\nOutput: %s", err, string(output))
 	}
 
-	fileContent.WriteString("// " + fn.Description + "\n")
-	fileContent.WriteString("// Source: " + fn.Function + "\n")
-	fileContent.WriteString(fn.GoSignature + " {\n")
+	// Try to extract from opencode's JSON event stream first.
+	if impl, err := parseOpencodeOutput(string(output)); err == nil && impl != "" {
+		return impl, nil
+	}
 
-	// Indent the implementation
-	lines := strings.Split(implementation, "\n")
-	for _, line := range lines {
-		if line != "" {
-			fileContent.WriteString("\t" + line + "\n")
-		} else {
-			fileContent.WriteString("\n")
+	// Fall back to reading the stub file that opencode may have written.
+	if data, err := os.ReadFile(stubFile); err == nil {
+		cleaned := cleanupGeneratedCode(string(data))
+		if cleaned != "" && cleaned != "// WRITE YOUR IMPLEMENTATION HERE" {
+			return cleaned, nil
 		}
 	}
 
-	fileContent.WriteString("}\n")
+	return "", fmt.Errorf("no code generated")
+}
 
-	return os.WriteFile(filePath, []byte(fileContent.String()), 0644)
+func parseOpencodeOutput(jsonOutput string) (string, error) {
+	for _, line := range strings.Split(jsonOutput, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		var event struct {
+			Type string `json:"type"`
+			Part struct {
+				Tool  string `json:"tool"`
+				State struct {
+					Input struct {
+						Content string `json:"content"`
+					} `json:"input"`
+				} `json:"state"`
+			} `json:"part"`
+		}
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			continue
+		}
+		if event.Type == "tool_use" && event.Part.Tool == "write" && event.Part.State.Input.Content != "" {
+			return cleanupGeneratedCode(event.Part.State.Input.Content), nil
+		}
+	}
+
+	// Second pass: look for code in text events.
+	for _, line := range strings.Split(jsonOutput, "\n") {
+		line = strings.TrimSpace(line)
+		var textEvent struct {
+			Type string `json:"type"`
+			Part struct {
+				Text string `json:"text"`
+			} `json:"part"`
+		}
+		if err := json.Unmarshal([]byte(line), &textEvent); err != nil {
+			continue
+		}
+		if textEvent.Type == "text" {
+			if code := extractCodeBlock(textEvent.Part.Text); code != "" {
+				return code, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no code in output")
+}
+
+func extractCodeBlock(text string) string {
+	parts := strings.Split(text, "```")
+	if len(parts) >= 3 {
+		code := parts[1]
+		if strings.HasPrefix(code, "go\n") {
+			code = strings.TrimPrefix(code, "go\n")
+		}
+		return strings.TrimSpace(code)
+	}
+	return ""
+}
+
+func cleanupGeneratedCode(code string) string {
+	var lines []string
+	for _, line := range strings.Split(code, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "package ") {
+			continue
+		}
+		lines = append(lines, line)
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+func extractFunctionName(signature string) string {
+	s := strings.TrimPrefix(signature, "func ")
+	// Handle method receivers: func (r *Foo) Bar(...)
+	if strings.HasPrefix(s, "(") {
+		if idx := strings.Index(s, ") "); idx >= 0 {
+			s = s[idx+2:]
+		}
+	}
+	if idx := strings.Index(s, "("); idx > 0 {
+		return s[:idx]
+	}
+	return ""
 }
 
 func loadFunctionDatabase(path string) (*FunctionDatabase, error) {
@@ -628,7 +610,6 @@ func loadFunctionDatabase(path string) (*FunctionDatabase, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	var db FunctionDatabase
 	err = json.Unmarshal(data, &db)
 	return &db, err
@@ -638,12 +619,11 @@ func filterByTier(functions []FunctionSpec, tier int) []FunctionSpec {
 	if tier == 0 {
 		return functions
 	}
-
-	filtered := make([]FunctionSpec, 0)
+	var out []FunctionSpec
 	for _, fn := range functions {
 		if fn.Tier == tier {
-			filtered = append(filtered, fn)
+			out = append(out, fn)
 		}
 	}
-	return filtered
+	return out
 }
