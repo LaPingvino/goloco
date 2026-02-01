@@ -1,0 +1,121 @@
+package scenario
+
+import (
+	"github.com/LaPingvino/goloco/pkg/assets"
+)
+
+// Scenario represents a loaded scenario or saved game
+type Scenario struct {
+	// Header information
+	Header   assets.S5Header
+	FilePath string
+
+	// Map data
+	MapWidth  int
+	MapHeight int
+	Tiles     [][]Tile
+
+	// Scenario metadata
+	Options Options
+
+	// Packed objects (DAT file references)
+	PackedObjects []PackedObject
+}
+
+// GetTile returns tile at the given coordinates
+// (implementation moved to loader.go)
+
+// IsTitleSequence returns true if this is a title sequence file
+// (implementation moved to loader.go)
+
+// Tile represents a single map tile
+type Tile struct {
+	Surface      SurfaceType
+	Height       uint8
+	Water        uint8
+	TerrainIndex uint8 // raw 5-bit terrain index from the surface element (LandObject slot)
+	Ownership    uint8
+	BuildingID   uint16
+	TrackType    uint8
+	Flags        uint8
+}
+
+// SurfaceType represents type of terrain surface
+type SurfaceType uint8
+
+const (
+	SurfaceGrass SurfaceType = iota
+	SurfaceSand
+	SurfaceDirt
+	SurfaceRock
+	SurfaceSnow
+	SurfaceWater
+)
+
+// Options contains scenario configuration
+type Options struct {
+	Name        string
+	Description string
+	StartYear   uint16
+	EndYear     uint16
+	StartMoney  int64
+	MaxLoans    int64
+}
+
+// PackedObject represents a reference to a DAT object file
+type PackedObject struct {
+	Name     [8]byte
+	Checksum uint32
+	Type     ObjectType
+}
+
+// ObjectType identifies category of a DAT object
+type ObjectType uint8
+
+const (
+	ObjectTypeInterface ObjectType = iota
+	ObjectTypeSound
+	ObjectTypeCurrency
+	ObjectTypeSteam
+	ObjectTypeRockObj
+	ObjectTypeWaterObj
+	ObjectTypeLand
+	ObjectTypeTownNames
+	ObjectTypeCargo
+	ObjectTypeWall
+	ObjectTypeTrackSignal
+	ObjectTypeLevelCrossing
+	ObjectTypeStreetLight
+	ObjectTypeTunnel
+	ObjectTypeBridge
+	ObjectTypeTrackStation
+	ObjectTypeTrackMod
+	ObjectTypeTrack
+	ObjectTypeRoadStation
+	ObjectTypeRoadMod
+	ObjectTypeRoad
+	ObjectTypeAirport
+	ObjectTypeDock
+	ObjectTypeVehicle
+	ObjectTypeTree
+	ObjectTypeSnow
+	ObjectTypeClimate
+	ObjectTypeHillShapes
+	ObjectTypeBuilding
+	ObjectTypeScaffold
+	ObjectTypeIndustry
+	ObjectTypeRegion
+	ObjectTypeCompetitor
+	ObjectTypeScenarioText
+)
+
+// ChunkType identifies type of data chunk in an S5 file
+type ChunkType uint8
+
+const (
+	ChunkTypeFlags ChunkType = iota
+	ChunkTypePackedObjects
+	ChunkTypeGameState
+	ChunkTypeTileElements
+	// Add more as needed
+)

@@ -166,6 +166,47 @@ func TestParseTileElements_partial_element_ignored(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// TerrainIndex propagation
+// ---------------------------------------------------------------------------
+
+func TestParseTileElements_terrain_index_stored(t *testing.T) {
+	// Three tiles with distinct terrain indices; verify TerrainIndex matches the
+	// raw value written into byte 6 of each element.
+	var data []byte
+	indices := [3]uint8{0, 7, 15}
+	for _, idx := range indices {
+		e := makeSurfaceElement(idx, 0, 1, true)
+		data = append(data, e[:]...)
+	}
+
+	sc := &Scenario{MapWidth: 3, MapHeight: 1}
+	sc.parseTileElements(data)
+
+	for i, want := range indices {
+		got := sc.Tiles[0][i].TerrainIndex
+		if got != want {
+			t.Errorf("(%d,0) TerrainIndex = %d, want %d", i, got, want)
+		}
+	}
+}
+
+func TestParseTileElements_terrain_index_water_tile_preserves_index(t *testing.T) {
+	// Even when water overrides the surface type, TerrainIndex must still
+	// reflect the underlying terrain stored in byte 6.
+	elem := makeSurfaceElement(12, 5, 3, true) // terrain=12, water=5
+
+	sc := &Scenario{MapWidth: 1, MapHeight: 1}
+	sc.parseTileElements(elem[:])
+
+	if sc.Tiles[0][0].Surface != SurfaceWater {
+		t.Fatalf("Surface = %d, want SurfaceWater", sc.Tiles[0][0].Surface)
+	}
+	if sc.Tiles[0][0].TerrainIndex != 12 {
+		t.Errorf("TerrainIndex = %d, want 12", sc.Tiles[0][0].TerrainIndex)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // terrain type mapping
 // ---------------------------------------------------------------------------
 

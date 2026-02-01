@@ -16,28 +16,40 @@ type Object interface {
 
 // LoadedObject holds a loaded object with its data
 type LoadedObject struct {
-	Header       *ObjectHeader
-	Data         []byte      // Decompressed object data
-	Object       interface{} // Parsed object (VehicleObject, etc.)
-	ImageOffset  uint32      // Base image offset in global sprite pool
-	ImageCount   uint32      // Number of images in this object
-	ImageData    []byte      // Raw sprite data for this object
+	Header      *ObjectHeader
+	Data        []byte      // Decompressed object data
+	Object      interface{} // Parsed object (VehicleObject, etc.)
+	ImageOffset uint32      // Base image offset in global sprite pool
+	ImageCount  uint32      // Number of images in this object
+	ImageData   []byte      // Raw sprite data for this object
 }
 
 // ObjectManager manages loaded objects
 type ObjectManager struct {
 	Objects     map[string]*LoadedObject
 	Vehicles    []*VehicleObject
+	LandObjects []*LandObject
 	ObjDataPath string
+
+	// Sprite pool for object sprites
+	NextSpriteIndex uint32
 }
 
 // NewObjectManager creates a new object manager
 func NewObjectManager(objDataPath string) *ObjectManager {
 	return &ObjectManager{
-		Objects:     make(map[string]*LoadedObject),
-		Vehicles:    make([]*VehicleObject, 0),
-		ObjDataPath: objDataPath,
+		Objects:         make(map[string]*LoadedObject),
+		Vehicles:        make([]*VehicleObject, 0),
+		LandObjects:     make([]*LandObject, 0),
+		ObjDataPath:     objDataPath,
+		NextSpriteIndex: 0, // Will be set after G1 is loaded
 	}
+}
+
+// SetBaseSpriteIndex sets the starting index for object sprites
+// This should be called after loading G1.DAT with the count of G1 sprites
+func (m *ObjectManager) SetBaseSpriteIndex(baseIndex uint32) {
+	m.NextSpriteIndex = baseIndex
 }
 
 // LoadObject loads a single DAT file
@@ -93,6 +105,20 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 		vehicle.DisplayName = extractFirstString(decompressed)
 		loaded.Object = vehicle
 		m.Vehicles = append(m.Vehicles, vehicle)
+
+	case ObjectTypeLand:
+		land, err := ParseLandObject(header, decompressed)
+		if err != nil {
+			return nil, fmt.Errorf("parsing land: %w", err)
+		}
+		// Assign sprite indices
+		land.ImageOffset = m.NextSpriteIndex
+		loaded.ImageOffset = m.NextSpriteIndex
+		loaded.ImageCount = uint32(len(land.Sprites))
+		m.NextSpriteIndex += uint32(len(land.Sprites))
+
+		loaded.Object = land
+		m.LandObjects = append(m.LandObjects, land)
 	}
 
 	// Store in map
@@ -190,6 +216,44 @@ func (m *ObjectManager) GetVehicle(name string) *VehicleObject {
 		return v
 	}
 	return nil
+}
+
+// GetLandObject returns a land object by name
+func (m *ObjectManager) GetLandObject(name string) *LandObject {
+	obj := m.GetObject(name)
+	if obj == nil {
+		return nil
+	}
+	if l, ok := obj.Object.(*LandObject); ok {
+		return l
+	}
+	return nil
+}
+
+// GetDefaultLandObject returns the first loaded land object (typically GRASS1)
+func (m *ObjectManager) GetDefaultLandObject() *LandObject {
+	if len(m.LandObjects) > 0 {
+		return m.LandObjects[0]
+	}
+	return nil
+}
+
+// GetLandObjectByIndex returns the LandObject at the given terrain slot index,
+// or nil if the index is out of range.  The index corresponds to the 5-bit
+// terrain field in a surface element (0–29 in OpenLoco).
+func (m *ObjectManager) GetLandObjectByIndex(index int) *LandObject {
+	if index < 0 || index >= len(m.LandObjects) {
+		return nil
+	}
+	return m.LandObjects[index]
+}
+
+// GetLandSprite returns a sprite from a land object
+func (m *ObjectManager) GetLandSprite(land *LandObject, localIndex int) *SpriteElement {
+	if land == nil || localIndex < 0 || localIndex >= len(land.Sprites) {
+		return nil
+	}
+	return land.Sprites[localIndex]
 }
 
 // extractFirstString tries to extract the first string from object data

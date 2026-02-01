@@ -11,12 +11,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-// G1 sprite indices for terrain (from OpenLoco ImageIds.h)
-const (
-	SpriteIDSurfaceSmooth3Slope0 = 3746 // Flat grass terrain
-	SpriteIDSurfaceSmooth1Slope0 = 3765 // Alternative flat terrain
-)
-
 // TileType represents different terrain types
 type TileType int
 
@@ -26,16 +20,22 @@ const (
 	TileWater
 )
 
+// tile stores per-tile render state
+type tile struct {
+	tileType     TileType
+	terrainIndex uint8 // raw LandObject slot index from the scenario
+}
+
 // World holds a tile grid for an isometric game world
 type World struct {
 	renderer *render.Renderer
 	width    int
 	height   int
-	tiles    [][]TileType
+	tiles    [][]tile
 	// isometric tile dimensions (standard 2:1 ratio)
 	tileW int // tile width in pixels (64)
 	tileH int // tile height in pixels (32)
-	// cache colored diamond images per tile type (fallback if no G1)
+	// cache colored diamond images per tile type (fallback)
 	tileCache map[TileType]*ebiten.Image
 	// camera offset in pixels
 	camX float64
@@ -63,7 +63,7 @@ func NewWorld(r *render.Renderer) *World {
 		height:    15,
 		tileW:     64, // standard isometric tile width (matches G1 terrain sprites)
 		tileH:     16, // standard isometric tile height (matches G1 terrain sprites)
-		tiles:     make([][]TileType, 15),
+		tiles:     make([][]tile, 15),
 		tileCache: make(map[TileType]*ebiten.Image),
 		playerX:   10,
 		playerY:   7,
@@ -72,16 +72,15 @@ func NewWorld(r *render.Renderer) *World {
 
 	// Initialize tiles with some variety
 	for y := 0; y < w.height; y++ {
-		w.tiles[y] = make([]TileType, w.width)
+		w.tiles[y] = make([]tile, w.width)
 		for x := 0; x < w.width; x++ {
-			// Create some terrain variety
+			tt := TileGrass
 			if x < 2 || y < 2 || x >= w.width-2 || y >= w.height-2 {
-				w.tiles[y][x] = TileWater
+				tt = TileWater
 			} else if (x+y)%7 == 0 {
-				w.tiles[y][x] = TileDirt
-			} else {
-				w.tiles[y][x] = TileGrass
+				tt = TileDirt
 			}
+			w.tiles[y][x] = tile{tileType: tt}
 		}
 	}
 
@@ -106,23 +105,26 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 	}
 	w.width = sc.MapWidth
 	w.height = sc.MapHeight
-	w.tiles = make([][]TileType, w.height)
+	w.tiles = make([][]tile, w.height)
 	for y := 0; y < w.height; y++ {
-		w.tiles[y] = make([]TileType, w.width)
+		w.tiles[y] = make([]tile, w.width)
 		for x := 0; x < w.width; x++ {
-			tile := sc.GetTile(x, y)
-			if tile == nil {
-				w.tiles[y][x] = TileGrass
+			st := sc.GetTile(x, y)
+			if st == nil {
+				w.tiles[y][x] = tile{tileType: TileGrass}
 				continue
 			}
 
-			switch tile.Surface {
+			tt := TileGrass
+			switch st.Surface {
 			case scenario.SurfaceWater:
-				w.tiles[y][x] = TileWater
+				tt = TileWater
 			case scenario.SurfaceDirt, scenario.SurfaceSand, scenario.SurfaceRock:
-				w.tiles[y][x] = TileDirt
-			default:
-				w.tiles[y][x] = TileGrass
+				tt = TileDirt
+			}
+			w.tiles[y][x] = tile{
+				tileType:     tt,
+				terrainIndex: st.TerrainIndex,
 			}
 		}
 	}
@@ -184,7 +186,7 @@ func (w *World) HandleInput(dx, dy int) {
 	ny := w.playerY + dy
 	if nx >= 0 && nx < w.width && ny >= 0 && ny < w.height {
 		// Don't walk on water
-		if w.tiles[ny][nx] == TileWater {
+		if w.tiles[ny][nx].tileType == TileWater {
 			return
 		}
 		w.moveFromX = w.playerX
@@ -196,47 +198,12 @@ func (w *World) HandleInput(dx, dy int) {
 	}
 }
 
-// getTileImage returns the appropriate image for a tile type
-func (w *World) getTileImage(tt TileType) *ebiten.Image {
-	// Try to get from G1 sprites first
-	if w.renderer != nil && w.renderer.G1 != nil {
-		var spriteIdx int
-		switch tt {
-		case TileGrass:
-			spriteIdx = SpriteIDSurfaceSmooth3Slope0
-		case TileDirt:
-			spriteIdx = SpriteIDSurfaceSmooth1Slope0
-		case TileWater:
-			// Use a different sprite or fall back
-			spriteIdx = SpriteIDSurfaceSmooth3Slope0 + 10 // Just use a different grass variant for now
-		}
-		if img := w.renderer.GetSprite(spriteIdx); img != nil {
-			return img
-		}
-	}
-
-	// Try atlas next
-	if w.renderer != nil && w.renderer.Atlas != nil {
-		var name string
-		switch tt {
-		case TileGrass:
-			name = "grass.png"
-		case TileDirt:
-			name = "dirt.png"
-		case TileWater:
-			name = "water.png"
-		}
-		if img := w.renderer.Atlas.Get(name); img != nil {
-			return img
-		}
-	}
-
-	// Fall back to cached colored diamond
+// getFallbackImage returns a cached colored diamond for a tile type.
+// Used when no LandObject sprite is available.
+func (w *World) getFallbackImage(tt TileType) *ebiten.Image {
 	if img, ok := w.tileCache[tt]; ok {
 		return img
 	}
-
-	// Create a diamond-shaped tile
 	img := w.createDiamondTile(tt)
 	w.tileCache[tt] = img
 	return img
@@ -315,41 +282,35 @@ func (w *World) Draw(screen *ebiten.Image) {
 				continue
 			}
 
-			tt := w.tiles[y][x]
-
-			// Get the appropriate sprite index for this tile type
-			var spriteIdx int
-			switch tt {
-			case TileGrass:
-				spriteIdx = SpriteIDSurfaceSmooth3Slope0
-			case TileDirt:
-				spriteIdx = SpriteIDSurfaceSmooth1Slope0
-			case TileWater:
-				spriteIdx = SpriteIDSurfaceSmooth3Slope0 + 10
-			}
-
+			t := w.tiles[y][x]
 			screenX, screenY := w.tileToScreen(x, y)
 			drawX := screenX - w.camX
 			drawY := screenY - w.camY
 
-			// Try to draw G1 sprite with proper offset
-			if w.renderer != nil && w.renderer.G1 != nil {
-				if img := w.renderer.GetSprite(spriteIdx); img != nil {
-					_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteIdx)
-					if ok {
-						op := &ebiten.DrawImageOptions{}
-						op.GeoM.Translate(math.Floor(drawX+float64(xOff)), math.Floor(drawY+float64(yOff)))
-						screen.DrawImage(img, op)
-						continue
+			// Try to draw from the LandObject sprite for this terrain index.
+			// Sprite 0 in a LandObject is the flat terrain tile (slope 0).
+			// OpenLoco reference: Paint/PaintSurface.cpp paintSurface()
+			//   landObj->image + variation + displaySlope
+			if w.renderer != nil && w.renderer.ObjMgr != nil {
+				land := w.renderer.ObjMgr.GetLandObjectByIndex(int(t.terrainIndex))
+				if land != nil {
+					if img := w.renderer.GetObjectSprite(land, 0); img != nil {
+						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, 0)
+						if ok {
+							op := &ebiten.DrawImageOptions{}
+							op.GeoM.Translate(math.Floor(drawX+float64(xOff)), math.Floor(drawY+float64(yOff)))
+							screen.DrawImage(img, op)
+							continue
+						}
 					}
 				}
 			}
 
-			// Fall back to generated tile
-			tileImg := w.getTileImage(tt)
+			// Fall back to colored diamond
+			img := w.getFallbackImage(t.tileType)
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Translate(math.Floor(drawX), math.Floor(drawY))
-			screen.DrawImage(tileImg, op)
+			screen.DrawImage(img, op)
 		}
 	}
 
