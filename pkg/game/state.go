@@ -1,6 +1,10 @@
 package game
 
-import "time"
+import (
+	"time"
+
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // TileType represents different types of terrain
 type TileType uint8
@@ -18,24 +22,24 @@ const (
 // GameState holds the overall game state
 type GameState struct {
 	// Player company
-	CompanyName  string
-	PlayerMoney  int64
-	CurrentLoan  int64
+	CompanyName string
+	PlayerMoney int64
+	CurrentLoan int64
 
 	// Time tracking
-	GameDate     time.Time
-	TickCount    uint64
-	TicksPerDay  uint64
+	GameDate    time.Time
+	TickCount   uint64
+	TicksPerDay uint64
 
 	// World
-	MapWidth     int
-	MapHeight    int
-	MapTiles     [][]Tile
+	MapWidth  int
+	MapHeight int
+	MapTiles  [][]Tile
 
 	// Entities
-	Vehicles     []*Vehicle
-	Stations     []*Station
-	Buildings    []*Building
+	Vehicles  []*Vehicle
+	Stations  []*Station
+	Buildings []*Building
 
 	// UI state
 	SelectedTile *TilePos
@@ -50,24 +54,24 @@ type TilePos struct {
 
 // Tile represents a single map tile
 type Tile struct {
-	Type      TileType
-	Height    uint8
-	Owner     int // company ID, -1 for unowned
+	Type       TileType
+	Height     uint8
+	Owner      int // company ID, -1 for unowned
 	BuildingID int // -1 for no building
 }
 
 // Vehicle represents a train, bus, ship, or plane
 type Vehicle struct {
-	ID        int
-	Name      string
-	Type      VehicleType
-	OwnerID   int
-	X, Y      float64 // pixel position
-	TileX     int
-	TileY     int
-	Speed     float64
-	RouteID   int
-	RoutePos  int
+	ID       int
+	Name     string
+	Type     VehicleType
+	OwnerID  int
+	X, Y     float64 // pixel position
+	TileX    int
+	TileY    int
+	Speed    float64
+	RouteID  int
+	RoutePos int
 }
 
 type VehicleType uint8
@@ -120,18 +124,18 @@ const (
 // NewGameState creates a new game state with default values
 func NewGameState(width, height int) *GameState {
 	gs := &GameState{
-		CompanyName:  "Player Transport Co.",
-		PlayerMoney:  100000,
-		CurrentLoan:  0,
-		GameDate:     time.Date(1950, 1, 1, 0, 0, 0, 0, time.UTC),
-		TickCount:    0,
-		TicksPerDay:  74, // OpenLoco uses 74 ticks per day
-		MapWidth:     width,
-		MapHeight:    height,
-		MapTiles:     make([][]Tile, height),
-		Vehicles:     make([]*Vehicle, 0),
-		Stations:     make([]*Station, 0),
-		Buildings:    make([]*Building, 0),
+		CompanyName: "Player Transport Co.",
+		PlayerMoney: 100000,
+		CurrentLoan: 0,
+		GameDate:    time.Date(1950, 1, 1, 0, 0, 0, 0, time.UTC),
+		TickCount:   0,
+		TicksPerDay: 74, // OpenLoco uses 74 ticks per day
+		MapWidth:    width,
+		MapHeight:   height,
+		MapTiles:    make([][]Tile, height),
+		Vehicles:    make([]*Vehicle, 0),
+		Stations:    make([]*Station, 0),
+		Buildings:   make([]*Building, 0),
 	}
 
 	// Initialize map tiles
@@ -180,4 +184,81 @@ func (v *Vehicle) Update() {
 	if v.X > 500 {
 		v.X = 0
 	}
+}
+
+// LoadFromScenario populates game state from a loaded scenario
+func (gs *GameState) LoadFromScenario(sc *scenario.Scenario) error {
+	if sc == nil {
+		return nil
+	}
+
+	// Update map dimensions
+	gs.MapWidth = sc.MapWidth
+	gs.MapHeight = sc.MapHeight
+
+	// Convert scenario tiles to game tiles
+	gs.MapTiles = make([][]Tile, gs.MapHeight)
+	for y := 0; y < gs.MapHeight; y++ {
+		gs.MapTiles[y] = make([]Tile, gs.MapWidth)
+		for x := 0; x < gs.MapWidth; x++ {
+			scTile := sc.GetTile(x, y)
+			if scTile != nil {
+				gs.MapTiles[y][x] = Tile{
+					Type:       convertSurfaceType(scTile.Surface),
+					Height:     scTile.Height,
+					Owner:      -1,
+					BuildingID: -1,
+				}
+			} else {
+				gs.MapTiles[y][x] = Tile{
+					Type:       TileGrass,
+					Height:     0,
+					Owner:      -1,
+					BuildingID: -1,
+				}
+			}
+		}
+	}
+
+	// Update scenario options if available
+	if sc.Options.StartYear > 0 {
+		gs.GameDate = time.Date(int(sc.Options.StartYear), 1, 1, 0, 0, 0, 0, time.UTC)
+	}
+	if sc.Options.StartMoney > 0 {
+		gs.PlayerMoney = sc.Options.StartMoney
+	}
+
+	return nil
+}
+
+// convertSurfaceType converts scenario surface type to game tile type
+func convertSurfaceType(surface scenario.SurfaceType) TileType {
+	switch surface {
+	case scenario.SurfaceGrass:
+		return TileGrass
+	case scenario.SurfaceDirt, scenario.SurfaceSand:
+		return TileDirt
+	case scenario.SurfaceWater:
+		return TileWater
+	case scenario.SurfaceRock, scenario.SurfaceSnow:
+		return TileDirt // Use dirt for now
+	default:
+		return TileGrass
+	}
+}
+
+// NewGameStateFromScenario creates a game state from a scenario file
+func NewGameStateFromScenario(filePath string) (*GameState, error) {
+	sc, err := scenario.LoadScenarioData(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	gs := NewGameState(sc.MapWidth, sc.MapHeight)
+	err = gs.LoadFromScenario(sc)
+	if err != nil {
+		return nil, err
+	}
+
+	return gs, nil
 }
