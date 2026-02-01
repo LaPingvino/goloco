@@ -2,7 +2,6 @@ package world
 
 import (
 	"image/color"
-	"log"
 	"math"
 
 	"github.com/LaPingvino/goloco/pkg/render"
@@ -37,12 +36,17 @@ type World struct {
 	tileH int // tile height in pixels (32)
 	// cache colored diamond images per tile type (fallback)
 	tileCache map[TileType]*ebiten.Image
-	// camera offset in pixels
+	// camera offset in pixels (in world-space before zoom is applied)
 	camX float64
 	camY float64
 	// when true, Draw() does not recentre the camera on the player —
 	// an external caller (e.g. title sequence) is driving it via SetCamera.
 	externalCamera bool
+	// zoom level 0–3 matching OpenLoco convention:
+	//   0 = full size (1×), 1 = half (2×), 2 = quarter (4×), 3 = eighth (8×)
+	// The pixel scale factor is 1 << zoom applied in reverse:
+	// world coordinates are divided by (1 << zoom) for screen placement.
+	zoom int
 	// player tile coords
 	playerX int
 	playerY int
@@ -71,6 +75,7 @@ func NewWorld(r *render.Renderer) *World {
 		playerX:   10,
 		playerY:   7,
 		moveSpeed: 0.15,
+		zoom:      3, // start zoomed out (1/8 scale) so the map fits on screen
 	}
 
 	// Initialize tiles with some variety
@@ -142,36 +147,38 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 // tileToScreen so the camera tracks smoothly.
 func (w *World) SetCamera(tileX, tileY float64) {
 	w.externalCamera = true
-	// Convert tile coords to screen pixel position using the same
-	// projection as tileToScreen, then subtract half-screen so the
-	// target tile lands at the centre of the viewport.
-	screenX := (tileX-tileY)*float64(w.tileW)/2 + float64(w.width*w.tileW/4)
-	screenY := (tileX+tileY)*float64(w.tileH)/2 + 50
-	w.camX = screenX - 400 + float64(w.tileW)/2 // 400 = screenWidth/2
-	w.camY = screenY - 300 + float64(w.tileH)/2 // 300 = screenHeight/2
+	// Convert tile coords to world-space pixel position using the same
+	// projection as tileToScreen, then subtract half the viewport extent
+	// in world-space so the target tile lands at the centre.
+	// Half-viewport in world-space = (screenSize / 2) / scale = (screenSize / 2) << zoom
+	worldX := (tileX-tileY)*float64(w.tileW)/2 + float64(w.width*w.tileW/4)
+	worldY := (tileX+tileY)*float64(w.tileH)/2 + 50
+	halfW := 400.0 * float64(int(1)<<w.zoom) // 400 = screenWidth/2
+	halfH := 300.0 * float64(int(1)<<w.zoom) // 300 = screenHeight/2
+	w.camX = worldX - halfW
+	w.camY = worldY - halfH
 }
 
-// ZoomIn is a stub. Not yet implemented.
+// ZoomIn decreases the zoom level (more detail, fewer tiles visible).
+// Zoom 0 is full size; cannot go below 0.
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/Window.cpp
 //   Window::viewportZoomIn(bool toCursor)
-//   Window::viewportZoomSet(int8_t zoomLevel, bool toCursor)
-//
-// In OpenLoco the zoom level is clamped per-viewport and the viewport
-// position is re-centred (optionally on the cursor).  goloco will need
-// a zoom field on World (or a shared Viewport struct) and the
-// tileToScreen projection updated accordingly.
 func (w *World) ZoomIn() {
-	log.Println("[World] ZoomIn: stub — not yet implemented")
+	if w.zoom > 0 {
+		w.zoom--
+	}
 }
 
-// ZoomOut is a stub. Not yet implemented.
+// ZoomOut increases the zoom level (less detail, more tiles visible).
+// Zoom 3 is the minimum size (1/8); cannot go above 3.
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/Window.cpp
 //   Window::viewportZoomOut(bool toCursor)
-//   Window::viewportZoomSet(int8_t zoomLevel, bool toCursor)
 func (w *World) ZoomOut() {
-	log.Println("[World] ZoomOut: stub — not yet implemented")
+	if w.zoom < 3 {
+		w.zoom++
+	}
 }
 
 func (w *World) Update() {
@@ -287,12 +294,13 @@ func (w *World) createDiamondTile(tt TileType) *ebiten.Image {
 
 func (w *World) Draw(screen *ebiten.Image) {
 	sw, sh := screen.Size()
+	scale := 1.0 / float64(int(1)<<w.zoom) // zoom 0→1.0, 1→0.5, 2→0.25, 3→0.125
 
 	// Centre camera on player unless an external source (title sequence)
-	// is driving it.
+	// is driving it.  Camera coords are in world-space (unscaled).
 	if !w.externalCamera {
-		w.camX = w.playerPX - float64(sw)/2 + float64(w.tileW)/2
-		w.camY = w.playerPY - float64(sh)/2 + float64(w.tileH)/2
+		w.camX = w.playerPX - float64(sw)/scale/2 + float64(w.tileW)/2
+		w.camY = w.playerPY - float64(sh)/scale/2 + float64(w.tileH)/2
 	}
 
 	// Draw tiles in depth order (back to front)
@@ -305,8 +313,15 @@ func (w *World) Draw(screen *ebiten.Image) {
 
 			t := w.tiles[y][x]
 			screenX, screenY := w.tileToScreen(x, y)
-			drawX := screenX - w.camX
-			drawY := screenY - w.camY
+			// Convert world position to screen position: subtract camera,
+			// then apply zoom scale.
+			drawX := (screenX - w.camX) * scale
+			drawY := (screenY - w.camY) * scale
+
+			// Skip tiles that are entirely off-screen (with margin for sprite offsets)
+			if drawX < -128 || drawX > float64(sw)+64 || drawY < -128 || drawY > float64(sh)+64 {
+				continue
+			}
 
 			// Draw the base flat terrain sprite from this tile's LandObject.
 			// The zoom-0 flat terrain tile is at a fixed offset within the
@@ -321,7 +336,10 @@ func (w *World) Draw(screen *ebiten.Image) {
 						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, flatSpriteIdx)
 						if ok {
 							op := &ebiten.DrawImageOptions{}
-							op.GeoM.Translate(math.Floor(drawX+float64(xOff)), math.Floor(drawY+float64(yOff)))
+							op.GeoM.Scale(scale, scale)
+							op.GeoM.Translate(
+								math.Floor(drawX+float64(xOff)*scale),
+								math.Floor(drawY+float64(yOff)*scale))
 							screen.DrawImage(img, op)
 							continue
 						}
@@ -332,13 +350,17 @@ func (w *World) Draw(screen *ebiten.Image) {
 			// Fall back to colored diamond
 			img := w.getFallbackImage(t.tileType)
 			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Scale(scale, scale)
 			op.GeoM.Translate(math.Floor(drawX), math.Floor(drawY))
 			screen.DrawImage(img, op)
 		}
 	}
 
-	// Draw player as a small red marker
-	playerDrawX := w.playerPX - w.camX
-	playerDrawY := w.playerPY - w.camY - 16 // Raise above ground
-	ebitenutil.DrawRect(screen, playerDrawX, playerDrawY, 16, 16, color.RGBA{255, 50, 50, 220})
+	// Draw player as a small red marker (only when not in title-sequence mode)
+	if !w.externalCamera {
+		playerDrawX := (w.playerPX - w.camX) * scale
+		playerDrawY := (w.playerPY - w.camY) * scale
+		markerSize := 16.0 * scale
+		ebitenutil.DrawRect(screen, playerDrawX, playerDrawY-markerSize, markerSize, markerSize, color.RGBA{255, 50, 50, 220})
+	}
 }
