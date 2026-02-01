@@ -12,6 +12,7 @@ import (
 )
 
 var spriteErrorLogged = make(map[int]bool)
+var objectSpriteWarned = make(map[string]bool)
 
 // Renderer holds rendering state and sprite data
 type Renderer struct {
@@ -120,18 +121,27 @@ func (r *Renderer) GetObjectSprite(land *objects.LandObject, localIndex int) *eb
 
 	sprite := land.Sprites[localIndex]
 	if sprite == nil || len(sprite.Data) == 0 {
-		log.Printf("[Render] Sprite %s:%d has no data", land.Name, localIndex)
+		if !objectSpriteWarned[cacheKey] {
+			log.Printf("[Render] Sprite %s:%d has no data", land.Name, localIndex)
+			objectSpriteWarned[cacheKey] = true
+		}
 		return nil
 	}
 
 	// Decode the sprite using the G1 palette
 	rgba, err := r.decodeObjectSprite(sprite)
 	if err != nil {
-		log.Printf("[Render] Failed to decode sprite %s:%d: %v", land.Name, localIndex, err)
+		if !objectSpriteWarned[cacheKey] {
+			log.Printf("[Render] Failed to decode sprite %s:%d: %v", land.Name, localIndex, err)
+			objectSpriteWarned[cacheKey] = true
+		}
 		return nil
 	}
 	if rgba == nil {
-		log.Printf("[Render] Decoded sprite %s:%d is nil", land.Name, localIndex)
+		if !objectSpriteWarned[cacheKey] {
+			log.Printf("[Render] Decoded sprite %s:%d is nil", land.Name, localIndex)
+			objectSpriteWarned[cacheKey] = true
+		}
 		return nil
 	}
 

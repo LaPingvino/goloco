@@ -26,6 +26,7 @@ type DrawingContext struct {
 
 // Track which sprites have been logged (log each sprite ID once)
 var spriteLoggedForId = make(map[uint32]bool)
+var drawStringCenteredLogged bool
 
 type drawingState struct {
 	clip gfx.Rect
@@ -236,7 +237,10 @@ func (dc *DrawingContext) DrawImage(x, y int16, imageId uint32) error {
 	// Try to get sprite from atlas
 	sprite := render.GetGlobalSprite(imageId)
 	if sprite == nil {
-		log.Printf("[Graphics] DrawImage: id=%d spriteFound=false x=%d y=%d", imageId, x, y)
+		if !spriteLoggedForId[imageId] {
+			log.Printf("[Graphics] DrawImage: id=%d spriteFound=false x=%d y=%d", imageId, x, y)
+			spriteLoggedForId[imageId] = true
+		}
 		// Fallback: draw placeholder rectangle
 		return dc.FillRect(x, y, 16, 16, 5)
 	}
@@ -278,7 +282,10 @@ func (dc *DrawingContext) DrawString(x, y int16, str string, col uint8) error {
 // Replace the len*7 heuristic with a proper call to font.Metrics or
 // golang.org/x/image/font.MeasureString once font sizing is wired up.
 func (dc *DrawingContext) DrawStringCentered(x, y int16, str string, col uint8) error {
-	log.Println("[Graphics] DrawStringCentered: stub — using approximate character width (7px per char)")
+	if !drawStringCenteredLogged {
+		log.Println("[Graphics] DrawStringCentered: stub — using approximate character width (7px per char)")
+		drawStringCenteredLogged = true
+	}
 	width := len(str) * 7 // approximate; needs real font measurement
 	return dc.DrawString(x-int16(width/2), y, str, col)
 }
