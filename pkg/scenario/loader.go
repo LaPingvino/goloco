@@ -161,6 +161,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		return sc, fmt.Errorf("failed to read RequiredObjects chunk: %w", err)
 	}
 	log.Println("[Scenario] Read RequiredObjects,", len(reqObjBytes), "bytes")
+	sc.LandObjectOrder = parseLandObjectOrder(reqObjBytes)
 
 	// --- Game state chunks ---
 	// For scenarios: three separate chunks (GeneralState, Towns, Animations).
@@ -337,6 +338,72 @@ func advanceRaw(r *assets.S5ChunkReader, n int) {
 	// re-slices internally.  This is only called for packed object headers
 	// which are rare.
 	r.AdvanceRaw(n)
+}
+
+// ---------------------------------------------------------------------------
+// RequiredObjects → land-object order
+// ---------------------------------------------------------------------------
+
+// ObjectHeader layout (16 bytes, little-endian):
+//
+//	[0:4]  uint32 flags   — type in bits [5:0], sourceGame in bits [7:6]
+//	[4:12] [8]byte name
+//	[12:16] uint32 checksum
+//
+// OpenLoco reference: src/OpenLoco/src/Objects/Object.h  ObjectHeader
+
+const (
+	objectHeaderSize = 16
+	objectTypeMask   = 0x3F
+	objectTypeLand   = 6 // ObjectType::land
+
+	// Offsets into the 859-element RequiredObjects array.
+	// Land objects occupy 32 consecutive slots starting at index 171.
+	// 171 = Interface(1)+Sound(128)+Currency(1)+Steam(32)+Rock(8)+Water(1)
+	landSlotStart = 171
+	landSlotCount = 32
+)
+
+// parseLandObjectOrder extracts the 32 land-object names from a RequiredObjects
+// blob in terrain-slot order.  Empty slots (all-0xFF headers) produce "".
+func parseLandObjectOrder(data []byte) []string {
+	order := make([]string, landSlotCount)
+	for i := 0; i < landSlotCount; i++ {
+		off := (landSlotStart + i) * objectHeaderSize
+		if off+objectHeaderSize > len(data) {
+			break
+		}
+		hdr := data[off : off+objectHeaderSize]
+
+		// Check for empty header (flags == 0xFFFFFFFF)
+		if hdr[0] == 0xFF && hdr[1] == 0xFF && hdr[2] == 0xFF && hdr[3] == 0xFF {
+			continue
+		}
+
+		// Verify type field matches Land
+		flags := uint32(hdr[0]) | uint32(hdr[1])<<8 | uint32(hdr[2])<<16 | uint32(hdr[3])<<24
+		if flags&objectTypeMask != objectTypeLand {
+			continue
+		}
+
+		// Extract 8-byte name, trimming trailing nulls/0xFF
+		raw := hdr[4:12]
+		nameEnd := 8
+		for nameEnd > 0 && (raw[nameEnd-1] == 0 || raw[nameEnd-1] == 0xFF) {
+			nameEnd--
+		}
+		order[i] = string(raw[:nameEnd])
+	}
+
+	// Log non-empty entries
+	count := 0
+	for _, n := range order {
+		if n != "" {
+			count++
+		}
+	}
+	log.Printf("[Scenario] RequiredObjects: %d land objects in slot order", count)
+	return order
 }
 
 // ---------------------------------------------------------------------------

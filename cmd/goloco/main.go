@@ -145,6 +145,13 @@ func NewGame() *Game {
 		titlePath := filepath.Join(dataDir, "title.dat")
 		log.Printf("[Game] Loading title scenario from: %s", titlePath)
 		if sc, err := scenario.LoadScenarioData(titlePath); err == nil {
+			// Reorder land objects to match the terrain-slot order declared
+			// in the scenario's RequiredObjects chunk before loading tiles,
+			// so that TerrainIndex values resolve to the correct LandObject.
+			if objMgr != nil && len(sc.LandObjectOrder) > 0 {
+				objMgr.ReorderLandObjects(sc.LandObjectOrder)
+				log.Printf("[Game] Reordered land objects to match scenario slot order")
+			}
 			w.LoadFromScenario(sc)
 			log.Printf("[Game] Loaded title scenario: %dx%d map", sc.MapWidth, sc.MapHeight)
 		} else {

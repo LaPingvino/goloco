@@ -20,6 +20,11 @@ type Scenario struct {
 
 	// Packed objects (DAT file references)
 	PackedObjects []PackedObject
+
+	// LandObjectOrder is the list of land-object names in terrain-slot order,
+	// as specified by the RequiredObjects chunk.  Slot 0 = terrain index 0, etc.
+	// Empty entries (0xFF-filled headers) are stored as "".
+	LandObjectOrder []string
 }
 
 // GetTile returns tile at the given coordinates

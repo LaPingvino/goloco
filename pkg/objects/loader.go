@@ -248,6 +248,28 @@ func (m *ObjectManager) GetLandObjectByIndex(index int) *LandObject {
 	return m.LandObjects[index]
 }
 
+// ReorderLandObjects rebuilds the LandObjects slice so that each terrain
+// slot index maps to the LandObject whose name matches order[i].  Slots
+// whose name is "" or whose object was not loaded stay nil.
+//
+// This must be called after LoadAllObjects and after the scenario's
+// RequiredObjects chunk has been parsed to obtain the correct slot order.
+func (m *ObjectManager) ReorderLandObjects(order []string) {
+	reordered := make([]*LandObject, len(order))
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		// Objects map is keyed by upper-case name
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if land, ok := obj.Object.(*LandObject); ok {
+				reordered[i] = land
+			}
+		}
+	}
+	m.LandObjects = reordered
+}
+
 // GetLandSprite returns a sprite from a land object
 func (m *ObjectManager) GetLandSprite(land *LandObject, localIndex int) *SpriteElement {
 	if land == nil || localIndex < 0 || localIndex >= len(land.Sprites) {

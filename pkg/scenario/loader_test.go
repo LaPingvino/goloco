@@ -207,6 +207,144 @@ func TestParseTileElements_terrain_index_water_tile_preserves_index(t *testing.T
 }
 
 // ---------------------------------------------------------------------------
+// parseLandObjectOrder
+// ---------------------------------------------------------------------------
+
+// makeObjectHeader builds a 16-byte ObjectHeader: flags(u32) name[8] checksum(u32).
+func makeObjectHeader(objType uint8, name string) [16]byte {
+	var h [16]byte
+	// flags: type in bits [5:0]
+	h[0] = objType & objectTypeMask
+	// name: copy up to 8 bytes, pad with 0xFF
+	for i := 0; i < 8; i++ {
+		if i < len(name) {
+			h[4+i] = name[i]
+		} else {
+			h[4+i] = 0xFF
+		}
+	}
+	// checksum left as 0 — not checked by parser
+	return h
+}
+
+// makeEmptyHeader returns an all-0xFF 16-byte header (empty slot).
+func makeEmptyHeader() [16]byte {
+	var h [16]byte
+	for i := range h {
+		h[i] = 0xFF
+	}
+	return h
+}
+
+// makeRequiredObjectsBlob builds a minimal RequiredObjects blob large enough
+// to cover the land-object slot range.  Slots before landSlotStart are filled
+// with dummy non-land headers; the land slots are filled from the provided
+// array (nil entries become empty headers).
+func makeRequiredObjectsBlob(landNames []string) []byte {
+	totalSlots := landSlotStart + landSlotCount
+	buf := make([]byte, 0, totalSlots*objectHeaderSize)
+
+	// Fill pre-land slots with empty headers
+	for i := 0; i < landSlotStart; i++ {
+		h := makeEmptyHeader()
+		buf = append(buf, h[:]...)
+	}
+
+	// Fill land slots
+	for i := 0; i < landSlotCount; i++ {
+		if i < len(landNames) && landNames[i] != "" {
+			h := makeObjectHeader(objectTypeLand, landNames[i])
+			buf = append(buf, h[:]...)
+		} else {
+			h := makeEmptyHeader()
+			buf = append(buf, h[:]...)
+		}
+	}
+	return buf
+}
+
+func TestParseLandObjectOrder_basic(t *testing.T) {
+	names := []string{"GRASS1", "SAND1", "", "ROCK1"}
+	blob := makeRequiredObjectsBlob(names)
+	order := parseLandObjectOrder(blob)
+
+	if len(order) != landSlotCount {
+		t.Fatalf("len(order) = %d, want %d", len(order), landSlotCount)
+	}
+	if order[0] != "GRASS1" {
+		t.Errorf("order[0] = %q, want %q", order[0], "GRASS1")
+	}
+	if order[1] != "SAND1" {
+		t.Errorf("order[1] = %q, want %q", order[1], "SAND1")
+	}
+	if order[2] != "" {
+		t.Errorf("order[2] = %q, want empty (empty slot)", order[2])
+	}
+	if order[3] != "ROCK1" {
+		t.Errorf("order[3] = %q, want %q", order[3], "ROCK1")
+	}
+}
+
+func TestParseLandObjectOrder_all_empty(t *testing.T) {
+	blob := makeRequiredObjectsBlob(nil)
+	order := parseLandObjectOrder(blob)
+
+	if len(order) != landSlotCount {
+		t.Fatalf("len(order) = %d, want %d", len(order), landSlotCount)
+	}
+	for i, name := range order {
+		if name != "" {
+			t.Errorf("order[%d] = %q, want empty", i, name)
+		}
+	}
+}
+
+func TestParseLandObjectOrder_wrong_type_ignored(t *testing.T) {
+	// Put a non-land header (type=2, rock object) in land slot 0.
+	// It should not appear in the output because its type doesn't match.
+	totalSlots := landSlotStart + landSlotCount
+	buf := make([]byte, totalSlots*objectHeaderSize)
+	for i := range buf {
+		buf[i] = 0xFF // all empty
+	}
+	// Overwrite slot landSlotStart with a type-2 (rock) header
+	off := landSlotStart * objectHeaderSize
+	h := makeObjectHeader(2, "ROCK1") // type=2, not land
+	copy(buf[off:], h[:])
+
+	order := parseLandObjectOrder(buf)
+	if order[0] != "" {
+		t.Errorf("order[0] = %q, want empty (wrong type should be skipped)", order[0])
+	}
+}
+
+func TestParseLandObjectOrder_truncated_blob(t *testing.T) {
+	// Blob too short to cover any land slots → all empty, no panic.
+	blob := make([]byte, 10)
+	order := parseLandObjectOrder(blob)
+
+	if len(order) != landSlotCount {
+		t.Fatalf("len(order) = %d, want %d", len(order), landSlotCount)
+	}
+	for i, name := range order {
+		if name != "" {
+			t.Errorf("order[%d] = %q, want empty (truncated blob)", i, name)
+		}
+	}
+}
+
+func TestParseLandObjectOrder_name_trimming(t *testing.T) {
+	// Name shorter than 8 bytes; trailing 0xFF bytes must be trimmed.
+	names := []string{"AB"}
+	blob := makeRequiredObjectsBlob(names)
+	order := parseLandObjectOrder(blob)
+
+	if order[0] != "AB" {
+		t.Errorf("order[0] = %q, want %q", order[0], "AB")
+	}
+}
+
+// ---------------------------------------------------------------------------
 // terrain type mapping
 // ---------------------------------------------------------------------------
 
