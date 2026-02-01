@@ -3,22 +3,21 @@ package ui
 import (
 	"image/color"
 
+	"github.com/LaPingvino/goloco/pkg/graphics"
 	"github.com/LaPingvino/goloco/pkg/render"
-	"github.com/LaPingvino/goloco/pkg/sprites"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 // ToolbarButton represents a button in the main toolbar
 type ToolbarButton struct {
-	SpriteID int
-	Tooltip  string
-	X        int
-	Y        int
-	Width    int
-	Height   int
-	Pressed  bool
-	Hovered  bool
+	Tooltip string
+	X       int
+	Y       int
+	Width   int
+	Height  int
+	Pressed bool
+	Hovered bool
 }
 
 // Toolbar represents the main game toolbar
@@ -41,53 +40,32 @@ func NewToolbar(screenWidth int) *Toolbar {
 		Visible: true,
 	}
 
-	// Define toolbar buttons with their sprite IDs
-	// Using construction/UI icons from G1.DAT
-	buttonDefs := []struct {
-		spriteID int
-		tooltip  string
-	}{
-		{sprites.ToolbarZoomIn, "Zoom In"},
-		{sprites.ToolbarZoomOut, "Zoom Out"},
-		{sprites.ToolbarRotate, "Rotate View"},
-		{sprites.ToolbarMap, "Map"},
-		{0, ""}, // separator
-		{sprites.ToolbarTracks, "Build Tracks"},
-		{sprites.ToolbarRoads, "Build Roads"},
-		{sprites.ToolbarAirport, "Build Airports"},
-		{sprites.ToolbarPorts, "Build Ports"},
-		{0, ""}, // separator
-		{sprites.ToolbarVehicles, "Vehicles"},
-		{sprites.ToolbarStations, "Stations"},
-		{sprites.ToolbarTowns, "Towns"},
-		{sprites.ToolbarIndustries, "Industries"},
-		{0, ""}, // separator
-		{sprites.ToolbarLandscaping, "Landscaping"},
-		{sprites.ToolbarTrees, "Trees"},
-		{sprites.ToolbarWater, "Water"},
-		{sprites.ToolbarRemove, "Remove"},
-		{0, ""}, // separator
-		{sprites.ToolbarCompanies, "Companies"},
-		{sprites.ToolbarFinances, "Finances"},
-		{sprites.ToolbarNews, "Messages"},
-		{sprites.ToolbarCamera, "Screenshot"},
+	// Define toolbar buttons.  Real icons come from InterfaceSkin DAT objects
+	// which are not yet loaded; abbreviated text labels are used until then.
+	buttonDefs := []string{
+		"Zoom In", "Zoom Out", "Rotate View", "Map",
+		"", // separator
+		"Build Tracks", "Build Roads", "Build Airports", "Build Ports",
+		"", // separator
+		"Vehicles", "Stations", "Towns", "Industries",
+		"", // separator
+		"Landscaping", "Trees", "Water", "Remove",
+		"", // separator
+		"Companies", "Finances", "Messages", "Screenshot",
 	}
 
 	x := 4
-	for _, def := range buttonDefs {
-		if def.spriteID == 0 {
-			// Separator - just add spacing
-			x += 10
+	for _, tooltip := range buttonDefs {
+		if tooltip == "" {
+			x += 10 // separator
 			continue
 		}
-
 		t.Buttons = append(t.Buttons, ToolbarButton{
-			SpriteID: def.spriteID,
-			Tooltip:  def.tooltip,
-			X:        x,
-			Y:        3,
-			Width:    26,
-			Height:   26,
+			Tooltip: tooltip,
+			X:       x,
+			Y:       3,
+			Width:   26,
+			Height:  26,
 		})
 		x += 28
 	}
@@ -101,26 +79,39 @@ func (t *Toolbar) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 		return
 	}
 
-	// Draw toolbar background with slight gradient effect
-	for y := t.Y; y < t.Y+t.Height; y++ {
-		shade := uint8(70 - (y-t.Y)/2)
-		bgColor := color.RGBA{shade, shade, shade, 245}
-		for x := t.X; x < t.X+t.Width; x++ {
-			screen.Set(x, y, bgColor)
-		}
-	}
+	// Use a drawing context so palette indices can be used consistently.
+	dc := graphics.NewDrawingContext(screen)
 
-	// Draw border
-	borderColor := color.RGBA{40, 40, 40, 255}
-	for x := t.X; x < t.X+t.Width; x++ {
-		screen.Set(x, t.Y+t.Height-1, borderColor)
+	// Background: prefer palette-aware fill; fallback to gradient when no palette.
+	if graphics.IsGlobalPaletteLoaded() {
+		target := color.RGBA{70, 70, 70, 255}
+		idx := graphics.MatchPaletteIndex(target)
+		_ = dc.FillRect(int16(t.X), int16(t.Y), int16(t.Width), int16(t.Height), idx)
+
+		// Border line at bottom
+		borderIdx := graphics.MatchPaletteIndex(color.RGBA{40, 40, 40, 255})
+		_ = dc.FillRect(int16(t.X), int16(t.Y+t.Height-1), int16(t.Width), 1, borderIdx)
+	} else {
+		// Fallback: slight gradient effect for development without real palette
+		for y := t.Y; y < t.Y+t.Height; y++ {
+			shade := uint8(70 - (y-t.Y)/2)
+			bgColor := color.RGBA{shade, shade, shade, 245}
+			for x := t.X; x < t.X+t.Width; x++ {
+				screen.Set(x, y, bgColor)
+			}
+		}
+		// fallback bottom border
+		borderColor := color.RGBA{40, 40, 40, 255}
+		for x := t.X; x < t.X+t.Width; x++ {
+			screen.Set(x, t.Y+t.Height-1, borderColor)
+		}
 	}
 
 	// Draw buttons
 	var hoveredTooltip string
 	var tooltipX int
 	for i := range t.Buttons {
-		t.drawButton(screen, renderer, &t.Buttons[i])
+		t.drawButton(screen, &t.Buttons[i])
 		if t.Buttons[i].Hovered && t.Buttons[i].Tooltip != "" {
 			hoveredTooltip = t.Buttons[i].Tooltip
 			tooltipX = t.Buttons[i].X
@@ -134,58 +125,57 @@ func (t *Toolbar) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 	}
 }
 
-func (t *Toolbar) drawButton(screen *ebiten.Image, renderer *render.Renderer, btn *ToolbarButton) {
-	// Button background
-	var bgColor color.RGBA
+func (t *Toolbar) drawButton(screen *ebiten.Image, btn *ToolbarButton) {
+	// Create a drawing context for palette-aware fills
+	dc := graphics.NewDrawingContext(screen)
+
+	// Button background palette targets
+	normalTarget := color.RGBA{70, 70, 70, 255}
+	hoverTarget := color.RGBA{100, 100, 100, 255}
+	pressedTarget := color.RGBA{80, 80, 80, 255}
+
+	// Map targets to palette indices (or use defaults via matching)
+	normalIdx := graphics.MatchPaletteIndex(normalTarget)
+	hoverIdx := graphics.MatchPaletteIndex(hoverTarget)
+	pressedIdx := graphics.MatchPaletteIndex(pressedTarget)
+
+	var bgIdx uint8
 	if btn.Pressed {
-		bgColor = color.RGBA{80, 80, 80, 255}
+		bgIdx = pressedIdx
 	} else if btn.Hovered {
-		bgColor = color.RGBA{100, 100, 100, 255}
+		bgIdx = hoverIdx
 	} else {
-		bgColor = color.RGBA{70, 70, 70, 255}
+		bgIdx = normalIdx
 	}
 
-	// Draw button background
-	for y := btn.Y; y < btn.Y+btn.Height; y++ {
-		for x := btn.X; x < btn.X+btn.Width; x++ {
-			screen.Set(x, y, bgColor)
+	// Fill the button background using palette index
+	_ = dc.FillRect(int16(btn.X), int16(btn.Y), int16(btn.Width), int16(btn.Height), bgIdx)
+
+	// Draw button label text (centered).
+	// Real toolbar icons come from InterfaceSkin DAT objects which are not
+	// yet loaded; use abbreviated text labels until then.
+	if btn.Tooltip != "" {
+		label := btn.Tooltip
+		if len(label) > 4 {
+			label = label[:4]
 		}
+		// Center the short label in the button
+		labelX := btn.X + (btn.Width-len(label)*6)/2
+		labelY := btn.Y + btn.Height/2 - 4
+		ebitenutil.DebugPrintAt(screen, label, labelX, labelY)
 	}
 
-	// Draw sprite if available
-	if renderer != nil && renderer.G1 != nil {
-		if img := renderer.GetSprite(btn.SpriteID); img != nil {
-			w, h, xOff, yOff, ok := renderer.GetSpriteInfo(btn.SpriteID)
-			if ok {
-				// Center sprite in button
-				drawX := float64(btn.X) + float64(btn.Width-int(w))/2 + float64(xOff)
-				drawY := float64(btn.Y) + float64(btn.Height-int(h))/2 + float64(yOff)
-
-				op := &ebiten.DrawImageOptions{}
-				op.GeoM.Translate(drawX, drawY)
-				screen.DrawImage(img, op)
-			}
-		}
-	}
-
-	// Draw button border
-	borderLight := color.RGBA{120, 120, 120, 255}
-	borderDark := color.RGBA{40, 40, 40, 255}
+	// Draw button border using palette indices for light/dark edges
+	borderLightIdx := graphics.MatchPaletteIndex(color.RGBA{120, 120, 120, 255})
+	borderDarkIdx := graphics.MatchPaletteIndex(color.RGBA{40, 40, 40, 255})
 
 	// Top and left (light)
-	for x := btn.X; x < btn.X+btn.Width; x++ {
-		screen.Set(x, btn.Y, borderLight)
-	}
-	for y := btn.Y; y < btn.Y+btn.Height; y++ {
-		screen.Set(btn.X, y, borderLight)
-	}
+	_ = dc.FillRect(int16(btn.X), int16(btn.Y), int16(btn.Width), 1, borderLightIdx)
+	_ = dc.FillRect(int16(btn.X), int16(btn.Y), 1, int16(btn.Height), borderLightIdx)
+
 	// Bottom and right (dark)
-	for x := btn.X; x < btn.X+btn.Width; x++ {
-		screen.Set(x, btn.Y+btn.Height-1, borderDark)
-	}
-	for y := btn.Y; y < btn.Y+btn.Height; y++ {
-		screen.Set(btn.X+btn.Width-1, y, borderDark)
-	}
+	_ = dc.FillRect(int16(btn.X), int16(btn.Y+btn.Height-1), int16(btn.Width), 1, borderDarkIdx)
+	_ = dc.FillRect(int16(btn.X+btn.Width-1), int16(btn.Y), 1, int16(btn.Height), borderDarkIdx)
 }
 
 // HandleClick checks if a click hit any button and returns the index, or -1

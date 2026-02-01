@@ -40,6 +40,9 @@ type World struct {
 	// camera offset in pixels
 	camX float64
 	camY float64
+	// when true, Draw() does not recentre the camera on the player —
+	// an external caller (e.g. title sequence) is driving it via SetCamera.
+	externalCamera bool
 	// player tile coords
 	playerX int
 	playerY int
@@ -131,6 +134,21 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 
 	w.playerX, w.playerY = w.width/2, w.height/2
 	w.playerPX, w.playerPY = w.tileToScreen(w.playerX, w.playerY)
+}
+
+// SetCamera overrides the camera position directly (used by the title
+// sequence to pan across the map).  The coordinates are in tile space;
+// they are converted to screen pixels using the same projection as
+// tileToScreen so the camera tracks smoothly.
+func (w *World) SetCamera(tileX, tileY float64) {
+	w.externalCamera = true
+	// Convert tile coords to screen pixel position using the same
+	// projection as tileToScreen, then subtract half-screen so the
+	// target tile lands at the centre of the viewport.
+	screenX := (tileX-tileY)*float64(w.tileW)/2 + float64(w.width*w.tileW/4)
+	screenY := (tileX+tileY)*float64(w.tileH)/2 + 50
+	w.camX = screenX - 400 + float64(w.tileW)/2 // 400 = screenWidth/2
+	w.camY = screenY - 300 + float64(w.tileH)/2 // 300 = screenHeight/2
 }
 
 // ZoomIn is a stub. Not yet implemented.
@@ -270,9 +288,12 @@ func (w *World) createDiamondTile(tt TileType) *ebiten.Image {
 func (w *World) Draw(screen *ebiten.Image) {
 	sw, sh := screen.Size()
 
-	// Center camera on player
-	w.camX = w.playerPX - float64(sw)/2 + float64(w.tileW)/2
-	w.camY = w.playerPY - float64(sh)/2 + float64(w.tileH)/2
+	// Centre camera on player unless an external source (title sequence)
+	// is driving it.
+	if !w.externalCamera {
+		w.camX = w.playerPX - float64(sw)/2 + float64(w.tileW)/2
+		w.camY = w.playerPY - float64(sh)/2 + float64(w.tileH)/2
+	}
 
 	// Draw tiles in depth order (back to front)
 	for depth := 0; depth < w.width+w.height; depth++ {
@@ -287,15 +308,18 @@ func (w *World) Draw(screen *ebiten.Image) {
 			drawX := screenX - w.camX
 			drawY := screenY - w.camY
 
-			// Try to draw from the LandObject sprite for this terrain index.
-			// Sprite 0 in a LandObject is the flat terrain tile (slope 0).
+			// Draw the flat terrain sprite from the LandObject for this tile's
+			// terrain index.  The flat sprite is NOT at index 0 — it sits at
+			// TerrainFlatImageOffset (57) within the image table, which
+			// GetFlatTerrainSpriteIndex() computes correctly.
 			// OpenLoco reference: Paint/PaintSurface.cpp paintSurface()
 			//   landObj->image + variation + displaySlope
 			if w.renderer != nil && w.renderer.ObjMgr != nil {
 				land := w.renderer.ObjMgr.GetLandObjectByIndex(int(t.terrainIndex))
 				if land != nil {
-					if img := w.renderer.GetObjectSprite(land, 0); img != nil {
-						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, 0)
+					spriteIdx := land.GetFlatTerrainSpriteIndex(0)
+					if img := w.renderer.GetObjectSprite(land, spriteIdx); img != nil {
+						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, spriteIdx)
 						if ok {
 							op := &ebiten.DrawImageOptions{}
 							op.GeoM.Translate(math.Floor(drawX+float64(xOff)), math.Floor(drawY+float64(yOff)))

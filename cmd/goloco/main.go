@@ -226,9 +226,11 @@ func (g *Game) Update() error {
 		g.w.ZoomOut()
 	}
 
-	// Advance title sequence camera animation
+	// Advance title sequence camera animation and feed position into world
 	if g.titleSeq != nil && g.titleSeq.IsRunning() {
 		g.titleSeq.Update()
+		camX, camY, _ := g.titleSeq.GetCameraPosition()
+		g.w.SetCamera(camX, camY)
 	}
 
 	// World update handles arrow keys, mouse edge pan, and scroll zoom
