@@ -218,12 +218,19 @@ func (g *Game) Update() error {
 		g.windowMgr.StopDrag()
 	}
 
-	// Handle zoom with +/- keys (scroll wheel handled in world.Update)
+	// Zoom: keyboard +/- and mouse scroll wheel
 	if inpututil.IsKeyJustPressed(ebiten.KeyEqual) || inpututil.IsKeyJustPressed(ebiten.KeyKPAdd) {
 		g.w.ZoomIn()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyMinus) || inpututil.IsKeyJustPressed(ebiten.KeyKPSubtract) {
 		g.w.ZoomOut()
+	}
+	if _, dy := ebiten.Wheel(); dy != 0 {
+		if dy > 0 {
+			g.w.ZoomIn()
+		} else {
+			g.w.ZoomOut()
+		}
 	}
 
 	// Advance title sequence camera animation and feed position into world
@@ -233,7 +240,6 @@ func (g *Game) Update() error {
 		g.w.SetCamera(camX, camY)
 	}
 
-	// World update handles arrow keys, mouse edge pan, and scroll zoom
 	g.w.Update()
 	return nil
 }
@@ -241,6 +247,16 @@ func (g *Game) Update() error {
 func (g *Game) handleToolbarButton(idx int) {
 	btn := &g.toolbar.Buttons[idx]
 	tooltip := btn.Tooltip
+
+	// Zoom buttons act directly on the world — no window needed.
+	switch tooltip {
+	case "Zoom In":
+		g.w.ZoomIn()
+		return
+	case "Zoom Out":
+		g.w.ZoomOut()
+		return
+	}
 
 	// Create appropriate window based on button
 	var win *ui.SimpleWindow
