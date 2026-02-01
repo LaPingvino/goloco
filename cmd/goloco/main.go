@@ -190,22 +190,30 @@ func NewGame() *Game {
 }
 
 func (g *Game) Update() error {
-	// Track mouse position
 	g.mouseX, g.mouseY = ebiten.CursorPosition()
+
+	if g.inTitleScreen {
+		// Title screen: advance camera pan, handle title menu clicks only
+		if g.titleSeq != nil && g.titleSeq.IsRunning() {
+			g.titleSeq.Update()
+			camX, camY, _ := g.titleSeq.GetCameraPosition()
+			g.w.SetCamera(camX, camY)
+		}
+		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			g.handleTitleMenuClick(g.mouseX, g.mouseY)
+		}
+		return nil
+	}
+
+	// --- Gameplay mode ---
 	g.toolbar.UpdateHover(g.mouseX, g.mouseY)
 
-	// Handle window dragging
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 	}
-
-	// Handle mouse clicks
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		// Check windows first
 		if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
-			// Then check toolbar
 			if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
-				log.Printf("Toolbar button %d clicked: %s", btnIdx, g.toolbar.Buttons[btnIdx].Tooltip)
 				g.toolbar.Buttons[btnIdx].Pressed = true
 				g.handleToolbarButton(btnIdx)
 			}
@@ -233,15 +241,46 @@ func (g *Game) Update() error {
 		}
 	}
 
-	// Advance title sequence camera animation and feed position into world
-	if g.titleSeq != nil && g.titleSeq.IsRunning() {
-		g.titleSeq.Update()
-		camX, camY, _ := g.titleSeq.GetCameraPosition()
-		g.w.SetCamera(camX, camY)
-	}
-
 	g.w.Update()
 	return nil
+}
+
+// Title menu layout — matches OpenLoco TitleMenu.cpp constants.
+const (
+	titleBtnSize   = 74
+	titleBtnCount  = 4
+	titleMenuW     = titleBtnSize * titleBtnCount // 296
+	titleMenuH     = titleBtnSize
+	titleMenuMargin = 25 // pixels from bottom of screen
+)
+
+var titleButtons = [titleBtnCount]string{"New Game", "Load Game", "Tutorial", "Editor"}
+
+func (g *Game) handleTitleMenuClick(mx, my int) {
+	menuX := (screenWidth - titleMenuW) / 2
+	menuY := screenHeight - titleMenuH - titleMenuMargin
+
+	// Which button was hit?
+	relX := mx - menuX
+	if relX < 0 || relX >= titleMenuW || my < menuY || my >= menuY+titleMenuH {
+		return
+	}
+	btnIdx := relX / titleBtnSize
+
+	switch btnIdx {
+	case 0: // New Game — stop title sequence, enter gameplay
+		if g.titleSeq != nil {
+			g.titleSeq.Stop()
+		}
+		g.inTitleScreen = false
+		log.Println("[Game] Title menu: New Game selected")
+	case 1: // Load Game — stub
+		log.Println("[Game] Title menu: Load Game (not yet implemented)")
+	case 2: // Tutorial — stub
+		log.Println("[Game] Title menu: Tutorial (not yet implemented)")
+	case 3: // Scenario Editor — stub
+		log.Println("[Game] Title menu: Scenario Editor (not yet implemented)")
+	}
 }
 
 func (g *Game) handleToolbarButton(idx int) {
@@ -371,26 +410,62 @@ func (g *Game) handleToolbarButton(idx int) {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Clear screen with sky color
 	screen.Fill(color.RGBA{135, 206, 235, 255})
 
-	// Draw world
 	g.r.SetScreen(screen)
 	g.w.Draw(screen)
 
-	// Draw toolbar
-	g.toolbar.Draw(screen, g.r)
+	if g.inTitleScreen {
+		g.drawTitleMenu(screen)
+		return
+	}
 
-	// Draw windows
+	// --- Gameplay HUD ---
+	g.toolbar.Draw(screen, g.r)
 	g.windowMgr.Draw(screen, g.r)
 
-	// Draw status bar at bottom
 	statusY := screenHeight - 20
 	ebitenutil.DrawRect(screen, 0, float64(statusY), float64(screenWidth), 20, color.RGBA{50, 50, 50, 240})
-
-	// Status text
-	statusText := fmt.Sprintf("GoLoco | Mouse: %d,%d | WASD to move | Using Locomotion sprites", g.mouseX, g.mouseY)
+	statusText := fmt.Sprintf("GoLoco | Mouse: %d,%d | Scroll to zoom", g.mouseX, g.mouseY)
 	ebitenutil.DebugPrintAt(screen, statusText, 4, statusY+4)
+}
+
+func (g *Game) drawTitleMenu(screen *ebiten.Image) {
+	menuX := (screenWidth - titleMenuW) / 2
+	menuY := screenHeight - titleMenuH - titleMenuMargin
+
+	for i := 0; i < titleBtnCount; i++ {
+		bx := menuX + i*titleBtnSize
+		by := menuY
+
+		// Determine hover
+		hovered := g.mouseX >= bx && g.mouseX < bx+titleBtnSize &&
+			g.mouseY >= by && g.mouseY < by+titleBtnSize
+
+		// Button background
+		var bgColor color.RGBA
+		if hovered {
+			bgColor = color.RGBA{80, 120, 80, 220}
+		} else {
+			bgColor = color.RGBA{50, 90, 50, 200}
+		}
+		ebitenutil.DrawRect(screen, float64(bx), float64(by), float64(titleBtnSize), float64(titleBtnSize), bgColor)
+
+		// 3D border: light top+left, dark bottom+right
+		light := color.RGBA{100, 160, 100, 255}
+		dark := color.RGBA{30, 60, 30, 255}
+		ebitenutil.DrawRect(screen, float64(bx), float64(by), float64(titleBtnSize), 2, light)
+		ebitenutil.DrawRect(screen, float64(bx), float64(by), 2, float64(titleBtnSize), light)
+		ebitenutil.DrawRect(screen, float64(bx), float64(by+titleBtnSize-2), float64(titleBtnSize), 2, dark)
+		ebitenutil.DrawRect(screen, float64(bx+titleBtnSize-2), float64(by), 2, float64(titleBtnSize), dark)
+
+		// Label centred in button
+		label := titleButtons[i]
+		labelW := len(label) * 6
+		labelX := bx + (titleBtnSize-labelW)/2
+		labelY := by + titleBtnSize/2 - 4
+		ebitenutil.DebugPrintAt(screen, label, labelX, labelY)
+	}
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
