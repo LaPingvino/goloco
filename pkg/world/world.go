@@ -64,8 +64,8 @@ func NewWorld(r *render.Renderer) *World {
 		renderer:  r,
 		width:     20,
 		height:    15,
-		tileW:     64, // standard isometric tile width (matches G1 terrain sprites)
-		tileH:     16, // standard isometric tile height (matches G1 terrain sprites)
+		tileW:     64, // standard isometric tile width
+		tileH:     32, // standard isometric tile height (64×32 = 2:1 ratio)
 		tiles:     make([][]tile, 15),
 		tileCache: make(map[TileType]*ebiten.Image),
 		playerX:   10,
@@ -308,18 +308,17 @@ func (w *World) Draw(screen *ebiten.Image) {
 			drawX := screenX - w.camX
 			drawY := screenY - w.camY
 
-			// Draw the flat terrain sprite from the LandObject for this tile's
-			// terrain index.  The flat sprite is NOT at index 0 — it sits at
-			// TerrainFlatImageOffset (57) within the image table, which
-			// GetFlatTerrainSpriteIndex() computes correctly.
+			// Draw the base flat terrain sprite from this tile's LandObject.
+			// The zoom-0 flat terrain tile is at a fixed offset within the
+			// image table regardless of growth stage or variation count.
 			// OpenLoco reference: Paint/PaintSurface.cpp paintSurface()
 			//   landObj->image + variation + displaySlope
 			if w.renderer != nil && w.renderer.ObjMgr != nil {
 				land := w.renderer.ObjMgr.GetLandObjectByIndex(int(t.terrainIndex))
 				if land != nil {
-					spriteIdx := land.GetFlatTerrainSpriteIndex(0)
-					if img := w.renderer.GetObjectSprite(land, spriteIdx); img != nil {
-						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, spriteIdx)
+					const flatSpriteIdx = 57 // objects.TerrainFlatImageOffset — zoom-0 flat terrain
+					if img := w.renderer.GetObjectSprite(land, flatSpriteIdx); img != nil {
+						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, flatSpriteIdx)
 						if ok {
 							op := &ebiten.DrawImageOptions{}
 							op.GeoM.Translate(math.Floor(drawX+float64(xOff)), math.Floor(drawY+float64(yOff)))
