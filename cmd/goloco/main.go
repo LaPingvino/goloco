@@ -8,8 +8,12 @@ import (
 	"path/filepath"
 
 	"github.com/LaPingvino/goloco/pkg/assets"
+	"github.com/LaPingvino/goloco/pkg/audio"
+	"github.com/LaPingvino/goloco/pkg/graphics"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/render"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+	"github.com/LaPingvino/goloco/pkg/title"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/world"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -23,13 +27,17 @@ const (
 )
 
 type Game struct {
-	w         *world.World
-	r         *render.Renderer
-	toolbar   *ui.Toolbar
-	windowMgr *ui.SimpleWindowManager
-	objMgr    *objects.ObjectManager
-	mouseX    int
-	mouseY    int
+	w             *world.World
+	r             *render.Renderer
+	toolbar       *ui.Toolbar
+	windowMgr     *ui.SimpleWindowManager
+	objMgr        *objects.ObjectManager
+	audioMgr      *audio.Manager
+	titleSeq      *title.Sequence
+	mouseX        int
+	mouseY        int
+	dataDir       string
+	inTitleScreen bool
 }
 
 func findLocoDataDir() string {
@@ -51,13 +59,20 @@ func findLocoDataDir() string {
 }
 
 func NewGame() *Game {
+	log.Println("[Game] Creating new game...")
+
 	r := render.NewRenderer()
+
+	// Initialize audio manager
+	log.Println("[Game] Creating audio manager...")
+	audioMgr := audio.NewManager()
 
 	// Try to load real Locomotion G1.DAT sprites
 	dataDir := findLocoDataDir()
 	var objMgr *objects.ObjectManager
 
 	if dataDir != "" {
+		log.Printf("[Game] Found Locomotion data directory: %s", dataDir)
 		g1Path := filepath.Join(dataDir, "g1.DAT")
 		log.Printf("Loading G1 sprites from: %s", g1Path)
 
@@ -67,6 +82,21 @@ func NewGame() *Game {
 		} else {
 			log.Printf("Loaded %d sprites from G1.DAT", g1.GetSpriteCount())
 			r.G1 = g1
+
+			// Populate the UI drawing palette from the loaded G1 so window
+			// backgrounds, buttons and other widgets more closely match the
+			// original Locomotion look-and-feel.
+			//
+			// Set the package-level global palette so DrawingContext and UI
+			// widgets can use the game's palette everywhere. As a fallback,
+			// also attempt to copy the palette into a temporary DrawingContext.
+			if graphics.SetGlobalPalette(r.G1) {
+				log.Printf("Applied G1 palette to UI drawing context")
+			} else {
+				// Fallback: still try to copy into a temporary DC for local use
+				var tmpDC graphics.DrawingContext
+				tmpDC.UseRendererPalette(r.G1)
+			}
 		}
 
 		// Load objects from ObjData
@@ -74,11 +104,20 @@ func NewGame() *Game {
 		if _, err := os.Stat(objDataDir); err == nil {
 			log.Printf("Loading objects from: %s", objDataDir)
 			objMgr = objects.NewObjectManager(objDataDir)
+
+			// Set base sprite index to after G1 sprites
+			if g1 != nil {
+				objMgr.SetBaseSpriteIndex(uint32(g1.GetSpriteCount()))
+			}
+
 			if err := objMgr.LoadAllObjects(); err != nil {
 				log.Printf("Failed to load objects: %v", err)
 			} else {
-				log.Printf("Loaded %d vehicles", len(objMgr.Vehicles))
+				log.Printf("Loaded %d vehicles, %d land objects", len(objMgr.Vehicles), len(objMgr.LandObjects))
 			}
+
+			// Connect object manager to renderer for sprite access
+			r.ObjMgr = objMgr
 		}
 	} else {
 		log.Printf("Locomotion data directory not found")
@@ -101,7 +140,46 @@ func NewGame() *Game {
 	toolbar := ui.NewToolbar(screenWidth)
 	windowMgr := ui.NewSimpleWindowManager()
 
-	return &Game{w: w, r: r, toolbar: toolbar, windowMgr: windowMgr, objMgr: objMgr}
+	// Try to load the title scenario
+	if dataDir != "" {
+		titlePath := filepath.Join(dataDir, "title.dat")
+		log.Printf("[Game] Loading title scenario from: %s", titlePath)
+		if sc, err := scenario.LoadScenarioData(titlePath); err == nil {
+			w.LoadFromScenario(sc)
+			log.Printf("[Game] Loaded title scenario: %dx%d map", sc.MapWidth, sc.MapHeight)
+		} else {
+			log.Printf("[Game] Could not load title scenario: %v", err)
+		}
+	}
+
+	// Create title sequence
+	log.Println("[Game] Creating title sequence...")
+	titleSeq := title.NewSequence(audioMgr)
+	titleSeq.Start(64, 64) // Default map size for title animation
+
+	// Start playing title music
+	if dataDir != "" {
+		musicPath := filepath.Join(dataDir, "css5.dat")
+		log.Printf("[Game] Loading music from: %s", musicPath)
+		if err := audioMgr.LoadAndPlayMusic(musicPath, true); err != nil {
+			log.Printf("[Game] WARNING: Could not load music: %v", err)
+		} else {
+			log.Println("[Game] Music loaded and playing!")
+		}
+	}
+
+	log.Println("[Game] Game initialization complete")
+	return &Game{
+		w:             w,
+		r:             r,
+		toolbar:       toolbar,
+		windowMgr:     windowMgr,
+		objMgr:        objMgr,
+		audioMgr:      audioMgr,
+		titleSeq:      titleSeq,
+		dataDir:       dataDir,
+		inTitleScreen: true,
+	}
 }
 
 func (g *Game) Update() error {
@@ -133,25 +211,20 @@ func (g *Game) Update() error {
 		g.windowMgr.StopDrag()
 	}
 
-	// Handle keyboard input for movement
-	var dx, dy int
-	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) || ebiten.IsKeyPressed(ebiten.KeyW) {
-		dy = -1
+	// Handle zoom with +/- keys (scroll wheel handled in world.Update)
+	if inpututil.IsKeyJustPressed(ebiten.KeyEqual) || inpututil.IsKeyJustPressed(ebiten.KeyKPAdd) {
+		g.w.ZoomIn()
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) || ebiten.IsKeyPressed(ebiten.KeyS) {
-		dy = 1
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
-		dx = -1
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) || ebiten.IsKeyPressed(ebiten.KeyD) {
-		dx = 1
+	if inpututil.IsKeyJustPressed(ebiten.KeyMinus) || inpututil.IsKeyJustPressed(ebiten.KeyKPSubtract) {
+		g.w.ZoomOut()
 	}
 
-	if dx != 0 || dy != 0 {
-		g.w.HandleInput(dx, dy)
+	// Advance title sequence camera animation
+	if g.titleSeq != nil && g.titleSeq.IsRunning() {
+		g.titleSeq.Update()
 	}
 
+	// World update handles arrow keys, mouse edge pan, and scroll zoom
 	g.w.Update()
 	return nil
 }
@@ -249,14 +322,15 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Map":
 		win = ui.NewSimpleWindow("Map", 200, 80, 256, 256)
 		win.DrawContent = func(screen *ebiten.Image, x, y, w, h int, r *render.Renderer) {
-			// Draw mini-map placeholder
-			for py := y; py < y+h && py < y+200; py++ {
-				for px := x; px < x+w && px < x+200; px++ {
-					// Simple terrain representation
-					c := color.RGBA{34, 139, 34, 255} // Green
-					screen.Set(px, py, c)
-				}
+			drawH := h
+			if drawH > 200 {
+				drawH = 200
 			}
+			drawW := w
+			if drawW > 200 {
+				drawW = 200
+			}
+			ebitenutil.DrawRect(screen, float64(x), float64(y), float64(drawW), float64(drawH), color.RGBA{34, 139, 34, 255})
 		}
 	default:
 		// Generic window for other buttons
@@ -287,11 +361,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Draw status bar at bottom
 	statusY := screenHeight - 20
-	for x := 0; x < screenWidth; x++ {
-		for y := statusY; y < screenHeight; y++ {
-			screen.Set(x, y, color.RGBA{50, 50, 50, 240})
-		}
-	}
+	ebitenutil.DrawRect(screen, 0, float64(statusY), float64(screenWidth), 20, color.RGBA{50, 50, 50, 240})
 
 	// Status text
 	statusText := fmt.Sprintf("GoLoco | Mouse: %d,%d | WASD to move | Using Locomotion sprites", g.mouseX, g.mouseY)

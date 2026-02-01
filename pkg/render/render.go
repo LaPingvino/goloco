@@ -86,17 +86,14 @@ func (r *Renderer) GetSpriteInfo(index int) (width, height, xOff, yOff int16, ok
 	return elem.Width, elem.Height, elem.XOffset, elem.YOffset, true
 }
 
-// Clear clears the renderer's screen surface. Stub — does nothing.
+// Clear fills the screen with transparent black (palette index 0).
 //
 // OpenLoco reference: src/OpenLoco/src/Graphics/SoftwareDrawingContext.cpp
 //   SoftwareDrawingContext::clear(uint32_t fill)
-//   SoftwareDrawingContext::clearSingle(uint8_t paletteId)
-//
-// In OpenLoco, clear() fills the entire back-buffer with a single palette
-// index (typically 0 / transparent black) before each frame is drawn.
-// Implement by calling Screen.Fill() or equivalent once Screen is non-nil.
 func (r *Renderer) Clear() {
-	log.Println("[Render] Clear: stub — not yet implemented")
+	if r.Screen != nil {
+		r.Screen.Fill(color.RGBA{0, 0, 0, 0})
+	}
 }
 
 // GetObjectSprite returns a decoded sprite from a land object
