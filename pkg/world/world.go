@@ -1,11 +1,14 @@
 package world
 
 import (
+	"image/color"
+	"log"
+	"math"
+
 	"github.com/LaPingvino/goloco/pkg/render"
+	"github.com/LaPingvino/goloco/pkg/scenario"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"image/color"
-	"math"
 )
 
 // G1 sprite indices for terrain (from OpenLoco ImageIds.h)
@@ -95,6 +98,60 @@ func (w *World) tileToScreen(tileX, tileY int) (float64, float64) {
 	screenX := float64((tileX-tileY)*w.tileW/2) + float64(w.width*w.tileW/4)
 	screenY := float64((tileX+tileY)*w.tileH/2) + 50 // 50px top margin
 	return screenX, screenY
+}
+
+func (w *World) LoadFromScenario(sc *scenario.Scenario) {
+	if sc == nil || sc.Tiles == nil {
+		return
+	}
+	w.width = sc.MapWidth
+	w.height = sc.MapHeight
+	w.tiles = make([][]TileType, w.height)
+	for y := 0; y < w.height; y++ {
+		w.tiles[y] = make([]TileType, w.width)
+		for x := 0; x < w.width; x++ {
+			tile := sc.GetTile(x, y)
+			if tile == nil {
+				w.tiles[y][x] = TileGrass
+				continue
+			}
+
+			switch tile.Surface {
+			case scenario.SurfaceWater:
+				w.tiles[y][x] = TileWater
+			case scenario.SurfaceDirt, scenario.SurfaceSand, scenario.SurfaceRock:
+				w.tiles[y][x] = TileDirt
+			default:
+				w.tiles[y][x] = TileGrass
+			}
+		}
+	}
+
+	w.playerX, w.playerY = w.width/2, w.height/2
+	w.playerPX, w.playerPY = w.tileToScreen(w.playerX, w.playerY)
+}
+
+// ZoomIn is a stub. Not yet implemented.
+//
+// OpenLoco reference: src/OpenLoco/src/Ui/Window.cpp
+//   Window::viewportZoomIn(bool toCursor)
+//   Window::viewportZoomSet(int8_t zoomLevel, bool toCursor)
+//
+// In OpenLoco the zoom level is clamped per-viewport and the viewport
+// position is re-centred (optionally on the cursor).  goloco will need
+// a zoom field on World (or a shared Viewport struct) and the
+// tileToScreen projection updated accordingly.
+func (w *World) ZoomIn() {
+	log.Println("[World] ZoomIn: stub — not yet implemented")
+}
+
+// ZoomOut is a stub. Not yet implemented.
+//
+// OpenLoco reference: src/OpenLoco/src/Ui/Window.cpp
+//   Window::viewportZoomOut(bool toCursor)
+//   Window::viewportZoomSet(int8_t zoomLevel, bool toCursor)
+func (w *World) ZoomOut() {
+	log.Println("[World] ZoomOut: stub — not yet implemented")
 }
 
 func (w *World) Update() {

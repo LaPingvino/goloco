@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"log"
+
 	"github.com/LaPingvino/goloco/pkg/gfx"
 	"github.com/LaPingvino/goloco/pkg/graphics"
 )
@@ -48,12 +50,12 @@ const (
 	WidgetFlagClosable    WidgetFlags = 1 << 7
 )
 
-// RectInsetFlags for FillRectInset operations
+// RectInsetFlags for FillRectInset operations (re-exported from graphics package)
 const (
-	RectInsetNone         = 0
-	RectInsetBorder       = 1 << 0
-	RectInsetSecondary    = 1 << 1
-	RectInsetTransparent  = 1 << 2
+	RectInsetNone        = graphics.RectInsetNone
+	RectInsetBorder      = graphics.RectInsetBorder
+	RectInsetSecondary   = graphics.RectInsetSecondary
+	RectInsetTransparent = graphics.RectInsetTransparent
 )
 
 // WindowColour represents a colour scheme for a window
@@ -76,6 +78,7 @@ const (
 	WindowTypeToolbar
 	WindowTypeDropdown
 	WindowTypeTooltip
+	WindowTypeTitleMenu
 )
 
 // WindowNumber is a unique identifier for a window instance
@@ -85,28 +88,28 @@ type WindowNumber uint16
 type WindowFlags uint32
 
 const (
-	WindowFlagNone        WindowFlags = 0
-	WindowFlagStickToBack WindowFlags = 1 << 0
+	WindowFlagNone         WindowFlags = 0
+	WindowFlagStickToBack  WindowFlags = 1 << 0
 	WindowFlagStickToFront WindowFlags = 1 << 1
-	WindowFlagResizable   WindowFlags = 1 << 2
+	WindowFlagResizable    WindowFlags = 1 << 2
 	WindowFlagNoBackground WindowFlags = 1 << 3
-	WindowFlagTransparent WindowFlags = 1 << 4
-	WindowFlagNoAutoClose WindowFlags = 1 << 5
+	WindowFlagTransparent  WindowFlags = 1 << 4
+	WindowFlagNoAutoClose  WindowFlags = 1 << 5
 )
 
 // Widget represents a UI element within a window
 type Widget struct {
-	Type     WidgetType
-	Index    WidgetIndex
-	X        int16
-	Y        int16
-	Width    int16
-	Height   int16
-	Colour   gfx.AdvancedColor
-	Content  uint32 // for image/string IDs
-	Text     string
-	Flags    WidgetFlags
-	Tooltip  string
+	Type    WidgetType
+	Index   WidgetIndex
+	X       int16
+	Y       int16
+	Width   int16
+	Height  int16
+	Colour  gfx.AdvancedColor
+	Content uint32 // for image/string IDs
+	Text    string
+	Flags   WidgetFlags
+	Tooltip string
 
 	// State
 	Activated bool
@@ -177,23 +180,23 @@ func (w *Widget) drawLabel(window *Window, dc *DrawingContext) {
 
 // Window represents a UI window
 type Window struct {
-	Type     WindowType
-	Number   WindowNumber
-	X        int16
-	Y        int16
-	Width    int16
-	Height   int16
-	MinWidth int16
+	Type      WindowType
+	Number    WindowNumber
+	X         int16
+	Y         int16
+	Width     int16
+	Height    int16
+	MinWidth  int16
 	MinHeight int16
-	MaxWidth int16
+	MaxWidth  int16
 	MaxHeight int16
 
 	Flags   WindowFlags
 	Colours [4]gfx.AdvancedColor
 
 	// Widgets
-	Widgets         []Widget
-	DisabledWidgets uint32 // bitfield
+	Widgets          []Widget
+	DisabledWidgets  uint32 // bitfield
 	ActivatedWidgets uint32 // bitfield
 
 	// State
@@ -202,12 +205,12 @@ type Window struct {
 	Destroyed   bool
 
 	// Optional fields referenced by AI-generated code
-	background     *uint8
-	Viewports      []*Viewport // capitalized for AI-generated code compatibility
-	eventHandlers  *WindowEventHandlers
-	viewports      []*Viewport
-	children       []*Window
-	owner          *Window
+	background    *uint8
+	Viewports     []*Viewport // capitalized for AI-generated code compatibility
+	eventHandlers *WindowEventHandlers
+	viewports     []*Viewport
+	children      []*Window
+	owner         *Window
 
 	// Callback functions
 	OnClose  func(*Window)
@@ -278,8 +281,16 @@ func (w *Window) FindWidgetAt(x, y int16) WidgetIndex {
 // DrawingContext type alias for compatibility with AI-generated code
 type DrawingContext = graphics.DrawingContext
 
-// Draw renders the window to the drawing context (stub for AI-generated window_manager.go)
+// Draw renders the window to the drawing context. Stub — not yet implemented.
+//
+// OpenLoco reference: src/OpenLoco/src/Ui/Window.cpp
+//   Window::draw(Gfx::DrawingContext& drawingCtx)
+//   Window::callDraw(Gfx::DrawingContext& ctx)
+//
+// In OpenLoco, draw() iterates over each widget and dispatches to per-widget
+// draw handlers (button, caption, panel, etc.).  It also draws the window
+// background via fillRectInset and delegates to custom per-window-type draw
+// callbacks registered in the WindowEventTable.
 func (w *Window) Draw(dc *DrawingContext) {
-	// TODO: Implement actual window drawing
-	// This is a stub to satisfy the window_manager.go RenderWindows function
+	log.Println("[UI] Window.Draw: stub — window", w.Number, "not yet rendered")
 }

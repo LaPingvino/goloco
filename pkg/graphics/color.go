@@ -1,5 +1,7 @@
 package graphics
 
+import "log"
+
 // Color palette and shade system for OpenLoco-style graphics
 
 // Color represents a palette color index (0-255)
@@ -82,21 +84,27 @@ func GetTranslucent(colour Color) Color {
 	return colour + 128
 }
 
-// InitColorMaps initializes the color shade mapping tables
-// In real OpenLoco this loads from G1.DAT palette data
+// InitColorMaps initializes the color shade mapping tables. Stub — the
+// tables are populated with a synthetic linear gradient; they do not yet
+// match the real Locomotion palette shade progressions.
+//
+// OpenLoco reference: src/OpenLoco/src/Graphics/Colour.cpp
+//   initColourMap()
+//
+// In OpenLoco, initColourMap() fills _colourMapA and _colourMapB from
+// hard-coded lookup tables that were reverse-engineered from the original
+// Locomotion binary.  A third table, _translucentColourMap, stores the
+// three ExtColour indices used for translucent rendering per colour.
+// When the real tables are available (or extracted from G1.DAT palette
+// data), replace the loop below with direct initialisation from those
+// tables.
 func InitColorMaps() {
-	// TODO: Load actual palette data from G1.DAT
-	// For now we use simplified linear progressions
-
-	// Initialize basic shade progressions
+	log.Println("[Graphics] InitColorMaps: stub — using synthetic linear shade progression")
 	for c := 0; c < 32; c++ {
 		for s := 0; s < 8; s++ {
 			if c < len(colorShadeMap) {
-				// Create gradient from dark to light
 				colorShadeMap[c][s] = uint8(c*8 + s)
 			}
 		}
 	}
 }
-
-

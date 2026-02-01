@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"log"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -165,8 +167,17 @@ func handleWidgetClick(window *Window, widget *Widget) {
 		window.Invalidate()
 
 	case WidgetTypeTextBox:
-		// Focus textbox (for future text input)
-		// TODO: implement text input
+		// Stub: text input not yet implemented.
+		//
+		// OpenLoco reference: src/OpenLoco/src/Ui/TextInput.h
+		//   Ui::TextInput::InputSession — manages caret, selection, sanitisation
+		//   InputSession::handleInput(uint32_t charCode, uint32_t keyCode)
+		// Also: src/OpenLoco/src/Ui/Widgets/TextBoxWidget.cpp
+		//   TextBoxWidget — per-frame draw and event routing for the widget
+		//
+		// When implemented: focus this widget, capture keyboard events into an
+		// InputSession, and re-draw the caret each frame via TextBoxWidget logic.
+		log.Println("[UI] handleWidgetClick: TextBox focus stub — text input not yet implemented")
 	}
 }
 

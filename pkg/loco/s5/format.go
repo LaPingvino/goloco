@@ -16,11 +16,11 @@ const (
 type HeaderFlags uint32
 
 const (
-	HeaderFlagNone           HeaderFlags = 0
-	HeaderFlagIsRaw          HeaderFlags = 1 << 0
-	HeaderFlagIsDump         HeaderFlags = 1 << 1
+	HeaderFlagNone            HeaderFlags = 0
+	HeaderFlagIsRaw           HeaderFlags = 1 << 0
+	HeaderFlagIsDump          HeaderFlags = 1 << 1
 	HeaderFlagIsTitleSequence HeaderFlags = 1 << 2
-	HeaderFlagHasSaveDetails HeaderFlags = 1 << 3
+	HeaderFlagHasSaveDetails  HeaderFlags = 1 << 3
 )
 
 // Header is the S5 file header (32 bytes)
@@ -38,35 +38,44 @@ func (h *Header) HasFlags(flags HeaderFlags) bool {
 	return (h.Flags & flags) != 0
 }
 
-// CompanyFlags are flags for company state
+// CompanyFlags are flags for company state. Stub — only the zero value is
+// defined; the full flag set has not been mapped yet.
+//
+// OpenLoco reference: src/OpenLoco/src/World/Company.h
+//   enum class CompanyFlags : uint32_t
+//
+// Known flags in OpenLoco include (bit positions approximate):
+//   unk0, unk1, unk2, sorted,
+//   increasedPerformance, decreasedPerformance,
+//   challengeCompleted, challengeFailed, challengeBeatenByOpponent,
+//   bankrupt, autopayLoan
 type CompanyFlags uint32
 
 const (
 	CompanyFlagNone CompanyFlags = 0
-	// TODO: Add specific company flags
 )
 
 // SaveDetails contains save game metadata
 type SaveDetails struct {
-	Company          [256]byte
-	Owner            [256]byte
-	Date             uint32
-	PerformanceIndex uint16
-	Scenario         [0x40]byte
+	Company           [256]byte
+	Owner             [256]byte
+	Date              uint32
+	PerformanceIndex  uint16
+	Scenario          [0x40]byte
 	ChallengeProgress uint8
-	Padding1         byte
-	Image            [250 * 200]byte
-	ChallengeFlags   CompanyFlags
-	Padding2         [0x7C]byte // Pad to 0xC618
+	Padding1          byte
+	Image             [250 * 200]byte
+	ChallengeFlags    CompanyFlags
+	Padding2          [0x7C]byte // Pad to 0xC618
 }
 
 // S5FixFlags are flags for S5 file fixes
 type S5FixFlags uint32
 
 const (
-	S5FixFlagNone     S5FixFlags = 0
-	S5FixFlag0        S5FixFlags = 1 << 0
-	S5FixFlag1        S5FixFlags = 1 << 1
+	S5FixFlagNone S5FixFlags = 0
+	S5FixFlag0    S5FixFlags = 1 << 0
+	S5FixFlag1    S5FixFlags = 1 << 1
 )
 
 // LoadFlags control S5 file loading

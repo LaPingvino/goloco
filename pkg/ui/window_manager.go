@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"log"
+
 	"github.com/LaPingvino/goloco/pkg/gfx"
 )
 
@@ -42,16 +44,47 @@ func (w *Window) HasFlags(flags WindowFlags) bool {
 	return w.Flags&flags != 0
 }
 
+// ProcessEvents is a stub. Not yet implemented.
+//
+// OpenLoco reference: src/OpenLoco/src/Ui/WindowManager.cpp
+//   WindowManager::update() — iterates windows and dispatches input events
+// Also: src/OpenLoco/src/Ui/Window.cpp
+//   Window::callUpdate()
+//
+// In OpenLoco, per-window event processing is driven by the WindowEventTable
+// registered for each window type.  Input (mouse/keyboard) is routed through
+// WindowManager::processEvent() before reaching individual windows.
 func (w *Window) ProcessEvents() error {
-	return nil // TODO: implement
+	log.Println("[UI] Window.ProcessEvents: stub — not yet implemented")
+	return nil
 }
 
+// UpdateAnimations is a stub. Not yet implemented.
+//
+// OpenLoco reference: src/OpenLoco/src/Ui/WindowManager.cpp
+//   WindowManager::update() — advances animation state per frame
+// Also: src/OpenLoco/src/Ui/Window.cpp
+//   Window::callPeriodicUpdate()  (fires every 1000 ticks)
+//
+// In OpenLoco, animation state (e.g. blinking cursors, sprite frame
+// sequences) is advanced here based on the thousandthTickCounter.
 func (w *Window) UpdateAnimations() error {
-	return nil // TODO: implement
+	log.Println("[UI] Window.UpdateAnimations: stub — not yet implemented")
+	return nil
 }
 
+// ViewportsUpdatePosition is a stub. Not yet implemented.
+//
+// OpenLoco reference: src/OpenLoco/src/Ui/WindowManager.cpp
+//   WindowManager::updateViewports()
+// Also: src/OpenLoco/src/Ui/Window.cpp
+//   Window::viewportsUpdatePosition()
+//
+// In OpenLoco this keeps each viewport's world-space origin in sync with
+// its parent window position and the current scroll/zoom state.
 func (w *Window) ViewportsUpdatePosition() error {
-	return nil // TODO: implement
+	log.Println("[UI] Window.ViewportsUpdatePosition: stub — not yet implemented")
+	return nil
 }
 
 func (w *Window) CallOnResize() error {
@@ -99,16 +132,39 @@ func WindowManagerGet(index int) *Window {
 	return windows[index]
 }
 
+// UiWidth returns the current UI screen width. Stub — hardcoded to 800.
+//
+// OpenLoco reference: src/OpenLoco/src/Ui.h
+//   Ui::width()  — reads from Ui::ScreenInfo::width
+//
+// Wire this to the actual Ebiten window width once a shared screen-size
+// struct (or a simple global set at window creation) is in place.
 func UiWidth() int16 {
-	return 800 // TODO: get from screen
+	log.Println("[UI] UiWidth: stub — returning hardcoded 800")
+	return 800
 }
 
+// UiHeight returns the current UI screen height. Stub — hardcoded to 600.
+//
+// OpenLoco reference: src/OpenLoco/src/Ui.h
+//   Ui::height()  — reads from Ui::ScreenInfo::height
 func UiHeight() int16 {
-	return 600 // TODO: get from screen
+	log.Println("[UI] UiHeight: stub — returning hardcoded 600")
+	return 600
 }
 
+// GfxRender is a stub. Not yet implemented.
+//
+// OpenLoco reference: src/OpenLoco/src/Graphics/Gfx.cpp  (Gfx::render)
+// Also: src/OpenLoco/src/Graphics/SoftwareDrawingContext.cpp
+//   SoftwareDrawingContext::clear(uint32_t fill)
+//   SoftwareDrawingContext::clearSingle(uint8_t paletteId)
+//
+// In OpenLoco, Gfx::render triggers the full back-buffer → screen blit
+// for the given dirty rectangle.  The SoftwareDrawingContext handles the
+// actual pixel operations.
 func GfxRender(left, top, right, bottom int16) {
-	// TODO: implement
+	log.Printf("[UI] GfxRender: stub — region (%d,%d)-(%d,%d) not yet rendered", left, top, right, bottom)
 }
 
 // Update all windows (events, animations)
@@ -138,7 +194,6 @@ func UpdateWindows() {
 	}
 }
 
-
 // Find window at screen position
 // Source: WindowManager::findAt
 func FindWindowAt(x, y int16) *Window {
@@ -166,7 +221,6 @@ func FindWindowAt(x, y int16) *Window {
 	return nil
 }
 
-
 // Find window by type and number
 // Source: WindowManager::find
 func FindWindow(typ WindowType, number WindowNumber) *Window {
@@ -184,7 +238,6 @@ func FindWindow(typ WindowType, number WindowNumber) *Window {
 	return nil
 }
 
-
 // Bring window to front of Z-order
 // Source: WindowManager::bringToFront
 func BringWindowToFront(window *Window) *Window {
@@ -195,7 +248,7 @@ func BringWindowToFront(window *Window) *Window {
 		}
 
 		// If window is forced to back/front, don't change z-order.
-		if window.HasFlags(WindowFlagsStickToBack|WindowFlagsStickToFront) {
+		if window.HasFlags(WindowFlagsStickToBack | WindowFlagsStickToFront) {
 			return window
 		}
 
@@ -245,7 +298,6 @@ func BringWindowToFront(window *Window) *Window {
 	}
 }
 
-
 // Render all windows to context
 // Source: WindowManager::render
 func RenderWindows(dc *DrawingContext, rect Rect) {
@@ -267,7 +319,6 @@ func RenderWindows(dc *DrawingContext, rect Rect) {
 		win.Draw(dc)
 	}
 }
-
 
 // Close and destroy window
 // Source: WindowManager::close
@@ -343,7 +394,6 @@ func CloseWindow(window *Window) {
 	}
 }
 
-
 // Create new window
 // Source: WindowManager::createWindow
 func CreateWindow(typ WindowType, x, y, width, height int16, flags WindowFlags) *Window {
@@ -361,7 +411,6 @@ func CreateWindow(typ WindowType, x, y, width, height int16, flags WindowFlags) 
 	windows = append(windows, w)
 	return w
 }
-
 
 // Initialize window management system
 // Source: WindowManager::init
