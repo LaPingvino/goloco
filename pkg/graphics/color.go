@@ -89,7 +89,8 @@ func GetTranslucent(colour Color) Color {
 // match the real Locomotion palette shade progressions.
 //
 // OpenLoco reference: src/OpenLoco/src/Graphics/Colour.cpp
-//   initColourMap()
+//
+//	initColourMap()
 //
 // In OpenLoco, initColourMap() fills _colourMapA and _colourMapB from
 // hard-coded lookup tables that were reverse-engineered from the original

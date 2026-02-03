@@ -12,7 +12,7 @@ import (
 type SawyerEncoding uint8
 
 const (
-	EncodingUncompressed   SawyerEncoding = 0
+	EncodingUncompressed    SawyerEncoding = 0
 	EncodingRunLengthSingle SawyerEncoding = 1
 	EncodingRunLengthMulti  SawyerEncoding = 2
 	EncodingRotate          SawyerEncoding = 3
@@ -21,12 +21,13 @@ const (
 // S5Header is the 32-byte file header.
 //
 // Byte layout (matches OpenLoco S5::Header exactly):
-//   [0]      uint8  type
-//   [1]      uint8  flags
-//   [2:4]    uint16 numPackedObjects  (little-endian)
-//   [4:8]    uint32 version           (little-endian)
-//   [8:12]   uint32 magic             (little-endian)
-//   [12:32]  [20]byte padding
+//
+//	[0]      uint8  type
+//	[1]      uint8  flags
+//	[2:4]    uint16 numPackedObjects  (little-endian)
+//	[4:8]    uint32 version           (little-endian)
+//	[8:12]   uint32 magic             (little-endian)
+//	[12:32]  [20]byte padding
 type S5Header struct {
 	Type             uint8
 	Flags            uint8
@@ -164,12 +165,13 @@ func decodeSawyerChunk(encoding SawyerEncoding, data []byte) ([]byte, error) {
 // decodeRunLengthSingle implements OpenLoco's SawyerStreamReader::decodeRunLengthSingle.
 //
 // Format per the C++ source:
-//   if byte & 0x80 (high bit set):
-//       copyLen = 257 − byte
-//       repeat next byte copyLen times
-//   else:
-//       copyLen = byte + 1
-//       copy next copyLen bytes literally
+//
+//	if byte & 0x80 (high bit set):
+//	    copyLen = 257 − byte
+//	    repeat next byte copyLen times
+//	else:
+//	    copyLen = byte + 1
+//	    copy next copyLen bytes literally
 func decodeRunLengthSingle(data []byte) ([]byte, error) {
 	out := make([]byte, 0, len(data)*2)
 	i := 0
@@ -205,12 +207,13 @@ func decodeRunLengthSingle(data []byte) ([]byte, error) {
 // This is applied AFTER decodeRunLengthSingle (two-stage decode).
 //
 // Format:
-//   if byte == 0xFF:
-//       emit next byte literally
-//   else:
-//       offset = (byte >> 3) − 32   (always negative — back-reference)
-//       copyLen = (byte & 0x07) + 1  (1–8 bytes)
-//       copy copyLen bytes from output[current + offset]
+//
+//	if byte == 0xFF:
+//	    emit next byte literally
+//	else:
+//	    offset = (byte >> 3) − 32   (always negative — back-reference)
+//	    copyLen = (byte & 0x07) + 1  (1–8 bytes)
+//	    copy copyLen bytes from output[current + offset]
 func decodeRunLengthMulti(data []byte) ([]byte, error) {
 	out := make([]byte, 0, len(data)*2)
 	i := 0

@@ -284,8 +284,9 @@ type DrawingContext = graphics.DrawingContext
 // Draw renders the window to the drawing context. Stub — not yet implemented.
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/Window.cpp
-//   Window::draw(Gfx::DrawingContext& drawingCtx)
-//   Window::callDraw(Gfx::DrawingContext& ctx)
+//
+//	Window::draw(Gfx::DrawingContext& drawingCtx)
+//	Window::callDraw(Gfx::DrawingContext& ctx)
 //
 // In OpenLoco, draw() iterates over each widget and dispatches to per-widget
 // draw handlers (button, caption, panel, etc.).  It also draws the window

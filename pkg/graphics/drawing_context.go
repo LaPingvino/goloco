@@ -276,8 +276,9 @@ func (dc *DrawingContext) DrawString(x, y int16, str string, col uint8) error {
 // instead of querying the actual font metrics.
 //
 // OpenLoco reference: src/OpenLoco/src/Graphics/DrawingContext.cpp
-//   DrawingContext::drawStringCentred(...)
-//   DrawingContext::measureString(...)
+//
+//	DrawingContext::drawStringCentred(...)
+//	DrawingContext::measureString(...)
 //
 // Replace the len*7 heuristic with a proper call to font.Metrics or
 // golang.org/x/image/font.MeasureString once font sizing is wired up.

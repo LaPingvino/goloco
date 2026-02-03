@@ -10,31 +10,33 @@ import (
 // DropdownMenu represents a dropdown menu window
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/Dropdown.cpp
-//   Dropdown menus are temporary windows that appear when clicking toolbar buttons.
+//
+//	Dropdown menus are temporary windows that appear when clicking toolbar buttons.
 type DropdownMenu struct {
-	X          int
-	Y          int
-	Width      int
-	Height     int
-	Items      []DropdownItem
+	X           int
+	Y           int
+	Width       int
+	Height      int
+	Items       []DropdownItem
 	Highlighted int
-	OnSelect   func(index int)
-	Visible    bool
+	OnSelect    func(index int)
+	Visible     bool
 }
 
 // DropdownItem represents a single item in a dropdown menu
 type DropdownItem struct {
 	Text      string
 	Disabled  bool
-	Selected  bool  // Shows checkmark
-	Separator bool  // Is this a separator line?
+	Selected  bool // Shows checkmark
+	Separator bool // Is this a separator line?
 	Action    func()
 }
 
 // NewDropdownMenu creates a new dropdown menu positioned below a widget
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/Dropdown.cpp
-//   showBelow(window, widgetIndex, count, itemHeight, flags)
+//
+//	showBelow(window, widgetIndex, count, itemHeight, flags)
 func NewDropdownMenu(x, y int, items []DropdownItem) *DropdownMenu {
 	const itemHeight = 16
 	const padding = 4
@@ -42,7 +44,7 @@ func NewDropdownMenu(x, y int, items []DropdownItem) *DropdownMenu {
 	// Calculate width based on longest text
 	maxWidth := 120
 	for _, item := range items {
-		textWidth := len(item.Text) * 6 + padding*2
+		textWidth := len(item.Text)*6 + padding*2
 		if textWidth > maxWidth {
 			maxWidth = textWidth
 		}

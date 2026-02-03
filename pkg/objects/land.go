@@ -214,7 +214,8 @@ func parseImageTable(data []byte) ([]*SpriteElement, error) {
 // flat terrain tile within this object's image table.
 //
 // OpenLoco reference: src/OpenLoco/src/Objects/LandObject.cpp
-//   image = numImageAngles * numGrowthStages * kTerrainFlatImageOffset + imgRes.imageOffset
+//
+//	image = numImageAngles * numGrowthStages * kTerrainFlatImageOffset + imgRes.imageOffset
 //
 // imgRes.imageOffset is the global sprite-pool base; for local indexing it is 0.
 func (l *LandObject) GetFlatTerrainSpriteIndex() int {

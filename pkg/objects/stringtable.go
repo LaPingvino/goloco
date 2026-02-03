@@ -3,10 +3,12 @@ package objects
 // parseStringTable extracts the first string from a Locomotion object string table.
 //
 // OpenLoco reference: src/OpenLoco/src/Objects/ObjectStringTable.cpp
-//   loadStringTable() at address 0x00472172
+//
+//	loadStringTable() at address 0x00472172
 //
 // Format: Sequence of [languageID byte][null-terminated string], ending with 0xFF byte.
-//   Example: 09 "Hello\0" 09 "World\0" FF
+//
+//	Example: 09 "Hello\0" 09 "World\0" FF
 //
 // Returns: (tableLength, firstString)
 func parseStringTable(data []byte) (int, string) {

@@ -140,10 +140,11 @@ func (m *Manager) IsMusicPlaying() bool {
 // Stub — currently a no-op.
 //
 // OpenLoco reference: src/OpenLoco/src/Audio/Audio.cpp
-//   updateSounds()          — per-frame sound-effect channel processing
-//   updateVehicleNoise()    — position-based vehicle sound updates
-//   updateAmbientNoise()    — ambient/environmental sound logic
-//   playBackgroundMusic()   — background-music state machine
+//
+//	updateSounds()          — per-frame sound-effect channel processing
+//	updateVehicleNoise()    — position-based vehicle sound updates
+//	updateAmbientNoise()    — ambient/environmental sound logic
+//	playBackgroundMusic()   — background-music state machine
 //
 // When implemented this should tick any streaming audio channels, check
 // whether background music needs to transition, and spatially attenuate

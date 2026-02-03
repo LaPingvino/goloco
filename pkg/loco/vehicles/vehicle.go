@@ -109,9 +109,10 @@ func (tad *TrackAndDirection) GetDirection() uint8 {
 // are defined; the full entity layout from OpenLoco is not yet mapped.
 //
 // OpenLoco reference: src/OpenLoco/src/Vehicles/Vehicle.h
-//   Vehicles::Vehicle — base entity struct embedded in all vehicle sub-types.
-//   Fields include: x, y, z, owner, flags, breakdownFlags, flags38,
-//   subType (entity type), among many others.
+//
+//	Vehicles::Vehicle — base entity struct embedded in all vehicle sub-types.
+//	Fields include: x, y, z, owner, flags, breakdownFlags, flags38,
+//	subType (entity type), among many others.
 type Vehicle struct {
 	EntityType VehicleEntityType
 	Flags      VehicleFlags
@@ -124,10 +125,11 @@ type Vehicle struct {
 // head-specific fields have been added yet.
 //
 // OpenLoco reference: src/OpenLoco/src/Vehicles/VehicleHead.h
-//   Vehicles::VehicleHead
-//   Key fields: status (Status enum), currentSpeed, targetSpeed,
-//     routeIndex, routeHeads, orderStatus, daysAge, ...
-//   Key methods: update(), updateBreakdown(), updateDaily(), updateMonthly()
+//
+//	Vehicles::VehicleHead
+//	Key fields: status (Status enum), currentSpeed, targetSpeed,
+//	  routeIndex, routeHeads, orderStatus, daysAge, ...
+//	Key methods: update(), updateBreakdown(), updateDaily(), updateMonthly()
 type VehicleHead struct {
 	Vehicle
 }
@@ -136,8 +138,9 @@ type VehicleHead struct {
 // tail-specific fields have been added yet.
 //
 // OpenLoco reference: src/OpenLoco/src/Vehicles/VehicleTail.h
-//   Vehicles::VehicleTail
-//   Key method: update()
+//
+//	Vehicles::VehicleTail
+//	Key method: update()
 type VehicleTail struct {
 	Vehicle
 }
@@ -146,9 +149,10 @@ type VehicleTail struct {
 // bogie-specific fields have been added yet.
 //
 // OpenLoco reference: src/OpenLoco/src/Vehicles/VehicleBogie.h
-//   Vehicles::VehicleBogie
-//   Key fields: bogieFrame, trackAndDirection, animation
-//   Key methods: update(), updateSegmentCrashed(), isOnRackRail()
+//
+//	Vehicles::VehicleBogie
+//	Key fields: bogieFrame, trackAndDirection, animation
+//	Key methods: update(), updateSegmentCrashed(), isOnRackRail()
 type VehicleBogie struct {
 	Vehicle
 }
@@ -157,9 +161,10 @@ type VehicleBogie struct {
 // fields have been added yet.
 //
 // OpenLoco reference: src/OpenLoco/src/Vehicles/VehicleBody.h
-//   Vehicles::VehicleBody
-//   Key fields: cargoAmount, cargoType, cargoCapacity, trackAndDirection
-//   Key methods: update(const CarUpdateState&), updateCargoSprite()
+//
+//	Vehicles::VehicleBody
+//	Key fields: cargoAmount, cargoType, cargoCapacity, trackAndDirection
+//	Key methods: update(const CarUpdateState&), updateCargoSprite()
 type VehicleBody struct {
 	Vehicle
 }

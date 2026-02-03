@@ -47,9 +47,12 @@ func (w *Window) HasFlags(flags WindowFlags) bool {
 // ProcessEvents is a stub. Not yet implemented.
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/WindowManager.cpp
-//   WindowManager::update() — iterates windows and dispatches input events
+//
+//	WindowManager::update() — iterates windows and dispatches input events
+//
 // Also: src/OpenLoco/src/Ui/Window.cpp
-//   Window::callUpdate()
+//
+//	Window::callUpdate()
 //
 // In OpenLoco, per-window event processing is driven by the WindowEventTable
 // registered for each window type.  Input (mouse/keyboard) is routed through
@@ -62,9 +65,12 @@ func (w *Window) ProcessEvents() error {
 // UpdateAnimations is a stub. Not yet implemented.
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/WindowManager.cpp
-//   WindowManager::update() — advances animation state per frame
+//
+//	WindowManager::update() — advances animation state per frame
+//
 // Also: src/OpenLoco/src/Ui/Window.cpp
-//   Window::callPeriodicUpdate()  (fires every 1000 ticks)
+//
+//	Window::callPeriodicUpdate()  (fires every 1000 ticks)
 //
 // In OpenLoco, animation state (e.g. blinking cursors, sprite frame
 // sequences) is advanced here based on the thousandthTickCounter.
@@ -76,9 +82,12 @@ func (w *Window) UpdateAnimations() error {
 // ViewportsUpdatePosition is a stub. Not yet implemented.
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/WindowManager.cpp
-//   WindowManager::updateViewports()
+//
+//	WindowManager::updateViewports()
+//
 // Also: src/OpenLoco/src/Ui/Window.cpp
-//   Window::viewportsUpdatePosition()
+//
+//	Window::viewportsUpdatePosition()
 //
 // In OpenLoco this keeps each viewport's world-space origin in sync with
 // its parent window position and the current scroll/zoom state.
@@ -135,7 +144,8 @@ func WindowManagerGet(index int) *Window {
 // UiWidth returns the current UI screen width. Stub — hardcoded to 800.
 //
 // OpenLoco reference: src/OpenLoco/src/Ui.h
-//   Ui::width()  — reads from Ui::ScreenInfo::width
+//
+//	Ui::width()  — reads from Ui::ScreenInfo::width
 //
 // Wire this to the actual Ebiten window width once a shared screen-size
 // struct (or a simple global set at window creation) is in place.
@@ -147,7 +157,8 @@ func UiWidth() int16 {
 // UiHeight returns the current UI screen height. Stub — hardcoded to 600.
 //
 // OpenLoco reference: src/OpenLoco/src/Ui.h
-//   Ui::height()  — reads from Ui::ScreenInfo::height
+//
+//	Ui::height()  — reads from Ui::ScreenInfo::height
 func UiHeight() int16 {
 	log.Println("[UI] UiHeight: stub — returning hardcoded 600")
 	return 600
@@ -157,8 +168,9 @@ func UiHeight() int16 {
 //
 // OpenLoco reference: src/OpenLoco/src/Graphics/Gfx.cpp  (Gfx::render)
 // Also: src/OpenLoco/src/Graphics/SoftwareDrawingContext.cpp
-//   SoftwareDrawingContext::clear(uint32_t fill)
-//   SoftwareDrawingContext::clearSingle(uint8_t paletteId)
+//
+//	SoftwareDrawingContext::clear(uint32_t fill)
+//	SoftwareDrawingContext::clearSingle(uint8_t paletteId)
 //
 // In OpenLoco, Gfx::render triggers the full back-buffer → screen blit
 // for the given dirty rectangle.  The SoftwareDrawingContext handles the

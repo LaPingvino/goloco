@@ -66,7 +66,8 @@ func (co *CargoObject) HasFlags(flags CargoObjectFlags) bool {
 // Validate validates the cargo object. Stub — always returns true.
 //
 // OpenLoco reference: src/OpenLoco/src/Objects/CargoObject.cpp
-//   CargoObject::validate()  (at 0x0042F533)
+//
+//	CargoObject::validate()  (at 0x0042F533)
 //
 // In OpenLoco, validate() checks that referenced string IDs exist,
 // that the unit sprite is a valid image ID, and that the category
@@ -79,8 +80,9 @@ func (co *CargoObject) Validate() bool {
 // Load loads cargo object data from bytes. Stub — does nothing.
 //
 // OpenLoco reference: src/OpenLoco/src/Objects/CargoObject.cpp
-//   CargoObject::load(const LoadedObjectHandle&, std::span<const std::byte>, ...)
-//     (at 0x0042F4D0)
+//
+//	CargoObject::load(const LoadedObjectHandle&, std::span<const std::byte>, ...)
+//	  (at 0x0042F4D0)
 //
 // In OpenLoco, load() deserialises the fixed-size CargoObject header from
 // the object data span, then resolves dependent string and image IDs via
@@ -93,7 +95,8 @@ func (co *CargoObject) Load(data []byte) error {
 // Unload releases any resources held by the cargo object. Stub — does nothing.
 //
 // OpenLoco reference: src/OpenLoco/src/Objects/CargoObject.cpp
-//   CargoObject::unload()  (at 0x0042F514)
+//
+//	CargoObject::unload()  (at 0x0042F514)
 //
 // In OpenLoco, unload() clears resolved string and image pointers so the
 // object can be safely removed from the ObjectManager.

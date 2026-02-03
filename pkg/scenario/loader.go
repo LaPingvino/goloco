@@ -39,14 +39,14 @@ const (
 // OpenLoco reference: src/OpenLoco/src/Map/SurfaceElement.h  TerrainType enum
 // Values 0-29 are defined; anything ≥30 is unknown.
 var terrainTypes = [32]SurfaceType{
-	0: SurfaceGrass,  // grassland
-	1: SurfaceDirt,   // sand / dirt
-	2: SurfaceRock,   // rock
-	3: SurfaceDirt,   // mud
-	4: SurfaceGrass,  // grass (variant)
-	5: SurfaceSnow,   // snow
-	6: SurfaceRock,   // gravel
-	7: SurfaceDirt,   // dirt (variant)
+	0: SurfaceGrass, // grassland
+	1: SurfaceDirt,  // sand / dirt
+	2: SurfaceRock,  // rock
+	3: SurfaceDirt,  // mud
+	4: SurfaceGrass, // grass (variant)
+	5: SurfaceSnow,  // snow
+	6: SurfaceRock,  // gravel
+	7: SurfaceDirt,  // dirt (variant)
 	// 8-29: additional variants — default to grass
 }
 
@@ -77,14 +77,14 @@ func LoadScenarioData(filePath string) (*Scenario, error) {
 // ParseScenario reads an S5 scenario file by walking its chunk stream.
 //
 // Chunk sequence for a scenario (S5Type == 1), per OpenLoco S5.cpp importSave():
-//   1. Header          (rotate)
-//   2. ScenarioOptions (rotate)          — only if type == scenario
-//   3. PackedObjects                     — only if numPackedObjects > 0
-//   4. RequiredObjects (rotate)
-//   5. GeneralState    (runLengthSingle)
-//   6. Towns           (runLengthSingle)
-//   7. Animations      (runLengthSingle)
-//   8. TileElements    (runLengthMulti)  — only if tileManagerLoaded flag set
+//  1. Header          (rotate)
+//  2. ScenarioOptions (rotate)          — only if type == scenario
+//  3. PackedObjects                     — only if numPackedObjects > 0
+//  4. RequiredObjects (rotate)
+//  5. GeneralState    (runLengthSingle)
+//  6. Towns           (runLengthSingle)
+//  7. Animations      (runLengthSingle)
+//  8. TileElements    (runLengthMulti)  — only if tileManagerLoaded flag set
 //
 // For saved games (S5Type == 0) chunks 5-7 are replaced by a single
 // GameState chunk.  We handle both paths.
@@ -233,8 +233,9 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 // Elements are stored in tile order: (0,0), (1,0), … (383,0), (0,1), …
 //
 // OpenLoco reference: src/OpenLoco/src/Map/TileManager.cpp
-//   TileManager::setElements()
-//   TileManager::updateTilePointers()
+//
+//	TileManager::setElements()
+//	TileManager::updateTilePointers()
 func (sc *Scenario) parseTileElements(data []byte) {
 	sc.Tiles = make([][]Tile, sc.MapHeight)
 	for y := range sc.Tiles {
@@ -309,8 +310,9 @@ func (sc *Scenario) parseTileElements(data []byte) {
 // GameState blob.  The flags field is at a fixed offset within the struct.
 //
 // OpenLoco reference: src/OpenLoco/src/S5/GameState.h
-//   GeneralState::flags  — offset 0x434 from start of GameState,
-//   but GeneralState itself starts at offset 0 when read as a standalone chunk.
+//
+//	GeneralState::flags  — offset 0x434 from start of GameState,
+//	but GeneralState itself starts at offset 0 when read as a standalone chunk.
 //
 // For a scenario file the GeneralState chunk contains only the GeneralState
 // sub-struct (not the full GameState), so flags is near the beginning.
@@ -421,8 +423,9 @@ func parseLandObjectOrder(data []byte) []string {
 // correctly.
 //
 // OpenLoco reference: see parseTileElements comment above —
-//   src/OpenLoco/src/Scenario/Scenario.cpp  Scenario::load()
-//   src/OpenLoco/src/Map/TileManager.cpp    TileManager
+//
+//	src/OpenLoco/src/Scenario/Scenario.cpp  Scenario::load()
+//	src/OpenLoco/src/Map/TileManager.cpp    TileManager
 func (sc *Scenario) initPlaceholderMap() {
 	sc.Tiles = make([][]Tile, sc.MapHeight)
 	for y := 0; y < sc.MapHeight; y++ {

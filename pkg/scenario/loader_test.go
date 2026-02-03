@@ -19,7 +19,7 @@ func makeSurfaceElement(terrain uint8, waterLevel uint8, baseZ uint8, last bool)
 	e[4] = 0     // slope (not used yet)
 	e[5] = waterLevel & 0x1F
 	e[6] = terrain & 0x1F
-	e[7] = 0     // variation
+	e[7] = 0 // variation
 	return e
 }
 
@@ -157,7 +157,7 @@ func TestParseTileElements_empty_data(t *testing.T) {
 func TestParseTileElements_partial_element_ignored(t *testing.T) {
 	// 7 bytes (one short of a full element) → nothing parsed, defaults remain
 	sc := &Scenario{MapWidth: 1, MapHeight: 1}
-	sc.parseTileElements([]byte{0, 0x80, 5, 5, 0, 0, 2, /* missing 8th byte */})
+	sc.parseTileElements([]byte{0, 0x80, 5, 5, 0, 0, 2 /* missing 8th byte */})
 
 	// Should still have defaults
 	if sc.Tiles[0][0].Surface != SurfaceGrass {

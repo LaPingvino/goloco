@@ -53,14 +53,16 @@ type Toolbar struct {
 // NewToolbar creates a new toolbar matching OpenLoco's layout
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTop.cpp
-//   Game::open() creates the toolbar at (0, 0) with full screen width and height 28.
-//   All buttons are 30 pixels wide × 28 pixels tall.
+//
+//	Game::open() creates the toolbar at (0, 0) with full screen width and height 28.
+//	All buttons are 30 pixels wide × 28 pixels tall.
 //
 // Button layout (13 buttons organized in 4 color groups):
-//   PRIMARY (leftmost): Load/Save, Audio, (Cheats placeholder)
-//   SECONDARY: Zoom, Rotate, View
-//   TERTIARY (middle): Terraform, Railroad, Road, Port/Airport, Build Vehicles
-//   QUATERNARY (right-aligned): Vehicles, Stations, Towns/Industry
+//
+//	PRIMARY (leftmost): Load/Save, Audio, (Cheats placeholder)
+//	SECONDARY: Zoom, Rotate, View
+//	TERTIARY (middle): Terraform, Railroad, Road, Port/Airport, Build Vehicles
+//	QUATERNARY (right-aligned): Vehicles, Stations, Towns/Industry
 func NewToolbar(screenWidth int) *Toolbar {
 	t := &Toolbar{
 		X:       0,
@@ -107,9 +109,9 @@ func NewToolbar(screenWidth int) *Toolbar {
 		t.Buttons = append(t.Buttons, ToolbarButton{
 			Tooltip:    def.tooltip,
 			X:          def.x,
-			Y:          0,           // All buttons start at Y=0
-			Width:      30,          // Match OpenLoco: 30 pixels wide
-			Height:     28,          // Match OpenLoco: 28 pixels tall
+			Y:          0,  // All buttons start at Y=0
+			Width:      30, // Match OpenLoco: 30 pixels wide
+			Height:     28, // Match OpenLoco: 28 pixels tall
 			ColorGroup: def.colorGroup,
 			Hidden:     def.hidden,
 		})
@@ -125,7 +127,8 @@ func NewToolbar(screenWidth int) *Toolbar {
 // of the toolbar, matching OpenLoco's dynamic positioning logic.
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTop.cpp
-//   prepareDraw() lines 977-997
+//
+//	prepareDraw() lines 977-997
 func (t *Toolbar) rightAlignButtons(screenWidth int) {
 	// Start from the right edge (match OpenLoco: max(640, width) - 1)
 	x := screenWidth - 1

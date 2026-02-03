@@ -12,11 +12,11 @@ import (
 func TestParseS5Header_correct_layout(t *testing.T) {
 	// Build a 32-byte header with known values
 	var buf [32]byte
-	buf[0] = 1                                                          // Type = scenario
-	buf[1] = HeaderFlagHasSaveDetails | HeaderFlagIsTitleSequence       // Flags
-	binary.LittleEndian.PutUint16(buf[2:4], 3)                         // NumPackedObjects
-	binary.LittleEndian.PutUint32(buf[4:8], 0x62262)                   // Version
-	binary.LittleEndian.PutUint32(buf[8:12], 0x62300)                  // Magic
+	buf[0] = 1                                                    // Type = scenario
+	buf[1] = HeaderFlagHasSaveDetails | HeaderFlagIsTitleSequence // Flags
+	binary.LittleEndian.PutUint16(buf[2:4], 3)                    // NumPackedObjects
+	binary.LittleEndian.PutUint32(buf[4:8], 0x62262)              // Version
+	binary.LittleEndian.PutUint32(buf[8:12], 0x62300)             // Magic
 
 	h, err := ParseS5Header(buf[:])
 	if err != nil {
@@ -115,7 +115,7 @@ func TestDecodeRunLengthSingle_mixed(t *testing.T) {
 	// 3 literal bytes, then repeat 0x7F twice (257-0xFF=2)
 	input := []byte{
 		2, 0x01, 0x02, 0x03, // literal: copy 3 bytes
-		0xFF, 0x7F,           // repeat: 0x7F × 2
+		0xFF, 0x7F, // repeat: 0x7F × 2
 	}
 	out, err := decodeRunLengthSingle(input)
 	if err != nil {
@@ -171,7 +171,7 @@ func TestDecodeRunLengthMulti_backreference(t *testing.T) {
 		0xFF, 0xAA, // literal AA
 		0xFF, 0xBB, // literal BB
 		0xFF, 0xCC, // literal CC
-		0xE9,       // back-ref: offset=-3, len=2 → copy AA BB
+		0xE9, // back-ref: offset=-3, len=2 → copy AA BB
 	}
 	out, err := decodeRunLengthMulti(input)
 	if err != nil {

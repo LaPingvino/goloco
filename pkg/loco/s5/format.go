@@ -42,13 +42,15 @@ func (h *Header) HasFlags(flags HeaderFlags) bool {
 // defined; the full flag set has not been mapped yet.
 //
 // OpenLoco reference: src/OpenLoco/src/World/Company.h
-//   enum class CompanyFlags : uint32_t
+//
+//	enum class CompanyFlags : uint32_t
 //
 // Known flags in OpenLoco include (bit positions approximate):
-//   unk0, unk1, unk2, sorted,
-//   increasedPerformance, decreasedPerformance,
-//   challengeCompleted, challengeFailed, challengeBeatenByOpponent,
-//   bankrupt, autopayLoan
+//
+//	unk0, unk1, unk2, sorted,
+//	increasedPerformance, decreasedPerformance,
+//	challengeCompleted, challengeFailed, challengeBeatenByOpponent,
+//	bankrupt, autopayLoan
 type CompanyFlags uint32
 
 const (
