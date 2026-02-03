@@ -195,7 +195,7 @@ func NewGame() *Game {
 		centerX := float64(mapW) / 2.0
 		centerY := float64(mapH) / 2.0
 		titleSeq.SetCameraPosition(centerX, centerY, 0) // zoom 0 = full zoom
-		w.SetZoom(0) // Set world to full zoom for title screen
+		w.SetZoom(0)                                    // Set world to full zoom for title screen
 	} else {
 		titleSeq.Start(384, 384) // Default to standard map size
 		titleSeq.SetCameraPosition(192, 192, 0)
@@ -231,13 +231,9 @@ func (g *Game) Update() error {
 	g.mouseX, g.mouseY = ebiten.CursorPosition()
 
 	if g.inTitleScreen {
-		// Title screen: only handle camera pan and menu clicks
-		// NO zoom, scroll, or other gameplay inputs
-		if g.titleSeq != nil && g.titleSeq.IsRunning() {
-			g.titleSeq.Update()
-			camX, camY, _ := g.titleSeq.GetCameraPosition()
-			g.w.SetCamera(camX, camY)
-		}
+		// Title screen: only handle menu clicks
+		// NO camera animation, zoom, scroll, or other gameplay inputs
+		// The camera is set once at init and stays fixed
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			g.handleTitleMenuClick(g.mouseX, g.mouseY)
 		}
@@ -363,10 +359,11 @@ func (g *Game) handleTitleMenuClick(mx, my int) {
 // OpenLoco-based button layout.
 //
 // Button order (indices):
-//   0: Load/Save, 1: Audio, 2: (reserved/hidden)
-//   3: Zoom, 4: Rotate, 5: View
-//   6: Terraform, 7: Railroad, 8: Road, 9: Port/Airport, 10: Build Vehicles
-//   11: Vehicles, 12: Stations, 13: Towns
+//
+//	0: Load/Save, 1: Audio, 2: (reserved/hidden)
+//	3: Zoom, 4: Rotate, 5: View
+//	6: Terraform, 7: Railroad, 8: Road, 9: Port/Airport, 10: Build Vehicles
+//	11: Vehicles, 12: Stations, 13: Towns
 func (g *Game) handleToolbarButton(idx int) {
 	btn := &g.toolbar.Buttons[idx]
 	tooltip := btn.Tooltip
@@ -551,19 +548,18 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 	// --- Logo: top-left (0,0) 298×170 ---
-	// Draw the Locomotion logo sprite at position (0,0)
-	const locomotionLogoSpriteID = 3624
-	logoSprite := g.r.GetSprite(locomotionLogoSpriteID)
-	if logoSprite != nil {
-		opts := &ebiten.DrawImageOptions{}
-		opts.GeoM.Translate(0, 0)
-		screen.DrawImage(logoSprite, opts)
-	} else {
-		// Fallback: show placeholder
-		ebitenutil.DrawRect(screen, 0, 0, 298, 170, color.RGBA{30, 30, 60, 200})
-		ui.DrawTextBold(screen, "GoLoco", 110, 80, color.White)
-		ui.DrawText(screen, "Locomotion", 95, 100, color.White)
-	}
+	// Display "GoLoco" branding using OpenTTD font
+	ebitenutil.DrawRect(screen, 0, 0, 298, 170, color.RGBA{30, 30, 60, 200})
+	// Draw large "GoLoco" text centered
+	logoText := "GoLoco"
+	logoW, _ := ui.MeasureTextBold(logoText)
+	logoX := (298 - logoW) / 2
+	ui.DrawTextBold(screen, logoText, logoX, 60, color.RGBA{220, 220, 255, 255})
+	// Subtitle
+	subtitle := "A Locomotion Reimplementation"
+	subW, _ := ui.MeasureText(subtitle)
+	subX := (298 - subW) / 2
+	ui.DrawText(screen, subtitle, subX, 100, color.RGBA{180, 180, 200, 255})
 
 	// --- Options button: top-right (screenWidth-60, 0) 60×15 ---
 	optX := screenWidth - titleOptionsW

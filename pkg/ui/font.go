@@ -170,3 +170,17 @@ func MeasureText(str string) (int, int) {
 
 	return width, height
 }
+
+// MeasureTextBold returns the width and height of bold text in pixels
+func MeasureTextBold(str string) (int, int) {
+	if globalFontManager == nil || globalFontManager.BoldFace == nil {
+		// Fallback estimate (slightly wider than regular)
+		return len(str) * 7, 12
+	}
+
+	bounds, advance := font.BoundString(globalFontManager.BoldFace, str)
+	width := advance.Ceil()
+	height := (bounds.Max.Y - bounds.Min.Y).Ceil()
+
+	return width, height
+}

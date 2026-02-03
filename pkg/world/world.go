@@ -2,6 +2,7 @@ package world
 
 import (
 	"image/color"
+	"log"
 	"math"
 
 	"github.com/LaPingvino/goloco/pkg/render"
@@ -87,7 +88,7 @@ func NewWorld(r *render.Renderer) *World {
 		playerX:   10,
 		playerY:   7,
 		moveSpeed: 0.15,
-		zoom:      3, // start zoomed out (1/8 scale) so the map fits on screen
+		zoom:      0, // start at full zoom (1× scale)
 	}
 
 	// Initialize tiles with some variety
@@ -177,7 +178,8 @@ func (w *World) SetCamera(tileX, tileY float64) {
 // Zoom 0 is full size; cannot go below 0.
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/Window.cpp
-//   Window::viewportZoomIn(bool toCursor)
+//
+//	Window::viewportZoomIn(bool toCursor)
 func (w *World) ZoomIn() {
 	if w.zoom > 0 {
 		w.zoom--
@@ -188,7 +190,8 @@ func (w *World) ZoomIn() {
 // Zoom 3 is the minimum size (1/8); cannot go above 3.
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/Window.cpp
-//   Window::viewportZoomOut(bool toCursor)
+//
+//	Window::viewportZoomOut(bool toCursor)
 func (w *World) ZoomOut() {
 	if w.zoom < 3 {
 		w.zoom++
@@ -373,8 +376,13 @@ func (w *World) Draw(screen *ebiten.Image) {
 					spriteIdx := displaySlope
 
 					if img := w.renderer.GetObjectSprite(land, spriteIdx); img != nil {
-						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, spriteIdx)
+						spriteW, spriteH, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, spriteIdx)
 						if ok {
+							// Debug first few tiles
+							if x < 3 && y < 3 {
+								log.Printf("[World] Tile(%d,%d) slope=%d: sprite %dx%d, offset=(%d,%d)",
+									x, y, rawSlope, spriteW, spriteH, xOff, yOff)
+							}
 							op := &ebiten.DrawImageOptions{}
 							op.GeoM.Scale(scale, scale)
 							op.GeoM.Translate(
