@@ -231,7 +231,8 @@ func (g *Game) Update() error {
 	g.mouseX, g.mouseY = ebiten.CursorPosition()
 
 	if g.inTitleScreen {
-		// Title screen: advance camera pan, handle title menu clicks only
+		// Title screen: only handle camera pan and menu clicks
+		// NO zoom, scroll, or other gameplay inputs
 		if g.titleSeq != nil && g.titleSeq.IsRunning() {
 			g.titleSeq.Update()
 			camX, camY, _ := g.titleSeq.GetCameraPosition()
@@ -240,10 +241,11 @@ func (g *Game) Update() error {
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 			g.handleTitleMenuClick(g.mouseX, g.mouseY)
 		}
+		// Do NOT process any other input on title screen
 		return nil
 	}
 
-	// --- Gameplay mode ---
+	// --- Gameplay mode ONLY below this point ---
 
 	// Update dropdown hover if visible
 	if g.dropdown != nil && g.dropdown.Visible {
