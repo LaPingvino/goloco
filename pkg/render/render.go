@@ -89,7 +89,8 @@ func (r *Renderer) GetSpriteInfo(index int) (width, height, xOff, yOff int16, ok
 // Clear fills the screen with transparent black (palette index 0).
 //
 // OpenLoco reference: src/OpenLoco/src/Graphics/SoftwareDrawingContext.cpp
-//   SoftwareDrawingContext::clear(uint32_t fill)
+//
+//	SoftwareDrawingContext::clear(uint32_t fill)
 func (r *Renderer) Clear() {
 	if r.Screen != nil {
 		r.Screen.Fill(color.RGBA{0, 0, 0, 0})
@@ -109,11 +110,6 @@ func (r *Renderer) GetObjectSprite(land *objects.LandObject, localIndex int) *eb
 	cacheKey := fmt.Sprintf("%s:%d", land.Name, localIndex)
 	if img, ok := r.objectSpriteCache[cacheKey]; ok {
 		return img
-	}
-
-	// Debug: log cache miss on first few attempts
-	if len(r.objectSpriteCache) > 0 && len(r.objectSpriteCache) < 10 {
-		log.Printf("[Render] Cache MISS for key '%s', cache has %d entries", cacheKey, len(r.objectSpriteCache))
 	}
 
 	sprite := land.Sprites[localIndex]
@@ -288,7 +284,8 @@ func (r *Renderer) GetObjectSpriteInfo(land *objects.LandObject, localIndex int)
 // GetInterfaceSkinSprite returns a decoded sprite from the InterfaceSkin object.
 //
 // OpenLoco reference: src/OpenLoco/src/Objects/InterfaceSkinObject.h
-//   Sprites are accessed via: interface->img + InterfaceSkin::ImageIds::toolbar_*
+//
+//	Sprites are accessed via: interface->img + InterfaceSkin::ImageIds::toolbar_*
 //
 // The imageID is the InterfaceSkin::ImageIds constant (e.g., ISToolbarLoadsave).
 func (r *Renderer) GetInterfaceSkinSprite(imageID uint32) *ebiten.Image {
@@ -302,7 +299,6 @@ func (r *Renderer) GetInterfaceSkinSprite(imageID uint32) *ebiten.Image {
 	}
 
 	skin := r.ObjMgr.InterfaceSkin
-	log.Printf("[Render] GetInterfaceSkinSprite(%d): InterfaceSkin has %d sprites", imageID, len(skin.Sprites))
 
 	if int(imageID) >= len(skin.Sprites) {
 		log.Printf("[Render] GetInterfaceSkinSprite(%d): imageID out of range (max %d)", imageID, len(skin.Sprites)-1)
@@ -325,9 +321,6 @@ func (r *Renderer) GetInterfaceSkinSprite(imageID uint32) *ebiten.Image {
 			imageID, sprite.Width, sprite.Height, sprite.Flags)
 		return nil
 	}
-
-	log.Printf("[Render] InterfaceSkin sprite %d: %dx%d, flags=0x%04x, data len=%d",
-		imageID, sprite.Width, sprite.Height, sprite.Flags, len(sprite.Data))
 
 	// Decode the sprite
 	rgba, err := r.decodeObjectSprite(sprite)

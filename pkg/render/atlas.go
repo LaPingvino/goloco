@@ -21,6 +21,9 @@ type Atlas struct {
 // Global atlas instance
 var globalAtlas *Atlas
 
+// Track which sprite IDs have been logged to avoid spam
+var atlasSpriteLogged = make(map[uint32]bool)
+
 // LoadAtlasFromDir loads all PNGs under dir (non-recursive) into an Atlas.
 func LoadAtlasFromDir(dir string) (*Atlas, error) {
 	files, err := os.ReadDir(dir)
@@ -102,18 +105,34 @@ func (a *Atlas) GetSprite(id uint32) *ebiten.Image {
 			if rgba := e.ToRGBA(a.G1.Palette); rgba != nil {
 				img := ebiten.NewImageFromImage(rgba)
 				a.Sprites[id] = img // cache it
-				log.Printf("[Atlas] Decoded sprite from G1 id=%d size=%dx%d", id, rgba.Rect.Dx(), rgba.Rect.Dy())
+				// Log only first few sprite decodes to avoid spam
+				if !atlasSpriteLogged[id] && len(atlasSpriteLogged) < 5 {
+					log.Printf("[Atlas] Decoded sprite from G1 id=%d size=%dx%d", id, rgba.Rect.Dx(), rgba.Rect.Dy())
+					atlasSpriteLogged[id] = true
+				}
 				return img
 			}
-			log.Printf("[Atlas] G1 element present but ToRGBA returned nil id=%d", id)
+			if !atlasSpriteLogged[id] {
+				log.Printf("[Atlas] G1 element present but ToRGBA returned nil id=%d", id)
+				atlasSpriteLogged[id] = true
+			}
 		} else {
-			log.Printf("[Atlas] G1 present but id out of range id=%d len=%d", id, len(a.G1.Elements))
+			if !atlasSpriteLogged[id] {
+				log.Printf("[Atlas] G1 present but id out of range id=%d len=%d", id, len(a.G1.Elements))
+				atlasSpriteLogged[id] = true
+			}
 		}
 	} else {
-		log.Printf("[Atlas] No G1 attached to atlas while looking up id=%d", id)
+		if !atlasSpriteLogged[id] {
+			log.Printf("[Atlas] No G1 attached to atlas while looking up id=%d", id)
+			atlasSpriteLogged[id] = true
+		}
 	}
-	// Not found
-	log.Printf("[Atlas] Sprite not found id=%d", id)
+	// Not found - log only once per sprite ID
+	if !atlasSpriteLogged[id] {
+		log.Printf("[Atlas] Sprite not found id=%d", id)
+		atlasSpriteLogged[id] = true
+	}
 	return nil
 }
 
