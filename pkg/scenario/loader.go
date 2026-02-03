@@ -275,11 +275,15 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					surface = SurfaceWater
 				}
 
+				// Slope in byte 4, bits [3:0] = corner heights, bit 4 = double height
+				slopeByte := elem[4]
+
 				sc.Tiles[y][x] = Tile{
 					Surface:      surface,
 					Height:       baseZ,
 					Water:        waterLevel,
 					TerrainIndex: terrainRaw,
+					Slope:        slopeByte,
 				}
 			}
 			// Non-surface elements (track, building, tree, …) are skipped

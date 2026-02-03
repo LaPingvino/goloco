@@ -39,6 +39,7 @@ type Tile struct {
 	Height       uint8
 	Water        uint8
 	TerrainIndex uint8 // raw 5-bit terrain index from the surface element (LandObject slot)
+	Slope        uint8 // slope byte from surface element byte 4
 	Ownership    uint8
 	BuildingID   uint16
 	TrackType    uint8

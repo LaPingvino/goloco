@@ -10,6 +10,16 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
+// slopeToDisplaySlope maps raw slope values (0-31) to display slope indices (0-18)
+// From OpenLoco PaintSurface.cpp kSlopeToDisplaySlope
+// Slopes that can't be displayed are mapped to 0 (flat)
+var slopeToDisplaySlope = [32]uint8{
+	0, 2, 1, 3, 8, 10, 9, 11,
+	4, 6, 5, 7, 12, 14, 13, 15,
+	0, 0, 0, 0, 0, 0, 0, 17,
+	0, 0, 0, 16, 0, 18, 15, 0,
+}
+
 // TileType represents different terrain types
 type TileType int
 
@@ -136,7 +146,7 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 				tileType:     tt,
 				terrainIndex: st.TerrainIndex,
 				baseZ:        st.Height,
-				slope:        0, // TODO: parse slope from tile element byte 4
+				slope:        st.Slope,
 			}
 		}
 	}
@@ -345,15 +355,23 @@ func (w *World) Draw(screen *ebiten.Image) {
 				continue
 			}
 
-			// Draw the base flat terrain sprite from this tile's LandObject.
-			// The zoom-0 flat terrain tile is at a fixed offset within the
-			// image table regardless of growth stage or variation count.
+			// Draw the terrain sprite from this tile's LandObject with proper slope.
 			// OpenLoco reference: Paint/PaintSurface.cpp paintSurface()
-			//   landObj->image + variation + displaySlope
+			//   imageIndex = landObj->image + variation + displaySlope
 			if w.renderer != nil && w.renderer.ObjMgr != nil {
 				land := w.renderer.ObjMgr.GetLandObjectByIndex(int(t.terrainIndex))
 				if land != nil {
-					spriteIdx := land.GetFlatTerrainSpriteIndex()
+					// Map slope byte (0-31) to display slope (0-18)
+					rawSlope := t.slope & 0x1F // Lower 5 bits
+					displaySlope := int(0)
+					if rawSlope < uint8(len(slopeToDisplaySlope)) {
+						displaySlope = int(slopeToDisplaySlope[rawSlope])
+					}
+
+					// Calculate sprite index: base + variation + slope
+					// For now, variation = 0 (no growth stage/rotation variation yet)
+					spriteIdx := displaySlope
+
 					if img := w.renderer.GetObjectSprite(land, spriteIdx); img != nil {
 						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, spriteIdx)
 						if ok {
