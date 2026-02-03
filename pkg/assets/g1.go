@@ -242,6 +242,22 @@ func (g1 *G1File) loadPalette() error {
 	// Make index 0 transparent (typically the transparent color)
 	g1.Palette[0] = color.RGBA{0, 0, 0, 0}
 
+	// TEMPORARY FIX: Indices 248-252 are used by logo sprite but not in default palette.
+	// These are normally remappable colors, but for now we'll just set them to visible colors
+	// so the logo appears. Proper solution requires implementing the palette remapping system.
+	//
+	// OpenLoco reference: These indices are remappable "primary" colors that get replaced
+	// at draw time based on company colors or other context. See:
+	// - src/OpenLoco/src/Graphics/PaletteMap.cpp (color remapping)
+	// - src/OpenLoco/src/Graphics/ImageId.h (kMaskPrimary, kFlagPrimary)
+	//
+	// For the logo, we'll use a dark blue gradient:
+	g1.Palette[248] = color.RGBA{R: 20, G: 30, B: 60, A: 255}   // Very dark blue
+	g1.Palette[249] = color.RGBA{R: 30, G: 50, B: 90, A: 255}   // Dark blue
+	g1.Palette[250] = color.RGBA{R: 40, G: 70, B: 120, A: 255}  // Medium blue (most pixels)
+	g1.Palette[251] = color.RGBA{R: 50, G: 90, B: 150, A: 255}  // Lighter blue
+	g1.Palette[252] = color.RGBA{R: 60, G: 110, B: 180, A: 255} // Light blue
+
 	return nil
 }
 
