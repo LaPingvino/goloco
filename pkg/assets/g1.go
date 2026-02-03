@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"io"
-	"os"
 )
 
 // G1 file format constants
@@ -66,81 +64,144 @@ type G1File struct {
 	Palette  [256]color.RGBA
 }
 
-// LoadG1 loads and parses a G1.DAT file
-func LoadG1(path string) (*G1File, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("open g1: %w", err)
-	}
-	defer f.Close()
-
-	// Read header
-	var header G1Header
-	if err := binary.Read(f, binary.LittleEndian, &header); err != nil {
-		return nil, fmt.Errorf("read header: %w", err)
+// ToRGBA converts a G1Element to an RGBA image using the provided palette
+func (e *G1Element) ToRGBA(palette [256]color.RGBA) *image.RGBA {
+	width := int(e.Width)
+	height := int(e.Height)
+	if width <= 0 || height <= 0 {
+		return nil
 	}
 
-	fmt.Printf("G1: %d entries, %d bytes total\n", header.NumEntries, header.TotalSize)
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
 
-	// Validate entry count
-	if header.NumEntries != G1ExpectedCountDisc && header.NumEntries != G1ExpectedCountSteam {
-		fmt.Printf("Warning: unexpected G1 entry count %d (expected %d or %d)\n",
-			header.NumEntries, G1ExpectedCountDisc, G1ExpectedCountSteam)
+	var indices []byte
+	if e.Flags&G1FlagIsRLECompressed != 0 {
+		indices = decompressRLE(e.Data, width*height)
+	} else {
+		indices = e.Data
 	}
 
-	// Read element headers
-	elements32 := make([]G1Element32, header.NumEntries)
-	for i := uint32(0); i < header.NumEntries; i++ {
-		if err := binary.Read(f, binary.LittleEndian, &elements32[i]); err != nil {
-			return nil, fmt.Errorf("read element %d: %w", i, err)
+	if len(indices) < width*height {
+		return nil
+	}
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			idx := indices[y*width+x]
+			c := palette[idx]
+			img.SetRGBA(x, y, c)
 		}
 	}
 
-	// Read all element data
-	elementData := make([]byte, header.TotalSize)
-	if _, err := io.ReadFull(f, elementData); err != nil {
-		return nil, fmt.Errorf("read element data: %w", err)
-	}
+	return img
+}
 
-	// Convert elements and extract data slices
-	g1 := &G1File{
-		Header:   header,
-		Elements: make([]G1Element, header.NumEntries),
-	}
-
-	for i := uint32(0); i < header.NumEntries; i++ {
-		e32 := &elements32[i]
-		elem := &g1.Elements[i]
-
-		elem.Width = e32.Width
-		elem.Height = e32.Height
-		elem.XOffset = e32.XOffset
-		elem.YOffset = e32.YOffset
-		elem.Flags = e32.Flags
-		elem.ZoomOffset = e32.ZoomOffset
-
-		// Calculate data bounds
-		startOff := e32.Offset
-		var endOff uint32
-		if i+1 < header.NumEntries {
-			endOff = elements32[i+1].Offset
+// decompressRLE decompresses RLE compressed data
+func decompressRLE(data []byte, expectedLen int) []byte {
+	var out []byte
+	i := 0
+	for i < len(data) && len(out) < expectedLen {
+		if i >= len(data) {
+			break
+		}
+		b := data[i]
+		i++
+		if b&0x80 != 0 {
+			count := int(b & 0x7F)
+			if i+count > len(data) {
+				break
+			}
+			out = append(out, data[i:i+count]...)
+			i += count
 		} else {
-			endOff = header.TotalSize
+			count := int(b)
+			if i >= len(data) {
+				break
+			}
+			val := data[i]
+			i++
+			for j := 0; j < count && len(out) < expectedLen; j++ {
+				out = append(out, val)
+			}
 		}
+	}
+	return out
+}
 
-		if startOff < header.TotalSize && endOff <= header.TotalSize && startOff < endOff {
-			elem.Data = elementData[startOff:endOff]
+// LoadG1 loads and parses a G1.DAT file using the in-memory parser.
+// This implementation centralizes parsing by reading the file bytes with
+// `LoadDatFile` and delegating the heavy-lifting to `ParseG1`.
+func LoadG1(path string) (*G1File, error) {
+	// Read whole file into memory
+	data, err := LoadDatFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("load dat: %w", err)
+	}
+
+	// Parse the G1 table from the in-memory buffer
+	g1, err := ParseG1(data)
+	if err != nil {
+		return nil, fmt.Errorf("parse g1: %w", err)
+	}
+
+	// Handle elements marked as duplicate of previous element.
+	// Some G1s use the DuplicatePrev flag to indicate the element reuses the
+	// previous element's image/data. Ensure such elements get a proper Data
+	// slice and sensible defaults copied from the previous element when
+	// fields are zero-valued.
+	for i := 0; i < len(g1.Elements); i++ {
+		if (g1.Elements[i].Flags&G1FlagDuplicatePrev) != 0 && i > 0 {
+			prev := &g1.Elements[i-1]
+			cur := &g1.Elements[i]
+			if len(cur.Data) == 0 {
+				cur.Data = prev.Data
+			}
+			if cur.Width == 0 {
+				cur.Width = prev.Width
+			}
+			if cur.Height == 0 {
+				cur.Height = prev.Height
+			}
+			if cur.XOffset == 0 {
+				cur.XOffset = prev.XOffset
+			}
+			if cur.YOffset == 0 {
+				cur.YOffset = prev.YOffset
+			}
 		}
 	}
 
-	// Load palette from element 304
-	if err := g1.loadPalette(); err != nil {
-		fmt.Printf("Warning: failed to load palette: %v\n", err)
-		// Use a default grayscale palette as fallback
+	fmt.Printf("G1: %d entries, %d bytes total\n", g1.Header.NumEntries, g1.Header.TotalSize)
+
+	// Validate entry count (preserve original warning behavior)
+	if g1.Header.NumEntries != G1ExpectedCountDisc && g1.Header.NumEntries != G1ExpectedCountSteam {
+		fmt.Printf("Warning: unexpected G1 entry count %d (expected %d or %d)\n",
+			g1.Header.NumEntries, G1ExpectedCountDisc, G1ExpectedCountSteam)
+	}
+
+	// Ensure we have a usable palette. ParseG1 attempts to load the palette
+	// but may fail silently; keep the original fallback behavior to a
+	// grayscale palette when the parsed palette appears empty.
+	needFallback := true
+	nonZeroCount := 0
+	for i := 1; i < 256; i++ {
+		if g1.Palette[i].A != 0 || g1.Palette[i].R != 0 || g1.Palette[i].G != 0 || g1.Palette[i].B != 0 {
+			needFallback = false
+			nonZeroCount++
+		}
+	}
+	fmt.Printf("Palette check: %d non-zero entries, needFallback=%v\n", nonZeroCount, needFallback)
+	if needFallback {
+		fmt.Printf("Warning: failed to load palette, using grayscale fallback\n")
 		for i := 0; i < 256; i++ {
 			g1.Palette[i] = color.RGBA{uint8(i), uint8(i), uint8(i), 255}
 		}
+		// make index 0 transparent
+		g1.Palette[0] = color.RGBA{0, 0, 0, 0}
 	}
+	// Debug: print a few palette entries
+	fmt.Printf("Palette samples: [1]=%v [10]=%v [50]=%v [100]=%v [200]=%v [255]=%v\n",
+		g1.Palette[1], g1.Palette[10], g1.Palette[50], g1.Palette[100], g1.Palette[200], g1.Palette[255])
 
 	return g1, nil
 }
@@ -168,11 +229,11 @@ func (g1 *G1File) loadPalette() error {
 	for i := 0; i < count; i++ {
 		idx := startIdx + i
 		if idx >= 0 && idx < 256 {
-			// Data is R, G, B order
+			// Data is B, G, R order (Windows BITMAPINFO style)
 			g1.Palette[idx] = color.RGBA{
-				R: elem.Data[i*3+0],
+				R: elem.Data[i*3+2],
 				G: elem.Data[i*3+1],
-				B: elem.Data[i*3+2],
+				B: elem.Data[i*3+0],
 				A: 255,
 			}
 		}
@@ -198,6 +259,17 @@ func (g1 *G1File) DecodeSprite(index int) (*image.RGBA, error) {
 	w := int(elem.Width)
 	h := int(elem.Height)
 
+	// Debug logging for first few sprites
+	if decodeLogCount < 5 {
+		fmt.Printf("DecodeSprite(%d): %dx%d, flags=0x%X, dataLen=%d, isRLE=%v\n",
+			index, w, h, elem.Flags, len(elem.Data), elem.Flags&G1FlagIsRLECompressed != 0)
+		// Print first 20 bytes of data
+		if len(elem.Data) > 20 {
+			fmt.Printf("  First 20 bytes: %v\n", elem.Data[:20])
+		}
+		decodeLogCount++
+	}
+
 	// Create output image
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 
@@ -216,6 +288,8 @@ func (g1 *G1File) DecodeSprite(index int) (*image.RGBA, error) {
 	return img, nil
 }
 
+var decodeLogCount = 0
+
 // decodeRaw decodes uncompressed palette index data
 func (g1 *G1File) decodeRaw(elem *G1Element, img *image.RGBA) error {
 	w := int(elem.Width)
@@ -225,15 +299,27 @@ func (g1 *G1File) decodeRaw(elem *G1Element, img *image.RGBA) error {
 		return fmt.Errorf("raw data too small: %d < %d", len(elem.Data), w*h)
 	}
 
+	// Debug: track palette indices used
+	idxCount := make(map[uint8]int)
+
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
 			idx := elem.Data[y*w+x]
+			idxCount[idx]++
 			img.SetRGBA(x, y, g1.Palette[idx])
 		}
 	}
 
+	// Log first few sprites' palette usage
+	if len(idxCount) > 0 && rawDecodeLogCount < 3 {
+		fmt.Printf("Raw sprite palette indices used: %v\n", idxCount)
+		rawDecodeLogCount++
+	}
+
 	return nil
 }
+
+var rawDecodeLogCount = 0
 
 // decodeRLE decodes RLE compressed sprite data
 func (g1 *G1File) decodeRLE(elem *G1Element, img *image.RGBA) error {
@@ -291,4 +377,9 @@ func (g1 *G1File) decodeRLE(elem *G1Element, img *image.RGBA) error {
 // GetSpriteCount returns the number of sprites
 func (g1 *G1File) GetSpriteCount() int {
 	return len(g1.Elements)
+}
+
+// GetPalette returns the color palette
+func (g1 *G1File) GetPalette() []color.RGBA {
+	return g1.Palette[:]
 }

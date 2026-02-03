@@ -3,10 +3,11 @@ package ui
 import (
 	"image/color"
 
+	"github.com/LaPingvino/goloco/pkg/gfx"
+	"github.com/LaPingvino/goloco/pkg/graphics"
 	"github.com/LaPingvino/goloco/pkg/render"
 	"github.com/LaPingvino/goloco/pkg/sprites"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 // SimpleWindow represents a basic draggable game window for simple UI
@@ -153,60 +154,63 @@ func (w *SimpleWindow) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 		return
 	}
 
-	// Window colors (Locomotion style)
+	// Window colors (Locomotion style) - prefer using loaded G1/global palette when available
 	frameBg := color.RGBA{209, 205, 181, 255}
 	titleBg := color.RGBA{180, 170, 150, 255}
 	borderLight := color.RGBA{255, 255, 255, 255}
 	borderDark := color.RGBA{100, 95, 85, 255}
 	contentBg := color.RGBA{200, 195, 175, 255}
 
-	// Draw window frame background
-	for y := w.Y; y < w.Y+w.Height; y++ {
-		for x := w.X; x < w.X+w.Width; x++ {
-			screen.Set(x, y, frameBg)
-		}
+	// If a renderer/global palette is available, map these target RGBA values to
+	// the closest palette entries and use palette colors so the UI matches the
+	// game's look-and-feel more closely.
+	if graphics.IsGlobalPaletteLoaded() {
+		// Match the desired RGBA to palette indices
+		frameIdx := graphics.MatchPaletteIndex(frameBg)
+		titleIdx := graphics.MatchPaletteIndex(titleBg)
+		lightIdx := graphics.MatchPaletteIndex(borderLight)
+		darkIdx := graphics.MatchPaletteIndex(borderDark)
+		contentIdx := graphics.MatchPaletteIndex(contentBg)
+
+		// Replace with the actual palette colors
+		frameBg = graphics.GetGlobalColor(frameIdx)
+		titleBg = graphics.GetGlobalColor(titleIdx)
+		borderLight = graphics.GetGlobalColor(lightIdx)
+		borderDark = graphics.GetGlobalColor(darkIdx)
+		contentBg = graphics.GetGlobalColor(contentIdx)
 	}
 
+	// Draw window frame, title bar and content area using the DrawingContext so
+	// palette-aware colors are used when a G1 palette is loaded.
+	dc := graphics.NewDrawingContext(screen)
+	frameIdx := graphics.MatchPaletteIndex(frameBg)
+	titleIdx := graphics.MatchPaletteIndex(titleBg)
+	contentIdx := graphics.MatchPaletteIndex(contentBg)
+
+	// Draw full frame background with palette index
+	_ = dc.FillRect(int16(w.X), int16(w.Y), int16(w.Width), int16(w.Height), frameIdx)
+
 	// Draw title bar
-	for y := w.Y; y < w.Y+simpleTitleBarHeight; y++ {
-		for x := w.X; x < w.X+w.Width; x++ {
-			screen.Set(x, y, titleBg)
-		}
-	}
+	_ = dc.FillRect(int16(w.X), int16(w.Y), int16(w.Width), int16(simpleTitleBarHeight), titleIdx)
 
 	// Draw content area
 	contentX := w.X + simpleBorderWidth
 	contentY := w.Y + simpleTitleBarHeight
 	contentW := w.Width - simpleBorderWidth*2
-	contentH := w.Height - simpleTitleBarHeight - simpleBorderWidth
-	for y := contentY; y < contentY+contentH; y++ {
-		for x := contentX; x < contentX+contentW; x++ {
-			screen.Set(x, y, contentBg)
-		}
-	}
+	contentH := w.Height - simpleBorderWidth - simpleTitleBarHeight
+	_ = dc.FillRect(int16(contentX), int16(contentY), int16(contentW), int16(contentH), contentIdx)
 
-	// Draw 3D border effect
-	// Top and left (light)
-	for x := w.X; x < w.X+w.Width; x++ {
-		screen.Set(x, w.Y, borderLight)
-		screen.Set(x, w.Y+1, borderLight)
-	}
-	for y := w.Y; y < w.Y+w.Height; y++ {
-		screen.Set(w.X, y, borderLight)
-		screen.Set(w.X+1, y, borderLight)
-	}
-	// Bottom and right (dark)
-	for x := w.X; x < w.X+w.Width; x++ {
-		screen.Set(x, w.Y+w.Height-1, borderDark)
-		screen.Set(x, w.Y+w.Height-2, borderDark)
-	}
-	for y := w.Y; y < w.Y+w.Height; y++ {
-		screen.Set(w.X+w.Width-1, y, borderDark)
-		screen.Set(w.X+w.Width-2, y, borderDark)
-	}
+	// Draw a beveled border for the window using FillRectInset which will use
+	// nearby palette indices to simulate highlights and shadows. Pass the frame
+	// palette index as the base advanced color.
+	_ = dc.FillRectInset(int16(w.X), int16(w.Y), int16(w.Width), int16(w.Height), gfx.AdvancedColor{Color: gfx.Color(frameIdx)}, RectInsetBorder|RectInsetSecondary)
 
-	// Draw title text
-	ebitenutil.DebugPrintAt(screen, w.Title, w.X+6, w.Y+5)
+	// Draw title text using the drawing context so we can use the active palette.
+	// Prefer a readable text color mapped to the global palette when available.
+	// Desired default for title text is black; map it to the closest palette index.
+	textTarget := color.RGBA{0, 0, 0, 255}
+	textIdx := graphics.MatchPaletteIndex(textTarget)
+	_ = dc.DrawString(int16(w.X+6), int16(w.Y+5), w.Title, textIdx)
 
 	// Draw close button using G1 sprite if available
 	closeX := w.X + w.Width - 18
@@ -218,10 +222,17 @@ func (w *SimpleWindow) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 			screen.DrawImage(img, op)
 		}
 	} else {
-		// Fallback close button
+		// Fallback close button - pick a palette-aware color when available
+		fb := color.RGBA{200, 80, 80, 255}
+		var use color.RGBA
+		if graphics.IsGlobalPaletteLoaded() {
+			use = graphics.GetGlobalColor(graphics.MatchPaletteIndex(fb))
+		} else {
+			use = fb
+		}
 		for y := closeY; y < closeY+12; y++ {
 			for x := closeX; x < closeX+12; x++ {
-				screen.Set(x, y, color.RGBA{200, 80, 80, 255})
+				screen.Set(x, y, use)
 			}
 		}
 	}

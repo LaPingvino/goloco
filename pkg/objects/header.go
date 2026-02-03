@@ -9,9 +9,9 @@ import (
 
 // ObjectHeader is the 16-byte header at the start of each DAT object
 type ObjectHeader struct {
-	Flags    uint32   // Lower 6 bits = type, bits 6-7 = source game
-	Name     [8]byte  // Object name (null-padded)
-	Checksum uint32   // Object checksum
+	Flags    uint32  // Lower 6 bits = type, bits 6-7 = source game
+	Name     [8]byte // Object name (null-padded)
+	Checksum uint32  // Object checksum
 }
 
 // HeaderSize is the size of ObjectHeader in bytes

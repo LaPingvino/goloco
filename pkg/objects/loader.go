@@ -26,10 +26,11 @@ type LoadedObject struct {
 
 // ObjectManager manages loaded objects
 type ObjectManager struct {
-	Objects     map[string]*LoadedObject
-	Vehicles    []*VehicleObject
-	LandObjects []*LandObject
-	ObjDataPath string
+	Objects       map[string]*LoadedObject
+	Vehicles      []*VehicleObject
+	LandObjects   []*LandObject
+	InterfaceSkin *InterfaceSkinObject
+	ObjDataPath   string
 
 	// Sprite pool for object sprites
 	NextSpriteIndex uint32
@@ -96,6 +97,24 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 
 	// Parse type-specific data
 	switch header.GetType() {
+	case ObjectTypeInterfaceSkin:
+		skin, err := ParseInterfaceSkinObject(header, decompressed)
+		if err != nil {
+			return nil, fmt.Errorf("parsing interface skin: %w", err)
+		}
+		// Assign sprite indices
+		skin.ImageOffset = m.NextSpriteIndex
+		loaded.ImageOffset = m.NextSpriteIndex
+		loaded.ImageCount = uint32(len(skin.Sprites))
+		m.NextSpriteIndex += uint32(len(skin.Sprites))
+
+		loaded.Object = skin
+		// Store the first (typically only) InterfaceSkin as the active one
+		if m.InterfaceSkin == nil {
+			m.InterfaceSkin = skin
+			m.InterfaceSkin.Img = m.NextSpriteIndex - uint32(len(skin.Sprites))
+		}
+
 	case ObjectTypeVehicle:
 		vehicle, err := ParseVehicleObject(header, decompressed)
 		if err != nil {
@@ -318,22 +337,4 @@ func extractFirstString(data []byte) string {
 	return ""
 }
 
-func isPrintable(b byte) bool {
-	return b >= 0x20 && b < 0x7F
-}
-
-func cleanString(data []byte) string {
-	result := make([]byte, 0, len(data))
-	for _, b := range data {
-		if b == 0xFF {
-			continue // Skip FF bytes (format codes)
-		}
-		if b == 0 {
-			break
-		}
-		if isPrintable(b) {
-			result = append(result, b)
-		}
-	}
-	return strings.TrimSpace(string(result))
-}
+// Note: isPrintable and cleanString are now in stringtable.go

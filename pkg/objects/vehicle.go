@@ -11,20 +11,20 @@ type VehicleObject struct {
 	Header ObjectHeader
 
 	// Basic properties (from the decompressed data)
-	Name               uint16 // String ID
-	Mode               TransportMode
-	Type               VehicleType
-	NumCarComponents   uint8
-	TrackType          uint8
-	NumTrackExtras     uint8
-	CostIndex          uint8
-	CostFactor         int16
-	Reliability        uint8
-	RunCostIndex       uint8
-	RunCostFactor      int16
-	ColourType         uint8
-	NumCompatVehicles  uint8
-	CompatibleVehicles [8]uint16
+	Name                uint16 // String ID
+	Mode                TransportMode
+	Type                VehicleType
+	NumCarComponents    uint8
+	TrackType           uint8
+	NumTrackExtras      uint8
+	CostIndex           uint8
+	CostFactor          int16
+	Reliability         uint8
+	RunCostIndex        uint8
+	RunCostFactor       int16
+	ColourType          uint8
+	NumCompatVehicles   uint8
+	CompatibleVehicles  [8]uint16
 	RequiredTrackExtras [4]uint8
 
 	// Car components
@@ -55,11 +55,11 @@ type VehicleObject struct {
 
 // VehicleCarComponent describes one car in a vehicle consist
 type VehicleCarComponent struct {
-	FrontBogiePosition  uint8
-	BackBogiePosition   uint8
-	FrontBogieSpriteIdx uint8
-	BackBogieSpriteIdx  uint8
-	BodySpriteIdx       uint8
+	FrontBogiePosition   uint8
+	BackBogiePosition    uint8
+	FrontBogieSpriteIdx  uint8
+	BackBogieSpriteIdx   uint8
+	BodySpriteIdx        uint8
 	EmitterHorizontalPos uint8
 }
 

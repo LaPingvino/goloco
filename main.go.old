@@ -1,0 +1,347 @@
+package main
+
+import (
+	"image/color"
+	"log"
+	"strconv"
+
+	"github.com/LaPingvino/goloco/pkg/assets"
+	"github.com/LaPingvino/goloco/pkg/audio"
+	"github.com/LaPingvino/goloco/pkg/game"
+	"github.com/LaPingvino/goloco/pkg/graphics"
+	"github.com/LaPingvino/goloco/pkg/paint"
+	"github.com/LaPingvino/goloco/pkg/render"
+	"github.com/LaPingvino/goloco/pkg/title"
+	"github.com/LaPingvino/goloco/pkg/ui"
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+)
+
+const (
+	screenWidth  = 1024
+	screenHeight = 768
+)
+
+// GameMode represents the current mode of the game
+type GameMode int
+
+const (
+	GameModeTitle GameMode = iota
+	GameModeGame
+	GameModeEditor
+)
+
+// Game holds game state
+type Game struct {
+	// Mode
+	mode GameMode
+
+	// Camera
+	cameraX, cameraY float64
+	zoom             float64
+	frame            int
+
+	// Core systems
+	gameState     *game.GameState
+	audioManager  *audio.Manager
+	titleSequence *title.Sequence
+	mainWindow    *ui.Window
+
+	// Graphics
+	renderTarget *graphics.RenderTarget
+}
+
+func NewGame() *Game {
+	log.Println("[Main] Creating new game...")
+
+	g := &Game{
+		mode:         GameModeTitle,
+		zoom:         1.0, // Start zoomed out for title screen
+		audioManager: audio.NewManager(),
+	}
+	log.Println("[Main] Audio manager created")
+
+	// Try to load the title scenario, fall back to placeholder if unavailable
+	titlePath := "../locomotion/Data/title.dat"
+	log.Println("[Main] Loading title scenario from:", titlePath)
+	gs, err := game.NewGameStateFromScenario(titlePath)
+	if err != nil {
+		log.Printf("[Main] Could not load title scenario %s: %v (using placeholder)", titlePath, err)
+		gs = game.NewGameState(384, 384) // Larger placeholder map
+	} else {
+		log.Printf("[Main] Loaded title scenario: %dx%d map", gs.MapWidth, gs.MapHeight)
+	}
+	g.gameState = gs
+
+	// Create and start title sequence
+	log.Println("[Main] Creating title sequence...")
+	g.titleSequence = title.NewSequence(g.audioManager)
+	g.titleSequence.Start(g.gameState.MapWidth, g.gameState.MapHeight)
+
+	// Get initial camera position from title sequence
+	g.cameraX, g.cameraY, g.zoom = g.titleSequence.GetCameraPosition()
+	log.Printf("[Main] Initial camera: (%.1f, %.1f) zoom=%.2f", g.cameraX, g.cameraY, g.zoom)
+
+	// Initialize window manager
+	log.Println("[Main] Initializing window manager...")
+	ui.InitWindowManager()
+
+	// Create main viewport window
+	g.mainWindow = createMainWindow()
+
+	// Create title menu (positioned at bottom center)
+	log.Println("[Main] Creating title menu...")
+	titleMenu := ui.CreateTitleMenu(screenWidth, screenHeight)
+	_ = titleMenu // Title menu is added to window manager automatically
+
+	// Create toolbar window (top bar with File/View/Options)
+	log.Println("[Main] Creating toolbar window...")
+	toolbar := ui.CreateToolbarWindow()
+	_ = toolbar // Toolbar is added to window manager automatically
+
+	// Create test dialog for UI testing
+	log.Println("[Main] Creating test dialog...")
+	testDialog := ui.CreateTestDialog()
+	_ = testDialog // Test dialog is added to window manager automatically
+
+	// Load G1.DAT for palette and sprite data
+	g1Path := "../locomotion/Data/g1.DAT"
+	log.Println("[Main] Loading G1.DAT from:", g1Path)
+	g1, err := assets.LoadG1(g1Path)
+	if err != nil {
+		log.Printf("[Main] WARNING: Could not load G1 %s: %v", g1Path, err)
+	} else {
+		log.Printf("[Main] Loaded G1 with %d elements", len(g1.Elements))
+		// Set global palette for rendering
+		if graphics.SetGlobalPalette(g1) {
+			log.Println("[Main] Global palette set from G1")
+		} else {
+			log.Println("[Main] WARNING: No usable palette found in G1")
+		}
+	}
+
+	// Load sprite atlas
+	atlasPath := "extracted_sprites"
+	log.Println("[Main] Loading sprite atlas from:", atlasPath)
+	if atlas, err := render.LoadAtlasFromDir(atlasPath); err != nil {
+		log.Printf("[Main] WARNING: Could not load sprite atlas %s: %v", atlasPath, err)
+	} else {
+		log.Printf("[Main] Loaded atlas with %d images and %d sprites", len(atlas.Images), len(atlas.Sprites))
+		// Attach G1 for on-demand sprite loading
+		atlas.G1 = g1
+	}
+
+	// Start playing title music
+	musicPath := "../locomotion/Data/css5.dat"
+	log.Println("[Main] Loading music from:", musicPath)
+	if err := g.audioManager.LoadAndPlayMusic(musicPath, true); err != nil {
+		log.Printf("[Main] WARNING: Could not load music %s: %v", musicPath, err)
+	} else {
+		log.Println("[Main] Music loaded and playing")
+	}
+
+	log.Println("[Main] Game initialization complete")
+	return g
+}
+
+func (g *Game) Update() error {
+	// Input handling
+	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
+		// Update mouse/keyboard input
+		ui.UpdateInput()
+
+		return ebiten.Termination
+	}
+
+	switch g.mode {
+	case GameModeTitle:
+		g.updateTitle()
+	case GameModeGame:
+		g.updateGame()
+	}
+
+	// Update UI windows
+	ui.UpdateWindows()
+
+	// Update audio
+	g.audioManager.Update()
+
+	g.frame++
+	return nil
+}
+
+// updateTitle handles title screen update logic
+func (g *Game) updateTitle() {
+	// Update title sequence animation
+	if g.titleSequence != nil && g.titleSequence.IsRunning() {
+		g.titleSequence.Update()
+		g.cameraX, g.cameraY, g.zoom = g.titleSequence.GetCameraPosition()
+	}
+
+	// Check for title menu button clicks
+	// For now, any click or key press can interrupt the camera animation
+	// (manual camera control during title screen)
+	moveSpeed := 8.0 / g.zoom
+	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
+		g.cameraX -= moveSpeed
+		g.titleSequence.SetCameraPosition(g.cameraX, g.cameraY, g.zoom)
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) || ebiten.IsKeyPressed(ebiten.KeyD) {
+		g.cameraX += moveSpeed
+		g.titleSequence.SetCameraPosition(g.cameraX, g.cameraY, g.zoom)
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) || ebiten.IsKeyPressed(ebiten.KeyW) {
+		g.cameraY -= moveSpeed
+		g.titleSequence.SetCameraPosition(g.cameraX, g.cameraY, g.zoom)
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) || ebiten.IsKeyPressed(ebiten.KeyS) {
+		g.cameraY += moveSpeed
+		g.titleSequence.SetCameraPosition(g.cameraX, g.cameraY, g.zoom)
+	}
+
+	// Zoom controls
+	if ebiten.IsKeyPressed(ebiten.KeyQ) {
+		g.zoom *= 1.02
+		if g.zoom > 4 {
+			g.zoom = 4
+		}
+		g.titleSequence.SetCameraPosition(g.cameraX, g.cameraY, g.zoom)
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyE) {
+		g.zoom /= 1.02
+		if g.zoom < 0.25 {
+			g.zoom = 0.25
+		}
+		g.titleSequence.SetCameraPosition(g.cameraX, g.cameraY, g.zoom)
+	}
+}
+
+// updateGame handles regular game update logic
+func (g *Game) updateGame() {
+	// Camera movement
+	moveSpeed := 8.0 / g.zoom
+	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
+		g.cameraX -= moveSpeed
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) || ebiten.IsKeyPressed(ebiten.KeyD) {
+		g.cameraX += moveSpeed
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) || ebiten.IsKeyPressed(ebiten.KeyW) {
+		g.cameraY -= moveSpeed
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) || ebiten.IsKeyPressed(ebiten.KeyS) {
+		g.cameraY += moveSpeed
+	}
+
+	// Zoom
+	if ebiten.IsKeyPressed(ebiten.KeyQ) {
+		g.zoom *= 1.02
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyE) {
+		g.zoom /= 1.02
+	}
+	if g.zoom < 0.25 {
+		g.zoom = 0.25
+	}
+	if g.zoom > 4 {
+		g.zoom = 4
+	}
+
+	// Update game state
+	g.gameState.Update()
+}
+
+func (g *Game) Draw(screen *ebiten.Image) {
+	// Clear screen
+	screen.Fill(color.RGBA{0x80, 0xa0, 0xff, 0xff})
+
+	// Create drawing context
+	dc := graphics.NewDrawingContext(screen)
+
+	// Draw world
+	g.drawWorld(screen, dc)
+
+	// Draw UI windows
+	ui.RenderWindows(dc, ui.Rect{X: 0, Y: 0, Width: screenWidth, Height: screenHeight})
+
+	// Draw HUD overlay based on mode
+	if g.mode == GameModeTitle {
+		ebitenutil.DebugPrintAt(screen, "goloco - Title Screen", 8, 8)
+		ebitenutil.DebugPrintAt(screen,
+			"WASD / arrows: pan  Q/E: zoom  Esc: quit\n"+
+				"Map: "+strconv.Itoa(g.gameState.MapWidth)+"x"+strconv.Itoa(g.gameState.MapHeight)+
+				"  Zoom: "+floatToStr(g.zoom)+"\n"+
+				"Camera animating... (use arrow keys to override)",
+			8, 24)
+	} else {
+		ebitenutil.DebugPrintAt(screen, "goloco - OpenLoco in Go", 8, 8)
+
+		// Get mouse position
+		mx, my := ui.GetMousePosition()
+		mouseState := "up"
+		if ui.IsMousePressed() {
+			mouseState = "down"
+		}
+
+		ebitenutil.DebugPrintAt(screen,
+			"WASD / arrows: pan  Q/E: zoom  Esc: quit\n"+
+				"Zoom: "+floatToStr(g.zoom)+"  Cam: ("+floatToStr(g.cameraX)+","+floatToStr(g.cameraY)+")\n"+
+				"Date: "+g.gameState.GameDate.Format("Jan 02, 1950")+"  Money: £"+strconv.FormatInt(g.gameState.PlayerMoney, 10)+"\n"+
+				"Mouse: ("+strconv.Itoa(mx)+","+strconv.Itoa(my)+") "+mouseState,
+			8, 24)
+	}
+
+	// Get mouse position for cursor
+	mx, my := ui.GetMousePosition()
+
+	// Draw mouse cursor crosshair
+	ebitenutil.DrawLine(screen, float64(mx)-5, float64(my), float64(mx)+5, float64(my), color.RGBA{255, 255, 0, 255})
+	ebitenutil.DrawLine(screen, float64(mx), float64(my)-5, float64(mx), float64(my)+5, color.RGBA{255, 255, 0, 255})
+
+}
+
+func (g *Game) drawWorld(screen *ebiten.Image, dc *graphics.DrawingContext) {
+	// Use paint session for proper rendering pipeline
+	ps := paint.NewPaintSession()
+	ps.GenerateTilePaint(g.gameState, 32.0, g.cameraX, g.cameraY, g.zoom, screenWidth, screenHeight)
+	ps.ArrangeStructs()
+	ps.DrawStructs(dc)
+	// Draw vehicles (TODO: move to paint session)
+	s := g.zoom
+	for _, vehicle := range g.gameState.Vehicles {
+		vx := vehicle.X
+		vy := vehicle.Y
+		sx := (vx-g.cameraX)*s + float64(screenWidth)/2
+		sy := (vy-g.cameraY)*s + float64(screenHeight)/2
+		ebitenutil.DrawRect(screen, sx-4, sy-4, 8, 8, color.RGBA{255, 100, 100, 255})
+	}
+}
+
+func floatToStr(f float64) string {
+	return strconv.FormatFloat(f, 'f', 2, 64)
+}
+
+func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return screenWidth, screenHeight
+}
+
+// createMainWindow creates the main viewport window
+func createMainWindow() *ui.Window {
+	w := ui.CreateWindow(ui.WindowTypeMain, 0, 0, screenWidth, screenHeight, ui.WindowFlagNoBackground)
+
+	// This window is transparent and just acts as the main container
+	// We'll draw the world behind it
+
+	return w
+}
+
+func main() {
+	ebiten.SetWindowSize(screenWidth, screenHeight)
+	ebiten.SetWindowTitle("OpenLoco (Go)")
+
+	game := NewGame()
+
+	if err := ebiten.RunGame(game); err != nil {
+		log.Fatal(err)
+	}
+}

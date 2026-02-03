@@ -15,11 +15,11 @@ import (
 )
 
 var (
-	inputDir        = flag.String("in", "", "Input directory with converted code")
-	outputDir       = flag.String("out", "", "Output directory for clean scaffolds")
-	generateImpls   = flag.Bool("ai", false, "Use AI to generate initial implementations")
-	aiModel         = flag.String("model", "gpt-4o-mini", "AI model to use for generation")
-	verbose         = flag.Bool("v", false, "Verbose output")
+	inputDir      = flag.String("in", "", "Input directory with converted code")
+	outputDir     = flag.String("out", "", "Output directory for clean scaffolds")
+	generateImpls = flag.Bool("ai", false, "Use AI to generate initial implementations")
+	aiModel       = flag.String("model", "gpt-4o-mini", "AI model to use for generation")
+	verbose       = flag.Bool("v", false, "Verbose output")
 )
 
 type FunctionSignature struct {
@@ -49,11 +49,11 @@ type Field struct {
 }
 
 type ScaffoldFile struct {
-	Package     string
-	Imports     []string
-	Types       []TypeDefinition
-	Functions   []FunctionSignature
-	SourceFile  string
+	Package    string
+	Imports    []string
+	Types      []TypeDefinition
+	Functions  []FunctionSignature
+	SourceFile string
 }
 
 func main() {
@@ -133,13 +133,13 @@ func (sg *ScaffoldGenerator) processFile(path string) error {
 }
 
 var (
-	packageRe = regexp.MustCompile(`^package\s+(\w+)`)
-	typeRe    = regexp.MustCompile(`^type\s+(\w+)\s+(struct|int|uint8|uint16|uint32)`)
-	constRe   = regexp.MustCompile(`^const\s+\(`)
-	enumRe    = regexp.MustCompile(`^\s*(\w+)(?:\s+\w+)?\s*=?\s*(?:iota|1\s*<<|\d+)`)
-	funcRe    = regexp.MustCompile(`^func\s+(?:\((\w+)\s+\*(\w+)\)\s+)?(\w+)\(([^)]*)\)\s*(.*)`)
+	packageRe       = regexp.MustCompile(`^package\s+(\w+)`)
+	typeRe          = regexp.MustCompile(`^type\s+(\w+)\s+(struct|int|uint8|uint16|uint32)`)
+	constRe         = regexp.MustCompile(`^const\s+\(`)
+	enumRe          = regexp.MustCompile(`^\s*(\w+)(?:\s+\w+)?\s*=?\s*(?:iota|1\s*<<|\d+)`)
+	funcRe          = regexp.MustCompile(`^func\s+(?:\((\w+)\s+\*(\w+)\)\s+)?(\w+)\(([^)]*)\)\s*(.*)`)
 	commentMethodRe = regexp.MustCompile(`^\s*//\s*method:\s*(.+)`)
-	commentFuncRe = regexp.MustCompile(`^\s*//\s*func\s+(.+)`)
+	commentFuncRe   = regexp.MustCompile(`^\s*//\s*func\s+(.+)`)
 )
 
 func (sg *ScaffoldGenerator) extractScaffold(content, sourcePath string) *ScaffoldFile {
@@ -190,8 +190,8 @@ func (sg *ScaffoldGenerator) extractScaffold(content, sourcePath string) *Scaffo
 				scaffold.Types = append(scaffold.Types, *currentType)
 			}
 			currentType = &TypeDefinition{
-				Name: m[1],
-				Kind: m[2],
+				Name:   m[1],
+				Kind:   m[2],
 				Fields: make([]Field, 0),
 			}
 			if m[2] == "struct" {

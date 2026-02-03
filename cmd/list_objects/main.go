@@ -35,10 +35,10 @@ func main() {
 
 	// Load a few sample files first
 	sampleFiles := []string{
-		"114.DAT",     // A train (Class 114 DMU)
-		"A4.DAT",      // A4 steam locomotive
-		"747.DAT",     // Boeing 747
-		"TRUCK1.DAT",  // A truck
+		"114.DAT",    // A train (Class 114 DMU)
+		"A4.DAT",     // A4 steam locomotive
+		"747.DAT",    // Boeing 747
+		"TRUCK1.DAT", // A truck
 	}
 
 	fmt.Println("=== Sample Objects ===")

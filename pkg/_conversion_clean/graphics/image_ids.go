@@ -2454,6 +2454,7 @@ const Chris_sawyer_intro_palette uint32 = 3619
 const Atari_logo_intro_left uint32 = 3620
 const Atari_logo_intro_right uint32 = 3621
 const Atari_intro_palette uint32 = 3622
+
 // SKIPPED CONSTRUCTOR: const Atari_logo_small uint32 = UNUSED_IMG(3623)
 const Locomotion_logo uint32 = 3624
 const Wide_tab uint32 = 3625

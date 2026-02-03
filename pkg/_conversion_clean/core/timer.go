@@ -7,13 +7,14 @@ package core
 // #include <cstdint>
 // namespace OpenLoco::Core
 type Timer struct {
-// SKIPPED C++ SYNTAX: type ClockType = std::chrono::high_resolution_clock
-// SKIPPED C++ SYNTAX: type TimePointType = any /* std::chrono::time_point<ClockType> */ 
-// TimePointType _start = ClockType::now();
-// // Resets the timer
+	// SKIPPED C++ SYNTAX: type ClockType = std::chrono::high_resolution_clock
+	// SKIPPED C++ SYNTAX: type TimePointType = any /* std::chrono::time_point<ClockType> */
+	// TimePointType _start = ClockType::now();
+	// // Resets the timer
 	// method: void reset()
-// _start = ClockType::now();
+	// _start = ClockType::now();
 }
+
 // // Returns elapsed time in milliseconds
 // func Elapsed() float32
 // const auto now = ClockType::now();

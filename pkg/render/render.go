@@ -284,3 +284,68 @@ func (r *Renderer) GetObjectSpriteInfo(land *objects.LandObject, localIndex int)
 	sprite := land.Sprites[localIndex]
 	return sprite.Width, sprite.Height, sprite.XOffset, sprite.YOffset, true
 }
+
+// GetInterfaceSkinSprite returns a decoded sprite from the InterfaceSkin object.
+//
+// OpenLoco reference: src/OpenLoco/src/Objects/InterfaceSkinObject.h
+//   Sprites are accessed via: interface->img + InterfaceSkin::ImageIds::toolbar_*
+//
+// The imageID is the InterfaceSkin::ImageIds constant (e.g., ISToolbarLoadsave).
+func (r *Renderer) GetInterfaceSkinSprite(imageID uint32) *ebiten.Image {
+	if r.ObjMgr == nil {
+		log.Printf("[Render] GetInterfaceSkinSprite(%d): ObjMgr is nil", imageID)
+		return nil
+	}
+	if r.ObjMgr.InterfaceSkin == nil {
+		log.Printf("[Render] GetInterfaceSkinSprite(%d): InterfaceSkin is nil", imageID)
+		return nil
+	}
+
+	skin := r.ObjMgr.InterfaceSkin
+	log.Printf("[Render] GetInterfaceSkinSprite(%d): InterfaceSkin has %d sprites", imageID, len(skin.Sprites))
+
+	if int(imageID) >= len(skin.Sprites) {
+		log.Printf("[Render] GetInterfaceSkinSprite(%d): imageID out of range (max %d)", imageID, len(skin.Sprites)-1)
+		return nil
+	}
+
+	// Check cache
+	cacheKey := fmt.Sprintf("interface:%d", imageID)
+	if img, ok := r.objectSpriteCache[cacheKey]; ok {
+		return img
+	}
+
+	sprite := skin.Sprites[imageID]
+	if sprite == nil {
+		log.Printf("[Render] InterfaceSkin sprite %d is nil", imageID)
+		return nil
+	}
+	if len(sprite.Data) == 0 {
+		log.Printf("[Render] InterfaceSkin sprite %d has no data (width=%d, height=%d, flags=0x%04x)",
+			imageID, sprite.Width, sprite.Height, sprite.Flags)
+		return nil
+	}
+
+	log.Printf("[Render] InterfaceSkin sprite %d: %dx%d, flags=0x%04x, data len=%d",
+		imageID, sprite.Width, sprite.Height, sprite.Flags, len(sprite.Data))
+
+	// Decode the sprite
+	rgba, err := r.decodeObjectSprite(sprite)
+	if err != nil || rgba == nil {
+		if !objectSpriteWarned[cacheKey] {
+			log.Printf("[Render] Failed to decode InterfaceSkin sprite %d: %v", imageID, err)
+			objectSpriteWarned[cacheKey] = true
+		}
+		return nil
+	}
+
+	img := ebiten.NewImageFromImage(rgba)
+	r.objectSpriteCache[cacheKey] = img
+
+	// Log first few cached sprites
+	if len(r.objectSpriteCache) <= 10 {
+		log.Printf("[Render] Cached InterfaceSkin sprite %d (%dx%d)", imageID, sprite.Width, sprite.Height)
+	}
+
+	return img
+}

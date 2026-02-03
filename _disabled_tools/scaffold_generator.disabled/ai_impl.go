@@ -34,10 +34,10 @@ func NewAIImplementationGenerator(model string, verbose bool) (*AIImplementation
 }
 
 type ChatCompletionRequest struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
-	Temperature float64 `json:"temperature"`
-	MaxTokens int `json:"max_tokens"`
+	Model       string    `json:"model"`
+	Messages    []Message `json:"messages"`
+	Temperature float64   `json:"temperature"`
+	MaxTokens   int       `json:"max_tokens"`
 }
 
 type Message struct {

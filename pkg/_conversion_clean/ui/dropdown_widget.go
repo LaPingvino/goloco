@@ -9,14 +9,15 @@ package ui
 type ComboBox struct {
 	Public // embedded
 	// method: constexpr ComboBox(WidgetId id, Point origin, Size size, WindowColour colour, StringId content = StringIds::null, StringId tooltip = StringIds::null)
-// : Widget(id, origin, size, kWidgetType, colour, content, tooltip)
-// events.draw = &draw;
+	// : Widget(id, origin, size, kWidgetType, colour, content, tooltip)
+	// events.draw = &draw;
 }
+
 // MALFORMED FIELD: const ComboBoxWidgetType any = WidgetType.combobox
 // func ComboBox(origin Point, size Size, colour WindowColour, StringIds::null StringId content =, StringIds::null StringId tooltip =) constexpr
 // : ComboBox(WidgetId::none, origin, size, colour, content, tooltip)
 // events.draw = &draw;
-// func Draw(drawingCtx Gfx::DrawingContext, widget Widget, widgetState WidgetState) 
+// func Draw(drawingCtx Gfx::DrawingContext, widget Widget, widgetState WidgetState)
 // func DropdownWidgets(origin Ui::Point, size Ui::Size, colour WindowColour, Widget::kContentNull uint32 content =, StringIds::null StringId tooltip =) any
 // const auto makeDropdownButtonWidget = [](Ui::Point origin, Ui::Size size, WindowColour colour) {
 // const int16 xPos = origin.x + size.width - 12;

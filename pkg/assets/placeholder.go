@@ -27,8 +27,8 @@ func GeneratePlaceholderAtlas(outputPath string) error {
 
 	// Generate grass tile (green diamond)
 	grassTile := createDiamondTile(tileW, tileH,
-		color.RGBA{80, 160, 80, 255},  // main color
-		color.RGBA{60, 140, 60, 255},  // darker edge
+		color.RGBA{80, 160, 80, 255},   // main color
+		color.RGBA{60, 140, 60, 255},   // darker edge
 		color.RGBA{100, 180, 100, 255}) // lighter highlight
 	err = savePNG(filepath.Join(extractedPath, "grass.png"), grassTile)
 	if err != nil {
@@ -47,8 +47,8 @@ func GeneratePlaceholderAtlas(outputPath string) error {
 
 	// Generate water tile (blue diamond)
 	waterTile := createDiamondTile(tileW, tileH,
-		color.RGBA{64, 120, 192, 255}, // main color
-		color.RGBA{40, 90, 160, 255},  // darker edge
+		color.RGBA{64, 120, 192, 255},  // main color
+		color.RGBA{40, 90, 160, 255},   // darker edge
 		color.RGBA{100, 160, 220, 255}) // lighter highlight
 	err = savePNG(filepath.Join(extractedPath, "water.png"), waterTile)
 	if err != nil {

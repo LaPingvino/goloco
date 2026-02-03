@@ -4,35 +4,35 @@ package sprites
 
 // UI Elements
 const (
-	WindowResizeHandle         = 2305
-	ColourSwatchRecolourable   = 2306
-	ColourSwatchRaised         = 2307
-	ColourSwatchPressed        = 2308
-	CompanyListDropdownIcon    = 2309
-	IconParentFolder           = 2310
-	IconFolder                 = 2311
-	CurvedBorderLeftMedium     = 2315
-	CurvedBorderRightMedium    = 2316
-	CurvedBorderLeftMediumBold = 2317
-	CurvedBorderRightMediumBold= 2318
-	CurvedBorderLeftSmall      = 2319
-	CurvedBorderRightSmall     = 2320
-	CloseButton                = 2321
-	FrameBackgroundImage       = 2322
-	FrameBackgroundImageAlt    = 2323
-	InlineGreenUpArrow         = 2324
-	InlineRedDownArrow         = 2325
-	ProgressbarStyle0Frame0    = 2326
-	ProgressbarStyle0Frame1    = 2327
-	ProgressbarStyle0Frame2    = 2328
-	ProgressbarStyle0Frame3    = 2329
-	ProgressbarTrack           = 2330
-	Tab                        = 2387
-	SelectedTab                = 2388
-	TabDisplay                 = 2391
-	TabControl                 = 2392
-	TabSound                   = 2393
-	TabMiscellaneous           = 2394
+	WindowResizeHandle          = 2305
+	ColourSwatchRecolourable    = 2306
+	ColourSwatchRaised          = 2307
+	ColourSwatchPressed         = 2308
+	CompanyListDropdownIcon     = 2309
+	IconParentFolder            = 2310
+	IconFolder                  = 2311
+	CurvedBorderLeftMedium      = 2315
+	CurvedBorderRightMedium     = 2316
+	CurvedBorderLeftMediumBold  = 2317
+	CurvedBorderRightMediumBold = 2318
+	CurvedBorderLeftSmall       = 2319
+	CurvedBorderRightSmall      = 2320
+	CloseButton                 = 2321
+	FrameBackgroundImage        = 2322
+	FrameBackgroundImageAlt     = 2323
+	InlineGreenUpArrow          = 2324
+	InlineRedDownArrow          = 2325
+	ProgressbarStyle0Frame0     = 2326
+	ProgressbarStyle0Frame1     = 2327
+	ProgressbarStyle0Frame2     = 2328
+	ProgressbarStyle0Frame3     = 2329
+	ProgressbarTrack            = 2330
+	Tab                         = 2387
+	SelectedTab                 = 2388
+	TabDisplay                  = 2391
+	TabControl                  = 2392
+	TabSound                    = 2393
+	TabMiscellaneous            = 2394
 )
 
 // Construction icons
@@ -115,5 +115,5 @@ const (
 
 // Logo and title
 const (
-	ChrisRollercoasterGuy = 0  // First sprites are usually logo/intro
+	ChrisRollercoasterGuy = 0 // First sprites are usually logo/intro
 )

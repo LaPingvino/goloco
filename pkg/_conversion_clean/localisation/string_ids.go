@@ -67,6 +67,7 @@ const Too_many_names_in_use StringId = 58
 const Not_enough_cash_requires_currency32 StringId = 59
 const Tooltip_close_window StringId = 60
 const Game_init_failure StringId = 61
+
 // SKIPPED CONSTRUCTOR: const Unable_to_start_minimized StringId = UNUSED_STR(62)
 // SKIPPED CONSTRUCTOR: const Unable_to_initialize_graphics StringId = UNUSED_STR(63)
 // SKIPPED CONSTRUCTOR: const Invalid_cd_code_please_reinstall StringId = UNUSED_STR(64)
@@ -83,6 +84,7 @@ const About_locomotion_74 StringId = 74
 const About_locomotion_75 StringId = 75
 const About_locomotion_76 StringId = 76
 const About_locomotion_77 StringId = 77
+
 // SKIPPED CONSTRUCTOR: const About_locomotion_78 StringId = UNUSED_STR(78)
 // SKIPPED CONSTRUCTOR: const About_locomotion_79 StringId = UNUSED_STR(79)
 // SKIPPED CONSTRUCTOR: const About_locomotion_80 StringId = UNUSED_STR(80)
@@ -102,6 +104,7 @@ const Arg16_stringid StringId = 93
 const Arg18_stringid StringId = 94
 const Arg20_stringid StringId = 95
 const Dropdown StringId = 96
+
 // SKIPPED CONSTRUCTOR: const Unused_small_black_string StringId = UNUSED_STR(97)
 const Error_too_low StringId = 98
 const Error_too_high StringId = 99
@@ -151,6 +154,7 @@ const Cant_remove_pop3_string StringId = 142
 const Cant_build_pop3_string StringId = 143
 const Raise_or_lower_land_first StringId = 144
 const Menu_underground_view StringId = 145
+
 // SKIPPED CONSTRUCTOR: const Menu_hide_foreground_tracks_roads StringId = UNUSED_STR(146)
 const Station_type_can_only_be_built_at_road_ends StringId = 147
 const Wrong_type_of_station_for_string_id StringId = 148
@@ -373,6 +377,7 @@ const Format_openloco_saved_game StringId = 367
 const Format_openloco_scenario StringId = 368
 const Format_openloco_landscape StringId = 369
 const Error_game_save_failed StringId = 370
+
 // SKIPPED CONSTRUCTOR: const Error_failed_to_load_saved_game_file_contains_invalid_data StringId = UNUSED_STR(371)
 // SKIPPED CONSTRUCTOR: const Menu_hide_foreground_scenery_buildings StringId = UNUSED_STR(372)
 const Can_only_be_built_on_water StringId = 373
@@ -388,6 +393,7 @@ const Bridge_type_unsuitable_for_this_configuration StringId = 382
 const Title_station_name StringId = 383
 const Prompt_type_new_station_name StringId = 384
 const Error_cant_rename_station StringId = 385
+
 // SKIPPED CONSTRUCTOR: const Invalid_name_for_station StringId = UNUSED_STR(386)
 const Cant_move_vehicle StringId = 387
 const Cant_reverse_train StringId = 388
@@ -427,6 +433,7 @@ const Dropdown_stringid StringId = 421
 const Dropdown_stringid_selected StringId = 422
 const Dropdown_company_select StringId = 423
 const Dropdown_stringptr StringId = 424
+
 // SKIPPED CONSTRUCTOR: const Dropdown_stringptr_selected StringId = UNUSED_STR(425)
 const Menu_height_marks_on_tracks_roads StringId = 426
 const Menu_height_marks_on_land StringId = 427
@@ -450,6 +457,7 @@ const Dropdown_with_checkmark StringId = 444
 const Error_cant_remove_this StringId = 445
 const Title_build_walls StringId = 446
 const Title_plant_trees StringId = 447
+
 // SKIPPED CONSTRUCTOR: const Cant_position_this_here StringId = UNUSED_STR(448)
 const Cant_plant_this_here StringId = 449
 const Outlined_wcolour2_stringid StringId = 450
@@ -483,11 +491,13 @@ const Error_cant_lower_water_here StringId = 477
 const Error_cant_raise_water_here StringId = 478
 const Audio_device_none StringId = 479
 const Stringptr StringId = 480
+
 // SKIPPED CONSTRUCTOR: const Red_closed_hyphen_hyphen StringId = UNUSED_STR(481)
 // SKIPPED CONSTRUCTOR: const Yellow_string_hyphen_hyphen StringId = UNUSED_STR(482)
 // SKIPPED CONSTRUCTOR: const Land_slope_unsuitable StringId = UNUSED_STR(483)
 // SKIPPED CONSTRUCTOR: const Cant_build_this_underwater_duplicate StringId = UNUSED_STR(484)
 const Land_type_not_suitable StringId = 485
+
 // SKIPPED CONSTRUCTOR: const Spinner_up StringId = UNUSED_STR(486)
 // SKIPPED CONSTRUCTOR: const Spinner_down StringId = UNUSED_STR(487)
 const Status_num_stations_singular StringId = 520
@@ -499,6 +509,7 @@ const Status_towns_plural StringId = 556
 const Status_num_industries_singular StringId = 562
 const Status_num_industries_plural StringId = 563
 const Rotate_object_90 StringId = 565
+
 // SKIPPED CONSTRUCTOR: const Level_land_required StringId = UNUSED_STR(566)
 const Error_cant_change_land_type StringId = 567
 const Format_currency_income_green StringId = 568
@@ -515,10 +526,12 @@ const Tooltip_vehicle_tab_finance StringId = 578
 const New_construction_position StringId = 579
 const Rotate_90 StringId = 580
 const String_id_in_the_way StringId = 581
+
 // SKIPPED CONSTRUCTOR: const Unused_currency32 StringId = UNUSED_STR(582)
 const Error_cant_build_this_here StringId = 583
 const Date_monthyear StringId = 584
 const Openloco StringId = 585
+
 // SKIPPED CONSTRUCTOR: const Please_insert_cd_in_following_drive StringId = UNUSED_STR(586)
 const Expenditure_income StringId = 587
 const Train_income StringId = 588
@@ -582,6 +595,7 @@ const Month_long_november StringId = 645
 const Month_long_december StringId = 646
 const Tooltip_daymonthyear_challenge StringId = 647
 const Select_scenario_for_new_game StringId = 648
+
 // SKIPPED CONSTRUCTOR: const Sound_quality StringId = UNUSED_STR(650)
 // SKIPPED CONSTRUCTOR: const Sound_quality_low StringId = UNUSED_STR(651)
 // SKIPPED CONSTRUCTOR: const Sound_quality_medium StringId = UNUSED_STR(652)
@@ -723,6 +737,7 @@ const Title_map_vehicles StringId = 1006
 const Title_map_industries StringId = 1007
 const Title_map_routes StringId = 1008
 const Title_map_companies StringId = 1009
+
 // SKIPPED CONSTRUCTOR: const Forced_software_buffer_mixing StringId = UNUSED_STR(1010)
 // SKIPPED CONSTRUCTOR: const Forced_software_buffer_mixing_tip StringId = UNUSED_STR(1011)
 const Tutorial_text StringId = 1014
@@ -1013,6 +1028,7 @@ const Int_32 StringId = 1298
 const Table_header_stations StringId = 1299
 const Table_header_stations_desc StringId = 1300
 const Tooltip_sort_stations StringId = 1301
+
 // SKIPPED CONSTRUCTOR: const Table_header_town StringId = UNUSED_STR(1302)
 // SKIPPED CONSTRUCTOR: const Table_header_town_desc StringId = UNUSED_STR(1303)
 const Town_size_and_population StringId = 1304
@@ -1180,12 +1196,14 @@ const Tooltip_select_company StringId = 1465
 const Enter_host_address StringId = 1483
 const Enter_host_address_description StringId = 1484
 const Tooltip_display_options StringId = 1486
+
 // SKIPPED CONSTRUCTOR: const Tooltip_sound_options StringId = UNUSED_STR(1487)
 // SKIPPED CONSTRUCTOR: const Tooltip_music_options StringId = UNUSED_STR(1488)
 const Tooltip_regional_options StringId = 1489
 const Tooltip_control_options StringId = 1490
 const Tooltip_miscellaneous_options StringId = 1491
 const Options_title_display StringId = 1492
+
 // SKIPPED CONSTRUCTOR: const Options_title_sound StringId = UNUSED_STR(1493)
 // SKIPPED CONSTRUCTOR: const Options_title_music StringId = UNUSED_STR(1494)
 const Options_title_regional StringId = 1495
@@ -1240,6 +1258,7 @@ const Edit_music_selection_tip StringId = 1543
 const Music_selection_title StringId = 1544
 const Music_selection_tooltip StringId = 1545
 const Checkmark StringId = 1546
+
 // SKIPPED CONSTRUCTOR: const Volume StringId = UNUSED_STR(1547)
 const Set_music_volume_tip StringId = 1548
 const Menu_music_options StringId = 1549
@@ -1611,9 +1630,11 @@ const Tiny_power StringId = 1924
 const Tiny_brake StringId = 1925
 const Tooltip_route_move_order_up StringId = 1926
 const Tooltip_route_move_order_down StringId = 1927
+
 // SKIPPED CONSTRUCTOR: const Unable_to_run_from_read_only_media StringId = UNUSED_STR(1928)
 // SKIPPED CONSTRUCTOR: const Atari_inc_credits_btn StringId = UNUSED_STR(1929)
 const Licenced_to_atari_inc StringId = 1930
+
 // SKIPPED CONSTRUCTOR: const Atari_inc_credits_caption StringId = UNUSED_STR(1931)
 const Title_menu_chat_tooltip StringId = 1933
 const The_other_player StringId = 1934
@@ -1767,11 +1788,13 @@ const Object_world_region StringId = 2084
 const Object_company_owners StringId = 2085
 const Object_scenario_descriptions StringId = 2086
 const Tooltip_object_list StringId = 2087
+
 // SKIPPED CONSTRUCTOR: const Missing_object_data_id_x StringId = UNUSED_STR(2088)
 const Export_plugin_objects StringId = 2089
 const Export_plugin_objects_tip StringId = 2090
 const At_least_one_generic_dual_direction_road_type_must_be_selected StringId = 2091
 const Scaffolding_type_must_be_selected StringId = 2092
+
 // SKIPPED CONSTRUCTOR: const Object_selection_advanced StringId = UNUSED_STR(2093)
 // SKIPPED CONSTRUCTOR: const Object_selection_advanced_tooltip StringId = UNUSED_STR(2094)
 const Object_currency_big_font StringId = 2095
@@ -1794,6 +1817,7 @@ const Map_generation_type_must_be_selected StringId = 2111
 const Region_type_must_be_selected StringId = 2112
 const Unit_mph StringId = 2113
 const Unit_kmh StringId = 2114
+
 // SKIPPED CONSTRUCTOR: const Unit_hour StringId = UNUSED_STR(2115)
 // SKIPPED CONSTRUCTOR: const Unit_hours StringId = UNUSED_STR(2116)
 // SKIPPED CONSTRUCTOR: const Unit_mins StringId = UNUSED_STR(2117)
@@ -1842,6 +1866,7 @@ const Cheat_allow_manual_driving StringId = 2159
 const Cheat_allow_building_while_paused StringId = 2160
 const Option_show_fps_counter StringId = 2161
 const Option_show_fps_counter_tooltip StringId = 2162
+
 // SKIPPED CONSTRUCTOR: const Option_uncap_fps StringId = UNUSED_STR(2163)
 // SKIPPED CONSTRUCTOR: const Option_uncap_fps_tooltip StringId = UNUSED_STR(2164)
 const Frame_hardware StringId = 2165

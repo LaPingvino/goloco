@@ -23,6 +23,8 @@ const (
 type tile struct {
 	tileType     TileType
 	terrainIndex uint8 // raw LandObject slot index from the scenario
+	baseZ        uint8 // height in SmallZ units (4 units = 1 pixel vertical)
+	slope        uint8 // slope corners and flags from byte 4 of surface element
 }
 
 // World holds a tile grid for an isometric game world
@@ -133,6 +135,8 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 			w.tiles[y][x] = tile{
 				tileType:     tt,
 				terrainIndex: st.TerrainIndex,
+				baseZ:        st.Height,
+				slope:        0, // TODO: parse slope from tile element byte 4
 			}
 		}
 	}
@@ -179,6 +183,18 @@ func (w *World) ZoomOut() {
 	if w.zoom < 3 {
 		w.zoom++
 	}
+}
+
+// SetZoom sets the zoom level directly (0=full, 1=half, 2=quarter, 3=eighth)
+func (w *World) SetZoom(level int) {
+	if level >= 0 && level <= 3 {
+		w.zoom = level
+	}
+}
+
+// GetMapSize returns the map dimensions in tiles
+func (w *World) GetMapSize() (width, height int) {
+	return w.width, w.height
 }
 
 func (w *World) Update() {
@@ -313,6 +329,12 @@ func (w *World) Draw(screen *ebiten.Image) {
 
 			t := w.tiles[y][x]
 			screenX, screenY := w.tileToScreen(x, y)
+
+			// Apply height offset (4 SmallZ units = 1 pixel vertical)
+			// OpenLoco reference: Map/Tile.h - SmallZ units
+			heightOffset := float64(t.baseZ) / 4.0
+			screenY -= heightOffset
+
 			// Convert world position to screen position: subtract camera,
 			// then apply zoom scale.
 			drawX := (screenX - w.camX) * scale

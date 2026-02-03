@@ -64,9 +64,9 @@ func (t ObjectType) String() string {
 type SourceGame uint8
 
 const (
-	SourceGameCustom  SourceGame = 0
-	SourceGameData    SourceGame = 1
-	SourceGameVanilla SourceGame = 2
+	SourceGameCustom   SourceGame = 0
+	SourceGameData     SourceGame = 1
+	SourceGameVanilla  SourceGame = 2
 	SourceGameOpenLoco SourceGame = 3
 )
 
