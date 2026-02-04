@@ -130,7 +130,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 		if err != nil {
 			return nil, fmt.Errorf("parsing land: %w", err)
 		}
-		// Assign sprite indices
+		// Assign sprite indices for embedded sprites
 		land.ImageOffset = m.NextSpriteIndex
 		loaded.ImageOffset = m.NextSpriteIndex
 		loaded.ImageCount = uint32(len(land.Sprites))

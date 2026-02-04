@@ -2,7 +2,6 @@ package world
 
 import (
 	"image/color"
-	"log"
 	"math"
 
 	"github.com/LaPingvino/goloco/pkg/render"
@@ -358,39 +357,38 @@ func (w *World) Draw(screen *ebiten.Image) {
 				continue
 			}
 
-			// Draw the terrain sprite from this tile's LandObject with proper slope.
+			// Draw terrain using G1 base terrain sprites
 			// OpenLoco reference: Paint/PaintSurface.cpp paintSurface()
 			//   imageIndex = landObj->image + variation + displaySlope
-			if w.renderer != nil && w.renderer.ObjMgr != nil {
-				land := w.renderer.ObjMgr.GetLandObjectByIndex(int(t.terrainIndex))
-				if land != nil {
-					// Map slope byte (0-31) to display slope (0-18)
-					rawSlope := t.slope & 0x1F // Lower 5 bits
-					displaySlope := int(0)
-					if rawSlope < uint8(len(slopeToDisplaySlope)) {
-						displaySlope = int(slopeToDisplaySlope[rawSlope])
-					}
+			//
+			// G1 terrain sprites start at index 3746 (surfaceSmooth3Slope0)
+			// Each terrain type has 19 slope variants (0-18)
+			// For now, we just use the base grass terrain sprites
+			if w.renderer != nil {
+				// Map slope byte (0-31) to display slope (0-18)
+				rawSlope := t.slope & 0x1F // Lower 5 bits
+				displaySlope := int(0)
+				if rawSlope < uint8(len(slopeToDisplaySlope)) {
+					displaySlope = int(slopeToDisplaySlope[rawSlope])
+				}
 
-					// Calculate sprite index: base + variation + slope
-					// For now, variation = 0 (no growth stage/rotation variation yet)
-					spriteIdx := displaySlope
+				// Use G1 base terrain sprites
+				// 3746 = grass terrain flat (slope 0)
+				// Each slope adds 1 to the index
+				const g1TerrainBase = 3746
+				spriteID := g1TerrainBase + displaySlope
 
-					if img := w.renderer.GetObjectSprite(land, spriteIdx); img != nil {
-						spriteW, spriteH, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, spriteIdx)
-						if ok {
-							// Debug first few tiles
-							if x < 3 && y < 3 {
-								log.Printf("[World] Tile(%d,%d) slope=%d: sprite %dx%d, offset=(%d,%d)",
-									x, y, rawSlope, spriteW, spriteH, xOff, yOff)
-							}
-							op := &ebiten.DrawImageOptions{}
-							op.GeoM.Scale(scale, scale)
-							op.GeoM.Translate(
-								math.Floor(drawX+float64(xOff)*scale),
-								math.Floor(drawY+float64(yOff)*scale))
-							screen.DrawImage(img, op)
-							continue
-						}
+				if img := w.renderer.GetSprite(spriteID); img != nil {
+					// Get sprite info for proper positioning
+					_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+					if ok {
+						op := &ebiten.DrawImageOptions{}
+						op.GeoM.Scale(scale, scale)
+						op.GeoM.Translate(
+							math.Floor(drawX+float64(xOff)*scale),
+							math.Floor(drawY+float64(yOff)*scale))
+						screen.DrawImage(img, op)
+						continue
 					}
 				}
 			}
