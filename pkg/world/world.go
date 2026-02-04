@@ -320,6 +320,220 @@ func (w *World) createDiamondTile(tt TileType) *ebiten.Image {
 	return img
 }
 
+// getTile returns a pointer to the tile at (x, y), or nil if out of bounds
+func (w *World) getTile(x, y int) *tile {
+	if x < 0 || x >= w.width || y < 0 || y >= w.height {
+		return nil
+	}
+	return &w.tiles[y][x]
+}
+
+// Edge directions for neighbor lookup
+const (
+	EdgeSW = 0 // South-West (bottom-left)
+	EdgeSE = 1 // South-East (bottom-right)
+	EdgeNW = 2 // North-West (top-left)
+	EdgeNE = 3 // North-East (top-right)
+)
+
+// getNeighborTile returns the neighbor tile in the given edge direction
+// Edge directions match OpenLoco's neighbor offset order
+func (w *World) getNeighborTile(x, y int, edge int) *tile {
+	// Neighbor offsets for each edge (rotation 0)
+	// From OpenLoco kNeighbourOffsets
+	var dx, dy int
+	switch edge {
+	case EdgeSW: // 0
+		dx, dy = -1, 0
+	case EdgeSE: // 1
+		dx, dy = 0, 1
+	case EdgeNW: // 2
+		dx, dy = 0, -1
+	case EdgeNE: // 3
+		dx, dy = 1, 0
+	default:
+		return nil
+	}
+	return w.getTile(x+dx, y+dy)
+}
+
+// CornerHeight represents the height of the 4 corners of a tile
+// From OpenLoco CornerHeight struct
+type CornerHeight struct {
+	Top    uint8 // North corner
+	Right  uint8 // East corner
+	Bottom uint8 // South corner
+	Left   uint8 // West corner
+}
+
+// cornerHeights lookup table from OpenLoco kCornerHeights
+// Maps slope value (0-31) to corner heights (0, 1, or 2)
+var cornerHeights = [32]CornerHeight{
+	{0, 0, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}, {0, 0, 1, 1},
+	{1, 0, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, {1, 0, 1, 1},
+	{0, 1, 0, 0}, {0, 1, 1, 0}, {0, 1, 0, 1}, {0, 1, 1, 1},
+	{1, 1, 0, 0}, {1, 1, 1, 0}, {1, 1, 0, 1}, {1, 1, 1, 1},
+	{0, 0, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}, {0, 0, 1, 1},
+	{1, 0, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, {1, 0, 1, 2},
+	{0, 1, 0, 0}, {0, 1, 1, 0}, {0, 1, 0, 1}, {0, 1, 2, 1},
+	{1, 1, 0, 0}, {1, 2, 1, 0}, {2, 1, 0, 1}, {1, 1, 1, 1},
+}
+
+// getCornerHeights returns the absolute corner heights for a tile
+func (w *World) getCornerHeights(t *tile) CornerHeight {
+	if t == nil {
+		return CornerHeight{0, 0, 0, 0}
+	}
+
+	// Base height in MicroZ units (SmallZ * 4)
+	microZ := uint8(t.baseZ) * 4
+
+	// Get relative corner heights from slope
+	slope := t.slope & 0x1F // Lower 5 bits
+	rel := cornerHeights[slope]
+
+	// Add base height to get absolute corner heights
+	return CornerHeight{
+		Top:    microZ + rel.Top,
+		Right:  microZ + rel.Right,
+		Bottom: microZ + rel.Bottom,
+		Left:   microZ + rel.Left,
+	}
+}
+
+// EdgeHeight represents the heights of the two corners on an edge
+type EdgeHeight struct {
+	Self0      uint8 // First corner on self side
+	Neighbor0  uint8 // First corner on neighbor side
+	Self1      uint8 // Second corner on self side
+	Neighbor1  uint8 // Second corner on neighbor side
+}
+
+// getEdgeHeights calculates the corner heights for a specific edge
+func (w *World) getEdgeHeights(x, y int, edge int, selfCorners CornerHeight) EdgeHeight {
+	neighbor := w.getNeighborTile(x, y, edge)
+	if neighbor == nil {
+		return EdgeHeight{0, 0, 0, 0}
+	}
+
+	neighborCorners := w.getCornerHeights(neighbor)
+
+	// Map edge direction to corner pairs
+	// From OpenLoco paintSurface edge height calculation
+	var eh EdgeHeight
+	switch edge {
+	case EdgeSW: // 0
+		eh.Self0 = selfCorners.Left
+		eh.Neighbor0 = neighborCorners.Top
+		eh.Self1 = selfCorners.Bottom
+		eh.Neighbor1 = neighborCorners.Right
+	case EdgeSE: // 1
+		eh.Self0 = selfCorners.Right
+		eh.Neighbor0 = neighborCorners.Top
+		eh.Self1 = selfCorners.Bottom
+		eh.Neighbor1 = neighborCorners.Left
+	case EdgeNW: // 2
+		eh.Self0 = selfCorners.Top
+		eh.Neighbor0 = neighborCorners.Right
+		eh.Self1 = selfCorners.Left
+		eh.Neighbor1 = neighborCorners.Bottom
+	case EdgeNE: // 3
+		eh.Self0 = selfCorners.Top
+		eh.Neighbor0 = neighborCorners.Left
+		eh.Self1 = selfCorners.Right
+		eh.Neighbor1 = neighborCorners.Bottom
+	}
+
+	return eh
+}
+
+// paintCliffEdges renders cliff edge sprites for height transitions
+// OpenLoco reference: PaintSurface.cpp paintSurfaceCliffEdge()
+func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, drawX, drawY, scale float64) {
+	if w.renderer == nil || w.renderer.G1 == nil {
+		return
+	}
+
+	// Get corner heights for this tile
+	selfCorners := w.getCornerHeights(t)
+
+	// Check all 4 edges in order: NW, NE, SW, SE (matching OpenLoco order)
+	// OpenLoco paints in order: 2, 3, 0, 1
+	edges := []int{EdgeNW, EdgeNE, EdgeSW, EdgeSE}
+
+	for _, edge := range edges {
+		neighbor := w.getNeighborTile(x, y, edge)
+		if neighbor == nil {
+			continue
+		}
+
+		// Get edge heights
+		edgeHeights := w.getEdgeHeights(x, y, edge, selfCorners)
+
+		// Check if there's a height difference requiring cliff edges
+		// Cliff edges are needed when self corners are higher than neighbor corners
+		if edgeHeights.Self0 <= edgeHeights.Neighbor0 && edgeHeights.Self1 <= edgeHeights.Neighbor1 {
+			continue // No cliff needed
+		}
+
+		// Paint cliff edge sections
+		// For now, use hardcoded G1 cliff edge sprites (3726+ from ImageIds.h)
+		// TODO: Use land.CliffEdgeImage when we have dynamic sprite loading
+		const cliffEdgeBase = 3726 // cliffEdge0MaskSlope0
+
+		// Determine which corner needs cliff sections
+		minHeight := edgeHeights.Neighbor0
+		if edgeHeights.Neighbor1 < minHeight {
+			minHeight = edgeHeights.Neighbor1
+		}
+		maxHeight := edgeHeights.Self0
+		if edgeHeights.Self1 > maxHeight {
+			maxHeight = edgeHeights.Self1
+		}
+
+		// Paint cliff sections for each height level
+		for h := minHeight; h < maxHeight; h++ {
+			// Simple cliff edge sprite (height & 0xF gives us variant)
+			spriteID := int(cliffEdgeBase) + int(h&0xF)
+
+			if img := w.renderer.GetSprite(spriteID); img != nil {
+				_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+				if ok {
+					// Offset cliff edge sprite based on edge direction
+					edgeOffsetX, edgeOffsetY := w.getCliffEdgeOffset(edge, h)
+
+					op := &ebiten.DrawImageOptions{}
+					op.GeoM.Scale(scale, scale)
+					op.GeoM.Translate(
+						math.Floor(drawX+float64(xOff+edgeOffsetX)*scale),
+						math.Floor(drawY+float64(yOff+edgeOffsetY)*scale))
+					screen.DrawImage(img, op)
+				}
+			}
+		}
+	}
+}
+
+// getCliffEdgeOffset returns the pixel offset for cliff edge sprites
+// OpenLoco reference: kEdgeImageOffset in PaintSurface.cpp
+func (w *World) getCliffEdgeOffset(edge int, height uint8) (int16, int16) {
+	// Height offset (each MicroZ level is 1 pixel vertical)
+	heightOffset := int16(height)
+
+	switch edge {
+	case EdgeSW: // 0
+		return 30, -heightOffset
+	case EdgeSE: // 1
+		return 0, 30 - heightOffset
+	case EdgeNW: // 2
+		return 0, -2 - heightOffset + 1
+	case EdgeNE: // 3
+		return -2, -heightOffset + 1
+	default:
+		return 0, -heightOffset
+	}
+}
+
 func (w *World) Draw(screen *ebiten.Image) {
 	sw, sh := screen.Size()
 	scale := 1.0 / float64(int(1)<<w.zoom) // zoom 0→1.0, 1→0.5, 2→0.25, 3→0.125
@@ -383,6 +597,11 @@ func (w *World) Draw(screen *ebiten.Image) {
 								math.Floor(drawX+float64(xOff)*scale),
 								math.Floor(drawY+float64(yOff)*scale))
 							screen.DrawImage(img, op)
+
+							// Draw cliff edges for height transitions
+							// OpenLoco reference: PaintSurface.cpp:1714-1717
+							w.paintCliffEdges(screen, x, y, &t, drawX, drawY, scale)
+
 							continue
 						}
 					}
