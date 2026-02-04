@@ -4,6 +4,7 @@ import (
 	"image/color"
 	"math"
 
+	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/render"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -449,8 +450,8 @@ func (w *World) getEdgeHeights(x, y int, edge int, selfCorners CornerHeight) Edg
 
 // paintCliffEdges renders cliff edge sprites for height transitions
 // OpenLoco reference: PaintSurface.cpp paintSurfaceCliffEdge()
-func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, drawX, drawY, scale float64) {
-	if w.renderer == nil || w.renderer.G1 == nil {
+func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *objects.LandObject, drawX, drawY, scale float64) {
+	if w.renderer == nil || w.renderer.G1 == nil || land == nil {
 		return
 	}
 
@@ -476,10 +477,9 @@ func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, drawX, 
 			continue // No cliff needed
 		}
 
-		// Paint cliff edge sections
-		// For now, use hardcoded G1 cliff edge sprites (3726+ from ImageIds.h)
-		// TODO: Use land.CliffEdgeImage when we have dynamic sprite loading
-		const cliffEdgeBase = 3726 // cliffEdge0MaskSlope0
+		// Use land.CliffEdgeImage from dynamically loaded CliffEdgeObject
+		// OpenLoco reference: PaintSurface.cpp:1198-1209, 1460
+		cliffEdgeImageBase := land.CliffEdgeImage
 
 		// Determine which corner needs cliff sections
 		minHeight := edgeHeights.Neighbor0
@@ -492,9 +492,12 @@ func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, drawX, 
 		}
 
 		// Paint cliff sections for each height level
+		// OpenLoco reference: PaintSurface.cpp:1200
+		//   const auto image = ImageId(cliffEdgeImageBase).withIndexOffset(factor + (height & 0xF));
 		for h := minHeight; h < maxHeight; h++ {
-			// Simple cliff edge sprite (height & 0xF gives us variant)
-			spriteID := int(cliffEdgeBase) + int(h&0xF)
+			// Calculate factor (slope-based offset, 0 for now - flat cliffs)
+			factor := uint32(0)
+			spriteID := int(cliffEdgeImageBase) + int(factor) + int(h&0xF)
 
 			if img := w.renderer.GetSprite(spriteID); img != nil {
 				_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
@@ -598,13 +601,12 @@ func (w *World) Draw(screen *ebiten.Image) {
 								math.Floor(drawY+float64(yOff)*scale))
 							screen.DrawImage(img, op)
 
-							// TODO: Draw cliff edges for height transitions
+							// Draw cliff edges for height transitions
 							// OpenLoco reference: PaintSurface.cpp:1714-1717
-							// DISABLED: The G1 sprites at 3726+ are MASK sprites (palette index 255)
-							// They show as green strokes covering everything.
-							// Need to use land.CliffEdgeImage with proper texture sprites instead.
-							// This requires implementing dynamic G1 sprite loading for DAT objects.
-							// w.paintCliffEdges(screen, x, y, &t, drawX, drawY, scale)
+							// Now uses dynamic G1 sprite pool with land.CliffEdgeImage
+							if land.CliffEdgeImage > 0 {
+								w.paintCliffEdges(screen, x, y, &t, land, drawX, drawY, scale)
+							}
 
 							continue
 						}

@@ -102,14 +102,36 @@ func (r *Renderer) GetObjectSprite(land *objects.LandObject, localIndex int) *eb
 	if land == nil {
 		return nil
 	}
-	if localIndex < 0 || localIndex >= len(land.Sprites) {
-		return nil
-	}
 
 	// Check cache - use a proper string key
 	cacheKey := fmt.Sprintf("%s:%d", land.Name, localIndex)
 	if img, ok := r.objectSpriteCache[cacheKey]; ok {
 		return img
+	}
+
+	// If ImageOffset is set, use G1 dynamic sprites
+	if land.ImageOffset > 0 && r.G1 != nil {
+		g1Index := int(land.ImageOffset) + localIndex
+		rgba, err := r.G1.DecodeSprite(g1Index)
+		if err != nil {
+			if !objectSpriteWarned[cacheKey] {
+				log.Printf("[Render] Failed to decode G1 sprite %d for %s:%d: %v", g1Index, land.Name, localIndex, err)
+				objectSpriteWarned[cacheKey] = true
+			}
+			return nil
+		}
+		if rgba == nil {
+			return nil
+		}
+
+		img := ebiten.NewImageFromImage(rgba)
+		r.objectSpriteCache[cacheKey] = img
+		return img
+	}
+
+	// Fallback: use embedded sprites
+	if localIndex < 0 || localIndex >= len(land.Sprites) {
+		return nil
 	}
 
 	sprite := land.Sprites[localIndex]
@@ -274,7 +296,22 @@ func (r *Renderer) decodeObjectSprite(sprite *objects.SpriteElement) (*image.RGB
 
 // GetObjectSpriteInfo returns the dimensions and offsets for an object sprite
 func (r *Renderer) GetObjectSpriteInfo(land *objects.LandObject, localIndex int) (width, height, xOff, yOff int16, ok bool) {
-	if land == nil || localIndex < 0 || localIndex >= len(land.Sprites) {
+	if land == nil {
+		return 0, 0, 0, 0, false
+	}
+
+	// If ImageOffset is set, get info from G1
+	if land.ImageOffset > 0 && r.G1 != nil {
+		g1Index := int(land.ImageOffset) + localIndex
+		if g1Index < 0 || g1Index >= len(r.G1.Elements) {
+			return 0, 0, 0, 0, false
+		}
+		elem := &r.G1.Elements[g1Index]
+		return elem.Width, elem.Height, elem.XOffset, elem.YOffset, true
+	}
+
+	// Fallback: use embedded sprites
+	if localIndex < 0 || localIndex >= len(land.Sprites) {
 		return 0, 0, 0, 0, false
 	}
 	sprite := land.Sprites[localIndex]

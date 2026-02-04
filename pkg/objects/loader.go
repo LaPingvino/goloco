@@ -9,6 +9,17 @@ import (
 	"strings"
 )
 
+// G1Loader interface for loading sprites into the G1 pool
+type G1Loader interface {
+	LoadImageTable(data []byte) (ImageTableResult, error)
+}
+
+// ImageTableResult holds the result of loading an image table
+type ImageTableResult struct {
+	ImageOffset uint32
+	TableLength uint32
+}
+
 // Object is the interface for all loaded objects
 type Object interface {
 	GetHeader() *ObjectHeader
@@ -34,6 +45,7 @@ type ObjectManager struct {
 
 	// Sprite pool for object sprites
 	NextSpriteIndex uint32
+	G1File          interface{} // Reference to assets.G1File (using interface{} to avoid circular import)
 }
 
 // NewObjectManager creates a new object manager
@@ -126,15 +138,34 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 		m.Vehicles = append(m.Vehicles, vehicle)
 
 	case ObjectTypeLand:
-		land, err := ParseLandObject(header, decompressed)
+		// Use G1 dynamic loading if available
+		var land *LandObject
+		var err error
+		if m.G1File != nil {
+			// Cast to G1Loader interface
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				land, err = ParseLandObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				land, err = ParseLandObject(header, decompressed)
+			}
+		} else {
+			land, err = ParseLandObject(header, decompressed)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("parsing land: %w", err)
 		}
-		// Assign sprite indices for embedded sprites
-		land.ImageOffset = m.NextSpriteIndex
-		loaded.ImageOffset = m.NextSpriteIndex
-		loaded.ImageCount = uint32(len(land.Sprites))
-		m.NextSpriteIndex += uint32(len(land.Sprites))
+
+		// If using G1 dynamic loading, ImageOffset is already set
+		// Otherwise, assign sprite indices for embedded sprites
+		if land.ImageOffset == 0 && len(land.Sprites) > 0 {
+			land.ImageOffset = m.NextSpriteIndex
+			loaded.ImageOffset = m.NextSpriteIndex
+			loaded.ImageCount = uint32(len(land.Sprites))
+			m.NextSpriteIndex += uint32(len(land.Sprites))
+		} else {
+			loaded.ImageOffset = land.ImageOffset
+			loaded.ImageCount = 0 // Sprites are in G1, not embedded
+		}
 
 		loaded.Object = land
 		m.LandObjects = append(m.LandObjects, land)

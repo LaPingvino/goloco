@@ -59,9 +59,10 @@ type G1Element struct {
 
 // G1File holds all parsed G1 data
 type G1File struct {
-	Header   G1Header
-	Elements []G1Element
-	Palette  [256]color.RGBA
+	Header       G1Header
+	Elements     []G1Element
+	Palette      [256]color.RGBA
+	totalSprites uint32 // Track total sprite count for dynamic loading
 }
 
 // ToRGBA converts a G1Element to an RGBA image using the provided palette
@@ -202,6 +203,10 @@ func LoadG1(path string) (*G1File, error) {
 	// Debug: print a few palette entries
 	fmt.Printf("Palette samples: [1]=%v [10]=%v [50]=%v [100]=%v [200]=%v [255]=%v\n",
 		g1.Palette[1], g1.Palette[10], g1.Palette[50], g1.Palette[100], g1.Palette[200], g1.Palette[255])
+
+	// Initialize sprite counter for dynamic loading
+	g1.totalSprites = g1.Header.NumEntries
+	fmt.Printf("Initialized G1 sprite pool: %d base sprites\n", g1.totalSprites)
 
 	return g1, nil
 }
@@ -403,4 +408,132 @@ func (g1 *G1File) GetSpriteCount() int {
 // GetPalette returns the color palette
 func (g1 *G1File) GetPalette() []color.RGBA {
 	return g1.Palette[:]
+}
+
+// ImageTableResult holds the result of loading an image table from a DAT object.
+// This matches OpenLoco's ObjectImageTable.h::ImageTableResult.
+//
+// OpenLoco reference: src/OpenLoco/src/Objects/ObjectImageTable.h
+type ImageTableResult struct {
+	ImageOffset uint32 // Starting sprite index in global G1 pool
+	TableLength uint32 // Total byte size consumed (header + elements + data)
+}
+
+// LoadImageTable loads sprites from a DAT object's image table into the global G1 pool.
+// This appends the sprites from the object to the G1 sprite array and returns the
+// offset where they were added.
+//
+// The data format is identical to G1.DAT format:
+//   [G1Header: 8 bytes]
+//   [G1Element32 array: numEntries * 16 bytes]
+//   [Pixel data: referenced by element offsets]
+//
+// Elements with the DuplicatePrevious flag reuse the previous sprite's data but with
+// adjusted x/y offsets.
+//
+// OpenLoco reference: src/OpenLoco/src/Objects/ObjectImageTable.cpp::loadImageTable
+func (g1 *G1File) LoadImageTable(data []byte) (ImageTableResult, error) {
+	if len(data) < 8 {
+		return ImageTableResult{}, errors.New("data too small for G1 header")
+	}
+
+	// Parse header
+	header := G1Header{
+		NumEntries: binary.LittleEndian.Uint32(data[0:4]),
+		TotalSize:  binary.LittleEndian.Uint32(data[4:8]),
+	}
+
+	// Calculate total length consumed
+	headerSize := uint32(8)
+	elementTableSize := header.NumEntries * 16 // G1Element32 is 16 bytes
+	tableLength := headerSize + elementTableSize + header.TotalSize
+
+	if uint32(len(data)) < headerSize+elementTableSize {
+		return ImageTableResult{}, fmt.Errorf("data too small: need %d bytes for elements",
+			headerSize+elementTableSize)
+	}
+
+	// Remember starting index for this object's sprites
+	imageOffset := g1.totalSprites
+
+	// Parse elements
+	elemData := data[headerSize:]
+	pixelDataStart := headerSize + elementTableSize
+
+	for i := uint32(0); i < header.NumEntries; i++ {
+		offset := i * 16
+		elem32 := G1Element32{
+			Offset:     binary.LittleEndian.Uint32(elemData[offset+0 : offset+4]),
+			Width:      int16(binary.LittleEndian.Uint16(elemData[offset+4 : offset+6])),
+			Height:     int16(binary.LittleEndian.Uint16(elemData[offset+6 : offset+8])),
+			XOffset:    int16(binary.LittleEndian.Uint16(elemData[offset+8 : offset+10])),
+			YOffset:    int16(binary.LittleEndian.Uint16(elemData[offset+10 : offset+12])),
+			Flags:      G1ElementFlags(binary.LittleEndian.Uint16(elemData[offset+12 : offset+14])),
+			ZoomOffset: int16(binary.LittleEndian.Uint16(elemData[offset+14 : offset+16])),
+		}
+
+		// Convert to G1Element
+		elem := G1Element{
+			Width:      elem32.Width,
+			Height:     elem32.Height,
+			XOffset:    elem32.XOffset,
+			YOffset:    elem32.YOffset,
+			Flags:      elem32.Flags,
+			ZoomOffset: elem32.ZoomOffset,
+		}
+
+		// Handle DuplicatePrevious flag
+		if (elem.Flags&G1FlagDuplicatePrev) != 0 && len(g1.Elements) > 0 {
+			// Duplicate previous element but with adjusted offsets
+			prevIdx := len(g1.Elements) - 1
+			elem.Data = g1.Elements[prevIdx].Data
+			elem.Width = g1.Elements[prevIdx].Width
+			elem.Height = g1.Elements[prevIdx].Height
+			elem.XOffset = g1.Elements[prevIdx].XOffset + elem32.XOffset
+			elem.YOffset = g1.Elements[prevIdx].YOffset + elem32.YOffset
+		} else {
+			// Extract pixel data
+			dataOffset := pixelDataStart + elem32.Offset
+			if dataOffset < uint32(len(data)) {
+				// Calculate data size (goes to next element's offset or end of data)
+				var dataSize uint32
+				if i+1 < header.NumEntries {
+					// Next element's offset
+					nextOffset := binary.LittleEndian.Uint32(elemData[(i+1)*16 : (i+1)*16+4])
+					dataSize = nextOffset - elem32.Offset
+				} else {
+					// Last element: use remaining data
+					dataSize = header.TotalSize - elem32.Offset
+				}
+
+				if dataOffset+dataSize <= uint32(len(data)) {
+					elem.Data = make([]byte, dataSize)
+					copy(elem.Data, data[dataOffset:dataOffset+dataSize])
+				}
+			}
+		}
+
+		g1.Elements = append(g1.Elements, elem)
+		g1.totalSprites++
+	}
+
+	return ImageTableResult{
+		ImageOffset: imageOffset,
+		TableLength: tableLength,
+	}, nil
+}
+
+// GetTotalSprites returns the total number of sprites including dynamically loaded ones.
+// This matches OpenLoco's ObjectManager::getTotalNumImages().
+//
+// OpenLoco reference: src/OpenLoco/src/Objects/ObjectImageTable.cpp::getTotalNumImages
+func (g1 *G1File) GetTotalSprites() uint32 {
+	return g1.totalSprites
+}
+
+// SetTotalSprites sets the sprite counter. Used to initialize after loading G1.DAT.
+//
+// OpenLoco reference: src/OpenLoco/src/Objects/ObjectImageTable.cpp::setTotalNumImages
+func (g1 *G1File) SetTotalSprites(count uint32) {
+	g1.totalSprites = count
 }

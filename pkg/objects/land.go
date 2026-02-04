@@ -71,6 +71,11 @@ const G1ElementFlagHasZoomSprites = 0x10
 
 // ParseLandObject parses a land object from decompressed data
 func ParseLandObject(header *ObjectHeader, data []byte) (*LandObject, error) {
+	return ParseLandObjectWithG1(header, data, nil)
+}
+
+// ParseLandObjectWithG1 parses a land object and optionally loads sprites into the G1 pool
+func ParseLandObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*LandObject, error) {
 	if len(data) < 0x1E {
 		return nil, fmt.Errorf("land object data too small: %d bytes", len(data))
 	}
@@ -128,12 +133,33 @@ func ParseLandObject(header *ObjectHeader, data []byte) (*LandObject, error) {
 		offset += 16
 	}
 
-	// Parse embedded G1 image table
-	sprites, err := parseImageTable(data[offset:])
-	if err != nil {
-		return nil, fmt.Errorf("parsing image table: %w", err)
+	// Load sprites into G1 pool if G1 loader is available
+	if g1 != nil {
+		imgRes, err := g1.LoadImageTable(data[offset:])
+		if err != nil {
+			return nil, fmt.Errorf("loading image table to G1: %w", err)
+		}
+
+		// Calculate sprite indices matching OpenLoco's LandObject.cpp:81-88
+		land.ImageOffset = imgRes.ImageOffset
+		land.MapPixelImage = uint32(land.NumImageAngles)*uint32(land.NumGrowthStages)*NumImagesPerGrowthStagePlusZoom + imgRes.ImageOffset
+
+		// Calculate cliff edge sprite index
+		// In OpenLoco this comes from the CliffEdgeObject, but for now we calculate it
+		// The cliff edge sprites are the last sprites in the terrain image set
+		land.CliffEdgeImage = imgRes.ImageOffset // Will be updated when cliff edge objects are loaded
+
+		// Clear embedded sprites since they're now in G1
+		land.Sprites = nil
+	} else {
+		// Fallback: Parse embedded G1 image table (old behavior)
+		sprites, err := parseImageTable(data[offset:])
+		if err != nil {
+			return nil, fmt.Errorf("parsing image table: %w", err)
+		}
+		land.Sprites = sprites
+		land.ImageOffset = 0 // Will be set by ObjectManager
 	}
-	land.Sprites = sprites
 
 	return land, nil
 }

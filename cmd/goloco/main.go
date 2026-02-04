@@ -113,9 +113,11 @@ func NewGame() *Game {
 			log.Printf("Loading objects from: %s", objDataDir)
 			objMgr = objects.NewObjectManager(objDataDir)
 
-			// Set base sprite index to after G1 sprites
+			// Set base sprite index to after G1 sprites and attach G1 for dynamic loading
 			if g1 != nil {
 				objMgr.SetBaseSpriteIndex(uint32(g1.GetSpriteCount()))
+				objMgr.G1File = g1
+				log.Printf("ObjectManager will use dynamic G1 sprite pool (starting at index %d)", g1.GetSpriteCount())
 			}
 
 			// Load InterfaceSkin first (INTERDEF.DAT)
