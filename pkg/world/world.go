@@ -598,9 +598,13 @@ func (w *World) Draw(screen *ebiten.Image) {
 								math.Floor(drawY+float64(yOff)*scale))
 							screen.DrawImage(img, op)
 
-							// Draw cliff edges for height transitions
+							// TODO: Draw cliff edges for height transitions
 							// OpenLoco reference: PaintSurface.cpp:1714-1717
-							w.paintCliffEdges(screen, x, y, &t, drawX, drawY, scale)
+							// DISABLED: The G1 sprites at 3726+ are MASK sprites (palette index 255)
+							// They show as green strokes covering everything.
+							// Need to use land.CliffEdgeImage with proper texture sprites instead.
+							// This requires implementing dynamic G1 sprite loading for DAT objects.
+							// w.paintCliffEdges(screen, x, y, &t, drawX, drawY, scale)
 
 							continue
 						}
