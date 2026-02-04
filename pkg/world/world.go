@@ -357,11 +357,12 @@ func (w *World) Draw(screen *ebiten.Image) {
 				continue
 			}
 
-			// Draw terrain using G1 base terrain sprites
+			// Draw terrain using G1 terrain template sprites with palette remapping
 			// OpenLoco reference: Paint/PaintSurface.cpp paintSurface()
 			//   imageIndex = landObj->image + variation + displaySlope
 			//
-			// G1 colored terrain sprites start at index 322 (grass terrain)
+			// G1 terrain templates start at index 3746 (surfaceSmooth3Slope0)
+			// These use palette index 255 which we temporarily remap to grass green
 			// Each terrain type has 19 slope variants (0-18)
 			// For now, we just use the base grass terrain sprites
 			if w.renderer != nil {
@@ -372,10 +373,10 @@ func (w *World) Draw(screen *ebiten.Image) {
 					displaySlope = int(slopeToDisplaySlope[rawSlope])
 				}
 
-				// Use G1 colored terrain sprites (not the template sprites at 3746+)
-				// 322 = grass terrain flat (slope 0)
-				// Slopes 0-18 are consecutive indices
-				const g1TerrainBase = 322
+				// Use G1 terrain template sprites (palette index 255 remapped to grass green)
+				// 3746 = surfaceSmooth3Slope0 (grass terrain flat)
+				// Slopes 0-18 are consecutive indices (3746-3764)
+				const g1TerrainBase = 3746
 				spriteID := g1TerrainBase + displaySlope
 
 				if img := w.renderer.GetSprite(spriteID); img != nil {

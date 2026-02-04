@@ -242,9 +242,10 @@ func (g1 *G1File) loadPalette() error {
 	// Make index 0 transparent (typically the transparent color)
 	g1.Palette[0] = color.RGBA{0, 0, 0, 0}
 
-	// TEMPORARY FIX: Indices 248-252 are used by logo sprite but not in default palette.
-	// These are normally remappable colors, but for now we'll just set them to visible colors
-	// so the logo appears. Proper solution requires implementing the palette remapping system.
+	// TEMPORARY FIX: Indices 248-252 and 255 are remappable colors but not in default palette.
+	// These are normally remapped at draw time based on context (company colors, terrain type, etc.)
+	// For now we'll hardcode them to visible colors so sprites appear.
+	// Proper solution requires implementing the full ImageId + PaletteMap system.
 	//
 	// OpenLoco reference: These indices are remappable "primary" colors that get replaced
 	// at draw time based on company colors or other context. See:
@@ -257,6 +258,10 @@ func (g1 *G1File) loadPalette() error {
 	g1.Palette[250] = color.RGBA{R: 40, G: 70, B: 120, A: 255}  // Medium blue (most pixels)
 	g1.Palette[251] = color.RGBA{R: 50, G: 90, B: 150, A: 255}  // Lighter blue
 	g1.Palette[252] = color.RGBA{R: 60, G: 110, B: 180, A: 255} // Light blue
+
+	// Index 255 is used by terrain template sprites at 3746+
+	// Remap to grass green for now (should be based on LandObject color scheme)
+	g1.Palette[255] = color.RGBA{R: 71, G: 175, B: 39, A: 255}  // Grass green (from palette index 100)
 
 	return nil
 }
