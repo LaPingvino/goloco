@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+
+	"github.com/LaPingvino/goloco/pkg/objects"
 )
 
 // G1 file format constants
@@ -410,15 +412,6 @@ func (g1 *G1File) GetPalette() []color.RGBA {
 	return g1.Palette[:]
 }
 
-// ImageTableResult holds the result of loading an image table from a DAT object.
-// This matches OpenLoco's ObjectImageTable.h::ImageTableResult.
-//
-// OpenLoco reference: src/OpenLoco/src/Objects/ObjectImageTable.h
-type ImageTableResult struct {
-	ImageOffset uint32 // Starting sprite index in global G1 pool
-	TableLength uint32 // Total byte size consumed (header + elements + data)
-}
-
 // LoadImageTable loads sprites from a DAT object's image table into the global G1 pool.
 // This appends the sprites from the object to the G1 sprite array and returns the
 // offset where they were added.
@@ -432,9 +425,9 @@ type ImageTableResult struct {
 // adjusted x/y offsets.
 //
 // OpenLoco reference: src/OpenLoco/src/Objects/ObjectImageTable.cpp::loadImageTable
-func (g1 *G1File) LoadImageTable(data []byte) (ImageTableResult, error) {
+func (g1 *G1File) LoadImageTable(data []byte) (objects.ImageTableResult, error) {
 	if len(data) < 8 {
-		return ImageTableResult{}, errors.New("data too small for G1 header")
+		return objects.ImageTableResult{}, errors.New("data too small for G1 header")
 	}
 
 	// Parse header
@@ -449,7 +442,7 @@ func (g1 *G1File) LoadImageTable(data []byte) (ImageTableResult, error) {
 	tableLength := headerSize + elementTableSize + header.TotalSize
 
 	if uint32(len(data)) < headerSize+elementTableSize {
-		return ImageTableResult{}, fmt.Errorf("data too small: need %d bytes for elements",
+		return objects.ImageTableResult{}, fmt.Errorf("data too small: need %d bytes for elements",
 			headerSize+elementTableSize)
 	}
 
@@ -517,7 +510,7 @@ func (g1 *G1File) LoadImageTable(data []byte) (ImageTableResult, error) {
 		g1.totalSprites++
 	}
 
-	return ImageTableResult{
+	return objects.ImageTableResult{
 		ImageOffset: imageOffset,
 		TableLength: tableLength,
 	}, nil
