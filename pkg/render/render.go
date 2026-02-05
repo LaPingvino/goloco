@@ -285,9 +285,13 @@ func (r *Renderer) decodeObjectSprite(sprite *objects.SpriteElement) (*image.RGB
 				}
 			}
 		}
-		// Debug: log pixel count for first few sprites
+		// Warn once if no pixels were set (indicates palette or data issue)
 		if pixelsSet == 0 && len(sprite.Data) > 0 {
-			log.Printf("[Render] Raw decode: 0 pixels set! Data len=%d, first 10 bytes: %v", len(sprite.Data), sprite.Data[:min(10, len(sprite.Data))])
+			cacheKey := fmt.Sprintf("rawdec:%d:%d", sprite.Width, sprite.Height)
+			if !objectSpriteWarned[cacheKey] {
+				log.Printf("[Render] Raw decode: 0 pixels set! Data len=%d, first 10 bytes: %v", len(sprite.Data), sprite.Data[:min(10, len(sprite.Data))])
+				objectSpriteWarned[cacheKey] = true
+			}
 		}
 	}
 

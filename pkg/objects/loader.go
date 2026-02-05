@@ -37,11 +37,12 @@ type LoadedObject struct {
 
 // ObjectManager manages loaded objects
 type ObjectManager struct {
-	Objects       map[string]*LoadedObject
-	Vehicles      []*VehicleObject
-	LandObjects   []*LandObject
-	InterfaceSkin *InterfaceSkinObject
-	ObjDataPath   string
+	Objects        map[string]*LoadedObject
+	Vehicles       []*VehicleObject
+	LandObjects    []*LandObject
+	CliffEdgeObjs  map[string]*CliffEdgeObject // keyed by upper-case name
+	InterfaceSkin  *InterfaceSkinObject
+	ObjDataPath    string
 
 	// Sprite pool for object sprites
 	NextSpriteIndex uint32
@@ -54,6 +55,7 @@ func NewObjectManager(objDataPath string) *ObjectManager {
 		Objects:         make(map[string]*LoadedObject),
 		Vehicles:        make([]*VehicleObject, 0),
 		LandObjects:     make([]*LandObject, 0),
+		CliffEdgeObjs:   make(map[string]*CliffEdgeObject),
 		ObjDataPath:     objDataPath,
 		NextSpriteIndex: 0, // Will be set after G1 is loaded
 	}
@@ -169,6 +171,26 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 
 		loaded.Object = land
 		m.LandObjects = append(m.LandObjects, land)
+
+	case ObjectTypeCliffEdge:
+		var cliff *CliffEdgeObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				cliff, err = ParseCliffEdgeObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				cliff, err = ParseCliffEdgeObject(header, decompressed)
+			}
+		} else {
+			cliff, err = ParseCliffEdgeObject(header, decompressed)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("parsing cliff edge: %w", err)
+		}
+
+		loaded.Object = cliff
+		loaded.ImageOffset = cliff.Image
+		m.CliffEdgeObjs[strings.ToUpper(header.GetName())] = cliff
 	}
 
 	// Store in map
@@ -211,7 +233,36 @@ func (m *ObjectManager) LoadAllObjects() error {
 	}
 
 	fmt.Printf("Loaded %d objects (%d failed)\n", loaded, failed)
+
+	// Resolve cliff edge references: link each LandObject to its CliffEdgeObject
+	m.ResolveCliffEdges()
+
 	return nil
+}
+
+// ResolveCliffEdges links LandObjects to their CliffEdgeObjects.
+// Each LandObject's DAT file embeds an ObjectHeader naming the cliff edge
+// object to use. After all objects are loaded, this method looks up the
+// CliffEdgeObject by name and copies its Image (G1 sprite offset) into
+// the LandObject's CliffEdgeImage field.
+//
+// OpenLoco reference: src/OpenLoco/src/Objects/LandObject.cpp
+//   cliffEdgeImage = cliffObj->image;
+func (m *ObjectManager) ResolveCliffEdges() {
+	resolved := 0
+	for _, land := range m.LandObjects {
+		if land == nil || land.CliffEdgeName == "" {
+			continue
+		}
+		if cliff, ok := m.CliffEdgeObjs[strings.ToUpper(land.CliffEdgeName)]; ok {
+			land.CliffEdgeImage = cliff.Image
+			resolved++
+		}
+	}
+	if resolved > 0 {
+		fmt.Printf("Resolved %d cliff edge references (%d cliff edge objects loaded)\n",
+			resolved, len(m.CliffEdgeObjs))
+	}
 }
 
 // LoadVehicles loads only vehicle objects

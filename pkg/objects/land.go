@@ -3,6 +3,7 @@ package objects
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
 )
 
 // LandObjectFlags define special behavior for land types
@@ -50,6 +51,7 @@ type LandObject struct {
 	NumImagesPerGrowthStage uint32
 	CliffEdgeImage          uint32
 	MapPixelImage           uint32
+	CliffEdgeName           string // Name of the referenced CliffEdgeObject (for post-load resolution)
 
 	// Embedded sprite data
 	Sprites []*SpriteElement
@@ -119,10 +121,13 @@ func ParseLandObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Lan
 		offset++ // skip 0xFF end marker
 	}
 
-	// Skip ObjectHeader for CliffEdge (16 bytes)
+	// Read ObjectHeader for CliffEdge (16 bytes): 4 flags + 8 name + 4 checksum
 	if offset+16 > len(data) {
 		return nil, fmt.Errorf("missing CliffEdge header at offset %d", offset)
 	}
+	// Extract the cliff edge object name (bytes 4-11, null/space padded)
+	cliffNameBytes := data[offset+4 : offset+12]
+	land.CliffEdgeName = strings.TrimRight(string(cliffNameBytes), "\x00 ")
 	offset += 16
 
 	// Skip ObjectHeader for ReplacementLand if present
@@ -144,10 +149,9 @@ func ParseLandObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Lan
 		land.ImageOffset = imgRes.ImageOffset
 		land.MapPixelImage = uint32(land.NumImageAngles)*uint32(land.NumGrowthStages)*NumImagesPerGrowthStagePlusZoom + imgRes.ImageOffset
 
-		// Calculate cliff edge sprite index
-		// In OpenLoco this comes from the CliffEdgeObject, but for now we calculate it
-		// The cliff edge sprites are the last sprites in the terrain image set
-		land.CliffEdgeImage = imgRes.ImageOffset // Will be updated when cliff edge objects are loaded
+		// CliffEdgeImage is resolved later by ObjectManager.ResolveCliffEdges()
+		// after CliffEdgeObjects have been loaded.
+		land.CliffEdgeImage = 0
 
 		// Clear embedded sprites since they're now in G1
 		land.Sprites = nil

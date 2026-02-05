@@ -287,17 +287,6 @@ func (g1 *G1File) DecodeSprite(index int) (*image.RGBA, error) {
 	w := int(elem.Width)
 	h := int(elem.Height)
 
-	// Debug logging for first few sprites
-	if decodeLogCount < 5 {
-		fmt.Printf("DecodeSprite(%d): %dx%d, flags=0x%X, dataLen=%d, isRLE=%v\n",
-			index, w, h, elem.Flags, len(elem.Data), elem.Flags&G1FlagIsRLECompressed != 0)
-		// Print first 20 bytes of data
-		if len(elem.Data) > 20 {
-			fmt.Printf("  First 20 bytes: %v\n", elem.Data[:20])
-		}
-		decodeLogCount++
-	}
-
 	// Create output image
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 
@@ -316,8 +305,6 @@ func (g1 *G1File) DecodeSprite(index int) (*image.RGBA, error) {
 	return img, nil
 }
 
-var decodeLogCount = 0
-
 // decodeRaw decodes uncompressed palette index data
 func (g1 *G1File) decodeRaw(elem *G1Element, img *image.RGBA) error {
 	w := int(elem.Width)
@@ -327,27 +314,15 @@ func (g1 *G1File) decodeRaw(elem *G1Element, img *image.RGBA) error {
 		return fmt.Errorf("raw data too small: %d < %d", len(elem.Data), w*h)
 	}
 
-	// Debug: track palette indices used
-	idxCount := make(map[uint8]int)
-
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
 			idx := elem.Data[y*w+x]
-			idxCount[idx]++
 			img.SetRGBA(x, y, g1.Palette[idx])
 		}
 	}
 
-	// Log first few sprites' palette usage
-	if len(idxCount) > 0 && rawDecodeLogCount < 3 {
-		fmt.Printf("Raw sprite palette indices used: %v\n", idxCount)
-		rawDecodeLogCount++
-	}
-
 	return nil
 }
-
-var rawDecodeLogCount = 0
 
 // decodeRLE decodes RLE compressed sprite data
 func (g1 *G1File) decodeRLE(elem *G1Element, img *image.RGBA) error {
