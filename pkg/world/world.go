@@ -36,6 +36,8 @@ type tile struct {
 	terrainIndex uint8 // raw LandObject slot index from the scenario
 	baseZ        uint8 // height in SmallZ units (4 units = 1 pixel vertical)
 	slope        uint8 // slope corners and flags from byte 4 of surface element
+	trees        []scenario.TreeElement
+	buildings    []scenario.BuildingElement
 }
 
 // World holds a tile grid for an isometric game world
@@ -148,6 +150,8 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 				terrainIndex: st.TerrainIndex,
 				baseZ:        st.Height,
 				slope:        st.Slope,
+				trees:        st.Trees,
+				buildings:    st.Buildings,
 			}
 		}
 	}
@@ -448,8 +452,12 @@ func (w *World) getEdgeHeights(x, y int, edge int, selfCorners CornerHeight) Edg
 	return eh
 }
 
+// Edge factor offsets for cliff sprite variation per edge direction.
+// OpenLoco reference: PaintSurface.cpp kEdgeFactorOffset
+var kEdgeFactorOffset = [4]uint32{0, 16, 16, 0} // SW, SE, NW, NE
+
 // paintCliffEdges renders cliff edge sprites for height transitions
-// OpenLoco reference: PaintSurface.cpp paintSurfaceCliffEdge()
+// OpenLoco reference: PaintSurface.cpp paintSurfaceCliffEdge(), paintEdgeSection()
 func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *objects.LandObject, drawX, drawY, scale float64) {
 	if w.renderer == nil || w.renderer.G1 == nil || land == nil {
 		return
@@ -458,9 +466,8 @@ func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *o
 	// Get corner heights for this tile
 	selfCorners := w.getCornerHeights(t)
 
-	// Check all 4 edges in order: NW, NE, SW, SE (matching OpenLoco order)
-	// OpenLoco paints in order: 2, 3, 0, 1
-	edges := []int{EdgeNW, EdgeNE, EdgeSW, EdgeSE}
+	// Check all 4 edges
+	edges := []int{EdgeSW, EdgeSE, EdgeNW, EdgeNE}
 
 	for _, edge := range edges {
 		neighbor := w.getNeighborTile(x, y, edge)
@@ -468,20 +475,14 @@ func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *o
 			continue
 		}
 
-		// Get edge heights
 		edgeHeights := w.getEdgeHeights(x, y, edge, selfCorners)
 
-		// Check if there's a height difference requiring cliff edges
-		// Cliff edges are needed when self corners are higher than neighbor corners
 		if edgeHeights.Self0 <= edgeHeights.Neighbor0 && edgeHeights.Self1 <= edgeHeights.Neighbor1 {
-			continue // No cliff needed
+			continue
 		}
 
-		// Use land.CliffEdgeImage from dynamically loaded CliffEdgeObject
-		// OpenLoco reference: PaintSurface.cpp:1198-1209, 1460
 		cliffEdgeImageBase := land.CliffEdgeImage
 
-		// Determine which corner needs cliff sections
 		minHeight := edgeHeights.Neighbor0
 		if edgeHeights.Neighbor1 < minHeight {
 			minHeight = edgeHeights.Neighbor1
@@ -491,18 +492,18 @@ func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *o
 			maxHeight = edgeHeights.Self1
 		}
 
-		// Paint cliff sections for each height level
-		// OpenLoco reference: PaintSurface.cpp:1200
-		//   const auto image = ImageId(cliffEdgeImageBase).withIndexOffset(factor + (height & 0xF));
+		// Calculate factor with rotation variation
+		// OpenLoco: factor = ((spritePos.x ^ spritePos.y) & 0b10'0000) + kEdgeFactorOffset[edge]
+		// The (x^y)&32 creates a checkerboard pattern of 0/32 for visual variety
+		checkerboard := uint32((x ^ y) & 0x20) // bit 5 = 0 or 32
+		factor := checkerboard + kEdgeFactorOffset[edge]
+
 		for h := minHeight; h < maxHeight; h++ {
-			// Calculate factor (slope-based offset, 0 for now - flat cliffs)
-			factor := uint32(0)
 			spriteID := int(cliffEdgeImageBase) + int(factor) + int(h&0xF)
 
 			if img := w.renderer.GetSprite(spriteID); img != nil {
 				_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
 				if ok {
-					// Offset cliff edge sprite based on edge direction
 					edgeOffsetX, edgeOffsetY := w.getCliffEdgeOffset(edge, h)
 
 					op := &ebiten.DrawImageOptions{}
@@ -512,6 +513,156 @@ func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *o
 						math.Floor(drawY+float64(yOff+edgeOffsetY)*scale))
 					screen.DrawImage(img, op)
 				}
+			}
+		}
+	}
+}
+
+// Tree quadrant offsets within a tile (in sub-tile coordinates).
+// OpenLoco reference: PaintTree.cpp kTreeQuadrantOffset
+var kTreeQuadrantOffset = [4][2]int16{
+	{7, 7},   // quadrant 0
+	{7, 23},  // quadrant 1
+	{23, 23}, // quadrant 2
+	{23, 7},  // quadrant 3
+}
+
+// paintTrees renders tree sprites for a tile.
+//
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintTree.cpp  paintTree()
+func (w *World) paintTrees(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
+	if w.renderer == nil || w.renderer.ObjMgr == nil || len(t.trees) == 0 {
+		return
+	}
+
+	for _, te := range t.trees {
+		treeObj := w.renderer.ObjMgr.GetTreeObjectByIndex(int(te.TreeObjectID))
+		if treeObj == nil {
+			continue
+		}
+
+		// Calculate frame number: rotation + growth * numRotations
+		// OpenLoco: (viewableRotation % numRotations) + growth * numRotations
+		// We use rotation=0 for now (no viewport rotation support yet)
+		viewRotation := uint32(te.Rotation) % uint32(treeObj.NumRotations)
+		treeFrameNum := viewRotation + uint32(te.Growth)*uint32(treeObj.NumRotations)
+
+		// Select season sprite base
+		season := te.Season
+		if season >= 6 {
+			season = 0
+		}
+		var spriteBase uint32
+		if te.HasSnow {
+			spriteBase = treeObj.SnowSprites[season]
+		} else {
+			spriteBase = treeObj.Sprites[season]
+		}
+
+		spriteID := int(spriteBase + treeFrameNum)
+
+		img := w.renderer.GetSprite(spriteID)
+		if img == nil {
+			continue
+		}
+
+		_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+		if !ok {
+			continue
+		}
+
+		// Position within tile based on quadrant
+		quadrant := te.Quadrant % 4
+		qx := float64(kTreeQuadrantOffset[quadrant][0]) - 16 // center around tile
+		qy := float64(kTreeQuadrantOffset[quadrant][1]) - 16
+
+		// Height offset: drawY already includes the surface baseZ, so we
+		// only need the extra height if the tree sits above the surface.
+		extraHeight := float64(int(te.BaseZ)-int(t.baseZ)) / 4.0
+
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(
+			math.Floor(drawX+(float64(xOff)+qx)*scale),
+			math.Floor(drawY+(float64(yOff)-extraHeight+qy)*scale))
+		screen.DrawImage(img, op)
+	}
+}
+
+// paintBuildings renders building sprites for a tile.
+//
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintBuilding.cpp  paintBuilding()
+// Simplified: renders the first variation's parts stacked vertically.
+func (w *World) paintBuildings(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
+	if w.renderer == nil || w.renderer.ObjMgr == nil || len(t.buildings) == 0 {
+		return
+	}
+
+	for _, be := range t.buildings {
+		bldgObj := w.renderer.ObjMgr.GetBuildingObjectByIndex(int(be.ObjectID))
+		if bldgObj == nil || bldgObj.ImageOffset == 0 {
+			continue
+		}
+
+		// Only render constructed buildings (skip under-construction for now)
+		if !be.IsConstructed {
+			continue
+		}
+
+		// For multi-tile (2x2) buildings, only render from one tile
+		// (sequenceIndex check). Simplified: only render sequenceIndex 0.
+		if bldgObj.HasFlags(objects.BuildingFlagLargeTile) && be.SequenceIndex != 0 {
+			continue
+		}
+
+		rotation := be.Rotation & 0x03
+		variation := be.Variation
+		if int(variation) >= int(bldgObj.NumVariations) {
+			variation = 0
+		}
+
+		parts := bldgObj.GetBuildingParts(variation)
+		if len(parts) == 0 {
+			continue
+		}
+
+		// Height offset for building's own baseZ vs surface baseZ
+		extraHeight := float64(int(be.BaseZ)-int(t.baseZ)) / 4.0
+
+		// Image offset for 1x1 buildings: center of tile (16, 16)
+		offsetX := float64(16)
+		offsetY := float64(16)
+		if bldgObj.HasFlags(objects.BuildingFlagLargeTile) {
+			offsetX = 0
+			offsetY = 0
+		}
+
+		// Stack parts vertically
+		partZ := float64(0)
+		for _, part := range parts {
+			// Each part has 4 rotation variants: part * 4 + rotation
+			spriteID := int(bldgObj.ImageOffset) + int(part)*4 + int(rotation)
+
+			img := w.renderer.GetSprite(spriteID)
+			if img == nil {
+				continue
+			}
+
+			_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+			if !ok {
+				continue
+			}
+
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Scale(scale, scale)
+			op.GeoM.Translate(
+				math.Floor(drawX+(float64(xOff)+offsetX)*scale),
+				math.Floor(drawY+(float64(yOff)-extraHeight-partZ+offsetY)*scale))
+			screen.DrawImage(img, op)
+
+			// Stack next part on top
+			if int(part) < len(bldgObj.PartHeights) {
+				partZ += float64(bldgObj.PartHeights[part])
 			}
 		}
 	}
@@ -607,6 +758,10 @@ func (w *World) Draw(screen *ebiten.Image) {
 							if land.CliffEdgeImage > 0 {
 								w.paintCliffEdges(screen, x, y, &t, land, drawX, drawY, scale)
 							}
+
+							// Draw trees and buildings on this tile
+							w.paintTrees(screen, &t, drawX, drawY, scale)
+							w.paintBuildings(screen, &t, drawX, drawY, scale)
 
 							continue
 						}

@@ -32,7 +32,15 @@ const (
 	elementFlagLast = 0x80 // last element on this tile
 
 	// Known element type values (after >> 2)
-	elementTypeSurface = 0
+	elementTypeSurface  = 0
+	elementTypeTrack    = 1
+	elementTypeStation  = 2
+	elementTypeSignal   = 3
+	elementTypeBuilding = 4
+	elementTypeTree     = 5
+	elementTypeWall     = 6
+	elementTypeRoad     = 7
+	elementTypeIndustry = 8
 )
 
 // terrainTypes maps the 5-bit terrain field in a surface element to our SurfaceType.
@@ -162,6 +170,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	}
 	log.Println("[Scenario] Read RequiredObjects,", len(reqObjBytes), "bytes")
 	sc.LandObjectOrder = parseLandObjectOrder(reqObjBytes)
+	sc.TreeObjectOrder = parseTreeObjectOrder(reqObjBytes)
+	sc.BuildingObjectOrder = parseBuildingObjectOrder(reqObjBytes)
 
 	// --- Game state chunks ---
 	// For scenarios: three separate chunks (GeneralState, Towns, Animations).
@@ -248,6 +258,8 @@ func (sc *Scenario) parseTileElements(data []byte) {
 	x, y := 0, 0
 	pos := 0
 	elemCount := 0
+	treeCount := 0
+	buildingCount := 0
 
 	for pos+tileElementSize <= len(data) {
 		elem := data[pos : pos+tileElementSize]
@@ -262,7 +274,8 @@ func (sc *Scenario) parseTileElements(data []byte) {
 		elemType := (typeByte & elementTypeMask) >> elementTypeShift
 
 		if x < sc.MapWidth && y < sc.MapHeight {
-			if elemType == elementTypeSurface {
+			switch elemType {
+			case elementTypeSurface:
 				// Surface element: byte 6 has terrain type in bits [4:0]
 				terrainRaw := elem[6] & 0x1F
 				surface := SurfaceGrass
@@ -279,17 +292,50 @@ func (sc *Scenario) parseTileElements(data []byte) {
 				// Slope in byte 4, bits [3:0] = corner heights, bit 4 = double height
 				slopeByte := elem[4]
 
+				// Preserve any existing non-surface elements (trees, buildings)
+				// that were parsed before the surface element
+				existing := sc.Tiles[y][x]
 				sc.Tiles[y][x] = Tile{
 					Surface:      surface,
 					Height:       baseZ,
 					Water:        waterLevel,
 					TerrainIndex: terrainRaw,
 					Slope:        slopeByte,
+					Trees:        existing.Trees,
+					Buildings:    existing.Buildings,
 				}
+
+			case elementTypeTree:
+				// TreeElement: byte layout from TreeElement.h
+				te := TreeElement{
+					TreeObjectID: elem[4],
+					Rotation:     typeByte & 0x03,
+					Quadrant:     (typeByte >> 6) & 0x03,
+					Growth:       elem[5] & 0x0F,
+					Season:       (elem[7] >> 3) & 0x07,
+					Colour:       elem[6] & 0x1F,
+					HasSnow:      elem[6]&0x40 != 0,
+					BaseZ:        baseZ,
+					ClearZ:       elem[3],
+					Unk7l:        elem[7] & 0x07,
+				}
+				sc.Tiles[y][x].Trees = append(sc.Tiles[y][x].Trees, te)
+				treeCount++
+
+			case elementTypeBuilding:
+				be := BuildingElement{
+					ObjectID:      elem[4],
+					Rotation:      typeByte & 0x03,
+					SequenceIndex: elem[5] & 0x03,
+					Variation:     ((elem[7] & 0x03) << 3) | ((elem[6] >> 6) & 0x07),
+					Colour:        (elem[7] >> 3) & 0x1F,
+					IsConstructed: typeByte&0x80 != 0,
+					BaseZ:         baseZ,
+					ClearZ:        elem[3],
+				}
+				sc.Tiles[y][x].Buildings = append(sc.Tiles[y][x].Buildings, be)
+				buildingCount++
 			}
-			// Non-surface elements (track, building, tree, …) are skipped
-			// for now; only the first surface element per tile matters for
-			// terrain rendering.
 		}
 
 		// Advance to next tile when we see the "last" flag
@@ -302,8 +348,8 @@ func (sc *Scenario) parseTileElements(data []byte) {
 		}
 	}
 
-	log.Printf("[Scenario] Parsed %d tile elements covering %d×%d tiles (stopped at x=%d y=%d)",
-		elemCount, sc.MapWidth, sc.MapHeight, x, y)
+	log.Printf("[Scenario] Parsed %d tile elements covering %d×%d tiles (stopped at x=%d y=%d) — %d trees, %d buildings",
+		elemCount, sc.MapWidth, sc.MapHeight, x, y, treeCount, buildingCount)
 }
 
 // readGeneralStateFlags extracts the flags uint32 from a GeneralState or
@@ -361,21 +407,33 @@ func advanceRaw(r *assets.S5ChunkReader, n int) {
 const (
 	objectHeaderSize = 16
 	objectTypeMask   = 0x3F
-	objectTypeLand   = 6 // ObjectType::land
+	objectTypeLand   = 6  // ObjectType::land
+	objectTypeTree   = 24 // ObjectType::tree
+	objectTypeBuilding = 28 // ObjectType::building
 
 	// Offsets into the 859-element RequiredObjects array.
-	// Land objects occupy 32 consecutive slots starting at index 171.
-	// 171 = Interface(1)+Sound(128)+Currency(1)+Steam(32)+Rock(8)+Water(1)
+	// Cumulative counts: Interface(1)+Sound(128)+Currency(1)+Steam(32)+Rock(8)+Water(1)=171
 	landSlotStart = 171
 	landSlotCount = 32
+
+	// Tree slots: after Interface(1)+Sound(128)+Currency(1)+Steam(32)+Rock(8)+Water(1)+
+	//   Surface(32)+TownNames(1)+Cargo(32)+Wall(32)+TrackSignal(16)+LevelCrossing(4)+
+	//   StreetLight(1)+Tunnel(16)+Bridge(8)+TrainStation(16)+TrackExtra(8)+Track(8)+
+	//   RoadStation(16)+RoadExtra(4)+Road(8)+Airport(8)+Dock(8)+Vehicle(224) = 613
+	treeSlotStart = 613
+	treeSlotCount = 64
+
+	// Building slots: tree(64)+Snow(1)+Climate(1)+HillShapes(1) = 613+64+1+1+1 = 680
+	buildingSlotStart = 680
+	buildingSlotCount = 128
 )
 
-// parseLandObjectOrder extracts the 32 land-object names from a RequiredObjects
-// blob in terrain-slot order.  Empty slots (all-0xFF headers) produce "".
-func parseLandObjectOrder(data []byte) []string {
-	order := make([]string, landSlotCount)
-	for i := 0; i < landSlotCount; i++ {
-		off := (landSlotStart + i) * objectHeaderSize
+// parseObjectOrder extracts object names from a RequiredObjects blob for a
+// given slot range and expected object type.
+func parseObjectOrder(data []byte, slotStart, slotCount int, expectedType uint32) []string {
+	order := make([]string, slotCount)
+	for i := 0; i < slotCount; i++ {
+		off := (slotStart + i) * objectHeaderSize
 		if off+objectHeaderSize > len(data) {
 			break
 		}
@@ -386,14 +444,13 @@ func parseLandObjectOrder(data []byte) []string {
 			continue
 		}
 
-		// Verify type field matches Land
+		// Verify type field matches expected
 		flags := uint32(hdr[0]) | uint32(hdr[1])<<8 | uint32(hdr[2])<<16 | uint32(hdr[3])<<24
-		if flags&objectTypeMask != objectTypeLand {
+		if flags&objectTypeMask != expectedType {
 			continue
 		}
 
 		// Extract 8-byte name, trimming trailing nulls, 0xFF, and spaces.
-		// The name field is space-padded to 8 bytes in the on-disk header.
 		raw := hdr[4:12]
 		nameEnd := 8
 		for nameEnd > 0 && (raw[nameEnd-1] == 0 || raw[nameEnd-1] == 0xFF || raw[nameEnd-1] == ' ') {
@@ -401,8 +458,13 @@ func parseLandObjectOrder(data []byte) []string {
 		}
 		order[i] = string(raw[:nameEnd])
 	}
+	return order
+}
 
-	// Log non-empty entries
+// parseLandObjectOrder extracts the 32 land-object names from a RequiredObjects
+// blob in terrain-slot order.  Empty slots (all-0xFF headers) produce "".
+func parseLandObjectOrder(data []byte) []string {
+	order := parseObjectOrder(data, landSlotStart, landSlotCount, objectTypeLand)
 	count := 0
 	for _, n := range order {
 		if n != "" {
@@ -410,6 +472,32 @@ func parseLandObjectOrder(data []byte) []string {
 		}
 	}
 	log.Printf("[Scenario] RequiredObjects: %d land objects in slot order", count)
+	return order
+}
+
+// parseTreeObjectOrder extracts the 64 tree-object names from RequiredObjects.
+func parseTreeObjectOrder(data []byte) []string {
+	order := parseObjectOrder(data, treeSlotStart, treeSlotCount, objectTypeTree)
+	count := 0
+	for _, n := range order {
+		if n != "" {
+			count++
+		}
+	}
+	log.Printf("[Scenario] RequiredObjects: %d tree objects in slot order", count)
+	return order
+}
+
+// parseBuildingObjectOrder extracts the 128 building-object names from RequiredObjects.
+func parseBuildingObjectOrder(data []byte) []string {
+	order := parseObjectOrder(data, buildingSlotStart, buildingSlotCount, objectTypeBuilding)
+	count := 0
+	for _, n := range order {
+		if n != "" {
+			count++
+		}
+	}
+	log.Printf("[Scenario] RequiredObjects: %d building objects in slot order", count)
 	return order
 }
 

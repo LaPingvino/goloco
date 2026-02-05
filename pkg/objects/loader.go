@@ -37,12 +37,14 @@ type LoadedObject struct {
 
 // ObjectManager manages loaded objects
 type ObjectManager struct {
-	Objects        map[string]*LoadedObject
-	Vehicles       []*VehicleObject
-	LandObjects    []*LandObject
-	CliffEdgeObjs  map[string]*CliffEdgeObject // keyed by upper-case name
-	InterfaceSkin  *InterfaceSkinObject
-	ObjDataPath    string
+	Objects          map[string]*LoadedObject
+	Vehicles         []*VehicleObject
+	LandObjects      []*LandObject
+	TreeObjects      []*TreeObject              // all loaded tree objects
+	BuildingObjects  []*BuildingObject           // all loaded building objects
+	CliffEdgeObjs    map[string]*CliffEdgeObject // keyed by upper-case name
+	InterfaceSkin    *InterfaceSkinObject
+	ObjDataPath      string
 
 	// Sprite pool for object sprites
 	NextSpriteIndex uint32
@@ -55,6 +57,8 @@ func NewObjectManager(objDataPath string) *ObjectManager {
 		Objects:         make(map[string]*LoadedObject),
 		Vehicles:        make([]*VehicleObject, 0),
 		LandObjects:     make([]*LandObject, 0),
+		TreeObjects:     make([]*TreeObject, 0),
+		BuildingObjects: make([]*BuildingObject, 0),
 		CliffEdgeObjs:   make(map[string]*CliffEdgeObject),
 		ObjDataPath:     objDataPath,
 		NextSpriteIndex: 0, // Will be set after G1 is loaded
@@ -191,6 +195,46 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 		loaded.Object = cliff
 		loaded.ImageOffset = cliff.Image
 		m.CliffEdgeObjs[strings.ToUpper(header.GetName())] = cliff
+
+	case ObjectTypeTree:
+		var tree *TreeObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				tree, err = ParseTreeObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				tree, err = ParseTreeObject(header, decompressed)
+			}
+		} else {
+			tree, err = ParseTreeObject(header, decompressed)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("parsing tree: %w", err)
+		}
+
+		loaded.Object = tree
+		loaded.ImageOffset = tree.ImageOffset
+		m.TreeObjects = append(m.TreeObjects, tree)
+
+	case ObjectTypeBuilding:
+		var bldg *BuildingObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				bldg, err = ParseBuildingObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				bldg, err = ParseBuildingObject(header, decompressed)
+			}
+		} else {
+			bldg, err = ParseBuildingObject(header, decompressed)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("parsing building: %w", err)
+		}
+
+		loaded.Object = bldg
+		loaded.ImageOffset = bldg.ImageOffset
+		m.BuildingObjects = append(m.BuildingObjects, bldg)
 	}
 
 	// Store in map
@@ -347,6 +391,64 @@ func (m *ObjectManager) GetLandObjectByIndex(index int) *LandObject {
 		return nil
 	}
 	return m.LandObjects[index]
+}
+
+// GetTreeObjectByIndex returns the TreeObject at the given index (from tile
+// element byte 4), or nil if the index is out of range.
+func (m *ObjectManager) GetTreeObjectByIndex(index int) *TreeObject {
+	if index < 0 || index >= len(m.TreeObjects) {
+		return nil
+	}
+	return m.TreeObjects[index]
+}
+
+// GetBuildingObjectByIndex returns the BuildingObject at the given index,
+// or nil if the index is out of range.
+func (m *ObjectManager) GetBuildingObjectByIndex(index int) *BuildingObject {
+	if index < 0 || index >= len(m.BuildingObjects) {
+		return nil
+	}
+	return m.BuildingObjects[index]
+}
+
+// ReorderBuildingObjects rebuilds the BuildingObjects slice so that each
+// building slot index maps to the BuildingObject whose name matches order[i].
+func (m *ObjectManager) ReorderBuildingObjects(order []string) {
+	reordered := make([]*BuildingObject, len(order))
+	matched := 0
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if bldg, ok := obj.Object.(*BuildingObject); ok {
+				reordered[i] = bldg
+				matched++
+			}
+		}
+	}
+	m.BuildingObjects = reordered
+	fmt.Printf("Reordered building objects: %d matched out of %d slots\n", matched, len(order))
+}
+
+// ReorderTreeObjects rebuilds the TreeObjects slice so that each tree
+// slot index maps to the TreeObject whose name matches order[i].
+func (m *ObjectManager) ReorderTreeObjects(order []string) {
+	reordered := make([]*TreeObject, len(order))
+	matched := 0
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if tree, ok := obj.Object.(*TreeObject); ok {
+				reordered[i] = tree
+				matched++
+			}
+		}
+	}
+	m.TreeObjects = reordered
+	fmt.Printf("Reordered tree objects: %d matched out of %d slots\n", matched, len(order))
 }
 
 // ReorderLandObjects rebuilds the LandObjects slice so that each terrain

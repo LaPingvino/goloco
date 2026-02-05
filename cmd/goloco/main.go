@@ -168,12 +168,22 @@ func NewGame() *Game {
 		titlePath := filepath.Join(dataDir, "title.dat")
 		log.Printf("[Game] Loading title scenario from: %s", titlePath)
 		if sc, err := scenario.LoadScenarioData(titlePath); err == nil {
-			// Reorder land objects to match the terrain-slot order declared
-			// in the scenario's RequiredObjects chunk before loading tiles,
-			// so that TerrainIndex values resolve to the correct LandObject.
-			if objMgr != nil && len(sc.LandObjectOrder) > 0 {
-				objMgr.ReorderLandObjects(sc.LandObjectOrder)
-				log.Printf("[Game] Reordered land objects to match scenario slot order")
+			// Reorder objects to match the slot order declared in the
+			// scenario's RequiredObjects chunk before loading tiles,
+			// so that element indices resolve to the correct objects.
+			if objMgr != nil {
+				if len(sc.LandObjectOrder) > 0 {
+					objMgr.ReorderLandObjects(sc.LandObjectOrder)
+					log.Printf("[Game] Reordered land objects to match scenario slot order")
+				}
+				if len(sc.TreeObjectOrder) > 0 {
+					objMgr.ReorderTreeObjects(sc.TreeObjectOrder)
+					log.Printf("[Game] Reordered tree objects to match scenario slot order (%d slots)", len(sc.TreeObjectOrder))
+				}
+				if len(sc.BuildingObjectOrder) > 0 {
+					objMgr.ReorderBuildingObjects(sc.BuildingObjectOrder)
+					log.Printf("[Game] Reordered building objects to match scenario slot order (%d slots)", len(sc.BuildingObjectOrder))
+				}
 			}
 			w.LoadFromScenario(sc)
 			log.Printf("[Game] Loaded title scenario: %dx%d map", sc.MapWidth, sc.MapHeight)
@@ -550,18 +560,33 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 	// --- Logo: top-left (0,0) 298×170 ---
-	// Display "GoLoco" branding using OpenTTD font
-	ebitenutil.DrawRect(screen, 0, 0, 298, 170, color.RGBA{30, 30, 60, 200})
-	// Draw large "GoLoco" text centered
-	logoText := "GoLoco"
-	logoW, _ := ui.MeasureTextBold(logoText)
-	logoX := (298 - logoW) / 2
-	ui.DrawTextBold(screen, logoText, logoX, 60, color.RGBA{220, 220, 255, 255})
-	// Subtitle
-	subtitle := "A Locomotion Reimplementation"
-	subW, _ := ui.MeasureText(subtitle)
-	subX := (298 - subW) / 2
-	ui.DrawText(screen, subtitle, subX, 100, color.RGBA{180, 180, 200, 255})
+	// OpenLoco reference: src/OpenLoco/src/Ui/Windows/TitleLogo.cpp
+	//   drawingCtx.drawImage(window.x, window.y, ImageIds::locomotion_logo);
+	const logoSpriteID = 3624
+	logoSprite := g.r.GetSprite(logoSpriteID)
+	if logoSprite != nil {
+		// Draw the actual Locomotion logo sprite
+		opts := &ebiten.DrawImageOptions{}
+		opts.GeoM.Scale(2, 2) // Scale up since logo is 91x34
+		opts.GeoM.Translate(float64((298-91*2)/2), float64((120-34*2)/2))
+		screen.DrawImage(logoSprite, opts)
+		// Add "GoLoco" subtitle below the logo
+		subtitle := "A Locomotion Reimplementation"
+		subW, _ := ui.MeasureText(subtitle)
+		subX := (298 - subW) / 2
+		ui.DrawText(screen, subtitle, subX, 100, color.RGBA{180, 180, 200, 255})
+	} else {
+		// Fallback: text branding
+		ebitenutil.DrawRect(screen, 0, 0, 298, 170, color.RGBA{30, 30, 60, 200})
+		logoText := "GoLoco"
+		logoW, _ := ui.MeasureTextBold(logoText)
+		logoX := (298 - logoW) / 2
+		ui.DrawTextBold(screen, logoText, logoX, 60, color.RGBA{220, 220, 255, 255})
+		subtitle := "A Locomotion Reimplementation"
+		subW, _ := ui.MeasureText(subtitle)
+		subX := (298 - subW) / 2
+		ui.DrawText(screen, subtitle, subX, 100, color.RGBA{180, 180, 200, 255})
+	}
 
 	// --- Options button: top-right (screenWidth-60, 0) 60×15 ---
 	optX := screenWidth - titleOptionsW
