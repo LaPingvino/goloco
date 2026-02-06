@@ -34,7 +34,7 @@ const (
 type tile struct {
 	tileType     TileType
 	terrainIndex uint8 // raw LandObject slot index from the scenario
-	baseZ        uint8 // height in SmallZ units (1 unit = 4 pixels vertical)
+	baseZ        uint8 // height in SmallZ units (OpenLoco: 1 unit = 4px; GoLoco temp: 1 unit = 2px)
 	slope        uint8 // slope corners and flags from byte 4 of surface element
 	trees        []scenario.TreeElement
 	buildings    []scenario.BuildingElement
@@ -578,7 +578,7 @@ func (w *World) paintTrees(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 
 		// Height offset: drawY already includes the surface baseZ, so we
 		// only need the extra height if the tree sits above the surface.
-		extraHeight := float64(int(te.BaseZ)-int(t.baseZ)) * 4.0
+		extraHeight := float64(int(te.BaseZ)-int(t.baseZ)) * 2.0
 
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(scale, scale)
@@ -627,7 +627,7 @@ func (w *World) paintBuildings(screen *ebiten.Image, t *tile, drawX, drawY, scal
 		}
 
 		// Height offset for building's own baseZ vs surface baseZ
-		extraHeight := float64(int(be.BaseZ)-int(t.baseZ)) * 4.0
+		extraHeight := float64(int(be.BaseZ)-int(t.baseZ)) * 2.0
 
 		// Image offset for 1x1 buildings: center of tile (16, 16)
 		offsetX := float64(16)
@@ -710,10 +710,14 @@ func (w *World) Draw(screen *ebiten.Image) {
 			t := w.tiles[y][x]
 			screenX, screenY := w.tileToScreen(x, y)
 
-			// Apply height offset: 1 SmallZ = kSmallZStep (4) game units = 4 viewport pixels
-			// OpenLoco reference: TileElementBase.h baseHeight() = _baseZ * kSmallZStep
-			// gameToScreen: screenY = (rotY + rotX) / 2 - z, where z = baseZ * 4
-			heightOffset := float64(t.baseZ) * 4.0
+			// Height offset: OpenLoco uses baseZ * kSmallZStep (4) giving 4 viewport
+			// pixels per SmallZ unit.  That is correct but produces large gaps at
+			// height transitions because cliff-edge sprites (vertical walls) are not
+			// yet rendered.  As a temporary compromise we use * 2 so that terrain
+			// has visible elevation while gaps stay manageable.
+			// TODO: switch to * 4 once cliff edge rendering is implemented.
+			// OpenLoco ref: TileElementBase.h baseHeight() = _baseZ * kSmallZStep
+			heightOffset := float64(t.baseZ) * 2.0
 			screenY -= heightOffset
 
 			// Convert world position to screen position: subtract camera,
