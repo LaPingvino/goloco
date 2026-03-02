@@ -99,14 +99,18 @@ func NewWorld(r *render.Renderer) *World {
 	return w
 }
 
-// tileToScreen converts tile coordinates to screen pixel coordinates
+// tileToScreen converts tile coordinates to viewport pixel coordinates.
+// Matches OpenLoco Map/Tile.cpp::gameToScreen (rotation 0):
+//
+//	vpX = (tileY - tileX) * kTileSize        where kTileSize = 32
+//	vpY = (tileY + tileX) * (kTileSize / 2)  = (tileY + tileX) * 16
+//
+// Height is NOT included here; it is subtracted separately in Draw().
+// Camera offset and zoom are also applied in Draw().
 func (w *World) tileToScreen(tileX, tileY int) (float64, float64) {
-	// Isometric projection:
-	// screenX = (tileX - tileY) * tileW/2
-	// screenY = (tileX + tileY) * tileH/2
-	screenX := float64((tileX-tileY)*w.tileW/2) + float64(w.width*w.tileW/4)
-	screenY := float64((tileX+tileY)*w.tileH/2) + 50 // 50px top margin
-	return screenX, screenY
+	vpX := float64((tileY - tileX) * 32)
+	vpY := float64((tileY + tileX) * 16)
+	return vpX, vpY
 }
 
 func (w *World) LoadFromScenario(sc *scenario.Scenario) {
@@ -152,19 +156,14 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 }
 
 // SetCamera overrides the camera position directly (used by the title
-// sequence to pan across the map).  The coordinates are in tile space;
-// they are converted to screen pixels using the same projection as
-// tileToScreen so the camera tracks smoothly.
+// sequence to pan across the map). Uses the same projection as tileToScreen.
 func (w *World) SetCamera(tileX, tileY float64) {
 	w.externalCamera = true
-	// Convert tile coords to world-space pixel position using the same
-	// projection as tileToScreen, then subtract half the viewport extent
-	// in world-space so the target tile lands at the centre.
-	// Half-viewport in world-space = (screenSize / 2) / scale = (screenSize / 2) << zoom
-	worldX := (tileX-tileY)*float64(w.tileW)/2 + float64(w.width*w.tileW/4)
-	worldY := (tileX+tileY)*float64(w.tileH)/2 + 50
-	halfW := 400.0 * float64(int(1)<<w.zoom) // 400 = screenWidth/2
-	halfH := 300.0 * float64(int(1)<<w.zoom) // 300 = screenHeight/2
+	// Mirror of tileToScreen: vpX = (tileY-tileX)*32, vpY = (tileY+tileX)*16
+	worldX := (tileY - tileX) * 32.0
+	worldY := (tileY + tileX) * 16.0
+	halfW := 400.0 * float64(int(1)<<w.zoom)
+	halfH := 300.0 * float64(int(1)<<w.zoom)
 	w.camX = worldX - halfW
 	w.camY = worldY - halfH
 }
@@ -302,21 +301,23 @@ const (
 	EdgeNE = 3 // North-East (top-right)
 )
 
-// getNeighborTile returns the neighbor tile in the given edge direction
-// Edge directions match OpenLoco's neighbor offset order
+// getNeighborTile returns the neighbor tile in the given edge direction.
+// Offsets match OpenLoco PaintSurface.cpp::kNeighbourOffsets[rotation=0]:
+//   SW: Pos2{+32,0}  → tileX+1
+//   SE: Pos2{0,+32}  → tileY+1
+//   NW: Pos2{0,-32}  → tileY-1
+//   NE: Pos2{-32,0}  → tileX-1
 func (w *World) getNeighborTile(x, y int, edge int) *tile {
-	// Neighbor offsets for each edge (rotation 0)
-	// From OpenLoco kNeighbourOffsets
 	var dx, dy int
 	switch edge {
-	case EdgeSW: // 0
-		dx, dy = -1, 0
-	case EdgeSE: // 1
-		dx, dy = 0, 1
-	case EdgeNW: // 2
-		dx, dy = 0, -1
-	case EdgeNE: // 3
+	case EdgeSW: // world +x
 		dx, dy = 1, 0
+	case EdgeSE: // world +y
+		dx, dy = 0, 1
+	case EdgeNW: // world -y
+		dx, dy = 0, -1
+	case EdgeNE: // world -x
+		dx, dy = -1, 0
 	default:
 		return nil
 	}
@@ -345,23 +346,17 @@ var cornerHeights = [32]CornerHeight{
 	{1, 1, 0, 0}, {1, 2, 1, 0}, {2, 1, 0, 1}, {1, 1, 1, 1},
 }
 
-// getCornerHeights returns the absolute corner heights for a tile
+// getCornerHeights returns the absolute corner heights for a tile in MicroZ units.
+// OpenLoco PaintSurface.cpp: microZ = baseZ / kMicroToSmallZStep (= baseZ / 4).
+// 1 MicroZ = 16 viewport pixels at zoom-0.
 func (w *World) getCornerHeights(t *tile) CornerHeight {
 	if t == nil {
 		return CornerHeight{0, 0, 0, 0}
 	}
-
-	// Use the same visual scale factor as terrain height rendering (* 2).
-	// With the * 4 correct factor, cliff edges appear above tiles because
-	// the terrain sprites are at half the height they should be.
-	// TODO: switch to * 4 once terrain also uses * 4.
-	microZ := uint8(t.baseZ) * 2
-
-	// Get relative corner heights from slope
-	slope := t.slope & 0x1F // Lower 5 bits
+	// SmallZ → MicroZ: divide by kMicroToSmallZStep = 4
+	microZ := uint8(t.baseZ) / 4
+	slope := t.slope & 0x1F
 	rel := cornerHeights[slope]
-
-	// Add base height to get absolute corner heights
 	return CornerHeight{
 		Top:    microZ + rel.Top,
 		Right:  microZ + rel.Right,
@@ -456,10 +451,9 @@ func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *o
 			maxHeight = edgeHeights.Self1
 		}
 
-		// Calculate factor with rotation variation
-		// OpenLoco: factor = ((spritePos.x ^ spritePos.y) & 0b10'0000) + kEdgeFactorOffset[edge]
-		// The (x^y)&32 creates a checkerboard pattern of 0/32 for visual variety
-		checkerboard := uint32((x ^ y) & 0x20) // bit 5 = 0 or 32
+		// Checkerboard: OpenLoco uses world coords (tileX*32)^(tileY*32) & 0x20.
+		// Equivalent with tile coords: ((tileX^tileY) & 1) * 32 — alternates every tile.
+		checkerboard := uint32((x^y)&1) * 32
 		factor := checkerboard + kEdgeFactorOffset[edge]
 
 		for h := minHeight; h < maxHeight; h++ {
@@ -542,7 +536,7 @@ func (w *World) paintTrees(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 
 		// Height offset: drawY already includes the surface baseZ, so we
 		// only need the extra height if the tree sits above the surface.
-		extraHeight := float64(int(te.BaseZ)-int(t.baseZ)) * 2.0
+		extraHeight := float64(int(te.BaseZ)-int(t.baseZ)) * 4.0
 
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(scale, scale)
@@ -591,7 +585,7 @@ func (w *World) paintBuildings(screen *ebiten.Image, t *tile, drawX, drawY, scal
 		}
 
 		// Height offset for building's own baseZ vs surface baseZ
-		extraHeight := float64(int(be.BaseZ)-int(t.baseZ)) * 2.0
+		extraHeight := float64(int(be.BaseZ)-int(t.baseZ)) * 4.0
 
 		// Image offset for 1x1 buildings: center of tile (16, 16)
 		offsetX := float64(16)
@@ -679,7 +673,7 @@ func (w *World) paintWalls(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 		}
 
 		// Height offset for wall's baseZ vs surface baseZ
-		extraHeight := float64(int(we.BaseZ)-int(t.baseZ)) * 2.0
+		extraHeight := float64(int(we.BaseZ)-int(t.baseZ)) * 4.0
 
 		// Position along tile edge based on rotation
 		rot := we.Rotation & 0x03
@@ -728,9 +722,10 @@ func (w *World) getWaterImage() *ebiten.Image {
 func (w *World) paintWater(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
 	waterImg := w.getWaterImage()
 
-	// drawY includes the baseZ visual offset. If waterLevel > baseZ, water is
-	// above terrain and we need to raise it further.
-	waterHeightDiff := float64(int(t.waterLevel)-int(t.baseZ)) * 2.0
+	// water field is MicroZ (kMicroZStep=16 px/unit); baseZ is SmallZ (kSmallZStep=4 px/unit).
+	// waterHeightDiff = how many px above terrain base the water surface sits.
+	// drawY already accounts for baseZ*4, so we only need the additional water offset.
+	waterHeightDiff := float64(t.waterLevel)*16.0 - float64(t.baseZ)*4.0
 
 	// Apply the same centering offsets as flat terrain sprites:
 	//   xOff=-32  centres the 64px wide diamond on the tile anchor
@@ -743,23 +738,27 @@ func (w *World) paintWater(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 	screen.DrawImage(waterImg, op)
 }
 
-// getCliffEdgeOffset returns the pixel offset for cliff edge sprites
-// OpenLoco reference: kEdgeImageOffset in PaintSurface.cpp
-func (w *World) getCliffEdgeOffset(edge int, height uint8) (int16, int16) {
-	// Height offset (each MicroZ level is 1 pixel vertical)
-	heightOffset := int16(height)
-
+// getCliffEdgeOffset converts kEdgeImageOffset[edge] + Pos3{0,0,h*kMicroZStep}
+// to viewport (vpX_off, vpY_off) using gameToScreen:
+//
+//	vpX_off = posY - posX
+//	vpY_off = (posY+posX)/2 - (posZ_base + h*16)
+//
+// h is in MicroZ units; 1 MicroZ = 16 viewport pixels (kMicroZStep=16).
+// See MEASUREMENTS.md "Cliff edge Pos3 → screen offset" table.
+func (w *World) getCliffEdgeOffset(edge int, h uint8) (int16, int16) {
+	heightPx := int16(h) * 16
 	switch edge {
-	case EdgeSW: // 0
-		return 30, -heightOffset
-	case EdgeSE: // 1
-		return 0, 30 - heightOffset
-	case EdgeNW: // 2
-		return 0, -2 - heightOffset + 1
-	case EdgeNE: // 3
-		return -2, -heightOffset + 1
+	case EdgeSW: // Pos3{30,0,0}: vpX=0-30=-30, vpY=(0+30)/2-0=15
+		return -30, 15 - heightPx
+	case EdgeSE: // Pos3{0,30,0}: vpX=30-0=30, vpY=(30+0)/2-0=15
+		return 30, 15 - heightPx
+	case EdgeNW: // Pos3{0,-2,1}: vpX=-2-0=-2, vpY=(-2+0)/2-1=-2
+		return -2, -2 - heightPx
+	case EdgeNE: // Pos3{-2,0,1}: vpX=0-(-2)=2, vpY=(0-2)/2-1=-2
+		return 2, -2 - heightPx
 	default:
-		return 0, -heightOffset
+		return 0, -heightPx
 	}
 }
 
@@ -781,14 +780,10 @@ func (w *World) Draw(screen *ebiten.Image) {
 			t := w.tiles[y][x]
 			screenX, screenY := w.tileToScreen(x, y)
 
-			// Height offset: OpenLoco uses baseZ * kSmallZStep (4) giving 4 viewport
-			// pixels per SmallZ unit.  That is correct but produces large gaps at
-			// height transitions because cliff-edge sprites (vertical walls) are not
-			// yet rendered.  As a temporary compromise we use * 2 so that terrain
-			// has visible elevation while gaps stay manageable.
-			// TODO: switch to * 4 once cliff edge rendering is implemented.
+			// OpenLoco: loc.z = baseZ * kSmallZStep = baseZ * 4 viewport pixels.
+			// Cliff edge sprites fill the gaps at height transitions.
 			// OpenLoco ref: TileElementBase.h baseHeight() = _baseZ * kSmallZStep
-			heightOffset := float64(t.baseZ) * 2.0
+			heightOffset := float64(t.baseZ) * 4.0
 			screenY -= heightOffset
 
 			// Convert world position to screen position: subtract camera,
