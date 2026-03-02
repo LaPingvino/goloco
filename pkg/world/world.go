@@ -351,8 +351,11 @@ func (w *World) getCornerHeights(t *tile) CornerHeight {
 		return CornerHeight{0, 0, 0, 0}
 	}
 
-	// Base height in MicroZ units (SmallZ * 4)
-	microZ := uint8(t.baseZ) * 4
+	// Use the same visual scale factor as terrain height rendering (* 2).
+	// With the * 4 correct factor, cliff edges appear above tiles because
+	// the terrain sprites are at half the height they should be.
+	// TODO: switch to * 4 once terrain also uses * 4.
+	microZ := uint8(t.baseZ) * 2
 
 	// Get relative corner heights from slope
 	slope := t.slope & 0x1F // Lower 5 bits
@@ -725,15 +728,18 @@ func (w *World) getWaterImage() *ebiten.Image {
 func (w *World) paintWater(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
 	waterImg := w.getWaterImage()
 
-	// Water height offset relative to terrain base (waterLevel is in same SmallZ units)
-	// drawY already includes baseZ offset, so add the extra water height
-	waterHeightDiff := float64(int(t.waterLevel)-int(t.baseZ)) * 2.0 // same temp factor as terrain
+	// drawY includes the baseZ visual offset. If waterLevel > baseZ, water is
+	// above terrain and we need to raise it further.
+	waterHeightDiff := float64(int(t.waterLevel)-int(t.baseZ)) * 2.0
 
+	// Apply the same centering offsets as flat terrain sprites:
+	//   xOff=-32  centres the 64px wide diamond on the tile anchor
+	//   yOff=-15  places the top of the sprite at the terrain surface level
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(scale, scale)
 	op.GeoM.Translate(
-		math.Floor(drawX),
-		math.Floor(drawY-waterHeightDiff*scale))
+		math.Floor(drawX+float64(-32)*scale),
+		math.Floor(drawY+float64(-15)*scale-waterHeightDiff*scale))
 	screen.DrawImage(waterImg, op)
 }
 
