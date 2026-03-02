@@ -42,6 +42,7 @@ type ObjectManager struct {
 	LandObjects      []*LandObject
 	TreeObjects      []*TreeObject              // all loaded tree objects
 	BuildingObjects  []*BuildingObject           // all loaded building objects
+	WallObjects      []*WallObject              // all loaded wall objects
 	CliffEdgeObjs    map[string]*CliffEdgeObject // keyed by upper-case name
 	InterfaceSkin    *InterfaceSkinObject
 	ObjDataPath      string
@@ -59,6 +60,7 @@ func NewObjectManager(objDataPath string) *ObjectManager {
 		LandObjects:     make([]*LandObject, 0),
 		TreeObjects:     make([]*TreeObject, 0),
 		BuildingObjects: make([]*BuildingObject, 0),
+		WallObjects:     make([]*WallObject, 0),
 		CliffEdgeObjs:   make(map[string]*CliffEdgeObject),
 		ObjDataPath:     objDataPath,
 		NextSpriteIndex: 0, // Will be set after G1 is loaded
@@ -235,6 +237,26 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 		loaded.Object = bldg
 		loaded.ImageOffset = bldg.ImageOffset
 		m.BuildingObjects = append(m.BuildingObjects, bldg)
+
+	case ObjectTypeWall:
+		var wall *WallObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				wall, err = ParseWallObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				wall, err = ParseWallObject(header, decompressed)
+			}
+		} else {
+			wall, err = ParseWallObject(header, decompressed)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("parsing wall: %w", err)
+		}
+
+		loaded.Object = wall
+		loaded.ImageOffset = wall.Sprite
+		m.WallObjects = append(m.WallObjects, wall)
 	}
 
 	// Store in map
@@ -429,6 +451,34 @@ func (m *ObjectManager) ReorderBuildingObjects(order []string) {
 	}
 	m.BuildingObjects = reordered
 	fmt.Printf("Reordered building objects: %d matched out of %d slots\n", matched, len(order))
+}
+
+// GetWallObjectByIndex returns the wall object at the given slot index
+func (m *ObjectManager) GetWallObjectByIndex(index int) *WallObject {
+	if index < 0 || index >= len(m.WallObjects) {
+		return nil
+	}
+	return m.WallObjects[index]
+}
+
+// ReorderWallObjects rebuilds the WallObjects slice so that each
+// wall slot index maps to the WallObject whose name matches order[i].
+func (m *ObjectManager) ReorderWallObjects(order []string) {
+	reordered := make([]*WallObject, len(order))
+	matched := 0
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if wall, ok := obj.Object.(*WallObject); ok {
+				reordered[i] = wall
+				matched++
+			}
+		}
+	}
+	m.WallObjects = reordered
+	fmt.Printf("Reordered wall objects: %d matched out of %d slots\n", matched, len(order))
 }
 
 // ReorderTreeObjects rebuilds the TreeObjects slice so that each tree

@@ -172,6 +172,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.LandObjectOrder = parseLandObjectOrder(reqObjBytes)
 	sc.TreeObjectOrder = parseTreeObjectOrder(reqObjBytes)
 	sc.BuildingObjectOrder = parseBuildingObjectOrder(reqObjBytes)
+	sc.WallObjectOrder = parseWallObjectOrder(reqObjBytes)
 
 	// --- Game state chunks ---
 	// For scenarios: three separate chunks (GeneralState, Towns, Animations).
@@ -260,6 +261,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 	elemCount := 0
 	treeCount := 0
 	buildingCount := 0
+	wallCount := 0
 
 	for pos+tileElementSize <= len(data) {
 		elem := data[pos : pos+tileElementSize]
@@ -335,6 +337,19 @@ func (sc *Scenario) parseTileElements(data []byte) {
 				}
 				sc.Tiles[y][x].Buildings = append(sc.Tiles[y][x].Buildings, be)
 				buildingCount++
+
+			case elementTypeWall:
+				// WallElement: byte layout from WallElement.h
+				we := WallElement{
+					WallObjectID:  elem[4],
+					Rotation:      typeByte & 0x03,
+					EdgeSlope:     (typeByte >> 6) & 0x03,
+					PrimaryColour: elem[6] & 0x1F,
+					BaseZ:         baseZ,
+					ClearZ:        elem[3],
+				}
+				sc.Tiles[y][x].Walls = append(sc.Tiles[y][x].Walls, we)
+				wallCount++
 			}
 		}
 
@@ -348,8 +363,8 @@ func (sc *Scenario) parseTileElements(data []byte) {
 		}
 	}
 
-	log.Printf("[Scenario] Parsed %d tile elements covering %d×%d tiles (stopped at x=%d y=%d) — %d trees, %d buildings",
-		elemCount, sc.MapWidth, sc.MapHeight, x, y, treeCount, buildingCount)
+	log.Printf("[Scenario] Parsed %d tile elements covering %d×%d tiles (stopped at x=%d y=%d) — %d trees, %d buildings, %d walls",
+		elemCount, sc.MapWidth, sc.MapHeight, x, y, treeCount, buildingCount, wallCount)
 }
 
 // readGeneralStateFlags extracts the flags uint32 from a GeneralState or
@@ -407,14 +422,19 @@ func advanceRaw(r *assets.S5ChunkReader, n int) {
 const (
 	objectHeaderSize = 16
 	objectTypeMask   = 0x3F
-	objectTypeLand   = 6  // ObjectType::land
-	objectTypeTree   = 24 // ObjectType::tree
+	objectTypeLand     = 6  // ObjectType::land
+	objectTypeWall     = 9  // ObjectType::wall
+	objectTypeTree     = 24 // ObjectType::tree
 	objectTypeBuilding = 28 // ObjectType::building
 
 	// Offsets into the 859-element RequiredObjects array.
 	// Cumulative counts: Interface(1)+Sound(128)+Currency(1)+Steam(32)+Rock(8)+Water(1)=171
 	landSlotStart = 171
 	landSlotCount = 32
+
+	// Wall slots: after land(32)+TownNames(1)+Cargo(32) = 171+32+1+32 = 236
+	wallSlotStart = 236
+	wallSlotCount = 32
 
 	// Tree slots: after Interface(1)+Sound(128)+Currency(1)+Steam(32)+Rock(8)+Water(1)+
 	//   Surface(32)+TownNames(1)+Cargo(32)+Wall(32)+TrackSignal(16)+LevelCrossing(4)+
@@ -498,6 +518,19 @@ func parseBuildingObjectOrder(data []byte) []string {
 		}
 	}
 	log.Printf("[Scenario] RequiredObjects: %d building objects in slot order", count)
+	return order
+}
+
+// parseWallObjectOrder extracts the 32 wall-object names from RequiredObjects.
+func parseWallObjectOrder(data []byte) []string {
+	order := parseObjectOrder(data, wallSlotStart, wallSlotCount, objectTypeWall)
+	count := 0
+	for _, n := range order {
+		if n != "" {
+			count++
+		}
+	}
+	log.Printf("[Scenario] RequiredObjects: %d wall objects in slot order", count)
 	return order
 }
 

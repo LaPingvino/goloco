@@ -8,7 +8,6 @@ import (
 	"github.com/LaPingvino/goloco/pkg/render"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 // slopeToDisplaySlope maps raw slope values (0-31) to display slope indices (0-18)
@@ -36,8 +35,10 @@ type tile struct {
 	terrainIndex uint8 // raw LandObject slot index from the scenario
 	baseZ        uint8 // height in SmallZ units (OpenLoco: 1 unit = 4px; GoLoco temp: 1 unit = 2px)
 	slope        uint8 // slope corners and flags from byte 4 of surface element
+	waterLevel   uint8 // water level from surface element byte 5 bits [4:0]; 0 = no water
 	trees        []scenario.TreeElement
 	buildings    []scenario.BuildingElement
+	walls        []scenario.WallElement
 }
 
 // World holds a tile grid for an isometric game world
@@ -50,11 +51,12 @@ type World struct {
 	tileW int // tile width in pixels (64)
 	tileH int // tile height in pixels (32)
 	// cache colored diamond images per tile type (fallback)
-	tileCache map[TileType]*ebiten.Image
+	tileCache  map[TileType]*ebiten.Image
+	waterImage *ebiten.Image // cached translucent water diamond overlay
 	// camera offset in pixels (in world-space before zoom is applied)
 	camX float64
 	camY float64
-	// when true, Draw() does not recentre the camera on the player —
+	// when true, Draw() does not recentre the camera —
 	// an external caller (e.g. title sequence) is driving it via SetCamera.
 	externalCamera bool
 	// zoom level 0–3 matching OpenLoco convention:
@@ -62,20 +64,6 @@ type World struct {
 	// The pixel scale factor is 1 << zoom applied in reverse:
 	// world coordinates are divided by (1 << zoom) for screen placement.
 	zoom int
-	// player tile coords
-	playerX int
-	playerY int
-	// player pixel position (for smooth movement)
-	playerPX float64
-	playerPY float64
-	// movement tweening
-	moving       bool
-	moveFromX    int
-	moveFromY    int
-	moveToX      int
-	moveToY      int
-	moveProgress float64
-	moveSpeed    float64
 }
 
 func NewWorld(r *render.Renderer) *World {
@@ -87,9 +75,6 @@ func NewWorld(r *render.Renderer) *World {
 		tileH:     32, // standard isometric tile height (64×32 = 2:1 ratio)
 		tiles:     make([][]tile, 15),
 		tileCache: make(map[TileType]*ebiten.Image),
-		playerX:   10,
-		playerY:   7,
-		moveSpeed: 0.15,
 		zoom:      0, // start at full zoom (1× scale)
 	}
 
@@ -107,8 +92,10 @@ func NewWorld(r *render.Renderer) *World {
 		}
 	}
 
-	// Initialize player screen position
-	w.playerPX, w.playerPY = w.tileToScreen(w.playerX, w.playerY)
+	// Center camera on the map
+	cx, cy := w.tileToScreen(w.width/2, w.height/2)
+	w.camX = cx - 400 // half screen width
+	w.camY = cy - 300 // half screen height
 	return w
 }
 
@@ -150,14 +137,18 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 				terrainIndex: st.TerrainIndex,
 				baseZ:        st.Height,
 				slope:        st.Slope,
+				waterLevel:   st.Water,
 				trees:        st.Trees,
 				buildings:    st.Buildings,
+				walls:        st.Walls,
 			}
 		}
 	}
 
-	w.playerX, w.playerY = w.width/2, w.height/2
-	w.playerPX, w.playerPY = w.tileToScreen(w.playerX, w.playerY)
+	// Center camera on the map
+	cx, cy := w.tileToScreen(w.width/2, w.height/2)
+	w.camX = cx - 400
+	w.camY = cy - 300
 }
 
 // SetCamera overrides the camera position directly (used by the title
@@ -215,45 +206,15 @@ func (w *World) GetMapSize() (width, height int) {
 }
 
 func (w *World) Update() {
-	if w.moving {
-		w.moveProgress += w.moveSpeed
-		if w.moveProgress >= 1.0 {
-			w.playerX = w.moveToX
-			w.playerY = w.moveToY
-			w.playerPX, w.playerPY = w.tileToScreen(w.playerX, w.playerY)
-			w.moving = false
-			w.moveProgress = 0
-		} else {
-			// Smoothstep interpolation
-			t := w.moveProgress
-			t = t * t * (3 - 2*t)
-
-			fromX, fromY := w.tileToScreen(w.moveFromX, w.moveFromY)
-			toX, toY := w.tileToScreen(w.moveToX, w.moveToY)
-			w.playerPX = fromX + (toX-fromX)*t
-			w.playerPY = fromY + (toY-fromY)*t
-		}
-	}
+	// Currently a no-op; camera is driven by PanCamera from the game loop.
 }
 
-func (w *World) HandleInput(dx, dy int) {
-	if w.moving {
-		return
-	}
-	nx := w.playerX + dx
-	ny := w.playerY + dy
-	if nx >= 0 && nx < w.width && ny >= 0 && ny < w.height {
-		// Don't walk on water
-		if w.tiles[ny][nx].tileType == TileWater {
-			return
-		}
-		w.moveFromX = w.playerX
-		w.moveFromY = w.playerY
-		w.moveToX = nx
-		w.moveToY = ny
-		w.moveProgress = 0
-		w.moving = true
-	}
+// PanCamera moves the camera by (dx, dy) pixels in world-space.
+// Called each frame when WASD/arrow keys are held.
+func (w *World) PanCamera(dx, dy float64) {
+	w.externalCamera = false // user is now driving the camera
+	w.camX += dx
+	w.camY += dy
 }
 
 // getFallbackImage returns a cached colored diamond for a tile type.
@@ -668,6 +629,114 @@ func (w *World) paintBuildings(screen *ebiten.Image, t *tile, drawX, drawY, scal
 	}
 }
 
+// Wall sprite offset constants per rotation, from OpenLoco PaintWall.cpp kOffsets.
+// These position the wall sprite along the correct tile edge.
+var kWallOffsets = [4][2]int16{
+	{0, 0},    // rotation 0 (SE edge)
+	{1, 31},   // rotation 1 (SW edge)
+	{31, 0},   // rotation 2 (NW edge)
+	{2, 1},    // rotation 3 (NE edge)
+}
+
+// paintWalls renders wall sprites for a tile.
+//
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintWall.cpp paintWall()
+func (w *World) paintWalls(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
+	if w.renderer == nil || w.renderer.ObjMgr == nil || len(t.walls) == 0 {
+		return
+	}
+
+	for _, we := range t.walls {
+		wallObj := w.renderer.ObjMgr.GetWallObjectByIndex(int(we.WallObjectID))
+		if wallObj == nil || wallObj.Sprite == 0 {
+			continue
+		}
+
+		// Simplified sprite selection: flat wall for now (ignore slope flags)
+		// rotation 0,2 → SE/NW edge → sprite 0 (kFlatSE)
+		// rotation 1,3 → NE/SW edge → sprite 1 (kFlatNE)
+		var spriteOffset uint32
+		switch we.Rotation {
+		case 0, 2:
+			spriteOffset = 0 // kFlatSE
+		case 1, 3:
+			spriteOffset = 1 // kFlatNE
+		}
+
+		spriteID := int(wallObj.Sprite + spriteOffset)
+
+		img := w.renderer.GetSprite(spriteID)
+		if img == nil {
+			continue
+		}
+
+		_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+		if !ok {
+			continue
+		}
+
+		// Height offset for wall's baseZ vs surface baseZ
+		extraHeight := float64(int(we.BaseZ)-int(t.baseZ)) * 2.0
+
+		// Position along tile edge based on rotation
+		rot := we.Rotation & 0x03
+		edgeX := float64(kWallOffsets[rot][0])
+		edgeY := float64(kWallOffsets[rot][1])
+
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(
+			math.Floor(drawX+(float64(xOff)+edgeX)*scale),
+			math.Floor(drawY+(float64(yOff)-extraHeight+edgeY)*scale))
+		screen.DrawImage(img, op)
+	}
+}
+
+// getWaterImage returns a cached translucent blue diamond overlay for water tiles.
+func (w *World) getWaterImage() *ebiten.Image {
+	if w.waterImage != nil {
+		return w.waterImage
+	}
+	img := ebiten.NewImage(w.tileW, w.tileH)
+	centerX := w.tileW / 2
+	centerY := w.tileH / 2
+	waterColor := color.RGBA{40, 80, 180, 140}
+	for y := 0; y < w.tileH; y++ {
+		var halfWidth int
+		if y < centerY {
+			halfWidth = (y * centerX) / centerY
+		} else {
+			halfWidth = ((w.tileH - 1 - y) * centerX) / centerY
+		}
+		for x := centerX - halfWidth; x <= centerX+halfWidth; x++ {
+			if x >= 0 && x < w.tileW {
+				img.Set(x, y, waterColor)
+			}
+		}
+	}
+	w.waterImage = img
+	return img
+}
+
+// paintWater renders a translucent blue water overlay on a tile.
+// The water sits at the waterLevel height, which may be above the terrain baseZ.
+//
+// OpenLoco reference: PaintSurface.cpp:1720-1759 (paintSurfaceWater)
+func (w *World) paintWater(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
+	waterImg := w.getWaterImage()
+
+	// Water height offset relative to terrain base (waterLevel is in same SmallZ units)
+	// drawY already includes baseZ offset, so add the extra water height
+	waterHeightDiff := float64(int(t.waterLevel)-int(t.baseZ)) * 2.0 // same temp factor as terrain
+
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(scale, scale)
+	op.GeoM.Translate(
+		math.Floor(drawX),
+		math.Floor(drawY-waterHeightDiff*scale))
+	screen.DrawImage(waterImg, op)
+}
+
 // getCliffEdgeOffset returns the pixel offset for cliff edge sprites
 // OpenLoco reference: kEdgeImageOffset in PaintSurface.cpp
 func (w *World) getCliffEdgeOffset(edge int, height uint8) (int16, int16) {
@@ -692,12 +761,8 @@ func (w *World) Draw(screen *ebiten.Image) {
 	sw, sh := screen.Size()
 	scale := 1.0 / float64(int(1)<<w.zoom) // zoom 0→1.0, 1→0.5, 2→0.25, 3→0.125
 
-	// Centre camera on player unless an external source (title sequence)
-	// is driving it.  Camera coords are in world-space (unscaled).
-	if !w.externalCamera {
-		w.camX = w.playerPX - float64(sw)/scale/2 + float64(w.tileW)/2
-		w.camY = w.playerPY - float64(sh)/scale/2 + float64(w.tileH)/2
-	}
+	// Camera coords are in world-space (unscaled). They are set by
+	// PanCamera (gameplay) or SetCamera (title sequence).
 
 	// Draw tiles in depth order (back to front)
 	for depth := 0; depth < w.width+w.height; depth++ {
@@ -764,9 +829,15 @@ func (w *World) Draw(screen *ebiten.Image) {
 								w.paintCliffEdges(screen, x, y, &t, land, drawX, drawY, scale)
 							}
 
-							// Draw trees and buildings on this tile
+							// Draw water overlay if this tile has water
+							if t.waterLevel > 0 {
+								w.paintWater(screen, &t, drawX, drawY, scale)
+							}
+
+							// Draw trees, buildings, and walls on this tile
 							w.paintTrees(screen, &t, drawX, drawY, scale)
 							w.paintBuildings(screen, &t, drawX, drawY, scale)
+							w.paintWalls(screen, &t, drawX, drawY, scale)
 
 							continue
 						}
@@ -783,11 +854,4 @@ func (w *World) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// Draw player as a small red marker (only when not in title-sequence mode)
-	if !w.externalCamera {
-		playerDrawX := (w.playerPX - w.camX) * scale
-		playerDrawY := (w.playerPY - w.camY) * scale
-		markerSize := 16.0 * scale
-		ebitenutil.DrawRect(screen, playerDrawX, playerDrawY-markerSize, markerSize, markerSize, color.RGBA{255, 50, 50, 220})
-	}
 }

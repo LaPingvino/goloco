@@ -9,6 +9,7 @@ import (
 
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"github.com/LaPingvino/goloco/pkg/audio"
+	"github.com/LaPingvino/goloco/pkg/game"
 	"github.com/LaPingvino/goloco/pkg/graphics"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/render"
@@ -34,6 +35,7 @@ type Game struct {
 	objMgr        *objects.ObjectManager
 	audioMgr      *audio.Manager
 	titleSeq      *title.Sequence
+	gameState     *game.GameState
 	dropdown      *ui.DropdownMenu
 	mouseX        int
 	mouseY        int
@@ -184,6 +186,10 @@ func NewGame() *Game {
 					objMgr.ReorderBuildingObjects(sc.BuildingObjectOrder)
 					log.Printf("[Game] Reordered building objects to match scenario slot order (%d slots)", len(sc.BuildingObjectOrder))
 				}
+				if len(sc.WallObjectOrder) > 0 {
+					objMgr.ReorderWallObjects(sc.WallObjectOrder)
+					log.Printf("[Game] Reordered wall objects to match scenario slot order (%d slots)", len(sc.WallObjectOrder))
+				}
 			}
 			w.LoadFromScenario(sc)
 			log.Printf("[Game] Loaded title scenario: %dx%d map", sc.MapWidth, sc.MapHeight)
@@ -286,11 +292,30 @@ func (g *Game) Update() error {
 		g.windowMgr.StopDrag()
 	}
 
-	// Zoom: keyboard +/- and mouse scroll wheel (only in gameplay mode)
-	if inpututil.IsKeyJustPressed(ebiten.KeyEqual) || inpututil.IsKeyJustPressed(ebiten.KeyKPAdd) {
+	// Camera panning: WASD or arrow keys (smooth, pixels per frame)
+	const panSpeed = 4.0
+	var panX, panY float64
+	if ebiten.IsKeyPressed(ebiten.KeyW) || ebiten.IsKeyPressed(ebiten.KeyUp) {
+		panY -= panSpeed
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyS) || ebiten.IsKeyPressed(ebiten.KeyDown) {
+		panY += panSpeed
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyA) || ebiten.IsKeyPressed(ebiten.KeyLeft) {
+		panX -= panSpeed
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyD) || ebiten.IsKeyPressed(ebiten.KeyRight) {
+		panX += panSpeed
+	}
+	if panX != 0 || panY != 0 {
+		g.w.PanCamera(panX, panY)
+	}
+
+	// Zoom: keyboard Q/E, +/-, and mouse scroll wheel
+	if inpututil.IsKeyJustPressed(ebiten.KeyQ) || inpututil.IsKeyJustPressed(ebiten.KeyEqual) || inpututil.IsKeyJustPressed(ebiten.KeyKPAdd) {
 		g.w.ZoomIn()
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyMinus) || inpututil.IsKeyJustPressed(ebiten.KeyKPSubtract) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyE) || inpututil.IsKeyJustPressed(ebiten.KeyMinus) || inpututil.IsKeyJustPressed(ebiten.KeyKPSubtract) {
 		g.w.ZoomOut()
 	}
 	if _, dy := ebiten.Wheel(); dy != 0 {
@@ -301,8 +326,11 @@ func (g *Game) Update() error {
 		}
 	}
 
-	// Only update world movement/animation in gameplay mode
+	// Update world
 	g.w.Update()
+	if g.gameState != nil {
+		g.gameState.Update()
+	}
 	return nil
 }
 
@@ -357,6 +385,8 @@ func (g *Game) handleTitleMenuClick(mx, my int) {
 			g.titleSeq.Stop()
 		}
 		g.inTitleScreen = false
+		mapW, mapH := g.w.GetMapSize()
+		g.gameState = game.NewGameState(mapW, mapH)
 		log.Println("[Game] Title menu: New Game selected")
 	case 1:
 		log.Println("[Game] Title menu: Load Game (not yet implemented)")
@@ -554,7 +584,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	statusY := screenHeight - 20
 	ebitenutil.DrawRect(screen, 0, float64(statusY), float64(screenWidth), 20, color.RGBA{50, 50, 50, 240})
-	statusText := fmt.Sprintf("GoLoco | Mouse: %d,%d | Scroll to zoom", g.mouseX, g.mouseY)
+	var statusText string
+	if g.gameState != nil {
+		date := g.gameState.GameDate
+		statusText = fmt.Sprintf("%s %d  |  £%d  |  Scroll to zoom",
+			date.Month().String()[:3], date.Year(), g.gameState.PlayerMoney)
+	} else {
+		statusText = fmt.Sprintf("GoLoco | Mouse: %d,%d | Scroll to zoom", g.mouseX, g.mouseY)
+	}
 	ui.DrawText(screen, statusText, 4, statusY+14, color.White)
 }
 

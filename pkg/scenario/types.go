@@ -32,6 +32,10 @@ type Scenario struct {
 
 	// BuildingObjectOrder is the list of building-object names in building-slot order.
 	BuildingObjectOrder []string
+
+	// WallObjectOrder is the list of wall-object names in wall-slot order,
+	// as specified by the RequiredObjects chunk. Slots 236-267.
+	WallObjectOrder []string
 }
 
 // GetTile returns tile at the given coordinates
@@ -55,6 +59,7 @@ type Tile struct {
 	// Non-surface elements on this tile
 	Trees     []TreeElement
 	Buildings []BuildingElement
+	Walls     []WallElement
 }
 
 // TreeElement represents a tree on a tile.
@@ -85,6 +90,18 @@ type BuildingElement struct {
 	IsConstructed bool  // byte 0 bit 7
 	BaseZ         uint8 // byte 2
 	ClearZ        uint8 // byte 3
+}
+
+// WallElement represents a wall/fence on a tile edge.
+//
+// OpenLoco reference: src/OpenLoco/src/Map/WallElement.h
+type WallElement struct {
+	WallObjectID   uint8 // byte 4: which WallObject (index into RequiredObjects wall slots)
+	Rotation       uint8 // byte 0 bits [1:0]
+	EdgeSlope      uint8 // byte 0 bits [7:6]: 0=none, 1=upwards, 2=downwards
+	PrimaryColour  uint8 // byte 6 bits [4:0]
+	BaseZ          uint8 // byte 2: height in SmallZ
+	ClearZ         uint8 // byte 3: clear height
 }
 
 // SurfaceType represents type of terrain surface
