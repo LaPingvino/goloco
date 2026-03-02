@@ -173,6 +173,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.TreeObjectOrder = parseTreeObjectOrder(reqObjBytes)
 	sc.BuildingObjectOrder = parseBuildingObjectOrder(reqObjBytes)
 	sc.WallObjectOrder = parseWallObjectOrder(reqObjBytes)
+	sc.TrackObjectOrder = parseTrackObjectOrder(reqObjBytes)
+	sc.RoadObjectOrder = parseRoadObjectOrder(reqObjBytes)
 
 	// --- Game state chunks ---
 	// For scenarios: three separate chunks (GeneralState, Towns, Animations).
@@ -262,6 +264,11 @@ func (sc *Scenario) parseTileElements(data []byte) {
 	treeCount := 0
 	buildingCount := 0
 	wallCount := 0
+	trackCount := 0
+	roadCount := 0
+	stationCount := 0
+	signalCount := 0
+	industryCount := 0
 
 	for pos+tileElementSize <= len(data) {
 		elem := data[pos : pos+tileElementSize]
@@ -294,8 +301,8 @@ func (sc *Scenario) parseTileElements(data []byte) {
 				// Slope in byte 4, bits [3:0] = corner heights, bit 4 = double height
 				slopeByte := elem[4]
 
-				// Preserve any existing non-surface elements (trees, buildings)
-				// that were parsed before the surface element
+				// Preserve any existing non-surface elements parsed before
+				// the surface element (elements are not guaranteed to be ordered).
 				existing := sc.Tiles[y][x]
 				sc.Tiles[y][x] = Tile{
 					Surface:      surface,
@@ -305,6 +312,12 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					Slope:        slopeByte,
 					Trees:        existing.Trees,
 					Buildings:    existing.Buildings,
+					Walls:        existing.Walls,
+					Tracks:       existing.Tracks,
+					Roads:        existing.Roads,
+					Stations:     existing.Stations,
+					Signals:      existing.Signals,
+					Industries:   existing.Industries,
 				}
 
 			case elementTypeTree:
@@ -350,6 +363,85 @@ func (sc *Scenario) parseTileElements(data []byte) {
 				}
 				sc.Tiles[y][x].Walls = append(sc.Tiles[y][x].Walls, we)
 				wallCount++
+
+			case elementTypeTrack:
+				// TrackElement: byte layout from TrackElement.h
+				te := TrackElement{
+					TrackID:       elem[4] & 0x3F,
+					HasBridge:     elem[4]&0x80 != 0,
+					SequenceIndex: elem[5] & 0x0F,
+					TrackObjectID: (elem[5] >> 4) & 0x0F,
+					Rotation:      typeByte & 0x03,
+					HasSignal:     typeByte&0x40 != 0,
+					HasStation:    typeByte&0x80 != 0,
+					Owner:         elem[7] & 0x0F,
+					Mods:          (elem[7] >> 4) & 0x0F,
+					BaseZ:         baseZ,
+					ClearZ:        elem[3],
+				}
+				sc.Tiles[y][x].Tracks = append(sc.Tiles[y][x].Tracks, te)
+				trackCount++
+
+			case elementTypeRoad:
+				// RoadElement: byte layout from RoadElement.h
+				re := RoadElement{
+					RoadID:        elem[4] & 0x0F,
+					HasBridge:     elem[4]&0x80 != 0,
+					SequenceIndex: elem[5] & 0x03,
+					RoadObjectID:  (elem[5] >> 4) & 0x0F,
+					Rotation:      typeByte & 0x03,
+					Owner:         elem[7] & 0x0F,
+					Mods:          (elem[7] >> 6) & 0x03,
+					BaseZ:         baseZ,
+					ClearZ:        elem[3],
+				}
+				sc.Tiles[y][x].Roads = append(sc.Tiles[y][x].Roads, re)
+				roadCount++
+
+			case elementTypeStation:
+				// StationElement: byte layout from StationElement.h
+				stationWord := uint16(elem[6]) | uint16(elem[7])<<8
+				se := StationElement{
+					ObjectID:      elem[5] & 0x1F,
+					Rotation:      typeByte & 0x03,
+					SequenceIndex: (typeByte >> 6) & 0x03,
+					StationID:     stationWord & 0x03FF,
+					BuildingType:  uint8((stationWord >> 10) & 0x3F),
+					Owner:         elem[4] & 0x0F,
+					BaseZ:         baseZ,
+					ClearZ:        elem[3],
+				}
+				sc.Tiles[y][x].Stations = append(sc.Tiles[y][x].Stations, se)
+				stationCount++
+
+			case elementTypeSignal:
+				// SignalElement: byte layout from SignalElement.h
+				sig := SignalElement{
+					SignalObjectID: elem[4] & 0x0F,
+					Rotation:       typeByte & 0x03,
+					HasLeftSignal:  elem[4]&0x80 != 0,
+					LeftFrame:      elem[5] & 0x0F,
+					HasRightSignal: elem[6]&0x80 != 0,
+					RightFrame:     elem[7] & 0x0F,
+					BaseZ:          baseZ,
+					ClearZ:         elem[3],
+				}
+				sc.Tiles[y][x].Signals = append(sc.Tiles[y][x].Signals, sig)
+				signalCount++
+
+			case elementTypeIndustry:
+				// IndustryElement: byte layout from IndustryElement.h
+				sectionWord := uint16(elem[6]) | uint16(elem[7])<<8
+				ie := IndustryElement{
+					IndustryID:    elem[4],
+					BuildingType:  uint8((sectionWord >> 6) & 0x1F),
+					Rotation:      typeByte & 0x03,
+					IsConstructed: typeByte&0x80 != 0,
+					BaseZ:         baseZ,
+					ClearZ:        elem[3],
+				}
+				sc.Tiles[y][x].Industries = append(sc.Tiles[y][x].Industries, ie)
+				industryCount++
 			}
 		}
 
@@ -363,8 +455,8 @@ func (sc *Scenario) parseTileElements(data []byte) {
 		}
 	}
 
-	log.Printf("[Scenario] Parsed %d tile elements covering %d×%d tiles (stopped at x=%d y=%d) — %d trees, %d buildings, %d walls",
-		elemCount, sc.MapWidth, sc.MapHeight, x, y, treeCount, buildingCount, wallCount)
+	log.Printf("[Scenario] Parsed %d tile elements covering %d×%d tiles (stopped at x=%d y=%d) — %d trees, %d buildings, %d walls, %d tracks, %d roads, %d stations, %d signals, %d industries",
+		elemCount, sc.MapWidth, sc.MapHeight, x, y, treeCount, buildingCount, wallCount, trackCount, roadCount, stationCount, signalCount, industryCount)
 }
 
 // readGeneralStateFlags extracts the flags uint32 from a GeneralState or
@@ -422,10 +514,14 @@ func advanceRaw(r *assets.S5ChunkReader, n int) {
 const (
 	objectHeaderSize = 16
 	objectTypeMask   = 0x3F
-	objectTypeLand     = 6  // ObjectType::land
-	objectTypeWall     = 9  // ObjectType::wall
-	objectTypeTree     = 24 // ObjectType::tree
-	objectTypeBuilding = 28 // ObjectType::building
+	objectTypeLand         = 6  // ObjectType::land
+	objectTypeWall         = 9  // ObjectType::wall
+	objectTypeTrackStation = 15 // ObjectType::trackStation
+	objectTypeTrack        = 17 // ObjectType::track
+	objectTypeRoadStation  = 18 // ObjectType::roadStation
+	objectTypeRoad         = 20 // ObjectType::road
+	objectTypeTree         = 24 // ObjectType::tree
+	objectTypeBuilding     = 28 // ObjectType::building
 
 	// Offsets into the 859-element RequiredObjects array.
 	// Cumulative counts: Interface(1)+Sound(128)+Currency(1)+Steam(32)+Rock(8)+Water(1)=171
@@ -435,6 +531,22 @@ const (
 	// Wall slots: after land(32)+TownNames(1)+Cargo(32) = 171+32+1+32 = 236
 	wallSlotStart = 236
 	wallSlotCount = 32
+
+	// TrainStation slots: Wall(32)+TrackSignal(16)+LevelCrossing(4)+StreetLight(1)+Tunnel(16)+Bridge(8) = 236+32+16+4+1+16+8 = 313
+	trainStationSlotStart = 313
+	trainStationSlotCount = 16
+
+	// Track slots: TrainStation(16)+TrackExtra(8) = 313+16+8 = 337
+	trackSlotStart = 337
+	trackSlotCount = 8
+
+	// RoadStation slots: Track(8) = 337+8 = 345
+	roadStationSlotStart = 345
+	roadStationSlotCount = 16
+
+	// Road slots: RoadStation(16)+RoadExtra(4) = 345+16+4 = 365
+	roadSlotStart = 365
+	roadSlotCount = 8
 
 	// Tree slots: after Interface(1)+Sound(128)+Currency(1)+Steam(32)+Rock(8)+Water(1)+
 	//   Surface(32)+TownNames(1)+Cargo(32)+Wall(32)+TrackSignal(16)+LevelCrossing(4)+
@@ -531,6 +643,34 @@ func parseWallObjectOrder(data []byte) []string {
 		}
 	}
 	log.Printf("[Scenario] RequiredObjects: %d wall objects in slot order", count)
+	return order
+}
+
+// parseTrackObjectOrder extracts the 8 track-object names from RequiredObjects.
+// Slots 337-344 (ObjectType::track = 17).
+func parseTrackObjectOrder(data []byte) []string {
+	order := parseObjectOrder(data, trackSlotStart, trackSlotCount, objectTypeTrack)
+	count := 0
+	for _, n := range order {
+		if n != "" {
+			count++
+		}
+	}
+	log.Printf("[Scenario] RequiredObjects: %d track objects in slot order", count)
+	return order
+}
+
+// parseRoadObjectOrder extracts the 8 road-object names from RequiredObjects.
+// Slots 365-372 (ObjectType::road = 20).
+func parseRoadObjectOrder(data []byte) []string {
+	order := parseObjectOrder(data, roadSlotStart, roadSlotCount, objectTypeRoad)
+	count := 0
+	for _, n := range order {
+		if n != "" {
+			count++
+		}
+	}
+	log.Printf("[Scenario] RequiredObjects: %d road objects in slot order", count)
 	return order
 }
 

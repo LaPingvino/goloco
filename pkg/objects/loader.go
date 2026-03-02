@@ -43,6 +43,8 @@ type ObjectManager struct {
 	TreeObjects      []*TreeObject              // all loaded tree objects
 	BuildingObjects  []*BuildingObject           // all loaded building objects
 	WallObjects      []*WallObject              // all loaded wall objects
+	TrackObjects     []*TrackObject             // all loaded track objects
+	RoadObjects      []*RoadObject              // all loaded road objects
 	CliffEdgeObjs    map[string]*CliffEdgeObject // keyed by upper-case name
 	InterfaceSkin    *InterfaceSkinObject
 	ObjDataPath      string
@@ -61,6 +63,8 @@ func NewObjectManager(objDataPath string) *ObjectManager {
 		TreeObjects:     make([]*TreeObject, 0),
 		BuildingObjects: make([]*BuildingObject, 0),
 		WallObjects:     make([]*WallObject, 0),
+		TrackObjects:    make([]*TrackObject, 0),
+		RoadObjects:     make([]*RoadObject, 0),
 		CliffEdgeObjs:   make(map[string]*CliffEdgeObject),
 		ObjDataPath:     objDataPath,
 		NextSpriteIndex: 0, // Will be set after G1 is loaded
@@ -257,6 +261,46 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 		loaded.Object = wall
 		loaded.ImageOffset = wall.Sprite
 		m.WallObjects = append(m.WallObjects, wall)
+
+	case ObjectTypeTrack:
+		var track *TrackObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				track, err = ParseTrackObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				track, err = ParseTrackObject(header, decompressed)
+			}
+		} else {
+			track, err = ParseTrackObject(header, decompressed)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("parsing track: %w", err)
+		}
+
+		loaded.Object = track
+		loaded.ImageOffset = track.Image
+		m.TrackObjects = append(m.TrackObjects, track)
+
+	case ObjectTypeRoad:
+		var road *RoadObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				road, err = ParseRoadObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				road, err = ParseRoadObject(header, decompressed)
+			}
+		} else {
+			road, err = ParseRoadObject(header, decompressed)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("parsing road: %w", err)
+		}
+
+		loaded.Object = road
+		loaded.ImageOffset = road.Image
+		m.RoadObjects = append(m.RoadObjects, road)
 	}
 
 	// Store in map
@@ -572,3 +616,61 @@ func extractFirstString(data []byte) string {
 }
 
 // Note: isPrintable and cleanString are now in stringtable.go
+
+// GetTrackObjectByIndex returns the TrackObject at the given slot index (0-7),
+// or nil if the index is out of range.
+func (m *ObjectManager) GetTrackObjectByIndex(index int) *TrackObject {
+	if index < 0 || index >= len(m.TrackObjects) {
+		return nil
+	}
+	return m.TrackObjects[index]
+}
+
+// ReorderTrackObjects rebuilds the TrackObjects slice so that each track slot
+// index maps to the TrackObject whose name matches order[i].
+func (m *ObjectManager) ReorderTrackObjects(order []string) {
+	reordered := make([]*TrackObject, len(order))
+	matched := 0
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if track, ok := obj.Object.(*TrackObject); ok {
+				reordered[i] = track
+				matched++
+			}
+		}
+	}
+	m.TrackObjects = reordered
+	fmt.Printf("Reordered track objects: %d matched out of %d slots\n", matched, len(order))
+}
+
+// GetRoadObjectByIndex returns the RoadObject at the given slot index (0-7),
+// or nil if the index is out of range.
+func (m *ObjectManager) GetRoadObjectByIndex(index int) *RoadObject {
+	if index < 0 || index >= len(m.RoadObjects) {
+		return nil
+	}
+	return m.RoadObjects[index]
+}
+
+// ReorderRoadObjects rebuilds the RoadObjects slice so that each road slot
+// index maps to the RoadObject whose name matches order[i].
+func (m *ObjectManager) ReorderRoadObjects(order []string) {
+	reordered := make([]*RoadObject, len(order))
+	matched := 0
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if road, ok := obj.Object.(*RoadObject); ok {
+				reordered[i] = road
+				matched++
+			}
+		}
+	}
+	m.RoadObjects = reordered
+	fmt.Printf("Reordered road objects: %d matched out of %d slots\n", matched, len(order))
+}

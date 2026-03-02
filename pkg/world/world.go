@@ -33,12 +33,17 @@ const (
 type tile struct {
 	tileType     TileType
 	terrainIndex uint8 // raw LandObject slot index from the scenario
-	baseZ        uint8 // height in SmallZ units (OpenLoco: 1 unit = 4px; GoLoco temp: 1 unit = 2px)
+	baseZ        uint8 // height in SmallZ units (OpenLoco: 1 unit = 4px)
 	slope        uint8 // slope corners and flags from byte 4 of surface element
 	waterLevel   uint8 // water level from surface element byte 5 bits [4:0]; 0 = no water
 	trees        []scenario.TreeElement
 	buildings    []scenario.BuildingElement
 	walls        []scenario.WallElement
+	tracks       []scenario.TrackElement
+	roads        []scenario.RoadElement
+	stations     []scenario.StationElement
+	signals      []scenario.SignalElement
+	industries   []scenario.IndustryElement
 }
 
 // World holds a tile grid for an isometric game world
@@ -145,6 +150,11 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 				trees:        st.Trees,
 				buildings:    st.Buildings,
 				walls:        st.Walls,
+				tracks:       st.Tracks,
+				roads:        st.Roads,
+				stations:     st.Stations,
+				signals:      st.Signals,
+				industries:   st.Industries,
 			}
 		}
 	}
@@ -635,6 +645,92 @@ var kWallOffsets = [4][2]int16{
 	{2, 1},    // rotation 3 (NE edge)
 }
 
+// paintTracks renders railway track sprites for a tile.
+//
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintTrack.cpp paintTrack()
+//
+// Sprite layout per TrackObject image table:
+//
+//	Each track piece has 4 rotation variants.
+//	spriteID = trackObj.Image + trackID * 4 + rotation
+func (w *World) paintTracks(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
+	if w.renderer == nil || w.renderer.ObjMgr == nil || len(t.tracks) == 0 {
+		return
+	}
+
+	for _, te := range t.tracks {
+		trackObj := w.renderer.ObjMgr.GetTrackObjectByIndex(int(te.TrackObjectID))
+		if trackObj == nil || trackObj.Image == 0 {
+			continue
+		}
+
+		rotation := te.Rotation & 0x03
+		spriteID := int(trackObj.Image) + int(te.TrackID)*4 + int(rotation)
+
+		img := w.renderer.GetSprite(spriteID)
+		if img == nil {
+			continue
+		}
+
+		_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+		if !ok {
+			continue
+		}
+
+		extraHeight := float64(int(te.BaseZ)-int(t.baseZ)) * 4.0
+
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(
+			math.Floor(drawX+float64(xOff)*scale),
+			math.Floor(drawY+(float64(yOff)-extraHeight)*scale))
+		screen.DrawImage(img, op)
+	}
+}
+
+// paintRoads renders road sprites for a tile.
+//
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintRoad.cpp paintRoad()
+//
+// Sprite layout per RoadObject image table:
+//
+//	Each road piece has 4 rotation variants.
+//	spriteID = roadObj.Image + roadID * 4 + rotation
+func (w *World) paintRoads(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
+	if w.renderer == nil || w.renderer.ObjMgr == nil || len(t.roads) == 0 {
+		return
+	}
+
+	for _, re := range t.roads {
+		roadObj := w.renderer.ObjMgr.GetRoadObjectByIndex(int(re.RoadObjectID))
+		if roadObj == nil || roadObj.Image == 0 {
+			continue
+		}
+
+		rotation := re.Rotation & 0x03
+		spriteID := int(roadObj.Image) + int(re.RoadID)*4 + int(rotation)
+
+		img := w.renderer.GetSprite(spriteID)
+		if img == nil {
+			continue
+		}
+
+		_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+		if !ok {
+			continue
+		}
+
+		extraHeight := float64(int(re.BaseZ)-int(t.baseZ)) * 4.0
+
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(
+			math.Floor(drawX+float64(xOff)*scale),
+			math.Floor(drawY+(float64(yOff)-extraHeight)*scale))
+		screen.DrawImage(img, op)
+	}
+}
+
 // paintWalls renders wall sprites for a tile.
 //
 // OpenLoco reference: src/OpenLoco/src/Paint/PaintWall.cpp paintWall()
@@ -835,7 +931,9 @@ func (w *World) Draw(screen *ebiten.Image) {
 								w.paintWater(screen, &t, drawX, drawY, scale)
 							}
 
-							// Draw trees, buildings, and walls on this tile
+							// Draw infrastructure and scenery on this tile
+							w.paintTracks(screen, &t, drawX, drawY, scale)
+							w.paintRoads(screen, &t, drawX, drawY, scale)
 							w.paintTrees(screen, &t, drawX, drawY, scale)
 							w.paintBuildings(screen, &t, drawX, drawY, scale)
 							w.paintWalls(screen, &t, drawX, drawY, scale)

@@ -190,6 +190,14 @@ func NewGame() *Game {
 					objMgr.ReorderWallObjects(sc.WallObjectOrder)
 					log.Printf("[Game] Reordered wall objects to match scenario slot order (%d slots)", len(sc.WallObjectOrder))
 				}
+				if len(sc.TrackObjectOrder) > 0 {
+					objMgr.ReorderTrackObjects(sc.TrackObjectOrder)
+					log.Printf("[Game] Reordered track objects to match scenario slot order (%d slots)", len(sc.TrackObjectOrder))
+				}
+				if len(sc.RoadObjectOrder) > 0 {
+					objMgr.ReorderRoadObjects(sc.RoadObjectOrder)
+					log.Printf("[Game] Reordered road objects to match scenario slot order (%d slots)", len(sc.RoadObjectOrder))
+				}
 			}
 			w.LoadFromScenario(sc)
 			log.Printf("[Game] Loaded title scenario: %dx%d map", sc.MapWidth, sc.MapHeight)
