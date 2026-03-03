@@ -342,7 +342,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					ObjectID:      elem[4],
 					Rotation:      typeByte & 0x03,
 					SequenceIndex: elem[5] & 0x03,
-					Variation:     ((elem[7] & 0x03) << 3) | ((elem[6] >> 6) & 0x07),
+					Variation:     ((elem[7] & 0x07) << 2) | ((elem[6] >> 6) & 0x03),
 					Colour:        (elem[7] >> 3) & 0x1F,
 					IsConstructed: typeByte&0x80 != 0,
 					BaseZ:         baseZ,

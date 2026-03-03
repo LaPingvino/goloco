@@ -636,23 +636,47 @@ func (w *World) paintBuildings(screen *ebiten.Image, t *tile, drawX, drawY, scal
 	}
 }
 
-// Wall sprite offset constants per rotation, from OpenLoco PaintWall.cpp kOffsets.
-// These position the wall sprite along the correct tile edge.
-var kWallOffsets = [4][2]int16{
+// kWallScreenOffsets: screen-pixel (deltaX, deltaY) per rotation.
+// OpenLoco source: PaintWall.cpp kOffsets stores world sub-tile Pos3 values:
+//
+//	rot0={0,0,0}, rot1={1,31,0}, rot2={31,0,0}, rot3={2,1,0}
+//
+// Projection to screen pixels (matching tileToScreen formula):
+//
+//	screenX = wy - wx
+//	screenY = (wy + wx) / 2
+//
+// rot0: (0,0)   → (0,   0 )
+// rot1: (1,31)  → (30,  16)
+// rot2: (31,0)  → (-31, 15)
+// rot3: (2,1)   → (-1,  1 )
+var kWallScreenOffsets = [4][2]int16{
 	{0, 0},    // rotation 0 (SE edge)
-	{1, 31},   // rotation 1 (SW edge)
-	{31, 0},   // rotation 2 (NW edge)
-	{2, 1},    // rotation 3 (NE edge)
+	{30, 16},  // rotation 1 (SW edge)
+	{-31, 15}, // rotation 2 (NW edge)
+	{-1, 1},   // rotation 3 (NE edge)
+}
+
+// kWallImageOffsets[rotation][slopeIndex] → WallObj sprite offset.
+// OpenLoco source: PaintWall.cpp kImageOffsets[not-twoSided][rotation][slope]
+//
+//	kFlatSE=0, kFlatNE=1, kSlopedSE=2, kSlopedNE=3, kSlopedNW=4, kSlopedSW=5
+//
+// slopeIndex: 0=downwards, 1=upwards, 2=flat  (from slopeFlagsToIndex)
+var kWallImageOffsets = [4][3]uint32{
+	{3, 5, 1}, // rot 0: kSlopedNE, kSlopedSW, kFlatNE
+	{2, 4, 0}, // rot 1: kSlopedSE, kSlopedNW, kFlatSE
+	{5, 3, 1}, // rot 2: kSlopedSW, kSlopedNE, kFlatNE
+	{4, 2, 0}, // rot 3: kSlopedNW, kSlopedSE, kFlatSE
 }
 
 // paintTracks renders railway track sprites for a tile.
 //
 // OpenLoco reference: src/OpenLoco/src/Paint/PaintTrack.cpp paintTrack()
 //
-// Sprite layout per TrackObject image table:
-//
-//	Each track piece has 4 rotation variants.
-//	spriteID = trackObj.Image + trackID * 4 + rotation
+// Sprite layout: kTrackParts[trackID][seqIdx] → image offsets per rotation and layer.
+// Mergeable pieces: 3 layers (Ballast=0, Sleeper=1, Rail=2).
+// Non-mergeable (slope) pieces: only layer 0.
 func (w *World) paintTracks(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
 	if w.renderer == nil || w.renderer.ObjMgr == nil || len(t.tracks) == 0 {
 		return
@@ -664,27 +688,50 @@ func (w *World) paintTracks(screen *ebiten.Image, t *tile, drawX, drawY, scale f
 			continue
 		}
 
-		rotation := te.Rotation & 0x03
-		spriteID := int(trackObj.Image) + int(te.TrackID)*4 + int(rotation)
-
-		img := w.renderer.GetSprite(spriteID)
-		if img == nil {
+		trackID := int(te.TrackID)
+		if trackID >= len(kTrackParts) || kTrackParts[trackID] == nil {
 			continue
 		}
+		pieces := kTrackParts[trackID]
 
-		_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
-		if !ok {
+		seqIdx := int(te.SequenceIndex)
+		if seqIdx >= len(pieces) {
 			continue
 		}
+		piece := pieces[seqIdx]
 
+		rotation := int(te.Rotation & 0x03)
 		extraHeight := float64(int(te.BaseZ)-int(t.baseZ)) * 4.0
 
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Scale(scale, scale)
-		op.GeoM.Translate(
-			math.Floor(drawX+float64(xOff)*scale),
-			math.Floor(drawY+(float64(yOff)-extraHeight)*scale))
-		screen.DrawImage(img, op)
+		// Determine how many layers to render.
+		maxLayer := 3
+		if piece.nonMergeable {
+			maxLayer = 1
+		}
+
+		for layer := 0; layer < maxLayer; layer++ {
+			offset := piece.img[rotation][layer]
+			if offset == 0 {
+				continue
+			}
+			spriteID := int(trackObj.Image) + int(offset)
+
+			img := w.renderer.GetSprite(spriteID)
+			if img == nil {
+				continue
+			}
+			_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+			if !ok {
+				continue
+			}
+
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Scale(scale, scale)
+			op.GeoM.Translate(
+				math.Floor(drawX+float64(xOff)*scale),
+				math.Floor(drawY+(float64(yOff)-extraHeight)*scale))
+			screen.DrawImage(img, op)
+		}
 	}
 }
 
@@ -692,10 +739,8 @@ func (w *World) paintTracks(screen *ebiten.Image, t *tile, drawX, drawY, scale f
 //
 // OpenLoco reference: src/OpenLoco/src/Paint/PaintRoad.cpp paintRoad()
 //
-// Sprite layout per RoadObject image table:
-//
-//	Each road piece has 4 rotation variants.
-//	spriteID = roadObj.Image + roadID * 4 + rotation
+// Sprite layout: dispatch on roadObj.PaintStyle (0=single-image, 1=3-layer rail, 2=single-image).
+// kRoadPartsStyle0/1[roadID][seqIdx] → image offsets per rotation (and layer for Style1).
 func (w *World) paintRoads(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
 	if w.renderer == nil || w.renderer.ObjMgr == nil || len(t.roads) == 0 {
 		return
@@ -707,28 +752,66 @@ func (w *World) paintRoads(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 			continue
 		}
 
-		rotation := re.Rotation & 0x03
-		spriteID := int(roadObj.Image) + int(re.RoadID)*4 + int(rotation)
-
-		img := w.renderer.GetSprite(spriteID)
-		if img == nil {
-			continue
-		}
-
-		_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
-		if !ok {
-			continue
-		}
-
+		roadID := int(re.RoadID)
+		seqIdx := int(re.SequenceIndex)
+		rotation := int(re.Rotation & 0x03)
 		extraHeight := float64(int(re.BaseZ)-int(t.baseZ)) * 4.0
 
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Scale(scale, scale)
-		op.GeoM.Translate(
-			math.Floor(drawX+float64(xOff)*scale),
-			math.Floor(drawY+(float64(yOff)-extraHeight)*scale))
-		screen.DrawImage(img, op)
+		switch roadObj.PaintStyle {
+		case 0, 2:
+			// Style0 and Style2: single image per rotation (Style2 uses same table shape as Style0)
+			if roadID >= len(kRoadPartsStyle0) || kRoadPartsStyle0[roadID] == nil {
+				continue
+			}
+			pieces := kRoadPartsStyle0[roadID]
+			if seqIdx >= len(pieces) {
+				continue
+			}
+			offset := pieces[seqIdx].img[rotation]
+			if offset == 0 {
+				continue // hit-test only or unimplemented
+			}
+			spriteID := int(roadObj.Image) + int(offset)
+			w.drawTrackRoadSprite(screen, spriteID, drawX, drawY, extraHeight, scale)
+
+		case 1:
+			// Style1: 3 layers (Ballast, Sleeper, Rail) like track
+			if roadID >= len(kRoadPartsStyle1) || kRoadPartsStyle1[roadID] == nil {
+				continue
+			}
+			pieces := kRoadPartsStyle1[roadID]
+			if seqIdx >= len(pieces) {
+				continue
+			}
+			piece := pieces[seqIdx]
+			for layer := 0; layer < 3; layer++ {
+				offset := piece.img[rotation][layer]
+				if offset == 0 {
+					continue
+				}
+				spriteID := int(roadObj.Image) + int(offset)
+				w.drawTrackRoadSprite(screen, spriteID, drawX, drawY, extraHeight, scale)
+			}
+		}
 	}
+}
+
+// drawTrackRoadSprite fetches a sprite and draws it at the correct screen position.
+func (w *World) drawTrackRoadSprite(screen *ebiten.Image, spriteID int, drawX, drawY, extraHeight, scale float64) {
+	img := w.renderer.GetSprite(spriteID)
+	if img == nil {
+		return
+	}
+	_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+	if !ok {
+		return
+	}
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(scale, scale)
+	op.GeoM.Translate(
+		math.Floor(drawX+float64(xOff)*scale),
+		math.Floor(drawY+(float64(yOff)-extraHeight)*scale))
+	screen.DrawImage(img, op)
 }
 
 // paintWalls renders wall sprites for a tile.
@@ -745,17 +828,18 @@ func (w *World) paintWalls(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 			continue
 		}
 
-		// Simplified sprite selection: flat wall for now (ignore slope flags)
-		// rotation 0,2 → SE/NW edge → sprite 0 (kFlatSE)
-		// rotation 1,3 → NE/SW edge → sprite 1 (kFlatNE)
-		var spriteOffset uint32
-		switch we.Rotation {
-		case 0, 2:
-			spriteOffset = 0 // kFlatSE
-		case 1, 3:
-			spriteOffset = 1 // kFlatNE
+		rot := we.Rotation & 0x03
+
+		// Slope index from EdgeSlope flags (OpenLoco: slopeFlagsToIndex).
+		// EdgeSlope::downwards=bit1, EdgeSlope::upwards=bit0.
+		slopeIdx := 2 // flat
+		if we.EdgeSlope&0x02 != 0 {
+			slopeIdx = 0 // downwards
+		} else if we.EdgeSlope&0x01 != 0 {
+			slopeIdx = 1 // upwards
 		}
 
+		spriteOffset := kWallImageOffsets[rot][slopeIdx]
 		spriteID := int(wallObj.Sprite + spriteOffset)
 
 		img := w.renderer.GetSprite(spriteID)
@@ -771,10 +855,9 @@ func (w *World) paintWalls(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 		// Height offset for wall's baseZ vs surface baseZ
 		extraHeight := float64(int(we.BaseZ)-int(t.baseZ)) * 4.0
 
-		// Position along tile edge based on rotation
-		rot := we.Rotation & 0x03
-		edgeX := float64(kWallOffsets[rot][0])
-		edgeY := float64(kWallOffsets[rot][1])
+		// Screen-space edge offset (world sub-tile Pos3 projected to pixels).
+		edgeX := float64(kWallScreenOffsets[rot][0])
+		edgeY := float64(kWallScreenOffsets[rot][1])
 
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(scale, scale)
