@@ -1132,23 +1132,6 @@ func (w *World) Draw(screen *ebiten.Image) {
 				continue
 			}
 
-			// Special case for TileWater: draw water overlay at terrain level
-			// without the land object terrain sprite
-			if t.tileType == TileWater {
-				// Modify drawY to position water at terrain level
-				// waterHeightDiff tells us how far above baseZ the water is
-				effectiveDrawY := drawY + (float64(t.waterLevel)*16.0-float64(t.baseZ)*4.0)*scale
-				w.paintWater(screen, &t, drawX, effectiveDrawY, scale)
-
-				// Still draw infrastructure and scenery on top
-				w.paintTracks(screen, &t, drawX, drawY, scale)
-				w.paintRoads(screen, &t, drawX, drawY, scale)
-				w.paintTrees(screen, &t, drawX, drawY, scale)
-				w.paintBuildings(screen, &t, drawX, drawY, scale)
-				w.paintWalls(screen, &t, drawX, drawY, scale)
-
-				continue
-			}
 
 			// Draw terrain using LandObject embedded sprites
 			// OpenLoco reference: Paint/PaintSurface.cpp paintSurface()
@@ -1189,9 +1172,12 @@ func (w *World) Draw(screen *ebiten.Image) {
 								w.paintCliffEdges(screen, x, y, &t, land, drawX, drawY, scale)
 							}
 
-							// Draw water overlay if this tile has water
-							if t.waterLevel > 0 {
-								w.paintWater(screen, &t, drawX, drawY, scale)
+							// Draw water when surface is above terrain base (matches OpenLoco attachToPrevious).
+							// effectiveDrawY cancels the height offset inside paintWater so the
+							// sprite aligns with the terrain; partial-shape sprites handle the rest.
+							if t.waterLevel > 0 && uint16(t.waterLevel)*16 > uint16(t.baseZ)*4 {
+								effectiveDrawY := drawY + (float64(t.waterLevel)*16.0-float64(t.baseZ)*4.0)*scale
+								w.paintWater(screen, &t, drawX, effectiveDrawY, scale)
 							}
 
 							// Draw infrastructure and scenery on this tile
