@@ -477,8 +477,8 @@ func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *o
 					op := &ebiten.DrawImageOptions{}
 					op.GeoM.Scale(scale, scale)
 					op.GeoM.Translate(
-						math.Floor(drawX+float64(xOff+edgeOffsetX)*scale),
-						math.Floor(drawY+float64(yOff+edgeOffsetY)*scale))
+						drawX+float64(xOff+edgeOffsetX)*scale,
+						drawY+float64(yOff+edgeOffsetY)*scale)
 					screen.DrawImage(img, op)
 				}
 			}
@@ -551,8 +551,8 @@ func (w *World) paintTrees(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(scale, scale)
 		op.GeoM.Translate(
-			math.Floor(drawX+(float64(xOff)+qx)*scale),
-			math.Floor(drawY+(float64(yOff)-extraHeight+qy)*scale))
+			drawX+(float64(xOff)+qx)*scale,
+			drawY+(float64(yOff)-extraHeight+qy)*scale)
 		screen.DrawImage(img, op)
 	}
 }
@@ -627,8 +627,8 @@ func (w *World) paintBuildings(screen *ebiten.Image, t *tile, drawX, drawY, scal
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Scale(scale, scale)
 			op.GeoM.Translate(
-				math.Floor(drawX+(float64(xOff)+offsetX)*scale),
-				math.Floor(drawY+(float64(yOff)-extraHeight-partZ+offsetY)*scale))
+				drawX+(float64(xOff)+offsetX)*scale,
+				drawY+(float64(yOff)-extraHeight-partZ+offsetY)*scale)
 			screen.DrawImage(img, op)
 
 			// Stack next part on top
@@ -731,8 +731,8 @@ func (w *World) paintTracks(screen *ebiten.Image, t *tile, drawX, drawY, scale f
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Scale(scale, scale)
 			op.GeoM.Translate(
-				math.Floor(drawX+float64(xOff)*scale),
-				math.Floor(drawY+(float64(yOff)-extraHeight)*scale))
+				drawX+float64(xOff)*scale,
+				drawY+(float64(yOff)-extraHeight)*scale)
 			screen.DrawImage(img, op)
 		}
 	}
@@ -812,8 +812,8 @@ func (w *World) drawTrackRoadSprite(screen *ebiten.Image, spriteID int, drawX, d
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(scale, scale)
 	op.GeoM.Translate(
-		math.Floor(drawX+float64(xOff)*scale),
-		math.Floor(drawY+(float64(yOff)-extraHeight)*scale))
+		drawX+float64(xOff)*scale,
+		drawY+(float64(yOff)-extraHeight)*scale)
 	screen.DrawImage(img, op)
 }
 
@@ -865,8 +865,8 @@ func (w *World) paintWalls(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Scale(scale, scale)
 		op.GeoM.Translate(
-			math.Floor(drawX+(float64(xOff)+edgeX)*scale),
-			math.Floor(drawY+(float64(yOff)-extraHeight+edgeY)*scale))
+			drawX+(float64(xOff)+edgeX)*scale,
+			drawY+(float64(yOff)-extraHeight+edgeY)*scale)
 		screen.DrawImage(img, op)
 	}
 }
@@ -915,8 +915,8 @@ func (w *World) paintWater(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(scale, scale)
 	op.GeoM.Translate(
-		math.Floor(drawX+float64(-32)*scale),
-		math.Floor(drawY+float64(-15)*scale-waterHeightDiff*scale))
+		drawX+float64(-32)*scale,
+		drawY+float64(-15)*scale-waterHeightDiff*scale)
 	screen.DrawImage(waterImg, op)
 }
 
@@ -969,9 +969,11 @@ func (w *World) Draw(screen *ebiten.Image) {
 			screenY -= heightOffset
 
 			// Convert world position to screen position: subtract camera,
-			// then apply zoom scale.
-			drawX := (screenX - w.camX) * scale
-			drawY := (screenY - w.camY) * scale
+			// then apply zoom scale. Round to nearest integer so adjacent tile
+			// anchors snap consistently — sub-pixel sprite offsets then tend
+			// toward overlap rather than leaving gaps.
+			drawX := math.Round((screenX - w.camX) * scale)
+			drawY := math.Round((screenY - w.camY) * scale)
 
 			// Skip tiles that are entirely off-screen (with margin for sprite offsets)
 			if drawX < -128 || drawX > float64(sw)+64 || drawY < -128 || drawY > float64(sh)+64 {
@@ -1001,8 +1003,8 @@ func (w *World) Draw(screen *ebiten.Image) {
 							op := &ebiten.DrawImageOptions{}
 							op.GeoM.Scale(scale, scale)
 							op.GeoM.Translate(
-								math.Floor(drawX+float64(xOff)*scale),
-								math.Floor(drawY+float64(yOff)*scale))
+								drawX+float64(xOff)*scale,
+								drawY+float64(yOff)*scale)
 							screen.DrawImage(img, op)
 
 							// Draw cliff edges for height transitions
@@ -1034,7 +1036,7 @@ func (w *World) Draw(screen *ebiten.Image) {
 			img := w.getFallbackImage(t.tileType)
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Scale(scale, scale)
-			op.GeoM.Translate(math.Floor(drawX), math.Floor(drawY))
+			op.GeoM.Translate(drawX, drawY)
 			screen.DrawImage(img, op)
 		}
 	}
