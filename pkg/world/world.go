@@ -577,16 +577,17 @@ func (w *World) paintBuildings(screen *ebiten.Image, t *tile, drawX, drawY, scal
 			continue
 		}
 
-		// For multi-tile (2x2) buildings, only render from one tile
-		// (sequenceIndex check). Simplified: only render sequenceIndex 0.
-		if bldgObj.HasFlags(objects.BuildingFlagLargeTile) && be.SequenceIndex != 0 {
-			continue
-		}
-
 		rotation := be.Rotation & 0x03
 		variation := be.Variation
 		if int(variation) >= int(bldgObj.NumVariations) {
 			variation = 0
+		}
+
+		// For multi-tile (2x2) buildings only the "front" tile renders the sprites.
+		// OpenLoco: (sequenceIndex ^ 2) == ((-viewportRotation) & 3).
+		// With fixed viewport rotation=0: render seqIdx==2, skip all others.
+		if bldgObj.HasFlags(objects.BuildingFlagLargeTile) && be.SequenceIndex != 2 {
+			continue
 		}
 
 		parts := bldgObj.GetBuildingParts(variation)
@@ -597,8 +598,10 @@ func (w *World) paintBuildings(screen *ebiten.Image, t *tile, drawX, drawY, scal
 		// Height offset for building's own baseZ vs surface baseZ
 		extraHeight := float64(int(be.BaseZ)-int(t.baseZ)) * 4.0
 
-		// Image offset for 1x1 buildings: center of tile (16, 16)
-		offsetX := float64(16)
+		// Sub-tile image offset: OpenLoco kImageOffsetBase1x1={16,16,0}, kImageOffsetBase2x2={0,0,0}.
+		// Projected to screen: screenX=wy-wx, screenY=(wx+wy)/2.
+		// 1x1: {16,16,0} → screenDelta=(0,16); 2x2: {0,0,0} → screenDelta=(0,0).
+		offsetX := float64(0)
 		offsetY := float64(16)
 		if bldgObj.HasFlags(objects.BuildingFlagLargeTile) {
 			offsetX = 0
