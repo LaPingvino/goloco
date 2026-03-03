@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"image/color"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"github.com/LaPingvino/goloco/pkg/audio"
@@ -18,13 +21,15 @@ import (
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/world"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 const (
-	screenWidth  = 800
-	screenHeight = 600
+	defaultWidth  = 800
+	defaultHeight = 600
+	edgeScrollZone  = 20  // px from screen edge that triggers edge scroll
+	edgeScrollSpeed = 8.0 // world-space pixels per frame at zoom 0
 )
 
 type Game struct {
@@ -39,8 +44,26 @@ type Game struct {
 	dropdown      *ui.DropdownMenu
 	mouseX        int
 	mouseY        int
-	dataDir       string
-	inTitleScreen bool
+	dataDir             string
+	inTitleScreen       bool
+	currentScenarioPath string // path of the currently loaded scenario/save
+	saveMsg             string // transient "Game Saved!" status overlay
+	saveMsgFrames       int    // frames remaining to show saveMsg
+
+	// Current logical screen dimensions (updated by Layout each frame)
+	sw, sh int
+
+	// Right-click drag pan state
+	rightDragging bool
+	dragLastX     int
+	dragLastY     int
+
+	// Title screen globe animation counter (incremented each frame)
+	titleFrame int
+
+	// Speed controls
+	isPaused  bool
+	speedMult int // 1, 2, 4, or 8
 }
 
 func findLocoDataDir() string {
@@ -162,7 +185,7 @@ func NewGame() *Game {
 	}
 
 	w := world.NewWorld(r)
-	toolbar := ui.NewToolbar(screenWidth)
+	toolbar := ui.NewToolbar(defaultWidth)
 	windowMgr := ui.NewSimpleWindowManager()
 
 	// Try to load the title scenario
@@ -250,6 +273,9 @@ func NewGame() *Game {
 		titleSeq:      titleSeq,
 		dataDir:       dataDir,
 		inTitleScreen: true,
+		sw:            defaultWidth,
+		sh:            defaultHeight,
+		speedMult:     1,
 	}
 }
 
@@ -257,13 +283,21 @@ func (g *Game) Update() error {
 	g.mouseX, g.mouseY = ebiten.CursorPosition()
 
 	if g.inTitleScreen {
-		// Title screen: only handle menu clicks
-		// NO camera animation, zoom, scroll, or other gameplay inputs
-		// The camera is set once at init and stays fixed
-		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			g.handleTitleMenuClick(g.mouseX, g.mouseY)
+		// Title screen: handle menu clicks + window manager (e.g. Load Game window)
+		g.titleFrame++
+		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+			g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 		}
-		// Do NOT process any other input on title screen
+		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			// Window manager takes priority (e.g. Load Game file browser)
+			if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
+				g.handleTitleMenuClick(g.mouseX, g.mouseY)
+			}
+		}
+		if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
+			g.windowMgr.StopDrag()
+		}
+		g.routeWheelToWindows()
 		return nil
 	}
 
@@ -300,6 +334,24 @@ func (g *Game) Update() error {
 		g.windowMgr.StopDrag()
 	}
 
+	// Right-click drag to pan the map.
+	// OpenLoco reference: src/OpenLoco/src/Input/MouseInput.cpp stateViewportRight()
+	// dragOffset is scaled by (1 << zoom) to convert screen pixels → world pixels.
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+		g.rightDragging = true
+		g.dragLastX, g.dragLastY = g.mouseX, g.mouseY
+	}
+	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) {
+		g.rightDragging = false
+	}
+	if g.rightDragging && ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
+		worldScale := float64(int(1) << g.w.GetZoom())
+		dx := float64(g.mouseX-g.dragLastX) * worldScale
+		dy := float64(g.mouseY-g.dragLastY) * worldScale
+		g.w.PanCamera(-dx, -dy) // negative: drag right moves camera left
+		g.dragLastX, g.dragLastY = g.mouseX, g.mouseY
+	}
+
 	// Camera panning: WASD or arrow keys (smooth, pixels per frame)
 	const panSpeed = 4.0
 	var panX, panY float64
@@ -327,17 +379,66 @@ func (g *Game) Update() error {
 		g.w.ZoomOut()
 	}
 	if _, dy := ebiten.Wheel(); dy != 0 {
-		if dy > 0 {
-			g.w.ZoomIn()
-		} else {
-			g.w.ZoomOut()
+		if !g.routeWheelToWindows() {
+			if dy > 0 {
+				g.w.ZoomIn()
+			} else {
+				g.w.ZoomOut()
+			}
 		}
 	}
 
-	// Update world
-	g.w.Update()
-	if g.gameState != nil {
-		g.gameState.Update()
+	// Edge scrolling: pan when cursor is within edgeScrollZone px of screen edge.
+	// OpenLoco reference: src/OpenLoco/src/Input/Keyboard.cpp edgeScrolling()
+	// Speed is scaled by zoom so scrolling feels consistent at all zoom levels.
+	if ebiten.IsFocused() && !g.rightDragging {
+		edgeSpeed := edgeScrollSpeed * float64(int(1)<<g.w.GetZoom())
+		if g.mouseX <= edgeScrollZone {
+			g.w.PanCamera(-edgeSpeed, 0)
+		}
+		if g.mouseX >= g.sw-edgeScrollZone {
+			g.w.PanCamera(edgeSpeed, 0)
+		}
+		if g.mouseY <= edgeScrollZone {
+			g.w.PanCamera(0, -edgeSpeed)
+		}
+		if g.mouseY >= g.sh-edgeScrollZone {
+			g.w.PanCamera(0, edgeSpeed)
+		}
+	}
+
+	// Speed controls: Space=pause, F3=×1, F4=×2, F5=×4, F6=×8
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		g.isPaused = !g.isPaused
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF3) {
+		g.speedMult = 1
+		g.isPaused = false
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
+		g.speedMult = 2
+		g.isPaused = false
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF5) {
+		g.speedMult = 4
+		g.isPaused = false
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF6) {
+		g.speedMult = 8
+		g.isPaused = false
+	}
+
+	// Update world (skipped when paused; repeated per speed multiplier)
+	if !g.isPaused {
+		for i := 0; i < g.speedMult; i++ {
+			g.w.Update()
+			if g.gameState != nil {
+				g.gameState.Update()
+			}
+		}
+	}
+	if g.saveMsgFrames > 0 {
+		g.saveMsgFrames--
 	}
 	return nil
 }
@@ -360,27 +461,26 @@ const (
 	titleOptionsH = 15
 )
 
-var titleButtons = [titleBtnCount]string{"New Game", "Load Game", "Tutorial", "Editor"}
 
 func (g *Game) handleTitleMenuClick(mx, my int) {
 	// --- Exit button: bottom-right corner ---
-	exitX := screenWidth - titleExitW
-	exitY := screenHeight - titleExitH
-	if mx >= exitX && mx < screenWidth && my >= exitY && my < screenHeight {
+	exitX := g.sw - titleExitW
+	exitY := g.sh - titleExitH
+	if mx >= exitX && mx < g.sw && my >= exitY && my < g.sh {
 		log.Println("[Game] Exit clicked")
 		os.Exit(0)
 	}
 
 	// --- Options button: top-right corner ---
-	optX := screenWidth - titleOptionsW
-	if mx >= optX && mx < screenWidth && my >= 0 && my < titleOptionsH {
+	optX := g.sw - titleOptionsW
+	if mx >= optX && mx < g.sw && my >= 0 && my < titleOptionsH {
 		log.Println("[Game] Title menu: Options (not yet implemented)")
 		return
 	}
 
 	// --- Main menu buttons: bottom-centre ---
-	menuX := (screenWidth - titleMenuW) / 2
-	menuY := screenHeight - titleMenuH - titleMenuMargin
+	menuX := (g.sw - titleMenuW) / 2
+	menuY := g.sh - titleMenuH - titleMenuMargin
 	relX := mx - menuX
 	if relX < 0 || relX >= titleMenuW || my < menuY || my >= menuY+titleMenuH {
 		return
@@ -388,16 +488,10 @@ func (g *Game) handleTitleMenuClick(mx, my int) {
 	btnIdx := relX / titleBtnSize
 
 	switch btnIdx {
-	case 0: // New Game
-		if g.titleSeq != nil {
-			g.titleSeq.Stop()
-		}
-		g.inTitleScreen = false
-		mapW, mapH := g.w.GetMapSize()
-		g.gameState = game.NewGameState(mapW, mapH)
-		log.Println("[Game] Title menu: New Game selected")
+	case 0: // New Game — open scenario browser (SC5 only)
+		g.openNewGameWindow()
 	case 1:
-		log.Println("[Game] Title menu: Load Game (not yet implemented)")
+		g.openLoadGameWindow()
 	case 2:
 		log.Println("[Game] Title menu: Tutorial (not yet implemented)")
 	case 3:
@@ -424,8 +518,12 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Load/Save":
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTop.cpp:117-154
 		items := []ui.DropdownItem{
-			{Text: "Load Game", Action: func() { log.Println("[Game] Load Game selected") }},
-			{Text: "Save Game", Action: func() { log.Println("[Game] Save Game selected") }},
+			{Text: "Load Game", Action: func() { g.openLoadGameWindow() }},
+			{Text: "Save Game", Action: func() {
+				if err := g.saveGame(); err != nil {
+					log.Printf("[Game] Save error: %v", err)
+				}
+			}},
 			{Separator: true},
 			{Text: "About", Action: func() { log.Println("[Game] About selected") }},
 			{Text: "Options", Action: func() { log.Println("[Game] Options selected") }},
@@ -578,6 +676,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	if g.inTitleScreen {
 		g.drawTitleMenu(screen)
+		g.windowMgr.Draw(screen, g.r) // allow windows (e.g. Load Game) on title screen
 		return
 	}
 
@@ -590,153 +689,676 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.dropdown.Draw(screen)
 	}
 
-	statusY := screenHeight - 20
-	ebitenutil.DrawRect(screen, 0, float64(statusY), float64(screenWidth), 20, color.RGBA{50, 50, 50, 240})
+	statusY := g.sh - 20
+	fillRect(screen, 0, float64(statusY), float64(g.sw), 20, color.RGBA{50, 50, 50, 240})
 	var statusText string
+	speedStr := fmt.Sprintf("×%d", g.speedMult)
+	if g.isPaused {
+		speedStr = "PAUSED"
+	}
 	if g.gameState != nil {
 		date := g.gameState.GameDate
-		statusText = fmt.Sprintf("%s %d  |  £%d  |  Scroll to zoom",
-			date.Month().String()[:3], date.Year(), g.gameState.PlayerMoney)
+		statusText = fmt.Sprintf("%s %d  |  £%d  |  %s  |  Space=pause F3-F6=speed",
+			date.Month().String()[:3], date.Year(), g.gameState.PlayerMoney, speedStr)
 	} else {
-		statusText = fmt.Sprintf("GoLoco | Mouse: %d,%d | Scroll to zoom", g.mouseX, g.mouseY)
+		statusText = fmt.Sprintf("GoLoco | %s | Scroll to zoom", speedStr)
 	}
 	ui.DrawText(screen, statusText, 4, statusY+14, color.White)
+
+	// Transient save confirmation overlay
+	if g.saveMsgFrames > 0 {
+		alpha := uint8(255)
+		if g.saveMsgFrames < 30 {
+			alpha = uint8(g.saveMsgFrames * 8)
+		}
+		msgW, _ := ui.MeasureText(g.saveMsg)
+		mx := (g.sw - msgW) / 2
+		fillRect(screen, float64(mx-8), float64(statusY-30), float64(msgW+16), 24,
+			color.RGBA{0, 0, 0, alpha / 2})
+		ui.DrawText(screen, g.saveMsg, mx, statusY-12, color.RGBA{100, 255, 100, alpha})
+	}
+}
+
+// fillRect is a thin wrapper around vector.FillRect using float64 args (no anti-aliasing).
+// Replaces the deprecated ebitenutil.DrawRect.
+func fillRect(dst *ebiten.Image, x, y, w, h float64, c color.Color) {
+	vector.FillRect(dst, float32(x), float32(y), float32(w), float32(h), c, false)
+}
+
+// ColourNone means no palette remap — draw with the base palette as-is.
+const ColourNone = -1
+
+// OpenLoco Colour enum indices (Colour.h).
+const (
+	ColourBlack          = 0
+	ColourGrey           = 1
+	ColourWhite          = 2
+	ColourMutedDarkPurple = 3
+	ColourMutedPurple    = 4
+	ColourPurple         = 5
+	ColourDarkBlue       = 6
+	ColourBlue           = 7
+)
+
+// drawUISprite draws a G1 sprite at (x,y) in screen coordinates.
+// colour is an OpenLoco Colour index (0=black, 1=grey, …) or ColourNone for no remap.
+// The sprite's G1 xOffset/yOffset are applied, matching OpenLoco's drawImage().
+//
+// OpenLoco reference: src/OpenLoco/src/Graphics/SoftwareDrawingContext.cpp drawImage()
+//   → PaletteMap::getForColour() → G1[2170+colour] 256-byte remap table
+func (g *Game) drawUISprite(screen *ebiten.Image, spriteID, x, y, colour int) {
+	var img *ebiten.Image
+	if colour == ColourNone {
+		img = g.r.GetSprite(spriteID)
+	} else {
+		img = g.r.GetSpriteColoured(spriteID, colour)
+	}
+	if img == nil {
+		return
+	}
+	_, _, xOff, yOff, ok := g.r.GetSpriteInfo(spriteID)
+	if !ok {
+		xOff, yOff = 0, 0
+	}
+	opts := &ebiten.DrawImageOptions{}
+	opts.GeoM.Translate(float64(x+int(xOff)), float64(y+int(yOff)))
+	screen.DrawImage(img, opts)
 }
 
 func (g *Game) drawTitleMenu(screen *ebiten.Image) {
-	// --- Logo: top-left (0,0) 298×170 ---
-	// OpenLoco reference: src/OpenLoco/src/Ui/Windows/TitleLogo.cpp
-	//   drawingCtx.drawImage(window.x, window.y, ImageIds::locomotion_logo);
-	const logoSpriteID = 3624
-	logoSprite := g.r.GetSprite(logoSpriteID)
-	if logoSprite != nil {
-		// Draw the actual Locomotion logo sprite
-		opts := &ebiten.DrawImageOptions{}
-		opts.GeoM.Scale(2, 2) // Scale up since logo is 91x34
-		opts.GeoM.Translate(float64((298-91*2)/2), float64((120-34*2)/2))
-		screen.DrawImage(logoSprite, opts)
-		// Add "GoLoco" subtitle below the logo
-		subtitle := "A Locomotion Reimplementation"
-		subW, _ := ui.MeasureText(subtitle)
-		subX := (298 - subW) / 2
-		ui.DrawText(screen, subtitle, subX, 100, color.RGBA{180, 180, 200, 255})
-	} else {
-		// Fallback: text branding
-		ebitenutil.DrawRect(screen, 0, 0, 298, 170, color.RGBA{30, 30, 60, 200})
-		logoText := "GoLoco"
-		logoW, _ := ui.MeasureTextBold(logoText)
-		logoX := (298 - logoW) / 2
-		ui.DrawTextBold(screen, logoText, logoX, 60, color.RGBA{220, 220, 255, 255})
-		subtitle := "A Locomotion Reimplementation"
-		subW, _ := ui.MeasureText(subtitle)
-		subX := (298 - subW) / 2
-		ui.DrawText(screen, subtitle, subX, 100, color.RGBA{180, 180, 200, 255})
-	}
+	// Sprite ID constants.
+	// OpenLoco reference: src/OpenLoco/src/Graphics/ImageIds.h
+	const (
+		spriteGlobeSpinBase  = 3552 // title_menu_globe_spin_0..31 (sequential)
+		spriteGlobeConstBase = 3584 // title_menu_globe_construct_0..31 (sequential)
+		spriteGlobeConstIdle = 3608 // globe_construct_24 — default editor frame
+		spriteSparkle        = 3547 // title_menu_sparkle (New Game overlay)
+		spriteSave           = 3548 // title_menu_save (Load Game overlay)
+		spriteLessonL        = 3549 // title_menu_lesson_l (Tutorial overlay)
+	)
 
-	// --- Options button: top-right (screenWidth-60, 0) 60×15 ---
-	optX := screenWidth - titleOptionsW
-	optHovered := g.mouseX >= optX && g.mouseX < screenWidth &&
+	// --- Logo: centered over globe, GoLoco branding (no background) ---
+	// G1[3624] (locomotion_logo) is only a 91×34 grey remap panel — not a text logo.
+	// We show our own branding directly over the globe animation at 4× scale.
+	const logoScale = 4.0
+	logoText := "GoLoco"
+	logoW, _ := ui.MeasureTextBold(logoText)
+	logoX := (298 - int(float64(logoW)*logoScale)) / 2
+	logoY := 72 // shifted down ~2/3 logo height from original
+	// Outline: 8 directions, scaled proportionally to text size
+	shadow := color.RGBA{0, 0, 0, 220}
+	for _, d := range [][2]int{{-4, -4}, {0, -4}, {4, -4}, {-4, 0}, {4, 0}, {-4, 4}, {0, 4}, {4, 4}} {
+		ui.DrawTextBoldScaled(screen, logoText, logoX+d[0], logoY+d[1], logoScale, shadow)
+	}
+	ui.DrawTextBoldScaled(screen, logoText, logoX, logoY, logoScale, color.RGBA{220, 220, 255, 255})
+
+	subtitle := "A Locomotion Reimplementation"
+	subW, _ := ui.MeasureText(subtitle)
+	subX := (298 - subW) / 2
+	subY := logoY + int(9.0*logoScale) + 8 // logo visual height ≈ 9px * scale
+	for _, d := range [][2]int{{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}} {
+		ui.DrawText(screen, subtitle, subX+d[0], subY+d[1], color.RGBA{0, 0, 0, 160})
+	}
+	ui.DrawText(screen, subtitle, subX, subY, color.RGBA{200, 200, 230, 255})
+
+	// --- Options button: top-right (sw-60, 0), 60×15 ---
+	// OpenLoco: TitleOptions.cpp at (Ui::width()-60, 0)
+	optX := g.sw - titleOptionsW
+	optHovered := g.mouseX >= optX && g.mouseX < g.sw &&
 		g.mouseY >= 0 && g.mouseY < titleOptionsH
 	optBg := color.RGBA{60, 60, 100, 200}
 	if optHovered {
 		optBg = color.RGBA{80, 80, 130, 220}
 	}
-	ebitenutil.DrawRect(screen, float64(optX), 0, float64(titleOptionsW), float64(titleOptionsH), optBg)
-	ebitenutil.DrawRect(screen, float64(optX), 0, float64(titleOptionsW), 1, color.RGBA{120, 120, 180, 255})
-	ebitenutil.DrawRect(screen, float64(optX), 0, 1, float64(titleOptionsH), color.RGBA{120, 120, 180, 255})
-	ebitenutil.DrawRect(screen, float64(optX), float64(titleOptionsH-1), float64(titleOptionsW), 1, color.RGBA{30, 30, 50, 255})
-	ebitenutil.DrawRect(screen, float64(screenWidth-1), 0, 1, float64(titleOptionsH), color.RGBA{30, 30, 50, 255})
+	fillRect(screen, float64(optX), 0, float64(titleOptionsW), float64(titleOptionsH), optBg)
+	fillRect(screen, float64(optX), 0, float64(titleOptionsW), 1, color.RGBA{120, 120, 180, 255})
+	fillRect(screen, float64(optX), 0, 1, float64(titleOptionsH), color.RGBA{120, 120, 180, 255})
+	fillRect(screen, float64(optX), float64(titleOptionsH-1), float64(titleOptionsW), 1, color.RGBA{30, 30, 50, 255})
+	fillRect(screen, float64(g.sw-1), 0, 1, float64(titleOptionsH), color.RGBA{30, 30, 50, 255})
 	optLabel := "Options"
 	optLabelW, _ := ui.MeasureText(optLabel)
 	optLabelX := optX + (titleOptionsW-optLabelW)/2
 	ui.DrawText(screen, optLabel, optLabelX, 12, color.White)
 
-	// --- Main menu buttons: bottom-centre ---
-	// OpenLoco reference: src/OpenLoco/src/Graphics/ImageIds.h
-	//   title_menu_globe_spin_0 = 3552 (idle sprite for New/Load/Tutorial)
-	//   title_menu_globe_construct_24 = 3608 (idle sprite for Editor)
-	const titleMenuGlobeSpin0 = 3552
-	const titleMenuGlobeConstruct24 = 3608
+	// --- Main menu buttons: horizontally centred, 25px from bottom ---
+	// OpenLoco: TitleMenu.cpp — kBtnMainSize=74, kWW=296,
+	//   window at ((Ui::width()-296)/2, Ui::height()-92-25)
+	// Globe animation: (var_846/2) % 32, var_846 incremented each frame.
+	animFrame := (g.titleFrame / 2) % 32
 
-	menuX := (screenWidth - titleMenuW) / 2
-	menuY := screenHeight - titleMenuH - titleMenuMargin
+	type btnDef struct {
+		globeBase  int // base sprite ID for animation frames
+		idleGlobe  int // idle (non-hover) sprite ID
+		overlay    int // overlay sprite ID (-1 = none)
+		label      string
+		frameCount int // number of animation frames in the sequence
+	}
+	btns := [titleBtnCount]btnDef{
+		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteSparkle, "New Game", 32},
+		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteSave, "Load Game", 32},
+		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteLessonL, "Tutorial", 32},
+		// globe_construct has 25 frames (0–24 = sprites 3584–3608); clamping to 25
+		// prevents overshooting into unrelated sprites (e.g. the Sawyer logo).
+		{spriteGlobeConstBase, spriteGlobeConstIdle, -1, "Scenario Editor", 25},
+	}
 
-	for i := 0; i < titleBtnCount; i++ {
+	menuX := (g.sw - titleMenuW) / 2
+	menuY := g.sh - titleMenuH - titleMenuMargin
+
+	for i, btn := range btns {
 		bx := menuX + i*titleBtnSize
 		by := menuY
 
 		hovered := g.mouseX >= bx && g.mouseX < bx+titleBtnSize &&
 			g.mouseY >= by && g.mouseY < by+titleBtnSize
 
-		// Choose sprite based on button type
-		spriteID := titleMenuGlobeSpin0
-		if i == 3 { // Editor button uses construct globe
-			spriteID = titleMenuGlobeConstruct24
+		globeID := btn.idleGlobe
+		if hovered {
+			globeID = btn.globeBase + animFrame%btn.frameCount
 		}
 
-		// Try to draw globe sprite
-		globeSprite := g.r.GetSprite(spriteID)
-		if globeSprite != nil {
-			// Center the sprite in the button
-			opts := &ebiten.DrawImageOptions{}
-			opts.GeoM.Translate(float64(bx), float64(by))
-			screen.DrawImage(globeSprite, opts)
+		if g.r.GetSprite(globeID) != nil {
+			// Draw globe base then overlay (OpenLoco: drawImage x2 per button)
+			g.drawUISprite(screen, globeID, bx, by, ColourNone)
+			if btn.overlay >= 0 {
+				g.drawUISprite(screen, btn.overlay, bx, by, ColourNone)
+			}
 		} else {
-			// Fallback: draw colored rectangle with border
+			// Fallback: coloured rectangle + text label
 			var bgColor color.RGBA
 			if hovered {
 				bgColor = color.RGBA{80, 120, 80, 220}
 			} else {
 				bgColor = color.RGBA{50, 90, 50, 200}
 			}
-			ebitenutil.DrawRect(screen, float64(bx), float64(by), float64(titleBtnSize), float64(titleBtnSize), bgColor)
-
+			fillRect(screen, float64(bx), float64(by), float64(titleBtnSize), float64(titleBtnSize), bgColor)
 			light := color.RGBA{100, 160, 100, 255}
 			dark := color.RGBA{30, 60, 30, 255}
-			ebitenutil.DrawRect(screen, float64(bx), float64(by), float64(titleBtnSize), 2, light)
-			ebitenutil.DrawRect(screen, float64(bx), float64(by), 2, float64(titleBtnSize), light)
-			ebitenutil.DrawRect(screen, float64(bx), float64(by+titleBtnSize-2), float64(titleBtnSize), 2, dark)
-			ebitenutil.DrawRect(screen, float64(bx+titleBtnSize-2), float64(by), 2, float64(titleBtnSize), dark)
-
-			label := titleButtons[i]
-			labelW, _ := ui.MeasureText(label)
+			fillRect(screen, float64(bx), float64(by), float64(titleBtnSize), 2, light)
+			fillRect(screen, float64(bx), float64(by), 2, float64(titleBtnSize), light)
+			fillRect(screen, float64(bx), float64(by+titleBtnSize-2), float64(titleBtnSize), 2, dark)
+			fillRect(screen, float64(bx+titleBtnSize-2), float64(by), 2, float64(titleBtnSize), dark)
+			labelW, _ := ui.MeasureText(btn.label)
 			labelX := bx + (titleBtnSize-labelW)/2
 			labelY := by + titleBtnSize/2 + 4
-			ui.DrawText(screen, label, labelX, labelY, color.White)
+			ui.DrawText(screen, btn.label, labelX, labelY, color.White)
 		}
 	}
 
-	// --- Exit button: bottom-right (screenWidth-40, screenHeight-28) 40×28 ---
-	exitX := screenWidth - titleExitW
-	exitY := screenHeight - titleExitH
-	exitHovered := g.mouseX >= exitX && g.mouseX < screenWidth &&
-		g.mouseY >= exitY && g.mouseY < screenHeight
+	// --- Exit button: bottom-right (sw-40, sh-28), 40×28 ---
+	// OpenLoco: TitleExit.cpp at (Ui::width()-40, Ui::height()-28)
+	exitX := g.sw - titleExitW
+	exitY := g.sh - titleExitH
+	exitHovered := g.mouseX >= exitX && g.mouseX < g.sw &&
+		g.mouseY >= exitY && g.mouseY < g.sh
 	exitBg := color.RGBA{100, 40, 40, 200}
 	if exitHovered {
 		exitBg = color.RGBA{140, 60, 60, 220}
 	}
-	ebitenutil.DrawRect(screen, float64(exitX), float64(exitY), float64(titleExitW), float64(titleExitH), exitBg)
-	ebitenutil.DrawRect(screen, float64(exitX), float64(exitY), float64(titleExitW), 2, color.RGBA{180, 100, 100, 255})
-	ebitenutil.DrawRect(screen, float64(exitX), float64(exitY), 2, float64(titleExitH), color.RGBA{180, 100, 100, 255})
-	ebitenutil.DrawRect(screen, float64(exitX), float64(screenHeight-2), float64(titleExitW), 2, color.RGBA{60, 20, 20, 255})
-	ebitenutil.DrawRect(screen, float64(screenWidth-2), float64(exitY), 2, float64(titleExitH), color.RGBA{60, 20, 20, 255})
-	exitLabel := "Exit"
+	fillRect(screen, float64(exitX), float64(exitY), float64(titleExitW), float64(titleExitH), exitBg)
+	fillRect(screen, float64(exitX), float64(exitY), float64(titleExitW), 2, color.RGBA{180, 100, 100, 255})
+	fillRect(screen, float64(exitX), float64(exitY), 2, float64(titleExitH), color.RGBA{180, 100, 100, 255})
+	fillRect(screen, float64(exitX), float64(g.sh-2), float64(titleExitW), 2, color.RGBA{60, 20, 20, 255})
+	fillRect(screen, float64(g.sw-2), float64(exitY), 2, float64(titleExitH), color.RGBA{60, 20, 20, 255})
+	exitLabel := "Exit Game"
 	exitLabelW, _ := ui.MeasureText(exitLabel)
 	exitLabelX := exitX + (titleExitW-exitLabelW)/2
-	exitLabelY := exitY + (titleExitH)/2 + 4
+	exitLabelY := exitY + titleExitH/2 + 4
 	ui.DrawText(screen, exitLabel, exitLabelX, exitLabelY, color.White)
 
-	// --- Version text: bottom-left (8, screenHeight-30) ---
-	ui.DrawText(screen, "GoLoco v0.1", 8, screenHeight-20, color.RGBA{200, 200, 200, 255})
+	// --- Version text: bottom-left ---
+	ui.DrawText(screen, "GoLoco v0.1", 8, g.sh-20, color.RGBA{200, 200, 200, 255})
 }
 
+// --- Load / Save -------------------------------------------------------
+
+// GoLocoSave is the JSON format for GoLoco native save files (.goloco).
+type GoLocoSave struct {
+	Version      int    `json:"version"`
+	ScenarioPath string `json:"scenarioPath"`
+}
+
+// goLocoSavesDir returns (and creates) the directory for .goloco save files.
+func goLocoSavesDir() string {
+	home, _ := os.UserHomeDir()
+	dir := filepath.Join(home, ".goloco", "saves")
+	_ = os.MkdirAll(dir, 0o755)
+	return dir
+}
+
+// loadScenario loads a scenario or GoLoco save file into the world.
+// Supports .SC5, .SV5 (Locomotion native) and .goloco (GoLoco JSON saves).
+func (g *Game) loadScenario(filePath string) error {
+	// If it is a GoLoco JSON save, extract the referenced scenario path.
+	if strings.EqualFold(filepath.Ext(filePath), ".goloco") {
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("reading save file: %w", err)
+		}
+		var save GoLocoSave
+		if err := json.Unmarshal(data, &save); err != nil {
+			return fmt.Errorf("parsing save file: %w", err)
+		}
+		filePath = save.ScenarioPath
+	}
+
+	sc, err := scenario.LoadScenarioData(filePath)
+	if err != nil {
+		return fmt.Errorf("loading scenario: %w", err)
+	}
+
+	if g.objMgr != nil {
+		if len(sc.LandObjectOrder) > 0 {
+			g.objMgr.ReorderLandObjects(sc.LandObjectOrder)
+		}
+		if len(sc.TreeObjectOrder) > 0 {
+			g.objMgr.ReorderTreeObjects(sc.TreeObjectOrder)
+		}
+		if len(sc.BuildingObjectOrder) > 0 {
+			g.objMgr.ReorderBuildingObjects(sc.BuildingObjectOrder)
+		}
+		if len(sc.WallObjectOrder) > 0 {
+			g.objMgr.ReorderWallObjects(sc.WallObjectOrder)
+		}
+		if len(sc.TrackObjectOrder) > 0 {
+			g.objMgr.ReorderTrackObjects(sc.TrackObjectOrder)
+		}
+		if len(sc.RoadObjectOrder) > 0 {
+			g.objMgr.ReorderRoadObjects(sc.RoadObjectOrder)
+		}
+	}
+
+	g.w.LoadFromScenario(sc)
+	g.currentScenarioPath = filePath
+	g.inTitleScreen = false
+
+	mapW, mapH := g.w.GetMapSize()
+	g.gameState = game.NewGameState(mapW, mapH)
+
+	if g.titleSeq != nil {
+		g.titleSeq.Stop()
+	}
+	g.windowMgr.CloseWindow("Load Game")
+	g.windowMgr.CloseWindow("New Game")
+	log.Printf("[Game] Loaded scenario: %s (%dx%d)", filePath, sc.MapWidth, sc.MapHeight)
+	return nil
+}
+
+// saveGame writes the current scenario path to a .goloco JSON save file.
+func (g *Game) saveGame() error {
+	if g.currentScenarioPath == "" {
+		g.saveMsg = "Nothing to save"
+		g.saveMsgFrames = 120
+		return nil
+	}
+	savesDir := goLocoSavesDir()
+	filename := fmt.Sprintf("save_%d.goloco", time.Now().Unix())
+	path := filepath.Join(savesDir, filename)
+
+	data, err := json.Marshal(GoLocoSave{Version: 1, ScenarioPath: g.currentScenarioPath})
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return err
+	}
+	g.saveMsg = "Game saved!"
+	g.saveMsgFrames = 120
+	log.Printf("[Game] Saved to: %s", path)
+	return nil
+}
+
+// routeWheelToWindows sends mouse-wheel events to any visible window under the
+// cursor that has an OnScrollWheel handler.  Returns true if consumed.
+func (g *Game) routeWheelToWindows() bool {
+	_, dy := ebiten.Wheel()
+	if dy == 0 {
+		return false
+	}
+	for i := len(g.windowMgr.Windows) - 1; i >= 0; i-- {
+		w := g.windowMgr.Windows[i]
+		if w.Visible && w.OnScrollWheel != nil &&
+			g.mouseX >= w.X && g.mouseX < w.X+w.Width &&
+			g.mouseY >= w.Y && g.mouseY < w.Y+w.Height {
+			w.OnScrollWheel(dy)
+			return true
+		}
+	}
+	return false
+}
+
+// openNewGameWindow opens the scenario file browser filtered to .SC5 files only.
+func (g *Game) openNewGameWindow() { g.openFileWindow("New Game", true) }
+
+// openLoadGameWindow opens the file browser for all supported file types.
+func (g *Game) openLoadGameWindow() { g.openFileWindow("Load Game", false) }
+
+// openFileWindow is the shared implementation for the two-panel file browser.
+// title is the window title (also used as the CloseWindow key).
+// scenariosOnly restricts the file list to .SC5 files when true.
+func (g *Game) openFileWindow(title string, scenariosOnly bool) {
+	const (
+		winW      = 540
+		winH      = 380
+		itemH     = 18
+		dirPanelW = 165 // width of the left directory panel
+		sepW      = 2   // vertical separator between panels
+		bottomH   = 46  // path display + button row at the bottom
+	)
+
+	// Colour scheme — all text is dark on the beige window background so it
+	// stays readable regardless of the global palette.
+	var (
+		colText    = color.RGBA{20, 12, 4, 255}   // dark on beige — main text
+		colLight   = color.RGBA{240, 238, 232, 255} // light — text on dark bg
+		colDir     = color.RGBA{25, 60, 140, 255}  // blue — directory labels
+		colSep     = color.RGBA{140, 132, 115, 255} // panel separator line
+		colSelFile = color.RGBA{50, 100, 185, 220}  // selected file highlight
+		colSelDir  = color.RGBA{35, 100, 45, 220}   // navigating into a dir
+		colBtnBg   = color.RGBA{172, 167, 150, 255} // neutral button
+		colBtnLoad = color.RGBA{45, 115, 45, 245}   // green load button
+		colBtnDis  = color.RGBA{155, 150, 135, 220} // disabled load button
+		colPathBg  = color.RGBA{178, 172, 155, 255} // path display bar
+		colPanelHd = color.RGBA{155, 148, 130, 255} // panel header strip
+	)
+
+	// ── State captured in closure ──────────────────────────────────────────
+	startDir := ""
+	if home, err := os.UserHomeDir(); err == nil {
+		startDir = home
+	}
+	if g.dataDir != "" {
+		startDir = filepath.Dir(g.dataDir) // one level up from "Data/"
+	}
+
+	var currentDir string
+	var subDirs []string  // directory names within currentDir (basenames only)
+	var fileList []string // full paths of .SC5/.SV5/.goloco files in currentDir
+	selectedFile := -1
+	dirScroll := 0
+	fileScroll := 0
+	lastFileIdx := -1
+	var lastClickTime time.Time
+
+	iclamp := func(v, lo, hi int) int {
+		if v < lo {
+			return lo
+		}
+		if v > hi {
+			return hi
+		}
+		return v
+	}
+
+	rescanDir := func(dir string) {
+		currentDir = dir
+		subDirs = nil
+		fileList = nil
+		selectedFile = -1
+		dirScroll = 0
+		fileScroll = 0
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return
+		}
+		for _, e := range entries {
+			if e.IsDir() {
+				subDirs = append(subDirs, e.Name())
+			} else {
+				ext := strings.ToLower(filepath.Ext(e.Name()))
+				isScenario := ext == ".sc5"
+				isSave := ext == ".sv5" || ext == ".goloco"
+				if isScenario || (!scenariosOnly && isSave) {
+					fileList = append(fileList, filepath.Join(dir, e.Name()))
+				}
+			}
+		}
+	}
+	rescanDir(startDir)
+
+	win := ui.NewSimpleWindow(title, 60, 60, winW, winH)
+
+	// ── DrawContent ────────────────────────────────────────────────────────
+	win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, r *render.Renderer) {
+		listH := ch - bottomH
+		visible := listH / itemH
+		if visible < 1 {
+			visible = 1
+		}
+		filePanelX := cx + dirPanelW + sepW
+		filePanelW := cw - dirPanelW - sepW
+
+		// ── Left panel header ──────────────────────────────────────────────
+		fillRect(screen, float64(cx), float64(cy), float64(dirPanelW), float64(itemH), colPanelHd)
+		ui.DrawText(screen, "Folders", cx+4, cy+itemH-4, colText)
+
+		// ── Parent dir entry ──────────────────────────────────────────────
+		parentY := cy + itemH
+		parentLbl := "[↑  ..]"
+		parent := filepath.Dir(currentDir)
+		if parent == currentDir {
+			// at filesystem root — dim the entry
+			ui.DrawText(screen, parentLbl, cx+4, parentY+itemH-4, colSep)
+		} else {
+			ui.DrawText(screen, parentLbl, cx+4, parentY+itemH-4, colDir)
+		}
+
+		// ── Subdirectory list ──────────────────────────────────────────────
+		// The parent entry occupies row 0; subdirs start at row 1.
+		// We reserve 1 slot for the parent, so only (visible-2) subdir rows
+		// fit below it (minus 1 for header).
+		subVisible := visible - 2
+		if subVisible < 0 {
+			subVisible = 0
+		}
+		for i := 0; i < subVisible; i++ {
+			idx := dirScroll + i
+			if idx >= len(subDirs) {
+				break
+			}
+			ry := cy + (i+2)*itemH // +2: skip header and parent rows
+			label := "[" + subDirs[idx] + "]"
+			ui.DrawText(screen, label, cx+4, ry+itemH-4, colDir)
+		}
+
+		// Dir scroll indicator
+		if len(subDirs) > subVisible && subVisible > 0 {
+			total := len(subDirs)
+			barH := listH * subVisible / total
+			if barH < 6 {
+				barH = 6
+			}
+			barY := listH * dirScroll / total
+			fillRect(screen, float64(cx+dirPanelW-5), float64(cy), 5, float64(listH), colPanelHd)
+			fillRect(screen, float64(cx+dirPanelW-5), float64(cy+barY), 5, float64(barH), colSep)
+		}
+
+		// ── Vertical separator ─────────────────────────────────────────────
+		fillRect(screen, float64(cx+dirPanelW), float64(cy), float64(sepW), float64(listH), colSep)
+
+		// ── Right panel header ─────────────────────────────────────────────
+		fillRect(screen, float64(filePanelX), float64(cy), float64(filePanelW), float64(itemH), colPanelHd)
+		ui.DrawText(screen, "Scenarios / Saves", filePanelX+4, cy+itemH-4, colText)
+
+		// ── File list ──────────────────────────────────────────────────────
+		// Files start below the header row.
+		fileVisible := visible - 1
+		if fileVisible < 0 {
+			fileVisible = 0
+		}
+		for i := 0; i < fileVisible; i++ {
+			idx := fileScroll + i
+			if idx >= len(fileList) {
+				break
+			}
+			ry := cy + (i+1)*itemH
+			label := filepath.Base(fileList[idx])
+			if idx == selectedFile {
+				fillRect(screen, float64(filePanelX), float64(ry), float64(filePanelW), float64(itemH), colSelFile)
+				ui.DrawText(screen, label, filePanelX+4, ry+itemH-4, colLight)
+			} else {
+				ui.DrawText(screen, label, filePanelX+4, ry+itemH-4, colText)
+			}
+		}
+		if len(fileList) == 0 {
+			ui.DrawText(screen, "No files here.", filePanelX+6, cy+itemH+14, colSep)
+		}
+
+		// File scroll indicator
+		if len(fileList) > fileVisible && fileVisible > 0 {
+			total := len(fileList)
+			barH := listH * fileVisible / total
+			if barH < 6 {
+				barH = 6
+			}
+			barY := listH * fileScroll / total
+			fillRect(screen, float64(filePanelX+filePanelW-5), float64(cy), 5, float64(listH), colPanelHd)
+			fillRect(screen, float64(filePanelX+filePanelW-5), float64(cy+barY), 5, float64(barH), colSep)
+		}
+
+		// ── Bottom strip: current path + buttons ───────────────────────────
+		stripY := cy + listH
+		fillRect(screen, float64(cx), float64(stripY), float64(cw), float64(bottomH), colPathBg)
+
+		// Path text (truncated on the left if too long)
+		pathLabel := currentDir
+		maxPathW := cw - 8
+		for {
+			w, _ := ui.MeasureText(pathLabel)
+			if w <= maxPathW || len(pathLabel) < 4 {
+				break
+			}
+			pathLabel = "…" + pathLabel[len(pathLabel)/4:]
+		}
+		ui.DrawText(screen, pathLabel, cx+4, stripY+14, colText)
+
+		// Buttons
+		btnY := stripY + bottomH - 26
+		// Cancel
+		fillRect(screen, float64(cx+4), float64(btnY), 80, 22, colBtnBg)
+		ui.DrawText(screen, "Cancel", cx+4+20, btnY+15, colText)
+		// Load
+		canLoad := selectedFile >= 0 && selectedFile < len(fileList)
+		loadBg := colBtnLoad
+		loadTextCol := colLight
+		if !canLoad {
+			loadBg = colBtnDis
+			loadTextCol = colSep
+		}
+		fillRect(screen, float64(cx+cw-84), float64(btnY), 80, 22, loadBg)
+		ui.DrawText(screen, "Load", cx+cw-84+28, btnY+15, loadTextCol)
+		_ = colSelDir
+	}
+
+	// ── OnContentClick ─────────────────────────────────────────────────────
+	win.OnContentClick = func(relX, relY int) {
+		ch := win.Height - 22 - 3 // content height
+		listH := ch - bottomH
+		visible := listH / itemH
+
+		if relY >= listH {
+			// Button row
+			btnRelY := relY - listH
+			if btnRelY >= bottomH-26 {
+				if relX >= 4 && relX < 84 {
+					// Cancel
+					g.windowMgr.CloseWindow(title)
+				} else if relX >= win.Width-6-84 {
+					// Load
+					if selectedFile >= 0 && selectedFile < len(fileList) {
+						if err := g.loadScenario(fileList[selectedFile]); err != nil {
+							log.Printf("[Game] Load error: %v", err)
+						}
+					}
+				}
+			}
+			return
+		}
+
+		row := relY / itemH
+
+		if relX < dirPanelW {
+			// ── Dir panel click ────────────────────────────────────────────
+			switch row {
+			case 0:
+				// header — ignore
+			case 1:
+				// parent dir
+				parent := filepath.Dir(currentDir)
+				if parent != currentDir {
+					rescanDir(parent)
+				}
+			default:
+				// subdir rows start at row 2
+				subVisible := visible - 2
+				if subVisible < 0 {
+					subVisible = 0
+				}
+				idx := dirScroll + (row - 2)
+				if idx >= 0 && idx < len(subDirs) {
+					rescanDir(filepath.Join(currentDir, subDirs[idx]))
+				}
+			}
+		} else if relX >= dirPanelW+sepW {
+			// ── File panel click ───────────────────────────────────────────
+			if row == 0 {
+				return // header
+			}
+			fileRow := row - 1
+			idx := fileScroll + fileRow
+			if idx < 0 || idx >= len(fileList) {
+				return
+			}
+			now := time.Now()
+			if idx == lastFileIdx && now.Sub(lastClickTime) < 400*time.Millisecond {
+				// Double-click: load immediately
+				if err := g.loadScenario(fileList[idx]); err != nil {
+					log.Printf("[Game] Load error: %v", err)
+				}
+				return
+			}
+			selectedFile = idx
+			lastFileIdx = idx
+			lastClickTime = now
+		}
+	}
+
+	// ── OnScrollWheel ──────────────────────────────────────────────────────
+	win.OnScrollWheel = func(dy float64) {
+		ch := win.Height - 22 - 3
+		listH := ch - bottomH
+		visible := listH / itemH
+		subVisible := visible - 2
+		fileVisible := visible - 1
+
+		mx, _ := ebiten.CursorPosition()
+		relX := mx - (win.X + 3)
+		if relX < dirPanelW {
+			// scroll dir panel
+			maxD := iclamp(len(subDirs)-subVisible, 0, len(subDirs))
+			dirScroll = iclamp(dirScroll-int(dy), 0, maxD)
+		} else {
+			// scroll file panel
+			maxF := iclamp(len(fileList)-fileVisible, 0, len(fileList))
+			fileScroll = iclamp(fileScroll-int(dy), 0, maxF)
+		}
+	}
+
+	g.windowMgr.OpenWindow(win)
+}
+
+// -----------------------------------------------------------------------
+
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
-	return screenWidth, screenHeight
+	g.sw = outsideWidth
+	g.sh = outsideHeight
+	return outsideWidth, outsideHeight
 }
 
 func main() {
 	game := NewGame()
-	ebiten.SetWindowSize(screenWidth, screenHeight)
+	ebiten.SetWindowSize(defaultWidth, defaultHeight)
+	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetWindowTitle("GoLoco - Locomotion Reimplementation")
 	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)

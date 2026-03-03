@@ -27,6 +27,14 @@ type SimpleWindow struct {
 
 	// Content callback
 	DrawContent func(screen *ebiten.Image, x, y, w, h int, renderer *render.Renderer)
+
+	// OnContentClick is called when the user clicks inside the content area.
+	// relX, relY are coordinates relative to the top-left of the content area.
+	OnContentClick func(relX, relY int)
+
+	// OnScrollWheel is called when the mouse wheel is used over this window.
+	// dy is the vertical scroll delta (positive = scroll up/away from user).
+	OnScrollWheel func(dy float64)
 }
 
 // SimpleWindowManager manages all open simple windows
@@ -109,6 +117,11 @@ func (wm *SimpleWindowManager) HandleClick(x, y int, pressed bool) bool {
 					w.dragging = true
 					w.dragOffX = x - w.X
 					w.dragOffY = y - w.Y
+				} else if w.OnContentClick != nil {
+					// Click in content area — pass relative coordinates
+					contentX := w.X + simpleBorderWidth
+					contentY := w.Y + simpleTitleBarHeight
+					w.OnContentClick(x-contentX, y-contentY)
 				}
 			} else {
 				w.dragging = false
