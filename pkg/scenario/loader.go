@@ -24,8 +24,11 @@ const tileElementSize = 8
 // OpenLoco reference: src/OpenLoco/src/Map/SurfaceElement.h
 
 const (
-	// ElementType is stored in bits [7:2] of the first byte of a TileElement.
-	elementTypeMask  = 0xFC // bits 7-2
+	// ElementType is stored in bits [5:2] of the first byte of a TileElement.
+	// OpenLoco: TileElementBase::type() uses (_type & 0x3C) >> 2 — NOT 0xFC.
+	// Bits 6-7 are element-specific flags (isConstructed, hasSignal, etc.)
+	// and must NOT be included in the type mask.
+	elementTypeMask  = 0x3C // bits 5-2 only
 	elementTypeShift = 2
 
 	// ElementFlags byte (second byte):
