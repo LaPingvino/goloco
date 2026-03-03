@@ -45,8 +45,8 @@ func ScanScenario(filePath string) (*ScenarioMeta, error) {
 	if err != nil {
 		return nil, err
 	}
-	if header.Type != assets.S5TypeScenario {
-		return nil, nil // not a scenario, skip silently
+	if header.Type != assets.S5TypeScenario && header.Type != assets.S5TypeLandscape {
+		return nil, nil // not a scenario or landscape, skip silently
 	}
 
 	// Skip SaveDetails if present

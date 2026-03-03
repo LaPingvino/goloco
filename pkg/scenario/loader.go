@@ -138,7 +138,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		}
 		log.Println("[Scenario] Read SaveDetails,", len(saveDetails), "bytes")
 	}
-	if header.Type == assets.S5TypeScenario {
+	if header.Type == assets.S5TypeScenario || header.Type == assets.S5TypeLandscape {
 		scenarioOpts, err := reader.ReadChunk()
 		if err != nil {
 			return sc, fmt.Errorf("failed to read ScenarioOptions chunk: %w", err)
@@ -186,7 +186,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	// For saved games: one big GameState chunk.
 	// We only need the flags field from GeneralState to know if tiles follow.
 	var generalStateFlags uint32
-	if header.Type == assets.S5TypeScenario {
+	if header.Type == assets.S5TypeScenario || header.Type == assets.S5TypeLandscape {
 		generalState, err := reader.ReadChunk()
 		if err != nil {
 			return sc, fmt.Errorf("failed to read GeneralState chunk: %w", err)
@@ -241,7 +241,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		// No tile elements in file. For "randomly generated" scenarios
 		// (landscapeGenerationDone flag clear) generate terrain from the
 		// stored parameters; otherwise fall back to a flat placeholder.
-		if sc.Options.Flags&ScenarioFlagLandscapeGenerationDone == 0 && sc.Header.Type == assets.S5TypeScenario {
+		if sc.Options.Flags&ScenarioFlagLandscapeGenerationDone == 0 &&
+			(sc.Header.Type == assets.S5TypeScenario || sc.Header.Type == assets.S5TypeLandscape) {
 			log.Println("[Scenario] Generating landscape from scenario parameters")
 			sc.initGeneratedLandscape()
 		} else {
