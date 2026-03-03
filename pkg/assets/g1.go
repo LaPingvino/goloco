@@ -249,27 +249,150 @@ func (g1 *G1File) loadPalette() error {
 	// Make index 0 transparent (typically the transparent color)
 	g1.Palette[0] = color.RGBA{0, 0, 0, 0}
 
-	// TEMPORARY FIX: Indices 248-252 and 255 are remappable colors but not in default palette.
-	// These are normally remapped at draw time based on context (company colors, terrain type, etc.)
-	// For now we'll hardcode them to visible colors so sprites appear.
-	// Proper solution requires implementing the full ImageId + PaletteMap system.
+	// Indices 7-9 and 246-254 are "primary remap" slots — intentionally absent from
+	// the base palette. They are filled at draw time by PaletteMap::getForColour()
+	// which redirects them to actual palette entries for the chosen colour.
+	// PaletteMap is now implemented in GetPaletteMap() + DecodeSpriteMapped().
 	//
-	// OpenLoco reference: These indices are remappable "primary" colors that get replaced
-	// at draw time based on company colors or other context. See:
-	// - src/OpenLoco/src/Graphics/PaletteMap.cpp (color remapping)
-	// - src/OpenLoco/src/Graphics/ImageId.h (kMaskPrimary, kFlagPrimary)
+	// For world sprites (buildings, vehicles) that still use GetSprite() without a
+	// colour remap, we provide a visible placeholder (dark blue) so they are not
+	// invisible. Proper company-colour support requires calling GetSpriteColoured()
+	// with the correct company colour index.
 	//
-	// For the logo, we'll use a dark blue gradient:
-	g1.Palette[248] = color.RGBA{R: 20, G: 30, B: 60, A: 255}   // Very dark blue
-	g1.Palette[249] = color.RGBA{R: 30, G: 50, B: 90, A: 255}   // Dark blue
-	g1.Palette[250] = color.RGBA{R: 40, G: 70, B: 120, A: 255}  // Medium blue (most pixels)
-	g1.Palette[251] = color.RGBA{R: 50, G: 90, B: 150, A: 255}  // Lighter blue
-	g1.Palette[252] = color.RGBA{R: 60, G: 110, B: 180, A: 255} // Light blue
+	// OpenLoco reference: src/OpenLoco/src/Graphics/PaletteMap.cpp
+	//   primaryRemap5=0xF8(248) … primaryRemapB=0xFE(254)
+	g1.Palette[248] = color.RGBA{R: 20, G: 30, B: 60, A: 255}
+	g1.Palette[249] = color.RGBA{R: 30, G: 50, B: 90, A: 255}
+	g1.Palette[250] = color.RGBA{R: 40, G: 70, B: 120, A: 255}
+	g1.Palette[251] = color.RGBA{R: 50, G: 90, B: 150, A: 255}
+	g1.Palette[252] = color.RGBA{R: 60, G: 110, B: 180, A: 255}
 
-	// Index 255 is used by terrain template sprites at 3746+
-	// Remap to grass green for now (should be based on LandObject color scheme)
-	g1.Palette[255] = color.RGBA{R: 71, G: 175, B: 39, A: 255}  // Grass green (from palette index 100)
+	// Index 255 — G1 sprites 3746+ use it as a remap template marker; those are
+	// never rendered directly so this value is only a safety placeholder.
+	g1.Palette[255] = color.RGBA{R: 71, G: 175, B: 39, A: 255}
 
+	return nil
+}
+
+// PaletteMapG1Base is the G1 index of the first colour palette map (Colour::black = 0).
+// The map for Colour N is at G1 index (PaletteMapG1Base + N).
+// Each element is 256×1 raw bytes: outputIndex = map[inputIndex].
+//
+// OpenLoco reference: src/OpenLoco/src/Graphics/PaletteMap.cpp
+//   kDefaultPaletteToG1Offset: ExtColour 0 → ImageIds::paletteMapBlack = 2170
+//   ExtColour 1 → paletteMapGrey = 2171, …
+const PaletteMapG1Base = 2170
+
+// GetPaletteMap loads the 256-byte index remap table for the given colour index
+// (0 = black, 1 = grey, 2 = white, …) from the G1 file.
+// Returns a 256-element slice where result[srcIdx] = destIdx in the base palette.
+//
+// OpenLoco reference: src/OpenLoco/src/Graphics/PaletteMap.cpp getForColour()
+func (g1 *G1File) GetPaletteMap(colourIdx int) ([]byte, error) {
+	g1Index := PaletteMapG1Base + colourIdx
+	if g1Index < 0 || g1Index >= len(g1.Elements) {
+		return nil, fmt.Errorf("palette map index %d (g1[%d]) out of range", colourIdx, g1Index)
+	}
+	e := &g1.Elements[g1Index]
+	if int(e.Width)*int(e.Height) != 256 {
+		return nil, fmt.Errorf("palette map g1[%d] is not 256 bytes (w=%d h=%d)", g1Index, e.Width, e.Height)
+	}
+	if len(e.Data) < 256 {
+		return nil, fmt.Errorf("palette map g1[%d] data too short: %d", g1Index, len(e.Data))
+	}
+	result := make([]byte, 256)
+	copy(result, e.Data[:256])
+	return result, nil
+}
+
+// DecodeSpriteMapped decodes a sprite applying a PaletteMap remap before the palette lookup.
+// For each pixel: finalColour = palette[paletteMap[pixelIndex]].
+// Pass a nil paletteMap to use the identity (same as DecodeSprite).
+//
+// OpenLoco reference: src/OpenLoco/src/Graphics/DrawSpriteHelper.hpp blitPixel (remap mode)
+func (g1 *G1File) DecodeSpriteMapped(index int, paletteMap []byte) (*image.RGBA, error) {
+	if index < 0 || index >= len(g1.Elements) {
+		return nil, fmt.Errorf("sprite index %d out of range", index)
+	}
+	if paletteMap == nil || len(paletteMap) < 256 {
+		return g1.DecodeSprite(index)
+	}
+
+	elem := &g1.Elements[index]
+	if elem.Width <= 0 || elem.Height <= 0 {
+		return nil, fmt.Errorf("invalid sprite dimensions: %dx%d", elem.Width, elem.Height)
+	}
+
+	w, h := int(elem.Width), int(elem.Height)
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+
+	if elem.Flags&G1FlagIsRLECompressed != 0 {
+		if err := g1.decodeRLEMapped(elem, img, paletteMap); err != nil {
+			return nil, fmt.Errorf("decode RLE mapped: %w", err)
+		}
+	} else {
+		if err := g1.decodeRawMapped(elem, img, paletteMap); err != nil {
+			return nil, fmt.Errorf("decode raw mapped: %w", err)
+		}
+	}
+	return img, nil
+}
+
+// decodeRawMapped decodes uncompressed data with palette remap.
+func (g1 *G1File) decodeRawMapped(elem *G1Element, img *image.RGBA, palMap []byte) error {
+	w, h := int(elem.Width), int(elem.Height)
+	if len(elem.Data) < w*h {
+		return fmt.Errorf("raw data too small: %d < %d", len(elem.Data), w*h)
+	}
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			src := elem.Data[y*w+x]
+			dst := palMap[src]
+			img.SetRGBA(x, y, g1.Palette[dst])
+		}
+	}
+	return nil
+}
+
+// decodeRLEMapped decodes RLE data with palette remap.
+func (g1 *G1File) decodeRLEMapped(elem *G1Element, img *image.RGBA, palMap []byte) error {
+	w, h := int(elem.Width), int(elem.Height)
+	data := elem.Data
+	if len(data) < h*2 {
+		return errors.New("RLE data too small for line offsets")
+	}
+	for y := 0; y < h; y++ {
+		lineOffset := int(binary.LittleEndian.Uint16(data[y*2 : y*2+2]))
+		if lineOffset >= len(data) {
+			continue
+		}
+		p := lineOffset
+		for {
+			if p+2 > len(data) {
+				break
+			}
+			dataSize := int(data[p])
+			firstX := int(data[p+1])
+			p += 2
+			isLast := (dataSize & 0x80) != 0
+			dataSize &= 0x7F
+			if p+dataSize > len(data) {
+				break
+			}
+			for i := 0; i < dataSize; i++ {
+				x := firstX + i
+				if x >= 0 && x < w {
+					src := data[p+i]
+					dst := palMap[src]
+					img.SetRGBA(x, y, g1.Palette[dst])
+				}
+			}
+			p += dataSize
+			if isLast {
+				break
+			}
+		}
+	}
 	return nil
 }
 

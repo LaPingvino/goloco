@@ -21,8 +21,11 @@ type Renderer struct {
 	G1     *assets.G1File
 	ObjMgr *objects.ObjectManager
 
-	// Cache for decoded G1 sprites
+	// Cache for decoded G1 sprites (no palette remap)
 	spriteCache map[int]*ebiten.Image
+
+	// Cache for palette-remapped sprites, keyed by (spriteIdx<<8)|colourIdx
+	colouredSpriteCache map[int]*ebiten.Image
 
 	// Cache for decoded object sprites (keyed by "objectName:localIndex")
 	objectSpriteCache map[string]*ebiten.Image
@@ -30,8 +33,9 @@ type Renderer struct {
 
 func NewRenderer() *Renderer {
 	r := &Renderer{
-		spriteCache:       make(map[int]*ebiten.Image),
-		objectSpriteCache: make(map[string]*ebiten.Image),
+		spriteCache:         make(map[int]*ebiten.Image),
+		colouredSpriteCache: make(map[int]*ebiten.Image),
+		objectSpriteCache:   make(map[string]*ebiten.Image),
 	}
 	// attempt to load atlas from default extracted assets directory; ignore errors
 	if at, err := LoadAtlasFromDir("assets/extracted"); err == nil {
@@ -84,6 +88,39 @@ func (r *Renderer) GetSpriteInfo(index int) (width, height, xOff, yOff int16, ok
 	}
 	elem := &r.G1.Elements[index]
 	return elem.Width, elem.Height, elem.XOffset, elem.YOffset, true
+}
+
+// GetSpriteColoured returns a palette-remapped sprite for the given Colour index
+// (0=black, 1=grey, 2=white, … matching OpenLoco's Colour enum).
+// Results are cached per (spriteIndex, colourIndex) pair.
+//
+// OpenLoco reference: src/OpenLoco/src/Graphics/PaletteMap.cpp getForColour()
+//   Colour N → G1[2170+N] is a 256-byte index remap table.
+func (r *Renderer) GetSpriteColoured(spriteIndex, colourIndex int) *ebiten.Image {
+	if r.G1 == nil {
+		return nil
+	}
+
+	cacheKey := (spriteIndex << 8) | (colourIndex & 0xFF)
+	if img, ok := r.colouredSpriteCache[cacheKey]; ok {
+		return img
+	}
+
+	palMap, err := r.G1.GetPaletteMap(colourIndex)
+	if err != nil {
+		log.Printf("[Render] PaletteMap colour %d: %v", colourIndex, err)
+		return r.GetSprite(spriteIndex) // fall back to unremapped
+	}
+
+	rgba, err := r.G1.DecodeSpriteMapped(spriteIndex, palMap)
+	if err != nil {
+		log.Printf("[Render] DecodeSpriteMapped sprite=%d colour=%d: %v", spriteIndex, colourIndex, err)
+		return r.GetSprite(spriteIndex)
+	}
+
+	img := ebiten.NewImageFromImage(rgba)
+	r.colouredSpriteCache[cacheKey] = img
+	return img
 }
 
 // Clear fills the screen with transparent black (palette index 0).

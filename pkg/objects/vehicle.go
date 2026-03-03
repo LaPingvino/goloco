@@ -49,7 +49,13 @@ type VehicleObject struct {
 	// Parsed strings
 	DisplayName string
 
-	// Image IDs (base image ID for this object's sprites)
+	// ImageOffset is the base index in the dynamic G1 sprite pool for this vehicle's
+	// sprites. All FlatImageID / GentleImageID / SteepImageID values in BodySprites
+	// and BogieSprites are relative offsets from this base.
+	// Set by ParseVehicleObjectWithG1; zero when sprites are not loaded.
+	ImageOffset uint32
+
+	// BaseImageID kept for backward compatibility
 	BaseImageID uint32
 }
 
@@ -216,6 +222,90 @@ func ParseVehicleObject(header *ObjectHeader, data []byte) (*VehicleObject, erro
 	v.Obsolete = r.readU16()
 
 	return v, nil
+}
+
+// ParseVehicleObjectWithG1 parses a vehicle object and loads its sprites into
+// the G1 dynamic pool via g1.LoadImageTable.
+// OpenLoco reference: src/OpenLoco/src/Objects/VehicleObject.cpp::load
+func ParseVehicleObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*VehicleObject, error) {
+	v, err := ParseVehicleObject(header, data)
+	if err != nil {
+		return nil, err
+	}
+	if g1 == nil {
+		return v, nil
+	}
+
+	// Locate the image table that follows the fixed struct, string table, and
+	// compatible-object headers.
+	//   Fixed struct:        0x15E bytes
+	//   String table:        [langID][str\0]...[0xFF]
+	//   Compat/extra hdrs:   (NumCompatVehicles + NumTrackExtras) × HeaderSize
+	const fixedSize = 0x15E
+	offset := fixedSize
+
+	// Walk string table
+	for offset < len(data) && data[offset] != 0xFF {
+		offset++ // langID byte
+		for offset < len(data) && data[offset] != 0 {
+			offset++
+		}
+		if offset < len(data) {
+			offset++ // null terminator
+		}
+	}
+	if offset < len(data) {
+		offset++ // 0xFF terminator
+	}
+
+	// Skip compatible vehicle and required track-extra object headers
+	numHeaders := int(v.NumCompatVehicles) + int(v.NumTrackExtras)
+	offset += numHeaders * HeaderSize
+
+	if offset >= len(data) {
+		return v, nil // no image data section
+	}
+
+	imgRes, err := g1.LoadImageTable(data[offset:])
+	if err != nil {
+		return nil, fmt.Errorf("loading vehicle image table: %w", err)
+	}
+	v.ImageOffset = imgRes.ImageOffset
+	return v, nil
+}
+
+// GetBodySpriteID returns the G1 sprite index for the given body sprite slot
+// (bodyIdx 0-3), rotation direction (0-31 in OpenLoco convention), and flat
+// (non-sloped) ground.  Returns 0 and false if the slot has no sprites.
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintVehicle.cpp
+func (v *VehicleObject) GetBodySpriteID(bodyIdx, direction32 int) (uint32, bool) {
+	if bodyIdx < 0 || bodyIdx >= 4 {
+		return 0, false
+	}
+	bs := &v.BodySprites[bodyIdx]
+	if bs.Flags&BodyFlagHasSprites == 0 {
+		return 0, false
+	}
+
+	// Reduce the 32-direction to the number of unique flat frames.
+	yawAcc := int(bs.FlatYawAccuracy)
+	frameIdx := direction32 >> yawAcc
+
+	// Rotational symmetry: only the first half of frames are stored; the
+	// second half mirrors them (renderer should flip horizontally — for now
+	// we just clamp to the stored range).
+	if bs.Flags&BodyFlagRotationalSymmetry != 0 {
+		maxFrame := int(bs.NumFlatRotationFrames)
+		if frameIdx >= maxFrame {
+			frameIdx = (2*maxFrame - 1) - frameIdx
+			if frameIdx < 0 {
+				frameIdx = 0
+			}
+		}
+	}
+
+	spriteID := v.ImageOffset + bs.FlatImageID + uint32(frameIdx)*uint32(bs.NumFramesPerRotation)
+	return spriteID, true
 }
 
 // Helper for reading binary data

@@ -213,17 +213,154 @@ var kTrackParts = [26][]trackPiece{
 		}},
 	},
 
-	// 8: LeftCurveLarge (5 pieces) — TODO: need full PaintTrackData.h data
-	nil,
+	// 8: LeftCurveLarge (5 pieces, mergeable)
+	// kLeftCurveLarge0-4: Ballast NE=228-232/SE=233-237/SW=238-242/NW=243-247
+	//                      Sleeper NE=268-272/SE=273-277/SW=278-282/NW=283-287
+	//                      Rail    NE=308-312/SE=313-317/SW=318-322/NW=323-327
+	// OpenLoco reference: src/OpenLoco/src/Objects/TrackObject.h Style0 namespace
+	{
+		{img: [4][3]uint32{
+			{228, 268, 308}, // rot0 NE
+			{233, 273, 313}, // rot1 SE
+			{238, 278, 318}, // rot2 SW
+			{243, 283, 323}, // rot3 NW
+		}},
+		{img: [4][3]uint32{
+			{229, 269, 309},
+			{234, 274, 314},
+			{239, 279, 319},
+			{244, 284, 324},
+		}},
+		{img: [4][3]uint32{
+			{230, 270, 310},
+			{235, 275, 315},
+			{240, 280, 320},
+			{245, 285, 325},
+		}},
+		{img: [4][3]uint32{
+			{231, 271, 311},
+			{236, 276, 316},
+			{241, 281, 321},
+			{246, 286, 326},
+		}},
+		{img: [4][3]uint32{
+			{232, 272, 312},
+			{237, 277, 317},
+			{242, 282, 322},
+			{247, 287, 327},
+		}},
+	},
 
-	// 9: RightCurveLarge (5 pieces) — TODO
-	nil,
+	// 9: RightCurveLarge (5 pieces, mergeable)
+	// kRightCurveLarge0-4: Ballast NE=208-212/SE=213-217/SW=218-222/NW=223-227
+	//                       Sleeper NE=248-252/SE=253-257/SW=258-262/NW=263-267
+	//                       Rail    NE=288-292/SE=293-297/SW=298-302/NW=303-307
+	{
+		{img: [4][3]uint32{
+			{208, 248, 288}, // rot0 NE
+			{213, 253, 293}, // rot1 SE
+			{218, 258, 298}, // rot2 SW
+			{223, 263, 303}, // rot3 NW
+		}},
+		{img: [4][3]uint32{
+			{209, 249, 289},
+			{214, 254, 294},
+			{219, 259, 299},
+			{224, 264, 304},
+		}},
+		{img: [4][3]uint32{
+			{210, 250, 290},
+			{215, 255, 295},
+			{220, 260, 300},
+			{225, 265, 305},
+		}},
+		{img: [4][3]uint32{
+			{211, 251, 291},
+			{216, 256, 296},
+			{221, 261, 301},
+			{226, 266, 306},
+		}},
+		{img: [4][3]uint32{
+			{212, 252, 292},
+			{217, 257, 297},
+			{222, 262, 302},
+			{227, 267, 307},
+		}},
+	},
 
-	// 10: DiagonalLeftCurveLarge (5 pieces) — TODO
-	nil,
+	// 10: DiagonalLeftCurveLarge (5 pieces, mergeable)
+	// = rotateTrackPP(kRightCurveLarge{4,2,3,1,0}, kRotationTable2301={2,3,0,1})
+	// result.rot[i] = source.rot[table[i]]
+	// OpenLoco reference: src/OpenLoco/src/Paint/PaintTrackData.h kDiagonalLeftCurveLargeTPP
+	{
+		{img: [4][3]uint32{ // rotateTrackPP(kRCL4, {2,3,0,1})
+			{222, 262, 302}, // rot0 = RCL4.rot2
+			{227, 267, 307}, // rot1 = RCL4.rot3
+			{212, 252, 292}, // rot2 = RCL4.rot0
+			{217, 257, 297}, // rot3 = RCL4.rot1
+		}},
+		{img: [4][3]uint32{ // rotateTrackPP(kRCL2, {2,3,0,1})
+			{220, 260, 300},
+			{225, 265, 305},
+			{210, 250, 290},
+			{215, 255, 295},
+		}},
+		{img: [4][3]uint32{ // rotateTrackPP(kRCL3, {2,3,0,1})
+			{221, 261, 301},
+			{226, 266, 306},
+			{211, 251, 291},
+			{216, 256, 296},
+		}},
+		{img: [4][3]uint32{ // rotateTrackPP(kRCL1, {2,3,0,1})
+			{219, 259, 299},
+			{224, 264, 304},
+			{209, 249, 289},
+			{214, 254, 294},
+		}},
+		{img: [4][3]uint32{ // rotateTrackPP(kRCL0, {2,3,0,1})
+			{218, 258, 298},
+			{223, 263, 303},
+			{208, 248, 288},
+			{213, 253, 293},
+		}},
+	},
 
-	// 11: DiagonalRightCurveLarge (5 pieces) — TODO
-	nil,
+	// 11: DiagonalRightCurveLarge (5 pieces, mergeable)
+	// = rotateTrackPP(kLeftCurveLarge{4,2,3,1,0}, kRotationTable3012={3,0,1,2})
+	// result.rot[i] = source.rot[table[i]]
+	// OpenLoco reference: src/OpenLoco/src/Paint/PaintTrackData.h kDiagonalRightCurveLargeTPP
+	{
+		{img: [4][3]uint32{ // rotateTrackPP(kLCL4, {3,0,1,2})
+			{247, 287, 327}, // rot0 = LCL4.rot3
+			{232, 272, 312}, // rot1 = LCL4.rot0
+			{237, 277, 317}, // rot2 = LCL4.rot1
+			{242, 282, 322}, // rot3 = LCL4.rot2
+		}},
+		{img: [4][3]uint32{ // rotateTrackPP(kLCL2, {3,0,1,2})
+			{245, 285, 325},
+			{230, 270, 310},
+			{235, 275, 315},
+			{240, 280, 320},
+		}},
+		{img: [4][3]uint32{ // rotateTrackPP(kLCL3, {3,0,1,2})
+			{246, 286, 326},
+			{231, 271, 311},
+			{236, 276, 316},
+			{241, 281, 321},
+		}},
+		{img: [4][3]uint32{ // rotateTrackPP(kLCL1, {3,0,1,2})
+			{244, 284, 324},
+			{229, 269, 309},
+			{234, 274, 314},
+			{239, 279, 319},
+		}},
+		{img: [4][3]uint32{ // rotateTrackPP(kLCL0, {3,0,1,2})
+			{243, 283, 323},
+			{228, 268, 308},
+			{233, 273, 313},
+			{238, 278, 318},
+		}},
+	},
 
 	// 12: SBendLeft (4 pieces, mergeable)
 	{
@@ -307,8 +444,16 @@ var kTrackParts = [26][]trackPiece{
 		{img: [4][3]uint32{{206}, {207}, {204}, {205}}, nonMergeable: true},
 	},
 
-	// 18: LeftCurveSmallSlopeUp (4 pieces, non-mergeable) — TODO
-	nil,
+	// 18: LeftCurveSmallSlopeUp (4 pieces, non-mergeable)
+	// = rotateTrackPP(kRightCurveSmallSlopeDown{3,1,2,0}, kRotationTable1230={1,2,3,0})
+	// result.rot[i] = source.rot[table[i]]; source uses kRCSDown0-3 NE=88-91/SE=92-95/SW=96-99/NW=100-103
+	// OpenLoco reference: src/OpenLoco/src/Paint/PaintTrackData.h kLeftCurveSmallSlopeUpTPP
+	{
+		{img: [4][3]uint32{{95}, {99}, {103}, {91}}, nonMergeable: true},  // rotateTrackPP(kRCSDown3, 1230)
+		{img: [4][3]uint32{{93}, {97}, {101}, {89}}, nonMergeable: true},  // rotateTrackPP(kRCSDown1, 1230)
+		{img: [4][3]uint32{{94}, {98}, {102}, {90}}, nonMergeable: true},  // rotateTrackPP(kRCSDown2, 1230)
+		{img: [4][3]uint32{{92}, {96}, {100}, {88}}, nonMergeable: true},  // rotateTrackPP(kRCSDown0, 1230)
+	},
 
 	// 19: RightCurveSmallSlopeUp (4 pieces, non-mergeable)
 	// kRightCurveSmallSlopeUp: NE=72-75, SE=76-79, SW=80-83, NW=84-87
@@ -319,14 +464,37 @@ var kTrackParts = [26][]trackPiece{
 		{img: [4][3]uint32{{75}, {79}, {83}, {87}}, nonMergeable: true},
 	},
 
-	// 20: LeftCurveSmallSlopeDown (4 pieces, non-mergeable) — TODO
-	nil,
+	// 20: LeftCurveSmallSlopeDown (4 pieces, non-mergeable)
+	// = rotateTrackPP(kRightCurveSmallSlopeUp{3,1,2,0}, kRotationTable1230={1,2,3,0})
+	// source uses kRCSUp0-3 NE=72-75/SE=76-79/SW=80-83/NW=84-87
+	// OpenLoco reference: src/OpenLoco/src/Paint/PaintTrackData.h kLeftCurveSmallSlopeDownTPP
+	{
+		{img: [4][3]uint32{{79}, {83}, {87}, {75}}, nonMergeable: true},  // rotateTrackPP(kRCSUp3, 1230)
+		{img: [4][3]uint32{{77}, {81}, {85}, {73}}, nonMergeable: true},  // rotateTrackPP(kRCSUp1, 1230)
+		{img: [4][3]uint32{{78}, {82}, {86}, {74}}, nonMergeable: true},  // rotateTrackPP(kRCSUp2, 1230)
+		{img: [4][3]uint32{{76}, {80}, {84}, {72}}, nonMergeable: true},  // rotateTrackPP(kRCSUp0, 1230)
+	},
 
-	// 21: RightCurveSmallSlopeDown (4 pieces, non-mergeable) — TODO
-	nil,
+	// 21: RightCurveSmallSlopeDown (4 pieces, non-mergeable)
+	// kRightCurveSmallSlopeDown: NE=88-91/SE=92-95/SW=96-99/NW=100-103
+	// OpenLoco reference: src/OpenLoco/src/Paint/PaintTrackData.h kRightCurveSmallSlopeDownTPP
+	{
+		{img: [4][3]uint32{{88}, {92}, {96}, {100}}, nonMergeable: true},
+		{img: [4][3]uint32{{89}, {93}, {97}, {101}}, nonMergeable: true},
+		{img: [4][3]uint32{{90}, {94}, {98}, {102}}, nonMergeable: true},
+		{img: [4][3]uint32{{91}, {95}, {99}, {103}}, nonMergeable: true},
+	},
 
-	// 22: LeftCurveSmallSteepSlopeUp (4 pieces, non-mergeable) — TODO
-	nil,
+	// 22: LeftCurveSmallSteepSlopeUp (4 pieces, non-mergeable)
+	// = rotateTrackPP(kRightCurveSmallSteepSlopeDown{3,1,2,0}, kRotationTable1230={1,2,3,0})
+	// source uses kRCSteepDown0-3 NE=120-123/SE=124-127/SW=128-131/NW=132-135
+	// OpenLoco reference: src/OpenLoco/src/Paint/PaintTrackData.h kLeftCurveSmallSteepSlopeUpTPP
+	{
+		{img: [4][3]uint32{{127}, {131}, {135}, {123}}, nonMergeable: true}, // rotateTrackPP(kRCSteepDown3, 1230)
+		{img: [4][3]uint32{{125}, {129}, {133}, {121}}, nonMergeable: true}, // rotateTrackPP(kRCSteepDown1, 1230)
+		{img: [4][3]uint32{{126}, {130}, {134}, {122}}, nonMergeable: true}, // rotateTrackPP(kRCSteepDown2, 1230)
+		{img: [4][3]uint32{{124}, {128}, {132}, {120}}, nonMergeable: true}, // rotateTrackPP(kRCSteepDown0, 1230)
+	},
 
 	// 23: RightCurveSmallSteepSlopeUp (4 pieces, non-mergeable)
 	// kRightCurveSmallSteepSlopeUp: NE=104-107, SE=108-111, SW=112-115, NW=116-119
@@ -337,8 +505,16 @@ var kTrackParts = [26][]trackPiece{
 		{img: [4][3]uint32{{107}, {111}, {115}, {119}}, nonMergeable: true},
 	},
 
-	// 24: LeftCurveSmallSteepSlopeDown (4 pieces, non-mergeable) — TODO
-	nil,
+	// 24: LeftCurveSmallSteepSlopeDown (4 pieces, non-mergeable)
+	// = rotateTrackPP(kRightCurveSmallSteepSlopeUp{3,1,2,0}, kRotationTable1230={1,2,3,0})
+	// source uses kRCSteepUp0-3 NE=104-107/SE=108-111/SW=112-115/NW=116-119
+	// OpenLoco reference: src/OpenLoco/src/Paint/PaintTrackData.h kLeftCurveSmallSteepSlopeDownTPP
+	{
+		{img: [4][3]uint32{{111}, {115}, {119}, {107}}, nonMergeable: true}, // rotateTrackPP(kRCSteepUp3, 1230)
+		{img: [4][3]uint32{{109}, {113}, {117}, {105}}, nonMergeable: true}, // rotateTrackPP(kRCSteepUp1, 1230)
+		{img: [4][3]uint32{{110}, {114}, {118}, {106}}, nonMergeable: true}, // rotateTrackPP(kRCSteepUp2, 1230)
+		{img: [4][3]uint32{{108}, {112}, {116}, {104}}, nonMergeable: true}, // rotateTrackPP(kRCSteepUp0, 1230)
+	},
 
 	// 25: RightCurveSmallSteepSlopeDown (4 pieces, non-mergeable)
 	// kRightCurveSmallSteepSlopeDown: NE=120-123, SE=124-127, SW=128-131, NW=132-135

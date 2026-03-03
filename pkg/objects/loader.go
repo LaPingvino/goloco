@@ -46,6 +46,7 @@ type ObjectManager struct {
 	TrackObjects     []*TrackObject             // all loaded track objects
 	RoadObjects      []*RoadObject              // all loaded road objects
 	CliffEdgeObjs    map[string]*CliffEdgeObject // keyed by upper-case name
+	WaterObj         *WaterObject               // the single water object (slot 170)
 	InterfaceSkin    *InterfaceSkinObject
 	ObjDataPath      string
 
@@ -140,11 +141,20 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 		}
 
 	case ObjectTypeVehicle:
-		vehicle, err := ParseVehicleObject(header, decompressed)
+		var vehicle *VehicleObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				vehicle, err = ParseVehicleObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				vehicle, err = ParseVehicleObject(header, decompressed)
+			}
+		} else {
+			vehicle, err = ParseVehicleObject(header, decompressed)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("parsing vehicle: %w", err)
 		}
-		// Try to extract display name from string table
 		vehicle.DisplayName = extractFirstString(decompressed)
 		loaded.Object = vehicle
 		m.Vehicles = append(m.Vehicles, vehicle)
@@ -181,6 +191,25 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 
 		loaded.Object = land
 		m.LandObjects = append(m.LandObjects, land)
+
+	case ObjectTypeWater:
+		var water *WaterObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				water, err = ParseWaterObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				water, err = ParseWaterObject(header, decompressed)
+			}
+		} else {
+			water, err = ParseWaterObject(header, decompressed)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("parsing water: %w", err)
+		}
+		loaded.Object = water
+		loaded.ImageOffset = water.ImageOffset
+		m.WaterObj = water
 
 	case ObjectTypeCliffEdge:
 		var cliff *CliffEdgeObject

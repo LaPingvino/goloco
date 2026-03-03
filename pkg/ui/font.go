@@ -171,6 +171,20 @@ func MeasureText(str string) (int, int) {
 	return width, height
 }
 
+// DrawTextBoldScaled draws bold text scaled by the given factor.
+// x, y is the top-left of the text bounding box (same convention as DrawTextBold).
+func DrawTextBoldScaled(screen *ebiten.Image, str string, x, y int, scale float64, clr color.Color) {
+	if globalFontManager == nil || globalFontManager.Bold == nil {
+		return
+	}
+	op := &text.DrawOptions{}
+	op.GeoM.Scale(scale, scale)
+	// Ascender at 10pt ≈ 9px; at scale s the baseline sits 9*s px below the visual top.
+	op.GeoM.Translate(float64(x), float64(y)-9.0*scale)
+	op.ColorScale.ScaleWithColor(clr)
+	text.Draw(screen, str, globalFontManager.Bold, op)
+}
+
 // MeasureTextBold returns the width and height of bold text in pixels
 func MeasureTextBold(str string) (int, int) {
 	if globalFontManager == nil || globalFontManager.BoldFace == nil {
