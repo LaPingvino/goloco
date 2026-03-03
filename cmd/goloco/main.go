@@ -1649,6 +1649,15 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 
 func main() {
 	game := NewGame()
+
+	// If a file path is given as the first argument, load it immediately.
+	if len(os.Args) > 1 {
+		arg := os.Args[1]
+		if err := game.loadScenario(arg); err != nil {
+			log.Printf("Failed to load %s: %v", arg, err)
+		}
+	}
+
 	ebiten.SetWindowSize(defaultWidth, defaultHeight)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetWindowTitle("GoLoco - Locomotion Reimplementation")

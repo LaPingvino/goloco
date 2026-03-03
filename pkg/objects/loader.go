@@ -364,7 +364,6 @@ func (m *ObjectManager) LoadAllObjects() error {
 		path := filepath.Join(m.ObjDataPath, name)
 		_, err := m.LoadObject(path)
 		if err != nil {
-			// Log but continue
 			failed++
 			continue
 		}

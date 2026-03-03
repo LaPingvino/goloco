@@ -1026,6 +1026,27 @@ func (w *World) paintWater(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 		slope := t.slope & 0x0F
 		shape := objects.KSlopeToWaterShape[slope]
 		spriteID := int(waterObj.GetWaterSpriteIndex(shape, true)) // blended variant
+		// Draw flat (opaque) water surface first, then blended ripple on top.
+		// Blended sprites alone are mostly transparent (ripple-only, no base colour).
+		flatID := int(waterObj.GetWaterSpriteIndex(shape, false)) // non-blended base
+		if img := w.renderer.GetSprite(flatID); img != nil {
+			_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(flatID)
+			if !ok {
+				xOff, yOff = -32, -15
+			}
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Scale(scale, scale)
+			op.GeoM.Translate(
+				drawX+float64(xOff)*scale,
+				drawY+float64(yOff)*scale-waterHeightDiff*scale)
+			screen.DrawImage(img, op)
+			// Blended ripple layer on top (same position)
+			if blendImg := w.renderer.GetSprite(spriteID); blendImg != nil {
+				screen.DrawImage(blendImg, op)
+			}
+			return
+		}
+		// Fallback: try blended only
 		if img := w.renderer.GetSprite(spriteID); img != nil {
 			_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
 			if !ok {
