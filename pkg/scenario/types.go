@@ -44,6 +44,13 @@ type Scenario struct {
 	// RoadObjectOrder is the list of road-object names in road-slot order.
 	// Slots 365-372 (8 slots).
 	RoadObjectOrder []string
+
+	// Entities contains vehicle entities parsed from the GameState chunk of
+	// an .SV5 saved-game file.  Only VehicleHead and VehicleBody types are
+	// included — enough for world-space rendering.  Nil for .SC5 scenarios.
+	//
+	// OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h  GameState::entities
+	Entities []VehicleEntity
 }
 
 // GetTile returns tile at the given coordinates

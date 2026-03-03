@@ -46,12 +46,23 @@ type tile struct {
 	industries   []scenario.IndustryElement
 }
 
+// DemoTrain is a simple animated train entity for the title sequence and early gameplay.
+// It follows the tile grid, moving one tile at a time in direction (dx,dy).
+type DemoTrain struct {
+	tileX, tileY int     // current tile (leading car position)
+	dx, dy       int     // movement direction in tile space (one axis only)
+	progress     float64 // 0.0 = at tile centre, 1.0 = at next tile
+	vehicleIdx   int     // index into renderer.ObjMgr.Vehicles
+}
+
 // World holds a tile grid for an isometric game world
 type World struct {
 	renderer *render.Renderer
 	width    int
 	height   int
 	tiles    [][]tile
+	trains   []*DemoTrain            // demo trains (title screen / scenarios without saved entities)
+	entities []scenario.VehicleEntity // real vehicle entities from .SV5 saved-game files
 	// isometric tile dimensions (standard 2:1 ratio)
 	tileW int // tile width in pixels (64)
 	tileH int // tile height in pixels (32)
@@ -163,6 +174,75 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 	cx, cy := w.tileToScreen(w.width/2, w.height/2)
 	w.camX = cx - 400
 	w.camY = cy - 300
+
+	// Store real vehicle entities from saved games.  When entities are present
+	// they are rendered by paintVehicleEntities; otherwise fall back to demo trains.
+	w.entities = sc.Entities
+
+	if len(w.entities) == 0 {
+		// No real entities (scenario file or empty save) — spawn scripted demo trains
+		// so the title screen and freshly-loaded scenarios show some movement.
+		w.spawnDemoTrains()
+	} else {
+		w.trains = nil
+	}
+}
+
+// spawnDemoTrains places a handful of trains on track tiles found in the map.
+func (w *World) spawnDemoTrains() {
+	w.trains = nil
+	if w.renderer == nil || w.renderer.ObjMgr == nil || len(w.renderer.ObjMgr.Vehicles) == 0 {
+		return
+	}
+
+	// Find tiles with at least one track element. Spread spawns evenly.
+	type trackPos struct{ x, y int }
+	var trackTiles []trackPos
+	step := 1
+	if w.width*w.height > 1000 {
+		step = 8 // sample every 8th tile on large maps
+	}
+	for y := 0; y < w.height; y += step {
+		for x := 0; x < w.width; x += step {
+			if len(w.tiles[y][x].tracks) > 0 {
+				trackTiles = append(trackTiles, trackPos{x, y})
+			}
+		}
+	}
+	if len(trackTiles) == 0 {
+		return
+	}
+
+	// Spawn up to 5 trains, evenly spaced in the found list.
+	maxTrains := 5
+	if len(trackTiles) < maxTrains {
+		maxTrains = len(trackTiles)
+	}
+	for i := 0; i < maxTrains; i++ {
+		idx := i * len(trackTiles) / maxTrains
+		tp := trackTiles[idx]
+
+		// Prefer a direction that has a neighbouring track tile; fall back to +Y.
+		dx, dy := 0, 1
+		for _, cand := range [][2]int{{0, 1}, {1, 0}, {0, -1}, {-1, 0}} {
+			nx, ny := tp.x+cand[0], tp.y+cand[1]
+			if nx >= 0 && nx < w.width && ny >= 0 && ny < w.height &&
+				len(w.tiles[ny][nx].tracks) > 0 {
+				dx, dy = cand[0], cand[1]
+				break
+			}
+		}
+
+		vIdx := i % len(w.renderer.ObjMgr.Vehicles)
+		w.trains = append(w.trains, &DemoTrain{
+			tileX:      tp.x,
+			tileY:      tp.y,
+			dx:         dx,
+			dy:         dy,
+			progress:   float64(i) / float64(maxTrains), // stagger start positions
+			vehicleIdx: vIdx,
+		})
+	}
 }
 
 // SetCamera overrides the camera position directly (used by the title
@@ -214,8 +294,33 @@ func (w *World) GetMapSize() (width, height int) {
 	return w.width, w.height
 }
 
+// GetZoom returns the current zoom level (0=full, 1=half, 2=quarter, 3=eighth).
+// The screen scale factor is 1/(1<<zoom).
+func (w *World) GetZoom() int {
+	return w.zoom
+}
+
 func (w *World) Update() {
-	// Currently a no-op; camera is driven by PanCamera from the game loop.
+	// Advance demo trains at ~2 tiles/second (60fps → 1/30 per frame).
+	const speed = 1.0 / 30.0
+	for _, tr := range w.trains {
+		tr.progress += speed
+		if tr.progress >= 1.0 {
+			tr.progress -= 1.0
+			// Move to the next tile
+			nx := tr.tileX + tr.dx
+			ny := tr.tileY + tr.dy
+			// Bounce if out-of-bounds or no track at destination
+			if nx < 0 || nx >= w.width || ny < 0 || ny >= w.height ||
+				len(w.tiles[ny][nx].tracks) == 0 {
+				tr.dx = -tr.dx
+				tr.dy = -tr.dy
+			} else {
+				tr.tileX = nx
+				tr.tileY = ny
+			}
+		}
+	}
 }
 
 // PanCamera moves the camera by (dx, dy) pixels in world-space.
@@ -897,21 +1002,39 @@ func (w *World) getWaterImage() *ebiten.Image {
 	return img
 }
 
-// paintWater renders a translucent blue water overlay on a tile.
-// The water sits at the waterLevel height, which may be above the terrain baseZ.
+// paintWater renders a water surface overlay on a tile.
+// Uses WaterObject sprites when loaded; falls back to a hand-drawn blue diamond.
 //
 // OpenLoco reference: PaintSurface.cpp:1720-1759 (paintSurfaceWater)
+// Water sprite: waterObj.ImageOffset + KSlopeToWaterShape[slope & 0xF] + 35 (blended variant)
 func (w *World) paintWater(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
-	waterImg := w.getWaterImage()
-
 	// water field is MicroZ (kMicroZStep=16 px/unit); baseZ is SmallZ (kSmallZStep=4 px/unit).
-	// waterHeightDiff = how many px above terrain base the water surface sits.
-	// drawY already accounts for baseZ*4, so we only need the additional water offset.
+	// drawY already accounts for baseZ*4, so we only need the extra water height.
 	waterHeightDiff := float64(t.waterLevel)*16.0 - float64(t.baseZ)*4.0
 
-	// Apply the same centering offsets as flat terrain sprites:
-	//   xOff=-32  centres the 64px wide diamond on the tile anchor
-	//   yOff=-15  places the top of the sprite at the terrain surface level
+	// Try to use real WaterObject sprites
+	if w.renderer != nil && w.renderer.ObjMgr != nil && w.renderer.ObjMgr.WaterObj != nil {
+		waterObj := w.renderer.ObjMgr.WaterObj
+		slope := t.slope & 0x0F
+		shape := objects.KSlopeToWaterShape[slope]
+		spriteID := int(waterObj.GetWaterSpriteIndex(shape, true)) // blended variant
+		if img := w.renderer.GetSprite(spriteID); img != nil {
+			_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+			if !ok {
+				xOff, yOff = -32, -15
+			}
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Scale(scale, scale)
+			op.GeoM.Translate(
+				drawX+float64(xOff)*scale,
+				drawY+float64(yOff)*scale-waterHeightDiff*scale)
+			screen.DrawImage(img, op)
+			return
+		}
+	}
+
+	// Fallback: hand-drawn translucent blue diamond
+	waterImg := w.getWaterImage()
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(scale, scale)
 	op.GeoM.Translate(
@@ -1041,4 +1164,170 @@ func (w *World) Draw(screen *ebiten.Image) {
 		}
 	}
 
+	// Vehicle rendering — separate post-tile pass (depth approximation).
+	// Use real parsed entities when available (loaded .SV5), otherwise demo trains.
+	if len(w.entities) > 0 {
+		w.paintVehicleEntities(screen, scale)
+	} else {
+		w.paintDemoTrains(screen, scale)
+	}
+}
+
+// paintDemoTrains renders all active demo trains after the tile loop.
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintVehicle.cpp
+func (w *World) paintDemoTrains(screen *ebiten.Image, scale float64) {
+	if w.renderer == nil || w.renderer.ObjMgr == nil {
+		return
+	}
+	vehicles := w.renderer.ObjMgr.Vehicles
+	if len(vehicles) == 0 {
+		return
+	}
+
+	for _, tr := range w.trains {
+		if tr.tileX < 0 || tr.tileX >= w.width || tr.tileY < 0 || tr.tileY >= w.height {
+			continue
+		}
+
+		// Fractional world position (smooth between tiles)
+		fracX := float64(tr.tileX) + float64(tr.dx)*tr.progress
+		fracY := float64(tr.tileY) + float64(tr.dy)*tr.progress
+		vpX := (fracY - fracX) * 32.0
+		vpY := (fracY + fracX) * 16.0
+
+		// Height: interpolate between current and next tile
+		baseZ := float64(w.tiles[tr.tileY][tr.tileX].baseZ)
+		nx := tr.tileX + tr.dx
+		ny := tr.tileY + tr.dy
+		if nx >= 0 && nx < w.width && ny >= 0 && ny < w.height {
+			nextZ := float64(w.tiles[ny][nx].baseZ)
+			baseZ = baseZ*(1.0-tr.progress) + nextZ*tr.progress
+		}
+		vpY -= baseZ * 4.0
+
+		drawX := math.Round((vpX-w.camX)*scale) - 16 // centre horizontally
+		drawY := math.Round((vpY-w.camY)*scale) - 16 // centre vertically
+
+		// Direction → sprite rotation (32-direction wheel; 0=SE, 8=SW, 16=NW, 24=NE)
+		dir32 := 0
+		switch {
+		case tr.dy > 0 && tr.dx == 0:
+			dir32 = 0
+		case tr.dx > 0 && tr.dy == 0:
+			dir32 = 8
+		case tr.dy < 0 && tr.dx == 0:
+			dir32 = 16
+		case tr.dx < 0 && tr.dy == 0:
+			dir32 = 24
+		}
+
+		v := vehicles[tr.vehicleIdx%len(vehicles)]
+		if v.ImageOffset == 0 {
+			continue // sprites not loaded
+		}
+
+		// Use the body sprite for car component 0
+		bodyIdx := int(v.CarComponents[0].BodySpriteIdx)
+		spriteID, ok := v.GetBodySpriteID(bodyIdx, dir32)
+		if !ok {
+			continue
+		}
+
+		img := w.renderer.GetSprite(int(spriteID))
+		if img == nil {
+			continue
+		}
+		_, _, xOff, yOff, hasInfo := w.renderer.GetSpriteInfo(int(spriteID))
+		if hasInfo {
+			drawX += float64(xOff) * scale
+			drawY += float64(yOff) * scale
+		}
+
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(drawX, drawY)
+		screen.DrawImage(img, op)
+	}
+}
+
+// paintVehicleEntities renders VehicleBody entities parsed from an .SV5 save file.
+// Each body entity carries its own tile position (tileX/tileY) and sprite info
+// (objectId, objectSpriteType, spriteYaw) — no interpolation needed.
+//
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintVehicle.cpp
+func (w *World) paintVehicleEntities(screen *ebiten.Image, scale float64) {
+	if w.renderer == nil || w.renderer.ObjMgr == nil {
+		return
+	}
+	vehicles := w.renderer.ObjMgr.Vehicles
+	if len(vehicles) == 0 {
+		return
+	}
+
+	for i := range w.entities {
+		ent := &w.entities[i]
+		if ent.EntityType != scenario.VehicleTypeBody {
+			continue // only Body entities have renderable car sprites
+		}
+
+		// Bounds check: tile coordinates from the save must be on the loaded map.
+		tx := int(ent.TileX)
+		ty := int(ent.TileY)
+		if tx < 0 || tx >= w.width || ty < 0 || ty >= w.height {
+			continue
+		}
+
+		// Convert tile → viewport (same formula as tileToScreen).
+		// For sub-tile precision we shift by the sub-tile offset within the tile:
+		//   PosX = tileX*32 + subtileX,  so subtileX = PosX - tileX*32
+		subtileX := float64(ent.PosX) - float64(ent.TileX)*32.0
+		subtileY := float64(ent.PosY) - float64(ent.TileY)*32.0
+		fracX := float64(tx) + subtileX/32.0
+		fracY := float64(ty) + subtileY/32.0
+
+		vpX := (fracY - fracX) * 32.0
+		vpY := (fracY + fracX) * 16.0
+
+		// Height: use entity's PosZ (world SmallZ) for pixel offset.
+		// OpenLoco formula: heightPx = posZ * 4 (kSmallZStep = 4 px/unit).
+		// We apply the current global compromise (×2 instead of ×4).
+		vpY -= float64(ent.PosZ) * 2.0
+
+		drawX := math.Round((vpX-w.camX)*scale) - 16
+		drawY := math.Round((vpY-w.camY)*scale) - 16
+
+		// Vehicle object lookup.  objectId is 0-based index into loaded vehicles.
+		if int(ent.ObjectID) >= len(vehicles) {
+			continue
+		}
+		v := vehicles[ent.ObjectID]
+		if v == nil || v.ImageOffset == 0 {
+			continue
+		}
+
+		// Direction: spriteYaw is stored 0-63 (64 steps per full rotation).
+		// Halve to get 0-31 for 32-direction sprite tables.
+		dir32 := int(ent.SpriteYaw) >> 1
+
+		bodyIdx := int(ent.ObjectSpriteType)
+		spriteID, ok := v.GetBodySpriteID(bodyIdx, dir32)
+		if !ok {
+			continue
+		}
+
+		img := w.renderer.GetSprite(int(spriteID))
+		if img == nil {
+			continue
+		}
+		_, _, xOff, yOff, hasInfo := w.renderer.GetSpriteInfo(int(spriteID))
+		if hasInfo {
+			drawX += float64(xOff) * scale
+			drawY += float64(yOff) * scale
+		}
+
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(drawX, drawY)
+		screen.DrawImage(img, op)
+	}
 }

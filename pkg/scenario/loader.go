@@ -212,6 +212,15 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		}
 		log.Println("[Scenario] Read GameState,", len(gameState), "bytes")
 		generalStateFlags = readGeneralStateFlags(gameState)
+
+		// Parse vehicle entities from the entity table embedded in the GameState.
+		// This is only present in .SV5 saved-game files; ParseVehicleEntities
+		// returns nil if the chunk is smaller than EntityTableOffset + table size.
+		// OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h  GameState::entities
+		sc.Entities = ParseVehicleEntities(gameState)
+		if sc.Entities != nil {
+			log.Printf("[Scenario] Parsed %d vehicle entities (Head+Body) from GameState", len(sc.Entities))
+		}
 	}
 
 	// --- Tile elements (runLengthMulti-encoded) ---
