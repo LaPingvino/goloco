@@ -64,7 +64,9 @@ type Tile struct {
 	Surface      SurfaceType
 	Height       uint8
 	Water        uint8
-	TerrainIndex uint8 // raw 5-bit terrain index from the surface element (LandObject slot)
+	TerrainIndex uint8 // byte 6 bits [4:0] — LandObject slot (0-31)
+	GrowthStage  uint8 // byte 6 bits [7:5] — growth/season stage (0-7); used in sprite variation formula
+	Variation    uint8 // byte 7 — alternate terrain style; non-zero in snowy/special scenarios
 	Slope        uint8 // slope byte from surface element byte 4
 	Ownership    uint8
 	BuildingID   uint16
@@ -208,14 +210,70 @@ const (
 	SurfaceWater
 )
 
+// ScenarioCategory is the difficulty level stored in ScenarioOptions.difficulty (offset 0x01).
+//
+// OpenLoco reference: src/OpenLoco/src/S5/S5Options.h  Options::difficulty
+type ScenarioCategory uint8
+
+const (
+	CategoryBeginner    ScenarioCategory = 0
+	CategoryEasy        ScenarioCategory = 1
+	CategoryMedium      ScenarioCategory = 2
+	CategoryChallenging ScenarioCategory = 3
+	CategoryExpert      ScenarioCategory = 4
+)
+
+func (c ScenarioCategory) String() string {
+	switch c {
+	case CategoryBeginner:
+		return "Beginner"
+	case CategoryEasy:
+		return "Easy"
+	case CategoryMedium:
+		return "Medium"
+	case CategoryChallenging:
+		return "Challenging"
+	case CategoryExpert:
+		return "Expert"
+	default:
+		return "Unknown"
+	}
+}
+
+// ScenarioFlagLandscapeGenerationDone is bit 0 of ScenarioOptions.scenarioFlags (offset 0x06).
+// When set, the map was hand-crafted and a 128×128 preview image is stored.
+// When clear, the map is generated from stored parameters (no preview).
+//
+// OpenLoco reference: src/OpenLoco/src/S5/S5Options.h  ScenarioFlags::landscapeGenerationDone
+const ScenarioFlagLandscapeGenerationDone uint16 = 0x0001
+
+// PreviewSize is the side length of the scenario preview image in pixels.
+const PreviewSize = 128
+
 // Options contains scenario configuration
 type Options struct {
+	// Parsed from ScenarioOptions chunk (S5::Options)
 	Name        string
 	Description string
-	StartYear   uint16
-	EndYear     uint16
-	StartMoney  int64
-	MaxLoans    int64
+	Category    ScenarioCategory
+	Flags       uint16 // ScenarioFlags bitmask (bit 0 = landscapeGenerationDone)
+	HasPreview  bool   // true when landscapeGenerationDone flag is set
+	// Preview is the 128×128 palette-indexed preview image.
+	// Each byte is a palette colour index; zero-filled if no preview.
+	Preview        [PreviewSize * PreviewSize]byte
+	StartYear      uint16
+	MaxCompetitors uint8
+	ObjectiveType  uint8
+
+	// Generation parameters (used when landscapeGenerationDone is clear)
+	MinLandHeight    uint8 // base height (0-15)
+	TopographyStyle  uint8 // 0=flat,1=smallHills,2=mountains,3=halfMtHills,4=halfMtFlat
+	HillDensity      uint8 // 0-100
+
+	// Legacy / unused fields kept for compatibility
+	EndYear    uint16
+	StartMoney int64
+	MaxLoans   int64
 }
 
 // PackedObject represents a reference to a DAT object file

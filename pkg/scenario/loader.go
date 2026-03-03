@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/assets"
 )
@@ -142,7 +143,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		if err != nil {
 			return sc, fmt.Errorf("failed to read ScenarioOptions chunk: %w", err)
 		}
-		log.Println("[Scenario] Read ScenarioOptions,", len(scenarioOpts), "bytes")
+		log.Printf("[Scenario] Read ScenarioOptions, %d bytes", len(scenarioOpts))
+		sc.Options = parseScenarioOptions(scenarioOpts)
 	}
 
 	// --- Packed objects (raw ObjectHeader + data chunk per object) ---
@@ -236,8 +238,16 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		log.Println("[Scenario] Read TileElements,", len(tileData), "bytes (", len(tileData)/tileElementSize, "elements)")
 		sc.parseTileElements(tileData)
 	} else {
-		log.Println("[Scenario] tileManagerLoaded flag not set — no tile elements in file")
-		sc.initPlaceholderMap()
+		// No tile elements in file. For "randomly generated" scenarios
+		// (landscapeGenerationDone flag clear) generate terrain from the
+		// stored parameters; otherwise fall back to a flat placeholder.
+		if sc.Options.Flags&ScenarioFlagLandscapeGenerationDone == 0 && sc.Header.Type == assets.S5TypeScenario {
+			log.Println("[Scenario] Generating landscape from scenario parameters")
+			sc.initGeneratedLandscape()
+		} else {
+			log.Println("[Scenario] tileManagerLoaded flag not set — using placeholder map")
+			sc.initPlaceholderMap()
+		}
 	}
 
 	if sc.Tiles == nil {
@@ -297,8 +307,17 @@ func (sc *Scenario) parseTileElements(data []byte) {
 		if x < sc.MapWidth && y < sc.MapHeight {
 			switch elemType {
 			case elementTypeSurface:
-				// Surface element: byte 6 has terrain type in bits [4:0]
-				terrainRaw := elem[6] & 0x1F
+				// Surface element byte layout:
+				//   byte 4: slope — bits [4:0] = slope type, bits [7:5] = snow coverage
+				//   byte 5: water — bits [4:0] = water level (MicroZ)
+				//   byte 6: terrain — bits [4:0] = LandObject slot, bits [7:5] = growth stage
+				//   byte 7: variation — alternate terrain style (0 = default)
+				//
+				// OpenLoco reference: src/OpenLoco/src/Map/SurfaceElement.h
+				terrainRaw := elem[6] & 0x1F // bits [4:0] → LandObject slot (0-31)
+				growthStage := elem[6] >> 5  // bits [7:5] → growth/season stage (0-7)
+				variation := elem[7]         // alternate terrain style
+
 				surface := SurfaceGrass
 				if int(terrainRaw) < len(terrainTypes) {
 					surface = terrainTypes[terrainRaw]
@@ -310,7 +329,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					surface = SurfaceWater
 				}
 
-				// Slope in byte 4, bits [3:0] = corner heights, bit 4 = double height
+				// Slope in byte 4, bits [4:0] (corner heights + double-height flag).
 				slopeByte := elem[4]
 
 				// Preserve any existing non-surface elements parsed before
@@ -321,6 +340,8 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					Height:       baseZ,
 					Water:        waterLevel,
 					TerrainIndex: terrainRaw,
+					GrowthStage:  growthStage,
+					Variation:    variation,
 					Slope:        slopeByte,
 					Trees:        existing.Trees,
 					Buildings:    existing.Buildings,
@@ -487,22 +508,93 @@ func (sc *Scenario) parseTileElements(data []byte) {
 // find it definitively, default to assuming tiles are present (which is the
 // common case for title.dat and scenario files).
 func readGeneralStateFlags(data []byte) uint32 {
-	// In OpenLoco's GameState, general.flags is at byte offset 0x00 of the
-	// GeneralState sub-struct.  When GeneralState is written as its own chunk
-	// (scenario path), the flags field is at offset 0 of that chunk.
-	if len(data) >= 4 {
-		// Read the first uint32 — this is general.flags for the standalone chunk.
-		flags := uint32(data[0]) | uint32(data[1])<<8 | uint32(data[2])<<16 | uint32(data[3])<<24
-		log.Printf("[Scenario] GeneralState flags = 0x%08X", flags)
+	// GeneralState.flags is at byte offset 0x10 within the struct:
+	//
+	//   0x00  rng[0]    uint32
+	//   0x04  rng[1]    uint32
+	//   0x08  unkRng[0] uint32
+	//   0x0C  unkRng[1] uint32
+	//   0x10  flags     uint32  ← tileManagerLoaded = bit 0
+	//
+	// OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h  GeneralState::flags
+	const off = GeneralFlagsOffset // 0x10 = 16
+	if len(data) >= off+4 {
+		flags := uint32(data[off]) | uint32(data[off+1])<<8 |
+			uint32(data[off+2])<<16 | uint32(data[off+3])<<24
+		log.Printf("[Scenario] GeneralState flags = 0x%08X (offset 0x%02X)", flags, off)
 		return flags
 	}
-	// Default: assume tile manager is loaded (safest for title sequences)
+	// Default: assume tile manager is loaded (safest for very short chunks)
 	log.Println("[Scenario] GeneralState too short to read flags, assuming tileManagerLoaded")
 	return 1
 }
 
 // advanceRaw moves the reader forward by n raw bytes (no chunk framing).
 // This is used to skip ObjectHeader structs that are written raw (not as chunks).
+// parseScenarioOptions extracts metadata from the raw ScenarioOptions (S5::Options) chunk.
+//
+// Field offsets from src/OpenLoco/src/S5/S5Options.h (packed, 1-byte alignment):
+//
+//	0x01        difficulty    uint8   — scenario category (0=Beginner … 4=Expert)
+//	0x02-0x03  startYear     uint16  — start year
+//	0x06-0x07  scenarioFlags uint16  — bit 0 = landscapeGenerationDone
+//	0x2A-0x69  scenarioName  char[64]
+//	0x6A-0x169 scenarioDetails char[256]
+//	0x184      minLandHeight  uint8
+//	0x185      topographyStyle uint8
+//	0x186      hillDensity    uint8
+//	0x18A-0x4189 preview[128][128] uint8 — palette-indexed preview image
+//	0x418A     maxCompetingCompanies uint8
+//	0x418C     objective.type uint8
+func parseScenarioOptions(data []byte) Options {
+	var opts Options
+	if len(data) < 0x08 {
+		return opts
+	}
+	opts.Category = ScenarioCategory(data[0x01])
+	opts.StartYear = uint16(data[0x02]) | uint16(data[0x03])<<8
+	opts.Flags = uint16(data[0x06]) | uint16(data[0x07])<<8
+	opts.HasPreview = opts.Flags&ScenarioFlagLandscapeGenerationDone != 0
+
+	if len(data) >= 0x6A {
+		opts.Name = nullTermString(data[0x2A:0x6A])
+	}
+	if len(data) >= 0x6A+256 {
+		opts.Description = nullTermString(data[0x6A : 0x6A+256])
+	}
+	// Generation parameters
+	if len(data) >= 0x187 {
+		opts.MinLandHeight = data[0x184]
+		opts.TopographyStyle = data[0x185]
+		opts.HillDensity = data[0x186]
+	}
+	// Preview image (128×128 palette-indexed bytes)
+	const previewOffset = 0x18A
+	const previewBytes = PreviewSize * PreviewSize
+	if len(data) >= previewOffset+previewBytes {
+		copy(opts.Preview[:], data[previewOffset:previewOffset+previewBytes])
+	}
+	// Competing companies
+	if len(data) >= 0x418B {
+		opts.MaxCompetitors = data[0x418A]
+	}
+	// Objective type
+	if len(data) >= 0x418D {
+		opts.ObjectiveType = data[0x418C]
+	}
+	return opts
+}
+
+// nullTermString returns a Go string from a null-terminated (or space-padded) byte slice.
+func nullTermString(b []byte) string {
+	for i, c := range b {
+		if c == 0 {
+			return strings.TrimSpace(string(b[:i]))
+		}
+	}
+	return strings.TrimSpace(string(b))
+}
+
 func advanceRaw(r *assets.S5ChunkReader, n int) {
 	// S5ChunkReader doesn't expose a skip method, so we manipulate via the
 	// exported Offset and reconstruct.  For now we use a simple wrapper that

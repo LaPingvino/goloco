@@ -719,6 +719,17 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 }
 
+// iclamp clamps v to [lo, hi].
+func iclamp(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
 // fillRect is a thin wrapper around vector.FillRect using float64 args (no anti-aliasing).
 // Replaces the deprecated ebitenutil.DrawRect.
 func fillRect(dst *ebiten.Image, x, y, w, h float64, c color.Color) {
@@ -1027,8 +1038,294 @@ func (g *Game) routeWheelToWindows() bool {
 	return false
 }
 
-// openNewGameWindow opens the scenario file browser filtered to .SC5 files only.
-func (g *Game) openNewGameWindow() { g.openFileWindow("New Game", true) }
+// openNewGameWindow opens the OpenLoco-style scenario selection screen.
+func (g *Game) openNewGameWindow() {
+	const winTitle = "New Game"
+	const winW, winH = 620, 440
+
+	// Scan for scenarios once when the window opens.
+	metas, _ := scenario.ScanScenarios(g.dataDir + "/../Scenarios")
+	if len(metas) == 0 {
+		// Fallback: scan the data dir itself for .SC5 files.
+		metas, _ = scenario.ScanScenarios(g.dataDir)
+	}
+
+	// Group by category.
+	type catGroup struct {
+		label string
+		items []*scenario.ScenarioMeta
+	}
+	cats := []catGroup{
+		{label: "Beginner"},
+		{label: "Easy"},
+		{label: "Medium"},
+		{label: "Challenging"},
+		{label: "Expert"},
+	}
+	for _, m := range metas {
+		idx := int(m.Category)
+		if idx < 0 || idx >= len(cats) {
+			idx = 0
+		}
+		cats[idx].items = append(cats[idx].items, m)
+	}
+
+	// Find first non-empty category.
+	activeCat := 0
+	for i, c := range cats {
+		if len(c.items) > 0 {
+			activeCat = i
+			break
+		}
+	}
+
+	selectedIdx := -1
+	listScroll := 0
+
+	// Cached preview image for the selected scenario.
+	var previewImg *ebiten.Image
+	var previewFor string // file path the image was built for
+
+	getPreview := func(m *scenario.ScenarioMeta) *ebiten.Image {
+		if m == nil || m.IsGenerated {
+			return nil
+		}
+		if previewFor == m.FilePath {
+			return previewImg
+		}
+		// Convert 128×128 palette-indexed preview → RGBA using the global palette.
+		img := ebiten.NewImage(scenario.PreviewSize, scenario.PreviewSize)
+		if graphics.IsGlobalPaletteLoaded() {
+			for py := 0; py < scenario.PreviewSize; py++ {
+				for px := 0; px < scenario.PreviewSize; px++ {
+					idx := m.Preview[py*scenario.PreviewSize+px]
+					c := graphics.GetGlobalColor(idx)
+					img.Set(px, py, c)
+				}
+			}
+		}
+		previewImg = img
+		previewFor = m.FilePath
+		return previewImg
+	}
+
+	win := ui.NewSimpleWindow(winTitle, 60, 30, winW, winH)
+
+	// Layout constants (content area starts after title bar + border).
+	const (
+		tabH      = 24 // category tab height
+		listW     = 220
+		divW      = 4
+		infoX     = listW + divW
+		itemH     = 20
+		btnAreaH  = 32
+		previewSz = scenario.PreviewSize // 128
+	)
+
+	win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, r *render.Renderer) {
+		// ── Category tabs ────────────────────────────────────────────────
+		tabW := cw / len(cats)
+		for i, cat := range cats {
+			tx := cx + i*tabW
+			active := i == activeCat
+			bg := color.RGBA{160, 150, 130, 255}
+			if active {
+				bg = color.RGBA{220, 210, 185, 255}
+			}
+			fillRect(screen, float64(tx), float64(cy), float64(tabW), float64(tabH), bg)
+			// Tab border
+			fillRect(screen, float64(tx), float64(cy+tabH-1), float64(tabW), 1, color.RGBA{80, 75, 65, 255})
+			label := cat.label
+			lw, _ := ui.MeasureText(label)
+			ui.DrawText(screen, label, tx+(tabW-lw)/2, cy+tabH-6, color.RGBA{20, 20, 20, 255})
+		}
+
+		contentY := cy + tabH
+		contentH := ch - tabH - btnAreaH
+		items := cats[activeCat].items
+		visible := contentH / itemH
+
+		// ── Scenario list (left panel) ───────────────────────────────────
+		fillRect(screen, float64(cx), float64(contentY), float64(listW), float64(contentH), color.RGBA{210, 205, 185, 255})
+		// Clamp scroll
+		maxScroll := len(items) - visible
+		if maxScroll < 0 {
+			maxScroll = 0
+		}
+		if listScroll > maxScroll {
+			listScroll = maxScroll
+		}
+		if listScroll < 0 {
+			listScroll = 0
+		}
+
+		for i := 0; i < visible; i++ {
+			idx := listScroll + i
+			if idx >= len(items) {
+				break
+			}
+			m := items[idx]
+			iy := contentY + i*itemH
+			rowBg := color.RGBA{210, 205, 185, 255}
+			textCol := color.RGBA{20, 20, 20, 255}
+			if idx == selectedIdx {
+				rowBg = color.RGBA{60, 100, 180, 255}
+				textCol = color.RGBA{255, 255, 255, 255}
+			}
+			fillRect(screen, float64(cx), float64(iy), float64(listW), float64(itemH), rowBg)
+			label := m.Name
+			if m.IsGenerated {
+				label = "~ " + label
+			}
+			ui.DrawText(screen, label, cx+4, iy+itemH-5, textCol)
+		}
+
+		// Divider
+		fillRect(screen, float64(cx+listW), float64(contentY), float64(divW), float64(contentH), color.RGBA{120, 115, 100, 255})
+
+		// ── Info panel (right panel) ─────────────────────────────────────
+		infoW := cw - infoX
+		fillRect(screen, float64(cx+infoX), float64(contentY), float64(infoW), float64(contentH), color.RGBA{225, 220, 200, 255})
+
+		if selectedIdx >= 0 && selectedIdx < len(items) {
+			m := items[selectedIdx]
+			ix := cx + infoX + 6
+			iy := contentY + 6
+
+			// Preview image or "Randomly Generated" text
+			if !m.IsGenerated {
+				if img := getPreview(m); img != nil {
+					op := &ebiten.DrawImageOptions{}
+					op.GeoM.Translate(float64(ix), float64(iy))
+					screen.DrawImage(img, op)
+					iy += previewSz + 6
+				}
+			} else {
+				fillRect(screen, float64(ix), float64(iy), float64(previewSz), float64(previewSz), color.RGBA{100, 130, 100, 255})
+				ui.DrawText(screen, "Randomly", ix+previewSz/2-28, iy+previewSz/2-8, color.White)
+				ui.DrawText(screen, "Generated", ix+previewSz/2-28, iy+previewSz/2+6, color.White)
+				iy += previewSz + 6
+			}
+
+			// Scenario name (bold-ish via repeated draw)
+			ui.DrawText(screen, m.Name, ix+1, iy+10, color.RGBA{20, 20, 20, 255})
+			ui.DrawText(screen, m.Name, ix, iy+10, color.RGBA{30, 30, 30, 255})
+			iy += 16
+
+			// Start year
+			if m.StartYear > 0 {
+				ui.DrawText(screen, fmt.Sprintf("Start: %d", m.StartYear), ix, iy+10, color.RGBA{60, 60, 60, 255})
+				iy += 14
+			}
+			// Competitors
+			if m.MaxCompetitors > 0 {
+				ui.DrawText(screen, fmt.Sprintf("Competitors: %d", m.MaxCompetitors), ix, iy+10, color.RGBA{60, 60, 60, 255})
+				iy += 14
+			}
+
+			// Description (word-wrapped by character count)
+			if m.Description != "" {
+				descMaxW := infoW - 12
+				charWidth := 6
+				charsPerLine := descMaxW / charWidth
+				desc := m.Description
+				for len(desc) > 0 && iy < contentY+contentH-10 {
+					line := desc
+					if len(line) > charsPerLine {
+						cut := charsPerLine
+						for cut > 0 && desc[cut] != ' ' {
+							cut--
+						}
+						if cut == 0 {
+							cut = charsPerLine
+						}
+						line = desc[:cut]
+						desc = strings.TrimLeft(desc[cut:], " ")
+					} else {
+						desc = ""
+					}
+					ui.DrawText(screen, line, ix, iy+10, color.RGBA{50, 50, 50, 255})
+					iy += 12
+				}
+			}
+		} else if len(items) == 0 {
+			ui.DrawText(screen, "No scenarios found", cx+infoX+10, contentY+30, color.RGBA{100, 100, 100, 255})
+		}
+
+		// ── Bottom buttons ───────────────────────────────────────────────
+		btnY := cy + ch - btnAreaH + 4
+		// Cancel
+		fillRect(screen, float64(cx+4), float64(btnY), 80, 22, color.RGBA{150, 140, 120, 255})
+		ui.DrawText(screen, "Cancel", cx+4+20, btnY+15, color.RGBA{20, 20, 20, 255})
+		// Play (greyed when nothing selected)
+		canPlay := selectedIdx >= 0 && selectedIdx < len(items)
+		playBg := color.RGBA{60, 120, 60, 255}
+		playTextCol := color.RGBA{255, 255, 255, 255}
+		if !canPlay {
+			playBg = color.RGBA{130, 130, 120, 255}
+			playTextCol = color.RGBA{80, 80, 80, 255}
+		}
+		fillRect(screen, float64(cx+cw-84), float64(btnY), 80, 22, playBg)
+		ui.DrawText(screen, "Play", cx+cw-84+28, btnY+15, playTextCol)
+	}
+
+	win.OnContentClick = func(relX, relY int) {
+		// Tab clicks
+		tabW := win.Width / len(cats)
+		if relY < tabH {
+			clicked := relX / tabW
+			if clicked >= 0 && clicked < len(cats) && clicked != activeCat {
+				activeCat = clicked
+				selectedIdx = -1
+				listScroll = 0
+				previewFor = ""
+			}
+			return
+		}
+
+		// Button row
+		if relY >= win.Height-22-3-btnAreaH {
+			if relX >= 4 && relX < 84 {
+				g.windowMgr.CloseWindow(winTitle)
+			} else if relX >= win.Width-6-84 {
+				items := cats[activeCat].items
+				if selectedIdx >= 0 && selectedIdx < len(items) {
+					if err := g.loadScenario(items[selectedIdx].FilePath); err != nil {
+						log.Printf("[Game] Load error: %v", err)
+					}
+				}
+			}
+			return
+		}
+
+		contentY := tabH
+		row := (relY - contentY) / itemH
+		if row < 0 {
+			return
+		}
+		if relX < listW {
+			items := cats[activeCat].items
+			idx := listScroll + row
+			if idx >= 0 && idx < len(items) {
+				selectedIdx = idx
+				previewFor = ""
+			}
+		}
+	}
+
+	win.OnScrollWheel = func(dy float64) {
+		items := cats[activeCat].items
+		contentH := win.Height - 22 - 3 - tabH - btnAreaH
+		visible := contentH / itemH
+		maxScroll := len(items) - visible
+		if maxScroll < 0 {
+			maxScroll = 0
+		}
+		listScroll = iclamp(listScroll-int(dy), 0, maxScroll)
+	}
+
+	g.windowMgr.OpenWindow(win)
+}
 
 // openLoadGameWindow opens the file browser for all supported file types.
 func (g *Game) openLoadGameWindow() { g.openFileWindow("Load Game", false) }
@@ -1080,15 +1377,7 @@ func (g *Game) openFileWindow(title string, scenariosOnly bool) {
 	lastFileIdx := -1
 	var lastClickTime time.Time
 
-	iclamp := func(v, lo, hi int) int {
-		if v < lo {
-			return lo
-		}
-		if v > hi {
-			return hi
-		}
-		return v
-	}
+
 
 	rescanDir := func(dir string) {
 		currentDir = dir
