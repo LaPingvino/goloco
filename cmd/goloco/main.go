@@ -1350,9 +1350,12 @@ func (g *Game) openFileWindow(title string, scenariosOnly bool) {
 // -----------------------------------------------------------------------
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
+	// Track physical window size for UI hit-testing (edge scroll, status bar).
+	// Return a fixed logical size so Ebiten's internal scale stays consistent
+	// regardless of window resize or DPI — avoids screen-size-change artifacts.
 	g.sw = outsideWidth
 	g.sh = outsideHeight
-	return outsideWidth, outsideHeight
+	return defaultWidth, defaultHeight
 }
 
 func main() {

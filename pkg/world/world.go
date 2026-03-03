@@ -36,6 +36,7 @@ type tile struct {
 	baseZ        uint8 // height in SmallZ units (OpenLoco: 1 unit = 4px)
 	slope        uint8 // slope corners and flags from byte 4 of surface element
 	waterLevel   uint8 // water level from surface element byte 5 bits [4:0]; 0 = no water
+	growthStage  uint8 // terrain growth/season stage 0-7 (byte 6 bits [7:5]); selects sprite set
 	trees        []scenario.TreeElement
 	buildings    []scenario.BuildingElement
 	walls        []scenario.WallElement
@@ -158,6 +159,7 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 				baseZ:        st.Height,
 				slope:        st.Slope,
 				waterLevel:   st.Water,
+				growthStage:  st.GrowthStage,
 				trees:        st.Trees,
 				buildings:    st.Buildings,
 				walls:        st.Walls,
@@ -537,6 +539,12 @@ func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *o
 		return
 	}
 
+	// drawY was computed with the tile height already subtracted (heightOffset = baseZ*4).
+	// getCliffEdgeOffset returns offsets relative to the tile's FLAT (zero-height) viewport
+	// position, so we need drawY without the height contribution.
+	// drawYFlat = drawY + baseZ*4*scale restores the flat reference.
+	drawYFlat := drawY + float64(t.baseZ)*4.0*scale
+
 	// Get corner heights for this tile
 	selfCorners := w.getCornerHeights(t)
 
@@ -583,7 +591,7 @@ func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *o
 					op.GeoM.Scale(scale, scale)
 					op.GeoM.Translate(
 						drawX+float64(xOff+edgeOffsetX)*scale,
-						drawY+float64(yOff+edgeOffsetY)*scale)
+						drawYFlat+float64(yOff+edgeOffsetY)*scale)
 					screen.DrawImage(img, op)
 				}
 			}
@@ -1116,8 +1124,13 @@ func (w *World) Draw(screen *ebiten.Image) {
 						displaySlope = int(slopeToDisplaySlope[rawSlope])
 					}
 
-					// Calculate sprite index: base flat terrain index (57) + displaySlope
-					// This gives us the correct slope variant from the LandObject's sprite table
+					// Zoom-0 flat terrain sprite: skip all zoom3/zoom2/zoom1 images
+					// (numAngles * numGrowthStages * 57) then add slope variant.
+					// Growth stage variation is NOT applied here: the correct step between
+					// growth stages in zoom-0 is (numAngles*19), not NumImagesPerGrowthStage
+					// (which includes blend images). Using NumImagesPerGrowthStage pushes
+					// spriteIdx out of bounds for any tile with growthStage>0 (blank tile).
+					// OpenLoco reference: src/OpenLoco/src/Objects/LandObject.cpp getTerrainImage()
 					spriteIdx := land.GetFlatTerrainSpriteIndex() + displaySlope
 
 					if img := w.renderer.GetObjectSprite(land, spriteIdx); img != nil {
