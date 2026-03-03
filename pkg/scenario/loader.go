@@ -324,9 +324,12 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					surface = terrainTypes[terrainRaw]
 				}
 
-				// Water level in byte 5, bits [4:0].  If > 0, treat as water.
+				// Water level in byte 5, bits [4:0] — MicroZ units (1 MicroZ = 16 px).
+				// The field is set for ALL tiles (it's the global water table height).
+				// A tile is submerged only when water surface is above terrain:
+				//   waterLevel * 16 > baseZ * 4
 				waterLevel := elem[5] & 0x1F
-				if waterLevel > 0 {
+				if waterLevel > 0 && uint16(waterLevel)*16 > uint16(baseZ)*4 {
 					surface = SurfaceWater
 				}
 
