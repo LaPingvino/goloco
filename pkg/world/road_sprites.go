@@ -253,3 +253,69 @@ var kRoadPartsStyle1 = [10][]roadPiece1{
 		}},
 	},
 }
+
+// kRoadPartsStyle2[roadID] = ordered slice of pieces (indexed by sequenceIndex).
+// Style2: single image per rotation (same rendering as Style0 but DIFFERENT offsets).
+// All values are offsets relative to roadObj.Image.
+// Rotation order: [0]=NE, [1]=SE, [2]=SW, [3]=NW.
+//
+// OpenLoco reference: src/OpenLoco/src/Objects/RoadObject.h  Style2 namespace
+// src/OpenLoco/src/Paint/PaintRoad.cpp  Style02::paintRoadPP
+var kRoadPartsStyle2 = [10][]roadPiece0{
+
+	// 0: Straight — kStraight0: NE=34, SE=35, SW=85, NW=86
+	{{img: [4]uint32{34, 35, 85, 86}}},
+
+	// 1: LeftCurveVerySmall — kLeftCurveVerySmall0: NE=37, SE=38, SW=39, NW=36
+	{{img: [4]uint32{37, 38, 39, 36}}},
+
+	// 2: RightCurveVerySmall — kRightCurveVerySmall0: NE=87, SE=88, SW=89, NW=90
+	{{img: [4]uint32{87, 88, 89, 90}}},
+
+	// 3: LeftCurveSmall (4 pieces)
+	// Piece ordering: seqIdx 0=LCS3, 1=LCS1, 2=LCS2, 3=LCS0 (matches Style0 convention)
+	// LCS0: NE=52,SE=56,SW=60,NW=48  LCS1: NE=50,SE=54,SW=58,NW=46
+	// LCS2: NE=51,SE=55,SW=59,NW=47  LCS3: NE=49,SE=53,SW=57,NW=45
+	{
+		{img: [4]uint32{49, 53, 57, 45}}, // seqIdx 0 = LCS3
+		{img: [4]uint32{50, 54, 58, 46}}, // seqIdx 1 = LCS1
+		{img: [4]uint32{51, 55, 59, 47}}, // seqIdx 2 = LCS2
+		{img: [4]uint32{52, 56, 60, 48}}, // seqIdx 3 = LCS0
+	},
+
+	// 4: RightCurveSmall (4 pieces)
+	// RCS0: NE=96,SE=100,SW=104,NW=108  RCS1: NE=97,SE=101,SW=105,NW=109
+	// RCS2: NE=98,SE=102,SW=106,NW=110  RCS3: NE=99,SE=103,SW=107,NW=111
+	{
+		{img: [4]uint32{96, 100, 104, 108}},  // seqIdx 0 = RCS0
+		{img: [4]uint32{97, 101, 105, 109}},  // seqIdx 1 = RCS1
+		{img: [4]uint32{98, 102, 106, 110}},  // seqIdx 2 = RCS2
+		{img: [4]uint32{99, 103, 107, 111}},  // seqIdx 3 = RCS3
+	},
+
+	// 5: StraightSlopeUp (2 pieces)
+	// SSU0: NE=61,SE=63,SW=65,NW=67  SSU1: NE=62,SE=64,SW=66,NW=68
+	{
+		{img: [4]uint32{61, 63, 65, 67}},
+		{img: [4]uint32{62, 64, 66, 68}},
+	},
+
+	// 6: StraightSlopeDown (2 pieces) — explicit (not rotated from SlopeUp)
+	// SSD0: NE=117,SE=119,SW=113,NW=115  SSD1: NE=116,SE=118,SW=112,NW=114
+	{
+		{img: [4]uint32{117, 119, 113, 115}},
+		{img: [4]uint32{116, 118, 112, 114}},
+	},
+
+	// 7: StraightSteepSlopeUp (1 piece)
+	// NE=69, SE=70, SW=71, NW=72
+	{{img: [4]uint32{69, 70, 71, 72}}},
+
+	// 8: StraightSteepSlopeDown (1 piece) — explicit
+	// SW=120, NW=121, NE=122, SE=123
+	{{img: [4]uint32{122, 123, 120, 121}}},
+
+	// 9: Turnaround (1 piece)
+	// NE=73, SE=74, SW=75, NW=76
+	{{img: [4]uint32{73, 74, 75, 76}}},
+}

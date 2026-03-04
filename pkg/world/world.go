@@ -874,8 +874,7 @@ func (w *World) paintRoads(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 		extraHeight := float64(int(re.BaseZ)-int(t.baseZ)) * 4.0
 
 		switch roadObj.PaintStyle {
-		case 0, 2:
-			// Style0 and Style2: single image per rotation (Style2 uses same table shape as Style0)
+		case 0:
 			if roadID >= len(kRoadPartsStyle0) || kRoadPartsStyle0[roadID] == nil {
 				continue
 			}
@@ -886,6 +885,22 @@ func (w *World) paintRoads(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 			offset := pieces[seqIdx].img[rotation]
 			if offset == 0 {
 				continue // hit-test only or unimplemented
+			}
+			spriteID := int(roadObj.Image) + int(offset)
+			w.drawTrackRoadSprite(screen, spriteID, drawX, drawY, extraHeight, scale)
+		case 2:
+			// Style2: same rendering as Style0 but completely different image offsets.
+			// OpenLoco reference: RoadObject.h Style2 namespace, PaintRoad.cpp Style02::paintRoadPP
+			if roadID >= len(kRoadPartsStyle2) || kRoadPartsStyle2[roadID] == nil {
+				continue
+			}
+			pieces := kRoadPartsStyle2[roadID]
+			if seqIdx >= len(pieces) {
+				continue
+			}
+			offset := pieces[seqIdx].img[rotation]
+			if offset == 0 {
+				continue
 			}
 			spriteID := int(roadObj.Image) + int(offset)
 			w.drawTrackRoadSprite(screen, spriteID, drawX, drawY, extraHeight, scale)
