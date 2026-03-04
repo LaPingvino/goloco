@@ -871,60 +871,66 @@ var kWallImageOffsets = [4][3]uint32{
 // Sprite layout: kTrackParts[trackID][seqIdx] → image offsets per rotation and layer.
 // Mergeable pieces: 3 layers (Ballast=0, Sleeper=1, Rail=2).
 // Non-mergeable (slope) pieces: only layer 0.
+//
+// When multiple track elements share a tile (e.g. a Y-junction or level crossing),
+// all Ballast layers must be drawn before all Sleeper layers, and all Sleeper layers
+// before all Rail layers.  This matches OpenLoco's addToPlotListTrackRoad() which
+// places layers into priority buckets 0/1/3 and flushes them in order.
+// Rendering element-by-element (ballast+sleeper+rail for elem1, then elem2) would
+// let the second element's ballast overdraw the first element's sleepers/rails.
 func (w *World) paintTracks(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
 	if w.renderer == nil || w.renderer.ObjMgr == nil || len(t.tracks) == 0 {
 		return
 	}
 
+	// Resolve all track elements into (piece, rotation, extraHeight, baseImage) tuples.
+	type resolved struct {
+		base        uint32
+		piece       trackPiece
+		rotation    int
+		extraHeight float64
+	}
+	var elems [8]resolved // fixed array avoids allocation; 8 track elements per tile is more than enough
+	n := 0
 	for _, te := range t.tracks {
+		if n >= len(elems) {
+			break
+		}
 		trackObj := w.renderer.ObjMgr.GetTrackObjectByIndex(int(te.TrackObjectID))
 		if trackObj == nil || trackObj.Image == 0 {
 			continue
 		}
-
 		trackID := int(te.TrackID)
 		if trackID >= len(kTrackParts) || kTrackParts[trackID] == nil {
 			continue
 		}
-		pieces := kTrackParts[trackID]
-
+		parts := kTrackParts[trackID]
 		seqIdx := int(te.SequenceIndex)
-		if seqIdx >= len(pieces) {
+		if seqIdx >= len(parts) {
 			continue
 		}
-		piece := pieces[seqIdx]
-
-		rotation := int(te.Rotation & 0x03)
-		extraHeight := float64(int(te.BaseZ)-int(t.baseZ)) * 4.0
-
-		// Determine how many layers to render.
-		maxLayer := 3
-		if piece.nonMergeable {
-			maxLayer = 1
+		elems[n] = resolved{
+			base:        trackObj.Image,
+			piece:       parts[seqIdx],
+			rotation:    int(te.Rotation & 0x03),
+			extraHeight: float64(int(te.BaseZ)-int(t.baseZ)) * 4.0,
 		}
+		n++
+	}
 
-		for layer := 0; layer < maxLayer; layer++ {
-			offset := piece.img[rotation][layer]
+	// Render layer-by-layer: all Ballast (0), then all Sleeper (1), then all Rail (2).
+	// Non-mergeable (slope) pieces only have layer 0 and are skipped in layers 1 and 2.
+	for layer := 0; layer < 3; layer++ {
+		for i := 0; i < n; i++ {
+			el := &elems[i]
+			if layer > 0 && el.piece.nonMergeable {
+				continue
+			}
+			offset := el.piece.img[el.rotation][layer]
 			if offset == 0 {
 				continue
 			}
-			spriteID := int(trackObj.Image) + int(offset)
-
-			img := w.renderer.GetSprite(spriteID)
-			if img == nil {
-				continue
-			}
-			_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
-			if !ok {
-				continue
-			}
-
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Scale(scale, scale)
-			op.GeoM.Translate(
-				drawX+float64(xOff)*scale,
-				drawY+(float64(yOff)-extraHeight)*scale)
-			screen.DrawImage(img, op)
+			w.drawTrackRoadSprite(screen, int(el.base)+int(offset), drawX, drawY, el.extraHeight, scale)
 		}
 	}
 }
