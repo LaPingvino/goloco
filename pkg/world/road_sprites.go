@@ -26,13 +26,58 @@ type roadPiece1 struct {
 //	7=StraightSteepSlopeUp, 8=StraightSteepSlopeDown,
 //	9=Turnaround
 
+// ---- Multi-tile merge (junction) system ----
+//
+// Road IDs 0 (straight), 1 (leftCurveVerySmall) and 2 (rightCurveVerySmall) do NOT render
+// their individual piece sprites.  Instead each element contributes to an "exits" bitmask,
+// and one junction/straight/curve composite sprite is rendered from that combined bitmask.
+// This matches OpenLoco's finalisePaintRoad() / kExitsToMergeId mechanism.
+//
+// Exits bit order: bit0=NE, bit1=SE, bit2=SW, bit3=NW.
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintRoad.cpp, PaintRoadCommonData.h
+
+// kRoadMergeExits[roadID][rotation] = exits bitmask contributed by a road element.
+// Only roadIDs 0–2 participate in the merge system.
+// Source: PaintRoadCommonData.h  kStraight0.bridgeEdges=0b0101 (rotl4bit for each rotation)
+//         kRightCurveVerySmall0.bridgeEdges=0b0110 (rotl4bit)
+//         kLeftCurveVerySmall0 = rotateRoadPCP(kRightCurveVerySmall0, {1,2,3,0})
+var kRoadMergeExits = [3][4]uint8{
+	// 0: Straight — 0b0101 rotl4: {0b0101, 0b1010, 0b0101, 0b1010}
+	{0b0101, 0b1010, 0b0101, 0b1010},
+	// 1: LeftCurveVerySmall — rotate RCV exits by {1,2,3,0}: {0b1100, 0b1001, 0b0011, 0b0110}
+	{0b1100, 0b1001, 0b0011, 0b0110},
+	// 2: RightCurveVerySmall — 0b0110 rotl4: {0b0110, 0b1100, 0b1001, 0b0011}
+	{0b0110, 0b1100, 0b1001, 0b0011},
+}
+
+// kExitsToMergeId maps the 4-bit exits bitmask to a mergeId (0–10).
+// mergeId is added to the merge-base sprite offset to select the final sprite.
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintRoad.cpp  kExitsToMergeId
+var kExitsToMergeId = [16]uint8{
+	0, 0, 1, 5, 0, 0, 2, 8, 1, 4, 1, 7, 3, 6, 9, 10,
+}
+
+// kMergeBaseOffset is the image offset within a road object that the merge system
+// bases its sprite selection on.  mergeId is added to this offset.
+//   mergeId 0  → kStraight0NE (34) — straight NE-SW
+//   mergeId 1  → kStraight0SE (35) — straight SE-NW
+//   mergeId 2–5 → very-small-curve variants (36–39)
+//   mergeId 6–9 → T-junctions (40–43)
+//   mergeId 10  → crossroads (44)
+// OpenLoco reference: PaintRoad.cpp Style02::kMergeBaseImageIndex[0] = kStraight0NE = 34
+const kMergeBaseOffset = uint32(34)
+
+// kMergeBaseOffsetStyle2Right is for the right-lane of Style2 (dual carriageway) roads.
+// OpenLoco reference: PaintRoad.cpp Style02::kMergeBaseImageIndex[2] = kStraight0SW = 85
+const kMergeBaseOffsetStyle2Right = uint32(85)
+
 // kRoadPartsStyle0[roadID] = ordered slice of pieces (indexed by sequenceIndex).
 // Style0: single image per rotation (no Ballast/Sleeper/Rail layering).
-// roadID 0 (Straight) uses global hit-test G1 IDs — not road-object offsets — so all 0 (skip).
 var kRoadPartsStyle0 = [10][]roadPiece0{
 
-	// 0: Straight — uses ImageIds::road_hit_test_straight_NE (global G1), NOT roadObj offset
-	{{img: [4]uint32{0, 0, 0, 0}}},
+	// 0: Straight — kStraight0NE=34, kStraight0SE=35; SW/NW reuse NE/SE (rotationally symmetric)
+	// OpenLoco reference: src/OpenLoco/src/Objects/RoadObject.h  Style0 namespace
+	{{img: [4]uint32{34, 35, 34, 35}}},
 
 	// 1: LeftCurveVerySmall
 	// rotateRoadPP(kRightCurveVerySmall0, {1,2,3,0})

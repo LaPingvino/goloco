@@ -34,6 +34,7 @@ const (
 
 type Game struct {
 	w             *world.World
+	titleWorld    *world.World // preserved title-screen world; restored on Quit to Menu
 	r             *render.Renderer
 	toolbar       *ui.Toolbar
 	windowMgr     *ui.SimpleWindowManager
@@ -46,6 +47,8 @@ type Game struct {
 	mouseY        int
 	dataDir             string
 	inTitleScreen       bool
+	soundEnabled        bool // whether sound effects are on
+	musicEnabled        bool // whether music is on
 	currentScenarioPath string // path of the currently loaded scenario/save
 	saveMsg             string // transient "Game Saved!" status overlay
 	saveMsgFrames       int    // frames remaining to show saveMsg
@@ -213,6 +216,10 @@ func NewGame() *Game {
 					objMgr.ReorderWallObjects(sc.WallObjectOrder)
 					log.Printf("[Game] Reordered wall objects to match scenario slot order (%d slots)", len(sc.WallObjectOrder))
 				}
+				if len(sc.TrainStationObjectOrder) > 0 {
+					objMgr.ReorderTrainStationObjects(sc.TrainStationObjectOrder)
+					log.Printf("[Game] Reordered train station objects to match scenario slot order (%d slots)", len(sc.TrainStationObjectOrder))
+				}
 				if len(sc.TrackObjectOrder) > 0 {
 					objMgr.ReorderTrackObjects(sc.TrackObjectOrder)
 					log.Printf("[Game] Reordered track objects to match scenario slot order (%d slots)", len(sc.TrackObjectOrder))
@@ -265,6 +272,7 @@ func NewGame() *Game {
 	log.Println("[Game] Game initialization complete")
 	return &Game{
 		w:             w,
+		titleWorld:    w, // keep a reference so Quit to Menu can restore it
 		r:             r,
 		toolbar:       toolbar,
 		windowMgr:     windowMgr,
@@ -273,6 +281,8 @@ func NewGame() *Game {
 		titleSeq:      titleSeq,
 		dataDir:       dataDir,
 		inTitleScreen: true,
+		soundEnabled:  true,
+		musicEnabled:  true,
 		sw:            defaultWidth,
 		sh:            defaultHeight,
 		speedMult:     1,
@@ -453,7 +463,7 @@ const (
 	titleMenuMargin = 25 // pixels from bottom
 
 	// Exit button (TitleExit.cpp) — bottom-right
-	titleExitW = 40
+	titleExitW = 60
 	titleExitH = 28
 
 	// Options button (TitleOptions.cpp) — top-right
@@ -474,7 +484,7 @@ func (g *Game) handleTitleMenuClick(mx, my int) {
 	// --- Options button: top-right corner ---
 	optX := g.sw - titleOptionsW
 	if mx >= optX && mx < g.sw && my >= 0 && my < titleOptionsH {
-		log.Println("[Game] Title menu: Options (not yet implemented)")
+		g.openOptionsWindow()
 		return
 	}
 
@@ -526,9 +536,9 @@ func (g *Game) handleToolbarButton(idx int) {
 			}},
 			{Separator: true},
 			{Text: "About", Action: func() { log.Println("[Game] About selected") }},
-			{Text: "Options", Action: func() { log.Println("[Game] Options selected") }},
+			{Text: "Options", Action: func() { g.openOptionsWindow() }},
 			{Separator: true},
-			{Text: "Quit to Menu", Action: func() { g.inTitleScreen = true }},
+			{Text: "Quit to Menu", Action: func() { g.quitToMenu() }},
 			{Text: "Quit to Desktop", Action: func() { os.Exit(0) }},
 		}
 		g.dropdown = ui.NewDropdownMenu(btn.X, btn.Y+btn.Height, items)
@@ -937,6 +947,18 @@ func goLocoSavesDir() string {
 	return dir
 }
 
+// quitToMenu restores the title screen world and restarts the title sequence.
+func (g *Game) quitToMenu() {
+	if g.titleWorld != nil {
+		g.w = g.titleWorld
+	}
+	g.inTitleScreen = true
+	g.currentScenarioPath = ""
+	if g.titleSeq != nil {
+		g.titleSeq.Restart()
+	}
+}
+
 // loadScenario loads a scenario or GoLoco save file into the world.
 // Supports .SC5, .SV5 (Locomotion native) and .goloco (GoLoco JSON saves).
 func (g *Game) loadScenario(filePath string) error {
@@ -971,6 +993,9 @@ func (g *Game) loadScenario(filePath string) error {
 		if len(sc.WallObjectOrder) > 0 {
 			g.objMgr.ReorderWallObjects(sc.WallObjectOrder)
 		}
+		if len(sc.TrainStationObjectOrder) > 0 {
+			g.objMgr.ReorderTrainStationObjects(sc.TrainStationObjectOrder)
+		}
 		if len(sc.TrackObjectOrder) > 0 {
 			g.objMgr.ReorderTrackObjects(sc.TrackObjectOrder)
 		}
@@ -979,7 +1004,10 @@ func (g *Game) loadScenario(filePath string) error {
 		}
 	}
 
-	g.w.LoadFromScenario(sc)
+	// Create a fresh world for the new scenario so the title world is preserved.
+	gameW := world.NewWorld(g.r)
+	gameW.LoadFromScenario(sc)
+	g.w = gameW
 	g.currentScenarioPath = filePath
 	g.inTitleScreen = false
 
@@ -1324,6 +1352,87 @@ func (g *Game) openNewGameWindow() {
 		listScroll = iclamp(listScroll-int(dy), 0, maxScroll)
 	}
 
+	g.windowMgr.OpenWindow(win)
+}
+
+// openOptionsWindow opens a simple Options window with sound/music toggles.
+func (g *Game) openOptionsWindow() {
+	const winTitle = "Options"
+	const (
+		winW        = 260
+		winH        = 140
+		rowH        = 28
+		pad         = 10
+		titleBarH   = 22 // must match simpleTitleBarHeight in simplewindow.go
+		borderW     = 3  // must match simpleBorderWidth in simplewindow.go
+		onBtnX      = 120
+		offBtnX     = 155
+	)
+	contentH := winH - titleBarH - borderW
+	closeBtnRelY := contentH - rowH
+	win := &ui.SimpleWindow{
+		Title:   winTitle,
+		X:       100,
+		Y:       80,
+		Width:   winW,
+		Height:  winH,
+		Visible: true,
+	}
+	win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, _ *render.Renderer) {
+		// Row 1: Sound effects toggle
+		labelSound := "Sound Effects: "
+		if g.soundEnabled {
+			labelSound += "[ON ]  [ OFF]"
+		} else {
+			labelSound += "[ ON]  [OFF ]"
+		}
+		ui.DrawText(screen, labelSound, cx+pad, cy+pad+12, color.White)
+
+		// Row 2: Music toggle
+		labelMusic := "Music:          "
+		if g.musicEnabled {
+			labelMusic += "[ON ]  [ OFF]"
+		} else {
+			labelMusic += "[ ON]  [OFF ]"
+		}
+		ui.DrawText(screen, labelMusic, cx+pad, cy+pad+rowH+12, color.White)
+
+		// Close button centred at bottom
+		btnW := 60
+		btnX := cx + cw/2 - btnW/2
+		btnY := cy + ch - rowH
+		fillRect(screen, float64(btnX), float64(btnY), float64(btnW), float64(rowH-4), color.RGBA{80, 80, 120, 220})
+		lw, _ := ui.MeasureText("Close")
+		ui.DrawText(screen, "Close", btnX+(btnW-lw)/2, btnY+(rowH-4)/2+4, color.White)
+	}
+	win.OnContentClick = func(relX, relY int) {
+		if relY >= closeBtnRelY {
+			g.windowMgr.CloseWindow(winTitle)
+			return
+		}
+		var row int
+		if relY >= pad && relY < pad+rowH {
+			row = 1
+		} else if relY >= pad+rowH && relY < pad+rowH*2 {
+			row = 2
+		}
+		if row == 1 {
+			if relX < onBtnX+25 {
+				g.soundEnabled = true
+			} else if relX >= offBtnX {
+				g.soundEnabled = false
+			}
+		} else if row == 2 {
+			if relX < onBtnX+25 {
+				g.musicEnabled = true
+			} else if relX >= offBtnX {
+				g.musicEnabled = false
+				if g.audioMgr != nil {
+					g.audioMgr.StopMusic()
+				}
+			}
+		}
+	}
 	g.windowMgr.OpenWindow(win)
 }
 

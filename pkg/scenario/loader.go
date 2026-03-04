@@ -178,6 +178,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.TreeObjectOrder = parseTreeObjectOrder(reqObjBytes)
 	sc.BuildingObjectOrder = parseBuildingObjectOrder(reqObjBytes)
 	sc.WallObjectOrder = parseWallObjectOrder(reqObjBytes)
+	sc.TrainStationObjectOrder = parseTrainStationObjectOrder(reqObjBytes)
 	sc.TrackObjectOrder = parseTrackObjectOrder(reqObjBytes)
 	sc.RoadObjectOrder = parseRoadObjectOrder(reqObjBytes)
 
@@ -751,6 +752,20 @@ func parseWallObjectOrder(data []byte) []string {
 		}
 	}
 	log.Printf("[Scenario] RequiredObjects: %d wall objects in slot order", count)
+	return order
+}
+
+// parseTrainStationObjectOrder extracts the 16 train-station-object names from RequiredObjects.
+// Slots 313-328 (ObjectType::trackStation = 15).
+func parseTrainStationObjectOrder(data []byte) []string {
+	order := parseObjectOrder(data, trainStationSlotStart, trainStationSlotCount, objectTypeTrackStation)
+	count := 0
+	for _, n := range order {
+		if n != "" {
+			count++
+		}
+	}
+	log.Printf("[Scenario] RequiredObjects: %d train station objects in slot order", count)
 	return order
 }
 

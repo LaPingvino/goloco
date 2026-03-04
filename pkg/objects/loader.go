@@ -45,6 +45,7 @@ type ObjectManager struct {
 	WallObjects      []*WallObject              // all loaded wall objects
 	TrackObjects     []*TrackObject             // all loaded track objects
 	RoadObjects      []*RoadObject              // all loaded road objects
+	TrainStationObjects []*TrainStationObject      // all loaded train-station objects
 	CliffEdgeObjs    map[string]*CliffEdgeObject // keyed by upper-case name
 	WaterObj         *WaterObject               // the single water object (slot 170)
 	InterfaceSkin    *InterfaceSkinObject
@@ -330,6 +331,25 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 		loaded.Object = road
 		loaded.ImageOffset = road.Image
 		m.RoadObjects = append(m.RoadObjects, road)
+
+	case ObjectTypeTrainStation:
+		var station *TrainStationObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				station, err = ParseTrainStationObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				station, err = ParseTrainStationObject(header, decompressed)
+			}
+		} else {
+			station, err = ParseTrainStationObject(header, decompressed)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("parsing train station: %w", err)
+		}
+		loaded.Object = station
+		loaded.ImageOffset = station.ImageOffset
+		m.TrainStationObjects = append(m.TrainStationObjects, station)
 	}
 
 	// Store in map
@@ -701,4 +721,33 @@ func (m *ObjectManager) ReorderRoadObjects(order []string) {
 	}
 	m.RoadObjects = reordered
 	fmt.Printf("Reordered road objects: %d matched out of %d slots\n", matched, len(order))
+}
+
+// GetTrainStationObjectByIndex returns the TrainStationObject at the given slot index (0-15),
+// or nil if the index is out of range.
+func (m *ObjectManager) GetTrainStationObjectByIndex(index int) *TrainStationObject {
+	if index < 0 || index >= len(m.TrainStationObjects) {
+		return nil
+	}
+	return m.TrainStationObjects[index]
+}
+
+// ReorderTrainStationObjects rebuilds the TrainStationObjects slice so that each
+// slot index maps to the TrainStationObject whose name matches order[i].
+func (m *ObjectManager) ReorderTrainStationObjects(order []string) {
+	reordered := make([]*TrainStationObject, len(order))
+	matched := 0
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if station, ok := obj.Object.(*TrainStationObject); ok {
+				reordered[i] = station
+				matched++
+			}
+		}
+	}
+	m.TrainStationObjects = reordered
+	fmt.Printf("Reordered train station objects: %d matched out of %d slots\n", matched, len(order))
 }

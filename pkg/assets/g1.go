@@ -305,6 +305,25 @@ func (g1 *G1File) GetPaletteMap(colourIdx int) ([]byte, error) {
 	return result, nil
 }
 
+// GetPaletteMapAt loads a 256-byte index remap table from any G1 element index directly.
+// Unlike GetPaletteMap, this takes a raw G1 index rather than an ExtColour offset.
+// Used for water blend palette maps stored inside object sprite pools (e.g. WaterObject+41).
+//
+// OpenLoco reference: src/OpenLoco/src/Objects/ObjectManager.cpp updateWaterPalette()
+//   paletteImageId = waterObj->image + Water::ImageIds::kColourPalette (= 41)
+func (g1 *G1File) GetPaletteMapAt(g1Index int) ([]byte, error) {
+	if g1Index < 0 || g1Index >= len(g1.Elements) {
+		return nil, fmt.Errorf("palette map g1[%d] out of range", g1Index)
+	}
+	e := &g1.Elements[g1Index]
+	if len(e.Data) < 256 {
+		return nil, fmt.Errorf("palette map g1[%d] data too short: %d bytes", g1Index, len(e.Data))
+	}
+	result := make([]byte, 256)
+	copy(result, e.Data[:256])
+	return result, nil
+}
+
 // DecodeSpriteMapped decodes a sprite applying a PaletteMap remap before the palette lookup.
 // For each pixel: finalColour = palette[paletteMap[pixelIndex]].
 // Pass a nil paletteMap to use the identity (same as DecodeSprite).

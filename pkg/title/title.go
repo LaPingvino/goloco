@@ -69,7 +69,7 @@ func NewSequence(audioMgr *audio.Manager) *Sequence {
 		targetX:    200,
 		targetY:    200,
 		targetZoom: 1.0,
-		waypoints:  DefaultWaypoints,
+		waypoints:  append([]Waypoint(nil), DefaultWaypoints...), // copy so scaleWaypoints doesn't mutate the global
 	}
 }
 
@@ -175,6 +175,23 @@ func (s *Sequence) SetCameraPosition(x, y, zoom float64) {
 // Stop ends the title sequence
 func (s *Sequence) Stop() {
 	s.state = StateNone
+}
+
+// Restart resumes the title sequence from waypoint 0 without re-scaling
+// the waypoints (safe to call after Start has already been called once).
+func (s *Sequence) Restart() {
+	s.tickCounter = 0
+	s.waypointIdx = 0
+	s.waypointTick = 0
+	if len(s.waypoints) > 0 {
+		s.cameraX = s.waypoints[0].X
+		s.cameraY = s.waypoints[0].Y
+		s.zoom = s.waypoints[0].Zoom
+		s.targetX = s.cameraX
+		s.targetY = s.cameraY
+		s.targetZoom = s.zoom
+	}
+	s.state = StateRunning
 }
 
 // IsRunning returns true if the title sequence is active
