@@ -235,19 +235,29 @@ func (w *SimpleWindow) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 			screen.DrawImage(img, op)
 		}
 	} else {
-		// Fallback close button - pick a palette-aware color when available
-		fb := color.RGBA{200, 80, 80, 255}
-		var use color.RGBA
-		if graphics.IsGlobalPaletteLoaded() {
-			use = graphics.GetGlobalColor(graphics.MatchPaletteIndex(fb))
+		// Fallback: draw a beveled close button with an × label.
+		const cw, ch = 14, 14
+		bgC := color.RGBA{192, 56, 56, 255}
+		bgIdx := graphics.MatchPaletteIndex(bgC)
+		var lightIdx, darkIdx uint8
+		if bgIdx <= 252 {
+			lightIdx = bgIdx + 4
 		} else {
-			use = fb
+			lightIdx = bgIdx
 		}
-		for y := closeY; y < closeY+12; y++ {
-			for x := closeX; x < closeX+12; x++ {
-				screen.Set(x, y, use)
-			}
+		if bgIdx >= 4 {
+			darkIdx = bgIdx - 4
+		} else {
+			darkIdx = bgIdx
 		}
+		_ = dc.FillRect(int16(closeX), int16(closeY), cw, ch, bgIdx)
+		_ = dc.FillRect(int16(closeX), int16(closeY), cw, 1, lightIdx)
+		_ = dc.FillRect(int16(closeX), int16(closeY), 1, ch, lightIdx)
+		_ = dc.FillRect(int16(closeX), int16(closeY+ch-1), cw, 1, darkIdx)
+		_ = dc.FillRect(int16(closeX+cw-1), int16(closeY), 1, ch, darkIdx)
+		// × label (white)
+		textIdx := graphics.MatchPaletteIndex(color.RGBA{255, 255, 255, 255})
+		_ = dc.DrawString(int16(closeX+4), int16(closeY-2), "x", textIdx)
 	}
 
 	// Draw content if callback is set

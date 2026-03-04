@@ -746,6 +746,57 @@ func fillRect(dst *ebiten.Image, x, y, w, h float64, c color.Color) {
 	vector.FillRect(dst, float32(x), float32(y), float32(w), float32(h), c, false)
 }
 
+// drawButton renders a Windows 95-style 3D beveled button with a centered text label.
+//
+//   - pressed=true inverts the bevel so the button looks inset/active (e.g. toggle ON state).
+//   - enabled=false renders the button greyed out.
+//
+// Colors match the overall Locomotion beige palette; when a global palette is
+// loaded the nearest indices are selected automatically via FillRect chains.
+//
+// OpenLoco reference: src/OpenLoco/src/Graphics/SoftwareDrawingContext.cpp drawRect3d
+func drawButton(screen *ebiten.Image, x, y, w, h int, label string, pressed, enabled bool) {
+	var bgC, lightC, darkC, textC color.RGBA
+	if !enabled {
+		bgC = color.RGBA{168, 163, 148, 255}
+		lightC = color.RGBA{194, 190, 175, 255}
+		darkC = color.RGBA{118, 114, 102, 255}
+		textC = color.RGBA{108, 104, 94, 255}
+	} else if pressed {
+		// Invert bevel: dark on top/left, light on bottom/right
+		bgC = color.RGBA{190, 185, 168, 255}
+		lightC = color.RGBA{110, 107, 96, 255}
+		darkC = color.RGBA{232, 229, 214, 255}
+		textC = color.RGBA{20, 15, 10, 255}
+	} else {
+		bgC = color.RGBA{205, 200, 183, 255}
+		lightC = color.RGBA{238, 235, 220, 255}
+		darkC = color.RGBA{112, 108, 97, 255}
+		textC = color.RGBA{20, 15, 10, 255}
+	}
+	fillRect(screen, float64(x), float64(y), float64(w), float64(h), bgC)
+	// Outer bevel
+	fillRect(screen, float64(x), float64(y), float64(w), 1, lightC)
+	fillRect(screen, float64(x), float64(y), 1, float64(h), lightC)
+	fillRect(screen, float64(x), float64(y+h-1), float64(w), 1, darkC)
+	fillRect(screen, float64(x+w-1), float64(y), 1, float64(h), darkC)
+	// Inner bevel
+	if w > 3 && h > 3 {
+		fillRect(screen, float64(x+1), float64(y+1), float64(w-2), 1, lightC)
+		fillRect(screen, float64(x+1), float64(y+1), 1, float64(h-2), lightC)
+		fillRect(screen, float64(x+1), float64(y+h-2), float64(w-2), 1, darkC)
+		fillRect(screen, float64(x+w-2), float64(y+1), 1, float64(h-2), darkC)
+	}
+	lw, _ := ui.MeasureText(label)
+	lx := x + (w-lw)/2
+	ly := y + h/2 + 4 // +4 for font baseline
+	if pressed {
+		lx++
+		ly++
+	}
+	ui.DrawText(screen, label, lx, ly, textC)
+}
+
 // ColourNone means no palette remap — draw with the base palette as-is.
 const ColourNone = -1
 
@@ -1282,19 +1333,9 @@ func (g *Game) openNewGameWindow() {
 
 		// ── Bottom buttons ───────────────────────────────────────────────
 		btnY := cy + ch - btnAreaH + 4
-		// Cancel
-		fillRect(screen, float64(cx+4), float64(btnY), 80, 22, color.RGBA{150, 140, 120, 255})
-		ui.DrawText(screen, "Cancel", cx+4+20, btnY+15, color.RGBA{20, 20, 20, 255})
-		// Play (greyed when nothing selected)
 		canPlay := selectedIdx >= 0 && selectedIdx < len(items)
-		playBg := color.RGBA{60, 120, 60, 255}
-		playTextCol := color.RGBA{255, 255, 255, 255}
-		if !canPlay {
-			playBg = color.RGBA{130, 130, 120, 255}
-			playTextCol = color.RGBA{80, 80, 80, 255}
-		}
-		fillRect(screen, float64(cx+cw-84), float64(btnY), 80, 22, playBg)
-		ui.DrawText(screen, "Play", cx+cw-84+28, btnY+15, playTextCol)
+		drawButton(screen, cx+4, btnY, 80, 22, "Cancel", false, true)
+		drawButton(screen, cx+cw-84, btnY, 80, 22, "Play", false, canPlay)
 	}
 
 	win.OnContentClick = func(relX, relY int) {
@@ -1355,21 +1396,29 @@ func (g *Game) openNewGameWindow() {
 	g.windowMgr.OpenWindow(win)
 }
 
-// openOptionsWindow opens a simple Options window with sound/music toggles.
+// openOptionsWindow opens an Options window with proper 3D toggle buttons for
+// sound and music, styled after OpenLoco's option panels.
 func (g *Game) openOptionsWindow() {
 	const winTitle = "Options"
 	const (
-		winW        = 260
-		winH        = 140
-		rowH        = 28
-		pad         = 10
-		titleBarH   = 22 // must match simpleTitleBarHeight in simplewindow.go
-		borderW     = 3  // must match simpleBorderWidth in simplewindow.go
-		onBtnX      = 120
-		offBtnX     = 155
+		winW   = 270
+		winH   = 160
+		rowH   = 32
+		pad    = 10
+		btnW   = 44
+		btnH   = 22
+		valueX = 140 // x offset (relative to content area) where ON button starts
 	)
+	// Content area dimensions (must match simplewindow.go constants).
+	const (
+		titleBarH = 22
+		borderW   = 3
+	)
+	contentW := winW - borderW*2
 	contentH := winH - titleBarH - borderW
-	closeBtnRelY := contentH - rowH
+
+	darkText := color.RGBA{20, 15, 10, 255}
+
 	win := &ui.SimpleWindow{
 		Title:   winTitle,
 		X:       100,
@@ -1379,58 +1428,54 @@ func (g *Game) openOptionsWindow() {
 		Visible: true,
 	}
 	win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, _ *render.Renderer) {
-		// Row 1: Sound effects toggle
-		labelSound := "Sound Effects: "
-		if g.soundEnabled {
-			labelSound += "[ON ]  [ OFF]"
-		} else {
-			labelSound += "[ ON]  [OFF ]"
-		}
-		ui.DrawText(screen, labelSound, cx+pad, cy+pad+12, color.White)
+		// Row 1: Sound Effects
+		ui.DrawText(screen, "Sound Effects", cx+pad, cy+pad+btnH/2+4, darkText)
+		drawButton(screen, cx+valueX, cy+pad, btnW, btnH, "On", g.soundEnabled, true)
+		drawButton(screen, cx+valueX+btnW+4, cy+pad, btnW, btnH, "Off", !g.soundEnabled, true)
 
-		// Row 2: Music toggle
-		labelMusic := "Music:          "
-		if g.musicEnabled {
-			labelMusic += "[ON ]  [ OFF]"
-		} else {
-			labelMusic += "[ ON]  [OFF ]"
-		}
-		ui.DrawText(screen, labelMusic, cx+pad, cy+pad+rowH+12, color.White)
+		// Row 2: Music
+		ui.DrawText(screen, "Music", cx+pad, cy+pad+rowH+btnH/2+4, darkText)
+		drawButton(screen, cx+valueX, cy+pad+rowH, btnW, btnH, "On", g.musicEnabled, true)
+		drawButton(screen, cx+valueX+btnW+4, cy+pad+rowH, btnW, btnH, "Off", !g.musicEnabled, true)
+
+		// Separator line
+		sepY := cy + pad + rowH*2 + 6
+		fillRect(screen, float64(cx+pad), float64(sepY), float64(cw-pad*2), 1, color.RGBA{140, 135, 120, 255})
 
 		// Close button centred at bottom
-		btnW := 60
-		btnX := cx + cw/2 - btnW/2
-		btnY := cy + ch - rowH
-		fillRect(screen, float64(btnX), float64(btnY), float64(btnW), float64(rowH-4), color.RGBA{80, 80, 120, 220})
-		lw, _ := ui.MeasureText("Close")
-		ui.DrawText(screen, "Close", btnX+(btnW-lw)/2, btnY+(rowH-4)/2+4, color.White)
+		closeW := 60
+		closeX := cx + (cw-closeW)/2
+		closeY := cy + ch - btnH - 6
+		drawButton(screen, closeX, closeY, closeW, btnH, "Close", false, true)
 	}
 	win.OnContentClick = func(relX, relY int) {
-		if relY >= closeBtnRelY {
-			g.windowMgr.CloseWindow(winTitle)
-			return
-		}
-		var row int
+		// Sound row
 		if relY >= pad && relY < pad+rowH {
-			row = 1
-		} else if relY >= pad+rowH && relY < pad+rowH*2 {
-			row = 2
-		}
-		if row == 1 {
-			if relX < onBtnX+25 {
+			if relX >= valueX && relX < valueX+btnW {
 				g.soundEnabled = true
-			} else if relX >= offBtnX {
+			} else if relX >= valueX+btnW+4 && relX < valueX+btnW*2+4 {
 				g.soundEnabled = false
 			}
-		} else if row == 2 {
-			if relX < onBtnX+25 {
+			return
+		}
+		// Music row
+		if relY >= pad+rowH && relY < pad+rowH*2 {
+			if relX >= valueX && relX < valueX+btnW {
 				g.musicEnabled = true
-			} else if relX >= offBtnX {
+			} else if relX >= valueX+btnW+4 && relX < valueX+btnW*2+4 {
 				g.musicEnabled = false
 				if g.audioMgr != nil {
 					g.audioMgr.StopMusic()
 				}
 			}
+			return
+		}
+		// Close button
+		closeW := 60
+		closeX := (contentW - closeW) / 2
+		closeY := contentH - btnH - 6
+		if relY >= closeY && relY < closeY+btnH && relX >= closeX && relX < closeX+closeW {
+			g.windowMgr.CloseWindow(winTitle)
 		}
 	}
 	g.windowMgr.OpenWindow(win)
@@ -1455,15 +1500,12 @@ func (g *Game) openFileWindow(title string, scenariosOnly bool) {
 	// Colour scheme — all text is dark on the beige window background so it
 	// stays readable regardless of the global palette.
 	var (
-		colText    = color.RGBA{20, 12, 4, 255}   // dark on beige — main text
+		colText    = color.RGBA{20, 12, 4, 255}    // dark on beige — main text
 		colLight   = color.RGBA{240, 238, 232, 255} // light — text on dark bg
-		colDir     = color.RGBA{25, 60, 140, 255}  // blue — directory labels
+		colDir     = color.RGBA{25, 60, 140, 255}   // blue — directory labels
 		colSep     = color.RGBA{140, 132, 115, 255} // panel separator line
 		colSelFile = color.RGBA{50, 100, 185, 220}  // selected file highlight
 		colSelDir  = color.RGBA{35, 100, 45, 220}   // navigating into a dir
-		colBtnBg   = color.RGBA{172, 167, 150, 255} // neutral button
-		colBtnLoad = color.RGBA{45, 115, 45, 245}   // green load button
-		colBtnDis  = color.RGBA{155, 150, 135, 220} // disabled load button
 		colPathBg  = color.RGBA{178, 172, 155, 255} // path display bar
 		colPanelHd = color.RGBA{155, 148, 130, 255} // panel header strip
 	)
@@ -1632,19 +1674,9 @@ func (g *Game) openFileWindow(title string, scenariosOnly bool) {
 
 		// Buttons
 		btnY := stripY + bottomH - 26
-		// Cancel
-		fillRect(screen, float64(cx+4), float64(btnY), 80, 22, colBtnBg)
-		ui.DrawText(screen, "Cancel", cx+4+20, btnY+15, colText)
-		// Load
 		canLoad := selectedFile >= 0 && selectedFile < len(fileList)
-		loadBg := colBtnLoad
-		loadTextCol := colLight
-		if !canLoad {
-			loadBg = colBtnDis
-			loadTextCol = colSep
-		}
-		fillRect(screen, float64(cx+cw-84), float64(btnY), 80, 22, loadBg)
-		ui.DrawText(screen, "Load", cx+cw-84+28, btnY+15, loadTextCol)
+		drawButton(screen, cx+4, btnY, 80, 22, "Cancel", false, true)
+		drawButton(screen, cx+cw-84, btnY, 80, 22, "Load", false, canLoad)
 		_ = colSelDir
 	}
 
