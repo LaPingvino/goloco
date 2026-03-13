@@ -108,10 +108,13 @@ func (r *Renderer) GetSpriteColoured(spriteIndex, colourIndex int) *ebiten.Image
 	if r.G1 == nil {
 		return nil
 	}
+	if spriteIndex < 0 || spriteIndex >= len(r.G1.Elements) {
+		return nil
+	}
 
 	cacheKey := (spriteIndex << 8) | (colourIndex & 0xFF)
 	if img, ok := r.colouredSpriteCache[cacheKey]; ok {
-		return img
+		return img // nil entries cached here prevent repeated failed decodes
 	}
 
 	palMap, err := r.G1.GetPaletteMap(colourIndex)
@@ -122,12 +125,36 @@ func (r *Renderer) GetSpriteColoured(spriteIndex, colourIndex int) *ebiten.Image
 
 	rgba, err := r.G1.DecodeSpriteMapped(spriteIndex, palMap)
 	if err != nil {
-		log.Printf("[Render] DecodeSpriteMapped sprite=%d colour=%d: %v", spriteIndex, colourIndex, err)
-		return r.GetSprite(spriteIndex)
+		if !spriteErrorLogged[spriteIndex] {
+			log.Printf("[Render] DecodeSpriteMapped sprite=%d colour=%d: %v", spriteIndex, colourIndex, err)
+			spriteErrorLogged[spriteIndex] = true
+		}
+		r.colouredSpriteCache[cacheKey] = nil // cache nil to stop repeated attempts
+		return nil
 	}
 
 	img := ebiten.NewImageFromImage(rgba)
 	r.colouredSpriteCache[cacheKey] = img
+	return img
+}
+
+// GetSpriteWithPaletteMap decodes a sprite applying a raw 256-byte palette remap table.
+// Used for water blend sprites whose palette indices 1-4 map to water-blue shades
+// via the WaterObject's remap table (G1[waterImageOffset+41]).
+// Results are cached by spriteIndex (caller must pass the same palMap per spriteIndex).
+func (r *Renderer) GetSpriteWithPaletteMap(spriteIndex int, palMap []byte) *ebiten.Image {
+	if r.G1 == nil {
+		return nil
+	}
+	if img, ok := r.colouredSpriteCache[spriteIndex]; ok {
+		return img
+	}
+	rgba, err := r.G1.DecodeSpriteMapped(spriteIndex, palMap)
+	if err != nil {
+		return r.GetSprite(spriteIndex)
+	}
+	img := ebiten.NewImageFromImage(rgba)
+	r.colouredSpriteCache[spriteIndex] = img
 	return img
 }
 

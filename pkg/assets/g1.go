@@ -415,6 +415,62 @@ func (g1 *G1File) decodeRLEMapped(elem *G1Element, img *image.RGBA, palMap []byt
 	return nil
 }
 
+// DecodeSpriteMaskOnly decodes a blend-mask sprite into a stencil image where
+// every pixel that is explicitly present in the sprite data becomes opaque white
+// and all absent (gap) positions remain transparent.
+//
+// For RLE-compressed blend sprites (e.g. water +35) the palette index value is
+// irrelevant — OpenLoco's withBlend() mode applies the water colour remap to
+// every pixel that appears in the RLE run, regardless of whether its index is 0
+// or a small shading value (1-4, etc.).  We therefore use decodeRLEPresence so
+// the full diamond shape is treated as the blend region.
+//
+// For uncompressed sprites the blend region is still defined by palette index 0
+// (legacy behaviour preserved for non-water blend sprites).
+//
+// OpenLoco reference: src/OpenLoco/src/Graphics/DrawSpriteHelper.hpp (blend pixel mode)
+func (g1 *G1File) DecodeSpriteMaskOnly(index int) (*image.RGBA, error) {
+	if index < 0 || index >= len(g1.Elements) {
+		return nil, fmt.Errorf("sprite index %d out of range", index)
+	}
+	elem := &g1.Elements[index]
+	if elem.Width <= 0 || elem.Height <= 0 {
+		return nil, fmt.Errorf("invalid sprite dimensions: %dx%d", elem.Width, elem.Height)
+	}
+	w, h := int(elem.Width), int(elem.Height)
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	opaque := color.RGBA{255, 255, 255, 255}
+
+	if elem.Flags&G1FlagIsRLECompressed != 0 {
+		// For RLE blend sprites: every pixel present in the RLE stream is the
+		// blend region.  Use the presence bitmap rather than checking index == 0.
+		presence, err := decodeRLEPresence(elem.Data, w, h)
+		if err != nil {
+			return nil, fmt.Errorf("decode mask RLE presence: %w", err)
+		}
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				if presence[y*w+x] {
+					img.SetRGBA(x, y, opaque)
+				}
+			}
+		}
+	} else {
+		// Uncompressed: palette index 0 marks the blend region.
+		if len(elem.Data) < w*h {
+			return nil, fmt.Errorf("mask raw data too small: %d < %d", len(elem.Data), w*h)
+		}
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				if elem.Data[y*w+x] == 0 {
+					img.SetRGBA(x, y, opaque)
+				}
+			}
+		}
+	}
+	return img, nil
+}
+
 // DecodeSprite decodes a sprite element to an RGBA image
 func (g1 *G1File) DecodeSprite(index int) (*image.RGBA, error) {
 	if index < 0 || index >= len(g1.Elements) {

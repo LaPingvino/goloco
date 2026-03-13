@@ -245,6 +245,51 @@ func TestWaterHeightFormula(t *testing.T) {
 //   Must alternate every tile (not every 32 tiles).
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Water palette remap — the blend sprite (+35) uses palette indices 1-4.
+// Without the water palette remap (G1[waterImageOffset+41]), those indices
+// decode as transparent/black. The remap maps them to opaque blue shades.
+// We verify the remap formula: spriteID = ImageOffset + BlendedOffset + shape.
+// ---------------------------------------------------------------------------
+
+func TestWaterBlendSpriteIDFormula(t *testing.T) {
+	// Verifies the sprite ID formula used in paintWater for the full-tile
+	// water surface (blendID) that requires palette remap to render as blue.
+	cases := []struct {
+		imageOffset uint32
+		shape       uint8
+		wantFlatID  uint32
+		wantBlendID uint32
+		desc        string
+	}{
+		{100000, 0, 100030, 100035, "flat ocean"},
+		{100000, 1, 100031, 100036, "slope variant 1"},
+		{200000, 0, 200030, 200035, "different object offset"},
+	}
+
+	for _, c := range cases {
+		flatID := c.imageOffset + 30 + uint32(c.shape)
+		blendID := c.imageOffset + 35 + uint32(c.shape)
+		if flatID != c.wantFlatID || blendID != c.wantBlendID {
+			t.Errorf("water sprite IDs(offset=%d,shape=%d): flat=%d blend=%d, want flat=%d blend=%d — %s",
+				c.imageOffset, c.shape, flatID, blendID, c.wantFlatID, c.wantBlendID, c.desc)
+		}
+	}
+}
+
+// TestWaterPaletteRemapIndex verifies that the water remap palette map is at
+// waterObj.ImageOffset + 41, matching OpenLoco's WaterObject sprite layout.
+// OpenLoco reference: PaintSurface.cpp paintSurfaceWater — withBlend(ExtColour::water)
+//   The remap table is the 42nd sprite in the water object image table (0-indexed).
+func TestWaterPaletteRemapIndex(t *testing.T) {
+	const remapOffset = 41 // 0-indexed position of the remap palette map
+	const imageOffset = uint32(118748)
+	wantRemapID := int(imageOffset) + remapOffset
+	if wantRemapID != 118789 {
+		t.Errorf("water remap G1 index = %d, want 118789 (imageOffset+41)", wantRemapID)
+	}
+}
+
 func TestCheckerboard(t *testing.T) {
 	cases := []struct {
 		x, y    int

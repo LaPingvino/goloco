@@ -57,6 +57,10 @@ type Scenario struct {
 	// Slots 365-372 (8 slots).
 	RoadObjectOrder []string
 
+	// VehicleObjectOrder is the list of vehicle-object names in slot order.
+	// Slots 389-612 (224 slots, ObjectType::vehicle).
+	VehicleObjectOrder []string
+
 	// Entities contains vehicle entities parsed from the GameState chunk of
 	// an .SV5 saved-game file.  Only VehicleHead and VehicleBody types are
 	// included — enough for world-space rendering.  Nil for .SC5 scenarios.

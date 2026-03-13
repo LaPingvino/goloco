@@ -273,6 +273,10 @@ func NewGame() *Game {
 					objMgr.ReorderRoadObjects(sc.RoadObjectOrder)
 					log.Printf("[Game] Reordered road objects to match scenario slot order (%d slots)", len(sc.RoadObjectOrder))
 				}
+				if len(sc.VehicleObjectOrder) > 0 {
+					objMgr.ReorderVehicleObjects(sc.VehicleObjectOrder)
+					log.Printf("[Game] Reordered vehicle objects to match scenario slot order (%d slots)", len(sc.VehicleObjectOrder))
+				}
 			}
 			w.LoadFromScenario(sc)
 			log.Printf("[Game] Loaded title scenario: %dx%d map", sc.MapWidth, sc.MapHeight)
@@ -343,8 +347,11 @@ func (g *Game) Update() error {
 	g.mouseX, g.mouseY = ebiten.CursorPosition()
 
 	if g.inTitleScreen {
-		// Title screen: advance camera animation and apply to world
+		// Title screen: advance camera animation and apply to world.
+		// w.Update() must be called here too — it increments animTick which
+		// drives water wave animation and demo train movement.
 		g.titleFrame++
+		g.w.Update()
 		if g.titleSeq != nil {
 			g.titleSeq.Update()
 			cx, cy := g.titleSeq.GetCameraPosition()
@@ -842,7 +849,11 @@ func (g *Game) handleToolbarButton(idx int) {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{135, 206, 235, 255})
+	if g.diagPending {
+		diagBackground(screen)
+	} else {
+		screen.Fill(color.RGBA{0, 0, 0, 255})
+	}
 
 	// Full-map PNG save: skip normal game draw; show progress and render one chunk.
 	if done, total := g.w.MapSaveProgress(); total > 0 {
@@ -1292,6 +1303,9 @@ func (g *Game) loadScenario(filePath string) error {
 		}
 		if len(sc.RoadObjectOrder) > 0 {
 			g.objMgr.ReorderRoadObjects(sc.RoadObjectOrder)
+		}
+		if len(sc.VehicleObjectOrder) > 0 {
+			g.objMgr.ReorderVehicleObjects(sc.VehicleObjectOrder)
 		}
 	}
 
@@ -2020,12 +2034,20 @@ func (g *Game) openFileWindow(title string, scenariosOnly bool) {
 // -----------------------------------------------------------------------
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
-	// Track physical window size for UI hit-testing (edge scroll, status bar).
-	// Return a fixed logical size so Ebiten's internal scale stays consistent
-	// regardless of window resize or DPI — avoids screen-size-change artifacts.
+	if outsideWidth < 1 {
+		outsideWidth = defaultWidth
+	}
+	if outsideHeight < 1 {
+		outsideHeight = defaultHeight
+	}
 	g.sw = outsideWidth
 	g.sh = outsideHeight
-	return defaultWidth, defaultHeight
+	// Update toolbar to span the full window width on resize.
+	if g.toolbar != nil && g.toolbar.Width != outsideWidth {
+		g.toolbar.Width = outsideWidth
+		g.toolbar.RightAlignButtons(outsideWidth)
+	}
+	return outsideWidth, outsideHeight
 }
 
 const diagCropW = 480
@@ -2034,6 +2056,30 @@ const diagCropH = 360
 // saveDiagCrop saves a 480×360 PNG cropped from the centre of the screen
 // (or centred on tile diagTileX/diagTileY when the world is loaded).
 // The file is always named "diag.png" so Claude can read it without guessing the name.
+// diagBackground draws a black+red cross-hatch pattern onto img so that
+// transparent/unrendered areas are visually distinct from intentional black pixels.
+func diagBackground(img *ebiten.Image) {
+	w, h := img.Bounds().Dx(), img.Bounds().Dy()
+	pixels := make([]byte, w*h*4)
+	const stride = 16 // grid cell size
+	red := [4]byte{180, 0, 0, 255}
+	dark := [4]byte{20, 20, 20, 255}
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			onLine := (x%stride == 0) || (y%stride == 0)
+			var c [4]byte
+			if onLine {
+				c = red
+			} else {
+				c = dark
+			}
+			i := (y*w + x) * 4
+			pixels[i], pixels[i+1], pixels[i+2], pixels[i+3] = c[0], c[1], c[2], c[3]
+		}
+	}
+	img.WritePixels(pixels)
+}
+
 func saveDiagCrop(screen *ebiten.Image, g *Game, tileX, tileY int) {
 	sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
 
@@ -2070,7 +2116,8 @@ func main() {
 	// Parse CLI args:
 	//   ./goloco [file]                    — load scenario normally
 	//   ./goloco [file] --diag TX,TY       — save diag.png centred on tile TX,TY, quit
-	//   ./goloco [file] --diag water       — save diag.png centred on nearest water tile, quit
+	//   ./goloco [file] --diag worst       — jump to tile with most render issues (dynamic)
+	//   ./goloco [file] --diag water       — scan for nearest water tile, quit
 	//   ./goloco [file] --diag building    — same for building / track / road / tree / station /
 	//                                        industry / wall / train
 	//   ./goloco [file] --diag             — save diag.png centred on map middle, quit
@@ -2093,7 +2140,7 @@ func main() {
 		if n == 2 {
 			i++ // consumed as TX,TY
 		} else if len(next) > 0 && next[0] != '-' {
-			diagKind = next // consumed as kind keyword
+			diagKind = next // consumed as kind keyword (water, worst, building, etc.)
 			i++
 		}
 	}
@@ -2107,18 +2154,24 @@ func main() {
 	if diagMode && game.w != nil {
 		if diagTileX < 0 {
 			if diagKind == "" {
-				diagKind = "water" // sensible default for --diag with no arg
+				diagKind = "worst"
 			}
-			game.w.CenterOn(diagKind)
+			game.w.CenterOn(diagKind) // handles "worst", "water", "building", etc.
+			// Store the tile CenterOn snapped to so Draw() re-applies camera each
+			// frame, overriding the title sequence tour camera.
+			game.diagTileX = game.w.LastCenterTileX
+			game.diagTileY = game.w.LastCenterTileY
+			game.diagPending = true
+			game.diagQuit = true
 		} else {
 			// Move camera to centre on the requested tile so it is
 			// fully rendered when saveDiagCrop runs after Draw().
 			game.w.SetCamera(float64(diagTileX), float64(diagTileY))
+			game.diagPending = true
+			game.diagQuit = true
+			game.diagTileX = diagTileX
+			game.diagTileY = diagTileY
 		}
-		game.diagPending = true
-		game.diagQuit = true
-		game.diagTileX = diagTileX
-		game.diagTileY = diagTileY
 	}
 
 	ebiten.SetWindowSize(defaultWidth, defaultHeight)

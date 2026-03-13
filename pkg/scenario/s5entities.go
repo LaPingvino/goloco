@@ -1,5 +1,7 @@
 package scenario
 
+import "github.com/LaPingvino/goloco/pkg/coords"
+
 // s5entities.go — Go types mirroring the S5 entity table binary format.
 //
 // The entity table is embedded in the GameState chunk of an .SV5 save file.
@@ -24,8 +26,24 @@ package scenario
 // OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h  GameState::entities
 const (
 	// EntityTableOffset is the byte offset of the entity array within the
-	// full decompressed GameState chunk.
+	// full decompressed GameState chunk for the original GameState format.
+	// OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h
+	//   struct GameState { Entity entities[...]; // 0x1B58C4 }
+	//   static_assert(sizeof(GameState) == 0x4A0644)
 	EntityTableOffset = 0x1B58C4
+
+	// EntityTableOffsetType2 is the entity table offset for GameStateType2.
+	// GameStateType2 uses a smaller Company struct, shifting all subsequent
+	// arrays down by 0x1C20 bytes relative to GameState.
+	// OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h
+	//   struct GameStateType2 { Entity entities[...]; // 0x1B3CA4 }
+	//   static_assert(sizeof(GameStateType2) == 0x49EA24)
+	EntityTableOffsetType2 = 0x1B3CA4
+
+	// GameStateSizeType2 is the decompressed size of a GameStateType2 chunk.
+	// When the GameState chunk decompresses to exactly this size, use
+	// EntityTableOffsetType2 instead of EntityTableOffset.
+	GameStateSizeType2 = 0x49EA24
 
 	// EntitySize is the size of a single entity slot in bytes.
 	// OpenLoco reference: static_assert(sizeof(Entity) == 0x80)
@@ -178,16 +196,19 @@ type VehicleEntity struct {
 	Owner      uint8  // ebOwner (0x21) — company index
 
 	// Sub-tile world position (ebPosX/Y/Z, 0x0E-0x12).
-	// 1 tile = 32 sub-tile units.  Divide by 32 for fractional tile coordinate.
-	PosX int16 // world sub-tile X
-	PosY int16 // world sub-tile Y
-	PosZ uint8 // world Z (SmallZ height; multiply by 4 for pixels)
+	// 1 tile = 32 WorldUnits.  Call .Tile() for tile index, .SubOffset() for intra-tile.
+	PosX coords.WorldUnits // world sub-tile X
+	PosY coords.WorldUnits // world sub-tile Y
+	PosZ uint8             // world Z (SmallZ height; multiply by 4 for pixels)
 
 	// ---- Common vehicle fields ----
-	HeadID    uint16 // vhCommonHead (0x26) — ID of this train's VehicleHead entity
-	TileX     int16  // vhCommonTileX (0x30) — integer tile-space X position
-	TileY     int16  // vhCommonTileY (0x32) — integer tile-space Y position
-	TileBaseZ uint8  // vhCommonTileBaseZ (0x34) — height in SmallZ units
+	HeadID uint16 // vhCommonHead (0x26) — ID of this train's VehicleHead entity
+	// TileX/TileY are tile-aligned world coords in WorldUnits (same units as PosX/PosY).
+	// TileX = PosX.Tile().World() — i.e., floor(PosX/32)*32.
+	// Use PosX.Tile() / PosY.Tile() for the tile grid index.
+	TileX     coords.WorldUnits // vhCommonTileX (0x30) — tile-aligned X in WorldUnits
+	TileY     coords.WorldUnits // vhCommonTileY (0x32) — tile-aligned Y in WorldUnits
+	TileBaseZ uint8             // vhCommonTileBaseZ (0x34) — height in SmallZ units
 	NextCarID uint16 // vhCommonNextCarId (0x3A) — next entity in car chain (0xFFFF = end)
 
 	// ---- VehicleBody / VehicleBogie sprite fields ----
@@ -203,13 +224,28 @@ type VehicleEntity struct {
 // ParseVehicleEntities extracts VehicleHead and VehicleBody entities from a
 // decompressed GameState chunk (as read from an .SV5 saved-game file).
 //
+// Detects GameStateType2 vs GameState by decompressed chunk size and chooses
+// the correct entity table offset automatically.
+//
+// IMPORTANT: In GameStateType2 files (including title.dat), TileX and TileY
+// are stored in sub-tile world units (same as PosX/PosY), NOT tile indices.
+// Convert to tile index with TileX/32 or TileY/32.
+//
 // Returns nil without error when the chunk is too small to contain the entity
 // table — this is expected for .SC5 scenario files, which only write a
 // GeneralState chunk (0xB96C bytes) rather than the full GameState.
 //
 // OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h  GameState::entities
 func ParseVehicleEntities(gameState []byte) []VehicleEntity {
-	minSize := EntityTableOffset + MaxEntities*EntitySize
+	// Choose the entity table offset based on the GameState variant.
+	// GameStateType2 (sizeof==0x49EA24) uses offset 0x1B3CA4.
+	// GameState       (sizeof==0x4A0644) uses offset 0x1B58C4.
+	tableOffset := EntityTableOffset
+	if len(gameState) == GameStateSizeType2 {
+		tableOffset = EntityTableOffsetType2
+	}
+
+	minSize := tableOffset + MaxEntities*EntitySize
 	if len(gameState) < minSize {
 		// Not a full saved-game GameState — scenario files are much smaller.
 		return nil
@@ -217,7 +253,7 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 
 	var result []VehicleEntity
 	for i := 0; i < MaxEntities; i++ {
-		off := EntityTableOffset + i*EntitySize
+		off := tableOffset + i*EntitySize
 		e := gameState[off : off+EntitySize]
 
 		baseType := e[ebBaseType]
@@ -239,13 +275,13 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			SpriteYaw:  e[ebSpriteYaw],
 			Owner:      e[ebOwner],
 
-			PosX: int16(e[ebPosX]) | int16(e[ebPosX+1])<<8,
-			PosY: int16(e[ebPosY]) | int16(e[ebPosY+1])<<8,
+			PosX: coords.WorldUnits(int16(e[ebPosX]) | int16(e[ebPosX+1])<<8),
+			PosY: coords.WorldUnits(int16(e[ebPosY]) | int16(e[ebPosY+1])<<8),
 			PosZ: e[ebPosZ],
 
 			HeadID:    uint16(e[vhCommonHead]) | uint16(e[vhCommonHead+1])<<8,
-			TileX:     int16(e[vhCommonTileX]) | int16(e[vhCommonTileX+1])<<8,
-			TileY:     int16(e[vhCommonTileY]) | int16(e[vhCommonTileY+1])<<8,
+			TileX:     coords.WorldUnits(int16(e[vhCommonTileX]) | int16(e[vhCommonTileX+1])<<8),
+			TileY:     coords.WorldUnits(int16(e[vhCommonTileY]) | int16(e[vhCommonTileY+1])<<8),
 			TileBaseZ: e[vhCommonTileBaseZ],
 			NextCarID: uint16(e[vhCommonNextCarId]) | uint16(e[vhCommonNextCarId+1])<<8,
 

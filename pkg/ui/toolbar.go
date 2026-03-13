@@ -118,18 +118,20 @@ func NewToolbar(screenWidth int) *Toolbar {
 	}
 
 	// Right-align the tertiary and quaternary buttons
-	t.rightAlignButtons(screenWidth)
+	t.RightAlignButtons(screenWidth)
 
 	return t
 }
 
-// rightAlignButtons repositions tertiary and quaternary buttons to the right side
+// RightAlignButtons repositions tertiary and quaternary buttons to the right side
 // of the toolbar, matching OpenLoco's dynamic positioning logic.
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTop.cpp
 //
 //	prepareDraw() lines 977-997
-func (t *Toolbar) rightAlignButtons(screenWidth int) {
+// RightAlignButtons repositions the right-aligned toolbar buttons for the
+// given screen width. Called on creation and again whenever the window resizes.
+func (t *Toolbar) RightAlignButtons(screenWidth int) {
 	// Start from the right edge (match OpenLoco: max(640, width) - 1)
 	x := screenWidth - 1
 
@@ -258,6 +260,7 @@ func (t *Toolbar) drawButton(screen *ebiten.Image, btn *ToolbarButton, renderer 
 	_ = dc.FillRect(int16(btn.X), int16(btn.Y), int16(btn.Width), int16(btn.Height), bgIdx)
 
 	// Try to draw the InterfaceSkin sprite if available
+	drewSprite := false
 	if imageIDs, ok := buttonImageIDs[btn.Tooltip]; ok {
 		imageID := imageIDs[0] // normal
 		if btn.Hovered || btn.Pressed {
@@ -275,31 +278,60 @@ func (t *Toolbar) drawButton(screen *ebiten.Image, btn *ToolbarButton, renderer 
 			opts := &ebiten.DrawImageOptions{}
 			opts.GeoM.Translate(float64(drawX), float64(drawY))
 			screen.DrawImage(sprite, opts)
-		} else {
-			// Fallback: draw abbreviated text label
-			if btn.Tooltip != "" {
-				label := btn.Tooltip
-				if len(label) > 4 {
-					label = label[:4]
+			drewSprite = true
+		}
+	}
+
+	// Railroad / Road: draw the first available track/road preview image on top of the
+	// empty-opaque background, mirroring OpenLoco ToolbarTop.cpp::draw().
+	// OpenLoco reference: ToolbarTop.cpp:818-852 (railroad_menu draw)
+	//   fg_image = recolour(obj->image + TrackObj::ImageIds::kUiPreviewImage0, companyColour)
+	if !drewSprite || btn.Tooltip == "Railroad" || btn.Tooltip == "Road" {
+		var previewSpriteID int = -1
+		const defaultCompanyColour = 7
+		if btn.Tooltip == "Railroad" && renderer.ObjMgr != nil {
+			for _, tr := range renderer.ObjMgr.TrackObjects {
+				if tr != nil {
+					previewSpriteID = int(tr.Image) // kUiPreviewImage0 = offset 0
+					break
 				}
-				labelW, _ := MeasureText(label)
-				labelX := btn.X + (btn.Width-labelW)/2
-				labelY := btn.Y + btn.Height/2 + 4
-				DrawText(screen, label, labelX, labelY, color.White)
+			}
+		} else if btn.Tooltip == "Road" && renderer.ObjMgr != nil {
+			for _, ro := range renderer.ObjMgr.RoadObjects {
+				if ro != nil {
+					previewSpriteID = int(ro.Image) // kUiPreviewImage0 = offset 0
+					break
+				}
 			}
 		}
-	} else {
-		// No sprite mapping - use text label
-		if btn.Tooltip != "" {
-			label := btn.Tooltip
-			if len(label) > 4 {
-				label = label[:4]
+		if previewSpriteID >= 0 {
+			img := renderer.GetSpriteColoured(previewSpriteID, defaultCompanyColour)
+			if img == nil {
+				img = renderer.GetSprite(previewSpriteID)
 			}
-			labelW, _ := MeasureText(label)
-			labelX := btn.X + (btn.Width-labelW)/2
-			labelY := btn.Y + btn.Height/2 + 4
-			DrawText(screen, label, labelX, labelY, color.White)
+			if img != nil {
+				spriteW := img.Bounds().Dx()
+				spriteH := img.Bounds().Dy()
+				drawX := btn.X + (btn.Width-spriteW)/2
+				drawY := btn.Y + (btn.Height-spriteH)/2
+				opts := &ebiten.DrawImageOptions{}
+				opts.GeoM.Translate(float64(drawX), float64(drawY))
+				screen.DrawImage(img, opts)
+				drewSprite = true
+			}
 		}
+	}
+
+	// Fallback: abbreviated text label
+	if !drewSprite && btn.Tooltip != "" {
+		label := btn.Tooltip
+		if len(label) > 4 {
+			label = label[:4]
+		}
+		labelW, _ := MeasureText(label)
+		labelX := btn.X + (btn.Width-labelW)/2
+		labelY := btn.Y + btn.Height/2 + 4
+		DrawText(screen, label, labelX, labelY, color.White)
 	}
 
 	// Draw button border using palette indices for light/dark edges

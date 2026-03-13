@@ -817,6 +817,29 @@ func (m *ObjectManager) GetRoadStationObjectByIndex(index int) *RoadStationObjec
 	return m.RoadStationObjects[index]
 }
 
+// ReorderVehicleObjects rebuilds the Vehicles slice so that each vehicle slot
+// index (from entity ObjectID) maps to the VehicleObject whose name matches
+// order[i].  Slots 389-612 in RequiredObjects; order[] has length 224.
+//
+// OpenLoco reference: src/OpenLoco/src/Objects/ObjectManager.cpp
+func (m *ObjectManager) ReorderVehicleObjects(order []string) {
+	reordered := make([]*VehicleObject, len(order))
+	matched := 0
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if v, ok := obj.Object.(*VehicleObject); ok {
+				reordered[i] = v
+				matched++
+			}
+		}
+	}
+	m.Vehicles = reordered
+	fmt.Printf("Reordered vehicle objects: %d matched out of %d slots\n", matched, len(order))
+}
+
 // ReorderRoadStationObjects rebuilds the RoadStationObjects slice so that each
 // slot index maps to the RoadStationObject whose name matches order[i].
 func (m *ObjectManager) ReorderRoadStationObjects(order []string) {

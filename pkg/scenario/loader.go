@@ -189,6 +189,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.RoadStationObjectOrder = parseRoadStationObjectOrder(reqObjBytes)
 	sc.TrackObjectOrder = parseTrackObjectOrder(reqObjBytes)
 	sc.RoadObjectOrder = parseRoadObjectOrder(reqObjBytes)
+	sc.VehicleObjectOrder = parseVehicleObjectOrder(reqObjBytes)
 
 	// --- Game state chunks ---
 	// For scenarios: three separate chunks (GeneralState, Towns, Animations).
@@ -666,6 +667,11 @@ const (
 	roadSlotStart = 365
 	roadSlotCount = 8
 
+	// Vehicle slots: Road(8)+Airport(8)+Dock(8) = 365+8+8+8 = 389
+	vehicleSlotStart = 389
+	vehicleSlotCount = 224
+	objectTypeVehicle = 23 // ObjectType::vehicle
+
 	// Tree slots: after Interface(1)+Sound(128)+Currency(1)+Steam(32)+Rock(8)+Water(1)+
 	//   Surface(32)+TownNames(1)+Cargo(32)+Wall(32)+TrackSignal(16)+LevelCrossing(4)+
 	//   StreetLight(1)+Tunnel(16)+Bridge(8)+TrainStation(16)+TrackExtra(8)+Track(8)+
@@ -817,6 +823,20 @@ func parseRoadObjectOrder(data []byte) []string {
 		}
 	}
 	log.Printf("[Scenario] RequiredObjects: %d road objects in slot order", count)
+	return order
+}
+
+// parseVehicleObjectOrder extracts the 224 vehicle-object names from RequiredObjects.
+// Slots 389-612 (ObjectType::vehicle = 23).
+func parseVehicleObjectOrder(data []byte) []string {
+	order := parseObjectOrder(data, vehicleSlotStart, vehicleSlotCount, objectTypeVehicle)
+	count := 0
+	for _, n := range order {
+		if n != "" {
+			count++
+		}
+	}
+	log.Printf("[Scenario] RequiredObjects: %d vehicle objects in slot order", count)
 	return order
 }
 
