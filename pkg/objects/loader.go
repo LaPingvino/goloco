@@ -48,6 +48,7 @@ type ObjectManager struct {
 	TrainStationObjects []*TrainStationObject      // all loaded train-station objects
 	RoadStationObjects  []*RoadStationObject       // all loaded road-station objects
 	TrainSignalObjects  []*TrainSignalObject       // all loaded train-signal objects (slots 268-283)
+	BridgeObjects       []*BridgeObject            // all loaded bridge objects (slots 305-312)
 	CliffEdgeObjs    map[string]*CliffEdgeObject // keyed by upper-case name
 	WaterObj         *WaterObject               // the single water object (slot 170)
 	InterfaceSkin    *InterfaceSkinObject
@@ -407,6 +408,25 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		loaded.Object = roadStation
 		loaded.ImageOffset = roadStation.ImageOffset
 		m.RoadStationObjects = append(m.RoadStationObjects, roadStation)
+
+	case ObjectTypeBridge:
+		var bridge *BridgeObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				bridge, err = ParseBridgeObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				bridge, err = ParseBridgeObject(header, decompressed)
+			}
+		} else {
+			bridge, err = ParseBridgeObject(header, decompressed)
+		}
+		if err != nil {
+			return fmt.Errorf("parsing bridge: %w", err)
+		}
+		loaded.Object = bridge
+		loaded.ImageOffset = bridge.ImageOffset
+		m.BridgeObjects = append(m.BridgeObjects, bridge)
 
 	case ObjectTypeTrackSignal:
 		var sig *TrainSignalObject
@@ -797,6 +817,36 @@ func (m *ObjectManager) ReorderRoadObjects(order []string) {
 	}
 	m.RoadObjects = reordered
 	fmt.Printf("Reordered road objects: %d matched out of %d slots\n", matched, len(order))
+}
+
+// GetBridgeObjectByIndex returns the BridgeObject at the given slot index (0-7),
+// or nil if the index is out of range.
+func (m *ObjectManager) GetBridgeObjectByIndex(index int) *BridgeObject {
+	if index < 0 || index >= len(m.BridgeObjects) {
+		return nil
+	}
+	return m.BridgeObjects[index]
+}
+
+// ReorderBridgeObjects rebuilds the BridgeObjects slice so that each bridge slot
+// index maps to the BridgeObject whose name matches order[i].
+// Slots 305-312 in RequiredObjects (8 slots).
+func (m *ObjectManager) ReorderBridgeObjects(order []string) {
+	reordered := make([]*BridgeObject, len(order))
+	matched := 0
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if b, ok := obj.Object.(*BridgeObject); ok {
+				reordered[i] = b
+				matched++
+			}
+		}
+	}
+	m.BridgeObjects = reordered
+	fmt.Printf("Reordered bridge objects: %d matched out of %d slots\n", matched, len(order))
 }
 
 // GetTrainSignalObjectByIndex returns the TrainSignalObject at the given slot index (0-15),

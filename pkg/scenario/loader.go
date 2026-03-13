@@ -186,6 +186,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.BuildingObjectOrder = parseBuildingObjectOrder(reqObjBytes)
 	sc.WallObjectOrder = parseWallObjectOrder(reqObjBytes)
 	sc.TrainSignalObjectOrder = parseTrainSignalObjectOrder(reqObjBytes)
+	sc.BridgeObjectOrder = parseBridgeObjectOrder(reqObjBytes)
 	sc.TrainStationObjectOrder = parseTrainStationObjectOrder(reqObjBytes)
 	sc.RoadStationObjectOrder = parseRoadStationObjectOrder(reqObjBytes)
 	sc.TrackObjectOrder = parseTrackObjectOrder(reqObjBytes)
@@ -414,9 +415,11 @@ func (sc *Scenario) parseTileElements(data []byte) {
 
 			case elementTypeTrack:
 				// TrackElement: byte layout from TrackElement.h
+				// bridge(): elem[6] >> 5 (bits [7:5]) — OpenLoco TrackElement.h
 				te := TrackElement{
 					TrackID:       elem[4] & 0x3F,
 					HasBridge:     elem[4]&0x80 != 0,
+					BridgeID:      elem[6] >> 5,
 					SequenceIndex: elem[5] & 0x0F,
 					TrackObjectID: (elem[5] >> 4) & 0x0F,
 					Rotation:      typeByte & 0x03,
@@ -432,9 +435,11 @@ func (sc *Scenario) parseTileElements(data []byte) {
 
 			case elementTypeRoad:
 				// RoadElement: byte layout from RoadElement.h
+				// BridgeID: same layout as track — byte 6 bits [7:5]
 				re := RoadElement{
 					RoadID:        elem[4] & 0x0F,
 					HasBridge:     elem[4]&0x80 != 0,
+					BridgeID:      elem[6] >> 5,
 					SequenceIndex: elem[5] & 0x03,
 					RoadObjectID:  (elem[5] >> 4) & 0x0F,
 					Rotation:      typeByte & 0x03,
@@ -657,6 +662,11 @@ const (
 	trackSignalSlotCount = 16
 	objectTypeTrackSignal = 10 // ObjectType::trackSignal
 
+	// Bridge slots: TrackSignal(16)+LevelCrossing(4)+StreetLight(1)+Tunnel(16) = 268+16+4+1+16 = 305
+	bridgeSlotStart = 305
+	bridgeSlotCount = 8
+	objectTypeBridge = 14 // ObjectType::bridge
+
 	// TrainStation slots: Wall(32)+TrackSignal(16)+LevelCrossing(4)+StreetLight(1)+Tunnel(16)+Bridge(8) = 236+32+16+4+1+16+8 = 313
 	trainStationSlotStart = 313
 	trainStationSlotCount = 16
@@ -829,6 +839,20 @@ func parseRoadObjectOrder(data []byte) []string {
 		}
 	}
 	log.Printf("[Scenario] RequiredObjects: %d road objects in slot order", count)
+	return order
+}
+
+// parseBridgeObjectOrder extracts the 8 bridge-object names from RequiredObjects.
+// Slots 305-312 (ObjectType::bridge = 14).
+func parseBridgeObjectOrder(data []byte) []string {
+	order := parseObjectOrder(data, bridgeSlotStart, bridgeSlotCount, objectTypeBridge)
+	count := 0
+	for _, n := range order {
+		if n != "" {
+			count++
+		}
+	}
+	log.Printf("[Scenario] RequiredObjects: %d bridge objects in slot order", count)
 	return order
 }
 

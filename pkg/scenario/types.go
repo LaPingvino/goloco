@@ -45,6 +45,10 @@ type Scenario struct {
 	// Slots 268-283 (16 slots, ObjectType::trackSignal).
 	TrainSignalObjectOrder []string
 
+	// BridgeObjectOrder is the list of bridge-object names in slot order.
+	// Slots 305-312 (8 slots, ObjectType::bridge).
+	BridgeObjectOrder []string
+
 	// TrainStationObjectOrder is the list of train-station-object names in slot order.
 	// Slots 313-328 (16 slots).
 	TrainStationObjectOrder []string
@@ -155,6 +159,7 @@ type TrackElement struct {
 	Rotation      uint8 // byte 0 bits [1:0]: 0-3
 	SequenceIndex uint8 // byte 5 bits [3:0]: multi-tile piece index
 	HasBridge     bool  // byte 4 bit 7
+	BridgeID      uint8 // byte 6 bits [7:5]: bridge object slot index (only valid if HasBridge)
 	HasSignal     bool  // byte 0 bit 6
 	HasStation    bool  // byte 0 bit 7
 	Owner         uint8 // byte 7 bits [3:0]
@@ -172,6 +177,7 @@ type RoadElement struct {
 	Rotation      uint8 // byte 0 bits [1:0]: 0-3
 	SequenceIndex uint8 // byte 5 bits [1:0]: multi-tile piece index
 	HasBridge     bool  // byte 4 bit 7
+	BridgeID      uint8 // byte 6 bits [7:5]: bridge object slot index (only valid if HasBridge)
 	Owner         uint8 // byte 7 bits [3:0]
 	Mods          uint8 // byte 7 bits [7:6]: modifier bitmask
 	BaseZ         uint8 // byte 2

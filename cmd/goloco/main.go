@@ -261,6 +261,10 @@ func NewGame() *Game {
 					objMgr.ReorderTrainSignalObjects(sc.TrainSignalObjectOrder)
 					log.Printf("[Game] Reordered train signal objects to match scenario slot order (%d slots)", len(sc.TrainSignalObjectOrder))
 				}
+				if len(sc.BridgeObjectOrder) > 0 {
+					objMgr.ReorderBridgeObjects(sc.BridgeObjectOrder)
+					log.Printf("[Game] Reordered bridge objects to match scenario slot order (%d slots)", len(sc.BridgeObjectOrder))
+				}
 				if len(sc.TrainStationObjectOrder) > 0 {
 					objMgr.ReorderTrainStationObjects(sc.TrainStationObjectOrder)
 					log.Printf("[Game] Reordered train station objects to match scenario slot order (%d slots)", len(sc.TrainStationObjectOrder))
@@ -1298,6 +1302,9 @@ func (g *Game) loadScenario(filePath string) error {
 		}
 		if len(sc.TrainSignalObjectOrder) > 0 {
 			g.objMgr.ReorderTrainSignalObjects(sc.TrainSignalObjectOrder)
+		}
+		if len(sc.BridgeObjectOrder) > 0 {
+			g.objMgr.ReorderBridgeObjects(sc.BridgeObjectOrder)
 		}
 		if len(sc.TrainStationObjectOrder) > 0 {
 			g.objMgr.ReorderTrainStationObjects(sc.TrainStationObjectOrder)

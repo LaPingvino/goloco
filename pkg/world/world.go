@@ -1447,6 +1447,21 @@ var kWallImageOffsets = [4][3]uint32{
 	{4, 2, 0}, // rot 3: kSlopedNW, kSlopedSE, kFlatSE
 }
 
+// paintBridgeDeck renders the bridge deck for a bridged track or road element.
+// It draws the flat deck sprite (BridgeDeckNoSupport) at the clearZ height.
+//
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintBridge.cpp paintBridge()
+func (w *World) paintBridgeDeck(screen *ebiten.Image, bridgeID uint8, baseZ, clearZ uint8, drawX, drawY, scale float64) {
+	bridgeObj := w.renderer.ObjMgr.GetBridgeObjectByIndex(int(bridgeID))
+	if bridgeObj == nil || bridgeObj.ImageOffset == 0 {
+		return
+	}
+	spriteID := int(bridgeObj.ImageOffset) + objects.BridgeDeckNoSupport
+	// Deck is at clearZ height, so extraHeight = (clearZ - baseZ) * 4
+	extraHeight := float64(int(clearZ)-int(baseZ)) * 4.0
+	w.drawTrackRoadSprite(screen, spriteID, drawX, drawY, extraHeight, scale)
+}
+
 // paintTracks renders railway track sprites for a tile.
 //
 // OpenLoco reference: src/OpenLoco/src/Paint/PaintTrack.cpp paintTrack()
@@ -1514,6 +1529,13 @@ func (w *World) paintTracks(screen *ebiten.Image, t *tile, drawX, drawY, scale f
 				continue
 			}
 			w.drawTrackRoadSprite(screen, int(el.base)+int(offset), drawX, drawY, el.extraHeight, scale)
+		}
+	}
+
+	// Draw bridge decks for bridged track elements.
+	for _, te := range t.tracks {
+		if te.HasBridge {
+			w.paintBridgeDeck(screen, te.BridgeID, t.baseZ, te.ClearZ, drawX, drawY, scale)
 		}
 	}
 }
@@ -1650,6 +1672,13 @@ func (w *World) paintRoads(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 			mergeID := kExitsToMergeId[ms.exitsRight&0x0F]
 			spriteID := int(ms.roadObj.Image) + int(kMergeBaseOffsetStyle2Right) + int(mergeID)
 			w.drawTrackRoadSprite(screen, spriteID, drawX, drawY, ms.extraHeight, scale)
+		}
+	}
+
+	// Draw bridge decks for bridged road elements.
+	for _, re := range t.roads {
+		if re.HasBridge {
+			w.paintBridgeDeck(screen, re.BridgeID, t.baseZ, re.ClearZ, drawX, drawY, scale)
 		}
 	}
 }
