@@ -2251,9 +2251,44 @@ func (w *World) Draw(screen *ebiten.Image) {
 	// Camera coords are in world-space (unscaled). They are set by
 	// PanCamera (gameplay) or SetCamera (title sequence).
 
+	// Precompute per-frame constants for visible y-range within each depth slice.
+	//
+	// For depth d (x+y=d): screenX(y) = (2y−d)·32, screenY(d) = d·16.
+	// drawX(y) = (screenX(y) − camX)·scale; visible when drawX ∈ [−128, sw+64].
+	// Solving: y ∈ [depth/2 + camX/64 − 128·invScale/64,
+	//               depth/2 + camX/64 + (sw+64)·invScale/64]
+	// The constant term (camX/64 ± margin) is computed once here.
+	invScale := float64(int(1) << w.zoom) // 2^zoom = 1/scale
+	xBase := w.camX / 64.0
+	xLeftMargin := -128.0 * invScale / 64.0
+	xRightMargin := float64(sw+64) * invScale / 64.0
+
+	// Y-cull for depth slice: screenY = depth·16; height offset can shift a tile
+	// up by at most ~336 px (baseZ max=84, ×4). Use 512 for extra safety.
+	const maxHeightOffsetPx = 512.0
+
 	// Draw tiles in depth order (back to front)
 	for depth := 0; depth < w.width+w.height; depth++ {
-		for y := 0; y < w.height; y++ {
+		// Y-cull entire depth slice before iterating tiles within it.
+		drawYBase := (float64(depth)*16.0 - w.camY) * scale
+		if drawYBase < -(float64(sh)+maxHeightOffsetPx) || drawYBase > float64(sh)+maxHeightOffsetPx {
+			continue
+		}
+
+		// Restrict y to the range whose tiles land within the horizontal screen bounds.
+		depthHalf := float64(depth) * 0.5
+		yMinF := depthHalf + xBase + xLeftMargin
+		yMaxF := depthHalf + xBase + xRightMargin
+		yMin := int(math.Floor(yMinF))
+		yMax := int(math.Ceil(yMaxF))
+		if yMin < 0 {
+			yMin = 0
+		}
+		if yMax >= w.height {
+			yMax = w.height - 1
+		}
+
+		for y := yMin; y <= yMax; y++ {
 			x := depth - y
 			if x < 0 || x >= w.width {
 				continue

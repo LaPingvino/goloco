@@ -919,6 +919,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.inTitleScreen {
 		g.drawTitleMenu(screen)
 		g.windowMgr.Draw(screen, g.r) // allow windows (e.g. Load Game) on title screen
+		ui.DrawText(screen, fmt.Sprintf("%.0ffps", ebiten.ActualFPS()), 4, g.sh-8, color.RGBA{200, 200, 200, 200})
 		return
 	}
 
@@ -938,12 +939,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.isPaused {
 		speedStr = "PAUSED"
 	}
+	fps := ebiten.ActualFPS()
+	fpsStr := fmt.Sprintf("%.0ffps", fps)
 	if g.gameState != nil {
 		date := g.gameState.GameDate
-		statusText = fmt.Sprintf("%s %d  |  £%d  |  %s  |  Space=pause F3-F6=speed",
-			date.Month().String()[:3], date.Year(), g.gameState.PlayerMoney, speedStr)
+		statusText = fmt.Sprintf("%s %d  |  £%d  |  %s  |  Space=pause F3-F6=speed  |  %s",
+			date.Month().String()[:3], date.Year(), g.gameState.PlayerMoney, speedStr, fpsStr)
 	} else {
-		statusText = fmt.Sprintf("GoLoco | %s | Scroll to zoom", speedStr)
+		statusText = fmt.Sprintf("GoLoco | %s | Scroll to zoom | %s", speedStr, fpsStr)
 	}
 	ui.DrawText(screen, statusText, 4, statusY+14, color.White)
 
