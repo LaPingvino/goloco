@@ -1795,6 +1795,62 @@ func (w *World) paintStation(screen *ebiten.Image, t *tile, drawX, drawY, scale 
 	}
 }
 
+// paintSignals renders railway signal sprites for a tile.
+//
+// Each SignalElement may have a left signal, a right signal, or both.
+// The signal post position is taken from SignalPosLeft / SignalPosRight tables
+// indexed by trackRotation (0-15).  For straight tracks (trackId=0), the track
+// rotation matches the element's Rotation field directly (0-3).
+//
+// Image offset formula:
+//
+//	imageRotationOffset = (rotation & 0x3) << 1  (0,2,4,6 for rotations 0-3)
+//	spriteID = signalObj.ImageOffset + imageRotationOffset + (frame << 3)
+//
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintSignal.cpp paintSignalSide()
+func (w *World) paintSignals(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
+	if w.renderer == nil || w.renderer.ObjMgr == nil || len(t.signals) == 0 {
+		return
+	}
+
+	for _, se := range t.signals {
+		rot := int(se.Rotation & 0x03)
+
+		// imageRotationOffset: ((rot & 0x3) << 1) — 0,2,4,6
+		imageRotOffset := (rot & 0x3) << 1
+
+		extraHeight := float64(int(se.BaseZ)-int(t.baseZ)) * 4.0
+
+		if se.HasLeftSignal {
+			sigObj := w.renderer.ObjMgr.GetTrainSignalObjectByIndex(int(se.SignalObjectID))
+			if sigObj != nil && sigObj.ImageOffset > 0 {
+				frame := int(se.LeftFrame)
+				spriteID := int(sigObj.ImageOffset) + imageRotOffset + (frame << 3)
+				pos := objects.SignalPosLeft[rot]
+				// Convert tile-space offset to viewport-space offset.
+				// Tile-space: (sigX, sigY) in 0-31; viewport: dx = sigY-sigX, dy = (sigY+sigX)/2
+				sigX, sigY := float64(pos[0]), float64(pos[1])
+				vpDX := (sigY - sigX) * scale
+				vpDY := (sigY+sigX) / 2.0 * scale
+				w.drawTrackRoadSprite(screen, spriteID, drawX+vpDX, drawY+vpDY, extraHeight, scale)
+			}
+		}
+
+		if se.HasRightSignal {
+			sigObj := w.renderer.ObjMgr.GetTrainSignalObjectByIndex(int(se.SignalObjectID))
+			if sigObj != nil && sigObj.ImageOffset > 0 {
+				frame := int(se.RightFrame)
+				spriteID := int(sigObj.ImageOffset) + imageRotOffset + 1 + (frame << 3)
+				pos := objects.SignalPosRight[rot]
+				sigX, sigY := float64(pos[0]), float64(pos[1])
+				vpDX := (sigY - sigX) * scale
+				vpDY := (sigY+sigX) / 2.0 * scale
+				w.drawTrackRoadSprite(screen, spriteID, drawX+vpDX, drawY+vpDY, extraHeight, scale)
+			}
+		}
+	}
+}
+
 // paintTrainStation renders a train station platform sprite for a single StationElement.
 //
 // OpenLoco reference: src/OpenLoco/src/Paint/PaintTrainStation.cpp
@@ -2225,6 +2281,7 @@ func (w *World) Draw(screen *ebiten.Image) {
 							w.paintTracks(w.worldBuf, &t, drawX, drawY, scale)
 							w.paintRoads(w.worldBuf, &t, drawX, drawY, scale)
 							w.paintStation(w.worldBuf, &t, drawX, drawY, scale)
+							w.paintSignals(w.worldBuf, &t, drawX, drawY, scale)
 							w.paintTrees(w.worldBuf, &t, drawX, drawY, scale)
 							w.paintBuildings(w.worldBuf, &t, drawX, drawY, scale)
 							w.paintWalls(w.worldBuf, &t, drawX, drawY, scale)

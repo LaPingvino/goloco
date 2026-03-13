@@ -47,6 +47,7 @@ type ObjectManager struct {
 	RoadObjects      []*RoadObject              // all loaded road objects
 	TrainStationObjects []*TrainStationObject      // all loaded train-station objects
 	RoadStationObjects  []*RoadStationObject       // all loaded road-station objects
+	TrainSignalObjects  []*TrainSignalObject       // all loaded train-signal objects (slots 268-283)
 	CliffEdgeObjs    map[string]*CliffEdgeObject // keyed by upper-case name
 	WaterObj         *WaterObject               // the single water object (slot 170)
 	InterfaceSkin    *InterfaceSkinObject
@@ -406,6 +407,25 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		loaded.Object = roadStation
 		loaded.ImageOffset = roadStation.ImageOffset
 		m.RoadStationObjects = append(m.RoadStationObjects, roadStation)
+
+	case ObjectTypeTrackSignal:
+		var sig *TrainSignalObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				sig, err = ParseTrainSignalObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				sig, err = ParseTrainSignalObject(header, decompressed)
+			}
+		} else {
+			sig, err = ParseTrainSignalObject(header, decompressed)
+		}
+		if err != nil {
+			return fmt.Errorf("parsing train signal: %w", err)
+		}
+		loaded.Object = sig
+		loaded.ImageOffset = sig.ImageOffset
+		m.TrainSignalObjects = append(m.TrainSignalObjects, sig)
 	}
 
 	// Store in map
@@ -777,6 +797,36 @@ func (m *ObjectManager) ReorderRoadObjects(order []string) {
 	}
 	m.RoadObjects = reordered
 	fmt.Printf("Reordered road objects: %d matched out of %d slots\n", matched, len(order))
+}
+
+// GetTrainSignalObjectByIndex returns the TrainSignalObject at the given slot index (0-15),
+// or nil if the index is out of range.
+func (m *ObjectManager) GetTrainSignalObjectByIndex(index int) *TrainSignalObject {
+	if index < 0 || index >= len(m.TrainSignalObjects) {
+		return nil
+	}
+	return m.TrainSignalObjects[index]
+}
+
+// ReorderTrainSignalObjects rebuilds the TrainSignalObjects slice so that each
+// slot index maps to the TrainSignalObject whose name matches order[i].
+// Slots 268-283 in RequiredObjects (16 slots).
+func (m *ObjectManager) ReorderTrainSignalObjects(order []string) {
+	reordered := make([]*TrainSignalObject, len(order))
+	matched := 0
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if sig, ok := obj.Object.(*TrainSignalObject); ok {
+				reordered[i] = sig
+				matched++
+			}
+		}
+	}
+	m.TrainSignalObjects = reordered
+	fmt.Printf("Reordered train signal objects: %d matched out of %d slots\n", matched, len(order))
 }
 
 // GetTrainStationObjectByIndex returns the TrainStationObject at the given slot index (0-15),

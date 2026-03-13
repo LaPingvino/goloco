@@ -41,6 +41,10 @@ type Scenario struct {
 	// as specified by the RequiredObjects chunk. Slots 236-267.
 	WallObjectOrder []string
 
+	// TrainSignalObjectOrder is the list of train-signal-object names in slot order.
+	// Slots 268-283 (16 slots, ObjectType::trackSignal).
+	TrainSignalObjectOrder []string
+
 	// TrainStationObjectOrder is the list of train-station-object names in slot order.
 	// Slots 313-328 (16 slots).
 	TrainStationObjectOrder []string
