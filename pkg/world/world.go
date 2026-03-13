@@ -2054,9 +2054,13 @@ func (w *World) Draw(screen *ebiten.Image) {
 						displaySlope = 0
 					}
 
-					// Zoom-0 flat terrain sprite: skip all zoom3/zoom2/zoom1 images
+					// Zoom-0 flat terrain sprite: skip all zoom3/zoom2/zoom1 images.
+					// Growth stage selects the season/maturity variant within the zoom-0 block.
 					// OpenLoco reference: src/OpenLoco/src/Objects/LandObject.cpp getTerrainImage()
-					spriteIdx := land.GetFlatTerrainSpriteIndex() + displaySlope
+					//   variation = numImagesPerGrowthStage * growthStage
+					//   imageIndex = image + variation + displaySlope
+					spriteIdx := land.GetFlatTerrainSpriteIndex() +
+						int(t.growthStage)*int(land.NumImagesPerGrowthStage) + displaySlope
 
 					if img := w.renderer.GetObjectSprite(land, spriteIdx); img != nil {
 						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, spriteIdx)
