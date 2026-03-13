@@ -47,8 +47,9 @@ type ObjectManager struct {
 	RoadObjects      []*RoadObject              // all loaded road objects
 	TrainStationObjects []*TrainStationObject      // all loaded train-station objects
 	RoadStationObjects  []*RoadStationObject       // all loaded road-station objects
-	TrainSignalObjects  []*TrainSignalObject       // all loaded train-signal objects (slots 268-283)
-	BridgeObjects       []*BridgeObject            // all loaded bridge objects (slots 305-312)
+	TrainSignalObjects     []*TrainSignalObject       // all loaded train-signal objects (slots 268-283)
+	LevelCrossingObjects   []*LevelCrossingObject     // all loaded level-crossing objects (slots 284-287)
+	BridgeObjects          []*BridgeObject            // all loaded bridge objects (slots 305-312)
 	CliffEdgeObjs    map[string]*CliffEdgeObject // keyed by upper-case name
 	WaterObj         *WaterObject               // the single water object (slot 170)
 	InterfaceSkin    *InterfaceSkinObject
@@ -446,6 +447,25 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		loaded.Object = sig
 		loaded.ImageOffset = sig.ImageOffset
 		m.TrainSignalObjects = append(m.TrainSignalObjects, sig)
+
+	case ObjectTypeLevelCrossing:
+		var crossing *LevelCrossingObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				crossing, err = ParseLevelCrossingObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				crossing, err = ParseLevelCrossingObject(header, decompressed)
+			}
+		} else {
+			crossing, err = ParseLevelCrossingObject(header, decompressed)
+		}
+		if err != nil {
+			return fmt.Errorf("parsing level crossing: %w", err)
+		}
+		loaded.Object = crossing
+		loaded.ImageOffset = crossing.ImageOffset
+		m.LevelCrossingObjects = append(m.LevelCrossingObjects, crossing)
 	}
 
 	// Store in map
@@ -856,6 +876,36 @@ func (m *ObjectManager) GetTrainSignalObjectByIndex(index int) *TrainSignalObjec
 		return nil
 	}
 	return m.TrainSignalObjects[index]
+}
+
+// GetLevelCrossingObjectByIndex returns the LevelCrossingObject at the given slot index (0-3),
+// or nil if the index is out of range.
+func (m *ObjectManager) GetLevelCrossingObjectByIndex(index int) *LevelCrossingObject {
+	if index < 0 || index >= len(m.LevelCrossingObjects) {
+		return nil
+	}
+	return m.LevelCrossingObjects[index]
+}
+
+// ReorderLevelCrossingObjects rebuilds the LevelCrossingObjects slice so that each
+// slot index maps to the LevelCrossingObject whose name matches order[i].
+// Slots 284-287 in RequiredObjects (4 slots).
+func (m *ObjectManager) ReorderLevelCrossingObjects(order []string) {
+	reordered := make([]*LevelCrossingObject, len(order))
+	matched := 0
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if lc, ok := obj.Object.(*LevelCrossingObject); ok {
+				reordered[i] = lc
+				matched++
+			}
+		}
+	}
+	m.LevelCrossingObjects = reordered
+	fmt.Printf("Reordered level crossing objects: %d matched out of %d slots\n", matched, len(order))
 }
 
 // ReorderTrainSignalObjects rebuilds the TrainSignalObjects slice so that each

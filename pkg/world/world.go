@@ -1462,6 +1462,30 @@ func (w *World) paintBridgeDeck(screen *ebiten.Image, bridgeID uint8, baseZ, cle
 	w.drawTrackRoadSprite(screen, spriteID, drawX, drawY, extraHeight, scale)
 }
 
+// paintLevelCrossing renders level crossing gate sprites for a road element.
+// Draws 4 sprites at the tile corners (gate positions) for both NE and SE orientations.
+//
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintRoad.cpp paintLevelCrossing()
+func (w *World) paintLevelCrossing(screen *ebiten.Image, re *scenario.RoadElement, baseZ uint8, drawX, drawY, scale float64) {
+	lcObj := w.renderer.ObjMgr.GetLevelCrossingObjectByIndex(int(re.LevelCrossingObjectID))
+	if lcObj == nil || lcObj.ImageOffset == 0 {
+		return
+	}
+	frame := int(re.AnimFrame)
+	rotation := int(re.Rotation)
+	imageIndex0 := int(lcObj.ImageOffset) + ((rotation & 1) * 4) + (frame * 8)
+
+	// 4 gate sprites at sub-tile positions {tileX, tileY}:
+	//   +0: {2,2}, +1: {2,30}, +2: {30,2}, +3: {30,30}
+	subTilePos := [4][2]float64{{2, 2}, {2, 30}, {30, 2}, {30, 30}}
+	for i, pos := range subTilePos {
+		tileX, tileY := pos[0], pos[1]
+		vpDX := (tileY - tileX) * scale
+		vpDY := (tileY+tileX) / 2.0 * scale
+		w.drawTrackRoadSprite(screen, imageIndex0+i, drawX+vpDX, drawY+vpDY, 0, scale)
+	}
+}
+
 // paintTracks renders railway track sprites for a tile.
 //
 // OpenLoco reference: src/OpenLoco/src/Paint/PaintTrack.cpp paintTrack()
@@ -1679,6 +1703,14 @@ func (w *World) paintRoads(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 	for _, re := range t.roads {
 		if re.HasBridge {
 			w.paintBridgeDeck(screen, re.BridgeID, t.baseZ, re.ClearZ, drawX, drawY, scale)
+		}
+	}
+
+	// Draw level crossings.
+	for i := range t.roads {
+		re := &t.roads[i]
+		if re.HasLevelCrossing {
+			w.paintLevelCrossing(screen, re, t.baseZ, drawX, drawY, scale)
 		}
 	}
 }

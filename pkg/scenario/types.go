@@ -65,6 +65,10 @@ type Scenario struct {
 	// Slots 365-372 (8 slots).
 	RoadObjectOrder []string
 
+	// LevelCrossingObjectOrder is the list of level-crossing-object names in slot order.
+	// Slots 284-287 (4 slots, ObjectType::levelCrossing).
+	LevelCrossingObjectOrder []string
+
 	// VehicleObjectOrder is the list of vehicle-object names in slot order.
 	// Slots 389-612 (224 slots, ObjectType::vehicle).
 	VehicleObjectOrder []string
@@ -172,16 +176,19 @@ type TrackElement struct {
 //
 // OpenLoco reference: src/OpenLoco/src/Map/RoadElement.h
 type RoadElement struct {
-	RoadObjectID  uint8 // byte 5 bits [7:4]: index into RequiredObjects road slots
-	RoadID        uint8 // byte 4 bits [3:0]: road piece type (0-15)
-	Rotation      uint8 // byte 0 bits [1:0]: 0-3
-	SequenceIndex uint8 // byte 5 bits [1:0]: multi-tile piece index
-	HasBridge     bool  // byte 4 bit 7
-	BridgeID      uint8 // byte 6 bits [7:5]: bridge object slot index (only valid if HasBridge)
-	Owner         uint8 // byte 7 bits [3:0]
-	Mods          uint8 // byte 7 bits [7:6]: modifier bitmask
-	BaseZ         uint8 // byte 2
-	ClearZ        uint8 // byte 3
+	RoadObjectID         uint8 // byte 5 bits [7:4]: index into RequiredObjects road slots
+	RoadID               uint8 // byte 4 bits [3:0]: road piece type (0-15)
+	Rotation             uint8 // byte 0 bits [1:0]: 0-3
+	SequenceIndex        uint8 // byte 5 bits [1:0]: multi-tile piece index
+	HasBridge            bool  // byte 4 bit 7
+	BridgeID             uint8 // byte 6 bits [7:5]: bridge object slot index (only valid if HasBridge)
+	HasLevelCrossing     bool  // byte 7 bit 5
+	LevelCrossingObjectID uint8 // byte 5 bits [3:2]: index into RequiredObjects level-crossing slots
+	AnimFrame            uint8 // byte 6 bits [3:0]: level crossing animation state
+	Owner                uint8 // byte 7 bits [3:0]
+	Mods                 uint8 // byte 7 bits [7:6]: modifier bitmask
+	BaseZ                uint8 // byte 2
+	ClearZ               uint8 // byte 3
 }
 
 // StationElement represents a station tile (rail, road, airport, or dock).
