@@ -14,6 +14,82 @@ import (
 var spriteErrorLogged = make(map[int]bool)
 var objectSpriteWarned = make(map[string]bool)
 
+// ── Sprite atlas ──────────────────────────────────────────────────────────────
+//
+// SpriteAtlas packs decoded G1 sprites into a single large *ebiten.Image.
+// Sub-images from the same parent share one GPU texture, so Ebiten can batch
+// all DrawImage calls in a single GPU draw call instead of one per sprite.
+//
+// Packing is a simple left-to-right, top-to-bottom row strip.  Sprites are
+// 1-pixel-separated to avoid bilinear bleed (not that Ebiten uses it, but it
+// is good hygiene).
+//
+// The atlas is lazily initialised on the first GetSprite call so that
+// ebiten.NewImage is always called from within the game loop.
+const (
+	spriteAtlasW = 4096
+	spriteAtlasH = 4096
+	spriteAtlasP = 1 // 1-px gap between packed sprites
+)
+
+type SpriteAtlas struct {
+	backing      *ebiten.Image
+	regions      map[int]image.Rectangle
+	packX, packY int
+	rowH         int
+	full         bool
+}
+
+func newSpriteAtlas() *SpriteAtlas {
+	return &SpriteAtlas{
+		backing: ebiten.NewImage(spriteAtlasW, spriteAtlasH),
+		regions: make(map[int]image.Rectangle),
+	}
+}
+
+// pack copies img into the atlas and returns the sub-image.
+// Returns nil when the atlas is full; callers must fall back to the raw image.
+func (sa *SpriteAtlas) pack(key int, img *ebiten.Image) *ebiten.Image {
+	if sa.full {
+		return nil
+	}
+	iw, ih := img.Bounds().Dx(), img.Bounds().Dy()
+	if iw <= 0 || ih <= 0 {
+		return nil
+	}
+	if sa.packX+iw > spriteAtlasW {
+		sa.packX = 0
+		sa.packY += sa.rowH + spriteAtlasP
+		sa.rowH = 0
+	}
+	if sa.packY+ih > spriteAtlasH {
+		sa.full = true
+		log.Printf("[Atlas] Sprite atlas full after %d sprites", len(sa.regions))
+		return nil
+	}
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(float64(sa.packX), float64(sa.packY))
+	sa.backing.DrawImage(img, op)
+	rect := image.Rect(sa.packX, sa.packY, sa.packX+iw, sa.packY+ih)
+	sa.regions[key] = rect
+	if ih > sa.rowH {
+		sa.rowH = ih
+	}
+	sa.packX += iw + spriteAtlasP
+	return sa.backing.SubImage(rect).(*ebiten.Image)
+}
+
+// get returns the sub-image for key, or nil if not yet packed.
+func (sa *SpriteAtlas) get(key int) *ebiten.Image {
+	rect, ok := sa.regions[key]
+	if !ok {
+		return nil
+	}
+	return sa.backing.SubImage(rect).(*ebiten.Image)
+}
+
+// ── Renderer ──────────────────────────────────────────────────────────────────
+
 // Renderer holds rendering state and sprite data
 type Renderer struct {
 	Screen *ebiten.Image
@@ -21,7 +97,12 @@ type Renderer struct {
 	G1     *assets.G1File
 	ObjMgr *objects.ObjectManager
 
-	// Cache for decoded G1 sprites (no palette remap)
+	// mainAtlas packs all raw G1 sprites (and palette-remapped variants) into
+	// one GPU texture so Ebiten can batch consecutive DrawImage calls.
+	// Lazily created on first GetSprite call (ebiten.NewImage requires game loop).
+	mainAtlas *SpriteAtlas
+
+	// Cache for decoded G1 sprites (no palette remap) — fallback when atlas full
 	spriteCache map[int]*ebiten.Image
 
 	// Cache for palette-remapped sprites, keyed by (spriteIdx<<8)|colourIdx
@@ -52,18 +133,35 @@ func NewRenderer() *Renderer {
 	return r
 }
 
+// ensureAtlas lazily creates the main sprite atlas on first use.
+// Must be called from within the Ebiten game loop (Draw/Update).
+func (r *Renderer) ensureAtlas() *SpriteAtlas {
+	if r.mainAtlas == nil {
+		r.mainAtlas = newSpriteAtlas()
+	}
+	return r.mainAtlas
+}
+
 func (r *Renderer) SetScreen(s *ebiten.Image) {
 	r.Screen = s
 }
 
-// GetSprite returns an ebiten image for the given G1 sprite index
-// Results are cached for performance
+// GetSprite returns an ebiten image for the given G1 sprite index.
+// The first call for each index decodes the sprite and packs it into the main
+// sprite atlas so all subsequent DrawImage calls share one GPU texture and are
+// batched by Ebiten's renderer.
 func (r *Renderer) GetSprite(index int) *ebiten.Image {
 	if r.G1 == nil {
 		return nil
 	}
 
-	// Check cache first
+	// Check atlas first (fast path — sub-image lookup only)
+	atlas := r.ensureAtlas()
+	if img := atlas.get(index); img != nil {
+		return img
+	}
+
+	// Fallback cache (used when atlas is full)
 	if img, ok := r.spriteCache[index]; ok {
 		return img
 	}
@@ -78,15 +176,14 @@ func (r *Renderer) GetSprite(index int) *ebiten.Image {
 		return nil
 	}
 
-	// Convert to ebiten image and cache
-	img := ebiten.NewImageFromImage(rgba)
-	r.spriteCache[index] = img
+	tmp := ebiten.NewImageFromImage(rgba)
 
-	if len(r.spriteCache) <= 5 {
-		log.Printf("[Render] Cached sprite %d: %dx%d", index, rgba.Bounds().Dx(), rgba.Bounds().Dy())
+	// Pack into atlas; if atlas is full fall back to individual sprite cache
+	if sub := atlas.pack(index, tmp); sub != nil {
+		return sub
 	}
-
-	return img
+	r.spriteCache[index] = tmp
+	return tmp
 }
 
 // GetSpriteInfo returns the dimensions and offsets for a sprite
@@ -246,23 +343,14 @@ func (r *Renderer) GetObjectSprite(land *objects.LandObject, localIndex int) *eb
 		return img
 	}
 
-	// If ImageOffset is set, use G1 dynamic sprites
+	// If ImageOffset is set, route through GetSprite so the sprite goes into the
+	// main atlas and all land/object draws share the same GPU texture.
 	if land.ImageOffset > 0 && r.G1 != nil {
 		g1Index := int(land.ImageOffset) + localIndex
-		rgba, err := r.G1.DecodeSprite(g1Index)
-		if err != nil {
-			if !objectSpriteWarned[cacheKey] {
-				log.Printf("[Render] Failed to decode G1 sprite %d for %s:%d: %v", g1Index, land.Name, localIndex, err)
-				objectSpriteWarned[cacheKey] = true
-			}
-			return nil
+		img := r.GetSprite(g1Index)
+		if img != nil {
+			r.objectSpriteCache[cacheKey] = img // secondary cache so string-key lookup still works
 		}
-		if rgba == nil {
-			return nil
-		}
-
-		img := ebiten.NewImageFromImage(rgba)
-		r.objectSpriteCache[cacheKey] = img
 		return img
 	}
 
@@ -519,4 +607,39 @@ func (r *Renderer) GetInterfaceSkinSprite(imageID uint32) *ebiten.Image {
 	}
 
 	return img
+}
+
+// PrewarmSpriteRange decodes and packs G1 sprites [start, end) into the main
+// atlas.  Call this during the loading phase so the render loop pays no decode
+// cost.  Returns the number of sprites successfully packed.
+func (r *Renderer) PrewarmSpriteRange(start, end int) int {
+	if r.G1 == nil {
+		return 0
+	}
+	n := 0
+	for i := start; i < end; i++ {
+		if r.GetSprite(i) != nil {
+			n++
+		}
+	}
+	return n
+}
+
+// PrewarmSpriteList decodes and packs the given G1 sprite IDs into the atlas.
+func (r *Renderer) PrewarmSpriteList(ids []int) int {
+	n := 0
+	for _, id := range ids {
+		if r.GetSprite(id) != nil {
+			n++
+		}
+	}
+	return n
+}
+
+// AtlasPackedCount returns the number of sprites currently in the main atlas.
+func (r *Renderer) AtlasPackedCount() int {
+	if r.mainAtlas == nil {
+		return 0
+	}
+	return len(r.mainAtlas.regions)
 }

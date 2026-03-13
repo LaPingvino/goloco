@@ -367,6 +367,144 @@ func (w *World) GetZoom() int {
 	return w.zoom
 }
 
+// CollectSpriteIDs returns all G1 sprite indices that this world will need
+// during rendering.  Used by the loading screen to pre-warm the sprite atlas.
+//
+// Collected categories:
+//   - Progress bar / UI sprites (G1 2326-2334)
+//   - Cliff-edge mask sprites (G1 3726-3735)
+//   - Each LandObject's terrain sprites and cliff-edge sprites
+//   - WaterObject sprites (surface shapes + wave frames + palette map)
+//   - All other DAT object sprites referenced from tiles
+func (w *World) CollectSpriteIDs() []int {
+	if w.renderer == nil || w.renderer.ObjMgr == nil {
+		return nil
+	}
+	seen := make(map[int]struct{})
+	add := func(id int) {
+		if id >= 0 {
+			seen[id] = struct{}{}
+		}
+	}
+
+	// Progress bar train sprites (OpenLoco G1 2326-2334 + track 2330)
+	for id := 2326; id <= 2334; id++ {
+		add(id)
+	}
+
+	// Cliff-edge mask sprites (5 masks × 2 directions: SW/NE use 3726, SE/NW use 3731)
+	for id := 3726; id <= 3735; id++ {
+		add(id)
+	}
+
+	objMgr := w.renderer.ObjMgr
+
+	// Land objects — terrain sprites + cliff-edge sprites
+	for _, land := range objMgr.LandObjects {
+		if land == nil || land.ImageOffset == 0 {
+			continue
+		}
+		// GetObjectSprite calls GetSprite(int(land.ImageOffset) + localIndex),
+		// so atlas keys are absolute G1 indices = ImageOffset + localIndex.
+		imgBase := int(land.ImageOffset)
+		flatLocalBase := int(land.GetFlatTerrainSpriteIndex())
+		count := int(land.NumImagesPerGrowthStage) * int(land.NumGrowthStages)
+		if count <= 0 {
+			count = 19 * 8 // safe upper bound
+		}
+		for i := 0; i < count; i++ {
+			add(imgBase + flatLocalBase + i)
+		}
+		// Cliff-edge sprites: CliffEdgeImage is already an absolute G1 index.
+		if land.CliffEdgeImage > 0 {
+			cliffBase := int(land.CliffEdgeImage)
+			// 4 factor offsets (0,16,32,48) × up to 16 height steps + spare
+			for f := 0; f < 4; f++ {
+				for h := 0; h < 16; h++ {
+					add(cliffBase + f*16 + h)
+					add(cliffBase + 16 + f*16 + h) // +16 for SE/NW direction
+				}
+			}
+		}
+	}
+
+	// Water object sprites
+	if wo := objMgr.WaterObj; wo != nil && wo.ImageOffset > 0 {
+		base := int(wo.ImageOffset)
+		for i := 0; i <= 75; i++ { // 0-29 misc, 30-39 surface shapes, 40-59 misc, 60-75 waves
+			add(base + i)
+		}
+	}
+
+	// Track objects
+	for _, tr := range objMgr.TrackObjects {
+		if tr == nil || tr.Image == 0 {
+			continue
+		}
+		base := int(tr.Image)
+		for i := 0; i < 800; i++ { // generous bound covers all track piece variants
+			add(base + i)
+		}
+	}
+
+	// Road objects
+	for _, ro := range objMgr.RoadObjects {
+		if ro == nil || ro.Image == 0 {
+			continue
+		}
+		base := int(ro.Image)
+		for i := 0; i < 400; i++ {
+			add(base + i)
+		}
+	}
+
+	// Tree objects — scan tiles for used tree object IDs
+	usedTrees := make(map[uint8]struct{})
+	for _, row := range w.tiles {
+		for _, t := range row {
+			for _, te := range t.trees {
+				usedTrees[te.TreeObjectID] = struct{}{}
+			}
+		}
+	}
+	for treeID := range usedTrees {
+		treeObj := objMgr.GetTreeObjectByIndex(int(treeID))
+		if treeObj == nil || treeObj.ImageOffset == 0 {
+			continue
+		}
+		base := int(treeObj.ImageOffset)
+		for i := 0; i < 300; i++ {
+			add(base + i)
+		}
+	}
+
+	// Building objects — scan tiles
+	usedBuildings := make(map[uint8]struct{})
+	for _, row := range w.tiles {
+		for _, t := range row {
+			for _, be := range t.buildings {
+				usedBuildings[be.ObjectID] = struct{}{}
+			}
+		}
+	}
+	for bldID := range usedBuildings {
+		bldObj := objMgr.GetBuildingObjectByIndex(int(bldID))
+		if bldObj == nil || bldObj.ImageOffset == 0 {
+			continue
+		}
+		base := int(bldObj.ImageOffset)
+		for i := 0; i < 600; i++ {
+			add(base + i)
+		}
+	}
+
+	ids := make([]int, 0, len(seen))
+	for id := range seen {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
 func (w *World) Update() {
 	w.animTick++
 	// Advance demo trains at ~2 tiles/second (60fps → 1/30 per frame).
@@ -2099,8 +2237,13 @@ func (w *World) paintWater(target *ebiten.Image, tileX, tileY int, t *tile, draw
 	}
 
 	waterObj := w.renderer.ObjMgr.WaterObj
-	slope := t.slope & 0x0F
-	shape := objects.KSlopeToWaterShape[slope]
+	// OpenLoco: kSlopeToWaterShape only applied when waterHeight <= baseHeight + kMicroZStep.
+	// For deeper water the surface is always flat (shape 0) — avoids triangle artefacts.
+	// OpenLoco reference: PaintSurface.cpp paintSurfaceWater() line 1730-1733
+	shape := uint8(0)
+	if uint16(t.waterLevel)*16 <= uint16(t.baseZ)*4+16 {
+		shape = objects.KSlopeToWaterShape[t.slope&0x0F]
+	}
 	flatID := int(waterObj.GetWaterSpriteIndex(shape, false))
 	blendID := int(waterObj.GetWaterSpriteIndex(shape, true))
 

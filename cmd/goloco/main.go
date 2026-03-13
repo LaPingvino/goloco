@@ -92,6 +92,14 @@ type Game struct {
 	diagTileY   int
 	// quitAfterSave: exit cleanly once the map save has completed.
 	quitAfterSave bool
+
+	// Loading-screen state.  When loadingSpriteIDs != nil, the game is in the
+	// sprite-preload phase and will draw the OpenLoco-style loading screen.
+	loadingSpriteIDs  []int   // full list collected from the world
+	loadingStep       int     // next index to process
+	loadingStepSize   int     // sprites per frame
+	loadingCaption    string  // text shown in the loading window caption
+	loadingStyleFlip  bool    // alternates between train style 0 and 1 each load
 }
 
 func findLocoDataDir() string {
@@ -296,6 +304,8 @@ func NewGame() *Game {
 			log.Printf("[Game] Could not load title scenario: %v", err)
 		}
 	}
+	titleSpriteIDs := w.CollectSpriteIDs()
+	log.Printf("[Game] Collected %d sprite IDs for preload", len(titleSpriteIDs))
 
 	// Create title sequence
 	log.Println("[Game] Creating title sequence...")
@@ -349,6 +359,11 @@ func NewGame() *Game {
 		speedMult:  1,
 		hoverTileX: -1,
 		hoverTileY: -1,
+		// Begin preloading title sprites on the first Draw() frame.
+		loadingSpriteIDs: titleSpriteIDs,
+		loadingStep:      0,
+		loadingStepSize:  60,
+		loadingCaption:   "title.dat",
 	}
 }
 
@@ -860,7 +875,110 @@ func (g *Game) handleToolbarButton(idx int) {
 	}
 }
 
+// drawLoadingScreen draws the OpenLoco-style progress window.
+// The G1 progress bar sprites are:
+//
+//	2326-2329 style-0 train (green locomotive, 4 frames)
+//	2330      track background (345×28)
+//	2331-2334 style-1 train (darker locomotive, 4 frames)
+//
+// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ProgressBar.cpp
+func (g *Game) drawLoadingScreen(screen *ebiten.Image) {
+	sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
+
+	// Dark background
+	screen.Fill(color.RGBA{0, 0, 0, 255})
+
+	total := len(g.loadingSpriteIDs)
+	if total == 0 {
+		return
+	}
+	barValue := uint8(g.loadingStep * 255 / total) // 0-255 like OpenLoco
+
+	// Window geometry (matches OpenLoco ProgressBar 350×47)
+	const winW, winH = 350, 47
+	winX := (sw - winW) / 2
+	winY := (sh - winH) / 2
+
+	// Window chrome: dark panel with single-pixel bevel
+	fillRect(screen, float64(winX), float64(winY), float64(winW), float64(winH), color.RGBA{40, 40, 40, 255})
+	fillRect(screen, float64(winX), float64(winY), float64(winW), 1, color.RGBA{120, 120, 120, 255})
+	fillRect(screen, float64(winX), float64(winY), 1, float64(winH), color.RGBA{120, 120, 120, 255})
+	fillRect(screen, float64(winX), float64(winY+winH-1), float64(winW), 1, color.RGBA{20, 20, 20, 255})
+	fillRect(screen, float64(winX+winW-1), float64(winY), 1, float64(winH), color.RGBA{20, 20, 20, 255})
+	// Caption bar background
+	fillRect(screen, float64(winX+1), float64(winY+1), float64(winW-2), 13, color.RGBA{0, 0, 128, 255})
+
+	// Caption bar at top (14px)
+	captionText := "Loading: " + g.loadingCaption
+	ui.DrawText(screen, captionText, winX+4, winY+3, color.RGBA{255, 255, 255, 255})
+
+	// Clip region for progress bar: (winX+2, winY+15, 345, 28)
+	clipX, clipY := winX+2, winY+15
+
+	// Draw track background sprite (G1 2330) tiled across the clip area
+	if track := g.r.GetSprite(2330); track != nil {
+		tw := track.Bounds().Dx()
+		op := &ebiten.DrawImageOptions{}
+		for x := 0; x < 345; x += tw {
+			op.GeoM.Reset()
+			op.GeoM.Translate(float64(clipX+x), float64(clipY))
+			screen.DrawImage(track, op)
+		}
+	}
+
+	// Choose train style: style 0 = frames 2326-2329, style 1 = frames 2331-2334
+	trainBase := 2326
+	if g.loadingStyleFlip {
+		trainBase = 2331
+	}
+	trainFrame := int(barValue/4) % 4
+	if train := g.r.GetSprite(trainBase + trainFrame); train != nil {
+		// xPos: OpenLoco draws at xPos = barValue - 255 within the clip area.
+		// At barValue=0: xPos=-255 (off left); at barValue=255: xPos=0 (left edge).
+		// We mirror this: train enters from the right and parks near left.
+		trainXOff := int(barValue) - 255 + 345 // slide across 345px track
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(float64(clipX+trainXOff), float64(clipY))
+		screen.DrawImage(train, op)
+	}
+
+	// Numeric progress below the window
+	pct := g.loadingStep * 100 / total
+	ui.DrawText(screen, fmt.Sprintf("%d%%", pct), winX+winW/2-10, winY+winH+4, color.RGBA{200, 200, 200, 200})
+}
+
+// doLoadingStep preloads up to loadingStepSize sprites per frame into the atlas.
+// Returns true when all sprites have been packed and loading is complete.
+func (g *Game) doLoadingStep() bool {
+	size := g.loadingStepSize
+	if size <= 0 {
+		size = 50
+	}
+	end := g.loadingStep + size
+	if end > len(g.loadingSpriteIDs) {
+		end = len(g.loadingSpriteIDs)
+	}
+	g.r.PrewarmSpriteList(g.loadingSpriteIDs[g.loadingStep:end])
+	g.loadingStep = end
+	if g.loadingStep >= len(g.loadingSpriteIDs) {
+		g.loadingSpriteIDs = nil // loading complete
+		log.Printf("[Game] Sprite preload complete — atlas has %d sprites", g.r.AtlasPackedCount())
+		return true
+	}
+	return false
+}
+
 func (g *Game) Draw(screen *ebiten.Image) {
+	// ── Loading screen ──────────────────────────────────────────────────────
+	// When loadingSpriteIDs is set, show OpenLoco-style progress window and
+	// pack sprites into the atlas N per frame. Normal draw is skipped.
+	if g.loadingSpriteIDs != nil {
+		g.drawLoadingScreen(screen)
+		g.doLoadingStep()
+		return
+	}
+
 	if g.diagPending {
 		diagBackground(screen)
 	} else {
@@ -1339,6 +1457,14 @@ func (g *Game) loadScenario(filePath string) error {
 	g.w = gameW
 	g.currentScenarioPath = filePath
 	g.inTitleScreen = false
+
+	// Kick off sprite preload for the new scenario's sprites.
+	g.loadingSpriteIDs = gameW.CollectSpriteIDs()
+	g.loadingStep = 0
+	g.loadingStepSize = 60
+	g.loadingCaption = filepath.Base(filePath)
+	g.loadingStyleFlip = !g.loadingStyleFlip
+	log.Printf("[Game] Queued %d sprites for preload from %s", len(g.loadingSpriteIDs), filePath)
 
 	mapW, mapH := g.w.GetMapSize()
 	g.gameState = game.NewGameState(mapW, mapH)
