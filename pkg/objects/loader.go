@@ -80,6 +80,32 @@ func (m *ObjectManager) SetBaseSpriteIndex(baseIndex uint32) {
 	m.NextSpriteIndex = baseIndex
 }
 
+// LoadObjectFromHeaderAndData loads an object from a pre-parsed 16-byte header
+// and already-decompressed data payload.  This is used for packed objects
+// embedded in SC5/SV5 scenario files, whose data chunks are decoded by the
+// S5 chunk reader rather than by the Sawyer codec used in standalone DAT files.
+//
+// OpenLoco reference: src/OpenLoco/src/S5/S5.cpp  importPackedObjects()
+func (m *ObjectManager) LoadObjectFromHeaderAndData(headerBytes [16]byte, decompressed []byte) (*LoadedObject, error) {
+	header, err := ReadHeader(bytes.NewReader(headerBytes[:]))
+	if err != nil {
+		return nil, fmt.Errorf("parsing packed object header: %w", err)
+	}
+
+	loaded := &LoadedObject{
+		Header: header,
+		Data:   decompressed,
+	}
+
+	if err := m.parseAndRegisterObject(loaded, header, decompressed); err != nil {
+		return nil, err
+	}
+
+	key := strings.ToUpper(header.GetName())
+	m.Objects[key] = loaded
+	return loaded, nil
+}
+
 // LoadObject loads a single DAT file
 func (m *ObjectManager) LoadObject(path string) (*LoadedObject, error) {
 	f, err := os.Open(path)
@@ -122,12 +148,22 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 		Data:   decompressed,
 	}
 
+	if err := m.parseAndRegisterObject(loaded, header, decompressed); err != nil {
+		return nil, err
+	}
+	return loaded, nil
+}
+
+// parseAndRegisterObject parses type-specific fields from already-decompressed
+// object data, populates loaded, appends to the appropriate type slice, and
+// stores the object in m.Objects keyed by its name.
+func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *ObjectHeader, decompressed []byte) error {
 	// Parse type-specific data
 	switch header.GetType() {
 	case ObjectTypeInterfaceSkin:
 		skin, err := ParseInterfaceSkinObject(header, decompressed)
 		if err != nil {
-			return nil, fmt.Errorf("parsing interface skin: %w", err)
+			return fmt.Errorf("parsing interface skin: %w", err)
 		}
 		// Assign sprite indices
 		skin.ImageOffset = m.NextSpriteIndex
@@ -155,7 +191,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 			vehicle, err = ParseVehicleObject(header, decompressed)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("parsing vehicle: %w", err)
+			return fmt.Errorf("parsing vehicle: %w", err)
 		}
 		vehicle.DisplayName = extractFirstString(decompressed)
 		loaded.Object = vehicle
@@ -176,7 +212,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 			land, err = ParseLandObject(header, decompressed)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("parsing land: %w", err)
+			return fmt.Errorf("parsing land: %w", err)
 		}
 
 		// If using G1 dynamic loading, ImageOffset is already set
@@ -207,7 +243,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 			water, err = ParseWaterObject(header, decompressed)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("parsing water: %w", err)
+			return fmt.Errorf("parsing water: %w", err)
 		}
 		loaded.Object = water
 		loaded.ImageOffset = water.ImageOffset
@@ -226,7 +262,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 			cliff, err = ParseCliffEdgeObject(header, decompressed)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("parsing cliff edge: %w", err)
+			return fmt.Errorf("parsing cliff edge: %w", err)
 		}
 
 		loaded.Object = cliff
@@ -246,7 +282,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 			tree, err = ParseTreeObject(header, decompressed)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("parsing tree: %w", err)
+			return fmt.Errorf("parsing tree: %w", err)
 		}
 
 		loaded.Object = tree
@@ -266,7 +302,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 			bldg, err = ParseBuildingObject(header, decompressed)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("parsing building: %w", err)
+			return fmt.Errorf("parsing building: %w", err)
 		}
 
 		loaded.Object = bldg
@@ -286,7 +322,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 			wall, err = ParseWallObject(header, decompressed)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("parsing wall: %w", err)
+			return fmt.Errorf("parsing wall: %w", err)
 		}
 
 		loaded.Object = wall
@@ -306,7 +342,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 			track, err = ParseTrackObject(header, decompressed)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("parsing track: %w", err)
+			return fmt.Errorf("parsing track: %w", err)
 		}
 
 		loaded.Object = track
@@ -326,7 +362,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 			road, err = ParseRoadObject(header, decompressed)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("parsing road: %w", err)
+			return fmt.Errorf("parsing road: %w", err)
 		}
 
 		loaded.Object = road
@@ -346,7 +382,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 			station, err = ParseTrainStationObject(header, decompressed)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("parsing train station: %w", err)
+			return fmt.Errorf("parsing train station: %w", err)
 		}
 		loaded.Object = station
 		loaded.ImageOffset = station.ImageOffset
@@ -365,7 +401,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 			roadStation, err = ParseRoadStationObject(header, decompressed)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("parsing road station: %w", err)
+			return fmt.Errorf("parsing road station: %w", err)
 		}
 		loaded.Object = roadStation
 		loaded.ImageOffset = roadStation.ImageOffset
@@ -376,7 +412,7 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 	key := strings.ToUpper(header.GetName())
 	m.Objects[key] = loaded
 
-	return loaded, nil
+	return nil
 }
 
 // LoadAllObjects loads all DAT files from the ObjData directory

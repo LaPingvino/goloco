@@ -29,6 +29,12 @@ type Renderer struct {
 
 	// Cache for decoded object sprites (keyed by "objectName:localIndex")
 	objectSpriteCache map[string]*ebiten.Image
+
+	// Cache for blend-mask sprites (palette index 0 → opaque white, others → transparent)
+	maskSpriteCache map[int]*ebiten.Image
+
+	// Cache for cliff-edge masked sprites keyed by spriteID*100000+maskID
+	maskedSpriteCache map[int]*ebiten.Image
 }
 
 func NewRenderer() *Renderer {
@@ -36,6 +42,8 @@ func NewRenderer() *Renderer {
 		spriteCache:         make(map[int]*ebiten.Image),
 		colouredSpriteCache: make(map[int]*ebiten.Image),
 		objectSpriteCache:   make(map[string]*ebiten.Image),
+		maskSpriteCache:     make(map[int]*ebiten.Image),
+		maskedSpriteCache:   make(map[int]*ebiten.Image),
 	}
 	// attempt to load atlas from default extracted assets directory; ignore errors
 	if at, err := LoadAtlasFromDir("assets/extracted"); err == nil {
@@ -121,6 +129,71 @@ func (r *Renderer) GetSpriteColoured(spriteIndex, colourIndex int) *ebiten.Image
 	img := ebiten.NewImageFromImage(rgba)
 	r.colouredSpriteCache[cacheKey] = img
 	return img
+}
+
+// GetSpriteMask returns a blend-mask image for the given G1 sprite index.
+// Pixels with palette index 0 (the blend region in withBlend sprites) become
+// opaque white; all other pixels are transparent.
+// Used for water +35, glass, shadow, and any other withBlend() sprite.
+//
+// OpenLoco reference: src/OpenLoco/src/Graphics/DrawSpriteHelper.hpp (blend pixel mode)
+func (r *Renderer) GetSpriteMask(index int) *ebiten.Image {
+	if r.G1 == nil {
+		return nil
+	}
+	if img, ok := r.maskSpriteCache[index]; ok {
+		return img
+	}
+	rgba, err := r.G1.DecodeSpriteMaskOnly(index)
+	if err != nil {
+		return nil
+	}
+	img := ebiten.NewImageFromImage(rgba)
+	r.maskSpriteCache[index] = img
+	return img
+}
+
+// GetMaskedSprite returns a cliff-edge sprite clipped by maskSpriteID using
+// DestinationIn compositing.  The result is cached so allocation only happens
+// once per (spriteID, maskID) pair.
+//
+// OpenLoco reference: PaintSurface.cpp paintEdgeSection() — hasMaskedImage /
+//   maskedImageId drawn with DrawSpriteHelper blend-mask logic.
+func (r *Renderer) GetMaskedSprite(spriteID, maskID int) *ebiten.Image {
+	key := spriteID*100000 + maskID
+	if img, ok := r.maskedSpriteCache[key]; ok {
+		return img
+	}
+	sprite := r.GetSprite(spriteID)
+	if sprite == nil {
+		return nil
+	}
+	mask := r.GetSprite(maskID)
+	if mask == nil {
+		// No mask available — return unmasked sprite so cliff is still visible.
+		return sprite
+	}
+
+	// Create a temp image large enough for both the cliff and the mask.
+	// Both sprites share the same in-world anchor, so they align at (0,0).
+	sw, sh := sprite.Bounds().Dx(), sprite.Bounds().Dy()
+	mw, mh := mask.Bounds().Dx(), mask.Bounds().Dy()
+	w, h := sw, sh
+	if mw > w {
+		w = mw
+	}
+	if mh > h {
+		h = mh
+	}
+	tmp := ebiten.NewImage(w, h)
+	tmp.DrawImage(sprite, nil)
+
+	mop := &ebiten.DrawImageOptions{}
+	mop.Blend = ebiten.BlendDestinationIn
+	tmp.DrawImage(mask, mop)
+
+	r.maskedSpriteCache[key] = tmp
+	return tmp
 }
 
 // Clear fills the screen with transparent black (palette index 0).

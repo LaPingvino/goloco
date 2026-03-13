@@ -221,6 +221,22 @@ func NewGame() *Game {
 		titlePath := filepath.Join(dataDir, "title.dat")
 		log.Printf("[Game] Loading title scenario from: %s", titlePath)
 		if sc, err := scenario.LoadScenarioData(titlePath); err == nil {
+			// Load packed objects embedded in the scenario file first.
+			// These take priority over ObjData files and provide scenario-
+			// specific assets (buildings, vehicles, etc.) that may not exist
+			// in the standard ObjData directory.
+			if objMgr != nil && len(sc.PackedObjectsRaw) > 0 {
+				packedOK := 0
+				for _, po := range sc.PackedObjectsRaw {
+					if _, err := objMgr.LoadObjectFromHeaderAndData(po.HeaderBytes, po.Data); err != nil {
+						log.Printf("[Game] Failed to load packed object: %v", err)
+					} else {
+						packedOK++
+					}
+				}
+				log.Printf("[Game] Loaded %d/%d packed objects from scenario", packedOK, len(sc.PackedObjectsRaw))
+			}
+
 			// Reorder objects to match the slot order declared in the
 			// scenario's RequiredObjects chunk before loading tiles,
 			// so that element indices resolve to the correct objects.
@@ -847,6 +863,13 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		return
 	}
 
+	// If a diagnostic crop is pending for a specific tile, move the camera
+	// here (after Update has run) so the title-sequence camera override
+	// doesn't undo the positioning we set earlier.
+	if g.diagPending && g.diagTileX >= 0 {
+		g.w.SetCamera(float64(g.diagTileX), float64(g.diagTileY))
+	}
+
 	g.r.SetScreen(screen)
 	g.w.Draw(screen)
 
@@ -854,6 +877,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.diagPending {
 		g.diagPending = false
 		saveDiagCrop(screen, g, g.diagTileX, g.diagTileY)
+		world.LogBuildingStats()
 		if g.diagQuit {
 			g.quitAfterSave = true
 		}
@@ -2086,6 +2110,10 @@ func main() {
 				diagKind = "water" // sensible default for --diag with no arg
 			}
 			game.w.CenterOn(diagKind)
+		} else {
+			// Move camera to centre on the requested tile so it is
+			// fully rendered when saveDiagCrop runs after Draw().
+			game.w.SetCamera(float64(diagTileX), float64(diagTileY))
 		}
 		game.diagPending = true
 		game.diagQuit = true

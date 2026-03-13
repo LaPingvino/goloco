@@ -21,6 +21,10 @@ type Scenario struct {
 	// Packed objects (DAT file references)
 	PackedObjects []PackedObject
 
+	// PackedObjectsRaw holds fully decoded (header + decompressed data) for
+	// each packed object embedded in the scenario file.
+	PackedObjectsRaw []PackedObjectRaw
+
 	// LandObjectOrder is the list of land-object names in terrain-slot order,
 	// as specified by the RequiredObjects chunk.  Slot 0 = terrain index 0, etc.
 	// Empty entries (0xFF-filled headers) are stored as "".
@@ -290,6 +294,15 @@ type PackedObject struct {
 	Name     [8]byte
 	Checksum uint32
 	Type     ObjectType
+}
+
+// PackedObjectRaw stores a packed object's header and decompressed data as
+// embedded directly in an SC5/SV5 file.  These objects are loaded into the
+// ObjectManager before reordering so that scenario-specific assets (buildings,
+// vehicles, etc.) that are not present in ObjData are still available.
+type PackedObjectRaw struct {
+	HeaderBytes [16]byte // raw 16-byte ObjectHeader (flags, name, checksum)
+	Data        []byte   // decompressed object payload
 }
 
 // ObjectType identifies category of a DAT object

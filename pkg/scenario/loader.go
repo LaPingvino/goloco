@@ -149,23 +149,30 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 
 	// --- Packed objects (raw ObjectHeader + data chunk per object) ---
 	if header.NumPackedObjects > 0 {
-		log.Printf("[Scenario] Skipping %d packed objects", header.NumPackedObjects)
+		log.Printf("[Scenario] Loading %d packed objects", header.NumPackedObjects)
 		for i := uint16(0); i < header.NumPackedObjects; i++ {
 			// Each packed object is: 16-byte ObjectHeader (raw, no chunk framing)
 			// followed by one chunk of object data.
-			// Skip the raw header bytes directly.
 			if reader.Offset()+16 > len(data) {
 				return sc, fmt.Errorf("truncated packed object header at index %d", i)
 			}
-			// Advance past the 16-byte raw ObjectHeader (not chunk-framed)
+			// Capture the raw 16-byte ObjectHeader before advancing.
+			var rawHdr [16]byte
+			copy(rawHdr[:], data[reader.Offset():reader.Offset()+16])
 			advanceRaw(reader, 16)
 
-			// Then one chunk of object data
-			_, err := reader.ReadChunk()
+			// Decode the object data chunk (run-length / rotate encoded).
+			objData, err := reader.ReadChunk()
 			if err != nil {
 				return sc, fmt.Errorf("failed to read packed object %d data: %w", i, err)
 			}
+
+			sc.PackedObjectsRaw = append(sc.PackedObjectsRaw, PackedObjectRaw{
+				HeaderBytes: rawHdr,
+				Data:        objData,
+			})
 		}
+		log.Printf("[Scenario] Decoded %d packed objects", len(sc.PackedObjectsRaw))
 	}
 
 	// --- Required objects (rotate-encoded) ---

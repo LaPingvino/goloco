@@ -186,6 +186,7 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 	w.width = sc.MapWidth
 	w.height = sc.MapHeight
 	w.tiles = make([][]tile, w.height)
+	totalBuildings := 0
 	for y := 0; y < w.height; y++ {
 		w.tiles[y] = make([]tile, w.width)
 		for x := 0; x < w.width; x++ {
@@ -194,6 +195,7 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 				w.tiles[y][x] = tile{tileType: TileGrass}
 				continue
 			}
+			totalBuildings += len(st.Buildings)
 
 			tt := TileGrass
 			switch st.Surface {
@@ -220,6 +222,8 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 			}
 		}
 	}
+
+	log.Printf("[World] LoadFromScenario: %dx%d tiles, totalBuildings=%d", w.width, w.height, totalBuildings)
 
 	// Center camera on the map
 	cx, cy := w.tileToScreen(w.width/2, w.height/2)
@@ -917,6 +921,13 @@ func (w *World) getEdgeHeights(x, y int, edge int, selfCorners CornerHeight) Edg
 // OpenLoco reference: PaintSurface.cpp kEdgeFactorOffset
 var kEdgeFactorOffset = [4]uint32{0, 16, 16, 0} // SW, SE, NW, NE
 
+// kCliffEdgeMaskBase[edge] is the G1 index of the first mask sprite for that edge.
+// OpenLoco reference: PaintSurface.cpp kEdgeMaskImageFromSlope, ImageIds.h 3726-3735
+// Masks: cliffEdge0MaskSlope0..4 = 3726-3730 (SW, NE)
+//        cliffEdge1MaskSlope0..4 = 3731-3735 (SE, NW)
+// [0]=body, [1]=top-equalSelf, [2]=top-other, [3]=bottom-n1<n0, [4]=bottom-n1>n0
+var kCliffEdgeMaskBase = [4]int{3726, 3731, 3731, 3726} // indexed by edge (SW,SE,NW,NE)
+
 // paintCliffEdges renders cliff edge sprites for height transitions
 // OpenLoco reference: PaintSurface.cpp paintSurfaceCliffEdge(), paintEdgeSection()
 func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *objects.LandObject, drawX, drawY, scale float64) {
@@ -964,10 +975,26 @@ func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *o
 		checkerboard := uint32((x^y)&1) * 32
 		factor := checkerboard + kEdgeFactorOffset[edge]
 
+		maskBase := kCliffEdgeMaskBase[edge]
 		for h := minHeight; h < maxHeight; h++ {
 			spriteID := int(cliffEdgeImageBase) + int(factor) + int(h&0xF)
 
-			if img := w.renderer.GetSprite(spriteID); img != nil {
+			// Select mask slope variant:
+			//   body sections use slope0 (maskBase+0)
+			//   topmost section uses slope1 when both self corners equal h+1,
+			//   slope2 otherwise.
+			// OpenLoco reference: PaintSurface.cpp paintSurfaceCliffEdgeImpl maskArr[]
+			var slopeVariant int
+			if h == maxHeight-1 {
+				if edgeHeights.Self0 == edgeHeights.Self1 {
+					slopeVariant = 1
+				} else {
+					slopeVariant = 2
+				}
+			}
+			maskID := maskBase + slopeVariant
+
+			if img := w.renderer.GetMaskedSprite(spriteID, maskID); img != nil {
 				_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
 				if ok {
 					edgeOffsetX, edgeOffsetY := w.getCliffEdgeOffset(edge, h)
@@ -1045,9 +1072,15 @@ func (w *World) paintWaterCliffEdges(x, y int, t *tile, land *objects.LandObject
 		}
 
 		factor := checkerboard + kEdgeFactorOffset[edge]
+		maskBase := kCliffEdgeMaskBase[edge]
 		for h := minH; h < waterMicroZ; h++ {
 			spriteID := int(cliffEdgeImageBase) + int(factor) + int(h&0xF)
-			img := w.renderer.GetSprite(spriteID)
+			var slopeVariant int
+			if h == waterMicroZ-1 {
+				slopeVariant = 1 // topmost water cliff section
+			}
+			maskID := maskBase + slopeVariant
+			img := w.renderer.GetMaskedSprite(spriteID, maskID)
 			if img == nil {
 				continue
 			}
@@ -1132,14 +1165,23 @@ func (w *World) paintTrees(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 //
 // OpenLoco reference: src/OpenLoco/src/Paint/PaintBuilding.cpp  paintBuilding()
 // Simplified: renders the first variation's parts stacked vertically.
+var buildingDrawCount int
+var buildingSkipNilImg int
+var buildingSkipSpriteNil int
+var buildingSkipEarlyReturn int
+
 func (w *World) paintBuildings(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
 	if w.renderer == nil || w.renderer.ObjMgr == nil || len(t.buildings) == 0 {
+		if len(t.buildings) > 0 {
+			buildingSkipEarlyReturn++ // renderer/ObjMgr nil but tile has buildings
+		}
 		return
 	}
 
 	for _, be := range t.buildings {
 		bldgObj := w.renderer.ObjMgr.GetBuildingObjectByIndex(int(be.ObjectID))
 		if bldgObj == nil || bldgObj.ImageOffset == 0 {
+			buildingSkipNilImg++
 			continue
 		}
 
@@ -1187,6 +1229,7 @@ func (w *World) paintBuildings(screen *ebiten.Image, t *tile, drawX, drawY, scal
 
 			img := w.renderer.GetSprite(spriteID)
 			if img == nil {
+				buildingSkipSpriteNil++
 				continue
 			}
 
@@ -1201,6 +1244,7 @@ func (w *World) paintBuildings(screen *ebiten.Image, t *tile, drawX, drawY, scal
 				drawX+(float64(xOff)+offsetX)*scale,
 				drawY+(float64(yOff)-extraHeight-partZ+offsetY)*scale)
 			screen.DrawImage(img, op)
+			buildingDrawCount++
 
 			// Stack next part on top
 			if int(part) < len(bldgObj.PartHeights) {
@@ -1208,6 +1252,11 @@ func (w *World) paintBuildings(screen *ebiten.Image, t *tile, drawX, drawY, scal
 			}
 		}
 	}
+}
+
+// LogBuildingStats logs counts of building draw attempts/skips for diagnostics.
+func LogBuildingStats() {
+	log.Printf("[Buildings] drawn=%d skipNilImg=%d skipSpriteNil=%d skipEarlyReturn=%d", buildingDrawCount, buildingSkipNilImg, buildingSkipSpriteNil, buildingSkipEarlyReturn)
 }
 
 // kWallScreenOffsets: screen-pixel (deltaX, deltaY) per rotation.
