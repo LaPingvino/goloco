@@ -41,6 +41,10 @@ type Scenario struct {
 	// Slots 313-328 (16 slots).
 	TrainStationObjectOrder []string
 
+	// RoadStationObjectOrder is the list of road-station-object names in slot order.
+	// Slots 345-360 (16 slots).
+	RoadStationObjectOrder []string
+
 	// TrackObjectOrder is the list of track-object names in track-slot order.
 	// Slots 337-344 (8 slots).
 	TrackObjectOrder []string
@@ -166,6 +170,7 @@ type RoadElement struct {
 //
 // OpenLoco reference: src/OpenLoco/src/Map/StationElement.h
 type StationElement struct {
+	StationType  uint8  // byte 5 bits [7:5]: 0=train, 1=road, 2=airport, 3=docks
 	ObjectID     uint8  // byte 5 bits [4:0]: StationObject index
 	Rotation     uint8  // byte 0 bits [1:0]
 	SequenceIndex uint8 // byte 0 bits [7:6]: multi-tile position

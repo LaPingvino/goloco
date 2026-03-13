@@ -179,6 +179,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.BuildingObjectOrder = parseBuildingObjectOrder(reqObjBytes)
 	sc.WallObjectOrder = parseWallObjectOrder(reqObjBytes)
 	sc.TrainStationObjectOrder = parseTrainStationObjectOrder(reqObjBytes)
+	sc.RoadStationObjectOrder = parseRoadStationObjectOrder(reqObjBytes)
 	sc.TrackObjectOrder = parseTrackObjectOrder(reqObjBytes)
 	sc.RoadObjectOrder = parseRoadObjectOrder(reqObjBytes)
 
@@ -440,6 +441,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 				// StationElement: byte layout from StationElement.h
 				stationWord := uint16(elem[6]) | uint16(elem[7])<<8
 				se := StationElement{
+					StationType:   elem[5] >> 5,
 					ObjectID:      elem[5] & 0x1F,
 					Rotation:      typeByte & 0x03,
 					SequenceIndex: (typeByte >> 6) & 0x03,
@@ -673,7 +675,7 @@ const (
 // given slot range and expected object type.
 func parseObjectOrder(data []byte, slotStart, slotCount int, expectedType uint32) []string {
 	order := make([]string, slotCount)
-	for i := 0; i < slotCount; i++ {
+	for i := range slotCount {
 		off := (slotStart + i) * objectHeaderSize
 		if off+objectHeaderSize > len(data) {
 			break
@@ -766,6 +768,20 @@ func parseTrainStationObjectOrder(data []byte) []string {
 		}
 	}
 	log.Printf("[Scenario] RequiredObjects: %d train station objects in slot order", count)
+	return order
+}
+
+// parseRoadStationObjectOrder extracts the 16 road-station-object names from RequiredObjects.
+// Slots 345-360 (ObjectType::roadStation = 18).
+func parseRoadStationObjectOrder(data []byte) []string {
+	order := parseObjectOrder(data, roadStationSlotStart, roadStationSlotCount, objectTypeRoadStation)
+	count := 0
+	for _, n := range order {
+		if n != "" {
+			count++
+		}
+	}
+	log.Printf("[Scenario] RequiredObjects: %d road station objects in slot order", count)
 	return order
 }
 

@@ -1,8 +1,13 @@
 package world
 
 import (
+	"image"
 	"image/color"
+	"image/png"
+	"log"
 	"math"
+	"os"
+	"time"
 
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/render"
@@ -69,12 +74,10 @@ type World struct {
 	tileH int // tile height in pixels (32)
 	// cache colored diamond images per tile type (fallback)
 	tileCache  map[TileType]*ebiten.Image
-	waterImage *ebiten.Image // cached translucent water diamond overlay (fallback)
-	// Cache for pre-rendered solid-blue water blend sprites, keyed by shape (0-4).
-	// Each entry is the +35 water sprite forced to the game's actual water colour
-	// (derived from the water palette map at WaterObject.ImageOffset+41).
-	// This approximates OpenLoco's dst-based water blend without requiring screen readback.
-	waterBlendCache map[int]*ebiten.Image
+	waterImage          *ebiten.Image          // solid water base diamond (cached)
+	waterBaseCache      map[int]*ebiten.Image  // +35 blend sprite with water colour forced (per shape)
+	waterHighlightCache map[int]*ebiten.Image  // +30 highlight sprites (real teal colours)
+	waterWaveCache      map[int]*ebiten.Image  // wave frame sprites (real palette colours)
 	// camera offset in pixels (in world-space before zoom is applied)
 	camX float64
 	camY float64
@@ -85,7 +88,48 @@ type World struct {
 	//   0 = full size (1×), 1 = half (2×), 2 = quarter (4×), 3 = eighth (8×)
 	// The pixel scale factor is 1 << zoom applied in reverse:
 	// world coordinates are divided by (1 << zoom) for screen placement.
-	zoom int
+	zoom     int
+	animTick int // incremented every frame; drives water wave animation
+
+	// 2-pass blend rendering (water, glass, etc.)
+	worldBuf      *ebiten.Image          // pass-1 target: all opaque sprites
+	blendBuf      *ebiten.Image          // pass-2 target: blend-mode overlay
+	blendOps     []worldBlendOp     // queued during pass 1
+	highlightOps []worldHighlightOp // ripple/wave sprites drawn after blend
+
+	// step-based full-map PNG save (one chunk per frame)
+	mapSave *mapSaveState
+}
+
+// mapSaveState holds in-progress full-map PNG render state.
+type mapSaveState struct {
+	filename        string
+	final           *image.RGBA
+	imgW, imgH      int
+	minVpX, minVpY  float64
+	chunkX, chunkY  int
+	total, done     int
+	chunkPix        []byte
+	// saved world state restored when saving is complete
+	savedCamX, savedCamY float64
+	savedZoom             int
+	savedExternal         bool
+	savedWorldBuf         *ebiten.Image
+	savedBlendBuf         *ebiten.Image
+}
+
+// worldBlendOp records a pending destination-blend draw for pass 2.
+type worldBlendOp struct {
+	maskImg  *ebiten.Image   // white-mask from Renderer.GetSpriteMask
+	tileRect image.Rectangle // screen-space pixel region for the mask
+	tint     color.RGBA
+	strength float32
+}
+
+// worldHighlightOp records a post-blend sprite draw (ripple, wave, etc.).
+type worldHighlightOp struct {
+	img  *ebiten.Image
+	opts *ebiten.DrawImageOptions
 }
 
 func NewWorld(r *render.Renderer) *World {
@@ -308,6 +352,7 @@ func (w *World) GetZoom() int {
 }
 
 func (w *World) Update() {
+	w.animTick++
 	// Advance demo trains at ~2 tiles/second (60fps → 1/30 per frame).
 	const speed = 1.0 / 30.0
 	for _, tr := range w.trains {
@@ -328,6 +373,232 @@ func (w *World) Update() {
 			}
 		}
 	}
+}
+
+// mapSaveChunkSize is the pixel size of each rendering tile during full-map save.
+// Small enough that the CPU blend pass completes within a single frame.
+const mapSaveChunkSize = 512
+
+// StartMapSave begins a step-based full-map PNG render. Call StepMapSave each
+// frame; when it returns true, call FinishMapSave to write the PNG.
+func (w *World) StartMapSave(filename string) {
+	const chunkMax = mapSaveChunkSize
+	minVpX := -(float64(w.width) - 1) * 32.0
+	maxVpX := (float64(w.height) - 1) * 32.0
+	minVpY := -512.0
+	maxVpY := (float64(w.width)+float64(w.height)-2)*16.0 + 64.0
+	imgW := int(maxVpX-minVpX) + 128
+	imgH := int(maxVpY-minVpY) + 64
+
+	total := 0
+	for cy := 0; cy < imgH; cy += chunkMax {
+		for cx := 0; cx < imgW; cx += chunkMax {
+			_ = cx
+			total++
+		}
+	}
+
+	final := image.NewRGBA(image.Rect(0, 0, imgW, imgH))
+	for i := 0; i < len(final.Pix); i += 4 {
+		final.Pix[i], final.Pix[i+1], final.Pix[i+2], final.Pix[i+3] = 135, 206, 235, 255
+	}
+
+	w.mapSave = &mapSaveState{
+		filename: filename,
+		final:    final,
+		imgW:     imgW, imgH: imgH,
+		minVpX:   minVpX, minVpY: minVpY,
+		total:    total,
+		chunkPix: make([]byte, chunkMax*chunkMax*4),
+		// save world state
+		savedCamX: w.camX, savedCamY: w.camY,
+		savedZoom:     w.zoom,
+		savedExternal: w.externalCamera,
+		savedWorldBuf: w.worldBuf,
+		savedBlendBuf: w.blendBuf,
+	}
+	w.zoom = 0
+	w.externalCamera = true // prevent Draw() from overriding our chunk camera position
+	log.Printf("[World] StartMapSave: %dx%d px, %d chunks", imgW, imgH, total)
+}
+
+// StepMapSave renders the next chunk. Returns true when all chunks are done.
+// Call FinishMapSave after it returns true.
+func (w *World) StepMapSave() bool {
+	const chunkMax = mapSaveChunkSize
+	s := w.mapSave
+	if s == nil {
+		return true
+	}
+	chunkW := min(chunkMax, s.imgW-s.chunkX)
+	chunkH := min(chunkMax, s.imgH-s.chunkY)
+
+	w.camX = s.minVpX + float64(s.chunkX)
+	w.camY = s.minVpY + float64(s.chunkY)
+	w.worldBuf = nil
+	w.blendBuf = nil
+
+	log.Printf("[MapSave] chunk %d/%d at (%d,%d) size %dx%d", s.done+1, s.total, s.chunkX, s.chunkY, chunkW, chunkH)
+	t0 := time.Now()
+	chunk := ebiten.NewImage(chunkW, chunkH)
+	chunk.Fill(color.RGBA{135, 206, 235, 255})
+	w.Draw(chunk)
+	log.Printf("[MapSave] chunk %d/%d rendered in %v", s.done+1, s.total, time.Since(t0))
+
+	pix := s.chunkPix[:chunkW*chunkH*4]
+	chunk.ReadPixels(pix)
+	for row := 0; row < chunkH; row++ {
+		srcOff := row * chunkW * 4
+		dstOff := (s.chunkY+row)*s.imgW*4 + s.chunkX*4
+		copy(s.final.Pix[dstOff:dstOff+chunkW*4], pix[srcOff:srcOff+chunkW*4])
+	}
+	s.done++
+
+	// Advance to next chunk.
+	s.chunkX += chunkMax
+	if s.chunkX >= s.imgW {
+		s.chunkX = 0
+		s.chunkY += chunkMax
+	}
+	if s.chunkY >= s.imgH {
+		return true
+	}
+	// DEBUG: bail after first chunk to verify output — remove when confirmed correct.
+	return s.done >= 1
+}
+
+// MapSaveProgress returns (done, total) chunks for the in-progress save.
+// total is 0 if no save is in progress.
+func (w *World) MapSaveProgress() (done, total int) {
+	if w.mapSave == nil {
+		return 0, 0
+	}
+	return w.mapSave.done, w.mapSave.total
+}
+
+// FinishMapSave writes the PNG, restores world state, and clears the save state.
+func (w *World) FinishMapSave() error {
+	s := w.mapSave
+	if s == nil {
+		return nil
+	}
+	// Restore world state.
+	w.camX, w.camY = s.savedCamX, s.savedCamY
+	w.zoom = s.savedZoom
+	w.externalCamera = s.savedExternal
+	w.worldBuf = s.savedWorldBuf
+	w.blendBuf = s.savedBlendBuf
+	w.mapSave = nil
+
+	f, err := os.Create(s.filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := png.Encode(f, s.final); err != nil {
+		return err
+	}
+	log.Printf("[World] Full map saved to %s (%dx%d)", s.filename, s.imgW, s.imgH)
+	return nil
+}
+
+// CenterOn moves the camera to the nearest tile (from map centre outward) that
+// matches kind. Recognised kinds:
+//
+//	"water"    — tile with a water surface
+//	"tree"     — tile with at least one tree element
+//	"building" — tile with at least one building element
+//	"track"    — tile with at least one track element
+//	"road"     — tile with at least one road element
+//	"station"  — tile with at least one station element
+//	"industry" — tile with at least one industry element
+//	"wall"     — tile with at least one wall element
+//	"train"    — first demo-train or vehicle entity position
+//	""         — no-op (leaves camera where it is)
+//
+// Returns true if a matching position was found.
+func (w *World) CenterOn(kind string) bool {
+	if kind == "" {
+		return false
+	}
+
+	// Trains live outside the tile grid; handle separately.
+	if kind == "train" || kind == "trains" || kind == "vehicle" || kind == "vehicles" {
+		if len(w.entities) > 0 {
+			e := w.entities[0]
+			tx, ty := int(e.TileX), int(e.TileY)
+			log.Printf("[World] CenterOn(%q): entity at (%d,%d)", kind, tx, ty)
+			w.SetCamera(float64(tx), float64(ty))
+			w.externalCamera = false
+			return true
+		}
+		if len(w.trains) > 0 {
+			tr := w.trains[0]
+			log.Printf("[World] CenterOn(%q): demo train at (%d,%d)", kind, tr.tileX, tr.tileY)
+			w.SetCamera(float64(tr.tileX), float64(tr.tileY))
+			w.externalCamera = false
+			return true
+		}
+		log.Printf("[World] CenterOn(%q): no trains found", kind)
+		return false
+	}
+
+	match := func(t *tile) bool {
+		switch kind {
+		case "water":
+			return t.waterLevel > 0 && uint16(t.waterLevel)*16 > uint16(t.baseZ)*4
+		case "tree", "trees":
+			return len(t.trees) > 0
+		case "building", "buildings":
+			return len(t.buildings) > 0
+		case "track", "tracks":
+			return len(t.tracks) > 0
+		case "road", "roads":
+			return len(t.roads) > 0
+		case "station", "stations":
+			return len(t.stations) > 0
+		case "industry", "industries":
+			return len(t.industries) > 0
+		case "wall", "walls":
+			return len(t.walls) > 0
+		}
+		return false
+	}
+
+	cx, cy := w.width/2, w.height/2
+	for r := 0; r < w.width/2+w.height/2; r++ {
+		for dy := -r; dy <= r; dy++ {
+			for dx := -r; dx <= r; dx++ {
+				if abs(dx) != r && abs(dy) != r {
+					continue
+				}
+				x, y := cx+dx, cy+dy
+				if x < 0 || y < 0 || x >= w.width || y >= w.height {
+					continue
+				}
+				if match(&w.tiles[y][x]) {
+					log.Printf("[World] CenterOn(%q): found at (%d,%d)", kind, x, y)
+					w.SetCamera(float64(x), float64(y))
+					w.externalCamera = false
+					return true
+				}
+			}
+		}
+	}
+	log.Printf("[World] CenterOn(%q): nothing found", kind)
+	return false
+}
+
+// CenterOnWater is a convenience wrapper around CenterOn("water").
+func (w *World) CenterOnWater() bool {
+	return w.CenterOn("water")
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 // PanCamera moves the camera by (dx, dy) pixels in world-space.
@@ -413,6 +684,106 @@ func (w *World) getTile(x, y int) *tile {
 		return nil
 	}
 	return &w.tiles[y][x]
+}
+
+// TileToScreenPx returns the screen pixel (sx, sy) for the centre of tile (tileX, tileY)
+// given the current camera and zoom. Inverse of ScreenToTile.
+func (w *World) TileToScreenPx(tileX, tileY int) (int, int) {
+	scale := 1.0 / float64(int(1)<<w.zoom)
+	vpX, vpY := w.tileToScreen(tileX, tileY)
+	sx := int((vpX-w.camX)*scale)
+	sy := int((vpY-w.camY)*scale)
+	return sx, sy
+}
+
+// ScreenToTile converts a screen pixel (sx, sy) to tile coordinates.
+// Returns (-1, -1) if the position maps outside the map bounds.
+// Height is ignored (tiles are treated as flat) — small error on steep terrain is acceptable.
+//
+// Inverse of tileToScreen:
+//
+//	vpX = (tileY - tileX) * 32  →  tileY - tileX = vpX/32
+//	vpY = (tileY + tileX) * 16  →  tileY + tileX = vpY/16
+//	tileY = (vpX/32 + vpY/16) / 2
+//	tileX = (vpY/16 - vpX/32) / 2
+func (w *World) ScreenToTile(sx, sy int) (int, int) {
+	scale := 1.0 / float64(int(1)<<w.zoom)
+	// un-zoom and un-camera to get world-space viewport coords
+	vpX := float64(sx)/scale + w.camX
+	vpY := float64(sy)/scale + w.camY
+	tileX := int(math.Floor((vpY/16.0 - vpX/32.0) / 2.0))
+	tileY := int(math.Floor((vpX/32.0 + vpY/16.0) / 2.0))
+	if tileX < 0 || tileX >= w.width || tileY < 0 || tileY >= w.height {
+		return -1, -1
+	}
+	return tileX, tileY
+}
+
+// GetTileBaseZ returns the baseZ of tile (x, y), or -1 if out of bounds.
+func (w *World) GetTileBaseZ(x, y int) int {
+	t := w.getTile(x, y)
+	if t == nil {
+		return -1
+	}
+	return int(t.baseZ)
+}
+
+// AddTrack appends a track element to tile (x, y).
+// Returns false if the tile is out of bounds or an identical element already exists.
+func (w *World) AddTrack(x, y int, te scenario.TrackElement) bool {
+	t := w.getTile(x, y)
+	if t == nil {
+		return false
+	}
+	for _, ex := range t.tracks {
+		if ex.TrackObjectID == te.TrackObjectID &&
+			ex.TrackID == te.TrackID &&
+			ex.Rotation == te.Rotation &&
+			ex.BaseZ == te.BaseZ {
+			return false
+		}
+	}
+	t.tracks = append(t.tracks, te)
+	return true
+}
+
+// AddRoad appends a road element to tile (x, y).
+// Returns false if the tile is out of bounds or an identical element already exists.
+func (w *World) AddRoad(x, y int, re scenario.RoadElement) bool {
+	t := w.getTile(x, y)
+	if t == nil {
+		return false
+	}
+	for _, ex := range t.roads {
+		if ex.RoadObjectID == re.RoadObjectID &&
+			ex.RoadID == re.RoadID &&
+			ex.Rotation == re.Rotation &&
+			ex.BaseZ == re.BaseZ {
+			return false
+		}
+	}
+	t.roads = append(t.roads, re)
+	return true
+}
+
+// RemoveLastTrack removes the most recently placed track element from tile (x, y).
+func (w *World) RemoveLastTrack(x, y int) bool {
+	t := w.getTile(x, y)
+	if t == nil || len(t.tracks) == 0 {
+		return false
+	}
+	t.tracks = t.tracks[:len(t.tracks)-1]
+	return true
+}
+
+// RemoveLastRoad removes the most recently placed road element from tile (x, y).
+func (w *World) RemoveLastRoad(x, y int) bool {
+	t := w.getTile(x, y)
+	if t == nil || len(t.roads) == 0 {
+		return false
+	}
+	t.roads = t.roads[:len(t.roads)-1]
+	return true
 }
 
 // Edge directions for neighbor lookup
@@ -502,7 +873,16 @@ func (w *World) getEdgeHeights(x, y int, edge int, selfCorners CornerHeight) Edg
 		return EdgeHeight{0, 0, 0, 0}
 	}
 
-	neighborCorners := w.getCornerHeights(neighbor)
+	// If the neighbor is submerged, its terrain is drawn at waterLevel height.
+	// Use waterLevel as effective corner height so cliff edges terminate at the
+	// water surface rather than at the (lower) terrain base.
+	var neighborCorners CornerHeight
+	if neighbor.waterLevel > 0 && uint16(neighbor.waterLevel)*16 > uint16(neighbor.baseZ)*4 {
+		wl := uint8(neighbor.waterLevel)
+		neighborCorners = CornerHeight{wl, wl, wl, wl}
+	} else {
+		neighborCorners = w.getCornerHeights(neighbor)
+	}
 
 	// Map edge direction to corner pairs
 	// From OpenLoco paintSurface edge height calculation
@@ -613,13 +993,13 @@ var kTreeQuadrantOffset = [4][2]int16{
 	{23, 7},  // quadrant 3
 }
 
-// paintWaterCliffEdges renders cliff edge sprites at the water-surface level
-// for tiles where the adjacent tile has a different (lower) water height.
-// This creates the visual "shore cliff" between water bodies at different levels.
+// paintWaterCliffEdges queues cliff-edge sprites at the water-surface level into
+// highlightOps so they render after the blend pass (pass 4) and are not covered
+// by the water tint.
 //
 // OpenLoco reference: src/OpenLoco/src/Paint/PaintSurface.cpp
 //   paintSurfaceWaterCliffEdge() — called for all 4 edges after paintWater
-func (w *World) paintWaterCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *objects.LandObject, drawX, drawY, scale float64) {
+func (w *World) paintWaterCliffEdges(x, y int, t *tile, land *objects.LandObject, drawX, drawY, scale float64) {
 	if w.renderer == nil || w.renderer.G1 == nil || land == nil || land.CliffEdgeImage == 0 {
 		return
 	}
@@ -681,7 +1061,7 @@ func (w *World) paintWaterCliffEdges(screen *ebiten.Image, x, y int, t *tile, la
 			op.GeoM.Translate(
 				drawX+float64(xOff+edgeOffsetX)*scale,
 				drawYFlat+float64(yOff+edgeOffsetY)*scale)
-			screen.DrawImage(img, op)
+			w.highlightOps = append(w.highlightOps, worldHighlightOp{img: img, opts: op})
 		}
 	}
 }
@@ -1089,6 +1469,106 @@ func (w *World) drawTrackRoadSprite(screen *ebiten.Image, spriteID int, drawX, d
 	screen.DrawImage(img, op)
 }
 
+// DrawTrackGhost renders a translucent preview of a track piece at tile (tileX, tileY).
+// Used to show the player where a piece will be placed before clicking.
+// trackID=0 straight, 2=LeftCurveVerySmall, 3=RightCurveVerySmall, etc.
+func (w *World) DrawTrackGhost(screen *ebiten.Image, tileX, tileY, trackID, rotation, objID int) {
+	if w.renderer == nil || w.renderer.ObjMgr == nil {
+		return
+	}
+	t := w.getTile(tileX, tileY)
+	if t == nil {
+		return
+	}
+	trackObj := w.renderer.ObjMgr.GetTrackObjectByIndex(objID)
+	if trackObj == nil || trackObj.Image == 0 {
+		return
+	}
+	if trackID >= len(kTrackParts) || kTrackParts[trackID] == nil || len(kTrackParts[trackID]) == 0 {
+		return
+	}
+	piece := kTrackParts[trackID][0]
+	rot := rotation & 0x03
+	scale := 1.0 / float64(int(1)<<w.zoom)
+	vpX, vpY := w.tileToScreen(tileX, tileY)
+	vpY -= float64(t.baseZ) * 4.0
+	drawX := math.Round((vpX-w.camX)*scale)
+	drawY := math.Round((vpY-w.camY)*scale)
+
+	for layer := 0; layer < 3; layer++ {
+		offset := piece.img[rot][layer]
+		if piece.nonMergeable && layer > 0 {
+			break
+		}
+		if offset == 0 {
+			continue
+		}
+		spriteID := int(trackObj.Image) + int(offset)
+		img := w.renderer.GetSprite(spriteID)
+		if img == nil {
+			continue
+		}
+		_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+		if !ok {
+			continue
+		}
+		op := &ebiten.DrawImageOptions{}
+		op.ColorScale.ScaleAlpha(0.5)
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(drawX+float64(xOff)*scale, drawY+float64(yOff)*scale)
+		screen.DrawImage(img, op)
+	}
+}
+
+// DrawRoadGhost renders a translucent preview of a road piece at tile (tileX, tileY).
+func (w *World) DrawRoadGhost(screen *ebiten.Image, tileX, tileY, roadID, rotation, objID int) {
+	if w.renderer == nil || w.renderer.ObjMgr == nil {
+		return
+	}
+	t := w.getTile(tileX, tileY)
+	if t == nil {
+		return
+	}
+	roadObj := w.renderer.ObjMgr.GetRoadObjectByIndex(objID)
+	if roadObj == nil || roadObj.Image == 0 {
+		return
+	}
+	if roadID >= len(kRoadPartsStyle0) || kRoadPartsStyle0[roadID] == nil || len(kRoadPartsStyle0[roadID]) == 0 {
+		return
+	}
+	rot := rotation & 0x03
+	scale := 1.0 / float64(int(1)<<w.zoom)
+	vpX, vpY := w.tileToScreen(tileX, tileY)
+	vpY -= float64(t.baseZ) * 4.0
+	drawX := math.Round((vpX-w.camX)*scale)
+	drawY := math.Round((vpY-w.camY)*scale)
+
+	// Road ghost: use the merge sprite for just this piece's exits
+	// Straight (roadID=0): exits 0101 (rot0/2) or 1010 (rot1/3)
+	var exits uint8
+	switch rot {
+	case 0, 2:
+		exits = 0b0101
+	case 1, 3:
+		exits = 0b1010
+	}
+	mergeID := kExitsToMergeId[exits&0x0F]
+	spriteID := int(roadObj.Image) + int(kMergeBaseOffset) + int(mergeID)
+	img := w.renderer.GetSprite(spriteID)
+	if img == nil {
+		return
+	}
+	_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+	if !ok {
+		return
+	}
+	op := &ebiten.DrawImageOptions{}
+	op.ColorScale.ScaleAlpha(0.5)
+	op.GeoM.Scale(scale, scale)
+	op.GeoM.Translate(drawX+float64(xOff)*scale, drawY+float64(yOff)*scale)
+	screen.DrawImage(img, op)
+}
+
 // paintStation renders train station sprites for a tile.
 //
 // OpenLoco reference: src/OpenLoco/src/Paint/PaintTrainStation.cpp
@@ -1103,35 +1583,82 @@ func (w *World) paintStation(screen *ebiten.Image, t *tile, drawX, drawY, scale 
 	}
 
 	for _, se := range t.stations {
-		stationObj := w.renderer.ObjMgr.GetTrainStationObjectByIndex(int(se.ObjectID))
-		if stationObj == nil || stationObj.ImageOffset == 0 {
-			continue
+		switch se.StationType {
+		case 0: // train station
+			w.paintTrainStation(screen, t, &se, drawX, drawY, scale)
+		case 1: // road station (bus stop)
+			w.paintRoadStation(screen, t, &se, drawX, drawY, scale)
 		}
+	}
+}
 
-		seqIdx := int(se.SequenceIndex)
-		if seqIdx >= len(stationObj.SequenceImageOffsets) {
-			seqIdx = 0
-		}
-		seqBase := int(stationObj.SequenceImageOffsets[seqIdx])
+// paintTrainStation renders a train station platform sprite for a single StationElement.
+//
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintTrainStation.cpp
+func (w *World) paintTrainStation(screen *ebiten.Image, t *tile, se *scenario.StationElement, drawX, drawY, scale float64) {
+	stationObj := w.renderer.ObjMgr.GetTrainStationObjectByIndex(int(se.ObjectID))
+	if stationObj == nil || stationObj.ImageOffset == 0 {
+		return
+	}
 
-		// Select NE or SE sprite set based on rotation.
-		var backOff, frontOff, canopyOff int
-		if se.Rotation&1 == 0 { // NE-facing (rotations 0, 2)
-			backOff = objects.StStraightBackNE
-			frontOff = objects.StStraightFrontNE
-			canopyOff = objects.StStraightCanopyNE
-		} else { // SE-facing (rotations 1, 3)
-			backOff = objects.StStraightBackSE
-			frontOff = objects.StStraightFrontSE
-			canopyOff = objects.StStraightCanopySE
-		}
+	seqIdx := int(se.SequenceIndex)
+	if seqIdx >= len(stationObj.SequenceImageOffsets) {
+		seqIdx = 0
+	}
+	seqBase := int(stationObj.SequenceImageOffsets[seqIdx])
 
-		extraHeight := float64(int(se.BaseZ)-int(t.baseZ)) * 4.0
+	// Select NE or SE sprite set based on rotation.
+	var backOff, frontOff, canopyOff int
+	if se.Rotation&1 == 0 { // NE-facing (rotations 0, 2)
+		backOff = objects.StStraightBackNE
+		frontOff = objects.StStraightFrontNE
+		canopyOff = objects.StStraightCanopyNE
+	} else { // SE-facing (rotations 1, 3)
+		backOff = objects.StStraightBackSE
+		frontOff = objects.StStraightFrontSE
+		canopyOff = objects.StStraightCanopySE
+	}
 
-		for _, sprOffset := range []int{backOff, frontOff, canopyOff} {
-			spriteID := seqBase + sprOffset
-			w.drawTrackRoadSprite(screen, spriteID, drawX, drawY, extraHeight, scale)
-		}
+	extraHeight := float64(int(se.BaseZ)-int(t.baseZ)) * 4.0
+
+	for _, sprOffset := range []int{backOff, frontOff, canopyOff} {
+		spriteID := seqBase + sprOffset
+		w.drawTrackRoadSprite(screen, spriteID, drawX, drawY, extraHeight, scale)
+	}
+}
+
+// paintRoadStation renders a road station (bus stop) sprite for a single StationElement.
+//
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintRoadStation.cpp
+func (w *World) paintRoadStation(screen *ebiten.Image, t *tile, se *scenario.StationElement, drawX, drawY, scale float64) {
+	stationObj := w.renderer.ObjMgr.GetRoadStationObjectByIndex(int(se.ObjectID))
+	if stationObj == nil || stationObj.ImageOffset == 0 {
+		return
+	}
+
+	seqIdx := int(se.SequenceIndex)
+	if seqIdx >= len(stationObj.SequenceImageOffsets) {
+		seqIdx = 0
+	}
+	seqBase := int(stationObj.SequenceImageOffsets[seqIdx])
+
+	// Select NE or SE sprite set based on rotation.
+	var backOff, frontOff, canopyOff int
+	if se.Rotation&1 == 0 { // NE-facing (rotations 0, 2)
+		backOff = objects.RsStraightBackNE
+		frontOff = objects.RsStraightFrontNE
+		canopyOff = objects.RsStraightCanopyNE
+	} else { // SE-facing (rotations 1, 3)
+		backOff = objects.RsStraightBackSE
+		frontOff = objects.RsStraightFrontSE
+		canopyOff = objects.RsStraightCanopySE
+	}
+
+	extraHeight := float64(int(se.BaseZ)-int(t.baseZ)) * 4.0
+
+	for _, sprOffset := range []int{backOff, frontOff, canopyOff} {
+		spriteID := seqBase + sprOffset
+		w.drawTrackRoadSprite(screen, spriteID, drawX, drawY, extraHeight, scale)
 	}
 }
 
@@ -1189,7 +1716,9 @@ func (w *World) paintWalls(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 	}
 }
 
-// getWaterImage returns a cached translucent blue diamond overlay for water tiles.
+// getWaterImage returns a cached solid-blue diamond for the water tile base.
+// Uses the actual water colour from the palette at full opacity so that sprite
+// cutouts (holes in +30 and transparent +35) never expose the terrain below.
 func (w *World) getWaterImage() *ebiten.Image {
 	if w.waterImage != nil {
 		return w.waterImage
@@ -1197,7 +1726,8 @@ func (w *World) getWaterImage() *ebiten.Image {
 	img := ebiten.NewImage(w.tileW, w.tileH)
 	centerX := w.tileW / 2
 	centerY := w.tileH / 2
-	waterColor := color.RGBA{40, 80, 180, 140}
+	wc := w.waterColourFromPalette()
+	wc.A = 255 // fully opaque base — no see-through gaps
 	for y := 0; y < w.tileH; y++ {
 		var halfWidth int
 		if y < centerY {
@@ -1207,7 +1737,7 @@ func (w *World) getWaterImage() *ebiten.Image {
 		}
 		for x := centerX - halfWidth; x <= centerX+halfWidth; x++ {
 			if x >= 0 && x < w.tileW {
-				img.Set(x, y, waterColor)
+				img.Set(x, y, wc)
 			}
 		}
 	}
@@ -1217,101 +1747,145 @@ func (w *World) getWaterImage() *ebiten.Image {
 
 // paintWater renders a water surface overlay on a tile.
 //
-// OpenLoco uses a destination-based palette blend for the +35 sprite:
-//   for each non-transparent pixel in the blend shape, remap the destination
-//   (terrain) pixel through the water palette map → water-blue output.
-// We approximate this by pre-rendering the +35 sprite as solid water blue
-// (colour extracted from the water palette map at ImageOffset+41), then
-// drawing the +30 sprite (ripple/highlight detail) on top at full opacity.
+// Approach (2-layer):
+//   Layer 0 (pass 1, worldBuf): +35 blend sprite with water colour forced, at its
+//     native xOff=-32, yOff=0. The +35 sprite is the game-canonical water surface shape
+//     (a bottom-half-of-diamond, 64×31 pixels). Adjacent water tiles drawn earlier in
+//     depth order cover the "top 15 rows" of each tile's screen area, so tessellation
+//     is seamless across flat ocean. Water cliff edges cover exposed terrain at boundaries.
+//   Layer 1 (pass 4, screen): +30 ripple detail with real teal palette colours.
+//   Layer 2 (pass 4, screen, zoom 0 only): wave animation frame (+60+frame).
+//
+// Fallback: when no WaterObj is loaded, uses getWaterImage() hand-drawn diamond.
 //
 // OpenLoco reference: PaintSurface.cpp:1720-1759 (paintSurfaceWater)
-//   sprite+35 .withBlend(ExtColour::water) → dst-based remap (mask + tint)
-//   sprite+30 attached → highlight detail drawn on top
-func (w *World) paintWater(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
+//   sprite+35 .withBlend(ExtColour::water) → dst-based palette remap
+//   sprite+30 attached → ripple detail on top
+//   sprite+60+frame attached → wave animation at zoom 0
+func (w *World) paintWater(target *ebiten.Image, tileX, tileY int, t *tile, drawX, drawY, scale float64) {
 	// waterLevel is MicroZ (×16 px/unit); baseZ is SmallZ (×4 px/unit).
 	waterHeightDiff := float64(t.waterLevel)*16.0 - float64(t.baseZ)*4.0
 
-	if w.renderer != nil && w.renderer.ObjMgr != nil && w.renderer.ObjMgr.WaterObj != nil {
-		waterObj := w.renderer.ObjMgr.WaterObj
-		shape := objects.KSlopeToWaterShape[t.slope&0x0F]
-		blendID := int(waterObj.GetWaterSpriteIndex(shape, true))
-		flatID := int(waterObj.GetWaterSpriteIndex(shape, false))
+	if w.renderer == nil || w.renderer.ObjMgr == nil || w.renderer.ObjMgr.WaterObj == nil {
+		// Fallback: no water object — use hand-drawn diamond
+		baseImg := w.getWaterImage()
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(
+			drawX+float64(-32)*scale,
+			drawY+float64(-15)*scale-waterHeightDiff*scale)
+		target.DrawImage(baseImg, op)
+		return
+	}
 
-		drawSprite := func(spriteID int, img *ebiten.Image) {
-			_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+	waterObj := w.renderer.ObjMgr.WaterObj
+	// OpenLoco PaintSurface.cpp: sloped water shape only when waterHeight <= baseHeight+kMicroZStep.
+	// For deeply submerged tiles use flat shape (0).
+	shape := uint8(0) // always flat for now; sloped shapes cause triangle artifacts
+	blendID := int(waterObj.GetWaterSpriteIndex(shape, true))
+	flatID := int(waterObj.GetWaterSpriteIndex(shape, false))
+
+	// ── layer 0: +35 sprite with water colour forced (correct tessellating diamond) ──
+	// The +35 mask (from decodeRLEPresence) marks exactly which pixels are the water
+	// surface. We force all those pixels to the water colour for a clean solid blue.
+	// Drawn at blendID's native xOff=-32, yOff=0 (the water surface anchor).
+	if w.waterBaseCache == nil {
+		w.waterBaseCache = make(map[int]*ebiten.Image)
+	}
+	// For non-zero shapes the blend sprite may not decode; fall back to shape 0 mask.
+	maskID := blendID
+	maskImg := w.renderer.GetSpriteMask(maskID)
+	if maskImg == nil && shape != 0 {
+		maskID = int(waterObj.GetWaterSpriteIndex(0, true))
+		maskImg = w.renderer.GetSpriteMask(maskID)
+	}
+	if maskImg != nil {
+		wc := w.waterColourFromPalette()
+		waterBaseImg := buildColoredImage(w.waterBaseCache, int(shape), maskImg, wc)
+		if waterBaseImg != nil {
+			_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(blendID)
 			if !ok {
-				xOff, yOff = -32, -15
+				xOff, yOff = -32, 0
 			}
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Scale(scale, scale)
 			op.GeoM.Translate(
 				drawX+float64(xOff)*scale,
 				drawY+float64(yOff)*scale-waterHeightDiff*scale)
-			screen.DrawImage(img, op)
+			target.DrawImage(waterBaseImg, op)
 		}
-
-		// ── layer 1: solid-blue blend sprite (+35) — full tile rhombus ──
-		if blendImg := w.buildWaterBlendImage(int(shape), blendID); blendImg != nil {
-			drawSprite(blendID, blendImg)
-		}
-		// ── layer 2: flat ripple/highlight sprite (+30) — drawn on top ──
-		if flatImg := w.renderer.GetSprite(flatID); flatImg != nil {
-			drawSprite(flatID, flatImg)
-		}
-		return
 	}
 
-	// Fallback: hand-drawn translucent blue diamond
-	waterImg := w.getWaterImage()
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(scale, scale)
-	op.GeoM.Translate(
-		drawX+float64(-32)*scale,
-		drawY+float64(-15)*scale-waterHeightDiff*scale)
-	screen.DrawImage(waterImg, op)
+	// queueSprite draws a sprite with its own palette colours to the highlight list.
+	queueSprite := func(cache map[int]*ebiten.Image, cacheKey, spriteID int) {
+		src := w.renderer.GetSprite(spriteID)
+		if src == nil {
+			return
+		}
+		_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+		if !ok {
+			xOff, yOff = -32, -15
+		}
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(
+			drawX+float64(xOff)*scale,
+			drawY+float64(yOff)*scale-waterHeightDiff*scale)
+		w.highlightOps = append(w.highlightOps, worldHighlightOp{img: src, opts: op})
+		_ = cache
+		_ = cacheKey
+	}
+
+	// ── layer 1 (highlight pass): +30 ripple detail with real teal colours ──
+	if w.waterHighlightCache == nil {
+		w.waterHighlightCache = make(map[int]*ebiten.Image)
+	}
+	queueSprite(w.waterHighlightCache, int(shape), flatID)
+
+	// ── layer 2 (highlight pass): wave animation frames at zoom 0 ──
+	// OpenLoco reference: PaintSurface.cpp WaveManager, 16 frames × 4 ticks each
+	if w.zoom == 0 {
+		const waveFrames = 16
+		waveFrame := (w.animTick/4 + tileX + tileY) & (waveFrames - 1)
+		waveID := int(waterObj.ImageOffset) + 60 + waveFrame
+		if w.waterWaveCache == nil {
+			w.waterWaveCache = make(map[int]*ebiten.Image)
+		}
+		queueSprite(w.waterWaveCache, waveID, waveID)
+	}
 }
 
-// buildWaterBlendImage returns a cached solid-blue version of water blend sprite +35.
-// Each non-transparent pixel is forced to the water colour derived from the water
-// object's palette map at ImageOffset+41, approximating OpenLoco's dst-based blend.
-//
-// OpenLoco reference: ObjectManager.cpp updateWaterPalette()
-//   paletteImageId = waterObj->image + Water::ImageIds::kColourPalette (= 41)
-func (w *World) buildWaterBlendImage(shape, blendSpriteID int) *ebiten.Image {
-	if w.waterBlendCache == nil {
-		w.waterBlendCache = make(map[int]*ebiten.Image)
-	}
-	if img, ok := w.waterBlendCache[shape]; ok {
+// buildColoredImage returns a version of srcImg where every non-transparent pixel
+// is replaced with c.  Results are cached by cacheKey in the supplied map.
+// alpha controls the output alpha (255 = fully opaque).
+func buildColoredImage(cache map[int]*ebiten.Image, cacheKey int, srcImg *ebiten.Image, c color.RGBA) *ebiten.Image {
+	if img, ok := cache[cacheKey]; ok {
 		return img
 	}
-	srcImg := w.renderer.GetSprite(blendSpriteID)
-	if srcImg == nil {
-		return nil
-	}
-	wc := w.waterColourFromPalette()
 	bw, bh := srcImg.Bounds().Dx(), srcImg.Bounds().Dy()
 	pixels := make([]byte, bw*bh*4)
 	srcImg.ReadPixels(pixels)
 	for i := 0; i < len(pixels); i += 4 {
-		if pixels[i+3] > 0 { // non-transparent pixel → force to water blue
-			pixels[i+0] = wc.R
-			pixels[i+1] = wc.G
-			pixels[i+2] = wc.B
-			pixels[i+3] = 255
+		if pixels[i+3] > 0 {
+			pixels[i+0] = c.R
+			pixels[i+1] = c.G
+			pixels[i+2] = c.B
+			pixels[i+3] = c.A
 		}
 	}
 	result := ebiten.NewImage(bw, bh)
 	result.WritePixels(pixels)
-	w.waterBlendCache[shape] = result
+	cache[cacheKey] = result
 	return result
 }
+
 
 // waterColourFromPalette samples the water palette map (WaterObject sprite +41)
 // to derive the actual water blue.  The map converts any terrain index into a
 // water-tinted shade; we average several mid-range samples to get a representative
 // water colour.
 func (w *World) waterColourFromPalette() color.RGBA {
-	const defR, defG, defB uint8 = 35, 100, 170
+	const defR, defG, defB uint8 = 25, 120, 205 // brighter blue fallback
 	if w.renderer == nil || w.renderer.G1 == nil || w.renderer.ObjMgr == nil || w.renderer.ObjMgr.WaterObj == nil {
 		return color.RGBA{defR, defG, defB, 255}
 	}
@@ -1328,7 +1902,12 @@ func (w *World) waterColourFromPalette() color.RGBA {
 		bSum += uint32(c.B)
 	}
 	n := uint32(len(samples))
-	return color.RGBA{R: uint8(rSum / n), G: uint8(gSum / n), B: uint8(bSum / n), A: 255}
+	wc := color.RGBA{R: uint8(rSum / n), G: uint8(gSum / n), B: uint8(bSum / n), A: 255}
+	// Sanity check: water should be bluer than red; use fallback if not.
+	if int(wc.R) > int(wc.B) {
+		return color.RGBA{defR, defG, defB, 255}
+	}
+	return wc
 }
 
 // getCliffEdgeOffset converts kEdgeImageOffset[edge] + Pos3{0,0,h*kMicroZStep}
@@ -1356,9 +1935,21 @@ func (w *World) getCliffEdgeOffset(edge int, h uint8) (int16, int16) {
 }
 
 func (w *World) Draw(screen *ebiten.Image) {
-	sw, sh := screen.Size()
+	sw := screen.Bounds().Dx()
+	sh := screen.Bounds().Dy()
 	scale := 1.0 / float64(int(1)<<w.zoom) // zoom 0→1.0, 1→0.5, 2→0.25, 3→0.125
 
+	// ── Allocate / reuse off-screen buffers ──
+	if w.worldBuf == nil || w.worldBuf.Bounds().Dx() != sw || w.worldBuf.Bounds().Dy() != sh {
+		w.worldBuf = ebiten.NewImage(sw, sh)
+		w.blendBuf = ebiten.NewImage(sw, sh)
+	}
+	w.worldBuf.Clear()
+	w.blendBuf.Clear()
+	w.blendOps = w.blendOps[:0]
+	w.highlightOps = w.highlightOps[:0]
+
+	// ── Pass 1: render all opaque sprites to worldBuf ──
 	// Camera coords are in world-space (unscaled). They are set by
 	// PanCamera (gameplay) or SetCamera (title sequence).
 
@@ -1391,7 +1982,6 @@ func (w *World) Draw(screen *ebiten.Image) {
 				continue
 			}
 
-
 			// Draw terrain using LandObject embedded sprites
 			// OpenLoco reference: Paint/PaintSurface.cpp paintSurface()
 			//   imageIndex = landObj->image + variation + displaySlope
@@ -1405,49 +1995,54 @@ func (w *World) Draw(screen *ebiten.Image) {
 						displaySlope = int(slopeToDisplaySlope[rawSlope])
 					}
 
+					// OpenLoco PaintSurface.cpp ~line 676-688: when water is above the
+					// terrain base, the terrain is drawn as flat (slope=0) AT THE WATER
+					// HEIGHT so it is hidden under the water sprite on top.
+					// OpenLoco ref: `slope = 0; height = elSurface.waterHeight();`
+					waterHeightDiff := float64(t.waterLevel)*16.0 - float64(t.baseZ)*4.0
+					isSubmerged := t.waterLevel > 0 && waterHeightDiff > 0
+					if isSubmerged {
+						displaySlope = 0
+					}
+
 					// Zoom-0 flat terrain sprite: skip all zoom3/zoom2/zoom1 images
-					// (numAngles * numGrowthStages * 57) then add slope variant.
-					// Growth stage variation is NOT applied here: the correct step between
-					// growth stages in zoom-0 is (numAngles*19), not NumImagesPerGrowthStage
-					// (which includes blend images). Using NumImagesPerGrowthStage pushes
-					// spriteIdx out of bounds for any tile with growthStage>0 (blank tile).
 					// OpenLoco reference: src/OpenLoco/src/Objects/LandObject.cpp getTerrainImage()
 					spriteIdx := land.GetFlatTerrainSpriteIndex() + displaySlope
 
 					if img := w.renderer.GetObjectSprite(land, spriteIdx); img != nil {
 						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, spriteIdx)
 						if ok {
+							// For submerged tiles: draw terrain sprite at water height (not
+							// terrain height) so it sits flush under the water surface.
+							terrainDrawY := drawY
+							if isSubmerged {
+								terrainDrawY = drawY - waterHeightDiff*scale
+							}
 							op := &ebiten.DrawImageOptions{}
 							op.GeoM.Scale(scale, scale)
 							op.GeoM.Translate(
 								drawX+float64(xOff)*scale,
-								drawY+float64(yOff)*scale)
-							screen.DrawImage(img, op)
+								terrainDrawY+float64(yOff)*scale)
+							w.worldBuf.DrawImage(img, op)
 
 							// Draw cliff edges for height transitions
-							// OpenLoco reference: PaintSurface.cpp:1714-1717
-							// Now uses dynamic G1 sprite pool with land.CliffEdgeImage
 							if land.CliffEdgeImage > 0 {
-								w.paintCliffEdges(screen, x, y, &t, land, drawX, drawY, scale)
+								w.paintCliffEdges(w.worldBuf, x, y, &t, land, drawX, drawY, scale)
 							}
 
-							// Draw water when surface is above terrain base (matches OpenLoco attachToPrevious).
-							// effectiveDrawY cancels the height offset inside paintWater so the
-							// sprite aligns with the terrain; partial-shape sprites handle the rest.
+							// Queue water blend ops + draw highlights (pass 2/4)
 							if t.waterLevel > 0 && uint16(t.waterLevel)*16 > uint16(t.baseZ)*4 {
-								effectiveDrawY := drawY + (float64(t.waterLevel)*16.0-float64(t.baseZ)*4.0)*scale
-								w.paintWater(screen, &t, drawX, effectiveDrawY, scale)
-								// Water cliff edges at shore level boundaries
-								w.paintWaterCliffEdges(screen, x, y, &t, land, drawX, drawY, scale)
+								w.paintWater(w.worldBuf, x, y, &t, drawX, drawY, scale)
+								w.paintWaterCliffEdges(x, y, &t, land, drawX, drawY, scale)
 							}
 
 							// Draw infrastructure and scenery on this tile
-							w.paintTracks(screen, &t, drawX, drawY, scale)
-							w.paintRoads(screen, &t, drawX, drawY, scale)
-							w.paintStation(screen, &t, drawX, drawY, scale)
-							w.paintTrees(screen, &t, drawX, drawY, scale)
-							w.paintBuildings(screen, &t, drawX, drawY, scale)
-							w.paintWalls(screen, &t, drawX, drawY, scale)
+							w.paintTracks(w.worldBuf, &t, drawX, drawY, scale)
+							w.paintRoads(w.worldBuf, &t, drawX, drawY, scale)
+							w.paintStation(w.worldBuf, &t, drawX, drawY, scale)
+							w.paintTrees(w.worldBuf, &t, drawX, drawY, scale)
+							w.paintBuildings(w.worldBuf, &t, drawX, drawY, scale)
+							w.paintWalls(w.worldBuf, &t, drawX, drawY, scale)
 
 							continue
 						}
@@ -1460,11 +2055,60 @@ func (w *World) Draw(screen *ebiten.Image) {
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Scale(scale, scale)
 			op.GeoM.Translate(drawX, drawY)
-			screen.DrawImage(img, op)
+			w.worldBuf.DrawImage(img, op)
 		}
 	}
 
-	// Vehicle rendering — separate post-tile pass (depth approximation).
+	// ── Pass 2: apply blend ops (CPU terrain tint) → blendBuf ──
+	// Sample the original terrain from worldBuf, tint it toward the water colour
+	// where the mask is opaque, then draw into blendBuf.
+	// worldBuf is never modified, so every terrain sample is pristine.
+	for _, op := range w.blendOps {
+		if op.tileRect.Empty() || op.maskImg == nil {
+			continue
+		}
+		mw, mh := op.maskImg.Bounds().Dx(), op.maskImg.Bounds().Dy()
+		if mw <= 0 || mh <= 0 {
+			continue
+		}
+		terrainImg := ebiten.NewImage(mw, mh)
+		copyOpts := &ebiten.DrawImageOptions{}
+		copyOpts.GeoM.Translate(-float64(op.tileRect.Min.X), -float64(op.tileRect.Min.Y))
+		terrainImg.DrawImage(w.worldBuf, copyOpts)
+		maskPx := make([]byte, mw*mh*4)
+		op.maskImg.ReadPixels(maskPx)
+		terrainPx := make([]byte, mw*mh*4)
+		terrainImg.ReadPixels(terrainPx)
+		tR := float32(op.tint.R)
+		tG := float32(op.tint.G)
+		tB := float32(op.tint.B)
+		s := op.strength
+		for i := 0; i < len(maskPx); i += 4 {
+			if maskPx[i+3] == 0 {
+				terrainPx[i+3] = 0 // transparent outside mask — worldBuf shows through
+				continue
+			}
+			terrainPx[i] = byte(float32(terrainPx[i])*(1-s) + tR*s)
+			terrainPx[i+1] = byte(float32(terrainPx[i+1])*(1-s) + tG*s)
+			terrainPx[i+2] = byte(float32(terrainPx[i+2])*(1-s) + tB*s)
+			terrainPx[i+3] = 255
+		}
+		terrainImg.WritePixels(terrainPx)
+		drawOpts := &ebiten.DrawImageOptions{}
+		drawOpts.GeoM.Translate(float64(op.tileRect.Min.X), float64(op.tileRect.Min.Y))
+		w.blendBuf.DrawImage(terrainImg, drawOpts)
+	}
+
+	// ── Pass 3: composite worldBuf + blendBuf → screen ──
+	screen.DrawImage(w.worldBuf, nil)
+	screen.DrawImage(w.blendBuf, nil)
+
+	// ── Pass 4: highlight/wave sprites on top of everything ──
+	for _, hi := range w.highlightOps {
+		screen.DrawImage(hi.img, hi.opts)
+	}
+
+	// ── Vehicle rendering — post-tile pass (depth approximation) ──
 	// Use real parsed entities when available (loaded .SV5), otherwise demo trains.
 	if len(w.entities) > 0 {
 		w.paintVehicleEntities(screen, scale)

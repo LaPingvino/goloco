@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"image/color"
+	"image"
+	"image/png"
 	"log"
 	"os"
 	"path/filepath"
@@ -30,6 +32,12 @@ const (
 	defaultHeight = 600
 	edgeScrollZone  = 20  // px from screen edge that triggers edge scroll
 	edgeScrollSpeed = 8.0 // world-space pixels per frame at zoom 0
+)
+
+const (
+	buildModeNone  = 0
+	buildModeTrack = 1
+	buildModeRoad  = 2
 )
 
 type Game struct {
@@ -67,6 +75,23 @@ type Game struct {
 	// Speed controls
 	isPaused  bool
 	speedMult int // 1, 2, 4, or 8
+
+	// Build mode (track/road placement)
+	buildMode     int // buildModeNone / buildModeTrack / buildModeRoad
+	buildPieceID  int // track: 0=straight,2=LCurveVS,3=RCurveVS; road: 0=straight
+	buildRotation int // 0-3
+	buildObjID    int // index into TrackObjects / RoadObjects
+	hoverTileX    int // tile under cursor in build mode (-1 if invalid)
+	hoverTileY    int
+
+	// Diagnostic crop: when set, save a 480×360 PNG centred on diagTileX/Y after the next Draw.
+	// diagQuit=true means quit afterwards (CLI --diag mode); false keeps the game running (F12).
+	diagPending bool
+	diagQuit    bool
+	diagTileX   int
+	diagTileY   int
+	// quitAfterSave: exit cleanly once the map save has completed.
+	quitAfterSave bool
 }
 
 func findLocoDataDir() string {
@@ -220,6 +245,10 @@ func NewGame() *Game {
 					objMgr.ReorderTrainStationObjects(sc.TrainStationObjectOrder)
 					log.Printf("[Game] Reordered train station objects to match scenario slot order (%d slots)", len(sc.TrainStationObjectOrder))
 				}
+				if len(sc.RoadStationObjectOrder) > 0 {
+					objMgr.ReorderRoadStationObjects(sc.RoadStationObjectOrder)
+					log.Printf("[Game] Reordered road station objects to match scenario slot order (%d slots)", len(sc.RoadStationObjectOrder))
+				}
 				if len(sc.TrackObjectOrder) > 0 {
 					objMgr.ReorderTrackObjects(sc.TrackObjectOrder)
 					log.Printf("[Game] Reordered track objects to match scenario slot order (%d slots)", len(sc.TrackObjectOrder))
@@ -247,15 +276,15 @@ func NewGame() *Game {
 	mapW, mapH := w.GetMapSize()
 	if mapW > 0 && mapH > 0 {
 		titleSeq.Start(mapW, mapH)
-		// Set camera to map center (tile coords)
-		centerX := float64(mapW) / 2.0
-		centerY := float64(mapH) / 2.0
-		titleSeq.SetCameraPosition(centerX, centerY, 0) // zoom 0 = full zoom
-		w.SetZoom(0)                                    // Set world to full zoom for title screen
+		w.SetZoom(0) // full zoom for title screen
 	} else {
-		titleSeq.Start(384, 384) // Default to standard map size
-		titleSeq.SetCameraPosition(192, 192, 0)
+		titleSeq.Start(384, 384)
 		w.SetZoom(0)
+	}
+	// Apply initial camera position from sequence
+	{
+		cx, cy := titleSeq.GetCameraPosition()
+		w.SetCamera(cx, cy)
 	}
 
 	// Start playing title music
@@ -285,16 +314,26 @@ func NewGame() *Game {
 		musicEnabled:  true,
 		sw:            defaultWidth,
 		sh:            defaultHeight,
-		speedMult:     1,
+		speedMult:  1,
+		hoverTileX: -1,
+		hoverTileY: -1,
 	}
 }
 
 func (g *Game) Update() error {
+	if g.quitAfterSave {
+		return ebiten.Termination
+	}
 	g.mouseX, g.mouseY = ebiten.CursorPosition()
 
 	if g.inTitleScreen {
-		// Title screen: handle menu clicks + window manager (e.g. Load Game window)
+		// Title screen: advance camera animation and apply to world
 		g.titleFrame++
+		if g.titleSeq != nil {
+			g.titleSeq.Update()
+			cx, cy := g.titleSeq.GetCameraPosition()
+			g.w.SetCamera(cx, cy)
+		}
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 		}
@@ -312,6 +351,27 @@ func (g *Game) Update() error {
 	}
 
 	// --- Gameplay mode ONLY below this point ---
+
+	// Build mode: update hover tile every frame
+	if g.buildMode != buildModeNone {
+		g.hoverTileX, g.hoverTileY = g.w.ScreenToTile(g.mouseX, g.mouseY)
+		// Keyboard shortcuts for build mode
+		if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+			g.buildRotation = (g.buildRotation + 1) & 3
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyX) && g.hoverTileX >= 0 {
+			if g.buildMode == buildModeTrack {
+				g.w.RemoveLastTrack(g.hoverTileX, g.hoverTileY)
+			} else {
+				g.w.RemoveLastRoad(g.hoverTileX, g.hoverTileY)
+			}
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+			g.buildMode = buildModeNone
+			g.hoverTileX = -1
+			g.hoverTileY = -1
+		}
+	}
 
 	// Update dropdown hover if visible
 	if g.dropdown != nil && g.dropdown.Visible {
@@ -334,6 +394,9 @@ func (g *Game) Update() error {
 			if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
 				g.toolbar.Buttons[btnIdx].Pressed = true
 				g.handleToolbarButton(btnIdx)
+			} else if g.buildMode != buildModeNone && g.hoverTileX >= 0 {
+				// Map click while in build mode — place piece
+				g.placeBuildPiece(g.hoverTileX, g.hoverTileY)
 			}
 		}
 	}
@@ -437,7 +500,11 @@ func (g *Game) Update() error {
 		g.speedMult = 8
 		g.isPaused = false
 	}
-
+	if inpututil.IsKeyJustPressed(ebiten.KeyF12) {
+		g.diagPending = true
+		g.diagTileX = -1
+		g.diagTileY = -1
+	}
 	// Update world (skipped when paused; repeated per speed multiplier)
 	if !g.isPaused {
 		for i := 0; i < g.speedMult; i++ {
@@ -535,6 +602,13 @@ func (g *Game) handleToolbarButton(idx int) {
 				}
 			}},
 			{Separator: true},
+			{Text: "Screenshot", Action: func() {
+				g.diagPending = true
+				g.diagQuit = false
+				g.diagTileX = -1
+				g.diagTileY = -1
+			}},
+			{Separator: true},
 			{Text: "About", Action: func() { log.Println("[Game] About selected") }},
 			{Text: "Options", Action: func() { g.openOptionsWindow() }},
 			{Separator: true},
@@ -585,11 +659,84 @@ func (g *Game) handleToolbarButton(idx int) {
 		log.Println("[Game] Terraform menu (not yet implemented)")
 		return
 	case "Railroad":
-		log.Println("[Game] Railroad construction menu (not yet implemented)")
-		return
+		g.buildMode = buildModeTrack
+		g.buildPieceID = 0
+		g.buildRotation = 0
+		g.buildObjID = 0
+		win = ui.NewSimpleWindow("Railroad Construction", 10, 40, 200, 200)
+		win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, r *render.Renderer) {
+			pieces := []struct {
+				name    string
+				pieceID int
+				rot     int
+			}{
+				{"Straight NE/SW", 0, 0},
+				{"Straight NW/SE", 0, 1},
+				{"Curve Left (VS)", 2, 0},
+				{"Curve Right (VS)", 3, 0},
+			}
+			ui.DrawText(screen, "Track piece:", cx+6, cy+8, color.RGBA{220, 220, 180, 255})
+			for i, p := range pieces {
+				var col color.Color = color.White
+				if g.buildPieceID == p.pieceID && g.buildRotation == p.rot {
+					col = color.RGBA{255, 230, 60, 255}
+				}
+				ui.DrawText(screen, p.name, cx+8, cy+24+i*18, col)
+			}
+			ui.DrawText(screen, fmt.Sprintf("Rotation: %d  [R]=rotate", g.buildRotation),
+				cx+6, cy+104, color.RGBA{180, 200, 180, 255})
+			ui.DrawText(screen, "[X]=remove  [Esc]=done",
+				cx+6, cy+120, color.RGBA{160, 160, 160, 255})
+		}
+		win.OnContentClick = func(relX, relY int) {
+			pieces := []struct{ pieceID, rot int }{
+				{0, 0}, {0, 1}, {2, 0}, {3, 0},
+			}
+			idx := (relY - 24) / 18
+			if relY >= 24 && idx >= 0 && idx < len(pieces) {
+				g.buildPieceID = pieces[idx].pieceID
+				g.buildRotation = pieces[idx].rot
+			}
+		}
+
 	case "Road":
-		log.Println("[Game] Road construction menu (not yet implemented)")
-		return
+		g.buildMode = buildModeRoad
+		g.buildPieceID = 0
+		g.buildRotation = 0
+		g.buildObjID = 0
+		win = ui.NewSimpleWindow("Road Construction", 10, 40, 200, 180)
+		win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, r *render.Renderer) {
+			pieces := []struct {
+				name    string
+				pieceID int
+				rot     int
+			}{
+				{"Straight NE/SW", 0, 0},
+				{"Straight NW/SE", 0, 1},
+			}
+			ui.DrawText(screen, "Road piece:", cx+6, cy+8, color.RGBA{220, 220, 180, 255})
+			for i, p := range pieces {
+				var col color.Color = color.White
+				if g.buildPieceID == p.pieceID && g.buildRotation == p.rot {
+					col = color.RGBA{255, 230, 60, 255}
+				}
+				ui.DrawText(screen, p.name, cx+8, cy+24+i*18, col)
+			}
+			ui.DrawText(screen, fmt.Sprintf("Rotation: %d  [R]=rotate", g.buildRotation),
+				cx+6, cy+80, color.RGBA{180, 200, 180, 255})
+			ui.DrawText(screen, "[X]=remove  [Esc]=done",
+				cx+6, cy+96, color.RGBA{160, 160, 160, 255})
+		}
+		win.OnContentClick = func(relX, relY int) {
+			pieces := []struct{ pieceID, rot int }{
+				{0, 0}, {0, 1},
+			}
+			idx := (relY - 24) / 18
+			if relY >= 24 && idx >= 0 && idx < len(pieces) {
+				g.buildPieceID = pieces[idx].pieceID
+				g.buildRotation = pieces[idx].rot
+			}
+		}
 	case "Port/Airport":
 		log.Println("[Game] Port/Airport construction menu (not yet implemented)")
 		return
@@ -681,8 +828,46 @@ func (g *Game) handleToolbarButton(idx int) {
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{135, 206, 235, 255})
 
+	// Full-map PNG save: skip normal game draw; show progress and render one chunk.
+	if done, total := g.w.MapSaveProgress(); total > 0 {
+		pct := float64(done) / float64(total)
+		sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
+		fillRect(screen, 0, 0, float64(sw), float64(sh), color.RGBA{20, 20, 30, 220})
+		barX, barY, barW, barH := float64(sw/2-200), float64(sh/2-12), 400.0, 24.0
+		fillRect(screen, barX, barY, barW, barH, color.RGBA{60, 60, 80, 255})
+		fillRect(screen, barX, barY, barW*pct, barH, color.RGBA{80, 180, 80, 255})
+		label := fmt.Sprintf("Saving full map... %d/%d (%.0f%%)", done, total, pct*100)
+		ui.DrawText(screen, label, sw/2-100, sh/2-8, color.RGBA{255, 255, 255, 255})
+		if g.w.StepMapSave() {
+			if err := g.w.FinishMapSave(); err != nil {
+				log.Printf("FinishMapSave: %v", err)
+			}
+			g.quitAfterSave = true
+		}
+		return
+	}
+
 	g.r.SetScreen(screen)
 	g.w.Draw(screen)
+
+	// Diagnostic crop: save a small PNG centred on the requested tile.
+	if g.diagPending {
+		g.diagPending = false
+		saveDiagCrop(screen, g, g.diagTileX, g.diagTileY)
+		if g.diagQuit {
+			g.quitAfterSave = true
+		}
+	}
+
+	// Ghost preview for build mode
+	if g.buildMode == buildModeTrack && g.hoverTileX >= 0 {
+		g.w.DrawTrackGhost(screen, g.hoverTileX, g.hoverTileY,
+			g.buildPieceID, g.buildRotation, g.buildObjID)
+	}
+	if g.buildMode == buildModeRoad && g.hoverTileX >= 0 {
+		g.w.DrawRoadGhost(screen, g.hoverTileX, g.hoverTileY,
+			g.buildPieceID, g.buildRotation, g.buildObjID)
+	}
 
 	if g.inTitleScreen {
 		g.drawTitleMenu(screen)
@@ -998,6 +1183,34 @@ func goLocoSavesDir() string {
 	return dir
 }
 
+// placeBuildPiece places a track or road element at tile (tx, ty) based on current build state.
+func (g *Game) placeBuildPiece(tx, ty int) {
+	baseZ := g.w.GetTileBaseZ(tx, ty)
+	if baseZ < 0 {
+		return
+	}
+	b := uint8(baseZ)
+	if g.buildMode == buildModeTrack {
+		g.w.AddTrack(tx, ty, scenario.TrackElement{
+			TrackObjectID: uint8(g.buildObjID),
+			TrackID:       uint8(g.buildPieceID),
+			Rotation:      uint8(g.buildRotation),
+			SequenceIndex: 0,
+			BaseZ:         b,
+			ClearZ:        b + 4,
+		})
+	} else {
+		g.w.AddRoad(tx, ty, scenario.RoadElement{
+			RoadObjectID:  uint8(g.buildObjID),
+			RoadID:        uint8(g.buildPieceID),
+			Rotation:      uint8(g.buildRotation),
+			SequenceIndex: 0,
+			BaseZ:         b,
+			ClearZ:        b + 4,
+		})
+	}
+}
+
 // quitToMenu restores the title screen world and restarts the title sequence.
 func (g *Game) quitToMenu() {
 	if g.titleWorld != nil {
@@ -1046,6 +1259,9 @@ func (g *Game) loadScenario(filePath string) error {
 		}
 		if len(sc.TrainStationObjectOrder) > 0 {
 			g.objMgr.ReorderTrainStationObjects(sc.TrainStationObjectOrder)
+		}
+		if len(sc.RoadStationObjectOrder) > 0 {
+			g.objMgr.ReorderRoadStationObjects(sc.RoadStationObjectOrder)
 		}
 		if len(sc.TrackObjectOrder) > 0 {
 			g.objMgr.ReorderTrackObjects(sc.TrackObjectOrder)
@@ -1788,21 +2004,99 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return defaultWidth, defaultHeight
 }
 
+const diagCropW = 480
+const diagCropH = 360
+
+// saveDiagCrop saves a 480×360 PNG cropped from the centre of the screen
+// (or centred on tile diagTileX/diagTileY when the world is loaded).
+// The file is always named "diag.png" so Claude can read it without guessing the name.
+func saveDiagCrop(screen *ebiten.Image, g *Game, tileX, tileY int) {
+	sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
+
+	// Centre pixel: use tile position when valid, otherwise screen centre.
+	cx, cy := sw/2, sh/2
+	if g.w != nil && tileX >= 0 && tileY >= 0 {
+		cx, cy = g.w.TileToScreenPx(tileX, tileY)
+	}
+
+	x0 := cx - diagCropW/2
+	y0 := cy - diagCropH/2
+	x0 = max(0, min(x0, sw-diagCropW))
+	y0 = max(0, min(y0, sh-diagCropH))
+
+	crop := screen.SubImage(image.Rect(x0, y0, x0+diagCropW, y0+diagCropH))
+
+	f, err := os.Create("diag.png")
+	if err != nil {
+		log.Printf("[Diag] Cannot create diag.png: %v", err)
+		return
+	}
+	defer f.Close()
+	if err := png.Encode(f, crop); err != nil {
+		log.Printf("[Diag] Encode failed: %v", err)
+		return
+	}
+	log.Printf("[Diag] Saved diag.png (%dx%d crop centred on tile %d,%d, screen offset %d,%d)",
+		diagCropW, diagCropH, tileX, tileY, x0, y0)
+}
+
 func main() {
 	game := NewGame()
 
-	// If a file path is given as the first argument, load it immediately.
-	if len(os.Args) > 1 {
-		arg := os.Args[1]
-		if err := game.loadScenario(arg); err != nil {
-			log.Printf("Failed to load %s: %v", arg, err)
+	// Parse CLI args:
+	//   ./goloco [file]                    — load scenario normally
+	//   ./goloco [file] --diag TX,TY       — save diag.png centred on tile TX,TY, quit
+	//   ./goloco [file] --diag water       — save diag.png centred on nearest water tile, quit
+	//   ./goloco [file] --diag building    — same for building / track / road / tree / station /
+	//                                        industry / wall / train
+	//   ./goloco [file] --diag             — save diag.png centred on map middle, quit
+	args := os.Args[1:]
+	var scenarioPath string
+	diagTileX, diagTileY := -1, -1
+	diagKind := ""
+	diagMode := false
+	for i := 0; i < len(args); i++ {
+		if args[i] != "--diag" {
+			scenarioPath = args[i]
+			continue
 		}
+		diagMode = true
+		if i+1 >= len(args) {
+			break
+		}
+		next := args[i+1]
+		n, _ := fmt.Sscanf(next, "%d,%d", &diagTileX, &diagTileY)
+		if n == 2 {
+			i++ // consumed as TX,TY
+		} else if len(next) > 0 && next[0] != '-' {
+			diagKind = next // consumed as kind keyword
+			i++
+		}
+	}
+
+	if scenarioPath != "" {
+		if err := game.loadScenario(scenarioPath); err != nil {
+			log.Printf("Failed to load %s: %v", scenarioPath, err)
+		}
+	}
+
+	if diagMode && game.w != nil {
+		if diagTileX < 0 {
+			if diagKind == "" {
+				diagKind = "water" // sensible default for --diag with no arg
+			}
+			game.w.CenterOn(diagKind)
+		}
+		game.diagPending = true
+		game.diagQuit = true
+		game.diagTileX = diagTileX
+		game.diagTileY = diagTileY
 	}
 
 	ebiten.SetWindowSize(defaultWidth, defaultHeight)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetWindowTitle("GoLoco - Locomotion Reimplementation")
-	if err := ebiten.RunGame(game); err != nil {
+	if err := ebiten.RunGame(game); err != nil && err != ebiten.Termination {
 		log.Fatal(err)
 	}
 }

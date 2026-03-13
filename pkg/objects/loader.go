@@ -29,7 +29,7 @@ type Object interface {
 type LoadedObject struct {
 	Header      *ObjectHeader
 	Data        []byte      // Decompressed object data
-	Object      interface{} // Parsed object (VehicleObject, etc.)
+	Object      any // Parsed object (VehicleObject, etc.)
 	ImageOffset uint32      // Base image offset in global sprite pool
 	ImageCount  uint32      // Number of images in this object
 	ImageData   []byte      // Raw sprite data for this object
@@ -46,6 +46,7 @@ type ObjectManager struct {
 	TrackObjects     []*TrackObject             // all loaded track objects
 	RoadObjects      []*RoadObject              // all loaded road objects
 	TrainStationObjects []*TrainStationObject      // all loaded train-station objects
+	RoadStationObjects  []*RoadStationObject       // all loaded road-station objects
 	CliffEdgeObjs    map[string]*CliffEdgeObject // keyed by upper-case name
 	WaterObj         *WaterObject               // the single water object (slot 170)
 	InterfaceSkin    *InterfaceSkinObject
@@ -53,7 +54,7 @@ type ObjectManager struct {
 
 	// Sprite pool for object sprites
 	NextSpriteIndex uint32
-	G1File          interface{} // Reference to assets.G1File (using interface{} to avoid circular import)
+	G1File          any // Reference to assets.G1File (using any to avoid circular import)
 }
 
 // NewObjectManager creates a new object manager
@@ -350,6 +351,25 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 		loaded.Object = station
 		loaded.ImageOffset = station.ImageOffset
 		m.TrainStationObjects = append(m.TrainStationObjects, station)
+
+	case ObjectTypeRoadStation:
+		var roadStation *RoadStationObject
+		var err error
+		if m.G1File != nil {
+			if g1Loader, ok := m.G1File.(G1Loader); ok {
+				roadStation, err = ParseRoadStationObjectWithG1(header, decompressed, g1Loader)
+			} else {
+				roadStation, err = ParseRoadStationObject(header, decompressed)
+			}
+		} else {
+			roadStation, err = ParseRoadStationObject(header, decompressed)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("parsing road station: %w", err)
+		}
+		loaded.Object = roadStation
+		loaded.ImageOffset = roadStation.ImageOffset
+		m.RoadStationObjects = append(m.RoadStationObjects, roadStation)
 	}
 
 	// Store in map
@@ -750,4 +770,33 @@ func (m *ObjectManager) ReorderTrainStationObjects(order []string) {
 	}
 	m.TrainStationObjects = reordered
 	fmt.Printf("Reordered train station objects: %d matched out of %d slots\n", matched, len(order))
+}
+
+// GetRoadStationObjectByIndex returns the RoadStationObject at the given slot index (0-15),
+// or nil if the index is out of range.
+func (m *ObjectManager) GetRoadStationObjectByIndex(index int) *RoadStationObject {
+	if index < 0 || index >= len(m.RoadStationObjects) {
+		return nil
+	}
+	return m.RoadStationObjects[index]
+}
+
+// ReorderRoadStationObjects rebuilds the RoadStationObjects slice so that each
+// slot index maps to the RoadStationObject whose name matches order[i].
+func (m *ObjectManager) ReorderRoadStationObjects(order []string) {
+	reordered := make([]*RoadStationObject, len(order))
+	matched := 0
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if roadStation, ok := obj.Object.(*RoadStationObject); ok {
+				reordered[i] = roadStation
+				matched++
+			}
+		}
+	}
+	m.RoadStationObjects = reordered
+	fmt.Printf("Reordered road station objects: %d matched out of %d slots\n", matched, len(order))
 }
