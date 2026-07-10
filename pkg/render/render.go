@@ -5,6 +5,8 @@ import (
 	"image"
 	"image/color"
 	"log"
+	"os"
+	"runtime/debug"
 
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -178,6 +180,9 @@ func (r *Renderer) GetSprite(index int) *ebiten.Image {
 		if !spriteErrorLogged[index] {
 			log.Printf("[Render] Failed to decode sprite %d: %v", index, err)
 			spriteErrorLogged[index] = true
+			if os.Getenv("GOLOCO_DEBUG_SPRITES") == "1" {
+				log.Printf("[Render] caller stack:\n%s", debug.Stack())
+			}
 		}
 		return nil
 	}
@@ -206,7 +211,8 @@ func (r *Renderer) GetSpriteInfo(index int) (width, height, xOff, yOff int16, ok
 // Results are cached per (spriteIndex, colourIndex) pair.
 //
 // OpenLoco reference: src/OpenLoco/src/Graphics/PaletteMap.cpp getForColour()
-//   Colour N → G1[2170+N] is a 256-byte index remap table.
+//
+//	Colour N → G1[2170+N] is a 256-byte index remap table.
 func (r *Renderer) GetSpriteColoured(spriteIndex, colourIndex int) *ebiten.Image {
 	if r.G1 == nil {
 		return nil
@@ -288,7 +294,8 @@ func (r *Renderer) GetSpriteMask(index int) *ebiten.Image {
 // once per (spriteID, maskID) pair.
 //
 // OpenLoco reference: PaintSurface.cpp paintEdgeSection() — hasMaskedImage /
-//   maskedImageId drawn with DrawSpriteHelper blend-mask logic.
+//
+//	maskedImageId drawn with DrawSpriteHelper blend-mask logic.
 func (r *Renderer) GetMaskedSprite(spriteID, maskID int) *ebiten.Image {
 	key := spriteID*100000 + maskID
 	if img, ok := r.maskedSpriteCache[key]; ok {

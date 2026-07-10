@@ -379,8 +379,14 @@ func (w *World) CollectSpriteIDs() []int {
 		return nil
 	}
 	seen := make(map[int]struct{})
+	// Preload bounds are deliberately generous over-estimates per object type,
+	// so clamp to the pool: ids past the end are guaranteed decode failures.
+	poolSize := -1
+	if w.renderer.G1 != nil {
+		poolSize = int(w.renderer.G1.GetTotalSprites())
+	}
 	add := func(id int) {
-		if id >= 0 {
+		if id >= 0 && (poolSize < 0 || id < poolSize) {
 			seen[id] = struct{}{}
 		}
 	}

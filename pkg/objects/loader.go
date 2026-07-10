@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,32 +29,32 @@ type Object interface {
 // LoadedObject holds a loaded object with its data
 type LoadedObject struct {
 	Header      *ObjectHeader
-	Data        []byte      // Decompressed object data
-	Object      any // Parsed object (VehicleObject, etc.)
-	ImageOffset uint32      // Base image offset in global sprite pool
-	ImageCount  uint32      // Number of images in this object
-	ImageData   []byte      // Raw sprite data for this object
+	Data        []byte // Decompressed object data
+	Object      any    // Parsed object (VehicleObject, etc.)
+	ImageOffset uint32 // Base image offset in global sprite pool
+	ImageCount  uint32 // Number of images in this object
+	ImageData   []byte // Raw sprite data for this object
 }
 
 // ObjectManager manages loaded objects
 type ObjectManager struct {
-	Objects          map[string]*LoadedObject
-	Vehicles         []*VehicleObject
-	LandObjects      []*LandObject
-	TreeObjects      []*TreeObject              // all loaded tree objects
-	BuildingObjects  []*BuildingObject           // all loaded building objects
-	WallObjects      []*WallObject              // all loaded wall objects
-	TrackObjects     []*TrackObject             // all loaded track objects
-	RoadObjects      []*RoadObject              // all loaded road objects
-	TrainStationObjects []*TrainStationObject      // all loaded train-station objects
-	RoadStationObjects  []*RoadStationObject       // all loaded road-station objects
-	TrainSignalObjects     []*TrainSignalObject       // all loaded train-signal objects (slots 268-283)
-	LevelCrossingObjects   []*LevelCrossingObject     // all loaded level-crossing objects (slots 284-287)
-	BridgeObjects          []*BridgeObject            // all loaded bridge objects (slots 305-312)
-	CliffEdgeObjs    map[string]*CliffEdgeObject // keyed by upper-case name
-	WaterObj         *WaterObject               // the single water object (slot 170)
-	InterfaceSkin    *InterfaceSkinObject
-	ObjDataPath      string
+	Objects              map[string]*LoadedObject
+	Vehicles             []*VehicleObject
+	LandObjects          []*LandObject
+	TreeObjects          []*TreeObject               // all loaded tree objects
+	BuildingObjects      []*BuildingObject           // all loaded building objects
+	WallObjects          []*WallObject               // all loaded wall objects
+	TrackObjects         []*TrackObject              // all loaded track objects
+	RoadObjects          []*RoadObject               // all loaded road objects
+	TrainStationObjects  []*TrainStationObject       // all loaded train-station objects
+	RoadStationObjects   []*RoadStationObject        // all loaded road-station objects
+	TrainSignalObjects   []*TrainSignalObject        // all loaded train-signal objects (slots 268-283)
+	LevelCrossingObjects []*LevelCrossingObject      // all loaded level-crossing objects (slots 284-287)
+	BridgeObjects        []*BridgeObject             // all loaded bridge objects (slots 305-312)
+	CliffEdgeObjs        map[string]*CliffEdgeObject // keyed by upper-case name
+	WaterObj             *WaterObject                // the single water object (slot 170)
+	InterfaceSkin        *InterfaceSkinObject
+	ObjDataPath          string
 
 	// Sprite pool for object sprites
 	NextSpriteIndex uint32
@@ -100,8 +101,17 @@ func (m *ObjectManager) LoadObjectFromHeaderAndData(headerBytes [16]byte, decomp
 		Data:   decompressed,
 	}
 
+	type spriteCounter interface{ GetTotalSprites() uint32 }
+	var before uint32
+	tc, hasTC := m.G1File.(spriteCounter)
+	if hasTC {
+		before = tc.GetTotalSprites()
+	}
 	if err := m.parseAndRegisterObject(loaded, header, decompressed); err != nil {
 		return nil, err
+	}
+	if hasTC && DebugSpriteRanges {
+		log.Printf("[ObjLoad] packed type=%2d %-10s sprites %d..%d", header.GetType(), header.GetName(), before, tc.GetTotalSprites())
 	}
 
 	key := strings.ToUpper(header.GetName())
@@ -151,11 +161,23 @@ func (m *ObjectManager) LoadObjectFromReader(r io.Reader, name string) (*LoadedO
 		Data:   decompressed,
 	}
 
+	type spriteCounter interface{ GetTotalSprites() uint32 }
+	var before uint32
+	tc, hasTC := m.G1File.(spriteCounter)
+	if hasTC {
+		before = tc.GetTotalSprites()
+	}
 	if err := m.parseAndRegisterObject(loaded, header, decompressed); err != nil {
 		return nil, err
 	}
+	if hasTC && DebugSpriteRanges {
+		log.Printf("[ObjLoad] type=%2d %-10s sprites %d..%d", header.GetType(), name, before, tc.GetTotalSprites())
+	}
 	return loaded, nil
 }
+
+// DebugSpriteRanges enables per-object sprite range logging (GOLOCO_DEBUG_SPRITES=1).
+var DebugSpriteRanges = os.Getenv("GOLOCO_DEBUG_SPRITES") == "1"
 
 // parseAndRegisterObject parses type-specific fields from already-decompressed
 // object data, populates loaded, appends to the appropriate type slice, and
@@ -500,6 +522,7 @@ func (m *ObjectManager) LoadAllObjects() error {
 		path := filepath.Join(m.ObjDataPath, name)
 		_, err := m.LoadObject(path)
 		if err != nil {
+			log.Printf("[ObjLoad] FAILED %s: %v", name, err)
 			failed++
 			continue
 		}
@@ -521,7 +544,8 @@ func (m *ObjectManager) LoadAllObjects() error {
 // the LandObject's CliffEdgeImage field.
 //
 // OpenLoco reference: src/OpenLoco/src/Objects/LandObject.cpp
-//   cliffEdgeImage = cliffObj->image;
+//
+//	cliffEdgeImage = cliffObj->image;
 func (m *ObjectManager) ResolveCliffEdges() {
 	resolved := 0
 	for _, land := range m.LandObjects {

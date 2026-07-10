@@ -236,15 +236,17 @@ func ParseVehicleObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 		return v, nil
 	}
 
-	// Locate the image table that follows the fixed struct, string table, and
-	// compatible-object headers.
-	//   Fixed struct:        0x15E bytes
-	//   String table:        [langID][str\0]...[0xFF]
-	//   Compat/extra hdrs:   (NumCompatVehicles + NumTrackExtras) × HeaderSize
+	// Locate the image table by walking every variable-length section between
+	// the fixed struct and the table, mirroring VehicleObject::load exactly.
+	// OpenLoco reference: src/OpenLoco/src/Objects/VehicleObject.cpp::load
 	const fixedSize = 0x15E
+	const (
+		flagRackRail    = 1 << 6 // VehicleObjectFlags::rackRail
+		flagAnyRoadType = 1 << 9 // VehicleObjectFlags::anyRoadType
+	)
 	offset := fixedSize
 
-	// Walk string table
+	// 1. String table: [langID][str\0]...[0xFF]
 	for offset < len(data) && data[offset] != 0xFF {
 		offset++ // langID byte
 		for offset < len(data) && data[offset] != 0 {
@@ -258,9 +260,56 @@ func ParseVehicleObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 		offset++ // 0xFF terminator
 	}
 
-	// Skip compatible vehicle and required track-extra object headers
-	numHeaders := int(v.NumCompatVehicles) + int(v.NumTrackExtras)
-	offset += numHeaders * HeaderSize
+	// 2. Track/road type header — only for rail/road vehicles without anyRoadType.
+	if v.Flags&flagAnyRoadType == 0 &&
+		(v.Mode == TransportModeRail || v.Mode == TransportModeRoad) {
+		offset += HeaderSize
+	}
+
+	// 3. Required track-extra headers.
+	offset += int(v.NumTrackExtras) * HeaderSize
+
+	// 4. Cargo section: 2 × [maxCargo u8; if ≠0: (category u16, spriteOffset u8)*
+	//    until category 0xFFFF, then the u16 terminator itself].
+	for i := 0; i < 2 && offset < len(data); i++ {
+		maxCargo := data[offset]
+		offset++
+		if maxCargo == 0 {
+			continue
+		}
+		for offset+2 <= len(data) && binary.LittleEndian.Uint16(data[offset:offset+2]) != 0xFFFF {
+			offset += 3 // cargo category u16 + sprite offset u8
+		}
+		offset += 2 // 0xFFFF terminator
+	}
+
+	// 5. Emitter-animation headers: one per animation slot with type ≠ none.
+	//    animation[2] lives at 0x10D in the fixed struct, 3 bytes each, type at +2.
+	for i := 0; i < 2; i++ {
+		if data[0x10D+i*3+2] != 0 {
+			offset += HeaderSize
+		}
+	}
+
+	// 6. Compatible-vehicle headers.
+	offset += int(v.NumCompatVehicles) * HeaderSize
+
+	// 7. Rack-rail object header.
+	if v.Flags&flagRackRail != 0 {
+		offset += HeaderSize
+	}
+
+	// 8. Driving-sound object header (drivingSoundType at 0x119, none = 0).
+	if data[0x119] != 0 {
+		offset += HeaderSize
+	}
+
+	// 9. Start-sound headers (count at 0x15A, low 7 bits, max 3).
+	numStartSounds := int(data[0x15A] & 0x7F)
+	if numStartSounds > 3 {
+		numStartSounds = 3
+	}
+	offset += numStartSounds * HeaderSize
 
 	if offset >= len(data) {
 		return v, nil // no image data section
@@ -271,7 +320,96 @@ func ParseVehicleObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 		return nil, fmt.Errorf("loading vehicle image table: %w", err)
 	}
 	v.ImageOffset = imgRes.ImageOffset
+
+	// The image-id fields in the DAT are placeholders; compute them from the
+	// frame counts, exactly like upstream. Stored relative to ImageOffset
+	// (GetBodySpriteID / bogie lookups add it back).
+	// OpenLoco reference: VehicleObject::load after loadImageTable.
+	imgOff := uint32(0)
+	for i := range v.BodySprites {
+		bs := &v.BodySprites[i]
+		if bs.Flags&BodyFlagHasSprites == 0 {
+			continue
+		}
+		sym := uint32(1)
+		if bs.Flags&BodyFlagRotationalSymmetry != 0 {
+			sym = 2
+		}
+		bs.FlatImageID = imgOff
+		bs.FlatYawAccuracy = yawAccuracyFlat(bs.NumFlatRotationFrames)
+		nfpr := uint32(bs.NumAnimationFrames) * uint32(bs.NumCargoFrames) * uint32(bs.NumRollFrames)
+		if bs.Flags&BodyFlagHasBrakingLights != 0 {
+			nfpr++
+		}
+		bs.NumFramesPerRotation = uint8(nfpr)
+		imgOff += nfpr * uint32(bs.NumFlatRotationFrames) / sym
+
+		if bs.Flags&BodyFlagHasGentleSprites != 0 {
+			bs.GentleImageID = imgOff
+			imgOff += nfpr * 8 / sym // transition frames up/down deg6
+			bs.SlopedYawAccuracy = yawAccuracySloped(bs.NumSlopedRotationFrames)
+			imgOff += nfpr * uint32(bs.NumSlopedRotationFrames) * 2 / sym // up/down deg12
+
+			if bs.Flags&BodyFlagHasSteepSprites != 0 {
+				bs.SteepImageID = imgOff
+				imgOff += nfpr * 8 / sym                                      // transition frames up/down deg18
+				imgOff += uint32(bs.NumSlopedRotationFrames) * nfpr * 2 / sym // up/down deg25
+			}
+		}
+	}
+	for i := range v.BogieSprites {
+		bg := &v.BogieSprites[i]
+		if bg.Flags&BogieFlagHasSprites == 0 {
+			continue
+		}
+		sym := uint32(1)
+		if bg.Flags&BogieFlagRotationalSymmetry != 0 {
+			sym = 2
+		}
+		bg.NumFramesPerRotation = bg.NumAnimationFrames
+		bg.FlatImageIDs = imgOff
+		imgOff += uint32(bg.NumFramesPerRotation) * 32 / sym
+
+		if bg.Flags&BogieFlagHasGentleSprites != 0 {
+			bg.GentleImageIDs = imgOff
+			imgOff += uint32(bg.NumFramesPerRotation) * 32 * 2 / sym // up/down deg12
+
+			if bg.Flags&BogieFlagHasSteepSprites != 0 {
+				bg.SteepImageIDs = imgOff
+				imgOff += uint32(bg.NumFramesPerRotation) * 32 * 2 / sym // up/down deg25
+			}
+		}
+	}
+
 	return v, nil
+}
+
+// yawAccuracyFlat mirrors upstream getYawAccuracyFlat.
+func yawAccuracyFlat(numFrames uint8) uint8 {
+	switch numFrames {
+	case 8:
+		return 1
+	case 16:
+		return 2
+	case 32:
+		return 3
+	default:
+		return 4
+	}
+}
+
+// yawAccuracySloped mirrors upstream getYawAccuracySloped.
+func yawAccuracySloped(numFrames uint8) uint8 {
+	switch numFrames {
+	case 4:
+		return 0
+	case 8:
+		return 1
+	case 16:
+		return 2
+	default:
+		return 3
+	}
 }
 
 // GetBodySpriteID returns the G1 sprite index for the given body sprite slot

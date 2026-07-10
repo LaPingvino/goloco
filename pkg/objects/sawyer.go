@@ -83,49 +83,32 @@ func decodeRunLengthSingle(data []byte) ([]byte, error) {
 	return result, nil
 }
 
+// decodeRunLengthMulti decodes the second Sawyer pass: 0xFF is followed by one
+// literal byte; any other code is a back-reference into the already-decoded
+// output at offset (code>>3)-32 (negative), length (code&7)+1, copied byte by
+// byte because ranges may overlap.
+// OpenLoco reference: src/OpenLoco/src/S5/SawyerStream.cpp decodeRunLengthMulti
 func decodeRunLengthMulti(data []byte) ([]byte, error) {
 	result := make([]byte, 0, len(data)*2)
 
-	for i := 0; i < len(data); {
-		rleCode := data[i]
-		i++
-
-		if rleCode&0x80 != 0 {
-			// Repeat pattern
+	for i := 0; i < len(data); i++ {
+		code := data[i]
+		if code == 0xFF {
+			i++
 			if i >= len(data) {
-				return nil, fmt.Errorf("invalid multi-RLE: unexpected end")
+				return nil, fmt.Errorf("invalid multi-RLE: trailing 0xFF")
 			}
-
-			copyLen := 257 - int(rleCode)
-			if rleCode == 0xFF {
-				// Special case: copy from previous output
-				if i >= len(data) {
-					return nil, fmt.Errorf("invalid multi-RLE: no offset")
-				}
-				offset := int(data[i])
-				i++
-				srcStart := len(result) - offset - 1
-				if srcStart < 0 {
-					srcStart = 0
-				}
-				for j := 0; j < copyLen && srcStart+j < len(result); j++ {
-					result = append(result, result[srcStart+j])
-				}
-			} else {
-				copyByte := data[i]
-				i++
-				for j := 0; j < copyLen; j++ {
-					result = append(result, copyByte)
-				}
-			}
-		} else {
-			// Copy next (rleCode + 1) bytes directly
-			copyLen := int(rleCode) + 1
-			if i+copyLen > len(data) {
-				return nil, fmt.Errorf("invalid multi-RLE: not enough data")
-			}
-			result = append(result, data[i:i+copyLen]...)
-			i += copyLen
+			result = append(result, data[i])
+			continue
+		}
+		offset := int(code>>3) - 32
+		copyLen := int(code&7) + 1
+		srcStart := len(result) + offset
+		if srcStart < 0 {
+			return nil, fmt.Errorf("invalid multi-RLE: back-reference before start")
+		}
+		for j := 0; j < copyLen; j++ {
+			result = append(result, result[srcStart+j])
 		}
 	}
 

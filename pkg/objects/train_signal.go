@@ -99,16 +99,20 @@ func ParseTrainSignalObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader
 
 	offset := fixedSize
 
-	// Walk string table: [langID][str\0]...[0xFF]
-	for offset < len(data) && data[offset] != 0xFF {
-		offset++ // skip langID
-		for offset < len(data) && data[offset] != 0 {
-			offset++ // skip string bytes
+	// Walk TWO string tables (name, description), each [langID][str\0]...[0xFF].
+	// OpenLoco reference: TrainSignalObject::load — loadString(name, 0) then
+	// loadString(description, 1).
+	for t := 0; t < 2; t++ {
+		for offset < len(data) && data[offset] != 0xFF {
+			offset++ // skip langID
+			for offset < len(data) && data[offset] != 0 {
+				offset++ // skip string bytes
+			}
+			offset++ // skip null terminator
 		}
-		offset++ // skip null terminator
-	}
-	if offset < len(data) {
-		offset++ // skip 0xFF end marker
+		if offset < len(data) {
+			offset++ // skip 0xFF end marker
+		}
 	}
 
 	// Skip numCompatible ObjectHeaders (HeaderSize bytes each)
