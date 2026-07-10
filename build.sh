@@ -4,7 +4,7 @@
 set -e
 
 echo "🔨 Building goloco..."
-go build .
+go build -o goloco ./cmd/goloco
 
 echo "✅ Build successful!"
 echo ""

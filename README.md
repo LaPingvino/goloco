@@ -1,116 +1,75 @@
 # GoLoco — OpenLoco Reimplementation in Go
 
-> ⚠️ **Project Status:** See [STATUS.md](../STATUS.md) for actual verified state.
-> Previous documentation was over-optimistic. This README reflects reality.
+A from-scratch reimplementation of Chris Sawyer's Locomotion in Go, using
+[Ebitengine](https://ebitengine.org/) for rendering. Loads the original game's
+data files (G1 sprites, DAT objects, SC5/SV5 scenarios).
 
-## What Actually Works
+## What Works
 
-- ✅ Compiles and runs without crashes
-- ✅ Loads Locomotion game data (G1 sprites, objects)
-- ✅ Basic isometric tile rendering (placeholder maps)
-- ✅ Simple UI system (windows, drag, click)
-- ✅ Audio/music playback
-- ✅ Camera controls (pan, zoom)
+- Loads Locomotion game data: G1 sprites, object DAT files, packed objects from SC5/SV5 scenarios
+- Isometric terrain rendering with height, cliffs, water, and growth-stage surfaces
+- Track and road rendering, including junctions (ballast/sleeper/rail layering)
+- Stations (train, bus stop), bridges, train signals, level crossings
+- Title sequence with scripted camera cuts
+- Window/UI system (drag, buttons, checkboxes) with 3D beveled widgets
+- Audio/music playback
+- Camera pan and zoom; O(visible) tile culling with a sprite atlas
 
-## What Doesn't Work (Known Issues)
+## Not There Yet
 
-- ❌ Scenario S5 decompression fails (creates placeholder maps)
-- ❌ Paint system disabled (can't render tracks/roads/buildings properly)
-- ❌ Excessive debug logging (performance issue)
-- ❌ No gameplay systems (economy, companies, vehicles, stations)
-- ❌ No unit tests
-
-See [STATUS.md](../STATUS.md) for detailed issue list.
+- Gameplay systems: economy, companies, vehicle movement, routing
+- Full paint/depth-sort parity with OpenLoco
 
 ## Quick Start
 
 ```bash
-cd /home/joop/goloco-project/goloco
-
-# Build
-go build ./...
-
-# Run
+./build.sh        # or: go build -o goloco ./cmd/goloco
 ./goloco
 ```
 
-**Note:** Requires Locomotion game data in `../locomotion/Data` or falls back to placeholders.
-
-## Documentation
-
-| Document | Purpose |
-|----------|---------|
-| [STATUS.md](../STATUS.md) | Actual verified state of all systems |
-| [TODO.md](../TODO.md) | Realistic task list with estimates |
-| [DEVELOPMENT.md](../DEVELOPMENT.md) | Guidelines to avoid past mistakes |
-| [BUILD_NOTES.md](../BUILD_NOTES.md) | Build, run, and testing reference |
-
-**Read STATUS.md before starting any work.**
-
-## Project Structure
-
-```
-goloco/
-├── cmd/
-│   └── goloco/main.go       # Game entry point
-├── pkg/
-│   ├── assets/               # G1/DAT loading
-│   ├── audio/                # Audio/music
-│   ├── graphics/             # Drawing primitives
-│   ├── objects/              # Game objects
-│   ├── paint/                # Depth-sorted rendering (partial, mostly disabled)
-│   ├── render/               # Ebiten adapter
-│   ├── scenario/             # Scenario loading (S5 parser)
-│   ├── ui/                   # Window system
-│   ├── world/                # World rendering
-│   └── loco/                 # Clean type definitions
-├── STATUS.md (↑)           # Actual project status
-├── TODO.md (↑)             # Realistic task list
-├── DEVELOPMENT.md (↑)       # Development guidelines
-└── BUILD_NOTES.md (↑)      # Build/run reference
-```
+Requires Locomotion game data in `../locomotion/Data` (falls back to
+placeholders without it).
 
 ## Controls
 
-- **Arrow keys / WASD:** Pan camera
-- **Q / E:** Zoom in/out
-- **Mouse drag (edges):** Pan camera
-- **Mouse wheel:** Zoom
-- **Mouse click:** Interact with UI
+- **Arrow keys / WASD:** pan camera
+- **Q / E** or **mouse wheel:** zoom
+- **Mouse:** drag windows by title bar, click widgets
+- **Esc:** quit
 
-## Known Issues
+## Layout
 
-See [STATUS.md](../STATUS.md) for complete list. Critical issues:
+```
+cmd/
+├── goloco/        # Game entry point
+├── diagnostics/   # Implementation-coverage report vs OpenLoco source
+├── extract_g1/    # Dump G1 sprites to PNG
+└── list_objects/  # List objects in game data
+pkg/
+├── assets/        # G1/DAT loading
+├── audio/         # Audio/music
+├── gfx, graphics/ # Drawing primitives
+├── loco/          # Type definitions (economy, objects, s5, vehicles, worldmap)
+├── objects/       # Game object parsing
+├── render/        # Ebiten adapter, sprite atlas
+├── scenario/      # S5 scenario loading
+├── title/         # Title sequence
+├── ui/            # Window system
+└── world/         # World state and rendering
+```
 
-1. **S5 decompression fails** - Can't load real maps/scenarios
-2. **Paint system disabled** - Can't render tracks/roads/buildings
-3. **Excessive logging** - Performance degradation
-4. **No gameplay systems** - Economy, companies, vehicles missing
+`OBJECT_TYPES.md` documents the Locomotion object type IDs.
 
-## Next Steps
+## Development
 
-See [TODO.md](../TODO.md) for prioritized task list.
+```bash
+go build ./...
+go test ./...
+```
 
-Immediate priorities:
-1. Fix S5 chunk decompression
-2. Remove excessive debug logging
-3. Enable and debug paint system
-4. Add basic unit tests
-
-## Contributing
-
-Before contributing:
-1. Read [DEVELOPMENT.md](../DEVELOPMENT.md) for guidelines
-2. Check [STATUS.md](../STATUS.md) for actual project state
-3. Review [TODO.md](../TODO.md) for current priorities
-4. Test thoroughly before claiming anything works
+CI runs the test suite on every push and PR.
 
 ## License
 
-This is a reimplementation project. Original game by Chris Sawyer.
-
----
-
-**Last Updated:** 2026-01-31
-
-**Important:** Do not trust older documentation. Read STATUS.md for actual state.
+Reimplementation project; original game by Chris Sawyer. Requires an original
+copy of Locomotion for game data.

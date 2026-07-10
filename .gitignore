@@ -1,1 +1,3 @@
-goloco
+/goloco
+*.log
+/extracted_sprites/

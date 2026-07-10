@@ -51,18 +51,13 @@ func hasPattern(root, rel, pattern string) bool {
 	return false
 }
 
-// countMatches counts lines matching pattern across *.go files under root/dir,
-// skipping the _conversion_generated subtree (reference artifacts, not game code).
+// countMatches counts lines matching pattern across *.go files under root/dir.
 func countMatches(root, dir, pattern string) int {
 	re := regexp.MustCompile(pattern)
 	n := 0
 	_ = filepath.Walk(filepath.Join(root, dir), func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return nil
-		}
-		// Skip reference artifacts — they are not compiled into the game.
-		if fi.IsDir() && fi.Name() == "_conversion_generated" {
-			return filepath.SkipDir
 		}
 		if fi.IsDir() || !strings.HasSuffix(path, ".go") {
 			return nil
