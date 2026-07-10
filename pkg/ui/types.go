@@ -116,8 +116,7 @@ type Widget struct {
 	Visible   bool
 
 	// Callback functions
-	Draw     func(*Widget, *graphics.DrawingContext) error
-	drawFunc func(*Widget, *graphics.DrawingContext) error
+	Draw func(*Widget, *graphics.DrawingContext) error
 }
 
 // Bounds returns the widget's bounding rectangle
@@ -150,34 +149,6 @@ func (w *Widget) IsActivated() bool {
 	return w.Activated
 }
 
-// Helper methods for AI-generated code compatibility
-func (w *Widget) position() gfx.Point {
-	return w.Position()
-}
-
-func (w *Widget) size() gfx.Size {
-	return w.Size()
-}
-
-func (w *Widget) colour() gfx.AdvancedColor {
-	return w.Colour
-}
-
-func (w *Widget) flags() WidgetFlags {
-	return w.Flags
-}
-
-func (w *Widget) activated() bool {
-	return w.Activated
-}
-
-func (w *Widget) drawLabel(window *Window, dc *DrawingContext) {
-	// Simple label drawing - just text
-	if w.Text != "" {
-		_ = dc.DrawString(w.X, w.Y, w.Text, uint8(w.Colour.Color))
-	}
-}
-
 // Window represents a UI window
 type Window struct {
 	Type      WindowType
@@ -204,8 +175,6 @@ type Window struct {
 	Visible     bool
 	Destroyed   bool
 
-	// Optional fields referenced by AI-generated code
-	background    *uint8
 	Viewports     []*Viewport // capitalized for AI-generated code compatibility
 	eventHandlers *WindowEventHandlers
 	viewports     []*Viewport
@@ -247,11 +216,6 @@ func (w *Window) Bounds() gfx.Rect {
 // Position returns the window's position as a Point
 func (w *Window) Position() gfx.Point {
 	return gfx.Point{X: w.X, Y: w.Y}
-}
-
-// position returns the window's position (lowercase for AI-generated code)
-func (w *Window) position() gfx.Point {
-	return w.Position()
 }
 
 // SetSize changes the window's dimensions

@@ -155,16 +155,8 @@ func TestG1SpritePoolMultipleLoads(t *testing.T) {
 
 // TestG1LoaderInterface verifies G1File implements the objects.G1Loader interface
 func TestG1LoaderInterface(t *testing.T) {
-	g1 := &G1File{}
-
-	// This should compile if G1File implements G1Loader
-	var _ objects.G1Loader = g1
-
-	// Runtime verification
-	var loader objects.G1Loader = g1
-	if loader == nil {
-		t.Error("G1File does not implement G1Loader interface")
-	}
+	// Compile-time check that G1File implements G1Loader.
+	var _ objects.G1Loader = &G1File{}
 }
 
 // TestSpriteDataNonEmpty verifies loaded sprites have realistic data

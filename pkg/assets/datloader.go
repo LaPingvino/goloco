@@ -228,18 +228,3 @@ func ParseG1(data []byte) (*G1File, error) {
 	return nil, ErrG1NotFound
 }
 
-// readUint32LE reads a uint32 from data at offset using little-endian.
-func readUint32LE(data []byte, offset int) (uint32, error) {
-	if offset+4 > len(data) {
-		return 0, io.ErrUnexpectedEOF
-	}
-	return binary.LittleEndian.Uint32(data[offset : offset+4]), nil
-}
-
-// readUint16LE reads a uint16 from data at offset using little-endian.
-func readUint16LE(data []byte, offset int) (uint16, error) {
-	if offset+2 > len(data) {
-		return 0, io.ErrUnexpectedEOF
-	}
-	return binary.LittleEndian.Uint16(data[offset : offset+2]), nil
-}

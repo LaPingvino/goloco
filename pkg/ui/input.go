@@ -15,8 +15,6 @@ var (
 
 	// Dragging state
 	draggedWindow *Window
-	dragStartX    int16
-	dragStartY    int16
 	dragOffsetX   int16
 	dragOffsetY   int16
 )
@@ -78,8 +76,6 @@ func startDrag() {
 		if x >= wx && x < wx+widget.Width && y >= wy && y < wy+widget.Height {
 			// Start dragging
 			draggedWindow = w
-			dragStartX = x
-			dragStartY = y
 			dragOffsetX = x - w.X
 			dragOffsetY = y - w.Y
 

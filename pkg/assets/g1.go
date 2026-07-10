@@ -79,7 +79,11 @@ func (e *G1Element) ToRGBA(palette [256]color.RGBA) *image.RGBA {
 
 	var indices []byte
 	if e.Flags&G1FlagIsRLECompressed != 0 {
-		indices = decompressRLE(e.Data, width*height)
+		decoded, err := decodeRLEElement(e.Data, width, height)
+		if err != nil {
+			return nil
+		}
+		indices = decoded
 	} else {
 		indices = e.Data
 	}
@@ -99,38 +103,6 @@ func (e *G1Element) ToRGBA(palette [256]color.RGBA) *image.RGBA {
 	return img
 }
 
-// decompressRLE decompresses RLE compressed data
-func decompressRLE(data []byte, expectedLen int) []byte {
-	var out []byte
-	i := 0
-	for i < len(data) && len(out) < expectedLen {
-		if i >= len(data) {
-			break
-		}
-		b := data[i]
-		i++
-		if b&0x80 != 0 {
-			count := int(b & 0x7F)
-			if i+count > len(data) {
-				break
-			}
-			out = append(out, data[i:i+count]...)
-			i += count
-		} else {
-			count := int(b)
-			if i >= len(data) {
-				break
-			}
-			val := data[i]
-			i++
-			for j := 0; j < count && len(out) < expectedLen; j++ {
-				out = append(out, val)
-			}
-		}
-	}
-	return out
-}
-
 // LoadG1 loads and parses a G1.DAT file using the in-memory parser.
 // This implementation centralizes parsing by reading the file bytes with
 // `LoadDatFile` and delegating the heavy-lifting to `ParseG1`.
@@ -147,30 +119,15 @@ func LoadG1(path string) (*G1File, error) {
 		return nil, fmt.Errorf("parse g1: %w", err)
 	}
 
-	// Handle elements marked as duplicate of previous element.
-	// Some G1s use the DuplicatePrev flag to indicate the element reuses the
-	// previous element's image/data. Ensure such elements get a proper Data
-	// slice and sensible defaults copied from the previous element when
-	// fields are zero-valued.
-	for i := 0; i < len(g1.Elements); i++ {
-		if (g1.Elements[i].Flags&G1FlagDuplicatePrev) != 0 && i > 0 {
-			prev := &g1.Elements[i-1]
-			cur := &g1.Elements[i]
-			if len(cur.Data) == 0 {
-				cur.Data = prev.Data
-			}
-			if cur.Width == 0 {
-				cur.Width = prev.Width
-			}
-			if cur.Height == 0 {
-				cur.Height = prev.Height
-			}
-			if cur.XOffset == 0 {
-				cur.XOffset = prev.XOffset
-			}
-			if cur.YOffset == 0 {
-				cur.YOffset = prev.YOffset
-			}
+	// Handle elements marked as duplicate of previous element: the element is
+	// a full copy of the previous one with its own x/y offsets added as deltas.
+	// OpenLoco reference: src/OpenLoco/src/Objects/ObjectImageTable.cpp:36-41
+	for i := 1; i < len(g1.Elements); i++ {
+		if (g1.Elements[i].Flags & G1FlagDuplicatePrev) != 0 {
+			dx, dy := g1.Elements[i].XOffset, g1.Elements[i].YOffset
+			g1.Elements[i] = g1.Elements[i-1]
+			g1.Elements[i].XOffset += dx
+			g1.Elements[i].YOffset += dy
 		}
 	}
 
@@ -333,7 +290,7 @@ func (g1 *G1File) DecodeSpriteMapped(index int, paletteMap []byte) (*image.RGBA,
 	if index < 0 || index >= len(g1.Elements) {
 		return nil, fmt.Errorf("sprite index %d out of range", index)
 	}
-	if paletteMap == nil || len(paletteMap) < 256 {
+	if len(paletteMap) < 256 {
 		return g1.DecodeSprite(index)
 	}
 
@@ -609,12 +566,14 @@ func (g1 *G1File) LoadImageTable(data []byte) (objects.ImageTableResult, error) 
 		TotalSize:  binary.LittleEndian.Uint32(data[4:8]),
 	}
 
-	// Calculate total length consumed
-	headerSize := uint32(8)
-	elementTableSize := header.NumEntries * 16 // G1Element32 is 16 bytes
-	tableLength := headerSize + elementTableSize + header.TotalSize
+	// Calculate total length consumed. Arithmetic is done in int64: a malformed
+	// header (huge NumEntries/TotalSize) must fail the size check below rather
+	// than wrap around uint32 and pass it.
+	headerSize := int64(8)
+	elementTableSize := int64(header.NumEntries) * 16 // G1Element32 is 16 bytes
+	tableLength := headerSize + elementTableSize + int64(header.TotalSize)
 
-	if uint32(len(data)) < headerSize+elementTableSize {
+	if int64(len(data)) < headerSize+elementTableSize {
 		return objects.ImageTableResult{}, fmt.Errorf("data too small: need %d bytes for elements",
 			headerSize+elementTableSize)
 	}
@@ -627,7 +586,7 @@ func (g1 *G1File) LoadImageTable(data []byte) (objects.ImageTableResult, error) 
 	pixelDataStart := headerSize + elementTableSize
 
 	for i := uint32(0); i < header.NumEntries; i++ {
-		offset := i * 16
+		offset := int64(i) * 16
 		elem32 := G1Element32{
 			Offset:     binary.LittleEndian.Uint32(elemData[offset+0 : offset+4]),
 			Width:      int16(binary.LittleEndian.Uint16(elemData[offset+4 : offset+6])),
@@ -648,34 +607,31 @@ func (g1 *G1File) LoadImageTable(data []byte) (objects.ImageTableResult, error) 
 			ZoomOffset: elem32.ZoomOffset,
 		}
 
-		// Handle DuplicatePrevious flag
+		// DuplicatePrevious: full copy of the previous element with this
+		// element's x/y offsets added as deltas.
+		// OpenLoco reference: src/OpenLoco/src/Objects/ObjectImageTable.cpp:36-41
 		if (elem.Flags&G1FlagDuplicatePrev) != 0 && len(g1.Elements) > 0 {
-			// Duplicate previous element but with adjusted offsets
-			prevIdx := len(g1.Elements) - 1
-			elem.Data = g1.Elements[prevIdx].Data
-			elem.Width = g1.Elements[prevIdx].Width
-			elem.Height = g1.Elements[prevIdx].Height
-			elem.XOffset = g1.Elements[prevIdx].XOffset + elem32.XOffset
-			elem.YOffset = g1.Elements[prevIdx].YOffset + elem32.YOffset
+			prev := g1.Elements[len(g1.Elements)-1]
+			elem = prev
+			elem.XOffset = prev.XOffset + elem32.XOffset
+			elem.YOffset = prev.YOffset + elem32.YOffset
 		} else {
-			// Extract pixel data
-			dataOffset := pixelDataStart + elem32.Offset
-			if dataOffset < uint32(len(data)) {
-				// Calculate data size (goes to next element's offset or end of data)
-				var dataSize uint32
-				if i+1 < header.NumEntries {
-					// Next element's offset
-					nextOffset := binary.LittleEndian.Uint32(elemData[(i+1)*16 : (i+1)*16+4])
-					dataSize = nextOffset - elem32.Offset
-				} else {
-					// Last element: use remaining data
-					dataSize = header.TotalSize - elem32.Offset
-				}
+			// Extract pixel data. Size runs to the next element's offset (or
+			// TotalSize for the last element); a non-monotonic or out-of-range
+			// offset table yields dataSize <= 0 and the element keeps nil Data
+			// instead of wrapping around and panicking on the slice bounds.
+			dataOffset := pixelDataStart + int64(elem32.Offset)
+			var dataSize int64
+			if i+1 < header.NumEntries {
+				nextOffset := binary.LittleEndian.Uint32(elemData[int64(i+1)*16 : int64(i+1)*16+4])
+				dataSize = int64(nextOffset) - int64(elem32.Offset)
+			} else {
+				dataSize = int64(header.TotalSize) - int64(elem32.Offset)
+			}
 
-				if dataOffset+dataSize <= uint32(len(data)) {
-					elem.Data = make([]byte, dataSize)
-					copy(elem.Data, data[dataOffset:dataOffset+dataSize])
-				}
+			if dataSize > 0 && dataOffset+dataSize <= int64(len(data)) {
+				elem.Data = make([]byte, dataSize)
+				copy(elem.Data, data[dataOffset:dataOffset+dataSize])
 			}
 		}
 
@@ -685,7 +641,7 @@ func (g1 *G1File) LoadImageTable(data []byte) (objects.ImageTableResult, error) 
 
 	return objects.ImageTableResult{
 		ImageOffset: imageOffset,
-		TableLength: tableLength,
+		TableLength: uint32(tableLength),
 	}, nil
 }
 

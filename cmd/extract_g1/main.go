@@ -57,6 +57,9 @@ func main() {
 			elem := &g1.Elements[i]
 			flagStr := ""
 			if elem.Flags&assets.G1FlagHasTransparency != 0 {
+				flagStr += "TRANS "
+			}
+			if elem.Flags&assets.G1FlagIsRLECompressed != 0 {
 				flagStr += "RLE "
 			}
 			if elem.Flags&assets.G1FlagIsR8G8B8Palette != 0 {
@@ -106,6 +109,9 @@ func main() {
 
 		if err := png.Encode(f, img); err != nil {
 			fmt.Printf("Sprite %d: encode error: %v\n", i, err)
+			f.Close()
+			skipped++
+			continue
 		}
 		f.Close()
 		extracted++

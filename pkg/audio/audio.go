@@ -18,6 +18,7 @@ const (
 type Manager struct {
 	context     *audio.Context
 	musicPlayer *audio.Player
+	musicFile   *os.File // backing file of musicPlayer; Player.Close does not close its source
 	musicVolume float64
 	sfxVolume   float64
 }
@@ -88,6 +89,7 @@ func (m *Manager) LoadAndPlayMusic(path string, loop bool) error {
 	log.Println("[Audio] Player created successfully")
 
 	m.musicPlayer = player
+	m.musicFile = f
 	m.musicPlayer.SetVolume(m.musicVolume)
 	log.Println("[Audio] Volume set to:", m.musicVolume)
 
@@ -103,6 +105,10 @@ func (m *Manager) StopMusic() {
 	if m.musicPlayer != nil {
 		m.musicPlayer.Close()
 		m.musicPlayer = nil
+	}
+	if m.musicFile != nil {
+		m.musicFile.Close()
+		m.musicFile = nil
 	}
 }
 

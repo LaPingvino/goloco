@@ -11,15 +11,10 @@ import (
 
 // Global window management state
 var (
-	windows               []*Window
-	mainWindow            *Window
-	focusedWindow         *Window
-	modalWindow           *Window
-	dirtyRegions          []gfx.Rect
-	thousandthTickCounter uint32
-	currentModalType      WindowType
-	currentRotation       uint8
-	updateViewports       func()
+	windows         []*Window
+	focusedWindow   *Window
+	modalWindow     *Window
+	updateViewports func()
 )
 
 // Type aliases for compatibility
@@ -182,9 +177,6 @@ func GfxRender(left, top, right, bottom int16) {
 // Update all windows (events, animations)
 // Source: WindowManager::update
 func UpdateWindows() {
-	// advance tick counter used for fine-grained animation timing
-	thousandthTickCounter++
-
 	for _, w := range windows {
 		if w == nil {
 			continue
@@ -430,10 +422,5 @@ func InitWindowManager() {
 	{
 		// Clear the windows list but keep underlying capacity (like C++ clear).
 		windows = windows[:0]
-
-		// Reset internal state to zero/undefined values.
-		thousandthTickCounter = 0
-		currentModalType = WindowTypeUndefined
-		currentRotation = 0
 	}
 }

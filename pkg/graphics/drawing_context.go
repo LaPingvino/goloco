@@ -140,10 +140,12 @@ func (dc *DrawingContext) UseRendererPalette(g1 *assets.G1File) bool {
 				maxCount = len(e.Data) / 3
 			}
 			for j := 0; j < maxCount && (startIdx+j) < 256; j++ {
+				// Data is B, G, R order (Windows BITMAPINFO style), same as
+				// assets.(*G1File).loadPalette.
 				dc.palette[startIdx+j] = color.RGBA{
-					R: e.Data[j*3+0],
+					R: e.Data[j*3+2],
 					G: e.Data[j*3+1],
-					B: e.Data[j*3+2],
+					B: e.Data[j*3+0],
 					A: 255,
 				}
 			}
@@ -158,21 +160,26 @@ func (dc *DrawingContext) UseRendererPalette(g1 *assets.G1File) bool {
 	return false
 }
 
+// fillPixel is a shared 1x1 white image scaled and tinted by FillRect, so a
+// fill does not allocate a new GPU image per call.
+var fillPixel = func() *ebiten.Image {
+	img := ebiten.NewImage(1, 1)
+	img.Fill(color.White)
+	return img
+}()
+
 // FillRect fills a rectangle with a solid color
 func (dc *DrawingContext) FillRect(x, y, width, height int16, col uint8) error {
-	if dc.target == nil {
+	if dc.target == nil || width <= 0 || height <= 0 {
 		return nil
 	}
 
-	// Create a temporary image for the rectangle
-	rect := ebiten.NewImage(int(width), int(height))
 	c := dc.paletteColor(col)
-	rect.Fill(c)
-
-	// Draw it at the specified position
 	opts := &ebiten.DrawImageOptions{}
+	opts.GeoM.Scale(float64(width), float64(height))
 	opts.GeoM.Translate(float64(x), float64(y))
-	dc.target.DrawImage(rect, opts)
+	opts.ColorScale.ScaleWithColor(c)
+	dc.target.DrawImage(fillPixel, opts)
 
 	return nil
 }
@@ -393,12 +400,14 @@ func MatchPaletteIndex(c color.RGBA) uint8 {
 	if !globalPaletteLoaded {
 		return 1
 	}
-	bestIdx := uint8(0)
+	bestIdx := uint8(1)
 	bestDist := int(^uint(0) >> 1) // large number
 	tr := int(c.R)
 	tg := int(c.G)
 	tb := int(c.B)
-	for i := 0; i < 256; i++ {
+	// Start at 1: index 0 is forced transparent, so matching it would make
+	// the caller draw nothing (dark colours would otherwise snap to it).
+	for i := 1; i < 256; i++ {
 		p := globalPalette[i]
 		dr := tr - int(p.R)
 		dg := tg - int(p.G)

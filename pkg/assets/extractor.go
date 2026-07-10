@@ -1,7 +1,6 @@
 package assets
 
 import (
-	"encoding/binary"
 	"fmt"
 	"image/png"
 	"os"
@@ -35,19 +34,16 @@ func ExportG1Images(data []byte, srcName string, outDir string) (int, error) {
 				if err != nil {
 					return found, err
 				}
-				_ = png.Encode(f, img)
-				f.Close()
+				encErr := png.Encode(f, img)
+				if closeErr := f.Close(); encErr == nil {
+					encErr = closeErr
+				}
+				if encErr != nil {
+					return found, encErr
+				}
 				found++
 			}
 		}
 	}
 	return found, nil
-}
-
-// Helper to read a uint32 LE from data safely (used by any future code).
-func u32(data []byte, off int) (uint32, bool) {
-	if off+4 > len(data) {
-		return 0, false
-	}
-	return binary.LittleEndian.Uint32(data[off : off+4]), true
 }

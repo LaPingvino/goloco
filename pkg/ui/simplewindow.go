@@ -170,27 +170,16 @@ func (w *SimpleWindow) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 	// Window colors (Locomotion style) - prefer using loaded G1/global palette when available
 	frameBg := color.RGBA{209, 205, 181, 255}
 	titleBg := color.RGBA{180, 170, 150, 255}
-	borderLight := color.RGBA{255, 255, 255, 255}
-	borderDark := color.RGBA{100, 95, 85, 255}
 	contentBg := color.RGBA{200, 195, 175, 255}
 
 	// If a renderer/global palette is available, map these target RGBA values to
 	// the closest palette entries and use palette colors so the UI matches the
-	// game's look-and-feel more closely.
+	// game's look-and-feel more closely. (Bevel light/dark shades come from
+	// FillRectInset's palette-index offsets, not from separate colours here.)
 	if graphics.IsGlobalPaletteLoaded() {
-		// Match the desired RGBA to palette indices
-		frameIdx := graphics.MatchPaletteIndex(frameBg)
-		titleIdx := graphics.MatchPaletteIndex(titleBg)
-		lightIdx := graphics.MatchPaletteIndex(borderLight)
-		darkIdx := graphics.MatchPaletteIndex(borderDark)
-		contentIdx := graphics.MatchPaletteIndex(contentBg)
-
-		// Replace with the actual palette colors
-		frameBg = graphics.GetGlobalColor(frameIdx)
-		titleBg = graphics.GetGlobalColor(titleIdx)
-		borderLight = graphics.GetGlobalColor(lightIdx)
-		borderDark = graphics.GetGlobalColor(darkIdx)
-		contentBg = graphics.GetGlobalColor(contentIdx)
+		frameBg = graphics.GetGlobalColor(graphics.MatchPaletteIndex(frameBg))
+		titleBg = graphics.GetGlobalColor(graphics.MatchPaletteIndex(titleBg))
+		contentBg = graphics.GetGlobalColor(graphics.MatchPaletteIndex(contentBg))
 	}
 
 	// Draw window frame, title bar and content area using the DrawingContext so

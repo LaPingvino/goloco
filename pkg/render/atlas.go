@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -54,24 +56,14 @@ func LoadAtlasFromDir(dir string) (*Atlas, error) {
 		e := ebiten.NewImageFromImage(img)
 		at.Images[fi.Name()] = e
 
-		// Extract sprite ID from filename (sprite_XXXX.png -> ID XXXX)
-		var id uint32
-		if len(fi.Name()) >= 12 && fi.Name()[:7] == "sprite_" && fi.Name()[11:15] == ".png" {
-			// Parse XXXX as decimal
-			var num int
-			for i := 7; i < 11; i++ {
-				if fi.Name()[i] < '0' || fi.Name()[i] > '9' {
-					num = -1
-					break
+		// Extract sprite ID from filename (sprite_<n>.png -> ID n). The number
+		// may be any width: extract_g1 pads to 4 digits but grows past 9999.
+		if base, ok := strings.CutPrefix(fi.Name(), "sprite_"); ok {
+			if numStr, ok := strings.CutSuffix(base, ".png"); ok {
+				if num, err := strconv.Atoi(numStr); err == nil && num >= 0 {
+					at.Sprites[uint32(num)] = e
 				}
-				num = num*10 + int(fi.Name()[i]-'0')
 			}
-			if num >= 0 {
-				id = uint32(num)
-			}
-		}
-		if id > 0 || fi.Name() == "sprite_0000.png" { // Allow 0000
-			at.Sprites[id] = e
 		}
 	}
 

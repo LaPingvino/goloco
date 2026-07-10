@@ -57,6 +57,9 @@ func ParseSimpleG1(data []byte, headerOffset int) ([]*image.RGBA, error) {
 		if elemStart+4 > len(data) {
 			return nil, errors.New("element truncated")
 		}
+		if elemEnd > len(data) || elemEnd < elemStart+4 {
+			return nil, errors.New("element offsets out of range")
+		}
 		w := int(binary.LittleEndian.Uint16(data[elemStart : elemStart+2]))
 		h := int(binary.LittleEndian.Uint16(data[elemStart+2 : elemStart+4]))
 		if w <= 0 || h <= 0 {

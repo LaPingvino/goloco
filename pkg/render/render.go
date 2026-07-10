@@ -108,6 +108,11 @@ type Renderer struct {
 	// Cache for palette-remapped sprites, keyed by (spriteIdx<<8)|colourIdx
 	colouredSpriteCache map[int]*ebiten.Image
 
+	// Cache for raw-palette-map sprites (water blend etc.), keyed by spriteIdx.
+	// Separate from colouredSpriteCache: its raw spriteIndex keys would collide
+	// with that map's shifted keys.
+	paletteMapSpriteCache map[int]*ebiten.Image
+
 	// Cache for decoded object sprites (keyed by "objectName:localIndex")
 	objectSpriteCache map[string]*ebiten.Image
 
@@ -120,11 +125,12 @@ type Renderer struct {
 
 func NewRenderer() *Renderer {
 	r := &Renderer{
-		spriteCache:         make(map[int]*ebiten.Image),
-		colouredSpriteCache: make(map[int]*ebiten.Image),
-		objectSpriteCache:   make(map[string]*ebiten.Image),
-		maskSpriteCache:     make(map[int]*ebiten.Image),
-		maskedSpriteCache:   make(map[int]*ebiten.Image),
+		spriteCache:           make(map[int]*ebiten.Image),
+		colouredSpriteCache:   make(map[int]*ebiten.Image),
+		paletteMapSpriteCache: make(map[int]*ebiten.Image),
+		objectSpriteCache:     make(map[string]*ebiten.Image),
+		maskSpriteCache:       make(map[int]*ebiten.Image),
+		maskedSpriteCache:     make(map[int]*ebiten.Image),
 	}
 	// attempt to load atlas from default extracted assets directory; ignore errors
 	if at, err := LoadAtlasFromDir("assets/extracted"); err == nil {
@@ -243,7 +249,7 @@ func (r *Renderer) GetSpriteWithPaletteMap(spriteIndex int, palMap []byte) *ebit
 	if r.G1 == nil {
 		return nil
 	}
-	if img, ok := r.colouredSpriteCache[spriteIndex]; ok {
+	if img, ok := r.paletteMapSpriteCache[spriteIndex]; ok {
 		return img
 	}
 	rgba, err := r.G1.DecodeSpriteMapped(spriteIndex, palMap)
@@ -251,7 +257,7 @@ func (r *Renderer) GetSpriteWithPaletteMap(spriteIndex int, palMap []byte) *ebit
 		return r.GetSprite(spriteIndex)
 	}
 	img := ebiten.NewImageFromImage(rgba)
-	r.colouredSpriteCache[spriteIndex] = img
+	r.paletteMapSpriteCache[spriteIndex] = img
 	return img
 }
 
@@ -440,53 +446,18 @@ func (r *Renderer) decodeObjectSprite(sprite *objects.SpriteElement) (*image.RGB
 	_ = sprite.Flags&0x01 != 0 // hasTransparency - used for drawing logic
 
 	if isRLE {
-		// RLE format: row offsets table followed by RLE data
-		// First 2*height bytes are uint16 offsets to each row's data
-		if len(sprite.Data) < height*2 {
+		// RLE format: per-row uint16 LE offset table, then chunks of
+		// [size (bit7 = last chunk)][firstX][size pixel bytes] — decoded by
+		// the same logic as g1.dat sprites.
+		indices, err := assets.DecodeRLE(sprite.Data, width, height)
+		if err != nil {
 			return nil, nil
 		}
-
 		for y := 0; y < height; y++ {
-			rowOffset := int(sprite.Data[y*2]) | int(sprite.Data[y*2+1])<<8
-			if rowOffset == 0 || rowOffset >= len(sprite.Data) {
-				continue
-			}
-
-			x := 0
-			pos := rowOffset
-			for pos < len(sprite.Data) && x < width {
-				if pos >= len(sprite.Data) {
-					break
-				}
-
-				chunk := sprite.Data[pos]
-				pos++
-
-				if chunk == 0 {
-					// End of row
-					break
-				}
-
-				// High bit set = skip pixels (transparent)
-				// Otherwise = draw pixels
-				isTransparent := chunk&0x80 != 0
-				count := int(chunk & 0x7F)
-
-				if isTransparent {
-					x += count
-				} else {
-					// Read 'count' palette indices
-					for i := 0; i < count && x < width && pos < len(sprite.Data); i++ {
-						palIdx := sprite.Data[pos]
-						pos++
-						if palIdx < uint8(len(palette)) {
-							c := palette[palIdx]
-							if palIdx != 0 { // Index 0 is typically transparent
-								img.SetRGBA(x, y, c)
-							}
-						}
-						x++
-					}
+			for x := 0; x < width; x++ {
+				palIdx := indices[y*width+x]
+				if palIdx != 0 && int(palIdx) < len(palette) {
+					img.SetRGBA(x, y, palette[palIdx])
 				}
 			}
 		}

@@ -1,6 +1,10 @@
 package core
 
-// Prng is a small pseudo-random generator ported from OpenLoco C++.
+import "math/bits"
+
+// Prng is Locomotion's pseudo-random generator, ported from OpenLoco
+// (src/Core/src/Prng.cpp). The exact sequence matters for parity with
+// scenario/save state.
 type Prng struct {
 	s0 uint32
 	s1 uint32
@@ -12,17 +16,11 @@ func NewPrngSeed(s0, s1 uint32) *Prng { return &Prng{s0: s0, s1: s1} }
 func (p *Prng) Srand0() uint32 { return p.s0 }
 func (p *Prng) Srand1() uint32 { return p.s1 }
 
-// randNext implements an XORSHIFT-like PRNG adapted from OpenLoco's implementation.
 func (p *Prng) RandNext() uint32 {
-	// Simple xorshift algorithm based on two 32-bit state values.
-	a := p.s0
-	b := p.s1
-	p.s0 = b
-	a ^= a << 23
-	a ^= a >> 17
-	a ^= b ^ (b >> 26)
-	p.s1 = a
-	return p.s0 + p.s1
+	s0 := p.s0
+	p.s0 += bits.RotateLeft32(p.s1^0x1234567F, -7)
+	p.s1 = bits.RotateLeft32(s0, -3)
+	return p.s1
 }
 
 // RandNextBound returns random int32 in [0, high]

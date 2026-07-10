@@ -73,7 +73,6 @@ type World struct {
 	tileW int // tile width in pixels (64)
 	tileH int // tile height in pixels (32)
 	// cache colored diamond images per tile type (fallback)
-	tileCache  map[TileType]*ebiten.Image
 	waterImage          *ebiten.Image          // solid water base diamond (cached, fallback only)
 	// camera offset in pixels (in world-space before zoom is applied)
 	camX float64
@@ -152,7 +151,6 @@ func NewWorld(r *render.Renderer) *World {
 		tileW:     64, // standard isometric tile width
 		tileH:     32, // standard isometric tile height (64×32 = 2:1 ratio)
 		tiles:     make([][]tile, 15),
-		tileCache: make(map[TileType]*ebiten.Image),
 		zoom:      0, // start at full zoom (1× scale)
 	}
 
@@ -817,75 +815,6 @@ func (w *World) PanCamera(dx, dy float64) {
 	w.externalCamera = false // user is now driving the camera
 	w.camX += dx
 	w.camY += dy
-}
-
-// getFallbackImage returns a cached colored diamond for a tile type.
-// Used when no LandObject sprite is available.
-func (w *World) getFallbackImage(tt TileType) *ebiten.Image {
-	if img, ok := w.tileCache[tt]; ok {
-		return img
-	}
-	img := w.createDiamondTile(tt)
-	w.tileCache[tt] = img
-	return img
-}
-
-// createDiamondTile creates a simple diamond-shaped tile image
-func (w *World) createDiamondTile(tt TileType) *ebiten.Image {
-	img := ebiten.NewImage(w.tileW, w.tileH)
-
-	var mainColor, darkColor, lightColor color.RGBA
-	switch tt {
-	case TileGrass:
-		mainColor = color.RGBA{80, 160, 80, 255}
-		darkColor = color.RGBA{60, 140, 60, 255}
-		lightColor = color.RGBA{100, 180, 100, 255}
-	case TileDirt:
-		mainColor = color.RGBA{139, 90, 43, 255}
-		darkColor = color.RGBA{100, 65, 30, 255}
-		lightColor = color.RGBA{170, 120, 70, 255}
-	case TileWater:
-		mainColor = color.RGBA{64, 120, 192, 255}
-		darkColor = color.RGBA{40, 90, 160, 255}
-		lightColor = color.RGBA{100, 160, 220, 255}
-	}
-
-	centerX := w.tileW / 2
-	centerY := w.tileH / 2
-
-	for y := 0; y < w.tileH; y++ {
-		var halfWidth int
-		if y < centerY {
-			halfWidth = (y * centerX) / centerY
-		} else {
-			halfWidth = ((w.tileH - 1 - y) * centerX) / centerY
-		}
-
-		for x := centerX - halfWidth; x <= centerX+halfWidth; x++ {
-			if x < 0 || x >= w.tileW {
-				continue
-			}
-
-			var c color.RGBA
-			if y < centerY {
-				if x < centerX {
-					c = lightColor
-				} else {
-					c = mainColor
-				}
-			} else {
-				if x < centerX {
-					c = mainColor
-				} else {
-					c = darkColor
-				}
-			}
-
-			img.Set(x, y, c)
-		}
-	}
-
-	return img
 }
 
 // getTile returns a pointer to the tile at (x, y), or nil if out of bounds
@@ -2293,31 +2222,6 @@ func (w *World) paintWater(target *ebiten.Image, tileX, tileY int, t *tile, draw
 	}
 	_ = target
 }
-
-// buildColoredImage returns a version of srcImg where every non-transparent pixel
-// is replaced with c.  Results are cached by cacheKey in the supplied map.
-// alpha controls the output alpha (255 = fully opaque).
-func buildColoredImage(cache map[int]*ebiten.Image, cacheKey int, srcImg *ebiten.Image, c color.RGBA) *ebiten.Image {
-	if img, ok := cache[cacheKey]; ok {
-		return img
-	}
-	bw, bh := srcImg.Bounds().Dx(), srcImg.Bounds().Dy()
-	pixels := make([]byte, bw*bh*4)
-	srcImg.ReadPixels(pixels)
-	for i := 0; i < len(pixels); i += 4 {
-		if pixels[i+3] > 0 {
-			pixels[i+0] = c.R
-			pixels[i+1] = c.G
-			pixels[i+2] = c.B
-			pixels[i+3] = c.A
-		}
-	}
-	result := ebiten.NewImage(bw, bh)
-	result.WritePixels(pixels)
-	cache[cacheKey] = result
-	return result
-}
-
 
 // waterColourFromPalette samples the water palette map (WaterObject sprite +41)
 // to derive the actual water blue.  The map converts any terrain index into a

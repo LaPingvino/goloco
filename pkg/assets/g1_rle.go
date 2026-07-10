@@ -49,6 +49,12 @@ func decodeRLEPresence(src []byte, width, height int) ([]bool, error) {
 	return out, nil
 }
 
+// DecodeRLE decodes RLE-compressed G1 sprite data into a width*height buffer
+// of palette indices (0 — transparent — where no pixel was stored).
+func DecodeRLE(src []byte, width, height int) ([]byte, error) {
+	return decodeRLEElement(src, width, height)
+}
+
 // decodeRLEElement decodes RLE-compressed element data into a width*height
 // buffer of palette indices. The input `src` is the element data which for
 // RLE contains a line offset table followed by run chunks as used by

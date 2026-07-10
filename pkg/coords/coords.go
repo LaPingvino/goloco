@@ -22,8 +22,9 @@ package coords
 // Stored as int16 in entity structs (OpenLoco: coord_t = int16_t).
 type WorldUnits int16
 
-// Tile returns the tile-grid index (WorldUnits / 32).
-func (w WorldUnits) Tile() TileCoord { return TileCoord(int(w) / 32) }
+// Tile returns the tile-grid index, flooring for negative coordinates so it
+// stays consistent with SubOffset (Tile().World() + SubOffset() == w always).
+func (w WorldUnits) Tile() TileCoord { return TileCoord(int(w) >> 5) }
 
 // SubOffset returns the fractional position within the current tile (0–31).
 func (w WorldUnits) SubOffset() int { return int(w) & 31 }
