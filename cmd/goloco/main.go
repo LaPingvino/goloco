@@ -90,6 +90,12 @@ type Game struct {
 	diagQuit    bool
 	diagTileX   int
 	diagTileY   int
+
+	// --shots mode: periodic full-frame captures (shot_NN.png), then quit.
+	shotsEvery time.Duration // wall-clock interval between captures
+	shotsLeft  int
+	shotsLast  time.Time
+	shotsN     int
 	// quitAfterSave: exit cleanly once the map save has completed.
 	quitAfterSave bool
 
@@ -1079,6 +1085,28 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		fillRect(screen, float64(mx-8), float64(statusY-30), float64(msgW+16), 24,
 			color.RGBA{0, 0, 0, alpha / 2})
 		ui.DrawText(screen, g.saveMsg, mx, statusY-12, color.RGBA{100, 255, 100, alpha})
+	}
+
+	// --shots mode: save the full frame every shotsEvery, quit when done.
+	if g.shotsEvery > 0 && g.shotsLeft > 0 {
+		if time.Since(g.shotsLast) >= g.shotsEvery {
+			g.shotsLast = time.Now()
+			g.shotsN++
+			name := fmt.Sprintf("shot_%02d.png", g.shotsN)
+			if f, err := os.Create(name); err == nil {
+				if err := png.Encode(f, screen.SubImage(screen.Bounds())); err != nil {
+					log.Printf("[Shots] encode %s: %v", name, err)
+				}
+				f.Close()
+				log.Printf("[Shots] saved %s (%d remaining)", name, g.shotsLeft-1)
+			} else {
+				log.Printf("[Shots] create %s: %v", name, err)
+			}
+			g.shotsLeft--
+			if g.shotsLeft == 0 {
+				g.quitAfterSave = true
+			}
+		}
 	}
 }
 
@@ -2271,12 +2299,26 @@ func main() {
 	//   ./goloco [file] --diag building    — same for building / track / road / tree / station /
 	//                                        industry / wall / train
 	//   ./goloco [file] --diag             — save diag.png centred on map middle, quit
+	//   ./goloco [file] --shots S,N       — save shot_01..NN.png every S seconds, quit
 	args := os.Args[1:]
 	var scenarioPath string
 	diagTileX, diagTileY := -1, -1
 	diagKind := ""
 	diagMode := false
 	for i := 0; i < len(args); i++ {
+		if args[i] == "--shots" && i+1 < len(args) {
+			var secs, count int
+			if n, _ := fmt.Sscanf(args[i+1], "%d,%d", &secs, &count); n >= 1 && secs > 0 {
+				if count <= 0 {
+					count = 5
+				}
+				game.shotsEvery = time.Duration(secs) * time.Second
+				game.shotsLeft = count
+				game.shotsLast = time.Now()
+			}
+			i++
+			continue
+		}
 		if args[i] != "--diag" {
 			scenarioPath = args[i]
 			continue
