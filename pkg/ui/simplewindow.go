@@ -8,7 +8,29 @@ import (
 	"github.com/LaPingvino/goloco/pkg/render"
 	"github.com/LaPingvino/goloco/pkg/sprites"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
+
+// lightenRGBA / darkenRGBA nudge a colour toward white / black for bevel edges.
+func lightenRGBA(c color.RGBA, d uint8) color.RGBA {
+	add := func(v uint8) uint8 {
+		if int(v)+int(d) > 255 {
+			return 255
+		}
+		return v + d
+	}
+	return color.RGBA{add(c.R), add(c.G), add(c.B), 255}
+}
+
+func darkenRGBA(c color.RGBA, d uint8) color.RGBA {
+	sub := func(v uint8) uint8 {
+		if int(v)-int(d) < 0 {
+			return 0
+		}
+		return v - d
+	}
+	return color.RGBA{sub(c.R), sub(c.G), sub(c.B), 255}
+}
 
 // SimpleWindow represents a basic draggable game window for simple UI
 // This is separate from the more complex Window type in types.go
@@ -35,6 +57,15 @@ type SimpleWindow struct {
 	// OnScrollWheel is called when the mouse wheel is used over this window.
 	// dy is the vertical scroll delta (positive = scroll up/away from user).
 	OnScrollWheel func(dy float64)
+
+	// Optional palette-matched colour overrides. When TitleBg.A != 0 the window
+	// uses these target RGBA values (snapped to the loaded game palette) for the
+	// title bar / frame / content area instead of the neutral beige defaults.
+	// Used by the construction window to get Locomotion's brown body + gold title.
+	TitleBg    color.RGBA
+	BodyBg     color.RGBA
+	ContentBg  color.RGBA
+	TitleText  color.RGBA // title-bar text colour (A!=0 to override black)
 }
 
 // SimpleWindowManager manages all open simple windows
@@ -172,6 +203,17 @@ func (w *SimpleWindow) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 	titleBg := color.RGBA{180, 170, 150, 255}
 	contentBg := color.RGBA{200, 195, 175, 255}
 
+	// Per-window palette overrides (e.g. construction window brown/gold theme).
+	if w.TitleBg.A != 0 {
+		titleBg = w.TitleBg
+	}
+	if w.BodyBg.A != 0 {
+		frameBg = w.BodyBg
+	}
+	if w.ContentBg.A != 0 {
+		contentBg = w.ContentBg
+	}
+
 	// If a renderer/global palette is available, map these target RGBA values to
 	// the closest palette entries and use palette colors so the UI matches the
 	// game's look-and-feel more closely. (Bevel light/dark shades come from
@@ -182,35 +224,48 @@ func (w *SimpleWindow) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 		contentBg = graphics.GetGlobalColor(graphics.MatchPaletteIndex(contentBg))
 	}
 
-	// Draw window frame, title bar and content area using the DrawingContext so
-	// palette-aware colors are used when a G1 palette is loaded.
 	dc := graphics.NewDrawingContext(screen)
-	frameIdx := graphics.MatchPaletteIndex(frameBg)
-	titleIdx := graphics.MatchPaletteIndex(titleBg)
-	contentIdx := graphics.MatchPaletteIndex(contentBg)
-
-	// Draw full frame background with palette index
-	_ = dc.FillRect(int16(w.X), int16(w.Y), int16(w.Width), int16(w.Height), frameIdx)
-
-	// Draw title bar
-	_ = dc.FillRect(int16(w.X), int16(w.Y), int16(w.Width), int16(simpleTitleBarHeight), titleIdx)
-
-	// Draw content area
 	contentX := w.X + simpleBorderWidth
 	contentY := w.Y + simpleTitleBarHeight
 	contentW := w.Width - simpleBorderWidth*2
 	contentH := w.Height - simpleBorderWidth - simpleTitleBarHeight
-	_ = dc.FillRect(int16(contentX), int16(contentY), int16(contentW), int16(contentH), contentIdx)
 
-	// Draw a beveled border for the window using FillRectInset which will use
-	// nearby palette indices to simulate highlights and shadows. Pass the frame
-	// palette index as the base advanced color.
-	_ = dc.FillRectInset(int16(w.X), int16(w.Y), int16(w.Width), int16(w.Height), gfx.AdvancedColor{Color: gfx.Color(frameIdx)}, RectInsetBorder|RectInsetSecondary)
+	if w.TitleBg.A != 0 {
+		// Themed window (e.g. construction): draw exact RGBA — the loaded UI
+		// palette has no close match for the gold title so palette-snapping
+		// washes it out to the body brown. Bevels are drawn manually.
+		fr := func(x, y, ww, hh int, c color.RGBA) {
+			vector.FillRect(screen, float32(x), float32(y), float32(ww), float32(hh), c, false)
+		}
+		fr(w.X, w.Y, w.Width, w.Height, frameBg)
+		fr(w.X, w.Y, w.Width, simpleTitleBarHeight, titleBg)
+		fr(contentX, contentY, contentW, contentH, contentBg)
+		// Outer bevel: light top/left, dark bottom/right.
+		light := lightenRGBA(frameBg, 40)
+		dark := darkenRGBA(frameBg, 55)
+		fr(w.X, w.Y, w.Width, 1, light)
+		fr(w.X, w.Y, 1, w.Height, light)
+		fr(w.X, w.Y+w.Height-1, w.Width, 1, dark)
+		fr(w.X+w.Width-1, w.Y, 1, w.Height, dark)
+	} else {
+		// Draw window frame, title bar and content area using the DrawingContext
+		// so palette-aware colors are used when a G1 palette is loaded.
+		frameIdx := graphics.MatchPaletteIndex(frameBg)
+		titleIdx := graphics.MatchPaletteIndex(titleBg)
+		contentIdx := graphics.MatchPaletteIndex(contentBg)
+		_ = dc.FillRect(int16(w.X), int16(w.Y), int16(w.Width), int16(w.Height), frameIdx)
+		_ = dc.FillRect(int16(w.X), int16(w.Y), int16(w.Width), int16(simpleTitleBarHeight), titleIdx)
+		_ = dc.FillRect(int16(contentX), int16(contentY), int16(contentW), int16(contentH), contentIdx)
+		_ = dc.FillRectInset(int16(w.X), int16(w.Y), int16(w.Width), int16(w.Height), gfx.AdvancedColor{Color: gfx.Color(frameIdx)}, RectInsetBorder|RectInsetSecondary)
+	}
 
 	// Draw title text using the drawing context so we can use the active palette.
 	// Prefer a readable text color mapped to the global palette when available.
 	// Desired default for title text is black; map it to the closest palette index.
 	textTarget := color.RGBA{0, 0, 0, 255}
+	if w.TitleText.A != 0 {
+		textTarget = w.TitleText
+	}
 	textIdx := graphics.MatchPaletteIndex(textTarget)
 	_ = dc.DrawString(int16(w.X+6), int16(w.Y+5), w.Title, textIdx)
 

@@ -2632,6 +2632,20 @@ func (g *Game) consSelectedID() int {
 	return g.consSelectedTrackID()
 }
 
+// consDisplayID returns a piece id to show in the preview panel for the current
+// curve/slope selection, regardless of whether it is placeable at the head (so
+// the panel always shows the piece the buttons describe). Falls back to the
+// first candidate, or straight.
+func (g *Game) consDisplayID() int {
+	if id := g.consSelectedID(); id >= 0 {
+		return id
+	}
+	if cs := g.consCandidates(g.consCurve, g.consSlope); len(cs) > 0 {
+		return cs[0]
+	}
+	return 0
+}
+
 func (g *Game) consPlace(id int) {
 	if g.consIsRoad() {
 		g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
@@ -2722,30 +2736,83 @@ func (g *Game) consCycleType(dir int) {
 	}
 }
 
+// Construction window layout — content-relative offsets, styled after the
+// original Locomotion "Railway Track" window (reference/gallery-screenshot-0.png).
+//
+// OpenLoco reference: src/OpenLoco/src/Ui/Windows/Construction/ConstructionTab.cpp
+const (
+	consWinW = 138
+	consWinH = 282
+
+	consBtnS   = 22 // small (curve/slope) button size
+	consBigBtn = 24 // large-curve / straight button size
+
+	consTabY   = 2
+	consTabH   = 26
+	consTabW   = 42
+
+	consCurveY = 32 // primary curve row (6 buttons, no straight)
+	consRow2Y  = 56 // large-left / straight / large-right
+	consSlopeY = 82 // slope row (5 buttons)
+	consTypeY  = 108
+	consTypeH  = 20
+	consPrevY  = 132 // piece preview panel
+	consPrevH  = 58
+	consCostY  = 196
+	consIconY  = 214
+	consIconS  = 24
+	consStatY  = 244
+)
+
+// consCurveVals / consCurveSprites: the six primary-row curve buttons, sharpest
+// (very-small) on the outside, medium nearest the centre — mirrors the original.
+var consCurveVals = []int{-1, -2, -3, 3, 2, 1}
+var consCurveSprites = []int{2340, 2342, 2344, 2345, 2343, 2341}
+
+// consRow2Vals: large-left curve, straight (up-arrow), large-right curve.
+var consRow2Vals = []int{-4, 0, 4}
+var consRow2Sprites = []int{2346, 2335, 2347}
+
+var consSlopeVals = []int{-2, -1, 0, 1, 2}
+var consSlopeSprites = []int{2348, 2349, 2350, 2351, 2352}
+
+const (
+	spriteRotateObject = 2365 // ImageIds::rotate_object (red curved arrow)
+	spriteRemoveObject = 2361 // ImageIds::construction_remove (undo/remove)
+)
+
 func (g *Game) newConstructionWindow() *ui.SimpleWindow {
-	const winW, winH = 220, 206
-	title := "Track Construction"
+	title := "Railway Track"
 	if g.consIsRoad() {
-		title = "Road Construction"
+		title = "Road"
 	}
-	win := ui.NewSimpleWindow(title, 10, 40, winW, winH)
+	win := ui.NewSimpleWindow(title, 10, 40, consWinW, consWinH)
+	// Brown body + gold title bar, matching the original construction window.
+	// Values sampled from reference/gallery-screenshot-0.png (palette-snapped).
+	win.TitleBg = color.RGBA{255, 214, 102, 255}
+	win.BodyBg = color.RGBA{143, 127, 107, 255}
+	win.ContentBg = color.RGBA{143, 127, 107, 255}
+	win.TitleText = color.RGBA{255, 255, 255, 255}
 
-	// Sprite ids for the two button rows (ImageIds construction_*).
-	curveSprites := []int{2346, 2344, 2342, 2340, 2335, 2341, 2343, 2345, 2347}
-	curveValues := []int{-4, -3, -2, -1, 0, 1, 2, 3, 4}
-	slopeSprites := []int{2348, 2349, 2350, 2351, 2352}
-	slopeValues := []int{-2, -1, 0, 1, 2}
-
-	const btnS = 22 // button size
-	curveY, slopeY, actionY, stationY, typeY := 6, 34, 66, 118, 146
+	// recessed sunken panel (dark inset frame) used for tabs, type box, preview.
+	recessed := func(screen *ebiten.Image, x, y, w, h int) {
+		fillRect(screen, float64(x), float64(y), float64(w), float64(h), color.RGBA{102, 90, 74, 255})
+		fillRect(screen, float64(x), float64(y), float64(w), 1, color.RGBA{70, 60, 48, 255})
+		fillRect(screen, float64(x), float64(y), 1, float64(h), color.RGBA{70, 60, 48, 255})
+		fillRect(screen, float64(x), float64(y+h-1), float64(w), 1, color.RGBA{190, 176, 150, 255})
+		fillRect(screen, float64(x+w-1), float64(y), 1, float64(h), color.RGBA{190, 176, 150, 255})
+	}
 
 	win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, r *render.Renderer) {
-		drawSpriteButton := func(x, y, spriteID int, selected, enabled bool) {
-			drawButton(screen, x, y, btnS, btnS, "", selected, enabled)
+		head := g.w.ConstructionHeadState()
+		rot := int(head.Rotation) & 3
+
+		drawSpriteButton := func(x, y, sz, spriteID int, selected, enabled bool) {
+			drawButton(screen, x, y, sz, sz, "", selected, enabled)
 			if img := r.GetSprite(spriteID); img != nil {
 				b := img.Bounds()
 				op := &ebiten.DrawImageOptions{}
-				op.GeoM.Translate(float64(x+(btnS-b.Dx())/2), float64(y+(btnS-b.Dy())/2))
+				op.GeoM.Translate(float64(x+(sz-b.Dx())/2), float64(y+(sz-b.Dy())/2))
 				if !enabled {
 					op.ColorScale.ScaleAlpha(0.4)
 				}
@@ -2753,105 +2820,192 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 			}
 		}
 
-		// Curve row
-		rowX := cx + (cw-len(curveSprites)*btnS)/2
-		for i, sp := range curveSprites {
-			sel := g.consCurve == curveValues[i]
+		// --- Tab strip (Construction / Station / Signal) --------------------
+		tabLabels := []string{"", "Stn", "Sig"}
+		for i := 0; i < 3; i++ {
+			tx := cx + 3 + i*consTabW
+			ty := cy + consTabY
+			tw := consTabW - 2
+			if i == 0 {
+				// active tab: raised brown panel (lighter than the recessed ones)
+				fillRect(screen, float64(tx), float64(ty), float64(tw), float64(consTabH), color.RGBA{162, 146, 124, 255})
+				fillRect(screen, float64(tx), float64(ty), float64(tw), 1, color.RGBA{200, 186, 160, 255})
+				fillRect(screen, float64(tx), float64(ty), 1, float64(consTabH), color.RGBA{200, 186, 160, 255})
+				fillRect(screen, float64(tx), float64(ty+consTabH-1), float64(tw), 1, color.RGBA{96, 84, 68, 255})
+				fillRect(screen, float64(tx+tw-1), float64(ty), 1, float64(consTabH), color.RGBA{96, 84, 68, 255})
+				g.w.DrawPiecePreview(screen, float64(tx+consTabW/2-1), float64(ty+consTabH/2),
+					0.5, g.consIsRoad(), 0, g.buildObjID, rot)
+			} else {
+				recessed(screen, tx, ty, tw, consTabH)
+				lw, _ := ui.MeasureText(tabLabels[i])
+				ui.DrawText(screen, tabLabels[i], tx+(tw-lw)/2, ty+consTabH/2-5, color.RGBA{230, 220, 200, 255})
+			}
+		}
+
+		// --- Primary curve row (6 buttons) ----------------------------------
+		rowX := cx + (cw-len(consCurveSprites)*consBtnS)/2
+		for i, sp := range consCurveSprites {
+			sel := g.consCurve == consCurveVals[i] && g.consSlope == 0
 			en := false
-			for _, id := range g.consCandidates(curveValues[i], 0) {
+			for _, id := range g.consCandidates(consCurveVals[i], 0) {
 				if g.consCanPlace(id) {
 					en = true
 					break
 				}
 			}
-			drawSpriteButton(rowX+i*btnS, cy+curveY, sp, sel, en)
+			drawSpriteButton(rowX+i*consBtnS, cy+consCurveY, consBtnS, sp, sel, en)
 		}
-		// Slope row (centred, only meaningful for straight)
-		rowX2 := cx + (cw-len(slopeSprites)*btnS)/2
-		for i, sp := range slopeSprites {
-			sel := g.consSlope == slopeValues[i]
+
+		// --- Row 2: large-left / straight / large-right ---------------------
+		row2X := cx + (cw-len(consRow2Sprites)*consBigBtn)/2
+		for i, sp := range consRow2Sprites {
+			sel := g.consCurve == consRow2Vals[i] && g.consSlope == 0
 			en := false
-			for _, id := range g.consCandidates(0, slopeValues[i]) {
+			for _, id := range g.consCandidates(consRow2Vals[i], 0) {
 				if g.consCanPlace(id) {
 					en = true
 					break
 				}
 			}
-			drawSpriteButton(rowX2+i*btnS, cy+slopeY, sp, sel, en)
+			drawSpriteButton(row2X+i*consBigBtn, cy+consRow2Y, consBigBtn, sp, sel, en)
 		}
 
-		// Action row
-		head := g.w.ConstructionHeadState()
-		canBuild := head.Active && g.consSelectedID() >= 0
-		drawButton(screen, cx+6, cy+actionY, 62, 20, "Build", false, canBuild)
-		drawButton(screen, cx+72, cy+actionY, 62, 20, "Undo", false, true)
-		drawButton(screen, cx+138, cy+actionY, 62, 20, "Rotate", false, head.Active)
+		// --- Slope row ------------------------------------------------------
+		slopeX := cx + (cw-len(consSlopeSprites)*consBtnS)/2
+		for i, sp := range consSlopeSprites {
+			sel := g.consSlope == consSlopeVals[i]
+			en := false
+			for _, id := range g.consCandidates(0, consSlopeVals[i]) {
+				if g.consCanPlace(id) {
+					en = true
+					break
+				}
+			}
+			drawSpriteButton(slopeX+i*consBtnS, cy+consSlopeY, consBtnS, sp, sel, en)
+		}
 
-		// Status line
+		// --- Type selector (dropdown-style box) -----------------------------
+		tbX, tbY := cx+3, cy+consTypeY
+		tbW := cw - 6
+		recessed(screen, tbX, tbY, tbW, consTypeH)
+		name := g.consObjName()
+		ui.DrawText(screen, name, tbX+5, tbY+(consTypeH-10)/2, color.RGBA{20, 15, 10, 255})
+		// dropdown arrow button on the right
+		drawButton(screen, tbX+tbW-consTypeH, tbY, consTypeH, consTypeH, "", false, true)
+		if img := r.GetSprite(2339); img != nil { // red_arrow_down
+			b := img.Bounds()
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Translate(float64(tbX+tbW-consTypeH+(consTypeH-b.Dx())/2), float64(tbY+(consTypeH-b.Dy())/2))
+			screen.DrawImage(img, op)
+		}
+
+		// --- Preview panel (also the Build action) --------------------------
+		pX, pY := cx+3, cy+consPrevY
+		pW := cw - 6
+		recessed(screen, pX, pY, pW, consPrevH)
+		clip, _ := screen.SubImage(image.Rect(pX+1, pY+1, pX+pW-1, pY+consPrevH-1)).(*ebiten.Image)
+		if clip != nil {
+			pcx := float64(pX + pW/2)
+			pcy := float64(pY + consPrevH/2)
+			g.w.DrawPiecePreview(clip, pcx, pcy, 1.0, g.consIsRoad(), g.consDisplayID(), g.buildObjID, rot)
+			// yellow direction arrow overlay (construction straight up-arrow)
+			if img := r.GetSprite(2335); img != nil {
+				b := img.Bounds()
+				op := &ebiten.DrawImageOptions{}
+				op.GeoM.Translate(pcx-float64(b.Dx())/2, pcy-float64(b.Dy())/2-14)
+				clip.DrawImage(img, op)
+			}
+		}
+		if !head.Active {
+			ui.DrawText(screen, "click map", pX+pW/2-24, pY+consPrevH-11, color.RGBA{210, 200, 180, 220})
+		}
+
+		// --- Cost line ------------------------------------------------------
+		cost := "Cost: --"
+		costW, _ := ui.MeasureText(cost)
+		drawOutlinedText(screen, cost, cx+(cw-costW)/2, cy+consCostY, color.RGBA{255, 245, 200, 255})
+
+		// --- Bottom icon row: remove (undo) + rotate ------------------------
+		remX := cx + (cw-(consIconS*2+12))/2
+		rotX := remX + consIconS + 12
+		drawSpriteButton(remX, cy+consIconY, consIconS, spriteRemoveObject, false, true)
+		drawSpriteButton(rotX, cy+consIconY, consIconS, spriteRotateObject, false, head.Active)
+
+		// --- Status / help --------------------------------------------------
 		status := "Click the map to start"
 		if head.Active {
 			dir := [16]string{"SW", "SE", "NE", "NW", "", "", "", "", "", "", "", "", "S", "E", "N", "W"}[head.Rotation]
-			status = fmt.Sprintf("Head: %d,%d h%d %s", head.X, head.Y, head.BaseZ, dir)
+			status = fmt.Sprintf("%d,%d h%d %s", head.X, head.Y, head.BaseZ, dir)
 		}
-		ui.DrawText(screen, status, cx+6, cy+actionY+28, color.RGBA{220, 220, 180, 255})
-		ui.DrawText(screen, "[R]=rotate  [X]=undo  [Esc]=done", cx+6, cy+actionY+42, color.RGBA{160, 160, 160, 255})
-
-		// Station row (track mode only): attach a station to the head piece.
-		canStation := head.Active && !g.consIsRoad()
-		drawButton(screen, cx+6, cy+stationY, 194, 20, "Station", false, canStation)
-
-		// Type picker: prev/next cycling button showing the current object name.
-		drawButton(screen, cx+6, cy+typeY, 20, 20, "<", false, true)
-		drawButton(screen, cx+cw-26, cy+typeY, 20, 20, ">", false, true)
-		drawButton(screen, cx+30, cy+typeY, cw-62, 20, g.consObjName(), false, true)
+		ui.DrawText(screen, status, cx+4, cy+consStatY, color.RGBA{225, 215, 195, 255})
 	}
 
 	win.OnContentClick = func(relX, relY int) {
-		rowX := (winW - len(curveSprites)*btnS) / 2
-		if relY >= curveY && relY < curveY+btnS {
-			if i := (relX - rowX) / btnS; i >= 0 && i < len(curveValues) && relX >= rowX {
-				g.consCurve = curveValues[i]
-				if g.consCurve != 0 {
-					g.consSlope = 0
+		cw := consWinW - 6 // content width (window minus 3px side borders)
+		// Tab strip
+		if relY >= consTabY && relY < consTabY+consTabH {
+			i := (relX - 3) / consTabW
+			if relX >= 3 && i >= 0 && i < 3 {
+				if i == 1 {
+					g.consPlaceStation()
 				}
 			}
 			return
 		}
-		rowX2 := (winW - len(slopeSprites)*btnS) / 2
-		if relY >= slopeY && relY < slopeY+btnS {
-			if i := (relX - rowX2) / btnS; i >= 0 && i < len(slopeValues) && relX >= rowX2 {
-				g.consSlope = slopeValues[i]
+		// Primary curve row
+		rowX := (cw - len(consCurveSprites)*consBtnS) / 2
+		if relY >= consCurveY && relY < consCurveY+consBtnS {
+			if i := (relX - rowX) / consBtnS; relX >= rowX && i >= 0 && i < len(consCurveVals) {
+				g.consCurve = consCurveVals[i]
+				g.consSlope = 0
+			}
+			return
+		}
+		// Row 2 (large curves + straight)
+		row2X := (cw - len(consRow2Sprites)*consBigBtn) / 2
+		if relY >= consRow2Y && relY < consRow2Y+consBigBtn {
+			if i := (relX - row2X) / consBigBtn; relX >= row2X && i >= 0 && i < len(consRow2Vals) {
+				g.consCurve = consRow2Vals[i]
+				g.consSlope = 0
+			}
+			return
+		}
+		// Slope row
+		slopeX := (cw - len(consSlopeSprites)*consBtnS) / 2
+		if relY >= consSlopeY && relY < consSlopeY+consBtnS {
+			if i := (relX - slopeX) / consBtnS; relX >= slopeX && i >= 0 && i < len(consSlopeVals) {
+				g.consSlope = consSlopeVals[i]
 				if g.consSlope != 0 {
 					g.consCurve = 0
 				}
 			}
 			return
 		}
-		if relY >= actionY && relY < actionY+20 {
-			switch {
-			case relX >= 6 && relX < 68:
-				if id := g.consSelectedID(); id >= 0 {
-					g.consPlace(id)
-				}
-			case relX >= 72 && relX < 134:
-				g.consUndo()
-			case relX >= 138 && relX < 200:
-				g.w.RotateConstructionHead()
-			}
-			return
-		}
-		if relY >= stationY && relY < stationY+20 {
-			if relX >= 6 && relX < 200 {
-				g.consPlaceStation()
-			}
-			return
-		}
-		if relY >= typeY && relY < typeY+20 {
-			switch {
-			case relX >= 6 && relX < 26:
+		// Type selector: left half = prev, right half = next
+		if relY >= consTypeY && relY < consTypeY+consTypeH {
+			if relX < cw/2 {
 				g.consCycleType(-1)
-			case relX >= winW-26 && relX < winW-6:
+			} else {
 				g.consCycleType(1)
+			}
+			return
+		}
+		// Preview panel = Build
+		if relY >= consPrevY && relY < consPrevY+consPrevH {
+			if id := g.consSelectedID(); id >= 0 {
+				g.consPlace(id)
+			}
+			return
+		}
+		// Bottom icon row: remove (undo) + rotate
+		if relY >= consIconY && relY < consIconY+consIconS {
+			remX := (cw - (consIconS*2 + 12)) / 2
+			rotX := remX + consIconS + 12
+			switch {
+			case relX >= remX && relX < remX+consIconS:
+				g.consUndo()
+			case relX >= rotX && relX < rotX+consIconS:
+				g.w.RotateConstructionHead()
 			}
 		}
 	}
