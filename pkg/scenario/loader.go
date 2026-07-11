@@ -183,6 +183,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	}
 	log.Println("[Scenario] Read RequiredObjects,", len(reqObjBytes), "bytes")
 	sc.LandObjectOrder = parseLandObjectOrder(reqObjBytes)
+	sc.CargoObjectOrder = parseObjectOrder(reqObjBytes, cargoSlotStart, cargoSlotCount, objectTypeCargo)
 	sc.TreeObjectOrder = parseTreeObjectOrder(reqObjBytes)
 	sc.BuildingObjectOrder = parseBuildingObjectOrder(reqObjBytes)
 	sc.WallObjectOrder = parseWallObjectOrder(reqObjBytes)
@@ -668,6 +669,7 @@ const (
 	objectHeaderSize       = 16
 	objectTypeMask         = 0x3F
 	objectTypeLand         = 6  // ObjectType::land
+	objectTypeCargo        = 8  // ObjectType::cargo
 	objectTypeWall         = 9  // ObjectType::wall
 	objectTypeTrackStation = 15 // ObjectType::trackStation
 	objectTypeTrack        = 17 // ObjectType::track
@@ -680,6 +682,9 @@ const (
 	// Cumulative counts: Interface(1)+Sound(128)+Currency(1)+Steam(32)+Rock(8)+Water(1)=171
 	landSlotStart = 171
 	landSlotCount = 32
+
+	cargoSlotStart = 204
+	cargoSlotCount = 32
 
 	// Wall slots: after land(32)+TownNames(1)+Cargo(32) = 171+32+1+32 = 236
 	wallSlotStart = 236

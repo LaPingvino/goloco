@@ -79,9 +79,10 @@ type Scenario struct {
 	// included — enough for world-space rendering.  Nil for .SC5 scenarios.
 	//
 	// OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h  GameState::entities
-	Objective    Objective // win condition (valid when HasObjective)
-	HasObjective bool
-	Entities     []VehicleEntity
+	CargoObjectOrder []string  // cargo slot -> DAT name (for objective cargo names)
+	Objective        Objective // win condition (valid when HasObjective)
+	HasObjective     bool
+	Entities         []VehicleEntity
 }
 
 // GetTile returns tile at the given coordinates
