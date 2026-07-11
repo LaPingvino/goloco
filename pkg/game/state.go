@@ -30,6 +30,19 @@ type GameState struct {
 	CargoDelivered [32]uint32
 	CurrentLoan    int64
 
+	// Economy accumulators. MonthlyIncome/MonthlyExpenses are summed over the
+	// current game month; at the month rollover Update snapshots
+	// LastMonthProfit = income - expenses and resets both accumulators. The
+	// monthly vehicle-profit objective (type 1) reads LastMonthProfit.
+	MonthlyIncome   int64
+	MonthlyExpenses int64
+	LastMonthProfit int64
+
+	// VehicleCount returns the number of company vehicles at month rollover,
+	// used to charge the flat monthly running cost. Set by the game loop
+	// (cmd/goloco loadScenario); nil in tests unless supplied.
+	VehicleCount func() int
+
 	// Time tracking
 	GameDate    time.Time
 	TickCount   uint64
@@ -166,19 +179,73 @@ func NewGameState(width, height int) *GameState {
 	return gs
 }
 
+// vehicleRunningCost is the flat monthly running cost charged per company
+// vehicle. Simplified: upstream derives running cost from each vehicle
+// object's runCostFactor scaled by a cost index and inflation.
+// TODO: upstream reference src/OpenLoco/src/Vehicles/Vehicle.cpp
+// (updateMonthly / VehicleObject::runCostFactor).
+const vehicleRunningCost int64 = 120
+
+// cargoFare returns the simplified flat fare paid per unit of the given cargo
+// slot on delivery. Upstream computes payment from cargo type, distance and
+// transit time (a payment curve); this is a flat per-cargo stand-in.
+// TODO: upstream reference src/OpenLoco/src/Economy/ (calculateTransportPayment
+// / CargoObject payment factors and the age/distance payment table).
+func cargoFare(cargoSlot uint8) int64 {
+	switch cargoSlot {
+	case 0, 11: // passengers (PASS is slot 11 in the base game — see
+		// world.CargoSlotPass; slot 0 kept for generic/test callers)
+		return 6
+	case 1: // mail
+		return 8
+	default:
+		return 10
+	}
+}
+
+// CreditDelivery pays the company for delivering amount units of the given
+// cargo slot, crediting both PlayerMoney and the current month's income.
+// Wired from World.OnCargoDelivered (cmd/goloco loadScenario).
+func (gs *GameState) CreditDelivery(cargoSlot uint8, amount uint32) {
+	income := cargoFare(cargoSlot) * int64(amount)
+	gs.PlayerMoney += income
+	gs.MonthlyIncome += income
+}
+
 // Update updates the game state for one tick
 func (gs *GameState) Update() {
 	gs.TickCount++
 
-	// Update date
+	// Update date, detecting a month rollover to run the monthly economy.
 	if gs.TickCount%gs.TicksPerDay == 0 {
+		prevMonth := gs.GameDate.Month()
 		gs.GameDate = gs.GameDate.AddDate(0, 0, 1)
+		if gs.GameDate.Month() != prevMonth {
+			gs.onMonthRollover()
+		}
 	}
 
 	// Update vehicles
 	for _, v := range gs.Vehicles {
 		v.Update()
 	}
+}
+
+// onMonthRollover charges monthly vehicle running costs, snapshots the
+// finished month's profit (income - expenses) into LastMonthProfit, and
+// resets the accumulators for the new month.
+func (gs *GameState) onMonthRollover() {
+	n := 0
+	if gs.VehicleCount != nil {
+		n = gs.VehicleCount()
+	}
+	runningCost := int64(n) * vehicleRunningCost
+	gs.MonthlyExpenses += runningCost
+	gs.PlayerMoney -= runningCost
+
+	gs.LastMonthProfit = gs.MonthlyIncome - gs.MonthlyExpenses
+	gs.MonthlyIncome = 0
+	gs.MonthlyExpenses = 0
 }
 
 // Update updates a vehicle's position

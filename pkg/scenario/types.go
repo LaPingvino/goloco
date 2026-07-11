@@ -83,6 +83,26 @@ type Scenario struct {
 	Objective        Objective // win condition (valid when HasObjective)
 	HasObjective     bool
 	Entities         []VehicleEntity
+
+	// Towns holds the non-empty town records parsed from the scenario Towns
+	// chunk (or the towns array embedded in a saved-game GameState chunk).
+	// OpenLoco reference: include/OpenLoco/S5/S5Town.h struct Town
+	Towns []Town
+}
+
+// Town is one parsed town record.  The town name is stored as a StringId that
+// references a dynamically-registered user string (built from a TownNamesObject
+// at generation time); resolving it back to text is non-trivial, so callers
+// display "Town N (pop P)" instead.
+//
+// OpenLoco reference: include/OpenLoco/S5/S5Town.h struct Town (0x270 bytes)
+type Town struct {
+	Name         uint16 // 0x00 StringId (0xFFFF = empty slot)
+	X            int16  // 0x02 world-units X of the town centre (1 tile = 32)
+	Y            int16  // 0x04 world-units Y
+	Population   uint32 // 0x30
+	NumBuildings int16  // 0x38
+	Size         uint8  // 0x5A TownSize: 0 hamlet .. 4 metropolis
 }
 
 // GetTile returns tile at the given coordinates

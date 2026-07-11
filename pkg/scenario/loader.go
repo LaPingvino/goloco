@@ -229,12 +229,18 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		generalStateFlags = readGeneralStateFlags(generalState)
 		parseObjective(generalState)
 
-		// Towns
+		// Towns.  The chunk begins with kMaxTowns (80) Town records, followed by
+		// the Industries and Stations arrays (the writer bundles all three under
+		// one runLengthSingle chunk).  We only parse the leading town records.
+		// OpenLoco reference: src/OpenLoco/src/S5/S5.cpp exportGameStateToFile()
+		//   fs.writeChunk(runLengthSingle, gameState.towns, 0x123480)
 		towns, err := reader.ReadChunk()
 		if err != nil {
 			return sc, fmt.Errorf("failed to read Towns chunk: %w", err)
 		}
 		log.Println("[Scenario] Read Towns,", len(towns), "bytes")
+		sc.Towns = parseTowns(towns)
+		log.Printf("[Scenario] Parsed %d towns", len(sc.Towns))
 
 		// Animations
 		animations, err := reader.ReadChunk()
@@ -258,6 +264,12 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.Entities = ParseVehicleEntities(gameState)
 		if sc.Entities != nil {
 			log.Printf("[Scenario] Parsed %d vehicle entities (Head+Body) from GameState", len(sc.Entities))
+		}
+
+		// Towns live inside the GameState chunk for saved games.
+		sc.Towns = parseTownsFromGameState(gameState)
+		if len(sc.Towns) > 0 {
+			log.Printf("[Scenario] Parsed %d towns from GameState", len(sc.Towns))
 		}
 	}
 
@@ -948,6 +960,67 @@ func parseVehicleObjectOrder(data []byte) []string {
 	}
 	log.Printf("[Scenario] RequiredObjects: %d vehicle objects in slot order", count)
 	return order
+}
+
+// ---------------------------------------------------------------------------
+// Town parsing
+// ---------------------------------------------------------------------------
+
+// Town record layout within the Towns chunk / GameState towns array.
+// OpenLoco reference: include/OpenLoco/S5/S5Town.h struct Town (packed).
+const (
+	townRecordSize         = 0x270 // sizeof(S5::Town)
+	townMaxCount           = 80    // S5::Limits::kMaxTowns
+	townNameOffset         = 0x00  // uint16 StringId (0xFFFF = empty)
+	townXOffset            = 0x02  // int16 world-units X
+	townYOffset            = 0x04  // int16 world-units Y
+	townPopulationOffset   = 0x30  // uint32
+	townNumBuildingsOffset = 0x38  // int16
+	townSizeOffset         = 0x5A  // uint8 TownSize
+
+	// Offsets of the towns array inside a decompressed GameState chunk.
+	// OpenLoco reference: include/OpenLoco/S5/S5GameState.h GameState::towns.
+	townsGameStateOffset      = 0x092444
+	townsGameStateOffsetType2 = 0x090824
+)
+
+// parseTowns reads up to kMaxTowns Town records from the start of buf, skipping
+// empty slots (name == StringIds::null == 0xFFFF).
+func parseTowns(buf []byte) []Town {
+	var towns []Town
+	for i := 0; i < townMaxCount; i++ {
+		off := i * townRecordSize
+		if off+townRecordSize > len(buf) {
+			break
+		}
+		rec := buf[off : off+townRecordSize]
+		name := binary.LittleEndian.Uint16(rec[townNameOffset:])
+		if name == 0xFFFF {
+			continue // empty slot (Town::empty)
+		}
+		towns = append(towns, Town{
+			Name:         name,
+			X:            int16(binary.LittleEndian.Uint16(rec[townXOffset:])),
+			Y:            int16(binary.LittleEndian.Uint16(rec[townYOffset:])),
+			Population:   binary.LittleEndian.Uint32(rec[townPopulationOffset:]),
+			NumBuildings: int16(binary.LittleEndian.Uint16(rec[townNumBuildingsOffset:])),
+			Size:         rec[townSizeOffset],
+		})
+	}
+	return towns
+}
+
+// parseTownsFromGameState extracts town records from a full decompressed
+// GameState chunk (saved games), choosing the array offset by chunk variant.
+func parseTownsFromGameState(gs []byte) []Town {
+	off := townsGameStateOffset
+	if len(gs) == GameStateSizeType2 {
+		off = townsGameStateOffsetType2
+	}
+	if len(gs) < off+townMaxCount*townRecordSize {
+		return nil
+	}
+	return parseTowns(gs[off:])
 }
 
 // ---------------------------------------------------------------------------
