@@ -506,17 +506,17 @@ func (g *Game) Update() error {
 
 	// Zoom: keyboard Q/E, +/-, and mouse scroll wheel
 	if inpututil.IsKeyJustPressed(ebiten.KeyQ) || inpututil.IsKeyJustPressed(ebiten.KeyEqual) || inpututil.IsKeyJustPressed(ebiten.KeyKPAdd) {
-		g.w.ZoomIn()
+		g.w.ZoomInAt(g.sw/2, g.sh/2)
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyE) || inpututil.IsKeyJustPressed(ebiten.KeyMinus) || inpututil.IsKeyJustPressed(ebiten.KeyKPSubtract) {
-		g.w.ZoomOut()
+		g.w.ZoomOutAt(g.sw/2, g.sh/2)
 	}
 	if _, dy := ebiten.Wheel(); dy != 0 {
 		if !g.routeWheelToWindows() {
 			if dy > 0 {
-				g.w.ZoomIn()
+				g.w.ZoomInAt(g.mouseX, g.mouseY)
 			} else {
-				g.w.ZoomOut()
+				g.w.ZoomOutAt(g.mouseX, g.mouseY)
 			}
 		}
 	}

@@ -69,13 +69,13 @@ type World struct {
 	width    int
 	height   int
 	tiles    [][]tile
-	trains   []*DemoTrain            // demo trains (title screen / scenarios without saved entities)
+	trains   []*DemoTrain             // demo trains (title screen / scenarios without saved entities)
 	entities []scenario.VehicleEntity // real vehicle entities from .SV5 saved-game files
 	// isometric tile dimensions (standard 2:1 ratio)
 	tileW int // tile width in pixels (64)
 	tileH int // tile height in pixels (32)
 	// cache colored diamond images per tile type (fallback)
-	waterImage          *ebiten.Image          // solid water base diamond (cached, fallback only)
+	waterImage *ebiten.Image // solid water base diamond (cached, fallback only)
 	// camera offset in pixels (in world-space before zoom is applied)
 	camX float64
 	camY float64
@@ -92,8 +92,8 @@ type World struct {
 	animTick int // incremented every frame; drives water wave animation
 
 	// 2-pass blend rendering (water, glass, etc.)
-	worldBuf      *ebiten.Image          // pass-1 target: all opaque sprites
-	blendBuf      *ebiten.Image          // pass-2 target: blend-mode overlay
+	worldBuf     *ebiten.Image      // pass-1 target: all opaque sprites
+	blendBuf     *ebiten.Image      // pass-2 target: blend-mode overlay
 	blendOps     []worldBlendOp     // queued during pass 1
 	highlightOps []worldHighlightOp // ripple/wave sprites drawn after blend
 	waterOps     []worldHighlightOp // water surface ops drawn after all terrain (pass 1.5)
@@ -108,19 +108,19 @@ type World struct {
 
 // mapSaveState holds in-progress full-map PNG render state.
 type mapSaveState struct {
-	filename        string
-	final           *image.RGBA
-	imgW, imgH      int
-	minVpX, minVpY  float64
-	chunkX, chunkY  int
-	total, done     int
-	chunkPix        []byte
+	filename       string
+	final          *image.RGBA
+	imgW, imgH     int
+	minVpX, minVpY float64
+	chunkX, chunkY int
+	total, done    int
+	chunkPix       []byte
 	// saved world state restored when saving is complete
 	savedCamX, savedCamY float64
-	savedZoom             int
-	savedExternal         bool
-	savedWorldBuf         *ebiten.Image
-	savedBlendBuf         *ebiten.Image
+	savedZoom            int
+	savedExternal        bool
+	savedWorldBuf        *ebiten.Image
+	savedBlendBuf        *ebiten.Image
 }
 
 // RenderIssue records a tile where rendering failed silently during Draw.
@@ -147,13 +147,13 @@ type worldHighlightOp struct {
 
 func NewWorld(r *render.Renderer) *World {
 	w := &World{
-		renderer:  r,
-		width:     20,
-		height:    15,
-		tileW:     64, // standard isometric tile width
-		tileH:     32, // standard isometric tile height (64×32 = 2:1 ratio)
-		tiles:     make([][]tile, 15),
-		zoom:      0, // start at full zoom (1× scale)
+		renderer: r,
+		width:    20,
+		height:   15,
+		tileW:    64, // standard isometric tile width
+		tileH:    32, // standard isometric tile height (64×32 = 2:1 ratio)
+		tiles:    make([][]tile, 15),
+		zoom:     0, // start at full zoom (1× scale)
 	}
 
 	// Initialize tiles with some variety
@@ -349,6 +349,31 @@ func (w *World) ZoomOut() {
 	if w.zoom < 3 {
 		w.zoom++
 	}
+}
+
+// ZoomInAt / ZoomOutAt change zoom while keeping the world point under the
+// screen position (sx, sy) fixed — wheel zoom targets the cursor, keyboard
+// zoom the viewport centre, like OpenLoco's viewportZoomIn(toCursor).
+func (w *World) ZoomInAt(sx, sy int) {
+	if w.zoom > 0 {
+		w.zoomAt(w.zoom-1, sx, sy)
+	}
+}
+
+func (w *World) ZoomOutAt(sx, sy int) {
+	if w.zoom < 3 {
+		w.zoomAt(w.zoom+1, sx, sy)
+	}
+}
+
+func (w *World) zoomAt(newZoom, sx, sy int) {
+	oldScale := 1.0 / float64(int(1)<<w.zoom)
+	newScale := 1.0 / float64(int(1)<<newZoom)
+	vpX := float64(sx)/oldScale + w.camX
+	vpY := float64(sy)/oldScale + w.camY
+	w.zoom = newZoom
+	w.camX = vpX - float64(sx)/newScale
+	w.camY = vpY - float64(sy)/newScale
 }
 
 // SetZoom sets the zoom level directly (0=full, 1=half, 2=quarter, 3=eighth)
@@ -569,7 +594,7 @@ func (w *World) StartMapSave(filename string) {
 		filename: filename,
 		final:    final,
 		imgW:     imgW, imgH: imgH,
-		minVpX:   minVpX, minVpY: minVpY,
+		minVpX: minVpX, minVpY: minVpY,
 		total:    total,
 		chunkPix: make([]byte, chunkMax*chunkMax*4),
 		// save world state
@@ -887,7 +912,6 @@ func (w *World) ScreenToTile(sx, sy int) (int, int) {
 	return tileX, tileY
 }
 
-
 // ── Surface edge smoothing ────────────────────────────────────────────────────
 // OpenLoco reference: src/OpenLoco/src/Paint/PaintSurface.cpp
 // paintSurfaceSmoothenEdge — where two tiles meet coplanar along an edge, the
@@ -921,6 +945,9 @@ var cornerHeightsTable = [32][4]uint8{
 var smoothNeighbourOffsets = [4][2]int{{1, 0}, {0, 1}, {0, -1}, {-1, 0}}
 
 func (w *World) paintSurfaceSmoothing(dst *ebiten.Image, x, y int, t *tile, land *objects.LandObject, drawX, drawY, scale float64) {
+	if os.Getenv("GOLOCO_NO_SMOOTH") == "1" {
+		return
+	}
 	if t.isIndustrial {
 		return // industry fields have no land blend images
 	}
@@ -1089,10 +1116,11 @@ const (
 
 // getNeighborTile returns the neighbor tile in the given edge direction.
 // Offsets match OpenLoco PaintSurface.cpp::kNeighbourOffsets[rotation=0]:
-//   SW: Pos2{+32,0}  → tileX+1
-//   SE: Pos2{0,+32}  → tileY+1
-//   NW: Pos2{0,-32}  → tileY-1
-//   NE: Pos2{-32,0}  → tileX-1
+//
+//	SW: Pos2{+32,0}  → tileX+1
+//	SE: Pos2{0,+32}  → tileY+1
+//	NW: Pos2{0,-32}  → tileY-1
+//	NE: Pos2{-32,0}  → tileX-1
 func (w *World) getNeighborTile(x, y int, edge int) *tile {
 	var dx, dy int
 	switch edge {
@@ -1153,10 +1181,10 @@ func (w *World) getCornerHeights(t *tile) CornerHeight {
 
 // EdgeHeight represents the heights of the two corners on an edge
 type EdgeHeight struct {
-	Self0      uint8 // First corner on self side
-	Neighbor0  uint8 // First corner on neighbor side
-	Self1      uint8 // Second corner on self side
-	Neighbor1  uint8 // Second corner on neighbor side
+	Self0     uint8 // First corner on self side
+	Neighbor0 uint8 // First corner on neighbor side
+	Self1     uint8 // Second corner on self side
+	Neighbor1 uint8 // Second corner on neighbor side
 }
 
 // getEdgeHeights calculates the corner heights for a specific edge
@@ -1216,15 +1244,17 @@ var kEdgeFactorOffset = [4]uint32{0, 16, 16, 0} // SW, SE, NW, NE
 // OpenLoco reference: PaintSurface.cpp kEdgeMaskImageFromSlope, ImageIds.h 3726-3735
 //
 // G1 indices:
-//   SW / NE edges: cliffEdge0MaskSlope0..4 = G1 3726–3730
-//   SE / NW edges: cliffEdge1MaskSlope0..4 = G1 3731–3735
+//
+//	SW / NE edges: cliffEdge0MaskSlope0..4 = G1 3726–3730
+//	SE / NW edges: cliffEdge1MaskSlope0..4 = G1 3731–3735
 //
 // Mask slot semantics (paintSurfaceCliffEdgeImpl, lines 1230–1319):
-//   [0] body  — rectangular, used for all interior height steps
-//   [1] top-A — topmost step when uHeight < self0 (one corner still higher)
-//   [2] top-B — topmost step when uHeight >= self0 (other corner is the remaining top)
-//   [3] bot-A — bottom slope when neigh1 < neigh0 (neigh1 is the lower start)
-//   [4] bot-B — bottom slope when neigh1 >= neigh0 (snap uHeight down to neigh0)
+//
+//	[0] body  — rectangular, used for all interior height steps
+//	[1] top-A — topmost step when uHeight < self0 (one corner still higher)
+//	[2] top-B — topmost step when uHeight >= self0 (other corner is the remaining top)
+//	[3] bot-A — bottom slope when neigh1 < neigh0 (neigh1 is the lower start)
+//	[4] bot-B — bottom slope when neigh1 >= neigh0 (snap uHeight down to neigh0)
 //
 // CRITICAL: when self0 == self1 (flat-topped cliff OR water cliff edge), the top
 // section is NEVER drawn — the algorithm exits early. Using mask[1] or [2] for
@@ -1236,29 +1266,30 @@ var kCliffEdgeMaskBase = [4]int{3726, 3731, 3731, 3726} // indexed by EdgeSW/SE/
 // OpenLoco reference: PaintSurface.cpp paintSurfaceCliffEdgeImpl (lines 1211–1319)
 //
 // Parameters (all heights in MicroZ units; 1 MicroZ = 16 screen px at zoom-0):
-//   self0, self1   — the two corner heights of THIS tile's edge (from getEdgeHeights)
-//   neigh0, neigh1 — the corresponding corner heights of the NEIGHBOR tile's edge
-//   drawYFlat      — screen Y at this tile with baseZ contribution removed
-//                    (= drawY + baseZ*4*scale)
-//   emit           — callback to place the finished DrawImageOptions; callers use
-//                    this to write to screen (terrain) or to highlightOps (water).
+//
+//	self0, self1   — the two corner heights of THIS tile's edge (from getEdgeHeights)
+//	neigh0, neigh1 — the corresponding corner heights of the NEIGHBOR tile's edge
+//	drawYFlat      — screen Y at this tile with baseZ contribution removed
+//	                 (= drawY + baseZ*4*scale)
+//	emit           — callback to place the finished DrawImageOptions; callers use
+//	                 this to write to screen (terrain) or to highlightOps (water).
 //
 // Algorithm in three steps:
 //
-//  Step 1 — Bottom slope section (only when neigh0 != neigh1):
-//    Start uHeight = neigh1.
-//    If neigh1 >= neigh0: maskSlot=4, snap uHeight=neigh0 (lowest neighbor corner).
-//    Else:                maskSlot=3.
-//    Draw that single section (unless uHeight is already at self0 or self1), uHeight++.
+//	Step 1 — Bottom slope section (only when neigh0 != neigh1):
+//	  Start uHeight = neigh1.
+//	  If neigh1 >= neigh0: maskSlot=4, snap uHeight=neigh0 (lowest neighbor corner).
+//	  Else:                maskSlot=3.
+//	  Draw that single section (unless uHeight is already at self0 or self1), uHeight++.
 //
-//  Step 2 — Body sections:
-//    while uHeight < self0 && uHeight < self1: draw maskSlot=0 (rectangular), uHeight++.
+//	Step 2 — Body sections:
+//	  while uHeight < self0 && uHeight < self1: draw maskSlot=0 (rectangular), uHeight++.
 //
-//  Step 3 — Top section (one final sloped section where the two self-corners diverge):
-//    maskSlot = 1
-//    if uHeight >= self0:  maskSlot = 2
-//    if uHeight >= self1:  return  ← cliff complete, no top section needed
-//    draw maskSlot
+//	Step 3 — Top section (one final sloped section where the two self-corners diverge):
+//	  maskSlot = 1
+//	  if uHeight >= self0:  maskSlot = 2
+//	  if uHeight >= self1:  return  ← cliff complete, no top section needed
+//	  draw maskSlot
 //
 // When self0 == self1 (flat top OR water cliff), step 3 always hits the early return
 // because after step 2 uHeight == self0 == self1. No top-slope section is drawn.
@@ -1298,7 +1329,7 @@ func (w *World) paintSurfaceCliffEdgeImpl(
 	if uHeight != neigh0 {
 		maskSlot := 3 // neigh1 < neigh0: start at neigh1 (lower), use bot-A mask
 		if uHeight >= neigh0 {
-			maskSlot = 4    // neigh1 > neigh0: snap down to neigh0, use bot-B mask
+			maskSlot = 4 // neigh1 > neigh0: snap down to neigh0, use bot-B mask
 			uHeight = neigh0
 		}
 		// Only draw this section if we are not already sitting on one of the self corners.
@@ -1334,7 +1365,8 @@ func (w *World) paintSurfaceCliffEdgeImpl(
 // paintCliffEdges renders cliff-edge sprites for terrain height transitions.
 //
 // OpenLoco reference: PaintSurface.cpp paintSurfaceCliffEdge() (line 1322)
-//   which calls paintSurfaceCliffEdgeImpl() for the actual section loop.
+//
+//	which calls paintSurfaceCliffEdgeImpl() for the actual section loop.
 func (w *World) paintCliffEdges(screen *ebiten.Image, x, y int, t *tile, land *objects.LandObject, drawX, drawY, scale float64) {
 	if w.renderer == nil || w.renderer.G1 == nil || land == nil {
 		return
@@ -1382,17 +1414,19 @@ var kTreeQuadrantOffset = [4][2]int16{
 // so they composite after terrain (pass 1) and water (pass 1.5) are both drawn.
 //
 // OpenLoco reference: PaintSurface.cpp paintSurfaceWaterCliffEdge() (line 1332)
-//   which calls paintSurfaceCliffEdgeImpl with self0 = self1 = waterHeight/kMicroZStep.
+//
+//	which calls paintSurfaceCliffEdgeImpl with self0 = self1 = waterHeight/kMicroZStep.
 //
 // Because self0 == self1 == waterMicroZ always, paintSurfaceCliffEdgeImpl's step 3
 // (top-slope section) is ALWAYS skipped.  Every section uses mask[0] (rectangular).
 // The previous code drew mask[1] for the topmost iteration, producing chevrons.
 //
 // Neighbor corners used per edge (OpenLoco TileDescriptor assembly, line 1408+):
-//   EdgeSW(0): neigh0=neighbor.Top,   neigh1=neighbor.Right
-//   EdgeSE(1): neigh0=neighbor.Top,   neigh1=neighbor.Left
-//   EdgeNW(2): neigh0=neighbor.Right, neigh1=neighbor.Bottom
-//   EdgeNE(3): neigh0=neighbor.Left,  neigh1=neighbor.Bottom
+//
+//	EdgeSW(0): neigh0=neighbor.Top,   neigh1=neighbor.Right
+//	EdgeSE(1): neigh0=neighbor.Top,   neigh1=neighbor.Left
+//	EdgeNW(2): neigh0=neighbor.Right, neigh1=neighbor.Bottom
+//	EdgeNE(3): neigh0=neighbor.Left,  neigh1=neighbor.Bottom
 func (w *World) paintWaterCliffEdges(x, y int, t *tile, land *objects.LandObject, drawX, drawY, scale float64) {
 	if w.renderer == nil || w.renderer.G1 == nil || land == nil || land.CliffEdgeImage == 0 {
 		return
@@ -1672,14 +1706,16 @@ var kWallImageOffsets = [4][3]uint32{
 // It draws the flat deck sprite (BridgeDeckNoSupport) at the clearZ height.
 //
 // OpenLoco reference: src/OpenLoco/src/Paint/PaintBridge.cpp paintBridge()
-func (w *World) paintBridgeDeck(screen *ebiten.Image, bridgeID uint8, baseZ, clearZ uint8, drawX, drawY, scale float64) {
+func (w *World) paintBridgeDeck(screen *ebiten.Image, bridgeID uint8, tileBaseZ, elemBaseZ uint8, drawX, drawY, scale float64) {
 	bridgeObj := w.renderer.ObjMgr.GetBridgeObjectByIndex(int(bridgeID))
 	if bridgeObj == nil || bridgeObj.ImageOffset == 0 {
 		return
 	}
 	spriteID := int(bridgeObj.ImageOffset) + objects.BridgeDeckNoSupport
-	// Deck is at clearZ height, so extraHeight = (clearZ - baseZ) * 4
-	extraHeight := float64(int(clearZ)-int(baseZ)) * 4.0
+	// The deck sits directly under the track/road, i.e. at the ELEMENT's base
+	// height (clearZ is the clearance top — using it floated every deck a few
+	// height units up-left onto the neighbouring terrain).
+	extraHeight := float64(int(elemBaseZ)-int(tileBaseZ)) * 4.0
 	w.drawTrackRoadSprite(screen, spriteID, drawX, drawY, extraHeight, scale)
 }
 
@@ -1702,7 +1738,7 @@ func (w *World) paintLevelCrossing(screen *ebiten.Image, re *scenario.RoadElemen
 	for i, pos := range subTilePos {
 		tileX, tileY := pos[0], pos[1]
 		vpDX := (tileY - tileX) * scale
-		vpDY := (tileY+tileX) / 2.0 * scale
+		vpDY := (tileY + tileX) / 2.0 * scale
 		w.drawTrackRoadSprite(screen, imageIndex0+i, drawX+vpDX, drawY+vpDY, 0, scale)
 	}
 }
@@ -1722,6 +1758,9 @@ func (w *World) paintLevelCrossing(screen *ebiten.Image, re *scenario.RoadElemen
 // Rendering element-by-element (ballast+sleeper+rail for elem1, then elem2) would
 // let the second element's ballast overdraw the first element's sleepers/rails.
 func (w *World) paintTracks(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
+	if os.Getenv("GOLOCO_NO_TRACK") == "1" {
+		return
+	}
 	if w.renderer == nil || w.renderer.ObjMgr == nil || len(t.tracks) == 0 {
 		return
 	}
@@ -1761,6 +1800,13 @@ func (w *World) paintTracks(screen *ebiten.Image, t *tile, drawX, drawY, scale f
 		n++
 	}
 
+	// Bridge decks go under the track: draw before ballast/sleepers/rails.
+	for _, te := range t.tracks {
+		if te.HasBridge {
+			w.paintBridgeDeck(screen, te.BridgeID, t.baseZ, te.BaseZ, drawX, drawY, scale)
+		}
+	}
+
 	// Render layer-by-layer: all Ballast (0), then all Sleeper (1), then all Rail (2).
 	// Non-mergeable (slope) pieces only have layer 0 and are skipped in layers 1 and 2.
 	for layer := 0; layer < 3; layer++ {
@@ -1777,12 +1823,6 @@ func (w *World) paintTracks(screen *ebiten.Image, t *tile, drawX, drawY, scale f
 		}
 	}
 
-	// Draw bridge decks for bridged track elements.
-	for _, te := range t.tracks {
-		if te.HasBridge {
-			w.paintBridgeDeck(screen, te.BridgeID, t.baseZ, te.ClearZ, drawX, drawY, scale)
-		}
-	}
 }
 
 // paintRoads renders road sprites for a tile.
@@ -1923,7 +1963,7 @@ func (w *World) paintRoads(screen *ebiten.Image, t *tile, drawX, drawY, scale fl
 	// Draw bridge decks for bridged road elements.
 	for _, re := range t.roads {
 		if re.HasBridge {
-			w.paintBridgeDeck(screen, re.BridgeID, t.baseZ, re.ClearZ, drawX, drawY, scale)
+			w.paintBridgeDeck(screen, re.BridgeID, t.baseZ, re.BaseZ, drawX, drawY, scale)
 		}
 	}
 
@@ -1977,8 +2017,8 @@ func (w *World) DrawTrackGhost(screen *ebiten.Image, tileX, tileY, trackID, rota
 	scale := 1.0 / float64(int(1)<<w.zoom)
 	vpX, vpY := w.tileToScreen(tileX, tileY)
 	vpY -= float64(t.baseZ) * 4.0
-	drawX := math.Round((vpX-w.camX)*scale)
-	drawY := math.Round((vpY-w.camY)*scale)
+	drawX := math.Round((vpX - w.camX) * scale)
+	drawY := math.Round((vpY - w.camY) * scale)
 
 	for layer := 0; layer < 3; layer++ {
 		offset := piece.img[rot][layer]
@@ -2025,8 +2065,8 @@ func (w *World) DrawRoadGhost(screen *ebiten.Image, tileX, tileY, roadID, rotati
 	scale := 1.0 / float64(int(1)<<w.zoom)
 	vpX, vpY := w.tileToScreen(tileX, tileY)
 	vpY -= float64(t.baseZ) * 4.0
-	drawX := math.Round((vpX-w.camX)*scale)
-	drawY := math.Round((vpY-w.camY)*scale)
+	drawX := math.Round((vpX - w.camX) * scale)
+	drawY := math.Round((vpY - w.camY) * scale)
 
 	// Road ghost: use the merge sprite for just this piece's exits
 	// Straight (roadID=0): exits 0101 (rot0/2) or 1010 (rot1/3)
@@ -2063,6 +2103,9 @@ func (w *World) DrawRoadGhost(screen *ebiten.Image, tileX, tileY, roadID, rotati
 //	NE orientation (rotation 0/2): +0=BackNE, +1=FrontNE, +2=CanopyNE
 //	SE orientation (rotation 1/3): +4=BackSE, +5=FrontSE, +6=CanopySE
 func (w *World) paintStation(screen *ebiten.Image, t *tile, drawX, drawY, scale float64) {
+	if os.Getenv("GOLOCO_NO_STATION") == "1" {
+		return
+	}
 	if w.renderer == nil || w.renderer.ObjMgr == nil || len(t.stations) == 0 {
 		return
 	}
@@ -2113,7 +2156,7 @@ func (w *World) paintSignals(screen *ebiten.Image, t *tile, drawX, drawY, scale 
 				// Tile-space: (sigX, sigY) in 0-31; viewport: dx = sigY-sigX, dy = (sigY+sigX)/2
 				sigX, sigY := float64(pos[0]), float64(pos[1])
 				vpDX := (sigY - sigX) * scale
-				vpDY := (sigY+sigX) / 2.0 * scale
+				vpDY := (sigY + sigX) / 2.0 * scale
 				w.drawTrackRoadSprite(screen, spriteID, drawX+vpDX, drawY+vpDY, extraHeight, scale)
 			}
 		}
@@ -2126,7 +2169,7 @@ func (w *World) paintSignals(screen *ebiten.Image, t *tile, drawX, drawY, scale 
 				pos := objects.SignalPosRight[rot]
 				sigX, sigY := float64(pos[0]), float64(pos[1])
 				vpDX := (sigY - sigX) * scale
-				vpDY := (sigY+sigX) / 2.0 * scale
+				vpDY := (sigY + sigX) / 2.0 * scale
 				w.drawTrackRoadSprite(screen, spriteID, drawX+vpDX, drawY+vpDY, extraHeight, scale)
 			}
 		}
@@ -2289,20 +2332,22 @@ func (w *World) getWaterImage() *ebiten.Image {
 // paintWater renders a water surface overlay on a tile.
 //
 // Approach (2-layer):
-//   Layer 0 (pass 1, worldBuf): +35 blend sprite with water colour forced, at its
-//     native xOff=-32, yOff=0. The +35 sprite is the game-canonical water surface shape
-//     (a bottom-half-of-diamond, 64×31 pixels). Adjacent water tiles drawn earlier in
-//     depth order cover the "top 15 rows" of each tile's screen area, so tessellation
-//     is seamless across flat ocean. Water cliff edges cover exposed terrain at boundaries.
-//   Layer 1 (pass 4, screen): +30 ripple detail with real teal palette colours.
-//   Layer 2 (pass 4, screen, zoom 0 only): wave animation frame (+60+frame).
+//
+//	Layer 0 (pass 1, worldBuf): +35 blend sprite with water colour forced, at its
+//	  native xOff=-32, yOff=0. The +35 sprite is the game-canonical water surface shape
+//	  (a bottom-half-of-diamond, 64×31 pixels). Adjacent water tiles drawn earlier in
+//	  depth order cover the "top 15 rows" of each tile's screen area, so tessellation
+//	  is seamless across flat ocean. Water cliff edges cover exposed terrain at boundaries.
+//	Layer 1 (pass 4, screen): +30 ripple detail with real teal palette colours.
+//	Layer 2 (pass 4, screen, zoom 0 only): wave animation frame (+60+frame).
 //
 // Fallback: when no WaterObj is loaded, uses getWaterImage() hand-drawn diamond.
 //
 // OpenLoco reference: PaintSurface.cpp:1720-1759 (paintSurfaceWater)
-//   sprite+35 .withBlend(ExtColour::water) → dst-based palette remap
-//   sprite+30 attached → ripple detail on top
-//   sprite+60+frame attached → wave animation at zoom 0
+//
+//	sprite+35 .withBlend(ExtColour::water) → dst-based palette remap
+//	sprite+30 attached → ripple detail on top
+//	sprite+60+frame attached → wave animation at zoom 0
 func (w *World) paintWater(target *ebiten.Image, tileX, tileY int, t *tile, drawX, drawY, scale float64) {
 	// waterLevel is MicroZ (×16 px/unit); baseZ is SmallZ (×4 px/unit).
 	waterHeightDiff := float64(t.waterLevel)*16.0 - float64(t.baseZ)*4.0
@@ -2522,11 +2567,11 @@ func (w *World) Draw(screen *ebiten.Image) {
 			if w.renderer != nil && w.renderer.ObjMgr != nil {
 				land := w.renderer.ObjMgr.GetLandObjectByIndex(int(t.terrainIndex))
 				if t.isIndustrial {
-				// TODO: industry fields draw via IndustryObject
-				// fieldImageIds (PaintSurface.cpp isIndustrial branch).
-				// Until industry objects load, draw bare land (slot 0,
-				// growth 0) instead of leaving a hole.
-				land = w.renderer.ObjMgr.GetLandObjectByIndex(0)
+					// TODO: industry fields draw via IndustryObject
+					// fieldImageIds (PaintSurface.cpp isIndustrial branch).
+					// Until industry objects load, draw bare land (slot 0,
+					// growth 0) instead of leaving a hole.
+					land = w.renderer.ObjMgr.GetLandObjectByIndex(0)
 				}
 				if land != nil {
 					// Map slope byte (0-31) to display slope (0-18)
