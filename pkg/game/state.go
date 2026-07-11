@@ -24,7 +24,11 @@ type GameState struct {
 	// Player company
 	CompanyName string
 	PlayerMoney int64
-	CurrentLoan int64
+
+	// CargoDelivered counts units delivered per cargo slot, for the
+	// cargoDelivery objective (Objective type 3).
+	CargoDelivered [32]uint32
+	CurrentLoan    int64
 
 	// Time tracking
 	GameDate    time.Time

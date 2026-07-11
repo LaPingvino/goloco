@@ -1,6 +1,7 @@
 package scenario
 
 import (
+	"fmt"
 	"github.com/LaPingvino/goloco/pkg/assets"
 )
 
@@ -78,7 +79,9 @@ type Scenario struct {
 	// included — enough for world-space rendering.  Nil for .SC5 scenarios.
 	//
 	// OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h  GameState::entities
-	Entities []VehicleEntity
+	Objective    Objective // win condition (valid when HasObjective)
+	HasObjective bool
+	Entities     []VehicleEntity
 }
 
 // GetTile returns tile at the given coordinates
@@ -147,17 +150,69 @@ type BuildingElement struct {
 //
 // OpenLoco reference: src/OpenLoco/src/Map/WallElement.h
 type WallElement struct {
-	WallObjectID   uint8 // byte 4: which WallObject (index into RequiredObjects wall slots)
-	Rotation       uint8 // byte 0 bits [1:0]
-	EdgeSlope      uint8 // byte 0 bits [7:6]: 0=none, 1=upwards, 2=downwards
-	PrimaryColour  uint8 // byte 6 bits [4:0]
-	BaseZ          uint8 // byte 2: height in SmallZ
-	ClearZ         uint8 // byte 3: clear height
+	WallObjectID  uint8 // byte 4: which WallObject (index into RequiredObjects wall slots)
+	Rotation      uint8 // byte 0 bits [1:0]
+	EdgeSlope     uint8 // byte 0 bits [7:6]: 0=none, 1=upwards, 2=downwards
+	PrimaryColour uint8 // byte 6 bits [4:0]
+	BaseZ         uint8 // byte 2: height in SmallZ
+	ClearZ        uint8 // byte 3: clear height
 }
 
 // TrackElement represents a railway track section on a tile.
 //
 // OpenLoco reference: src/OpenLoco/src/Map/TrackElement.h
+// Objective is the scenario win condition, from GameState offset 0x418.
+// OpenLoco reference: include/OpenLoco/Scenario/ScenarioObjective.h
+type Objective struct {
+	Type                 uint8 // 0 companyValue, 1 vehicleProfit, 2 performanceIndex, 3 cargoDelivery
+	Flags                uint8 // bit0 beTopCompany, bit1 topThree, bit2 withinTimeLimit
+	CompanyValue         uint32
+	MonthlyVehicleProfit uint32
+	PerformanceIndex     uint8 // x10 = percent
+	DeliveredCargoType   uint8 // cargo object slot
+	DeliveredCargoAmount uint32
+	TimeLimitYears       uint8
+}
+
+// DescribeWithCargo renders the objective using a cargo name when known.
+func (o Objective) DescribeWithCargo(cargoName string) string {
+	if o.Type == 3 && cargoName != "" {
+		s := fmt.Sprintf("Deliver %d units of %s", o.DeliveredCargoAmount, cargoName)
+		if o.Flags&0x04 != 0 {
+			s += fmt.Sprintf(" within %d years", o.TimeLimitYears)
+		}
+		return s
+	}
+	return o.Describe()
+}
+
+// Describe renders the objective as a human-readable sentence.
+func (o Objective) Describe() string {
+	s := ""
+	switch o.Type {
+	case 0:
+		s = fmt.Sprintf("Achieve a company value of £%d", o.CompanyValue)
+	case 1:
+		s = fmt.Sprintf("Achieve a monthly vehicle profit of £%d", o.MonthlyVehicleProfit)
+	case 2:
+		s = fmt.Sprintf("Achieve a performance index of %d%%", o.PerformanceIndex)
+	case 3:
+		s = fmt.Sprintf("Deliver %d units of cargo type %d", o.DeliveredCargoAmount, o.DeliveredCargoType)
+	default:
+		return "Unknown objective"
+	}
+	if o.Flags&0x04 != 0 {
+		s += fmt.Sprintf(" within %d years", o.TimeLimitYears)
+	}
+	if o.Flags&0x01 != 0 {
+		s += " (be the top company)"
+	}
+	if o.Flags&0x02 != 0 {
+		s += " (be in the top three)"
+	}
+	return s
+}
+
 type TrackElement struct {
 	TrackObjectID uint8 // byte 5 bits [7:4]: index into RequiredObjects track slots
 	TrackID       uint8 // byte 4 bits [5:0]: track piece type (0-63)
@@ -177,34 +232,34 @@ type TrackElement struct {
 //
 // OpenLoco reference: src/OpenLoco/src/Map/RoadElement.h
 type RoadElement struct {
-	RoadObjectID         uint8 // byte 5 bits [7:4]: index into RequiredObjects road slots
-	RoadID               uint8 // byte 4 bits [3:0]: road piece type (0-15)
-	Rotation             uint8 // byte 0 bits [1:0]: 0-3
-	SequenceIndex        uint8 // byte 5 bits [1:0]: multi-tile piece index
-	HasBridge            bool  // byte 4 bit 7
-	BridgeID             uint8 // byte 6 bits [7:5]: bridge object slot index (only valid if HasBridge)
-	HasLevelCrossing     bool  // byte 7 bit 5
+	RoadObjectID          uint8 // byte 5 bits [7:4]: index into RequiredObjects road slots
+	RoadID                uint8 // byte 4 bits [3:0]: road piece type (0-15)
+	Rotation              uint8 // byte 0 bits [1:0]: 0-3
+	SequenceIndex         uint8 // byte 5 bits [1:0]: multi-tile piece index
+	HasBridge             bool  // byte 4 bit 7
+	BridgeID              uint8 // byte 6 bits [7:5]: bridge object slot index (only valid if HasBridge)
+	HasLevelCrossing      bool  // byte 7 bit 5
 	LevelCrossingObjectID uint8 // byte 5 bits [3:2]: index into RequiredObjects level-crossing slots
-	AnimFrame            uint8 // byte 6 bits [3:0]: level crossing animation state
-	Owner                uint8 // byte 7 bits [3:0]
-	Mods                 uint8 // byte 7 bits [7:6]: modifier bitmask
-	BaseZ                uint8 // byte 2
-	ClearZ               uint8 // byte 3
+	AnimFrame             uint8 // byte 6 bits [3:0]: level crossing animation state
+	Owner                 uint8 // byte 7 bits [3:0]
+	Mods                  uint8 // byte 7 bits [7:6]: modifier bitmask
+	BaseZ                 uint8 // byte 2
+	ClearZ                uint8 // byte 3
 }
 
 // StationElement represents a station tile (rail, road, airport, or dock).
 //
 // OpenLoco reference: src/OpenLoco/src/Map/StationElement.h
 type StationElement struct {
-	StationType  uint8  // byte 5 bits [7:5]: 0=train, 1=road, 2=airport, 3=docks
-	ObjectID     uint8  // byte 5 bits [4:0]: StationObject index
-	Rotation     uint8  // byte 0 bits [1:0]
-	SequenceIndex uint8 // byte 0 bits [7:6]: multi-tile position
-	StationID    uint16 // bytes 6-7 bits [9:0]: which station instance
-	BuildingType uint8  // bytes 6-7 bits [15:10]: airport building type
-	Owner        uint8  // byte 4 bits [3:0]
-	BaseZ        uint8  // byte 2
-	ClearZ       uint8  // byte 3
+	StationType   uint8  // byte 5 bits [7:5]: 0=train, 1=road, 2=airport, 3=docks
+	ObjectID      uint8  // byte 5 bits [4:0]: StationObject index
+	Rotation      uint8  // byte 0 bits [1:0]
+	SequenceIndex uint8  // byte 0 bits [7:6]: multi-tile position
+	StationID     uint16 // bytes 6-7 bits [9:0]: which station instance
+	BuildingType  uint8  // bytes 6-7 bits [15:10]: airport building type
+	Owner         uint8  // byte 4 bits [3:0]
+	BaseZ         uint8  // byte 2
+	ClearZ        uint8  // byte 3
 }
 
 // SignalElement represents a railway signal on a tile.
@@ -225,12 +280,12 @@ type SignalElement struct {
 //
 // OpenLoco reference: src/OpenLoco/src/Map/IndustryElement.h
 type IndustryElement struct {
-	IndustryID   uint8 // byte 4: industry index
-	BuildingType uint8 // bytes 6-7 bits [10:6]
-	Rotation     uint8 // byte 0 bits [1:0]
-	IsConstructed bool // byte 0 bit 7
-	BaseZ        uint8 // byte 2
-	ClearZ       uint8 // byte 3
+	IndustryID    uint8 // byte 4: industry index
+	BuildingType  uint8 // bytes 6-7 bits [10:6]
+	Rotation      uint8 // byte 0 bits [1:0]
+	IsConstructed bool  // byte 0 bit 7
+	BaseZ         uint8 // byte 2
+	ClearZ        uint8 // byte 3
 }
 
 // SurfaceType represents type of terrain surface
@@ -301,9 +356,9 @@ type Options struct {
 	ObjectiveType  uint8
 
 	// Generation parameters (used when landscapeGenerationDone is clear)
-	MinLandHeight    uint8 // base height (0-15)
-	TopographyStyle  uint8 // 0=flat,1=smallHills,2=mountains,3=halfMtHills,4=halfMtFlat
-	HillDensity      uint8 // 0-100
+	MinLandHeight   uint8 // base height (0-15)
+	TopographyStyle uint8 // 0=flat,1=smallHills,2=mountains,3=halfMtHills,4=halfMtFlat
+	HillDensity     uint8 // 0-100
 
 	// Legacy / unused fields kept for compatibility
 	EndYear    uint16

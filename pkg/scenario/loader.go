@@ -1,6 +1,7 @@
 package scenario
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
@@ -193,6 +194,25 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.TrackObjectOrder = parseTrackObjectOrder(reqObjBytes)
 	sc.RoadObjectOrder = parseRoadObjectOrder(reqObjBytes)
 	sc.VehicleObjectOrder = parseVehicleObjectOrder(reqObjBytes)
+	parseObjective := func(buf []byte) {
+		// GameState objective block at 0x418.
+		// OpenLoco reference: include/OpenLoco/S5/S5GameState.h 0x000418
+		if len(buf) < 0x429 {
+			return
+		}
+		sc.Objective = Objective{
+			Type:                 buf[0x418],
+			Flags:                buf[0x419],
+			CompanyValue:         binary.LittleEndian.Uint32(buf[0x41A:]),
+			MonthlyVehicleProfit: binary.LittleEndian.Uint32(buf[0x41E:]),
+			PerformanceIndex:     buf[0x422],
+			DeliveredCargoType:   buf[0x423],
+			DeliveredCargoAmount: binary.LittleEndian.Uint32(buf[0x424:]),
+			TimeLimitYears:       buf[0x428],
+		}
+		sc.HasObjective = true
+		log.Printf("[Scenario] Objective: %s", sc.Objective.Describe())
+	}
 
 	// --- Game state chunks ---
 	// For scenarios: three separate chunks (GeneralState, Towns, Animations).
@@ -206,6 +226,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		}
 		log.Println("[Scenario] Read GeneralState,", len(generalState), "bytes")
 		generalStateFlags = readGeneralStateFlags(generalState)
+		parseObjective(generalState)
 
 		// Towns
 		towns, err := reader.ReadChunk()
@@ -227,6 +248,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		}
 		log.Println("[Scenario] Read GameState,", len(gameState), "bytes")
 		generalStateFlags = readGeneralStateFlags(gameState)
+		parseObjective(gameState)
 
 		// Parse vehicle entities from the entity table embedded in the GameState.
 		// This is only present in .SV5 saved-game files; ParseVehicleEntities
@@ -643,8 +665,8 @@ func advanceRaw(r *assets.S5ChunkReader, n int) {
 // OpenLoco reference: src/OpenLoco/src/Objects/Object.h  ObjectHeader
 
 const (
-	objectHeaderSize = 16
-	objectTypeMask   = 0x3F
+	objectHeaderSize       = 16
+	objectTypeMask         = 0x3F
 	objectTypeLand         = 6  // ObjectType::land
 	objectTypeWall         = 9  // ObjectType::wall
 	objectTypeTrackStation = 15 // ObjectType::trackStation
@@ -664,18 +686,18 @@ const (
 	wallSlotCount = 32
 
 	// TrackSignal slots: Wall(32) = 236+32 = 268
-	trackSignalSlotStart = 268
-	trackSignalSlotCount = 16
+	trackSignalSlotStart  = 268
+	trackSignalSlotCount  = 16
 	objectTypeTrackSignal = 10 // ObjectType::trackSignal
 
 	// LevelCrossing slots: TrackSignal(16) = 268+16 = 284
-	levelCrossingSlotStart = 284
-	levelCrossingSlotCount = 4
+	levelCrossingSlotStart  = 284
+	levelCrossingSlotCount  = 4
 	objectTypeLevelCrossing = 11 // ObjectType::levelCrossing
 
 	// Bridge slots: TrackSignal(16)+LevelCrossing(4)+StreetLight(1)+Tunnel(16) = 268+16+4+1+16 = 305
-	bridgeSlotStart = 305
-	bridgeSlotCount = 8
+	bridgeSlotStart  = 305
+	bridgeSlotCount  = 8
 	objectTypeBridge = 14 // ObjectType::bridge
 
 	// TrainStation slots: Wall(32)+TrackSignal(16)+LevelCrossing(4)+StreetLight(1)+Tunnel(16)+Bridge(8) = 236+32+16+4+1+16+8 = 313
@@ -695,8 +717,8 @@ const (
 	roadSlotCount = 8
 
 	// Vehicle slots: Road(8)+Airport(8)+Dock(8) = 365+8+8+8 = 389
-	vehicleSlotStart = 389
-	vehicleSlotCount = 224
+	vehicleSlotStart  = 389
+	vehicleSlotCount  = 224
 	objectTypeVehicle = 23 // ObjectType::vehicle
 
 	// Tree slots: after Interface(1)+Sound(128)+Currency(1)+Steam(32)+Rock(8)+Water(1)+

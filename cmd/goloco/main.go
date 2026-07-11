@@ -77,6 +77,10 @@ type Game struct {
 
 	// Build mode (track/road placement)
 	buildMode  int // buildModeNone / buildModeTrack / buildModeRoad
+	objective    scenario.Objective
+	hasObjective bool
+	gameWon      bool
+
 	consCurve  int // construction curve selection: -4 (left large) … 0 … +4
 	consSlope  int // construction slope selection: -2 (steep down) … 0 … +2
 	buildObjID int // index into TrackObjects / RoadObjects
@@ -584,6 +588,7 @@ func (g *Game) Update() error {
 			g.w.Update()
 			if g.gameState != nil {
 				g.gameState.Update()
+				g.checkObjective()
 			}
 		}
 	}
@@ -1019,6 +1024,22 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		speedStr = "PAUSED"
 	}
 	fps := ebiten.ActualFPS()
+	// Objective HUD line under the toolbar, and the win banner.
+	if g.hasObjective && !g.inTitleScreen {
+		obj := "Objective: " + g.objective.Describe()
+		if g.objective.Type == 3 && g.gameState != nil {
+			ct := int(g.objective.DeliveredCargoType) % len(g.gameState.CargoDelivered)
+			obj += fmt.Sprintf("  (%d/%d)", g.gameState.CargoDelivered[ct], g.objective.DeliveredCargoAmount)
+		}
+		drawOutlinedText(screen, obj, 6, 34, color.RGBA{255, 240, 160, 255})
+	}
+	if g.gameWon {
+		msg := "OBJECTIVE ACHIEVED!"
+		mw, _ := ui.MeasureTextBold(msg)
+		fillRect(screen, float64(g.sw/2-mw), float64(g.sh/2-30), float64(mw*2), 60, color.RGBA{0, 80, 0, 200})
+		ui.DrawTextBoldScaled(screen, msg, g.sw/2-mw, g.sh/2-10, 2.0, color.RGBA{255, 255, 160, 255})
+	}
+
 	fpsStr := fmt.Sprintf("%.0ffps", fps)
 	if g.gameState != nil {
 		date := g.gameState.GameDate
@@ -1389,6 +1410,9 @@ func (g *Game) loadScenario(filePath string) error {
 	if err != nil {
 		return fmt.Errorf("loading scenario: %w", err)
 	}
+	g.objective = sc.Objective
+	g.hasObjective = sc.HasObjective
+	g.gameWon = false
 
 	if g.objMgr != nil {
 		if len(sc.LandObjectOrder) > 0 {
@@ -2345,6 +2369,31 @@ func main() {
 	ebiten.SetWindowTitle("GoLoco - Locomotion Reimplementation")
 	if err := ebiten.RunGame(game); err != nil && err != ebiten.Termination {
 		log.Fatal(err)
+	}
+}
+
+// checkObjective evaluates the scenario win condition against the current
+// game state. Company value approximates to player money until a real
+// valuation model exists; performance index and top-company flags are not
+// evaluated yet.
+// OpenLoco reference: src/OpenLoco/src/Scenario/ScenarioObjective.cpp
+func (g *Game) checkObjective() {
+	if !g.hasObjective || g.gameWon || g.gameState == nil {
+		return
+	}
+	switch g.objective.Type {
+	case 0: // company value
+		if g.gameState.PlayerMoney >= int64(g.objective.CompanyValue) {
+			g.gameWon = true
+		}
+	case 3: // cargo delivery
+		ct := int(g.objective.DeliveredCargoType) % len(g.gameState.CargoDelivered)
+		if g.gameState.CargoDelivered[ct] >= g.objective.DeliveredCargoAmount {
+			g.gameWon = true
+		}
+	}
+	if g.gameWon {
+		log.Printf("[Game] OBJECTIVE ACHIEVED: %s", g.objective.Describe())
 	}
 }
 
