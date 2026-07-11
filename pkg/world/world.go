@@ -2854,8 +2854,12 @@ func (w *World) paintVehicleEntities(screen *ebiten.Image, scale float64) {
 		// an ad-hoc x2, floating every vehicle above its track.
 		vpY -= float64(ent.PosZ)
 
-		drawX := math.Round((vpX-w.camX)*scale) - 16
-		drawY := math.Round((vpY-w.camY)*scale) - 16
+		// The entity's world position projects directly; the sprite's own
+		// x/y offsets (applied below) centre the body image on it, exactly
+		// like upstream addToPlotList. (Former -16,-16 fudges compensated
+		// the old wrong PosZ scaling.)
+		drawX := math.Round((vpX - w.camX) * scale)
+		drawY := math.Round((vpY - w.camY) * scale)
 
 		// Vehicle object lookup.  objectId is 0-based index into loaded vehicles.
 		if int(ent.ObjectID) >= len(vehicles) {
