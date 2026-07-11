@@ -14,6 +14,13 @@ SYSTEMIC — the same few root causes explain most defects.
   falls back to placeholder rendering.
 - Debug heuristic (from Joop): when stuck, fix every detail that looks off
   along the way — small oddities are evidence about the systemic cause.
+- **Pixel ground truth**: (1) `reference/` holds gallery screenshots of the
+  original game (gitignored — do not commit); (2) the reference engine
+  BUILDS AND RUNS here: `~/OpenLoco/build/OpenLoco` (ninja -C ~/OpenLoco/build),
+  configured via ~/.config/OpenLoco/openloco.yml. Run it for comparison shots:
+  `DISPLAY=:99 SDL_AUDIODRIVER=dummy ~/OpenLoco/build/OpenLoco` then
+  `ffmpeg -f x11grab -video_size 800x600 -i :99 -frames:v 1 out.png`.
+  Compare goloco captures against BOTH before judging GUI/render parity.
 
 ## Recurring bug classes — check these FIRST
 
