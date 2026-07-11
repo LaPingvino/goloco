@@ -1180,7 +1180,7 @@ func drawButton(screen *ebiten.Image, x, y, w, h int, label string, pressed, ena
 	}
 	lw, _ := ui.MeasureText(label)
 	lx := x + (w-lw)/2
-	ly := y + h/2 + 4 // +4 for font baseline
+	ly := y + (h-10)/2 // top-anchored 10px bitmap glyphs, vertically centred
 	if pressed {
 		lx++
 		ly++
@@ -1660,16 +1660,7 @@ func (g *Game) openNewGameWindow() {
 		for i, cat := range cats {
 			tx := cx + i*tabW
 			active := i == activeCat
-			bg := color.RGBA{160, 150, 130, 255}
-			if active {
-				bg = color.RGBA{220, 210, 185, 255}
-			}
-			fillRect(screen, float64(tx), float64(cy), float64(tabW), float64(tabH), bg)
-			// Tab border
-			fillRect(screen, float64(tx), float64(cy+tabH-1), float64(tabW), 1, color.RGBA{80, 75, 65, 255})
-			label := cat.label
-			lw, _ := ui.MeasureText(label)
-			ui.DrawText(screen, label, tx+(tabW-lw)/2, cy+tabH-6, color.RGBA{20, 20, 20, 255})
+			drawButton(screen, tx, cy, tabW-2, tabH-2, cat.label, active, len(cat.items) > 0)
 		}
 
 		contentY := cy + tabH
@@ -1709,7 +1700,7 @@ func (g *Game) openNewGameWindow() {
 			if m.IsGenerated {
 				label = "~ " + label
 			}
-			ui.DrawText(screen, label, cx+4, iy+itemH-5, textCol)
+			ui.DrawText(screen, label, cx+4, iy+(itemH-10)/2, textCol)
 		}
 
 		// Divider
@@ -1734,25 +1725,26 @@ func (g *Game) openNewGameWindow() {
 				}
 			} else {
 				fillRect(screen, float64(ix), float64(iy), float64(previewSz), float64(previewSz), color.RGBA{100, 130, 100, 255})
-				ui.DrawText(screen, "Randomly", ix+previewSz/2-28, iy+previewSz/2-8, color.White)
-				ui.DrawText(screen, "Generated", ix+previewSz/2-28, iy+previewSz/2+6, color.White)
+				rw, _ := ui.MeasureText("Randomly")
+				gw, _ := ui.MeasureText("Generated")
+				ui.DrawText(screen, "Randomly", ix+(previewSz-rw)/2, iy+previewSz/2-12, color.White)
+				ui.DrawText(screen, "Generated", ix+(previewSz-gw)/2, iy+previewSz/2+2, color.White)
 				iy += previewSz + 6
 			}
 
-			// Scenario name (bold-ish via repeated draw)
-			ui.DrawText(screen, m.Name, ix+1, iy+10, color.RGBA{20, 20, 20, 255})
-			ui.DrawText(screen, m.Name, ix, iy+10, color.RGBA{30, 30, 30, 255})
-			iy += 16
+			// Scenario name in the bold bitmap font
+			ui.DrawTextBold(screen, m.Name, ix, iy, color.RGBA{20, 20, 20, 255})
+			iy += 14
 
 			// Start year
 			if m.StartYear > 0 {
-				ui.DrawText(screen, fmt.Sprintf("Start: %d", m.StartYear), ix, iy+10, color.RGBA{60, 60, 60, 255})
-				iy += 14
+				ui.DrawText(screen, fmt.Sprintf("Start: %d", m.StartYear), ix, iy, color.RGBA{60, 60, 60, 255})
+				iy += 12
 			}
 			// Competitors
 			if m.MaxCompetitors > 0 {
-				ui.DrawText(screen, fmt.Sprintf("Competitors: %d", m.MaxCompetitors), ix, iy+10, color.RGBA{60, 60, 60, 255})
-				iy += 14
+				ui.DrawText(screen, fmt.Sprintf("Competitors: %d", m.MaxCompetitors), ix, iy, color.RGBA{60, 60, 60, 255})
+				iy += 12
 			}
 
 			// Description (word-wrapped by character count)
@@ -1776,7 +1768,7 @@ func (g *Game) openNewGameWindow() {
 					} else {
 						desc = ""
 					}
-					ui.DrawText(screen, line, ix, iy+10, color.RGBA{50, 50, 50, 255})
+					ui.DrawText(screen, line, ix, iy, color.RGBA{50, 50, 50, 255})
 					iy += 12
 				}
 			}
@@ -2385,6 +2377,10 @@ func main() {
 			game.diagTileX = diagTileX
 			game.diagTileY = diagTileY
 		}
+	}
+
+	if os.Getenv("GOLOCO_OPEN") == "newgame" {
+		game.openNewGameWindow()
 	}
 
 	ebiten.SetWindowSize(defaultWidth, defaultHeight)
