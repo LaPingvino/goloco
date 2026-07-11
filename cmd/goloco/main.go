@@ -23,7 +23,6 @@ import (
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/world"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
@@ -92,6 +91,9 @@ type Game struct {
 	diagQuit    bool
 	diagTileX   int
 	diagTileY   int
+
+	// scripted input playback (GOLOCO_SCRIPT)
+	script *inputScript
 
 	// --shots mode: periodic full-frame captures (shot_NN.png), then quit.
 	shotsEvery time.Duration // wall-clock interval between captures
@@ -383,7 +385,16 @@ func (g *Game) Update() error {
 	if g.quitAfterSave {
 		return ebiten.Termination
 	}
+	if g.script != nil {
+		g.script.step()
+		if g.script.quit {
+			return ebiten.Termination
+		}
+	}
 	g.mouseX, g.mouseY = ebiten.CursorPosition()
+	if g.script != nil && g.script.hasMouse {
+		g.mouseX, g.mouseY = g.script.mouseX, g.script.mouseY
+	}
 
 	if g.inTitleScreen {
 		// Title screen: advance camera animation and apply to world.
@@ -399,13 +410,13 @@ func (g *Game) Update() error {
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 		}
-		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 			// Window manager takes priority (e.g. Load Game file browser)
 			if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
 				g.handleTitleMenuClick(g.mouseX, g.mouseY)
 			}
 		}
-		if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
+		if g.inMouseJustReleased(ebiten.MouseButtonLeft) {
 			g.windowMgr.StopDrag()
 		}
 		g.routeWheelToWindows()
@@ -418,21 +429,21 @@ func (g *Game) Update() error {
 	if g.buildMode != buildModeNone {
 		g.hoverTileX, g.hoverTileY = g.w.ScreenToTile(g.mouseX, g.mouseY)
 		// Keyboard shortcuts for build mode
-		if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+		if g.inKeyJustPressed(ebiten.KeyR) {
 			if g.buildMode == buildModeTrack {
 				g.w.RotateConstructionHead()
 			} else {
 				g.buildRotation = (g.buildRotation + 1) & 3
 			}
 		}
-		if inpututil.IsKeyJustPressed(ebiten.KeyX) {
+		if g.inKeyJustPressed(ebiten.KeyX) {
 			if g.buildMode == buildModeTrack {
 				g.w.UndoLastTrack()
 			} else if g.hoverTileX >= 0 {
 				g.w.RemoveLastRoad(g.hoverTileX, g.hoverTileY)
 			}
 		}
-		if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		if g.inKeyJustPressed(ebiten.KeyEscape) {
 			g.buildMode = buildModeNone
 			g.hoverTileX = -1
 			g.hoverTileY = -1
@@ -450,7 +461,7 @@ func (g *Game) Update() error {
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 	}
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 		// Check dropdown first (it's on top)
 		if g.dropdown != nil && g.dropdown.Visible {
 			if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
@@ -469,7 +480,7 @@ func (g *Game) Update() error {
 			}
 		}
 	}
-	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
+	if g.inMouseJustReleased(ebiten.MouseButtonLeft) {
 		for i := range g.toolbar.Buttons {
 			g.toolbar.Buttons[i].Pressed = false
 		}
@@ -479,11 +490,11 @@ func (g *Game) Update() error {
 	// Right-click drag to pan the map.
 	// OpenLoco reference: src/OpenLoco/src/Input/MouseInput.cpp stateViewportRight()
 	// dragOffset is scaled by (1 << zoom) to convert screen pixels → world pixels.
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+	if g.inMouseJustPressed(ebiten.MouseButtonRight) {
 		g.rightDragging = true
 		g.dragLastX, g.dragLastY = g.mouseX, g.mouseY
 	}
-	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonRight) {
+	if g.inMouseJustReleased(ebiten.MouseButtonRight) {
 		g.rightDragging = false
 	}
 	if g.rightDragging && ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
@@ -514,13 +525,13 @@ func (g *Game) Update() error {
 	}
 
 	// Zoom: keyboard Q/E, +/-, and mouse scroll wheel
-	if inpututil.IsKeyJustPressed(ebiten.KeyQ) || inpututil.IsKeyJustPressed(ebiten.KeyEqual) || inpututil.IsKeyJustPressed(ebiten.KeyKPAdd) {
+	if g.inKeyJustPressed(ebiten.KeyQ) || g.inKeyJustPressed(ebiten.KeyEqual) || g.inKeyJustPressed(ebiten.KeyKPAdd) {
 		g.w.ZoomInAt(g.sw/2, g.sh/2)
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyE) || inpututil.IsKeyJustPressed(ebiten.KeyMinus) || inpututil.IsKeyJustPressed(ebiten.KeyKPSubtract) {
+	if g.inKeyJustPressed(ebiten.KeyE) || g.inKeyJustPressed(ebiten.KeyMinus) || g.inKeyJustPressed(ebiten.KeyKPSubtract) {
 		g.w.ZoomOutAt(g.sw/2, g.sh/2)
 	}
-	if _, dy := ebiten.Wheel(); dy != 0 {
+	if _, dy := g.inWheel(); dy != 0 {
 		if !g.routeWheelToWindows() {
 			if dy > 0 {
 				g.w.ZoomInAt(g.mouseX, g.mouseY)
@@ -550,26 +561,26 @@ func (g *Game) Update() error {
 	}
 
 	// Speed controls: Space=pause, F3=×1, F4=×2, F5=×4, F6=×8
-	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+	if g.inKeyJustPressed(ebiten.KeySpace) {
 		g.isPaused = !g.isPaused
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF3) {
+	if g.inKeyJustPressed(ebiten.KeyF3) {
 		g.speedMult = 1
 		g.isPaused = false
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF4) {
+	if g.inKeyJustPressed(ebiten.KeyF4) {
 		g.speedMult = 2
 		g.isPaused = false
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF5) {
+	if g.inKeyJustPressed(ebiten.KeyF5) {
 		g.speedMult = 4
 		g.isPaused = false
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF6) {
+	if g.inKeyJustPressed(ebiten.KeyF6) {
 		g.speedMult = 8
 		g.isPaused = false
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF12) {
+	if g.inKeyJustPressed(ebiten.KeyF12) {
 		g.diagPending = true
 		g.diagTileX = -1
 		g.diagTileY = -1
@@ -1074,8 +1085,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 }
 
 // maybeSaveShot implements --shots mode: save the full frame every shotsEvery,
-// quit when the requested count has been captured.
+// quit when the requested count has been captured. Script `shot` commands are
+// honoured here too.
 func (g *Game) maybeSaveShot(screen *ebiten.Image) {
+	if name := g.scriptShotName(); name != "" {
+		if f, err := os.Create(name); err == nil {
+			png.Encode(f, screen.SubImage(screen.Bounds()))
+			f.Close()
+			log.Printf("[Script] saved %s", name)
+		}
+	}
 	if g.shotsEvery <= 0 || g.shotsLeft <= 0 || time.Since(g.shotsLast) < g.shotsEvery {
 		return
 	}
@@ -1530,7 +1549,7 @@ func (g *Game) saveGame() error {
 // routeWheelToWindows sends mouse-wheel events to any visible window under the
 // cursor that has an OnScrollWheel handler.  Returns true if consumed.
 func (g *Game) routeWheelToWindows() bool {
-	_, dy := ebiten.Wheel()
+	_, dy := g.inWheel()
 	if dy == 0 {
 		return false
 	}
@@ -2355,6 +2374,9 @@ func main() {
 		}
 	}
 
+	if p := os.Getenv("GOLOCO_SCRIPT"); p != "" {
+		game.script = loadInputScript(p)
+	}
 	if os.Getenv("GOLOCO_OPEN") == "newgame" {
 		game.openNewGameWindow()
 	}
