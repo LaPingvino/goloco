@@ -45,6 +45,12 @@ type SimVehicle struct {
 	dist     float64 // distance from the piece begin, in [0, length]
 	speed    float64 // world units per tick
 
+	// Passenger cargo bookkeeping (see station.go).
+	boarded        uint32 // passengers currently aboard
+	boardedStation int    // station id where the aboard passengers boarded (-1 = none)
+	atStation      int    // station id the vehicle is dwelling at (-1 = none)
+	dwell          int    // remaining dwell ticks at a station
+
 	// consist: rendered body entities driven by this vehicle. Indices into
 	// w.entities. For the slice a single body is enough, but the field is a
 	// slice so a multi-car consist can be added later.
@@ -179,12 +185,14 @@ func (w *World) SpawnTestVehicle(objID int) bool {
 	}
 
 	sv := &SimVehicle{
-		tileX:    bestX,
-		tileY:    bestY,
-		trackID:  int(best.TrackID),
-		rotation: best.Rotation & 3,
-		baseZ:    best.BaseZ,
-		speed:    1.0,
+		tileX:          bestX,
+		tileY:          bestY,
+		trackID:        int(best.TrackID),
+		rotation:       best.Rotation & 3,
+		baseZ:          best.BaseZ,
+		speed:          1.0,
+		boardedStation: -1,
+		atStation:      -1,
 	}
 
 	ent := scenario.VehicleEntity{
@@ -201,9 +209,12 @@ func (w *World) SpawnTestVehicle(objID int) bool {
 	return true
 }
 
-// TickVehicles advances every SimVehicle one simulation step. Called from the
-// game update in gameplay mode.
-func (w *World) TickVehicles() { w.UpdateVehicles() }
+// TickVehicles advances every SimVehicle one simulation step and accumulates
+// station passenger supply. Called from the game update in gameplay mode.
+func (w *World) TickVehicles() {
+	w.tickStations()
+	w.UpdateVehicles()
+}
 
 // UpdateVehicles advances every SimVehicle by its speed and writes the new
 // interpolated entity positions.
@@ -217,6 +228,24 @@ func (w *World) UpdateVehicles() {
 // advanceVehicle moves one vehicle along its piece, handing off to a connected
 // piece when it runs off an end, or bouncing when there is none.
 func (w *World) advanceVehicle(sv *SimVehicle) {
+	// Station handling: hold at a station for a fixed dwell, load/unload on
+	// arrival. The vehicle's current piece origin tile is treated as "at the
+	// station" when it carries one.
+	if sv.dwell > 0 {
+		sv.dwell--
+		return
+	}
+	if st := w.stationAt(sv.tileX, sv.tileY, sv.baseZ); st != nil {
+		if st.id != sv.atStation {
+			sv.atStation = st.id
+			sv.dwell = stationDwellTicks
+			w.serviceStation(sv, st)
+			return
+		}
+	} else {
+		sv.atStation = -1
+	}
+
 	// Guard against pathological loops if pieces are extremely short: cap the
 	// number of hand-offs processed in a single tick.
 	for iter := 0; iter < 16; iter++ {

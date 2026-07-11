@@ -1472,6 +1472,18 @@ func (g *Game) loadScenario(filePath string) error {
 	mapW, mapH := g.w.GetMapSize()
 	g.gameState = game.NewGameState(mapW, mapH)
 
+	// Wire cargo delivery: vehicles that deliver passengers to a station
+	// increment the objective's cargo counter (see World.OnCargoDelivered).
+	gs := g.gameState
+	gameW.OnCargoDelivered = func(slot uint8, amount uint32) {
+		if gs == nil || int(slot) >= len(gs.CargoDelivered) {
+			return
+		}
+		gs.CargoDelivered[slot] += amount
+		log.Printf("[Cargo] delivered %d units to slot %d (total %d)",
+			amount, slot, gs.CargoDelivered[slot])
+	}
+
 	if g.titleSeq != nil {
 		g.titleSeq.Stop()
 	}
@@ -2344,14 +2356,43 @@ func main() {
 		game.windowMgr.OpenWindow(game.newConstructionWindow())
 		mw, mh := game.w.GetMapSize()
 		game.w.SetConstructionHead(mw/2, mh/2)
-		for _, id := range []int{0, 0, 4, 0, 14, 0, 0, 6, 0} {
+		// Straight line so the piece origins fall on a predictable tile row and
+		// the first/last pieces can carry stations for the board→deliver loop.
+		seq := []int{0, 0, 0, 0, 0}
+		var firstX, firstY, lastX, lastY int
+		for i, id := range seq {
+			h := game.w.ConstructionHeadState()
+			if i == 0 {
+				firstX, firstY = h.X, h.Y
+			}
+			if i == len(seq)-1 {
+				lastX, lastY = h.X, h.Y
+			}
 			if !game.w.PlaceTrackAtHead(id, 0) {
 				log.Printf("[ConsTest] piece %d not placeable at head %+v", id, game.w.ConstructionHeadState())
 			}
 		}
 		log.Printf("[ConsTest] head after sequence: %+v", game.w.ConstructionHeadState())
+		// Stations on the first and last pieces of the line.
+		stationSlot := game.firstTrainStationSlot()
+		if game.w.PlaceStationOnTile(firstX, firstY, stationSlot) {
+			log.Printf("[ConsTest] station A placed at (%d,%d)", firstX, firstY)
+		}
+		if game.w.PlaceStationOnTile(lastX, lastY, stationSlot) {
+			log.Printf("[ConsTest] station B placed at (%d,%d)", lastX, lastY)
+		}
+		// Seed waiting passengers so the headless run demonstrates delivery
+		// without waiting for slow building-based accumulation.
+		game.w.SeedStationWaiting(firstX, firstY, 200)
 		if game.w.SpawnTestVehicle(0) {
-			log.Printf("[ConsTest] test vehicle spawned")
+			log.Printf("[ConsTest] test vehicle spawned; ticking board→travel→deliver")
+			for i := 0; i < 2000; i++ {
+				game.w.TickVehicles()
+			}
+			if game.gameState != nil {
+				log.Printf("[ConsTest] delivered PASS so far: %d",
+					game.gameState.CargoDelivered[world.CargoSlotPass])
+			}
 		}
 	}
 	if os.Getenv("GOLOCO_OPEN") == "road" && game.w != nil {
@@ -2545,6 +2586,29 @@ func (g *Game) consUndo() {
 	}
 }
 
+// firstTrainStationSlot returns the first populated train-station object slot,
+// or 0 when none are loaded. Used to pick a station type for placement.
+func (g *Game) firstTrainStationSlot() uint8 {
+	if g.objMgr == nil {
+		return 0
+	}
+	for i := 0; i < 16; i++ {
+		if g.objMgr.GetTrainStationObjectByIndex(i) != nil {
+			return uint8(i)
+		}
+	}
+	return 0
+}
+
+// consPlaceStation attaches a station to the track piece under the head, using
+// the first populated train-station object slot. Track mode only.
+func (g *Game) consPlaceStation() {
+	if g.consIsRoad() {
+		return
+	}
+	g.w.PlaceStationAtHead(g.firstTrainStationSlot())
+}
+
 // consObjectNames returns the object display names for the current mode,
 // indexed by object slot (empty string for unused slots).
 func (g *Game) consObjectNames() []string {
@@ -2597,7 +2661,7 @@ func (g *Game) consCycleType(dir int) {
 }
 
 func (g *Game) newConstructionWindow() *ui.SimpleWindow {
-	const winW, winH = 220, 182
+	const winW, winH = 220, 206
 	title := "Track Construction"
 	if g.consIsRoad() {
 		title = "Road Construction"
@@ -2611,7 +2675,7 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 	slopeValues := []int{-2, -1, 0, 1, 2}
 
 	const btnS = 22 // button size
-	curveY, slopeY, actionY, typeY := 6, 34, 66, 122
+	curveY, slopeY, actionY, stationY, typeY := 6, 34, 66, 118, 146
 
 	win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, r *render.Renderer) {
 		drawSpriteButton := func(x, y, spriteID int, selected, enabled bool) {
@@ -2670,6 +2734,10 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 		ui.DrawText(screen, status, cx+6, cy+actionY+28, color.RGBA{220, 220, 180, 255})
 		ui.DrawText(screen, "[R]=rotate  [X]=undo  [Esc]=done", cx+6, cy+actionY+42, color.RGBA{160, 160, 160, 255})
 
+		// Station row (track mode only): attach a station to the head piece.
+		canStation := head.Active && !g.consIsRoad()
+		drawButton(screen, cx+6, cy+stationY, 194, 20, "Station", false, canStation)
+
 		// Type picker: prev/next cycling button showing the current object name.
 		drawButton(screen, cx+6, cy+typeY, 20, 20, "<", false, true)
 		drawButton(screen, cx+cw-26, cy+typeY, 20, 20, ">", false, true)
@@ -2707,6 +2775,12 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 				g.consUndo()
 			case relX >= 138 && relX < 200:
 				g.w.RotateConstructionHead()
+			}
+			return
+		}
+		if relY >= stationY && relY < stationY+20 {
+			if relX >= 6 && relX < 200 {
+				g.consPlaceStation()
 			}
 			return
 		}

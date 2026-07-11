@@ -113,6 +113,14 @@ type World struct {
 	// simVehicles are minimal track-following vehicles advanced by TickVehicles
 	// (gameplay simulation). Each drives one or more w.entities body sprites.
 	simVehicles []*SimVehicle
+
+	// simStations is the passenger-supply registry (see station.go).
+	simStations []*SimStation
+
+	// OnCargoDelivered is invoked when a vehicle delivers cargo to a station
+	// different from where it picked it up. cmd/goloco wires this to
+	// GameState.CargoDelivered; nil in tests/headless runs that don't care.
+	OnCargoDelivered func(cargoSlot uint8, amount uint32)
 }
 
 // mapSaveState holds in-progress full-map PNG render state.
