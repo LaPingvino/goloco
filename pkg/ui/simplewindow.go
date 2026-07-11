@@ -62,10 +62,10 @@ type SimpleWindow struct {
 	// uses these target RGBA values (snapped to the loaded game palette) for the
 	// title bar / frame / content area instead of the neutral beige defaults.
 	// Used by the construction window to get Locomotion's brown body + gold title.
-	TitleBg    color.RGBA
-	BodyBg     color.RGBA
-	ContentBg  color.RGBA
-	TitleText  color.RGBA // title-bar text colour (A!=0 to override black)
+	TitleBg   color.RGBA
+	BodyBg    color.RGBA
+	ContentBg color.RGBA
+	TitleText color.RGBA // title-bar text colour (A!=0 to override black)
 }
 
 // SimpleWindowManager manages all open simple windows
@@ -266,8 +266,8 @@ func (w *SimpleWindow) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 	if w.TitleText.A != 0 {
 		textTarget = w.TitleText
 	}
-	textIdx := graphics.MatchPaletteIndex(textTarget)
-	_ = dc.DrawString(int16(w.X+6), int16(w.Y+5), w.Title, textIdx)
+	// Bitmap font, top-anchored 10px glyphs, vertically centred in the 22px bar.
+	DrawTextBold(screen, w.Title, w.X+6, w.Y+(simpleTitleBarHeight-10)/2, textTarget)
 
 	// Draw close button using G1 sprite if available
 	closeX := w.X + w.Width - 18

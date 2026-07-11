@@ -2906,13 +2906,13 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 		clip, _ := screen.SubImage(image.Rect(pX+1, pY+1, pX+pW-1, pY+consPrevH-1)).(*ebiten.Image)
 		if clip != nil {
 			pcx := float64(pX + pW/2)
-			pcy := float64(pY + consPrevH/2)
-			g.w.DrawPiecePreview(clip, pcx, pcy, 1.0, g.consIsRoad(), g.consDisplayID(), g.buildObjID, rot)
+			pcy := float64(pY+consPrevH/2) - 8 // track diamonds are bottom-heavy; lift into optical centre
+			g.w.DrawPiecePreview(clip, pcx, pcy+6, 1.0, g.consIsRoad(), g.consDisplayID(), g.buildObjID, rot)
 			// yellow direction arrow overlay (construction straight up-arrow)
 			if img := r.GetSprite(2335); img != nil {
 				b := img.Bounds()
 				op := &ebiten.DrawImageOptions{}
-				op.GeoM.Translate(pcx-float64(b.Dx())/2, pcy-float64(b.Dy())/2-14)
+				op.GeoM.Translate(pcx-float64(b.Dx())/2, pcy-float64(b.Dy())/2-8)
 				clip.DrawImage(img, op)
 			}
 		}
