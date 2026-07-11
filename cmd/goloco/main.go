@@ -78,6 +78,8 @@ type Game struct {
 
 	// Build mode (track/road placement)
 	buildMode     int // buildModeNone / buildModeTrack / buildModeRoad
+	consCurve     int // construction curve selection: -4 (left large) … 0 … +4
+	consSlope     int // construction slope selection: -2 (steep down) … 0 … +2
 	buildPieceID  int // track: 0=straight,2=LCurveVS,3=RCurveVS; road: 0=straight
 	buildRotation int // 0-3
 	buildObjID    int // index into TrackObjects / RoadObjects
@@ -417,12 +419,16 @@ func (g *Game) Update() error {
 		g.hoverTileX, g.hoverTileY = g.w.ScreenToTile(g.mouseX, g.mouseY)
 		// Keyboard shortcuts for build mode
 		if inpututil.IsKeyJustPressed(ebiten.KeyR) {
-			g.buildRotation = (g.buildRotation + 1) & 3
-		}
-		if inpututil.IsKeyJustPressed(ebiten.KeyX) && g.hoverTileX >= 0 {
 			if g.buildMode == buildModeTrack {
-				g.w.RemoveLastTrack(g.hoverTileX, g.hoverTileY)
+				g.w.RotateConstructionHead()
 			} else {
+				g.buildRotation = (g.buildRotation + 1) & 3
+			}
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyX) {
+			if g.buildMode == buildModeTrack {
+				g.w.UndoLastTrack()
+			} else if g.hoverTileX >= 0 {
 				g.w.RemoveLastRoad(g.hoverTileX, g.hoverTileY)
 			}
 		}
@@ -430,6 +436,7 @@ func (g *Game) Update() error {
 			g.buildMode = buildModeNone
 			g.hoverTileX = -1
 			g.hoverTileY = -1
+			g.w.ClearConstructionHead()
 		}
 	}
 
@@ -454,8 +461,10 @@ func (g *Game) Update() error {
 			if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
 				g.toolbar.Buttons[btnIdx].Pressed = true
 				g.handleToolbarButton(btnIdx)
-			} else if g.buildMode != buildModeNone && g.hoverTileX >= 0 {
-				// Map click while in build mode — place piece
+			} else if g.buildMode == buildModeTrack && g.hoverTileX >= 0 {
+				// Track mode: clicking the map sets the construction head.
+				g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
+			} else if g.buildMode == buildModeRoad && g.hoverTileX >= 0 {
 				g.placeBuildPiece(g.hoverTileX, g.hoverTileY)
 			}
 		}
@@ -720,44 +729,10 @@ func (g *Game) handleToolbarButton(idx int) {
 		return
 	case "Railroad":
 		g.buildMode = buildModeTrack
-		g.buildPieceID = 0
-		g.buildRotation = 0
 		g.buildObjID = 0
-		win = ui.NewSimpleWindow("Railroad Construction", 10, 40, 200, 200)
-		win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, r *render.Renderer) {
-			pieces := []struct {
-				name    string
-				pieceID int
-				rot     int
-			}{
-				{"Straight NE/SW", 0, 0},
-				{"Straight NW/SE", 0, 1},
-				{"Curve Left (VS)", 2, 0},
-				{"Curve Right (VS)", 3, 0},
-			}
-			ui.DrawText(screen, "Track piece:", cx+6, cy+8, color.RGBA{220, 220, 180, 255})
-			for i, p := range pieces {
-				var col color.Color = color.White
-				if g.buildPieceID == p.pieceID && g.buildRotation == p.rot {
-					col = color.RGBA{255, 230, 60, 255}
-				}
-				ui.DrawText(screen, p.name, cx+8, cy+24+i*18, col)
-			}
-			ui.DrawText(screen, fmt.Sprintf("Rotation: %d  [R]=rotate", g.buildRotation),
-				cx+6, cy+104, color.RGBA{180, 200, 180, 255})
-			ui.DrawText(screen, "[X]=remove  [Esc]=done",
-				cx+6, cy+120, color.RGBA{160, 160, 160, 255})
-		}
-		win.OnContentClick = func(relX, relY int) {
-			pieces := []struct{ pieceID, rot int }{
-				{0, 0}, {0, 1}, {2, 0}, {3, 0},
-			}
-			idx := (relY - 24) / 18
-			if relY >= 24 && idx >= 0 && idx < len(pieces) {
-				g.buildPieceID = pieces[idx].pieceID
-				g.buildRotation = pieces[idx].rot
-			}
-		}
+		g.consCurve = 0
+		g.consSlope = 0
+		win = g.newConstructionWindow()
 
 	case "Road":
 		g.buildMode = buildModeRoad
@@ -1036,7 +1011,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	// Ghost preview for build mode
-	if g.buildMode == buildModeTrack && g.hoverTileX >= 0 {
+	if g.buildMode == buildModeTrack {
+		g.w.DrawConstructionGhost(screen, g.consSelectedTrackID(), g.buildObjID)
+	} else if false && g.hoverTileX >= 0 {
 		g.w.DrawTrackGhost(screen, g.hoverTileX, g.hoverTileY,
 			g.buildPieceID, g.buildRotation, g.buildObjID)
 	}
@@ -2381,6 +2358,20 @@ func main() {
 	if os.Getenv("GOLOCO_OPEN") == "newgame" {
 		game.openNewGameWindow()
 	}
+	if os.Getenv("GOLOCO_OPEN") == "track" && game.w != nil {
+		// Headless construction test: open the window and chain a piece
+		// sequence from the map centre so captures verify connections.
+		game.buildMode = buildModeTrack
+		game.windowMgr.OpenWindow(game.newConstructionWindow())
+		mw, mh := game.w.GetMapSize()
+		game.w.SetConstructionHead(mw/2, mh/2)
+		for _, id := range []int{0, 0, 4, 0, 14, 0, 0, 6, 0} {
+			if !game.w.PlaceTrackAtHead(id, 0) {
+				log.Printf("[ConsTest] piece %d not placeable at head %+v", id, game.w.ConstructionHeadState())
+			}
+		}
+		log.Printf("[ConsTest] head after sequence: %+v", game.w.ConstructionHeadState())
+	}
 
 	ebiten.SetWindowSize(defaultWidth, defaultHeight)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
@@ -2388,4 +2379,172 @@ func main() {
 	if err := ebiten.RunGame(game); err != nil && err != ebiten.Termination {
 		log.Fatal(err)
 	}
+}
+
+// --- RCT-style track construction window --------------------------------
+//
+// OpenLoco reference: src/OpenLoco/src/Ui/Windows/Construction/Construction.cpp
+// Curve row + slope row of sprite buttons, Rotate/Undo, and a Build action.
+// Click the map to place the construction head; pieces then chain from it.
+
+// consTrackCandidates maps the selected curve (-4 left large … 0 straight …
+// +4 right large) and slope (-2 steep down … 0 level … +2 steep up) to track
+// piece candidates; the first placeable at the head's heading wins (this is
+// how straight-vs-diagonal and cardinal-vs-diagonal larges resolve).
+func consTrackCandidates(curve, slope int) []int {
+	if curve == 0 {
+		switch slope {
+		case -2:
+			return []int{17}
+		case -1:
+			return []int{15}
+		case 1:
+			return []int{14}
+		case 2:
+			return []int{16}
+		default:
+			return []int{0, 1} // straight, or diagonal when heading is diagonal
+		}
+	}
+	if slope != 0 {
+		return nil // curved slopes not yet supported
+	}
+	switch curve {
+	case -1:
+		return []int{2} // left very small
+	case 1:
+		return []int{3}
+	case -2:
+		return []int{4} // left small
+	case 2:
+		return []int{5}
+	case -3:
+		return []int{6} // left medium
+	case 3:
+		return []int{7}
+	case -4:
+		return []int{8, 10} // left large (to/from diagonal)
+	case 4:
+		return []int{9, 11}
+	}
+	return nil
+}
+
+// consSelectedTrackID resolves the current curve/slope selection to the first
+// placeable track id at the head, or -1.
+func (g *Game) consSelectedTrackID() int {
+	for _, id := range consTrackCandidates(g.consCurve, g.consSlope) {
+		if g.w.CanPlaceTrackAtHead(id) {
+			return id
+		}
+	}
+	return -1
+}
+
+func (g *Game) newConstructionWindow() *ui.SimpleWindow {
+	const winW, winH = 220, 160
+	win := ui.NewSimpleWindow("Track Construction", 10, 40, winW, winH)
+
+	// Sprite ids for the two button rows (ImageIds construction_*).
+	curveSprites := []int{2346, 2344, 2342, 2340, 2335, 2341, 2343, 2345, 2347}
+	curveValues := []int{-4, -3, -2, -1, 0, 1, 2, 3, 4}
+	slopeSprites := []int{2348, 2349, 2350, 2351, 2352}
+	slopeValues := []int{-2, -1, 0, 1, 2}
+
+	const btnS = 22 // button size
+	curveY, slopeY, actionY := 6, 34, 66
+
+	win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, r *render.Renderer) {
+		drawSpriteButton := func(x, y, spriteID int, selected, enabled bool) {
+			drawButton(screen, x, y, btnS, btnS, "", selected, enabled)
+			if img := r.GetSprite(spriteID); img != nil {
+				b := img.Bounds()
+				op := &ebiten.DrawImageOptions{}
+				op.GeoM.Translate(float64(x+(btnS-b.Dx())/2), float64(y+(btnS-b.Dy())/2))
+				if !enabled {
+					op.ColorScale.ScaleAlpha(0.4)
+				}
+				screen.DrawImage(img, op)
+			}
+		}
+
+		// Curve row
+		rowX := cx + (cw-len(curveSprites)*btnS)/2
+		for i, sp := range curveSprites {
+			sel := g.consCurve == curveValues[i]
+			en := false
+			for _, id := range consTrackCandidates(curveValues[i], 0) {
+				if g.w.CanPlaceTrackAtHead(id) {
+					en = true
+					break
+				}
+			}
+			drawSpriteButton(rowX+i*btnS, cy+curveY, sp, sel, en)
+		}
+		// Slope row (centred, only meaningful for straight)
+		rowX2 := cx + (cw-len(slopeSprites)*btnS)/2
+		for i, sp := range slopeSprites {
+			sel := g.consSlope == slopeValues[i]
+			en := false
+			for _, id := range consTrackCandidates(0, slopeValues[i]) {
+				if g.w.CanPlaceTrackAtHead(id) {
+					en = true
+					break
+				}
+			}
+			drawSpriteButton(rowX2+i*btnS, cy+slopeY, sp, sel, en)
+		}
+
+		// Action row
+		head := g.w.ConstructionHeadState()
+		canBuild := head.Active && g.consSelectedTrackID() >= 0
+		drawButton(screen, cx+6, cy+actionY, 62, 20, "Build", false, canBuild)
+		drawButton(screen, cx+72, cy+actionY, 62, 20, "Undo", false, true)
+		drawButton(screen, cx+138, cy+actionY, 62, 20, "Rotate", false, head.Active)
+
+		// Status line
+		status := "Click the map to start"
+		if head.Active {
+			dir := [16]string{"SW", "SE", "NE", "NW", "", "", "", "", "", "", "", "", "S", "E", "N", "W"}[head.Rotation]
+			status = fmt.Sprintf("Head: %d,%d h%d %s", head.X, head.Y, head.BaseZ, dir)
+		}
+		ui.DrawText(screen, status, cx+6, cy+actionY+28, color.RGBA{220, 220, 180, 255})
+		ui.DrawText(screen, "[R]=rotate  [X]=undo  [Esc]=done", cx+6, cy+actionY+42, color.RGBA{160, 160, 160, 255})
+	}
+
+	win.OnContentClick = func(relX, relY int) {
+		rowX := (winW - len(curveSprites)*btnS) / 2
+		if relY >= curveY && relY < curveY+btnS {
+			if i := (relX - rowX) / btnS; i >= 0 && i < len(curveValues) && relX >= rowX {
+				g.consCurve = curveValues[i]
+				if g.consCurve != 0 {
+					g.consSlope = 0
+				}
+			}
+			return
+		}
+		rowX2 := (winW - len(slopeSprites)*btnS) / 2
+		if relY >= slopeY && relY < slopeY+btnS {
+			if i := (relX - rowX2) / btnS; i >= 0 && i < len(slopeValues) && relX >= rowX2 {
+				g.consSlope = slopeValues[i]
+				if g.consSlope != 0 {
+					g.consCurve = 0
+				}
+			}
+			return
+		}
+		if relY >= actionY && relY < actionY+20 {
+			switch {
+			case relX >= 6 && relX < 68:
+				if id := g.consSelectedTrackID(); id >= 0 {
+					g.w.PlaceTrackAtHead(id, uint8(g.buildObjID))
+				}
+			case relX >= 72 && relX < 134:
+				g.w.UndoLastTrack()
+			case relX >= 138 && relX < 200:
+				g.w.RotateConstructionHead()
+			}
+		}
+	}
+	return win
 }

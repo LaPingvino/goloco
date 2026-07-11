@@ -95,6 +95,8 @@ type World struct {
 	worldBuf     *ebiten.Image      // pass-1 target: all opaque sprites
 	blendBuf     *ebiten.Image      // pass-2 target: blend-mode overlay
 	blendOps     []worldBlendOp     // queued during pass 1
+	consHead     ConstructionHead   // track construction head
+	consStack    []placedPiece      // undo stack for placed pieces
 	highlightOps []worldHighlightOp // ripple/wave sprites drawn after blend
 	waterOps     []worldHighlightOp // water surface ops drawn after all terrain (pass 1.5)
 

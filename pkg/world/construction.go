@@ -1,0 +1,232 @@
+package world
+
+import (
+	"math"
+
+	"github.com/LaPingvino/goloco/pkg/scenario"
+	"github.com/hajimehoshi/ebiten/v2"
+)
+
+// Track construction: an OpenLoco-style construction head that pieces connect
+// to, instead of free placement under the cursor.
+//
+// The head is the world position, height and heading where the NEXT piece
+// begins. Placing a piece appends its elements to every sequence tile and
+// advances the head by the piece's end transform (kTrackCoordinates).
+//
+// OpenLoco reference: src/OpenLoco/src/Ui/Windows/Construction/Construction.cpp
+// and Map/Track/TrackData.cpp.
+
+// ConstructionHead is the "next piece starts here" cursor.
+type ConstructionHead struct {
+	Active   bool
+	X, Y     int   // tile coordinates of the piece origin
+	BaseZ    uint8 // SmallZ height of the piece origin
+	Rotation uint8 // heading 0-3 (diagonal headings 12-15 not yet buildable)
+}
+
+// placedPiece remembers one build action so it can be undone.
+type placedPiece struct {
+	trackID  int
+	rotation uint8
+	tiles    [][2]int // tile coords that received elements
+	baseZ    []uint8  // element BaseZ per tile
+}
+
+// rotOffset rotates a rotation-0 world offset to the given rotation.
+// Matches OpenLoco Math::Vector::rotate.
+func rotOffset(x, y int16, rotation uint8) (int16, int16) {
+	switch rotation & 3 {
+	case 1:
+		return y, -x
+	case 2:
+		return -x, -y
+	case 3:
+		return -y, x
+	}
+	return x, y
+}
+
+// SetConstructionHead places the head on a tile (click-to-start). The head
+// takes the tile's surface height and keeps its current heading.
+func (w *World) SetConstructionHead(tileX, tileY int) {
+	t := w.getTile(tileX, tileY)
+	if t == nil {
+		return
+	}
+	w.consHead.Active = true
+	w.consHead.X = tileX
+	w.consHead.Y = tileY
+	w.consHead.BaseZ = t.baseZ
+}
+
+// ConstructionHeadState returns the current head (value copy).
+func (w *World) ConstructionHeadState() ConstructionHead { return w.consHead }
+
+// RotateConstructionHead turns the head 90° clockwise.
+func (w *World) RotateConstructionHead() {
+	w.consHead.Rotation = (w.consHead.Rotation + 1) & 3
+}
+
+// ClearConstructionHead deactivates the head (leave build mode).
+func (w *World) ClearConstructionHead() { w.consHead.Active = false }
+
+// CanPlaceTrackAtHead reports whether trackID can start at the head's exact
+// heading: the piece's begin rotation (kTrackCoordinates) must equal the head
+// heading, which naturally restricts cardinal vs diagonal (12-15) pieces.
+func (w *World) CanPlaceTrackAtHead(trackID int) bool {
+	h := w.consHead
+	if !h.Active || trackID < 0 || trackID<<3 >= len(kTrackCoordinates) {
+		return false
+	}
+	if kTrackCoordinates[trackID<<3|int(h.Rotation&3)].RotBegin != h.Rotation {
+		return false
+	}
+	_, _, ok := w.trackPieceTiles(trackID)
+	return ok
+}
+
+// trackPieceTiles returns the sequence-tile placements for trackID at the
+// head: tile coords and BaseZ per sequence tile. ok=false when the piece
+// would leave the map or the data table has no entry.
+func (w *World) trackPieceTiles(trackID int) (tiles [][2]int, baseZ []uint8, ok bool) {
+	if trackID < 0 || trackID >= len(kTrackPieceTiles) || len(kTrackPieceTiles[trackID]) == 0 {
+		return nil, nil, false
+	}
+	h := w.consHead
+	for _, off := range kTrackPieceTiles[trackID] {
+		dx, dy := rotOffset(off[0], off[1], h.Rotation)
+		tx := h.X + int(dx)/32
+		ty := h.Y + int(dy)/32
+		if tx < 0 || ty < 0 || tx >= w.width || ty >= w.height {
+			return nil, nil, false
+		}
+		z := int(h.BaseZ) + int(off[2])/4 // piece z is world units; BaseZ is SmallZ
+		if z < 0 || z > 255 {
+			return nil, nil, false
+		}
+		tiles = append(tiles, [2]int{tx, ty})
+		baseZ = append(baseZ, uint8(z))
+	}
+	return tiles, baseZ, true
+}
+
+// PlaceTrackAtHead appends trackID at the construction head and advances the
+// head along the piece's end transform. Returns false if the piece cannot be
+// placed (inactive head, unsupported heading, off-map).
+func (w *World) PlaceTrackAtHead(trackID int, trackObjID uint8) bool {
+	h := w.consHead
+	if !w.CanPlaceTrackAtHead(trackID) {
+		return false
+	}
+	tiles, baseZ, ok := w.trackPieceTiles(trackID)
+	if !ok {
+		return false
+	}
+	_ = h
+
+	placed := placedPiece{trackID: trackID, rotation: w.consHead.Rotation, tiles: tiles, baseZ: baseZ}
+	for i, tc := range tiles {
+		w.AddTrack(tc[0], tc[1], scenario.TrackElement{
+			TrackObjectID: trackObjID,
+			TrackID:       uint8(trackID),
+			Rotation:      w.consHead.Rotation & 3,
+			SequenceIndex: uint8(i),
+			BaseZ:         baseZ[i],
+			ClearZ:        baseZ[i] + 8,
+		})
+	}
+	w.consStack = append(w.consStack, placed)
+
+	// Advance the head: trackAndDirection = trackID<<3 | rotation (forward).
+	c := kTrackCoordinates[trackID<<3|int(w.consHead.Rotation&3)]
+	w.consHead.X += int(c.DX) / 32
+	w.consHead.Y += int(c.DY) / 32
+	w.consHead.BaseZ = uint8(int(w.consHead.BaseZ) + int(c.DZ)/4)
+	w.consHead.Rotation = c.RotEnd // may become diagonal (12-15); UI restricts pieces then
+	return true
+}
+
+// UndoLastTrack removes the most recently placed piece and moves the head
+// back to its origin.
+func (w *World) UndoLastTrack() bool {
+	if len(w.consStack) == 0 {
+		return false
+	}
+	p := w.consStack[len(w.consStack)-1]
+	w.consStack = w.consStack[:len(w.consStack)-1]
+	for i, tc := range p.tiles {
+		w.removeTrackElement(tc[0], tc[1], uint8(p.trackID), p.rotation, uint8(i), p.baseZ[i])
+	}
+	w.consHead.X = p.tiles[0][0]
+	w.consHead.Y = p.tiles[0][1]
+	w.consHead.BaseZ = p.baseZ[0]
+	w.consHead.Rotation = p.rotation
+	w.consHead.Active = true
+	return true
+}
+
+// removeTrackElement deletes one exactly-matching track element from a tile.
+func (w *World) removeTrackElement(x, y int, trackID, rotation, seq, baseZ uint8) {
+	t := w.getTile(x, y)
+	if t == nil {
+		return
+	}
+	for i, te := range t.tracks {
+		if te.TrackID == trackID && te.Rotation == rotation &&
+			te.SequenceIndex == seq && te.BaseZ == baseZ {
+			t.tracks = append(t.tracks[:i], t.tracks[i+1:]...)
+			return
+		}
+	}
+}
+
+// DrawConstructionGhost renders the selected piece translucently at the head,
+// covering every sequence tile, plus a marker diamond on the head tile.
+func (w *World) DrawConstructionGhost(screen *ebiten.Image, trackID, objID int) {
+	h := w.consHead
+	if !h.Active || w.renderer == nil || w.renderer.ObjMgr == nil {
+		return
+	}
+	trackObj := w.renderer.ObjMgr.GetTrackObjectByIndex(objID)
+	scale := 1.0 / float64(int(1)<<w.zoom)
+
+	drawAt := func(tileX, tileY int, z uint8, spriteID int) {
+		vpX, vpY := w.tileToScreen(tileX, tileY)
+		vpY -= float64(z) * 4.0
+		drawX := math.Round((vpX - w.camX) * scale)
+		drawY := math.Round((vpY - w.camY) * scale)
+		img := w.renderer.GetSprite(spriteID)
+		if img == nil {
+			return
+		}
+		_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+		if !ok {
+			return
+		}
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(drawX+float64(xOff)*scale, drawY+float64(yOff)*scale)
+		op.ColorScale.ScaleAlpha(0.6)
+		screen.DrawImage(img, op)
+	}
+
+	if trackObj != nil && trackObj.Image != 0 && w.CanPlaceTrackAtHead(trackID) &&
+		trackID < len(kTrackParts) && kTrackParts[trackID] != nil {
+		if tiles, baseZ, ok := w.trackPieceTiles(trackID); ok {
+			parts := kTrackParts[trackID]
+			for seq, tc := range tiles {
+				if seq >= len(parts) {
+					break
+				}
+				for layer := 0; layer < 3; layer++ {
+					offset := parts[seq].img[h.Rotation&3][layer]
+					if offset == 0 {
+						continue
+					}
+					drawAt(tc[0], tc[1], baseZ[seq], int(trackObj.Image)+int(offset))
+				}
+			}
+		}
+	}
+}
