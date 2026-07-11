@@ -133,7 +133,7 @@ const (
 	ebVehicleFlags        = 0x0C // uint16 — vehicle-specific bit flags
 	ebPosX                = 0x0E // int16  — world X in sub-tile units (1 tile = 32 units)
 	ebPosY                = 0x10 // int16  — world Y in sub-tile units
-	ebPosZ                = 0x12 // uint8  — world Z (SmallZ height units)
+	ebPosZ                = 0x12 // int16  — world Z (1 unit = 1 px at zoom 0; = SmallZ*4)
 	ebSpriteWidth         = 0x14 // uint8  — sprite bounding box width
 	ebSpriteHeightPos     = 0x15 // uint8  — sprite bounding box height (positive)
 	ebSpriteLeft          = 0x16 // int16  — sprite bounding box left edge
@@ -199,7 +199,7 @@ type VehicleEntity struct {
 	// 1 tile = 32 WorldUnits.  Call .Tile() for tile index, .SubOffset() for intra-tile.
 	PosX coords.WorldUnits // world sub-tile X
 	PosY coords.WorldUnits // world sub-tile Y
-	PosZ uint8             // world Z (SmallZ height; multiply by 4 for pixels)
+	PosZ int16             // world Z (1 unit = 1 px at zoom 0; = SmallZ*4)
 
 	// ---- Common vehicle fields ----
 	HeadID uint16 // vhCommonHead (0x26) — ID of this train's VehicleHead entity
@@ -277,7 +277,7 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 
 			PosX: coords.WorldUnits(int16(e[ebPosX]) | int16(e[ebPosX+1])<<8),
 			PosY: coords.WorldUnits(int16(e[ebPosY]) | int16(e[ebPosY+1])<<8),
-			PosZ: e[ebPosZ],
+			PosZ: int16(e[ebPosZ]) | int16(e[ebPosZ+1])<<8,
 
 			HeadID:    uint16(e[vhCommonHead]) | uint16(e[vhCommonHead+1])<<8,
 			TileX:     coords.WorldUnits(int16(e[vhCommonTileX]) | int16(e[vhCommonTileX+1])<<8),

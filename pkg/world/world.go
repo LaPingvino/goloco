@@ -2848,10 +2848,11 @@ func (w *World) paintVehicleEntities(screen *ebiten.Image, scale float64) {
 		vpX := (fracY - fracX) * 32.0
 		vpY := (fracY + fracX) * 16.0
 
-		// Height: use entity's PosZ (world SmallZ) for pixel offset.
-		// OpenLoco formula: heightPx = posZ * 4 (kSmallZStep = 4 px/unit).
-		// We apply the current global compromise (×2 instead of ×4).
-		vpY -= float64(ent.PosZ) * 2.0
+		// Height: entity PosZ is int16 world z (S5 Pos3, sizeof==6), where
+		// 1 unit = 1 px at zoom 0 (= SmallZ*4) — same axis the terrain uses
+		// via baseZ*4. It was previously parsed as a lone byte and scaled by
+		// an ad-hoc x2, floating every vehicle above its track.
+		vpY -= float64(ent.PosZ)
 
 		drawX := math.Round((vpX-w.camX)*scale) - 16
 		drawY := math.Round((vpY-w.camY)*scale) - 16
