@@ -51,6 +51,7 @@ type ObjectManager struct {
 	TrainSignalObjects   []*TrainSignalObject        // all loaded train-signal objects (slots 268-283)
 	LevelCrossingObjects []*LevelCrossingObject      // all loaded level-crossing objects (slots 284-287)
 	BridgeObjects        []*BridgeObject             // all loaded bridge objects (slots 305-312)
+	CargoObjects         []*CargoObject              // cargo slot order (reordered per scenario)
 	CliffEdgeObjs        map[string]*CliffEdgeObject // keyed by upper-case name
 	WaterObj             *WaterObject                // the single water object (slot 170)
 	InterfaceSkin        *InterfaceSkinObject
@@ -221,6 +222,18 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		vehicle.DisplayName = extractFirstString(decompressed)
 		loaded.Object = vehicle
 		m.Vehicles = append(m.Vehicles, vehicle)
+
+	case ObjectTypeCargo:
+		var g1Loader G1Loader
+		if l, ok := m.G1File.(G1Loader); ok {
+			g1Loader = l
+		}
+		cargo, err := ParseCargoObjectWithG1(header, decompressed, g1Loader)
+		if err != nil {
+			return fmt.Errorf("parsing cargo: %w", err)
+		}
+		loaded.Object = cargo
+		m.CargoObjects = append(m.CargoObjects, cargo)
 
 	case ObjectTypeLand:
 		// Use G1 dynamic loading if available
