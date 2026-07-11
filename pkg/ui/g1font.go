@@ -3,6 +3,7 @@ package ui
 import (
 	"image"
 	"image/color"
+	"os"
 
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -37,7 +38,7 @@ var globalG1Font *g1Font
 // pool. Once called, DrawText/DrawTextBold render glyph sprites instead of
 // TTF fallback fonts.
 func InitG1Font(g1 *assets.G1File) {
-	if g1 == nil {
+	if g1 == nil || os.Getenv("GOLOCO_FONT") == "ttf" {
 		return
 	}
 	f := &g1Font{g1: g1, glyphs: make(map[int]*ebiten.Image)}
@@ -92,10 +93,14 @@ func (f *g1Font) glyph(font, chr int) *ebiten.Image {
 		f.glyphs[idx] = nil
 		return nil
 	}
+	// Glyphs use three remap indices (textRemap0/1/2 = 0x01/0x02/0x03). For
+	// normal text only textRemap0 is coloured; 1 and 2 are transparent (they
+	// exist for the inset/outline text styles).
+	// OpenLoco reference: TextRenderer.cpp setTextColours.
 	white := image.NewRGBA(image.Rect(0, 0, w, h))
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
-			if indices[y*w+x] != 0 {
+			if indices[y*w+x] == 0x01 {
 				white.SetRGBA(x, y, color.RGBA{255, 255, 255, 255})
 			}
 		}
