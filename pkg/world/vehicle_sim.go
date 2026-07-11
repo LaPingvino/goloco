@@ -214,6 +214,7 @@ func (w *World) SpawnTestVehicle(objID int) bool {
 func (w *World) TickVehicles() {
 	w.tickStations()
 	w.UpdateVehicles()
+	w.tickMoneyFloats()
 }
 
 // UpdateVehicles advances every SimVehicle by its speed and writes the new

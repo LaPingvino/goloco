@@ -172,6 +172,9 @@ func (w *World) serviceStation(sv *SimVehicle, st *SimStation) {
 		if w.OnCargoDelivered != nil {
 			w.OnCargoDelivered(CargoSlotPass, delivered)
 		}
+		// Spawn a rising "+£N" income float at the delivering vehicle's tile.
+		// The fare mirrors game.cargoFare(CargoSlotPass); see passengerFare.
+		w.SpawnMoneyFloat(sv.tileX, sv.tileY, sv.baseZ, int64(delivered)*passengerFare)
 	}
 	space := vehiclePassengerCapacity - sv.boarded
 	take := st.waiting
