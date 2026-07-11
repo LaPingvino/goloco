@@ -150,7 +150,7 @@ func (w *World) tickStations() {
 			continue
 		}
 		s.accum = 0
-		add := uint32(s.buildings) / 4
+		add := uint32(s.buildings)
 		if add == 0 {
 			add = 1 // trickle when a few buildings are in range
 		}

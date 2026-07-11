@@ -28,6 +28,11 @@ type GameState struct {
 	// CargoDelivered counts units delivered per cargo slot, for the
 	// cargoDelivery objective (Objective type 3).
 	CargoDelivered [32]uint32
+
+	// FareFor overrides the built-in flat fare table when set: returns the
+	// per-unit fare for a cargo slot (derived from the cargo object's
+	// authentic paymentFactor). TODO: full upstream distance/time payment.
+	FareFor func(cargoSlot uint8) int64
 	CurrentLoan    int64
 
 	// Economy accumulators. MonthlyIncome/MonthlyExpenses are summed over the
@@ -207,7 +212,13 @@ func cargoFare(cargoSlot uint8) int64 {
 // cargo slot, crediting both PlayerMoney and the current month's income.
 // Wired from World.OnCargoDelivered (cmd/goloco loadScenario).
 func (gs *GameState) CreditDelivery(cargoSlot uint8, amount uint32) {
-	income := cargoFare(cargoSlot) * int64(amount)
+	fare := cargoFare(cargoSlot)
+	if gs.FareFor != nil {
+		if f := gs.FareFor(cargoSlot); f > 0 {
+			fare = f
+		}
+	}
+	income := fare * int64(amount)
 	gs.PlayerMoney += income
 	gs.MonthlyIncome += income
 }

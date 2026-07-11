@@ -827,6 +827,25 @@ func (m *ObjectManager) GetTrackObjectByIndex(index int) *TrackObject {
 	return m.TrackObjects[index]
 }
 
+// ReorderCargoObjects rebuilds CargoObjects so index == scenario cargo slot.
+func (m *ObjectManager) ReorderCargoObjects(order []string) {
+	reordered := make([]*CargoObject, len(order))
+	matched := 0
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if c, ok := obj.Object.(*CargoObject); ok {
+				reordered[i] = c
+				matched++
+			}
+		}
+	}
+	m.CargoObjects = reordered
+	fmt.Printf("Reordered cargo objects: %d matched of %d slots\n", matched, len(order))
+}
+
 // ReorderTrackObjects rebuilds the TrackObjects slice so that each track slot
 // index maps to the TrackObject whose name matches order[i].
 func (m *ObjectManager) ReorderTrackObjects(order []string) {
