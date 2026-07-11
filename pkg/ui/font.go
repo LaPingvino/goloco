@@ -171,6 +171,10 @@ func GetFontManager() *FontManager {
 // DrawText draws text at the specified position using the regular font
 // The Y coordinate is the TOP of the text (not baseline), adjusted for proper alignment
 func DrawText(screen *ebiten.Image, str string, x, y int, clr color.Color) {
+	if globalG1Font != nil && globalG1Font.supports(str) {
+		globalG1Font.drawString(screen, str, G1FontMediumNormal, x, y, 1.0, clr)
+		return
+	}
 	if globalFontManager == nil || globalFontManager.Regular == nil {
 		return
 	}
@@ -186,6 +190,10 @@ func DrawText(screen *ebiten.Image, str string, x, y int, clr color.Color) {
 // DrawTextBold draws text at the specified position using the bold font
 // The Y coordinate is the TOP of the text (not baseline), adjusted for proper alignment
 func DrawTextBold(screen *ebiten.Image, str string, x, y int, clr color.Color) {
+	if globalG1Font != nil && globalG1Font.supports(str) {
+		globalG1Font.drawString(screen, str, G1FontMediumBold, x, y, 1.0, clr)
+		return
+	}
 	if globalFontManager == nil || globalFontManager.Bold == nil {
 		return
 	}
@@ -200,6 +208,10 @@ func DrawTextBold(screen *ebiten.Image, str string, x, y int, clr color.Color) {
 
 // MeasureText returns the width and height of text in pixels
 func MeasureText(str string) (int, int) {
+	if globalG1Font != nil && globalG1Font.supports(str) {
+		return globalG1Font.drawString(nil, str, G1FontMediumNormal, 0, 0, 1.0, nil),
+			g1FontHeight(G1FontMediumNormal)
+	}
 	if globalFontManager == nil || globalFontManager.RegularFace == nil {
 		// Fallback estimate
 		return len(str) * 6, 12
@@ -215,6 +227,10 @@ func MeasureText(str string) (int, int) {
 // DrawTextBoldScaled draws bold text scaled by the given factor.
 // x, y is the top-left of the text bounding box (same convention as DrawTextBold).
 func DrawTextBoldScaled(screen *ebiten.Image, str string, x, y int, scale float64, clr color.Color) {
+	if globalG1Font != nil && globalG1Font.supports(str) {
+		globalG1Font.drawString(screen, str, G1FontMediumBold, x, y, scale, clr)
+		return
+	}
 	if globalFontManager == nil || globalFontManager.Bold == nil {
 		return
 	}
@@ -228,6 +244,10 @@ func DrawTextBoldScaled(screen *ebiten.Image, str string, x, y int, scale float6
 
 // MeasureTextBold returns the width and height of bold text in pixels
 func MeasureTextBold(str string) (int, int) {
+	if globalG1Font != nil && globalG1Font.supports(str) {
+		return globalG1Font.drawString(nil, str, G1FontMediumBold, 0, 0, 1.0, nil),
+			g1FontHeight(G1FontMediumBold)
+	}
 	if globalFontManager == nil || globalFontManager.BoldFace == nil {
 		// Fallback estimate (slightly wider than regular)
 		return len(str) * 7, 12

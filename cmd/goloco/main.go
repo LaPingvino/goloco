@@ -158,6 +158,10 @@ func NewGame() *Game {
 			log.Printf("Loaded %d sprites from G1.DAT", g1.GetSpriteCount())
 			r.G1 = g1
 
+			// Authentic Locomotion bitmap text from the g1 glyph sprites;
+			// overrides the TTF/embedded fallback set up by InitFonts.
+			ui.InitG1Font(g1)
+
 			// Populate the UI drawing palette from the loaded G1 so window
 			// backgrounds, buttons and other widgets more closely match the
 			// original Locomotion look-and-feel.
