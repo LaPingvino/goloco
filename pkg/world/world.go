@@ -92,13 +92,14 @@ type World struct {
 	animTick int // incremented every frame; drives water wave animation
 
 	// 2-pass blend rendering (water, glass, etc.)
-	worldBuf     *ebiten.Image      // pass-1 target: all opaque sprites
-	blendBuf     *ebiten.Image      // pass-2 target: blend-mode overlay
-	blendOps     []worldBlendOp     // queued during pass 1
-	consHead     ConstructionHead   // track construction head
-	consStack    []placedPiece      // undo stack for placed pieces
-	highlightOps []worldHighlightOp // ripple/wave sprites drawn after blend
-	waterOps     []worldHighlightOp // water surface ops drawn after all terrain (pass 1.5)
+	worldBuf      *ebiten.Image      // pass-1 target: all opaque sprites
+	blendBuf      *ebiten.Image      // pass-2 target: blend-mode overlay
+	blendOps      []worldBlendOp     // queued during pass 1
+	consHead      ConstructionHead   // shared track/road construction head
+	consStack     []placedPiece      // undo stack for placed track pieces
+	consRoadStack []placedPiece      // undo stack for placed road pieces
+	highlightOps  []worldHighlightOp // ripple/wave sprites drawn after blend
+	waterOps      []worldHighlightOp // water surface ops drawn after all terrain (pass 1.5)
 
 	// RenderIssues tracks tiles where rendering failed silently during the last Draw().
 	// Accumulated per-frame; exposed via WorstRenderIssue() for --diag targeting.

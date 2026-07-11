@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"image/color"
 	"image"
+	"image/color"
 	"image/png"
 	"log"
 	"os"
@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	defaultWidth  = 800
-	defaultHeight = 600
+	defaultWidth    = 800
+	defaultHeight   = 600
 	edgeScrollZone  = 20  // px from screen edge that triggers edge scroll
 	edgeScrollSpeed = 8.0 // world-space pixels per frame at zoom 0
 )
@@ -40,22 +40,22 @@ const (
 )
 
 type Game struct {
-	w             *world.World
-	titleWorld    *world.World // preserved title-screen world; restored on Quit to Menu
-	r             *render.Renderer
-	toolbar       *ui.Toolbar
-	windowMgr     *ui.SimpleWindowManager
-	objMgr        *objects.ObjectManager
-	audioMgr      *audio.Manager
-	titleSeq      *title.Sequence
-	gameState     *game.GameState
-	dropdown      *ui.DropdownMenu
-	mouseX        int
-	mouseY        int
+	w                   *world.World
+	titleWorld          *world.World // preserved title-screen world; restored on Quit to Menu
+	r                   *render.Renderer
+	toolbar             *ui.Toolbar
+	windowMgr           *ui.SimpleWindowManager
+	objMgr              *objects.ObjectManager
+	audioMgr            *audio.Manager
+	titleSeq            *title.Sequence
+	gameState           *game.GameState
+	dropdown            *ui.DropdownMenu
+	mouseX              int
+	mouseY              int
 	dataDir             string
 	inTitleScreen       bool
-	soundEnabled        bool // whether sound effects are on
-	musicEnabled        bool // whether music is on
+	soundEnabled        bool   // whether sound effects are on
+	musicEnabled        bool   // whether music is on
 	currentScenarioPath string // path of the currently loaded scenario/save
 	saveMsg             string // transient "Game Saved!" status overlay
 	saveMsgFrames       int    // frames remaining to show saveMsg
@@ -76,14 +76,12 @@ type Game struct {
 	speedMult int // 1, 2, 4, or 8
 
 	// Build mode (track/road placement)
-	buildMode     int // buildModeNone / buildModeTrack / buildModeRoad
-	consCurve     int // construction curve selection: -4 (left large) … 0 … +4
-	consSlope     int // construction slope selection: -2 (steep down) … 0 … +2
-	buildPieceID  int // track: 0=straight,2=LCurveVS,3=RCurveVS; road: 0=straight
-	buildRotation int // 0-3
-	buildObjID    int // index into TrackObjects / RoadObjects
-	hoverTileX    int // tile under cursor in build mode (-1 if invalid)
-	hoverTileY    int
+	buildMode  int // buildModeNone / buildModeTrack / buildModeRoad
+	consCurve  int // construction curve selection: -4 (left large) … 0 … +4
+	consSlope  int // construction slope selection: -2 (steep down) … 0 … +2
+	buildObjID int // index into TrackObjects / RoadObjects
+	hoverTileX int // tile under cursor in build mode (-1 if invalid)
+	hoverTileY int
 
 	// Diagnostic crop: when set, save a 480×360 PNG centred on diagTileX/Y after the next Draw.
 	// diagQuit=true means quit afterwards (CLI --diag mode); false keeps the game running (F12).
@@ -105,11 +103,11 @@ type Game struct {
 
 	// Loading-screen state.  When loadingSpriteIDs != nil, the game is in the
 	// sprite-preload phase and will draw the OpenLoco-style loading screen.
-	loadingSpriteIDs  []int   // full list collected from the world
-	loadingStep       int     // next index to process
-	loadingStepSize   int     // sprites per frame
-	loadingCaption    string  // text shown in the loading window caption
-	loadingStyleFlip  bool    // alternates between train style 0 and 1 each load
+	loadingSpriteIDs []int  // full list collected from the world
+	loadingStep      int    // next index to process
+	loadingStepSize  int    // sprites per frame
+	loadingCaption   string // text shown in the loading window caption
+	loadingStyleFlip bool   // alternates between train style 0 and 1 each load
 }
 
 func findLocoDataDir() string {
@@ -370,9 +368,9 @@ func NewGame() *Game {
 		musicEnabled:  true,
 		sw:            defaultWidth,
 		sh:            defaultHeight,
-		speedMult:  1,
-		hoverTileX: -1,
-		hoverTileY: -1,
+		speedMult:     1,
+		hoverTileX:    -1,
+		hoverTileY:    -1,
 		// Begin preloading title sprites on the first Draw() frame.
 		loadingSpriteIDs: titleSpriteIDs,
 		loadingStep:      0,
@@ -430,17 +428,14 @@ func (g *Game) Update() error {
 		g.hoverTileX, g.hoverTileY = g.w.ScreenToTile(g.mouseX, g.mouseY)
 		// Keyboard shortcuts for build mode
 		if g.inKeyJustPressed(ebiten.KeyR) {
-			if g.buildMode == buildModeTrack {
-				g.w.RotateConstructionHead()
-			} else {
-				g.buildRotation = (g.buildRotation + 1) & 3
-			}
+			// Both track and road drive the shared construction head.
+			g.w.RotateConstructionHead()
 		}
 		if g.inKeyJustPressed(ebiten.KeyX) {
-			if g.buildMode == buildModeTrack {
+			if g.buildMode == buildModeRoad {
+				g.w.UndoLastRoad()
+			} else {
 				g.w.UndoLastTrack()
-			} else if g.hoverTileX >= 0 {
-				g.w.RemoveLastRoad(g.hoverTileX, g.hoverTileY)
 			}
 		}
 		if g.inKeyJustPressed(ebiten.KeyEscape) {
@@ -472,11 +467,9 @@ func (g *Game) Update() error {
 			if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
 				g.toolbar.Buttons[btnIdx].Pressed = true
 				g.handleToolbarButton(btnIdx)
-			} else if g.buildMode == buildModeTrack && g.hoverTileX >= 0 {
-				// Track mode: clicking the map sets the construction head.
+			} else if g.buildMode != buildModeNone && g.hoverTileX >= 0 {
+				// Track/road mode: clicking the map sets the construction head.
 				g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
-			} else if g.buildMode == buildModeRoad && g.hoverTileX >= 0 {
-				g.placeBuildPiece(g.hoverTileX, g.hoverTileY)
 			}
 		}
 	}
@@ -618,7 +611,6 @@ const (
 	titleOptionsH = 15
 )
 
-
 func (g *Game) handleTitleMenuClick(mx, my int) {
 	// --- Exit button: bottom-right corner ---
 	exitX := g.sw - titleExitW
@@ -747,42 +739,10 @@ func (g *Game) handleToolbarButton(idx int) {
 
 	case "Road":
 		g.buildMode = buildModeRoad
-		g.buildPieceID = 0
-		g.buildRotation = 0
 		g.buildObjID = 0
-		win = ui.NewSimpleWindow("Road Construction", 10, 40, 200, 180)
-		win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, r *render.Renderer) {
-			pieces := []struct {
-				name    string
-				pieceID int
-				rot     int
-			}{
-				{"Straight NE/SW", 0, 0},
-				{"Straight NW/SE", 0, 1},
-			}
-			ui.DrawText(screen, "Road piece:", cx+6, cy+8, color.RGBA{220, 220, 180, 255})
-			for i, p := range pieces {
-				var col color.Color = color.White
-				if g.buildPieceID == p.pieceID && g.buildRotation == p.rot {
-					col = color.RGBA{255, 230, 60, 255}
-				}
-				ui.DrawText(screen, p.name, cx+8, cy+24+i*18, col)
-			}
-			ui.DrawText(screen, fmt.Sprintf("Rotation: %d  [R]=rotate", g.buildRotation),
-				cx+6, cy+80, color.RGBA{180, 200, 180, 255})
-			ui.DrawText(screen, "[X]=remove  [Esc]=done",
-				cx+6, cy+96, color.RGBA{160, 160, 160, 255})
-		}
-		win.OnContentClick = func(relX, relY int) {
-			pieces := []struct{ pieceID, rot int }{
-				{0, 0}, {0, 1},
-			}
-			idx := (relY - 24) / 18
-			if relY >= 24 && idx >= 0 && idx < len(pieces) {
-				g.buildPieceID = pieces[idx].pieceID
-				g.buildRotation = pieces[idx].rot
-			}
-		}
+		g.consCurve = 0
+		g.consSlope = 0
+		win = g.newConstructionWindow()
 	case "Port/Airport":
 		log.Println("[Game] Port/Airport construction menu (not yet implemented)")
 		return
@@ -1021,16 +981,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// Ghost preview for build mode
+	// Ghost preview for build mode (both chain from the construction head).
 	if g.buildMode == buildModeTrack {
 		g.w.DrawConstructionGhost(screen, g.consSelectedTrackID(), g.buildObjID)
-	} else if false && g.hoverTileX >= 0 {
-		g.w.DrawTrackGhost(screen, g.hoverTileX, g.hoverTileY,
-			g.buildPieceID, g.buildRotation, g.buildObjID)
-	}
-	if g.buildMode == buildModeRoad && g.hoverTileX >= 0 {
-		g.w.DrawRoadGhost(screen, g.hoverTileX, g.hoverTileY,
-			g.buildPieceID, g.buildRotation, g.buildObjID)
+	} else if g.buildMode == buildModeRoad {
+		g.w.DrawRoadConstructionGhost(screen, g.consSelectedRoadID(), g.buildObjID)
 	}
 
 	if g.inTitleScreen {
@@ -1189,14 +1144,14 @@ const ColourNone = -1
 
 // OpenLoco Colour enum indices (Colour.h).
 const (
-	ColourBlack          = 0
-	ColourGrey           = 1
-	ColourWhite          = 2
+	ColourBlack           = 0
+	ColourGrey            = 1
+	ColourWhite           = 2
 	ColourMutedDarkPurple = 3
-	ColourMutedPurple    = 4
-	ColourPurple         = 5
-	ColourDarkBlue       = 6
-	ColourBlue           = 7
+	ColourMutedPurple     = 4
+	ColourPurple          = 5
+	ColourDarkBlue        = 6
+	ColourBlue            = 7
 )
 
 // drawUISprite draws a G1 sprite at (x,y) in screen coordinates.
@@ -1204,7 +1159,8 @@ const (
 // The sprite's G1 xOffset/yOffset are applied, matching OpenLoco's drawImage().
 //
 // OpenLoco reference: src/OpenLoco/src/Graphics/SoftwareDrawingContext.cpp drawImage()
-//   → PaletteMap::getForColour() → G1[2170+colour] 256-byte remap table
+//
+//	→ PaletteMap::getForColour() → G1[2170+colour] 256-byte remap table
 func (g *Game) drawUISprite(screen *ebiten.Image, spriteID, x, y, colour int) {
 	var img *ebiten.Image
 	if colour == ColourNone {
@@ -1393,34 +1349,6 @@ func goLocoSavesDir() string {
 	dir := filepath.Join(home, ".goloco", "saves")
 	_ = os.MkdirAll(dir, 0o755)
 	return dir
-}
-
-// placeBuildPiece places a track or road element at tile (tx, ty) based on current build state.
-func (g *Game) placeBuildPiece(tx, ty int) {
-	baseZ := g.w.GetTileBaseZ(tx, ty)
-	if baseZ < 0 {
-		return
-	}
-	b := uint8(baseZ)
-	if g.buildMode == buildModeTrack {
-		g.w.AddTrack(tx, ty, scenario.TrackElement{
-			TrackObjectID: uint8(g.buildObjID),
-			TrackID:       uint8(g.buildPieceID),
-			Rotation:      uint8(g.buildRotation),
-			SequenceIndex: 0,
-			BaseZ:         b,
-			ClearZ:        b + 4,
-		})
-	} else {
-		g.w.AddRoad(tx, ty, scenario.RoadElement{
-			RoadObjectID:  uint8(g.buildObjID),
-			RoadID:        uint8(g.buildPieceID),
-			Rotation:      uint8(g.buildRotation),
-			SequenceIndex: 0,
-			BaseZ:         b,
-			ClearZ:        b + 4,
-		})
-	}
 }
 
 // quitToMenu restores the title screen world and restarts the title sequence.
@@ -1940,7 +1868,7 @@ func (g *Game) openFileWindow(title string, scenariosOnly bool) {
 	// Colour scheme — all text is dark on the beige window background so it
 	// stays readable regardless of the global palette.
 	var (
-		colText    = color.RGBA{20, 12, 4, 255}    // dark on beige — main text
+		colText    = color.RGBA{20, 12, 4, 255}     // dark on beige — main text
 		colLight   = color.RGBA{240, 238, 232, 255} // light — text on dark bg
 		colDir     = color.RGBA{25, 60, 140, 255}   // blue — directory labels
 		colSep     = color.RGBA{140, 132, 115, 255} // panel separator line
@@ -1967,8 +1895,6 @@ func (g *Game) openFileWindow(title string, scenariosOnly bool) {
 	fileScroll := 0
 	lastFileIdx := -1
 	var lastClickTime time.Time
-
-
 
 	rescanDir := func(dir string) {
 		currentDir = dir
@@ -2394,6 +2320,19 @@ func main() {
 		}
 		log.Printf("[ConsTest] head after sequence: %+v", game.w.ConstructionHeadState())
 	}
+	if os.Getenv("GOLOCO_OPEN") == "road" && game.w != nil {
+		// Headless road construction test: chain straight + very-small curves.
+		game.buildMode = buildModeRoad
+		game.windowMgr.OpenWindow(game.newConstructionWindow())
+		mw, mh := game.w.GetMapSize()
+		game.w.SetConstructionHead(mw/2, mh/2)
+		for _, id := range []int{0, 2, 0, 1, 0} {
+			if !game.w.PlaceRoadAtHead(id, 0) {
+				log.Printf("[RoadConsTest] piece %d not placeable at head %+v", id, game.w.ConstructionHeadState())
+			}
+		}
+		log.Printf("[RoadConsTest] head after sequence: %+v", game.w.ConstructionHeadState())
+	}
 
 	ebiten.SetWindowSize(defaultWidth, defaultHeight)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
@@ -2463,9 +2402,148 @@ func (g *Game) consSelectedTrackID() int {
 	return -1
 }
 
+// consRoadCandidates maps the selected curve/slope to road piece ids. Roads
+// support only straight, very-small curves and (steep) slopes — VERIFIED
+// against upstream kRoadCoordinates comments (straight=0, leftCurveVerySmall=1,
+// rightCurveVerySmall=2, straightSlopeUp=5, straightSlopeDown=6,
+// straightSteepSlopeUp=7, straightSteepSlopeDown=8).
+func consRoadCandidates(curve, slope int) []int {
+	if curve == 0 {
+		switch slope {
+		case -2:
+			return []int{8} // straightSteepSlopeDown
+		case -1:
+			return []int{6} // straightSlopeDown
+		case 1:
+			return []int{5} // straightSlopeUp
+		case 2:
+			return []int{7} // straightSteepSlopeUp
+		default:
+			return []int{0} // straight
+		}
+	}
+	if slope != 0 {
+		return nil // curved slopes not supported for roads
+	}
+	switch curve {
+	case -1:
+		return []int{1} // leftCurveVerySmall
+	case 1:
+		return []int{2} // rightCurveVerySmall
+	}
+	return nil
+}
+
+// consSelectedRoadID resolves the current curve/slope selection to the first
+// placeable road id at the head, or -1.
+func (g *Game) consSelectedRoadID() int {
+	for _, id := range consRoadCandidates(g.consCurve, g.consSlope) {
+		if g.w.CanPlaceRoadAtHead(id) {
+			return id
+		}
+	}
+	return -1
+}
+
+// --- Mode-aware dispatch (track vs road) for the shared construction window --
+
+func (g *Game) consIsRoad() bool { return g.buildMode == buildModeRoad }
+
+func (g *Game) consCandidates(curve, slope int) []int {
+	if g.consIsRoad() {
+		return consRoadCandidates(curve, slope)
+	}
+	return consTrackCandidates(curve, slope)
+}
+
+func (g *Game) consCanPlace(id int) bool {
+	if g.consIsRoad() {
+		return g.w.CanPlaceRoadAtHead(id)
+	}
+	return g.w.CanPlaceTrackAtHead(id)
+}
+
+func (g *Game) consSelectedID() int {
+	if g.consIsRoad() {
+		return g.consSelectedRoadID()
+	}
+	return g.consSelectedTrackID()
+}
+
+func (g *Game) consPlace(id int) {
+	if g.consIsRoad() {
+		g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
+	} else {
+		g.w.PlaceTrackAtHead(id, uint8(g.buildObjID))
+	}
+}
+
+func (g *Game) consUndo() {
+	if g.consIsRoad() {
+		g.w.UndoLastRoad()
+	} else {
+		g.w.UndoLastTrack()
+	}
+}
+
+// consObjectNames returns the object display names for the current mode,
+// indexed by object slot (empty string for unused slots).
+func (g *Game) consObjectNames() []string {
+	var names []string
+	if g.r == nil || g.r.ObjMgr == nil {
+		return names
+	}
+	if g.consIsRoad() {
+		for _, o := range g.r.ObjMgr.RoadObjects {
+			if o != nil {
+				names = append(names, o.Name)
+			} else {
+				names = append(names, "")
+			}
+		}
+	} else {
+		for _, o := range g.r.ObjMgr.TrackObjects {
+			if o != nil {
+				names = append(names, o.Name)
+			} else {
+				names = append(names, "")
+			}
+		}
+	}
+	return names
+}
+
+// consObjName is the current object slot's display name, or "(none)".
+func (g *Game) consObjName() string {
+	names := g.consObjectNames()
+	if g.buildObjID >= 0 && g.buildObjID < len(names) && names[g.buildObjID] != "" {
+		return names[g.buildObjID]
+	}
+	return "(none)"
+}
+
+// consCycleType advances g.buildObjID to the next populated object slot.
+func (g *Game) consCycleType(dir int) {
+	names := g.consObjectNames()
+	n := len(names)
+	if n == 0 {
+		return
+	}
+	for k := 0; k < n; k++ {
+		g.buildObjID = ((g.buildObjID+dir)%n + n) % n
+		if names[g.buildObjID] != "" {
+			return
+		}
+	}
+}
+
 func (g *Game) newConstructionWindow() *ui.SimpleWindow {
-	const winW, winH = 220, 160
-	win := ui.NewSimpleWindow("Track Construction", 10, 40, winW, winH)
+	const winW, winH = 220, 182
+	title := "Track Construction"
+	if g.consIsRoad() {
+		title = "Road Construction"
+	}
+	win := ui.NewSimpleWindow(title, 10, 40, winW, winH)
 
 	// Sprite ids for the two button rows (ImageIds construction_*).
 	curveSprites := []int{2346, 2344, 2342, 2340, 2335, 2341, 2343, 2345, 2347}
@@ -2474,7 +2552,7 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 	slopeValues := []int{-2, -1, 0, 1, 2}
 
 	const btnS = 22 // button size
-	curveY, slopeY, actionY := 6, 34, 66
+	curveY, slopeY, actionY, typeY := 6, 34, 66, 122
 
 	win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, r *render.Renderer) {
 		drawSpriteButton := func(x, y, spriteID int, selected, enabled bool) {
@@ -2495,8 +2573,8 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 		for i, sp := range curveSprites {
 			sel := g.consCurve == curveValues[i]
 			en := false
-			for _, id := range consTrackCandidates(curveValues[i], 0) {
-				if g.w.CanPlaceTrackAtHead(id) {
+			for _, id := range g.consCandidates(curveValues[i], 0) {
+				if g.consCanPlace(id) {
 					en = true
 					break
 				}
@@ -2508,8 +2586,8 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 		for i, sp := range slopeSprites {
 			sel := g.consSlope == slopeValues[i]
 			en := false
-			for _, id := range consTrackCandidates(0, slopeValues[i]) {
-				if g.w.CanPlaceTrackAtHead(id) {
+			for _, id := range g.consCandidates(0, slopeValues[i]) {
+				if g.consCanPlace(id) {
 					en = true
 					break
 				}
@@ -2519,7 +2597,7 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 
 		// Action row
 		head := g.w.ConstructionHeadState()
-		canBuild := head.Active && g.consSelectedTrackID() >= 0
+		canBuild := head.Active && g.consSelectedID() >= 0
 		drawButton(screen, cx+6, cy+actionY, 62, 20, "Build", false, canBuild)
 		drawButton(screen, cx+72, cy+actionY, 62, 20, "Undo", false, true)
 		drawButton(screen, cx+138, cy+actionY, 62, 20, "Rotate", false, head.Active)
@@ -2532,6 +2610,11 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 		}
 		ui.DrawText(screen, status, cx+6, cy+actionY+28, color.RGBA{220, 220, 180, 255})
 		ui.DrawText(screen, "[R]=rotate  [X]=undo  [Esc]=done", cx+6, cy+actionY+42, color.RGBA{160, 160, 160, 255})
+
+		// Type picker: prev/next cycling button showing the current object name.
+		drawButton(screen, cx+6, cy+typeY, 20, 20, "<", false, true)
+		drawButton(screen, cx+cw-26, cy+typeY, 20, 20, ">", false, true)
+		drawButton(screen, cx+30, cy+typeY, cw-62, 20, g.consObjName(), false, true)
 	}
 
 	win.OnContentClick = func(relX, relY int) {
@@ -2558,13 +2641,22 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 		if relY >= actionY && relY < actionY+20 {
 			switch {
 			case relX >= 6 && relX < 68:
-				if id := g.consSelectedTrackID(); id >= 0 {
-					g.w.PlaceTrackAtHead(id, uint8(g.buildObjID))
+				if id := g.consSelectedID(); id >= 0 {
+					g.consPlace(id)
 				}
 			case relX >= 72 && relX < 134:
-				g.w.UndoLastTrack()
+				g.consUndo()
 			case relX >= 138 && relX < 200:
 				g.w.RotateConstructionHead()
+			}
+			return
+		}
+		if relY >= typeY && relY < typeY+20 {
+			switch {
+			case relX >= 6 && relX < 26:
+				g.consCycleType(-1)
+			case relX >= winW-26 && relX < winW-6:
+				g.consCycleType(1)
 			}
 		}
 	}
