@@ -885,6 +885,128 @@ func (w *World) ScreenToTile(sx, sy int) (int, int) {
 	return tileX, tileY
 }
 
+
+// ── Surface edge smoothing ────────────────────────────────────────────────────
+// OpenLoco reference: src/OpenLoco/src/Paint/PaintSurface.cpp
+// paintSurfaceSmoothenEdge — where two tiles meet coplanar along an edge, the
+// neighbour's blend image (locals 19-24 of its growth block) is drawn through
+// a per-edge/slope mask sprite so terrain types fade into each other.
+
+// surfaceSmoothMaskBase[edge] = G1 index of surfaceSmooth{edge}Slope0.
+var surfaceSmoothMaskBase = [4]int{3784, 3765, 3803, 3746}
+
+// Per-corner tint tables indexed by display slope (k4FDA5E/71/84/97).
+var (
+	tintBottomLeft  = [19]uint8{2, 5, 1, 4, 2, 5, 1, 2, 2, 4, 1, 2, 1, 3, 0, 3, 1, 5, 0}
+	tintTopLeft     = [19]uint8{2, 5, 2, 4, 2, 5, 1, 1, 3, 4, 3, 2, 1, 2, 0, 3, 1, 5, 0}
+	tintTopRight    = [19]uint8{2, 2, 2, 4, 0, 0, 1, 1, 3, 4, 3, 5, 1, 2, 2, 3, 1, 5, 0}
+	tintBottomRight = [19]uint8{2, 2, 1, 4, 0, 0, 1, 2, 2, 4, 1, 5, 1, 3, 2, 3, 1, 5, 0}
+)
+
+// cornerHeightsTable[slope] = corner raises {top, right, bottom, left} in MicroZ.
+var cornerHeightsTable = [32][4]uint8{
+	{0, 0, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}, {0, 0, 1, 1},
+	{1, 0, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, {1, 0, 1, 1},
+	{0, 1, 0, 0}, {0, 1, 1, 0}, {0, 1, 0, 1}, {0, 1, 1, 1},
+	{1, 1, 0, 0}, {1, 1, 1, 0}, {1, 1, 0, 1}, {1, 1, 1, 1},
+	{0, 0, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}, {0, 0, 1, 1},
+	{1, 0, 0, 0}, {1, 0, 1, 0}, {1, 0, 0, 1}, {1, 0, 1, 2},
+	{0, 1, 0, 0}, {0, 1, 1, 0}, {0, 1, 0, 1}, {0, 1, 2, 1},
+	{1, 1, 0, 0}, {1, 2, 1, 0}, {2, 1, 0, 1}, {1, 1, 1, 1},
+}
+
+// smoothNeighbourOffsets[edge] = tile delta at rotation 0: SW, SE, NW, NE.
+var smoothNeighbourOffsets = [4][2]int{{1, 0}, {0, 1}, {0, -1}, {-1, 0}}
+
+func (w *World) paintSurfaceSmoothing(dst *ebiten.Image, x, y int, t *tile, land *objects.LandObject, drawX, drawY, scale float64) {
+	selfSnow := t.slope >> 5
+	if selfSnow >= 3 { // snow blending not supported yet
+		return
+	}
+	selfSlope := int(t.slope & 0x1F)
+	dsSelf := int(slopeToDisplaySlope[selfSlope])
+	selfMicro := int(t.baseZ) / 4
+	sc := cornerHeightsTable[selfSlope]
+
+	for edge := 0; edge < 4; edge++ {
+		nb := w.getTile(x+smoothNeighbourOffsets[edge][0], y+smoothNeighbourOffsets[edge][1])
+		if nb == nil || nb.slope>>5 >= 4 {
+			continue
+		}
+		nbSlope := int(nb.slope & 0x1F)
+		nbMicro := int(nb.baseZ) / 4
+		nc := cornerHeightsTable[nbSlope]
+
+		// Only smooth when the shared edge is coplanar (matching corner heights).
+		var s0, n0, s1, n1 int
+		switch edge {
+		case 0: // SW: self L/B vs neighbour T/R
+			s0, n0 = selfMicro+int(sc[3]), nbMicro+int(nc[0])
+			s1, n1 = selfMicro+int(sc[2]), nbMicro+int(nc[1])
+		case 1: // SE: self R/B vs neighbour T/L
+			s0, n0 = selfMicro+int(sc[1]), nbMicro+int(nc[0])
+			s1, n1 = selfMicro+int(sc[2]), nbMicro+int(nc[3])
+		case 2: // NW: self T/L vs neighbour R/B
+			s0, n0 = selfMicro+int(sc[0]), nbMicro+int(nc[1])
+			s1, n1 = selfMicro+int(sc[3]), nbMicro+int(nc[2])
+		case 3: // NE: self T/R vs neighbour L/B
+			s0, n0 = selfMicro+int(sc[0]), nbMicro+int(nc[3])
+			s1, n1 = selfMicro+int(sc[1]), nbMicro+int(nc[2])
+		}
+		if s0 != n0 || s1 != n1 {
+			continue
+		}
+
+		dsNb := int(slopeToDisplaySlope[nbSlope])
+		var dh, cl uint8
+		switch edge {
+		case 0:
+			dh, cl = tintBottomLeft[dsSelf], tintTopRight[dsNb]
+		case 1:
+			dh, cl = tintBottomRight[dsSelf], tintTopLeft[dsNb]
+		case 2:
+			dh, cl = tintTopLeft[dsSelf], tintBottomRight[dsNb]
+		case 3:
+			dh, cl = tintTopRight[dsSelf], tintBottomLeft[dsNb]
+		}
+
+		nbLand := w.renderer.ObjMgr.GetLandObjectByIndex(int(nb.terrainIndex))
+		if nbLand == nil || nbLand.ImageOffset == 0 {
+			continue
+		}
+
+		if t.terrainIndex == nb.terrainIndex && t.growthStage == nb.growthStage {
+			if cl == dh {
+				continue // same tint — nothing to blend
+			}
+			if land.HasFlags(objects.LandFlagHasSharpSlopeTransition) {
+				continue
+			}
+		} else {
+			if land.HasFlags(objects.LandFlagDisableSmoothTileTransition) ||
+				nbLand.HasFlags(objects.LandFlagDisableSmoothTileTransition) {
+				continue
+			}
+		}
+
+		maskIdx := surfaceSmoothMaskBase[edge] + dsSelf
+		colourLocal := nbLand.GetFlatTerrainSpriteIndex() +
+			int(nb.growthStage)*int(nbLand.NumImagesPerGrowthStage) + 19 + int(cl)
+		img := w.renderer.GetMaskedSpriteAligned(int(nbLand.ImageOffset)+colourLocal, maskIdx)
+		if img == nil {
+			continue
+		}
+		_, _, mXO, mYO, ok := w.renderer.GetSpriteInfo(maskIdx)
+		if !ok {
+			continue
+		}
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Scale(scale, scale)
+		op.GeoM.Translate(drawX+float64(mXO)*scale, drawY+float64(mYO)*scale)
+		dst.DrawImage(img, op)
+	}
+}
+
 // GetTileBaseZ returns the baseZ of tile (x, y), or -1 if out of bounds.
 func (w *World) GetTileBaseZ(x, y int) int {
 	t := w.getTile(x, y)
@@ -2444,6 +2566,9 @@ func (w *World) Draw(screen *ebiten.Image) {
 								drawX+float64(xOff)*scale,
 								terrainDrawY+float64(yOff)*scale)
 							w.worldBuf.DrawImage(img, op)
+
+							// Blend neighbouring terrain types along coplanar edges
+							w.paintSurfaceSmoothing(w.worldBuf, x, y, &t, land, drawX, terrainDrawY, scale)
 
 							// Draw cliff edges for height transitions
 							if land.CliffEdgeImage > 0 {

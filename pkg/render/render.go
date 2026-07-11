@@ -361,6 +361,41 @@ func (r *Renderer) GetMaskedSprite(spriteID, maskID int) *ebiten.Image {
 	return tmp
 }
 
+// GetMaskedSpriteAligned composes the colour sprite through the mask sprite,
+// honouring each sprite's in-world x/y offsets (unlike GetMaskedSprite, which
+// assumes identical anchors). The result is anchored at the MASK's offsets —
+// draw it at (tileX + mask.XOffset, tileY + mask.YOffset).
+// Used for terrain edge smoothing (PaintSurface.cpp hasMaskedImage).
+func (r *Renderer) GetMaskedSpriteAligned(colourID, maskID int) *ebiten.Image {
+	key := -(colourID*100000 + maskID + 1) // negative keyspace: no clash with GetMaskedSprite
+	if img, ok := r.maskedSpriteCache[key]; ok {
+		return img
+	}
+	colour := r.GetSprite(colourID)
+	mask := r.GetSprite(maskID)
+	if colour == nil || mask == nil {
+		return nil
+	}
+	_, _, cXO, cYO, ok1 := r.GetSpriteInfo(colourID)
+	_, _, mXO, mYO, ok2 := r.GetSpriteInfo(maskID)
+	if !ok1 || !ok2 {
+		return nil
+	}
+
+	mw, mh := mask.Bounds().Dx(), mask.Bounds().Dy()
+	tmp := ebiten.NewImage(mw, mh)
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(float64(cXO-mXO), float64(cYO-mYO))
+	tmp.DrawImage(colour, op)
+
+	mop := &ebiten.DrawImageOptions{}
+	mop.Blend = ebiten.BlendDestinationIn
+	tmp.DrawImage(mask, mop)
+
+	r.maskedSpriteCache[key] = tmp
+	return tmp
+}
+
 // Clear fills the screen with transparent black (palette index 0).
 //
 // OpenLoco reference: src/OpenLoco/src/Graphics/SoftwareDrawingContext.cpp
