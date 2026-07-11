@@ -586,6 +586,7 @@ func (g *Game) Update() error {
 	if !g.isPaused {
 		for i := 0; i < g.speedMult; i++ {
 			g.w.Update()
+			g.w.TickVehicles() // gameplay-only: advance track-following vehicles
 			if g.gameState != nil {
 				g.gameState.Update()
 				g.checkObjective()
@@ -2349,6 +2350,9 @@ func main() {
 			}
 		}
 		log.Printf("[ConsTest] head after sequence: %+v", game.w.ConstructionHeadState())
+		if game.w.SpawnTestVehicle(0) {
+			log.Printf("[ConsTest] test vehicle spawned")
+		}
 	}
 	if os.Getenv("GOLOCO_OPEN") == "road" && game.w != nil {
 		// Headless road construction test: chain straight + very-small curves.

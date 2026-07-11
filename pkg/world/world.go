@@ -109,6 +109,10 @@ type World struct {
 
 	// step-based full-map PNG save (one chunk per frame)
 	mapSave *mapSaveState
+
+	// simVehicles are minimal track-following vehicles advanced by TickVehicles
+	// (gameplay simulation). Each drives one or more w.entities body sprites.
+	simVehicles []*SimVehicle
 }
 
 // mapSaveState holds in-progress full-map PNG render state.

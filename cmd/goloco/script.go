@@ -88,7 +88,8 @@ func (s *inputScript) step() {
 	s.leftJust = false
 	s.rightJust = false
 	s.wheelDY = 0
-	s.shotRequest = ""
+	// shotRequest is NOT cleared here: multiple Updates can run between two
+	// Draws at low FPS; only scriptShotName (called from Draw) consumes it.
 	for k := range s.keysJust {
 		delete(s.keysJust, k)
 	}
