@@ -1280,19 +1280,15 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 	optX := g.sw - titleOptionsW
 	optHovered := g.mouseX >= optX && g.mouseX < g.sw &&
 		g.mouseY >= 0 && g.mouseY < titleOptionsH
-	optBg := color.RGBA{60, 60, 100, 200}
+	// OpenLoco's TitleOptions window is transparent — plain white text with a
+	// subtle darkening only on hover (the solid coloured boxes read as
+	// misrendered rectangles).
 	if optHovered {
-		optBg = color.RGBA{80, 80, 130, 220}
+		fillRect(screen, float64(optX), 0, float64(titleOptionsW), float64(titleOptionsH), color.RGBA{0, 0, 0, 90})
 	}
-	fillRect(screen, float64(optX), 0, float64(titleOptionsW), float64(titleOptionsH), optBg)
-	fillRect(screen, float64(optX), 0, float64(titleOptionsW), 1, color.RGBA{120, 120, 180, 255})
-	fillRect(screen, float64(optX), 0, 1, float64(titleOptionsH), color.RGBA{120, 120, 180, 255})
-	fillRect(screen, float64(optX), float64(titleOptionsH-1), float64(titleOptionsW), 1, color.RGBA{30, 30, 50, 255})
-	fillRect(screen, float64(g.sw-1), 0, 1, float64(titleOptionsH), color.RGBA{30, 30, 50, 255})
 	optLabel := "Options"
 	optLabelW, _ := ui.MeasureText(optLabel)
-	optLabelX := optX + (titleOptionsW-optLabelW)/2
-	ui.DrawText(screen, optLabel, optLabelX, 12, color.White)
+	drawOutlinedText(screen, optLabel, optX+(titleOptionsW-optLabelW)/2, (titleOptionsH-10)/2, color.White)
 
 	// --- Main menu buttons: horizontally centred, 25px from bottom ---
 	// OpenLoco: TitleMenu.cpp — kBtnMainSize=74, kWW=296,
@@ -1365,23 +1361,26 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 	exitY := g.sh - titleExitH
 	exitHovered := g.mouseX >= exitX && g.mouseX < g.sw &&
 		g.mouseY >= exitY && g.mouseY < g.sh
-	exitBg := color.RGBA{100, 40, 40, 200}
+	// Transparent like OpenLoco's TitleExit window; hover darkens.
 	if exitHovered {
-		exitBg = color.RGBA{140, 60, 60, 220}
+		fillRect(screen, float64(exitX), float64(exitY), float64(titleExitW), float64(titleExitH), color.RGBA{0, 0, 0, 90})
 	}
-	fillRect(screen, float64(exitX), float64(exitY), float64(titleExitW), float64(titleExitH), exitBg)
-	fillRect(screen, float64(exitX), float64(exitY), float64(titleExitW), 2, color.RGBA{180, 100, 100, 255})
-	fillRect(screen, float64(exitX), float64(exitY), 2, float64(titleExitH), color.RGBA{180, 100, 100, 255})
-	fillRect(screen, float64(exitX), float64(g.sh-2), float64(titleExitW), 2, color.RGBA{60, 20, 20, 255})
-	fillRect(screen, float64(g.sw-2), float64(exitY), 2, float64(titleExitH), color.RGBA{60, 20, 20, 255})
 	exitLabel := "Exit Game"
 	exitLabelW, _ := ui.MeasureText(exitLabel)
-	exitLabelX := exitX + (titleExitW-exitLabelW)/2
-	exitLabelY := exitY + titleExitH/2 + 4
-	ui.DrawText(screen, exitLabel, exitLabelX, exitLabelY, color.White)
+	drawOutlinedText(screen, exitLabel, exitX+(titleExitW-exitLabelW)/2, exitY+(titleExitH-10)/2, color.White)
 
 	// --- Version text: bottom-left ---
 	ui.DrawText(screen, "GoLoco v0.1", 8, g.sh-20, color.RGBA{200, 200, 200, 255})
+}
+
+// drawOutlinedText draws white-ish text with a 1px dark outline so it stays
+// readable over the moving title-screen world (like OpenLoco's title labels).
+func drawOutlinedText(screen *ebiten.Image, str string, x, y int, clr color.Color) {
+	shadow := color.RGBA{0, 0, 0, 200}
+	for _, d := range [][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}} {
+		ui.DrawText(screen, str, x+d[0], y+d[1], shadow)
+	}
+	ui.DrawText(screen, str, x, y, clr)
 }
 
 // --- Load / Save -------------------------------------------------------
