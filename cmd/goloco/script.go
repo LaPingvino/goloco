@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -31,7 +32,7 @@ type inputScript struct {
 	cmds []string
 	idx  int
 
-	waitFrames int // frames to wait before next command (60 ≈ 1s of game Update ticks)
+	waitUntil time.Time // wall-clock deadline before the next command runs
 
 	// synthesized per-frame state
 	mouseX, mouseY   int
@@ -94,8 +95,7 @@ func (s *inputScript) step() {
 		delete(s.keysJust, k)
 	}
 
-	if s.waitFrames > 0 {
-		s.waitFrames--
+	if time.Now().Before(s.waitUntil) {
 		return
 	}
 	if s.idx >= len(s.cmds) {
@@ -108,7 +108,7 @@ func (s *inputScript) step() {
 	switch strings.ToLower(fields[0]) {
 	case "wait":
 		sec, _ := strconv.ParseFloat(fields[1], 64)
-		s.waitFrames = int(sec * 60)
+		s.waitUntil = time.Now().Add(time.Duration(sec * float64(time.Second)))
 	case "move":
 		s.mouseX, s.mouseY, s.hasMouse = arg(1), arg(2), true
 	case "click":
@@ -130,7 +130,7 @@ func (s *inputScript) step() {
 		s.wheelDY = dy
 	case "shot":
 		s.shotRequest = fields[1]
-		s.waitFrames = 3 // give Draw a chance to consume the request
+		s.waitUntil = time.Now().Add(300 * time.Millisecond) // let Draw consume it
 	case "quit":
 		s.quit = true
 	default:
