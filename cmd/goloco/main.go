@@ -1044,6 +1044,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.drawTitleMenu(screen)
 		g.windowMgr.Draw(screen, g.r) // allow windows (e.g. Load Game) on title screen
 		ui.DrawText(screen, fmt.Sprintf("%.0ffps", ebiten.ActualFPS()), 4, g.sh-8, color.RGBA{200, 200, 200, 200})
+		g.maybeSaveShot(screen)
 		return
 	}
 
@@ -1087,26 +1088,30 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		ui.DrawText(screen, g.saveMsg, mx, statusY-12, color.RGBA{100, 255, 100, alpha})
 	}
 
-	// --shots mode: save the full frame every shotsEvery, quit when done.
-	if g.shotsEvery > 0 && g.shotsLeft > 0 {
-		if time.Since(g.shotsLast) >= g.shotsEvery {
-			g.shotsLast = time.Now()
-			g.shotsN++
-			name := fmt.Sprintf("shot_%02d.png", g.shotsN)
-			if f, err := os.Create(name); err == nil {
-				if err := png.Encode(f, screen.SubImage(screen.Bounds())); err != nil {
-					log.Printf("[Shots] encode %s: %v", name, err)
-				}
-				f.Close()
-				log.Printf("[Shots] saved %s (%d remaining)", name, g.shotsLeft-1)
-			} else {
-				log.Printf("[Shots] create %s: %v", name, err)
-			}
-			g.shotsLeft--
-			if g.shotsLeft == 0 {
-				g.quitAfterSave = true
-			}
+	g.maybeSaveShot(screen)
+}
+
+// maybeSaveShot implements --shots mode: save the full frame every shotsEvery,
+// quit when the requested count has been captured.
+func (g *Game) maybeSaveShot(screen *ebiten.Image) {
+	if g.shotsEvery <= 0 || g.shotsLeft <= 0 || time.Since(g.shotsLast) < g.shotsEvery {
+		return
+	}
+	g.shotsLast = time.Now()
+	g.shotsN++
+	name := fmt.Sprintf("shot_%02d.png", g.shotsN)
+	if f, err := os.Create(name); err == nil {
+		if err := png.Encode(f, screen.SubImage(screen.Bounds())); err != nil {
+			log.Printf("[Shots] encode %s: %v", name, err)
 		}
+		f.Close()
+		log.Printf("[Shots] saved %s (%d remaining)", name, g.shotsLeft)
+	} else {
+		log.Printf("[Shots] create %s: %v", name, err)
+	}
+	g.shotsLeft--
+	if g.shotsLeft == 0 {
+		g.quitAfterSave = true
 	}
 }
 
@@ -1230,25 +1235,36 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 		spriteLessonL        = 3549 // title_menu_lesson_l (Tutorial overlay)
 	)
 
-	// --- Logo: centered over globe, GoLoco branding (no background) ---
-	// G1[3624] (locomotion_logo) is only a 91×34 grey remap panel — not a text logo.
-	// We show our own branding directly over the globe animation at 4× scale.
-	const logoScale = 4.0
-	logoText := "GoLoco"
-	logoW, _ := ui.MeasureTextBold(logoText)
-	logoX := (298 - int(float64(logoW)*logoScale)) / 2
-	logoY := 72 // shifted down ~2/3 logo height from original
-	// Outline: 8 directions, scaled proportionally to text size
-	shadow := color.RGBA{0, 0, 0, 220}
-	for _, d := range [][2]int{{-4, -4}, {0, -4}, {4, -4}, {-4, 0}, {4, 0}, {-4, 4}, {0, 4}, {4, 4}} {
-		ui.DrawTextBoldScaled(screen, logoText, logoX+d[0], logoY+d[1], logoScale, shadow)
+	// --- Logo: the original Locomotion logo sprite, like OpenLoco's TitleLogo
+	// window (298×170 at the top-left). Requires the disc-aligned G1 layout.
+	// OpenLoco reference: src/OpenLoco/src/Ui/Windows/TitleLogo.cpp,
+	// ImageIds::locomotion_logo = 3624.
+	const spriteLocomotionLogo = 3624
+	var subY int
+	if logo := g.r.GetSprite(spriteLocomotionLogo); logo != nil {
+		_, lh, xOff, yOff, _ := g.r.GetSpriteInfo(spriteLocomotionLogo)
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(float64(xOff), float64(yOff))
+		screen.DrawImage(logo, op)
+		subY = int(yOff) + int(lh) + 6
+	} else {
+		// Fallback branding when the logo sprite is unavailable.
+		const logoScale = 4.0
+		logoText := "GoLoco"
+		logoW, _ := ui.MeasureTextBold(logoText)
+		logoX := (298 - int(float64(logoW)*logoScale)) / 2
+		logoY := 72
+		shadow := color.RGBA{0, 0, 0, 220}
+		for _, d := range [][2]int{{-4, -4}, {0, -4}, {4, -4}, {-4, 0}, {4, 0}, {-4, 4}, {0, 4}, {4, 4}} {
+			ui.DrawTextBoldScaled(screen, logoText, logoX+d[0], logoY+d[1], logoScale, shadow)
+		}
+		ui.DrawTextBoldScaled(screen, logoText, logoX, logoY, logoScale, color.RGBA{220, 220, 255, 255})
+		subY = logoY + int(9.0*logoScale) + 8
 	}
-	ui.DrawTextBoldScaled(screen, logoText, logoX, logoY, logoScale, color.RGBA{220, 220, 255, 255})
 
-	subtitle := "A Locomotion Reimplementation"
+	subtitle := "GoLoco - A Locomotion Reimplementation"
 	subW, _ := ui.MeasureText(subtitle)
 	subX := (298 - subW) / 2
-	subY := logoY + int(9.0*logoScale) + 8 // logo visual height ≈ 9px * scale
 	for _, d := range [][2]int{{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}} {
 		ui.DrawText(screen, subtitle, subX+d[0], subY+d[1], color.RGBA{0, 0, 0, 160})
 	}

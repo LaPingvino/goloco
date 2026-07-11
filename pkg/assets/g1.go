@@ -12,7 +12,7 @@ import (
 
 // G1 file format constants
 const (
-	G1ExpectedCountDisc  = 0x0F4A
+	G1ExpectedCountDisc  = 0x101A // and GOG (upstream Gfx.h G1ExpectedCount::kDisc)
 	G1ExpectedCountSteam = 0x0F38
 	DefaultPaletteIndex  = 304
 )
@@ -129,6 +129,40 @@ func LoadG1(path string) (*G1File, error) {
 			g1.Elements[i].XOffset += dx
 			g1.Elements[i].YOffset += dy
 		}
+	}
+
+	// The Steam G1.DAT is missing two localised tutorial icons and a smaller
+	// font variant. Realign to the disc layout so all sprite indices ≥3549
+	// (title logo, globe animation, tabs, cursors, …) match ImageIds.
+	// OpenLoco reference: src/OpenLoco/src/Graphics/Gfx.cpp loadG1
+	if g1.Header.NumEntries == G1ExpectedCountSteam {
+		// Temporarily convert zoom offsets to absolute indices so the shuffle
+		// below cannot break the relative links.
+		for i := range g1.Elements {
+			if g1.Elements[i].Flags&G1FlagHasZoomSprites != 0 {
+				g1.Elements[i].ZoomOffset = int16(i) - g1.Elements[i].ZoomOffset
+			}
+		}
+
+		els := make([]G1Element, G1ExpectedCountDisc)
+		copy(els, g1.Elements[:3549])
+		// Shift everything from 3549 up by two; fill the two missing tutorial
+		// icons with the closest variant.
+		copy(els[3551:], g1.Elements[3549:])
+		els[3549] = els[3551]
+		els[3550] = els[3551]
+		// Extra font variant: duplicate 223 glyphs from 1788.
+		copy(els[3898:3898+223], els[1788:1788+223])
+		g1.Elements = els
+		g1.Header.NumEntries = G1ExpectedCountDisc
+
+		// Restore relative zoom offsets.
+		for i := range g1.Elements {
+			if g1.Elements[i].Flags&G1FlagHasZoomSprites != 0 {
+				g1.Elements[i].ZoomOffset = int16(i) - g1.Elements[i].ZoomOffset
+			}
+		}
+		fmt.Printf("G1: Steam layout realigned to disc layout (%d entries)\n", g1.Header.NumEntries)
 	}
 
 	fmt.Printf("G1: %d entries, %d bytes total\n", g1.Header.NumEntries, g1.Header.TotalSize)

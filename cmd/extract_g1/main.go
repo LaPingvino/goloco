@@ -18,11 +18,12 @@ func main() {
 	extractEnd := flag.Int("end", 500, "End index for extraction")
 	flag.Parse()
 
-	// Default G1 path - try multiple locations
+	// G1 path: positional argument, or well-known locations.
 	g1Paths := []string{
-		"/home/joop/locomotion/Data/g1.DAT",
+		flag.Arg(0),
 		"../locomotion/Data/g1.DAT",
-		"../../locomotion/Data/g1.DAT",
+		filepath.Join(os.Getenv("HOME"), ".local/share/Steam/steamapps/common/Locomotion/Data/g1.DAT"),
+		filepath.Join(os.Getenv("HOME"), ".steam/steam/steamapps/common/Locomotion/Data/g1.DAT"),
 	}
 
 	var g1Path string
