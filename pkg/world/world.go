@@ -117,6 +117,9 @@ type World struct {
 	// simStations is the passenger-supply registry (see station.go).
 	simStations []*SimStation
 
+	// towns holds the parsed town records for the loaded scenario (list window).
+	towns []scenario.Town
+
 	// OnCargoDelivered is invoked when a vehicle delivers cargo to a station
 	// different from where it picked it up. cmd/goloco wires this to
 	// GameState.CargoDelivered; nil in tests/headless runs that don't care.
@@ -261,6 +264,9 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 	w.camX = cx - 400
 	w.camY = cy - 300
 
+	// Store parsed town records for the Towns list window.
+	w.towns = sc.Towns
+
 	// Store real vehicle entities from saved games.  When entities are present
 	// they are rendered by paintVehicleEntities; otherwise fall back to demo trains.
 	w.entities = sc.Entities
@@ -403,6 +409,12 @@ func (w *World) SetZoom(level int) {
 // GetMapSize returns the map dimensions in tiles
 func (w *World) GetMapSize() (width, height int) {
 	return w.width, w.height
+}
+
+// VehicleCount returns the number of simulated (track-following) vehicles.
+// Used by the economy to charge a monthly running cost per vehicle.
+func (w *World) VehicleCount() int {
+	return len(w.simVehicles)
 }
 
 // GetZoom returns the current zoom level (0=full, 1=half, 2=quarter, 3=eighth).

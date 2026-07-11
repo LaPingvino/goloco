@@ -767,74 +767,14 @@ func (g *Game) handleToolbarButton(idx int) {
 		log.Println("[Game] Build vehicles menu (not yet implemented)")
 		return
 	case "Vehicles":
-		win = ui.NewSimpleWindow("Available Vehicles", 50, 50, 400, 350)
-		vehicles := g.objMgr
-		win.DrawContent = func(screen *ebiten.Image, x, y, w, h int, r *render.Renderer) {
-			if vehicles == nil {
-				ui.DrawText(screen, "No vehicles loaded", x+10, y+20, color.White)
-				return
-			}
-
-			// Group by type
-			trains := 0
-			buses := 0
-			trucks := 0
-			aircraft := 0
-			ships := 0
-			for _, v := range vehicles.Vehicles {
-				switch v.Type {
-				case objects.VehicleTypeTrain:
-					trains++
-				case objects.VehicleTypeBus:
-					buses++
-				case objects.VehicleTypeTruck:
-					trucks++
-				case objects.VehicleTypeAircraft:
-					aircraft++
-				case objects.VehicleTypeShip:
-					ships++
-				}
-			}
-
-			ui.DrawText(screen, fmt.Sprintf("Total Vehicles: %d", len(vehicles.Vehicles)), x+10, y+20, color.White)
-			ui.DrawText(screen, fmt.Sprintf("  Trains:   %d", trains), x+10, y+40, color.White)
-			ui.DrawText(screen, fmt.Sprintf("  Buses:    %d", buses), x+10, y+55, color.White)
-			ui.DrawText(screen, fmt.Sprintf("  Trucks:   %d", trucks), x+10, y+70, color.White)
-			ui.DrawText(screen, fmt.Sprintf("  Aircraft: %d", aircraft), x+10, y+85, color.White)
-			ui.DrawText(screen, fmt.Sprintf("  Ships:    %d", ships), x+10, y+100, color.White)
-
-			ui.DrawText(screen, "--- Sample Vehicles ---", x+10, y+125, color.White)
-
-			// Show first 10 vehicles
-			yOff := y + 140
-			count := 0
-			for _, v := range vehicles.Vehicles {
-				if count >= 10 {
-					break
-				}
-				name := v.DisplayName
-				if name == "" {
-					name = v.Header.GetName()
-				}
-				if len(name) > 28 {
-					name = name[:28] + "..."
-				}
-				line := fmt.Sprintf("%-30s %3d km/h", name, int(v.GetSpeedKmh()))
-				ui.DrawText(screen, line, x+10, yOff, color.White)
-				yOff += 15
-				count++
-			}
-		}
+		g.openVehiclesWindow()
+		return
 	case "Stations":
-		win = ui.NewSimpleWindow("Stations", 150, 120, 350, 250)
-		win.DrawContent = func(screen *ebiten.Image, x, y, w, h int, r *render.Renderer) {
-			ui.DrawText(screen, "Station list will go here", x+10, y+20, color.White)
-		}
+		g.openStationsWindow()
+		return
 	case "Towns":
-		win = ui.NewSimpleWindow("Towns", 150, 120, 280, 180)
-		win.DrawContent = func(screen *ebiten.Image, x, y, w, h int, r *render.Renderer) {
-			ui.DrawText(screen, "Town list will go here", x+10, y+20, color.White)
-		}
+		g.openTownsWindow()
+		return
 	default:
 		// Generic window for any unhandled buttons
 		win = ui.NewSimpleWindow(tooltip, 100+idx*20, 100+idx*10, 250, 150)
@@ -1491,13 +1431,17 @@ func (g *Game) loadScenario(filePath string) error {
 	// Wire cargo delivery: vehicles that deliver passengers to a station
 	// increment the objective's cargo counter (see World.OnCargoDelivered).
 	gs := g.gameState
+	// Charge the monthly running cost against the live sim-vehicle count.
+	gs.VehicleCount = gameW.VehicleCount
 	gameW.OnCargoDelivered = func(slot uint8, amount uint32) {
 		if gs == nil || int(slot) >= len(gs.CargoDelivered) {
 			return
 		}
 		gs.CargoDelivered[slot] += amount
-		log.Printf("[Cargo] delivered %d units to slot %d (total %d)",
-			amount, slot, gs.CargoDelivered[slot])
+		// Pay the company for the delivery (income + monthly income).
+		gs.CreditDelivery(slot, amount)
+		log.Printf("[Cargo] delivered %d units to slot %d (total %d, £%d)",
+			amount, slot, gs.CargoDelivered[slot], gs.PlayerMoney)
 	}
 
 	if g.titleSeq != nil {
@@ -2484,6 +2428,10 @@ func (g *Game) checkObjective() {
 	switch g.objective.Type {
 	case 0: // company value
 		if g.gameState.PlayerMoney >= int64(g.objective.CompanyValue) {
+			g.gameWon = true
+		}
+	case 1: // monthly vehicle profit
+		if g.gameState.LastMonthProfit >= int64(g.objective.MonthlyVehicleProfit) {
 			g.gameWon = true
 		}
 	case 3: // cargo delivery
