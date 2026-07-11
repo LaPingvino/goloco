@@ -934,8 +934,9 @@ func (g *Game) drawLoadingScreen(screen *ebiten.Image) {
 	}
 
 	if track := g.r.GetSprite(2330); track != nil {
+		_, _, xo, yo, _ := g.r.GetSpriteInfo(2330)
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(clipX), float64(clipY))
+		op.GeoM.Translate(float64(clipX+int(xo)), float64(clipY+int(yo)))
 		clip.DrawImage(track, op)
 	}
 
@@ -946,8 +947,9 @@ func (g *Game) drawLoadingScreen(screen *ebiten.Image) {
 	}
 	trainFrame := int(barValue/4) % 4
 	if train := g.r.GetSpriteColoured2(trainBase+trainFrame, c1, c2); train != nil {
+		_, _, xo, yo, _ := g.r.GetSpriteInfo(trainBase + trainFrame)
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(clipX+int(barValue)-255), float64(clipY))
+		op.GeoM.Translate(float64(clipX+int(barValue)-255+int(xo)), float64(clipY+int(yo)))
 		clip.DrawImage(train, op)
 	}
 
