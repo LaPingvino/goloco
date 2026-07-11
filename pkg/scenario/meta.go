@@ -24,6 +24,10 @@ type ScenarioMeta struct {
 	Preview        [PreviewSize * PreviewSize]byte
 	MaxCompetitors uint8
 	ObjectiveType  uint8
+
+	Objective          Objective
+	HasObjective       bool
+	ObjectiveCargoName string
 }
 
 // ScanScenario reads the header and ScenarioOptions chunks from a .SC5 file
@@ -80,6 +84,10 @@ func ScanScenario(filePath string) (*ScenarioMeta, error) {
 		Preview:        opts.Preview,
 		MaxCompetitors: opts.MaxCompetitors,
 		ObjectiveType:  opts.ObjectiveType,
+
+		Objective:          opts.Objective,
+		HasObjective:       opts.HasObjective,
+		ObjectiveCargoName: opts.ObjectiveCargoName,
 	}, nil
 }
 

@@ -5,3 +5,5 @@
 /diag*.png
 /live_*.png
 /gs_*.png
+/debug/
+/goloco_progress.json

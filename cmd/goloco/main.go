@@ -80,6 +80,7 @@ type Game struct {
 	objective    scenario.Objective
 	hasObjective bool
 	gameWon      bool
+	progress     *progressFile
 
 	consCurve  int // construction curve selection: -4 (left large) … 0 … +4
 	consSlope  int // construction slope selection: -2 (steep down) … 0 … +2
@@ -144,9 +145,13 @@ func NewGame() *Game {
 
 	r := render.NewRenderer()
 
-	// Initialize audio manager
-	log.Println("[Game] Creating audio manager...")
-	audioMgr := audio.NewManager()
+	// Initialize audio manager (GOLOCO_MUTE=1 skips it entirely — parallel
+	// headless instances would otherwise fight over the ALSA device).
+	var audioMgr *audio.Manager
+	if os.Getenv("GOLOCO_MUTE") != "1" {
+		log.Println("[Game] Creating audio manager...")
+		audioMgr = audio.NewManager()
+	}
 
 	// Try to load real Locomotion G1.DAT sprites
 	dataDir := findLocoDataDir()
@@ -1067,11 +1072,22 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.maybeSaveShot(screen)
 }
 
+// debugPath prefixes capture filenames with the gitignored debug/ directory
+// (created on demand) unless the caller already gave a path.
+func debugPath(name string) string {
+	if strings.ContainsRune(name, '/') {
+		return name
+	}
+	_ = os.MkdirAll("debug", 0o755)
+	return "debug/" + name
+}
+
 // maybeSaveShot implements --shots mode: save the full frame every shotsEvery,
 // quit when the requested count has been captured. Script `shot` commands are
 // honoured here too.
 func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	if name := g.scriptShotName(); name != "" {
+		name = debugPath(name)
 		if f, err := os.Create(name); err == nil {
 			png.Encode(f, screen.SubImage(screen.Bounds()))
 			f.Close()
@@ -1083,7 +1099,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	}
 	g.shotsLast = time.Now()
 	g.shotsN++
-	name := fmt.Sprintf("shot_%02d.png", g.shotsN)
+	name := debugPath(fmt.Sprintf("shot_%02d.png", g.shotsN))
 	if f, err := os.Create(name); err == nil {
 		if err := png.Encode(f, screen.SubImage(screen.Bounds())); err != nil {
 			log.Printf("[Shots] encode %s: %v", name, err)
@@ -1666,6 +1682,12 @@ func (g *Game) openNewGameWindow() {
 			if m.IsGenerated {
 				label = "~ " + label
 			}
+			if g.progress != nil && g.progress.isCompleted(m.FilePath) {
+				label = "* " + label // completed
+				if idx != selectedIdx {
+					textCol = color.RGBA{20, 110, 20, 255}
+				}
+			}
 			ui.DrawText(screen, label, cx+4, iy+(itemH-10)/2, textCol)
 		}
 
@@ -1711,6 +1733,17 @@ func (g *Game) openNewGameWindow() {
 			if m.MaxCompetitors > 0 {
 				ui.DrawText(screen, fmt.Sprintf("Competitors: %d", m.MaxCompetitors), ix, iy, color.RGBA{60, 60, 60, 255})
 				iy += 12
+			}
+
+			// Objective
+			if m.HasObjective {
+				objTxt := "Objective: " + m.Objective.DescribeWithCargo(m.ObjectiveCargoName)
+				ui.DrawText(screen, objTxt, ix, iy, color.RGBA{90, 60, 20, 255})
+				iy += 12
+			}
+			if g.progress != nil && g.progress.isCompleted(m.FilePath) {
+				ui.DrawTextBold(screen, "COMPLETED", ix, iy, color.RGBA{20, 130, 20, 255})
+				iy += 14
 			}
 
 			// Description (word-wrapped by character count)
@@ -2251,7 +2284,7 @@ func saveDiagCrop(screen *ebiten.Image, g *Game, tileX, tileY int) {
 
 	crop := screen.SubImage(image.Rect(x0, y0, x0+diagCropW, y0+diagCropH))
 
-	f, err := os.Create("diag.png")
+	f, err := os.Create(debugPath("diag.png"))
 	if err != nil {
 		log.Printf("[Diag] Cannot create diag.png: %v", err)
 		return
@@ -2343,6 +2376,7 @@ func main() {
 		}
 	}
 
+	game.progress = loadProgress()
 	if p := os.Getenv("GOLOCO_SCRIPT"); p != "" {
 		game.script = loadInputScript(p)
 	}
@@ -2460,6 +2494,13 @@ func (g *Game) checkObjective() {
 	}
 	if g.gameWon {
 		log.Printf("[Game] OBJECTIVE ACHIEVED: %s", g.objective.Describe())
+		if g.progress != nil && g.currentScenarioPath != "" {
+			score := uint32(0)
+			if g.objective.Type == 3 && g.gameState != nil {
+				score = g.gameState.CargoDelivered[int(g.objective.DeliveredCargoType)%len(g.gameState.CargoDelivered)]
+			}
+			g.progress.markCompleted(g.currentScenarioPath, g.objective.Describe(), score)
+		}
 	}
 }
 
