@@ -95,6 +95,7 @@ type Tile struct {
 	TerrainIndex uint8 // byte 6 bits [4:0] — LandObject slot (0-31)
 	GrowthStage  uint8 // byte 6 bits [7:5] — growth/season stage (0-7); used in sprite variation formula
 	Variation    uint8 // byte 7 — alternate terrain style; non-zero in snowy/special scenarios
+	IsIndustrial bool  // type byte bit 7 — surface belongs to an industry (farm fields etc.)
 	Slope        uint8 // slope byte from surface element byte 4
 	Ownership    uint8
 	BuildingID   uint16

@@ -43,6 +43,7 @@ type tile struct {
 	waterLevel   uint8 // water level from surface element byte 5 bits [4:0]; 0 = no water
 	growthStage  uint8 // terrain growth/season stage 0-7 (byte 6 bits [7:5]); selects sprite set
 	variation    uint8 // per-tile flat-grass variation (byte 7); 0 = plain flat image
+	isIndustrial bool  // surface owned by an industry; terrainIndex is not a land slot
 	trees        []scenario.TreeElement
 	buildings    []scenario.BuildingElement
 	walls        []scenario.WallElement
@@ -223,6 +224,7 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 				waterLevel:   st.Water,
 				growthStage:  st.GrowthStage,
 				variation:    st.Variation,
+				isIndustrial: st.IsIndustrial,
 				trees:        st.Trees,
 				buildings:    st.Buildings,
 				walls:        st.Walls,
@@ -919,6 +921,9 @@ var cornerHeightsTable = [32][4]uint8{
 var smoothNeighbourOffsets = [4][2]int{{1, 0}, {0, 1}, {0, -1}, {-1, 0}}
 
 func (w *World) paintSurfaceSmoothing(dst *ebiten.Image, x, y int, t *tile, land *objects.LandObject, drawX, drawY, scale float64) {
+	if t.isIndustrial {
+		return // industry fields have no land blend images
+	}
 	selfSnow := t.slope >> 5
 	if selfSnow >= 3 { // snow blending not supported yet
 		return
@@ -930,7 +935,7 @@ func (w *World) paintSurfaceSmoothing(dst *ebiten.Image, x, y int, t *tile, land
 
 	for edge := 0; edge < 4; edge++ {
 		nb := w.getTile(x+smoothNeighbourOffsets[edge][0], y+smoothNeighbourOffsets[edge][1])
-		if nb == nil || nb.slope>>5 >= 4 {
+		if nb == nil || nb.isIndustrial || nb.slope>>5 >= 4 {
 			continue
 		}
 		nbSlope := int(nb.slope & 0x1F)
@@ -2516,6 +2521,13 @@ func (w *World) Draw(screen *ebiten.Image) {
 			//   imageIndex = landObj->image + variation + displaySlope
 			if w.renderer != nil && w.renderer.ObjMgr != nil {
 				land := w.renderer.ObjMgr.GetLandObjectByIndex(int(t.terrainIndex))
+				if t.isIndustrial {
+				// TODO: industry fields draw via IndustryObject
+				// fieldImageIds (PaintSurface.cpp isIndustrial branch).
+				// Until industry objects load, draw bare land (slot 0,
+				// growth 0) instead of leaving a hole.
+				land = w.renderer.ObjMgr.GetLandObjectByIndex(0)
+				}
 				if land != nil {
 					// Map slope byte (0-31) to display slope (0-18)
 					rawSlope := t.slope & 0x1F // Lower 5 bits
@@ -2539,14 +2551,18 @@ func (w *World) Draw(screen *ebiten.Image) {
 					// OpenLoco reference: src/OpenLoco/src/Objects/LandObject.cpp getTerrainImage()
 					//   variation = numImagesPerGrowthStage * growthStage
 					//   imageIndex = image + variation + displaySlope
+					effGrowth := int(t.growthStage)
+					if t.isIndustrial || effGrowth >= int(land.NumGrowthStages) {
+						effGrowth = 0 // industrial growth stages index industry fields, not land sets
+					}
 					spriteIdx := land.GetFlatTerrainSpriteIndex() +
-						int(t.growthStage)*int(land.NumImagesPerGrowthStage) + displaySlope
+						effGrowth*int(land.NumImagesPerGrowthStage) + displaySlope
 					// Fully-grown flat tiles with a non-zero per-tile variation
 					// draw one of the dedicated variation images instead of the
 					// plain flat image, breaking up texture repetition.
 					// OpenLoco reference: Paint/PaintSurface.cpp ~0x00465E92
 					//   image = mapPixelImage + 3 + variation
-					if t.variation != 0 && displaySlope == 0 && t.waterLevel == 0 &&
+					if !t.isIndustrial && t.variation != 0 && displaySlope == 0 && t.waterLevel == 0 &&
 						land.NumGrowthStages > 0 && t.growthStage == land.NumGrowthStages-1 {
 						spriteIdx = int(land.MapPixelImage-land.ImageOffset) + 3 + int(t.variation)
 					}
