@@ -117,6 +117,9 @@ type World struct {
 	// simStations is the passenger-supply registry (see station.go).
 	simStations []*SimStation
 
+	// moneyFloats are rising "+£N" income indicators (see overlay.go).
+	moneyFloats []moneyFloat
+
 	// towns holds the parsed town records for the loaded scenario (list window).
 	towns []scenario.Town
 
@@ -2768,6 +2771,9 @@ func (w *World) Draw(screen *ebiten.Image) {
 	} else {
 		w.paintDemoTrains(screen, scale)
 	}
+
+	// ── Overlay pass: station/town name labels + income money floats ──
+	w.drawOverlay(screen)
 }
 
 // paintDemoTrains renders all active demo trains after the tile loop.

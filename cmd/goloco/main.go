@@ -2344,6 +2344,9 @@ func main() {
 			sB := game.w.PlaceStationOnTile(h.X+1, h.Y, uint8(game.firstTrainStationSlot()))
 			sp := game.w.SpawnTestVehicle(0)
 			log.Printf("[WinRun] line at (%d,%d): placed=%d stations=%v/%v vehicle=%v", x, y, placed, sA, sB, sp)
+			// Point the camera at the shuttle so the autonomous attempt is visible
+			// (also lets headless captures see the station plaques / income floats).
+			game.w.CenterOn("station")
 		} else {
 			log.Printf("[WinRun] no townside run found")
 		}
