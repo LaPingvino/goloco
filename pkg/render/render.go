@@ -110,6 +110,9 @@ type Renderer struct {
 	// Cache for palette-remapped sprites, keyed by (spriteIdx<<8)|colourIdx
 	colouredSpriteCache map[int]*ebiten.Image
 
+	// Cache for two-colour remapped sprites, keyed by (idx<<16)|(c1<<8)|c2.
+	coloured2SpriteCache map[int]*ebiten.Image
+
 	// Cache for raw-palette-map sprites (water blend etc.), keyed by spriteIdx.
 	// Separate from colouredSpriteCache: its raw spriteIndex keys would collide
 	// with that map's shifted keys.
@@ -129,6 +132,7 @@ func NewRenderer() *Renderer {
 	r := &Renderer{
 		spriteCache:           make(map[int]*ebiten.Image),
 		colouredSpriteCache:   make(map[int]*ebiten.Image),
+		coloured2SpriteCache:  make(map[int]*ebiten.Image),
 		paletteMapSpriteCache: make(map[int]*ebiten.Image),
 		objectSpriteCache:     make(map[string]*ebiten.Image),
 		maskSpriteCache:       make(map[int]*ebiten.Image),
@@ -244,6 +248,30 @@ func (r *Renderer) GetSpriteColoured(spriteIndex, colourIndex int) *ebiten.Image
 
 	img := ebiten.NewImageFromImage(rgba)
 	r.colouredSpriteCache[cacheKey] = img
+	return img
+}
+
+// GetSpriteColoured2 returns a sprite remapped with two Colour indices
+// (primary + secondary), like OpenLoco's Gfx::recolour2. Used for e.g. the
+// loading-screen train. Results are cached per (sprite, c1, c2).
+func (r *Renderer) GetSpriteColoured2(spriteIndex, primary, secondary int) *ebiten.Image {
+	if r.G1 == nil || spriteIndex < 0 || spriteIndex >= len(r.G1.Elements) {
+		return nil
+	}
+	cacheKey := (spriteIndex << 16) | ((primary & 0xFF) << 8) | (secondary & 0xFF)
+	if img, ok := r.coloured2SpriteCache[cacheKey]; ok {
+		return img
+	}
+	palMap, err := r.G1.GetPaletteMap2(primary, secondary)
+	if err != nil {
+		return r.GetSprite(spriteIndex)
+	}
+	rgba, err := r.G1.DecodeSpriteMapped(spriteIndex, palMap)
+	if err != nil {
+		return r.GetSprite(spriteIndex)
+	}
+	img := ebiten.NewImageFromImage(rgba)
+	r.coloured2SpriteCache[cacheKey] = img
 	return img
 }
 

@@ -279,6 +279,33 @@ const PaletteMapG1Base = 2170
 // Returns a 256-element slice where result[srcIdx] = destIdx in the base palette.
 //
 // OpenLoco reference: src/OpenLoco/src/Graphics/PaletteMap.cpp getForColour()
+// GetPaletteMap2 builds the combined palette map for a two-colour remapped
+// sprite (Gfx::recolour2): primary-range pixels take primary's shades and the
+// secondary ranges take secondary's primary-range shades.
+// OpenLoco reference: src/OpenLoco/src/Graphics/PaletteMap.cpp getForImage
+//
+//	dst[0x07..0x09] = primary[0x07..0x09]; dst[0xF6..0xFE] = primary[0xF6..0xFE]
+//	dst[0xCA..0xCC] = secondary[0x07..0x09]; dst[0xCD..0xD5] = secondary[0xF6..0xFE]
+func (g1 *G1File) GetPaletteMap2(primary, secondary int) ([]byte, error) {
+	pm, err := g1.GetPaletteMap(primary)
+	if err != nil {
+		return nil, err
+	}
+	sm, err := g1.GetPaletteMap(secondary)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]byte, 256)
+	for i := range out {
+		out[i] = byte(i)
+	}
+	copy(out[0x07:0x0A], pm[0x07:0x0A])
+	copy(out[0xF6:0xFF], pm[0xF6:0xFF])
+	copy(out[0xCA:0xCD], sm[0x07:0x0A])
+	copy(out[0xCD:0xD6], sm[0xF6:0xFF])
+	return out, nil
+}
+
 func (g1 *G1File) GetPaletteMap(colourIdx int) ([]byte, error) {
 	g1Index := PaletteMapG1Base + colourIdx
 	if g1Index < 0 || g1Index >= len(g1.Elements) {

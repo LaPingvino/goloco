@@ -919,34 +919,32 @@ func (g *Game) drawLoadingScreen(screen *ebiten.Image) {
 	captionText := "Loading: " + g.loadingCaption
 	ui.DrawText(screen, captionText, winX+4, winY+3, color.RGBA{255, 255, 255, 255})
 
-	// Clip region for progress bar: (winX+2, winY+15, 345, 28)
+	// Clip region for progress bar: (winX+2, winY+15, 345, 28).
+	// OpenLoco reference: Ui/Windows/ProgressBar.cpp draw() — the track is a
+	// single full-width image at the clip origin and the train slides in from
+	// the left (xPos = barValue - 255), both clipped to the bar region.
 	clipX, clipY := winX+2, winY+15
-
-	// Draw track background sprite (G1 2330) tiled across the clip area
-	if track := g.r.GetSprite(2330); track != nil {
-		tw := track.Bounds().Dx()
-		op := &ebiten.DrawImageOptions{}
-		for x := 0; x < 345; x += tw {
-			op.GeoM.Reset()
-			op.GeoM.Translate(float64(clipX+x), float64(clipY))
-			screen.DrawImage(track, op)
-		}
+	clip, _ := screen.SubImage(image.Rect(clipX, clipY, clipX+345, clipY+28)).(*ebiten.Image)
+	if clip == nil {
+		return
 	}
 
-	// Choose train style: style 0 = frames 2326-2329, style 1 = frames 2331-2334
-	trainBase := 2326
+	if track := g.r.GetSprite(2330); track != nil {
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(float64(clipX), float64(clipY))
+		clip.DrawImage(track, op)
+	}
+
+	// Style 0: sea-green/dark-red steam train; style 1: black/grass-green.
+	trainBase, c1, c2 := 2326, 11, 25 // mutedSeaGreen, mutedDarkRed
 	if g.loadingStyleFlip {
-		trainBase = 2331
+		trainBase, c1, c2 = 2331, 0, 12 // black, mutedGrassGreen
 	}
 	trainFrame := int(barValue/4) % 4
-	if train := g.r.GetSprite(trainBase + trainFrame); train != nil {
-		// xPos: OpenLoco draws at xPos = barValue - 255 within the clip area.
-		// At barValue=0: xPos=-255 (off left); at barValue=255: xPos=0 (left edge).
-		// We mirror this: train enters from the right and parks near left.
-		trainXOff := int(barValue) - 255 + 345 // slide across 345px track
+	if train := g.r.GetSpriteColoured2(trainBase+trainFrame, c1, c2); train != nil {
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(clipX+trainXOff), float64(clipY))
-		screen.DrawImage(train, op)
+		op.GeoM.Translate(float64(clipX+int(barValue)-255), float64(clipY))
+		clip.DrawImage(train, op)
 	}
 
 	// Numeric progress below the window
@@ -982,6 +980,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.loadingSpriteIDs != nil {
 		g.drawLoadingScreen(screen)
 		g.doLoadingStep()
+		g.maybeSaveShot(screen)
 		return
 	}
 
