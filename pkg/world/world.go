@@ -42,6 +42,7 @@ type tile struct {
 	slope        uint8 // slope corners and flags from byte 4 of surface element
 	waterLevel   uint8 // water level from surface element byte 5 bits [4:0]; 0 = no water
 	growthStage  uint8 // terrain growth/season stage 0-7 (byte 6 bits [7:5]); selects sprite set
+	variation    uint8 // per-tile flat-grass variation (byte 7); 0 = plain flat image
 	trees        []scenario.TreeElement
 	buildings    []scenario.BuildingElement
 	walls        []scenario.WallElement
@@ -221,6 +222,7 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 				slope:        st.Slope,
 				waterLevel:   st.Water,
 				growthStage:  st.GrowthStage,
+				variation:    st.Variation,
 				trees:        st.Trees,
 				buildings:    st.Buildings,
 				walls:        st.Walls,
@@ -2398,6 +2400,15 @@ func (w *World) Draw(screen *ebiten.Image) {
 					//   imageIndex = image + variation + displaySlope
 					spriteIdx := land.GetFlatTerrainSpriteIndex() +
 						int(t.growthStage)*int(land.NumImagesPerGrowthStage) + displaySlope
+					// Fully-grown flat tiles with a non-zero per-tile variation
+					// draw one of the dedicated variation images instead of the
+					// plain flat image, breaking up texture repetition.
+					// OpenLoco reference: Paint/PaintSurface.cpp ~0x00465E92
+					//   image = mapPixelImage + 3 + variation
+					if t.variation != 0 && displaySlope == 0 && t.waterLevel == 0 &&
+						land.NumGrowthStages > 0 && t.growthStage == land.NumGrowthStages-1 {
+						spriteIdx = int(land.MapPixelImage-land.ImageOffset) + 3 + int(t.variation)
+					}
 
 					if img := w.renderer.GetObjectSprite(land, spriteIdx); img != nil {
 						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, spriteIdx)

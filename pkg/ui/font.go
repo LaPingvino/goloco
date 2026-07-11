@@ -9,6 +9,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"golang.org/x/image/font"
+	"golang.org/x/image/font/gofont/gobold"
+	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/image/font/opentype"
 )
 
@@ -33,11 +35,14 @@ var globalFontManager *FontManager
 func InitFonts(fontDir string) (*FontManager, error) {
 	fm := &FontManager{}
 
-	// Load regular font (using Small variant for compact UI text)
+	// Load regular font (using Small variant for compact UI text).
+	// When the OpenTTD fonts are not installed, fall back to the Go fonts
+	// embedded in golang.org/x/image so UI text always renders.
 	regularPath := fontDir + "/OpenTTD-Small.ttf"
 	regularData, err := os.ReadFile(regularPath)
 	if err != nil {
-		return nil, err
+		log.Printf("[Font] %v — using embedded Go fonts", err)
+		return initEmbeddedFonts(fm)
 	}
 
 	regularTTF, err := opentype.Parse(regularData)
@@ -119,6 +124,42 @@ func InitFonts(fontDir string) (*FontManager, error) {
 
 	globalFontManager = fm
 	log.Println("[Font] Loaded OpenTTD fonts successfully")
+	return fm, nil
+}
+
+// initEmbeddedFonts fills fm from the Go fonts compiled into the binary
+// (golang.org/x/image/font/gofont). Used when no OpenTTD TTFs are on disk.
+func initEmbeddedFonts(fm *FontManager) (*FontManager, error) {
+	const dpi = 72
+	const size = 10
+
+	load := func(data []byte) (*text.GoTextFace, font.Face, error) {
+		ttf, err := opentype.Parse(data)
+		if err != nil {
+			return nil, nil, err
+		}
+		face, err := opentype.NewFace(ttf, &opentype.FaceOptions{Size: size, DPI: dpi, Hinting: font.HintingFull})
+		if err != nil {
+			return nil, nil, err
+		}
+		src, err := text.NewGoTextFaceSource(bytes.NewReader(data))
+		if err != nil {
+			return nil, nil, err
+		}
+		return &text.GoTextFace{Source: src, Size: size}, face, nil
+	}
+
+	var err error
+	fm.Regular, fm.RegularFace, err = load(goregular.TTF)
+	if err != nil {
+		return nil, err
+	}
+	fm.Bold, fm.BoldFace, err = load(gobold.TTF)
+	if err != nil {
+		fm.Bold, fm.BoldFace = fm.Regular, fm.RegularFace
+	}
+	globalFontManager = fm
+	log.Println("[Font] Loaded embedded Go fonts")
 	return fm, nil
 }
 
