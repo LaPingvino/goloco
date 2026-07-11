@@ -2349,6 +2349,27 @@ func main() {
 	if os.Getenv("GOLOCO_OPEN") == "newgame" {
 		game.openNewGameWindow()
 	}
+	if os.Getenv("GOLOCO_OPEN") == "win" && game.w != nil {
+		// Autonomous win attempt: build a passenger shuttle beside a town and
+		// let the game run; the objective counter does the rest.
+		if x, y, ok := game.w.FindTownsideRun(6); ok {
+			game.buildMode = buildModeTrack
+			game.w.SetConstructionHead(x, y)
+			placed := 0
+			for i := 0; i < 5; i++ {
+				if game.w.PlaceTrackAtHead(0, uint8(game.buildObjID)) {
+					placed++
+				}
+			}
+			sA := game.w.PlaceStationOnTile(x, y, uint8(game.firstTrainStationSlot()))
+			h := game.w.ConstructionHeadState()
+			sB := game.w.PlaceStationOnTile(h.X+1, h.Y, uint8(game.firstTrainStationSlot()))
+			sp := game.w.SpawnTestVehicle(0)
+			log.Printf("[WinRun] line at (%d,%d): placed=%d stations=%v/%v vehicle=%v", x, y, placed, sA, sB, sp)
+		} else {
+			log.Printf("[WinRun] no townside run found")
+		}
+	}
 	if os.Getenv("GOLOCO_OPEN") == "track" && game.w != nil {
 		// Headless construction test: open the window and chain a piece
 		// sequence from the map centre so captures verify connections.

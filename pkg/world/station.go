@@ -201,3 +201,47 @@ func (w *World) SeedStationWaiting(tileX, tileY int, n uint32) bool {
 	}
 	return false
 }
+
+// FindTownsideRun locates a straight, flat, empty west-heading run of n tiles
+// whose endpoints have town buildings nearby — a viable site for a passenger
+// shuttle line. Returns the origin tile and ok.
+func (w *World) FindTownsideRun(n int) (int, int, bool) {
+	buildingsNear := func(x, y int) int {
+		c := 0
+		for dy := -4; dy <= 4; dy++ {
+			for dx := -4; dx <= 4; dx++ {
+				if t := w.getTile(x+dx, y+dy); t != nil && len(t.buildings) > 0 {
+					c++
+				}
+			}
+		}
+		return c
+	}
+	for y := 2; y < w.height-2; y++ {
+		for x := n + 1; x < w.width-2; x++ {
+			ok := true
+			var z uint8
+			for i := 0; i < n; i++ {
+				t := w.getTile(x-i, y)
+				if t == nil || t.slope&0x1F != 0 || t.waterLevel > 0 ||
+					len(t.buildings) > 0 || len(t.tracks) > 0 || len(t.roads) > 0 || t.isIndustrial {
+					ok = false
+					break
+				}
+				if i == 0 {
+					z = t.baseZ
+				} else if t.baseZ != z {
+					ok = false
+					break
+				}
+			}
+			if !ok {
+				continue
+			}
+			if buildingsNear(x, y) >= 4 && buildingsNear(x-n+1, y) >= 1 {
+				return x, y, true
+			}
+		}
+	}
+	return 0, 0, false
+}

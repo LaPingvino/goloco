@@ -64,6 +64,13 @@ Build: `go build -o goloco ./cmd/goloco`. Always verify visually:
   N -info-end M]`; read the PNGs with vision. `scripts/fetch-fonts.sh` gets
   the OpenTTD TTFs (Unicode fallback).
 
+- ALWAYS run long headless sessions under Xvfb so the desktop/screen-lock
+  cannot freeze the loop: `Xvfb :99 -screen 0 800x600x24 &` then
+  `DISPLAY=:99 WAYLAND_DISPLAY= ./goloco …` (xorg-server-xvfb installed).
+- `GOLOCO_OPEN=win` — autonomous scenario attempt: builds a shuttle beside
+  a town (World.FindTownsideRun), stations, vehicle; the objective counter
+  runs to the win banner. First victory: Weatherworld, 648/500 PASS.
+
 Read captures with vision, judge against real Locomotion, fix, re-capture.
 The scenario boot takes ~40-80s wall (software rendering ~10-20 fps).
 
