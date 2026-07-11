@@ -16,6 +16,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/audio"
 	"github.com/LaPingvino/goloco/pkg/game"
 	"github.com/LaPingvino/goloco/pkg/graphics"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/render"
 	"github.com/LaPingvino/goloco/pkg/scenario"
@@ -76,7 +77,7 @@ type Game struct {
 	speedMult int // 1, 2, 4, or 8
 
 	// Build mode (track/road placement)
-	buildMode  int // buildModeNone / buildModeTrack / buildModeRoad
+	buildMode    int // buildModeNone / buildModeTrack / buildModeRoad
 	objective    scenario.Objective
 	hasObjective bool
 	gameWon      bool
@@ -135,6 +136,15 @@ func findLocoDataDir() string {
 
 func NewGame() *Game {
 	log.Println("[Game] Creating new game...")
+
+	// Load the UI language pack (GOLOCO_LANG, default en-GB) before any object
+	// string tables are parsed — Load also sets objects.SelectedLocoLanguage
+	// from the pack header so DAT strings match. A missing pack is non-fatal.
+	if err := i18n.Load(os.Getenv("GOLOCO_LANG")); err != nil {
+		log.Printf("[Game] i18n: %v (using English)", err)
+	} else {
+		log.Printf("[Game] Language: %s (%s)", i18n.Locale(), i18n.NativeName())
+	}
 
 	// Initialize fonts
 	log.Println("[Game] Loading fonts...")
@@ -972,7 +982,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	fps := ebiten.ActualFPS()
 	// Objective HUD line under the toolbar, and the win banner.
 	if g.hasObjective && !g.inTitleScreen {
-		obj := "Objective: " + g.objective.Describe()
+		obj := i18n.T("game.objective") + " " + g.objective.Describe()
 		if g.objective.Type == 3 && g.gameState != nil {
 			ct := int(g.objective.DeliveredCargoType) % len(g.gameState.CargoDelivered)
 			obj += fmt.Sprintf("  (%d/%d)", g.gameState.CargoDelivered[ct], g.objective.DeliveredCargoAmount)
@@ -990,7 +1000,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.gameState != nil {
 		date := g.gameState.GameDate
 		statusText = fmt.Sprintf("%s %d  |  £%d  |  %s  |  Space=pause F3-F6=speed  |  %s",
-			date.Month().String()[:3], date.Year(), g.gameState.PlayerMoney, speedStr, fpsStr)
+			i18n.Month(int(date.Month())), date.Year(), g.gameState.PlayerMoney, speedStr, fpsStr)
 	} else {
 		statusText = fmt.Sprintf("GoLoco | %s | Scroll to zoom | %s", speedStr, fpsStr)
 	}
@@ -1222,7 +1232,7 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 	if optHovered {
 		fillRect(screen, float64(optX), 0, float64(titleOptionsW), float64(titleOptionsH), color.RGBA{0, 0, 0, 90})
 	}
-	optLabel := "Options"
+	optLabel := i18n.T("menu.options")
 	optLabelW, _ := ui.MeasureText(optLabel)
 	drawOutlinedText(screen, optLabel, optX+(titleOptionsW-optLabelW)/2, (titleOptionsH-10)/2, color.White)
 
@@ -1240,12 +1250,12 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 		frameCount int // number of animation frames in the sequence
 	}
 	btns := [titleBtnCount]btnDef{
-		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteSparkle, "New Game", 32},
-		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteSave, "Load Game", 32},
-		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteLessonL, "Tutorial", 32},
+		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteSparkle, i18n.T("menu.new_game"), 32},
+		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteSave, i18n.T("menu.load_game"), 32},
+		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteLessonL, i18n.T("menu.tutorial"), 32},
 		// globe_construct has 25 frames (0–24 = sprites 3584–3608); clamping to 25
 		// prevents overshooting into unrelated sprites (e.g. the Sawyer logo).
-		{spriteGlobeConstBase, spriteGlobeConstIdle, -1, "Scenario Editor", 25},
+		{spriteGlobeConstBase, spriteGlobeConstIdle, -1, i18n.T("menu.scenario_editor"), 25},
 	}
 
 	menuX := (g.sw - titleMenuW) / 2
@@ -1301,7 +1311,7 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 	if exitHovered {
 		fillRect(screen, float64(exitX), float64(exitY), float64(titleExitW), float64(titleExitH), color.RGBA{0, 0, 0, 90})
 	}
-	exitLabel := "Exit Game"
+	exitLabel := i18n.T("menu.exit_game")
 	exitLabelW, _ := ui.MeasureText(exitLabel)
 	drawOutlinedText(screen, exitLabel, exitX+(titleExitW-exitLabelW)/2, exitY+(titleExitH-10)/2, color.White)
 
@@ -1370,10 +1380,25 @@ func (g *Game) loadScenario(filePath string) error {
 	g.objective = sc.Objective
 	g.hasObjective = sc.HasObjective
 	g.gameWon = false
+	defer func() {
+		if g.gameState != nil && g.objMgr != nil {
+			g.gameState.FareFor = func(slot uint8) int64 {
+				if int(slot) < len(g.objMgr.CargoObjects) && g.objMgr.CargoObjects[slot] != nil {
+					// Authentic per-unit basis: cargo paymentFactor scaled down
+					// (upstream applies distance/time curves — TODO Economy/).
+					return int64(g.objMgr.CargoObjects[slot].PaymentFactor) / 4
+				}
+				return 0
+			}
+		}
+	}()
 
 	if g.objMgr != nil {
 		if len(sc.LandObjectOrder) > 0 {
 			g.objMgr.ReorderLandObjects(sc.LandObjectOrder)
+		}
+		if len(sc.CargoObjectOrder) > 0 {
+			g.objMgr.ReorderCargoObjects(sc.CargoObjectOrder)
 		}
 		if len(sc.TreeObjectOrder) > 0 {
 			g.objMgr.ReorderTreeObjects(sc.TreeObjectOrder)
@@ -1514,11 +1539,11 @@ func (g *Game) openNewGameWindow() {
 		items []*scenario.ScenarioMeta
 	}
 	cats := []catGroup{
-		{label: "Beginner"},
-		{label: "Easy"},
-		{label: "Medium"},
-		{label: "Challenging"},
-		{label: "Expert"},
+		{label: i18n.T("cat.beginner")},
+		{label: i18n.T("cat.easy")},
+		{label: i18n.T("cat.medium")},
+		{label: i18n.T("cat.challenging")},
+		{label: i18n.T("cat.expert")},
 	}
 	for _, m := range metas {
 		idx := int(m.Category)
@@ -1681,12 +1706,12 @@ func (g *Game) openNewGameWindow() {
 
 			// Objective
 			if m.HasObjective {
-				objTxt := "Objective: " + m.Objective.DescribeWithCargo(m.ObjectiveCargoName)
+				objTxt := i18n.T("game.objective") + " " + m.Objective.DescribeWithCargo(m.ObjectiveCargoName)
 				ui.DrawText(screen, objTxt, ix, iy, color.RGBA{90, 60, 20, 255})
 				iy += 12
 			}
 			if g.progress != nil && g.progress.isCompleted(m.FilePath) {
-				ui.DrawTextBold(screen, "COMPLETED", ix, iy, color.RGBA{20, 130, 20, 255})
+				ui.DrawTextBold(screen, i18n.T("newgame.completed"), ix, iy, color.RGBA{20, 130, 20, 255})
 				iy += 14
 			}
 
@@ -1722,8 +1747,8 @@ func (g *Game) openNewGameWindow() {
 		// ── Bottom buttons ───────────────────────────────────────────────
 		btnY := cy + ch - btnAreaH + 4
 		canPlay := selectedIdx >= 0 && selectedIdx < len(items)
-		drawButton(screen, cx+4, btnY, 80, 22, "Cancel", false, true)
-		drawButton(screen, cx+cw-84, btnY, 80, 22, "Play", false, canPlay)
+		drawButton(screen, cx+4, btnY, 80, 22, i18n.T("newgame.cancel"), false, true)
+		drawButton(screen, cx+cw-84, btnY, 80, 22, i18n.T("newgame.play"), false, canPlay)
 	}
 
 	win.OnContentClick = func(relX, relY int) {
@@ -2698,9 +2723,9 @@ const (
 	consBtnS   = 22 // small (curve/slope) button size
 	consBigBtn = 24 // large-curve / straight button size
 
-	consTabY   = 2
-	consTabH   = 26
-	consTabW   = 42
+	consTabY = 2
+	consTabH = 26
+	consTabW = 42
 
 	consCurveY = 32 // primary curve row (6 buttons, no straight)
 	consRow2Y  = 56 // large-left / straight / large-right
@@ -2772,7 +2797,7 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 		}
 
 		// --- Tab strip (Construction / Station / Signal) --------------------
-		tabLabels := []string{"", "Stn", "Sig"}
+		tabLabels := []string{"", i18n.T("cons.station"), i18n.T("cons.signal")}
 		for i := 0; i < 3; i++ {
 			tx := cx + 3 + i*consTabW
 			ty := cy + consTabY
@@ -2872,7 +2897,7 @@ func (g *Game) newConstructionWindow() *ui.SimpleWindow {
 		}
 
 		// --- Cost line ------------------------------------------------------
-		cost := "Cost: --"
+		cost := i18n.T("cons.cost") + " --"
 		costW, _ := ui.MeasureText(cost)
 		drawOutlinedText(screen, cost, cx+(cw-costW)/2, cy+consCostY, color.RGBA{255, 245, 200, 255})
 
