@@ -1,10 +1,13 @@
 package world
 
 import (
+	"image/color"
+	"log"
 	"math"
 
 	"github.com/LaPingvino/goloco/pkg/scenario"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 // Track construction: an OpenLoco-style construction head that pieces connect
@@ -137,6 +140,7 @@ func (w *World) PlaceTrackAtHead(trackID int, trackObjID uint8) bool {
 		})
 	}
 	w.consStack = append(w.consStack, placed)
+	log.Printf("[Cons] placed track id=%d objSlot=%d rot=%d tiles=%v z=%v", trackID, trackObjID, w.consHead.Rotation&3, tiles, baseZ)
 
 	// Advance the head: trackAndDirection = trackID<<3 | rotation (forward).
 	c := kTrackCoordinates[trackID<<3|int(w.consHead.Rotation&3)]
@@ -164,6 +168,29 @@ func (w *World) UndoLastTrack() bool {
 	w.consHead.Rotation = p.rotation
 	w.consHead.Active = true
 	return true
+}
+
+// drawHeadMarker outlines the construction-head tile with a bright pulsing
+// diamond so the head is visible even over busy terrain (OpenLoco shows a
+// construction arrow here).
+func (w *World) drawHeadMarker(screen *ebiten.Image, scale float64) {
+	h := w.consHead
+	if !h.Active {
+		return
+	}
+	vpX, vpY := w.tileToScreen(h.X, h.Y)
+	vpY -= float64(h.BaseZ) * 4.0
+	cx := float32(math.Round((vpX - w.camX) * scale))
+	cy := float32(math.Round((vpY - w.camY) * scale))
+	s := float32(scale)
+	// Tile diamond corners relative to the anchor (top corner).
+	pts := [4][2]float32{{0, 0}, {32 * s, 16 * s}, {0, 32 * s}, {-32 * s, 16 * s}}
+	pulse := uint8(180 + 75*math.Sin(float64(w.frameCounter)*0.2))
+	col := color.RGBA{255, 255, pulse, 255}
+	for i := range pts {
+		a, b := pts[i], pts[(i+1)%4]
+		vector.StrokeLine(screen, cx+a[0], cy+a[1], cx+b[0], cy+b[1], 2, col, false)
+	}
 }
 
 // removeTrackElement deletes one exactly-matching track element from a tile.
@@ -373,6 +400,8 @@ func (w *World) DrawConstructionGhost(screen *ebiten.Image, trackID, objID int) 
 		op.ColorScale.ScaleAlpha(0.6)
 		screen.DrawImage(img, op)
 	}
+
+	w.drawHeadMarker(screen, scale)
 
 	if trackObj != nil && trackObj.Image != 0 && w.CanPlaceTrackAtHead(trackID) &&
 		trackID < len(kTrackParts) && kTrackParts[trackID] != nil {

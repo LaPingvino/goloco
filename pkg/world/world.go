@@ -1,6 +1,7 @@
 package world
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -96,6 +97,7 @@ type World struct {
 	blendBuf      *ebiten.Image      // pass-2 target: blend-mode overlay
 	blendOps      []worldBlendOp     // queued during pass 1
 	consHead      ConstructionHead   // shared track/road construction head
+	frameCounter  int                // draw-frame counter for UI pulses
 	consStack     []placedPiece      // undo stack for placed track pieces
 	consRoadStack []placedPiece      // undo stack for placed road pieces
 	highlightOps  []worldHighlightOp // ripple/wave sprites drawn after blend
@@ -853,6 +855,17 @@ func (w *World) PanCamera(dx, dy float64) {
 	w.externalCamera = false // user is now driving the camera
 	w.camX += dx
 	w.camY += dy
+}
+
+var worldWarned = map[string]bool{}
+
+// warnOncef logs a formatted warning exactly once per unique message.
+func warnOncef(format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	if !worldWarned[msg] {
+		worldWarned[msg] = true
+		log.Printf("[World] %s", msg)
+	}
 }
 
 // getTile returns a pointer to the tile at (x, y), or nil if out of bounds
@@ -1783,6 +1796,7 @@ func (w *World) paintTracks(screen *ebiten.Image, t *tile, drawX, drawY, scale f
 		}
 		trackObj := w.renderer.ObjMgr.GetTrackObjectByIndex(int(te.TrackObjectID))
 		if trackObj == nil || trackObj.Image == 0 {
+			warnOncef("paintTracks: element slot %d has no track object (nil=%v)", te.TrackObjectID, trackObj == nil)
 			continue
 		}
 		trackID := int(te.TrackID)
@@ -2480,6 +2494,7 @@ func (w *World) getCliffEdgeOffset(edge int, h uint8) (int16, int16) {
 }
 
 func (w *World) Draw(screen *ebiten.Image) {
+	w.frameCounter++
 	sw := screen.Bounds().Dx()
 	sh := screen.Bounds().Dy()
 	scale := 1.0 / float64(int(1)<<w.zoom) // zoom 0→1.0, 1→0.5, 2→0.25, 3→0.125

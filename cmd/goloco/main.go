@@ -733,6 +733,9 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Railroad":
 		g.buildMode = buildModeTrack
 		g.buildObjID = 0
+		if names := g.consObjectNames(); len(names) > 0 && names[0] == "" {
+			g.consCycleType(1) // slot 0 empty in this scenario — first populated slot
+		}
 		g.consCurve = 0
 		g.consSlope = 0
 		win = g.newConstructionWindow()
@@ -740,6 +743,9 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Road":
 		g.buildMode = buildModeRoad
 		g.buildObjID = 0
+		if names := g.consObjectNames(); len(names) > 0 && names[0] == "" {
+			g.consCycleType(1) // slot 0 empty in this scenario — first populated slot
+		}
 		g.consCurve = 0
 		g.consSlope = 0
 		win = g.newConstructionWindow()
