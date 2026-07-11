@@ -38,6 +38,9 @@ func NewManager() *Manager {
 // LoadAndPlayMusic loads a WAV file and starts playing it
 // The loop parameter controls whether the music loops continuously
 func (m *Manager) LoadAndPlayMusic(path string, loop bool) error {
+	if m == nil {
+		return nil // muted (GOLOCO_MUTE)
+	}
 	log.Println("[Audio] LoadAndPlayMusic called with path:", path, "loop:", loop)
 
 	// Stop any currently playing music
@@ -102,6 +105,9 @@ func (m *Manager) LoadAndPlayMusic(path string, loop bool) error {
 
 // StopMusic stops the currently playing music
 func (m *Manager) StopMusic() {
+	if m == nil {
+		return
+	}
 	if m.musicPlayer != nil {
 		m.musicPlayer.Close()
 		m.musicPlayer = nil
@@ -114,6 +120,9 @@ func (m *Manager) StopMusic() {
 
 // SetMusicVolume sets the music volume (0.0 to 1.0)
 func (m *Manager) SetMusicVolume(vol float64) {
+	if m == nil {
+		return
+	}
 	if vol < 0 {
 		vol = 0
 	}
@@ -139,6 +148,9 @@ func (m *Manager) SetSFXVolume(vol float64) {
 
 // IsMusicPlaying returns true if music is currently playing
 func (m *Manager) IsMusicPlaying() bool {
+	if m == nil {
+		return false
+	}
 	return m.musicPlayer != nil && m.musicPlayer.IsPlaying()
 }
 
@@ -156,10 +168,16 @@ func (m *Manager) IsMusicPlaying() bool {
 // whether background music needs to transition, and spatially attenuate
 // vehicle/ambient sounds based on viewport position.
 func (m *Manager) Update() {
+	if m == nil {
+		return
+	}
 	// stub — no per-frame audio logic yet
 }
 
 // Context returns the underlying audio context
 func (m *Manager) Context() *audio.Context {
+	if m == nil {
+		return nil
+	}
 	return m.context
 }

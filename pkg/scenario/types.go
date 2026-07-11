@@ -356,6 +356,10 @@ type Options struct {
 	MaxCompetitors uint8
 	ObjectiveType  uint8
 
+	Objective          Objective
+	HasObjective       bool
+	ObjectiveCargoName string // DAT name of the delivery cargo (e.g. PASS)
+
 	// Generation parameters (used when landscapeGenerationDone is clear)
 	MinLandHeight   uint8 // base height (0-15)
 	TopographyStyle uint8 // 0=flat,1=smallHills,2=mountains,3=halfMtHills,4=halfMtFlat

@@ -628,9 +628,23 @@ func parseScenarioOptions(data []byte) Options {
 	if len(data) >= 0x418B {
 		opts.MaxCompetitors = data[0x418A]
 	}
-	// Objective type
-	if len(data) >= 0x418D {
+	// Full objective block at 0x418C, then the delivered-cargo ObjectHeader
+	// at 0x419D (name bytes 4-11).
+	// OpenLoco reference: include/OpenLoco/S5/S5Options.h
+	if len(data) >= 0x419D+16 {
 		opts.ObjectiveType = data[0x418C]
+		opts.Objective = Objective{
+			Type:                 data[0x418C],
+			Flags:                data[0x418D],
+			CompanyValue:         binary.LittleEndian.Uint32(data[0x418E:]),
+			MonthlyVehicleProfit: binary.LittleEndian.Uint32(data[0x4192:]),
+			PerformanceIndex:     data[0x4196],
+			DeliveredCargoType:   data[0x4197],
+			DeliveredCargoAmount: binary.LittleEndian.Uint32(data[0x4198:]),
+			TimeLimitYears:       data[0x419C],
+		}
+		opts.HasObjective = true
+		opts.ObjectiveCargoName = nullTermString(data[0x419D+4 : 0x419D+12])
 	}
 	return opts
 }
