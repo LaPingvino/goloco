@@ -78,6 +78,10 @@ type Session struct {
 	structs        []Struct
 	tunnels        [4][]tunnelEntry
 	bridge         BridgeEntry
+	support        SupportHeight
+	surfaceHeight  int
+	surfaceSlope   uint8
+	waterHeight2   int
 	attachedSlab   []Attached
 	chunks         [][]Struct
 	attachedChunks [][]Attached
@@ -130,6 +134,27 @@ func (s *Session) newAttached() *Attached {
 
 // SetSpritePosition sets the world position painters' offsets are relative to.
 func (s *Session) SetSpritePosition(x, y int) { s.spriteX, s.spriteY = x, y }
+
+// SupportHeight is the session's general support height (Paint.h _support:
+// height, slope); 0xFFFF height = nothing to support from.
+type SupportHeight struct {
+	Height int
+	Slope  uint8
+}
+
+// SetGeneralSupportHeight is setGeneralSupportHeight.
+func (s *Session) SetGeneralSupportHeight(height int, slope uint8) {
+	s.support = SupportHeight{height, slope}
+}
+
+// GeneralSupportHeight is getGeneralSupportHeight.
+func (s *Session) GeneralSupportHeight() SupportHeight { return s.support }
+
+// SetSurface records what paintSurface tells the session for bridge shadows
+// (setSurfaceHeight / setSurfaceSlope) and the tile's water (setWaterHeight2).
+func (s *Session) SetSurface(height int, slope uint8, waterHeight2 int) {
+	s.surfaceHeight, s.surfaceSlope, s.waterHeight2 = height, slope, waterHeight2
+}
 
 // BridgeEntry is Paint.h BridgeEntry: set by a track/road piece with a bridge,
 // painted and cleared in paintTileElementsEndLoop. Height -1 = empty

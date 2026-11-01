@@ -196,6 +196,7 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 			}
 			s.SetSpritePosition(x*32, y*32)
 			s.ResetTunnels() // paintTileElementsSetup
+			s.SetGeneralSupportHeight(0xFFFF, 0)
 			// paintTileElements: the tile's elements in stored order, each followed by
 			// paintTileElementsEndLoop. Signals and stations read entry.prev().
 			for i, ref := range t.Order {
@@ -212,6 +213,9 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 					s.FinaliseTrackRoadAdditionsOrdering()
 					if b, ok := s.TakeBridge(); ok {
 						r.paintBridge(s, b)
+						if s.GeneralSupportHeight().Height >= b.Height {
+							s.SetGeneralSupportHeight(b.Height, 0x20)
+						}
 					}
 				}
 			}
@@ -372,6 +376,12 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 // field, snow, cliff edges, water).
 func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y int) {
 	om, sprite := r.Objects, r.Sprite
+	// Session state paintSurface sets (bridge shadows and supports): surface
+	// height/slope, setWaterHeight2, and at the end setGeneralSupportHeight.
+	// Rotation is 0 here, so rotatedSlope is the slope.
+	z := int(t.BaseZ) * 4
+	s.SetSurface(z, t.Slope&0x1F, int(t.WaterLevel)*16)
+	defer s.SetGeneralSupportHeight(z, t.Slope&0x1F)
 	ti := int(t.TerrainIndex)
 	if t.IsIndustrial {
 		ti = 0
@@ -389,7 +399,6 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	if !t.IsIndustrial && t.Variation != 0 && ds == 0 && t.WaterLevel == 0 && land.NumGrowthStages > 0 && t.GrowthStage == land.NumGrowthStages-1 {
 		idx = int(land.MapPixelImage) + 3 + int(t.Variation)
 	}
-	z := int(t.BaseZ) * 4
 	// Industry fields (PaintSurface.cpp industrial branch): the field surface and
 	// its tree image come from the industry object; the tile's byte 7 (goloco's
 	// Variation) is then the industry id. PARTIAL: snow cover not drawn.
