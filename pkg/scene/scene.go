@@ -273,8 +273,19 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 					}
 					continue
 				}
+				if st.StationType == 2 { // airport
+					ao := om.GetAirportObjectByIndex(int(st.ObjectID))
+					if ao == nil || int(st.BuildingType) >= len(ao.Variations) {
+						continue
+					}
+					an := r.animOf(ao, ao.PartAnimations)
+					s.PaintAirport(st.Rotation, st.SequenceIndex, st.BaseZ, paint.AirportObj{BuildingImage: int(ao.BuildingImage),
+						Parts: ao.Variations[st.BuildingType], PartHeights: ao.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds,
+						LargeTile: ao.LargeTiles&(1<<st.BuildingType) != 0}, x, y, v.Ticks, sprite)
+					continue
+				}
 				if st.StationType != 0 {
-					continue // airports, docks: not ported yet
+					continue // docks: not ported yet
 				}
 				so := om.GetTrainStationObjectByIndex(int(st.ObjectID))
 				if so == nil || so.PaintStyle != 0 || int(st.SequenceIndex) >= len(so.SequenceImageOffsets) {
