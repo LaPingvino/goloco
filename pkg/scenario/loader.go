@@ -455,6 +455,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 				// bridge(): elem[6] >> 5 (bits [7:5]) — OpenLoco TrackElement.h
 				te := TrackElement{
 					TrackID:       elem[4] & 0x3F,
+					IsLast:        elem[1]&0x40 != 0, // ElementFlags::flag_6
 					HasBridge:     elem[4]&0x80 != 0,
 					BridgeID:      elem[6] >> 5,
 					SequenceIndex: elem[5] & 0x0F,
@@ -512,14 +513,15 @@ func (sc *Scenario) parseTileElements(data []byte) {
 			case elementTypeSignal:
 				// SignalElement: byte layout from SignalElement.h
 				sig := SignalElement{
-					SignalObjectID: elem[4] & 0x0F,
-					Rotation:       typeByte & 0x03,
-					HasLeftSignal:  elem[4]&0x80 != 0,
-					LeftFrame:      elem[5] & 0x0F,
-					HasRightSignal: elem[6]&0x80 != 0,
-					RightFrame:     elem[7] & 0x0F,
-					BaseZ:          baseZ,
-					ClearZ:         elem[3],
+					SignalObjectID:      elem[4] & 0x0F,
+					RightSignalObjectID: elem[6] & 0x0F,
+					Rotation:            typeByte & 0x03,
+					HasLeftSignal:       elem[4]&0x80 != 0,
+					LeftFrame:           elem[5] & 0x0F,
+					HasRightSignal:      elem[6]&0x80 != 0,
+					RightFrame:          elem[7] & 0x0F,
+					BaseZ:               baseZ,
+					ClearZ:              elem[3],
 				}
 				sc.Tiles[y][x].Signals = append(sc.Tiles[y][x].Signals, sig)
 				signalCount++

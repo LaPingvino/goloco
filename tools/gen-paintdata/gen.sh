@@ -10,7 +10,7 @@ inc=(-I"$OL/src/OpenLoco/include" -I"$OL/src/OpenLoco/src" -I"$OL/src/OpenLoco/i
      -I"$OL/src/Platform/include" -I"$OL/src/Utility/include" -I"$OL/src/Math/include" -I"$OL/src/Engine/include" -I"$OL/src/Gfx/include")
 tmp=$(mktemp -d)
 g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/gen" "$here/gen.cpp"
-g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/gen_track" "$here/gen_track.cpp"
+g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/gen_track" "$here/gen_track.cpp" "$OL/src/OpenLoco/src/Map/Track/TrackData.cpp"
 "$tmp/gen" > "$repo/pkg/paint/roaddata_gen.go"
 "$tmp/gen_track" > "$repo/pkg/paint/trackdata_gen.go"
 gofmt -w "$repo/pkg/paint/roaddata_gen.go" "$repo/pkg/paint/trackdata_gen.go"

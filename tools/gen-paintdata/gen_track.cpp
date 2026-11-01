@@ -7,6 +7,7 @@
 #include "Objects/TrackObject.h"
 #include "Paint/Paint.h"
 #include "Paint/PaintTrackData.h"
+#include "Map/Track/TrackData.h"
 #include <cstdio>
 #include <type_traits>
 
@@ -84,4 +85,13 @@ int main()
     std::printf("// TrackPiece is TrackPaintPiece (PaintTrackData.h).\n");
     std::printf("type TrackPiece struct {\n\tImageIndexOffsets [4][3]uint32\n\tBBOffsets, BBSizes [4]Pos3\n\tBridgeEdges, BridgeQuarters, BridgeType [4]uint8\n\tTunnelHeights [4][4]int16\n\tSegments [4]uint16\n\tIsMergeable bool\n}\n\n");
     table("TrackParts", "TrackPiece", kTrackPaintParts, trackPiece);
+    // World::TrackData::getTrackMiscData(trackId).signalHeightOffsetLeft/Right
+    std::printf("// TrackSignalHeightOffset[trackId] = {left, right} (TrackData getTrackMiscData).\n");
+    std::printf("var TrackSignalHeightOffset = [%zu][2]uint8{\n", kTrackPaintParts.size());
+    for (size_t i = 0; i < kTrackPaintParts.size(); i++)
+    {
+        const auto& m = World::TrackData::getTrackMiscData(i);
+        std::printf("\t{%u, %u},\n", (unsigned)m.signalHeightOffsetLeft, (unsigned)m.signalHeightOffsetRight);
+    }
+    std::printf("}\n");
 }

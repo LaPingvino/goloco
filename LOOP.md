@@ -262,6 +262,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    keeps tracks and roads in separate slices, so their order within one baseZ is lost (tracks first) — fix when
    the tile keeps element order. Title map: the railway renders. NOT YET: company colours, bridges, tunnels, track
    extras. NEXT: signals + stations, then make scene mode the default once nothing visible is missing.
+   Tick 38: signals DONE (pkg/paint/signal.go = paintSignal/paintSignalSide; offset tables, image rotation,
+   frames; TrackSignalHeightOffset generated from TrackData.cpp getTrackMiscData — gen_track now links that
+   file). PARSE FIXES (scenario): SignalElement.RightSignalObjectID (byte 6 bits 0-3 — the right side was read with
+   the left side's object), TrackElement.IsLast (element flags byte 1, flag_6). Signals pair with the track of the
+   same baseZ (APPROXIMATION: upstream uses the element just before). Title map (87,180): signal renders, sorted
+   behind trees. NEXT: stations (PaintStation/PaintTrainStation/PaintRoadStation).
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -349,3 +355,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 35 (item 3j) — walls ported (image ids generated); title-map walls render in the CPU renderer.
 - 2026-11-01 tick 36 (item 3j) — track paint table generated from upstream; goloco's hand track table verified identical (0 diffs). (Video SRT: OCR of the burned-in captions planned as a second source, per Joop.)
 - 2026-11-01 tick 37 (item 3j) — tracks in the CPU renderer (priority layers, sorted with roads per height group); the title railway renders.
+- 2026-11-01 tick 38 (item 3j) — signals ported; fixed two parse gaps (right-side signal object, track flag_6); signal offsets generated from upstream TrackData.
