@@ -11,8 +11,8 @@ import (
 // ScenarioSelect — a port of Ui/Windows/ScenarioSelect.cpp (the New Game
 // window): 610×412, centred (y at least 28), five category tabs, the scenario
 // list (24 px rows) and the selected scenario's details.
-// PARTIAL: no scrollbar (the list scrolls with the wheel, without the bar
-// widget), {COLOUR BLACK} uses PaletteIndex::black0 rather than the g1
+// PARTIAL: the scrollbar is drawn but only the wheel scrolls (its buttons,
+// track and thumb don't respond to the mouse yet), {COLOUR BLACK} uses PaletteIndex::black0 rather than the g1
 // text_palette, wrapping breaks at spaces, the completed tick / "completed by"
 // line (no high scores yet), currency swapping.
 
@@ -45,6 +45,7 @@ type ScenarioSelectWindow struct {
 	byCat    [5][]*scenario.ScenarioMeta
 	OnStart  func(*scenario.ScenarioMeta)
 	OnClose  func()
+	content  [4]int // the list's content rectangle, window-relative (set by Draw)
 }
 
 // NewScenarioSelect opens the window for screen size sw × sh.
@@ -86,7 +87,7 @@ func (w *ScenarioSelectWindow) HandleClick(px, py int) {
 		}
 	}
 	if w.in(ssList, px, py) {
-		idx := (py - (w.Y + ssList[1]) + w.Scroll) / ssRowHeight
+		idx := (py - (w.Y + ssList[1] + 1) + w.Scroll) / ssRowHeight
 		if idx >= 0 && idx < len(w.byCat[w.Tab]) {
 			m := w.byCat[w.Tab][idx]
 			if m == w.Selected && w.OnStart != nil {
@@ -133,14 +134,18 @@ func (w *ScenarioSelectWindow) Draw(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, ssClose[0], ssClose[1], gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		// drawScroll: cleared to shade 4 of the secondary colour, selected row unk30.
+		// The list is a ScrollView: inset frame, scrollbar when needed; its
+		// content (drawScroll) cleared to shade 4, the selected row unk30.
 		l := ssList
-		gfx8.FillRect(rt, l[0], l[1], l[0]+l[2]-1, l[1]+l[3]-1, gfx8.Shade(sec, 4))
+		cx, cy, cw, ch, _ := drawVScrollView(rt, l[0], l[1], l[2], l[3], gfx8.InsetColour{Map: sec}, len(w.byCat[w.Tab])*ssRowHeight, w.Scroll)
+		w.content = [4]int{cx, cy, cw, ch}
+		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 4))
 		m30, _ := g1.GetPaletteMap(0x30)
 		for i, m := range w.byCat[w.Tab] {
-			y := l[1] + i*ssRowHeight - w.Scroll
-			if m == w.Selected && y+ssRowHeight > l[1] && y < l[1]+l[3] {
-				gfx8.FillRectTranslucent(rt, l[0], max(y, l[1]), l[0]+l[2]-1, min(y+ssRowHeight-2, l[1]+l[3]-1), m30)
+			y := cy + i*ssRowHeight - w.Scroll
+			if m == w.Selected && y+ssRowHeight > cy && y < cy+ch {
+				// drawRect(0, y, self.width, kRowHeight - 1) in the content target
+				gfx8.FillRectTranslucent(rt, cx, max(y, cy), cx+cw-1, min(y+ssRowHeight-2, cy+ch-1), m30)
 			}
 		}
 		// Preview outline (inset, secondary colour) and image.
@@ -175,11 +180,15 @@ func (w *ScenarioSelectWindow) Draw(screen *ebiten.Image) {
 		tw, _ := MeasureTextBold(ssGroups[i])
 		DrawTextBold(screen, ssGroups[i], cx-tw/2, cy, win2) // wcolour2_stringid
 	}
-	// List rows: the name centred at x = 210, black (selected: window colour 2).
-	l := ssList
+	// List rows (content target): the name centred at x = 210, black
+	// (selected: window colour 2).
+	l, ct := ssList, w.content
+	if len(w.byCat[w.Tab])*ssRowHeight > l[3] {
+		drawVScrollArrows(screen, w.X+l[0], w.Y+l[1], l[2], l[3])
+	}
 	for i, m := range w.byCat[w.Tab] {
-		y := w.Y + l[1] + i*ssRowHeight - w.Scroll
-		if y+ssRowHeight <= w.Y+l[1] || y >= w.Y+l[1]+l[3] {
+		y := w.Y + ct[1] + i*ssRowHeight - w.Scroll
+		if y+ssRowHeight <= w.Y+ct[1] || y+10 > w.Y+ct[1]+ct[3] {
 			continue
 		}
 		c := black
@@ -187,7 +196,7 @@ func (w *ScenarioSelectWindow) Draw(screen *ebiten.Image) {
 			c = win2
 		}
 		tw, _ := MeasureTextBold(m.Name)
-		DrawTextBold(screen, m.Name, w.X+l[0]+210-tw/2, y+1, c)
+		DrawTextBold(screen, m.Name, w.X+ct[0]+210-tw/2, y+1, c)
 	}
 	if w.Selected == nil {
 		return
@@ -251,5 +260,16 @@ func itoa3(n int) string {
 func (w *ScenarioSelectWindow) SelectFirst() {
 	if len(w.byCat[w.Tab]) > 0 {
 		w.Selected = w.byCat[w.Tab][0]
+	}
+}
+
+// DiagRepeat repeats every category's list n times (diagnostics: to show the
+// scrollbar, which no shipped category is long enough to need).
+func (w *ScenarioSelectWindow) DiagRepeat(n int) {
+	for c := range w.byCat {
+		base := w.byCat[c]
+		for i := 1; i < n; i++ {
+			w.byCat[c] = append(w.byCat[c], base...)
+		}
 	}
 }
