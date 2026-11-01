@@ -99,12 +99,14 @@ type Scenario struct {
 	// included — enough for world-space rendering.  Nil for .SC5 scenarios.
 	//
 	// OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h  GameState::entities
-	CargoObjectOrder []string  // cargo slot -> DAT name (for objective cargo names)
-	Objective        Objective // win condition (valid when HasObjective)
-	HasObjective     bool
-	Entities         []VehicleEntity
-	VehicleList      []VehicleListEntry // heads with veh1/veh2 list data (VehicleList.cpp)
-	CurrentDay       uint32             // GameState general.currentDay
+	CargoObjectOrder   []string  // cargo slot -> DAT name (for objective cargo names)
+	Objective          Objective // win condition (valid when HasObjective)
+	HasObjective       bool
+	Entities           []VehicleEntity
+	VehicleList        []VehicleListEntry // heads with veh1/veh2 list data (VehicleList.cpp)
+	CurrentDay         uint32             // GameState general.currentDay
+	CompanyNames       []uint16           // company slot → name StringId
+	ControllingCompany uint8              // playerCompanies[0] (getControllingId)
 
 	// Towns holds the non-empty town records parsed from the scenario Towns
 	// chunk (or the towns array embedded in a saved-game GameState chunk).

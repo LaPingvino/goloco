@@ -93,8 +93,7 @@ type StationRow struct {
 }
 
 // NewStationList opens the station list (StationList.cpp): columns Name,
-// Status, Total waiting, Accepts; five tabs. PARTIAL: the caption lacks the
-// company name ("{STRINGID} - All Stations"), the transport-mode icons after
+// Status, Total waiting, Accepts; five tabs. PARTIAL: the transport-mode icons after
 // the name, the per-mode tabs' filtering, the company select button.
 func NewStationList(sw int, stations []StationRow, titleColour, colour uint8) *TownListWindow {
 	rows := make([][]string, len(stations))
@@ -185,7 +184,7 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 		w.content = [4]int{cx, cy, cw, ch}
 		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 3)) // drawScroll: clearSingle(shade 3)
 		m30, _ := g1.GetPaletteMap(0x30)
-		if w.Hover >= 0 {
+		if w.Hover >= 0 && w.Hover < len(w.Rows) {
 			y := cy + w.Hover*w.RowHeight - w.Scroll
 			if y+w.RowHeight > cy && y < cy+ch {
 				if w.HoverSolid { // drawRect(0, y, width, rowHeight, getShade(secondary, 0))
@@ -261,7 +260,7 @@ var vehicleListRowHeights = [6]int{28, 28, 28, 28, 48, 36}
 // row_heights[tab] tall, text outlined in the window's secondary colour (red
 // for a loss). PARTIAL: the vehicle drawn inline at the bottom of each row
 // (drawTrainInline), the status after the name (VehicleHead::getStatus), the
-// company name in the caption, the filter dropdowns, sorting, owner filter.
+// filter dropdowns, sorting, the company select button.
 func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour uint8) *TownListWindow {
 	rows := make([][]string, len(vehicles))
 	for i, v := range vehicles {
