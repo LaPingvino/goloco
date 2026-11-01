@@ -32,6 +32,7 @@ type Image struct {
 	Sprite *gfx8.Sprite
 	Op     gfx8.BlendOp
 	PalMap []uint8
+	Mask   *gfx8.Sprite // drawn masked (PaintStructFlags::hasMaskedImage) when set
 }
 
 // Struct is a PaintStruct.
@@ -324,6 +325,10 @@ func (s *Session) Order() []*Struct {
 // then its own attachments. rt's (0,0) is viewport (s.rtX, s.rtY).
 func (s *Session) Draw(rt *gfx8.RenderTarget) {
 	draw := func(img Image, x, y int) {
+		if img.Mask != nil {
+			gfx8.DrawSpriteMasked(rt, img.Sprite, img.Mask, x-s.rtX, y-s.rtY)
+			return
+		}
 		gfx8.DrawSprite(rt, img.Sprite, x-s.rtX, y-s.rtY, img.Op, img.PalMap)
 	}
 	attached := func(ps *Struct) {

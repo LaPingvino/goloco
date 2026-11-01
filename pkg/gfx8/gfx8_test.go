@@ -94,3 +94,15 @@ func TestDrawSpriteClipsAndOffsets(t *testing.T) {
 		t.Errorf("offset/clip: %v", rt.Bits)
 	}
 }
+
+func TestDrawSpriteMasked(t *testing.T) {
+	img := &Sprite{Width: 3, Height: 1, Pix: []uint8{9, 9, 9}}
+	mask := &Sprite{Width: 3, Height: 1, Pix: []uint8{0xFF, 0, 0x0F}}
+	rt := NewRenderTarget(3, 1)
+	copy(rt.Bits, []uint8{1, 2, 3})
+	DrawSpriteMasked(rt, img, mask, 0, 0)
+	// 9&0xFF=9 written; 9&0=0 skipped; 9&0x0F=9 written
+	if rt.Bits[0] != 9 || rt.Bits[1] != 2 || rt.Bits[2] != 9 {
+		t.Fatalf("masked: %v", rt.Bits)
+	}
+}
