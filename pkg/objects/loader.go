@@ -1087,3 +1087,20 @@ func (m *ObjectManager) GetIndustryObjectByIndex(index int) *IndustryObject {
 	}
 	return m.IndustryObjects[index]
 }
+
+// ReorderIndustryObjects rebuilds IndustryObjects in the scenario's industry
+// slot order (RequiredObjects slots 809..824), which IndustryObjectIDs index.
+func (m *ObjectManager) ReorderIndustryObjects(order []string) {
+	reordered := make([]*IndustryObject, len(order))
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if ind, ok := obj.Object.(*IndustryObject); ok {
+				reordered[i] = ind
+			}
+		}
+	}
+	m.IndustryObjects = reordered
+}

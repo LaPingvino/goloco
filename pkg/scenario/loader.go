@@ -188,6 +188,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.BuildingObjectOrder = parseBuildingObjectOrder(reqObjBytes)
 	sc.WallObjectOrder = parseWallObjectOrder(reqObjBytes)
 	sc.TrainSignalObjectOrder = parseTrainSignalObjectOrder(reqObjBytes)
+	sc.IndustryObjectOrder = parseIndustryObjectOrder(reqObjBytes)
 	sc.LevelCrossingObjectOrder = parseLevelCrossingObjectOrder(reqObjBytes)
 	sc.BridgeObjectOrder = parseBridgeObjectOrder(reqObjBytes)
 	sc.TrainStationObjectOrder = parseTrainStationObjectOrder(reqObjBytes)
@@ -532,8 +533,12 @@ func (sc *Scenario) parseTileElements(data []byte) {
 				// IndustryElement: byte layout from IndustryElement.h
 				sectionWord := uint16(elem[6]) | uint16(elem[7])<<8
 				ie := IndustryElement{
-					IndustryID:    elem[4],
-					BuildingType:  uint8((sectionWord >> 6) & 0x1F),
+					IndustryID:      elem[4],
+					BuildingType:    uint8((sectionWord >> 6) & 0x1F),
+					Colour:          uint8((sectionWord >> 11) & 0x1F), // var_6_F800
+					Var6Low:         uint8(sectionWord & 0x3F),         // var_6_003F
+					SectionProgress: (elem[5] >> 5) & 0x7,
+					SequenceIndex:   elem[5] & 0x3,
 					Rotation:      typeByte & 0x03,
 					IsConstructed: typeByte&0x80 != 0,
 					BaseZ:         baseZ,
@@ -766,6 +771,12 @@ const (
 	// Building slots: tree(64)+Snow(1)+Climate(1)+HillShapes(1) = 613+64+1+1+1 = 680
 	buildingSlotStart = 680
 	buildingSlotCount = 128
+
+	// Industry: ObjectType::industry (30); slots from getMaxObjects summed over
+	// the earlier types (computed with upstream's ObjectManager.h: 809, 16).
+	industrySlotStart  = 809
+	industrySlotCount  = 16
+	objectTypeIndustry = 30
 )
 
 // parseObjectOrder extracts object names from a RequiredObjects blob for a
@@ -829,6 +840,11 @@ func parseTreeObjectOrder(data []byte) []string {
 }
 
 // parseBuildingObjectOrder extracts the 128 building-object names from RequiredObjects.
+// parseIndustryObjectOrder extracts the 16 industry-object names from RequiredObjects.
+func parseIndustryObjectOrder(data []byte) []string {
+	return parseObjectOrder(data, industrySlotStart, industrySlotCount, objectTypeIndustry)
+}
+
 func parseBuildingObjectOrder(data []byte) []string {
 	order := parseObjectOrder(data, buildingSlotStart, buildingSlotCount, objectTypeBuilding)
 	count := 0

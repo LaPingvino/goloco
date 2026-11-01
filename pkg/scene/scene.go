@@ -213,6 +213,27 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 						PartAnimFrames: frames, PartAnimSpeed: speeds, ElevatorSequences: bo.ElevatorSequences, LargeTile: bo.HasFlags(objects.BuildingFlagLargeTile)},
 					cmap, x, y, v.Ticks, sprite)
 			}
+			for _, ie := range t.Industries {
+				if int(ie.IndustryID) >= len(m.IndustryObjectIDs) {
+					continue
+				}
+				io := om.GetIndustryObjectByIndex(int(m.IndustryObjectIDs[ie.IndustryID]))
+				if io == nil || int(ie.BuildingType) >= len(io.Variations) {
+					continue
+				}
+				frames := make([]uint8, len(io.PartAnimations))
+				speeds := make([]uint8, len(io.PartAnimations))
+				for i, pa := range io.PartAnimations {
+					frames[i], speeds[i] = pa.NumFrames, pa.AnimationSpeed
+				}
+				cmap, _ := r.G1.GetPaletteMap(int(ie.Colour))
+				s.PaintIndustry(paint.IndustryEl{Rotation: ie.Rotation, SequenceIndex: ie.SequenceIndex, BuildingType: ie.BuildingType,
+					Var6Low: ie.Var6Low, SectionProgress: ie.SectionProgress, IsConstructed: ie.IsConstructed, BaseZ: ie.BaseZ, ClearZ: ie.ClearZ},
+					paint.IndustryObj{BuildingImageIDs: int(io.BuildingImageIDs), Parts: io.Variations[ie.BuildingType], PartHeights: io.PartHeights,
+						PartAnimFrames: frames, PartAnimSpeed: speeds, AnimationSequences: io.AnimationSequences,
+						LargeTile: io.BuildingSizeFlags&(1<<ie.BuildingType) != 0},
+					cmap, x, y, v.Ticks, sprite)
+			}
 			for _, wl := range t.Walls {
 				wo := om.GetWallObjectByIndex(int(wl.WallObjectID))
 				if wo == nil {
