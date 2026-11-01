@@ -37,7 +37,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
   Blocked and move on — don't work around it.
 
 ## Queue (top = next)
-1. [x] **Private wasm test page.** DONE tick 2: published as a private Artifact (link in Joop's chat — never in the
+1. [x] **Private wasm test page.** Since 2026-11-01 (Joop: the artifact is slow; serve it from the VPS
+   behind Caddy with HTTP auth): `go run ./cmd/webpack -local -out ~/Projects/goloco-web-local` and
+   https://kiefte.eu/goloco/ (basic auth; set up once by Joop with `sudo bash scripts/caddy-goloco.sh`).
+   Rebuild = re-run webpack -local; no Caddy change needed. Earlier: DONE tick 2: published as a private Artifact (link in Joop's chat — never in the
    repo). Rebuild + republish: `go run ./cmd/webpack -out <scratchpad>/goloco-web -scenarios "..."`, then publish
    index.html with the other files from that folder to the same artifact. The host serves no gzip/binary types,
    so chunks ship as base64 text of gzip (.b64.txt, < 15 MB each; ~42 MB total of a 64 MB budget).
@@ -82,3 +85,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 2 (item 1 done) — black screenshots were a WebGL readback artefact: goloco's own --shots capture shows its loading screen drawing correctly. Artifacts serve no gzip, so the pack ships as base64 text of gzip; published privately; verified headless (544 objects, init complete). Body padding no longer squeezes the canvas.
 - 2026-11-01 tick 3 (item 2 done) — July WIP reviewed against upstream BuildVehicle.cpp: an invented list + track placement, not a port → parked on wip/build-vehicles-july; main clean; CLAUDE.md paths fixed (~/Projects/OpenLoco, ~/Projects/locomotion; no Xvfb yet, wasm page instead). Queued the real window as 5b.
 - 2026-11-01 tick 4 (item 3 done) — docs/deviations.md: 103 markers + invented heuristics, each with the upstream file it should follow, severity and size; found 5 dead packages (pkg/loco/*, pkg/tests) → new item 3b.
+- 2026-11-01 (Joop: artifact too slow → Caddy with password) — webpack -local writes plain .gz (page decodes both forms); scripts/caddy-goloco.sh inserts a marked /goloco/ block with basic_auth into the kiefte.eu site, backs up, validates (restores on failure), reloads; dry run on a copy validated and replaced cleanly on a second run. Needs Joop's sudo run.
