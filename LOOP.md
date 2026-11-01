@@ -152,6 +152,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    water blend must hit only what was drawn BEFORE the water tile, which needs in-order blending — what an 8-bit
    target gives for free. NEXT: (2) the paint session (Paint/Paint.cpp: addToPlotList, bounding boxes, quadrant
    sort), then (3) surfaces first, compared pixel-for-pixel with the current output on dry land.
+   Tick 20 — step (2) core DONE: pkg/paint — createNormalPaintStruct (offset/bbox rotation, gameToScreen,
+   imageWithinRT), addToPlotListAsParent/AsChild, attachToPrevious, quadrant bucketing, arrangeStructs with its
+   helper ported line for line (all 4 rotations of checkBoundingBox), drawStructs (children + attachments).
+   Tests: back-to-front tile order; an object on a tile draws after its ground even when added first; children
+   and attachments. NOT ported yet: track/road priority lists (finaliseTrackRoadOrdering), string structs,
+   culling, interaction lookup, masked images. NEXT: (3) a surface painter on gfx8+paint (PaintSurface main
+   surface only) rendering a test region, compared pixel-for-pixel with the current RGBA output on dry land.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -221,3 +228,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 17 (item 3e water d / slopes) — submerged terrain is no longer flattened and lifted (a misread of getWaterSurface); seabed slopes show through the water like the reference; slope→display table checked equal to upstream. Live build updated.
 - 2026-11-01 tick 18 (item 3e) — waterline tile explained (light-facing slope, not a bug); road slope placement proven by a headless test; found water blended over buildings near the coast (draw order) → interim object-mask fix queued, then the road slope capture.
 - 2026-11-01 tick 19 (item 3i step 1) — pkg/gfx8: 8-bit render target + exact blitPixel port + index decoder; unit tests for every blend op; equivalence test: 4,118/4,118 g1 sprites identical to the RGBA decoder. Chosen over an interim water mask that would still be wrong for terrain in front.
+- 2026-11-01 tick 20 (item 3i step 2) — pkg/paint: core of OpenLoco's paint session (structs, quadrants, arrangeStructs, draw order) ported line for line, 4 tests pass headless.
