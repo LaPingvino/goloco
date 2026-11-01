@@ -44,6 +44,15 @@ type Sprite struct {
 	Pix              []uint8 // Width×Height indices; 0 = transparent
 	HasTransparency  bool
 	RLE              bool // stored RLE-compressed (no noise mask: vanilla didn't support it)
+
+	// Zoom (G1 element flags and zoomOffset): at zoom > 0 a sprite with
+	// HasZoomSprites is drawn as image - ZoomOffset at half size; NoZoomDraw
+	// sprites are not drawn at all.
+	HasZoomSprites, NoZoomDraw bool
+	ZoomOffset                 int
+	// Runs are the RLE rows as stored: per row, [x0, n] pairs (drawRLESprite
+	// walks these; the pixels themselves are in Pix).
+	Runs [][][2]int
 }
 
 // Decode turns a g1 element into indices (raw or RLE, as stored).
@@ -53,7 +62,9 @@ func Decode(e *assets.G1Element) (*Sprite, error) {
 		return nil, errors.New("gfx8: empty sprite")
 	}
 	s := &Sprite{Width: w, Height: h, XOffset: int(e.XOffset), YOffset: int(e.YOffset), Pix: make([]uint8, w*h),
-		HasTransparency: e.Flags&assets.G1FlagHasTransparency != 0}
+		HasTransparency: e.Flags&assets.G1FlagHasTransparency != 0,
+		HasZoomSprites:  e.Flags&assets.G1FlagHasZoomSprites != 0, NoZoomDraw: e.Flags&assets.G1FlagNoZoomDraw != 0,
+		ZoomOffset: int(e.ZoomOffset)}
 	if e.Flags&assets.G1FlagIsRLECompressed == 0 {
 		if len(e.Data) < w*h {
 			return nil, errors.New("gfx8: raw data too short")
@@ -63,6 +74,7 @@ func Decode(e *assets.G1Element) (*Sprite, error) {
 	}
 	s.HasTransparency = true
 	s.RLE = true
+	s.Runs = make([][][2]int, h)
 	d := e.Data
 	if len(d) < h*2 {
 		return nil, errors.New("gfx8: RLE data too short")
@@ -76,6 +88,7 @@ func Decode(e *assets.G1Element) (*Sprite, error) {
 			if p+n > len(d) {
 				break
 			}
+			s.Runs[y] = append(s.Runs[y], [2]int{x0, n})
 			for i := 0; i < n; i++ {
 				if x := x0 + i; x < w {
 					s.Pix[y*w+x] = d[p+i]
