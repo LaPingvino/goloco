@@ -70,15 +70,15 @@ func (s *State) RotateConstructionHead() {
 // ClearConstructionHead deactivates the head (leave build mode).
 func (s *State) ClearConstructionHead() { s.ConsHead.Active = false }
 
-// CanPlaceTrackAtHead reports whether trackID can start at the head's exact
-// heading: the piece's begin rotation (TrackCoordinates) must equal the head
-// heading, which naturally restricts cardinal vs diagonal (12-15) pieces.
+// CanPlaceTrackAtHead reports whether trackID fits on the map at the head.
+// Which piece goes with the heading is getTrackPieceId's (pkg/construct);
+// upstream's CreateTrack doesn't compare the piece's rotationBegin with the
+// heading (rotationBegin serves following connected track, Track.cpp), so
+// neither does this. (An earlier goloco check did, and refused e.g. the
+// turnaround's track 42 where getTrackPieceId gives it.)
 func (s *State) CanPlaceTrackAtHead(trackID int) bool {
 	h := s.ConsHead
 	if !h.Active || trackID < 0 || trackID<<3 >= len(TrackCoordinates) {
-		return false
-	}
-	if TrackCoordinates[trackID<<3|int(h.Rotation&3)].RotBegin != h.Rotation {
 		return false
 	}
 	_, _, ok := s.TrackFootprint(trackID)
@@ -199,9 +199,7 @@ func (s *State) CanPlaceRoadAtHead(roadID int) bool {
 	if !h.Active || roadID < 0 || roadID<<3 >= len(RoadCoordinates) {
 		return false
 	}
-	if RoadCoordinates[roadID<<3|int(h.Rotation&3)].RotBegin != h.Rotation {
-		return false
-	}
+	// No rotationBegin check: CreateRoad has none (see CanPlaceTrackAtHead).
 	_, _, ok := s.RoadFootprint(roadID)
 	return ok
 }
