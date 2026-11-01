@@ -26,6 +26,9 @@ type TrackObject struct {
 	// extras, signals and stations TrackObject::load resolves into mods[],
 	// the signals bitset and stations[].
 	ModNames, SignalNames, StationNames []string
+	// BuildCostFactor and CostIndex price a piece (CreateTrack).
+	BuildCostFactor int16
+	CostIndex       uint8
 	// BridgeNames are its bridges' DAT names (load resolves them into bridges).
 	BridgeNames []string
 }
@@ -91,6 +94,9 @@ func ParseTrackObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tr
 		NumBridges:  numBridges,
 		NumStations: numStations,
 		TrackPieces: uint16(data[0x02]) | uint16(data[0x03])<<8,
+		// buildCostFactor 0x14, costIndex 0x1A (offsets from the compiler)
+		BuildCostFactor: int16(uint16(data[0x14]) | uint16(data[0x15])<<8),
+		CostIndex:       data[0x1A],
 	}
 
 	offset := fixedSize

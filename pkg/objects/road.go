@@ -20,8 +20,11 @@ type RoadObject struct {
 	ModNames []string
 	// BridgeNames are its bridges' DAT names.
 	BridgeNames []string
-	NumBridges  uint8 // Number of supported bridges (max 7)
-	NumStations uint8 // Number of supported stations (max 7)
+	// BuildCostFactor and CostIndex price a piece (CreateRoad).
+	BuildCostFactor int16
+	CostIndex       uint8
+	NumBridges      uint8 // Number of supported bridges (max 7)
+	NumStations     uint8 // Number of supported stations (max 7)
 	// RoadPieces (0x02) is the RoadTraitFlags set: small / very small curves,
 	// slope, steep slope, turnaround, junction.
 	RoadPieces uint16
@@ -87,6 +90,9 @@ func ParseRoadObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Roa
 		NumBridges:  numBridges,
 		NumStations: numStations,
 		RoadPieces:  uint16(data[0x02]) | uint16(data[0x03])<<8,
+		// buildCostFactor 0x04, costIndex 0x0A (offsets from the compiler)
+		BuildCostFactor: int16(uint16(data[0x04]) | uint16(data[0x05])<<8),
+		CostIndex:       data[0x0A],
 	}
 
 	offset := fixedSize
