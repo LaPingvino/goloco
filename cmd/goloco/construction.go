@@ -35,6 +35,7 @@ func nameFor(m map[string]int, v int) string {
 func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.ConstructionTabState) {
 	f := &ui.ConstructionFrame{X: x, Y: y, Title: g.consObjName(), FrameNo: g.titleFrame}
 	var st ui.ConstructionTabState
+	company, _ := g.w.ControllingCompany()
 	if g.r != nil && g.r.ObjMgr != nil {
 		if sk := g.r.ObjMgr.InterfaceSkin; sk != nil {
 			f.SkinColour = sk.WindowConstructionColour
@@ -48,9 +49,27 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 			f.TrackImage, st.Traits, f.TabFrames = int(t.Image), t.TrackPieces, 16
 		}
 	}
-	company, _ := g.w.ControllingCompany()
 	if company < len(g.w.CompanyColours) {
 		f.CompanyColour = g.w.CompanyColours[company]
+	}
+	// setDisabledWidgets: no signal (roads have none), no station or no mod
+	// available in this year hides that tab.
+	if om := g.r.ObjMgr; om != nil {
+		year := int(g.w.CurrentYear)
+		road := g.consIsRoad()
+		f.Disabled[2] = road || len(om.AvailableCompatibleSignals(g.buildObjID, year)) == 0
+		f.Disabled[1] = len(om.AvailableCompatibleStations(g.buildObjID, road, year)) == 0
+		if road {
+			f.Disabled[3] = true // PARTIAL: road extras (getAvailableCompatibleMods for roads) not ported
+		} else {
+			unlocked := func(v int) bool {
+				if company < len(g.w.UnlockedVehicles) && v < 224 {
+					return g.w.UnlockedVehicles[company][v/32]&(1<<(v%32)) != 0
+				}
+				return false
+			}
+			f.Disabled[3] = om.AvailableCompatibleMods(g.buildObjID, unlocked) == [4]uint8{0xFF, 0xFF, 0xFF, 0xFF}
+		}
 	}
 	st.Piece = nameFor(consPieceCurve, g.consCurve)
 	st.Gradient = nameFor(consGradientSlope, g.consSlope)
@@ -73,13 +92,13 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		}
 	}
 	win.OnWindowClick = func(rx, ry int) {
-		if ry >= 15 && ry < 42 && rx >= 3 { // tabs
-			if (rx-3)/31 == 1 {
+		f, st := g.constructionFrame(win.X, win.Y)
+		if tab := f.TabAt(rx, ry); tab >= 0 || (ry >= 15 && ry < 42) { // tabs
+			if tab == 1 {
 				g.consPlaceStation()
 			}
 			return
 		}
-		_, st := g.constructionFrame(win.X, win.Y)
 		switch hit := ui.ConstructionHit(rx, ry, st); hit {
 		case "":
 		case "construct":

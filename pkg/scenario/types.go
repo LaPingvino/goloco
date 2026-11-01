@@ -58,6 +58,8 @@ type Scenario struct {
 	TrackExtraOrder []string
 	// UnlockedVehicles is each company's unlockedVehicles bitset.
 	UnlockedVehicles [][7]uint32
+	// CurrentYear is GameState general.currentYear (getCurrentYear).
+	CurrentYear uint16
 
 	// IndustryObjectIDs[industry index] = that industry's object id (GameState
 	// industries table); IndustryElement.IndustryID indexes it.
