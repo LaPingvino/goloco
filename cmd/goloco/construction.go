@@ -103,6 +103,20 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 	st.Gradient = nameFor(consGradientSlope, g.consSlope)
 	st.Hover = !g.w.ConstructionHeadState().Active
 	st.BridgeImage, st.Company = -1, f.CompanyColour
+	// trackCost/roadCost: the selected piece's cost while extending (the
+	// ghost's cost upstream).
+	if !st.Hover && g.r != nil && g.r.ObjMgr != nil {
+		if id := g.consSelectedID(); id >= 0 {
+			cmf := &g.w.CurrencyMultiplicationFactor
+			if g.consIsRoad() {
+				if r := g.r.ObjMgr.GetRoadObjectByIndex(g.buildObjID); r != nil {
+					st.Cost = int64(construct.RoadPieceCost(id, r.BuildCostFactor, r.CostIndex, cmf))
+				}
+			} else if t := g.r.ObjMgr.GetTrackObjectByIndex(g.buildObjID); t != nil {
+				st.Cost = int64(construct.TrackPieceCost(id, t.BuildCostFactor, t.CostIndex, cmf))
+			}
+		}
+	}
 	if g.r != nil && g.r.ObjMgr != nil {
 		om := g.r.ObjMgr
 		// lastSelectedBridge: the first available (PARTIAL: the scenario's remembered bridges[]).

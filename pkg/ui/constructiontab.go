@@ -3,6 +3,7 @@ package ui
 import (
 	"github.com/LaPingvino/goloco/pkg/construct"
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -118,6 +119,8 @@ type ConstructionTabState struct {
 	Gradient          string // the activated gradient widget ("level", …)
 	Hover             bool   // constructionHover: placing the first piece
 	Rotation          uint8  // constructionRotation (the dual-track buttons' images)
+	// Cost is trackCost/roadCost for the piece at the head (0: none drawn).
+	Cost int64
 	// BridgeImage is lastSelectedBridge's image (BridgeObject::image), -1
 	// for none; Company the player's primary colour (it is recoloured).
 	BridgeImage int
@@ -236,13 +239,23 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 	pal := g1.GetPalette()
 	text := pal[gfx8.Shade(sec, 9)]
 	// drawCostString: "Build this..." centred at the construct widget's midX,
-	// its bottom - 23, while extending (not while placing the first piece).
-	// PARTIAL: the "Cost: …" line 11 px below (goloco has no construction cost
-	// yet: the CreateTrack/CreateRoad game commands' cost isn't ported).
+	// its bottom - 23, while extending (not while placing the first piece);
+	// 11 px below, build_cost "{COLOUR WINDOW_2}Cost: {COLOUR BLACK}{CURRENCY32}"
+	// when there is a cost. PARTIAL: the cost is the piece's own
+	// (construct.TrackPieceCost); CreateTrack's clearing, bridges, tunnels
+	// and mods aren't added yet.
+	const midX, y = (3 + 3 + 132 - 1) / 2, 145 + 100 - 1 - 23
 	if !st.Hover {
-		const midX, y = (3 + 3 + 132 - 1) / 2, 145 + 100 - 1 - 23
 		bw, _ := MeasureTextBold("Build this...")
 		DrawTextBold(screen, "Build this...", f.X+midX-bw/2, f.Y+y, text)
+	}
+	if st.Cost != 0 {
+		label, amount := "Cost: ", L.Currency48(st.Cost)
+		lw, _ := MeasureTextBold(label)
+		aw, _ := MeasureTextBold(amount)
+		x := f.X + midX - (lw+aw)/2
+		DrawTextBold(screen, label, x, f.Y+y+11, text)
+		DrawTextBold(screen, amount, x+lw, f.Y+y+11, pal[paletteBlack0])
 	}
 	if st.Hover && st.BridgeImage >= 0 { // the bridge box's ▼
 		arrow := string(rune(170))
