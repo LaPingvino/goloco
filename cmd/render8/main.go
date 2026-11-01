@@ -60,6 +60,9 @@ func main() {
 	if len(sc.RoadObjectOrder) > 0 {
 		om.ReorderRoadObjects(sc.RoadObjectOrder)
 	}
+	if len(sc.WallObjectOrder) > 0 {
+		om.ReorderWallObjects(sc.WallObjectOrder)
+	}
 	om.ResolveCliffEdges()
 
 	var m sim.Map

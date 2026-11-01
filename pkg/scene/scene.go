@@ -159,6 +159,20 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 						PartAnimFrames: frames, PartAnimSpeed: speeds, ElevatorSequences: bo.ElevatorSequences, LargeTile: bo.HasFlags(objects.BuildingFlagLargeTile)},
 					cmap, x, y, v.Ticks, sprite)
 			}
+			for _, wl := range t.Walls {
+				wo := om.GetWallObjectByIndex(int(wl.WallObjectID))
+				if wo == nil {
+					continue
+				}
+				var cmap []uint8
+				if wo.Flags&objects.WallFlagHasPrimaryColour != 0 {
+					cmap, _ = r.G1.GetPaletteMap(int(wl.PrimaryColour))
+				}
+				s.PaintWall(paint.WallEl{Rotation: wl.Rotation, EdgeSlope: wl.EdgeSlope, PrimaryColour: wl.PrimaryColour, BaseZ: wl.BaseZ},
+					paint.WallObj{Sprite: int(wo.Sprite), Height: wo.Height, TwoSided: wo.Flags&objects.WallFlagTwoSided != 0,
+						HasPrimary: wo.Flags&objects.WallFlagHasPrimaryColour != 0, HasGlass: wo.Flags&objects.WallFlagHasGlass != 0},
+					cmap, sprite)
+			}
 			for _, tr := range t.Trees {
 				to := om.GetTreeObjectByIndex(int(tr.TreeObjectID))
 				if to == nil {
