@@ -297,54 +297,7 @@ func NewGame() *Game {
 			// scenario's RequiredObjects chunk before loading tiles,
 			// so that element indices resolve to the correct objects.
 			if objMgr != nil {
-				if len(sc.LandObjectOrder) > 0 {
-					objMgr.ReorderLandObjects(sc.LandObjectOrder)
-					log.Printf("[Game] Reordered land objects to match scenario slot order")
-				}
-				if len(sc.TreeObjectOrder) > 0 {
-					objMgr.ReorderTreeObjects(sc.TreeObjectOrder)
-					log.Printf("[Game] Reordered tree objects to match scenario slot order (%d slots)", len(sc.TreeObjectOrder))
-				}
-				if len(sc.BuildingObjectOrder) > 0 {
-					objMgr.ReorderBuildingObjects(sc.BuildingObjectOrder)
-					log.Printf("[Game] Reordered building objects to match scenario slot order (%d slots)", len(sc.BuildingObjectOrder))
-				}
-				if len(sc.WallObjectOrder) > 0 {
-					objMgr.ReorderWallObjects(sc.WallObjectOrder)
-					log.Printf("[Game] Reordered wall objects to match scenario slot order (%d slots)", len(sc.WallObjectOrder))
-				}
-				if len(sc.TrainSignalObjectOrder) > 0 {
-					objMgr.ReorderTrainSignalObjects(sc.TrainSignalObjectOrder)
-					log.Printf("[Game] Reordered train signal objects to match scenario slot order (%d slots)", len(sc.TrainSignalObjectOrder))
-				}
-				if len(sc.LevelCrossingObjectOrder) > 0 {
-					objMgr.ReorderLevelCrossingObjects(sc.LevelCrossingObjectOrder)
-					log.Printf("[Game] Reordered level crossing objects to match scenario slot order (%d slots)", len(sc.LevelCrossingObjectOrder))
-				}
-				if len(sc.BridgeObjectOrder) > 0 {
-					objMgr.ReorderBridgeObjects(sc.BridgeObjectOrder)
-					log.Printf("[Game] Reordered bridge objects to match scenario slot order (%d slots)", len(sc.BridgeObjectOrder))
-				}
-				if len(sc.TrainStationObjectOrder) > 0 {
-					objMgr.ReorderTrainStationObjects(sc.TrainStationObjectOrder)
-					log.Printf("[Game] Reordered train station objects to match scenario slot order (%d slots)", len(sc.TrainStationObjectOrder))
-				}
-				if len(sc.RoadStationObjectOrder) > 0 {
-					objMgr.ReorderRoadStationObjects(sc.RoadStationObjectOrder)
-					log.Printf("[Game] Reordered road station objects to match scenario slot order (%d slots)", len(sc.RoadStationObjectOrder))
-				}
-				if len(sc.TrackObjectOrder) > 0 {
-					objMgr.ReorderTrackObjects(sc.TrackObjectOrder)
-					log.Printf("[Game] Reordered track objects to match scenario slot order (%d slots)", len(sc.TrackObjectOrder))
-				}
-				if len(sc.RoadObjectOrder) > 0 {
-					objMgr.ReorderRoadObjects(sc.RoadObjectOrder)
-					log.Printf("[Game] Reordered road objects to match scenario slot order (%d slots)", len(sc.RoadObjectOrder))
-				}
-				if len(sc.VehicleObjectOrder) > 0 {
-					objMgr.ReorderVehicleObjects(sc.VehicleObjectOrder)
-					log.Printf("[Game] Reordered vehicle objects to match scenario slot order (%d slots)", len(sc.VehicleObjectOrder))
-				}
+				reorderScenarioObjects(objMgr, sc)
 			}
 			w.LoadFromScenario(sc)
 			log.Printf("[Game] Loaded title scenario: %dx%d map", sc.MapWidth, sc.MapHeight)
@@ -1621,45 +1574,7 @@ func (g *Game) loadScenario(filePath string) error {
 	}()
 
 	if g.objMgr != nil {
-		if len(sc.LandObjectOrder) > 0 {
-			g.objMgr.ReorderLandObjects(sc.LandObjectOrder)
-		}
-		if len(sc.CargoObjectOrder) > 0 {
-			g.objMgr.ReorderCargoObjects(sc.CargoObjectOrder)
-		}
-		if len(sc.TreeObjectOrder) > 0 {
-			g.objMgr.ReorderTreeObjects(sc.TreeObjectOrder)
-		}
-		if len(sc.BuildingObjectOrder) > 0 {
-			g.objMgr.ReorderBuildingObjects(sc.BuildingObjectOrder)
-		}
-		if len(sc.WallObjectOrder) > 0 {
-			g.objMgr.ReorderWallObjects(sc.WallObjectOrder)
-		}
-		if len(sc.TrainSignalObjectOrder) > 0 {
-			g.objMgr.ReorderTrainSignalObjects(sc.TrainSignalObjectOrder)
-		}
-		if len(sc.LevelCrossingObjectOrder) > 0 {
-			g.objMgr.ReorderLevelCrossingObjects(sc.LevelCrossingObjectOrder)
-		}
-		if len(sc.BridgeObjectOrder) > 0 {
-			g.objMgr.ReorderBridgeObjects(sc.BridgeObjectOrder)
-		}
-		if len(sc.TrainStationObjectOrder) > 0 {
-			g.objMgr.ReorderTrainStationObjects(sc.TrainStationObjectOrder)
-		}
-		if len(sc.RoadStationObjectOrder) > 0 {
-			g.objMgr.ReorderRoadStationObjects(sc.RoadStationObjectOrder)
-		}
-		if len(sc.TrackObjectOrder) > 0 {
-			g.objMgr.ReorderTrackObjects(sc.TrackObjectOrder)
-		}
-		if len(sc.RoadObjectOrder) > 0 {
-			g.objMgr.ReorderRoadObjects(sc.RoadObjectOrder)
-		}
-		if len(sc.VehicleObjectOrder) > 0 {
-			g.objMgr.ReorderVehicleObjects(sc.VehicleObjectOrder)
-		}
+		reorderScenarioObjects(g.objMgr, sc)
 	}
 
 	// Create a fresh world for the new scenario so the title world is preserved.
