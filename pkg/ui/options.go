@@ -10,10 +10,11 @@ import (
 // the device row and "Play title screen music", Volume group with six
 // sliders in two columns). Colours: the skin's windowTitlebarColour and
 // windowOptionsColour.
-// Tabs switch with upstream's size and caption per tab; Audio, Regional and
-// Controls have their contents (Regional: display only — its dropdowns don't
+// Tabs switch with upstream's size and caption per tab; Display, Audio,
+// Regional and Controls have their contents (Display: display only, at Config's
+// defaults — goloco has no screen-mode/scale/frame-limit settings yet) (Regional: display only — its dropdowns don't
 // open, and currency symbols/formatting are not applied yet).
-// PARTIAL: Display, Rendering, Company and Misc show only the common
+// PARTIAL: Rendering, Company and Misc show only the common
 // frame (their widgets aren't ported yet); Controls: only edge scrolling has a
 // goloco counterpart, Customize Keys opens nothing; tab icon
 // animation; the device dropdown (shows "Default"); goloco has only a music
@@ -219,6 +220,19 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			gfx8.FillRectInset(rt, 26, 94, 26+160-1, 94+12-1, gfx8.InsetColour{Map: sec}, 0)
 			return
 		}
+		if w.Tab == OptTabDisplay {
+			groupBox(rt, 4, 49, 392, 97, sec, "Hardware")
+			for _, y := range []int{63, 79, 111} {
+				optDropdown(rt, 235, y, 154, sec)
+			}
+			// stepperWidgets({235, 95}, {154, 12}): TextBox + "-" (x+w-26, 13 wide) and
+			// "+" (x+w-13, 12 wide) Buttons, both y+1 and h-2 high.
+			gfx8.FillRectInset(rt, 235, 95, 235+154-1, 95+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			gfx8.FillRectInset(rt, 235+154-26, 96, 235+154-26+13-1, 96+10-1, gfx8.InsetColour{Map: sec}, 0)
+			gfx8.FillRectInset(rt, 235+154-13, 96, 235+154-13+12-1, 96+10-1, gfx8.InsetColour{Map: sec}, 0)
+			gfx8.FillRectInset(rt, 10, 127, 10+10-1, 127+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			return
+		}
 		if w.Tab == OptTabRegional {
 			for _, r := range optRegionalRows {
 				optDropdown(rt, 183, r.y, 173, sec)
@@ -265,6 +279,42 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		const label = "Customize Keys..."
 		lw, _ := MeasureTextBold(label)
 		DrawTextBold(screen, label, w.X+26+(160-1)/2-lw/2, w.Y+94, text)
+		return
+	}
+	inset := func(t string, x, y int) { // colour.inset(): shade 4 at +1,+1, then shade 6
+		DrawTextBold(screen, t, x+1, y+1, pal[gfx8.Shade(sec, 4)])
+		DrawTextBold(screen, t, x, y, pal[gfx8.Shade(sec, 6)])
+	}
+	if w.Tab == OptTabDisplay {
+		// prepareDraw's values, at Config's defaults: window mode, fullscreen
+		// resolution 1920×1080 (disabled outside fullscreen), scale 1.00 (its "-"
+		// disabled at ScaleFactor::min), the internal frame rate, no fps counter.
+		DrawTextBold(screen, "Hardware", w.X+4+5, w.Y+49, text)
+		arrow := string(rune(170))
+		aw, _ := MeasureTextBold(arrow)
+		rows := []struct {
+			y            int
+			label, value string
+			disabled     bool
+		}{{63, "Screen mode:", "Windowed", false}, {79, "Display Resolution:", "1920 x 1080", true},
+			{95, "Window scale factor:", "1.00", false}, {111, "Frame rate limit:", "Internal speed (default)", false}}
+		for _, r := range rows {
+			DrawTextBold(screen, r.label, w.X+10, w.Y+r.y, text)
+			if r.disabled {
+				inset(r.value, w.X+235+1, w.Y+r.y+1)
+				inset(arrow, w.X+235+154-12+(11-1)/2-aw/2, w.Y+r.y+1)
+				continue
+			}
+			DrawTextBold(screen, r.value, w.X+235+1, w.Y+r.y+1, black)
+			if r.y != 95 {
+				DrawTextBold(screen, arrow, w.X+235+154-12+(11-1)/2-aw/2, w.Y+r.y+1, black)
+			}
+		}
+		mw, _ := MeasureTextBold("-")
+		pw, _ := MeasureTextBold("+")
+		inset("-", w.X+235+154-26+(13-1)/2-mw/2, w.Y+96) // disabled at the minimum scale
+		DrawTextBold(screen, "+", w.X+235+154-13+(12-1)/2-pw/2, w.Y+96, black)
+		DrawTextBold(screen, "Display fps counter", w.X+10+10+4, w.Y+127, text)
 		return
 	}
 	if w.Tab == OptTabRegional {
