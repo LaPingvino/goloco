@@ -63,6 +63,7 @@ cat > "$tmp/layout.cpp" <<'CPP'
 #include "Objects/AirportObject.h"
 #include "Objects/BuildingObject.h"
 #include "Objects/DockObject.h"
+#include "Objects/TunnelObject.h"
 #include "Objects/RoadStationObject.h"
 #include "Objects/TrainStationObject.h"
 #include <cstddef>
@@ -88,6 +89,7 @@ int main() {
   std::printf("\tDockNumBuildingPartsOffset = %zu\n", offsetof(DockObject, numBuildingParts));
   std::printf("\tDockNumBuildingVariationsOffset = %zu\n", offsetof(DockObject, numBuildingVariations));
   std::printf("\tDockFlagHasShadows = %u\n", (unsigned)DockObjectFlags::hasShadows);
+  std::printf("\tTunnelObjectSize = %zu\n", sizeof(TunnelObject));
   std::printf("\tTrainStationFlagsOffset = %zu\n", offsetof(TrainStationObject, flags));
   std::printf("\tTrainStationFlagRecolourable = %u\n", (unsigned)TrainStationFlags::recolourable);
   std::printf("\tRoadStationFlagsOffset = %zu\n", offsetof(RoadStationObject, flags));

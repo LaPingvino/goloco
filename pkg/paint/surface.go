@@ -81,7 +81,11 @@ func (s *Session) paintEdgeSection(sprite func(int) *gfx8.Sprite, cliffBase, fac
 	s.AddAsParent(Image{Sprite: img, Mask: mask}, off, off, edgeBBoxSize[edge])
 }
 
-// paintCliffEdgeImpl is paintSurfaceCliffEdgeImpl (without tunnels/underground).
+// kCliffEdgeToTunnelEdge (PaintSurface.cpp).
+var cliffEdgeToTunnelEdge = [4]int{2, 1, 3, 0}
+
+// paintCliffEdgeImpl is paintSurfaceCliffEdgeImpl, including the tunnel portals
+// (tunnels inserted by the track/road elements painted before the surface).
 func (s *Session) paintCliffEdgeImpl(sprite func(int) *gfx8.Sprite, edge int, eh edgeHeight, cliffBase int) {
 	if eh.self0 <= eh.neighbour0 && eh.self1 <= eh.neighbour1 {
 		return
@@ -100,7 +104,26 @@ func (s *Session) paintCliffEdgeImpl(sprite func(int) *gfx8.Sprite, edge int, eh
 			h++
 		}
 	}
+	tunnelNum := 0
 	for h < eh.self0 && h < eh.self1 {
+		te := cliffEdgeToTunnelEdge[edge]
+		for h > s.tunnelAt(te, tunnelNum).height {
+			tunnelNum++
+		}
+		if tn := s.tunnelAt(te, tunnelNum); h == tn.height {
+			z := h * microZStep
+			switch edge {
+			case 0:
+				s.addPortal(sprite, tn.tunnel, Pos3{30, 0, z}, Pos3{29, 0, 6 + z}, Pos3{2, 2, 25})
+				s.addPortal(sprite, tn.tunnel+1, Pos3{30, 0, z}, Pos3{30, 30, z}, Pos3{1, 1, 31})
+			case 1:
+				s.addPortal(sprite, tn.tunnel+2, Pos3{0, 30, z}, Pos3{0, 29, 6 + z}, Pos3{2, 2, 25})
+				s.addPortal(sprite, tn.tunnel+3, Pos3{0, 30, z}, Pos3{30, 30, z}, Pos3{1, 1, 31})
+			}
+			h += 2
+			tunnelNum++
+			continue
+		}
 		s.paintEdgeSection(sprite, cliffBase, factor, h, edge, mask(0))
 		h++
 	}
@@ -112,6 +135,12 @@ func (s *Session) paintCliffEdgeImpl(sprite func(int) *gfx8.Sprite, edge int, eh
 		}
 	}
 	s.paintEdgeSection(sprite, cliffBase, factor, h, edge, mask(unk))
+}
+
+func (s *Session) addPortal(sprite func(int) *gfx8.Sprite, img int, off, bbOff, bbSz Pos3) {
+	if sp := sprite(img); sp != nil {
+		s.AddAsParent(Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, off, bbOff, bbSz)
+	}
 }
 
 // PaintCliffEdges paints the cliff faces of the tile at the current sprite

@@ -351,6 +351,18 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		loaded.ImageOffset = bldg.ImageOffset
 		m.BuildingObjects = append(m.BuildingObjects, bldg)
 
+	case ObjectTypeTunnel:
+		var g1Loader G1Loader
+		if m.G1File != nil {
+			g1Loader, _ = m.G1File.(G1Loader)
+		}
+		tn, err := ParseTunnelObjectWithG1(header, decompressed, g1Loader)
+		if err != nil {
+			return fmt.Errorf("parsing tunnel: %w", err)
+		}
+		loaded.Object = tn
+		loaded.ImageOffset = tn.Image
+
 	case ObjectTypeDock:
 		var g1Loader G1Loader
 		if m.G1File != nil {

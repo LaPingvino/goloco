@@ -33,6 +33,7 @@ type Renderer struct {
 
 	colourMaps map[int][]uint8  // GetPaletteMap(colour), which copies, cached
 	anims      map[any]anim     // per object: part animation frames and speeds
+	tunnels    map[string]int   // tunnel header name → tunnel image base
 	nbBuf      [4]paint.Surface // neighbour surfaces of the tile being painted
 }
 
@@ -85,6 +86,20 @@ func (r *Renderer) shadow(has bool, image, colour int, primary bool) paint.Shado
 		return paint.Shadow{}
 	}
 	return paint.Shadow{Image: image, Pal: r.colourMap(int(paint.ShadowColour[colour])), Primary: primary}
+}
+
+// tunnelImage resolves a track/road object's tunnel header name to the tunnel
+// object's image base once (ObjectManager.TunnelImage), then from a cache.
+func (r *Renderer) tunnelImage(name string) int {
+	if v, ok := r.tunnels[name]; ok {
+		return v
+	}
+	if r.tunnels == nil {
+		r.tunnels = map[string]int{}
+	}
+	v := r.Objects.TunnelImage(name)
+	r.tunnels[name] = v
+	return v
 }
 
 // animOf splits an object's part animations into frames and speeds (cached).
@@ -174,6 +189,7 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 				continue
 			}
 			s.SetSpritePosition(x*32, y*32)
+			s.ResetTunnels() // paintTileElementsSetup
 			// paintTileElements: the tile's elements in stored order, each followed by
 			// paintTileElementsEndLoop. Signals and stations read entry.prev().
 			for i, ref := range t.Order {
@@ -260,12 +276,14 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 	case scenario.KindTrack:
 		tk := t.Tracks[ref.Index]
 		if to := om.GetTrackObjectByIndex(int(tk.TrackObjectID)); to != nil {
-			s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ, Remap: r.companyRemap(m, tk.Owner)}, int(to.Image), sprite)
+			s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ, Remap: r.companyRemap(m, tk.Owner),
+				Tunnel: r.tunnelImage(to.TunnelName)}, int(to.Image), sprite)
 		}
 	case scenario.KindRoad:
 		rd := t.Roads[ref.Index]
 		if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
-			s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: r.companyRemap(m, rd.Owner)}, int(ro.Image), ro.PaintStyle, sprite)
+			s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: r.companyRemap(m, rd.Owner),
+				Tunnel: r.tunnelImage(ro.TunnelName)}, int(ro.Image), ro.PaintStyle, sprite)
 		}
 	case scenario.KindSignal:
 		// paintSignal: against entry.prev(), which must be a track element.

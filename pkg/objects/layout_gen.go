@@ -21,6 +21,7 @@ const (
 	DockNumBuildingPartsOffset      = 18
 	DockNumBuildingVariationsOffset = 19
 	DockFlagHasShadows              = 1
+	TunnelObjectSize                = 6
 	TrainStationFlagsOffset         = 12
 	TrainStationFlagRecolourable    = 1
 	RoadStationFlagsOffset          = 11
