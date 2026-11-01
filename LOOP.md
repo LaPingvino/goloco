@@ -210,6 +210,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    (a) cmd/gen-paintdata: generate Go tables from those headers (like track_data_gen.go — exact, no hand
    copying); (b) port paintRoadPP/PCP for styles 0/2 + 1; (c) addToPlotListTrackRoad + finaliseTrackRoadOrdering
    (the priority lists the paint port deferred); (d) roads in render8; (e) capture the slope pieces.
+   Tick 30: (a) DONE — tools/gen-paintdata (gen.cpp compiled against upstream's headers with upstream's own
+   include line; gen.sh) writes pkg/paint/roaddata_gen.go: RoadCommonParts, RoadStyle0/1/2Parts — values evaluated
+   by the C++ compiler, constexpr rotations included. Road additions not yet. Comparing goloco's hand table
+   (pkg/world/road_sprites.go) with it: style2 roadId 3 (left curve small) had pieces 0 and 3 SWAPPED → fixed.
+   Roads 0-2 differ by design (merge sprites instead of hit-test images). The SLOPE pieces (5-8) MATCH — so Joop's
+   'up and down roads' bug is not in the sprite tables but in placement (heights/bboxes) → check during (b).
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -289,3 +295,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 27 (item 3i) — tree season sprite remap checked equal to upstream; buildings next.
 - 2026-11-01 tick 28 (item 3i) — buildings in the CPU renderer (variation, parts, animations, colours, 2×2, elevators); the town-by-the-sea renders with water behind it, as the original. Roads next.
 - 2026-11-01 tick 29 (item 3i) — road painter surveyed (code + ~1,800 lines of data headers); plan: generate the tables from upstream headers instead of goloco's hand-copied road_sprites.go, then port paintRoad.
+- 2026-11-01 tick 30 (item 3i roads a) — road paint tables generated from upstream via the C++ compiler; found and fixed a swapped left-curve piece in goloco's hand table; slope sprites verified equal (bug is in placement).

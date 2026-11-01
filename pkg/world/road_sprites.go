@@ -321,14 +321,15 @@ var kRoadPartsStyle2 = [10][]roadPiece0{
 	{{img: [4]uint32{87, 88, 89, 90}}},
 
 	// 3: LeftCurveSmall (4 pieces)
-	// Piece ordering: seqIdx 0=LCS3, 1=LCS1, 2=LCS2, 3=LCS0 (matches Style0 convention)
+	// Piece order checked against the compiler-evaluated upstream table (pkg/paint/roaddata_gen.go,
+	// 2026-11-01): seqIdx 0 and 3 were swapped here before.
 	// LCS0: NE=52,SE=56,SW=60,NW=48  LCS1: NE=50,SE=54,SW=58,NW=46
 	// LCS2: NE=51,SE=55,SW=59,NW=47  LCS3: NE=49,SE=53,SW=57,NW=45
 	{
-		{img: [4]uint32{49, 53, 57, 45}}, // seqIdx 0 = LCS3
+		{img: [4]uint32{52, 56, 60, 48}}, // seqIdx 0 (upstream Style2 kLeftCurveSmall: see pkg/paint/roaddata_gen.go)
 		{img: [4]uint32{50, 54, 58, 46}}, // seqIdx 1 = LCS1
 		{img: [4]uint32{51, 55, 59, 47}}, // seqIdx 2 = LCS2
-		{img: [4]uint32{52, 56, 60, 48}}, // seqIdx 3 = LCS0
+		{img: [4]uint32{49, 53, 57, 45}}, // seqIdx 3
 	},
 
 	// 4: RightCurveSmall (4 pieces)
