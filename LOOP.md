@@ -95,6 +95,16 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    WaveFlag tiles (diag: the all-over wave flecks are gone). NOTE: goloco ticks once per frame (60/s), upstream's
    game tick is 25 ms (40/s) — separate deviation, affects every timed effect. Remaining water item: (b) the late
    water pass → with the paint-sort work (deviations B, vehicle depth).
+   (c) FOUND tick 14 — the colour of the water itself. Reference (reference/gallery-screenshot-7.png): dark,
+   textured water, the seabed showing through; goloco: flat pale teal. Upstream (Graphics/DrawSprite.cpp
+   getDrawBlendOp): an image that is blended but has no primary colour is 'only a transparency mask — just colour
+   the pixels using the palette map' → for each non-transparent pixel of water +35, dst = waterMap[dst], where
+   waterMap = the water object's image +41 (WaterObject::kColourPalette; ObjectManager updateWaterPalette sets
+   ExtColour::water to it). Then +30 is drawn normally on top. goloco instead remaps the +35 sprite into an
+   opaque flat colour, and its pass-2 blend lerps toward one tint (worldBlendOp) — both approximations.
+   NEXT TICK: make the blend pass exact — at zoom 0 every drawn pixel is a palette colour, so reverse-look-up the
+   index (RGB→index table from the G1 palette), map it through the 256-entry map, write the mapped palette colour;
+   route water +35 through it as a mask (and glass, which uses the same op); compare with gallery-screenshot-7.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -158,3 +168,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 11 (item 4 step 3b) — sim.State (Map + construction head + undo stacks); construction rules and AddTrack/AddRoad moved to pkg/sim; World embeds sim.State; build+vet green; ghost drawing owes a visual check. Joop's three observations queued as 3e.
 - 2026-11-01 tick 12 (item 3e water) — coast diag captured; found invented all-tile waves and a late water pass vs upstream's paint sort; ported WaveManager + the tile loop's water branch to pkg/sim (first headless tests in pkg/sim, all pass). Queued: 3f element-by-element paint audit (Joop), 3g music stutter, 3h draft g1 (after fidelity).
 - 2026-11-01 tick 13 (item 3e water a) — waves wired: tile loop + wave update per tick, frames drawn only on wave tiles; diag shows plain water instead of flecks everywhere; live build updated. Noted the 60 vs 40 ticks/s deviation.
+- 2026-11-01 tick 14 (item 3e) — reference gallery found in goloco/reference/; water colour cause traced to upstream's mask-blend (dst through the water palette map +41) vs goloco's opaque remap + tint lerp; plan recorded; no code change.
