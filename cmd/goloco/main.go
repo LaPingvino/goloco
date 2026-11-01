@@ -96,12 +96,13 @@ type Game struct {
 	gameWon      bool
 	progress     *progressFile
 
-	consCurve  int  // construction curve selection: -4 (left large) … 0 … +4
-	consTab    int  // construction window tab: 0 construction, 2 signal (1 station places directly)
-	consSigOne bool // signal tab: single direction chosen (isSignalBothDirections = 0)
-	consSlope  int  // construction slope selection: -2 (steep down) … 0 … +2
-	buildObjID int  // index into TrackObjects / RoadObjects
-	hoverTileX int  // tile under cursor in build mode (-1 if invalid)
+	consCurve  int   // construction curve selection: -4 (left large) … 0 … +4
+	consTab    int   // construction window tab: 0 construction, 2 signal (1 station places directly)
+	consSigOne bool  // signal tab: single direction chosen (isSignalBothDirections = 0)
+	consMods   uint8 // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
+	consSlope  int   // construction slope selection: -2 (steep down) … 0 … +2
+	buildObjID int   // index into TrackObjects / RoadObjects
+	hoverTileX int   // tile under cursor in build mode (-1 if invalid)
 	hoverTileY int
 
 	// Diagnostic crop: when set, save a 480×360 PNG centred on diagTileX/Y after the next Draw.
@@ -1106,10 +1107,20 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.townList.Hover = 2
 	}
-	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend" || d == "signal") && !g.diagConsDone {
+	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend" || d == "signal" || d == "overhead") && !g.diagConsDone {
 		g.diagConsDone = true
 		if d == "signal" {
 			g.consTab = 2
+		}
+		if d == "overhead" { // the tram road (its overhead wires), one ticked
+			g.buildMode = buildModeRoad
+			for range 8 {
+				if st := g.overheadTabState(); st.Names[0] != "" {
+					break
+				}
+				g.consCycleType(1)
+			}
+			g.consTab, g.consMods = 3, 1
 		}
 		if d == "extend" {
 			g.buildMode = buildModeTrack
