@@ -257,6 +257,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    units, they redefine the same helpers); pkg/paint/trackdata_gen.go = kTrackPaintParts (91 pieces). goloco's
    hand table (pkg/world/track_sprites.go) checked against it: 0 differences. Track painter (paintTrack: mergeable →
    priority lists 0/1/3, standard → AsParent) next.
+   Tick 37: tracks DONE (pkg/paint/track.go = paintTrack/paintTrackPP: mergeable → priority lists 0/1/3, standard
+   → AsParent). Scene: tracks and roads per baseZ group (ascending), one finalise per group. APPROXIMATION: the tile
+   keeps tracks and roads in separate slices, so their order within one baseZ is lost (tracks first) — fix when
+   the tile keeps element order. Title map: the railway renders. NOT YET: company colours, bridges, tunnels, track
+   extras. NEXT: signals + stations, then make scene mode the default once nothing visible is missing.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -343,3 +348,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 34 (item 3j step 2) — the game can draw through the ported CPU renderer (GOLOCO_SCENE=1); title renders correctly; walls/tracks/stations still to port. (Videos: audio copied from Crostini, Whisper transcription running in a background agent.)
 - 2026-11-01 tick 35 (item 3j) — walls ported (image ids generated); title-map walls render in the CPU renderer.
 - 2026-11-01 tick 36 (item 3j) — track paint table generated from upstream; goloco's hand track table verified identical (0 diffs). (Video SRT: OCR of the burned-in captions planned as a second source, per Joop.)
+- 2026-11-01 tick 37 (item 3j) — tracks in the CPU renderer (priority layers, sorted with roads per height group); the title railway renders.

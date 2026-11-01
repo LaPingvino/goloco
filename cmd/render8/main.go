@@ -63,6 +63,9 @@ func main() {
 	if len(sc.WallObjectOrder) > 0 {
 		om.ReorderWallObjects(sc.WallObjectOrder)
 	}
+	if len(sc.TrackObjectOrder) > 0 {
+		om.ReorderTrackObjects(sc.TrackObjectOrder)
+	}
 	om.ResolveCliffEdges()
 
 	var m sim.Map

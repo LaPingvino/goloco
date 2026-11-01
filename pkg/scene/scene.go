@@ -132,16 +132,35 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 				s.PaintWater(self, nbs, r.water, objects.KSlopeToWaterShape[:], int(land.CliffEdgeImage), sprite)
 			}
 
-			// Roads, then the per-group finalise passes (PaintTile.cpp paintTileElementsEndLoop:
-			// at the end of each run of elements with the same baseZ).
-			for i, rd := range t.Roads {
-				if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
-					s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ}, int(ro.Image), ro.PaintStyle, sprite)
+			// Tracks and roads, then the per-group finalise passes (PaintTile.cpp
+			// paintTileElementsEndLoop: at the end of each run of elements with the
+			// same baseZ). Tile elements are stored in ascending baseZ; the order of
+			// tracks vs roads within one baseZ is not kept by the tile (separate
+			// slices), so tracks go first — APPROXIMATION until the tile keeps the
+			// element order.
+			ti, ri := 0, 0
+			for ti < len(t.Tracks) || ri < len(t.Roads) {
+				z := 256
+				if ti < len(t.Tracks) {
+					z = int(t.Tracks[ti].BaseZ)
 				}
-				if i == len(t.Roads)-1 || t.Roads[i+1].BaseZ != rd.BaseZ {
-					s.FinalisePaintRoad(sprite)
-					s.FinaliseTrackRoadOrdering()
+				if ri < len(t.Roads) && int(t.Roads[ri].BaseZ) < z {
+					z = int(t.Roads[ri].BaseZ)
 				}
+				for ; ti < len(t.Tracks) && int(t.Tracks[ti].BaseZ) == z; ti++ {
+					tk := t.Tracks[ti]
+					if to := om.GetTrackObjectByIndex(int(tk.TrackObjectID)); to != nil {
+						s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ}, int(to.Image), sprite)
+					}
+				}
+				for ; ri < len(t.Roads) && int(t.Roads[ri].BaseZ) == z; ri++ {
+					rd := t.Roads[ri]
+					if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
+						s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ}, int(ro.Image), ro.PaintStyle, sprite)
+					}
+				}
+				s.FinalisePaintRoad(sprite)
+				s.FinaliseTrackRoadOrdering()
 			}
 			for _, b := range t.Buildings {
 				bo := om.GetBuildingObjectByIndex(int(b.ObjectID))
