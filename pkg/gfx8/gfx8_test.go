@@ -106,3 +106,24 @@ func TestDrawSpriteMasked(t *testing.T) {
 		t.Fatalf("masked: %v", rt.Bits)
 	}
 }
+
+func TestNoiseMaskUsesSpriteWidthStride(t *testing.T) {
+	s := &Sprite{Width: 2, Height: 2, Pix: []uint8{5, 5, 5, 5}, HasTransparency: true}
+	// noise image 4 wide; with the sprite's width (2) as stride, row 1 reads noise[2..3]
+	noise := &Sprite{Width: 4, Height: 2, Pix: []uint8{0xFF, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}}
+	rt := NewRenderTarget(2, 2)
+	DrawSpriteNoise(rt, s, 0, 0, OpTransparent, nil, noise)
+	want := []uint8{5, 0, 0, 5}
+	for i := range want {
+		if rt.Bits[i] != want[i] {
+			t.Fatalf("noise: %v, want %v", rt.Bits, want)
+		}
+	}
+	// RLE sprites ignore the noise image (vanilla behaviour)
+	s.RLE = true
+	rt = NewRenderTarget(2, 2)
+	DrawSpriteNoise(rt, s, 0, 0, OpTransparent, nil, noise)
+	if rt.Bits[1] != 5 {
+		t.Fatalf("RLE sprite must ignore noise: %v", rt.Bits)
+	}
+}

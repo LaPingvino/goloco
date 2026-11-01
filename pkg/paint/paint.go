@@ -33,6 +33,7 @@ type Image struct {
 	Op     gfx8.BlendOp
 	PalMap []uint8
 	Mask   *gfx8.Sprite // drawn masked (PaintStructFlags::hasMaskedImage) when set
+	Noise  *gfx8.Sprite // noise image (ImageId withNoiseMask), non-RLE sprites only
 }
 
 // Struct is a PaintStruct.
@@ -329,7 +330,7 @@ func (s *Session) Draw(rt *gfx8.RenderTarget) {
 			gfx8.DrawSpriteMasked(rt, img.Sprite, img.Mask, x-s.rtX, y-s.rtY)
 			return
 		}
-		gfx8.DrawSprite(rt, img.Sprite, x-s.rtX, y-s.rtY, img.Op, img.PalMap)
+		gfx8.DrawSpriteNoise(rt, img.Sprite, x-s.rtX, y-s.rtY, img.Op, img.PalMap, img.Noise)
 	}
 	attached := func(ps *Struct) {
 		for a := ps.attached; a != nil; a = a.next {

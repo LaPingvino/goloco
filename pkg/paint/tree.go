@@ -3,10 +3,9 @@ package paint
 import "github.com/LaPingvino/goloco/pkg/gfx8"
 
 // Trees — a port of Paint/PaintTree.cpp paintTree (0x004BAEDA). PARTIAL: ghost
-// trees and coloured trees (no vanilla object uses colours) are not ported;
-// the noise mask of the second image only applies to non-RLE sprites
-// (DrawSprite.cpp: "Vanilla did not handle noise image for RLE compressed
-// images") and tree sprites are RLE, so it is not drawn here either.
+// trees and coloured trees (no vanilla object uses colours) are not ported.
+// The second (season-transition) image carries a noise mask: noise image
+// 3478+n (ImageIds::noise_mask_1 = 3479), applied by gfx8 to non-RLE sprites.
 
 // TreeEl is what paintTree reads from a tree element.
 type TreeEl struct {
@@ -47,13 +46,16 @@ func (s *Session) PaintTree(el TreeEl, obj TreeObj, sprite func(int) *gfx8.Sprit
 	season := el.Season % 6
 	hasImage2 := false
 	var image2 uint32
+	noiseMask := 0
 	if el.Unk7l != 7 {
 		hasImage2 = true
 		season = treeSeasonSwap[season]
+		noiseMask = int(el.Unk7l) + 1
 		img2Season := el.Season % 6
 		if treeSeasonFirst[img2Season] {
 			img2Season = season
 			season = el.Season % 6
+			noiseMask = 8 - noiseMask
 		}
 		image2 = frame + seasons(el.HasSnow)[img2Season]
 	}
@@ -73,7 +75,11 @@ func (s *Session) PaintTree(el TreeEl, obj TreeObj, sprite func(int) *gfx8.Sprit
 	}
 	if hasImage2 {
 		if sp := sprite(int(image2)); sp != nil {
-			s.AddAsChild(Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, off, bbOff, Pos3{2, 2, bbz})
+			var noise *gfx8.Sprite
+			if noiseMask > 0 {
+				noise = sprite(3478 + noiseMask) // _noiseMaskImages[noiseMask]
+			}
+			s.AddAsChild(Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false), Noise: noise}, off, bbOff, Pos3{2, 2, bbz})
 		}
 	}
 }

@@ -187,6 +187,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    128×256, _noiseMaskImages[unk7l+1 or 8-…]). NEXT: gfx8 noise op — read how drawBMPSprite indexes the noise
    image for a sprite pixel (DrawSprite.cpp / DrawSpriteHelper), port it, pass the noise sprite from PaintTree.
    Also verify goloco's tree season sprite remap against upstream TreeObject::load.
+   Tick 26: noise mask DONE — gfx8.DrawSpriteNoise (non-RLE only; noise byte at noise[sprite.Width*y + x], the
+   sprite's width as stride, as DrawSpriteBMP.hpp), paint.Image.Noise, PaintTree passes noise image 3478+n
+   (n = unk7l+1, or 8-n when the season order flips). Transition trees now dither their two seasons, as upstream.
+   STILL TO VERIFY: goloco's tree season sprite remap vs TreeObject::load.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -262,3 +266,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 23 (item 3i) — cliff edges ported (pkg/paint/surface.go) and drawn by render8; gaps filled.
 - 2026-11-01 tick 24 (item 3i) — water ported into the CPU renderer (exact dst blend in paint order); at the town-by-the-sea spot the water no longer spills onto the land in front.
 - 2026-11-01 tick 25 (item 3i) — trees in the CPU renderer; transition image needs the noise mask (tree sprites are BMP, so upstream applies it) → next.
+- 2026-11-01 tick 26 (item 3i) — noise-mask blit ported (sprite-width stride quirk kept, RLE excluded) with a test; trees in transition dither like the original. (Paused briefly for Joop's video-subtitle task: drop folder ~/Projects/videosubs, Whisper large-v3 pre-downloading.)
