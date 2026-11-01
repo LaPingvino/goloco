@@ -73,7 +73,7 @@ func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint
 	if obj.LargeTile {
 		// After the 2×2 front-tile test, every tile of the footprint:
 		// setGeneralSupportHeight(0xFFFF, 0).
-		defer s.SetGeneralSupportHeight(0xFFFF, 0)
+		defer s.blockSupports()
 	}
 	if obj.LargeTile && int(el.SequenceIndex^2) != int(-int(s.Rotation))&3 {
 		return // only the front tile of a 2×2 draws; images overlap the others

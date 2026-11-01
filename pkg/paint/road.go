@@ -47,6 +47,7 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 		s.setBridge(height, rpcp.BridgeType[rot], rpcp.BridgeEdges[rot], rpcp.BridgeQuarters[rot], el.Bridge, el.Remap)
 	}
 	s.InsertTunnels(rpcp.TunnelHeights[rot], height, el.Tunnel)
+	s.AddPendingSegments(rpcp.Segments[rot])
 	switch paintStyle {
 	case 0, 2:
 		parts := RoadStyle0Parts

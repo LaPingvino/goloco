@@ -44,6 +44,7 @@ func (s *Session) PaintTrack(el TrackEl, image int, sprite func(int) *gfx8.Sprit
 			}
 		}
 		s.InsertTunnels(tpp.TunnelHeights[rot], height, el.Tunnel)
+		s.AddPendingSegments(tpp.Segments[rot])
 		return
 	}
 	// paintTrackPPStandard: one image via addToPlotList4FD150 (= AsParent).
@@ -51,4 +52,5 @@ func (s *Session) PaintTrack(el TrackEl, image int, sprite func(int) *gfx8.Sprit
 		s.AddAsParent(i, ho, bbOff, tpp.BBSizes[rot])
 	}
 	s.InsertTunnels(tpp.TunnelHeights[rot], height, el.Tunnel)
+	s.AddPendingSegments(tpp.Segments[rot])
 }
