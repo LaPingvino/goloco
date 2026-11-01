@@ -100,6 +100,7 @@ type Game struct {
 	consCurve   int   // construction curve selection: -4 (left large) … 0 … +4
 	consTab     int   // construction window tab: 0 construction, 2 signal (1 station places directly)
 	consSigOne  bool  // signal tab: single direction chosen (isSignalBothDirections = 0)
+	consBridge  int   // lastSelectedBridge (slot; -1 = the first available)
 	consOneShot int   // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
 	consSignal  int   // signal tab: lastSelectedSignal (slot; -1 = the first available)
 	consStation int   // station tab: lastSelectedStationType (slot; -1 = the first available)
@@ -356,6 +357,7 @@ func NewGame() *Game {
 		w:             w,
 		consSignal:    -1,
 		consOneShot:   -1,
+		consBridge:    -1,
 		consStation:   -1,
 		titleWorld:    w, // keep a reference so Quit to Menu can restore it
 		r:             r,
@@ -1117,13 +1119,19 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.townList.Hover = 2
 	}
-	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend" || d == "signal" || d == "overhead" || d == "station" || d == "sigdrop") && !g.diagConsDone {
+	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend" || d == "signal" || d == "overhead" || d == "station" || d == "sigdrop" || d == "bridgedrop") && !g.diagConsDone {
 		g.diagConsDone = true
 		if d == "signal" {
 			g.consTab = 2
 		}
 		if d == "station" {
 			g.consTab = 1
+		}
+		if d == "bridgedrop" { // the bridge list open
+			defer func() {
+				f, _ := g.constructionFrame(10, 40)
+				g.openBridgeDropdown(10, 40, f.SkinColour, f.CompanyColour)
+			}()
 		}
 		if d == "sigdrop" { // the signal tab with its dropdown open
 			g.consTab = 2
