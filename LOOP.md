@@ -306,7 +306,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    PaintSurface.cpp by gen.sh into surfacedata_gen.go (literal integer table, no hand copy). Title farm: crop rows
    render. FOUND: goloco doesn't parse SNOW COVERAGE at all — both the land and field branches draw snow
    (SnowObject image + kSnowCoverageSlopeToMask) → item 3k.
-3m. [ ] **Zoom 1-3 in the CPU renderer (blocks making scene mode the default).** Upstream
+3n. [ ] **UI (Joop 2026-11-01, HIGH): 'the menus are severely misaligned and we still have a fair bit of improvised
+   dialogs instead of the game style'.** Port, don't patch: windows and widgets from upstream Ui/ (Widget.cpp
+   drawing and layout, WindowManager, the dropdown and the title/toolbar menus) and each improvised goloco
+   dialog replaced by the port of its upstream window (Ui/Windows/*.cpp). Start: inventory every goloco
+   menu/dialog → its upstream window; fix the shared layer first (widget positions, font metrics — deviations C:
+   g1font width fudge, DrawStringCentered len×7), since misalignment everywhere points there.
+3m. [~] **Zoom 1-3 in the CPU renderer (blocks making scene mode the default).** Upstream
    (Graphics/SoftwareDrawingContext.cpp drawImagePaletteSet + getDrawImagePosArgs, DrawSpriteBMP.hpp /
    DrawSpriteRLE.hpp, 248 lines): an element with hasZoomSprites (G1 flag 1<<4) at zoom>0 recurses at half
    coordinates into image - zoomOffset (rt x/y/w/h >>1, zoom-1); noZoomDraw (1<<5) skips at zoom>0; positions are
@@ -459,3 +465,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 70 (item 3j bridges, step 6b) — paintBridge nearly complete: quarter cases 1/2/4, NE/SW spans as one function parametrised by direction (segments, slope tables, edge images, box orientation — paintBridgeNE/SW + paintSupportNE/SW), span tile from the tile position masked by spanLength, subType-0 span walls, ground shadow (unk32). Title river bridge: brick arched piers on the riverbed + company-pink steel span. PARTIAL: quarter case 8 (front supports). UNVERIFIED against an OpenLoco reference render (plausible by eye). Question for Joop added.
 - 2026-11-01 tick 71 (item 3j bridges, DONE) — quarter case 8 (paintFlatSingleQuarterSupportFront + paintSupportDiagonal) ported literally, incl. upstream's re-test of unkHeight and its swapped Lhs/Rhs image names. Bridge PARTIAL notes gone; the end-loop note now names only paintSupports (track/road addition supports) as missing.
 - 2026-11-01 tick 72 (assessment) — what blocks scene mode as default: zoom 1-3 (new item 3m, plan + upstream refs), vehicles in the sort (item 5), track extras/supports, rotation. Vehicles currently drawn by the old post-pass over the scene.
+- 2026-11-01 tick 73 (item 3m step a) — gfx8 zoom: getDrawImagePosArgs + drawBMPSprite/drawRLESprite for zoom 1-3 ported (zoom.go); Sprite keeps hasZoomSprites/noZoomDraw/zoomOffset and the RLE runs. Property test: 2^z-upscaled sprite at zoom z == original at zoom 0 (BMP and RLE, 300 random cases each); noZoomDraw skipped. Joop reported misaligned menus + improvised dialogs → new item 3n (HIGH), next.
