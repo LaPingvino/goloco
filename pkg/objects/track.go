@@ -18,6 +18,10 @@ type TrackObject struct {
 	NumSignals  uint8  // Number of signal types
 	NumBridges  uint8  // Number of supported bridges (max 7)
 	NumStations uint8  // Number of supported stations (max 7)
+	// TrackPieces (0x02) is the TrackTraitFlags set: which pieces the track
+	// has (diagonal, large/normal/small/very small curves, slopes, steep
+	// slopes, one-sided, sloped curves, s-bends, junctions).
+	TrackPieces uint16
 }
 
 // GetObjectByIndex accessor sentinel — use ObjectManager.GetTrackObjectByIndex
@@ -80,6 +84,7 @@ func ParseTrackObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tr
 		NumSignals:  numSignals,
 		NumBridges:  numBridges,
 		NumStations: numStations,
+		TrackPieces: uint16(data[0x02]) | uint16(data[0x03])<<8,
 	}
 
 	offset := fixedSize

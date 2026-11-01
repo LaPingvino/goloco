@@ -1,0 +1,126 @@
+package ui
+
+import (
+	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/hajimehoshi/ebiten/v2"
+)
+
+// TrackTraitFlags (World::Track::TrackTraitFlags).
+const (
+	TraitLargeCurve     = 1 << 1
+	TraitNormalCurve    = 1 << 2
+	TraitSmallCurve     = 1 << 3
+	TraitVerySmallCurve = 1 << 4
+	TraitSlope          = 1 << 5
+	TraitSteepSlope     = 1 << 6
+	TraitOneSided       = 1 << 7
+)
+
+// ConstructionButton is one of the construction tab's image buttons
+// (ConstructionTab.cpp widgets: position, size, image).
+type ConstructionButton struct {
+	Name       string
+	X, Y, W, H int
+	Image      int
+}
+
+// constructionButtons are the tab's piece and gradient buttons in widget
+// order (widx left_hand_curve_very_small … steep_slope_up), at the positions
+// activateSelectedTrackWidgets leaves for a track without very small curves.
+var constructionButtons = []ConstructionButton{
+	{"left_hand_curve_very_small", 3, 45, 22, 24, 2340},
+	{"left_hand_curve_small", 3, 45, 22, 24, 2342},
+	{"left_hand_curve", 25, 45, 22, 24, 2344},
+	{"left_hand_curve_large", 47, 45, 22, 24, 2346},
+	{"right_hand_curve_large", 69, 45, 22, 24, 2347},
+	{"right_hand_curve", 91, 45, 22, 24, 2345},
+	{"right_hand_curve_small", 113, 45, 22, 24, 2343},
+	{"right_hand_curve_very_small", 113, 45, 22, 24, 2341},
+	{"s_bend_dual_track_left", 9, 69, 24, 24, 2355},
+	{"s_bend_left", 33, 69, 24, 24, 2353},
+	{"straight", 57, 69, 24, 24, 2335},
+	{"s_bend_right", 81, 69, 24, 24, 2354},
+	{"s_bend_dual_track_right", 105, 69, 24, 24, 2356},
+	{"steep_slope_down", 9, 96, 24, 24, 2348},
+	{"slope_down", 33, 96, 24, 24, 2349},
+	{"level", 57, 96, 24, 24, 2350},
+	{"slope_up", 81, 96, 24, 24, 2351},
+	{"steep_slope_up", 105, 96, 24, 24, 2352},
+}
+
+// ConstructionTabState is what activateSelectedTrackWidgets reads.
+type ConstructionTabState struct {
+	Traits   uint16 // the track object's TrackPieces
+	Piece    string // the activated piece widget ("straight", …); "" none
+	Gradient string // the activated gradient widget ("level", …)
+	Hover    bool   // constructionHover: placing the first piece
+}
+
+// TrackButtons is activateSelectedTrackWidgets' layout for a track: the
+// visible piece and gradient buttons with their positions.
+func TrackButtons(traits uint16) []ConstructionButton {
+	var out []ConstructionButton
+	vs := traits&TraitVerySmallCurve != 0
+	for _, b := range constructionButtons {
+		show := true
+		switch b.Name {
+		case "left_hand_curve_very_small", "right_hand_curve_very_small":
+			show = vs
+		case "left_hand_curve_large", "right_hand_curve_large":
+			show = traits&TraitLargeCurve != 0
+		case "left_hand_curve", "right_hand_curve":
+			show = traits&TraitNormalCurve != 0
+		case "left_hand_curve_small", "right_hand_curve_small":
+			show = traits&TraitSmallCurve != 0
+		case "s_bend_dual_track_left", "s_bend_dual_track_right":
+			show = traits&TraitOneSided != 0
+		case "slope_down", "slope_up":
+			show = traits&TraitSlope != 0
+		case "steep_slope_down", "steep_slope_up":
+			show = traits&TraitSteepSlope != 0
+		}
+		if !show {
+			continue
+		}
+		if vs { // very small curves take the outer slots, the others move in
+			switch b.Name {
+			case "left_hand_curve_small":
+				b.X = 25
+			case "right_hand_curve_small":
+				b.X = 91
+			case "left_hand_curve":
+				b.X = 47
+			case "right_hand_curve":
+				b.X = 69
+			}
+		}
+		out = append(out, b)
+	}
+	return out
+}
+
+// DrawConstructionTab draws the construction tab's buttons inside the frame f
+// (ImageButton::draw: an activated button gets an inset background in the
+// secondary colour, every visible button its image recoloured to that colour).
+// PARTIAL: the bridge dropdown, the construct/preview area (Wt3Widget with the
+// track piece drawn by the paint code), remove/rotate/copy/paste, hover.
+func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st ConstructionTabState) {
+	if globalG1Font == nil {
+		return
+	}
+	g1 := globalG1Font.g1
+	sec, err := g1.GetPaletteMap(int(f.SkinColour))
+	if err != nil {
+		return
+	}
+	draw8(screen, f.X, f.Y, ConstructionW, ConstructionH, func(rt *gfx8.RenderTarget) {
+		for _, b := range TrackButtons(st.Traits) {
+			if b.Name == st.Piece || b.Name == st.Gradient {
+				gfx8.FillRectInset(rt, b.X, b.Y, b.X+b.W-1, b.Y+b.H-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
+			}
+			if sp, err := gfx8.Decode(&g1.Elements[b.Image]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, b.X, b.Y, gfx8.OpFor(sp, true, false), sec, nil)
+			}
+		}
+	})
+}
