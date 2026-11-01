@@ -44,6 +44,15 @@ type manifest struct {
 	Files  []entry  `json:"files"`
 	Args   []string `json:"args"`
 	Wasm   string   `json:"wasm"` // file holding the game code
+	Lazy   []lazy   `json:"lazy"` // files fetched on first open (music)
+}
+
+// lazy is a file the page does not download up front: the fs shim fetches
+// URL (a .gz) the first time the game opens Path.
+type lazy struct {
+	Path string `json:"p"`
+	URL  string `json:"u"`
+	Size int    `json:"n"`
 }
 
 // mount maps a host directory onto a virtual one, with a filter.
@@ -55,7 +64,7 @@ type mount struct {
 func main() {
 	out := flag.String("out", "", "output directory (outside the repo)")
 	data := flag.String("data", "../locomotion", "Locomotion data directory")
-	music := flag.Bool("music", false, "include the music files (Data/*.dat over 3 MB)")
+	music := flag.Bool("music", false, "include the music files (Data/*.dat over 3 MB), fetched on first use (needs -local)")
 	scenarios := flag.String("scenarios", "", "comma-separated scenario file names to include (default: all)")
 	chunkRaw := flag.Int("chunk", 18<<20, "raw bytes per chunk before gzip")
 	args := flag.String("args", "", "space-separated command-line arguments passed to goloco")
@@ -63,6 +72,9 @@ func main() {
 	flag.Parse()
 	if *out == "" {
 		log.Fatal("webpack: -out is required")
+	}
+	if *music && !*local {
+		log.Fatal("webpack: -music needs -local (the artifact host's 64 MB limit can't hold the music)")
 	}
 	if abs, _ := filepath.Abs(*out); strings.HasPrefix(abs+"/", mustAbs(".")+"/") {
 		log.Fatal("webpack: -out must be outside the repo (the pack holds game data)")
@@ -79,7 +91,7 @@ func main() {
 		{"data", "/w/goloco/data", nil},
 		{"assets", "/w/goloco/assets", nil},
 		{filepath.Join(*data, "Data"), "/w/locomotion/Data", func(rel string, size int64) bool {
-			return *music || size < 3<<20
+			return size < 3<<20
 		}},
 		{filepath.Join(*data, "ObjData"), "/w/locomotion/ObjData", nil},
 		{filepath.Join(*data, "Scenarios"), "/w/locomotion/Scenarios", func(rel string, size int64) bool {
@@ -147,6 +159,26 @@ func main() {
 		raw.Write(b)
 	}
 	flush()
+	if *music {
+		// Music tracks (Data/*.dat of 3 MB and more): one .gz each, fetched by the
+		// page only when the game opens them, so starting the game stays light.
+		must(os.MkdirAll(filepath.Join(*out, "lazy"), 0o755))
+		ents, err := os.ReadDir(filepath.Join(*data, "Data"))
+		must(err)
+		for _, e := range ents {
+			info, err := e.Info()
+			must(err)
+			if e.IsDir() || info.Size() < 3<<20 {
+				continue
+			}
+			b, err := os.ReadFile(filepath.Join(*data, "Data", e.Name()))
+			must(err)
+			url := "lazy/" + e.Name() + ".gz"
+			must(os.WriteFile(filepath.Join(*out, url), gzipBytes(b), 0o644))
+			man.Lazy = append(man.Lazy, lazy{"/w/locomotion/Data/" + e.Name(), url, len(b)})
+		}
+		log.Printf("music: %d tracks, fetched on first use", len(man.Lazy))
+	}
 	mj, err := json.Marshal(man)
 	must(err)
 	must(os.WriteFile(filepath.Join(*out, "manifest.json"), mj, 0o644))

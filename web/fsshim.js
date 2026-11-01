@@ -22,6 +22,7 @@
 	const dirs = new Map();    // absolute path -> Set of entry names
 	const fds = new Map();     // fd -> {path, pos, dir, append}
 	const misses = new Set();
+	const lazy = new Map();    // absolute path -> {url, size}: fetched on first open (music)
 	let nextFd = 10;
 	let cwd = "/w/goloco";
 	let out = { 1: "", 2: "" };
@@ -65,9 +66,28 @@
 		return e;
 	};
 
+	// addLazy registers a file the game may open later; it is fetched (gzip)
+	// the first time it is opened, so it costs nothing until then.
+	const addLazy = (path, url, size) => {
+		path = norm(path);
+		mkdirp(parent(path));
+		dirs.get(parent(path)).add(base(path));
+		lazy.set(path, { url, size });
+	};
+
+	const fetchLazy = async (path) => {
+		const { url } = lazy.get(path);
+		const resp = await fetch(url);
+		if (!resp.ok) throw new Error(url + ": HTTP " + resp.status);
+		const s = resp.body.pipeThrough(new DecompressionStream("gzip"));
+		files.set(path, new Uint8Array(await new Response(s).arrayBuffer()));
+		lazy.delete(path);
+		console.log("fetched " + path);
+	};
+
 	const statOf = (path) => {
 		const isDir = dirs.has(path);
-		const f = files.get(path);
+		const f = files.get(path) || (lazy.has(path) ? { length: lazy.get(path).size } : null);
 		if (!isDir && !f) return null;
 		return {
 			dev: 0, ino: 0, mode: isDir ? (S_IFDIR | 0o755) : (S_IFREG | 0o644), nlink: 1,
@@ -114,6 +134,10 @@
 		},
 		open(path, flags, mode, cb) {
 			path = norm(path);
+			if (lazy.has(path)) {
+				fetchLazy(path).then(() => this.open(path, flags, mode, cb), (e) => { console.warn(e); cb(err("EIO", path)); });
+				return;
+			}
 			const exists = files.has(path) || dirs.has(path);
 			if (!exists && !(flags & O_CREAT)) { cb(err("ENOENT", path)); return; }
 			if (exists && (flags & O_CREAT) && (flags & O_EXCL)) { cb(err("EEXIST", path)); return; }
@@ -188,5 +212,5 @@
 		chdir(p) { p = norm(p); if (!dirs.has(p)) throw err("ENOENT", p); cwd = p; },
 	};
 	globalThis.path = { resolve(...segs) { return norm(segs.join("/")); } };
-	globalThis.GolocoFS = { addFile, misses, files, dirs, onLog: null };
+	globalThis.GolocoFS = { addFile, addLazy, misses, files, dirs, onLog: null };
 })();

@@ -40,7 +40,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
     <div class="bar" aria-hidden="true"><div id="fill"></div></div>
     <div id="status" role="status">Loading the data pack…</div>
     <button id="start" type="button" disabled>Start</button>
-    <p class="note">Music is left out of the pack. Saves and screenshots live in memory and are gone on reload. Goloco's log and any files it could not find are in the drawer below.</p>
+    <p class="note">Music is fetched when the game first plays a track. Saves and screenshots live in memory and are gone on reload. Goloco's log and any files it could not find are in the drawer below.</p>
   </div>
 </main>
 <details id="logbox"><summary>Log <span id="misscount"></span></summary><pre id="log"></pre></details>
@@ -93,6 +93,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
       for (const f of man.files) if (f.c === c) GolocoFS.addFile(f.p, buf.subarray(f.o, f.o + f.n));
       fill((c + 1) / steps);
     }
+    for (const l of man.lazy || []) GolocoFS.addLazy(l.p, l.u, l.n);
     status("Loading the game…");
     wasm = await gunzip(await fetch(man.wasm || "goloco.wasm.b64.txt"));
     fill(1);
