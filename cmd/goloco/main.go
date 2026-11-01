@@ -1114,6 +1114,9 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regional" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "display" && g.options != nil {
+			g.options.Tab = ui.OptTabDisplay
+		}
 	}
 	if os.Getenv("GOLOCO_DIAG_BROWSE") != "" && g.browse == nil && !g.diagBrowseDone {
 		g.diagBrowseDone = true
