@@ -266,6 +266,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 			log.Printf("[Scenario] Parsed %d vehicle entities (Head+Body) from GameState", len(sc.Entities))
 		}
 
+		sc.IndustryObjectIDs = parseIndustryObjectIDs(gameState)
+
 		// Towns live inside the GameState chunk for saved games.
 		sc.Towns = parseTownsFromGameState(gameState)
 		if len(sc.Towns) > 0 {
@@ -1072,4 +1074,34 @@ func (sc *Scenario) GetTile(x, y int) *Tile {
 // IsTitleSequence returns true if this is a title sequence file.
 func (sc *Scenario) IsTitleSequence() bool {
 	return sc.Header.Flags&assets.HeaderFlagIsTitleSequence != 0
+}
+
+// Industry records in the GameState (S5/S5GameState.h, S5/S5Industry.h).
+// Offsets and sizes as the compiler lays out upstream's structs (checked with
+// offsetof/sizeof against OpenLoco b93e074): GameState::industries at 0x9E744,
+// GameStateType2::industries at 0x9CB24; kMaxIndustries 128; sizeof(Industry)
+// 1107 with objectId at byte 16.
+const (
+	industriesGameStateOffset      = 0x9E744
+	industriesGameStateOffsetType2 = 0x9CB24
+	industryMaxCount               = 128
+	industryRecordSize             = 1107
+	industryObjectIDOffset         = 16
+)
+
+// parseIndustryObjectIDs returns, per industry index, its industry object id
+// (what IndustryElement.IndustryID refers to). nil if the chunk is too short.
+func parseIndustryObjectIDs(gs []byte) []uint8 {
+	off := industriesGameStateOffset
+	if len(gs) == GameStateSizeType2 {
+		off = industriesGameStateOffsetType2
+	}
+	if len(gs) < off+industryMaxCount*industryRecordSize {
+		return nil
+	}
+	ids := make([]uint8, industryMaxCount)
+	for i := range ids {
+		ids[i] = gs[off+i*industryRecordSize+industryObjectIDOffset]
+	}
+	return ids
 }

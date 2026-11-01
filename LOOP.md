@@ -274,6 +274,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    (image + 2 previews + i × style total). Title map (89,90): platform + arched canopy render. NOT YET: the
    translucent canopy glazing (needs the company colour → Colours::getTranslucent → palette map), platform cargo
    (station cargo stats), road stations, airports, docks.
+   Tick 40 — industries step 1: goloco had no industry records and no IndustryObject. Parsed the GameState
+   industries table (offsets/sizes taken from the compiler: GameState 0x9E744, Type2 0x9CB24, 128 × 1107 bytes,
+   objectId @16) → Scenario.IndustryObjectIDs; title map: tiles use object ids 0–14 (15 types, plausible).
+   NEXT: (2) IndustryObject loader (port IndustryObject::load's section walk: building parts, heights,
+   animations, sequences, buildingImageIds/shadowImageIds, buildingSizeFlags, scaffolding) with a test that every
+   ObjData industry parses to the end; (3) paintIndustry.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -363,3 +369,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 37 (item 3j) — tracks in the CPU renderer (priority layers, sorted with roads per height group); the title railway renders.
 - 2026-11-01 tick 38 (item 3j) — signals ported; fixed two parse gaps (right-side signal object, track flag_6); signal offsets generated from upstream TrackData.
 - 2026-11-01 tick 39 (item 3j) — train stations (style 0) in the CPU renderer; additions priority list ported; station image ids generated.
+- 2026-11-01 tick 40 (item 3j) — industries step 1: GameState industry records parsed (offsets checked with the compiler). Video: Whisper at ~3.5 min of 71 after 8 min (slow on CPU); caption strips 7,356/8,560.
