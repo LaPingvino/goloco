@@ -21,6 +21,8 @@ type RoadObject struct {
 	// RoadPieces (0x02) is the RoadTraitFlags set: small / very small curves,
 	// slope, steep slope, turnaround, junction.
 	RoadPieces uint16
+	// StationNames are the DAT names of the road's stations (stations[]).
+	StationNames []string
 }
 
 func (r *RoadObject) GetHeader() *ObjectHeader { return r.Header }
@@ -109,6 +111,9 @@ func ParseRoadObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Roa
 	//   numStations station objects
 	// RoadObject::load: the tunnel header follows the compatible and mod headers.
 	road.TunnelName = headerName(data, offset+(int(numCompatible)+int(numMods))*HeaderSize)
+	for i := range int(numStations) { // RoadObject::load: stations after the bridges
+		road.StationNames = append(road.StationNames, headerName(data, offset+(int(numCompatible)+int(numMods)+1+int(numBridges)+i)*HeaderSize))
+	}
 	numHeaders := int(numCompatible) + int(numMods) + 1 + int(numBridges) + int(numStations)
 	offset += numHeaders * HeaderSize
 
