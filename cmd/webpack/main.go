@@ -13,6 +13,7 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -26,9 +27,10 @@ import (
 	"strings"
 )
 
-// maxChunk is the largest gzipped chunk allowed (the private page host takes
-// binary files up to 15 MB each).
-const maxChunk = 14_500_000
+// maxChunk is the largest chunk file allowed. The private page host serves
+// neither gzip nor arbitrary binary types, but it serves text up to 16 MB per
+// file, so each chunk ships as base64 text of its gzip (≈ +33%).
+const maxChunk = 15_000_000
 
 type entry struct {
 	Path   string `json:"p"` // absolute path in the virtual filesystem
@@ -54,7 +56,7 @@ func main() {
 	data := flag.String("data", "../locomotion", "Locomotion data directory")
 	music := flag.Bool("music", false, "include the music files (Data/*.dat over 3 MB)")
 	scenarios := flag.String("scenarios", "", "comma-separated scenario file names to include (default: all)")
-	chunkRaw := flag.Int("chunk", 24<<20, "raw bytes per chunk before gzip")
+	chunkRaw := flag.Int("chunk", 18<<20, "raw bytes per chunk before gzip")
 	args := flag.String("args", "", "space-separated command-line arguments passed to goloco")
 	flag.Parse()
 	if *out == "" {
@@ -116,8 +118,8 @@ func main() {
 		if raw.Len() == 0 {
 			return
 		}
-		name := fmt.Sprintf("pack-%d.bin.gz", len(man.Chunks))
-		gz := gzipBytes(raw.Bytes())
+		name := fmt.Sprintf("pack-%d.b64.txt", len(man.Chunks))
+		gz := b64(gzipBytes(raw.Bytes()))
 		if len(gz) > maxChunk {
 			log.Fatalf("webpack: %s is %d bytes gzipped (max %d) — lower -chunk", name, len(gz), maxChunk)
 		}
@@ -141,7 +143,7 @@ func main() {
 	must(os.WriteFile(filepath.Join(*out, "manifest.json"), mj, 0o644))
 	log.Printf("pack: %d files in %d chunks", len(man.Files), len(man.Chunks))
 
-	// The wasm itself, gzipped (21 MB raw; the page unpacks it).
+	// The wasm itself, gzipped and base64-encoded (21 MB raw; the page unpacks it).
 	wasm := filepath.Join(*out, "goloco.wasm")
 	build := exec.Command("go", "build", "-ldflags=-s -w", "-o", wasm, "./cmd/goloco")
 	build.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
@@ -149,7 +151,7 @@ func main() {
 	must(build.Run())
 	wb, err := os.ReadFile(wasm)
 	must(err)
-	must(os.WriteFile(wasm+".gz", gzipBytes(wb), 0o644))
+	must(os.WriteFile(filepath.Join(*out, "goloco.wasm.b64.txt"), b64(gzipBytes(wb)), 0o644))
 	must(os.Remove(wasm))
 
 	for _, f := range []struct{ from, to string }{
@@ -162,6 +164,13 @@ func main() {
 		must(os.WriteFile(filepath.Join(*out, f.to), b, 0o644))
 	}
 	log.Printf("webpack: done → %s", *out)
+}
+
+// b64 encodes b as base64 text (the page decodes, then gunzips).
+func b64(b []byte) []byte {
+	out := make([]byte, base64.StdEncoding.EncodedLen(len(b)))
+	base64.StdEncoding.Encode(out, b)
+	return out
 }
 
 func gzipBytes(b []byte) []byte {

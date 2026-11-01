@@ -37,15 +37,15 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
   Blocked and move on — don't work around it.
 
 ## Queue (top = next)
-1. [~] **Private wasm test page.** (tick 1: (a)–(c) done — web/fsshim.js, web/index.html, cmd/webpack; in headless Chromium from file:// the game loads g1, all 544 objects and the title scenario, but the screenshot is black → next: find out whether frames draw (try without --virtual-time-budget; log from the draw loop), then publish privately (d).) Goal: Joop can click a private Artifact link and see/play the current
-   build. Pieces: (a) web/ — index.html + wasm_exec.js from the Go toolchain + a JS in-memory fs shim
-   (Go js/wasm routes os.Open/ReadDir/Stat through globalThis.fs: implement open/read/fstat/close/
-   stat/lstat/readdir over fetched buffers, so goloco's loaders run unchanged); (b) a data pack
-   script: g1.DAT, language/interface files, ObjData, a few scenarios — no music — packed into
-   chunks < 15 MB (artifact limits: 255 files, 64 MB/version); (c) gzipped wasm, unpacked in the
-   page with DecompressionStream; (d) publish privately, check it loads, log misses from the shim.
-   Files goloco opens: cmd/goloco/main.go 130/204/217/1365/1951, pkg/scenario/meta.go,
-   pkg/objects/loader.go, pkg/assets/datloader.go, pkg/i18n, pkg/audio, pkg/render/atlas.go, pkg/ui/font.go.
+1. [x] **Private wasm test page.** DONE tick 2: published as a private Artifact (link in Joop's chat — never in the
+   repo). Rebuild + republish: `go run ./cmd/webpack -out <scratchpad>/goloco-web -scenarios "..."`, then publish
+   index.html with the other files from that folder to the same artifact. The host serves no gzip/binary types,
+   so chunks ship as base64 text of gzip (.b64.txt, < 15 MB each; ~42 MB total of a 64 MB budget).
+   Headless check: chromium --allow-file-access-from-files --use-angle=swiftshader --virtual-time-budget=300000
+   on a copy with an autostart script; screenshots come out black (WebGL readback), so capture with goloco's own
+   `--shots` (args in manifest.json) and print the PNG as base64 to the console. Wasm sprite preload is slow
+   (11,057 sprites; still at 1% after 60 s under swiftshader) — check the speed in a real browser, and make the
+   preload incremental if it is slow there too (→ Questions).
 2. [ ] **Clean slate.** The July session left uncommitted work (Build Vehicles window
    cmd/goloco/buildvehicle.go; SpawnVehicleAt refactor in pkg/world/vehicle_sim.go; WinRun fleet of 3).
    Review it against upstream BuildVehicle.cpp, finish or trim to a correct slice, commit. Update
@@ -62,6 +62,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    'simplified approximation', depth-sort approximation for vehicles, g1font width fudge, …).
 
 ## Questions for Joop
+- Wasm test page: how long does it take to get from Start to the title screen in your browser? (Headless it was
+  still preloading sprites after a minute.)
 
 ## Blocked
 - 2026-11-01 tick 1: serving the test page from a local web server (python -m http.server) was refused by the auto-mode check ('Expose Local Services'). Test from file:// with chromium --allow-file-access-from-files instead.
@@ -72,3 +74,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
   wasm builds confirmed; tests pass except pkg/world (needs a display).
 - 2026-11-01 (setup) — pushing allowed (Joop); overnight idle-loop configured in ~/Projects/empty, the session's directory.
 - 2026-11-01 tick 1 (item 1) — wasm test page parts (a)–(c): in-memory fs shim for Go's js/wasm syscalls (open/read/fstat/stat/readdir…, O_DIRECTORY fixed after the first run), cmd/webpack (data pack in gzipped chunks < 15 MB, no music, refuses an output dir inside the repo), page with progress + Start + log drawer. Headless run: g1, 544 objects, title scenario load; canvas black → next tick. Split approved by Joop.
+- 2026-11-01 tick 2 (item 1 done) — black screenshots were a WebGL readback artefact: goloco's own --shots capture shows its loading screen drawing correctly. Artifacts serve no gzip, so the pack ships as base64 text of gzip; published privately; verified headless (544 objects, init complete). Body padding no longer squeezes the canvas.
