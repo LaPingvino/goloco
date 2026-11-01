@@ -202,6 +202,14 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    NOT YET: scaffolding/under-construction (BuildingElement age + unk5u aren't parsed), building shadows
    (Colours::getShadow(orange) translucency), ghosts. NEXT: roads (PaintRoad.cpp) — then capture the road slope
    pieces at (228,23)…(233,28) for Joop's 'up and down roads' observation.
+   Tick 29 — roads, survey: PaintRoad.cpp (719 lines) + data headers include/OpenLoco/Paint/PaintRoadCommonData.h
+   (576), PaintRoadStyle0/1/2Data.h (233/205/339), PaintRoadAdditionsData.h (458). paintRoad picks
+   kRoadPaintCommonParts[roadId][seq] and Style{0,1,2}::kRoadPaintParts by roadObj->paintStyle, then paintRoadPP
+   (standard or multi-tile merge) + paintRoadPCP (tunnels/supports), level crossings, streetlights, road extras.
+   goloco's road_sprites.go is a hand-copied partial version — the likely source of the slope bugs. PLAN:
+   (a) cmd/gen-paintdata: generate Go tables from those headers (like track_data_gen.go — exact, no hand
+   copying); (b) port paintRoadPP/PCP for styles 0/2 + 1; (c) addToPlotListTrackRoad + finaliseTrackRoadOrdering
+   (the priority lists the paint port deferred); (d) roads in render8; (e) capture the slope pieces.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -280,3 +288,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 26 (item 3i) — noise-mask blit ported (sprite-width stride quirk kept, RLE excluded) with a test; trees in transition dither like the original. (Paused briefly for Joop's video-subtitle task: drop folder ~/Projects/videosubs, Whisper large-v3 pre-downloading.)
 - 2026-11-01 tick 27 (item 3i) — tree season sprite remap checked equal to upstream; buildings next.
 - 2026-11-01 tick 28 (item 3i) — buildings in the CPU renderer (variation, parts, animations, colours, 2×2, elevators); the town-by-the-sea renders with water behind it, as the original. Roads next.
+- 2026-11-01 tick 29 (item 3i) — road painter surveyed (code + ~1,800 lines of data headers); plan: generate the tables from upstream headers instead of goloco's hand-copied road_sprites.go, then port paintRoad.
