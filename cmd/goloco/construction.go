@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"github.com/LaPingvino/goloco/pkg/construct"
+	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"image"
 
 	"github.com/LaPingvino/goloco/pkg/ui"
@@ -389,8 +389,7 @@ func (g *Game) openConsDropdown(wx, wy int, colour uint8, station bool) {
 // at the bridge box (40, 123), 155 wide, items 22 high, in the window's
 // colour: each bridge's image (company colour) with "Max. speed:" and
 // "Height limit:" (dropdown_bridge_stats), the current one highlighted.
-// Units as goloco's Regional settings show them (Imperial: mph, and the
-// height × 16 in ft; metric would be km/h × 1.609375 and × 5 m).
+// Units as the Regional tab's Distance and Speed sets them (uilayout).
 func (g *Game) openBridgeDropdown(wx, wy int, colour, company uint8) {
 	if g.r == nil || g.r.ObjMgr == nil {
 		return
@@ -410,10 +409,10 @@ func (g *Game) openBridgeDropdown(wx, wy int, colour, company uint8) {
 		}
 		speed := "Unlimited"
 		if b.MaxSpeed != 0xFFFF { // kSpeed16Null
-			speed = fmt.Sprintf("%dmph", b.MaxSpeed)
+			speed = L.Velocity(int(b.MaxSpeed))
 		}
 		items[i] = ui.DropdownItem{Sprite: int(b.ImageOffset), SpriteColour: company,
-			Lines: []string{"Max. speed: " + speed, fmt.Sprintf("Height limit: %dft", int(b.MaxHeight)*16)}}
+			Lines: []string{"Max. speed: " + speed, "Height limit: " + L.Height(int(b.MaxHeight))}}
 		if s == cur {
 			hl = i
 		}

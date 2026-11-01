@@ -55,3 +55,16 @@ func TestCurrencyObjectFormat(t *testing.T) {
 		}
 	}
 }
+
+// ControlCodes::velocity and height in both measurement formats.
+func TestVelocityHeight(t *testing.T) {
+	defer func(m bool) { Metric = m }(Metric)
+	Metric = false
+	if Velocity(60) != "60mph" || Height(10) != "160ft" {
+		t.Errorf("imperial: %s %s", Velocity(60), Height(10))
+	}
+	Metric = true
+	if Velocity(60) != "97km/h" || Height(10) != "50m" || Velocity(1000) != "1,609km/h" {
+		t.Errorf("metric: %s %s %s", Velocity(60), Height(10), Velocity(1000))
+	}
+}
