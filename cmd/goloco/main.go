@@ -1170,6 +1170,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regional" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionaldrop" && g.options != nil {
+			g.options.Tab = ui.OptTabRegional // and a click on Distance and Speed
+			g.options.HandleClick(g.options.X+190, g.options.Y+72)
+		}
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "display" && g.options != nil {
 			g.options.Tab = ui.OptTabDisplay
 		}
@@ -1780,6 +1784,7 @@ func (g *Game) openOptionsWindow() {
 		w.MusicVolume = g.audioMgr.MusicVolume()
 	}
 	w.OnClose = func() { g.options = nil }
+	w.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
 	// Regional tab: the scenario's currency object, the preferred one
 	// (Config default CURRDOLL), and title mode.
 	w.TitleMode = g.inTitleScreen

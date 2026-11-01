@@ -35,9 +35,11 @@ type DropdownMenu struct {
 
 // DropdownItem represents a single item in a dropdown menu
 type DropdownItem struct {
-	Text      string
-	Disabled  bool
-	Selected  bool // Shows checkmark
+	Text     string
+	Disabled bool
+	Selected bool // setItemSelected: the format's next string ("»" before the text)
+	// MoveX10 is dropdown_stringid's "{MOVE_X 10}{STRINGID}": the text 10 px in
+	// (and "»" at the left when Selected).
 	Separator bool // Is this a separator line?
 	// Sprite, if > 0, is drawn at the item's (0, 1), recoloured to
 	// SpriteColour; Lines are small-font lines at (45, 1 + 10·i)
@@ -45,6 +47,7 @@ type DropdownItem struct {
 	Sprite       int
 	SpriteColour uint8
 	Lines        []string
+	MoveX10      bool
 	Action       func()
 }
 
@@ -181,7 +184,14 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 				smalls = append(smalls, small{ln, 2 + 45, 1 + i*ih + 1 + 10*k, c})
 			}
 			if it.Text != "" {
-				labels = append(labels, label{it.Text, 2, 1 + i*ih, c, inset})
+				x := 2
+				if it.MoveX10 {
+					if it.Selected {
+						labels = append(labels, label{"»", 2, 1 + i*ih, c, inset})
+					}
+					x += 10
+				}
+				labels = append(labels, label{it.Text, x, 1 + i*ih, c, inset})
 			}
 		}
 	}

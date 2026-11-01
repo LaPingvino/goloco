@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -81,7 +82,10 @@ type OptionsWindow struct {
 	// Regional tab: the current game's currency name and the preferred one;
 	// TitleMode disables the current-currency dropdown (prepareDraw).
 	CurrencyName, PreferredCurrencyName string
-	TitleMode                           bool
+	// OpenDropdown shows a dropdown for the window (the game's single
+	// dropdown); nil: the Regional dropdowns don't open.
+	OpenDropdown func(*DropdownMenu)
+	TitleMode    bool
 }
 
 // Regional tab rows (Regional::_widgets): label at x 10, dropdown at x 183,
@@ -148,6 +152,17 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 				}
 				return
 			}
+		}
+		return
+	}
+	if w.Tab == OptTabRegional {
+		// distanceSpeedMouseDown: Dropdown::show at the combobox (183, 69),
+		// width() − 4, Imperial / Metric, the current one ticked.
+		if r := optRegionalRows[1]; w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil {
+			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour,
+				[]DropdownItem{{Text: "Imperial", Selected: !L.Metric, MoveX10: true}, {Text: "Metric", Selected: L.Metric, MoveX10: true}}, 1<<20, 1<<20)
+			d.OnSelect = func(i int) { L.Metric = i == 1 } // distanceSpeedDropdown (PARTIAL: Config::write)
+			w.OpenDropdown(d)
 		}
 		return
 	}
@@ -425,7 +440,11 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 	if w.Tab == OptTabRegional {
 		// prepareDraw's values: Config defaults (language en-GB "English (UK)",
 		// measurementFormat imperial, showHeightAsUnits false) and the currencies.
-		values := [5]string{"English (UK)", "Imperial", "Real Values", w.CurrencyName, w.PreferredCurrencyName}
+		measure := "Imperial"
+		if L.Metric {
+			measure = "Metric"
+		}
+		values := [5]string{"English (UK)", measure, "Real Values", w.CurrencyName, w.PreferredCurrencyName}
 		arrow := string(rune(170)) // LocoChar::down, StringIds::dropdown "{COLOUR BLACK}▼"
 		aw, _ := MeasureTextBold(arrow)
 		for i, r := range optRegionalRows {

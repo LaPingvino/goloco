@@ -1,6 +1,10 @@
 package uilayout
 
-import "strconv"
+import (
+	"math"
+	"strconv"
+	"strings"
+)
 
 // TimePanel layout — Ui/Windows/TimePanel.cpp: a 140×27 window at the
 // bottom-right; widgets relative to it.
@@ -151,4 +155,39 @@ func Currency48(v int64) string {
 		g += string(ch)
 	}
 	return out + c.Prefix + g + c.Suffix
+}
+
+// Metric is Config::measurementFormat == metric (the Options window's
+// Regional tab sets it; imperial is upstream's default): speeds in km/h
+// (× 1.609375), heights in m (× 5) instead of mph and ft (× 16).
+var Metric bool
+
+// Velocity formats ControlCodes::velocity (a speed16 in mph units).
+func Velocity(mph int) string {
+	if Metric {
+		return groupInt(int64(math.Round(float64(mph)*1.609375))) + "km/h"
+	}
+	return groupInt(int64(mph)) + "mph"
+}
+
+// Height formats ControlCodes::height (showHeightAsUnits off).
+func Height(v int) string {
+	if Metric {
+		return groupInt(int64(v*5)) + "m"
+	}
+	return groupInt(int64(v*16)) + "ft"
+}
+
+// groupInt is formatInt32Grouped: thousands separated by ",".
+func groupInt(v int64) string {
+	s := strconv.FormatInt(v, 10)
+	neg := strings.HasPrefix(s, "-")
+	s = strings.TrimPrefix(s, "-")
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	if neg {
+		s = "-" + s
+	}
+	return s
 }
