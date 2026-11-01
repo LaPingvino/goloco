@@ -123,6 +123,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    indices whose palette alpha is 0 — the water mask uses 1-4 → now DecodeSpriteMaskOnly. Diag now shows dark,
    textured water with the seabed through it, like reference/gallery-screenshot-7.png. Live build updated.
    PERF: one full-frame ReadPixels per frame with water on screen.
+   (d) Tick 17: submerged terrain — goloco flattened it (slope 0) and lifted it to the water height, citing
+   PaintSurface ~676-688; that is getWaterSurface, used only for selection boxes. Upstream always paints the
+   surface at baseHeight with its displaySlope (paintMainSurface, ~1545-1569). Fixed: the seabed's real slope
+   now shows through the blend — shallow bands along the coast, as in the reference. Open: the light-green tile
+   at the waterline in the Weatherworld diag (growth stage or variation?) — check against PaintSurface next.
 3i. [ ] **DESIGN (bold, Joop-approved direction): port the software renderer.** OpenLoco draws into an 8-bit
    palette-indexed RenderTarget with software sprite blits (Graphics/DrawSpriteHelper.hpp ops: none,
    transparent, src remap, dst blend, src+dst blend, noise mask) and a sorted paint session (Paint/Paint.cpp:
@@ -197,3 +202,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 14 (item 3e) — reference gallery found in goloco/reference/; water colour cause traced to upstream's mask-blend (dst through the water palette map +41) vs goloco's opaque remap + tint lerp; plan recorded; no code change.
 - 2026-11-01 tick 15 (item 3e water c) — exact palette-map blend implemented as a Kage shader; terrain read comes back black under headless WebGL, so it's switched off (exactWaterBlend=false) pending a repro; water looks as before; ripple/wave draw order now after the blend; dead CPU tint pass removed.
 - 2026-11-01 tick 16 (item 3e water c done) — exact palette-map blend on the CPU (pkg/palblend + test); mask bug (DecodeSprite drops palette-alpha-0 indices) fixed; water now matches the reference look; live. New rule from Joop: exact CPU first, optimise with equivalence checks. Queued 3i: port OpenLoco's indexed software renderer + paint sort.
+- 2026-11-01 tick 17 (item 3e water d / slopes) — submerged terrain is no longer flattened and lifted (a misread of getWaterSurface); seabed slopes show through the water like the reference; slope→display table checked equal to upstream. Live build updated.

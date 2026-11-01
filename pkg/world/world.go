@@ -2567,15 +2567,12 @@ func (w *World) Draw(screen *ebiten.Image) {
 						displaySlope = int(slopeToDisplaySlope[rawSlope])
 					}
 
-					// OpenLoco PaintSurface.cpp ~line 676-688: when water is above the
-					// terrain base, the terrain is drawn as flat (slope=0) AT THE WATER
-					// HEIGHT so it is hidden under the water sprite on top.
-					// OpenLoco ref: `slope = 0; height = elSurface.waterHeight();`
-					waterHeightDiff := float64(t.WaterLevel)*16.0 - float64(t.BaseZ)*4.0
-					isSubmerged := t.WaterLevel > 0 && waterHeightDiff > 0
-					if isSubmerged {
-						displaySlope = 0
-					}
+					// The surface is always painted at its own height with its own slope,
+					// under water too: the water is blended on top at the water height
+					// (PaintSurface.cpp paintMainSurface(…, baseHeight) at ~1545-1569).
+					// getWaterSurface's 'flat at water height' (~675) is only used for the
+					// selection boxes, not for the surface — goloco used to flatten
+					// submerged tiles and lift them to the water, bending the shoreline.
 
 					// Zoom-0 flat terrain sprite: skip all zoom3/zoom2/zoom1 images.
 					// Growth stage selects the season/maturity variant within the zoom-0 block.
@@ -2601,12 +2598,7 @@ func (w *World) Draw(screen *ebiten.Image) {
 					if img := w.renderer.GetObjectSprite(land, spriteIdx); img != nil {
 						_, _, xOff, yOff, ok := w.renderer.GetObjectSpriteInfo(land, spriteIdx)
 						if ok {
-							// For submerged tiles: draw terrain sprite at water height (not
-							// terrain height) so it sits flush under the water surface.
 							terrainDrawY := drawY
-							if isSubmerged {
-								terrainDrawY = drawY - waterHeightDiff*scale
-							}
 							op := &ebiten.DrawImageOptions{}
 							op.GeoM.Scale(scale, scale)
 							op.GeoM.Translate(
