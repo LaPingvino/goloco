@@ -2444,7 +2444,7 @@ func (w *World) Draw(screen *ebiten.Image) {
 	sh := screen.Bounds().Dy()
 	scale := 1.0 / float64(int(1)<<w.zoom) // zoom 0→1.0, 1→0.5, 2→0.25, 3→0.125
 
-	// The ported software renderer (scene.go), behind GOLOCO_SCENE=1 for now.
+	// The ported software renderer (scene.go): the default; GOLOCO_SCENE=0 selects the old one.
 	if w.sceneEnabled() {
 		w.drawScene(screen)
 		if len(w.Entities) > 0 {

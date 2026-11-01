@@ -43,7 +43,7 @@ internal. Size: S (one tick), M (2–4 ticks), L (a series).
 
 | Where | What goloco does | What upstream does | Sev | Size |
 |---|---|---|---|---|
-| pkg/ui/g1font.go:45–52 | Per-font width "fudge" {-1,-1,-1,1} | Font metrics from the g1 glyph widths as upstream's Gfx/Font.cpp computes them | M | S |
+| pkg/ui/g1font.go:45–52 | NOT A DEVIATION (checked 2026-11-01): the {-1,-1,-1,1} "fudge" is upstream's own widthFudge table (Graphics/Gfx.cpp initialiseCharacterWidths) | — | — | — |
 | pkg/graphics/drawing_context.go:282–297 | DrawStringCentered measures len×7 px | String width from the font (getStringWidth) | M | S |
 | pkg/ui/button_widget.go:25 | Text height "approximate" | Widget text placement as in Ui/Widget.cpp | L | S |
 | pkg/ui/input.go:166–176 | No text input | Text input windows (TextInputWindow.cpp) | M | M |
