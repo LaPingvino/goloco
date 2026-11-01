@@ -161,16 +161,30 @@ func DrawSpriteNoise(rt *RenderTarget, s *Sprite, x, y int, op BlendOp, palMap [
 		op &^= OpNoiseMask
 	}
 	x0, y0 := x+s.XOffset, y+s.YOffset
-	for sy := 0; sy < s.Height; sy++ {
-		ty := y0 + sy
-		if ty < 0 || ty >= rt.Height {
-			continue
-		}
-		for sx := 0; sx < s.Width; sx++ {
-			tx := x0 + sx
-			if tx < 0 || tx >= rt.Width {
-				continue
+	// Clip the sprite rectangle to the target once (same pixels as testing every
+	// pixel against the bounds).
+	sxMin, sxMax := max(0, -x0), min(s.Width, rt.Width-x0)
+	syMin, syMax := max(0, -y0), min(s.Height, rt.Height-y0)
+	if sxMin >= sxMax || syMin >= syMax {
+		return
+	}
+	// Fast path for the commonest op, a transparent copy: blitPixel with
+	// OpTransparent alone writes src wherever src != 0.
+	if op == OpTransparent {
+		for sy := syMin; sy < syMax; sy++ {
+			src := s.Pix[sy*s.Width+sxMin : sy*s.Width+sxMax]
+			dst := rt.Bits[(y0+sy)*rt.Width+x0+sxMin:]
+			for i, p := range src {
+				if p != Transparent {
+					dst[i] = p
+				}
 			}
+		}
+		return
+	}
+	for sy := syMin; sy < syMax; sy++ {
+		row := (y0 + sy) * rt.Width
+		for sx := sxMin; sx < sxMax; sx++ {
 			nm := uint8(0xFF)
 			if op&OpNoiseMask != 0 {
 				if i := s.Width*sy + sx; i < len(noise.Pix) {
@@ -179,7 +193,7 @@ func DrawSpriteNoise(rt *RenderTarget, s *Sprite, x, y int, op BlendOp, palMap [
 					nm = 0
 				}
 			}
-			blitPixel(op, s.Pix[sy*s.Width+sx], &rt.Bits[ty*rt.Width+tx], palMap, nm)
+			blitPixel(op, s.Pix[sy*s.Width+sx], &rt.Bits[row+x0+sx], palMap, nm)
 		}
 	}
 }

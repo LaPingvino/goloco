@@ -232,7 +232,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    split for style 2 (upstream: one exits mask per tile, merge base from the element's own MergeType).
    DECISION: the payoff now is switching the game's World.Draw onto gfx8+paint (render8's pipeline), then
    retiring the per-tile painters one by one. → new item 3j.
-3j. [~] **Switch the live renderer to gfx8+paint.** World.Draw builds a paint session from the visible tiles with
+3j. [~] **Switch the live renderer to gfx8+paint.**
+   PERF (tick 46): pkg/scene BenchmarkRenderTitleView (800×600, title farm view, native, with Whisper using 6 cores):
+   28.7 ms → 17.6 ms/frame after clipping the sprite rectangle once and a fast path for plain transparent copies.
+   EQUIVALENCE PROCEDURE for every optimisation: render8 the three reference views (title 169,150; Weatherworld
+   231,25; Bottleneck Blues 237,12) before and after, `cmp` the PNGs — must be byte-identical (kept in the
+   scratchpad, never committed: they contain game graphics). Next candidates (profile): 28k allocations/frame (paint
+   structs → a reusable slab), ToRGBA allocating each frame, sprite cache map lookups. World.Draw builds a paint session from the visible tiles with
    the ported painters (surface, cliffs, water, trees, buildings, roads), draws into an 8-bit target, converts
    through the palette into one Ebiten image. Keep the old path behind a flag (GOLOCO_OLD_RENDER=1) for comparison
    until tracks, stations, signals, walls, bridges and vehicles are ported; elements not ported yet are drawn by
@@ -398,3 +404,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 43 (item 3j) — farm fields render (industrial surface branch); k4FD30C extracted from upstream source; snow cover found missing → 3k.
 - 2026-11-01 tick 44 (item 3k) — snow cover on land in the CPU renderer; SnowObject loader; mask table generated (names from the .cpp, values from the compiler).
 - 2026-11-01 tick 45 (item 3j) — test page: checkbox 'Use the ported renderer' (passes GOLOCO_SCENE=1, remembered per browser); scene mode logs its average CPU frame time every 120 frames to the console. Live at kiefte.eu/goloco for Joop to compare.
+- 2026-11-01 tick 46 (item 3j perf) — scene benchmark added; blit clipping + transparent fast path: 28.7 → 17.6 ms/frame, byte-identical on all three reference views.
