@@ -27,9 +27,10 @@ const (
 )
 
 type g1Font struct {
-	g1     *assets.G1File
-	glyphs map[int]*ebiten.Image // white glyph shapes, tinted at draw time
-	widths [4][224]int8
+	g1       *assets.G1File
+	glyphs   map[int]*ebiten.Image // white glyph shapes, tinted at draw time
+	outlines map[int]*ebiten.Image // the glyphs' textRemap1/2 pixels (outline style)
+	widths   [4][224]int8
 }
 
 var globalG1Font *g1Font
@@ -41,7 +42,7 @@ func InitG1Font(g1 *assets.G1File) {
 	if g1 == nil || os.Getenv("GOLOCO_FONT") == "ttf" {
 		return
 	}
-	f := &g1Font{g1: g1, glyphs: make(map[int]*ebiten.Image)}
+	f := &g1Font{g1: g1, glyphs: make(map[int]*ebiten.Image), outlines: make(map[int]*ebiten.Image)}
 	fudge := [4]int8{-1, -1, -1, 1}
 	for fi := 0; fi < 4; fi++ {
 		for i := 0; i < 224; i++ {
@@ -160,4 +161,78 @@ func g1FontHeight(font int) int {
 	default:
 		return 10
 	}
+}
+
+// outline returns the glyph's textRemap1/2 pixels (0x02, 0x03) as a white
+// shape: TextRenderer's outline style colours them (setTextColours pal2/pal3).
+func (f *g1Font) outline(font, chr int) *ebiten.Image {
+	if chr < 32 || chr > 255 {
+		return nil
+	}
+	idx := g1FontBase + font*224 + (chr - 32)
+	if img, ok := f.outlines[idx]; ok {
+		return img
+	}
+	e := &f.g1.Elements[idx]
+	w, h := int(e.Width), int(e.Height)
+	indices := e.Data
+	if e.Flags&assets.G1FlagIsRLECompressed != 0 {
+		decoded, err := assets.DecodeRLE(e.Data, w, h)
+		if err != nil {
+			f.outlines[idx] = nil
+			return nil
+		}
+		indices = decoded
+	}
+	if w <= 0 || h <= 0 || len(indices) < w*h {
+		f.outlines[idx] = nil
+		return nil
+	}
+	m := image.NewRGBA(image.Rect(0, 0, w, h))
+	any := false
+	for i, p := range indices[:w*h] {
+		if p == 0x02 || p == 0x03 {
+			m.SetRGBA(i%w, i/w, color.RGBA{255, 255, 255, 255})
+			any = true
+		}
+	}
+	var img *ebiten.Image
+	if any {
+		img = ebiten.NewImageFromImage(m)
+	}
+	f.outlines[idx] = img
+	return img
+}
+
+// DrawTextOutlined draws str in medium bold with the outline text style
+// (AdvancedColour::outline): the glyphs' outline pixels in outlineClr (upstream
+// black0), then the body in clr. Returns the width.
+func DrawTextOutlined(screen *ebiten.Image, str string, x, y int, clr, outlineClr color.Color) int {
+	f := globalG1Font
+	if f == nil {
+		return 0
+	}
+	penX := 0
+	for _, r := range str {
+		chr := int(r)
+		if chr < 32 || chr > 255 {
+			chr = '?'
+		}
+		idx := g1FontBase + G1FontMediumBold*224 + (chr - 32)
+		e := &f.g1.Elements[idx]
+		for _, plane := range [2]struct {
+			img *ebiten.Image
+			c   color.Color
+		}{{f.outline(G1FontMediumBold, chr), outlineClr}, {f.glyph(G1FontMediumBold, chr), clr}} {
+			if plane.img == nil {
+				continue
+			}
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Translate(float64(x+penX+int(e.XOffset)), float64(y+int(e.YOffset)))
+			op.ColorScale.ScaleWithColor(plane.c)
+			screen.DrawImage(plane.img, op)
+		}
+		penX += int(f.widths[G1FontMediumBold][chr-32])
+	}
+	return penX
 }

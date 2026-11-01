@@ -1092,6 +1092,16 @@ func debugPath(name string) string {
 // quit when the requested count has been captured. Script `shot` commands are
 // honoured here too.
 func (g *Game) maybeSaveShot(screen *ebiten.Image) {
+	if os.Getenv("GOLOCO_DIAG_WINDOW") != "" {
+		// Diagnostic: an upstream-style window frame + caption (FrameWidget,
+		// CaptionWidget ports) for headless shots; the colour is the skin's window colour.
+		var c uint8 = 1
+		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+			c = g.r.ObjMgr.InterfaceSkin.WindowColour
+		}
+		ui.DrawWindowFrame(screen, 200, 60, 360, 220, c, false)
+		ui.DrawWindowCaption(screen, 201, 61, 358, "Select Scenario")
+	}
 	if os.Getenv("GOLOCO_DIAG_TOOLTIP") != "" {
 		// Diagnostic: a tooltip over the frame (ToolTip.cpp port), for headless shots.
 		var c uint8
