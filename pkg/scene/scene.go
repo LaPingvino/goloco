@@ -89,14 +89,18 @@ func (r *Renderer) shadow(has bool, image, colour int, primary bool) paint.Shado
 }
 
 // paintBridge hands the session's bridge entry to paint.PaintBridge (PARTIAL
-// there: deck only so far) with its bridge object (scenario bridge slot).
-func (r *Renderer) paintBridge(s *paint.Session, b paint.BridgeEntry) bool {
+// there: quarter case 8) with its bridge object (scenario bridge slot).
+// extColourUnk32 is ExtColour::unk32, the bridge shadow's translucency.
+const extColourUnk32 = 0x32
+
+func (r *Renderer) paintBridge(s *paint.Session, b paint.BridgeEntry, tx, ty int) bool {
 	bo := r.Objects.GetBridgeObjectByIndex(int(b.ObjectID))
 	if bo == nil {
 		return false
 	}
 	return s.PaintBridge(b, paint.BridgeObj{Image: int(bo.ImageOffset), SpanLength: bo.SpanLength, PillarSpacing: bo.PillarSpacing,
-		HasRoof: bo.Flags&objects.BridgeFlagHasRoof != 0}, r.Sprite)
+		HasRoof: bo.Flags&objects.BridgeFlagHasRoof != 0, DeckDepth: int(bo.DeckDepth), TileX: tx, TileY: ty,
+		ShadowPal: r.colourMap(extColourUnk32)}, r.Sprite)
 }
 
 // tunnelImage resolves a track/road object's tunnel header name to the tunnel
@@ -218,7 +222,7 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 					s.FinaliseTrackRoadOrdering()
 					s.FinaliseTrackRoadAdditionsOrdering()
 					if b, ok := s.TakeBridge(); ok {
-						if r.paintBridge(s, b) {
+						if r.paintBridge(s, b, x, y) {
 							s.SetSegmentsSupportHeight(paint.SegmentsAll, 0xFFFF, 0)
 						}
 						if s.GeneralSupportHeight().Height >= b.Height {
