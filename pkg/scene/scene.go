@@ -29,6 +29,40 @@ type Renderer struct {
 	sess *paint.Session
 	rt   *gfx8.RenderTarget
 	rgba *image.RGBA
+
+	colourMaps map[int][]uint8 // GetPaletteMap(colour), which copies, cached
+	anims      map[any]anim    // per object: part animation frames and speeds
+}
+
+type anim struct{ frames, speeds []uint8 }
+
+// colourMap returns the remap for a colour (cached; G1File.GetPaletteMap copies).
+func (r *Renderer) colourMap(c int) []uint8 {
+	if m, ok := r.colourMaps[c]; ok {
+		return m
+	}
+	m, _ := r.G1.GetPaletteMap(c)
+	if r.colourMaps == nil {
+		r.colourMaps = map[int][]uint8{}
+	}
+	r.colourMaps[c] = m
+	return m
+}
+
+// animOf splits an object's part animations into frames and speeds (cached).
+func (r *Renderer) animOf(key any, pa []objects.BuildingPartAnimation) anim {
+	if a, ok := r.anims[key]; ok {
+		return a
+	}
+	a := anim{make([]uint8, len(pa)), make([]uint8, len(pa))}
+	for i, p := range pa {
+		a.frames[i], a.speeds[i] = p.NumFrames, p.AnimationSpeed
+	}
+	if r.anims == nil {
+		r.anims = map[any]anim{}
+	}
+	r.anims[key] = a
+	return a
 }
 
 // New prepares a renderer. The object manager must already be reordered to the
@@ -244,12 +278,9 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 				if bo == nil || int(b.Variation) >= len(bo.VariationParts) {
 					continue
 				}
-				frames := make([]uint8, len(bo.PartAnimations))
-				speeds := make([]uint8, len(bo.PartAnimations))
-				for i, pa := range bo.PartAnimations {
-					frames[i], speeds[i] = pa.NumFrames, pa.AnimationSpeed
-				}
-				cmap, _ := r.G1.GetPaletteMap(int(b.Colour))
+				an := r.animOf(bo, bo.PartAnimations)
+				frames, speeds := an.frames, an.speeds
+				cmap := r.colourMap(int(b.Colour))
 				s.PaintBuilding(paint.BuildingEl{Rotation: b.Rotation, SequenceIndex: b.SequenceIndex, Variation: b.Variation, BaseZ: b.BaseZ, ClearZ: b.ClearZ},
 					paint.BuildingObj{Image: int(bo.ImageOffset), NumParts: int(bo.NumParts), Parts: bo.VariationParts[b.Variation], PartHeights: bo.PartHeights,
 						PartAnimFrames: frames, PartAnimSpeed: speeds, ElevatorSequences: bo.ElevatorSequences, LargeTile: bo.HasFlags(objects.BuildingFlagLargeTile)},
@@ -263,12 +294,9 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 				if io == nil || int(ie.BuildingType) >= len(io.Variations) {
 					continue
 				}
-				frames := make([]uint8, len(io.PartAnimations))
-				speeds := make([]uint8, len(io.PartAnimations))
-				for i, pa := range io.PartAnimations {
-					frames[i], speeds[i] = pa.NumFrames, pa.AnimationSpeed
-				}
-				cmap, _ := r.G1.GetPaletteMap(int(ie.Colour))
+				an := r.animOf(io, io.PartAnimations)
+				frames, speeds := an.frames, an.speeds
+				cmap := r.colourMap(int(ie.Colour))
 				s.PaintIndustry(paint.IndustryEl{Rotation: ie.Rotation, SequenceIndex: ie.SequenceIndex, BuildingType: ie.BuildingType,
 					Var6Low: ie.Var6Low, SectionProgress: ie.SectionProgress, IsConstructed: ie.IsConstructed, BaseZ: ie.BaseZ, ClearZ: ie.ClearZ},
 					paint.IndustryObj{BuildingImageIDs: int(io.BuildingImageIDs), Parts: io.Variations[ie.BuildingType], PartHeights: io.PartHeights,
@@ -283,7 +311,7 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 				}
 				var cmap []uint8
 				if wo.Flags&objects.WallFlagHasPrimaryColour != 0 {
-					cmap, _ = r.G1.GetPaletteMap(int(wl.PrimaryColour))
+					cmap = r.colourMap(int(wl.PrimaryColour))
 				}
 				s.PaintWall(paint.WallEl{Rotation: wl.Rotation, EdgeSlope: wl.EdgeSlope, PrimaryColour: wl.PrimaryColour, BaseZ: wl.BaseZ},
 					paint.WallObj{Sprite: int(wo.Sprite), Height: wo.Height, TwoSided: wo.Flags&objects.WallFlagTwoSided != 0,

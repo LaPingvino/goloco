@@ -411,3 +411,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 45 (item 3j) — test page: checkbox 'Use the ported renderer' (passes GOLOCO_SCENE=1, remembered per browser); scene mode logs its average CPU frame time every 120 frames to the console. Live at kiefte.eu/goloco for Joop to compare.
 - 2026-11-01 tick 46 (item 3j perf) — scene benchmark added; blit clipping + transparent fast path: 28.7 → 17.6 ms/frame, byte-identical on all three reference views.
 - 2026-11-01 tick 47 (item 3j perf) — paint/scene buffers reused across frames (2.8 MB → 190 KB per frame), byte-identical; next: per-element allocations.
+- 2026-11-01 tick 48 (item 3j perf) — palette maps cached per colour, part-animation arrays per object: 190 → 82 KB/frame, byte-identical; allocation count (~25.6k) comes from elsewhere — profile next.
