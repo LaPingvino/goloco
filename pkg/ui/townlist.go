@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 	"image/color"
 )
@@ -272,7 +273,7 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 		if v.AgeYears == 1 {
 			age = "1 year"
 		}
-		p := currency32(profit)
+		p := currency32(profit) // {COLOUR RED}-{CURRENCY32} for a loss: '-' then the amount
 		if v.Profit < 0 {
 			p = "-" + p
 		}
@@ -296,16 +297,5 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 	return w
 }
 
-// currency32 formats {CURRENCY32} (en-GB pound, comma groups). PARTIAL as
-// uilayout.Currency48: the scenario's currency object is not applied.
-func currency32(v int64) string {
-	s := itoa3(int(v))
-	out := ""
-	for i, c := range s {
-		if i > 0 && (len(s)-i)%3 == 0 {
-			out += ","
-		}
-		out += string(c)
-	}
-	return "£" + out
-}
+// currency32 is {CURRENCY32}: formatCurrency, as uilayout.Currency48.
+func currency32(v int64) string { return L.Currency48(v) }
