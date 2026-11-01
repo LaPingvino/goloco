@@ -94,6 +94,10 @@ type OptionsWindow struct {
 	// fullscreen window); OnScreenMode is told a new one (setDisplayMode).
 	ScreenMode   int
 	OnScreenMode func(int)
+	// FrameLimit is 0 internal speed, 1 vertical sync, 2 unrestricted
+	// (uncapFPS / display.vsync); OnFrameLimit is told a new one.
+	FrameLimit   int
+	OnFrameLimit func(int)
 	TitleMode    bool
 }
 
@@ -101,6 +105,9 @@ type OptionsWindow struct {
 // both 173×12.
 // optScreenModes are options_mode_windowed / _fullscreen / _fullscreen_window.
 var optScreenModes = []string{"Windowed", "Fullscreen", "Fullscreen (borderless window)"}
+
+// optFrameLimits are frameRateLimitInternal / Vsync / Unrestricted.
+var optFrameLimits = []string{"Internal speed (default)", "Vertical sync", "Unrestricted"}
 
 var optRegionalRows = [5]struct {
 	y     int
@@ -181,6 +188,23 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 					w.ScreenMode = i
 					if w.OnScreenMode != nil {
 						w.OnScreenMode(i)
+					}
+				}
+			}
+			w.OpenDropdown(d)
+		}
+		// frameLimitMouseDown: Dropdown::show at the combobox, width() (no −4).
+		if w.in([4]int{235, 111, 154, 12}, px, py) && w.OpenDropdown != nil {
+			items := make([]DropdownItem, len(optFrameLimits))
+			for i, m := range optFrameLimits {
+				items[i] = DropdownItem{Text: m, Selected: i == w.FrameLimit, MoveX10: true}
+			}
+			d := NewDropdownShow(w.X+235, w.Y+111, 154-1, 11, w.Colour, items, 1<<20, 1<<20)
+			d.OnSelect = func(i int) {
+				if i >= 0 {
+					w.FrameLimit = i
+					if w.OnFrameLimit != nil {
+						w.OnFrameLimit(i)
 					}
 				}
 			}
@@ -475,7 +499,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			label, value string
 			disabled     bool
 		}{{63, "Screen mode:", optScreenModes[w.ScreenMode], false}, {79, "Display Resolution:", "1920 x 1080", w.ScreenMode != 1},
-			{95, "Window scale factor:", "1.00", false}, {111, "Frame rate limit:", "Internal speed (default)", false}}
+			{95, "Window scale factor:", "1.00", false}, {111, "Frame rate limit:", optFrameLimits[w.FrameLimit], false}}
 		for _, r := range rows {
 			DrawTextBold(screen, r.label, w.X+10, w.Y+r.y, text)
 			if r.disabled {
