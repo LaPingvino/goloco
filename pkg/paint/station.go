@@ -1,0 +1,93 @@
+package paint
+
+import "github.com/LaPingvino/goloco/pkg/gfx8"
+
+// Train stations — a port of Paint/PaintTrainStation.cpp (paint style 0:
+// straight and diagonal track). PARTIAL: cargo on the platforms
+// (paintStationCargo needs the station's cargo stats), the translucent canopy
+// layer (translucency colour from the company colour, not parsed yet), company
+// colour remap, ghosts, and road stations / airports / docks.
+
+// StationEl is what paintTrainStation reads from a station element and the
+// track element before it.
+type StationEl struct {
+	Rotation, BaseZ   uint8
+	TrackID, TrackSeq uint8
+}
+
+type stationDetail struct {
+	img         int
+	bbOff, bbSz Pos3
+}
+
+var (
+	stationNE = [3]stationDetail{
+		{Station0StraightBackNE, Pos3{2, 2, 8}, Pos3{28, 4, 3}},
+		{Station0StraightFrontNE, Pos3{2, 24, 8}, Pos3{28, 4, 3}},
+		{Station0StraightCanopyNE, Pos3{2, 2, 26}, Pos3{28, 28, 1}},
+	}
+	stationSE = [3]stationDetail{
+		{Station0StraightBackSE, Pos3{2, 2, 8}, Pos3{4, 28, 3}},
+		{Station0StraightFrontSE, Pos3{24, 2, 8}, Pos3{4, 28, 3}},
+		{Station0StraightCanopySE, Pos3{2, 2, 26}, Pos3{28, 28, 1}},
+	}
+)
+
+// PaintTrainStation paints a style-0 train station element at the current
+// sprite position; base is stationObj->imageOffsets[sequenceIndex].
+func (s *Session) PaintTrainStation(el StationEl, base int, sprite func(int) *gfx8.Sprite) {
+	rot := int((s.Rotation + el.Rotation) & 3)
+	ho := Pos3{0, 0, int(el.BaseZ) * 4}
+	img := func(off int) Image {
+		sp := sprite(base + off)
+		return Image{Sprite: sp, Op: gfx8.OpTransparent}
+	}
+	at := func(p Pos3) Pos3 { return Pos3{p.X, p.Y, p.Z + ho.Z} }
+	switch el.TrackID {
+	case 0: // paintTrainStationStyle0StraightTrack
+		d := stationNE
+		if rot&1 == 1 {
+			d = stationSE
+		}
+		for _, part := range d[:2] {
+			if i := img(part.img); i.Sprite != nil {
+				s.AddAsParent(i, ho, at(part.bbOff), part.bbSz) // addToPlotList4FD150
+			}
+		}
+		if i := img(d[2].img); i.Sprite != nil {
+			s.AddTrackRoadAddition(i, 1, ho, at(d[2].bbOff), d[2].bbSz)
+		}
+	case 1: // paintTrainStationStyle0DiagonalTrack
+		seq := int(el.TrackSeq)
+		if rot&2 != 0 {
+			seq = 3 - seq
+		}
+		add := func(off int, bbOff, bbSz Pos3) {
+			if i := img(off); i.Sprite != nil {
+				s.AddAsParent(i, ho, at(bbOff), bbSz)
+			}
+		}
+		if rot&1 == 1 {
+			switch seq {
+			case 1:
+				add(Station0DiagonalSE1, Pos3{28, 34, 8}, Pos3{2, 2, 3})
+			case 2:
+				add(Station0DiagonalSE2, Pos3{34, 28, 8}, Pos3{2, 2, 3})
+			case 3:
+				if i := img(Station0DiagonalSE3); i.Sprite != nil {
+					s.AddTrackRoadAddition(i, 1, ho, at(Pos3{0, 0, 26}), Pos3{30, 30, 1})
+				}
+			}
+		} else {
+			switch seq {
+			case 0:
+				add(Station0DiagonalNE0, Pos3{2, 2, 8}, Pos3{2, 2, 3})
+			case 1:
+				add(Station0DiagonalNE1, Pos3{6, 6, 8}, Pos3{2, 2, 11})
+				add(Station0DiagonalCanopyNE1, Pos3{6, 6, 26}, Pos3{2, 2, 1})
+			case 3:
+				add(Station0DiagonalNE3, Pos3{2, 2, 8}, Pos3{2, 2, 3})
+			}
+		}
+	}
+}

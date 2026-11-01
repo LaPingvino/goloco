@@ -275,6 +275,27 @@ var TrackParts = [26][]TrackPiece{
 	},
 }
 
+// Train station style 0 image offsets (TrainStationObject.h TrainStation::ImageIds::Style0).
+const (
+	Station0StraightBackNE               = 0
+	Station0StraightFrontNE              = 1
+	Station0StraightCanopyNE             = 2
+	Station0StraightCanopyTranslucentNE  = 3
+	Station0StraightBackSE               = 4
+	Station0StraightFrontSE              = 5
+	Station0StraightCanopySE             = 6
+	Station0StraightCanopyTranslucentSE  = 7
+	Station0DiagonalNE0                  = 8
+	Station0DiagonalNE3                  = 9
+	Station0DiagonalNE1                  = 10
+	Station0DiagonalCanopyNE1            = 11
+	Station0DiagonalCanopyTranslucentNE1 = 12
+	Station0DiagonalSE1                  = 13
+	Station0DiagonalSE2                  = 14
+	Station0DiagonalSE3                  = 15
+	Station0DiagonalCanopyTranslucentSE3 = 16
+)
+
 // TrackSignalHeightOffset[trackId] = {left, right} (TrackData getTrackMiscData).
 var TrackSignalHeightOffset = [26][2]uint8{
 	{0, 0},

@@ -161,6 +161,7 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 				}
 				s.FinalisePaintRoad(sprite)
 				s.FinaliseTrackRoadOrdering()
+				s.FinaliseTrackRoadAdditionsOrdering()
 			}
 			// Signals: upstream paints a signal against the track element just before it
 			// in the tile; the tile keeps signals in their own slice, so the track with
@@ -177,6 +178,25 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 					break
 				}
 			}
+			// Train stations (style 0), against the track of the same baseZ (upstream:
+			// the element before — same APPROXIMATION as signals).
+			for _, st := range t.Stations {
+				if st.StationType != 0 {
+					continue // road stations, airports, docks: not ported yet
+				}
+				so := om.GetTrainStationObjectByIndex(int(st.ObjectID))
+				if so == nil || so.PaintStyle != 0 || int(st.SequenceIndex) >= len(so.SequenceImageOffsets) {
+					continue
+				}
+				for _, tk := range t.Tracks {
+					if tk.BaseZ == st.BaseZ {
+						s.PaintTrainStation(paint.StationEl{Rotation: st.Rotation, BaseZ: st.BaseZ, TrackID: tk.TrackID, TrackSeq: tk.SequenceIndex},
+							int(so.SequenceImageOffsets[st.SequenceIndex]), sprite)
+						break
+					}
+				}
+			}
+			s.FinaliseTrackRoadAdditionsOrdering()
 			for _, b := range t.Buildings {
 				bo := om.GetBuildingObjectByIndex(int(b.ObjectID))
 				if bo == nil || int(b.Variation) >= len(bo.VariationParts) {

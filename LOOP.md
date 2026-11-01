@@ -268,6 +268,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    the left side's object), TrackElement.IsLast (element flags byte 1, flag_6). Signals pair with the track of the
    same baseZ (APPROXIMATION: upstream uses the element just before). Title map (87,180): signal renders, sorted
    behind trees. NEXT: stations (PaintStation/PaintTrainStation/PaintRoadStation).
+   Tick 39: train stations (style 0) DONE — pkg/paint/station.go (straight: back/front platform + canopy into the
+   additions list; diagonal sequences 0-3 per rotation), session gains addToPlotListTrackRoadAddition and its
+   finalise; station image ids generated (TrainStationObject.h); goloco's SequenceImageOffsets match load()
+   (image + 2 previews + i × style total). Title map (89,90): platform + arched canopy render. NOT YET: the
+   translucent canopy glazing (needs the company colour → Colours::getTranslucent → palette map), platform cargo
+   (station cargo stats), road stations, airports, docks.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -356,3 +362,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 36 (item 3j) — track paint table generated from upstream; goloco's hand track table verified identical (0 diffs). (Video SRT: OCR of the burned-in captions planned as a second source, per Joop.)
 - 2026-11-01 tick 37 (item 3j) — tracks in the CPU renderer (priority layers, sorted with roads per height group); the title railway renders.
 - 2026-11-01 tick 38 (item 3j) — signals ported; fixed two parse gaps (right-side signal object, track flag_6); signal offsets generated from upstream TrackData.
+- 2026-11-01 tick 39 (item 3j) — train stations (style 0) in the CPU renderer; additions priority list ported; station image ids generated.

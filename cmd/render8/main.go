@@ -69,6 +69,9 @@ func main() {
 	if len(sc.TrainSignalObjectOrder) > 0 {
 		om.ReorderTrainSignalObjects(sc.TrainSignalObjectOrder)
 	}
+	if len(sc.TrainStationObjectOrder) > 0 {
+		om.ReorderTrainStationObjects(sc.TrainStationObjectOrder)
+	}
 	om.ResolveCliffEdges()
 
 	var m sim.Map
