@@ -1,7 +1,7 @@
 // Command render8 renders a map region through the ported software renderer
 // (pkg/gfx8 + pkg/paint) to a PNG, with no graphics library — the CPU
 // reference the Ebiten renderer is compared against (LOOP item 3i, step 3).
-// So far: land surfaces, cliff edges and water (no waves).
+// So far: land surfaces, cliff edges, water (no waves) and trees.
 //
 //	go run ./cmd/render8 -scenario ../locomotion/Data/title.dat -tile 196,190 -out surf.png
 package main
@@ -50,7 +50,11 @@ func main() {
 	if len(sc.LandObjectOrder) > 0 {
 		om.ReorderLandObjects(sc.LandObjectOrder)
 	}
+	if len(sc.TreeObjectOrder) > 0 {
+		om.ReorderTreeObjects(sc.TreeObjectOrder)
+	}
 	om.ResolveCliffEdges()
+	shadowMap, _ := g1.GetPaletteMapAt(2208) // ImageIds::paletteMapUnk32 (tree shadows)
 	var water paint.WaterImages
 	if wo := om.WaterObj; wo != nil {
 		water.Base = int(wo.ImageOffset)
@@ -122,6 +126,17 @@ func main() {
 					}
 				}
 				s.PaintCliffEdges(paint.Surface{BaseZ: t.Height, Slope: t.Slope}, nbs, int(land.CliffEdgeImage), sprite)
+			}
+			for _, tr := range t.Trees {
+				to := om.GetTreeObjectByIndex(int(tr.TreeObjectID))
+				if to == nil {
+					continue
+				}
+				s.PaintTree(paint.TreeEl{Rotation: tr.Rotation, Quadrant: tr.Quadrant, Growth: tr.Growth, Season: tr.Season,
+					Unk7l: tr.Unk7l, HasSnow: tr.HasSnow, BaseZ: tr.BaseZ, ClearZ: tr.ClearZ},
+					paint.TreeObj{NumRotations: to.NumRotations, Sprites: to.Sprites, SnowSprites: to.SnowSprites,
+						ShadowImageOffset: uint32(to.ShadowImageOffset), HasShadow: to.Flags&objects.TreeFlagHasShadow != 0},
+					sprite, shadowMap)
 			}
 			if t.Water != 0 && water.PalMap != nil {
 				var nbs [4]*paint.Surface

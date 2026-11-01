@@ -181,6 +181,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    where the Ebiten renderer blends water over the town — the water now stops cleanly at the coast; the land in
    front is untouched (in-order blending). NEXT: objects in render8, in the order the deviations list ranks them
    (trees + buildings first: they are what water was painted over), each from its upstream painter.
+   Tick 25: trees ported (pkg/paint/tree.go, paintTree: season swap tables, quadrant offsets, bbox, shadow through
+   the unk32 map 2208) and drawn by render8. WRONG STILL: the second (season-transition) image draws in full —
+   tree sprites are NOT RLE (flags 0x1, checked), so upstream DOES apply the noise mask (images 3479-3485,
+   128×256, _noiseMaskImages[unk7l+1 or 8-…]). NEXT: gfx8 noise op — read how drawBMPSprite indexes the noise
+   image for a sprite pixel (DrawSprite.cpp / DrawSpriteHelper), port it, pass the noise sprite from PaintTree.
+   Also verify goloco's tree season sprite remap against upstream TreeObject::load.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -255,3 +261,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 22 (item 3i) — land image formula verified against LandObject::load; gfx8 masked draw (bitwise AND as upstream) + paint support, tested; cliffs next.
 - 2026-11-01 tick 23 (item 3i) — cliff edges ported (pkg/paint/surface.go) and drawn by render8; gaps filled.
 - 2026-11-01 tick 24 (item 3i) — water ported into the CPU renderer (exact dst blend in paint order); at the town-by-the-sea spot the water no longer spills onto the land in front.
+- 2026-11-01 tick 25 (item 3i) — trees in the CPU renderer; transition image needs the noise mask (tree sprites are BMP, so upstream applies it) → next.
