@@ -116,6 +116,10 @@ type ConstructionTabState struct {
 	Piece             string // the activated piece widget ("straight", …); "" none
 	Gradient          string // the activated gradient widget ("level", …)
 	Hover             bool   // constructionHover: placing the first piece
+	// BridgeImage is lastSelectedBridge's image (BridgeObject::image), -1
+	// for none; Company the player's primary colour (it is recoloured).
+	BridgeImage int
+	Company     uint8
 }
 
 // TrackButtons is activateSelectedTrackWidgets' layout for a track: the
@@ -195,6 +199,21 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 				gfx8.DrawSpriteNoise(rt, sp, ic[0], ic[1], gfx8.OpFor(sp, true, false), sec, nil)
 			}
 		}
+		// The bridge box (dropdownWidgets 40,123 58×20), shown while placing
+		// the first piece when a bridge is available (prepareDraw), with the
+		// bridge's image at (left + 2, top + 1) in the company colour.
+		// PARTIAL: shown while extending when the ghost needs a bridge
+		// (byte_1136076 & 1); the dropdown list (bridge images, speed, height).
+		if st.Hover && st.BridgeImage >= 0 {
+			gfx8.FillRectInset(rt, 40, 123, 40+58-1, 123+20-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			gfx8.FillRectInset(rt, 40+58-12, 124, 40+58-12+11-1, 124+10-1, gfx8.InsetColour{Map: sec}, 0)
+			if st.BridgeImage < len(g1.Elements) {
+				if sp, err := gfx8.Decode(&g1.Elements[st.BridgeImage]); err == nil {
+					prim, _ := g1.GetPaletteMap(int(st.Company))
+					gfx8.DrawSpriteNoise(rt, sp, 40+2, 123+1, gfx8.OpFor(sp, prim != nil, false), prim, nil)
+				}
+			}
+		}
 		for _, b := range st.Buttons() {
 			if b.Name == st.Piece || b.Name == st.Gradient {
 				gfx8.FillRectInset(rt, b.X, b.Y, b.X+b.W-1, b.Y+b.H-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
@@ -215,6 +234,11 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 		const midX, y = (3 + 3 + 132 - 1) / 2, 145 + 100 - 1 - 23
 		bw, _ := MeasureTextBold("Build this...")
 		DrawTextBold(screen, "Build this...", f.X+midX-bw/2, f.Y+y, text)
+	}
+	if st.Hover && st.BridgeImage >= 0 { // the bridge box's ▼
+		arrow := string(rune(170))
+		aw, _ := MeasureTextBold(arrow)
+		DrawTextBold(screen, arrow, f.X+40+58-12+(11-1)/2-aw/2, f.Y+124, pal[paletteBlack0])
 	}
 	for _, l := range []struct {
 		x, w int
