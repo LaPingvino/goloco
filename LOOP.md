@@ -306,7 +306,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    PaintSurface.cpp by gen.sh into surfacedata_gen.go (literal integer table, no hand copy). Title farm: crop rows
    render. FOUND: goloco doesn't parse SNOW COVERAGE at all — both the land and field branches draw snow
    (SnowObject image + kSnowCoverageSlopeToMask) → item 3k.
-3n. [ ] **UI (Joop 2026-11-01, HIGH): 'the menus are severely misaligned and we still have a fair bit of improvised
+3n. [x] **UI (Joop 2026-11-01, HIGH): 'the menus are severely misaligned and we still have a fair bit of improvised
    dialogs instead of the game style'.** Port, don't patch: windows and widgets from upstream Ui/ (Widget.cpp
    drawing and layout, WindowManager, the dropdown and the title/toolbar menus) and each improvised goloco
    dialog replaced by the port of its upstream window (Ui/Windows/*.cpp). Start: inventory every goloco
@@ -323,6 +323,14 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    panels; the objective belongs there / in its window, not as an overlapping overlay), (b) New Game → ScenarioSelect.cpp.
    ORDER: (1) drawRectInset + getShade + window frame/caption/button widget drawing in the 8-bit pipeline;
    (2) Dropdown.cpp (Joop named 'menus'); (3) ToolbarTop; (4) each dialog → its upstream window.
+3o. [ ] **Construction window (the last improvised window, from 3n).** goloco's track/road construction window is a
+   SimpleWindow with hand-sampled colours (main.go newConstructionWindow). Upstream Ui/Windows/Construction/
+   (7592 lines): Common.cpp (frame, tabs: construction / station / signal / overhead), ConstructionTab.cpp (the
+   track piece and slope buttons, the preview, cost, rotate/remove), StationTab, SignalTab, OverheadTab,
+   Blueprints. Order: (a) Common frame + tabs in the 8-bit UI; (b) ConstructionTab's widgets and drawing with
+   goloco's existing construction state behind them; (c) the other tabs. Also from 3n, still PARTIAL: scrollbar
+   mouse interaction, the list windows' inline vehicles/status/sorting, dropdowns in Options, PromptBrowse
+   preview/overwrite/delete.
 3m. [~] **Zoom 1-3 in the CPU renderer (blocks making scene mode the default).** Upstream
    (Graphics/SoftwareDrawingContext.cpp drawImagePaletteSet + getDrawImagePosArgs, DrawSpriteBMP.hpp /
    DrawSpriteRLE.hpp, 248 lines): an element with hasZoomSprites (G1 flag 1<<4) at zoom>0 recurses at half
@@ -513,3 +521,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 105 (item 3n) — Options Company tab: GroupBoxes 'Preferred owner' (4,50,412×80) and 'Preferred company' (4,135,412×47), three checkboxes (10, 64/97/149), 'Change...' Buttons (265, 79/112/164, 75×12) disabled at Config defaults (inset labels), name labels at (24,112)/(24,164); the face preview ImageButton draws nothing without a face (kContentNull, not hovered/activated). Display only. Left: Rendering, Misc. Headless check.
 - 2026-11-01 tick 106 (item 3n) — Options Rendering tab: GroupBoxes 'Map rendering' (4,49,392×128) and 'User interface' (4,180,392×32), dropdowns at (235, 63/79/95/194), labels (window frame style label at y 195), four checkboxes (10, 110/126/142/158); Config defaults (Quarter-scale ×2, White, smoothing ✓, gridlines ✗, cash popups ✓, AI ghosts ✗, Gradient (default)). Display only. Left: Misc; the Rendering tab's animated skin icon (existing PARTIAL). (Pacmanio skipped: waiting on Joop.)
 - 2026-11-01 tick 107 (item 3n) — Options Misc tab: GroupBoxes Gameplay tweaks (4,49,412×62) / Vehicle/track behaviour (4,115,412×77) / Autosave preferences (4,196,412×65), seven checkboxes, autosave frequency dropdown (250,211,156×12) 'Every month' and amount stepper '12' (drawDropdownContent at +1,+1), export-plug-in checkbox hidden (no custom objects). ALL SEVEN Options tabs now ported (several display-only at Config defaults; header comment rewritten to say which). (Pacmanio skipped: waiting on Joop.)
+- 2026-11-01 tick 108 (item 3n → 3o) — 3n CHECKED OFF: every window in the tick-76 inventory is ported. Removed the dead improvised openListWindow and the invented 'Coming soon...' window (unported toolbar buttons now just log). New item 3o: the construction window (the last improvised one), with its order and 3n's remaining PARTIALs. (Pacmanio skipped: waiting on Joop.)

@@ -867,11 +867,10 @@ func (g *Game) handleToolbarButton(idx int) {
 		g.openTownsWindow()
 		return
 	default:
-		// Generic window for any unhandled buttons
-		win = ui.NewSimpleWindow(tooltip, 100+idx*20, 100+idx*10, 250, 150)
-		win.DrawContent = func(screen *ebiten.Image, x, y, w, h int, r *render.Renderer) {
-			ui.DrawText(screen, "Coming soon...", x+10, y+20, color.White)
-		}
+		// Not ported yet: no window (an invented placeholder window would not
+		// be the game's own).
+		log.Printf("[Game] %s: window not ported yet", tooltip)
+		return
 	}
 
 	if win != nil {
