@@ -32,6 +32,7 @@ type Manager struct {
 	musicFile   *os.File // backing file of musicPlayer; Player.Close does not close its source
 	musicVolume float64
 	sfxVolume   float64
+	browser     browserMusic // js/wasm: music through the browser (browser.go); nil elsewhere
 }
 
 // NewManager creates a new audio manager with an initialized audio context
@@ -43,6 +44,7 @@ func NewManager() *Manager {
 		context:     ctx,
 		musicVolume: 1.0,
 		sfxVolume:   1.0,
+		browser:     newBrowserMusic(),
 	}
 }
 
@@ -56,6 +58,9 @@ func (m *Manager) LoadAndPlayMusic(path string, loop bool) error {
 
 	// Stop any currently playing music
 	m.StopMusic()
+	if m.browser != nil {
+		return m.browser.play(path, loop, m.musicVolume)
+	}
 
 	// Open the WAV file
 	log.Println("[Audio] Opening file:", path)
@@ -122,6 +127,9 @@ func (m *Manager) StopMusic() {
 	if m == nil {
 		return
 	}
+	if m.browser != nil {
+		m.browser.stop()
+	}
 	if m.musicPlayer != nil {
 		m.musicPlayer.Close()
 		m.musicPlayer = nil
@@ -144,6 +152,9 @@ func (m *Manager) SetMusicVolume(vol float64) {
 		vol = 1
 	}
 	m.musicVolume = vol
+	if m.browser != nil {
+		m.browser.setVolume(vol)
+	}
 	if m.musicPlayer != nil {
 		m.musicPlayer.SetVolume(vol)
 	}
@@ -164,6 +175,9 @@ func (m *Manager) SetSFXVolume(vol float64) {
 func (m *Manager) IsMusicPlaying() bool {
 	if m == nil {
 		return false
+	}
+	if m.browser != nil {
+		return m.browser.playing()
 	}
 	return m.musicPlayer != nil && m.musicPlayer.IsPlaying()
 }
