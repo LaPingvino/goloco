@@ -227,4 +227,3 @@ func ParseG1(data []byte) (*G1File, error) {
 
 	return nil, ErrG1NotFound
 }
-

@@ -50,6 +50,16 @@ func (r *Renderer) colourMap(c int) []uint8 {
 	return m
 }
 
+// companyRemap is CompanyManager::getCompanyColour(owner) as a palette remap:
+// the scenario's company colours (neutral = grey). nil when the map carries
+// none (a scenario without saved companies), which draws the images uncoloured.
+func (r *Renderer) companyRemap(m *sim.Map, owner uint8) []uint8 {
+	if int(owner) >= len(m.CompanyColours) {
+		return nil
+	}
+	return r.colourMap(int(m.CompanyColours[owner]))
+}
+
 // animOf splits an object's part animations into frames and speeds (cached).
 func (r *Renderer) animOf(key any, pa []objects.BuildingPartAnimation) anim {
 	if a, ok := r.anims[key]; ok {
@@ -229,13 +239,13 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 				for ; ti < len(t.Tracks) && int(t.Tracks[ti].BaseZ) == z; ti++ {
 					tk := t.Tracks[ti]
 					if to := om.GetTrackObjectByIndex(int(tk.TrackObjectID)); to != nil {
-						s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ}, int(to.Image), sprite)
+						s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ, Remap: r.companyRemap(m, tk.Owner)}, int(to.Image), sprite)
 					}
 				}
 				for ; ri < len(t.Roads) && int(t.Roads[ri].BaseZ) == z; ri++ {
 					rd := t.Roads[ri]
 					if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
-						s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ}, int(ro.Image), ro.PaintStyle, sprite)
+						s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: r.companyRemap(m, rd.Owner)}, int(ro.Image), ro.PaintStyle, sprite)
 					}
 				}
 				s.FinalisePaintRoad(sprite)
@@ -281,7 +291,7 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 					an := r.animOf(ao, ao.PartAnimations)
 					s.PaintAirport(st.Rotation, st.SequenceIndex, st.BaseZ, paint.AirportObj{BuildingImage: int(ao.BuildingImage),
 						Parts: ao.Variations[st.BuildingType], PartHeights: ao.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds,
-						LargeTile: ao.LargeTiles&(1<<st.BuildingType) != 0}, x, y, v.Ticks, sprite)
+						LargeTile: ao.LargeTiles&(1<<st.BuildingType) != 0, Remap: r.companyRemap(m, st.Owner)}, x, y, v.Ticks, sprite)
 					continue
 				}
 				if st.StationType == 3 { // docks
@@ -291,7 +301,7 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 					}
 					an := r.animOf(do, do.PartAnimations)
 					s.PaintDocks(st.Rotation, st.SequenceIndex, st.BaseZ, st.ClearZ, paint.AirportObj{BuildingImage: int(do.BuildingImage),
-						Parts: do.Variations[st.BuildingType], PartHeights: do.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds}, x, y, v.Ticks, sprite)
+						Parts: do.Variations[st.BuildingType], PartHeights: do.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds, Remap: r.companyRemap(m, st.Owner)}, x, y, v.Ticks, sprite)
 					continue
 				}
 				if st.StationType != 0 {
@@ -303,7 +313,7 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 				}
 				for _, tk := range t.Tracks {
 					if tk.BaseZ == st.BaseZ {
-						s.PaintTrainStation(paint.StationEl{Rotation: st.Rotation, BaseZ: st.BaseZ, TrackID: tk.TrackID, TrackSeq: tk.SequenceIndex},
+						s.PaintTrainStation(paint.StationEl{Rotation: st.Rotation, BaseZ: st.BaseZ, TrackID: tk.TrackID, TrackSeq: tk.SequenceIndex, Remap: r.companyRemap(m, tk.Owner)},
 							int(so.SequenceImageOffsets[st.SequenceIndex]), sprite)
 						break
 					}

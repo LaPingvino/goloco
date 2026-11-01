@@ -270,8 +270,9 @@ func (g1 *G1File) loadPalette() error {
 // Each element is 256×1 raw bytes: outputIndex = map[inputIndex].
 //
 // OpenLoco reference: src/OpenLoco/src/Graphics/PaletteMap.cpp
-//   kDefaultPaletteToG1Offset: ExtColour 0 → ImageIds::paletteMapBlack = 2170
-//   ExtColour 1 → paletteMapGrey = 2171, …
+//
+//	kDefaultPaletteToG1Offset: ExtColour 0 → ImageIds::paletteMapBlack = 2170
+//	ExtColour 1 → paletteMapGrey = 2171, …
 const PaletteMapG1Base = 2170
 
 // GetPaletteMap loads the 256-byte index remap table for the given colour index
@@ -328,7 +329,8 @@ func (g1 *G1File) GetPaletteMap(colourIdx int) ([]byte, error) {
 // Used for water blend palette maps stored inside object sprite pools (e.g. WaterObject+41).
 //
 // OpenLoco reference: src/OpenLoco/src/Objects/ObjectManager.cpp updateWaterPalette()
-//   paletteImageId = waterObj->image + Water::ImageIds::kColourPalette (= 41)
+//
+//	paletteImageId = waterObj->image + Water::ImageIds::kColourPalette (= 41)
 func (g1 *G1File) GetPaletteMapAt(g1Index int) ([]byte, error) {
 	if g1Index < 0 || g1Index >= len(g1.Elements) {
 		return nil, fmt.Errorf("palette map g1[%d] out of range", g1Index)
@@ -608,9 +610,10 @@ func (g1 *G1File) GetPalette() []color.RGBA {
 // offset where they were added.
 //
 // The data format is identical to G1.DAT format:
-//   [G1Header: 8 bytes]
-//   [G1Element32 array: numEntries * 16 bytes]
-//   [Pixel data: referenced by element offsets]
+//
+//	[G1Header: 8 bytes]
+//	[G1Element32 array: numEntries * 16 bytes]
+//	[Pixel data: referenced by element offsets]
 //
 // Elements with the DuplicatePrevious flag reuse the previous sprite's data but with
 // adjusted x/y offsets.

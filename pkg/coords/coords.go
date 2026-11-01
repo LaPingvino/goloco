@@ -14,7 +14,8 @@
 // The types are distinct so that the Go compiler catches mixing them.
 //
 // OpenLoco reference: src/OpenLoco/src/World/World.hpp
-//   kTileSize = 32, kMapColumns = 384, kMapRows = 384
+//
+//	kTileSize = 32, kMapColumns = 384, kMapRows = 384
 package coords
 
 // WorldUnits is a world-space coordinate in sub-tile units.

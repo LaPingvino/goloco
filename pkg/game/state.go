@@ -32,8 +32,8 @@ type GameState struct {
 	// FareFor overrides the built-in flat fare table when set: returns the
 	// per-unit fare for a cargo slot (derived from the cargo object's
 	// authentic paymentFactor). TODO: full upstream distance/time payment.
-	FareFor func(cargoSlot uint8) int64
-	CurrentLoan    int64
+	FareFor     func(cargoSlot uint8) int64
+	CurrentLoan int64
 
 	// Economy accumulators. MonthlyIncome/MonthlyExpenses are summed over the
 	// current game month; at the month rollover Update snapshots

@@ -4,13 +4,14 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 
 // Tracks — a port of Paint/PaintTrack.cpp paintTrack / paintTrackPP with the
 // table generated from upstream (trackdata_gen.go). PARTIAL: company colour
-// remap (saved company colours not parsed), bridges and tunnels (BridgeEntry,
+// remap only via TrackEl.Remap (the owner's colour, from the scenario), bridges and tunnels (BridgeEntry,
 // insertTunnels), track extras (mods), height markers and ghosts.
 
 // TrackEl is what paintTrack reads from a track element.
 type TrackEl struct {
 	TrackID, SequenceIndex, Rotation uint8
-	BaseZ                            uint8 // SmallZ
+	BaseZ                            uint8   // SmallZ
+	Remap                            []uint8 // company colour of elTrack.owner() (nil: none)
 }
 
 // PaintTrack paints one track element at the current sprite position; image
@@ -27,7 +28,7 @@ func (s *Session) PaintTrack(el TrackEl, image int, sprite func(int) *gfx8.Sprit
 	bbOff := tpp.BBOffsets[rot]
 	bbOff.Z += height
 	img := func(off uint32) Image {
-		return Image{Sprite: sprite(image + int(off)), Op: gfx8.OpTransparent}
+		return Colour(sprite(image+int(off)), el.Remap)
 	}
 	if tpp.IsMergeable {
 		// paintTrackPPMergeable: ballast, sleepers, rails into priority lists 0, 1, 3.

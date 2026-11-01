@@ -103,7 +103,8 @@ type AirportObj struct {
 	PartHeights    []uint8
 	PartAnimFrames []uint8
 	PartAnimSpeed  []uint8
-	LargeTile      bool // largeTiles & (1 << variation)
+	LargeTile      bool    // largeTiles & (1 << variation)
+	Remap          []uint8 // company colour of elStation.owner()
 }
 
 // PaintAirport — a port of Paint/PaintAirport.cpp paintAirport and
@@ -152,7 +153,7 @@ func (s *Session) paintStationBuilding(obj AirportObj, off, bbOff, bbSz Pos3, ro
 			break // out of the object's part table: upstream would read past it
 		}
 		if sp := sprite(adj*4 + obj.BuildingImage + int(rotation)); sp != nil {
-			s.AddAsChild(Image{Sprite: sp, Op: gfx8.OpTransparent}, off, bbOff, bbSz)
+			s.AddAsChild(Colour(sp, obj.Remap), off, bbOff, bbSz)
 		}
 		off.Z += int(obj.PartHeights[adj])
 	}
