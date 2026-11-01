@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"image"
 	"os"
 	"path/filepath"
 	"sort"
@@ -14,7 +15,14 @@ import (
 // 500×380, centred, black/mutedSeaGreen; caption, close button, panel, parent
 // folder button, "Folder:" line, the file list (a ScrollView, 11 px rows,
 // folders first with icon_folder) and the selected file's name on the right.
-// PARTIAL: save mode (filename text box + OK button), the saved-game / landscape
+// Save mode (NewPromptBrowseSave): the "File name:" text box (TextBox at
+// (88, h-31)…(w-4, h-18), text from (box+1, box+2), a 1×9 vertical caret in
+// shade 9 blinking every 16 updates), the OK button at (w-86, h-15)…(w-16, h-4),
+// and the list ending at h-34. Enter = OK, Escape = close.
+// A file row picks on one click, as onScrollMouseDown; the mouse-over row is
+// the selected one (onScrollMouseOver).
+// PARTIAL: the text box edits only at its end (no caret movement, no scrolling
+// offset); overwrite confirmation; right-click delete; the saved-game / landscape
 // preview pane (drawSavePreview), root-path drives, the folder line's "..."
 // shortening, scrollbar mouse interaction, window resizing.
 
@@ -46,6 +54,87 @@ type PromptBrowseWindow struct {
 	content  [4]int
 	OnPick   func(path string)
 	OnClose  func()
+
+	// Save mode: the filename being typed, the extension added on OK, the
+	// caret blink counter and the handler.
+	Save    bool
+	Input   []rune
+	SaveExt string
+	frame   int
+	OnSave  func(path string)
+}
+
+// NewPromptBrowseSave opens the window in save mode with name in the text box.
+func NewPromptBrowseSave(title, dir, name, ext string, sw, sh int) *PromptBrowseWindow {
+	w := NewPromptBrowse(title, dir, []string{ext}, sw, sh)
+	w.Save, w.Input, w.SaveExt = true, []rune(name), ext
+	return w
+}
+
+// list is the scroll view rect: bottom at h-4, or h-34 in save mode.
+func (w *PromptBrowseWindow) list() [4]int {
+	l := pbList
+	if w.Save {
+		l[3] = (pbH - 34) - l[1] + 1
+	}
+	return l
+}
+
+var (
+	pbTextBox = [4]int{88, pbH - 31, (pbW - 4) - 88 + 1, (pbH - 18) - (pbH - 31) + 1}
+	pbOK      = [4]int{pbW - 86, pbH - 15, (pbW - 16) - (pbW - 86) + 1, (pbH - 4) - (pbH - 15) + 1}
+)
+
+// HandleHover selects the row under the mouse (onScrollMouseOver).
+func (w *PromptBrowseWindow) HandleHover(px, py int) {
+	l := w.list()
+	if !w.in(l, px, py) {
+		return
+	}
+	if idx := (py - (w.Y + l[1] + 1) + w.Scroll) / pbRowHeight; idx >= 0 && idx < len(w.entries) {
+		w.Selected = idx
+	}
+}
+
+// HandleText types characters into the filename (save mode); backspace,
+// enter and escape as keyUp.
+func (w *PromptBrowseWindow) HandleText(chars []rune, backspace, enter, escape bool) {
+	w.frame++
+	switch {
+	case escape:
+		if w.OnClose != nil {
+			w.OnClose()
+		}
+		return
+	case enter && w.Save:
+		w.ok()
+		return
+	}
+	if !w.Save {
+		return
+	}
+	if backspace && len(w.Input) > 0 {
+		w.Input = w.Input[:len(w.Input)-1]
+		w.frame = 0
+	}
+	for _, r := range chars {
+		if r >= 32 && len(w.Input) < 200 { // InputSession(…, 200)
+			w.Input = append(w.Input, r)
+			w.frame = 0
+		}
+	}
+}
+
+// ok is processFileForLoadSave from the OK button: the typed name in the
+// current folder, with the file type's extension.
+func (w *PromptBrowseWindow) ok() {
+	name := strings.TrimSpace(string(w.Input))
+	if name == "" || strings.ContainsAny(name, `/\:*?"<>|`) { // filenameContainsInvalidChars
+		return
+	}
+	if w.OnSave != nil {
+		w.OnSave(filepath.Join(w.Dir, name+w.SaveExt))
+	}
 }
 
 type pbEntry struct {
@@ -108,19 +197,23 @@ func (w *PromptBrowseWindow) HandleClick(px, py int) {
 		if parent := filepath.Dir(w.Dir); parent != w.Dir {
 			w.chdir(parent)
 		}
-	case w.in(pbList, px, py):
-		idx := (py - (w.Y + pbList[1] + 1) + w.Scroll) / pbRowHeight
+	case w.Save && w.in(pbOK, px, py):
+		w.ok()
+	case w.in(w.list(), px, py):
+		l := w.list()
+		idx := (py - (w.Y + l[1] + 1) + w.Scroll) / pbRowHeight
 		if idx < 0 || idx >= len(w.entries) {
 			return
 		}
-		if idx != w.Selected {
-			w.Selected = idx
-			return
-		}
 		e := w.entries[idx]
-		if e.dir {
+		switch {
+		case e.dir:
 			w.chdir(e.path)
-		} else if w.OnPick != nil {
+		case w.Save:
+			if w.OnSave != nil {
+				w.OnSave(e.path) // PARTIAL: upstream asks before overwriting
+			}
+		case w.OnPick != nil:
 			w.OnPick(e.path)
 		}
 	}
@@ -128,7 +221,7 @@ func (w *PromptBrowseWindow) HandleClick(px, py int) {
 
 // HandleWheel scrolls the list.
 func (w *PromptBrowseWindow) HandleWheel(dy float64) {
-	maxScroll := max(len(w.entries)*pbRowHeight-pbList[3], 0)
+	maxScroll := max(len(w.entries)*pbRowHeight-w.list()[3], 0)
 	w.Scroll = min(max(w.Scroll-int(dy*3*pbRowHeight), 0), maxScroll)
 }
 
@@ -154,7 +247,7 @@ func (w *PromptBrowseWindow) Draw(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgParentFolder]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, pbParent[0], pbParent[1], gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
 		}
-		l := pbList
+		l := w.list()
 		cx, cy, cw, ch, _ := drawVScrollView(rt, l[0], l[1], l[2], l[3], gfx8.InsetColour{Map: sec}, len(w.entries)*pbRowHeight, w.Scroll)
 		w.content = [4]int{cx, cy, cw, ch}
 		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 4))
@@ -172,7 +265,34 @@ func (w *PromptBrowseWindow) Draw(screen *ebiten.Image) {
 				gfx8.DrawSpriteNoise(rt, fold, cx+1, y, gfx8.OpFor(fold, false, false), nil, nil)
 			}
 		}
+		if w.Save {
+			b, o := pbTextBox, pbOK
+			gfx8.FillRectInset(rt, b[0], b[1], b[0]+b[2]-1, b[1]+b[3]-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			gfx8.FillRectInset(rt, o[0], o[1], o[0]+o[2]-1, o[1]+o[3]-1, gfx8.InsetColour{Map: sec}, 0)
+		}
 	})
+	if w.Save {
+		b, o := pbTextBox, pbOK
+		DrawTextBold(screen, "File name:", w.X+3, w.Y+b[1]+2, win2) // {COLOUR WINDOW_2}
+		// drawTextInput, clipped to the box's inside: text at (1, 1) of the clip.
+		tx, ty := w.X+b[0]+1, w.Y+b[1]+1+1
+		text := string(w.Input)
+		for len(text) > 0 {
+			if tw, _ := MeasureTextBold(text); tw <= b[2]-2 {
+				break
+			}
+			text = text[1:]
+		}
+		DrawTextBold(screen, text, tx, ty, black)
+		tw, _ := MeasureTextBold(text)
+		if w.frame&0x10 == 0 && tx+tw < w.X+b[0]+b[2]-1 { // showCaret: (cursorFrame & 0x10) == 0
+			if c, ok := screen.SubImage(image.Rect(tx+tw, ty, tx+tw+1, ty+9)).(*ebiten.Image); ok {
+				c.Fill(win2) // drawRect(x, y, 1, 9, getShade(secondary, 9))
+			}
+		}
+		lw, _ := MeasureTextBold("OK")
+		DrawTextBold(screen, "OK", w.X+o[0]+(o[2]-1)/2-lw/2, w.Y+o[1], win2) // Button label, centred
+	}
 	DrawWindowCaption(screen, w.X+pbCaption[0], w.Y+pbCaption[1], pbCaption[2], w.Title)
 	drawLabelValue(screen, w.X+3, w.Y+pbParent[1]+6, "Folder: ", w.Dir, win2, black)
 	ct := w.content
@@ -192,7 +312,7 @@ func (w *PromptBrowseWindow) Draw(screen *ebiten.Image) {
 		DrawTextBold(screen, stem(e.path), w.X+ct[0]+x, y, c)
 	}
 	if w.Selected >= 0 && w.Selected < len(w.entries) && !w.entries[w.Selected].dir {
-		right := pbList[0] + pbList[2] - 1
+		right := w.list()[0] + w.list()[2] - 1
 		width := pbW - right - 8
 		x := w.X + right + 3
 		name := stem(w.entries[w.Selected].path)

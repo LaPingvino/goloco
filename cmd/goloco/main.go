@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"image"
 	"image/color"
 	"image/png"
@@ -383,6 +384,12 @@ func (g *Game) Update() error {
 	if g.script != nil && g.script.hasMouse {
 		g.mouseX, g.mouseY = g.script.mouseX, g.script.mouseY
 	}
+	if g.browse != nil { // PromptBrowse: mouse-over row, typed filename, Enter/Escape
+		g.browse.HandleHover(g.mouseX, g.mouseY)
+		g.browse.HandleText(ebiten.AppendInputChars(nil), inpututil.IsKeyJustPressed(ebiten.KeyBackspace),
+			inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter),
+			inpututil.IsKeyJustPressed(ebiten.KeyEscape))
+	}
 
 	if g.inTitleScreen {
 		// Title screen: advance camera animation and apply to world.
@@ -521,6 +528,7 @@ func (g *Game) Update() error {
 	// Camera panning: WASD or arrow keys (smooth, pixels per frame)
 	const panSpeed = 4.0
 	var panX, panY float64
+	typing := g.browse != nil && g.browse.Save // the focused text box takes the keys
 	if ebiten.IsKeyPressed(ebiten.KeyW) || ebiten.IsKeyPressed(ebiten.KeyUp) {
 		panY -= panSpeed
 	}
@@ -533,15 +541,18 @@ func (g *Game) Update() error {
 	if ebiten.IsKeyPressed(ebiten.KeyD) || ebiten.IsKeyPressed(ebiten.KeyRight) {
 		panX += panSpeed
 	}
+	if typing {
+		panX, panY = 0, 0
+	}
 	if panX != 0 || panY != 0 {
 		g.w.PanCamera(panX, panY)
 	}
 
 	// Zoom: keyboard Q/E, +/-, and mouse scroll wheel
-	if g.inKeyJustPressed(ebiten.KeyQ) || g.inKeyJustPressed(ebiten.KeyEqual) || g.inKeyJustPressed(ebiten.KeyKPAdd) {
+	if !typing && (g.inKeyJustPressed(ebiten.KeyQ) || g.inKeyJustPressed(ebiten.KeyEqual) || g.inKeyJustPressed(ebiten.KeyKPAdd)) {
 		g.w.ZoomInAt(g.sw/2, g.sh/2)
 	}
-	if g.inKeyJustPressed(ebiten.KeyE) || g.inKeyJustPressed(ebiten.KeyMinus) || g.inKeyJustPressed(ebiten.KeyKPSubtract) {
+	if !typing && (g.inKeyJustPressed(ebiten.KeyE) || g.inKeyJustPressed(ebiten.KeyMinus) || g.inKeyJustPressed(ebiten.KeyKPSubtract)) {
 		g.w.ZoomOutAt(g.sw/2, g.sh/2)
 	}
 	if _, dy := g.inWheel(); dy != 0 {
@@ -763,11 +774,7 @@ func (g *Game) handleToolbarButton(idx int) {
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTop.cpp:117-154
 		items := []ui.DropdownItem{
 			{Text: "Load Game", Action: func() { g.openLoadGameWindow() }},
-			{Text: "Save Game", Action: func() {
-				if err := g.saveGame(); err != nil {
-					log.Printf("[Game] Save error: %v", err)
-				}
-			}},
+			{Text: "Save Game", Action: func() { g.openSaveWindow() }},
 			{Separator: true},
 			{Text: "Screenshot", Action: func() {
 				g.diagPending = true
@@ -1110,7 +1117,11 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	}
 	if os.Getenv("GOLOCO_DIAG_BROWSE") != "" && g.browse == nil && !g.diagBrowseDone {
 		g.diagBrowseDone = true
-		g.openFileWindow("Load Game", false)
+		if os.Getenv("GOLOCO_DIAG_BROWSE") == "save" {
+			g.openSaveWindow()
+		} else {
+			g.openFileWindow("Load Game", false)
+		}
 	}
 	if os.Getenv("GOLOCO_DIAG_NEWGAME") != "" && g.scenarioSelect == nil && !g.diagNewGameDone {
 		// Diagnostic: open the ScenarioSelect window with its first scenario selected.
@@ -1573,17 +1584,38 @@ func (g *Game) loadScenario(filePath string) error {
 	return nil
 }
 
-// saveGame writes the current scenario path to a .goloco JSON save file.
+// openSaveWindow is the Save Game prompt (PromptBrowse, save mode) in the
+// saves folder, named after the current game.
+// DEVIATION (existing): goloco writes its .goloco JSON save (the scenario path),
+// not an S5 saved game — the S5 writer isn't ported.
+func (g *Game) openSaveWindow() {
+	name := ""
+	if g.currentScenarioPath != "" {
+		name = strings.TrimSuffix(filepath.Base(g.currentScenarioPath), filepath.Ext(g.currentScenarioPath))
+	}
+	w := ui.NewPromptBrowseSave("Save Game", goLocoSavesDir(), name, ".goloco", g.sw, g.sh)
+	w.OnClose = func() { g.browse = nil }
+	w.OnSave = func(path string) {
+		g.browse = nil
+		if err := g.saveGameTo(path); err != nil {
+			log.Printf("[Game] Save error: %v", err)
+		}
+	}
+	g.browse = w
+}
+
+// saveGame writes the current scenario path to a new .goloco JSON save file.
 func (g *Game) saveGame() error {
+	return g.saveGameTo(filepath.Join(goLocoSavesDir(), fmt.Sprintf("save_%d.goloco", time.Now().Unix())))
+}
+
+// saveGameTo writes the current scenario path to a .goloco JSON save file.
+func (g *Game) saveGameTo(path string) error {
 	if g.currentScenarioPath == "" {
 		g.saveMsg = "Nothing to save"
 		g.saveMsgFrames = 120
 		return nil
 	}
-	savesDir := goLocoSavesDir()
-	filename := fmt.Sprintf("save_%d.goloco", time.Now().Unix())
-	path := filepath.Join(savesDir, filename)
-
 	data, err := json.Marshal(GoLocoSave{Version: 1, ScenarioPath: g.currentScenarioPath})
 	if err != nil {
 		return err
