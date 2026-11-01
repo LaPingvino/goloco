@@ -117,6 +117,8 @@ var optFrameLimits = []string{"Internal speed (default)", "Vertical sync", "Unre
 var (
 	optScales  = []string{"Full-scale", "Half-scale", "Quarter-scale", "Eighth-scale"}
 	optMarkers = []string{"White", "Translucent"}
+	// optFrameStyles are windowFrameStyleGradient / Solid / Translucent.
+	optFrameStyles = []string{"Gradient (default)", "Solid colour", "Translucent colour"}
 )
 
 var optRegionalRows = [5]struct {
@@ -192,7 +194,8 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			y     int
 			items []string
 			v     *int
-		}{{63, optScales, &w.VehiclesMinScale}, {79, optScales, &w.StationNamesMinScale}, {95, optMarkers, &w.ConstructionMarker}} {
+		}{{63, optScales, &w.VehiclesMinScale}, {79, optScales, &w.StationNamesMinScale}, {95, optMarkers, &w.ConstructionMarker},
+			{194, optFrameStyles, &FrameStyle}} { // windowFrameStyleMouseDown too
 			if w.in([4]int{235, c.y, 154, 12}, px, py) && w.OpenDropdown != nil {
 				v := c.v
 				items := make([]DropdownItem, len(c.items))
@@ -484,7 +487,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			ly, y        int
 			label, value string
 		}{{63, 63, "Vehicles min. display scale:", optScales[w.VehiclesMinScale]}, {79, 79, "Station names min. display scale:", optScales[w.StationNamesMinScale]},
-			{95, 95, "Construction Marker:", optMarkers[w.ConstructionMarker]}, {195, 194, "Window frame style:", "Gradient (default)"}} {
+			{95, 95, "Construction Marker:", optMarkers[w.ConstructionMarker]}, {195, 194, "Window frame style:", optFrameStyles[FrameStyle]}} {
 			DrawTextBold(screen, r.label, w.X+10, w.Y+r.ly, text)
 			DrawTextBold(screen, r.value, w.X+235+1, w.Y+r.y+1, black)
 			DrawTextBold(screen, arrow, w.X+235+154-12+(11-1)/2-aw/2, w.Y+r.y+1, black)
