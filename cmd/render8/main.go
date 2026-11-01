@@ -50,6 +50,7 @@ func main() {
 	if len(sc.LandObjectOrder) > 0 {
 		om.ReorderLandObjects(sc.LandObjectOrder)
 	}
+	om.ResolveCliffEdges()
 
 	ct := sc.GetTile(tx, ty)
 	cz := 0
@@ -106,6 +107,17 @@ func main() {
 			s.SetSpritePosition(x*32, y*32)
 			// PaintSurface.cpp paintMainSurface: offset (0,0,baseHeight), bbox (32,32,-1).
 			s.AddAsParent(paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, paint.Pos3{Z: z}, paint.Pos3{Z: z}, paint.Pos3{X: 32, Y: 32, Z: -1})
+
+			// Cliff faces against the four neighbours (PaintSurface.cpp, edges 2,3,0,1).
+			if land.CliffEdgeImage > 0 {
+				var nbs [4]*paint.Surface
+				for d, o := range paint.NeighbourOffsets {
+					if nt := sc.GetTile(x+o[0]/32, y+o[1]/32); nt != nil {
+						nbs[d] = &paint.Surface{BaseZ: nt.Height, Slope: nt.Slope}
+					}
+				}
+				s.PaintCliffEdges(paint.Surface{BaseZ: t.Height, Slope: t.Slope}, nbs, int(land.CliffEdgeImage), sprite)
+			}
 		}
 	}
 	s.Arrange()
