@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -1122,7 +1123,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		if g.townList != nil {
 			g.townList.Draw(screen)
 		}
-		ui.DrawText(screen, fmt.Sprintf("%.0ffps", ebiten.ActualFPS()), 4, g.sh-8, color.RGBA{200, 200, 200, 200})
 		g.maybeSaveShot(screen)
 		return
 	}
@@ -1440,13 +1440,7 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 		subY = logoY + int(9.0*logoScale) + 8
 	}
 
-	subtitle := "GoLoco - A Locomotion Reimplementation"
-	subW, _ := ui.MeasureText(subtitle)
-	subX := (298 - subW) / 2
-	for _, d := range [][2]int{{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}} {
-		ui.DrawText(screen, subtitle, subX+d[0], subY+d[1], color.RGBA{0, 0, 0, 160})
-	}
-	ui.DrawText(screen, subtitle, subX, subY, color.RGBA{200, 200, 230, 255})
+	_ = subY // upstream draws no subtitle under the logo (TitleLogo.cpp)
 
 	// --- Options button: top-right (sw-60, 0), 60×15 ---
 	// OpenLoco: TitleOptions.cpp at (Ui::width()-60, 0)
@@ -1543,7 +1537,13 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 	drawOutlinedText(screen, exitLabel, exitX+(titleExitW-exitLabelW)/2, exitY+(titleExitH-10)/2, color.White)
 
 	// --- Version text: bottom-left ---
-	ui.DrawText(screen, "GoLoco v0.1", 8, g.sh-20, color.RGBA{200, 200, 200, 255})
+	// TitleVersion.cpp: the version and the platform, white with the outline
+	// style, at (8, height - 30) and 12 px below.
+	{
+		wc, oc := ui.TextColours(2) // Colour::white
+		ui.DrawTextOutlined(screen, "GoLoco v0.1", 8, g.sh-30, wc, oc)
+		ui.DrawTextOutlined(screen, runtime.GOOS+" ("+runtime.GOARCH+")", 8, g.sh-30+12, wc, oc)
+	}
 }
 
 // drawOutlinedText draws white-ish text with a 1px dark outline so it stays
