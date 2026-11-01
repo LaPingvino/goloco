@@ -70,7 +70,9 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    the loading bar at 1% before). Startup timings logged ('First world frame …', 'Background prewarm complete
    …'). The progress window is now unreached — marked: upstream shows it during S5 loading (S5.cpp:728).
    Local test build now carries all 46 scenarios (631 files, 47 MB).
-3d. [ ] **Open-graphics build (Joop: a public link once possible).** OpenLoco fetches OpenGraphics
+3d. [~] **Open-graphics build (Joop: a public link once possible).** Tick 7: research done →
+   docs/open-build.md (OpenGraphics is MIT; objects for every type, but 1 building/1 industry/1 tree/1 sound;
+   no g1.DAT replacement; title + scenarios must be our own). Steps there wait for Joop's yes (→ Questions). OpenLoco fetches OpenGraphics
    (github.com/OpenLoco/OpenGraphics, objects.zip v0.1.8 in OpenLoco's CMakeLists.txt): so far the interface
    skin, walls, tunnels, land, road stations, streetlights, hill shapes, some vehicles. Research step: list
    what goloco loads (g1.DAT base sprites, fonts, objects per type, title.dat, scenarios) against what
@@ -89,6 +91,9 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    'simplified approximation', depth-sort approximation for vehicles, g1font width fudge, …).
 
 ## Questions for Joop
+- docs/open-build.md: go for step 1 (an '-open' pack with only OpenGraphics objects and a goloco start path
+  without g1.DAT)? And for the g1 gap: (a) draw open replacements for the ~85 g1 ids goloco uses, or (b)
+  goloco-only UI art with TTF fonts in the public build?
 
 ## Blocked
 - 2026-11-01 tick 1: serving the test page from a local web server (python -m http.server) was refused by the auto-mode check ('Expose Local Services'). Test from file:// with chromium --allow-file-access-from-files instead.
@@ -106,3 +111,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 5 (item 3b done) — removed 6 dead packages and 11 uncalled pkg/ui stubs (−~1,400 lines incl. packages); build + vet green; tests as before (pkg/world needs a display → item 4). Found two coexisting window systems (GPT-generated Window + SimpleWindow) → noted.
 - 2026-11-01 — Caddy route live (Joop ran the script): 401 without auth, 200 with; wasm served in 0.07 s → slowness is client-side; queued 3c (lazy sprite preload).
 - 2026-11-01 tick 6 (item 3c done) — blocking sprite preload replaced by lazy decode + 4 ms/frame background prewarm; title visible at the first 3 s capture (was 1% loading bar); all scenarios in the local build; OpenGraphics noted for a future public build (3d).
+- 2026-11-01 tick 7 (item 3d research) — OpenGraphics v0.1.8 (MIT) compared with the original data per object type; gap = g1.DAT (UI, fonts, logo), title/scenarios, sounds/music, variety → docs/open-build.md with a 4-step plan awaiting Joop.
