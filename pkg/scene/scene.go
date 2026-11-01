@@ -277,7 +277,11 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 					}
 					for _, rd := range t.Roads {
 						if rd.BaseZ == st.BaseZ {
-							s.PaintRoadStation(st.Rotation, st.BaseZ, rd.RoadID, int(rso.SequenceImageOffsets[1]), sprite)
+							var remap []uint8 // getCompanyColour(station->owner)
+							if int(st.StationID) < len(m.StationOwners) {
+								remap = r.companyRemap(m, m.StationOwners[st.StationID])
+							}
+							s.PaintRoadStation(st.Rotation, st.BaseZ, rd.RoadID, int(rso.SequenceImageOffsets[1]), remap, sprite)
 							break
 						}
 					}
