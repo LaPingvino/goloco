@@ -774,7 +774,7 @@ func (g *Game) handleToolbarButton(idx int) {
 		log.Println("[Game] Port/Airport construction menu (not yet implemented)")
 		return
 	case "Build Vehicles":
-		log.Println("[Game] Build vehicles menu (not yet implemented)")
+		g.openBuildVehicleWindow()
 		return
 	case "Vehicles":
 		g.openVehiclesWindow()
@@ -2367,8 +2367,13 @@ func main() {
 			sA := game.w.PlaceStationOnTile(x, y, uint8(game.firstTrainStationSlot()))
 			h := game.w.ConstructionHeadState()
 			sB := game.w.PlaceStationOnTile(h.X+1, h.Y, uint8(game.firstTrainStationSlot()))
-			sp := game.w.SpawnTestVehicle(0)
-			log.Printf("[WinRun] line at (%d,%d): placed=%d stations=%v/%v vehicle=%v", x, y, placed, sA, sB, sp)
+			sp := 0
+			for i := 0; i < 3; i++ { // small fleet: one shuttle caps out below town supply
+				if game.w.SpawnTestVehicle(0) {
+					sp++
+				}
+			}
+			log.Printf("[WinRun] line at (%d,%d): placed=%d stations=%v/%v vehicles=%d", x, y, placed, sA, sB, sp)
 			// Point the camera at the shuttle so the autonomous attempt is visible
 			// (also lets headless captures see the station plaques / income floats).
 			game.w.CenterOn("station")
