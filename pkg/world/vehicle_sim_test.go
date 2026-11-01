@@ -13,7 +13,7 @@ func TestVehicleSimStraightLine(t *testing.T) {
 	wld.SetConstructionHead(15, 15) // head at (15,15), rot 0, baseZ 4
 
 	// Three straight (trackID 0) pieces, rot 0. Each advances the head by the
-	// piece delta kTrackCoordinates[0] = {0,0,-32,0,0}: origins land on tiles
+	// piece delta sim.TrackCoordinates[0] = {0,0,-32,0,0}: origins land on tiles
 	// (15,15), (14,15), (13,15); the head finishes at (12,15).
 	for i := 0; i < 3; i++ {
 		if !wld.PlaceTrackAtHead(0, 0) {

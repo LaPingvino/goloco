@@ -1,6 +1,7 @@
 package world
 
 import (
+	"github.com/LaPingvino/goloco/pkg/sim"
 	"image/color"
 	"log"
 	"math"
@@ -15,7 +16,7 @@ import (
 //
 // The head is the world position, height and heading where the NEXT piece
 // begins. Placing a piece appends its elements to every sequence tile and
-// advances the head by the piece's end transform (kTrackCoordinates).
+// advances the head by the piece's end transform (sim.TrackCoordinates).
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/Windows/Construction/Construction.cpp
 // and Map/Track/TrackData.cpp.
@@ -75,14 +76,14 @@ func (w *World) RotateConstructionHead() {
 func (w *World) ClearConstructionHead() { w.consHead.Active = false }
 
 // CanPlaceTrackAtHead reports whether trackID can start at the head's exact
-// heading: the piece's begin rotation (kTrackCoordinates) must equal the head
+// heading: the piece's begin rotation (sim.TrackCoordinates) must equal the head
 // heading, which naturally restricts cardinal vs diagonal (12-15) pieces.
 func (w *World) CanPlaceTrackAtHead(trackID int) bool {
 	h := w.consHead
-	if !h.Active || trackID < 0 || trackID<<3 >= len(kTrackCoordinates) {
+	if !h.Active || trackID < 0 || trackID<<3 >= len(sim.TrackCoordinates) {
 		return false
 	}
-	if kTrackCoordinates[trackID<<3|int(h.Rotation&3)].RotBegin != h.Rotation {
+	if sim.TrackCoordinates[trackID<<3|int(h.Rotation&3)].RotBegin != h.Rotation {
 		return false
 	}
 	_, _, ok := w.trackPieceTiles(trackID)
@@ -93,11 +94,11 @@ func (w *World) CanPlaceTrackAtHead(trackID int) bool {
 // head: tile coords and BaseZ per sequence tile. ok=false when the piece
 // would leave the map or the data table has no entry.
 func (w *World) trackPieceTiles(trackID int) (tiles [][2]int, baseZ []uint8, ok bool) {
-	if trackID < 0 || trackID >= len(kTrackPieceTiles) || len(kTrackPieceTiles[trackID]) == 0 {
+	if trackID < 0 || trackID >= len(sim.TrackPieceTiles) || len(sim.TrackPieceTiles[trackID]) == 0 {
 		return nil, nil, false
 	}
 	h := w.consHead
-	for _, off := range kTrackPieceTiles[trackID] {
+	for _, off := range sim.TrackPieceTiles[trackID] {
 		dx, dy := rotOffset(off[0], off[1], h.Rotation)
 		tx := h.X + int(dx)/32
 		ty := h.Y + int(dy)/32
@@ -143,7 +144,7 @@ func (w *World) PlaceTrackAtHead(trackID int, trackObjID uint8) bool {
 	log.Printf("[Cons] placed track id=%d objSlot=%d rot=%d tiles=%v z=%v", trackID, trackObjID, w.consHead.Rotation&3, tiles, baseZ)
 
 	// Advance the head: trackAndDirection = trackID<<3 | rotation (forward).
-	c := kTrackCoordinates[trackID<<3|int(w.consHead.Rotation&3)]
+	c := sim.TrackCoordinates[trackID<<3|int(w.consHead.Rotation&3)]
 	w.consHead.X += int(c.DX) / 32
 	w.consHead.Y += int(c.DY) / 32
 	w.consHead.BaseZ = uint8(int(w.consHead.BaseZ) + int(c.DZ)/4)
@@ -210,19 +211,19 @@ func (w *World) removeTrackElement(x, y int, trackID, rotation, seq, baseZ uint8
 
 // --- Road construction (mirrors the track functions above) ----------------
 //
-// Roads reuse the same construction head. The 80-entry kRoadCoordinates table
-// and kRoadPieceTiles footprints are generated from the same upstream file.
+// Roads reuse the same construction head. The 80-entry sim.RoadCoordinates table
+// and sim.RoadPieceTiles footprints are generated from the same upstream file.
 // Roads never produce diagonal end rotations, so the head stays cardinal.
 
 // CanPlaceRoadAtHead reports whether roadID can start at the head's exact
-// heading: the piece's begin rotation (kRoadCoordinates) must equal the head
+// heading: the piece's begin rotation (sim.RoadCoordinates) must equal the head
 // heading.
 func (w *World) CanPlaceRoadAtHead(roadID int) bool {
 	h := w.consHead
-	if !h.Active || roadID < 0 || roadID<<3 >= len(kRoadCoordinates) {
+	if !h.Active || roadID < 0 || roadID<<3 >= len(sim.RoadCoordinates) {
 		return false
 	}
-	if kRoadCoordinates[roadID<<3|int(h.Rotation&3)].RotBegin != h.Rotation {
+	if sim.RoadCoordinates[roadID<<3|int(h.Rotation&3)].RotBegin != h.Rotation {
 		return false
 	}
 	_, _, ok := w.roadPieceTiles(roadID)
@@ -233,11 +234,11 @@ func (w *World) CanPlaceRoadAtHead(roadID int) bool {
 // tile coords and BaseZ per sequence tile. ok=false when the piece would leave
 // the map or the data table has no entry.
 func (w *World) roadPieceTiles(roadID int) (tiles [][2]int, baseZ []uint8, ok bool) {
-	if roadID < 0 || roadID >= len(kRoadPieceTiles) || len(kRoadPieceTiles[roadID]) == 0 {
+	if roadID < 0 || roadID >= len(sim.RoadPieceTiles) || len(sim.RoadPieceTiles[roadID]) == 0 {
 		return nil, nil, false
 	}
 	h := w.consHead
-	for _, off := range kRoadPieceTiles[roadID] {
+	for _, off := range sim.RoadPieceTiles[roadID] {
 		dx, dy := rotOffset(off[0], off[1], h.Rotation)
 		tx := h.X + int(dx)/32
 		ty := h.Y + int(dy)/32
@@ -279,7 +280,7 @@ func (w *World) PlaceRoadAtHead(roadID int, roadObjID uint8) bool {
 	w.consRoadStack = append(w.consRoadStack, placed)
 
 	// Advance the head: roadAndDirection = roadID<<3 | rotation (forward).
-	c := kRoadCoordinates[roadID<<3|int(w.consHead.Rotation&3)]
+	c := sim.RoadCoordinates[roadID<<3|int(w.consHead.Rotation&3)]
 	w.consHead.X += int(c.DX) / 32
 	w.consHead.Y += int(c.DY) / 32
 	w.consHead.BaseZ = uint8(int(w.consHead.BaseZ) + int(c.DZ)/4)

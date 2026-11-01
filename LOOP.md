@@ -86,7 +86,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    (grass/dirt/water) and NewWorld's placeholder 'variety' map removed]; (2) sim.Map {Width, Height, Tiles,
    Towns, Entities} + TileAt, World embeds sim.Map by value [DONE tick 9; LoadFromScenario's data part still
    in world.go → move with step 4]; (3) construction logic
-   (placedPiece, ConstructionHead, track/road data tables); (4) stations + vehicles + lists; (5) move their
+   (placedPiece, ConstructionHead, track/road data tables) [tick 10: the generated track/road tables moved to
+   pkg/sim as TrackCoord/TrackCoordinates/TrackPieceTiles/RoadCoordinates/RoadPieceTiles; logic next]; (4) stations + vehicles + lists; (5) move their
    tests to pkg/sim and run them headless. Tooling: `gofmt -r 'a.old -> a.New'` is NOT type-aware — it also
    renames same-named fields of other types; check with `go build -gcflags=-e`. pkg/world imports
    Ebiten in world.go, construction.go, overlay.go; its tests panic without a display.
@@ -125,3 +126,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 7 (item 3d research) — OpenGraphics v0.1.8 (MIT) compared with the original data per object type; gap = g1.DAT (UI, fonts, logo), title/scenarios, sounds/music, variety → docs/open-build.md with a 4-step plan awaiting Joop.
 - 2026-11-01 tick 8 (item 4 step 1) — pkg/sim created with sim.Tile (exported fields); world uses it via an alias; dropped the write-only invented TileType and the placeholder 'variety' map; build+vet green; title capture identical. Joop: may draw g1 replacements or borrow from OpenTTD (licence check).
 - 2026-11-01 tick 9 (item 4 step 2) — sim.Map (size, tiles, towns, saved entities, TileAt) embedded in World by value so zero Worlds in tests stay usable; build+vet green; title capture matches (only the water animation frame differs).
+- 2026-11-01 tick 10 (item 4 step 3a) — generated track/road coordinate tables moved to pkg/sim with exported names; build+vet green. Joop: add music to the private build → lazy per-file fetch planned (shim open() fetches on first use).

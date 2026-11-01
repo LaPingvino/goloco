@@ -1,13 +1,13 @@
-package world
+package sim
 
 // Code generated from OpenLoco src/OpenLoco/src/Map/Track/TrackData.cpp
-// (kRoadCoordinates 0x4F6F8C and roadPiece0..9). Do not edit by hand.
+// (RoadCoordinates 0x4F6F8C and roadPiece0..9). Do not edit by hand.
 //
-// Road equivalent of track_data_gen.go. Reuses trackCoord (same layout:
+// Road equivalent of track_data_gen.go. Reuses TrackCoord (same layout:
 // begin/end rotation + end position delta in world units, 1 tile = 32).
 // Indexed by roadAndDirection = roadID<<3 | reversedBit<<2 | rotation.
 
-var kRoadCoordinates = [80]trackCoord{
+var RoadCoordinates = [80]TrackCoord{
 	// roadID 0 — straight
 	{0, 0, -32, 0, 0},
 	{1, 1, 0, 32, 0},
@@ -100,9 +100,9 @@ var kRoadCoordinates = [80]trackCoord{
 	{3, 1, 0, 32, 0},
 }
 
-// kRoadPieceTiles[roadID] lists each sequence tile's offset from the piece
+// RoadPieceTiles[roadID] lists each sequence tile's offset from the piece
 // origin at rotation 0, in world units (x, y) and world z (int16).
-var kRoadPieceTiles = [10][][3]int16{
+var RoadPieceTiles = [10][][3]int16{
 	0: {{0, 0, 0}},
 	1: {{0, 0, 0}},
 	2: {{0, 0, 0}},

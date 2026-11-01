@@ -1,17 +1,17 @@
-package world
+package sim
 
 // Code generated from OpenLoco src/OpenLoco/src/Map/Track/TrackData.cpp
-// (kTrackCoordinates 0x4F7B5C and trackPiece0..43). Do not edit by hand.
+// (TrackCoordinates 0x4F7B5C and trackPiece0..43). Do not edit by hand.
 
-// trackCoord describes where a track piece ends relative to its start:
+// TrackCoord describes where a track piece ends relative to its start:
 // begin/end rotation and the position delta in world units (1 tile = 32).
 // Indexed by trackAndDirection = trackID<<3 | reversedBit<<2 | rotation.
-type trackCoord struct {
+type TrackCoord struct {
 	RotBegin, RotEnd uint8
 	DX, DY, DZ       int16
 }
 
-var kTrackCoordinates = [352]trackCoord{
+var TrackCoordinates = [352]TrackCoord{
 	// trackID 0
 	{0, 0, -32, 0, 0},
 	{1, 1, 0, 32, 0},
@@ -410,9 +410,9 @@ var kTrackCoordinates = [352]trackCoord{
 	{7, 5, 0, 32, 0},
 }
 
-// kTrackPieceTiles[trackID] lists each sequence tile's offset from the
+// TrackPieceTiles[trackID] lists each sequence tile's offset from the
 // piece origin at rotation 0, in world units (x, y) and SmallZ*4 (z).
-var kTrackPieceTiles = [44][][3]int16{
+var TrackPieceTiles = [44][][3]int16{
 	0:  {{0, 0, 0}},
 	1:  {{0, 0, 0}, {0, 32, 0}, {-32, 0, 0}, {-32, 32, 0}},
 	2:  {{0, 0, 0}},

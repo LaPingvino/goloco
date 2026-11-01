@@ -1,6 +1,7 @@
 package world
 
 import (
+	"github.com/LaPingvino/goloco/pkg/sim"
 	"math"
 
 	"github.com/LaPingvino/goloco/pkg/coords"
@@ -11,18 +12,18 @@ import (
 //
 // A SimVehicle follows a chain of connected track pieces. Each tick it advances
 // a floating-point distance along the current piece (whose geometry comes from
-// kTrackCoordinates), interpolates the rendered body entity's world position
+// sim.TrackCoordinates), interpolates the rendered body entity's world position
 // linearly between the piece's begin and end, and hands off to the next piece
 // when it runs off the end. With no continuation it reverses (bounces).
 //
 // This is deliberately simple: curves are treated as straight segments between
 // their two endpoints. The piece-to-piece hand-off mirrors the construction
 // validation in CanPlaceTrackAtHead — a piece begins where the previous piece
-// ends when their rotations and positions agree (kTrackCoordinates RotBegin /
+// ends when their rotations and positions agree (sim.TrackCoordinates RotBegin /
 // RotEnd + the DX/DY/DZ world-unit delta).
 //
 // OpenLoco reference: src/OpenLoco/src/Vehicles/VehicleManager.cpp (movement),
-// src/OpenLoco/src/Map/Track/TrackData.cpp (kTrackCoordinates).
+// src/OpenLoco/src/Map/Track/TrackData.cpp (sim.TrackCoordinates).
 
 // tileCenterOffset centres a vehicle within a tile (tile = 32 world units).
 // The value is constant across all pieces, so a piece's end position equals the
@@ -59,8 +60,8 @@ type SimVehicle struct {
 
 // pieceGeom returns the begin/end world position, world-unit delta and the
 // begin/end cardinal rotation of the SimVehicle's current track piece.
-func (sv *SimVehicle) pieceGeom() (bx, by, bz, ex, ey, ez float64, c trackCoord) {
-	c = kTrackCoordinates[sv.trackID<<3|int(sv.rotation&3)]
+func (sv *SimVehicle) pieceGeom() (bx, by, bz, ex, ey, ez float64, c sim.TrackCoord) {
+	c = sim.TrackCoordinates[sv.trackID<<3|int(sv.rotation&3)]
 	bx = float64(sv.tileX*32 + tileCenterOffset)
 	by = float64(sv.tileY*32 + tileCenterOffset)
 	bz = float64(sv.BaseZ) * 4
@@ -72,7 +73,7 @@ func (sv *SimVehicle) pieceGeom() (bx, by, bz, ex, ey, ez float64, c trackCoord)
 
 // pieceLength is the euclidean length of the piece delta in world units.
 // A zero-length piece (shouldn't occur) is clamped to 1 to avoid div-by-zero.
-func pieceLength(c trackCoord) float64 {
+func pieceLength(c sim.TrackCoord) float64 {
 	l := math.Hypot(float64(c.DX), float64(c.DY))
 	if l == 0 {
 		return 1
@@ -90,7 +91,7 @@ func rotToYaw(r uint8) uint8 {
 }
 
 // findTrackOrigin returns the sequence-0 track element on tile (x,y) at the
-// given BaseZ whose piece begins with rotation beginRot (kTrackCoordinates
+// given BaseZ whose piece begins with rotation beginRot (sim.TrackCoordinates
 // RotBegin). This is the forward hand-off: the next piece starts where the
 // current one ends, exactly as CanPlaceTrackAtHead validates a placement.
 func (w *World) findTrackOrigin(x, y int, baseZ, beginRot uint8) (scenario.TrackElement, bool) {
@@ -102,10 +103,10 @@ func (w *World) findTrackOrigin(x, y int, baseZ, beginRot uint8) (scenario.Track
 		if te.SequenceIndex != 0 || te.BaseZ != baseZ {
 			continue
 		}
-		if int(te.TrackID)<<3 >= len(kTrackCoordinates) {
+		if int(te.TrackID)<<3 >= len(sim.TrackCoordinates) {
 			continue
 		}
-		if kTrackCoordinates[int(te.TrackID)<<3|int(te.Rotation&3)].RotBegin == beginRot {
+		if sim.TrackCoordinates[int(te.TrackID)<<3|int(te.Rotation&3)].RotBegin == beginRot {
 			return te, true
 		}
 	}
@@ -125,10 +126,10 @@ func (w *World) findTrackEnding(x, y int, baseZ, endRot uint8) (tileX, tileY int
 				if cand.SequenceIndex != 0 {
 					continue
 				}
-				if int(cand.TrackID)<<3 >= len(kTrackCoordinates) {
+				if int(cand.TrackID)<<3 >= len(sim.TrackCoordinates) {
 					continue
 				}
-				c := kTrackCoordinates[int(cand.TrackID)<<3|int(cand.Rotation&3)]
+				c := sim.TrackCoordinates[int(cand.TrackID)<<3|int(cand.Rotation&3)]
 				endX := tx + int(c.DX)/32
 				endY := ty + int(c.DY)/32
 				endZ := int(cand.BaseZ) + int(c.DZ)/4
@@ -159,10 +160,10 @@ func (w *World) SpawnTestVehicle(objID int) bool {
 		for tx := 0; tx < w.Width; tx++ {
 			for i := range w.Tiles[ty][tx].Tracks {
 				te := &w.Tiles[ty][tx].Tracks[i]
-				if te.SequenceIndex != 0 || int(te.TrackID)<<3 >= len(kTrackCoordinates) {
+				if te.SequenceIndex != 0 || int(te.TrackID)<<3 >= len(sim.TrackCoordinates) {
 					continue
 				}
-				beginRot := kTrackCoordinates[int(te.TrackID)<<3|int(te.Rotation&3)].RotBegin
+				beginRot := sim.TrackCoordinates[int(te.TrackID)<<3|int(te.Rotation&3)].RotBegin
 				_, _, _, hasPrev := w.findTrackEnding(tx, ty, te.BaseZ, beginRot)
 				score := 0
 				if !hasPrev {
@@ -290,7 +291,7 @@ func (w *World) advanceVehicle(sv *SimVehicle) {
 		// Reached the begin: look for the predecessor feeding into this piece.
 		beginRot := c.RotBegin
 		if px, py, te, ok := w.findTrackEnding(sv.tileX, sv.tileY, sv.BaseZ, beginRot); ok {
-			pc := kTrackCoordinates[int(te.TrackID)<<3|int(te.Rotation&3)]
+			pc := sim.TrackCoordinates[int(te.TrackID)<<3|int(te.Rotation&3)]
 			plen := pieceLength(pc)
 			sv.tileX, sv.tileY = px, py
 			sv.trackID = int(te.TrackID)
