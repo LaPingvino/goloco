@@ -334,6 +334,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    'simplified approximation', depth-sort approximation for vehicles, g1font width fudge, …).
 
 ## Questions for Joop
+- Try the test page with 'Use the ported renderer' ticked: does it look right, and what frame time does the console log
+  ('[Scene] CPU renderer: … per frame')? That decides how soon it can become the default.
 - (answered 2026-11-01) g1 gap: Joop allows drawing replacements myself, or borrowing from OpenTTD
   (check licences first: OpenTTD's OpenGFX is GPL-2.0; OpenGraphics is MIT).
 - docs/open-build.md: go for step 1 (an '-open' pack with only OpenGraphics objects and a goloco start path
@@ -395,3 +397,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 42 (item 3j) — industries render in the CPU renderer (farm, refinery); slot order and element fields parsed; farm fields next.
 - 2026-11-01 tick 43 (item 3j) — farm fields render (industrial surface branch); k4FD30C extracted from upstream source; snow cover found missing → 3k.
 - 2026-11-01 tick 44 (item 3k) — snow cover on land in the CPU renderer; SnowObject loader; mask table generated (names from the .cpp, values from the compiler).
+- 2026-11-01 tick 45 (item 3j) — test page: checkbox 'Use the ported renderer' (passes GOLOCO_SCENE=1, remembered per browser); scene mode logs its average CPU frame time every 120 frames to the console. Live at kiefte.eu/goloco for Joop to compare.

@@ -1,7 +1,9 @@
 package world
 
 import (
+	"log"
 	"os"
+	"time"
 
 	"github.com/LaPingvino/goloco/pkg/scene"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -24,6 +26,14 @@ func (w *World) drawScene(screen *ebiten.Image) {
 		w.scene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
 	}
 	sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
+	t0 := time.Now()
+	defer func() {
+		w.sceneTime += time.Since(t0)
+		if w.sceneFrames++; w.sceneFrames == 120 {
+			log.Printf("[Scene] CPU renderer: %v per frame (avg of 120, %dx%d)", (w.sceneTime / 120).Round(100*time.Microsecond), sw, sh)
+			w.sceneFrames, w.sceneTime = 0, 0
+		}
+	}()
 	rt := w.scene.Render(&w.Map, scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Ticks: uint32(w.animTick)})
 	if w.sceneImg == nil || w.sceneImg.Bounds().Dx() != sw || w.sceneImg.Bounds().Dy() != sh {
 		w.sceneImg = ebiten.NewImage(sw, sh)

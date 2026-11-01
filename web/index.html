@@ -23,6 +23,8 @@ h1 { font: 600 1.6rem/1.2 var(--display); letter-spacing: .02em; margin: 0; text
 button { font: 600 15px var(--display); letter-spacing: .04em; text-transform: uppercase; background: var(--signal); color: #1a1407; border: 0; border-radius: 4px; padding: 10px 18px; cursor: pointer; justify-self: start; }
 button:disabled { opacity: .4; cursor: default; }
 button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.opt { font-size: 14px; display: flex; gap: 8px; align-items: center; color: var(--text); }
+.opt input { accent-color: var(--signal); }
 .note { font-size: 13px; color: var(--muted); margin: 0; border-top: 1px solid var(--line); padding-top: 12px; }
 #logbox { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 20; width: min(36rem, calc(100% - 24px)); background: var(--card); border: 1px solid var(--line); border-radius: 6px; font: 12px/1.4 var(--mono); }
 #logbox summary { cursor: pointer; padding: 6px 10px; color: var(--muted); }
@@ -39,6 +41,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
     <p class="lede">The current goloco build, compiled to WebAssembly, running on the original Locomotion data from an in-memory filesystem. Private test page.</p>
     <div class="bar" aria-hidden="true"><div id="fill"></div></div>
     <div id="status" role="status">Loading the data pack…</div>
+    <label class="opt"><input type="checkbox" id="scene"> Use the ported renderer (experimental: drawn like OpenLoco, on the CPU; zoom 0 only)</label>
     <button id="start" type="button" disabled>Start</button>
     <p class="note">Music is fetched when the game first plays a track. Saves and screenshots live in memory and are gone on reload. Goloco's log and any files it could not find are in the drawer below.</p>
   </div>
@@ -83,6 +86,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
     return new Uint8Array(await new Response(s).arrayBuffer());
   };
 
+  try { $("scene").checked = localStorage.getItem("goloco-scene") === "1"; } catch (e) {}
   let wasm, man;
   (async () => {
     man = await (await fetch("manifest.json")).json();
@@ -108,6 +112,8 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
       const go = new Go();
       go.argv = ["goloco"].concat(man.args || []);
       go.env = Object.assign({ HOME: "/w" }, man.env || {});
+      if ($("scene").checked) go.env.GOLOCO_SCENE = "1";
+      try { localStorage.setItem("goloco-scene", $("scene").checked ? "1" : ""); } catch (e) {}
       const { instance } = await WebAssembly.instantiate(wasm, go.importObject);
       $("loader").hidden = true;
       document.body.style.padding = "0";

@@ -79,6 +79,8 @@ type World struct {
 	maskCache    map[int]maskEntry  // sprite alpha masks
 	scene        *scene.Renderer    // ported software renderer (scene.go)
 	sceneImg     *ebiten.Image      // its frame, uploaded each draw
+	sceneFrames  int                // frames since the last timing log
+	sceneTime    time.Duration      // render time accumulated over them
 	frameCounter int                // draw-frame counter for UI pulses
 	highlightOps []worldHighlightOp // ripple/wave sprites drawn after blend
 	waterOps     []worldHighlightOp // water surface ops drawn after all terrain (pass 1.5)
