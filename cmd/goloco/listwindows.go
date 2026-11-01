@@ -136,7 +136,7 @@ func (g *Game) openStationsWindow() {
 	rows := make([]listRow, len(infos))
 	for i, s := range infos {
 		rows[i] = listRow{
-			label:  fmt.Sprintf("Station %d — %s  (%d,%d)", s.ID, s.Kind, s.TileX, s.TileY),
+			label:  fmt.Sprintf("%s — %s  (%d,%d)", s.Name, s.Kind, s.TileX, s.TileY),
 			tileX:  s.TileX,
 			tileY:  s.TileY,
 			hasPos: true,

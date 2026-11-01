@@ -273,6 +273,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.CompanyColours = parseCompanyColours(gameState)
 		sc.StationOwners = parseStationOwners(gameState)
 		sc.UserStrings = parseUserStrings(gameState)
+		sc.StationNames = parseStationNames(gameState)
 
 		// Towns live inside the GameState chunk for saved games.
 		sc.Towns = parseTownsFromGameState(gameState)
@@ -1233,6 +1234,29 @@ func parseStationOwners(gs []byte) []uint8 {
 		o[i] = gs[off+i*stationRecordSize+stationOwnerOffset]
 	}
 	return o
+}
+
+// StationName is a station record's name StringId and town (S5::Station 0x00
+// and 0x2C).
+type StationName struct {
+	Name, Town uint16
+}
+
+// parseStationNames returns, per station id, its name and town. nil if short.
+func parseStationNames(gs []byte) []StationName {
+	off := stationsGameStateOffset
+	if len(gs) == GameStateSizeType2 {
+		off = stationsGameStateOffsetType2
+	}
+	if len(gs) < off+stationMaxCount*stationRecordSize {
+		return nil
+	}
+	out := make([]StationName, stationMaxCount)
+	for i := range out {
+		rec := gs[off+i*stationRecordSize:]
+		out[i] = StationName{binary.LittleEndian.Uint16(rec[0x00:]), binary.LittleEndian.Uint16(rec[0x2C:])}
+	}
+	return out
 }
 
 // parseIndustryObjectIDs returns, per industry index, its industry object id
