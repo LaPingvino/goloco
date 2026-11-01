@@ -1076,6 +1076,15 @@ func debugPath(name string) string {
 // quit when the requested count has been captured. Script `shot` commands are
 // honoured here too.
 func (g *Game) maybeSaveShot(screen *ebiten.Image) {
+	if os.Getenv("GOLOCO_DIAG_TOOLTIP") != "" {
+		// Diagnostic: a tooltip over the frame (ToolTip.cpp port), for headless shots.
+		var c uint8
+		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+			c = g.r.ObjMgr.InterfaceSkin.TooltipColour
+		}
+		ui.DrawTooltip(screen, "Change viewport settings", 380, 120, c)
+		ui.DrawTooltip(screen, "Build tracks, stations, signals and train depots, and place them on the map", 560, 240, c)
+	}
 	if os.Getenv("GOLOCO_DIAG_DROPDOWN") != "" {
 		// Diagnostic: a toolbar-style dropdown on every frame (drawn last, just
 		// before the capture), for headless screenshots of the Dropdown.cpp port.
