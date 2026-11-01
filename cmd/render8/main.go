@@ -75,6 +75,7 @@ func main() {
 	if len(sc.IndustryObjectOrder) > 0 {
 		om.ReorderIndustryObjects(sc.IndustryObjectOrder)
 	}
+	om.ReorderRoadStationObjects(sc.RoadStationObjectOrder)
 	om.ResolveCliffEdges()
 
 	var m sim.Map
