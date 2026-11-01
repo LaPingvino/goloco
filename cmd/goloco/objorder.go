@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
+	"github.com/LaPingvino/goloco/pkg/ui"
+	"github.com/LaPingvino/goloco/pkg/uilayout"
 )
 
 // reorderScenarioObjects puts every object type the map refers to by index in
@@ -37,4 +39,9 @@ func reorderScenarioObjects(om *objects.ObjectManager, sc *scenario.Scenario) {
 		}
 	}
 	om.CurrencySlot = sc.CurrencyObject
+	// Gfx::loadCurrency and formatCurrency's object, as on scenario load.
+	if c := om.GetCurrencyObject(sc.CurrencyObject); c != nil {
+		ui.LoadCurrency(c.ObjectIcon)
+		uilayout.SetCurrency(c.Prefix, c.Suffix, c.Separator, c.Factor)
+	}
 }

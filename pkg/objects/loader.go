@@ -230,7 +230,11 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		m.Vehicles = append(m.Vehicles, vehicle)
 
 	case ObjectTypeCurrency:
-		cur, err := ParseCurrencyObject(header, decompressed)
+		var g1Loader G1Loader
+		if m.G1File != nil {
+			g1Loader, _ = m.G1File.(G1Loader)
+		}
+		cur, err := ParseCurrencyObject(header, decompressed, g1Loader)
 		if err != nil {
 			return fmt.Errorf("parsing currency: %w", err)
 		}

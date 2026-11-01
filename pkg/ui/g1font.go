@@ -251,3 +251,30 @@ func TextColours(colour int) (body, outline color.Color) {
 	}
 	return pal[gfx8.Shade(m, 9)], pal[paletteBlack0]
 }
+
+// currencySignChar is the Locomotion character the currency symbol strings
+// use (U+00A3 → glyph characters_*_currency_sign).
+const currencySignChar = 0xA3
+
+// LoadCurrency is Gfx::loadCurrency: the currency object's four symbol images
+// (objectIcon + 0..3: small, medium normal, medium bold, large) replace the
+// fonts' currency-sign glyphs, whose widths become image width - 1 (large +1).
+func LoadCurrency(objectIcon uint32) {
+	f := globalG1Font
+	if f == nil || objectIcon == 0 {
+		return
+	}
+	for _, c := range [4]struct{ font, img, off int }{
+		{G1FontSmall, int(objectIcon), -1}, {G1FontMediumNormal, int(objectIcon) + 1, -1},
+		{G1FontMediumBold, int(objectIcon) + 2, -1}, {G1FontLarge, int(objectIcon) + 3, 1},
+	} {
+		dst := g1FontBase + c.font*224 + (currencySignChar - 32)
+		if c.img >= len(f.g1.Elements) || dst >= len(f.g1.Elements) {
+			continue
+		}
+		f.g1.Elements[dst] = f.g1.Elements[c.img]
+		f.widths[c.font][currencySignChar-32] = int8(int(f.g1.Elements[c.img].Width) + c.off)
+		delete(f.glyphs, dst)
+		delete(f.outlines, dst)
+	}
+}

@@ -1,5 +1,7 @@
 package uilayout
 
+import "strconv"
+
 // TimePanel layout — Ui/Windows/TimePanel.cpp: a 140×27 window at the
 // bottom-right; widgets relative to it.
 const (
@@ -99,24 +101,54 @@ func InPlayerPanel(px, py, sw, sh int) bool {
 	return px >= wx && px < wx+PlayerPanelW && py >= wy && py < wy+PlayerPanelH
 }
 
-// Currency48 formats money as {CURRENCY48} with a pound prefix and comma
-// thousands separators. PARTIAL: upstream takes the symbol, its position, the
-// separator and the factor from the scenario's currency object.
+// CurrencyFormat is what formatCurrency reads of the scenario's currency
+// object: the prefix and suffix symbol strings (Locomotion characters; the
+// symbol itself is character 0xA3, whose glyph LoadCurrency replaces), the
+// power-of-ten separator and the power-of-two factor.
+type CurrencyFormat struct {
+	Prefix, Suffix    string
+	Separator, Factor uint8
+}
+
+// Currency is the format in use; SetCurrency sets it when a scenario loads.
+// Before that it is the symbol as a prefix with no scaling.
+var Currency = CurrencyFormat{Prefix: string(rune(0xA3))}
+
+// SetCurrency takes a currency object's raw symbol strings (bytes are
+// Locomotion characters) and its separator and factor.
+func SetCurrency(prefix, suffix string, separator, factor uint8) {
+	Currency = CurrencyFormat{Prefix: locoString(prefix), Suffix: locoString(suffix), Separator: separator, Factor: factor}
+}
+
+func locoString(b string) string {
+	r := make([]rune, len(b))
+	for i := range len(b) {
+		r[i] = rune(b[i])
+	}
+	return string(r)
+}
+
+// Currency48 is Formatting.cpp formatCurrency ({CURRENCY48} and {CURRENCY32}):
+// a '-' for negatives, the prefix symbol, value × 2^factor × 10^separator
+// grouped in threes with ',' (Environment.cpp setLocale), the suffix symbol.
 func Currency48(v int64) string {
-	neg := v < 0
-	if neg {
+	out := ""
+	if v < 0 {
+		out = "-"
 		v = -v
 	}
-	s := itoa(int(v))
-	out := ""
-	for i, c := range s {
+	c := Currency
+	n := uint64(v) << c.Factor
+	for range c.Separator {
+		n *= 10
+	}
+	s := strconv.FormatUint(n, 10)
+	g := ""
+	for i, ch := range s {
 		if i > 0 && (len(s)-i)%3 == 0 {
-			out += ","
+			g += ","
 		}
-		out += string(c)
+		g += string(ch)
 	}
-	if neg {
-		return "-£" + out
-	}
-	return "£" + out
+	return out + c.Prefix + g + c.Suffix
 }
