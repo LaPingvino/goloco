@@ -878,76 +878,17 @@ func (g *Game) handleToolbarButton(idx int) {
 // Ui::ProgressBar::begin(StringIds::loading)), not for sprites. goloco loads
 // the file synchronously before the next frame; wire this to real S5 load
 // progress (Ui/Windows/ProgressBar.cpp) when loading moves off the frame.
-// The G1 progress bar sprites are:
-//
-//	2326-2329 style-0 train (green locomotive, 4 frames)
-//	2330      track background (345×28)
-//	2331-2334 style-1 train (darker locomotive, 4 frames)
-//
-// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ProgressBar.cpp
 func (g *Game) drawLoadingScreen(screen *ebiten.Image) {
-	sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
-
-	// Dark background
-	screen.Fill(color.RGBA{0, 0, 0, 255})
-
 	total := len(g.loadingSpriteIDs)
 	if total == 0 {
 		return
 	}
-	barValue := uint8(g.loadingStep * 255 / total) // 0-255 like OpenLoco
-
-	// Window geometry (matches OpenLoco ProgressBar 350×47)
-	const winW, winH = 350, 47
-	winX := (sw - winW) / 2
-	winY := (sh - winH) / 2
-
-	// Window chrome: dark panel with single-pixel bevel
-	fillRect(screen, float64(winX), float64(winY), float64(winW), float64(winH), color.RGBA{40, 40, 40, 255})
-	fillRect(screen, float64(winX), float64(winY), float64(winW), 1, color.RGBA{120, 120, 120, 255})
-	fillRect(screen, float64(winX), float64(winY), 1, float64(winH), color.RGBA{120, 120, 120, 255})
-	fillRect(screen, float64(winX), float64(winY+winH-1), float64(winW), 1, color.RGBA{20, 20, 20, 255})
-	fillRect(screen, float64(winX+winW-1), float64(winY), 1, float64(winH), color.RGBA{20, 20, 20, 255})
-	// Caption bar background
-	fillRect(screen, float64(winX+1), float64(winY+1), float64(winW-2), 13, color.RGBA{0, 0, 128, 255})
-
-	// Caption bar at top (14px)
-	captionText := "Loading: " + g.loadingCaption
-	ui.DrawText(screen, captionText, winX+4, winY+3, color.RGBA{255, 255, 255, 255})
-
-	// Clip region for progress bar: (winX+2, winY+15, 345, 28).
-	// OpenLoco reference: Ui/Windows/ProgressBar.cpp draw() — the track is a
-	// single full-width image at the clip origin and the train slides in from
-	// the left (xPos = barValue - 255), both clipped to the bar region.
-	clipX, clipY := winX+2, winY+15
-	clip, _ := screen.SubImage(image.Rect(clipX, clipY, clipX+345, clipY+28)).(*ebiten.Image)
-	if clip == nil {
-		return
-	}
-
-	if track := g.r.GetSprite(2330); track != nil {
-		_, _, xo, yo, _ := g.r.GetSpriteInfo(2330)
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(clipX+int(xo)), float64(clipY+int(yo)))
-		clip.DrawImage(track, op)
-	}
-
-	// Style 0: sea-green/dark-red steam train; style 1: black/grass-green.
-	trainBase, c1, c2 := 2326, 11, 25 // mutedSeaGreen, mutedDarkRed
+	style := 0
 	if g.loadingStyleFlip {
-		trainBase, c1, c2 = 2331, 0, 12 // black, mutedGrassGreen
+		style = 1
 	}
-	trainFrame := int(barValue/4) % 4
-	if train := g.r.GetSpriteColoured2(trainBase+trainFrame, c1, c2); train != nil {
-		_, _, xo, yo, _ := g.r.GetSpriteInfo(trainBase + trainFrame)
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(clipX+int(barValue)-255+int(xo)), float64(clipY+int(yo)))
-		clip.DrawImage(train, op)
-	}
-
-	// Numeric progress below the window
-	pct := g.loadingStep * 100 / total
-	ui.DrawText(screen, fmt.Sprintf("%d%%", pct), winX+winW/2-10, winY+winH+4, color.RGBA{200, 200, 200, 200})
+	// Ui::ProgressBar (pkg/ui/progressbar.go); the caption is StringIds::loading.
+	ui.DrawProgressBar(screen, "Loading...", uint8(g.loadingStep*255/total), style)
 }
 
 // doLoadingStep preloads up to loadingStepSize sprites per frame into the atlas.
@@ -1196,6 +1137,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		ui.DrawWindowFrame(screen, 200, 60, 360, 220, c, false)
 		ui.DrawWindowCaption(screen, 201, 61, 358, "Select Scenario")
+	}
+	if os.Getenv("GOLOCO_DIAG_PROGRESS") != "" {
+		// Diagnostic: the ProgressBar window at 3/4 in both styles, for headless shots.
+		ui.DrawProgressBar(screen, "Loading...", 190, 0)
 	}
 	if os.Getenv("GOLOCO_DIAG_TOOLTIP") != "" {
 		// Diagnostic: a tooltip over the frame (ToolTip.cpp port), for headless shots.
