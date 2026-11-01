@@ -1236,3 +1236,32 @@ func (m *ObjectManager) GetCurrencyObject(name string) *CurrencyObject {
 	}
 	return nil
 }
+
+// AvailableCompatibleSignals is ObjectUtils getAvailableCompatibleSignals:
+// the signal slots for the track slot that are available in the year (between
+// their designed and obsolete years): the track's own signals (its signals
+// bitset, from the signal headers it lists) and every signal that lists the
+// track among its compatible tracks; sorted.
+func (m *ObjectManager) AvailableCompatibleSignals(trackSlot, year int) []int {
+	if trackSlot < 0 || trackSlot >= len(m.TrackObjects) || m.TrackObjects[trackSlot] == nil {
+		return nil
+	}
+	t := m.TrackObjects[trackSlot]
+	var out []int
+	for i, s := range m.TrainSignalObjects {
+		if s == nil || s.Header == nil || year > int(s.ObsoleteYear) || year < int(s.DesignedYear) {
+			continue
+		}
+		listed := false
+		for _, n := range t.SignalNames {
+			listed = listed || strings.EqualFold(n, s.Header.GetName())
+		}
+		for _, n := range s.CompatibleNames {
+			listed = listed || strings.EqualFold(n, t.Header.GetName())
+		}
+		if listed {
+			out = append(out, i) // ascending slot order = std::ranges::sort
+		}
+	}
+	return out
+}

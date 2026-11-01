@@ -22,6 +22,10 @@ type TrackObject struct {
 	// has (diagonal, large/normal/small/very small curves, slopes, steep
 	// slopes, one-sided, sloped curves, s-bends, junctions).
 	TrackPieces uint16
+	// ModNames, SignalNames, StationNames are the DAT names of the track
+	// extras, signals and stations TrackObject::load resolves into mods[],
+	// the signals bitset and stations[].
+	ModNames, SignalNames, StationNames []string
 }
 
 // GetObjectByIndex accessor sentinel — use ObjectManager.GetTrackObjectByIndex
@@ -114,6 +118,17 @@ func ParseTrackObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tr
 	//   numStations station objects
 	// TrackObject::load: the tunnel header follows the compatible, mod and signal headers.
 	track.TunnelName = headerName(data, offset+(int(numCompatible)+int(numMods)+int(numSignals))*HeaderSize)
+	hdr := func(i int) string { return headerName(data, offset+i*HeaderSize) }
+	for i := range int(numMods) {
+		track.ModNames = append(track.ModNames, hdr(int(numCompatible)+i))
+	}
+	for i := range int(numSignals) {
+		track.SignalNames = append(track.SignalNames, hdr(int(numCompatible)+int(numMods)+i))
+	}
+	base := int(numCompatible) + int(numMods) + int(numSignals) + 1 + int(numBridges)
+	for i := range int(numStations) {
+		track.StationNames = append(track.StationNames, hdr(base+i))
+	}
 	numHeaders := int(numCompatible) + int(numMods) + int(numSignals) + 1 + int(numBridges) + int(numStations)
 	offset += numHeaders * HeaderSize
 
