@@ -66,8 +66,8 @@ func (w *World) StationList() []StationInfo {
 	var out []StationInfo
 	for y := range w.tiles {
 		for x := range w.tiles[y] {
-			for i := range w.tiles[y][x].stations {
-				se := &w.tiles[y][x].stations[i]
+			for i := range w.tiles[y][x].Stations {
+				se := &w.tiles[y][x].Stations[i]
 				id := int(se.StationID)
 				if seen[id] {
 					continue

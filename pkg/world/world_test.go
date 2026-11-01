@@ -53,9 +53,9 @@ func TestHeightOffset(t *testing.T) {
 	// For a tile at (0,0) with baseZ, the final vpY must be (0) - baseZ*4.
 	// We test via the formula directly since Draw() inlines it.
 	cases := []struct {
-		baseZ   uint8
-		wantPx  float64 // pixels subtracted from vpY
-		desc    string
+		BaseZ  uint8
+		wantPx float64 // pixels subtracted from vpY
+		desc   string
 	}{
 		{0, 0, "sea level"},
 		{1, 4, "1 SmallZ = 4 px"},
@@ -65,10 +65,10 @@ func TestHeightOffset(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		got := float64(c.baseZ) * 4.0 // the formula that must be in Draw()
+		got := float64(c.BaseZ) * 4.0 // the formula that must be in Draw()
 		if got != c.wantPx {
 			t.Errorf("heightOffset(baseZ=%d) = %.0f, want %.0f — %s",
-				c.baseZ, got, c.wantPx, c.desc)
+				c.BaseZ, got, c.wantPx, c.desc)
 		}
 	}
 }
@@ -82,13 +82,13 @@ func TestGetCornerHeights(t *testing.T) {
 	w := &World{}
 
 	cases := []struct {
-		baseZ    uint8
-		slope    uint8
-		wantTop  uint8
-		wantRight uint8
+		BaseZ      uint8
+		Slope      uint8
+		wantTop    uint8
+		wantRight  uint8
 		wantBottom uint8
-		wantLeft uint8
-		desc     string
+		wantLeft   uint8
+		desc       string
 	}{
 		// Flat (slope=0): all corners = microZ = baseZ/4
 		{0, 0, 0, 0, 0, 0, "baseZ=0 flat"},
@@ -107,12 +107,12 @@ func TestGetCornerHeights(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		tile := &tile{baseZ: c.baseZ, slope: c.slope}
+		tile := &tile{BaseZ: c.BaseZ, Slope: c.Slope}
 		ch := w.getCornerHeights(tile)
 		if ch.Top != c.wantTop || ch.Right != c.wantRight ||
 			ch.Bottom != c.wantBottom || ch.Left != c.wantLeft {
 			t.Errorf("getCornerHeights(baseZ=%d,slope=%d) = {%d,%d,%d,%d}, want {%d,%d,%d,%d} — %s",
-				c.baseZ, c.slope,
+				c.BaseZ, c.Slope,
 				ch.Top, ch.Right, ch.Bottom, ch.Left,
 				c.wantTop, c.wantRight, c.wantBottom, c.wantLeft,
 				c.desc)
@@ -137,7 +137,7 @@ func TestNeighborOffsets(t *testing.T) {
 	// Mark each tile with unique base values we can identify.
 	for y := 0; y < sz; y++ {
 		for x := 0; x < sz; x++ {
-			w.tiles[y][x].baseZ = uint8(y*sz + x)
+			w.tiles[y][x].BaseZ = uint8(y*sz + x)
 		}
 	}
 
@@ -162,9 +162,9 @@ func TestNeighborOffsets(t *testing.T) {
 			continue
 		}
 		wantBaseZ := uint8(c.wantTileY*sz + c.wantTileX)
-		if nb.baseZ != wantBaseZ {
+		if nb.BaseZ != wantBaseZ {
 			t.Errorf("getNeighborTile edge %d (%s): got tile with baseZ=%d, want baseZ=%d (tile %d,%d)",
-				c.edge, c.label, nb.baseZ, wantBaseZ, c.wantTileX, c.wantTileY)
+				c.edge, c.label, nb.BaseZ, wantBaseZ, c.wantTileX, c.wantTileY)
 		}
 	}
 }
@@ -183,11 +183,11 @@ func TestGetCliffEdgeOffset(t *testing.T) {
 	w := &World{}
 
 	cases := []struct {
-		edge      int
-		h         uint8  // MicroZ
-		wantX     int16
-		wantY     int16
-		label     string
+		edge  int
+		h     uint8 // MicroZ
+		wantX int16
+		wantY int16
+		label string
 	}{
 		{EdgeSW, 0, -30, 15, "SW h=0"},
 		{EdgeSW, 1, -30, -1, "SW h=1: 15-16=-1"},
@@ -217,8 +217,8 @@ func TestGetCliffEdgeOffset(t *testing.T) {
 
 func TestWaterHeightFormula(t *testing.T) {
 	cases := []struct {
-		waterLevel uint8 // MicroZ from surface element byte 5
-		baseZ      uint8 // SmallZ
+		WaterLevel uint8   // MicroZ from surface element byte 5
+		BaseZ      uint8   // SmallZ
 		wantDiff   float64 // pixels water is above terrain base (positive = higher on screen)
 		desc       string
 	}{
@@ -231,10 +231,10 @@ func TestWaterHeightFormula(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		got := float64(c.waterLevel)*16.0 - float64(c.baseZ)*4.0
+		got := float64(c.WaterLevel)*16.0 - float64(c.BaseZ)*4.0
 		if got != c.wantDiff {
 			t.Errorf("waterHeightDiff(water=%d, baseZ=%d) = %.0f, want %.0f — %s",
-				c.waterLevel, c.baseZ, got, c.wantDiff, c.desc)
+				c.WaterLevel, c.BaseZ, got, c.wantDiff, c.desc)
 		}
 	}
 }
@@ -280,7 +280,8 @@ func TestWaterBlendSpriteIDFormula(t *testing.T) {
 // TestWaterPaletteRemapIndex verifies that the water remap palette map is at
 // waterObj.ImageOffset + 41, matching OpenLoco's WaterObject sprite layout.
 // OpenLoco reference: PaintSurface.cpp paintSurfaceWater — withBlend(ExtColour::water)
-//   The remap table is the 42nd sprite in the water object image table (0-indexed).
+//
+//	The remap table is the 42nd sprite in the water object image table (0-indexed).
 func TestWaterPaletteRemapIndex(t *testing.T) {
 	const remapOffset = 41 // 0-indexed position of the remap palette map
 	const imageOffset = uint32(118748)
@@ -292,9 +293,9 @@ func TestWaterPaletteRemapIndex(t *testing.T) {
 
 func TestCheckerboard(t *testing.T) {
 	cases := []struct {
-		x, y    int
-		want    uint32 // 0 or 32
-		desc    string
+		x, y int
+		want uint32 // 0 or 32
+		desc string
 	}{
 		{0, 0, 0, "(0,0)"},
 		{1, 0, 32, "(1,0): different parity"},

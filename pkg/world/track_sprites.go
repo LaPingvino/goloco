@@ -449,10 +449,10 @@ var kTrackParts = [26][]trackPiece{
 	// result.rot[i] = source.rot[table[i]]; source uses kRCSDown0-3 NE=88-91/SE=92-95/SW=96-99/NW=100-103
 	// OpenLoco reference: src/OpenLoco/src/Paint/PaintTrackData.h kLeftCurveSmallSlopeUpTPP
 	{
-		{img: [4][3]uint32{{95}, {99}, {103}, {91}}, nonMergeable: true},  // rotateTrackPP(kRCSDown3, 1230)
-		{img: [4][3]uint32{{93}, {97}, {101}, {89}}, nonMergeable: true},  // rotateTrackPP(kRCSDown1, 1230)
-		{img: [4][3]uint32{{94}, {98}, {102}, {90}}, nonMergeable: true},  // rotateTrackPP(kRCSDown2, 1230)
-		{img: [4][3]uint32{{92}, {96}, {100}, {88}}, nonMergeable: true},  // rotateTrackPP(kRCSDown0, 1230)
+		{img: [4][3]uint32{{95}, {99}, {103}, {91}}, nonMergeable: true}, // rotateTrackPP(kRCSDown3, 1230)
+		{img: [4][3]uint32{{93}, {97}, {101}, {89}}, nonMergeable: true}, // rotateTrackPP(kRCSDown1, 1230)
+		{img: [4][3]uint32{{94}, {98}, {102}, {90}}, nonMergeable: true}, // rotateTrackPP(kRCSDown2, 1230)
+		{img: [4][3]uint32{{92}, {96}, {100}, {88}}, nonMergeable: true}, // rotateTrackPP(kRCSDown0, 1230)
 	},
 
 	// 19: RightCurveSmallSlopeUp (4 pieces, non-mergeable)
@@ -469,10 +469,10 @@ var kTrackParts = [26][]trackPiece{
 	// source uses kRCSUp0-3 NE=72-75/SE=76-79/SW=80-83/NW=84-87
 	// OpenLoco reference: src/OpenLoco/src/Paint/PaintTrackData.h kLeftCurveSmallSlopeDownTPP
 	{
-		{img: [4][3]uint32{{79}, {83}, {87}, {75}}, nonMergeable: true},  // rotateTrackPP(kRCSUp3, 1230)
-		{img: [4][3]uint32{{77}, {81}, {85}, {73}}, nonMergeable: true},  // rotateTrackPP(kRCSUp1, 1230)
-		{img: [4][3]uint32{{78}, {82}, {86}, {74}}, nonMergeable: true},  // rotateTrackPP(kRCSUp2, 1230)
-		{img: [4][3]uint32{{76}, {80}, {84}, {72}}, nonMergeable: true},  // rotateTrackPP(kRCSUp0, 1230)
+		{img: [4][3]uint32{{79}, {83}, {87}, {75}}, nonMergeable: true}, // rotateTrackPP(kRCSUp3, 1230)
+		{img: [4][3]uint32{{77}, {81}, {85}, {73}}, nonMergeable: true}, // rotateTrackPP(kRCSUp1, 1230)
+		{img: [4][3]uint32{{78}, {82}, {86}, {74}}, nonMergeable: true}, // rotateTrackPP(kRCSUp2, 1230)
+		{img: [4][3]uint32{{76}, {80}, {84}, {72}}, nonMergeable: true}, // rotateTrackPP(kRCSUp0, 1230)
 	},
 
 	// 21: RightCurveSmallSlopeDown (4 pieces, non-mergeable)

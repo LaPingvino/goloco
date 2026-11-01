@@ -42,8 +42,8 @@ const (
 type SimStation struct {
 	id           int
 	tileX, tileY int
-	baseZ        uint8
-	buildings    int    // nearby building count (fixed supply, computed once)
+	BaseZ        uint8
+	Buildings    int    // nearby building count (fixed supply, computed once)
 	waiting      uint32 // passengers waiting to board
 	accum        int    // tick accumulator toward the next supply increment
 }
@@ -69,9 +69,9 @@ func (w *World) PlaceStationOnTile(x, y int, stationObjID uint8) bool {
 		return false
 	}
 	var te *scenario.TrackElement
-	for i := range t.tracks {
-		if t.tracks[i].SequenceIndex == 0 {
-			te = &t.tracks[i]
+	for i := range t.Tracks {
+		if t.Tracks[i].SequenceIndex == 0 {
+			te = &t.Tracks[i]
 			break
 		}
 	}
@@ -79,7 +79,7 @@ func (w *World) PlaceStationOnTile(x, y int, stationObjID uint8) bool {
 		return false
 	}
 	te.HasStation = true
-	t.stations = append(t.stations, scenario.StationElement{
+	t.Stations = append(t.Stations, scenario.StationElement{
 		StationType:   0, // train station
 		ObjectID:      stationObjID,
 		Rotation:      te.Rotation & 3,
@@ -91,7 +91,7 @@ func (w *World) PlaceStationOnTile(x, y int, stationObjID uint8) bool {
 	})
 	s := w.registerStation(x, y, te.BaseZ)
 	log.Printf("[Station] placed at (%d,%d) z%d objSlot=%d nearbyBuildings=%d",
-		x, y, te.BaseZ, stationObjID, s.buildings)
+		x, y, te.BaseZ, stationObjID, s.Buildings)
 	return true
 }
 
@@ -99,7 +99,7 @@ func (w *World) PlaceStationOnTile(x, y int, stationObjID uint8) bool {
 // its passenger supply from the surrounding town buildings.
 func (w *World) registerStation(x, y int, baseZ uint8) *SimStation {
 	for _, s := range w.simStations {
-		if s.tileX == x && s.tileY == y && s.baseZ == baseZ {
+		if s.tileX == x && s.tileY == y && s.BaseZ == baseZ {
 			return s
 		}
 	}
@@ -107,8 +107,8 @@ func (w *World) registerStation(x, y int, baseZ uint8) *SimStation {
 		id:        len(w.simStations),
 		tileX:     x,
 		tileY:     y,
-		baseZ:     baseZ,
-		buildings: w.countNearbyBuildings(x, y, stationSupplyRadius),
+		BaseZ:     baseZ,
+		Buildings: w.countNearbyBuildings(x, y, stationSupplyRadius),
 	}
 	w.simStations = append(w.simStations, s)
 	return s
@@ -121,7 +121,7 @@ func (w *World) countNearbyBuildings(cx, cy, radius int) int {
 	for dy := -radius; dy <= radius; dy++ {
 		for dx := -radius; dx <= radius; dx++ {
 			if t := w.getTile(cx+dx, cy+dy); t != nil {
-				n += len(t.buildings)
+				n += len(t.Buildings)
 			}
 		}
 	}
@@ -131,7 +131,7 @@ func (w *World) countNearbyBuildings(cx, cy, radius int) int {
 // stationAt returns the SimStation registered at (x,y,baseZ), or nil.
 func (w *World) stationAt(x, y int, baseZ uint8) *SimStation {
 	for _, s := range w.simStations {
-		if s.tileX == x && s.tileY == y && s.baseZ == baseZ {
+		if s.tileX == x && s.tileY == y && s.BaseZ == baseZ {
 			return s
 		}
 	}
@@ -142,7 +142,7 @@ func (w *World) stationAt(x, y int, baseZ uint8) *SimStation {
 // its nearby-building supply: roughly buildings/4 per 100 ticks, capped.
 func (w *World) tickStations() {
 	for _, s := range w.simStations {
-		if s.buildings <= 0 {
+		if s.Buildings <= 0 {
 			continue
 		}
 		s.accum++
@@ -150,7 +150,7 @@ func (w *World) tickStations() {
 			continue
 		}
 		s.accum = 0
-		add := uint32(s.buildings)
+		add := uint32(s.Buildings)
 		if add == 0 {
 			add = 1 // trickle when a few buildings are in range
 		}
@@ -174,7 +174,7 @@ func (w *World) serviceStation(sv *SimVehicle, st *SimStation) {
 		}
 		// Spawn a rising "+£N" income float at the delivering vehicle's tile.
 		// The fare mirrors game.cargoFare(CargoSlotPass); see passengerFare.
-		w.SpawnMoneyFloat(sv.tileX, sv.tileY, sv.baseZ, int64(delivered)*passengerFare)
+		w.SpawnMoneyFloat(sv.tileX, sv.tileY, sv.BaseZ, int64(delivered)*passengerFare)
 	}
 	space := vehiclePassengerCapacity - sv.boarded
 	take := st.waiting
@@ -213,7 +213,7 @@ func (w *World) FindTownsideRun(n int) (int, int, bool) {
 		c := 0
 		for dy := -4; dy <= 4; dy++ {
 			for dx := -4; dx <= 4; dx++ {
-				if t := w.getTile(x+dx, y+dy); t != nil && len(t.buildings) > 0 {
+				if t := w.getTile(x+dx, y+dy); t != nil && len(t.Buildings) > 0 {
 					c++
 				}
 			}
@@ -226,14 +226,14 @@ func (w *World) FindTownsideRun(n int) (int, int, bool) {
 			var z uint8
 			for i := 0; i < n; i++ {
 				t := w.getTile(x-i, y)
-				if t == nil || t.slope&0x1F != 0 || t.waterLevel > 0 ||
-					len(t.buildings) > 0 || len(t.tracks) > 0 || len(t.roads) > 0 || t.isIndustrial {
+				if t == nil || t.Slope&0x1F != 0 || t.WaterLevel > 0 ||
+					len(t.Buildings) > 0 || len(t.Tracks) > 0 || len(t.Roads) > 0 || t.IsIndustrial {
 					ok = false
 					break
 				}
 				if i == 0 {
-					z = t.baseZ
-				} else if t.baseZ != z {
+					z = t.BaseZ
+				} else if t.BaseZ != z {
 					ok = false
 					break
 				}

@@ -39,8 +39,9 @@ type roadPiece1 struct {
 // kRoadMergeExits[roadID][rotation] = exits bitmask contributed by a road element.
 // Only roadIDs 0–2 participate in the merge system.
 // Source: PaintRoadCommonData.h  kStraight0.bridgeEdges=0b0101 (rotl4bit for each rotation)
-//         kRightCurveVerySmall0.bridgeEdges=0b0110 (rotl4bit)
-//         kLeftCurveVerySmall0 = rotateRoadPCP(kRightCurveVerySmall0, {1,2,3,0})
+//
+//	kRightCurveVerySmall0.bridgeEdges=0b0110 (rotl4bit)
+//	kLeftCurveVerySmall0 = rotateRoadPCP(kRightCurveVerySmall0, {1,2,3,0})
 var kRoadMergeExits = [3][4]uint8{
 	// 0: Straight — 0b0101 rotl4: {0b0101, 0b1010, 0b0101, 0b1010}
 	{0b0101, 0b1010, 0b0101, 0b1010},
@@ -59,11 +60,13 @@ var kExitsToMergeId = [16]uint8{
 
 // kMergeBaseOffset is the image offset within a road object that the merge system
 // bases its sprite selection on.  mergeId is added to this offset.
-//   mergeId 0  → kStraight0NE (34) — straight NE-SW
-//   mergeId 1  → kStraight0SE (35) — straight SE-NW
-//   mergeId 2–5 → very-small-curve variants (36–39)
-//   mergeId 6–9 → T-junctions (40–43)
-//   mergeId 10  → crossroads (44)
+//
+//	mergeId 0  → kStraight0NE (34) — straight NE-SW
+//	mergeId 1  → kStraight0SE (35) — straight SE-NW
+//	mergeId 2–5 → very-small-curve variants (36–39)
+//	mergeId 6–9 → T-junctions (40–43)
+//	mergeId 10  → crossroads (44)
+//
 // OpenLoco reference: PaintRoad.cpp Style02::kMergeBaseImageIndex[0] = kStraight0NE = 34
 const kMergeBaseOffset = uint32(34)
 
@@ -332,10 +335,10 @@ var kRoadPartsStyle2 = [10][]roadPiece0{
 	// RCS0: NE=96,SE=100,SW=104,NW=108  RCS1: NE=97,SE=101,SW=105,NW=109
 	// RCS2: NE=98,SE=102,SW=106,NW=110  RCS3: NE=99,SE=103,SW=107,NW=111
 	{
-		{img: [4]uint32{96, 100, 104, 108}},  // seqIdx 0 = RCS0
-		{img: [4]uint32{97, 101, 105, 109}},  // seqIdx 1 = RCS1
-		{img: [4]uint32{98, 102, 106, 110}},  // seqIdx 2 = RCS2
-		{img: [4]uint32{99, 103, 107, 111}},  // seqIdx 3 = RCS3
+		{img: [4]uint32{96, 100, 104, 108}}, // seqIdx 0 = RCS0
+		{img: [4]uint32{97, 101, 105, 109}}, // seqIdx 1 = RCS1
+		{img: [4]uint32{98, 102, 106, 110}}, // seqIdx 2 = RCS2
+		{img: [4]uint32{99, 103, 107, 111}}, // seqIdx 3 = RCS3
 	},
 
 	// 5: StraightSlopeUp (2 pieces)

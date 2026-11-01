@@ -39,7 +39,7 @@ type SimVehicle struct {
 	tileX, tileY int
 	trackID      int
 	rotation     uint8 // element rotation 0-3
-	baseZ        uint8 // origin element BaseZ (SmallZ)
+	BaseZ        uint8 // origin element BaseZ (SmallZ)
 
 	reversed bool    // false: travelling begin→end; true: end→begin
 	dist     float64 // distance from the piece begin, in [0, length]
@@ -63,7 +63,7 @@ func (sv *SimVehicle) pieceGeom() (bx, by, bz, ex, ey, ez float64, c trackCoord)
 	c = kTrackCoordinates[sv.trackID<<3|int(sv.rotation&3)]
 	bx = float64(sv.tileX*32 + tileCenterOffset)
 	by = float64(sv.tileY*32 + tileCenterOffset)
-	bz = float64(sv.baseZ) * 4
+	bz = float64(sv.BaseZ) * 4
 	ex = bx + float64(c.DX)
 	ey = by + float64(c.DY)
 	ez = bz + float64(c.DZ)
@@ -98,7 +98,7 @@ func (w *World) findTrackOrigin(x, y int, baseZ, beginRot uint8) (scenario.Track
 	if t == nil {
 		return scenario.TrackElement{}, false
 	}
-	for _, te := range t.tracks {
+	for _, te := range t.Tracks {
 		if te.SequenceIndex != 0 || te.BaseZ != baseZ {
 			continue
 		}
@@ -121,7 +121,7 @@ func (w *World) findTrackOrigin(x, y int, baseZ, beginRot uint8) (scenario.Track
 func (w *World) findTrackEnding(x, y int, baseZ, endRot uint8) (tileX, tileY int, te scenario.TrackElement, ok bool) {
 	for ty := 0; ty < w.height; ty++ {
 		for tx := 0; tx < w.width; tx++ {
-			for _, cand := range w.tiles[ty][tx].tracks {
+			for _, cand := range w.tiles[ty][tx].Tracks {
 				if cand.SequenceIndex != 0 {
 					continue
 				}
@@ -157,8 +157,8 @@ func (w *World) SpawnTestVehicle(objID int) bool {
 	)
 	for ty := 0; ty < w.height; ty++ {
 		for tx := 0; tx < w.width; tx++ {
-			for i := range w.tiles[ty][tx].tracks {
-				te := &w.tiles[ty][tx].tracks[i]
+			for i := range w.tiles[ty][tx].Tracks {
+				te := &w.tiles[ty][tx].Tracks[i]
 				if te.SequenceIndex != 0 || int(te.TrackID)<<3 >= len(kTrackCoordinates) {
 					continue
 				}
@@ -189,7 +189,7 @@ func (w *World) SpawnTestVehicle(objID int) bool {
 		tileY:          bestY,
 		trackID:        int(best.TrackID),
 		rotation:       best.Rotation & 3,
-		baseZ:          best.BaseZ,
+		BaseZ:          best.BaseZ,
 		speed:          1.0,
 		boardedStation: -1,
 		atStation:      -1,
@@ -236,7 +236,7 @@ func (w *World) advanceVehicle(sv *SimVehicle) {
 		sv.dwell--
 		return
 	}
-	if st := w.stationAt(sv.tileX, sv.tileY, sv.baseZ); st != nil {
+	if st := w.stationAt(sv.tileX, sv.tileY, sv.BaseZ); st != nil {
 		if st.id != sv.atStation {
 			sv.atStation = st.id
 			sv.dwell = stationDwellTicks
@@ -262,12 +262,12 @@ func (w *World) advanceVehicle(sv *SimVehicle) {
 			// Reached the end: look for the next piece beginning here.
 			endX := sv.tileX + int(c.DX)/32
 			endY := sv.tileY + int(c.DY)/32
-			endZ := uint8(int(sv.baseZ) + int(c.DZ)/4)
+			endZ := uint8(int(sv.BaseZ) + int(c.DZ)/4)
 			if te, ok := w.findTrackOrigin(endX, endY, endZ, c.RotEnd); ok {
 				sv.tileX, sv.tileY = endX, endY
 				sv.trackID = int(te.TrackID)
 				sv.rotation = te.Rotation & 3
-				sv.baseZ = te.BaseZ
+				sv.BaseZ = te.BaseZ
 				sv.reversed = false
 				sv.dist = carry
 				continue
@@ -289,13 +289,13 @@ func (w *World) advanceVehicle(sv *SimVehicle) {
 		carry := -sv.dist
 		// Reached the begin: look for the predecessor feeding into this piece.
 		beginRot := c.RotBegin
-		if px, py, te, ok := w.findTrackEnding(sv.tileX, sv.tileY, sv.baseZ, beginRot); ok {
+		if px, py, te, ok := w.findTrackEnding(sv.tileX, sv.tileY, sv.BaseZ, beginRot); ok {
 			pc := kTrackCoordinates[int(te.TrackID)<<3|int(te.Rotation&3)]
 			plen := pieceLength(pc)
 			sv.tileX, sv.tileY = px, py
 			sv.trackID = int(te.TrackID)
 			sv.rotation = te.Rotation & 3
-			sv.baseZ = te.BaseZ
+			sv.BaseZ = te.BaseZ
 			sv.reversed = true // enter at its end, travel toward its begin
 			sv.dist = plen - carry
 			if sv.dist < 0 {
