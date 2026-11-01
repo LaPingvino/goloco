@@ -1168,6 +1168,21 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		ui.DrawWindowFrame(screen, 200, 60, 360, 220, c, false)
 		ui.DrawWindowCaption(screen, 201, 61, 358, "Select Scenario")
 	}
+	if os.Getenv("GOLOCO_DIAG_CONSTRUCTION") != "" && g.r != nil && g.r.ObjMgr != nil {
+		// Diagnostic: the ported construction frame for the first track object.
+		f := &ui.ConstructionFrame{X: 10, Y: 40, Title: "Railway", FrameNo: g.titleFrame}
+		if sk := g.r.ObjMgr.InterfaceSkin; sk != nil {
+			f.SkinColour = sk.WindowConstructionColour
+		}
+		if len(g.w.CompanyColours) > 0 {
+			f.CompanyColour = g.w.CompanyColours[0]
+		}
+		if len(g.r.ObjMgr.TrackObjects) > 0 && g.r.ObjMgr.TrackObjects[0] != nil {
+			f.TrackImage = int(g.r.ObjMgr.TrackObjects[0].Image)
+			f.Title = g.r.ObjMgr.TrackObjects[0].Name
+		}
+		f.Draw(screen)
+	}
 	if os.Getenv("GOLOCO_DIAG_PROGRESS") != "" {
 		// Diagnostic: the ProgressBar window at 3/4 in both styles, for headless shots.
 		ui.DrawProgressBar(screen, "Loading...", 190, 0)
