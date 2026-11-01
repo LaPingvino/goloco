@@ -1,0 +1,111 @@
+<title>GoLoco Test Build</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one loading card centred on a dark rail-yard ground; the game canvas takes the window after Start. Single dark look by choice. */
+:root {
+  --ground: #16191c; --card: #1f2428; --line: #33393f; --text: #e4e1d8; --muted: #9a9890;
+  --signal: #e8b33a; --ok: #6fbf73; --warn: #e07a5f;
+  --display: "Chakra Petch", "Trebuchet MS", sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--ground); color: var(--text); font: 15px/1.5 var(--body); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+#loader { min-height: 100%; display: grid; place-items: center; padding-block: 24px; }
+.card { width: min(34rem, 100%); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 24px; display: grid; gap: 16px; }
+h1 { font: 600 1.6rem/1.2 var(--display); letter-spacing: .02em; margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); margin: 0; max-width: 60ch; }
+.bar { height: 8px; background: var(--ground); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.bar > div { height: 100%; width: 0; background: repeating-linear-gradient(90deg, var(--signal) 0 14px, #b88a24 14px 18px); transition: width .2s; }
+#status { font: 13px/1.4 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.4em; }
+#status.err { color: var(--warn); }
+button { font: 600 15px var(--display); letter-spacing: .04em; text-transform: uppercase; background: var(--signal); color: #1a1407; border: 0; border-radius: 4px; padding: 10px 18px; cursor: pointer; justify-self: start; }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.note { font-size: 13px; color: var(--muted); margin: 0; border-top: 1px solid var(--line); padding-top: 12px; }
+#logbox { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 20; width: min(36rem, calc(100% - 24px)); background: var(--card); border: 1px solid var(--line); border-radius: 6px; font: 12px/1.4 var(--mono); }
+#logbox summary { cursor: pointer; padding: 6px 10px; color: var(--muted); }
+#logbox summary b { color: var(--warn); font-weight: 600; }
+#log { max-height: 40vh; overflow: auto; margin: 0; padding: 6px 10px 10px; white-space: pre-wrap; word-break: break-word; }
+#log .miss { color: var(--warn); }
+@media (prefers-reduced-motion: reduce) { .bar > div { transition: none; } }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600&family=IBM+Plex+Mono&family=IBM+Plex+Sans:wght@400;600&display=swap">
+
+<main id="loader">
+  <div class="card">
+    <h1>GoLoco test build</h1>
+    <p class="lede">The current goloco build, compiled to WebAssembly, running on the original Locomotion data from an in-memory filesystem. Private test page.</p>
+    <div class="bar" aria-hidden="true"><div id="fill"></div></div>
+    <div id="status" role="status">Loading the data pack…</div>
+    <button id="start" type="button" disabled>Start</button>
+    <p class="note">Music is left out of the pack. Saves and screenshots live in memory and are gone on reload. Goloco's log and any files it could not find are in the drawer below.</p>
+  </div>
+</main>
+<details id="logbox"><summary>Log <span id="misscount"></span></summary><pre id="log"></pre></details>
+
+<script src="fsshim.js"></script>
+<script src="wasm_exec.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const status = (t, err) => { $("status").textContent = t; $("status").classList.toggle("err", !!err); };
+  const fill = (f) => { $("fill").style.width = (100 * f).toFixed(1) + "%"; };
+  const logLine = (t, cls) => {
+    const el = document.createElement("div");
+    if (cls) el.className = cls;
+    el.textContent = t;
+    const log = $("log"); log.appendChild(el);
+    while (log.childNodes.length > 2000) log.removeChild(log.firstChild);
+    log.scrollTop = log.scrollHeight;
+  };
+  GolocoFS.onLog = (lines) => lines.split("\n").forEach((l) => logLine(l));
+  let shown = 0;
+  setInterval(() => {
+    const m = [...GolocoFS.misses];
+    for (; shown < m.length; shown++) logLine("missing: " + m[shown], "miss");
+    $("misscount").innerHTML = m.length ? "· <b>" + m.length + " missing</b>" : "";
+  }, 1000);
+
+  const gunzip = async (resp) => {
+    if (!resp.ok) throw new Error(resp.url.split("/").pop() + ": HTTP " + resp.status);
+    const s = resp.body.pipeThrough(new DecompressionStream("gzip"));
+    return new Uint8Array(await new Response(s).arrayBuffer());
+  };
+
+  let wasm, man;
+  (async () => {
+    man = await (await fetch("manifest.json")).json();
+    const steps = man.chunks.length + 1;
+    for (let c = 0; c < man.chunks.length; c++) {
+      status("Unpacking data " + (c + 1) + " of " + man.chunks.length + "…");
+      const buf = await gunzip(await fetch(man.chunks[c]));
+      for (const f of man.files) if (f.c === c) GolocoFS.addFile(f.p, buf.subarray(f.o, f.o + f.n));
+      fill((c + 1) / steps);
+    }
+    status("Loading the game…");
+    wasm = await gunzip(await fetch("goloco.wasm.gz"));
+    fill(1);
+    status(man.files.length + " files ready · " + (wasm.length / 1e6).toFixed(1) + " MB of game code");
+    $("start").disabled = false;
+  })().catch((e) => { status("Could not load: " + e.message, true); logLine(String(e.stack || e), "miss"); });
+
+  $("start").addEventListener("click", async () => {
+    $("start").disabled = true;
+    status("Starting…");
+    try {
+      const go = new Go();
+      go.argv = ["goloco"].concat(man.args || []);
+      go.env = { HOME: "/w" };
+      const { instance } = await WebAssembly.instantiate(wasm, go.importObject);
+      $("loader").hidden = true;
+      go.run(instance).then(() => { $("loader").hidden = false; status("The game exited. Reload to start again."); });
+    } catch (e) {
+      $("loader").hidden = false;
+      status("Could not start: " + e.message, true);
+      logLine(String(e.stack || e), "miss");
+    }
+  });
+})();
+</script>
