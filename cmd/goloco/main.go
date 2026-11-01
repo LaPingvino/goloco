@@ -473,6 +473,9 @@ func (g *Game) Update() error {
 		g.toolbar.UpdateHover(g.mouseX, g.mouseY)
 	}
 
+	if g.townList != nil { // the list's scrollbar thumb follows the mouse while held
+		g.townList.Drag(g.mouseY, ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft))
+	}
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 	}
@@ -1120,6 +1123,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			g.openTownsWindow()
 		}
 		g.townList.Hover = 2
+		if d := os.Getenv("GOLOCO_DIAG_TOWNS"); d == "scrolled" { // a click on the track below the thumb
+			l := g.townList.List
+			g.townList.HandleClick(g.townList.X+l[0]+l[2]-6, g.townList.Y+l[1]+l[3]-20)
+		}
 	}
 	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend" || d == "signal" || d == "overhead" || d == "station" || d == "sigdrop" || d == "bridgedrop") && !g.diagConsDone {
 		g.diagConsDone = true
