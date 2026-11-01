@@ -274,3 +274,33 @@ var TrackParts = [26][]TrackPiece{
 			BridgeEdges: [4]uint8{14, 13, 11, 7}, BridgeQuarters: [4]uint8{15, 15, 15, 15}, BridgeType: [4]uint8{12, 9, 10, 11}, TunnelHeights: [4][4]int16{{-1, 0, -1, -1}, {-1, -1, 0, -1}, {-1, -1, -1, 0}, {0, -1, -1, -1}}, Segments: [4]uint16{442, 243, 373, 476}, IsMergeable: false},
 	},
 }
+
+// TrackSignalHeightOffset[trackId] = {left, right} (TrackData getTrackMiscData).
+var TrackSignalHeightOffset = [26][2]uint8{
+	{0, 0},
+	{0, 0},
+	{0, 0},
+	{0, 0},
+	{0, 0},
+	{0, 0},
+	{0, 0},
+	{0, 0},
+	{0, 0},
+	{0, 0},
+	{0, 0},
+	{0, 0},
+	{0, 0},
+	{0, 0},
+	{1, 15},
+	{15, 1},
+	{2, 14},
+	{14, 2},
+	{1, 15},
+	{1, 15},
+	{15, 1},
+	{15, 1},
+	{2, 14},
+	{2, 14},
+	{14, 2},
+	{14, 2},
+}

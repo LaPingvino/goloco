@@ -162,6 +162,21 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 				s.FinalisePaintRoad(sprite)
 				s.FinaliseTrackRoadOrdering()
 			}
+			// Signals: upstream paints a signal against the track element just before it
+			// in the tile; the tile keeps signals in their own slice, so the track with
+			// the same baseZ stands in for it (APPROXIMATION until element order is kept).
+			for _, sg := range t.Signals {
+				for _, tk := range t.Tracks {
+					if tk.BaseZ != sg.BaseZ {
+						continue
+					}
+					s.PaintSignal(sg.Rotation, sg.BaseZ, int(tk.TrackID), int(tk.SequenceIndex), tk.IsLast,
+						paint.SignalSide{Has: sg.HasLeftSignal, Object: int(sg.SignalObjectID), Frame: sg.LeftFrame},
+						paint.SignalSide{Has: sg.HasRightSignal, Object: int(sg.RightSignalObjectID), Frame: sg.RightFrame},
+						r.signalObj, sprite)
+					break
+				}
+			}
 			for _, b := range t.Buildings {
 				bo := om.GetBuildingObjectByIndex(int(b.ObjectID))
 				if bo == nil || int(b.Variation) >= len(bo.VariationParts) {
@@ -222,4 +237,12 @@ func (r *Renderer) ToRGBA(rt *gfx8.RenderTarget) *image.RGBA {
 		img.Pix[i*4], img.Pix[i*4+1], img.Pix[i*4+2], img.Pix[i*4+3] = c.R, c.G, c.B, 255
 	}
 	return img
+}
+
+func (r *Renderer) signalObj(i int) (paint.SignalObj, bool) {
+	o := r.Objects.GetTrainSignalObjectByIndex(i)
+	if o == nil {
+		return paint.SignalObj{}, false
+	}
+	return paint.SignalObj{Image: int(o.ImageOffset), IsLeft: o.IsLeft}, true
 }

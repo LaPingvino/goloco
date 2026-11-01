@@ -247,6 +247,7 @@ type TrackElement struct {
 	Mods          uint8 // byte 7 bits [7:4]: modifier bitmask
 	BaseZ         uint8 // byte 2
 	ClearZ        uint8 // byte 3
+	IsLast        bool  // byte 1 (element flags) bit 6: flag_6 — last tile of the piece
 }
 
 // RoadElement represents a road section on a tile.
@@ -287,14 +288,15 @@ type StationElement struct {
 //
 // OpenLoco reference: src/OpenLoco/src/Map/SignalElement.h
 type SignalElement struct {
-	SignalObjectID uint8 // byte 4 bits [3:0]
-	Rotation       uint8 // byte 0 bits [1:0]
-	LeftFrame      uint8 // byte 5 bits [3:0]: animation frame for left signal
-	RightFrame     uint8 // byte 7 bits [3:0]: animation frame for right signal
-	HasLeftSignal  bool  // byte 4 bit 7
-	HasRightSignal bool  // byte 6 bit 7
-	BaseZ          uint8 // byte 2
-	ClearZ         uint8 // byte 3
+	SignalObjectID      uint8 // byte 4 bits [3:0]: left side's signal object
+	RightSignalObjectID uint8 // byte 6 bits [3:0]: right side's signal object (SignalElement.h Side)
+	Rotation            uint8 // byte 0 bits [1:0]
+	LeftFrame           uint8 // byte 5 bits [3:0]: animation frame for left signal
+	RightFrame          uint8 // byte 7 bits [3:0]: animation frame for right signal
+	HasLeftSignal       bool  // byte 4 bit 7
+	HasRightSignal      bool  // byte 6 bit 7
+	BaseZ               uint8 // byte 2
+	ClearZ              uint8 // byte 3
 }
 
 // IndustryElement represents an industry building tile.
