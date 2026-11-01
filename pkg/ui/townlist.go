@@ -171,13 +171,9 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 		for i := range w.Tabs {
-			img := imgTab
-			if i == w.CurrentTab {
-				img++
-			}
-			if sp, err := gfx8.Decode(&g1.Elements[img]); err == nil {
-				gfx8.DrawSpriteNoise(rt, sp, 3+31*i, 15, gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
-			}
+			// PARTIAL: the tabs' skin icons (drawTabs) are not drawn yet; the
+			// inactive-tab overlay and line are (Widget::drawTab with kContentUnk).
+			drawTab(rt, 3+31*i, 15, i == w.CurrentTab, sec, tabNoIcon, nil)
 		}
 		for _, c := range w.Columns {
 			hw := min(c.HeaderW, w.W-4-c.HeaderX) // headers are clipped to the window (prepareDraw)

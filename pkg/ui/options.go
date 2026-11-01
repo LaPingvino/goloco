@@ -194,19 +194,11 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			gfx8.DrawSpriteNoise(rt, sp, ww-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 		for i, img := range optTabImages {
-			x := 3 + 31*i
-			bg := imgTab
-			if i == w.Tab {
-				bg++
+			icon := img
+			if img == imgTab { // Rendering/Company: skin icons drawn by drawTabs (PARTIAL: not yet)
+				icon = tabNoIcon
 			}
-			for _, id := range []int{bg, img} {
-				if id == imgTab && img == imgTab && id != bg {
-					continue
-				}
-				if sp, err := gfx8.Decode(&g1.Elements[id]); err == nil {
-					gfx8.DrawSpriteNoise(rt, sp, x, 15, gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
-				}
-			}
+			drawTab(rt, 3+31*i, 15, i == w.Tab, sec, icon, nil)
 		}
 		if w.Tab == OptTabControls {
 			for i := range w.Controls { // Checkbox boxes at (10, 49 + 15i)
