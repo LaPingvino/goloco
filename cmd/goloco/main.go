@@ -43,6 +43,7 @@ const (
 )
 
 type Game struct {
+	noEdgeScrolling     bool // Options > Controls: edge scrolling off (Config::edgeScrolling)
 	w                   *world.World
 	titleWorld          *world.World // preserved title-screen world; restored on Quit to Menu
 	r                   *render.Renderer
@@ -556,7 +557,7 @@ func (g *Game) Update() error {
 	// Edge scrolling: pan when cursor is within edgeScrollZone px of screen edge.
 	// OpenLoco reference: src/OpenLoco/src/Input/Keyboard.cpp edgeScrolling()
 	// Speed is scaled by zoom so scrolling feels consistent at all zoom levels.
-	if ebiten.IsFocused() && !g.rightDragging {
+	if ebiten.IsFocused() && !g.rightDragging && !g.noEdgeScrolling {
 		edgeSpeed := edgeScrollSpeed * float64(int(1)<<g.w.GetZoom())
 		if g.mouseX <= edgeScrollZone {
 			g.w.PanCamera(-edgeSpeed, 0)
@@ -1099,6 +1100,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	if os.Getenv("GOLOCO_DIAG_OPTIONS") != "" && g.options == nil && !g.diagOptionsDone {
 		g.diagOptionsDone = true
 		g.openOptionsWindow()
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "controls" && g.options != nil {
+			g.options.Tab = ui.OptTabControls
+			g.options.Controls = [3]bool{true, false, true}
+		}
 	}
 	if os.Getenv("GOLOCO_DIAG_BROWSE") != "" && g.browse == nil && !g.diagBrowseDone {
 		g.diagBrowseDone = true
@@ -1653,6 +1658,14 @@ func (g *Game) openOptionsWindow() {
 		w.MusicVolume = g.audioMgr.MusicVolume()
 	}
 	w.OnClose = func() { g.options = nil }
+	// Controls tab: Config::edgeScrolling (default on). zoomToCursor and
+	// invertRightMouseViewPan are kept in the window only: goloco has neither yet.
+	w.Controls[0] = !g.noEdgeScrolling
+	w.OnControl = func(i int, v bool) {
+		if i == 0 {
+			g.noEdgeScrolling = !v
+		}
+	}
 	w.OnTitleMusic = func(on bool) {
 		g.musicEnabled = on
 		if !on && g.audioMgr != nil {
