@@ -27,4 +27,66 @@ type Tile struct {
 	Stations     []scenario.StationElement
 	Signals      []scenario.SignalElement
 	Industries   []scenario.IndustryElement
+	Order        []scenario.ElemRef // elements in stored (height) order; kept in step by insertRef/removeRef
 }
+
+// baseZOf is the height of the element ref points at (the surface: BaseZ).
+func (t *Tile) baseZOf(r scenario.ElemRef) uint8 {
+	switch r.Kind {
+	case scenario.KindTrack:
+		return t.Tracks[r.Index].BaseZ
+	case scenario.KindStation:
+		return t.Stations[r.Index].BaseZ
+	case scenario.KindSignal:
+		return t.Signals[r.Index].BaseZ
+	case scenario.KindBuilding:
+		return t.Buildings[r.Index].BaseZ
+	case scenario.KindTree:
+		return t.Trees[r.Index].BaseZ
+	case scenario.KindWall:
+		return t.Walls[r.Index].BaseZ
+	case scenario.KindRoad:
+		return t.Roads[r.Index].BaseZ
+	case scenario.KindIndustry:
+		return t.Industries[r.Index].BaseZ
+	}
+	return t.BaseZ
+}
+
+// insertRef records a newly appended element (index = its slice position) where
+// TileManager::insertElement puts it: after every element whose baseZ is <= its own.
+func (t *Tile) insertRef(kind uint8, index int, baseZ uint8) {
+	at := len(t.Order)
+	for i, r := range t.Order {
+		if baseZ < t.baseZOf(r) {
+			at = i
+			break
+		}
+	}
+	t.Order = append(t.Order, scenario.ElemRef{})
+	copy(t.Order[at+1:], t.Order[at:])
+	t.Order[at] = scenario.ElemRef{Kind: kind, Index: uint16(index)}
+}
+
+// removeRef drops the ref of an element removed from its slice at index and
+// renumbers the later elements of that kind.
+func (t *Tile) removeRef(kind uint8, index int) {
+	out := t.Order[:0]
+	for _, r := range t.Order {
+		if r.Kind == kind {
+			if int(r.Index) == index {
+				continue
+			}
+			if int(r.Index) > index {
+				r.Index--
+			}
+		}
+		out = append(out, r)
+	}
+	t.Order = out
+}
+
+// InsertRef and RemoveRef are insertRef/removeRef for packages that edit tiles
+// (pkg/world construction and undo).
+func (t *Tile) InsertRef(kind uint8, index int, baseZ uint8) { t.insertRef(kind, index, baseZ) }
+func (t *Tile) RemoveRef(kind uint8, index int)              { t.removeRef(kind, index) }

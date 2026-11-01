@@ -1031,6 +1031,7 @@ func (w *World) RemoveLastTrack(x, y int) bool {
 		return false
 	}
 	t.Tracks = t.Tracks[:len(t.Tracks)-1]
+	t.RemoveRef(scenario.KindTrack, len(t.Tracks))
 	return true
 }
 
@@ -1041,6 +1042,7 @@ func (w *World) RemoveLastRoad(x, y int) bool {
 		return false
 	}
 	t.Roads = t.Roads[:len(t.Roads)-1]
+	t.RemoveRef(scenario.KindRoad, len(t.Roads))
 	return true
 }
 

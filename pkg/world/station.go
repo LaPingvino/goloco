@@ -89,6 +89,8 @@ func (w *World) PlaceStationOnTile(x, y int, stationObjID uint8) bool {
 		BaseZ:         te.BaseZ,
 		ClearZ:        te.BaseZ + 8,
 	})
+	t.InsertRef(scenario.KindStation, len(t.Stations)-1, te.BaseZ)
+
 	s := w.registerStation(x, y, te.BaseZ)
 	log.Printf("[Station] placed at (%d,%d) z%d objSlot=%d nearbyBuildings=%d",
 		x, y, te.BaseZ, stationObjID, s.Buildings)

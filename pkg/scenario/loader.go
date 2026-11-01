@@ -411,6 +411,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					Stations:     existing.Stations,
 					Signals:      existing.Signals,
 					Industries:   existing.Industries,
+					Order:        append(existing.Order, ElemRef{Kind: elementTypeSurface}),
 				}
 
 			case elementTypeTree:
@@ -427,6 +428,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					ClearZ:       elem[3],
 					Unk7l:        elem[7] & 0x07,
 				}
+				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeTree, Index: uint16(len(sc.Tiles[y][x].Trees))})
 				sc.Tiles[y][x].Trees = append(sc.Tiles[y][x].Trees, te)
 				treeCount++
 
@@ -441,6 +443,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					BaseZ:         baseZ,
 					ClearZ:        elem[3],
 				}
+				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeBuilding, Index: uint16(len(sc.Tiles[y][x].Buildings))})
 				sc.Tiles[y][x].Buildings = append(sc.Tiles[y][x].Buildings, be)
 				buildingCount++
 
@@ -454,6 +457,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					BaseZ:         baseZ,
 					ClearZ:        elem[3],
 				}
+				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeWall, Index: uint16(len(sc.Tiles[y][x].Walls))})
 				sc.Tiles[y][x].Walls = append(sc.Tiles[y][x].Walls, we)
 				wallCount++
 
@@ -475,6 +479,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					BaseZ:         baseZ,
 					ClearZ:        elem[3],
 				}
+				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeTrack, Index: uint16(len(sc.Tiles[y][x].Tracks))})
 				sc.Tiles[y][x].Tracks = append(sc.Tiles[y][x].Tracks, te)
 				trackCount++
 
@@ -497,6 +502,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					BaseZ:                 baseZ,
 					ClearZ:                elem[3],
 				}
+				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeRoad, Index: uint16(len(sc.Tiles[y][x].Roads))})
 				sc.Tiles[y][x].Roads = append(sc.Tiles[y][x].Roads, re)
 				roadCount++
 
@@ -514,6 +520,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					BaseZ:         baseZ,
 					ClearZ:        elem[3],
 				}
+				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeStation, Index: uint16(len(sc.Tiles[y][x].Stations))})
 				sc.Tiles[y][x].Stations = append(sc.Tiles[y][x].Stations, se)
 				stationCount++
 
@@ -530,6 +537,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					BaseZ:               baseZ,
 					ClearZ:              elem[3],
 				}
+				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeSignal, Index: uint16(len(sc.Tiles[y][x].Signals))})
 				sc.Tiles[y][x].Signals = append(sc.Tiles[y][x].Signals, sig)
 				signalCount++
 
@@ -548,6 +556,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					BaseZ:           baseZ,
 					ClearZ:          elem[3],
 				}
+				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeIndustry, Index: uint16(len(sc.Tiles[y][x].Industries))})
 				sc.Tiles[y][x].Industries = append(sc.Tiles[y][x].Industries, ie)
 				industryCount++
 			}
