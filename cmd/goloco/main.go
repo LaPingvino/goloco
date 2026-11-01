@@ -53,6 +53,8 @@ type Game struct {
 	diagNewGameDone     bool
 	browse              *ui.PromptBrowseWindow // the Load window when open
 	options             *ui.OptionsWindow      // the Options window when open
+	townList            *ui.TownListWindow     // the town list when open
+	diagTownsDone       bool
 	diagOptionsDone     bool
 	diagBrowseDone      bool
 	titleSeq            *title.Sequence
@@ -443,7 +445,9 @@ func (g *Game) Update() error {
 		}
 		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 			// The ScenarioSelect window, then the window manager, take priority.
-			if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
+			if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
+				g.townList.HandleClick(g.mouseX, g.mouseY)
+			} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
 				g.options.HandleClick(g.mouseX, g.mouseY)
 			} else if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
 				g.browse.HandleClick(g.mouseX, g.mouseY)
@@ -497,7 +501,9 @@ func (g *Game) Update() error {
 	}
 	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 		// Check dropdown first (it's on top)
-		if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
+		if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
+			g.townList.HandleClick(g.mouseX, g.mouseY)
+		} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
 			g.options.HandleClick(g.mouseX, g.mouseY)
 		} else if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
 			g.browse.HandleClick(g.mouseX, g.mouseY)
@@ -1113,6 +1119,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		if g.options != nil {
 			g.options.Draw(screen)
 		}
+		if g.townList != nil {
+			g.townList.Draw(screen)
+		}
 		ui.DrawText(screen, fmt.Sprintf("%.0ffps", ebiten.ActualFPS()), 4, g.sh-8, color.RGBA{200, 200, 200, 200})
 		g.maybeSaveShot(screen)
 		return
@@ -1129,6 +1138,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.options != nil {
 		g.options.Draw(screen)
+	}
+	if g.townList != nil {
+		g.townList.Draw(screen)
 	}
 
 	// Draw dropdown menu on top of everything else
@@ -1179,6 +1191,11 @@ func debugPath(name string) string {
 // quit when the requested count has been captured. Script `shot` commands are
 // honoured here too.
 func (g *Game) maybeSaveShot(screen *ebiten.Image) {
+	if os.Getenv("GOLOCO_DIAG_TOWNS") != "" && g.townList == nil && !g.diagTownsDone && g.w != nil {
+		g.diagTownsDone = true
+		g.openTownsWindow()
+		g.townList.Hover = 2
+	}
 	if os.Getenv("GOLOCO_DIAG_OPTIONS") != "" && g.options == nil && !g.diagOptionsDone {
 		g.diagOptionsDone = true
 		g.openOptionsWindow()
@@ -1719,6 +1736,10 @@ func (g *Game) routeWheelToWindows() bool {
 	}
 	if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
 		g.browse.HandleWheel(dy)
+		return true
+	}
+	if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
+		g.townList.HandleWheel(dy)
 		return true
 	}
 	for i := len(g.windowMgr.Windows) - 1; i >= 0; i-- {

@@ -147,19 +147,17 @@ func (g *Game) openStationsWindow() {
 
 // openTownsWindow lists the scenario's towns with population and size.
 func (g *Game) openTownsWindow() {
+	// The ported TownList window (pkg/ui/townlist.go).
 	infos := g.w.TownList()
-	rows := make([]listRow, len(infos))
+	rows := make([]ui.TownRow, len(infos))
 	for i, t := range infos {
-		size := t.Size
-		if size == "" {
-			size = "-"
-		}
-		rows[i] = listRow{
-			label:  fmt.Sprintf("%s — %s, pop %d  (%d,%d)", t.Name, size, t.Population, t.TileX, t.TileY),
-			tileX:  t.TileX,
-			tileY:  t.TileY,
-			hasPos: true,
-		}
+		rows[i] = ui.TownRow{Name: t.Name, Type: t.Size, Population: int(t.Population), Stations: t.NumStations}
 	}
-	g.openListWindow("Towns", 120, 60, rows, "No towns")
+	var tc, wc uint8 = 0, 1
+	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowColour
+	}
+	w := ui.NewTownList(g.sw, rows, tc, wc)
+	w.OnClose = func() { g.townList = nil }
+	g.townList = w
 }

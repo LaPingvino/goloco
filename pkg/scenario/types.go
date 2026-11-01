@@ -119,6 +119,7 @@ type Town struct {
 	Population   uint32 // 0x30
 	NumBuildings int16  // 0x38
 	Size         uint8  // 0x5A TownSize: 0 hamlet .. 4 metropolis
+	NumStations  int16  // 0x1A6 (offsetof(S5::Town, numStations), from the compiler)
 }
 
 // GetTile returns tile at the given coordinates

@@ -22,6 +22,7 @@ type TownInfo struct {
 	Population   uint32
 	Size         string
 	NumBuildings int
+	NumStations  int
 }
 
 // TownList returns the loaded scenario's towns.  Town names are stored as
@@ -41,6 +42,7 @@ func (w *World) TownList() []TownInfo {
 			Population:   t.Population,
 			Size:         size,
 			NumBuildings: int(t.NumBuildings),
+			NumStations:  int(t.NumStations),
 		})
 	}
 	return out

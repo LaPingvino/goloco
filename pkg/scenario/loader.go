@@ -1012,6 +1012,7 @@ func parseVehicleObjectOrder(data []byte) []string {
 // OpenLoco reference: include/OpenLoco/S5/S5Town.h struct Town (packed).
 const (
 	townRecordSize         = 0x270 // sizeof(S5::Town)
+	townNumStationsOffset  = 0x1A6 // offsetof(S5::Town, numStations), from the compiler
 	townMaxCount           = 80    // S5::Limits::kMaxTowns
 	townNameOffset         = 0x00  // uint16 StringId (0xFFFF = empty)
 	townXOffset            = 0x02  // int16 world-units X
@@ -1046,6 +1047,7 @@ func parseTowns(buf []byte) []Town {
 			Y:            int16(binary.LittleEndian.Uint16(rec[townYOffset:])),
 			Population:   binary.LittleEndian.Uint32(rec[townPopulationOffset:]),
 			NumBuildings: int16(binary.LittleEndian.Uint16(rec[townNumBuildingsOffset:])),
+			NumStations:  int16(binary.LittleEndian.Uint16(rec[townNumStationsOffset:])),
 			Size:         rec[townSizeOffset],
 		})
 	}

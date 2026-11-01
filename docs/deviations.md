@@ -41,6 +41,8 @@ internal. Size: S (one tick), M (2–4 ticks), L (a series).
 
 ## C. Text and UI
 
+| pkg/world/lists.go TownList | Town names are placeholders "Town N" | Town::name is a StringId resolved through the town-names object and user strings (StringManager) | M | M |
+
 | Where | What goloco does | What upstream does | Sev | Size |
 |---|---|---|---|---|
 | pkg/ui/g1font.go:45–52 | NOT A DEVIATION (checked 2026-11-01): the {-1,-1,-1,1} "fudge" is upstream's own widthFudge table (Graphics/Gfx.cpp initialiseCharacterWidths) | — | — | — |
