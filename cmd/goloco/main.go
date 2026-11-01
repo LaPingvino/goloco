@@ -1107,10 +1107,13 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.townList.Hover = 2
 	}
-	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend" || d == "signal" || d == "overhead") && !g.diagConsDone {
+	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend" || d == "signal" || d == "overhead" || d == "station") && !g.diagConsDone {
 		g.diagConsDone = true
 		if d == "signal" {
 			g.consTab = 2
+		}
+		if d == "station" {
+			g.consTab = 1
 		}
 		if d == "overhead" { // the tram road (its overhead wires), one ticked
 			g.buildMode = buildModeRoad

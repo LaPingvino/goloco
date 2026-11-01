@@ -35,6 +35,8 @@ func nameFor(m map[string]int, v int) string {
 func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.ConstructionTabState) {
 	f := &ui.ConstructionFrame{X: x, Y: y, Title: g.consObjName(), FrameNo: g.titleFrame, Tab: g.consTab}
 	switch g.consTab {
+	case 1:
+		f.H = ui.StationTabH
 	case 2:
 		f.H = ui.SignalTabH
 	case 3:
@@ -96,6 +98,9 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		win.Height = f.Height()
 		f.Draw(screen)
 		switch g.consTab {
+		case 1:
+			ui.DrawStationTab(screen, f, g.stationTabState(f.CompanyColour))
+			return
 		case 2:
 			ui.DrawSignalTab(screen, f, g.signalTabState())
 			return
@@ -116,6 +121,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		if tab := f.TabAt(rx, ry); tab >= 0 || (ry >= 15 && ry < 42) { // tabs
 			switch tab {
 			case 1:
+				g.consTab = 1 // switchTab; tabReset turns the placing tool on
 				g.consPlaceStation()
 			case 0, 2, 3:
 				g.consTab = tab // switchTab; tabReset picks the both-directions tool
@@ -211,6 +217,30 @@ func (g *Game) overheadTabState() ui.OverheadTabState {
 		if int(m) < len(order) {
 			st.Names[i] = om.ExtraName(order[m])
 		}
+	}
+	return st
+}
+
+// stationTabState is the station tab: the first available station type for
+// this track or road (lastSelectedStationType; PARTIAL: the scenario's
+// remembered choice) and the company's colour.
+func (g *Game) stationTabState(company uint8) ui.StationTabState {
+	st := ui.StationTabState{Image: -1, Company: company}
+	if g.r == nil || g.r.ObjMgr == nil {
+		return st
+	}
+	om := g.r.ObjMgr
+	road := g.consIsRoad()
+	list := om.AvailableCompatibleStations(g.buildObjID, road, int(g.w.CurrentYear))
+	if len(list) == 0 {
+		return st
+	}
+	if road {
+		if s := om.GetRoadStationObjectByIndex(list[0]); s != nil {
+			st.Name, st.Image, st.Recolourable = s.Name, int(s.ImageOffset), s.Flags&1 != 0
+		}
+	} else if s := om.GetTrainStationObjectByIndex(list[0]); s != nil {
+		st.Name, st.Image, st.Recolourable = s.Name, int(s.ImageOffset), s.Flags&1 != 0
 	}
 	return st
 }
