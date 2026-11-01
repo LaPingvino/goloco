@@ -307,9 +307,16 @@ func (g1 *G1File) GetPaletteMap2(primary, secondary int) ([]byte, error) {
 	return out, nil
 }
 
+// GetPaletteMap returns the palette map of an ExtColour (Gfx::PaletteMap::
+// getForColour): its g1 image comes from kDefaultPaletteToG1Offset
+// (PaletteToG1, generated). Colours 0..31 happen to sit at PaletteMapG1Base+n;
+// the extended ones (translucent, shadow, glass…) do not.
 func (g1 *G1File) GetPaletteMap(colourIdx int) ([]byte, error) {
-	g1Index := PaletteMapG1Base + colourIdx
-	if g1Index < 0 || g1Index >= len(g1.Elements) {
+	if colourIdx < 0 || colourIdx >= len(PaletteToG1) {
+		return nil, fmt.Errorf("palette map: colour %d out of range", colourIdx)
+	}
+	g1Index := int(PaletteToG1[colourIdx])
+	if g1Index >= len(g1.Elements) {
 		return nil, fmt.Errorf("palette map index %d (g1[%d]) out of range", colourIdx, g1Index)
 	}
 	e := &g1.Elements[g1Index]
