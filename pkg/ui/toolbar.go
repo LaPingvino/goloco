@@ -194,21 +194,24 @@ func (t *Toolbar) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 
 	// Draw buttons
 	var hoveredTooltip string
-	var tooltipX int
 	for i := range t.Buttons {
 		if !t.Buttons[i].Hidden {
 			t.drawButton(screen, &t.Buttons[i], renderer)
 			if t.Buttons[i].Hovered && t.Buttons[i].Tooltip != "" {
 				hoveredTooltip = t.Buttons[i].Tooltip
-				tooltipX = t.Buttons[i].X
 			}
 		}
 	}
 
 	// Draw tooltip if hovering
 	if hoveredTooltip != "" {
-		tooltipY := t.Y + t.Height + 12
-		DrawText(screen, hoveredTooltip, tooltipX, tooltipY, color.White)
+		// ToolTip.cpp: the tooltip window opens relative to the cursor.
+		var skinColour uint8
+		if renderer != nil && renderer.ObjMgr != nil && renderer.ObjMgr.InterfaceSkin != nil {
+			skinColour = renderer.ObjMgr.InterfaceSkin.TooltipColour
+		}
+		mx, my := ebiten.CursorPosition()
+		DrawTooltip(screen, hoveredTooltip, mx, my, skinColour)
 	}
 }
 
