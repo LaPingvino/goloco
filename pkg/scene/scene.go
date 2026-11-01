@@ -88,11 +88,17 @@ func (r *Renderer) shadow(has bool, image, colour int, primary bool) paint.Shado
 	return paint.Shadow{Image: image, Pal: r.colourMap(int(paint.ShadowColour[colour])), Primary: primary}
 }
 
-// paintBridge is PaintBridge.cpp paintBridge. PARTIAL — NOT PORTED YET: the
-// entry is collected and cleared as upstream does, but nothing is drawn (the
-// tables are in bridgedata_gen.go; the painting code is the next step), and the
-// support-height side effects are skipped.
-func (r *Renderer) paintBridge(s *paint.Session, b paint.BridgeEntry) {}
+// paintBridge hands the session's bridge entry to paint.PaintBridge (PARTIAL
+// there: deck only so far) with its bridge object (scenario bridge slot).
+// PARTIAL: the segment-support side effect of a true return is skipped.
+func (r *Renderer) paintBridge(s *paint.Session, b paint.BridgeEntry) {
+	bo := r.Objects.GetBridgeObjectByIndex(int(b.ObjectID))
+	if bo == nil {
+		return
+	}
+	s.PaintBridge(b, paint.BridgeObj{Image: int(bo.ImageOffset), SpanLength: bo.SpanLength, PillarSpacing: bo.PillarSpacing,
+		HasRoof: bo.Flags&objects.BridgeFlagHasRoof != 0}, r.Sprite)
+}
 
 // tunnelImage resolves a track/road object's tunnel header name to the tunnel
 // object's image base once (ObjectManager.TunnelImage), then from a cache.

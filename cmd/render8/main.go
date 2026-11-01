@@ -77,6 +77,7 @@ func main() {
 	}
 	om.ReorderRoadStationObjects(sc.RoadStationObjectOrder)
 	om.ReorderAirportObjects(sc.AirportObjectOrder)
+	om.ReorderBridgeObjects(sc.BridgeObjectOrder)
 	om.ReorderDockObjects(sc.DockObjectOrder)
 	om.ResolveCliffEdges()
 
