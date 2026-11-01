@@ -96,14 +96,16 @@ type Game struct {
 	gameWon      bool
 	progress     *progressFile
 
-	consCurve  int   // construction curve selection: -4 (left large) … 0 … +4
-	consTab    int   // construction window tab: 0 construction, 2 signal (1 station places directly)
-	consSigOne bool  // signal tab: single direction chosen (isSignalBothDirections = 0)
-	consMods   uint8 // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
-	consSlope  int   // construction slope selection: -2 (steep down) … 0 … +2
-	buildObjID int   // index into TrackObjects / RoadObjects
-	hoverTileX int   // tile under cursor in build mode (-1 if invalid)
-	hoverTileY int
+	consCurve   int   // construction curve selection: -4 (left large) … 0 … +4
+	consTab     int   // construction window tab: 0 construction, 2 signal (1 station places directly)
+	consSigOne  bool  // signal tab: single direction chosen (isSignalBothDirections = 0)
+	consSignal  int   // signal tab: lastSelectedSignal (slot; -1 = the first available)
+	consStation int   // station tab: lastSelectedStationType (slot; -1 = the first available)
+	consMods    uint8 // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
+	consSlope   int   // construction slope selection: -2 (steep down) … 0 … +2
+	buildObjID  int   // index into TrackObjects / RoadObjects
+	hoverTileX  int   // tile under cursor in build mode (-1 if invalid)
+	hoverTileY  int
 
 	// Diagnostic crop: when set, save a 480×360 PNG centred on diagTileX/Y after the next Draw.
 	// diagQuit=true means quit afterwards (CLI --diag mode); false keeps the game running (F12).
@@ -350,6 +352,8 @@ func NewGame() *Game {
 	log.Println("[Game] Game initialization complete")
 	return &Game{
 		w:             w,
+		consSignal:    -1,
+		consStation:   -1,
 		titleWorld:    w, // keep a reference so Quit to Menu can restore it
 		r:             r,
 		toolbar:       toolbar,
@@ -1028,6 +1032,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		if g.townList != nil {
 			g.townList.Draw(screen)
 		}
+		if g.dropdown != nil && g.dropdown.Visible { // a window's dropdown, on top
+			g.dropdown.Draw(screen)
+		}
 		g.maybeSaveShot(screen)
 		return
 	}
@@ -1107,13 +1114,17 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.townList.Hover = 2
 	}
-	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend" || d == "signal" || d == "overhead" || d == "station") && !g.diagConsDone {
+	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend" || d == "signal" || d == "overhead" || d == "station" || d == "sigdrop") && !g.diagConsDone {
 		g.diagConsDone = true
 		if d == "signal" {
 			g.consTab = 2
 		}
 		if d == "station" {
 			g.consTab = 1
+		}
+		if d == "sigdrop" { // the signal tab with its dropdown open
+			g.consTab = 2
+			defer g.openConsDropdown(10, 40, g.r.ObjMgr.InterfaceSkin.WindowConstructionColour, false)
 		}
 		if d == "overhead" { // the tram road (its overhead wires), one ticked
 			g.buildMode = buildModeRoad
