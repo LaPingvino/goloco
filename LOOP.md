@@ -412,3 +412,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 46 (item 3j perf) — scene benchmark added; blit clipping + transparent fast path: 28.7 → 17.6 ms/frame, byte-identical on all three reference views.
 - 2026-11-01 tick 47 (item 3j perf) — paint/scene buffers reused across frames (2.8 MB → 190 KB per frame), byte-identical; next: per-element allocations.
 - 2026-11-01 tick 48 (item 3j perf) — palette maps cached per colour, part-animation arrays per object: 190 → 82 KB/frame, byte-identical; allocation count (~25.6k) comes from elsewhere — profile next.
+- 2026-11-01 tick 49 (item 3j perf) — the 25.6k allocations/frame were the 4 neighbour Surface structs per tile escaping to the heap; renderer scratch fixes it: 1 alloc, 160 B per warm frame, 14.7 ms (CPU shared with Whisper). TestRenderSteadyStateAllocs guards it. Byte-identical on all three views.

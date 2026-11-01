@@ -30,8 +30,9 @@ type Renderer struct {
 	rt   *gfx8.RenderTarget
 	rgba *image.RGBA
 
-	colourMaps map[int][]uint8 // GetPaletteMap(colour), which copies, cached
-	anims      map[any]anim    // per object: part animation frames and speeds
+	colourMaps map[int][]uint8  // GetPaletteMap(colour), which copies, cached
+	anims      map[any]anim     // per object: part animation frames and speeds
+	nbBuf      [4]paint.Surface // neighbour surfaces of the tile being painted
 }
 
 type anim struct{ frames, speeds []uint8 }
@@ -197,7 +198,9 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 			var nbs [4]*paint.Surface
 			for d, o := range paint.NeighbourOffsets {
 				if nt := m.TileAt(x+o[0]/32, y+o[1]/32); nt != nil {
-					nbs[d] = &paint.Surface{BaseZ: nt.BaseZ, Slope: nt.Slope, Water: nt.WaterLevel}
+					// Scratch kept on the renderer: &Surface{} here escaped, 4 allocations per tile.
+					r.nbBuf[d] = paint.Surface{BaseZ: nt.BaseZ, Slope: nt.Slope, Water: nt.WaterLevel}
+					nbs[d] = &r.nbBuf[d]
 				}
 			}
 			self := paint.Surface{BaseZ: t.BaseZ, Slope: t.Slope, Water: t.WaterLevel}
