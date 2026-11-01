@@ -75,16 +75,19 @@ type Session struct {
 	mergeRoadPal    []uint8
 
 	// Slabs for paint structs and attachments (reused across frames by Reset).
-	structs        []Struct
-	tunnels        [4][]tunnelEntry
-	bridge         BridgeEntry
-	support        SupportHeight
-	surfaceHeight  int
-	surfaceSlope   uint8
-	waterHeight2   int
-	attachedSlab   []Attached
-	chunks         [][]Struct
-	attachedChunks [][]Attached
+	structs         []Struct
+	tunnels         [4][]tunnelEntry
+	bridge          BridgeEntry
+	support         SupportHeight
+	segments        [9]SupportHeight
+	pendingSegments uint16
+	waterHeight     int
+	surfaceHeight   int
+	surfaceSlope    uint8
+	waterHeight2    int
+	attachedSlab    []Attached
+	chunks          [][]Struct
+	attachedChunks  [][]Attached
 }
 
 // NewSession starts a session for a render target covering viewport rectangle
@@ -145,6 +148,53 @@ type SupportHeight struct {
 // SetGeneralSupportHeight is setGeneralSupportHeight.
 func (s *Session) SetGeneralSupportHeight(height int, slope uint8) {
 	s.support = SupportHeight{height, slope}
+}
+
+// SegmentsAll is SegmentFlags::all; segment s is flag 1 << s (kSegmentOffsets).
+const SegmentsAll = 0x1FF
+
+// SetSegmentsSupportHeight is setSegmentsSupportHeight / setSegmentSupportHeight:
+// the slope is only stored when the height is not 0xFFFF.
+func (s *Session) SetSegmentsSupportHeight(segments uint16, height int, slope uint8) {
+	for i := range s.segments {
+		if segments&(1<<i) != 0 {
+			s.segments[i].Height = height
+			if height != 0xFFFF {
+				s.segments[i].Slope = slope
+			}
+		}
+	}
+}
+
+// SetSurfaceSegments is the end of paintSurface: every segment from
+// kSlopeToSegmentsSupportHeights[slope] (heights as stored, no base added).
+func (s *Session) SetSurfaceSegments(slope uint8) {
+	for i, sh := range SlopeToSegmentsSupportHeights[slope&0x1F] {
+		s.SetSegmentsSupportHeight(1<<i, sh.Height, sh.Slope)
+	}
+}
+
+// AddPendingSegments ORs segments into the pending mask (session 525CF8).
+func (s *Session) AddPendingSegments(segments uint16) { s.pendingSegments |= segments }
+
+// FlushPendingSegments is the end of paintTileElementsEndLoop: the pending
+// segments become unsupported (0xFFFF) and the mask is cleared.
+func (s *Session) FlushPendingSegments() {
+	if s.pendingSegments != 0 {
+		s.SetSegmentsSupportHeight(s.pendingSegments, 0xFFFF, 0)
+		s.pendingSegments = 0
+	}
+}
+
+// SetWaterHeight is setWaterHeight (paintSurface, tiles with water only; it is
+// not reset per tile upstream).
+func (s *Session) SetWaterHeight(h int) { s.waterHeight = h }
+
+// blockSupports is what 2×2 objects do on every footprint tile:
+// setSegmentsSupportHeight(all, 0xFFFF, 0) and setGeneralSupportHeight(0xFFFF, 0).
+func (s *Session) blockSupports() {
+	s.SetSegmentsSupportHeight(SegmentsAll, 0xFFFF, 0)
+	s.SetGeneralSupportHeight(0xFFFF, 0)
 }
 
 // GeneralSupportHeight is getGeneralSupportHeight.

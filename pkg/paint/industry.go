@@ -44,7 +44,7 @@ func (s *Session) PaintIndustry(el IndustryEl, obj IndustryObj, colourMap []uint
 	if obj.LargeTile {
 		// After the 2×2 front-tile test, every tile of the footprint:
 		// setGeneralSupportHeight(0xFFFF, 0).
-		defer s.SetGeneralSupportHeight(0xFFFF, 0)
+		defer s.blockSupports()
 	}
 	if obj.LargeTile && int(el.SequenceIndex^2) != int(-int(s.Rotation))&3 {
 		return
@@ -140,7 +140,7 @@ func (s *Session) PaintAirport(rotationEl, sequenceIndex, baseZ uint8, obj Airpo
 	s.last = nil // session.resetLastPS()
 	s.paintShadow(obj.Shadow, rotation, imgOff, bbOff, bbSz, sprite)
 	if obj.LargeTile {
-		defer s.SetGeneralSupportHeight(0xFFFF, 0) // paintAirport: every tile of a 2×2
+		defer s.blockSupports() // paintAirport: every tile of a 2×2
 	}
 	if obj.LargeTile && int(sequenceIndex^2) != int(-int(s.Rotation))&3 {
 		return // only the front tile of a 2×2 draws
@@ -183,7 +183,7 @@ func (s *Session) PaintDocks(rotationEl, sequenceIndex, baseZ, clearZ uint8, obj
 	bbSz.Z += bbz
 	s.last = nil // session.resetLastPS()
 	s.paintShadow(obj.Shadow, rotation, imgOff, bbOff, bbSz, sprite)
-	defer s.SetGeneralSupportHeight(0xFFFF, 0) // paintDocks: docks are always 2×2
+	defer s.blockSupports() // paintDocks: docks are always 2×2
 	if int(sequenceIndex^2) == int(-int(s.Rotation))&3 {
 		s.paintStationBuilding(obj, imgOff, bbOff, bbSz, rotation, tileX, tileY, ticks, sprite)
 	}

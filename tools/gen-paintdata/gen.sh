@@ -168,4 +168,7 @@ bnames=$(grep -o 'Bridge::ImageIds::[A-Za-z0-9_]*' "$OL/src/OpenLoco/src/Paint/P
 g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/bridgeids" "$tmp/bridgeids.cpp"
 "$tmp/bridgeids" > "$repo/pkg/paint/bridgeids_gen.go"
 gofmt -w "$repo/pkg/paint/bridgeids_gen.go"
+g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -O1 -ffunction-sections -fdata-sections -Wl,--gc-sections -o "$tmp/gen_surface" "$here/gen_surface.cpp"
+"$tmp/gen_surface" > "$repo/pkg/paint/surfacesupport_gen.go"
+gofmt -w "$repo/pkg/paint/surfacesupport_gen.go"
 rm -rf "$tmp"

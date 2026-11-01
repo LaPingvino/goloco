@@ -90,13 +90,12 @@ func (r *Renderer) shadow(has bool, image, colour int, primary bool) paint.Shado
 
 // paintBridge hands the session's bridge entry to paint.PaintBridge (PARTIAL
 // there: deck only so far) with its bridge object (scenario bridge slot).
-// PARTIAL: the segment-support side effect of a true return is skipped.
-func (r *Renderer) paintBridge(s *paint.Session, b paint.BridgeEntry) {
+func (r *Renderer) paintBridge(s *paint.Session, b paint.BridgeEntry) bool {
 	bo := r.Objects.GetBridgeObjectByIndex(int(b.ObjectID))
 	if bo == nil {
-		return
+		return false
 	}
-	s.PaintBridge(b, paint.BridgeObj{Image: int(bo.ImageOffset), SpanLength: bo.SpanLength, PillarSpacing: bo.PillarSpacing,
+	return s.PaintBridge(b, paint.BridgeObj{Image: int(bo.ImageOffset), SpanLength: bo.SpanLength, PillarSpacing: bo.PillarSpacing,
 		HasRoof: bo.Flags&objects.BridgeFlagHasRoof != 0}, r.Sprite)
 }
 
@@ -203,6 +202,7 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 			s.SetSpritePosition(x*32, y*32)
 			s.ResetTunnels() // paintTileElementsSetup
 			s.SetGeneralSupportHeight(0xFFFF, 0)
+			s.SetSegmentsSupportHeight(paint.SegmentsAll, 0xFFFF, 0)
 			// paintTileElements: the tile's elements in stored order, each followed by
 			// paintTileElementsEndLoop. Signals and stations read entry.prev().
 			for i, ref := range t.Order {
@@ -218,11 +218,14 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 					s.FinaliseTrackRoadOrdering()
 					s.FinaliseTrackRoadAdditionsOrdering()
 					if b, ok := s.TakeBridge(); ok {
-						r.paintBridge(s, b)
+						if r.paintBridge(s, b) {
+							s.SetSegmentsSupportHeight(paint.SegmentsAll, 0xFFFF, 0)
+						}
 						if s.GeneralSupportHeight().Height >= b.Height {
 							s.SetGeneralSupportHeight(b.Height, 0x20)
 						}
 					}
+					s.FlushPendingSegments()
 				}
 			}
 		}
@@ -387,6 +390,10 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	// Rotation is 0 here, so rotatedSlope is the slope.
 	z := int(t.BaseZ) * 4
 	s.SetSurface(z, t.Slope&0x1F, int(t.WaterLevel)*16)
+	if t.WaterLevel != 0 {
+		s.SetWaterHeight(int(t.WaterLevel) * 16)
+	}
+	defer s.SetSurfaceSegments(t.Slope & 0x1F)
 	defer s.SetGeneralSupportHeight(z, t.Slope&0x1F)
 	ti := int(t.TerrainIndex)
 	if t.IsIndustrial {

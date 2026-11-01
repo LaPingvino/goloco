@@ -72,6 +72,7 @@ func (s *Session) PaintTrainStation(el StationEl, base int, sprite func(int) *gf
 			tr = Station0StraightCanopyTranslucentSE
 		}
 		s.attachTranslucent(sprite(base+tr), el.Translucent)
+		s.AddPendingSegments(SegmentsAll) // set525CF8(| all)
 	case 1: // paintTrainStationStyle0DiagonalTrack
 		seq := int(el.TrackSeq)
 		if rot&2 != 0 {
@@ -152,4 +153,5 @@ func (s *Session) PaintRoadStation(rotation, baseZ, roadID uint8, base int, rema
 		tr = 7 // straightCanopyTranslucentSE
 	}
 	s.attachTranslucent(sprite(base+tr), translucent)
+	s.AddPendingSegments(SegmentsAll) // set525CF8(| all)
 }
