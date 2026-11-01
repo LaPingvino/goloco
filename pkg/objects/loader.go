@@ -52,6 +52,7 @@ type ObjectManager struct {
 	WallObjects          []*WallObject               // all loaded wall objects
 	TrackObjects         []*TrackObject              // all loaded track objects
 	TrackExtraOrder      []string                    // track-extra DAT names in scenario slot order
+	RoadExtraOrder       []string                    // road-extra DAT names in scenario slot order
 	RoadObjects          []*RoadObject               // all loaded road objects
 	TrainStationObjects  []*TrainStationObject       // all loaded train-station objects
 	RoadStationObjects   []*RoadStationObject        // all loaded road-station objects
@@ -1354,6 +1355,45 @@ func (m *ObjectManager) AvailableCompatibleMods(trackSlot int, unlocked func(veh
 		}
 	}
 	return out
+}
+
+// AvailableCompatibleRoadMods is getAvailableCompatibleMods for roads
+// (0x00478265 with TransportMode::road): the road's mods (road-extra slots)
+// that an unlocked road vehicle on this road needs; 0xFF where none.
+func (m *ObjectManager) AvailableCompatibleRoadMods(roadSlot int, unlocked func(vehicleSlot int) bool) [4]uint8 {
+	out := [4]uint8{0xFF, 0xFF, 0xFF, 0xFF}
+	if roadSlot < 0 || roadSlot >= len(m.RoadObjects) || m.RoadObjects[roadSlot] == nil {
+		return out
+	}
+	r := m.RoadObjects[roadSlot]
+	need := map[string]bool{}
+	for i, v := range m.Vehicles {
+		if v == nil || v.Mode != TransportModeRoad || !strings.EqualFold(v.TrackName, r.Header.GetName()) || !unlocked(i) {
+			continue
+		}
+		for _, n := range v.ExtraNames {
+			need[strings.ToUpper(n)] = true
+		}
+		// rack rail is a rail-only flag in practice; upstream adds it for any mode
+		if v.RackRailName != "" {
+			need[strings.ToUpper(v.RackRailName)] = true
+		}
+	}
+	for i, n := range r.ModNames {
+		if i < 4 && need[strings.ToUpper(n)] {
+			out[i] = uint8(slotOf(m.RoadExtraOrder, n))
+		}
+	}
+	return out
+}
+
+func slotOf(order []string, name string) int {
+	for i, n := range order {
+		if strings.EqualFold(n, name) {
+			return i
+		}
+	}
+	return 0xFF
 }
 
 // trackExtraSlot is the slot of the named track extra in the scenario's order

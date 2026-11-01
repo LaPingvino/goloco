@@ -53,3 +53,27 @@ func TestAvailableCompatibleMods(t *testing.T) {
 		t.Errorf("nothing unlocked: %v", got)
 	}
 }
+
+// Road mods: a tram on this road that needs the overhead wire makes it
+// available (in its road-extra slot); a bus needs nothing; locked vehicles
+// don't count.
+func TestAvailableCompatibleRoadMods(t *testing.T) {
+	m := &ObjectManager{
+		RoadObjects:    []*RoadObject{{ModNames: []string{"ROADEXT1"}}},
+		RoadExtraOrder: []string{"", "ROADEXT1"},
+		Vehicles: []*VehicleObject{
+			{Mode: TransportModeRoad, ExtraNames: []string{"ROADEXT1"}},
+			{Mode: TransportModeRoad},
+		},
+	}
+	m.RoadObjects[0].Header = &ObjectHeader{Name: [8]byte{'R', 'O', 'A', 'D', '1'}}
+	m.Vehicles[0].TrackName, m.Vehicles[1].TrackName = "ROAD1", "ROAD1"
+	all := func(int) bool { return true }
+	if got := m.AvailableCompatibleRoadMods(0, all); got != [4]uint8{1, 0xFF, 0xFF, 0xFF} {
+		t.Errorf("with the tram: %v", got)
+	}
+	busOnly := func(v int) bool { return v == 1 }
+	if got := m.AvailableCompatibleRoadMods(0, busOnly); got != [4]uint8{0xFF, 0xFF, 0xFF, 0xFF} {
+		t.Errorf("bus only: %v", got)
+	}
+}

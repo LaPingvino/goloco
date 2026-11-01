@@ -11,13 +11,15 @@ import (
 type RoadObject struct {
 	Header *ObjectHeader
 
-	Name        string
-	Image       uint32 // Base G1 sprite index (set after image table load)
-	TunnelName  string // name of the embedded tunnel ObjectHeader (trackObj/roadObj->tunnel)
-	PaintStyle  uint8  // Sprite style: 0=normal, 1=ballast/sleeper, 2=left-curve
-	NumMods     uint8  // Number of road extra/modifications (max 2)
-	NumBridges  uint8  // Number of supported bridges (max 7)
-	NumStations uint8  // Number of supported stations (max 7)
+	Name       string
+	Image      uint32 // Base G1 sprite index (set after image table load)
+	TunnelName string // name of the embedded tunnel ObjectHeader (trackObj/roadObj->tunnel)
+	PaintStyle uint8  // Sprite style: 0=normal, 1=ballast/sleeper, 2=left-curve
+	NumMods    uint8  // Number of road extra/modifications (max 2)
+	// ModNames are the road extras' DAT names (load resolves them into mods).
+	ModNames    []string
+	NumBridges  uint8 // Number of supported bridges (max 7)
+	NumStations uint8 // Number of supported stations (max 7)
 	// RoadPieces (0x02) is the RoadTraitFlags set: small / very small curves,
 	// slope, steep slope, turnaround, junction.
 	RoadPieces uint16
@@ -110,6 +112,9 @@ func ParseRoadObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Roa
 	//   numBridges bridge objects
 	//   numStations station objects
 	// RoadObject::load: the tunnel header follows the compatible and mod headers.
+	for i := 0; i < int(numMods); i++ { // RoadObject::load: mods[i] from these headers
+		road.ModNames = append(road.ModNames, headerName(data, offset+(int(numCompatible)+i)*HeaderSize))
+	}
 	road.TunnelName = headerName(data, offset+(int(numCompatible)+int(numMods))*HeaderSize)
 	for i := range int(numStations) { // RoadObject::load: stations after the bridges
 		road.StationNames = append(road.StationNames, headerName(data, offset+(int(numCompatible)+int(numMods)+1+int(numBridges)+i)*HeaderSize))
