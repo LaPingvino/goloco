@@ -57,3 +57,38 @@ func (m *Map) AddRoad(x, y int, re scenario.RoadElement) bool {
 	t.Roads = append(t.Roads, re)
 	return true
 }
+
+// LoadScenario fills the map from a loaded scenario or save: size, every
+// tile's surface and elements, towns and the saved vehicle entities.
+func (m *Map) LoadScenario(sc *scenario.Scenario) {
+	m.Width, m.Height = sc.MapWidth, sc.MapHeight
+	m.Tiles = make([][]Tile, m.Height)
+	for y := 0; y < m.Height; y++ {
+		m.Tiles[y] = make([]Tile, m.Width)
+		for x := 0; x < m.Width; x++ {
+			st := sc.GetTile(x, y)
+			if st == nil {
+				continue
+			}
+			m.Tiles[y][x] = Tile{
+				TerrainIndex: st.TerrainIndex,
+				BaseZ:        st.Height,
+				Slope:        st.Slope,
+				WaterLevel:   st.Water,
+				GrowthStage:  st.GrowthStage,
+				Variation:    st.Variation,
+				IsIndustrial: st.IsIndustrial,
+				Trees:        st.Trees,
+				Buildings:    st.Buildings,
+				Walls:        st.Walls,
+				Tracks:       st.Tracks,
+				Roads:        st.Roads,
+				Stations:     st.Stations,
+				Signals:      st.Signals,
+				Industries:   st.Industries,
+			}
+		}
+	}
+	m.Towns = sc.Towns
+	m.Entities = sc.Entities
+}
