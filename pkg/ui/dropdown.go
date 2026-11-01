@@ -6,6 +6,7 @@ import (
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/paint"
+	"github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -53,8 +54,7 @@ const (
 // bottom-left (showBelow passes the widget top + height).
 //
 // OpenLoco reference: src/OpenLoco/src/Ui/Dropdown.cpp showText / showBelow.
-// PARTIAL: the flip-up / beside-the-widget placement when the dropdown would
-// leave the screen is not applied (toolbar dropdowns always fit below).
+// Place applies showText's placement for a widget and screen size.
 func NewDropdownMenu(x, y int, items []DropdownItem) *DropdownMenu {
 	maxW := 0
 	for _, it := range items {
@@ -76,6 +76,14 @@ func NewDropdownMenu(x, y int, items []DropdownItem) *DropdownMenu {
 		Highlighted: -1,
 		Visible:     true,
 	}
+}
+
+// Place is the placement half of common::showText for the widget at wx, wy
+// (wy its top) of size ww × wh on a screen sw × sh: below the widget; if that
+// leaves the screen, above it; if that fails too, beside it at the top; then x
+// kept on screen. (maxStringWidth there already includes its +3: ItemWidth.)
+func (d *DropdownMenu) Place(wx, wy, ww, wh, sw, sh int) {
+	d.X, d.Y = uilayout.DropdownPlace(wx, wy, ww, wh, d.ItemWidth, d.Width, d.Height, sw, sh)
 }
 
 // SetToolbarColour is showBelow's colour for a toolbar button: the button's

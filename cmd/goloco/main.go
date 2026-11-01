@@ -681,6 +681,7 @@ func (g *Game) handleTitleMenuClick(mx, my int) {
 // colour for its group), translucent.
 func (g *Game) toolbarDropdown(btn *ui.ToolbarButton, items []ui.DropdownItem) *ui.DropdownMenu {
 	d := ui.NewDropdownMenu(btn.X, btn.Y+btn.Height, items)
+	d.Place(btn.X, btn.Y, btn.Width, btn.Height, g.sw, g.sh)
 	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
 		sk := g.r.ObjMgr.InterfaceSkin
 		cols := [4]uint8{sk.TopToolbarPrimaryColour, sk.TopToolbarSecondaryColour, sk.TopToolbarTertiaryColour, sk.TopToolbarQuaternaryColour}
