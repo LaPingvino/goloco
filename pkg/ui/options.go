@@ -10,7 +10,11 @@ import (
 // the device row and "Play title screen music", Volume group with six
 // sliders in two columns). Colours: the skin's windowTitlebarColour and
 // windowOptionsColour.
-// PARTIAL: only the Audio tab exists (the other tabs show it too); tab icon
+// Tabs switch with upstream's size and caption per tab; Audio and Controls
+// have their contents.
+// PARTIAL: Display, Rendering, Regional, Company and Misc show only the common
+// frame (their widgets aren't ported yet); Controls: only edge scrolling has a
+// goloco counterpart, Customize Keys opens nothing; tab icon
 // animation; the device dropdown (shows "Default"); goloco has only a music
 // channel, so the master/effects/vehicles/interface/ambient sliders are drawn
 // at 100% and inert; slider dragging (a click sets the music volume).
@@ -36,6 +40,27 @@ const (
 
 var optTabImages = [7]int{imgTabDisplay, imgTab, imgTabSound, imgTabGlobe, imgTabControl, imgTab, imgTabMisc}
 
+// Options tabs (Common::tab).
+const (
+	OptTabDisplay = iota
+	OptTabRendering
+	OptTabAudio
+	OptTabRegional
+	OptTabControls
+	OptTabCompany
+	OptTabMisc
+)
+
+// optTabSize is each tab namespace's kWindowSize; optTabCaption its caption
+// (en-GB).
+var (
+	optTabSize    = [7][2]int{{400, 151}, {400, 218}, {optW, optH}, {366, 167}, {366, 114}, {420, 187}, {420, 266}}
+	optTabCaption = [7]string{"Options - Display", "Options - Rendering", "Options - Audio", "Options - Regional",
+		"Options - Controls", "Options - Company", "Options - Miscellaneous"}
+	// Controls tab checkboxes (Controls::_widgets) and the Customize Keys button.
+	optControlLabels = [3]string{"Scroll View when Pointer at Screen Edge", "Zoom to cursor position", "Invert right mouse dragging"}
+)
+
 // OptionsWindow is the window state.
 type OptionsWindow struct {
 	X, Y         int
@@ -46,11 +71,20 @@ type OptionsWindow struct {
 	OnTitleMusic func(bool)
 	OnMusicVol   func(float64)
 	OnClose      func()
+
+	// Tab is the current tab (Common::tab); the window takes that tab's size.
+	Tab int
+	// Controls holds edgeScrolling, zoomToCursor, invertRightMouseViewPan;
+	// OnControl is called with the index and new value when one is toggled.
+	Controls  [3]bool
+	OnControl func(i int, v bool)
 }
+
+func (w *OptionsWindow) size() (int, int) { s := optTabSize[w.Tab]; return s[0], s[1] }
 
 // NewOptions opens the window centred (createWindowCentred).
 func NewOptions(sw, sh int, titleColour, colour uint8) *OptionsWindow {
-	return &OptionsWindow{X: (sw - optW) / 2, Y: (sh - optH) / 2, TitleColour: titleColour, Colour: colour}
+	return &OptionsWindow{X: (sw - optW) / 2, Y: (sh - optH) / 2, TitleColour: titleColour, Colour: colour, Tab: OptTabAudio}
 }
 
 func (w *OptionsWindow) in(r [4]int, px, py int) bool {
@@ -58,7 +92,10 @@ func (w *OptionsWindow) in(r [4]int, px, py int) bool {
 }
 
 // Contains reports whether the point is on the window.
-func (w *OptionsWindow) Contains(px, py int) bool { return w.in([4]int{0, 0, optW, optH}, px, py) }
+func (w *OptionsWindow) Contains(px, py int) bool {
+	ww, wh := w.size()
+	return w.in([4]int{0, 0, ww, wh}, px, py)
+}
 
 func optSliderRow(i int) (lx, sx, y int) {
 	y = optVolOff + 16 + 26*(i/2)
@@ -70,10 +107,32 @@ func optSliderRow(i int) (lx, sx, y int) {
 
 // HandleClick: close, the title-music checkbox, the music slider.
 func (w *OptionsWindow) HandleClick(px, py int) {
-	if w.in([4]int{optW - 15, 2, 13, 13}, px, py) {
+	ww, _ := w.size()
+	if w.in([4]int{ww - 15, 2, 13, 13}, px, py) {
 		if w.OnClose != nil {
 			w.OnClose()
 		}
+		return
+	}
+	for i := range 7 {
+		if w.in([4]int{3 + 31*i, 15, 31, 27}, px, py) {
+			w.Tab = i // switchTab: the window keeps its position and takes the tab's size
+			return
+		}
+	}
+	if w.Tab == OptTabControls {
+		for i := range w.Controls {
+			if w.in([4]int{10, 49 + 15*i, 346, 12}, px, py) {
+				w.Controls[i] = !w.Controls[i]
+				if w.OnControl != nil {
+					w.OnControl(i, w.Controls[i])
+				}
+				return
+			}
+		}
+		return
+	}
+	if w.Tab != OptTabAudio {
 		return
 	}
 	if w.in([4]int{10, optSoundOff + 14 + 18, 346, 12}, px, py) {
@@ -107,17 +166,18 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 	}
 	text := pal[gfx8.Shade(sec, 9)] // opaque window colour → shade 9
 	black := pal[paletteBlack0]
-	DrawWindowFrame(screen, w.X, w.Y, optW, optH, w.TitleColour, false)
+	ww, wh := w.size()
+	DrawWindowFrame(screen, w.X, w.Y, ww, wh, w.TitleColour, false)
 	vols := [6]float64{1, w.MusicVolume, 1, 1, 1, 1}
-	draw8(screen, w.X, w.Y, optW, optH, func(rt *gfx8.RenderTarget) {
-		gfx8.FillRectInset(rt, 0, 41, optW-1, optH-1, gfx8.InsetColour{Map: sec}, 0) // panel (to the window bottom)
+	draw8(screen, w.X, w.Y, ww, wh, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, 0, 41, ww-1, wh-1, gfx8.InsetColour{Map: sec}, 0) // panel (to the window bottom)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
-			gfx8.DrawSpriteNoise(rt, sp, optW-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			gfx8.DrawSpriteNoise(rt, sp, ww-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 		for i, img := range optTabImages {
 			x := 3 + 31*i
 			bg := imgTab
-			if i == 2 { // the Audio tab is the current one
+			if i == w.Tab {
 				bg++
 			}
 			for _, id := range []int{bg, img} {
@@ -128,6 +188,18 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 					gfx8.DrawSpriteNoise(rt, sp, x, 15, gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
 				}
 			}
+		}
+		if w.Tab == OptTabControls {
+			for i := range w.Controls { // Checkbox boxes at (10, 49 + 15i)
+				y := 49 + 15*i
+				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			}
+			// Button({26, 94}, {160, 12}): fillRectInset with the window colour, raised.
+			gfx8.FillRectInset(rt, 26, 94, 26+160-1, 94+12-1, gfx8.InsetColour{Map: sec}, 0)
+			return
+		}
+		if w.Tab != OptTabAudio {
+			return
 		}
 		groupBox(rt, 4, optSoundOff, optW-8, optSoundH, sec, "Sound")
 		groupBox(rt, 4, optVolOff, optW-8, optVolH, sec, "Volume")
@@ -149,7 +221,24 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			}
 		}
 	})
-	DrawWindowCaption(screen, w.X+1, w.Y+1, optW-2, "Options - Audio")
+	DrawWindowCaption(screen, w.X+1, w.Y+1, ww-2, optTabCaption[w.Tab])
+	if w.Tab == OptTabControls {
+		for i, l := range optControlLabels {
+			y := 49 + 15*i
+			if w.Controls[i] {
+				DrawTextBold(screen, string(rune(0xAC)), w.X+10, w.Y+y, text)
+			}
+			DrawTextBold(screen, l, w.X+10+10+4, w.Y+y, text)
+		}
+		// Label::draw centred: x + (w - 1) / 2, y + max(0, (12 - 10) / 2 - 1).
+		const label = "Customize Keys..."
+		lw, _ := MeasureTextBold(label)
+		DrawTextBold(screen, label, w.X+26+(160-1)/2-lw/2, w.Y+94, text)
+		return
+	}
+	if w.Tab != OptTabAudio {
+		return
+	}
 	// GroupBox labels: drawn at (x+5, y) in the opaque window colour.
 	DrawTextBold(screen, "Sound", w.X+4+5, w.Y+optSoundOff, text)
 	DrawTextBold(screen, "Volume", w.X+4+5, w.Y+optVolOff, text)
