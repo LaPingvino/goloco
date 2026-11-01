@@ -73,6 +73,8 @@ type Scenario struct {
 	StationOwners []uint8
 	// UserStrings is the GameState user string table (StringIds 0x8000+).
 	UserStrings []string
+	// StationNames is station id → name StringId and town (GameState stations).
+	StationNames []StationName
 	// DockObjectOrder is the dock-object names in slot order (slots 381..388).
 	DockObjectOrder []string
 

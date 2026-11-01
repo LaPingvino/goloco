@@ -2,6 +2,7 @@ package world
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -57,6 +58,7 @@ type StationInfo struct {
 	ID           int
 	TileX, TileY int
 	Kind         string
+	Name         string
 }
 
 // StationList returns every placed/loaded station on the map.  A station spans
@@ -79,7 +81,7 @@ func (w *World) StationList() []StationInfo {
 				if int(se.StationType) < len(stationKindNames) {
 					kind = stationKindNames[se.StationType]
 				}
-				out = append(out, StationInfo{ID: id, TileX: x, TileY: y, Kind: kind})
+				out = append(out, StationInfo{ID: id, TileX: x, TileY: y, Kind: kind, Name: w.stationName(id)})
 			}
 		}
 	}
@@ -166,4 +168,38 @@ func (w *World) townName(id uint16, i int) string {
 		return w.UserStrings[id-0x8000]
 	}
 	return fmt.Sprintf("Town %d", i+1)
+}
+
+// Town name StringIds (StringManager.h): kTownNamesStart + a template id, or
+// kTownNamesEnd for the plain town name.
+const (
+	townNamesStart = 0x9EE7
+	townNamesEnd   = townNamesStart + 345
+)
+
+// stationName formats Station::name as formatStringImpl does: a town-name
+// template ({STRINGID} = the station's town's name), the plain town name, or a
+// user string. Falls back to "Station N".
+func (w *World) stationName(id int) string {
+	if id >= len(w.StationNames) {
+		return fmt.Sprintf("Station %d", id)
+	}
+	sn := w.StationNames[id]
+	town := ""
+	if int(sn.Town) < len(w.Towns) {
+		town = w.townName(w.Towns[sn.Town].Name, int(sn.Town))
+	}
+	switch {
+	case sn.Name >= 0x8000 && sn.Name < 0x8000+2048:
+		if int(sn.Name-0x8000) < len(w.UserStrings) {
+			return w.UserStrings[sn.Name-0x8000]
+		}
+	case sn.Name == townNamesEnd:
+		return town
+	case sn.Name >= townNamesStart && sn.Name < townNamesEnd:
+		if t, ok := stationNameTemplates[sn.Name-townNamesStart]; ok {
+			return strings.Replace(t, "{STRINGID}", town, 1)
+		}
+	}
+	return fmt.Sprintf("Station %d", id)
 }
