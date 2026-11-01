@@ -97,18 +97,19 @@ type Game struct {
 	gameWon      bool
 	progress     *progressFile
 
-	consCurve   int   // construction curve selection: -4 (left large) … 0 … +4
-	consTab     int   // construction window tab: 0 construction, 2 signal (1 station places directly)
-	consSigOne  bool  // signal tab: single direction chosen (isSignalBothDirections = 0)
-	consBridge  int   // lastSelectedBridge (slot; -1 = the first available)
-	consOneShot int   // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
-	consSignal  int   // signal tab: lastSelectedSignal (slot; -1 = the first available)
-	consStation int   // station tab: lastSelectedStationType (slot; -1 = the first available)
-	consMods    uint8 // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
-	consSlope   int   // construction slope selection: -2 (steep down) … 0 … +2
-	buildObjID  int   // index into TrackObjects / RoadObjects
-	hoverTileX  int   // tile under cursor in build mode (-1 if invalid)
-	hoverTileY  int
+	consCurve         int    // construction curve selection: -4 (left large) … 0 … +4
+	consTab           int    // construction window tab: 0 construction, 2 signal (1 station places directly)
+	consSigOne        bool   // signal tab: single direction chosen (isSignalBothDirections = 0)
+	preferredCurrency string // Config::preferredCurrency (DAT name; PARTIAL: not saved)
+	consBridge        int    // lastSelectedBridge (slot; -1 = the first available)
+	consOneShot       int    // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
+	consSignal        int    // signal tab: lastSelectedSignal (slot; -1 = the first available)
+	consStation       int    // station tab: lastSelectedStationType (slot; -1 = the first available)
+	consMods          uint8  // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
+	consSlope         int    // construction slope selection: -2 (steep down) … 0 … +2
+	buildObjID        int    // index into TrackObjects / RoadObjects
+	hoverTileX        int    // tile under cursor in build mode (-1 if invalid)
+	hoverTileY        int
 
 	// Diagnostic crop: when set, save a 480×360 PNG centred on diagTileX/Y after the next Draw.
 	// diagQuit=true means quit afterwards (CLI --diag mode); false keeps the game running (F12).
@@ -1170,6 +1171,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regional" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionalcurrency" && g.options != nil {
+			g.options.Tab = ui.OptTabRegional // and a click on Preferred currency
+			g.options.HandleClick(g.options.X+190, g.options.Y+122)
+		}
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionalheights" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional // and a click on Heights
 			g.options.HandleClick(g.options.X+190, g.options.Y+87)
@@ -1796,9 +1801,14 @@ func (g *Game) openOptionsWindow() {
 		if c := g.objMgr.GetCurrencyObject(g.objMgr.CurrencySlot); c != nil {
 			w.CurrencyName = c.Name
 		}
-		if c := g.objMgr.GetCurrencyObject("CURRDOLL"); c != nil {
+		if g.preferredCurrency == "" {
+			g.preferredCurrency = "CURRDOLL" // Config default
+		}
+		if c := g.objMgr.GetCurrencyObject(g.preferredCurrency); c != nil {
 			w.PreferredCurrencyName = c.Name
 		}
+		w.Currencies = g.objMgr.AvailableCurrencies()
+		w.OnPreferredCurrency = func(dat string) { g.preferredCurrency = dat }
 	}
 	// Controls tab: Config::edgeScrolling (default on). zoomToCursor and
 	// invertRightMouseViewPan are kept in the window only: goloco has neither yet.

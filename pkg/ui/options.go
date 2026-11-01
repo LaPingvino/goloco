@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/objects"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -82,6 +83,10 @@ type OptionsWindow struct {
 	// Regional tab: the current game's currency name and the preferred one;
 	// TitleMode disables the current-currency dropdown (prepareDraw).
 	CurrencyName, PreferredCurrencyName string
+	// Currencies are the installed currency objects (sorted by name);
+	// OnPreferredCurrency is told the DAT name chosen as preferred.
+	Currencies          []objects.CurrencyChoice
+	OnPreferredCurrency func(dat string)
 	// OpenDropdown shows a dropdown for the window (the game's single
 	// dropdown); nil: the Regional dropdowns don't open.
 	OpenDropdown func(*DropdownMenu)
@@ -162,6 +167,24 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour,
 				[]DropdownItem{{Text: "Imperial", Selected: !L.Metric, MoveX10: true}, {Text: "Metric", Selected: L.Metric, MoveX10: true}}, 1<<20, 1<<20)
 			d.OnSelect = func(i int) { L.Metric = i == 1 } // distanceSpeedDropdown (PARTIAL: Config::write)
+			w.OpenDropdown(d)
+		}
+		// preferredCurrencyMouseDown: every installed currency (dropdown_stringptr
+		// "{MOVE_X 10}{STRING}"), the preferred one selected ("»").
+		if r := optRegionalRows[4]; w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil && len(w.Currencies) > 0 {
+			items := make([]DropdownItem, len(w.Currencies))
+			for i, c := range w.Currencies {
+				items[i] = DropdownItem{Text: c.Name, Selected: c.Name == w.PreferredCurrencyName, MoveX10: true}
+			}
+			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour, items, 1<<20, 1<<20)
+			d.OnSelect = func(i int) { // preferredCurrencyDropdown (PARTIAL: Config::write, loadPreferredCurrencyAlways)
+				if i >= 0 && i < len(w.Currencies) {
+					w.PreferredCurrencyName = w.Currencies[i].Name
+					if w.OnPreferredCurrency != nil {
+						w.OnPreferredCurrency(w.Currencies[i].DAT)
+					}
+				}
+			}
 			w.OpenDropdown(d)
 		}
 		// heightsLabelsMouseDown: Units / Real Values, the current one selected.
