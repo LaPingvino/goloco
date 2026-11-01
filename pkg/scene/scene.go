@@ -24,6 +24,11 @@ type Renderer struct {
 	sprites   map[int]*gfx8.Sprite
 	water     paint.WaterImages
 	shadowMap []uint8
+
+	// Reused across frames (Render/ToRGBA allocate nothing in steady state).
+	sess *paint.Session
+	rt   *gfx8.RenderTarget
+	rgba *image.RGBA
 }
 
 // New prepares a renderer. The object manager must already be reordered to the
@@ -79,7 +84,12 @@ func tileWindow(m *sim.Map, v View) (x0, y0, x1, y1 int) {
 
 // Render draws the view of m into a new 8-bit target.
 func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
-	s := paint.NewSession(0, v.X, v.Y, v.W, v.H)
+	if r.sess == nil {
+		r.sess = paint.NewSession(0, v.X, v.Y, v.W, v.H)
+	} else {
+		r.sess.Reset(0, v.X, v.Y, v.W, v.H)
+	}
+	s := r.sess
 	x0, y0, x1, y1 := tileWindow(m, v)
 	if !v.Tiles.Empty() {
 		x0, y0, x1, y1 = max(v.Tiles.Min.X, 0), max(v.Tiles.Min.Y, 0), min(v.Tiles.Max.X, m.Width-1), min(v.Tiles.Max.Y, m.Height-1)
@@ -294,14 +304,22 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 		}
 	}
 	s.Arrange()
-	rt := gfx8.NewRenderTarget(v.W, v.H)
+	if r.rt == nil || r.rt.Width != v.W || r.rt.Height != v.H {
+		r.rt = gfx8.NewRenderTarget(v.W, v.H)
+	} else {
+		clear(r.rt.Bits)
+	}
+	rt := r.rt
 	s.Draw(rt)
 	return rt
 }
 
 // ToRGBA converts an 8-bit target through the palette (index 0 → opaque black).
 func (r *Renderer) ToRGBA(rt *gfx8.RenderTarget) *image.RGBA {
-	img := image.NewRGBA(image.Rect(0, 0, rt.Width, rt.Height))
+	if r.rgba == nil || r.rgba.Rect.Dx() != rt.Width || r.rgba.Rect.Dy() != rt.Height {
+		r.rgba = image.NewRGBA(image.Rect(0, 0, rt.Width, rt.Height))
+	}
+	img := r.rgba
 	for i, p := range rt.Bits {
 		c := r.G1.Palette[p]
 		if p == 0 {

@@ -73,12 +73,47 @@ type Session struct {
 	mergeRoadImage  int // absolute image of the merge set's first sprite
 	mergeRoadHeight int
 	mergeRoadPal    []uint8
+
+	// Slabs for paint structs and attachments (reused across frames by Reset).
+	structs               []Struct
+	attachedSlab          []Attached
+	chunks                [][]Struct
+	attachedChunks        [][]Attached
 }
 
 // NewSession starts a session for a render target covering viewport rectangle
 // (x, y, w, h).
 func NewSession(rotation uint8, x, y, w, h int) *Session {
 	return &Session{Rotation: rotation, rtX: x, rtY: y, rtW: w, rtH: h, back: noBackIndex}
+}
+
+// Reset prepares the session for a new frame, keeping its allocations (the
+// struct and attachment slabs) so a frame allocates nothing in steady state.
+func (s *Session) Reset(rotation uint8, x, y, w, h int) {
+	structs, attached := s.structs[:0], s.attachedSlab[:0]
+	*s = Session{Rotation: rotation, rtX: x, rtY: y, rtW: w, rtH: h, back: noBackIndex,
+		structs: structs, attachedSlab: attached}
+}
+
+// newStruct returns a zeroed struct from the slab (upstream allocatePaintStruct).
+// The slab grows in chunks; earlier chunks stay valid because a chunk is never
+// reallocated once handed out.
+func (s *Session) newStruct() *Struct {
+	if len(s.structs) == cap(s.structs) {
+		s.chunks = append(s.chunks, s.structs)
+		s.structs = make([]Struct, 0, max(1024, 2*cap(s.structs)))
+	}
+	s.structs = append(s.structs, Struct{})
+	return &s.structs[len(s.structs)-1]
+}
+
+func (s *Session) newAttached() *Attached {
+	if len(s.attachedSlab) == cap(s.attachedSlab) {
+		s.attachedChunks = append(s.attachedChunks, s.attachedSlab)
+		s.attachedSlab = make([]Attached, 0, max(256, 2*cap(s.attachedSlab)))
+	}
+	s.attachedSlab = append(s.attachedSlab, Attached{})
+	return &s.attachedSlab[len(s.attachedSlab)-1]
 }
 
 // SetSpritePosition sets the world position painters' offsets are relative to.
@@ -144,8 +179,10 @@ func (s *Session) create(img Image, off, bbOff, bbSize Pos3) *Struct {
 	bx, by := rotate(bbOff.X, bbOff.Y, sw)
 	rs := rotateBoundBoxSize(bbSize, s.Rotation)
 	mins := Pos3{bx + s.spriteX, by + s.spriteY, bbOff.Z}
-	return &Struct{Img: img, VpX: vpX, VpY: vpY, Mins: mins,
-		Maxs: Pos3{mins.X + rs.X, mins.Y + rs.Y, mins.Z + rs.Z}}
+	ps := s.newStruct()
+	ps.Img, ps.VpX, ps.VpY, ps.Mins = img, vpX, vpY, mins
+	ps.Maxs = Pos3{mins.X + rs.X, mins.Y + rs.Y, mins.Z + rs.Z}
+	return ps
 }
 
 // remapPositionToQuadrant (Paint.cpp).
@@ -206,7 +243,8 @@ func (s *Session) AttachToPrevious(img Image, x, y int) *Attached {
 	if s.last == nil {
 		return nil
 	}
-	a := &Attached{Img: img, X: x, Y: y, next: s.last.attached}
+	a := s.newAttached()
+	a.Img, a.X, a.Y, a.next = img, x, y, s.last.attached
 	s.last.attached = a
 	return a
 }
