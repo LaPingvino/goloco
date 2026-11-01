@@ -101,6 +101,7 @@ type Game struct {
 	consTab           int    // construction window tab: 0 construction, 2 signal (1 station places directly)
 	consSigOne        bool   // signal tab: single direction chosen (isSignalBothDirections = 0)
 	preferredCurrency string // Config::preferredCurrency (DAT name; PARTIAL: not saved)
+	frameLimit        int    // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
 	consBridge        int    // lastSelectedBridge (slot; -1 = the first available)
 	consOneShot       int    // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
 	consSignal        int    // signal tab: lastSelectedSignal (slot; -1 = the first available)
@@ -1171,6 +1172,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regional" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "framelimit" && g.options != nil {
+			g.options.Tab = ui.OptTabDisplay // and a click on Frame rate limit
+			g.options.HandleClick(g.options.X+240, g.options.Y+114)
+		}
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "displaymode" && g.options != nil {
 			g.options.Tab = ui.OptTabDisplay // and a click on Screen mode
 			g.options.HandleClick(g.options.X+240, g.options.Y+66)
@@ -1804,6 +1809,14 @@ func (g *Game) openOptionsWindow() {
 		w.ScreenMode = 2
 	}
 	w.OnScreenMode = func(m int) { ebiten.SetFullscreen(m != 0) }
+	// Frame rate limit: vertical sync = Ebitengine's vsync; unrestricted =
+	// vsync off; internal speed draws with vsync too (upstream draws only at
+	// its update rate — goloco draws every frame; noted in LOOP).
+	w.FrameLimit = g.frameLimit
+	w.OnFrameLimit = func(m int) {
+		g.frameLimit = m
+		ebiten.SetVsyncEnabled(m != 2)
+	}
 	// Regional tab: the scenario's currency object, the preferred one
 	// (Config default CURRDOLL), and title mode.
 	w.TitleMode = g.inTitleScreen
