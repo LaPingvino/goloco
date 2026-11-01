@@ -36,4 +36,5 @@ func reorderScenarioObjects(om *objects.ObjectManager, sc *scenario.Scenario) {
 			r.apply(r.order)
 		}
 	}
+	om.CurrencySlot = sc.CurrencyObject
 }

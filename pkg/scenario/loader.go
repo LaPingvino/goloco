@@ -189,6 +189,10 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.WallObjectOrder = parseWallObjectOrder(reqObjBytes)
 	sc.TrainSignalObjectOrder = parseTrainSignalObjectOrder(reqObjBytes)
 	sc.IndustryObjectOrder = parseIndustryObjectOrder(reqObjBytes)
+	// Currency: one slot, after the interface skin (1) and the sounds (128).
+	if o := parseObjectOrder(reqObjBytes, 129, 1, objectTypeCurrency); len(o) == 1 {
+		sc.CurrencyObject = o[0]
+	}
 	sc.LevelCrossingObjectOrder = parseLevelCrossingObjectOrder(reqObjBytes)
 	sc.BridgeObjectOrder = parseBridgeObjectOrder(reqObjBytes)
 	sc.TrainStationObjectOrder = parseTrainStationObjectOrder(reqObjBytes)
@@ -722,6 +726,7 @@ func advanceRaw(r *assets.S5ChunkReader, n int) {
 const (
 	objectHeaderSize       = 16
 	objectTypeMask         = 0x3F
+	objectTypeCurrency     = 2  // ObjectType::currency
 	objectTypeLand         = 6  // ObjectType::land
 	objectTypeCargo        = 8  // ObjectType::cargo
 	objectTypeWall         = 9  // ObjectType::wall

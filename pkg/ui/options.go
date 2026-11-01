@@ -10,9 +10,10 @@ import (
 // the device row and "Play title screen music", Volume group with six
 // sliders in two columns). Colours: the skin's windowTitlebarColour and
 // windowOptionsColour.
-// Tabs switch with upstream's size and caption per tab; Audio and Controls
-// have their contents.
-// PARTIAL: Display, Rendering, Regional, Company and Misc show only the common
+// Tabs switch with upstream's size and caption per tab; Audio, Regional and
+// Controls have their contents (Regional: display only — its dropdowns don't
+// open, and currency symbols/formatting are not applied yet).
+// PARTIAL: Display, Rendering, Company and Misc show only the common
 // frame (their widgets aren't ported yet); Controls: only edge scrolling has a
 // goloco counterpart, Customize Keys opens nothing; tab icon
 // animation; the device dropdown (shows "Default"); goloco has only a music
@@ -78,6 +79,26 @@ type OptionsWindow struct {
 	// OnControl is called with the index and new value when one is toggled.
 	Controls  [3]bool
 	OnControl func(i int, v bool)
+
+	// Regional tab: the current game's currency name and the preferred one;
+	// TitleMode disables the current-currency dropdown (prepareDraw).
+	CurrencyName, PreferredCurrencyName string
+	TitleMode                           bool
+}
+
+// Regional tab rows (Regional::_widgets): label at x 10, dropdown at x 183,
+// both 173×12.
+var optRegionalRows = [5]struct {
+	y     int
+	label string
+}{{49, "Language:"}, {69, "Distance and Speed:"}, {84, "Heights:"}, {104, "Current currency:"}, {119, "Preferred currency:"}}
+
+// optDropdown draws dropdownWidgets: the ComboBox (inset, fillDarker) and the
+// 11×10 Button at (x + w - 12, y + 1).
+func optDropdown(rt *gfx8.RenderTarget, x, y, w int, sec []uint8) {
+	gfx8.FillRectInset(rt, x, y, x+w-1, y+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+	bx := x + w - 12
+	gfx8.FillRectInset(rt, bx, y+1, bx+11-1, y+1+10-1, gfx8.InsetColour{Map: sec}, 0)
 }
 
 func (w *OptionsWindow) size() (int, int) { s := optTabSize[w.Tab]; return s[0], s[1] }
@@ -198,6 +219,16 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			gfx8.FillRectInset(rt, 26, 94, 26+160-1, 94+12-1, gfx8.InsetColour{Map: sec}, 0)
 			return
 		}
+		if w.Tab == OptTabRegional {
+			for _, r := range optRegionalRows {
+				optDropdown(rt, 183, r.y, 173, sec)
+			}
+			for i := range 2 { // Checkboxes at (10, 134) and (10, 148)
+				y := 134 + 14*i
+				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			}
+			return
+		}
 		if w.Tab != OptTabAudio {
 			return
 		}
@@ -234,6 +265,35 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		const label = "Customize Keys..."
 		lw, _ := MeasureTextBold(label)
 		DrawTextBold(screen, label, w.X+26+(160-1)/2-lw/2, w.Y+94, text)
+		return
+	}
+	if w.Tab == OptTabRegional {
+		// prepareDraw's values: Config defaults (language en-GB "English (UK)",
+		// measurementFormat imperial, showHeightAsUnits false) and the currencies.
+		values := [5]string{"English (UK)", "Imperial", "Real Values", w.CurrencyName, w.PreferredCurrencyName}
+		arrow := string(rune(170)) // LocoChar::down, StringIds::dropdown "{COLOUR BLACK}▼"
+		aw, _ := MeasureTextBold(arrow)
+		for i, r := range optRegionalRows {
+			DrawTextBold(screen, r.label, w.X+10, w.Y+r.y, text) // Label, left, {COLOUR WINDOW_2}
+			v := values[i]
+			for len(v) > 0 {
+				if tw, _ := MeasureTextBold(v); tw <= 173-2 {
+					break
+				}
+				v = v[:len(v)-1]
+			}
+			if i == 3 && w.TitleMode { // disabled: colour.inset()
+				c6, c4 := pal[gfx8.Shade(sec, 6)], pal[gfx8.Shade(sec, 4)]
+				DrawTextBold(screen, v, w.X+183+1+1, w.Y+r.y+1+1, c4)
+				DrawTextBold(screen, v, w.X+183+1, w.Y+r.y+1, c6)
+			} else {
+				DrawTextBold(screen, v, w.X+183+1, w.Y+r.y+1, black) // ComboBox text, FD = colour 0
+			}
+			bx := 183 + 173 - 12
+			DrawTextBold(screen, arrow, w.X+bx+(11-1)/2-aw/2, w.Y+r.y+1, black)
+		}
+		DrawTextBold(screen, "Use preferred currency when starting new game", w.X+10+10+4, w.Y+134, text)
+		DrawTextBold(screen, "Use preferred currency always", w.X+10+10+4, w.Y+148, text)
 		return
 	}
 	if w.Tab != OptTabAudio {
