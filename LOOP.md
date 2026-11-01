@@ -374,7 +374,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 ## Questions for Joop
 - Bridges (scene mode, title map river crossing near tile 90,99): do they look like the original? A reference screenshot from OpenLoco/Locomotion at the same spot would let me check pixel-exactness.
 - Does the music still stutter on the test page (rebuilt 2026-11-01 tick 63, audio now at the music's native 22050 Hz)?
-- Try the test page with 'Use the ported renderer' ticked: does it look right, and what frame time does the console log
+- (answered 2026-11-01: Joop — 'looks a lot better and isn't as slow as I expected; use that as the baseline') Try the test page with 'Use the ported renderer' ticked: does it look right, and what frame time does the console log
   ('[Scene] CPU renderer: … per frame')? That decides how soon it can become the default.
 - (answered 2026-11-01) g1 gap: Joop allows drawing replacements myself, or borrowing from OpenTTD
   (check licences first: OpenTTD's OpenGFX is GPL-2.0; OpenGraphics is MIT).
@@ -466,3 +466,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 71 (item 3j bridges, DONE) — quarter case 8 (paintFlatSingleQuarterSupportFront + paintSupportDiagonal) ported literally, incl. upstream's re-test of unkHeight and its swapped Lhs/Rhs image names. Bridge PARTIAL notes gone; the end-loop note now names only paintSupports (track/road addition supports) as missing.
 - 2026-11-01 tick 72 (assessment) — what blocks scene mode as default: zoom 1-3 (new item 3m, plan + upstream refs), vehicles in the sort (item 5), track extras/supports, rotation. Vehicles currently drawn by the old post-pass over the scene.
 - 2026-11-01 tick 73 (item 3m step a) — gfx8 zoom: getDrawImagePosArgs + drawBMPSprite/drawRLESprite for zoom 1-3 ported (zoom.go); Sprite keeps hasZoomSprites/noZoomDraw/zoomOffset and the RLE runs. Property test: 2^z-upscaled sprite at zoom z == original at zoom 0 (BMP and RLE, 300 random cases each); noZoomDraw skipped. Joop reported misaligned menus + improvised dialogs → new item 3n (HIGH), next.
+- 2026-11-01 tick 74 (item 3j / 3n) — CPU renderer is now the DEFAULT (Joop: 'use that as the baseline'); GOLOCO_SCENE=0 or the test page's 'Use the old renderer' box selects the old one; zoom>0 still falls back to the old renderer (3m). Test page redeployed. 3n: g1 font widthFudge is upstream's own table (deviations C entry was wrong); title screen captured headless — logo top-left, menu buttons without their window, hand-placed texts; upstream positions read (TitleLogo 298×170, TitleMenu centred at height-kWH-25, TitleVersion (8, h-kHeight), TitleOptions 60×15 top-right, TitleExit 40×28 bottom-right) → next: port the title windows.

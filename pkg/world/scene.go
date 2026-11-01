@@ -10,13 +10,14 @@ import (
 )
 
 // The ported software renderer (pkg/scene: gfx8 + paint) as the world view —
-// LOOP item 3j. Behind GOLOCO_SCENE=1 while it is incomplete: tracks,
-// stations, signals, walls, bridges and industries are not drawn by it yet (the
-// old per-tile painters still own those), and it covers zoom 0 only.
+// LOOP item 3j. The DEFAULT since 2026-11-01 (Joop: "use that as the
+// baseline"); GOLOCO_SCENE=0 selects the old Ebitengine renderer. PARTIAL: it
+// covers zoom 0 only — at zoom 1-3 the old renderer still draws the frame (item
+// 3m) — and vehicles are drawn over it by the old post-pass (item 5).
 
 // sceneEnabled reports whether this frame is drawn by pkg/scene.
 func (w *World) sceneEnabled() bool {
-	return os.Getenv("GOLOCO_SCENE") == "1" && w.zoom == 0 &&
+	return os.Getenv("GOLOCO_SCENE") != "0" && w.zoom == 0 &&
 		w.renderer != nil && w.renderer.G1 != nil && w.renderer.ObjMgr != nil
 }
 

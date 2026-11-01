@@ -41,7 +41,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
     <p class="lede">The current goloco build, compiled to WebAssembly, running on the original Locomotion data from an in-memory filesystem. Private test page.</p>
     <div class="bar" aria-hidden="true"><div id="fill"></div></div>
     <div id="status" role="status">Loading the data pack…</div>
-    <label class="opt"><input type="checkbox" id="scene"> Use the ported renderer (experimental: drawn like OpenLoco, on the CPU; zoom 0 only)</label>
+    <label class="opt"><input type="checkbox" id="oldrender"> Use the old renderer (the ported CPU renderer is now the default; it draws zoom 0, the old one still takes over when zoomed out)</label>
     <button id="start" type="button" disabled>Start</button>
     <p class="note">Music is fetched when the game first plays a track. Saves and screenshots live in memory and are gone on reload. Goloco's log and any files it could not find are in the drawer below.</p>
   </div>
@@ -86,7 +86,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
     return new Uint8Array(await new Response(s).arrayBuffer());
   };
 
-  try { $("scene").checked = localStorage.getItem("goloco-scene") === "1"; } catch (e) {}
+  try { $("oldrender").checked = localStorage.getItem("goloco-oldrender") === "1"; } catch (e) {}
   let wasm, man;
   (async () => {
     man = await (await fetch("manifest.json")).json();
@@ -112,8 +112,8 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
       const go = new Go();
       go.argv = ["goloco"].concat(man.args || []);
       go.env = Object.assign({ HOME: "/w" }, man.env || {});
-      if ($("scene").checked) go.env.GOLOCO_SCENE = "1";
-      try { localStorage.setItem("goloco-scene", $("scene").checked ? "1" : ""); } catch (e) {}
+      if ($("oldrender").checked) go.env.GOLOCO_SCENE = "0";
+      try { localStorage.setItem("goloco-oldrender", $("oldrender").checked ? "1" : ""); } catch (e) {}
       const { instance } = await WebAssembly.instantiate(wasm, go.importObject);
       $("loader").hidden = true;
       document.body.style.padding = "0";
