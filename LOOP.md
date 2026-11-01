@@ -244,6 +244,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    place (right after the surface). EQUIVALENCE: render8 via pkg/scene is pixel-identical to the pre-refactor
    output on both reference views (title 196,190 and Weatherworld 231,25). NEXT: World.Draw → scene (behind a flag
    first), old painters on top for the elements not ported yet.
+   Tick 34 — step 2 DONE: World.Draw → pkg/scene behind GOLOCO_SCENE=1 (zoom 0; pkg/world/scene.go), vehicles and
+   labels on top; the test page passes env from manifest.json ("env") into go.env. Title capture in scene mode:
+   terrain, cliffs, trees with shadows, water, UI — all through the CPU renderer. MISSING in scene mode: walls,
+   tracks, stations, signals, bridges, industries (next: port walls (PaintWall.cpp, small), then tracks). PERF:
+   one full-frame CPU render + upload per frame — measure in a real browser before making it the default.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -327,3 +332,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 31 (item 3i roads b-d) — road painter + track/road priority ordering ported; town streets and junctions render in the CPU renderer.
 - 2026-11-01 tick 32 (item 3i roads e) — slope comparison: tables and placement fine; the current renderer's unsorted per-tile drawing is the likely cause; found two more invented behaviours in its road merge. New item 3j: switch the live renderer to gfx8+paint.
 - 2026-11-01 tick 33 (item 3j step 1) — pkg/scene: the CPU renderer as a reusable package reading sim.Map; sim.Map.LoadScenario; refactor proven pixel-identical on both reference views.
+- 2026-11-01 tick 34 (item 3j step 2) — the game can draw through the ported CPU renderer (GOLOCO_SCENE=1); title renders correctly; walls/tracks/stations still to port. (Videos: audio copied from Crostini, Whisper transcription running in a background agent.)
