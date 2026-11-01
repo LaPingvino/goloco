@@ -11,6 +11,7 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 type Surface struct {
 	BaseZ uint8 // SmallZ (×4 world units)
 	Slope uint8 // 5-bit slope (corner flags + steep bit 0x10)
+	Water uint8 // water level in MicroZ (×16 world units); 0 = none
 }
 
 const (
@@ -124,5 +125,52 @@ func (s *Session) PaintCliffEdges(self Surface, neighbours [4]*Surface, cliffBas
 			continue
 		}
 		s.paintCliffEdgeImpl(sprite, edge, edgeHeightFor(sc, *nb, edge), cliffBase)
+	}
+}
+
+// Water — PaintSurface.cpp paintSurface water block (~1736-1775). PARTIAL: no
+// waves (WaveManager frames are drawn by the live game, not this still frame).
+
+// WaterImages are the water object's image base and its palette map (+41,
+// WaterObject::kColourPalette; ExtColour::water).
+type WaterImages struct {
+	Base   int
+	PalMap []uint8
+}
+
+// PaintWater paints the water surface of the tile at the current sprite position:
+// image +35+shape as a destination mask through the water palette map, +30+shape
+// attached on top, then the water cliff edges (edges 2,3,0,1). slopeToWaterShape
+// is kSlopeToWaterShape.
+func (s *Session) PaintWater(self Surface, neighbours [4]*Surface, w WaterImages, slopeToWaterShape []uint8, cliffBase int, sprite func(int) *gfx8.Sprite) {
+	if self.Water == 0 {
+		return
+	}
+	waterHeight := int(self.Water) * microZStep
+	baseHeight := int(self.BaseZ) * microToSmallZStep
+	shape := 0
+	if waterHeight <= baseHeight+microZStep {
+		shape = int(slopeToWaterShape[self.Slope&0xF])
+	}
+	blend := sprite(w.Base + shape + 35)
+	if blend != nil {
+		off := Pos3{0, 0, waterHeight}
+		s.AddAsParent(Image{Sprite: blend, Op: gfx8.OpTransparent | gfx8.OpDst, PalMap: w.PalMap}, off, off, Pos3{32, 32, -1})
+		if top := sprite(w.Base + shape + 30); top != nil {
+			s.AttachToPrevious(Image{Sprite: top, Op: gfx8.OpFor(top, false, false)}, 0, 0)
+		}
+	}
+	if cliffBase <= 0 {
+		return
+	}
+	sc := corners(self)
+	for _, edge := range [4]int{2, 3, 0, 1} {
+		nb := neighbours[edge]
+		if nb == nil || int(nb.Water)*microZStep == waterHeight {
+			continue
+		}
+		eh := edgeHeightFor(sc, *nb, edge)
+		wz := waterHeight / microZStep
+		s.paintCliffEdgeImpl(sprite, edge, edgeHeight{wz, eh.neighbour0, wz, eh.neighbour1}, cliffBase)
 	}
 }

@@ -1,7 +1,7 @@
 // Command render8 renders a map region through the ported software renderer
 // (pkg/gfx8 + pkg/paint) to a PNG, with no graphics library — the CPU
 // reference the Ebiten renderer is compared against (LOOP item 3i, step 3).
-// So far it paints the main land surface only.
+// So far: land surfaces, cliff edges and water (no waves).
 //
 //	go run ./cmd/render8 -scenario ../locomotion/Data/title.dat -tile 196,190 -out surf.png
 package main
@@ -51,6 +51,11 @@ func main() {
 		om.ReorderLandObjects(sc.LandObjectOrder)
 	}
 	om.ResolveCliffEdges()
+	var water paint.WaterImages
+	if wo := om.WaterObj; wo != nil {
+		water.Base = int(wo.ImageOffset)
+		water.PalMap, _ = g1.GetPaletteMapAt(water.Base + 41)
+	}
 
 	ct := sc.GetTile(tx, ty)
 	cz := 0
@@ -117,6 +122,15 @@ func main() {
 					}
 				}
 				s.PaintCliffEdges(paint.Surface{BaseZ: t.Height, Slope: t.Slope}, nbs, int(land.CliffEdgeImage), sprite)
+			}
+			if t.Water != 0 && water.PalMap != nil {
+				var nbs [4]*paint.Surface
+				for d, o := range paint.NeighbourOffsets {
+					if nt := sc.GetTile(x+o[0]/32, y+o[1]/32); nt != nil {
+						nbs[d] = &paint.Surface{BaseZ: nt.Height, Slope: nt.Slope, Water: nt.Water}
+					}
+				}
+				s.PaintWater(paint.Surface{BaseZ: t.Height, Slope: t.Slope, Water: t.Water}, nbs, water, objects.KSlopeToWaterShape[:], int(land.CliffEdgeImage), sprite)
 			}
 		}
 	}
