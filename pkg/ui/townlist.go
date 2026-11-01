@@ -48,6 +48,8 @@ type TownListWindow struct {
 	Status      string
 	Hover       int
 	Scroll      int
+	dragging    bool // the scrollbar's thumb is being dragged
+	dragY       int
 	content     [4]int
 	OnClose     func()
 
@@ -137,6 +139,19 @@ func (w *TownListWindow) HandleClick(px, py int) {
 			}
 			return
 		}
+	}
+	// The scrollbar (when the rows don't fit): buttons and track move the
+	// list (ScrollView's vButton/vTrack), the thumb starts a drag.
+	if l := w.List; w.in(l, px, py) && len(w.Rows)*w.RowHeight > l[3] &&
+		px >= w.X+l[0]+l[2]-L.ScrollbarSize-L.ScrollbarMargin {
+		y := py - (w.Y + l[1])
+		switch part := L.VScrollPart(y, l[3], len(w.Rows)*w.RowHeight, w.Scroll); part {
+		case "thumb":
+			w.dragY, w.dragging = py, true
+		default:
+			w.Scroll = L.VScrollClick(part, l[3], len(w.Rows)*w.RowHeight, w.Scroll)
+		}
+		return
 	}
 	if w.in(w.List, px, py) {
 		if i := (py - (w.Y + w.List[1] + 1) + w.Scroll) / w.RowHeight; i >= 0 && i < len(w.Rows) {
@@ -302,3 +317,19 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 
 // currency32 is {CURRENCY32}: formatCurrency, as uilayout.Currency48.
 func currency32(v int64) string { return L.Currency48(v) }
+
+// Drag follows the mouse while the thumb is held (verticalDragFollow); held
+// false ends the drag.
+func (w *TownListWindow) Drag(py int, held bool) {
+	if !w.dragging {
+		return
+	}
+	if !held {
+		w.dragging = false
+		return
+	}
+	if dy := py - w.dragY; dy != 0 {
+		w.Scroll = L.VScrollDrag(w.List[3], len(w.Rows)*w.RowHeight, w.Scroll, dy)
+		w.dragY = py
+	}
+}
