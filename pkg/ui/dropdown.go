@@ -262,3 +262,29 @@ func (d *DropdownMenu) UpdateHover(x, y int) {
 
 	d.Highlighted = -1
 }
+
+// NewDropdownShow is Dropdown::show (0x004CC807) for a window's dropdown
+// widget at x, y of the given height: items `width` wide and 10 high, the
+// list below the widget (above it if it doesn't fit, else beside it at the
+// top), width + 4 wide, kept on the sw × sh screen; in the window's colour
+// (opaque unless the colour is translucent).
+func NewDropdownShow(x, y, width, height int, colour uint8, items []DropdownItem, sw, sh int) *DropdownMenu {
+	h := len(items)*dropdownItemHeight + 3 + 1
+	oy := y + height
+	if h+oy > sh || oy < 0 {
+		oy -= height + h
+		bottom := oy
+		if oy >= 0 {
+			bottom = oy + h
+		}
+		if oy < 0 || bottom > sh {
+			x += width + 3
+			oy = 0
+		}
+	}
+	w := width + 3 + 1
+	x = max(x, 0)
+	x = min(x+w, sw) - w
+	return &DropdownMenu{X: x, Y: oy, Width: w, Height: h, ItemWidth: width, Colour: colour,
+		Items: items, Highlighted: -1, Visible: true}
+}

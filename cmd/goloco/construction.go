@@ -135,8 +135,14 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 			}
 			return
 		}
+		if g.consTab == 1 && rx >= 3 && rx < 3+132 && ry >= 45 && ry < 45+12 {
+			g.openConsDropdown(win.X, win.Y, f.SkinColour, true)
+			return
+		}
 		if g.consTab == 2 {
 			switch ui.SignalHit(rx, ry) {
+			case "dropdown":
+				g.openConsDropdown(win.X, win.Y, f.SkinColour, false)
 			case "both":
 				g.consSigOne = false
 			case "single":
@@ -185,7 +191,7 @@ func (g *Game) signalTabState() ui.SignalTabState {
 	if len(list) == 0 {
 		return st
 	}
-	if s := om.GetTrainSignalObjectByIndex(list[0]); s != nil {
+	if s := om.GetTrainSignalObjectByIndex(pickSlot(list, g.consSignal)); s != nil {
 		st.Name, st.Description, st.Image = s.Name, s.Description, int(s.ImageOffset)
 	}
 	return st
@@ -235,12 +241,81 @@ func (g *Game) stationTabState(company uint8) ui.StationTabState {
 	if len(list) == 0 {
 		return st
 	}
+	slot := pickSlot(list, g.consStation)
 	if road {
-		if s := om.GetRoadStationObjectByIndex(list[0]); s != nil {
+		if s := om.GetRoadStationObjectByIndex(slot); s != nil {
 			st.Name, st.Image, st.Recolourable = s.Name, int(s.ImageOffset), s.Flags&1 != 0
 		}
-	} else if s := om.GetTrainStationObjectByIndex(list[0]); s != nil {
+	} else if s := om.GetTrainStationObjectByIndex(slot); s != nil {
 		st.Name, st.Image, st.Recolourable = s.Name, int(s.ImageOffset), s.Flags&1 != 0
 	}
 	return st
+}
+
+// pickSlot is the selected slot if it is in the list, else the list's first.
+func pickSlot(list []int, sel int) int {
+	for _, s := range list {
+		if s == sel {
+			return s
+		}
+	}
+	return list[0]
+}
+
+// openConsDropdown is the station or signal tab's onMouseDown on its
+// dropdown: Dropdown::show at the combobox (3, 45; width() + 2 = 133,
+// height() = 11) in the window's secondary colour, an item per available
+// type, the selected one highlighted; choosing sets lastSelected….
+// PARTIAL: Scenario::getConstruction()'s remembered choice isn't written.
+func (g *Game) openConsDropdown(wx, wy int, colour uint8, station bool) {
+	if g.r == nil || g.r.ObjMgr == nil {
+		return
+	}
+	om := g.r.ObjMgr
+	year := int(g.w.CurrentYear)
+	var list []int
+	name := func(int) string { return "" }
+	sel := &g.consSignal
+	if station {
+		road := g.consIsRoad()
+		list, sel = om.AvailableCompatibleStations(g.buildObjID, road, year), &g.consStation
+		name = func(s int) string {
+			if road {
+				if o := om.GetRoadStationObjectByIndex(s); o != nil {
+					return o.Name
+				}
+			} else if o := om.GetTrainStationObjectByIndex(s); o != nil {
+				return o.Name
+			}
+			return ""
+		}
+	} else {
+		list = om.AvailableCompatibleSignals(g.buildObjID, year)
+		name = func(s int) string {
+			if o := om.GetTrainSignalObjectByIndex(s); o != nil {
+				return o.Name
+			}
+			return ""
+		}
+	}
+	if len(list) == 0 {
+		return
+	}
+	cur := pickSlot(list, *sel)
+	items := make([]ui.DropdownItem, len(list))
+	hl := -1
+	for i, s := range list {
+		items[i] = ui.DropdownItem{Text: name(s)}
+		if s == cur {
+			hl = i
+		}
+	}
+	d := ui.NewDropdownShow(wx+3, wy+45, 133, 11, colour, items, g.sw, g.sh)
+	d.Highlighted = hl
+	d.OnSelect = func(i int) {
+		if i >= 0 && i < len(list) {
+			*sel = list[i]
+		}
+	}
+	g.dropdown = d
 }
