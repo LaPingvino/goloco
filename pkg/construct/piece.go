@@ -236,3 +236,30 @@ func GetRoadPieceID(piece, gradient, rotation uint8) (TrackPieceID, bool) {
 	}
 	return TrackPieceID{ID: id, Rotation: rotation}, true
 }
+
+// Construction button images (ImageIds.h) for the dual-track pair.
+const (
+	ImgSBendDualTrackLeft      = 2355
+	ImgSBendDualTrackRight     = 2356
+	ImgSBendToSingleTrackLeft  = 2357
+	ImgSBendToSingleTrackRight = 2358
+	ImgRightTurnaround         = 2359
+	ImgLeftTurnaround          = 2360
+)
+
+// DualTrackButtons is activateSelectedTrackWidgets for a one-sided track's
+// s_bend_dual_track_left/right buttons at a construction rotation: each
+// button's image and the piece it chooses (onMouseDown reads the image).
+// Heading straight or diagonal: the two dual-track s-bends (both choose
+// s_bend_to_dual_track, as upstream); at 4–7: right turnaround and s-bend to
+// single track (left image); at 8–11: s-bend to single track (right image)
+// and left turnaround.
+func DualTrackButtons(rotation uint8) (leftImg, rightImg int, leftPiece, rightPiece uint8) {
+	switch {
+	case rotation >= 4 && rotation < 8:
+		return ImgRightTurnaround, ImgSBendToSingleTrackLeft, Turnaround, SBendToSingleTrack
+	case rotation >= 8 && rotation < 12:
+		return ImgSBendToSingleTrackRight, ImgLeftTurnaround, SBendToSingleTrack, Turnaround
+	}
+	return ImgSBendDualTrackLeft, ImgSBendDualTrackRight, SBendToDualTrack, SBendToDualTrack
+}

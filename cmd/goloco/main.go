@@ -2188,26 +2188,14 @@ func consTrackGradient(slope int) uint8 {
 	return construct.Level
 }
 
-// consDualTrackPiece is what the two s-bend-to-dual-track buttons choose at
-// this heading (onMouseDown reads the buttons' images, which
-// activateSelectedTrackWidgets sets by constructionRotation): heading
-// straight or diagonal both choose s_bend_to_dual_track (as upstream, the
-// right one too); at 4–7 left = turnaround, right = s-bend to single track;
-// at 8–11 left = s-bend to single track, right = turnaround.
+// consDualTrackPiece is the piece the left or right dual-track button
+// chooses at this heading (construct.DualTrackButtons).
 func consDualTrackPiece(right bool, rot uint8) int {
-	switch {
-	case rot >= 4 && rot < 8:
-		if right {
-			return construct.SBendToSingleTrack
-		}
-		return construct.Turnaround
-	case rot >= 8 && rot < 12:
-		if right {
-			return construct.Turnaround
-		}
-		return construct.SBendToSingleTrack
+	_, _, l, r := construct.DualTrackButtons(rot)
+	if right {
+		return int(r)
 	}
-	return construct.SBendToDualTrack
+	return int(l)
 }
 
 // consSelectedRoadID is getRoadPieceId (pkg/construct) for the chosen piece

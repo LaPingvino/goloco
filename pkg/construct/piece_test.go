@@ -69,3 +69,22 @@ func TestGetRoadPieceID(t *testing.T) {
 		}
 	}
 }
+
+// The dual-track pair as activateSelectedTrackWidgets and onMouseDown give it.
+func TestDualTrackButtons(t *testing.T) {
+	for _, c := range []struct {
+		rot    uint8
+		li, ri int
+		lp, rp uint8
+	}{
+		{0, ImgSBendDualTrackLeft, ImgSBendDualTrackRight, SBendToDualTrack, SBendToDualTrack},
+		{13, ImgSBendDualTrackLeft, ImgSBendDualTrackRight, SBendToDualTrack, SBendToDualTrack},
+		{5, ImgRightTurnaround, ImgSBendToSingleTrackLeft, Turnaround, SBendToSingleTrack},
+		{9, ImgSBendToSingleTrackRight, ImgLeftTurnaround, SBendToSingleTrack, Turnaround},
+	} {
+		li, ri, lp, rp := DualTrackButtons(c.rot)
+		if li != c.li || ri != c.ri || lp != c.lp || rp != c.rp {
+			t.Errorf("rot %d: %d %d %d %d", c.rot, li, ri, lp, rp)
+		}
+	}
+}
