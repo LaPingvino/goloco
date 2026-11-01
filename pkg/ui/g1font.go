@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"image"
 	"image/color"
 	"os"
@@ -235,4 +236,18 @@ func DrawTextOutlined(screen *ebiten.Image, str string, x, y int, clr, outlineCl
 		penX += int(f.widths[G1FontMediumBold][chr-32])
 	}
 	return penX
+}
+
+// TextColours returns the body and outline colours of the outline text style
+// for a colour: getShade(colour, 9) and PaletteIndex::black0.
+func TextColours(colour int) (body, outline color.Color) {
+	if globalG1Font == nil {
+		return color.White, color.Black
+	}
+	pal := globalG1Font.g1.GetPalette()
+	m, err := globalG1Font.g1.GetPaletteMap(colour)
+	if err != nil {
+		return color.White, pal[paletteBlack0]
+	}
+	return pal[gfx8.Shade(m, 9)], pal[paletteBlack0]
 }
