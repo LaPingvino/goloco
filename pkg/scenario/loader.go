@@ -272,6 +272,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.IndustryObjectIDs = parseIndustryObjectIDs(gameState)
 		sc.CompanyColours = parseCompanyColours(gameState)
 		sc.StationOwners = parseStationOwners(gameState)
+		sc.UserStrings = parseUserStrings(gameState)
 
 		// Towns live inside the GameState chunk for saved games.
 		sc.Towns = parseTownsFromGameState(gameState)
@@ -1159,6 +1160,52 @@ func parseCompanyColours(gs []byte) []uint8 {
 	}
 	c[companyNeutral] = colourGrey
 	return c
+}
+
+// User strings (StringManager): StringIds 0x8000.. name entries of the
+// GameState's userStrings table — 2048 × 32 bytes at 0x432A44 (GameStateType2:
+// 0x430E24), offsets from the compiler. Town names live here.
+const (
+	userStringsOffset      = 0x432A44
+	userStringsOffsetType2 = 0x430E24
+	userStringsCount       = 2048
+	userStringSize         = 32
+	// UserStringsStart is StringManager::kUserStringsStart.
+	UserStringsStart = 0x8000
+)
+
+// parseUserStrings returns the user strings (NUL-terminated, Latin-1 as the
+// game stores them). nil if the chunk is too short.
+func parseUserStrings(gs []byte) []string {
+	off := userStringsOffset
+	if len(gs) == GameStateSizeType2 {
+		off = userStringsOffsetType2
+	}
+	if len(gs) < off+userStringsCount*userStringSize {
+		return nil
+	}
+	out := make([]string, userStringsCount)
+	for i := range out {
+		rec := gs[off+i*userStringSize : off+(i+1)*userStringSize]
+		n := 0
+		for n < len(rec) && rec[n] != 0 {
+			n++
+		}
+		r := make([]rune, n)
+		for k := 0; k < n; k++ {
+			r[k] = rune(rec[k])
+		}
+		out[i] = string(r)
+	}
+	return out
+}
+
+// UserString resolves a user-string StringId (ok false for other ids).
+func (sc *Scenario) UserString(id uint16) (string, bool) {
+	if id < UserStringsStart || int(id-UserStringsStart) >= len(sc.UserStrings) {
+		return "", false
+	}
+	return sc.UserStrings[id-UserStringsStart], true
 }
 
 // Stations in the GameState (S5/S5Station.h; from the compiler): stations at

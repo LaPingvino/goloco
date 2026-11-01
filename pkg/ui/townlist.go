@@ -11,8 +11,7 @@ import (
 // Population, Stations), a ScrollView of 10 px rows and the "N towns" status.
 // PARTIAL: only the list tab (build-town/buildings tabs not ported), tab
 // icons, header sorting (rows keep the scenario order), window resizing and
-// the resize handle; town NAMES are goloco's placeholder "Town N" — the town
-// name strings (StringId → town-names object) are not resolved yet.
+// the resize handle.
 
 const (
 	tlW, tlH    = 600, 197

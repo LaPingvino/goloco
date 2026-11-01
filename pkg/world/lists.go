@@ -36,7 +36,7 @@ func (w *World) TownList() []TownInfo {
 			size = townSizeNames[t.Size]
 		}
 		out = append(out, TownInfo{
-			Name:         fmt.Sprintf("Town %d", i+1),
+			Name:         w.townName(t.Name, i),
 			TileX:        int(t.X) / 32,
 			TileY:        int(t.Y) / 32,
 			Population:   t.Population,
@@ -157,4 +157,13 @@ func (w *World) vehicleObjectName(objID uint16) string {
 		return vs[objID].Header.GetName()
 	}
 	return ""
+}
+
+// townName is Town::name formatted: a user string (StringIds 0x8000+, where the
+// town name generator puts them); otherwise goloco's placeholder "Town N".
+func (w *World) townName(id uint16, i int) string {
+	if id >= 0x8000 && int(id-0x8000) < len(w.UserStrings) && w.UserStrings[id-0x8000] != "" {
+		return w.UserStrings[id-0x8000]
+	}
+	return fmt.Sprintf("Town %d", i+1)
 }

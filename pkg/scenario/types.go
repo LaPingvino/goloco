@@ -71,6 +71,8 @@ type Scenario struct {
 	CompanyColours []uint8
 	// StationOwners is station id → owner (GameState stations); nil without a GameState.
 	StationOwners []uint8
+	// UserStrings is the GameState user string table (StringIds 0x8000+).
+	UserStrings []string
 	// DockObjectOrder is the dock-object names in slot order (slots 381..388).
 	DockObjectOrder []string
 
