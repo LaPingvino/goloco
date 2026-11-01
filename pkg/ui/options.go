@@ -11,10 +11,11 @@ import (
 // sliders in two columns). Colours: the skin's windowTitlebarColour and
 // windowOptionsColour.
 // Tabs switch with upstream's size and caption per tab; Display, Audio,
-// Regional and Controls have their contents (Display: display only, at Config's
+// Regional, Controls and Company have their contents (Company: display only, at
+// Config's defaults) (Display: display only, at Config's
 // defaults — goloco has no screen-mode/scale/frame-limit settings yet) (Regional: display only — its dropdowns don't
 // open, and currency symbols/formatting are not applied yet).
-// PARTIAL: Rendering, Company and Misc show only the common
+// PARTIAL: Rendering and Misc show only the common
 // frame (their widgets aren't ported yet); Controls: only edge scrolling has a
 // goloco counterpart, Customize Keys opens nothing; tab icon
 // animation; the device dropdown (shows "Default"); goloco has only a music
@@ -220,6 +221,19 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			gfx8.FillRectInset(rt, 26, 94, 26+160-1, 94+12-1, gfx8.InsetColour{Map: sec}, 0)
 			return
 		}
+		if w.Tab == OptTabCompany {
+			groupBox(rt, 4, 50, 412, 80, sec, "Preferred owner")
+			groupBox(rt, 4, 135, 412, 47, sec, "Preferred company")
+			for _, y := range []int{64, 97, 149} { // Checkboxes
+				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			}
+			for _, y := range []int{79, 112, 164} { // "Change..." Buttons (265, y, 75×12)
+				gfx8.FillRectInset(rt, 265, y, 265+75-1, y+12-1, gfx8.InsetColour{Map: sec}, 0)
+			}
+			// The face preview (ImageButton 345,59 66×66) has no image while
+			// usePreferredOwnerFace is off, and then draws nothing.
+			return
+		}
 		if w.Tab == OptTabDisplay {
 			groupBox(rt, 4, 49, 392, 97, sec, "Hardware")
 			for _, y := range []int{63, 79, 111} {
@@ -284,6 +298,26 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 	inset := func(t string, x, y int) { // colour.inset(): shade 4 at +1,+1, then shade 6
 		DrawTextBold(screen, t, x+1, y+1, pal[gfx8.Shade(sec, 4)])
 		DrawTextBold(screen, t, x, y, pal[gfx8.Shade(sec, 6)])
+	}
+	if w.Tab == OptTabCompany {
+		// Config defaults: every "use preferred …" off, so the Change... buttons are
+		// disabled (inset labels), the face label is empty and the names are "".
+		DrawTextBold(screen, "Preferred owner", w.X+4+5, w.Y+50, text)
+		DrawTextBold(screen, "Preferred company", w.X+4+5, w.Y+135, text)
+		for _, c := range []struct {
+			y     int
+			label string
+		}{{64, "Use preferred company face when starting a new game"}, {97, "Use preferred owner name when starting a new game"},
+			{149, "Use preferred company name when starting a new game"}} {
+			DrawTextBold(screen, c.label, w.X+10+10+4, w.Y+c.y, text)
+		}
+		cw, _ := MeasureTextBold("Change...")
+		for _, y := range []int{79, 112, 164} {
+			inset("Change...", w.X+265+(75-1)/2-cw/2, w.Y+y)
+		}
+		DrawTextBold(screen, "Preferred owner name: ", w.X+24, w.Y+112, text)
+		DrawTextBold(screen, "Preferred company name: ", w.X+24, w.Y+164, text)
+		return
 	}
 	if w.Tab == OptTabDisplay {
 		// prepareDraw's values, at Config's defaults: window mode, fullscreen
