@@ -77,3 +77,22 @@ func TestAvailableCompatibleRoadMods(t *testing.T) {
 		t.Errorf("bus only: %v", got)
 	}
 }
+
+// Bridges: the track's own order, only those designed by this year.
+func TestAvailableCompatibleBridges(t *testing.T) {
+	hdr := func(n string) *ObjectHeader {
+		h := &ObjectHeader{}
+		copy(h.Name[:], n)
+		return h
+	}
+	m := &ObjectManager{
+		TrackObjects:  []*TrackObject{{BridgeNames: []string{"BRDGSTL", "BRDGWOOD"}}},
+		BridgeObjects: []*BridgeObject{{Header: hdr("BRDGWOOD"), DesignedYear: 1900}, {Header: hdr("BRDGSTL"), DesignedYear: 1950}},
+	}
+	if got := m.AvailableCompatibleBridges(0, false, 1930); len(got) != 1 || got[0] != 0 {
+		t.Errorf("1930: %v", got)
+	}
+	if got := m.AvailableCompatibleBridges(0, false, 1960); len(got) != 2 || got[0] != 1 || got[1] != 0 {
+		t.Errorf("1960: %v", got)
+	}
+}

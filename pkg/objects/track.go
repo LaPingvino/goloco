@@ -26,6 +26,8 @@ type TrackObject struct {
 	// extras, signals and stations TrackObject::load resolves into mods[],
 	// the signals bitset and stations[].
 	ModNames, SignalNames, StationNames []string
+	// BridgeNames are its bridges' DAT names (load resolves them into bridges).
+	BridgeNames []string
 }
 
 // GetObjectByIndex accessor sentinel — use ObjectManager.GetTrackObjectByIndex
@@ -124,6 +126,9 @@ func ParseTrackObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tr
 	}
 	for i := range int(numSignals) {
 		track.SignalNames = append(track.SignalNames, hdr(int(numCompatible)+int(numMods)+i))
+	}
+	for i := range int(numBridges) { // TrackObject::load: bridges after the tunnel
+		track.BridgeNames = append(track.BridgeNames, hdr(int(numCompatible)+int(numMods)+int(numSignals)+1+i))
 	}
 	base := int(numCompatible) + int(numMods) + int(numSignals) + 1 + int(numBridges)
 	for i := range int(numStations) {

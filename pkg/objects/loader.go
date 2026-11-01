@@ -1418,3 +1418,33 @@ func (m *ObjectManager) trackExtraSlot(name string) int {
 	}
 	return 0xFF
 }
+
+// AvailableCompatibleBridges is getAvailableCompatibleBridges: the track's
+// (or road's) bridges, in its own order, that are loaded and designed by
+// this year (bridge slots).
+func (m *ObjectManager) AvailableCompatibleBridges(slot int, road bool, year int) []int {
+	var names []string
+	if road {
+		if slot < 0 || slot >= len(m.RoadObjects) || m.RoadObjects[slot] == nil {
+			return nil
+		}
+		names = m.RoadObjects[slot].BridgeNames
+	} else {
+		if slot < 0 || slot >= len(m.TrackObjects) || m.TrackObjects[slot] == nil {
+			return nil
+		}
+		names = m.TrackObjects[slot].BridgeNames
+	}
+	var out []int
+	for _, n := range names {
+		for i, b := range m.BridgeObjects {
+			if b != nil && b.Header != nil && strings.EqualFold(b.Header.GetName(), n) {
+				if year >= int(b.DesignedYear) {
+					out = append(out, i)
+				}
+				break
+			}
+		}
+	}
+	return out
+}

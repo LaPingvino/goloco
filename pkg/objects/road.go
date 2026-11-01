@@ -17,7 +17,9 @@ type RoadObject struct {
 	PaintStyle uint8  // Sprite style: 0=normal, 1=ballast/sleeper, 2=left-curve
 	NumMods    uint8  // Number of road extra/modifications (max 2)
 	// ModNames are the road extras' DAT names (load resolves them into mods).
-	ModNames    []string
+	ModNames []string
+	// BridgeNames are its bridges' DAT names.
+	BridgeNames []string
 	NumBridges  uint8 // Number of supported bridges (max 7)
 	NumStations uint8 // Number of supported stations (max 7)
 	// RoadPieces (0x02) is the RoadTraitFlags set: small / very small curves,
@@ -116,6 +118,9 @@ func ParseRoadObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Roa
 		road.ModNames = append(road.ModNames, headerName(data, offset+(int(numCompatible)+i)*HeaderSize))
 	}
 	road.TunnelName = headerName(data, offset+(int(numCompatible)+int(numMods))*HeaderSize)
+	for i := range int(numBridges) { // RoadObject::load: bridges after the tunnel
+		road.BridgeNames = append(road.BridgeNames, headerName(data, offset+(int(numCompatible)+int(numMods)+1+i)*HeaderSize))
+	}
 	for i := range int(numStations) { // RoadObject::load: stations after the bridges
 		road.StationNames = append(road.StationNames, headerName(data, offset+(int(numCompatible)+int(numMods)+1+int(numBridges)+i)*HeaderSize))
 	}

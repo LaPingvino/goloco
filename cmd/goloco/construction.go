@@ -83,6 +83,16 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 	st.Piece = nameFor(consPieceCurve, g.consCurve)
 	st.Gradient = nameFor(consGradientSlope, g.consSlope)
 	st.Hover = !g.w.ConstructionHeadState().Active
+	st.BridgeImage, st.Company = -1, f.CompanyColour
+	if g.r != nil && g.r.ObjMgr != nil {
+		om := g.r.ObjMgr
+		// lastSelectedBridge: the first available (PARTIAL: the scenario's remembered bridges[]).
+		if list := om.AvailableCompatibleBridges(g.buildObjID, g.consIsRoad(), int(g.w.CurrentYear)); len(list) > 0 {
+			if b := om.GetBridgeObjectByIndex(list[0]); b != nil {
+				st.BridgeImage = int(b.ImageOffset)
+			}
+		}
+	}
 	return f, st
 }
 
