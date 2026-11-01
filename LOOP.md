@@ -404,7 +404,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 
 ## Blocked
 
-- 2026-11-01: GitHub CI (.github/workflows/ci.yml) has failed on every push (60/60): the runner lacks the
+- (RESOLVED 2026-11-01: CI green — workflow pushed over SSH, source checks fixed) GitHub CI (.github/workflows/ci.yml) had failed on every push (60/60): the runner lacks the
   X11/GL/ALSA headers Ebitengine builds against, and pkg/ui + pkg/world tests need a display. Fixed workflow
   waits in docs/ci.yml.pending (apt packages + xvfb-run, setup-go@v5 with go.mod's version). Pushing it needs
   the gh token's `workflow` scope (refused, as for Stelo's Pages workflow); disabling the workflow via
@@ -536,3 +536,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 113 (item 3o step b) — the ported construction window REPLACES the improvised one for railway track: SimpleWindow got a Ported mode (draws itself; upstream close button and caption drag area; window-relative clicks). Construct area (Wt3: raised inset 3,145 132×100) with goloco's piece preview inside (PARTIAL: upstream draws it with the paint code); bottom row Copy/Paste Buttons (inert: blueprints not ported), Remove (72,248, only while extending), Rotate (111,248: rotate_object while placing the first piece, else construction_new_position). Clicks map upstream widgets to goloco's consCurve/consSlope; station tab places a station as before. PARTIAL: roads still on the old window (RoadTraitFlags not parsed), s-bends, bridge dropdown, cost line. Headless check (GOLOCO_DIAG_CONSTRUCTION=window). Old newConstructionWindow kept for roads.
 - 2026-11-01 tick 114 (item 3o) — roads on the ported construction window: RoadObject.RoadPieces (0x02) and GameState trafficHandedness (0x196, from the compiler) parsed; activateSelectedRoadWidgets' layout (only small/very small curves, straight, turnaround in the first s-bend slot with the left/right icon by traffic side, slopes by traits); road tab icon cycles 32 preview frames. The improvised newConstructionWindow is gone (the GOLOCO_OPEN test paths use the ported one). Headless check: one-way road. PARTIAL: s-bends/turnaround actions, bridge dropdown, cost line, station/signal/overhead tabs.
 - 2026-11-01 — CI workflow fix moved into .github/workflows/ci.yml (Joop added the token scope).
+- 2026-11-01 — CI GREEN: the new workflow built everything and exposed TestMeasurementChecks failing — its source patterns used the pre-export field spellings (t.baseZ, waterLevel); the rules still hold (BaseZ/4, WaterLevel*16.0); patterns now case-insensitive, which also revives must-be-absent checks that had passed vacuously.
