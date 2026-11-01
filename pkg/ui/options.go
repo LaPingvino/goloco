@@ -90,11 +90,18 @@ type OptionsWindow struct {
 	// OpenDropdown shows a dropdown for the window (the game's single
 	// dropdown); nil: the Regional dropdowns don't open.
 	OpenDropdown func(*DropdownMenu)
+	// ScreenMode is Config display.mode (0 windowed, 1 fullscreen, 2
+	// fullscreen window); OnScreenMode is told a new one (setDisplayMode).
+	ScreenMode   int
+	OnScreenMode func(int)
 	TitleMode    bool
 }
 
 // Regional tab rows (Regional::_widgets): label at x 10, dropdown at x 183,
 // both 173×12.
+// optScreenModes are options_mode_windowed / _fullscreen / _fullscreen_window.
+var optScreenModes = []string{"Windowed", "Fullscreen", "Fullscreen (borderless window)"}
+
 var optRegionalRows = [5]struct {
 	y     int
 	label string
@@ -157,6 +164,27 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 				}
 				return
 			}
+		}
+		return
+	}
+	if w.Tab == OptTabDisplay {
+		// screenModeMouseDown: the three modes (dropdown_stringid), the current
+		// one selected; screenModeDropdown sets it when it changes.
+		if w.in([4]int{235, 63, 154, 12}, px, py) && w.OpenDropdown != nil {
+			items := make([]DropdownItem, len(optScreenModes))
+			for i, m := range optScreenModes {
+				items[i] = DropdownItem{Text: m, Selected: i == w.ScreenMode, MoveX10: true}
+			}
+			d := NewDropdownShow(w.X+235, w.Y+63, 154-1-4, 11, w.Colour, items, 1<<20, 1<<20)
+			d.OnSelect = func(i int) {
+				if i >= 0 && i != w.ScreenMode {
+					w.ScreenMode = i
+					if w.OnScreenMode != nil {
+						w.OnScreenMode(i)
+					}
+				}
+			}
+			w.OpenDropdown(d)
 		}
 		return
 	}
@@ -446,7 +474,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			y            int
 			label, value string
 			disabled     bool
-		}{{63, "Screen mode:", "Windowed", false}, {79, "Display Resolution:", "1920 x 1080", true},
+		}{{63, "Screen mode:", optScreenModes[w.ScreenMode], false}, {79, "Display Resolution:", "1920 x 1080", w.ScreenMode != 1},
 			{95, "Window scale factor:", "1.00", false}, {111, "Frame rate limit:", "Internal speed (default)", false}}
 		for _, r := range rows {
 			DrawTextBold(screen, r.label, w.X+10, w.Y+r.y, text)
