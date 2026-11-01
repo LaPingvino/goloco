@@ -1,7 +1,7 @@
 // Command render8 renders a map region through the ported software renderer
 // (pkg/gfx8 + pkg/paint) to a PNG, with no graphics library — the CPU
 // reference the Ebiten renderer is compared against (LOOP item 3i, step 3).
-// So far: land surfaces, cliff edges, water (no waves), trees and buildings.
+// So far: land surfaces, cliff edges, water (no waves), trees, buildings and roads.
 //
 //	go run ./cmd/render8 -scenario ../locomotion/Data/title.dat -tile 196,190 -out surf.png
 package main
@@ -55,6 +55,9 @@ func main() {
 	}
 	if len(sc.BuildingObjectOrder) > 0 {
 		om.ReorderBuildingObjects(sc.BuildingObjectOrder)
+	}
+	if len(sc.RoadObjectOrder) > 0 {
+		om.ReorderRoadObjects(sc.RoadObjectOrder)
 	}
 	om.ResolveCliffEdges()
 	shadowMap, _ := g1.GetPaletteMapAt(2208) // ImageIds::paletteMapUnk32 (tree shadows)
@@ -129,6 +132,17 @@ func main() {
 					}
 				}
 				s.PaintCliffEdges(paint.Surface{BaseZ: t.Height, Slope: t.Slope}, nbs, int(land.CliffEdgeImage), sprite)
+			}
+			// Roads, then the per-group finalise passes (PaintTile.cpp paintTileElementsEndLoop:
+			// at the end of each run of elements with the same baseZ).
+			for i, rd := range t.Roads {
+				if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
+					s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ}, int(ro.Image), ro.PaintStyle, sprite)
+				}
+				if i == len(t.Roads)-1 || t.Roads[i+1].BaseZ != rd.BaseZ {
+					s.FinalisePaintRoad(sprite)
+					s.FinaliseTrackRoadOrdering()
+				}
 			}
 			for _, b := range t.Buildings {
 				bo := om.GetBuildingObjectByIndex(int(b.ObjectID))
