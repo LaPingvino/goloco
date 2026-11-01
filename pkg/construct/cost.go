@@ -20,8 +20,8 @@ func InflationAdjustedCost(costFactor int16, costIndex uint8, divisor uint, fact
 // TrackPieceCost is CreateTrack's track part of the cost: the track
 // object's inflation-adjusted build cost (divisor 10) × the piece's cost
 // factor / 256.
-// PARTIAL: the mods (track extras), clearing buildings/trees, level
-// crossings, bridges and tunnels that CreateTrack adds.
+// PARTIAL: clearing buildings/trees, level crossings, bridges and tunnels
+// that CreateTrack adds (the mods: ModsCost).
 func TrackPieceCost(trackID int, buildCostFactor int16, costIndex uint8, factors *[32]uint32) int32 {
 	if trackID < 0 || trackID >= len(trackCostFactor) {
 		return 0
@@ -35,4 +35,40 @@ func RoadPieceCost(roadID int, buildCostFactor int16, costIndex uint8, factors *
 		return 0
 	}
 	return InflationAdjustedCost(buildCostFactor, costIndex, 10, factors) * roadCostFactor[roadID] / 256
+}
+
+// trackCompatibleFlags and roadCompatibleFlags are getTrackMiscData /
+// getRoadMiscData compatibleFlags per id (printed from TrackData.cpp): the
+// piece kind an extra's trackPieces/roadPieces must cover.
+var trackCompatibleFlags = [44]uint16{0, 1, 16, 16, 8, 8, 4, 4, 2, 2, 2, 2, 512, 512, 32, 32, 64, 64, 296, 296, 296, 296,
+	328, 328, 328, 328, 128, 128, 144, 144, 144, 144, 128, 128, 192, 192, 192, 192, 128, 128, 128, 128, 128, 128}
+var roadCompatibleFlags = [10]uint16{0, 2, 2, 1, 1, 4, 4, 8, 8, 32}
+
+// Mod is a track or road extra as the cost needs it.
+type Mod struct {
+	Pieces          uint16
+	BuildCostFactor int16
+	CostIndex       uint8
+}
+
+// ModsCost is CreateTrack's (road: CreateRoad's) mods part: for each chosen
+// mod (bit i of mods, mods[i] its object, nil if none) that suits the piece
+// (validMods: its pieces cover the piece's compatibleFlags), its
+// inflation-adjusted build cost × the piece's cost factor / 256.
+func ModsCost(road bool, id int, mods uint8, objs []*Mod, factors *[32]uint32) int32 {
+	compat, factor := trackCompatibleFlags[:], trackCostFactor[:]
+	if road {
+		compat, factor = roadCompatibleFlags[:], roadCostFactor[:]
+	}
+	if id < 0 || id >= len(compat) {
+		return 0
+	}
+	var total int32
+	for i, m := range objs {
+		if m == nil || mods&(1<<i) == 0 || m.Pieces&compat[id] != compat[id] {
+			continue
+		}
+		total += InflationAdjustedCost(m.BuildCostFactor, m.CostIndex, 10, factors) * factor[id] / 256
+	}
+	return total
 }
