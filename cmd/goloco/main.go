@@ -44,6 +44,7 @@ const (
 )
 
 type Game struct {
+	diagConsDone        bool
 	noEdgeScrolling     bool // Options > Controls: edge scrolling off (Config::edgeScrolling)
 	w                   *world.World
 	titleWorld          *world.World // preserved title-screen world; restored on Quit to Menu
@@ -840,7 +841,7 @@ func (g *Game) handleToolbarButton(idx int) {
 		}
 		g.consCurve = 0
 		g.consSlope = 0
-		win = g.newConstructionWindow()
+		win = g.newPortedConstructionWindow()
 
 	case "Road":
 		g.buildMode = buildModeRoad
@@ -1103,6 +1104,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.townList.Hover = 2
 	}
+	if os.Getenv("GOLOCO_DIAG_CONSTRUCTION") == "window" && !g.diagConsDone {
+		g.diagConsDone = true
+		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+	}
 	if os.Getenv("GOLOCO_DIAG_OPTIONS") != "" && g.options == nil && !g.diagOptionsDone {
 		g.diagOptionsDone = true
 		g.openOptionsWindow()
@@ -1168,7 +1173,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		ui.DrawWindowFrame(screen, 200, 60, 360, 220, c, false)
 		ui.DrawWindowCaption(screen, 201, 61, 358, "Select Scenario")
 	}
-	if os.Getenv("GOLOCO_DIAG_CONSTRUCTION") != "" && g.r != nil && g.r.ObjMgr != nil {
+	if os.Getenv("GOLOCO_DIAG_CONSTRUCTION") == "frame" && g.r != nil && g.r.ObjMgr != nil {
 		// Diagnostic: the ported construction frame for the first track object.
 		f := &ui.ConstructionFrame{X: 10, Y: 40, Title: "Railway", FrameNo: g.titleFrame}
 		if sk := g.r.ObjMgr.InterfaceSkin; sk != nil {

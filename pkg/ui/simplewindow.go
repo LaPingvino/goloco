@@ -66,6 +66,14 @@ type SimpleWindow struct {
 	BodyBg    color.RGBA
 	ContentBg color.RGBA
 	TitleText color.RGBA // title-bar text colour (A!=0 to override black)
+
+	// Ported: the window draws itself (PortedDraw at its position) instead of
+	// SimpleWindow's chrome; its close button is upstream's (width-15, 2,
+	// 13×13), its caption (y 1..13) is the drag area, and other clicks go to
+	// OnWindowClick with window-relative coordinates.
+	Ported        bool
+	PortedDraw    func(screen *ebiten.Image, x, y int)
+	OnWindowClick func(relX, relY int)
 }
 
 // SimpleWindowManager manages all open simple windows
@@ -134,6 +142,17 @@ func (wm *SimpleWindowManager) HandleClick(x, y int, pressed bool) bool {
 
 		// Check if click is in window bounds
 		if x >= w.X && x < w.X+w.Width && y >= w.Y && y < w.Y+w.Height {
+			if pressed && w.Ported {
+				switch rx, ry := x-w.X, y-w.Y; {
+				case rx >= w.Width-15 && rx < w.Width-2 && ry >= 2 && ry < 15:
+					w.Visible = false
+				case ry < 15:
+					w.dragging, w.dragOffX, w.dragOffY = true, rx, ry
+				case w.OnWindowClick != nil:
+					w.OnWindowClick(rx, ry)
+				}
+				return true
+			}
 			if pressed {
 				// Check close button (top right)
 				closeX := w.X + w.Width - 18
@@ -195,6 +214,12 @@ const (
 // Draw draws the window
 func (w *SimpleWindow) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 	if !w.Visible {
+		return
+	}
+	if w.Ported {
+		if w.PortedDraw != nil {
+			w.PortedDraw(screen, w.X, w.Y)
+		}
 		return
 	}
 

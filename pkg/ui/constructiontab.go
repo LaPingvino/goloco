@@ -114,6 +114,25 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 		return
 	}
 	draw8(screen, f.X, f.Y, ConstructionW, ConstructionH, func(rt *gfx8.RenderTarget) {
+		// The construct area (Wt3Widget 3,145 132×100): a raised inset in the
+		// window colour; the piece preview is drawn into it by the caller.
+		gfx8.FillRectInset(rt, 3, 145, 3+132-1, 145+100-1, gfx8.InsetColour{Map: sec}, 0)
+		// Bottom row: Copy, Paste (Buttons), Remove (only while extending),
+		// Rotate (rotate_object while placing the first piece, else
+		// construction_new_position).
+		gfx8.FillRectInset(rt, 3, 248, 3+33-1, 248+24-1, gfx8.InsetColour{Map: sec}, 0)
+		gfx8.FillRectInset(rt, 36, 248, 36+37-1, 248+24-1, gfx8.InsetColour{Map: sec}, 0)
+		icons := [][3]int{{111, 248, imgConstructionNewPosition}}
+		if st.Hover {
+			icons[0][2] = imgRotateObject
+		} else {
+			icons = append(icons, [3]int{72, 248, imgConstructionRemove})
+		}
+		for _, ic := range icons {
+			if sp, err := gfx8.Decode(&g1.Elements[ic[2]]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, ic[0], ic[1], gfx8.OpFor(sp, true, false), sec, nil)
+			}
+		}
 		for _, b := range TrackButtons(st.Traits) {
 			if b.Name == st.Piece || b.Name == st.Gradient {
 				gfx8.FillRectInset(rt, b.X, b.Y, b.X+b.W-1, b.Y+b.H-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
@@ -123,4 +142,46 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 			}
 		}
 	})
+	// Button labels (Label::draw centred, opaque window colour).
+	pal := g1.GetPalette()
+	text := pal[gfx8.Shade(sec, 9)]
+	for _, l := range []struct {
+		x, w int
+		s    string
+	}{{3, 33, "Copy"}, {36, 37, "Paste"}} {
+		tw, _ := MeasureTextBold(l.s)
+		DrawTextBold(screen, l.s, f.X+l.x+(l.w-1)/2-tw/2, f.Y+248+6, text)
+	}
+}
+
+// Construction tab image ids (ImageIds.h).
+const (
+	imgConstructionRemove      = 2361
+	imgConstructionNewPosition = 2362
+	imgRotateObject            = 2365
+)
+
+// ConstructionHit returns the construction tab widget under (rx, ry) relative
+// to the window: a piece/gradient button name, "remove", "rotate", "construct",
+// "copy", "paste", or "" (tabs and the close button are the caller's).
+func ConstructionHit(rx, ry int, st ConstructionTabState) string {
+	in := func(x, y, w, h int) bool { return rx >= x && rx < x+w && ry >= y && ry < y+h }
+	for _, b := range TrackButtons(st.Traits) {
+		if in(b.X, b.Y, b.W, b.H) {
+			return b.Name
+		}
+	}
+	switch {
+	case in(3, 145, 132, 100):
+		return "construct"
+	case in(111, 248, 24, 24):
+		return "rotate"
+	case !st.Hover && in(72, 248, 39, 24):
+		return "remove"
+	case in(3, 248, 33, 24):
+		return "copy"
+	case in(36, 248, 37, 24):
+		return "paste"
+	}
+	return ""
 }
