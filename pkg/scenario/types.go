@@ -109,6 +109,7 @@ type Scenario struct {
 	CurrentDay         uint32             // GameState general.currentDay
 	CompanyNames       []uint16           // company slot → name StringId
 	ControllingCompany uint8              // playerCompanies[0] (getControllingId)
+	TrafficHandedness  uint8              // GameState trafficHandedness: 0 left-hand traffic, 1 right-hand
 
 	// Towns holds the non-empty town records parsed from the scenario Towns
 	// chunk (or the towns array embedded in a saved-game GameState chunk).

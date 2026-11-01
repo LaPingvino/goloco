@@ -8,8 +8,7 @@ import (
 )
 
 // The ported construction window (pkg/ui ConstructionFrame + construction tab)
-// in place of the improvised SimpleWindow, for railway track. Roads still use
-// the old window until their RoadTraitFlags are parsed (item 3o).
+// for railway track and roads, in place of the improvised SimpleWindow.
 
 // consPieceNames maps upstream's piece widgets to goloco's consCurve values
 // (the old window's sprite↔value pairs) and gradient widgets to consSlope.
@@ -40,8 +39,13 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 		if sk := g.r.ObjMgr.InterfaceSkin; sk != nil {
 			f.SkinColour = sk.WindowConstructionColour
 		}
-		if t := g.r.ObjMgr.GetTrackObjectByIndex(g.buildObjID); t != nil {
-			f.TrackImage, st.Traits = int(t.Image), t.TrackPieces
+		if g.consIsRoad() {
+			st.IsRoad, st.TrafficHandedness, f.TabFrames = true, g.w.TrafficHandedness, 32
+			if r := g.r.ObjMgr.GetRoadObjectByIndex(g.buildObjID); r != nil {
+				f.TrackImage, st.Traits = int(r.Image), r.RoadPieces
+			}
+		} else if t := g.r.ObjMgr.GetTrackObjectByIndex(g.buildObjID); t != nil {
+			f.TrackImage, st.Traits, f.TabFrames = int(t.Image), t.TrackPieces, 16
 		}
 	}
 	company, _ := g.w.ControllingCompany()
@@ -65,7 +69,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		// PARTIAL: upstream draws it with the paint code, drawTrack).
 		if clip, ok := screen.SubImage(image.Rect(x+4, y+146, x+3+132-1, y+145+100-1)).(*ebiten.Image); ok {
 			rot := int(g.w.ConstructionHeadState().Rotation) & 3
-			g.w.DrawPiecePreview(clip, float64(x+3+66), float64(y+145+28), 1.0, false, g.consDisplayID(), g.buildObjID, rot)
+			g.w.DrawPiecePreview(clip, float64(x+3+66), float64(y+145+28), 1.0, g.consIsRoad(), g.consDisplayID(), g.buildObjID, rot)
 		}
 	}
 	win.OnWindowClick = func(rx, ry int) {
@@ -97,7 +101,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 					g.consCurve = 0
 				}
 			}
-			// PARTIAL: s-bends (no goloco piece mapping yet).
+			// PARTIAL: s-bends and the road turnaround (no goloco piece mapping yet).
 		}
 	}
 	return win
