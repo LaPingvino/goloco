@@ -11,11 +11,11 @@ import (
 // sliders in two columns). Colours: the skin's windowTitlebarColour and
 // windowOptionsColour.
 // Tabs switch with upstream's size and caption per tab; Display, Audio,
-// Regional, Controls and Company have their contents (Company: display only, at
-// Config's defaults) (Display: display only, at Config's
+// Rendering, Regional, Controls and Company have their contents (Rendering and
+// Company: display only, at Config's defaults) (Display: display only, at Config's
 // defaults — goloco has no screen-mode/scale/frame-limit settings yet) (Regional: display only — its dropdowns don't
 // open, and currency symbols/formatting are not applied yet).
-// PARTIAL: Rendering and Misc show only the common
+// PARTIAL: Misc shows only the common
 // frame (their widgets aren't ported yet); Controls: only edge scrolling has a
 // goloco counterpart, Customize Keys opens nothing; tab icon
 // animation; the device dropdown (shows "Default"); goloco has only a music
@@ -221,6 +221,17 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			gfx8.FillRectInset(rt, 26, 94, 26+160-1, 94+12-1, gfx8.InsetColour{Map: sec}, 0)
 			return
 		}
+		if w.Tab == OptTabRendering {
+			groupBox(rt, 4, 49, 392, 128, sec, "Map rendering")
+			groupBox(rt, 4, 180, 392, 32, sec, "User interface")
+			for _, y := range []int{63, 79, 95, 194} {
+				optDropdown(rt, 235, y, 154, sec)
+			}
+			for _, y := range []int{110, 126, 142, 158} {
+				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			}
+			return
+		}
 		if w.Tab == OptTabCompany {
 			groupBox(rt, 4, 50, 412, 80, sec, "Preferred owner")
 			groupBox(rt, 4, 135, 412, 47, sec, "Preferred company")
@@ -298,6 +309,37 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 	inset := func(t string, x, y int) { // colour.inset(): shade 4 at +1,+1, then shade 6
 		DrawTextBold(screen, t, x+1, y+1, pal[gfx8.Shade(sec, 4)])
 		DrawTextBold(screen, t, x, y, pal[gfx8.Shade(sec, 6)])
+	}
+	if w.Tab == OptTabRendering {
+		// Config defaults: vehicles/station names min. scale 2 (Quarter-scale),
+		// construction marker 0 (White), landscape smoothing and cash popups on,
+		// gridlines and AI ghosts off, window frame style background (Gradient).
+		DrawTextBold(screen, "Map rendering", w.X+4+5, w.Y+49, text)
+		DrawTextBold(screen, "User interface", w.X+4+5, w.Y+180, text)
+		arrow := string(rune(170))
+		aw, _ := MeasureTextBold(arrow)
+		for _, r := range []struct {
+			ly, y        int
+			label, value string
+		}{{63, 63, "Vehicles min. display scale:", "Quarter-scale"}, {79, 79, "Station names min. display scale:", "Quarter-scale"},
+			{95, 95, "Construction Marker:", "White"}, {195, 194, "Window frame style:", "Gradient (default)"}} {
+			DrawTextBold(screen, r.label, w.X+10, w.Y+r.ly, text)
+			DrawTextBold(screen, r.value, w.X+235+1, w.Y+r.y+1, black)
+			DrawTextBold(screen, arrow, w.X+235+154-12+(11-1)/2-aw/2, w.Y+r.y+1, black)
+		}
+		tick := string(rune(0xAC))
+		for _, c := range []struct {
+			y     int
+			label string
+			on    bool
+		}{{110, "Landscape Smoothing", true}, {126, "Gridlines on Landscape", false},
+			{142, "Show cash popups", true}, {158, "Show planned AI track/road as ghosts", false}} {
+			if c.on {
+				DrawTextBold(screen, tick, w.X+10, w.Y+c.y, text)
+			}
+			DrawTextBold(screen, c.label, w.X+10+10+4, w.Y+c.y, text)
+		}
+		return
 	}
 	if w.Tab == OptTabCompany {
 		// Config defaults: every "use preferred …" off, so the Change... buttons are

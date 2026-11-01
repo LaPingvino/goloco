@@ -1120,6 +1120,9 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "company" && g.options != nil {
 			g.options.Tab = ui.OptTabCompany
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "rendering" && g.options != nil {
+			g.options.Tab = ui.OptTabRendering
+		}
 	}
 	if os.Getenv("GOLOCO_DIAG_BROWSE") != "" && g.browse == nil && !g.diagBrowseDone {
 		g.diagBrowseDone = true
