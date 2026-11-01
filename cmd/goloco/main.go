@@ -676,6 +676,21 @@ func (g *Game) handleTitleMenuClick(mx, my int) {
 	}
 }
 
+// toolbarDropdown is Dropdown::showBelow for a toolbar button: below the
+// button, in the button's window colour (the interface skin's top-toolbar
+// colour for its group), translucent.
+func (g *Game) toolbarDropdown(btn *ui.ToolbarButton, items []ui.DropdownItem) *ui.DropdownMenu {
+	d := ui.NewDropdownMenu(btn.X, btn.Y+btn.Height, items)
+	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+		sk := g.r.ObjMgr.InterfaceSkin
+		cols := [4]uint8{sk.TopToolbarPrimaryColour, sk.TopToolbarSecondaryColour, sk.TopToolbarTertiaryColour, sk.TopToolbarQuaternaryColour}
+		if btn.ColorGroup >= 0 && btn.ColorGroup < 4 {
+			d.SetToolbarColour(cols[btn.ColorGroup])
+		}
+	}
+	return d
+}
+
 // handleToolbarButton handles clicks on toolbar buttons, matching the new
 // OpenLoco-based button layout.
 //
@@ -715,7 +730,7 @@ func (g *Game) handleToolbarButton(idx int) {
 			{Text: "Quit to Menu", Action: func() { g.quitToMenu() }},
 			{Text: "Quit to Desktop", Action: func() { os.Exit(0) }},
 		}
-		g.dropdown = ui.NewDropdownMenu(btn.X, btn.Y+btn.Height, items)
+		g.dropdown = g.toolbarDropdown(btn, items)
 		return
 
 	case "Audio":
@@ -727,7 +742,7 @@ func (g *Game) handleToolbarButton(idx int) {
 				}
 			}},
 		}
-		g.dropdown = ui.NewDropdownMenu(btn.X, btn.Y+btn.Height, items)
+		g.dropdown = g.toolbarDropdown(btn, items)
 		return
 
 	case "Zoom":
@@ -736,7 +751,7 @@ func (g *Game) handleToolbarButton(idx int) {
 			{Text: "Zoom In", Action: func() { g.w.ZoomIn() }},
 			{Text: "Zoom Out", Action: func() { g.w.ZoomOut() }},
 		}
-		g.dropdown = ui.NewDropdownMenu(btn.X, btn.Y+btn.Height, items)
+		g.dropdown = g.toolbarDropdown(btn, items)
 		return
 
 	case "Rotate":
@@ -745,7 +760,7 @@ func (g *Game) handleToolbarButton(idx int) {
 			{Text: "Rotate Clockwise", Action: func() { log.Println("[Game] Rotate CW") }},
 			{Text: "Rotate Counter-CW", Action: func() { log.Println("[Game] Rotate CCW") }},
 		}
-		g.dropdown = ui.NewDropdownMenu(btn.X, btn.Y+btn.Height, items)
+		g.dropdown = g.toolbarDropdown(btn, items)
 		return
 
 	case "View":
@@ -753,7 +768,7 @@ func (g *Game) handleToolbarButton(idx int) {
 			{Text: "Underground View", Action: func() { log.Println("[Game] Underground view") }},
 			{Text: "See Through Tracks", Action: func() { log.Println("[Game] See through tracks") }},
 		}
-		g.dropdown = ui.NewDropdownMenu(btn.X, btn.Y+btn.Height, items)
+		g.dropdown = g.toolbarDropdown(btn, items)
 		return
 	case "Terraform":
 		log.Println("[Game] Terraform menu (not yet implemented)")
@@ -1092,6 +1107,9 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			{Text: "Screenshot"}, {Separator: true}, {Text: "About"}, {Text: "Options"}, {Separator: true},
 			{Text: "Quit to Menu"}, {Text: "Quit to Desktop"}})
 		d.Highlighted = 1
+		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+			d.SetToolbarColour(g.r.ObjMgr.InterfaceSkin.TopToolbarPrimaryColour)
+		}
 		d.Draw(screen)
 	}
 	if name := g.scriptShotName(); name != "" {
