@@ -192,3 +192,47 @@ func GetTrackPieceID(piece, gradient, rotation uint8) (TrackPieceID, bool) {
 	}
 	return TrackPieceID{ID: id, Rotation: rotation}, true
 }
+
+// GetRoadPieceID is getRoadPieceId (ConstructionTab.cpp): the road id
+// (World::Track::RoadId) for a piece and gradient at the construction
+// rotation. Roads have no diagonals, normal or large curves, or s-bends; the
+// turnaround (one-shot) is built at any heading below 12.
+func GetRoadPieceID(piece, gradient, rotation uint8) (TrackPieceID, bool) {
+	var id uint8
+	switch piece {
+	case Straight:
+		if rotation >= 4 {
+			return TrackPieceID{}, false
+		}
+		switch gradient {
+		case Level:
+			id = 0
+		case SlopeUp:
+			id = 5
+		case SlopeDown:
+			id = 6
+		case SteepSlopeUp:
+			id = 7
+		case SteepSlopeDown:
+			id = 8
+		default:
+			return TrackPieceID{}, false
+		}
+	case LeftCurveVerySmall, RightCurveVerySmall, LeftCurveSmall, RightCurveSmall:
+		if gradient != Level || rotation >= 4 {
+			return TrackPieceID{}, false
+		}
+		id = map[uint8]uint8{LeftCurveVerySmall: 1, RightCurveVerySmall: 2, LeftCurveSmall: 3, RightCurveSmall: 4}[piece]
+	case Turnaround:
+		if gradient != Level || rotation >= 12 {
+			return TrackPieceID{}, false
+		}
+		id = 9
+	default: // normal and large curves, s-bends
+		return TrackPieceID{}, false
+	}
+	if rotation < 12 {
+		rotation &= 3
+	}
+	return TrackPieceID{ID: id, Rotation: rotation}, true
+}

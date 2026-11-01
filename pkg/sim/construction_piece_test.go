@@ -41,3 +41,28 @@ func TestGetTrackPieceIDPiecesPlace(t *testing.T) {
 		}
 	}
 }
+
+// The road pieces construct.GetRoadPieceID gives can be built from a head on
+// flat ground in every rotation 0–3 and move it: the curves and the
+// turnaround (which goloco couldn't build before).
+func TestGetRoadPieceIDPiecesPlace(t *testing.T) {
+	for _, piece := range []uint8{construct.Straight, construct.LeftCurveVerySmall, construct.RightCurveVerySmall,
+		construct.LeftCurveSmall, construct.RightCurveSmall, construct.Turnaround} {
+		for rot := uint8(0); rot < 4; rot++ {
+			p, ok := construct.GetRoadPieceID(piece, construct.Level, rot)
+			if !ok {
+				t.Errorf("piece %d rot %d: no road id", piece, rot)
+				continue
+			}
+			s := flatState(30, 64)
+			s.ConsHead = ConstructionHead{Active: true, X: 15, Y: 15, BaseZ: 64, Rotation: rot}
+			if !s.PlaceRoadAtHead(int(p.ID), 0) {
+				t.Errorf("piece %d (road %d) rot %d: can't be built", piece, p.ID, rot)
+				continue
+			}
+			if h := s.ConsHead; h.X == 15 && h.Y == 15 && h.Rotation == rot {
+				t.Errorf("piece %d (road %d) rot %d: the head didn't move or turn", piece, p.ID, rot)
+			}
+		}
+	}
+}

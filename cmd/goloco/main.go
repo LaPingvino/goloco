@@ -2210,61 +2210,20 @@ func consDualTrackPiece(right bool, rot uint8) int {
 	return construct.SBendToDualTrack
 }
 
-// consRoadCandidates maps the selected curve/slope to road piece ids. Roads
-// support only straight, very-small curves and (steep) slopes — VERIFIED
-// against upstream kRoadCoordinates comments (straight=0, leftCurveVerySmall=1,
-// rightCurveVerySmall=2, straightSlopeUp=5, straightSlopeDown=6,
-// straightSteepSlopeUp=7, straightSteepSlopeDown=8).
-func consRoadCandidates(curve, slope int) []int {
-	if curve == 0 {
-		switch slope {
-		case -2:
-			return []int{8} // straightSteepSlopeDown
-		case -1:
-			return []int{6} // straightSlopeDown
-		case 1:
-			return []int{5} // straightSlopeUp
-		case 2:
-			return []int{7} // straightSteepSlopeUp
-		default:
-			return []int{0} // straight
-		}
-	}
-	if slope != 0 {
-		return nil // curved slopes not supported for roads
-	}
-	switch curve {
-	case -1:
-		return []int{1} // leftCurveVerySmall
-	case 1:
-		return []int{2} // rightCurveVerySmall
-	}
-	return nil
-}
-
-// consSelectedRoadID resolves the current curve/slope selection to the first
-// placeable road id at the head, or -1.
+// consSelectedRoadID is getRoadPieceId (pkg/construct) for the chosen piece
+// and gradient at the head, if it can be placed there; else -1.
 func (g *Game) consSelectedRoadID() int {
-	for _, id := range consRoadCandidates(g.consCurve, g.consSlope) {
-		if g.w.CanPlaceRoadAtHead(id) {
-			return id
-		}
+	rot := g.w.ConstructionHeadState().Rotation
+	p, ok := construct.GetRoadPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), rot)
+	if !ok || !g.w.CanPlaceRoadAtHead(int(p.ID)) {
+		return -1
 	}
-	return -1
+	return int(p.ID)
 }
 
 // --- Mode-aware dispatch (track vs road) for the shared construction window --
 
 func (g *Game) consIsRoad() bool { return g.buildMode == buildModeRoad }
-
-// consCandidates is the road's piece candidates (track pieces come from
-// construct.GetTrackPieceID).
-func (g *Game) consCandidates(curve, slope int) []int {
-	if g.consIsRoad() {
-		return consRoadCandidates(curve, slope)
-	}
-	return nil
-}
 
 func (g *Game) consCanPlace(id int) bool {
 	if g.consIsRoad() {
@@ -2288,27 +2247,29 @@ func (g *Game) consDisplayID() int {
 	if id := g.consSelectedID(); id >= 0 {
 		return id
 	}
-	if !g.consIsRoad() { // the piece getTrackPieceId gives; none (−1) when it can't be built here
-		rot := g.w.ConstructionHeadState().Rotation
-		if p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), rot); ok {
-			return int(p.ID)
-		}
-		return -1
+	// The piece getTrackPieceId/getRoadPieceId gives; none (−1) when it
+	// can't be built at this heading.
+	rot := g.w.ConstructionHeadState().Rotation
+	get := construct.GetTrackPieceID
+	if g.consIsRoad() {
+		get = construct.GetRoadPieceID
 	}
-	if cs := g.consCandidates(g.consCurve, g.consSlope); len(cs) > 0 {
-		return cs[0]
+	if p, ok := get(g.consTrackPiece(), consTrackGradient(g.consSlope), rot); ok {
+		return int(p.ID)
 	}
-	return 0
+	return -1
 }
 
 func (g *Game) consPlace(id int) {
+	var built bool
 	if g.consIsRoad() {
-		g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
+		built = g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
 	} else {
-		if g.w.PlaceTrackAtHead(id, uint8(g.buildObjID)) && g.consOneShot >= 0 {
-			// constructTrack: one-shot pieces (≥ 9) go back to straight.
-			g.consOneShot, g.consCurve = -1, 0
-		}
+		built = g.w.PlaceTrackAtHead(id, uint8(g.buildObjID))
+	}
+	if built && g.consOneShot >= 0 {
+		// constructTrack/constructRoad: one-shot pieces (≥ 9) go back to straight.
+		g.consOneShot, g.consCurve = -1, 0
 	}
 }
 
