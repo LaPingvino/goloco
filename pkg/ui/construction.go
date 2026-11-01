@@ -29,6 +29,16 @@ type ConstructionFrame struct {
 	// Disabled tabs (setDisabledWidgets) are hidden and the others move left
 	// (repositionTabs): index 0 construction, 1 station, 2 signal, 3 overhead.
 	Disabled [4]bool
+	// H is the window height for the current tab (0: ConstructionH).
+	H int
+}
+
+// Height is the window's height (each tab sets its own size).
+func (w *ConstructionFrame) Height() int {
+	if w.H > 0 {
+		return w.H
+	}
+	return ConstructionH
 }
 
 // ConstructionW/H is Construction::kWindowSize.
@@ -45,9 +55,10 @@ func (w *ConstructionFrame) Draw(screen *ebiten.Image) {
 	if err != nil {
 		return
 	}
-	DrawWindowFrame(screen, w.X, w.Y, ConstructionW, ConstructionH, w.CompanyColour, true)
-	draw8(screen, w.X, w.Y, ConstructionW, ConstructionH, func(rt *gfx8.RenderTarget) {
-		gfx8.FillRectInset(rt, 0, 41, ConstructionW-1, ConstructionH-1, gfx8.InsetColour{Map: sec}, 0)
+	h := w.Height()
+	DrawWindowFrame(screen, w.X, w.Y, ConstructionW, h, w.CompanyColour, true)
+	draw8(screen, w.X, w.Y, ConstructionW, h, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, 0, 41, ConstructionW-1, h-1, gfx8.InsetColour{Map: sec}, 0)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, ConstructionW-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
