@@ -1146,8 +1146,10 @@ func debugPath(name string) string {
 func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	if os.Getenv("GOLOCO_DIAG_TOWNS") != "" && g.townList == nil && !g.diagTownsDone && g.w != nil {
 		g.diagTownsDone = true
-		if os.Getenv("GOLOCO_DIAG_TOWNS") == "stations" {
+		if d := os.Getenv("GOLOCO_DIAG_TOWNS"); d == "stations" {
 			g.openStationsWindow()
+		} else if d == "vehicles" {
+			g.openVehiclesWindow()
 		} else {
 			g.openTownsWindow()
 		}

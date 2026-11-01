@@ -6,10 +6,12 @@ import "github.com/LaPingvino/goloco/pkg/scenario"
 // in the scenario (OpenLoco: Map/TileManager for tiles, Towns/TownManager,
 // Entities/EntityManager — state only, no drawing).
 type Map struct {
-	Width, Height int
-	Tiles         [][]Tile                 // [y][x]
-	Towns         []scenario.Town          // parsed town records
-	Entities      []scenario.VehicleEntity // real vehicle entities from the scenario / saved game
+	Width, Height   int
+	Tiles           [][]Tile        // [y][x]
+	Towns           []scenario.Town // parsed town records
+	Entities        []scenario.VehicleEntity
+	VehicleListData []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
+	CurrentDay      uint32                      // GameState general.currentDay // real vehicle entities from the scenario / saved game
 
 	IndustryObjectIDs []uint8                // industry index → industry object (GameState industries)
 	CompanyColours    []uint8                // owner → main colour (CompanyManager::updateColours); nil if none
@@ -100,6 +102,8 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	}
 	m.Towns = sc.Towns
 	m.Entities = sc.Entities
+	m.VehicleListData = sc.VehicleList
+	m.CurrentDay = sc.CurrentDay
 	m.IndustryObjectIDs = sc.IndustryObjectIDs
 	m.CompanyColours = sc.CompanyColours
 	m.StationOwners = sc.StationOwners

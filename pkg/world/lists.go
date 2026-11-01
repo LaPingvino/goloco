@@ -274,3 +274,44 @@ func grouped(n int) string {
 	}
 	return out
 }
+
+// vehicleNameTemplates are the en-GB default vehicle names (StringIds 4..9,
+// en-GB.yml); {INT16} is the head's ordinalNumber.
+var vehicleNameTemplates = map[uint16]string{
+	4: "Train {INT16}",
+	5: "Bus {INT16}",
+	6: "Truck {INT16}",
+	7: "Tram {INT16}",
+	8: "Aircraft {INT16}",
+	9: "Ship {INT16}",
+}
+
+// VehicleListRow is one vehicle of VehicleList.cpp's list.
+type VehicleListRow struct {
+	Type                  int
+	Name                  string
+	Profit                int64
+	AgeYears, Reliability int
+}
+
+// VehicleListRows returns the saved vehicles' list data: name (the head's
+// name with its ordinal, or a user string), totalRecentProfit/4, age in
+// years ((currentDay - dayCreated) / 365) and reliability.
+func (w *World) VehicleListRows() []VehicleListRow {
+	var out []VehicleListRow
+	for _, v := range w.VehicleListData {
+		name := fmt.Sprintf("Vehicle %d", v.Ordinal)
+		if v.Name >= 0x8000 && int(v.Name-0x8000) < len(w.UserStrings) {
+			name = w.UserStrings[v.Name-0x8000]
+		} else if t, ok := vehicleNameTemplates[v.Name]; ok {
+			name = strings.Replace(t, "{INT16}", strconv.Itoa(int(v.Ordinal)), 1)
+		}
+		age := 0
+		if w.CurrentDay >= v.DayCreated {
+			age = int((w.CurrentDay - v.DayCreated) / 365)
+		}
+		out = append(out, VehicleListRow{Type: int(v.VehicleType), Name: name, Profit: int64(v.RecentProfit / 4),
+			AgeYears: age, Reliability: int(v.Reliability)})
+	}
+	return out
+}
