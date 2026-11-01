@@ -88,8 +88,8 @@ func (r *Renderer) shadow(has bool, image, colour int, primary bool) paint.Shado
 	return paint.Shadow{Image: image, Pal: r.colourMap(int(paint.ShadowColour[colour])), Primary: primary}
 }
 
-// paintBridge hands the session's bridge entry to paint.PaintBridge (PARTIAL
-// there: quarter case 8) with its bridge object (scenario bridge slot).
+// paintBridge hands the session's bridge entry to paint.PaintBridge with its
+// bridge object (scenario bridge slot).
 // extColourUnk32 is ExtColour::unk32, the bridge shadow's translucency.
 const extColourUnk32 = 0x32
 
@@ -216,7 +216,7 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 				}
 				r.paintElement(s, m, t, ref, prev, x, y, v.Ticks)
 				// paintTileElementsEndLoop: at the last element or a change of baseZ.
-				// PARTIAL: supports and bridges (not ported) are skipped here.
+				// PARTIAL: paintSupports (track/road addition supports) is not ported yet.
 				if i == len(t.Order)-1 || tileElemZ(t, t.Order[i+1]) != tileElemZ(t, ref) {
 					s.FinalisePaintRoad(sprite)
 					s.FinaliseTrackRoadOrdering()

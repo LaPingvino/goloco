@@ -6,11 +6,10 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 // generated from the .cpp (bridgedata_gen.go) and its image ids from the
 // compiler (bridgeids_gen.go).
 //
-// PARTIAL: quarter case 8 (paintFlatSingleQuarterSupportFront, the front
-// supports down to the ground) is not ported; that quarter draws no span and
-// only its shadow. Everything else of paintBridge is: deck, walls and edges,
-// quarters 1/2/4, the NE/SW spans with their pillars, the subType-0 span walls,
-// and the shadow. Rotation is 0 here (the scene renderer has no rotation yet).
+// All of paintBridge is ported: deck, walls and edges, the quarter cases
+// (including 8, the front supports), the NE/SW spans with their pillars, the
+// subType-0 span walls and the shadow. Rotation is 0 here (the scene renderer
+// has no rotation yet).
 
 // BridgeObj is what paintBridge reads from a bridge object.
 type BridgeObj struct {
@@ -92,7 +91,8 @@ func (s *Session) PaintBridge(b BridgeEntry, obj BridgeObj, sprite func(int) *gf
 		shadowType = 3
 		s.bridgeQuarterNoSupport(b, obj, add, [3]uint32{BridgeImgRoofEdge2, BridgeImgDeckBaseNoSupportEdge2, BridgeImgDeckWallEdge2}, Pos3{24, 22, 0})
 	case 8:
-		shadowType = 1 // PARTIAL: paintFlatSingleQuarterSupportFront not ported
+		shadowType = 1
+		s.bridgeQuarterSupportFront(b, obj, add, supportLength, slope)
 	default:
 		// unkTile = toTileSpace(rotate(unkPosition, 0)) + kTwosToOnesCompliment[0], masked by the span.
 		ux := (obj.TileX + BridgeTwosToOnesCompliment[0][0]) & (int(obj.SpanLength) - 1)
@@ -267,4 +267,68 @@ func (s *Session) bridgeSpan(b BridgeEntry, obj BridgeObj, add func(uint32, Pos3
 	}
 	side(1<<0, lhs, 0, Pos3{}, d.edgeLhs[slope])
 	side(1<<1, rhs, 1, d.rhsOff, d.edgeRhs[slope])
+}
+
+// bridgeQuarterSupportFront is paintFlatSingleQuarterSupportFront (quarter 8:
+// "needs to do the front supports to ground as well").
+func (s *Session) bridgeQuarterSupportFront(b BridgeEntry, obj BridgeObj, add func(uint32, Pos3, Pos3, Pos3), supportLength int, slope uint8) {
+	base := Pos3{0, 0, b.Height}
+	if obj.HasRoof {
+		add(BridgeImgRoofEdge3, base, Pos3{0, 0, 30 + b.Height}, Pos3{32, 32, 0})
+	}
+	lhs, rhs, ok := func() (int, int, bool) {
+		if s.segments[1].Height == 0xFFFF || s.segments[2].Height == 0xFFFF {
+			return 0, 0, false
+		}
+		unk := supportLength - obj.DeckDepth
+		if unk < 0 {
+			return 0, 0, false
+		}
+		if obj.DeckDepth == 32 {
+			unk = b.Height - 16
+			if unk == s.waterHeight {
+				return 0, 0, false
+			}
+		}
+		r := unk - int(Bridge4F915C[slope])
+		if r < 0 {
+			return 0, 0, false
+		}
+		l := unk - int(Bridge4F919C[slope])
+		if unk < 0 { // sic: upstream tests unkHeight here, not the lhs length
+			return 0, 0, false
+		}
+		return l, r, true
+	}()
+	if ok {
+		off := Pos3{0, 0, b.Height - obj.DeckDepth}
+		add(BridgeImgDeckBaseWithSupportHeaderEdge3, off, Pos3{0, 0, 14 + off.Z}, Pos3{32, 32, 1})
+		s.bridgeSupportDiagonal(add, lhs, rhs, b.Height-obj.DeckDepth)
+	} else {
+		off := Pos3{0, 0, b.Height - 16}
+		add(BridgeImgDeckBaseNoSupportEdge3, off, Pos3{0, 0, 14 + off.Z}, Pos3{32, 32, 1})
+	}
+	if b.SubType == 0 {
+		add(BridgeImgDeckWallEdge3, base, Pos3{17, 17, 2 + b.Height}, Pos3{2, 2, 24})
+	}
+}
+
+// bridgeSupportDiagonal is paintSupportDiagonal. As upstream, the rhs loop
+// draws the image named Lhs (and vice versa).
+func (s *Session) bridgeSupportDiagonal(add func(uint32, Pos3, Pos3, Pos3), lhsLen, rhsLen, supportHeight int) {
+	loop := func(length int, img16, img32 uint32, bx, by int) {
+		h := supportHeight
+		for length >= 16 {
+			is16 := length == 16 || h-16 == s.waterHeight
+			sec, img, bz := 32, img32, 31
+			if is16 {
+				sec, img, bz = 16, img16, 15
+			}
+			h -= sec
+			length -= sec
+			add(img, Pos3{0, 0, h}, Pos3{bx, by, h}, Pos3{2, 2, bz})
+		}
+	}
+	loop(rhsLen, BridgeImgSupportSegmentEdge3Lhs16SW, BridgeImgSupportSegmentEdge3Lhs32SW, 30, 0)
+	loop(lhsLen, BridgeImgSupportSegmentEdge3Rhs16SW, BridgeImgSupportSegmentEdge3Rhs32SW, 0, 30)
 }
