@@ -108,12 +108,24 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 	if !st.Hover && g.r != nil && g.r.ObjMgr != nil {
 		if id := g.consSelectedID(); id >= 0 {
 			cmf := &g.w.CurrencyMultiplicationFactor
-			if g.consIsRoad() {
-				if r := g.r.ObjMgr.GetRoadObjectByIndex(g.buildObjID); r != nil {
-					st.Cost = int64(construct.RoadPieceCost(id, r.BuildCostFactor, r.CostIndex, cmf))
+			om := g.r.ObjMgr
+			mods := func(names []string) []*construct.Mod { // trackObj->mods[i]
+				out := make([]*construct.Mod, len(names))
+				for i, n := range names {
+					if e := om.Extra(n); e != nil {
+						out[i] = &construct.Mod{Pieces: e.Pieces, BuildCostFactor: e.BuildCostFactor, CostIndex: e.CostIndex}
+					}
 				}
-			} else if t := g.r.ObjMgr.GetTrackObjectByIndex(g.buildObjID); t != nil {
-				st.Cost = int64(construct.TrackPieceCost(id, t.BuildCostFactor, t.CostIndex, cmf))
+				return out
+			}
+			if g.consIsRoad() {
+				if r := om.GetRoadObjectByIndex(g.buildObjID); r != nil {
+					st.Cost = int64(construct.RoadPieceCost(id, r.BuildCostFactor, r.CostIndex, cmf) +
+						construct.ModsCost(true, id, g.consMods, mods(r.ModNames), cmf))
+				}
+			} else if t := om.GetTrackObjectByIndex(g.buildObjID); t != nil {
+				st.Cost = int64(construct.TrackPieceCost(id, t.BuildCostFactor, t.CostIndex, cmf) +
+					construct.ModsCost(false, id, g.consMods, mods(t.ModNames), cmf))
 			}
 		}
 	}

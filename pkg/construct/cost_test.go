@@ -20,3 +20,24 @@ func TestPieceCost(t *testing.T) {
 		t.Errorf("road turnaround %d", got)
 	}
 }
+
+// A chosen mod adds its cost when it suits the piece; one that doesn't suit
+// it (validMods) or isn't chosen adds nothing.
+func TestModsCost(t *testing.T) {
+	var f [32]uint32
+	f[1] = 1024
+	wires := &Mod{Pieces: 0xFFFF, BuildCostFactor: 40, CostIndex: 1}
+	straightOnly := &Mod{Pieces: 1, BuildCostFactor: 40, CostIndex: 1} // diagonal flag 1 only
+	if got := ModsCost(false, 0, 0b01, []*Mod{wires}, &f); got != 40 {
+		t.Errorf("wires on a straight: %d", got)
+	}
+	if got := ModsCost(false, 6, 0b01, []*Mod{wires}, &f); got != 40*1005/256 {
+		t.Errorf("wires on a curve: %d", got)
+	}
+	if got := ModsCost(false, 6, 0b01, []*Mod{straightOnly}, &f); got != 0 {
+		t.Errorf("an unsuitable mod: %d", got)
+	}
+	if got := ModsCost(false, 0, 0b00, []*Mod{wires}, &f); got != 0 {
+		t.Errorf("not chosen: %d", got)
+	}
+}
