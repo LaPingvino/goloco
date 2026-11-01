@@ -183,13 +183,64 @@ func (w *World) SpawnTestVehicle(objID int) bool {
 	if !found {
 		return false
 	}
+	w.spawnVehicleOnElement(bestX, bestY, best, objID)
+	return true
+}
 
+// SpawnVehicleAt places a SimVehicle for vehicle object objID at a track piece
+// on tile (tileX,tileY), appending a rendered body entity. It targets a
+// sequence-0 track element on that tile, preferring one with no predecessor
+// (so the vehicle can travel the whole line from a dead-end). Returns false
+// when the tile carries no usable track.
+//
+// This generalises SpawnTestVehicle: the UI (Build Vehicles window) places a
+// bought vehicle onto the tile the player built / selected on the map.
+func (w *World) SpawnVehicleAt(objID, tileX, tileY int) bool {
+	t := w.getTile(tileX, tileY)
+	if t == nil {
+		return false
+	}
+	var (
+		best  *scenario.TrackElement
+		score int // 2: trackID0 + no predecessor, 1: no predecessor, 0: any
+		found bool
+	)
+	for i := range t.tracks {
+		te := &t.tracks[i]
+		if te.SequenceIndex != 0 || int(te.TrackID)<<3 >= len(kTrackCoordinates) {
+			continue
+		}
+		beginRot := kTrackCoordinates[int(te.TrackID)<<3|int(te.Rotation&3)].RotBegin
+		_, _, _, hasPrev := w.findTrackEnding(tileX, tileY, te.BaseZ, beginRot)
+		s := 0
+		if !hasPrev {
+			s = 1
+			if te.TrackID == 0 {
+				s = 2
+			}
+		}
+		if !found || s > score {
+			best = te
+			score = s
+			found = true
+		}
+	}
+	if !found {
+		return false
+	}
+	w.spawnVehicleOnElement(tileX, tileY, best, objID)
+	return true
+}
+
+// spawnVehicleOnElement creates a SimVehicle sitting at the begin of the given
+// origin track element on tile (tx,ty) and appends its rendered body entity.
+func (w *World) spawnVehicleOnElement(tx, ty int, te *scenario.TrackElement, objID int) {
 	sv := &SimVehicle{
-		tileX:          bestX,
-		tileY:          bestY,
-		trackID:        int(best.TrackID),
-		rotation:       best.Rotation & 3,
-		baseZ:          best.BaseZ,
+		tileX:          tx,
+		tileY:          ty,
+		trackID:        int(te.TrackID),
+		rotation:       te.Rotation & 3,
+		baseZ:          te.BaseZ,
 		speed:          1.0,
 		boardedStation: -1,
 		atStation:      -1,
@@ -206,7 +257,6 @@ func (w *World) SpawnTestVehicle(objID int) bool {
 
 	w.simVehicles = append(w.simVehicles, sv)
 	w.writeVehicleEntity(sv)
-	return true
 }
 
 // TickVehicles advances every SimVehicle one simulation step and accumulates
