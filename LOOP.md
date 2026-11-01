@@ -1,7 +1,9 @@
 # GoLoco correction loop
 
 Started 2026-11-01 (Joop: "set up a loop to correct all things previous you disregarded and got wrong").
-A session cron fires a tick every ~15 min. Each tick: read this file, do ONE bounded chunk (~10 min),
+Runs by day as a session cron (~15 min); overnight via the idle-loop Stop hook: .idle-loop.json here,
+switched on with `.idle-loop-on` (content 'until HH:MM'; off after 24 h) in a session started from ~/Projects/goloco.
+Each overnight tick ends by writing work/nowork to .idle-loop-status. Each tick: read this file, do ONE bounded chunk (~10 min),
 verify it, commit, update this file (queue + one tick-log line), stop. Don't start two items.
 
 ## Non-negotiables
