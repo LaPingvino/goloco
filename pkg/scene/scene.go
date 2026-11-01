@@ -60,6 +60,20 @@ func (r *Renderer) companyRemap(m *sim.Map, owner uint8) []uint8 {
 	return r.colourMap(int(m.CompanyColours[owner]))
 }
 
+// canopyTranslucent is the station canopy's translucent palette map:
+// Colours::getTranslucent(companyColour) (shade 1), or ExtColour::unk2E when the
+// station object is not recolourable. nil without company colours.
+func (r *Renderer) canopyTranslucent(m *sim.Map, owner uint8, recolourable bool) []uint8 {
+	if int(owner) >= len(m.CompanyColours) {
+		return nil
+	}
+	ext := paint.ExtColourUnk2E
+	if recolourable {
+		ext = int(paint.TranslucentColour[m.CompanyColours[owner]][1])
+	}
+	return r.colourMap(ext)
+}
+
 // animOf splits an object's part animations into frames and speeds (cached).
 func (r *Renderer) animOf(key any, pa []objects.BuildingPartAnimation) anim {
 	if a, ok := r.anims[key]; ok {
@@ -281,7 +295,11 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 							if int(st.StationID) < len(m.StationOwners) {
 								remap = r.companyRemap(m, m.StationOwners[st.StationID])
 							}
-							s.PaintRoadStation(st.Rotation, st.BaseZ, rd.RoadID, int(rso.SequenceImageOffsets[1]), remap, sprite)
+							var tl []uint8
+							if int(st.StationID) < len(m.StationOwners) {
+								tl = r.canopyTranslucent(m, m.StationOwners[st.StationID], rso.Flags&objects.RoadStationFlagRecolourable != 0)
+							}
+							s.PaintRoadStation(st.Rotation, st.BaseZ, rd.RoadID, int(rso.SequenceImageOffsets[1]), remap, tl, sprite)
 							break
 						}
 					}
@@ -317,7 +335,8 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 				}
 				for _, tk := range t.Tracks {
 					if tk.BaseZ == st.BaseZ {
-						s.PaintTrainStation(paint.StationEl{Rotation: st.Rotation, BaseZ: st.BaseZ, TrackID: tk.TrackID, TrackSeq: tk.SequenceIndex, Remap: r.companyRemap(m, tk.Owner)},
+						s.PaintTrainStation(paint.StationEl{Rotation: st.Rotation, BaseZ: st.BaseZ, TrackID: tk.TrackID, TrackSeq: tk.SequenceIndex, Remap: r.companyRemap(m, tk.Owner),
+							Translucent: r.canopyTranslucent(m, tk.Owner, so.Flags&objects.TrainStationFlagRecolourable != 0)},
 							int(so.SequenceImageOffsets[st.SequenceIndex]), sprite)
 						break
 					}

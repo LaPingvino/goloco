@@ -7,3 +7,6 @@ var TranslucentColour = [31][3]uint8{{55, 53, 54}, {55, 53, 54}, {112, 110, 111}
 
 // ShadowColour is _shadowColourMap [colour] (ExtColour).
 var ShadowColour = [31]uint8{32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62}
+
+// ExtColourUnk2E is ExtColour::unk2E (translucentGlass1): the canopy of non-recolourable stations.
+const ExtColourUnk2E = 46

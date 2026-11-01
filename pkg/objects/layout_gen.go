@@ -21,4 +21,8 @@ const (
 	DockNumBuildingPartsOffset      = 18
 	DockNumBuildingVariationsOffset = 19
 	DockFlagHasShadows              = 1
+	TrainStationFlagsOffset         = 12
+	TrainStationFlagRecolourable    = 1
+	RoadStationFlagsOffset          = 11
+	RoadStationFlagRecolourable     = 1
 )

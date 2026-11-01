@@ -63,6 +63,8 @@ cat > "$tmp/layout.cpp" <<'CPP'
 #include "Objects/AirportObject.h"
 #include "Objects/BuildingObject.h"
 #include "Objects/DockObject.h"
+#include "Objects/RoadStationObject.h"
+#include "Objects/TrainStationObject.h"
 #include <cstddef>
 #include <cstdio>
 using namespace OpenLoco;
@@ -86,6 +88,10 @@ int main() {
   std::printf("\tDockNumBuildingPartsOffset = %zu\n", offsetof(DockObject, numBuildingParts));
   std::printf("\tDockNumBuildingVariationsOffset = %zu\n", offsetof(DockObject, numBuildingVariations));
   std::printf("\tDockFlagHasShadows = %u\n", (unsigned)DockObjectFlags::hasShadows);
+  std::printf("\tTrainStationFlagsOffset = %zu\n", offsetof(TrainStationObject, flags));
+  std::printf("\tTrainStationFlagRecolourable = %u\n", (unsigned)TrainStationFlags::recolourable);
+  std::printf("\tRoadStationFlagsOffset = %zu\n", offsetof(RoadStationObject, flags));
+  std::printf("\tRoadStationFlagRecolourable = %u\n", (unsigned)RoadStationFlags::recolourable);
   std::printf(")\n");
 }
 CPP
@@ -118,7 +124,7 @@ sh=$(awk '/_shadowColourMap = \{/,/^    \};/' "$OL/src/OpenLoco/src/Graphics/Col
     i=$((i+1)); done
   echo '  std::printf("}\n\n// ShadowColour is _shadowColourMap [colour] (ExtColour).\nvar ShadowColour = [31]uint8{");'
   for n in $sh; do echo "  std::printf(\"%u, \", (unsigned)$n);"; done
-  echo '  std::printf("}\n");'
+  echo '  std::printf("}\n\n// ExtColourUnk2E is ExtColour::unk2E (translucentGlass1): the canopy of non-recolourable stations.\nconst ExtColourUnk2E = %u\n", (unsigned)ExtColour::unk2E);'
   echo '}'
 } > "$tmp/colours.cpp"
 g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/colours" "$tmp/colours.cpp"
