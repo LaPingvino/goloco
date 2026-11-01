@@ -64,6 +64,7 @@ type StationInfo struct {
 	Status       string
 	Waiting      int
 	Accepts      string
+	Owner        int // Station::owner (-1 unknown)
 }
 
 // StationList returns every placed/loaded station on the map.  A station spans
@@ -87,7 +88,11 @@ func (w *World) StationList() []StationInfo {
 					kind = stationKindNames[se.StationType]
 				}
 				status, waiting, accepts := w.stationCargoText(id)
-				out = append(out, StationInfo{ID: id, TileX: x, TileY: y, Kind: kind, Name: w.stationName(id),
+				owner := -1
+				if id < len(w.StationOwners) {
+					owner = int(w.StationOwners[id])
+				}
+				out = append(out, StationInfo{ID: id, TileX: x, TileY: y, Kind: kind, Name: w.stationName(id), Owner: owner,
 					Status: status, Waiting: waiting, Accepts: accepts})
 			}
 		}
@@ -288,7 +293,7 @@ var vehicleNameTemplates = map[uint16]string{
 
 // VehicleListRow is one vehicle of VehicleList.cpp's list.
 type VehicleListRow struct {
-	Type                  int
+	Type, Owner           int
 	Name                  string
 	Profit                int64
 	AgeYears, Reliability int
@@ -310,8 +315,22 @@ func (w *World) VehicleListRows() []VehicleListRow {
 		if w.CurrentDay >= v.DayCreated {
 			age = int((w.CurrentDay - v.DayCreated) / 365)
 		}
-		out = append(out, VehicleListRow{Type: int(v.VehicleType), Name: name, Profit: int64(v.RecentProfit / 4),
+		out = append(out, VehicleListRow{Type: int(v.VehicleType), Owner: int(v.Owner), Name: name, Profit: int64(v.RecentProfit / 4),
 			AgeYears: age, Reliability: int(v.Reliability)})
 	}
 	return out
+}
+
+// ControllingCompany is CompanyManager::getControllingId and its name (a user
+// string; "" if unknown).
+func (w *World) ControllingCompany() (int, string) {
+	id := int(w.Map.ControllingCompany)
+	if id < len(w.CompanyNames) {
+		if n := w.CompanyNames[id]; n >= 0x8000 && int(n-0x8000) < len(w.UserStrings) {
+			return id, w.UserStrings[n-0x8000]
+		} else if n == 2 { // StringIds 2: "New Company{POP16}" (en-GB)
+			return id, "New Company"
+		}
+	}
+	return id, ""
 }

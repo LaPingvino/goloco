@@ -273,6 +273,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 
 		sc.IndustryObjectIDs = parseIndustryObjectIDs(gameState)
 		sc.CompanyColours = parseCompanyColours(gameState)
+		sc.CompanyNames = parseCompanyNames(gameState)
+		sc.ControllingCompany = parseControllingCompany(gameState)
 		sc.StationOwners = parseStationOwners(gameState)
 		sc.UserStrings = parseUserStrings(gameState)
 		sc.StationNames = parseStationNames(gameState)
@@ -1146,6 +1148,35 @@ const (
 	companyNeutral           = 15
 	colourGrey               = 1
 )
+
+// parseCompanyNames returns every company slot's name StringId (Company 0x00).
+func parseCompanyNames(gs []byte) []uint16 {
+	size := companyRecordSize
+	if len(gs) == GameStateSizeType2 {
+		size = companyRecordSizeType2
+	}
+	if len(gs) < companiesGameStateOffset+companyMaxCount*size {
+		return nil
+	}
+	n := make([]uint16, companyMaxCount)
+	for i := range n {
+		o := companiesGameStateOffset + i*size
+		n[i] = uint16(gs[o]) | uint16(gs[o+1])<<8
+	}
+	return n
+}
+
+// playerCompaniesOffset is GameState general.playerCompanies (uint8[2]; from
+// the compiler). playerCompanies[0] is CompanyManager::getControllingId.
+const playerCompaniesOffset = 0x24
+
+// parseControllingCompany returns playerCompanies[0].
+func parseControllingCompany(gs []byte) uint8 {
+	if len(gs) <= playerCompaniesOffset {
+		return 0
+	}
+	return gs[playerCompaniesOffset]
+}
 
 // parseCompanyColours is CompanyManager::updateColours: every company slot's
 // mainColours.primary, then neutral = grey. nil if the chunk is too short.
