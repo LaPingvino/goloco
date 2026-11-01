@@ -1171,6 +1171,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regional" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "displaymode" && g.options != nil {
+			g.options.Tab = ui.OptTabDisplay // and a click on Screen mode
+			g.options.HandleClick(g.options.X+240, g.options.Y+66)
+		}
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionalcurrency" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional // and a click on Preferred currency
 			g.options.HandleClick(g.options.X+190, g.options.Y+122)
@@ -1794,6 +1798,12 @@ func (g *Game) openOptionsWindow() {
 	}
 	w.OnClose = func() { g.options = nil }
 	w.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
+	// Screen mode: Ebitengine's fullscreen stands for both fullscreen modes
+	// (it has no exclusive mode); windowed leaves it.
+	if ebiten.IsFullscreen() {
+		w.ScreenMode = 2
+	}
+	w.OnScreenMode = func(m int) { ebiten.SetFullscreen(m != 0) }
 	// Regional tab: the scenario's currency object, the preferred one
 	// (Config default CURRDOLL), and title mode.
 	w.TitleMode = g.inTitleScreen
