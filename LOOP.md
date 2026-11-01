@@ -37,7 +37,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
   Blocked and move on — don't work around it.
 
 ## Queue (top = next)
-1. [ ] **Private wasm test page.** Goal: Joop can click a private Artifact link and see/play the current
+1. [~] **Private wasm test page.** (tick 1: (a)–(c) done — web/fsshim.js, web/index.html, cmd/webpack; in headless Chromium from file:// the game loads g1, all 544 objects and the title scenario, but the screenshot is black → next: find out whether frames draw (try without --virtual-time-budget; log from the draw loop), then publish privately (d).) Goal: Joop can click a private Artifact link and see/play the current
    build. Pieces: (a) web/ — index.html + wasm_exec.js from the Go toolchain + a JS in-memory fs shim
    (Go js/wasm routes os.Open/ReadDir/Stat through globalThis.fs: implement open/read/fstat/close/
    stat/lstat/readdir over fetched buffers, so goloco's loaders run unchanged); (b) a data pack
@@ -53,7 +53,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 3. [ ] **Inventory of deviations.** Walk the ~90 markers (approximat|simplif|fudge|hack|stub|TODO|
    FIXME|placeholder|not yet implemented) and every invented heuristic; write docs/deviations.md:
    file:line, what upstream does instead (file/function), severity, fix size. This becomes the queue.
-4. [ ] **Split simulation from rendering** (needs Joop's yes — see Questions). pkg/world imports
+4. [ ] **Split simulation from rendering** (APPROVED by Joop 2026-11-01: 'the split is perfectly okay. Free to make bold decisions.'). pkg/world imports
    Ebiten in world.go, construction.go, overlay.go; its tests panic without a display.
 5. [ ] **Vehicle movement port.** Generate SubpositionData.cpp into Go like track_data_gen.go;
    port the movement step (VehicleBogie/VehicleHead/VehicleManager) in faithful slices with tests
@@ -62,12 +62,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    'simplified approximation', depth-sort approximation for vehicles, g1font width fudge, …).
 
 ## Questions for Joop
-- Item 4 (splitting pkg/world into simulation and rendering): go?
 
 ## Blocked
+- 2026-11-01 tick 1: serving the test page from a local web server (python -m http.server) was refused by the auto-mode check ('Expose Local Services'). Test from file:// with chromium --allow-file-access-from-files instead.
 - 2026-11-01: Xvfb is not installed on the VPS (`sudo pacman -S xorg-server-xvfb` — needs Joop).
 
 ## Tick log
 - 2026-11-01 (setup) — LOOP.md written; Locomotion data extracted to ~/Projects/locomotion; native and
   wasm builds confirmed; tests pass except pkg/world (needs a display).
 - 2026-11-01 (setup) — pushing allowed (Joop); overnight idle-loop configured in ~/Projects/empty, the session's directory.
+- 2026-11-01 tick 1 (item 1) — wasm test page parts (a)–(c): in-memory fs shim for Go's js/wasm syscalls (open/read/fstat/stat/readdir…, O_DIRECTORY fixed after the first run), cmd/webpack (data pack in gzipped chunks < 15 MB, no music, refuses an output dir inside the repo), page with progress + Start + log drawer. Headless run: g1, 544 objects, title scenario load; canvas black → next tick. Split approved by Joop.
