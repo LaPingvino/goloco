@@ -503,8 +503,8 @@ func (g *Game) Update() error {
 				case 3:
 					g.speedMult, g.isPaused = 4, false
 				}
-			} else if uilayout.InTimePanel(g.mouseX, g.mouseY, g.sw, g.sh) && !g.inTitleScreen {
-				// the rest of the time panel window swallows the click
+			} else if (uilayout.InTimePanel(g.mouseX, g.mouseY, g.sw, g.sh) || uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh)) && !g.inTitleScreen {
+				// the bottom-bar windows swallow the click
 			} else if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
 				g.toolbar.Buttons[btnIdx].Pressed = true
 				g.handleToolbarButton(btnIdx)
@@ -689,6 +689,21 @@ func (g *Game) handleTitleMenuClick(mx, my int) {
 	case 3:
 		log.Println("[Game] Title menu: Scenario Editor (not yet implemented)")
 	}
+}
+
+// drawPlayerPanel draws the ported PlayerInfoPanel (bottom-left).
+func (g *Game) drawPlayerPanel(screen *ebiten.Image) {
+	if g.gameState == nil {
+		return
+	}
+	st := ui.PlayerPanelState{Cash: int64(g.gameState.PlayerMoney)}
+	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+		st.SkinColour = g.r.ObjMgr.InterfaceSkin.PlayerInfoToolbarColour
+	}
+	wx, wy := uilayout.PlayerPanelPos(g.sw, g.sh)
+	cv := uilayout.PlayerPanelCompanyVal
+	st.HoverCash = g.mouseX >= wx+cv[0] && g.mouseX < wx+cv[0]+cv[2] && g.mouseY >= wy+cv[1] && g.mouseY < wy+cv[1]+cv[3]
+	ui.DrawPlayerPanel(screen, st)
 }
 
 // drawTimePanel draws the ported TimePanel (bottom-right) and, when its date
@@ -1086,15 +1101,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	statusY := g.sh - 20
-	// IMPROVISED status strip (left part only, until PlayerInfoPanel.cpp is
-	// ported); the right end is the ported TimePanel.
-	fillRect(screen, 0, float64(statusY), float64(g.sw-uilayout.TimePanelW), 20, color.RGBA{50, 50, 50, 240})
-	var statusText string
-	speedStr := fmt.Sprintf("×%d", g.speedMult)
-	if g.isPaused {
-		speedStr = "PAUSED"
-	}
-	fps := ebiten.ActualFPS()
+	// Bottom bar: the ported PlayerInfoPanel (left) and TimePanel (right).
+	g.drawPlayerPanel(screen)
 	// The objective is not an overlay upstream: it is the time panel's date
 	// tooltip (StringIds::tooltip_daymonthyear_challenge), shown on hover.
 	g.drawTimePanel(screen)
@@ -1104,17 +1112,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		fillRect(screen, float64(g.sw/2-mw), float64(g.sh/2-30), float64(mw*2), 60, color.RGBA{0, 80, 0, 200})
 		ui.DrawTextBoldScaled(screen, msg, g.sw/2-mw, g.sh/2-10, 2.0, color.RGBA{255, 255, 160, 255})
 	}
-
-	fpsStr := fmt.Sprintf("%.0ffps", fps)
-	if g.gameState != nil {
-		date := g.gameState.GameDate
-		_ = date
-		statusText = fmt.Sprintf("£%d  |  %s  |  Space=pause F3-F6=speed  |  %s",
-			g.gameState.PlayerMoney, speedStr, fpsStr)
-	} else {
-		statusText = fmt.Sprintf("GoLoco | %s | Scroll to zoom | %s", speedStr, fpsStr)
-	}
-	ui.DrawText(screen, statusText, 4, statusY+14, color.White)
 
 	// Transient save confirmation overlay
 	if g.saveMsgFrames > 0 {
@@ -1153,6 +1150,11 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			st.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
 		}
 		ui.DrawTimePanel(screen, st)
+		ps := ui.PlayerPanelState{Cash: 2500000}
+		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+			ps.SkinColour = g.r.ObjMgr.InterfaceSkin.PlayerInfoToolbarColour
+		}
+		ui.DrawPlayerPanel(screen, ps)
 	}
 	if os.Getenv("GOLOCO_DIAG_WINDOW") != "" {
 		// Diagnostic: an upstream-style window frame + caption (FrameWidget,
