@@ -1,6 +1,9 @@
 package objects
 
-import "fmt"
+import (
+	"encoding/binary"
+	"fmt"
+)
 
 // BridgeObject represents a bridge structure object.
 //
@@ -69,25 +72,25 @@ func ParseBridgeObject(header *ObjectHeader, data []byte) (*BridgeObject, error)
 //
 // OpenLoco reference: src/OpenLoco/src/Objects/BridgeObject.cpp load()
 func ParseBridgeObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*BridgeObject, error) {
-	const fixedSize = 0x2C
+	const fixedSize = BridgeObjectSize // from the compiler (layout_gen.go)
 	if len(data) < fixedSize {
 		return nil, fmt.Errorf("bridge object data too small: %d bytes (need %d)", len(data), fixedSize)
 	}
 
 	obj := &BridgeObject{
 		Header:        header,
-		Flags:         data[0x02],
-		ClearHeight:   uint16(data[0x04]) | uint16(data[0x05])<<8,
-		DeckDepth:     int16(data[0x06]) | int16(data[0x07])<<8,
-		SpanLength:    data[0x08],
-		PillarSpacing: data[0x09],
-		MaxSpeed:      uint16(data[0x0A]) | uint16(data[0x0B])<<8,
-		MaxHeight:     data[0x0C],
+		Flags:         data[BridgeFlagsOffset],
+		ClearHeight:   binary.LittleEndian.Uint16(data[BridgeClearHeightOffset:]),
+		DeckDepth:     int16(binary.LittleEndian.Uint16(data[BridgeDeckDepthOffset:])),
+		SpanLength:    data[BridgeSpanLengthOffset],
+		PillarSpacing: data[BridgePillarSpacingOffset],
+		MaxSpeed:      binary.LittleEndian.Uint16(data[BridgeMaxSpeedOffset:]),
+		MaxHeight:     data[BridgeMaxHeightOffset],
 		CostIndex:     data[0x0D],
-		DesignedYear:  uint16(data[0x2A]) | uint16(data[0x2B])<<8,
+		DesignedYear:  binary.LittleEndian.Uint16(data[BridgeDesignedYearOffset:]),
 	}
-	trackNumCompatible := data[0x1A]
-	roadNumCompatible := data[0x22]
+	trackNumCompatible := data[BridgeTrackNumCompatibleOffset]
+	roadNumCompatible := data[BridgeRoadNumCompatibleOffset]
 
 	offset := fixedSize
 

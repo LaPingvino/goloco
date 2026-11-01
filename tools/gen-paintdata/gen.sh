@@ -63,6 +63,7 @@ cat > "$tmp/layout.cpp" <<'CPP'
 #include "Objects/AirportObject.h"
 #include "Objects/BuildingObject.h"
 #include "Objects/DockObject.h"
+#include "Objects/BridgeObject.h"
 #include "Objects/TunnelObject.h"
 #include "Objects/RoadStationObject.h"
 #include "Objects/TrainStationObject.h"
@@ -90,6 +91,18 @@ int main() {
   std::printf("\tDockNumBuildingVariationsOffset = %zu\n", offsetof(DockObject, numBuildingVariations));
   std::printf("\tDockFlagHasShadows = %u\n", (unsigned)DockObjectFlags::hasShadows);
   std::printf("\tTunnelObjectSize = %zu\n", sizeof(TunnelObject));
+  std::printf("\tBridgeObjectSize = %zu\n", sizeof(BridgeObject));
+  std::printf("\tBridgeFlagsOffset = %zu\n", offsetof(BridgeObject, flags));
+  std::printf("\tBridgeClearHeightOffset = %zu\n", offsetof(BridgeObject, clearHeight));
+  std::printf("\tBridgeDeckDepthOffset = %zu\n", offsetof(BridgeObject, deckDepth));
+  std::printf("\tBridgeSpanLengthOffset = %zu\n", offsetof(BridgeObject, spanLength));
+  std::printf("\tBridgePillarSpacingOffset = %zu\n", offsetof(BridgeObject, pillarSpacing));
+  std::printf("\tBridgeMaxSpeedOffset = %zu\n", offsetof(BridgeObject, maxSpeed));
+  std::printf("\tBridgeMaxHeightOffset = %zu\n", offsetof(BridgeObject, maxHeight));
+  std::printf("\tBridgeTrackNumCompatibleOffset = %zu\n", offsetof(BridgeObject, trackNumCompatible));
+  std::printf("\tBridgeRoadNumCompatibleOffset = %zu\n", offsetof(BridgeObject, roadNumCompatible));
+  std::printf("\tBridgeDesignedYearOffset = %zu\n", offsetof(BridgeObject, designedYear));
+  std::printf("\tBridgeFlagHasRoof = %u\n", (unsigned)BridgeObjectFlags::hasRoof);
   std::printf("\tTrainStationFlagsOffset = %zu\n", offsetof(TrainStationObject, flags));
   std::printf("\tTrainStationFlagRecolourable = %u\n", (unsigned)TrainStationFlags::recolourable);
   std::printf("\tRoadStationFlagsOffset = %zu\n", offsetof(RoadStationObject, flags));
