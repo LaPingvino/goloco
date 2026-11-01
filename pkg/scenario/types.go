@@ -67,6 +67,8 @@ type Scenario struct {
 
 	// AirportObjectOrder is the airport-object names in slot order (slots 373..380).
 	AirportObjectOrder []string
+	// CompanyColours is owner → main colour (neutral 15 = grey); nil without a GameState.
+	CompanyColours []uint8
 	// DockObjectOrder is the dock-object names in slot order (slots 381..388).
 	DockObjectOrder []string
 

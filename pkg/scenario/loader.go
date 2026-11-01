@@ -270,6 +270,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		}
 
 		sc.IndustryObjectIDs = parseIndustryObjectIDs(gameState)
+		sc.CompanyColours = parseCompanyColours(gameState)
 
 		// Towns live inside the GameState chunk for saved games.
 		sc.Towns = parseTownsFromGameState(gameState)
@@ -1115,6 +1116,38 @@ const (
 	industryRecordSize             = 1107
 	industryObjectIDOffset         = 16
 )
+
+// Companies in the GameState (S5/S5GameState.h, S5/S5Company.h; offsetof and
+// sizeof from the compiler, OpenLoco b93e074): companies at 0xB96C in both
+// GameState and GameStateType2; 15 records of 36776 bytes (CompanyType2:
+// 36296); mainColours at 0x1A, primary first. Neutral (owner 15) is grey (1).
+const (
+	companiesGameStateOffset = 0xB96C
+	companyMaxCount          = 15
+	companyRecordSize        = 36776
+	companyRecordSizeType2   = 36296
+	companyMainColoursOffset = 0x1A
+	companyNeutral           = 15
+	colourGrey               = 1
+)
+
+// parseCompanyColours is CompanyManager::updateColours: every company slot's
+// mainColours.primary, then neutral = grey. nil if the chunk is too short.
+func parseCompanyColours(gs []byte) []uint8 {
+	size := companyRecordSize
+	if len(gs) == GameStateSizeType2 {
+		size = companyRecordSizeType2
+	}
+	if len(gs) < companiesGameStateOffset+companyMaxCount*size {
+		return nil
+	}
+	c := make([]uint8, companyMaxCount+1)
+	for i := range companyMaxCount {
+		c[i] = gs[companiesGameStateOffset+i*size+companyMainColoursOffset]
+	}
+	c[companyNeutral] = colourGrey
+	return c
+}
 
 // parseIndustryObjectIDs returns, per industry index, its industry object id
 // (what IndustryElement.IndustryID refers to). nil if the chunk is too short.

@@ -87,6 +87,15 @@ func NewSession(rotation uint8, x, y, w, h int) *Session {
 	return &Session{Rotation: rotation, rtX: x, rtY: y, rtW: w, rtH: h, back: noBackIndex}
 }
 
+// Colour returns an image of sp remapped to a company colour (ImageId(index,
+// primary colour)): remap nil means no colour, a plain transparent copy.
+func Colour(sp *gfx8.Sprite, remap []uint8) Image {
+	if remap == nil {
+		return Image{Sprite: sp, Op: gfx8.OpTransparent}
+	}
+	return Image{Sprite: sp, Op: gfx8.OpTransparent | gfx8.OpSrc, PalMap: remap}
+}
+
 // Reset prepares the session for a new frame, keeping its allocations (the
 // struct and attachment slabs) so a frame allocates nothing in steady state.
 func (s *Session) Reset(rotation uint8, x, y, w, h int) {

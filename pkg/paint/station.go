@@ -13,6 +13,7 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 type StationEl struct {
 	Rotation, BaseZ   uint8
 	TrackID, TrackSeq uint8
+	Remap             []uint8 // company colour of the track's owner (elTrack->owner())
 }
 
 type stationDetail struct {
@@ -39,8 +40,7 @@ func (s *Session) PaintTrainStation(el StationEl, base int, sprite func(int) *gf
 	rot := int((s.Rotation + el.Rotation) & 3)
 	ho := Pos3{0, 0, int(el.BaseZ) * 4}
 	img := func(off int) Image {
-		sp := sprite(base + off)
-		return Image{Sprite: sp, Op: gfx8.OpTransparent}
+		return Colour(sprite(base+off), el.Remap)
 	}
 	at := func(p Pos3) Pos3 { return Pos3{p.X, p.Y, p.Z + ho.Z} }
 	switch el.TrackID {

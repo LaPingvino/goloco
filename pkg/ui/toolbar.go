@@ -129,6 +129,7 @@ func NewToolbar(screenWidth int) *Toolbar {
 // OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTop.cpp
 //
 //	prepareDraw() lines 977-997
+//
 // RightAlignButtons repositions the right-aligned toolbar buttons for the
 // given screen width. Called on creation and again whenever the window resizes.
 func (t *Toolbar) RightAlignButtons(screenWidth int) {

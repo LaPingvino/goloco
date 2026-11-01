@@ -12,7 +12,8 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 // RoadEl is what paintRoad reads from a road element.
 type RoadEl struct {
 	RoadID, SequenceIndex, Rotation uint8
-	BaseZ                           uint8 // SmallZ
+	BaseZ                           uint8   // SmallZ
+	Remap                           []uint8 // company colour of elRoad.owner() (nil: none)
 }
 
 var (
@@ -35,8 +36,7 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 	bbOff := rpcp.BBOffsets[rot]
 	bbOff.Z += height
 	img := func(off uint32) Image {
-		sp := sprite(image + int(off))
-		return Image{Sprite: sp, Op: gfx8.OpTransparent}
+		return Colour(sprite(image+int(off)), el.Remap)
 	}
 	switch paintStyle {
 	case 0, 2:
@@ -53,6 +53,7 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 			s.roadExits |= rpcp.BridgeEdges[rot]
 			s.mergeRoadImage = image + int(RoadMergeBaseImage[rpp.MergeType[rot]-1])
 			s.mergeRoadHeight = height
+			s.mergeRoadPal = el.Remap // the merge base image carries the road's colour
 			return
 		}
 		if i := img(rpp.ImageIndexOffsets[rot]); i.Sprite != nil {
@@ -83,6 +84,6 @@ func (s *Session) FinalisePaintRoad(sprite func(int) *gfx8.Sprite) {
 	bb := roadMergeBBOff[id]
 	bb.Z += s.mergeRoadHeight
 	if sp := sprite(s.mergeRoadImage + id); sp != nil {
-		s.AddTrackRoad(Image{Sprite: sp, Op: gfx8.OpTransparent, PalMap: s.mergeRoadPal}, 2, ho, bb, roadMergeBBSize[id])
+		s.AddTrackRoad(Colour(sp, s.mergeRoadPal), 2, ho, bb, roadMergeBBSize[id])
 	}
 }
