@@ -8,3 +8,5 @@
 /debug/
 /goloco_progress.json
 /reference/
+/.idle-loop-on
+/.idle-loop-status
