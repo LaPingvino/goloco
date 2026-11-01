@@ -80,11 +80,28 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    OpenGraphics replaces; write docs/open-build.md with the gap. A public build also needs its own title
    scene and scenario made only from open objects (Joop: 'we might need a custom level/title screen') —
    design, wait for Joop before building. Never publish anything containing the original data.
-3e. [ ] **Joop's observations on the live build (2026-11-01):** (1) slopes and corners are wonky; (2) water is
+3e. [~] **Joop's observations on the live build (2026-11-01):** (1) slopes and corners are wonky; (2) water is
    still slightly broken where it touches the coast; (3) roads up and down slopes don't work yet. Each: find the
    upstream paint code (Paint/PaintSurface.cpp for slopes/corners + water edges; Paint/PaintRoad.cpp and
    Map/Track/TrackData.cpp road slope pieces), capture the case with --diag, fix, compare. Interleave with item 4
    (one per tick when a split step is done).
+   Water (tick 12): diag capture at the coast of Weatherworld. Two departures from Paint/PaintSurface.cpp
+   1736–1775: (a) goloco animates waves on EVERY water tile with an invented frame; upstream draws frame +60
+   only on tiles with flag 6, from WaveManager waves that spawn at random on water tiles surrounded by water;
+   (b) goloco draws all water in a late separate pass ('pass 1.5'), upstream adds water to the paint sort at
+   waterHeight with bbox {32,32,-1} — a late pass can overpaint neighbouring land at the shore. Done so far:
+   WaveManager + tile-loop water branch ported to pkg/sim/wave.go with tests. NEXT: call UpdateTiles (visible
+   = tile in the viewport) and UpdateWaves each tick, draw +60+frame only on WaveFlag tiles, check visually;
+   then (b) with the paint-sort work (deviations B, vehicle depth).
+3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
+   element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
+   stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
+   read the upstream painter, diff goloco's, capture with --diag, fix, note it here.
+3g. [ ] Music stutters in the browser (Joop): find where audio is decoded/streamed (pkg/audio, oto in js/wasm);
+   likely decode on the main thread or too small a buffer.
+3h. [ ] (later, Joop: 'first fix and put in context how the graphics should work, then replace it with a fully
+   free version') A draft/comic-style g1 for testing: needs a g1.DAT writer (goloco only decodes) and drawings
+   for the ids goloco uses — after the graphics are right, as the first step of docs/open-build.md.
 4. [~] **Split simulation from rendering** (APPROVED by Joop 2026-11-01: 'the split is perfectly okay. Free to make bold decisions.').
    Plan: new pkg/sim (no ebiten/render imports — ebiten panics at init without a display, so headless
    tests need a package that never imports it) holding map state + rules; pkg/world keeps drawing and embeds
@@ -137,3 +154,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 10 (item 4 step 3a) — generated track/road coordinate tables moved to pkg/sim with exported names; build+vet green. Joop: add music to the private build → lazy per-file fetch planned (shim open() fetches on first use).
 - 2026-11-01 (Joop: music in the private build) — webpack -music (local only): 30 music tracks as separate .gz files, registered as lazy files that the fs shim fetches on first open(); headless: css5.dat (title music) fetched and decoded. Live build 445 MB on disk, nothing extra downloaded until a track plays.
 - 2026-11-01 tick 11 (item 4 step 3b) — sim.State (Map + construction head + undo stacks); construction rules and AddTrack/AddRoad moved to pkg/sim; World embeds sim.State; build+vet green; ghost drawing owes a visual check. Joop's three observations queued as 3e.
+- 2026-11-01 tick 12 (item 3e water) — coast diag captured; found invented all-tile waves and a late water pass vs upstream's paint sort; ported WaveManager + the tile loop's water branch to pkg/sim (first headless tests in pkg/sim, all pass). Queued: 3f element-by-element paint audit (Joop), 3g music stutter, 3h draft g1 (after fidelity).
