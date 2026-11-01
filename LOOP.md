@@ -195,6 +195,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    upstream leaves them unset — matters only for a snowy tree whose object has no snow variation (not seen).
    NEXT: buildings (Paint/PaintBuilding.cpp) in render8 — deviations B lists 'first variation only' and
    'under construction skipped' for the current renderer; port the real painter.
+   Tick 28: buildings DONE in render8 (pkg/paint/building.go: paintBuilding + paintBuildingBuilding — the tile's
+   variation, all parts, part animation frames, colour remap, 2×2 front-tile rule, elevators). The building loader
+   now keeps PartAnimations, ElevatorSequences, scaffolding type/colour (its section walk was already equal to
+   BuildingObject::load). Weatherworld (231,25): the town stands in front of the sea, water nowhere over it.
+   NOT YET: scaffolding/under-construction (BuildingElement age + unk5u aren't parsed), building shadows
+   (Colours::getShadow(orange) translucency), ghosts. NEXT: roads (PaintRoad.cpp) — then capture the road slope
+   pieces at (228,23)…(233,28) for Joop's 'up and down roads' observation.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -272,3 +279,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 25 (item 3i) — trees in the CPU renderer; transition image needs the noise mask (tree sprites are BMP, so upstream applies it) → next.
 - 2026-11-01 tick 26 (item 3i) — noise-mask blit ported (sprite-width stride quirk kept, RLE excluded) with a test; trees in transition dither like the original. (Paused briefly for Joop's video-subtitle task: drop folder ~/Projects/videosubs, Whisper large-v3 pre-downloading.)
 - 2026-11-01 tick 27 (item 3i) — tree season sprite remap checked equal to upstream; buildings next.
+- 2026-11-01 tick 28 (item 3i) — buildings in the CPU renderer (variation, parts, animations, colours, 2×2, elevators); the town-by-the-sea renders with water behind it, as the original. Roads next.

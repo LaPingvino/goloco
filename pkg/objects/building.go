@@ -35,6 +35,12 @@ type BuildingObject struct {
 	VariationParts [32][]uint8 // variationPartsOffset decoded
 	PartHeights    []uint8     // height per part
 
+	PartAnimations         []BuildingPartAnimation // per part (BuildingCommon.h)
+	NumElevatorSequences   uint8                   // 0xAD
+	ElevatorSequences      [][]uint8               // heights; size is a power of 2
+	ScaffoldingSegmentType uint8                   // 0x9C (0xFF = none)
+	ScaffoldingColour      uint8                   // 0x9D
+
 	// Calculated from image table during load
 	ImageOffset uint32 // Base sprite index in global G1 pool
 }
@@ -87,7 +93,13 @@ func ParseBuildingObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 	copy(bldg.PartHeights, data[offset:offset+int(bldg.NumParts)])
 	offset += int(bldg.NumParts)
 
-	// Skip part animations (numParts * 2 bytes)
+	// Part animations (numParts × {numFrames, animationSpeed})
+	bldg.PartAnimations = make([]BuildingPartAnimation, bldg.NumParts)
+	for i := range bldg.PartAnimations {
+		if offset+2*i+1 < len(data) {
+			bldg.PartAnimations[i] = BuildingPartAnimation{NumFrames: data[offset+2*i], AnimationSpeed: data[offset+2*i+1]}
+		}
+	}
 	offset += int(bldg.NumParts) * 2
 
 	// Parse variation parts (each variation is a list of uint8 terminated by 0xFF)
@@ -106,10 +118,15 @@ func ParseBuildingObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 	// Skip cargo headers (2 produced + 2 required = 4 * 16 bytes)
 	offset += 4 * 16
 
-	// Skip elevator sequences
-	numElevators := int(data[0xAD]) // numElevatorSequences at 0xAD
-	for i := 0; i < numElevators && offset+2 <= len(data); i++ {
+	// Elevator sequences: uint16 size, then size height bytes each
+	bldg.NumElevatorSequences = data[0xAD]
+	bldg.ScaffoldingSegmentType = data[0x9C]
+	bldg.ScaffoldingColour = data[0x9D]
+	for i := 0; i < int(bldg.NumElevatorSequences) && offset+2 <= len(data); i++ {
 		size := int(binary.LittleEndian.Uint16(data[offset : offset+2]))
+		if offset+2+size <= len(data) {
+			bldg.ElevatorSequences = append(bldg.ElevatorSequences, append([]uint8(nil), data[offset+2:offset+2+size]...))
+		}
 		offset += 2 + size
 	}
 
@@ -136,4 +153,10 @@ func (b *BuildingObject) GetBuildingParts(variation uint8) []uint8 {
 		return nil
 	}
 	return b.VariationParts[variation]
+}
+
+// BuildingPartAnimation is OpenLoco BuildingCommon.h BuildingPartAnimation.
+type BuildingPartAnimation struct {
+	NumFrames      uint8 // power of 2 (0 = no part animation)
+	AnimationSpeed uint8 // bit 7: position-modified
 }
