@@ -1160,6 +1160,11 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		g.diagNewGameDone = true
 		g.openNewGameWindow()
 		g.scenarioSelect.SelectFirst()
+		if os.Getenv("GOLOCO_DIAG_NEWGAME") == "many" {
+			g.scenarioSelect.DiagRepeat(3)
+			g.scenarioSelect.Tab = 3
+			g.scenarioSelect.HandleWheel(-4)
+		}
 	}
 	if os.Getenv("GOLOCO_DIAG_TIMEPANEL") != "" {
 		st := ui.TimePanelState{Date: uilayout.DateDMY(1, "January", 1950), Speed: 1}
