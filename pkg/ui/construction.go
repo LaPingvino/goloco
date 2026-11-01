@@ -26,6 +26,9 @@ type ConstructionFrame struct {
 	// TabFrames is how many preview frames the construction tab cycles through
 	// (drawTrackTabs: 16, drawRoadTabs: 32).
 	TabFrames int
+	// Disabled tabs (setDisabledWidgets) are hidden and the others move left
+	// (repositionTabs): index 0 construction, 1 station, 2 signal, 3 overhead.
+	Disabled [4]bool
 }
 
 // ConstructionW/H is Construction::kWindowSize.
@@ -55,10 +58,45 @@ func (w *ConstructionFrame) Draw(screen *ebiten.Image) {
 		if w.Tab == 0 {
 			icon += (w.FrameNo / 4) % max(w.TabFrames, 1)
 		}
-		drawTab(rt, 3, 15, w.Tab == 0, sec, icon, prim)
-		for i := 1; i < 4; i++ {
-			drawTab(rt, 3+31*i, 15, w.Tab == i, sec, tabNoIcon, nil)
+		for i, x := range w.TabX() {
+			if x < 0 {
+				continue
+			}
+			if i == 0 {
+				drawTab(rt, x, 15, w.Tab == 0, sec, icon, prim)
+			} else {
+				drawTab(rt, x, 15, w.Tab == i, sec, tabNoIcon, nil)
+			}
 		}
 	})
 	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, ConstructionW-2, w.Title, int(w.CompanyColour))
+}
+
+// TabX is repositionTabs: each tab's x, -1 for a hidden (disabled) one; the
+// enabled tabs sit side by side from x 3, 31 apart.
+func (w *ConstructionFrame) TabX() [4]int {
+	var xs [4]int
+	x := 3
+	for i := range xs {
+		if w.Disabled[i] {
+			xs[i] = -1
+			continue
+		}
+		xs[i] = x
+		x += 31
+	}
+	return xs
+}
+
+// TabAt returns the tab under (rx, ry) relative to the window, or -1.
+func (w *ConstructionFrame) TabAt(rx, ry int) int {
+	if ry < 15 || ry >= 15+27 {
+		return -1
+	}
+	for i, x := range w.TabX() {
+		if x >= 0 && rx >= x && rx < x+31 {
+			return i
+		}
+	}
+	return -1
 }

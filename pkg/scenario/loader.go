@@ -281,6 +281,9 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.CompanyColours = parseCompanyColours(gameState)
 		sc.CompanyNames = parseCompanyNames(gameState)
 		sc.UnlockedVehicles = parseUnlockedVehicles(gameState)
+		if len(gameState) > GeneralCurrentYearOffset+1 { // general.currentYear (from the compiler: 0x1A)
+			sc.CurrentYear = binary.LittleEndian.Uint16(gameState[GeneralCurrentYearOffset:])
+		}
 		sc.ControllingCompany = parseControllingCompany(gameState)
 		if len(gameState) > 0x196 { // general.trafficHandedness (from the compiler)
 			sc.TrafficHandedness = gameState[0x196]

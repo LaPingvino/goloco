@@ -15,6 +15,8 @@ type Map struct {
 	CompanyNames       []uint16                    // company slot → name StringId
 	ControllingCompany uint8                       // playerCompanies[0] (getControllingId)
 	TrafficHandedness  uint8                       // GameState trafficHandedness
+	UnlockedVehicles   [][7]uint32                 // per company: Company::unlockedVehicles
+	CurrentYear        uint16                      // GameState general.currentYear
 
 	IndustryObjectIDs []uint8                // industry index → industry object (GameState industries)
 	CompanyColours    []uint8                // owner → main colour (CompanyManager::updateColours); nil if none
@@ -110,6 +112,8 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.CompanyNames = sc.CompanyNames
 	m.ControllingCompany = sc.ControllingCompany
 	m.TrafficHandedness = sc.TrafficHandedness
+	m.UnlockedVehicles = sc.UnlockedVehicles
+	m.CurrentYear = sc.CurrentYear
 	m.IndustryObjectIDs = sc.IndustryObjectIDs
 	m.CompanyColours = sc.CompanyColours
 	m.StationOwners = sc.StationOwners
