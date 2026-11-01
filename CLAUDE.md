@@ -6,19 +6,20 @@ SYSTEMIC — the same few root causes explain most defects.
 
 ## Ground truth
 
-- **Upstream reference**: `~/OpenLoco` (shallow clone). When goloco code or
+- **Upstream reference**: `~/Projects/OpenLoco` (shallow clone; was ~/OpenLoco on the old Flex box). When goloco code or
   comments disagree with upstream, trust upstream — comments here may quote a
-  stale or misread decompilation. Game logic: `~/OpenLoco/src/OpenLoco/src/`.
-- **Game data**: `~/.local/share/Steam/steamapps/common/Locomotion`
+  stale or misread decompilation. Game logic: `~/Projects/OpenLoco/src/OpenLoco/src/`.
+- **Game data**: `~/Projects/locomotion` (unpacked from ~/locodata.tar.gz; found via ../locomotion/Data;
+  on the old Flex box it was `~/.local/share/Steam/steamapps/common/Locomotion`)
   (`Data/g1.DAT`, `ObjData/*.DAT`, `Scenarios/*.SC5`). Without it the game
   falls back to placeholder rendering.
 - Debug heuristic (from Joop): when stuck, fix every detail that looks off
   along the way — small oddities are evidence about the systemic cause.
 - **Pixel ground truth**: (1) `reference/` holds gallery screenshots of the
   original game (gitignored — do not commit); (2) the reference engine
-  BUILDS AND RUNS here: `~/OpenLoco/build/OpenLoco` (ninja -C ~/OpenLoco/build),
+  BUILDS AND RUNS here: `~/Projects/OpenLoco/build/OpenLoco` (ninja -C ~/Projects/OpenLoco/build),
   configured via ~/.config/OpenLoco/openloco.yml. Run it for comparison shots:
-  `DISPLAY=:99 SDL_AUDIODRIVER=dummy ~/OpenLoco/build/OpenLoco` then
+  `DISPLAY=:99 SDL_AUDIODRIVER=dummy ~/Projects/OpenLoco/build/OpenLoco` then
   `ffmpeg -f x11grab -video_size 800x600 -i :99 -frames:v 1 out.png`.
   Compare goloco captures against BOTH before judging GUI/render parity.
 
@@ -71,6 +72,10 @@ Build: `go build -o goloco ./cmd/goloco`. Always verify visually:
   N -info-end M]`; read the PNGs with vision. `scripts/fetch-fonts.sh` gets
   the OpenTTD TTFs (Unicode fallback).
 
+- On the VPS (vps2) Xvfb is not installed yet (needs `sudo pacman -S xorg-server-xvfb`) and the
+  OpenLoco config (~/.config/OpenLoco/openloco.yml) is not set up. Until then, visual checks go through
+  the wasm test page: `go run ./cmd/webpack -out <dir>` builds it (see LOOP.md, item 1, for the
+  headless check and the private publish).
 - ALWAYS run long headless sessions under Xvfb so the desktop/screen-lock
   cannot freeze the loop: `Xvfb :99 -screen 0 800x600x24 &` then
   `DISPLAY=:99 WAYLAND_DISPLAY= ./goloco …` (xorg-server-xvfb installed).

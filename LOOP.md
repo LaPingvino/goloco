@@ -46,10 +46,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    `--shots` (args in manifest.json) and print the PNG as base64 to the console. Wasm sprite preload is slow
    (11,057 sprites; still at 1% after 60 s under swiftshader) — check the speed in a real browser, and make the
    preload incremental if it is slow there too (→ Questions).
-2. [ ] **Clean slate.** The July session left uncommitted work (Build Vehicles window
-   cmd/goloco/buildvehicle.go; SpawnVehicleAt refactor in pkg/world/vehicle_sim.go; WinRun fleet of 3).
-   Review it against upstream BuildVehicle.cpp, finish or trim to a correct slice, commit. Update
-   CLAUDE.md paths for this machine.
+2. [x] **Clean slate.** DONE tick 3: the July Build Vehicles window was not a port of BuildVehicle.cpp (no
+   transport/track tabs, raw cost factor as 'Cost', placed running trains on track instead of VehicleCreate
+   into a depot) → parked on branch wip/build-vehicles-july (pushed), main clean. CLAUDE.md paths updated
+   for this machine. Real port of the window queued after item 5 (needs depots + VehicleCreate).
 3. [ ] **Inventory of deviations.** Walk the ~90 markers (approximat|simplif|fudge|hack|stub|TODO|
    FIXME|placeholder|not yet implemented) and every invented heuristic; write docs/deviations.md:
    file:line, what upstream does instead (file/function), severity, fix size. This becomes the queue.
@@ -58,6 +58,9 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 5. [ ] **Vehicle movement port.** Generate SubpositionData.cpp into Go like track_data_gen.go;
    port the movement step (VehicleBogie/VehicleHead/VehicleManager) in faithful slices with tests
    against upstream values; retire vehicle_sim.go's straight-segment approximation.
+5b. [ ] **Build Vehicle window**, ported from Ui/Windows/BuildVehicle.cpp (tabs per transport type and
+   track type, availability by year, VehicleCreate into a depot). Needs item 5. Reference: the parked
+   branch wip/build-vehicles-july.
 6. [ ] Then: deviations from docs/deviations.md, worst first (text measurement stub, terrain generation
    'simplified approximation', depth-sort approximation for vehicles, g1font width fudge, …).
 
@@ -75,3 +78,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 (setup) — pushing allowed (Joop); overnight idle-loop configured in ~/Projects/empty, the session's directory.
 - 2026-11-01 tick 1 (item 1) — wasm test page parts (a)–(c): in-memory fs shim for Go's js/wasm syscalls (open/read/fstat/stat/readdir…, O_DIRECTORY fixed after the first run), cmd/webpack (data pack in gzipped chunks < 15 MB, no music, refuses an output dir inside the repo), page with progress + Start + log drawer. Headless run: g1, 544 objects, title scenario load; canvas black → next tick. Split approved by Joop.
 - 2026-11-01 tick 2 (item 1 done) — black screenshots were a WebGL readback artefact: goloco's own --shots capture shows its loading screen drawing correctly. Artifacts serve no gzip, so the pack ships as base64 text of gzip; published privately; verified headless (544 objects, init complete). Body padding no longer squeezes the canvas.
+- 2026-11-01 tick 3 (item 2 done) — July WIP reviewed against upstream BuildVehicle.cpp: an invented list + track placement, not a port → parked on wip/build-vehicles-july; main clean; CLAUDE.md paths fixed (~/Projects/OpenLoco, ~/Projects/locomotion; no Xvfb yet, wasm page instead). Queued the real window as 5b.
