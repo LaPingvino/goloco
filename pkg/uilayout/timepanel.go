@@ -75,3 +75,48 @@ func itoa(n int) string {
 	}
 	return string(b[i:])
 }
+
+// PlayerInfoPanel layout — Ui/Windows/PlayerInfoPanel.cpp: 140×27 at the
+// bottom-left; the same outer/inner frames as the time panel.
+const (
+	PlayerPanelW = 140
+	PlayerPanelH = 27
+)
+
+// PlayerPanelPos is the window position on an sw × sh screen.
+func PlayerPanelPos(sw, sh int) (x, y int) { return 0, sh - PlayerPanelH }
+
+// Widget rectangles of the player info panel.
+var (
+	PlayerPanelFace        = [4]int{1, 1, 26, 26}
+	PlayerPanelCompanyVal  = [4]int{27, 2, 111, 12}
+	PlayerPanelPerformance = [4]int{27, 14, 111, 12}
+)
+
+// InPlayerPanel reports whether the point is on the player info panel.
+func InPlayerPanel(px, py, sw, sh int) bool {
+	wx, wy := PlayerPanelPos(sw, sh)
+	return px >= wx && px < wx+PlayerPanelW && py >= wy && py < wy+PlayerPanelH
+}
+
+// Currency48 formats money as {CURRENCY48} with a pound prefix and comma
+// thousands separators. PARTIAL: upstream takes the symbol, its position, the
+// separator and the factor from the scenario's currency object.
+func Currency48(v int64) string {
+	neg := v < 0
+	if neg {
+		v = -v
+	}
+	s := itoa(int(v))
+	out := ""
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			out += ","
+		}
+		out += string(c)
+	}
+	if neg {
+		return "-£" + out
+	}
+	return "£" + out
+}

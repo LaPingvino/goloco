@@ -23,3 +23,14 @@ func TestTimePanelSpeedAt(t *testing.T) {
 		t.Errorf("left of the buttons: %d", i)
 	}
 }
+
+func TestCurrency48(t *testing.T) {
+	for _, c := range []struct {
+		v    int64
+		want string
+	}{{0, "£0"}, {999, "£999"}, {1000, "£1,000"}, {2500000, "£2,500,000"}, {-12345, "-£12,345"}} {
+		if got := Currency48(c.v); got != c.want {
+			t.Errorf("%d: %q", c.v, got)
+		}
+	}
+}
