@@ -91,3 +91,43 @@ func (s *Session) PaintTrainStation(el StationEl, base int, sprite func(int) *gf
 		}
 	}
 }
+
+// Road stations — a port of Paint/PaintRoadStation.cpp (paint style 0, straight
+// road only: upstream's "simplified copy of train station paint"). Same PARTIAL
+// set as train stations: no cargo, no translucent canopy layer, no company
+// colour, no ghosts. Image indices are RoadStation::ImageIds::Style0 (0..7).
+var (
+	roadStationNE = [3]stationDetail{
+		{0, Pos3{2, 2, 8}, Pos3{28, 4, 3}},   // straightBackNE
+		{1, Pos3{2, 24, 8}, Pos3{28, 4, 3}},  // straightFrontNE
+		{2, Pos3{2, 2, 26}, Pos3{28, 28, 1}}, // straightCanopyNE
+	}
+	roadStationSE = [3]stationDetail{
+		{4, Pos3{2, 2, 8}, Pos3{4, 28, 3}},   // straightBackSE
+		{5, Pos3{24, 2, 8}, Pos3{4, 28, 3}},  // straightFrontSE
+		{6, Pos3{2, 2, 26}, Pos3{28, 28, 1}}, // straightCanopySE
+	}
+)
+
+// PaintRoadStation paints a style-0 road station element; base is
+// stationObj->imageOffsets[1] (upstream always uses index 1), roadID the road
+// element before it.
+func (s *Session) PaintRoadStation(rotation, baseZ, roadID uint8, base int, sprite func(int) *gfx8.Sprite) {
+	if roadID != 0 {
+		return // paintRoadStationStyle0: only straight road
+	}
+	rot := (s.Rotation + rotation) & 3
+	ho := Pos3{0, 0, int(baseZ) * 4}
+	d := roadStationNE
+	if rot&1 == 1 {
+		d = roadStationSE
+	}
+	for _, part := range d[:2] {
+		if sp := sprite(base + part.img); sp != nil {
+			s.AddAsParent(Image{Sprite: sp, Op: gfx8.OpTransparent}, ho, Pos3{part.bbOff.X, part.bbOff.Y, part.bbOff.Z + ho.Z}, part.bbSz)
+		}
+	}
+	if sp := sprite(base + d[2].img); sp != nil {
+		s.AddTrackRoadAddition(Image{Sprite: sp, Op: gfx8.OpTransparent}, 1, ho, Pos3{d[2].bbOff.X, d[2].bbOff.Y, d[2].bbOff.Z + ho.Z}, d[2].bbSz)
+	}
+}

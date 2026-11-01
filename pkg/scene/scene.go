@@ -260,8 +260,21 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 			// Train stations (style 0), against the track of the same baseZ (upstream:
 			// the element before — same APPROXIMATION as signals).
 			for _, st := range t.Stations {
+				if st.StationType == 1 { // road station, on the road of the same baseZ
+					rso := om.GetRoadStationObjectByIndex(int(st.ObjectID))
+					if rso == nil || rso.PaintStyle != 0 {
+						continue
+					}
+					for _, rd := range t.Roads {
+						if rd.BaseZ == st.BaseZ {
+							s.PaintRoadStation(st.Rotation, st.BaseZ, rd.RoadID, int(rso.SequenceImageOffsets[1]), sprite)
+							break
+						}
+					}
+					continue
+				}
 				if st.StationType != 0 {
-					continue // road stations, airports, docks: not ported yet
+					continue // airports, docks: not ported yet
 				}
 				so := om.GetTrainStationObjectByIndex(int(st.ObjectID))
 				if so == nil || so.PaintStyle != 0 || int(st.SequenceIndex) >= len(so.SequenceImageOffsets) {
