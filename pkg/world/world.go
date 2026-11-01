@@ -62,7 +62,9 @@ type World struct {
 	// The pixel scale factor is 1 << zoom applied in reverse:
 	// world coordinates are divided by (1 << zoom) for screen placement.
 	zoom     int
-	animTick int // incremented every frame; drives water wave animation
+	animTick int // incremented every Update; drives animation and the tile/wave ticks
+	// viewW, viewH: size of the last drawn screen, for tileOnScreen.
+	viewW, viewH int
 
 	// 2-pass blend rendering (water, glass, etc.)
 	worldBuf     *ebiten.Image      // pass-1 target: all opaque sprites
@@ -151,6 +153,7 @@ func NewWorld(r *render.Renderer) *World {
 	cx, cy := w.tileToScreen(w.Width/2, w.Height/2)
 	w.camX = cx - 400 // half screen width
 	w.camY = cy - 300 // half screen height
+	w.ResetWaves()
 	return w
 }
 
@@ -227,6 +230,18 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 	} else {
 		w.trains = nil
 	}
+	w.ResetWaves()
+}
+
+// tileOnScreen reports whether a tile's centre falls inside the last drawn
+// screen — upstream only starts a wave where a viewport shows it
+// (WaveManager::createWave: findWindowShowing).
+func (w *World) tileOnScreen(tileX, tileY int) bool {
+	if w.viewW == 0 || w.viewH == 0 {
+		return false
+	}
+	sx, sy := w.TileToScreenPx(tileX, tileY)
+	return sx >= 0 && sy >= 0 && sx < w.viewW && sy < w.viewH
 }
 
 // spawnDemoTrains places a handful of trains on track tiles found in the map.
@@ -518,6 +533,10 @@ func (w *World) CollectSpriteIDs() []int {
 
 func (w *World) Update() {
 	w.animTick++
+	// One game tick of the tile loop and the waves, in upstream's order
+	// (OpenLoco.cpp tick: TileManager::update, then WaveManager::update).
+	w.UpdateTiles(w.tileOnScreen)
+	w.UpdateWaves(uint32(w.animTick))
 	// Advance demo trains at ~2 tiles/second (60fps → 1/30 per frame).
 	const speed = 1.0 / 30.0
 	for _, tr := range w.trains {
@@ -2360,11 +2379,12 @@ func (w *World) paintWater(target *ebiten.Image, tileX, tileY int, t *tile, draw
 	}
 	queueWater(flatID, nil)
 
-	// Wave animation frames at zoom 0 (+60+frame).
-	if w.zoom == 0 {
-		const waveFrames = 16
-		waveFrame := (w.animTick/4 + tileX + tileY) & (waveFrames - 1)
-		queueWater(int(waterObj.ImageOffset)+60+waveFrame, nil)
+	// Waves: only on tiles where a wave is running, at zoom 0, frame from the
+	// wave table (PaintSurface.cpp: elSurface.isFlag6() && zoomLevel == 0 →
+	// water image + 60 + wave.frame; see pkg/sim/wave.go).
+	if t.WaveFlag && w.zoom == 0 {
+		wave := w.Waves[sim.WaveIndex(tileX, tileY)]
+		queueWater(int(waterObj.ImageOffset)+60+int(wave.Frame), nil)
 	}
 	_ = target
 }
@@ -2424,6 +2444,7 @@ func (w *World) getCliffEdgeOffset(edge int, h uint8) (int16, int16) {
 }
 
 func (w *World) Draw(screen *ebiten.Image) {
+	w.viewW, w.viewH = screen.Bounds().Dx(), screen.Bounds().Dy()
 	w.frameCounter++
 	sw := screen.Bounds().Dx()
 	sh := screen.Bounds().Dy()
