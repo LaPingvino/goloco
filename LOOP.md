@@ -223,6 +223,21 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    and junctions render between the buildings. NOT YET: company colour remap (saved company colours not parsed),
    streetlights, bridges/tunnels (paintRoadPCP), level crossings, road extras. NEXT: (e) a close crop of the slope
    pieces (228..233, 23..28) in render8 vs goloco's current renderer — to find the placement bug Joop saw.
+   Tick 32: close crops of the town (render8 vs the wasm --diag) — roads match apart from the known water spill;
+   the steep pieces there sit behind buildings. Joop's 'up and down roads don't work' most likely means BUILDING
+   them: the UI maps slope buttons to 5/6/7/8 correctly and placement passes the sim test, but goloco's current
+   paintRoads draws pieces directly in tile order with no depth sort, so a sloped piece can be painted over by
+   the next tile's terrain — the class of bug the paint session fixes. Also found in the current paintRoads:
+   (1) style-1 roads 0–2 are wrongly merged (upstream: Style1 never merges); (2) an invented left/right lane exits
+   split for style 2 (upstream: one exits mask per tile, merge base from the element's own MergeType).
+   DECISION: the payoff now is switching the game's World.Draw onto gfx8+paint (render8's pipeline), then
+   retiring the per-tile painters one by one. → new item 3j.
+3j. [ ] **Switch the live renderer to gfx8+paint.** World.Draw builds a paint session from the visible tiles with
+   the ported painters (surface, cliffs, water, trees, buildings, roads), draws into an 8-bit target, converts
+   through the palette into one Ebiten image. Keep the old path behind a flag (GOLOCO_OLD_RENDER=1) for comparison
+   until tracks, stations, signals, walls, bridges and vehicles are ported; elements not ported yet are drawn by
+   the old painters on top meanwhile (marked). Check: title capture + Weatherworld town + a slope road built in
+   the game (scripted), vs the old path.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -304,3 +319,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 29 (item 3i) — road painter surveyed (code + ~1,800 lines of data headers); plan: generate the tables from upstream headers instead of goloco's hand-copied road_sprites.go, then port paintRoad.
 - 2026-11-01 tick 30 (item 3i roads a) — road paint tables generated from upstream via the C++ compiler; found and fixed a swapped left-curve piece in goloco's hand table; slope sprites verified equal (bug is in placement).
 - 2026-11-01 tick 31 (item 3i roads b-d) — road painter + track/road priority ordering ported; town streets and junctions render in the CPU renderer.
+- 2026-11-01 tick 32 (item 3i roads e) — slope comparison: tables and placement fine; the current renderer's unsorted per-tile drawing is the likely cause; found two more invented behaviours in its road merge. New item 3j: switch the live renderer to gfx8+paint.
