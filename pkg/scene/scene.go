@@ -88,6 +88,12 @@ func (r *Renderer) shadow(has bool, image, colour int, primary bool) paint.Shado
 	return paint.Shadow{Image: image, Pal: r.colourMap(int(paint.ShadowColour[colour])), Primary: primary}
 }
 
+// paintBridge is PaintBridge.cpp paintBridge. PARTIAL — NOT PORTED YET: the
+// entry is collected and cleared as upstream does, but nothing is drawn (the
+// tables are in bridgedata_gen.go; the painting code is the next step), and the
+// support-height side effects are skipped.
+func (r *Renderer) paintBridge(s *paint.Session, b paint.BridgeEntry) {}
+
 // tunnelImage resolves a track/road object's tunnel header name to the tunnel
 // object's image base once (ObjectManager.TunnelImage), then from a cache.
 func (r *Renderer) tunnelImage(name string) int {
@@ -204,6 +210,9 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 					s.FinalisePaintRoad(sprite)
 					s.FinaliseTrackRoadOrdering()
 					s.FinaliseTrackRoadAdditionsOrdering()
+					if b, ok := s.TakeBridge(); ok {
+						r.paintBridge(s, b)
+					}
 				}
 			}
 		}
@@ -277,13 +286,13 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		tk := t.Tracks[ref.Index]
 		if to := om.GetTrackObjectByIndex(int(tk.TrackObjectID)); to != nil {
 			s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ, Remap: r.companyRemap(m, tk.Owner),
-				Tunnel: r.tunnelImage(to.TunnelName)}, int(to.Image), sprite)
+				Tunnel: r.tunnelImage(to.TunnelName), HasBridge: tk.HasBridge, Bridge: tk.BridgeID}, int(to.Image), sprite)
 		}
 	case scenario.KindRoad:
 		rd := t.Roads[ref.Index]
 		if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
 			s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: r.companyRemap(m, rd.Owner),
-				Tunnel: r.tunnelImage(ro.TunnelName)}, int(ro.Image), ro.PaintStyle, sprite)
+				Tunnel: r.tunnelImage(ro.TunnelName), HasBridge: rd.HasBridge, Bridge: rd.BridgeID}, int(ro.Image), ro.PaintStyle, sprite)
 		}
 	case scenario.KindSignal:
 		// paintSignal: against entry.prev(), which must be a track element.

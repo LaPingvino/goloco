@@ -13,6 +13,8 @@ type TrackEl struct {
 	BaseZ                            uint8   // SmallZ
 	Remap                            []uint8 // company colour of elTrack.owner() (nil: none)
 	Tunnel                           int     // trackObj->tunnel's image base (-1: none)
+	HasBridge                        bool
+	Bridge                           uint8 // elTrack.bridge(): bridge object slot
 }
 
 // PaintTrack paints one track element at the current sprite position; image
@@ -30,6 +32,9 @@ func (s *Session) PaintTrack(el TrackEl, image int, sprite func(int) *gfx8.Sprit
 	bbOff.Z += height
 	img := func(off uint32) Image {
 		return Colour(sprite(image+int(off)), el.Remap)
+	}
+	if el.HasBridge { // both paintTrackPPMergeable and paintTrackPPStandard
+		s.setBridge(height, tpp.BridgeType[rot], tpp.BridgeEdges[rot], tpp.BridgeQuarters[rot], el.Bridge, el.Remap)
 	}
 	if tpp.IsMergeable {
 		// paintTrackPPMergeable: ballast, sleepers, rails into priority lists 0, 1, 3.
