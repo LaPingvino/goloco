@@ -107,7 +107,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
     try {
       const go = new Go();
       go.argv = ["goloco"].concat(man.args || []);
-      go.env = { HOME: "/w" };
+      go.env = Object.assign({ HOME: "/w" }, man.env || {});
       const { instance } = await WebAssembly.instantiate(wasm, go.importObject);
       $("loader").hidden = true;
       document.body.style.padding = "0";

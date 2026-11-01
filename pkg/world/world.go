@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/LaPingvino/goloco/pkg/palblend"
+	"github.com/LaPingvino/goloco/pkg/scene"
 	"github.com/LaPingvino/goloco/pkg/sim"
 
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -76,6 +77,8 @@ type World struct {
 	blendOut     []byte             // blended pixels written to blendBuf (reused)
 	palIndex     palblend.Index     // palette colour → index
 	maskCache    map[int]maskEntry  // sprite alpha masks
+	scene        *scene.Renderer    // ported software renderer (scene.go)
+	sceneImg     *ebiten.Image      // its frame, uploaded each draw
 	frameCounter int                // draw-frame counter for UI pulses
 	highlightOps []worldHighlightOp // ripple/wave sprites drawn after blend
 	waterOps     []worldHighlightOp // water surface ops drawn after all terrain (pass 1.5)
@@ -2436,6 +2439,18 @@ func (w *World) Draw(screen *ebiten.Image) {
 	sw := screen.Bounds().Dx()
 	sh := screen.Bounds().Dy()
 	scale := 1.0 / float64(int(1)<<w.zoom) // zoom 0→1.0, 1→0.5, 2→0.25, 3→0.125
+
+	// The ported software renderer (scene.go), behind GOLOCO_SCENE=1 for now.
+	if w.sceneEnabled() {
+		w.drawScene(screen)
+		if len(w.Entities) > 0 {
+			w.paintVehicleEntities(screen, scale)
+		} else {
+			w.paintDemoTrains(screen, scale)
+		}
+		w.drawOverlay(screen)
+		return
+	}
 
 	// ── Allocate / reuse off-screen buffers ──
 	if w.worldBuf == nil || w.worldBuf.Bounds().Dx() != sw || w.worldBuf.Bounds().Dy() != sh {
