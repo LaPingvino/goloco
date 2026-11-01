@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/LaPingvino/goloco/pkg/construct"
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -105,7 +106,7 @@ func (st ConstructionTabState) Buttons() []ConstructionButton {
 	if st.IsRoad {
 		return RoadButtons(st.Traits, st.TrafficHandedness)
 	}
-	return TrackButtons(st.Traits)
+	return TrackButtons(st.Traits, st.Rotation)
 }
 
 // ConstructionTabState is what activateSelected{Track,Road}Widgets read.
@@ -116,6 +117,7 @@ type ConstructionTabState struct {
 	Piece             string // the activated piece widget ("straight", …); "" none
 	Gradient          string // the activated gradient widget ("level", …)
 	Hover             bool   // constructionHover: placing the first piece
+	Rotation          uint8  // constructionRotation (the dual-track buttons' images)
 	// BridgeImage is lastSelectedBridge's image (BridgeObject::image), -1
 	// for none; Company the player's primary colour (it is recoloured).
 	BridgeImage int
@@ -124,7 +126,8 @@ type ConstructionTabState struct {
 
 // TrackButtons is activateSelectedTrackWidgets' layout for a track: the
 // visible piece and gradient buttons with their positions.
-func TrackButtons(traits uint16) []ConstructionButton {
+func TrackButtons(traits uint16, rotation uint8) []ConstructionButton {
+	dl, dr, _, _ := construct.DualTrackButtons(rotation)
 	var out []ConstructionButton
 	vs := traits&TraitVerySmallCurve != 0
 	for _, b := range constructionButtons {
@@ -140,6 +143,12 @@ func TrackButtons(traits uint16) []ConstructionButton {
 			show = traits&TraitSmallCurve != 0
 		case "s_bend_dual_track_left", "s_bend_dual_track_right":
 			show = traits&TraitOneSided != 0
+			// Their images follow the heading (activateSelectedTrackWidgets).
+			if b.Name == "s_bend_dual_track_left" {
+				b.Image = dl
+			} else {
+				b.Image = dr
+			}
 		case "slope_down", "slope_up":
 			show = traits&TraitSlope != 0
 		case "steep_slope_down", "steep_slope_up":

@@ -81,6 +81,7 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 			f.Disabled[3] = om.AvailableCompatibleMods(g.buildObjID, unlocked) == none
 		}
 	}
+	st.Rotation = g.w.ConstructionHeadState().Rotation
 	st.Piece = nameFor(consPieceCurve, g.consCurve)
 	if g.consOneShot >= 0 && g.consIsRoad() {
 		st.Piece = "turnaround"
