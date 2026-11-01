@@ -30,7 +30,7 @@ func worldGoSource(t *testing.T) string {
 // assertAbsent fails if pattern is found in src.
 func assertAbsent(t *testing.T, src, pattern, msg string) {
 	t.Helper()
-	re := regexp.MustCompile(pattern)
+	re := regexp.MustCompile("(?i)" + pattern) // field names were exported (baseZ → BaseZ); match either spelling
 	if m := re.FindString(src); m != "" {
 		t.Errorf("BAD PATTERN found — %s\n  matched: %q", msg, m)
 	}
@@ -39,7 +39,7 @@ func assertAbsent(t *testing.T, src, pattern, msg string) {
 // assertPresent fails if pattern is NOT found in src.
 func assertPresent(t *testing.T, src, pattern, msg string) {
 	t.Helper()
-	re := regexp.MustCompile(pattern)
+	re := regexp.MustCompile("(?i)" + pattern) // field names were exported (baseZ → BaseZ); match either spelling
 	if !re.MatchString(src) {
 		t.Errorf("REQUIRED PATTERN absent — %s\n  pattern: %s", msg, pattern)
 	}
