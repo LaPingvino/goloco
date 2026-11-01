@@ -95,3 +95,60 @@ func (s *Session) PaintIndustry(el IndustryEl, obj IndustryObj, colourMap []uint
 		sectionCount--
 	}
 }
+
+// AirportObj is what paintAirport reads from an airport object.
+type AirportObj struct {
+	BuildingImage  int
+	Parts          []uint8 // the element's building type (variation)
+	PartHeights    []uint8
+	PartAnimFrames []uint8
+	PartAnimSpeed  []uint8
+	LargeTile      bool // largeTiles & (1 << variation)
+}
+
+// PaintAirport — a port of Paint/PaintAirport.cpp paintAirport and
+// paintAirportBuilding. PARTIAL: shadows, company colour, ghosts.
+func (s *Session) PaintAirport(rotationEl, sequenceIndex, baseZ uint8, obj AirportObj, tileX, tileY int, ticks uint32, sprite func(int) *gfx8.Sprite) {
+	rotation := (s.Rotation + rotationEl) & 3
+	// "Odd... different to industry, building, dock": the clear height is the
+	// sum of the variation's part heights, rounded up to 4.
+	clearHeight := 0
+	for _, p := range obj.Parts {
+		if int(p) < len(obj.PartHeights) {
+			clearHeight += int(obj.PartHeights[p])
+		}
+	}
+	clearHeight = (clearHeight + 3) &^ 3
+	bbz := min(clearHeight, 128) - 2
+	baseHeight := int(baseZ) * 4
+	imgOff, bbOff, bbSz := bldImgOff1x1, bldBBOff1x1, bldBBSz1x1
+	if obj.LargeTile {
+		imgOff, bbOff, bbSz = bldImgOff2x2, bldBBOff2x2, bldBBSz2x2
+	}
+	imgOff.Z += baseHeight
+	bbOff.Z += baseHeight
+	bbSz.Z += bbz
+	s.last = nil // session.resetLastPS()
+	if obj.LargeTile && int(sequenceIndex^2) != int(-int(s.Rotation))&3 {
+		return // only the front tile of a 2×2 draws
+	}
+	off := imgOff
+	for _, part := range obj.Parts {
+		// Upstream applies numFrames-1 unchecked (no numFrames==0 test as in
+		// buildings): uint8 - 1 → int -1 → all bits.
+		frameMask := uint32(int32(obj.PartAnimFrames[part]) - 1)
+		speed := obj.PartAnimSpeed[part]
+		tick := ticks >> (speed & 0x7F)
+		if speed&0x80 != 0 {
+			tick += uint32(tileX*5 + tileY*3)
+		}
+		adj := int(uint32(part) + (frameMask & tick))
+		if adj >= len(obj.PartHeights) {
+			break // out of the object's part table: upstream would read past it
+		}
+		if sp := sprite(adj*4 + obj.BuildingImage + int(rotation)); sp != nil {
+			s.AddAsChild(Image{Sprite: sp, Op: gfx8.OpTransparent}, off, bbOff, bbSz)
+		}
+		off.Z += int(obj.PartHeights[adj])
+	}
+}

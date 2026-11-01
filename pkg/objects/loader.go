@@ -44,6 +44,7 @@ type ObjectManager struct {
 	TreeObjects          []*TreeObject               // all loaded tree objects
 	IndustryObjects      []*IndustryObject           // all loaded industry objects
 	SnowObj              *SnowObject                 // the single snow object
+	AirportObjects       []*AirportObject            // airport objects (scenario slot order after ReorderAirportObjects)
 	BuildingObjects      []*BuildingObject           // all loaded building objects
 	WallObjects          []*WallObject               // all loaded wall objects
 	TrackObjects         []*TrackObject              // all loaded track objects
@@ -348,6 +349,19 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		loaded.Object = bldg
 		loaded.ImageOffset = bldg.ImageOffset
 		m.BuildingObjects = append(m.BuildingObjects, bldg)
+
+	case ObjectTypeAirport:
+		var g1Loader G1Loader
+		if m.G1File != nil {
+			g1Loader, _ = m.G1File.(G1Loader)
+		}
+		ap, err := ParseAirportObjectWithG1(header, decompressed, g1Loader)
+		if err != nil {
+			return fmt.Errorf("parsing airport: %w", err)
+		}
+		loaded.Object = ap
+		loaded.ImageOffset = ap.Image
+		m.AirportObjects = append(m.AirportObjects, ap)
 
 	case ObjectTypeSnow:
 		var g1Loader G1Loader
@@ -1122,3 +1136,28 @@ func (m *ObjectManager) ReorderIndustryObjects(order []string) {
 // SnowObjectSize is sizeof(SnowObject) upstream (6: StringId name + uint32 image;
 // checked by tools/gen-paintdata, see pkg/paint SnowObjectSize).
 const SnowObjectSize = 6
+
+// GetAirportObjectByIndex returns the airport object in scenario slot index.
+func (m *ObjectManager) GetAirportObjectByIndex(index int) *AirportObject {
+	if index < 0 || index >= len(m.AirportObjects) {
+		return nil
+	}
+	return m.AirportObjects[index]
+}
+
+// ReorderAirportObjects puts AirportObjects in the scenario's airport slot
+// order (RequiredObjects slots 373..380).
+func (m *ObjectManager) ReorderAirportObjects(order []string) {
+	reordered := make([]*AirportObject, len(order))
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if ap, ok := obj.Object.(*AirportObject); ok {
+				reordered[i] = ap
+			}
+		}
+	}
+	m.AirportObjects = reordered
+}

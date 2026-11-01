@@ -63,6 +63,7 @@ func titleView(b testing.TB) (*Renderer, *sim.Map, View) {
 	om.ReorderTrainStationObjects(sc.TrainStationObjectOrder)
 	om.ReorderIndustryObjects(sc.IndustryObjectOrder)
 	om.ReorderRoadStationObjects(sc.RoadStationObjectOrder)
+	om.ReorderAirportObjects(sc.AirportObjectOrder)
 	om.ResolveCliffEdges()
 	var m sim.Map
 	m.LoadScenario(sc)

@@ -193,6 +193,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.BridgeObjectOrder = parseBridgeObjectOrder(reqObjBytes)
 	sc.TrainStationObjectOrder = parseTrainStationObjectOrder(reqObjBytes)
 	sc.RoadStationObjectOrder = parseRoadStationObjectOrder(reqObjBytes)
+	sc.AirportObjectOrder = parseObjectOrder(reqObjBytes, airportSlotStart, airportSlotCount, objectTypeAirport)
 	sc.TrackObjectOrder = parseTrackObjectOrder(reqObjBytes)
 	sc.RoadObjectOrder = parseRoadObjectOrder(reqObjBytes)
 	sc.VehicleObjectOrder = parseVehicleObjectOrder(reqObjBytes)
@@ -539,10 +540,10 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					Var6Low:         uint8(sectionWord & 0x3F),         // var_6_003F
 					SectionProgress: (elem[5] >> 5) & 0x7,
 					SequenceIndex:   elem[5] & 0x3,
-					Rotation:      typeByte & 0x03,
-					IsConstructed: typeByte&0x80 != 0,
-					BaseZ:         baseZ,
-					ClearZ:        elem[3],
+					Rotation:        typeByte & 0x03,
+					IsConstructed:   typeByte&0x80 != 0,
+					BaseZ:           baseZ,
+					ClearZ:          elem[3],
 				}
 				sc.Tiles[y][x].Industries = append(sc.Tiles[y][x].Industries, ie)
 				industryCount++
@@ -753,6 +754,11 @@ const (
 	roadStationSlotCount = 16
 
 	// Road slots: RoadStation(16)+RoadExtra(4) = 345+16+4 = 365
+	// Airports: ObjectType::airport (21), slots 373..380 (getMaxObjects, via the compiler).
+	airportSlotStart  = 373
+	airportSlotCount  = 8
+	objectTypeAirport = 21
+
 	roadSlotStart = 365
 	roadSlotCount = 8
 
