@@ -284,6 +284,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    part animations, 4 animation sequences, var_38 pairs, variations, buildings, 2+3 cargo + 4+1+1 wall headers,
    image table; image bases as load()). Test (pkg/scene): all 22 ObjData industries walk EXACTLY to their image
    table (upstream's assert). NEXT: (3) paintIndustry + ReorderIndustryObjects (the scenario's industry slot order).
+   Tick 42 — step (3) DONE: pkg/paint/industry.go (paintIndustry/paintIndustryBuilding: parts, part animations or
+   the animation sequence, under-construction sections with the noise-masked top, colour remap, 2×2 front-tile
+   rule). Industry slot order parsed (slots 809×16 — computed from upstream getMaxObjects, which also reproduces
+   goloco's building 680×128), ReorderIndustryObjects, industry element colour/var_6/progress/sequence fields.
+   Title map (169,150): farm silos/barns and a refinery render among tracks, station, river. NOT YET: shadows,
+   scaffolding, farm FIELDS (PaintSurface industrial branch → next), ghosts.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -375,3 +381,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 39 (item 3j) — train stations (style 0) in the CPU renderer; additions priority list ported; station image ids generated.
 - 2026-11-01 tick 40 (item 3j) — industries step 1: GameState industry records parsed (offsets checked with the compiler). Video: Whisper at ~3.5 min of 71 after 8 min (slow on CPU); caption strips 7,356/8,560.
 - 2026-11-01 tick 41 (item 3j) — IndustryObject loader ported; all 22 industry objects walk exactly to their image tables. (OCR of the caption strips running in a second agent.)
+- 2026-11-01 tick 42 (item 3j) — industries render in the CPU renderer (farm, refinery); slot order and element fields parsed; farm fields next.

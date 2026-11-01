@@ -10,6 +10,8 @@ type Map struct {
 	Tiles         [][]Tile                 // [y][x]
 	Towns         []scenario.Town          // parsed town records
 	Entities      []scenario.VehicleEntity // real vehicle entities from the scenario / saved game
+
+	IndustryObjectIDs []uint8 // industry index → industry object (GameState industries)
 }
 
 // TileAt returns the tile at (x, y), or nil outside the map.
@@ -91,4 +93,5 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	}
 	m.Towns = sc.Towns
 	m.Entities = sc.Entities
+	m.IndustryObjectIDs = sc.IndustryObjectIDs
 }

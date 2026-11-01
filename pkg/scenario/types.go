@@ -50,6 +50,9 @@ type Scenario struct {
 	// Slots 305-312 (8 slots, ObjectType::bridge).
 	BridgeObjectOrder []string
 
+	// IndustryObjectOrder is the list of industry-object names in slot order.
+	IndustryObjectOrder []string
+
 	// IndustryObjectIDs[industry index] = that industry's object id (GameState
 	// industries table); IndustryElement.IndustryID indexes it.
 	IndustryObjectIDs []uint8
@@ -307,12 +310,16 @@ type SignalElement struct {
 //
 // OpenLoco reference: src/OpenLoco/src/Map/IndustryElement.h
 type IndustryElement struct {
-	IndustryID    uint8 // byte 4: industry index
-	BuildingType  uint8 // bytes 6-7 bits [10:6]
-	Rotation      uint8 // byte 0 bits [1:0]
-	IsConstructed bool  // byte 0 bit 7
-	BaseZ         uint8 // byte 2
-	ClearZ        uint8 // byte 3
+	IndustryID      uint8 // byte 4: industry index
+	BuildingType    uint8 // bytes 6-7 bits [10:6]
+	Colour          uint8 // bytes 6-7 bits [15:11] (var_6_F800)
+	Var6Low         uint8 // bytes 6-7 bits [5:0] (var_6_003F: sections / animation sequence select)
+	SectionProgress uint8 // byte 5 bits [7:5]
+	SequenceIndex   uint8 // byte 5 bits [1:0]
+	Rotation        uint8 // byte 0 bits [1:0]
+	IsConstructed   bool  // byte 0 bit 7
+	BaseZ           uint8 // byte 2
+	ClearZ          uint8 // byte 3
 }
 
 // SurfaceType represents type of terrain surface
