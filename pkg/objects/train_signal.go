@@ -24,13 +24,15 @@ import "fmt"
 //	  + 96: greenLights
 //	  + 104: greenLights2
 type TrainSignalObject struct {
-	Header    *ObjectHeader
-	Name      string
-	Flags     uint16 // TrainSignalObjectFlags
-	AnimSpeed uint8
-	NumFrames uint8
-	IsLeft    bool // flags bit 0: left vs right orientation
-	HasLights bool // flags bit 1
+	Header *ObjectHeader
+	Name   string
+	// Description is the second string table (loadString(description, 1)).
+	Description string
+	Flags       uint16 // TrainSignalObjectFlags
+	AnimSpeed   uint8
+	NumFrames   uint8
+	IsLeft      bool // flags bit 0: left vs right orientation
+	HasLights   bool // flags bit 1
 
 	// DesignedYear/ObsoleteYear (0x1A/0x1C): when it is available.
 	DesignedYear, ObsoleteYear uint16
@@ -109,18 +111,12 @@ func ParseTrainSignalObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader
 	// Walk TWO string tables (name, description), each [langID][str\0]...[0xFF].
 	// OpenLoco reference: TrainSignalObject::load — loadString(name, 0) then
 	// loadString(description, 1).
-	for t := 0; t < 2; t++ {
-		for offset < len(data) && data[offset] != 0xFF {
-			offset++ // skip langID
-			for offset < len(data) && data[offset] != 0 {
-				offset++ // skip string bytes
-			}
-			offset++ // skip null terminator
-		}
-		if offset < len(data) {
-			offset++ // skip 0xFF end marker
-		}
+	var name string
+	offset, name = walkStringTableLang(data, offset)
+	if obj.Name == "" {
+		obj.Name = name
 	}
+	offset, obj.Description = walkStringTableLang(data, offset)
 
 	// numCompatible ObjectHeaders: the tracks it fits (TrainSignalObject::load
 	// resolves them into mods[]).

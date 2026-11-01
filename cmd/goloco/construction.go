@@ -33,7 +33,10 @@ func nameFor(m map[string]int, v int) string {
 }
 
 func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.ConstructionTabState) {
-	f := &ui.ConstructionFrame{X: x, Y: y, Title: g.consObjName(), FrameNo: g.titleFrame}
+	f := &ui.ConstructionFrame{X: x, Y: y, Title: g.consObjName(), FrameNo: g.titleFrame, Tab: g.consTab}
+	if g.consTab == 2 {
+		f.H = ui.SignalTabH
+	}
 	var st ui.ConstructionTabState
 	company, _ := g.w.ControllingCompany()
 	if g.r != nil && g.r.ObjMgr != nil {
@@ -83,7 +86,16 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 	win.Ported = true
 	win.PortedDraw = func(screen *ebiten.Image, x, y int) {
 		f, st := g.constructionFrame(x, y)
+		if f.Disabled[g.consTab] { // the tab went away (another track type)
+			g.consTab = 0
+			f, st = g.constructionFrame(x, y)
+		}
+		win.Height = f.Height()
 		f.Draw(screen)
+		if g.consTab == 2 {
+			ui.DrawSignalTab(screen, f, g.signalTabState())
+			return
+		}
 		ui.DrawConstructionTab(screen, f, st)
 		// The piece preview in the construct area (goloco's preview drawing;
 		// PARTIAL: upstream draws it with the paint code, drawTrack).
@@ -95,8 +107,22 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 	win.OnWindowClick = func(rx, ry int) {
 		f, st := g.constructionFrame(win.X, win.Y)
 		if tab := f.TabAt(rx, ry); tab >= 0 || (ry >= 15 && ry < 42) { // tabs
-			if tab == 1 {
+			switch tab {
+			case 1:
 				g.consPlaceStation()
+			case 0, 2:
+				g.consTab = tab // switchTab; tabReset picks the both-directions tool
+				g.consSigOne = false
+			}
+			return
+		}
+		if g.consTab == 2 {
+			switch ui.SignalHit(rx, ry) {
+			case "both":
+				g.consSigOne = false
+			case "single":
+				g.consSigOne = true
+				// PARTIAL: placing signals (the tool, CreateSignal), the dropdown list
 			}
 			return
 		}
@@ -125,4 +151,23 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		}
 	}
 	return win
+}
+
+// signalTabState is the signal tab for the track being built: the selected
+// signal is the first available one (lastSelectedSignal; PARTIAL: the
+// scenario's remembered choice, Scenario::getConstruction().signals).
+func (g *Game) signalTabState() ui.SignalTabState {
+	st := ui.SignalTabState{Both: !g.consSigOne, Image: -1}
+	if g.r == nil || g.r.ObjMgr == nil {
+		return st
+	}
+	om := g.r.ObjMgr
+	list := om.AvailableCompatibleSignals(g.buildObjID, int(g.w.CurrentYear))
+	if len(list) == 0 {
+		return st
+	}
+	if s := om.GetTrainSignalObjectByIndex(list[0]); s != nil {
+		st.Name, st.Description, st.Image = s.Name, s.Description, int(s.ImageOffset)
+	}
+	return st
 }

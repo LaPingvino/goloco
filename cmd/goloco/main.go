@@ -96,10 +96,12 @@ type Game struct {
 	gameWon      bool
 	progress     *progressFile
 
-	consCurve  int // construction curve selection: -4 (left large) … 0 … +4
-	consSlope  int // construction slope selection: -2 (steep down) … 0 … +2
-	buildObjID int // index into TrackObjects / RoadObjects
-	hoverTileX int // tile under cursor in build mode (-1 if invalid)
+	consCurve  int  // construction curve selection: -4 (left large) … 0 … +4
+	consTab    int  // construction window tab: 0 construction, 2 signal (1 station places directly)
+	consSigOne bool // signal tab: single direction chosen (isSignalBothDirections = 0)
+	consSlope  int  // construction slope selection: -2 (steep down) … 0 … +2
+	buildObjID int  // index into TrackObjects / RoadObjects
+	hoverTileX int  // tile under cursor in build mode (-1 if invalid)
 	hoverTileY int
 
 	// Diagnostic crop: when set, save a 480×360 PNG centred on diagTileX/Y after the next Draw.
@@ -1104,8 +1106,11 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.townList.Hover = 2
 	}
-	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend") && !g.diagConsDone {
+	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend" || d == "signal") && !g.diagConsDone {
 		g.diagConsDone = true
+		if d == "signal" {
+			g.consTab = 2
+		}
 		if d == "extend" {
 			g.buildMode = buildModeTrack
 			mw, mh := g.w.GetMapSize()
