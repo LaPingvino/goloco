@@ -137,7 +137,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    'pass 1.5' covered the same buildings). NEXT TICK (interim, until 3i): draw tracks/roads/buildings/trees/
    walls/stations/signals also into an object-mask buffer and make palblend skip pixels an object covers; then
    capture (231,25) again to judge the road slopes.
-3i. [ ] **DESIGN (bold, Joop-approved direction): port the software renderer.** OpenLoco draws into an 8-bit
+3i. [~] **DESIGN (bold, Joop-approved direction): port the software renderer.** OpenLoco draws into an 8-bit
    palette-indexed RenderTarget with software sprite blits (Graphics/DrawSpriteHelper.hpp ops: none,
    transparent, src remap, dst blend, src+dst blend, noise mask) and a sorted paint session (Paint/Paint.cpp:
    addToPlotList, quadrant sort). Porting both gives exact blends without colour reverse-lookup, and fixes the
@@ -145,6 +145,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    pkg/gfx8: indexed framebuffer + drawSprite with every DrawBlendOp, tested against hand-made sprites; (2) a
    paint session port; (3) move painters onto it one element at a time, each checked against the current RGBA
    output before switching (equivalence per step). Ebiten then only shows the final RGBA frame.
+   Tick 19 — step (1) DONE: pkg/gfx8 — RenderTarget (8-bit), Decode (raw + RLE → indices), blitPixel exactly as
+   DrawSpriteHelper.hpp (transparent / src / dst / src+dst rows / noise mask), OpFor = getDrawBlendOp, clipped
+   DrawSprite with offsets. Tests: every op on hand-made sprites; equivalence: all 4,118 g1.DAT sprites decode
+   to indices whose palette colours equal the existing RGBA decoder's. Why now (instead of an interim mask): the
+   water blend must hit only what was drawn BEFORE the water tile, which needs in-order blending — what an 8-bit
+   target gives for free. NEXT: (2) the paint session (Paint/Paint.cpp: addToPlotList, bounding boxes, quadrant
+   sort), then (3) surfaces first, compared pixel-for-pixel with the current output on dry land.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -213,3 +220,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 16 (item 3e water c done) — exact palette-map blend on the CPU (pkg/palblend + test); mask bug (DecodeSprite drops palette-alpha-0 indices) fixed; water now matches the reference look; live. New rule from Joop: exact CPU first, optimise with equivalence checks. Queued 3i: port OpenLoco's indexed software renderer + paint sort.
 - 2026-11-01 tick 17 (item 3e water d / slopes) — submerged terrain is no longer flattened and lifted (a misread of getWaterSurface); seabed slopes show through the water like the reference; slope→display table checked equal to upstream. Live build updated.
 - 2026-11-01 tick 18 (item 3e) — waterline tile explained (light-facing slope, not a bug); road slope placement proven by a headless test; found water blended over buildings near the coast (draw order) → interim object-mask fix queued, then the road slope capture.
+- 2026-11-01 tick 19 (item 3i step 1) — pkg/gfx8: 8-bit render target + exact blitPixel port + index decoder; unit tests for every blend op; equivalence test: 4,118/4,118 g1 sprites identical to the RGBA decoder. Chosen over an interim water mask that would still be wrong for terrain in front.
