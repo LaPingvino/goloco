@@ -306,7 +306,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    PaintSurface.cpp by gen.sh into surfacedata_gen.go (literal integer table, no hand copy). Title farm: crop rows
    render. FOUND: goloco doesn't parse SNOW COVERAGE at all — both the land and field branches draw snow
    (SnowObject image + kSnowCoverageSlopeToMask) → item 3k.
-3l. [ ] **Keep tile element order (blocks tunnels; removes 3 APPROXIMATIONs).** Upstream paints a tile's
+3l. [~] **Keep tile element order (blocks tunnels; removes 3 APPROXIMATIONs).** Upstream paints a tile's
    elements in stored (height) order: an underground tunnel track comes BEFORE the surface, registers
    insertTunnel, and the surface's cliff edges then draw the portal (PaintSurface.cpp 1248-1301); signals and
    stations paint against `entry.prev()`; tracks/roads interleave per baseZ. goloco keeps typed slices only.
@@ -432,3 +432,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 56 (item 3j) — translucent station canopies (train straight + diagonal NE1/SE3, road stations): getTranslucent(companyColour) or unk2E when not recolourable; station flag offsets now from the compiler (agreed with the hand values). Title station's glass canopy renders tinted.
 - 2026-11-01 tick 57 (item 3j) — shadows: buildings ((parts+elevators+variation)*4, getShadow(orange)), industries (getShadow(own colour), primary → src+dst blend), airports, docks; added after resetLastPS as upstream (before the 2×2 front test). Original data: only BLDPYLON/BLDTRANS have shadows (Bottleneck Blues 246,54: shadow patch under trees; reference views unchanged, as they contain no shadowed objects). gfx8 blend: out-of-range src row now leaves dst (upstream asserts; Go would panic).
 - 2026-11-01 tick 58 (item 3l, design) — tunnels need the tile's element order (tunnel track precedes the surface); goloco loses it in typed slices. Plan + every mutation site recorded under 3l; no code yet (switched to Joop's video request).
+- 2026-11-01 tick 59 (item 3l step 1) — Tile.Order (ElemRef kind+index, stored order) parsed and copied into sim; insertRef (TileManager::insertElement placement: after all baseZ <= new) / removeRef kept in step at every mutation (AddTrack/AddRoad, removals, undo pops, station placement). Tests: title map Order complete on all tiles (270 tiles have elements below the surface — tunnels); sim mutations keep it sorted and renumbered. NEXT: scene walks Order (step 2).

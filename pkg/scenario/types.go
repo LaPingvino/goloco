@@ -151,6 +151,12 @@ type Tile struct {
 	Stations   []StationElement
 	Signals    []SignalElement
 	Industries []IndustryElement
+
+	// Order is the tile's elements in stored order (ascending height, as
+	// upstream paints them): Kind is the element type (0 surface, 1 track,
+	// 2 station, 3 signal, 4 building, 5 tree, 6 wall, 7 road, 8 industry) and
+	// Index the position in that kind's slice (0 for the surface).
+	Order []ElemRef
 }
 
 // TreeElement represents a tree on a tile.
@@ -478,4 +484,23 @@ const (
 	ChunkTypeGameState
 	ChunkTypeTileElements
 	// Add more as needed
+)
+
+// ElemRef points at one element of a tile, in stored order (see Tile.Order).
+type ElemRef struct {
+	Kind  uint8
+	Index uint16
+}
+
+// Element kinds of ElemRef (upstream World::ElementType).
+const (
+	KindSurface  = 0
+	KindTrack    = 1
+	KindStation  = 2
+	KindSignal   = 3
+	KindBuilding = 4
+	KindTree     = 5
+	KindWall     = 6
+	KindRoad     = 7
+	KindIndustry = 8
 )

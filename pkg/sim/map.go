@@ -40,6 +40,7 @@ func (m *Map) AddTrack(x, y int, te scenario.TrackElement) bool {
 		}
 	}
 	t.Tracks = append(t.Tracks, te)
+	t.insertRef(scenario.KindTrack, len(t.Tracks)-1, te.BaseZ)
 	return true
 }
 
@@ -59,6 +60,7 @@ func (m *Map) AddRoad(x, y int, re scenario.RoadElement) bool {
 		}
 	}
 	t.Roads = append(t.Roads, re)
+	t.insertRef(scenario.KindRoad, len(t.Roads)-1, re.BaseZ)
 	return true
 }
 
@@ -90,6 +92,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 				Stations:     st.Stations,
 				Signals:      st.Signals,
 				Industries:   st.Industries,
+				Order:        st.Order,
 			}
 		}
 	}

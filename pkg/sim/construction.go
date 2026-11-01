@@ -179,6 +179,7 @@ func (s *State) removeTrackElement(x, y int, trackID, rotation, seq, baseZ uint8
 		if te.TrackID == trackID && te.Rotation == rotation &&
 			te.SequenceIndex == seq && te.BaseZ == baseZ {
 			t.Tracks = append(t.Tracks[:i], t.Tracks[i+1:]...)
+			t.removeRef(scenario.KindTrack, i)
 			return
 		}
 	}
@@ -292,6 +293,7 @@ func (s *State) removeRoadElement(x, y int, roadID, rotation, seq, baseZ uint8) 
 		if re.RoadID == roadID && re.Rotation == rotation &&
 			re.SequenceIndex == seq && re.BaseZ == baseZ {
 			t.Roads = append(t.Roads[:i], t.Roads[i+1:]...)
+			t.removeRef(scenario.KindRoad, i)
 			return
 		}
 	}
