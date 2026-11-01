@@ -159,6 +159,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    and attachments. NOT ported yet: track/road priority lists (finaliseTrackRoadOrdering), string structs,
    culling, interaction lookup, masked images. NEXT: (3) a surface painter on gfx8+paint (PaintSurface main
    surface only) rendering a test region, compared pixel-for-pixel with the current RGBA output on dry land.
+   Tick 21 — step (3a): cmd/render8 renders a region through gfx8+paint to PNG with no graphics library
+   (headless CPU reference). Main surface only, same sprite choice as world.go, paintMainSurface box
+   (offset 0,0,baseHeight; size 32,32,-1). Title map at 196,190: the terrain matches goloco's diag of that spot;
+   cliffs are black gaps (not painted yet). NEXT: (3b) cliff edges (paintSurfaceCliffEdge) in render8; (3c) an
+   aligned pixel diff against the wasm --diag crop (same camera maths) to prove equivalence on dry land; also
+   check goloco's surface image base (ImageOffset + GetFlatTerrainSpriteIndex) against upstream LandObject::load
+   'image' — render8 copies goloco's formula for now, so both could share an error.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -229,3 +236,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 18 (item 3e) — waterline tile explained (light-facing slope, not a bug); road slope placement proven by a headless test; found water blended over buildings near the coast (draw order) → interim object-mask fix queued, then the road slope capture.
 - 2026-11-01 tick 19 (item 3i step 1) — pkg/gfx8: 8-bit render target + exact blitPixel port + index decoder; unit tests for every blend op; equivalence test: 4,118/4,118 g1 sprites identical to the RGBA decoder. Chosen over an interim water mask that would still be wrong for terrain in front.
 - 2026-11-01 tick 20 (item 3i step 2) — pkg/paint: core of OpenLoco's paint session (structs, quadrants, arrangeStructs, draw order) ported line for line, 4 tests pass headless.
+- 2026-11-01 tick 21 (item 3i step 3a) — cmd/render8: headless CPU render of land surfaces via gfx8+paint; title-map region matches goloco's diag structure; cliffs next, then an aligned pixel diff.
