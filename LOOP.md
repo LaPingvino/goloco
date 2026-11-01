@@ -326,7 +326,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
    read the upstream painter, diff goloco's, capture with --diag, fix, note it here.
-3g. [ ] Music stutters in the browser (Joop): find where audio is decoded/streamed (pkg/audio, oto in js/wasm);
+3g. [x] Music stutters in the browser (Joop): find where audio is decoded/streamed (pkg/audio, oto in js/wasm);
    likely decode on the main thread or too small a buffer.
 3h. [ ] (later, Joop: 'first fix and put in context how the graphics should work, then replace it with a fully
    free version') A draft/comic-style g1 for testing: needs a g1.DAT writer (goloco only decodes) and drawings
@@ -355,6 +355,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    'simplified approximation', depth-sort approximation for vehicles, g1font width fudge, …).
 
 ## Questions for Joop
+- Does the music still stutter on the test page (rebuilt 2026-11-01 tick 63, audio now at the music's native 22050 Hz)?
 - Try the test page with 'Use the ported renderer' ticked: does it look right, and what frame time does the console log
   ('[Scene] CPU renderer: … per frame')? That decides how soon it can become the default.
 - (answered 2026-11-01) g1 gap: Joop allows drawing replacements myself, or borrowing from OpenTTD
@@ -436,3 +437,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 60 (item 3l step 2) — scene paints each tile's elements in stored order (paintTileElements: paintElement switch + paintTileElementsEndLoop finalise at the last element / baseZ change); signals and train/road stations use entry.prev(). All three APPROXIMATION notes in scene.go removed (fixed, not deleted). Reference views (title, town, station, snow) byte-identical. NEXT (3l step 3): tunnels — insertTunnel from track/road + cliff-edge portals.
 - 2026-11-01 tick 61 (item 3l step 3, research) — tunnels: TunnelHeights already in the generated track/road tables; insertTunnel/insertTunnels (Paint.cpp 442-472) per edge with dedupe of the last entry; trackObj->tunnel / roadObj->tunnel = res->id of the embedded tunnel ObjectHeader (TrackObject.cpp: after compatible+mods+signals; RoadObject.cpp: after compatible+mods) → resolve by that header's name. Needs: TunnelObject loader (string table + image table), header capture in track.go/road.go, session tunnel lists reset per tile, portal code in PaintCliffEdges. No code yet (video work for Joop).
 - 2026-11-01 tick 62 (item 3l step 3, DONE) — tunnels: TunnelObject loader; track/road loaders keep the embedded tunnel header name (resolved by name = upstream's res->id object); session tunnel lists (resetTunnels per tile, insertTunnels with last-entry dedupe, 0xFF terminator); paintSurfaceCliffEdgeImpl portal branch (edge 0: image+0/1, edge 1: image+2/3, skip 2 heights; edges 2/3 skip only). Title map: portals at real mouths (101,280; 107,232 road tunnels) where rock covered the road before. Zero-alloc guard holds (tunnel image cached per name).
+- 2026-11-01 tick 63 (item 3g) — music stutter: the audio context ran at 44100 while Locomotion's music is 22050 Hz stereo, so Ebitengine resampled while playing — measured 64 ms CPU per second of music natively (13.3 s for one 208 s track) vs 5 ms for the whole track at 22050. Context now 22050 (native, as OpenLoco); 250 ms player buffer in the browser. Test page rebuilt — Joop to confirm by ear.

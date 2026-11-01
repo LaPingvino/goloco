@@ -4,14 +4,25 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/audio/wav"
 )
 
 const (
-	// SampleRate is the audio sample rate used by Ebitengine
-	SampleRate = 44100
+	// SampleRate is the audio context's rate: Locomotion's music (Data/*.dat,
+	// RIFF WAVE) is 22050 Hz 16-bit stereo, and OpenLoco plays it at that rate.
+	// Running the context at 44100 made Ebitengine resample every buffer while
+	// playing: 64 ms of CPU per second of music natively, more in the browser,
+	// where it shares the game's single thread — the music stuttered (Joop).
+	// At the native rate decoding is a plain copy.
+	SampleRate = 22050
+
+	// browserBuffer is the player buffer in js/wasm: the default is sized for a
+	// thread of its own; in the browser a long frame must not drain it.
+	browserBuffer = 250 * time.Millisecond
 )
 
 // Manager handles all game audio playback
@@ -91,6 +102,9 @@ func (m *Manager) LoadAndPlayMusic(path string, loop bool) error {
 	}
 	log.Println("[Audio] Player created successfully")
 
+	if runtime.GOOS == "js" {
+		player.SetBufferSize(browserBuffer)
+	}
 	m.musicPlayer = player
 	m.musicFile = f
 	m.musicPlayer.SetVolume(m.musicVolume)
