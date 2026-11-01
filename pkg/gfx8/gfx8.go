@@ -159,3 +159,31 @@ func DrawSprite(rt *RenderTarget, s *Sprite, x, y int, op BlendOp, palMap []uint
 		}
 	}
 }
+
+// DrawSpriteMasked is drawImageMasked at zoom 0 (SoftwareDrawingContext.cpp
+// drawImageMaskedZoom/drawMaskedZoom): the image is placed by its own offsets,
+// the mask is read at the same image-local positions with the image's row
+// width, and dst = mask & image wherever that is non-zero. Upstream supports
+// only raw (non-RLE) images here; the mask is assumed to share the layout.
+func DrawSpriteMasked(rt *RenderTarget, img, mask *Sprite, x, y int) {
+	x0, y0 := x+img.XOffset, y+img.YOffset
+	for sy := 0; sy < img.Height; sy++ {
+		ty := y0 + sy
+		if ty < 0 || ty >= rt.Height {
+			continue
+		}
+		for sx := 0; sx < img.Width; sx++ {
+			tx := x0 + sx
+			if tx < 0 || tx >= rt.Width {
+				continue
+			}
+			i := sy*img.Width + sx
+			if i >= len(mask.Pix) {
+				continue
+			}
+			if v := mask.Pix[i] & img.Pix[i]; v != 0 {
+				rt.Bits[ty*rt.Width+tx] = v
+			}
+		}
+	}
+}

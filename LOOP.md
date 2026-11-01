@@ -166,6 +166,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    aligned pixel diff against the wasm --diag crop (same camera maths) to prove equivalence on dry land; also
    check goloco's surface image base (ImageOffset + GetFlatTerrainSpriteIndex) against upstream LandObject::load
    'image' — render8 copies goloco's formula for now, so both could share an error.
+   Tick 22: surface image base CHECKED equal to upstream LandObject::load (image = angles × growthStages × 57 +
+   offset; perStage = angles × 25; mapPixelImage = angles × growthStages × 82 + offset). Masked images added
+   (gfx8.DrawSpriteMasked = drawImageMaskedZoom<0>: dst = mask & image where non-zero, image-local mask reads;
+   paint.Image.Mask) with a test — needed by cliff edges, smoothing, snow. NEXT: port paintSurfaceCliffEdge +
+   paintEdgeSection (PaintSurface.cpp 1198–1345) into a surface painter package used by render8.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -237,3 +242,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 19 (item 3i step 1) — pkg/gfx8: 8-bit render target + exact blitPixel port + index decoder; unit tests for every blend op; equivalence test: 4,118/4,118 g1 sprites identical to the RGBA decoder. Chosen over an interim water mask that would still be wrong for terrain in front.
 - 2026-11-01 tick 20 (item 3i step 2) — pkg/paint: core of OpenLoco's paint session (structs, quadrants, arrangeStructs, draw order) ported line for line, 4 tests pass headless.
 - 2026-11-01 tick 21 (item 3i step 3a) — cmd/render8: headless CPU render of land surfaces via gfx8+paint; title-map region matches goloco's diag structure; cliffs next, then an aligned pixel diff.
+- 2026-11-01 tick 22 (item 3i) — land image formula verified against LandObject::load; gfx8 masked draw (bitwise AND as upstream) + paint support, tested; cliffs next.
