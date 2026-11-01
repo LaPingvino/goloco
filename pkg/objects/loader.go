@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -1451,5 +1452,26 @@ func (m *ObjectManager) AvailableCompatibleBridges(slot int, road bool, year int
 			}
 		}
 	}
+	return out
+}
+
+// CurrencyChoice is an installed currency object: its DAT name and display name.
+type CurrencyChoice struct{ DAT, Name string }
+
+// AvailableCurrencies is getAvailableObjects(currency): every loaded currency
+// object, in the object index's order (sorted by display name).
+func (m *ObjectManager) AvailableCurrencies() []CurrencyChoice {
+	var out []CurrencyChoice
+	for dat, o := range m.Objects {
+		if c, ok := o.Object.(*CurrencyObject); ok {
+			out = append(out, CurrencyChoice{DAT: dat, Name: c.Name})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Name != out[j].Name {
+			return out[i].Name < out[j].Name
+		}
+		return out[i].DAT < out[j].DAT
+	})
 	return out
 }
