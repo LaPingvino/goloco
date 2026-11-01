@@ -5,6 +5,7 @@ import (
 	"image/color"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/paint"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -14,12 +15,16 @@ import (
 //
 //	Dropdown menus are temporary windows that appear when clicking toolbar buttons.
 type DropdownMenu struct {
-	X           int
-	Y           int
-	Width       int
-	Height      int
-	Items       []DropdownItem
-	ItemWidth   int // _dropdownItemWidth
+	X         int
+	Y         int
+	Width     int
+	Height    int
+	Items     []DropdownItem
+	ItemWidth int // _dropdownItemWidth
+	// Colour is the window colour; Translucent as AdvancedColour::translucent.
+	// Toolbar dropdowns: SetToolbarColour.
+	Colour      uint8
+	Translucent bool
 	Highlighted int
 	OnSelect    func(index int)
 	Visible     bool
@@ -40,10 +45,7 @@ type DropdownItem struct {
 // framed by its Wt3 panel widget (fillRectInset, raised).
 const (
 	dropdownItemHeight = 10
-	// DropdownColour is the window colour the dropdown panel is drawn in.
-	// PARTIAL: upstream's toolbar dropdowns are translucent (kDropdownColourTable
-	// + translucent(), remapping the view behind them); that needs the UI drawn
-	// into the 8-bit frame — until then the opaque colour is used.
+	// DropdownColour is the default (opaque) window colour of a dropdown.
 	DropdownColour = 1 // Colour::grey
 )
 
@@ -69,62 +71,94 @@ func NewDropdownMenu(x, y int, items []DropdownItem) *DropdownMenu {
 		Width:       itemWidth + 3 + 1,
 		Height:      dropdownItemHeight*len(items) + 3 + 1,
 		ItemWidth:   itemWidth,
+		Colour:      DropdownColour,
 		Items:       items,
 		Highlighted: -1,
 		Visible:     true,
 	}
 }
 
-// Draw renders the dropdown (Dropdown.cpp draw) into an 8-bit target with the
-// gfx8 window primitives and puts it on screen through the game palette.
+// SetToolbarColour is showBelow's colour for a toolbar button: the button's
+// window colour, translucent, mapped through kDropdownColourTable.
+func (d *DropdownMenu) SetToolbarColour(windowColour uint8) {
+	if int(windowColour) < len(DropdownColourTable) {
+		d.Colour = DropdownColourTable[windowColour]
+	}
+	d.Translucent = true
+}
+
+// Draw renders the dropdown (Dropdown.cpp draw) with the gfx8 window
+// primitives: an opaque dropdown in its own 8-bit target, a translucent one on
+// the screen region itself (draw8), so it remaps what is behind it as upstream.
 func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 	if !d.Visible || globalG1Font == nil {
 		return
 	}
 	g1 := globalG1Font.g1
-	cmap, err := g1.GetPaletteMap(DropdownColour)
+	cmap, err := g1.GetPaletteMap(int(d.Colour))
 	if err != nil {
 		return
 	}
-	rt := gfx8.NewRenderTarget(d.Width, d.Height)
-	gfx8.FillRectInset(rt, 0, 0, d.Width-1, d.Height-1, gfx8.InsetColour{Map: cmap}, 0) // the Wt3 panel
-	highlight, _ := g1.GetPaletteMap(extColourUnk2E)
 	pal := g1.GetPalette()
-	// Text is drawn after the frame is on screen (pkg/ui draws text with ebiten).
+	highlight, _ := g1.GetPaletteMap(extColourUnk2E)
+	var trans [3][]uint8
+	if d.Translucent {
+		for k := range trans {
+			trans[k], _ = g1.GetPaletteMap(int(paint.TranslucentColour[d.Colour][k]))
+		}
+	}
 	type label struct {
 		text  string
 		x, y  int
 		color color.Color
 	}
 	var labels []label
-	for i, it := range d.Items {
-		x, y := 2, 1+i*dropdownItemHeight
-		if it.Separator {
-			// Two lines: shade 3 then shade 7, item width - 1 wide, at mid-row.
-			sy := 1 + i*dropdownItemHeight + dropdownItemHeight/2
-			gfx8.FillRect(rt, 2, sy, 2+d.ItemWidth-2, sy, gfx8.Shade(cmap, 3))
-			gfx8.FillRect(rt, 2, sy+1, 2+d.ItemWidth-2, sy+1, gfx8.Shade(cmap, 7))
-			continue
+	draw := func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, 0, 0, d.Width-1, d.Height-1, gfx8.InsetColour{Map: cmap, Translucent: d.Translucent, Trans: trans}, 0) // the Wt3 panel
+		for i, it := range d.Items {
+			if it.Separator {
+				// Two lines at mid-row, item width - 1 wide: shades 3 and 7, or for a
+				// translucent colour getTranslucent(c)+1 (highlight) then +2 (shadow).
+				sy := 1 + i*dropdownItemHeight + dropdownItemHeight/2
+				if d.Translucent {
+					base := int(paint.TranslucentColour[d.Colour][1])
+					m1, _ := g1.GetPaletteMap(base + 1)
+					m2, _ := g1.GetPaletteMap(base + 2)
+					gfx8.FillRectTranslucent(rt, 2, sy, 2+d.ItemWidth-2, sy, m1)
+					gfx8.FillRectTranslucent(rt, 2, sy+1, 2+d.ItemWidth-2, sy+1, m2)
+				} else {
+					gfx8.FillRect(rt, 2, sy, 2+d.ItemWidth-2, sy, gfx8.Shade(cmap, 3))
+					gfx8.FillRect(rt, 2, sy+1, 2+d.ItemWidth-2, sy+1, gfx8.Shade(cmap, 7))
+				}
+				continue
+			}
+			// PARTIAL: upstream draws the string in the window's primary colour
+			// through the text renderer's colour handling (not ported); shade 9
+			// stands in.
+			var c color.Color = pal[gfx8.Shade(cmap, 9)]
+			if i == d.Highlighted {
+				gfx8.FillRectTranslucent(rt, 2, 2+i*dropdownItemHeight, 2+d.ItemWidth-1, 2+i*dropdownItemHeight+dropdownItemHeight-1, highlight)
+				c = color.White
+			}
+			if it.Disabled {
+				c = pal[gfx8.Shade(cmap, 7)] // PARTIAL: upstream draws the inset (embossed) text style
+			}
+			labels = append(labels, label{it.Text, 2, 1 + i*dropdownItemHeight, c})
 		}
-		// PARTIAL: upstream draws the string in the window's primary colour through
-		// the text renderer's colour handling (not ported); shade 9 stands in.
-		var c color.Color = pal[gfx8.Shade(cmap, 9)]
-		if i == d.Highlighted {
-			gfx8.FillRectTranslucent(rt, 2, 2+i*dropdownItemHeight, 2+d.ItemWidth-1, 2+i*dropdownItemHeight+dropdownItemHeight-1, highlight)
-			c = color.White
-		}
-		if it.Disabled {
-			c = pal[gfx8.Shade(cmap, 7)] // PARTIAL: upstream draws the inset (embossed) text style
-		}
-		labels = append(labels, label{it.Text, x, y, c})
 	}
-	img := image.NewRGBA(image.Rect(0, 0, d.Width, d.Height))
-	for i, p := range rt.Bits {
-		img.Set(i%d.Width, i/d.Width, pal[p])
+	if d.Translucent {
+		draw8(screen, d.X, d.Y, d.Width, d.Height, draw)
+	} else {
+		rt := gfx8.NewRenderTarget(d.Width, d.Height)
+		draw(rt)
+		img := image.NewRGBA(image.Rect(0, 0, d.Width, d.Height))
+		for i, p := range rt.Bits {
+			img.Set(i%d.Width, i/d.Width, pal[p])
+		}
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(float64(d.X), float64(d.Y))
+		screen.DrawImage(ebiten.NewImageFromImage(img), op)
 	}
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(float64(d.X), float64(d.Y))
-	screen.DrawImage(ebiten.NewImageFromImage(img), op)
 	for _, l := range labels {
 		DrawTextBold(screen, l.text, d.X+l.x, d.Y+l.y, l.color)
 	}
