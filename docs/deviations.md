@@ -37,7 +37,7 @@ internal. Size: S (one tick), M (2–4 ticks), L (a series).
 | pkg/ui/toolbar.go:94, 219 | Placeholder positions and colours | Toolbar layout and colours from the InterfaceSkin object | L | S |
 | pkg/graphics/drawing_context.go:199 | Palette "heuristic" | Palette maps (Gfx/PaletteMap) | M | S |
 
-| pkg/world/world.go paintWater + pass-2 blend | Water +35 remapped to an opaque flat colour; blend pass lerps the terrain toward one tint | Blended image without primary = mask: each covered destination pixel is mapped through the palette map (water: image +41) — Graphics/DrawSprite.cpp getDrawBlendOp | H | S |
+| pkg/world/world.go paintWater + pass-2 blend | FIXED 2026-11-01 (pkg/palblend, zoom 0; zoom > 0 still the old opaque remap). Was: water +35 remapped to an opaque flat colour; blend pass lerps the terrain toward one tint | Blended image without primary = mask: each covered destination pixel is mapped through the palette map (water: image +41) — Graphics/DrawSprite.cpp getDrawBlendOp | H | S |
 
 ## C. Text and UI
 

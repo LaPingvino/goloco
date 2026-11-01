@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/LaPingvino/goloco/pkg/palblend"
 	"github.com/LaPingvino/goloco/pkg/sim"
 
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -70,7 +71,11 @@ type World struct {
 	// 2-pass blend rendering (water, glass, etc.)
 	worldBuf     *ebiten.Image      // pass-1 target: all opaque sprites
 	blendBuf     *ebiten.Image      // pass-2 target: blend-mode overlay
-	blendOps     []worldBlendOp     // queued during pass 1
+	blendOps     []palblend.Op      // queued during pass 1 (blend.go)
+	blendFrame   []byte             // frame read back for blending (reused)
+	blendOut     []byte             // blended pixels written to blendBuf (reused)
+	palIndex     palblend.Index     // palette colour → index
+	maskCache    map[int]maskEntry  // sprite alpha masks
 	frameCounter int                // draw-frame counter for UI pulses
 	highlightOps []worldHighlightOp // ripple/wave sprites drawn after blend
 	waterOps     []worldHighlightOp // water surface ops drawn after all terrain (pass 1.5)
@@ -121,13 +126,6 @@ type RenderIssue struct {
 	TileX, TileY int
 	Severity     int    // higher = worse
 	Desc         string // human-readable description of the problem
-}
-
-// worldBlendOp records a pending destination-blend draw for pass 2.
-type worldBlendOp struct {
-	maskImg  *ebiten.Image   // white-mask from Renderer.GetSpriteMask
-	tileRect image.Rectangle // screen-space pixel region for the mask
-	table    *ebiten.Image   // palette + mapped palette (paletteBlendTable), mask-sized
 }
 
 // worldHighlightOp records a post-blend sprite draw (ripple, wave, etc.).
@@ -2298,18 +2296,13 @@ func (w *World) getWaterImage() *ebiten.Image {
 // queueWaterBlend queues the palette-map blend of water sprite spriteID at
 // (x, y) (sprite offsets applied). Returns false if it can't (no mask, no table).
 func (w *World) queueWaterBlend(tileX, tileY, spriteID int, palMap []byte, x, y float64) bool {
-	mask := w.renderer.GetSpriteMask(spriteID)
-	_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
-	if mask == nil || !ok || w.renderer.G1 == nil {
-		return false
-	}
-	mw, mh := mask.Bounds().Dx(), mask.Bounds().Dy()
-	table := paletteBlendTable(&w.renderer.G1.Palette, palMap, mw, mh)
-	if table == nil {
+	alpha, mw, mh, ok := w.maskAlpha(spriteID)
+	_, _, xOff, yOff, ok2 := w.renderer.GetSpriteInfo(spriteID)
+	if !ok || !ok2 || len(palMap) < 256 {
 		return false
 	}
 	x0, y0 := int(x)+int(xOff), int(y)+int(yOff)
-	w.blendOps = append(w.blendOps, worldBlendOp{maskImg: mask, tileRect: image.Rect(x0, y0, x0+mw, y0+mh), table: table})
+	w.blendOps = append(w.blendOps, palblend.Op{Mask: alpha, Rect: image.Rect(x0, y0, x0+mw, y0+mh), PalMap: palMap})
 	return true
 }
 
@@ -2396,7 +2389,7 @@ func (w *World) paintWater(target *ebiten.Image, tileX, tileY int, t *tile, draw
 	// mapped through the water palette map (blend.go). Zoomed out, pixels are no
 	// longer exact palette colours, so the old opaque remap stays there.
 	// KNOWN GAP: zoom > 0 still remaps the +35 sprite to an opaque colour.
-	if !(exactWaterBlend && scale == 1 && w.queueWaterBlend(tileX, tileY, blendID, waterPalMap, drawX, drawY-waterHeightDiff)) {
+	if !(scale == 1 && w.queueWaterBlend(tileX, tileY, blendID, waterPalMap, drawX, drawY-waterHeightDiff)) {
 		if !queueWater(blendID, waterPalMap) {
 			w.noteRenderIssue(tileX, tileY, "water:no-blend-sprite")
 		}
