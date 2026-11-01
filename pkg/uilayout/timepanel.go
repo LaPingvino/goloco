@@ -170,8 +170,16 @@ func Velocity(mph int) string {
 	return groupInt(int64(mph)) + "mph"
 }
 
-// Height formats ControlCodes::height (showHeightAsUnits off).
+// HeightUnits is Config::showHeightAsUnits (the Regional tab's Heights:
+// "Units" instead of "Real Values").
+var HeightUnits bool
+
+// Height formats ControlCodes::height: units (" units"), or metres (× 5) or
+// feet (× 16) by the measurement format.
 func Height(v int) string {
+	if HeightUnits {
+		return groupInt(int64(v)) + " units"
+	}
 	if Metric {
 		return groupInt(int64(v*5)) + "m"
 	}
