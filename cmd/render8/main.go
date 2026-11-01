@@ -1,7 +1,7 @@
 // Command render8 renders a map region through the ported software renderer
 // (pkg/gfx8 + pkg/paint) to a PNG, with no graphics library — the CPU
 // reference the Ebiten renderer is compared against (LOOP item 3i, step 3).
-// So far: land surfaces, cliff edges, water (no waves) and trees.
+// So far: land surfaces, cliff edges, water (no waves), trees and buildings.
 //
 //	go run ./cmd/render8 -scenario ../locomotion/Data/title.dat -tile 196,190 -out surf.png
 package main
@@ -52,6 +52,9 @@ func main() {
 	}
 	if len(sc.TreeObjectOrder) > 0 {
 		om.ReorderTreeObjects(sc.TreeObjectOrder)
+	}
+	if len(sc.BuildingObjectOrder) > 0 {
+		om.ReorderBuildingObjects(sc.BuildingObjectOrder)
 	}
 	om.ResolveCliffEdges()
 	shadowMap, _ := g1.GetPaletteMapAt(2208) // ImageIds::paletteMapUnk32 (tree shadows)
@@ -126,6 +129,22 @@ func main() {
 					}
 				}
 				s.PaintCliffEdges(paint.Surface{BaseZ: t.Height, Slope: t.Slope}, nbs, int(land.CliffEdgeImage), sprite)
+			}
+			for _, b := range t.Buildings {
+				bo := om.GetBuildingObjectByIndex(int(b.ObjectID))
+				if bo == nil || int(b.Variation) >= len(bo.VariationParts) {
+					continue
+				}
+				frames := make([]uint8, len(bo.PartAnimations))
+				speeds := make([]uint8, len(bo.PartAnimations))
+				for i, pa := range bo.PartAnimations {
+					frames[i], speeds[i] = pa.NumFrames, pa.AnimationSpeed
+				}
+				cmap, _ := g1.GetPaletteMap(int(b.Colour))
+				s.PaintBuilding(paint.BuildingEl{Rotation: b.Rotation, SequenceIndex: b.SequenceIndex, Variation: b.Variation, BaseZ: b.BaseZ, ClearZ: b.ClearZ},
+					paint.BuildingObj{Image: int(bo.ImageOffset), NumParts: int(bo.NumParts), Parts: bo.VariationParts[b.Variation], PartHeights: bo.PartHeights,
+						PartAnimFrames: frames, PartAnimSpeed: speeds, ElevatorSequences: bo.ElevatorSequences, LargeTile: bo.HasFlags(objects.BuildingFlagLargeTile)},
+					cmap, x, y, 0, sprite)
 			}
 			for _, tr := range t.Trees {
 				to := om.GetTreeObjectByIndex(int(tr.TreeObjectID))
