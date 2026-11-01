@@ -90,9 +90,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    only on tiles with flag 6, from WaveManager waves that spawn at random on water tiles surrounded by water;
    (b) goloco draws all water in a late separate pass ('pass 1.5'), upstream adds water to the paint sort at
    waterHeight with bbox {32,32,-1} — a late pass can overpaint neighbouring land at the shore. Done so far:
-   WaveManager + tile-loop water branch ported to pkg/sim/wave.go with tests. NEXT: call UpdateTiles (visible
-   = tile in the viewport) and UpdateWaves each tick, draw +60+frame only on WaveFlag tiles, check visually;
-   then (b) with the paint-sort work (deviations B, vehicle depth).
+   WaveManager + tile-loop water branch ported to pkg/sim/wave.go with tests; tick 13: wired — World.Update runs
+   UpdateTiles (visible = tile centre on the last drawn screen) + UpdateWaves; the painter draws +60+frame only on
+   WaveFlag tiles (diag: the all-over wave flecks are gone). NOTE: goloco ticks once per frame (60/s), upstream's
+   game tick is 25 ms (40/s) — separate deviation, affects every timed effect. Remaining water item: (b) the late
+   water pass → with the paint-sort work (deviations B, vehicle depth).
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -155,3 +157,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 (Joop: music in the private build) — webpack -music (local only): 30 music tracks as separate .gz files, registered as lazy files that the fs shim fetches on first open(); headless: css5.dat (title music) fetched and decoded. Live build 445 MB on disk, nothing extra downloaded until a track plays.
 - 2026-11-01 tick 11 (item 4 step 3b) — sim.State (Map + construction head + undo stacks); construction rules and AddTrack/AddRoad moved to pkg/sim; World embeds sim.State; build+vet green; ghost drawing owes a visual check. Joop's three observations queued as 3e.
 - 2026-11-01 tick 12 (item 3e water) — coast diag captured; found invented all-tile waves and a late water pass vs upstream's paint sort; ported WaveManager + the tile loop's water branch to pkg/sim (first headless tests in pkg/sim, all pass). Queued: 3f element-by-element paint audit (Joop), 3g music stutter, 3h draft g1 (after fidelity).
+- 2026-11-01 tick 13 (item 3e water a) — waves wired: tile loop + wave update per tick, frames drawn only on wave tiles; diag shows plain water instead of flecks everywhere; live build updated. Noted the 60 vs 40 ticks/s deviation.

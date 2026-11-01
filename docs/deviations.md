@@ -20,6 +20,8 @@ internal. Size: S (one tick), M (2–4 ticks), L (a series).
 | pkg/scenario/generate.go:9 | "Simplified approximation" of landscape generation | Map/MapGenerator/ with the game's PRNG (pkg/core/prng.go is already ported, unused) | M | L |
 | pkg/game/state.go:264, 326 | Placeholder movement ("move in a circle"), dirt tiles "for now" | — (check whether pkg/game is still live; see D) | L | S |
 
+| cmd/goloco/main.go (Update) | One world tick per frame (60/s) | Game tick every 25 ms (40/s), independent of frame rate (OpenLoco.cpp tick loop) | M | S |
+
 ## B. Rendering
 
 | Where | What goloco does | What upstream does | Sev | Size |
