@@ -23,6 +23,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
   public, never share its link; public builds wait until the data is properly substituted.
 - **Git:** commit each tick to main with a clear message and push to origin main (Joop, 2026-11-01:
   'feel free to push to Github'). Never commit data, reference screenshots or build output.
+- The test page is private: the Caddy route https://kiefte.eu/goloco/ (basic auth) or a private Artifact —
+  never a public URL.
 - Design questions (architecture splits beyond the queue, gameplay choices) → write them under
   "Questions for Joop" and move to the next item.
 
@@ -56,8 +58,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 3. [x] **Inventory of deviations.** DONE tick 4: docs/deviations.md — 103 markers sorted into gameplay (A),
    rendering (B), text/UI (C), dead scaffolding (D: pkg/loco/*, pkg/tests, uncalled ui stubs — keep pkg/core
    and pkg/olmath, real ports), not implemented (E); with the upstream file for each and a fix order.
-3b. [ ] **Remove dead scaffolding** (deviations D): delete pkg/loco/*, pkg/tests, the uncalled stubs in
-   pkg/ui/window_manager.go and types.go; `go build ./... && go vet ./...` must stay green. Own commit.
+3b. [x] **Remove dead scaffolding** DONE tick 5: deleted pkg/loco/* (5 packages), pkg/tests, and the 11 uncalled
+   functions/types in pkg/ui (window_manager.go: ProcessEvents, UpdateAnimations, ViewportsUpdatePosition, UiWidth,
+   UiHeight, GfxRender, WindowEventList, UpdateWindows, RenderWindows, InitWindowManager; types.go: Window.Draw).
+   Note: pkg/ui's GPT-generated Window/Widget system (window_manager.go header: 'batch_ai_impl … GPT-5-mini')
+   is still LIVE via input.go and title_menu.go, next to the SimpleWindow system the game windows use — two
+   window systems. Unify on a port of Ui/WindowManager.cpp later (→ deviations C).
 4. [ ] **Split simulation from rendering** (APPROVED by Joop 2026-11-01: 'the split is perfectly okay. Free to make bold decisions.'). pkg/world imports
    Ebiten in world.go, construction.go, overlay.go; its tests panic without a display.
 5. [ ] **Vehicle movement port.** Generate SubpositionData.cpp into Go like track_data_gen.go;
@@ -86,3 +92,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 3 (item 2 done) — July WIP reviewed against upstream BuildVehicle.cpp: an invented list + track placement, not a port → parked on wip/build-vehicles-july; main clean; CLAUDE.md paths fixed (~/Projects/OpenLoco, ~/Projects/locomotion; no Xvfb yet, wasm page instead). Queued the real window as 5b.
 - 2026-11-01 tick 4 (item 3 done) — docs/deviations.md: 103 markers + invented heuristics, each with the upstream file it should follow, severity and size; found 5 dead packages (pkg/loco/*, pkg/tests) → new item 3b.
 - 2026-11-01 (Joop: artifact too slow → Caddy with password) — webpack -local writes plain .gz (page decodes both forms); scripts/caddy-goloco.sh inserts a marked /goloco/ block with basic_auth into the kiefte.eu site, backs up, validates (restores on failure), reloads; dry run on a copy validated and replaced cleanly on a second run. Needs Joop's sudo run.
+- 2026-11-01 tick 5 (item 3b done) — removed 6 dead packages and 11 uncalled pkg/ui stubs (−~1,400 lines incl. packages); build + vet green; tests as before (pkg/world needs a display → item 4). Found two coexisting window systems (GPT-generated Window + SimpleWindow) → noted.

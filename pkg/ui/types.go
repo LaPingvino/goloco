@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"log"
-
 	"github.com/LaPingvino/goloco/pkg/gfx"
 	"github.com/LaPingvino/goloco/pkg/graphics"
 )
@@ -244,18 +242,3 @@ func (w *Window) FindWidgetAt(x, y int16) WidgetIndex {
 
 // DrawingContext type alias for compatibility with AI-generated code
 type DrawingContext = graphics.DrawingContext
-
-// Draw renders the window to the drawing context. Stub — not yet implemented.
-//
-// OpenLoco reference: src/OpenLoco/src/Ui/Window.cpp
-//
-//	Window::draw(Gfx::DrawingContext& drawingCtx)
-//	Window::callDraw(Gfx::DrawingContext& ctx)
-//
-// In OpenLoco, draw() iterates over each widget and dispatches to per-widget
-// draw handlers (button, caption, panel, etc.).  It also draws the window
-// background via fillRectInset and delegates to custom per-window-type draw
-// callbacks registered in the WindowEventTable.
-func (w *Window) Draw(dc *DrawingContext) {
-	log.Println("[UI] Window.Draw: stub — window", w.Number, "not yet rendered")
-}
