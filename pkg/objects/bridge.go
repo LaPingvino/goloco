@@ -9,30 +9,30 @@ import "fmt"
 //
 // Sprite layout (fixed 192 sprites, unused slots are 1×1 pixels):
 //
-//	 0: uiDropdown
-//	 1: deckBaseNoSupport
-//	 2-5: deckBaseNoSupportEdge0-3
-//	 6: roofFullTile
-//	 7-10: roofEdge0-3
-//	 11: deckBaseWithSupportHeaderEdge3
-//	 12-15: deckWallEdge3/1/0/2
-//	 16-35: support segments (NE/SW sides)
-//	 36-59: NE span deck+walls+roof (4 span positions × 6 images)
-//	 60-83: SW span deck+walls+roof (4 span positions × 6 images)
-//	 84-107: gentle slope deck images
-//	 108-191: pillar segments
+//	0: uiDropdown
+//	1: deckBaseNoSupport
+//	2-5: deckBaseNoSupportEdge0-3
+//	6: roofFullTile
+//	7-10: roofEdge0-3
+//	11: deckBaseWithSupportHeaderEdge3
+//	12-15: deckWallEdge3/1/0/2
+//	16-35: support segments (NE/SW sides)
+//	36-59: NE span deck+walls+roof (4 span positions × 6 images)
+//	60-83: SW span deck+walls+roof (4 span positions × 6 images)
+//	84-107: gentle slope deck images
+//	108-191: pillar segments
 type BridgeObject struct {
-	Header          *ObjectHeader
-	Name            string
-	Flags           uint8
-	ClearHeight     uint16
-	DeckDepth       int16 // 16 or 32
-	SpanLength      uint8 // 1, 2, or 4
-	PillarSpacing   uint8
-	MaxSpeed        uint16
-	MaxHeight       uint8
-	CostIndex       uint8
-	DesignedYear    uint16
+	Header        *ObjectHeader
+	Name          string
+	Flags         uint8
+	ClearHeight   uint16
+	DeckDepth     int16 // 16 or 32
+	SpanLength    uint8 // 1, 2, or 4
+	PillarSpacing uint8
+	MaxSpeed      uint16
+	MaxHeight     uint8
+	CostIndex     uint8
+	DesignedYear  uint16
 
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
 	ImageOffset uint32

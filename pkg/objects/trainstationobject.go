@@ -57,11 +57,12 @@ func ParseTrainStationObject(header *ObjectHeader, data []byte) (*TrainStationOb
 // ParseTrainStationObjectWithG1 parses a TrainStationObject from decompressed DAT data.
 //
 // Layout after sizeof(TrainStationObject)=0xAE bytes:
-//   string table: [langID][str\0]...[0xFF]
-//   numCompatible ObjectHeaders (8 bytes each, read from offset 0x22)
-//   4×4 cargo offset blobs  (variable length, each: z + N×(x,y,x,y) + terminator)
-//   16   var_6E blobs        (same format as cargo offset blobs)
-//   image table
+//
+//	string table: [langID][str\0]...[0xFF]
+//	numCompatible ObjectHeaders (8 bytes each, read from offset 0x22)
+//	4×4 cargo offset blobs  (variable length, each: z + N×(x,y,x,y) + terminator)
+//	16   var_6E blobs        (same format as cargo offset blobs)
+//	image table
 //
 // OpenLoco reference: TrainStationObject.cpp::load()
 func ParseTrainStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*TrainStationObject, error) {

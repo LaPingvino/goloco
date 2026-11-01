@@ -11,12 +11,12 @@ import (
 type TrackObject struct {
 	Header *ObjectHeader
 
-	Name       string
-	Image      uint32 // Base G1 sprite index (set after image table load)
-	NumMods    uint8  // Number of track extra/modifications (max 4)
-	NumSignals uint8  // Number of signal types
-	NumBridges uint8  // Number of supported bridges (max 7)
-	NumStations uint8 // Number of supported stations (max 7)
+	Name        string
+	Image       uint32 // Base G1 sprite index (set after image table load)
+	NumMods     uint8  // Number of track extra/modifications (max 4)
+	NumSignals  uint8  // Number of signal types
+	NumBridges  uint8  // Number of supported bridges (max 7)
+	NumStations uint8  // Number of supported stations (max 7)
 }
 
 // GetObjectByIndex accessor sentinel — use ObjectManager.GetTrackObjectByIndex
@@ -32,31 +32,32 @@ func ParseTrackObject(header *ObjectHeader, data []byte) (*TrackObject, error) {
 // OpenLoco reference: src/OpenLoco/src/Objects/TrackObject.cpp::load
 //
 // Fixed struct (0x36 = 54 bytes):
-//   0x00 StringId  name
-//   0x02 uint16    trackPieces
-//   0x04 uint16    stationTrackPieces
-//   0x06 uint8     var_06
-//   0x07 uint8     numCompatible
-//   0x08 uint8     numMods
-//   0x09 uint8     numSignals
-//   0x0A uint8[4]  mods
-//   0x0E uint16    signals
-//   0x10 uint16    compatibleTracks
-//   0x12 uint16    compatibleRoads
-//   0x14 int16     buildCostFactor
-//   0x16 int16     sellCostFactor
-//   0x18 int16     tunnelCostFactor
-//   0x1A uint8     costIndex
-//   0x1B uint8     tunnel
-//   0x1C uint16    curveSpeed
-//   0x1E uint32    image  ← filled at load time
-//   0x22 uint16    flags
-//   0x24 uint8     numBridges
-//   0x25 uint8[7]  bridges
-//   0x2C uint8     numStations
-//   0x2D uint8[7]  stations
-//   0x34 uint8     displayOffset
-//   0x35 uint8     pad
+//
+//	0x00 StringId  name
+//	0x02 uint16    trackPieces
+//	0x04 uint16    stationTrackPieces
+//	0x06 uint8     var_06
+//	0x07 uint8     numCompatible
+//	0x08 uint8     numMods
+//	0x09 uint8     numSignals
+//	0x0A uint8[4]  mods
+//	0x0E uint16    signals
+//	0x10 uint16    compatibleTracks
+//	0x12 uint16    compatibleRoads
+//	0x14 int16     buildCostFactor
+//	0x16 int16     sellCostFactor
+//	0x18 int16     tunnelCostFactor
+//	0x1A uint8     costIndex
+//	0x1B uint8     tunnel
+//	0x1C uint16    curveSpeed
+//	0x1E uint32    image  ← filled at load time
+//	0x22 uint16    flags
+//	0x24 uint8     numBridges
+//	0x25 uint8[7]  bridges
+//	0x2C uint8     numStations
+//	0x2D uint8[7]  stations
+//	0x34 uint8     displayOffset
+//	0x35 uint8     pad
 //
 // After the fixed struct: string table, then numCompatible + numMods + numSignals + 1
 // ObjectHeaders (16 bytes each) for compatible objects, then the image table.
@@ -123,4 +124,3 @@ func ParseTrackObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tr
 
 	return track, nil
 }
-

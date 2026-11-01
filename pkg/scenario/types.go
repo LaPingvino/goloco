@@ -67,6 +67,8 @@ type Scenario struct {
 
 	// AirportObjectOrder is the airport-object names in slot order (slots 373..380).
 	AirportObjectOrder []string
+	// DockObjectOrder is the dock-object names in slot order (slots 381..388).
+	DockObjectOrder []string
 
 	// TrackObjectOrder is the list of track-object names in track-slot order.
 	// Slots 337-344 (8 slots).

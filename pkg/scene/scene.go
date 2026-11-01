@@ -284,8 +284,18 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 						LargeTile: ao.LargeTiles&(1<<st.BuildingType) != 0}, x, y, v.Ticks, sprite)
 					continue
 				}
+				if st.StationType == 3 { // docks
+					do := om.GetDockObjectByIndex(int(st.ObjectID))
+					if do == nil || int(st.BuildingType) >= len(do.Variations) {
+						continue
+					}
+					an := r.animOf(do, do.PartAnimations)
+					s.PaintDocks(st.Rotation, st.SequenceIndex, st.BaseZ, st.ClearZ, paint.AirportObj{BuildingImage: int(do.BuildingImage),
+						Parts: do.Variations[st.BuildingType], PartHeights: do.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds}, x, y, v.Ticks, sprite)
+					continue
+				}
 				if st.StationType != 0 {
-					continue // docks: not ported yet
+					continue
 				}
 				so := om.GetTrainStationObjectByIndex(int(st.ObjectID))
 				if so == nil || so.PaintStyle != 0 || int(st.SequenceIndex) >= len(so.SequenceImageOffsets) {

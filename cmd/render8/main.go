@@ -77,6 +77,7 @@ func main() {
 	}
 	om.ReorderRoadStationObjects(sc.RoadStationObjectOrder)
 	om.ReorderAirportObjects(sc.AirportObjectOrder)
+	om.ReorderDockObjects(sc.DockObjectOrder)
 	om.ResolveCliffEdges()
 
 	var m sim.Map

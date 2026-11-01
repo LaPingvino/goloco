@@ -29,20 +29,20 @@ type TreeObject struct {
 	Header *ObjectHeader
 
 	Name          string
-	InitialHeight uint8  // 0x02
-	Height        uint8  // 0x03
-	Var04         uint8  // 0x04
-	Var05         uint8  // 0x05
-	NumRotations  uint8  // 0x06 (1, 2, or 4)
-	Growth        uint8  // 0x07 (number of tree size images)
+	InitialHeight uint8           // 0x02
+	Height        uint8           // 0x03
+	Var04         uint8           // 0x04
+	Var05         uint8           // 0x05
+	NumRotations  uint8           // 0x06 (1, 2, or 4)
+	Growth        uint8           // 0x07 (number of tree size images)
 	Flags         TreeObjectFlags // 0x08
-	Var3C         uint8  // 0x3C — bitmask controlling which season variants exist
-	SeasonState   uint8  // 0x3D
-	Colours       uint32 // 0x44
+	Var3C         uint8           // 0x3C — bitmask controlling which season variants exist
+	SeasonState   uint8           // 0x3D
+	Colours       uint32          // 0x44
 
 	// Calculated from image table during load
-	Sprites     [6]uint32 // Base image indices for 6 season variants
-	SnowSprites [6]uint32 // Snow variant base indices
+	Sprites           [6]uint32 // Base image indices for 6 season variants
+	SnowSprites       [6]uint32 // Snow variant base indices
 	ShadowImageOffset uint16
 
 	ImageOffset uint32 // Base index in global G1 pool

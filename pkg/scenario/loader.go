@@ -194,6 +194,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.TrainStationObjectOrder = parseTrainStationObjectOrder(reqObjBytes)
 	sc.RoadStationObjectOrder = parseRoadStationObjectOrder(reqObjBytes)
 	sc.AirportObjectOrder = parseObjectOrder(reqObjBytes, airportSlotStart, airportSlotCount, objectTypeAirport)
+	sc.DockObjectOrder = parseObjectOrder(reqObjBytes, dockSlotStart, dockSlotCount, objectTypeDock)
 	sc.TrackObjectOrder = parseTrackObjectOrder(reqObjBytes)
 	sc.RoadObjectOrder = parseRoadObjectOrder(reqObjBytes)
 	sc.VehicleObjectOrder = parseVehicleObjectOrder(reqObjBytes)
@@ -758,6 +759,10 @@ const (
 	airportSlotStart  = 373
 	airportSlotCount  = 8
 	objectTypeAirport = 21
+	// Docks: ObjectType::dock (22), slots 381..388.
+	dockSlotStart  = 381
+	dockSlotCount  = 8
+	objectTypeDock = 22
 
 	roadSlotStart = 365
 	roadSlotCount = 8

@@ -75,10 +75,10 @@ type Session struct {
 	mergeRoadPal    []uint8
 
 	// Slabs for paint structs and attachments (reused across frames by Reset).
-	structs               []Struct
-	attachedSlab          []Attached
-	chunks                [][]Struct
-	attachedChunks        [][]Attached
+	structs        []Struct
+	attachedSlab   []Attached
+	chunks         [][]Struct
+	attachedChunks [][]Attached
 }
 
 // NewSession starts a session for a render target covering viewport rectangle
