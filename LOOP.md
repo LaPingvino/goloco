@@ -11,6 +11,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - **Upstream is the truth.** `~/Projects/OpenLoco` (src/OpenLoco/src/…). Every correction cites the
   upstream file/function it mirrors. Where goloco's code or comments disagree with upstream, upstream
   wins — unless the code deliberately keeps a vanilla quirk (0x004XXXXX address comments).
+- **Exact on the CPU first, then optimise with proof (Joop, 2026-11-01: 'build 100% match on CPU first … The
+  original game had no GPU anything at all'; 'optimizing is easier if you can check every step that the code
+  remains equivalent').** Every rendering rule gets a CPU implementation that matches upstream exactly, with a
+  test; a faster version (GPU, caching) only replaces it with an equivalence check against the CPU result.
 - **Port, don't approximate.** No new "simplified", "approximate" or fudge-factor code. When a full port
   doesn't fit in a tick, port a faithful slice (with a test) rather than a whole approximate feature.
 - **Never delete a warning to make a number go up.** A TODO / "approximation" / "stub" note goes only
@@ -113,6 +117,20 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    (256 entries, land colours → indices 192–197, dark teal). So the exact path is behind `exactWaterBlend =
    false`; NEXT: a tiny Kage repro of sub-image sampling in pixel mode (origin mapping; maybe copy the region
    into a mask-sized temp image first and sample that at src), then switch it on and compare with the reference.
+   Tick 16: DONE on the CPU instead (Joop: exact on CPU first) — pkg/palblend (pure, tested headless): read the
+   frame once, recover each masked pixel's palette index from its exact colour, dst = map[dst] (skip if 0),
+   write to blendBuf. The shader is gone. Bug found by counting: the mask came from DecodeSprite, which drops
+   indices whose palette alpha is 0 — the water mask uses 1-4 → now DecodeSpriteMaskOnly. Diag now shows dark,
+   textured water with the seabed through it, like reference/gallery-screenshot-7.png. Live build updated.
+   PERF: one full-frame ReadPixels per frame with water on screen.
+3i. [ ] **DESIGN (bold, Joop-approved direction): port the software renderer.** OpenLoco draws into an 8-bit
+   palette-indexed RenderTarget with software sprite blits (Graphics/DrawSpriteHelper.hpp ops: none,
+   transparent, src remap, dst blend, src+dst blend, noise mask) and a sorted paint session (Paint/Paint.cpp:
+   addToPlotList, quadrant sort). Porting both gives exact blends without colour reverse-lookup, and fixes the
+   draw-order deviations at once (water 'pass 1.5', vehicles 'post-tile depth approximation'). Plan: (1)
+   pkg/gfx8: indexed framebuffer + drawSprite with every DrawBlendOp, tested against hand-made sprites; (2) a
+   paint session port; (3) move painters onto it one element at a time, each checked against the current RGBA
+   output before switching (equivalence per step). Ebiten then only shows the final RGBA frame.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -178,3 +196,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 13 (item 3e water a) — waves wired: tile loop + wave update per tick, frames drawn only on wave tiles; diag shows plain water instead of flecks everywhere; live build updated. Noted the 60 vs 40 ticks/s deviation.
 - 2026-11-01 tick 14 (item 3e) — reference gallery found in goloco/reference/; water colour cause traced to upstream's mask-blend (dst through the water palette map +41) vs goloco's opaque remap + tint lerp; plan recorded; no code change.
 - 2026-11-01 tick 15 (item 3e water c) — exact palette-map blend implemented as a Kage shader; terrain read comes back black under headless WebGL, so it's switched off (exactWaterBlend=false) pending a repro; water looks as before; ripple/wave draw order now after the blend; dead CPU tint pass removed.
+- 2026-11-01 tick 16 (item 3e water c done) — exact palette-map blend on the CPU (pkg/palblend + test); mask bug (DecodeSprite drops palette-alpha-0 indices) fixed; water now matches the reference look; live. New rule from Joop: exact CPU first, optimise with equivalence checks. Queued 3i: port OpenLoco's indexed software renderer + paint sort.
