@@ -65,7 +65,8 @@ type Session struct {
 	last               *Struct
 	head               *Struct
 
-	trackRoad [5]*Struct // _trackRoadPaintStructs, by priority
+	trackRoad    [5]*Struct // _trackRoadPaintStructs, by priority
+	trackRoadAdd [2]*Struct // _trackRoadAdditionsPaintStructs, by priority
 
 	// Road merging (PaintRoad.cpp): set by merge pieces, drawn by FinalisePaintRoad.
 	roadExits       uint8
@@ -375,12 +376,29 @@ func lastChild(ps *Struct) *Struct {
 	return ps
 }
 
-// FinaliseTrackRoadOrdering is finaliseTrackRoadOrdering → finaliseOrdering:
-// chain the priority lists in order as one struct, give it the min/max XY
-// bounds of the chain (getMinMaxXYBounding) and add it to a quadrant.
-func (s *Session) FinaliseTrackRoadOrdering() {
+// AddTrackRoadAddition is addToPlotListTrackRoadAddition (second set of lists).
+func (s *Session) AddTrackRoadAddition(img Image, priority int, off, bbOff, bbSize Pos3) *Struct {
+	s.last = nil
+	ps := s.create(img, off, bbOff, bbSize)
+	if ps != nil {
+		s.last = ps
+		ps.children = s.trackRoadAdd[priority]
+		s.trackRoadAdd[priority] = ps
+	}
+	return ps
+}
+
+// FinaliseTrackRoadOrdering is finaliseTrackRoadOrdering → finaliseOrdering.
+func (s *Session) FinaliseTrackRoadOrdering() { s.finaliseOrdering(s.trackRoad[:]) }
+
+// FinaliseTrackRoadAdditionsOrdering is finaliseTrackRoadAdditionsOrdering.
+func (s *Session) FinaliseTrackRoadAdditionsOrdering() { s.finaliseOrdering(s.trackRoadAdd[:]) }
+
+// finaliseOrdering chains the priority lists in order as one struct, gives it
+// the min/max XY bounds of the chain (getMinMaxXYBounding) and adds it to a quadrant.
+func (s *Session) finaliseOrdering(lists []*Struct) {
 	var route, lastEntry *Struct
-	for i, e := range s.trackRoad {
+	for i, e := range lists {
 		if e == nil {
 			continue
 		}
@@ -390,7 +408,7 @@ func (s *Session) FinaliseTrackRoadOrdering() {
 			lastEntry.children = e
 		}
 		lastEntry = lastChild(e)
-		s.trackRoad[i] = nil
+		lists[i] = nil
 	}
 	if route == nil {
 		return

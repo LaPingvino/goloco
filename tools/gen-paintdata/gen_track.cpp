@@ -8,6 +8,7 @@
 #include "Paint/Paint.h"
 #include "Paint/PaintTrackData.h"
 #include "Map/Track/TrackData.h"
+#include "Objects/TrainStationObject.h"
 #include <cstdio>
 #include <type_traits>
 
@@ -85,6 +86,18 @@ int main()
     std::printf("// TrackPiece is TrackPaintPiece (PaintTrackData.h).\n");
     std::printf("type TrackPiece struct {\n\tImageIndexOffsets [4][3]uint32\n\tBBOffsets, BBSizes [4]Pos3\n\tBridgeEdges, BridgeQuarters, BridgeType [4]uint8\n\tTunnelHeights [4][4]int16\n\tSegments [4]uint16\n\tIsMergeable bool\n}\n\n");
     table("TrackParts", "TrackPiece", kTrackPaintParts, trackPiece);
+    {
+        using namespace OpenLoco::TrainStation::ImageIds::Style0;
+        std::printf("// Train station style 0 image offsets (TrainStationObject.h TrainStation::ImageIds::Style0).\n");
+        std::printf("const (\n");
+#define C(n) std::printf("\tStation0%c%s = %u\n", (#n)[0] - 32, (#n) + 1, (unsigned)n)
+        C(straightBackNE); C(straightFrontNE); C(straightCanopyNE); C(straightCanopyTranslucentNE);
+        C(straightBackSE); C(straightFrontSE); C(straightCanopySE); C(straightCanopyTranslucentSE);
+        C(diagonalNE0); C(diagonalNE3); C(diagonalNE1); C(diagonalCanopyNE1); C(diagonalCanopyTranslucentNE1);
+        C(diagonalSE1); C(diagonalSE2); C(diagonalSE3); C(diagonalCanopyTranslucentSE3);
+#undef C
+        std::printf(")\n\n");
+    }
     // World::TrackData::getTrackMiscData(trackId).signalHeightOffsetLeft/Right
     std::printf("// TrackSignalHeightOffset[trackId] = {left, right} (TrackData getTrackMiscData).\n");
     std::printf("var TrackSignalHeightOffset = [%zu][2]uint8{\n", kTrackPaintParts.size());
