@@ -290,6 +290,14 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    goloco's building 680×128), ReorderIndustryObjects, industry element colour/var_6/progress/sequence fields.
    Title map (169,150): farm silos/barns and a refinery render among tracks, station, river. NOT YET: shadows,
    scaffolding, farm FIELDS (PaintSurface industrial branch → next), ghosts.
+   Tick 43: farm fields DONE (scene: industrial surfaces from the industry object — field image per growth stage +
+   display slope, tree image +19 at SurfaceTreeHeight[ds]; byte 7 = industry id). k4FD30C extracted from
+   PaintSurface.cpp by gen.sh into surfacedata_gen.go (literal integer table, no hand copy). Title farm: crop rows
+   render. FOUND: goloco doesn't parse SNOW COVERAGE at all — both the land and field branches draw snow
+   (SnowObject image + kSnowCoverageSlopeToMask) → item 3k.
+3k. [ ] **Snow cover.** Parse SurfaceElement snowCoverage (SurfaceElement.h), load the SnowObject, port the
+   snow branch of paintSurface (coverage 5 → snow image; 1-4 → surface + snow image masked by
+   kSnowCoverageSlopeToMask) and the SurfaceElement::update snow step (coverage moving toward the target).
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -382,3 +390,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 40 (item 3j) — industries step 1: GameState industry records parsed (offsets checked with the compiler). Video: Whisper at ~3.5 min of 71 after 8 min (slow on CPU); caption strips 7,356/8,560.
 - 2026-11-01 tick 41 (item 3j) — IndustryObject loader ported; all 22 industry objects walk exactly to their image tables. (OCR of the caption strips running in a second agent.)
 - 2026-11-01 tick 42 (item 3j) — industries render in the CPU renderer (farm, refinery); slot order and element fields parsed; farm fields next.
+- 2026-11-01 tick 43 (item 3j) — farm fields render (industrial surface branch); k4FD30C extracted from upstream source; snow cover found missing → 3k.
