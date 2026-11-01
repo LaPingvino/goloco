@@ -80,6 +80,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    OpenGraphics replaces; write docs/open-build.md with the gap. A public build also needs its own title
    scene and scenario made only from open objects (Joop: 'we might need a custom level/title screen') —
    design, wait for Joop before building. Never publish anything containing the original data.
+3e. [ ] **Joop's observations on the live build (2026-11-01):** (1) slopes and corners are wonky; (2) water is
+   still slightly broken where it touches the coast; (3) roads up and down slopes don't work yet. Each: find the
+   upstream paint code (Paint/PaintSurface.cpp for slopes/corners + water edges; Paint/PaintRoad.cpp and
+   Map/Track/TrackData.cpp road slope pieces), capture the case with --diag, fix, compare. Interleave with item 4
+   (one per tick when a split step is done).
 4. [~] **Split simulation from rendering** (APPROVED by Joop 2026-11-01: 'the split is perfectly okay. Free to make bold decisions.').
    Plan: new pkg/sim (no ebiten/render imports — ebiten panics at init without a display, so headless
    tests need a package that never imports it) holding map state + rules; pkg/world keeps drawing and embeds
@@ -87,8 +92,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    (grass/dirt/water) and NewWorld's placeholder 'variety' map removed]; (2) sim.Map {Width, Height, Tiles,
    Towns, Entities} + TileAt, World embeds sim.Map by value [DONE tick 9; LoadFromScenario's data part still
    in world.go → move with step 4]; (3) construction logic
-   (placedPiece, ConstructionHead, track/road data tables) [tick 10: the generated track/road tables moved to
-   pkg/sim as TrackCoord/TrackCoordinates/TrackPieceTiles/RoadCoordinates/RoadPieceTiles; logic next]; (4) stations + vehicles + lists; (5) move their
+   (placedPiece, ConstructionHead, track/road data tables) [tick 10: tables moved; tick 11: sim.State = Map + ConsHead
+   + undo stacks; construction rules (head, place/undo track+road, footprints → TrackFootprint/RoadFootprint)
+   and Map.AddTrack/AddRoad now in pkg/sim; pkg/world/construction.go only draws. OWED: a visual check of the
+   construction ghost/head marker (scripted session with GOLOCO_OPEN=track via go.env in the test page)]; (4) stations + vehicles + lists; (5) move their
    tests to pkg/sim and run them headless. Tooling: `gofmt -r 'a.old -> a.New'` is NOT type-aware — it also
    renames same-named fields of other types; check with `go build -gcflags=-e`. pkg/world imports
    Ebiten in world.go, construction.go, overlay.go; its tests panic without a display.
@@ -129,3 +136,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 9 (item 4 step 2) — sim.Map (size, tiles, towns, saved entities, TileAt) embedded in World by value so zero Worlds in tests stay usable; build+vet green; title capture matches (only the water animation frame differs).
 - 2026-11-01 tick 10 (item 4 step 3a) — generated track/road coordinate tables moved to pkg/sim with exported names; build+vet green. Joop: add music to the private build → lazy per-file fetch planned (shim open() fetches on first use).
 - 2026-11-01 (Joop: music in the private build) — webpack -music (local only): 30 music tracks as separate .gz files, registered as lazy files that the fs shim fetches on first open(); headless: css5.dat (title music) fetched and decoded. Live build 445 MB on disk, nothing extra downloaded until a track plays.
+- 2026-11-01 tick 11 (item 4 step 3b) — sim.State (Map + construction head + undo stacks); construction rules and AddTrack/AddRoad moved to pkg/sim; World embeds sim.State; build+vet green; ghost drawing owes a visual check. Joop's three observations queued as 3e.

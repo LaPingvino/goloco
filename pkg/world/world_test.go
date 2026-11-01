@@ -20,7 +20,7 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestTileToScreen(t *testing.T) {
-	w := &World{tileW: 64, tileH: 32, Map: sim.Map{Width: 20, Height: 15}}
+	w := &World{tileW: 64, tileH: 32, State: sim.State{Map: sim.Map{Width: 20, Height: 15}}}
 
 	cases := []struct {
 		tileX, tileY int
@@ -131,7 +131,7 @@ func TestGetCornerHeights(t *testing.T) {
 
 func TestNeighborOffsets(t *testing.T) {
 	const sz = 5
-	w := &World{Map: sim.Map{Width: sz, Height: sz, Tiles: make([][]tile, sz)}}
+	w := &World{State: sim.State{Map: sim.Map{Width: sz, Height: sz, Tiles: make([][]tile, sz)}}}
 	for y := range w.Tiles {
 		w.Tiles[y] = make([]tile, sz)
 	}
