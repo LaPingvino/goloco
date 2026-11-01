@@ -49,6 +49,8 @@ type Game struct {
 	windowMgr           *ui.SimpleWindowManager
 	objMgr              *objects.ObjectManager
 	audioMgr            *audio.Manager
+	scenarioSelect      *ui.ScenarioSelectWindow // the New Game window when open
+	diagNewGameDone     bool
 	titleSeq            *title.Sequence
 	gameState           *game.GameState
 	dropdown            *ui.DropdownMenu
@@ -436,8 +438,10 @@ func (g *Game) Update() error {
 			g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 		}
 		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
-			// Window manager takes priority (e.g. Load Game file browser)
-			if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
+			// The ScenarioSelect window, then the window manager, take priority.
+			if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
+				g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
+			} else if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
 				g.handleTitleMenuClick(g.mouseX, g.mouseY)
 			}
 		}
@@ -485,7 +489,9 @@ func (g *Game) Update() error {
 	}
 	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 		// Check dropdown first (it's on top)
-		if g.dropdown != nil && g.dropdown.Visible {
+		if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
+			g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
+		} else if g.dropdown != nil && g.dropdown.Visible {
 			if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
 				// Click outside dropdown - close it
 				g.dropdown = nil
@@ -1086,6 +1092,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.inTitleScreen {
 		g.drawTitleMenu(screen)
 		g.windowMgr.Draw(screen, g.r) // allow windows (e.g. Load Game) on title screen
+		if g.scenarioSelect != nil {
+			g.scenarioSelect.Draw(screen)
+		}
 		ui.DrawText(screen, fmt.Sprintf("%.0ffps", ebiten.ActualFPS()), 4, g.sh-8, color.RGBA{200, 200, 200, 200})
 		g.maybeSaveShot(screen)
 		return
@@ -1094,6 +1103,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// --- Gameplay HUD ---
 	g.toolbar.Draw(screen, g.r)
 	g.windowMgr.Draw(screen, g.r)
+	if g.scenarioSelect != nil {
+		g.scenarioSelect.Draw(screen)
+	}
 
 	// Draw dropdown menu on top of everything else
 	if g.dropdown != nil && g.dropdown.Visible {
@@ -1143,6 +1155,12 @@ func debugPath(name string) string {
 // quit when the requested count has been captured. Script `shot` commands are
 // honoured here too.
 func (g *Game) maybeSaveShot(screen *ebiten.Image) {
+	if os.Getenv("GOLOCO_DIAG_NEWGAME") != "" && g.scenarioSelect == nil && !g.diagNewGameDone {
+		// Diagnostic: open the ScenarioSelect window with its first scenario selected.
+		g.diagNewGameDone = true
+		g.openNewGameWindow()
+		g.scenarioSelect.SelectFirst()
+	}
 	if os.Getenv("GOLOCO_DIAG_TIMEPANEL") != "" {
 		st := ui.TimePanelState{Date: uilayout.DateDMY(1, "January", 1950), Speed: 1}
 		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
@@ -1658,6 +1676,10 @@ func (g *Game) routeWheelToWindows() bool {
 	if dy == 0 {
 		return false
 	}
+	if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
+		g.scenarioSelect.HandleWheel(dy)
+		return true
+	}
 	for i := len(g.windowMgr.Windows) - 1; i >= 0; i-- {
 		w := g.windowMgr.Windows[i]
 		if w.Visible && w.OnScrollWheel != nil &&
@@ -1672,290 +1694,20 @@ func (g *Game) routeWheelToWindows() bool {
 
 // openNewGameWindow opens the OpenLoco-style scenario selection screen.
 func (g *Game) openNewGameWindow() {
-	const winTitle = "New Game"
-	const winW, winH = 620, 440
-
-	// Scan for scenarios once when the window opens.
+	// The ported ScenarioSelect window (pkg/ui/scenarioselect.go).
 	metas, _ := scenario.ScanScenarios(g.dataDir + "/../Scenarios")
 	if len(metas) == 0 {
-		// Fallback: scan the data dir itself for .SC5 files.
 		metas, _ = scenario.ScanScenarios(g.dataDir)
 	}
-
-	// Group by category.
-	type catGroup struct {
-		label string
-		items []*scenario.ScenarioMeta
-	}
-	cats := []catGroup{
-		{label: i18n.T("cat.beginner")},
-		{label: i18n.T("cat.easy")},
-		{label: i18n.T("cat.medium")},
-		{label: i18n.T("cat.challenging")},
-		{label: i18n.T("cat.expert")},
-	}
-	for _, m := range metas {
-		idx := int(m.Category)
-		if idx < 0 || idx >= len(cats) {
-			idx = 0
-		}
-		cats[idx].items = append(cats[idx].items, m)
-	}
-
-	// Find first non-empty category.
-	activeCat := 0
-	for i, c := range cats {
-		if len(c.items) > 0 {
-			activeCat = i
-			break
+	w := ui.NewScenarioSelect(metas, g.sw, g.sh)
+	w.OnClose = func() { g.scenarioSelect = nil }
+	w.OnStart = func(m *scenario.ScenarioMeta) {
+		g.scenarioSelect = nil
+		if err := g.loadScenario(m.FilePath); err != nil {
+			log.Printf("[Game] Load error: %v", err)
 		}
 	}
-
-	selectedIdx := -1
-	listScroll := 0
-
-	// Cached preview image for the selected scenario.
-	var previewImg *ebiten.Image
-	var previewFor string // file path the image was built for
-
-	getPreview := func(m *scenario.ScenarioMeta) *ebiten.Image {
-		if m == nil || m.IsGenerated {
-			return nil
-		}
-		if previewFor == m.FilePath {
-			return previewImg
-		}
-		// Convert 128×128 palette-indexed preview → RGBA using the global palette.
-		img := ebiten.NewImage(scenario.PreviewSize, scenario.PreviewSize)
-		if graphics.IsGlobalPaletteLoaded() {
-			for py := 0; py < scenario.PreviewSize; py++ {
-				for px := 0; px < scenario.PreviewSize; px++ {
-					idx := m.Preview[py*scenario.PreviewSize+px]
-					c := graphics.GetGlobalColor(idx)
-					img.Set(px, py, c)
-				}
-			}
-		}
-		previewImg = img
-		previewFor = m.FilePath
-		return previewImg
-	}
-
-	win := ui.NewSimpleWindow(winTitle, 60, 30, winW, winH)
-
-	// Layout constants (content area starts after title bar + border).
-	const (
-		tabH      = 24 // category tab height
-		listW     = 220
-		divW      = 4
-		infoX     = listW + divW
-		itemH     = 20
-		btnAreaH  = 32
-		previewSz = scenario.PreviewSize // 128
-	)
-
-	win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, r *render.Renderer) {
-		// ── Category tabs ────────────────────────────────────────────────
-		tabW := cw / len(cats)
-		for i, cat := range cats {
-			tx := cx + i*tabW
-			active := i == activeCat
-			drawButton(screen, tx, cy, tabW-2, tabH-2, cat.label, active, len(cat.items) > 0)
-		}
-
-		contentY := cy + tabH
-		contentH := ch - tabH - btnAreaH
-		items := cats[activeCat].items
-		visible := contentH / itemH
-
-		// ── Scenario list (left panel) ───────────────────────────────────
-		fillRect(screen, float64(cx), float64(contentY), float64(listW), float64(contentH), color.RGBA{210, 205, 185, 255})
-		// Clamp scroll
-		maxScroll := len(items) - visible
-		if maxScroll < 0 {
-			maxScroll = 0
-		}
-		if listScroll > maxScroll {
-			listScroll = maxScroll
-		}
-		if listScroll < 0 {
-			listScroll = 0
-		}
-
-		for i := 0; i < visible; i++ {
-			idx := listScroll + i
-			if idx >= len(items) {
-				break
-			}
-			m := items[idx]
-			iy := contentY + i*itemH
-			rowBg := color.RGBA{210, 205, 185, 255}
-			textCol := color.RGBA{20, 20, 20, 255}
-			if idx == selectedIdx {
-				rowBg = color.RGBA{60, 100, 180, 255}
-				textCol = color.RGBA{255, 255, 255, 255}
-			}
-			fillRect(screen, float64(cx), float64(iy), float64(listW), float64(itemH), rowBg)
-			label := m.Name
-			if m.IsGenerated {
-				label = "~ " + label
-			}
-			if g.progress != nil && g.progress.isCompleted(m.FilePath) {
-				label = "* " + label // completed
-				if idx != selectedIdx {
-					textCol = color.RGBA{20, 110, 20, 255}
-				}
-			}
-			ui.DrawText(screen, label, cx+4, iy+(itemH-10)/2, textCol)
-		}
-
-		// Divider
-		fillRect(screen, float64(cx+listW), float64(contentY), float64(divW), float64(contentH), color.RGBA{120, 115, 100, 255})
-
-		// ── Info panel (right panel) ─────────────────────────────────────
-		infoW := cw - infoX
-		fillRect(screen, float64(cx+infoX), float64(contentY), float64(infoW), float64(contentH), color.RGBA{225, 220, 200, 255})
-
-		if selectedIdx >= 0 && selectedIdx < len(items) {
-			m := items[selectedIdx]
-			ix := cx + infoX + 6
-			iy := contentY + 6
-
-			// Preview image or "Randomly Generated" text
-			if !m.IsGenerated {
-				if img := getPreview(m); img != nil {
-					op := &ebiten.DrawImageOptions{}
-					op.GeoM.Translate(float64(ix), float64(iy))
-					screen.DrawImage(img, op)
-					iy += previewSz + 6
-				}
-			} else {
-				fillRect(screen, float64(ix), float64(iy), float64(previewSz), float64(previewSz), color.RGBA{100, 130, 100, 255})
-				rw, _ := ui.MeasureText("Randomly")
-				gw, _ := ui.MeasureText("Generated")
-				ui.DrawText(screen, "Randomly", ix+(previewSz-rw)/2, iy+previewSz/2-12, color.White)
-				ui.DrawText(screen, "Generated", ix+(previewSz-gw)/2, iy+previewSz/2+2, color.White)
-				iy += previewSz + 6
-			}
-
-			// Scenario name in the bold bitmap font
-			ui.DrawTextBold(screen, m.Name, ix, iy, color.RGBA{20, 20, 20, 255})
-			iy += 14
-
-			// Start year
-			if m.StartYear > 0 {
-				ui.DrawText(screen, fmt.Sprintf("Start: %d", m.StartYear), ix, iy, color.RGBA{60, 60, 60, 255})
-				iy += 12
-			}
-			// Competitors
-			if m.MaxCompetitors > 0 {
-				ui.DrawText(screen, fmt.Sprintf("Competitors: %d", m.MaxCompetitors), ix, iy, color.RGBA{60, 60, 60, 255})
-				iy += 12
-			}
-
-			// Objective
-			if m.HasObjective {
-				objTxt := i18n.T("game.objective") + " " + m.Objective.DescribeWithCargo(m.ObjectiveCargoName)
-				ui.DrawText(screen, objTxt, ix, iy, color.RGBA{90, 60, 20, 255})
-				iy += 12
-			}
-			if g.progress != nil && g.progress.isCompleted(m.FilePath) {
-				ui.DrawTextBold(screen, i18n.T("newgame.completed"), ix, iy, color.RGBA{20, 130, 20, 255})
-				iy += 14
-			}
-
-			// Description (word-wrapped by character count)
-			if m.Description != "" {
-				descMaxW := infoW - 12
-				charWidth := 6
-				charsPerLine := descMaxW / charWidth
-				desc := m.Description
-				for len(desc) > 0 && iy < contentY+contentH-10 {
-					line := desc
-					if len(line) > charsPerLine {
-						cut := charsPerLine
-						for cut > 0 && desc[cut] != ' ' {
-							cut--
-						}
-						if cut == 0 {
-							cut = charsPerLine
-						}
-						line = desc[:cut]
-						desc = strings.TrimLeft(desc[cut:], " ")
-					} else {
-						desc = ""
-					}
-					ui.DrawText(screen, line, ix, iy, color.RGBA{50, 50, 50, 255})
-					iy += 12
-				}
-			}
-		} else if len(items) == 0 {
-			ui.DrawText(screen, "No scenarios found", cx+infoX+10, contentY+30, color.RGBA{100, 100, 100, 255})
-		}
-
-		// ── Bottom buttons ───────────────────────────────────────────────
-		btnY := cy + ch - btnAreaH + 4
-		canPlay := selectedIdx >= 0 && selectedIdx < len(items)
-		drawButton(screen, cx+4, btnY, 80, 22, i18n.T("newgame.cancel"), false, true)
-		drawButton(screen, cx+cw-84, btnY, 80, 22, i18n.T("newgame.play"), false, canPlay)
-	}
-
-	win.OnContentClick = func(relX, relY int) {
-		// Tab clicks
-		tabW := win.Width / len(cats)
-		if relY < tabH {
-			clicked := relX / tabW
-			if clicked >= 0 && clicked < len(cats) && clicked != activeCat {
-				activeCat = clicked
-				selectedIdx = -1
-				listScroll = 0
-				previewFor = ""
-			}
-			return
-		}
-
-		// Button row
-		if relY >= win.Height-22-3-btnAreaH {
-			if relX >= 4 && relX < 84 {
-				g.windowMgr.CloseWindow(winTitle)
-			} else if relX >= win.Width-6-84 {
-				items := cats[activeCat].items
-				if selectedIdx >= 0 && selectedIdx < len(items) {
-					if err := g.loadScenario(items[selectedIdx].FilePath); err != nil {
-						log.Printf("[Game] Load error: %v", err)
-					}
-				}
-			}
-			return
-		}
-
-		contentY := tabH
-		row := (relY - contentY) / itemH
-		if row < 0 {
-			return
-		}
-		if relX < listW {
-			items := cats[activeCat].items
-			idx := listScroll + row
-			if idx >= 0 && idx < len(items) {
-				selectedIdx = idx
-				previewFor = ""
-			}
-		}
-	}
-
-	win.OnScrollWheel = func(dy float64) {
-		items := cats[activeCat].items
-		contentH := win.Height - 22 - 3 - tabH - btnAreaH
-		visible := contentH / itemH
-		maxScroll := len(items) - visible
-		if maxScroll < 0 {
-			maxScroll = 0
-		}
-		listScroll = iclamp(listScroll-int(dy), 0, maxScroll)
-	}
-
-	g.windowMgr.OpenWindow(win)
+	g.scenarioSelect = w
 }
 
 // openOptionsWindow opens an Options window with proper 3D toggle buttons for
