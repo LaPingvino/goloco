@@ -67,4 +67,9 @@ func TestVelocityHeight(t *testing.T) {
 	if Velocity(60) != "97km/h" || Height(10) != "50m" || Velocity(1000) != "1,609km/h" {
 		t.Errorf("metric: %s %s %s", Velocity(60), Height(10), Velocity(1000))
 	}
+	defer func(u bool) { HeightUnits = u }(HeightUnits)
+	HeightUnits = true
+	if Height(10) != "10 units" {
+		t.Errorf("units: %s", Height(10))
+	}
 }

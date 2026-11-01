@@ -164,6 +164,13 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			d.OnSelect = func(i int) { L.Metric = i == 1 } // distanceSpeedDropdown (PARTIAL: Config::write)
 			w.OpenDropdown(d)
 		}
+		// heightsLabelsMouseDown: Units / Real Values, the current one selected.
+		if r := optRegionalRows[2]; w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil {
+			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour,
+				[]DropdownItem{{Text: "Units", Selected: L.HeightUnits, MoveX10: true}, {Text: "Real Values", Selected: !L.HeightUnits, MoveX10: true}}, 1<<20, 1<<20)
+			d.OnSelect = func(i int) { L.HeightUnits = i == 0 } // heightsLabelsDropdown (PARTIAL: Config::write)
+			w.OpenDropdown(d)
+		}
 		return
 	}
 	if w.Tab != OptTabAudio {
@@ -444,7 +451,11 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		if L.Metric {
 			measure = "Metric"
 		}
-		values := [5]string{"English (UK)", measure, "Real Values", w.CurrencyName, w.PreferredCurrencyName}
+		heights := "Real Values"
+		if L.HeightUnits {
+			heights = "Units"
+		}
+		values := [5]string{"English (UK)", measure, heights, w.CurrencyName, w.PreferredCurrencyName}
 		arrow := string(rune(170)) // LocoChar::down, StringIds::dropdown "{COLOUR BLACK}▼"
 		aw, _ := MeasureTextBold(arrow)
 		for i, r := range optRegionalRows {

@@ -1170,6 +1170,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regional" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionalheights" && g.options != nil {
+			g.options.Tab = ui.OptTabRegional // and a click on Heights
+			g.options.HandleClick(g.options.X+190, g.options.Y+87)
+		}
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionaldrop" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional // and a click on Distance and Speed
 			g.options.HandleClick(g.options.X+190, g.options.Y+72)
