@@ -15,6 +15,8 @@ type RoadEl struct {
 	BaseZ                           uint8   // SmallZ
 	Remap                           []uint8 // company colour of elRoad.owner() (nil: none)
 	Tunnel                          int     // roadObj->tunnel's image base (-1: none)
+	HasBridge                       bool
+	Bridge                          uint8 // elRoad.bridge(): bridge object slot
 }
 
 var (
@@ -41,6 +43,9 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 	}
 	// paintRoadPCP runs after every piece (merge pieces too); its only effect
 	// ported here is insertTunnels, so it can go first.
+	if el.HasBridge {
+		s.setBridge(height, rpcp.BridgeType[rot], rpcp.BridgeEdges[rot], rpcp.BridgeQuarters[rot], el.Bridge, el.Remap)
+	}
 	s.InsertTunnels(rpcp.TunnelHeights[rot], height, el.Tunnel)
 	switch paintStyle {
 	case 0, 2:

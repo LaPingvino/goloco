@@ -77,6 +77,7 @@ type Session struct {
 	// Slabs for paint structs and attachments (reused across frames by Reset).
 	structs        []Struct
 	tunnels        [4][]tunnelEntry
+	bridge         BridgeEntry
 	attachedSlab   []Attached
 	chunks         [][]Struct
 	attachedChunks [][]Attached
@@ -85,7 +86,7 @@ type Session struct {
 // NewSession starts a session for a render target covering viewport rectangle
 // (x, y, w, h).
 func NewSession(rotation uint8, x, y, w, h int) *Session {
-	return &Session{Rotation: rotation, rtX: x, rtY: y, rtW: w, rtH: h, back: noBackIndex}
+	return &Session{Rotation: rotation, rtX: x, rtY: y, rtW: w, rtH: h, back: noBackIndex, bridge: BridgeEntry{Height: -1}}
 }
 
 // Colour returns an image of sp remapped to a company colour (ImageId(index,
@@ -102,7 +103,7 @@ func Colour(sp *gfx8.Sprite, remap []uint8) Image {
 func (s *Session) Reset(rotation uint8, x, y, w, h int) {
 	structs, attached, tunnels := s.structs[:0], s.attachedSlab[:0], s.tunnels
 	*s = Session{Rotation: rotation, rtX: x, rtY: y, rtW: w, rtH: h, back: noBackIndex,
-		structs: structs, attachedSlab: attached, tunnels: tunnels}
+		structs: structs, attachedSlab: attached, tunnels: tunnels, bridge: BridgeEntry{Height: -1}}
 	s.ResetTunnels()
 }
 
@@ -129,6 +130,35 @@ func (s *Session) newAttached() *Attached {
 
 // SetSpritePosition sets the world position painters' offsets are relative to.
 func (s *Session) SetSpritePosition(x, y int) { s.spriteX, s.spriteY = x, y }
+
+// BridgeEntry is Paint.h BridgeEntry: set by a track/road piece with a bridge,
+// painted and cleared in paintTileElementsEndLoop. Height -1 = empty
+// (kNullBridgeEntry). Remap is bridgeColoursBaseImageId's colour (the owner's).
+type BridgeEntry struct {
+	Height        int
+	SubType       uint8
+	EdgesQuarters uint8 // edges << 4 | quarters
+	ObjectID      uint8
+	Remap         []uint8
+}
+
+// setBridge is the hasBridge block of paintTrackPP* / paintRoadPCP: a new
+// entry whose edges/quarters are ORed with the current one (merging pieces).
+func (s *Session) setBridge(height int, subType, edges, quarters, objectID uint8, remap []uint8) {
+	eq := edges<<4 | quarters
+	if s.bridge.Height != -1 {
+		eq |= s.bridge.EdgesQuarters
+	}
+	s.bridge = BridgeEntry{Height: height, SubType: subType, EdgesQuarters: eq, ObjectID: objectID, Remap: remap}
+}
+
+// TakeBridge returns the pending bridge entry and resets it to kNullBridgeEntry
+// (the end of paintTileElementsEndLoop's bridge block); ok is false when empty.
+func (s *Session) TakeBridge() (BridgeEntry, bool) {
+	b := s.bridge
+	s.bridge = BridgeEntry{Height: -1}
+	return b, b.Height != -1
+}
 
 // Tunnels — Paint.cpp resetTunnels / insertTunnel / insertTunnels. Per edge a
 // list of (MicroZ height, tunnel) in insertion order; reading past the end
