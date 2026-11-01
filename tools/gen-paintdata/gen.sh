@@ -146,4 +146,8 @@ g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/colours" "$tmp/colour
 "$tmp/colours" > "$repo/pkg/paint/colourdata_gen.go"
 "$tmp/colours" pal > "$repo/pkg/assets/palettedata_gen.go"
 gofmt -w "$repo/pkg/paint/colourdata_gen.go" "$repo/pkg/assets/palettedata_gen.go"
+# PaintBridge.cpp's tables: the .cpp itself is included (gen_bridge.cpp).
+g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -O1 -ffunction-sections -fdata-sections -Wl,--gc-sections -o "$tmp/gen_bridge" "$here/gen_bridge.cpp"
+"$tmp/gen_bridge" > "$repo/pkg/paint/bridgedata_gen.go"
+gofmt -w "$repo/pkg/paint/bridgedata_gen.go"
 rm -rf "$tmp"
