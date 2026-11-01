@@ -52,6 +52,8 @@ type Game struct {
 	scenarioSelect      *ui.ScenarioSelectWindow // the New Game window when open
 	diagNewGameDone     bool
 	browse              *ui.PromptBrowseWindow // the Load window when open
+	options             *ui.OptionsWindow      // the Options window when open
+	diagOptionsDone     bool
 	diagBrowseDone      bool
 	titleSeq            *title.Sequence
 	gameState           *game.GameState
@@ -441,7 +443,9 @@ func (g *Game) Update() error {
 		}
 		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 			// The ScenarioSelect window, then the window manager, take priority.
-			if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
+			if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
+				g.options.HandleClick(g.mouseX, g.mouseY)
+			} else if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
 				g.browse.HandleClick(g.mouseX, g.mouseY)
 			} else if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
 				g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
@@ -493,7 +497,9 @@ func (g *Game) Update() error {
 	}
 	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 		// Check dropdown first (it's on top)
-		if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
+		if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
+			g.options.HandleClick(g.mouseX, g.mouseY)
+		} else if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
 			g.browse.HandleClick(g.mouseX, g.mouseY)
 		} else if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
 			g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
@@ -1104,6 +1110,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		if g.browse != nil {
 			g.browse.Draw(screen)
 		}
+		if g.options != nil {
+			g.options.Draw(screen)
+		}
 		ui.DrawText(screen, fmt.Sprintf("%.0ffps", ebiten.ActualFPS()), 4, g.sh-8, color.RGBA{200, 200, 200, 200})
 		g.maybeSaveShot(screen)
 		return
@@ -1117,6 +1126,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.browse != nil {
 		g.browse.Draw(screen)
+	}
+	if g.options != nil {
+		g.options.Draw(screen)
 	}
 
 	// Draw dropdown menu on top of everything else
@@ -1167,6 +1179,10 @@ func debugPath(name string) string {
 // quit when the requested count has been captured. Script `shot` commands are
 // honoured here too.
 func (g *Game) maybeSaveShot(screen *ebiten.Image) {
+	if os.Getenv("GOLOCO_DIAG_OPTIONS") != "" && g.options == nil && !g.diagOptionsDone {
+		g.diagOptionsDone = true
+		g.openOptionsWindow()
+	}
 	if os.Getenv("GOLOCO_DIAG_BROWSE") != "" && g.browse == nil && !g.diagBrowseDone {
 		g.diagBrowseDone = true
 		g.openFileWindow("Load Game", false)
@@ -1738,86 +1754,30 @@ func (g *Game) openNewGameWindow() {
 // openOptionsWindow opens an Options window with proper 3D toggle buttons for
 // sound and music, styled after OpenLoco's option panels.
 func (g *Game) openOptionsWindow() {
-	const winTitle = "Options"
-	const (
-		winW   = 270
-		winH   = 160
-		rowH   = 32
-		pad    = 10
-		btnW   = 44
-		btnH   = 22
-		valueX = 140 // x offset (relative to content area) where ON button starts
-	)
-	// Content area dimensions (must match simplewindow.go constants).
-	const (
-		titleBarH = 22
-		borderW   = 3
-	)
-	contentW := winW - borderW*2
-	contentH := winH - titleBarH - borderW
-
-	darkText := color.RGBA{20, 15, 10, 255}
-
-	win := &ui.SimpleWindow{
-		Title:   winTitle,
-		X:       100,
-		Y:       80,
-		Width:   winW,
-		Height:  winH,
-		Visible: true,
+	// The ported Options window, Audio tab (pkg/ui/options.go).
+	var tc, oc uint8 = 0, 1
+	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+		tc, oc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowOptionsColour
 	}
-	win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, _ *render.Renderer) {
-		// Row 1: Sound Effects
-		ui.DrawText(screen, "Sound Effects", cx+pad, cy+pad+btnH/2+4, darkText)
-		drawButton(screen, cx+valueX, cy+pad, btnW, btnH, "On", g.soundEnabled, true)
-		drawButton(screen, cx+valueX+btnW+4, cy+pad, btnW, btnH, "Off", !g.soundEnabled, true)
-
-		// Row 2: Music
-		ui.DrawText(screen, "Music", cx+pad, cy+pad+rowH+btnH/2+4, darkText)
-		drawButton(screen, cx+valueX, cy+pad+rowH, btnW, btnH, "On", g.musicEnabled, true)
-		drawButton(screen, cx+valueX+btnW+4, cy+pad+rowH, btnW, btnH, "Off", !g.musicEnabled, true)
-
-		// Separator line
-		sepY := cy + pad + rowH*2 + 6
-		fillRect(screen, float64(cx+pad), float64(sepY), float64(cw-pad*2), 1, color.RGBA{140, 135, 120, 255})
-
-		// Close button centred at bottom
-		closeW := 60
-		closeX := cx + (cw-closeW)/2
-		closeY := cy + ch - btnH - 6
-		drawButton(screen, closeX, closeY, closeW, btnH, "Close", false, true)
+	w := ui.NewOptions(g.sw, g.sh, tc, oc)
+	w.TitleMusic = g.musicEnabled
+	w.MusicVolume = 1
+	if g.audioMgr != nil {
+		w.MusicVolume = g.audioMgr.MusicVolume()
 	}
-	win.OnContentClick = func(relX, relY int) {
-		// Sound row
-		if relY >= pad && relY < pad+rowH {
-			if relX >= valueX && relX < valueX+btnW {
-				g.soundEnabled = true
-			} else if relX >= valueX+btnW+4 && relX < valueX+btnW*2+4 {
-				g.soundEnabled = false
-			}
-			return
-		}
-		// Music row
-		if relY >= pad+rowH && relY < pad+rowH*2 {
-			if relX >= valueX && relX < valueX+btnW {
-				g.musicEnabled = true
-			} else if relX >= valueX+btnW+4 && relX < valueX+btnW*2+4 {
-				g.musicEnabled = false
-				if g.audioMgr != nil {
-					g.audioMgr.StopMusic()
-				}
-			}
-			return
-		}
-		// Close button
-		closeW := 60
-		closeX := (contentW - closeW) / 2
-		closeY := contentH - btnH - 6
-		if relY >= closeY && relY < closeY+btnH && relX >= closeX && relX < closeX+closeW {
-			g.windowMgr.CloseWindow(winTitle)
+	w.OnClose = func() { g.options = nil }
+	w.OnTitleMusic = func(on bool) {
+		g.musicEnabled = on
+		if !on && g.audioMgr != nil {
+			g.audioMgr.StopMusic()
 		}
 	}
-	g.windowMgr.OpenWindow(win)
+	w.OnMusicVol = func(v float64) {
+		if g.audioMgr != nil {
+			g.audioMgr.SetMusicVolume(v)
+		}
+	}
+	g.options = w
 }
 
 // openLoadGameWindow opens the file browser for all supported file types.
