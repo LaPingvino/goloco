@@ -1,0 +1,144 @@
+package objects
+
+import (
+	"encoding/binary"
+	"fmt"
+)
+
+// IndustryObject — a port of OpenLoco Objects/IndustryObject.h/.cpp: the fields
+// the painter needs, read with load()'s exact section walk. sizeof(IndustryObject)
+// is 0xF4 (static_assert upstream).
+type IndustryObject struct {
+	Header *ObjectHeader
+	Name   string
+
+	NumBuildingParts       uint8  // 0x1E
+	NumBuildingVariations  uint8  // 0x1F
+	MaxNumBuildings        uint8  // 0xBD
+	BuildingSizeFlags      uint32 // 0xC6: bit n set = building type n is 2×2
+	ScaffoldingSegmentType uint8  // 0xD4
+	ScaffoldingColour      uint8  // 0xD5
+	Flags                  uint32 // 0xE4 (IndustryObjectFlags)
+	FarmTileNumImageAngles uint8  // 0xE9
+
+	PartHeights        []uint8
+	PartAnimations     []BuildingPartAnimation
+	AnimationSequences [4][]uint8 // each: size (power of 2), then data
+	Variations         [][]uint8  // building variation → parts
+
+	// Image bases (load(): shadowImageIds = table offset; buildings after the
+	// shadows when hasShadows; fields after the building parts).
+	ShadowImageIDs               uint32
+	BuildingImageIDs             uint32
+	FieldImageIDs                uint32
+	NumImagesPerFieldGrowthStage uint32
+	TableLength                  uint32 // image table length (for the exact-walk check)
+	RemainingAtTable             int    // bytes left when the image table starts
+}
+
+// IndustryFlagHasShadows is IndustryObjectFlags::hasShadows.
+const IndustryFlagHasShadows = 1 << 21
+
+const industryObjectSize = 0xF4
+
+// ParseIndustryObjectWithG1 parses an industry object (IndustryObject::load) and
+// loads its images into the G1 pool when g1 is set.
+func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*IndustryObject, error) {
+	if len(data) < industryObjectSize {
+		return nil, fmt.Errorf("industry object too small: %d bytes", len(data))
+	}
+	o := &IndustryObject{
+		Header:                 header,
+		NumBuildingParts:       data[0x1E],
+		NumBuildingVariations:  data[0x1F],
+		MaxNumBuildings:        data[0xBD],
+		BuildingSizeFlags:      binary.LittleEndian.Uint32(data[0xC6:]),
+		ScaffoldingSegmentType: data[0xD4],
+		ScaffoldingColour:      data[0xD5],
+		Flags:                  binary.LittleEndian.Uint32(data[0xE4:]),
+		FarmTileNumImageAngles: data[0xE9],
+	}
+	p := industryObjectSize
+	need := func(n int) error {
+		if p+n > len(data) {
+			return fmt.Errorf("industry %q truncated at %#x (+%d)", o.Name, p, n)
+		}
+		return nil
+	}
+	// 8 string tables: name, var_02, unused, closingDown, upProduction, downProduction, singular, plural.
+	for i := 0; i < 8; i++ {
+		n, str := parseStringTable(data[p:])
+		if i == 0 {
+			o.Name = str
+		}
+		p += n
+	}
+	np := int(o.NumBuildingParts)
+	if err := need(np * 3); err != nil {
+		return nil, err
+	}
+	o.PartHeights = append([]uint8(nil), data[p:p+np]...)
+	p += np
+	o.PartAnimations = make([]BuildingPartAnimation, np)
+	for i := range o.PartAnimations {
+		o.PartAnimations[i] = BuildingPartAnimation{NumFrames: data[p+2*i], AnimationSpeed: data[p+2*i+1]}
+	}
+	p += np * 2
+	for i := range o.AnimationSequences {
+		if err := need(1); err != nil {
+			return nil, err
+		}
+		n := int(data[p])
+		if err := need(1 + n); err != nil {
+			return nil, err
+		}
+		o.AnimationSequences[i] = append([]uint8(nil), data[p+1:p+1+n]...)
+		p += 1 + n
+	}
+	for { // var_38 entries (2 bytes each) until 0xFF
+		if err := need(1); err != nil {
+			return nil, err
+		}
+		if data[p] == 0xFF {
+			p++
+			break
+		}
+		p += 2
+	}
+	for v := 0; v < int(o.NumBuildingVariations); v++ {
+		var parts []uint8
+		for {
+			if err := need(1); err != nil {
+				return nil, err
+			}
+			if data[p] == 0xFF {
+				p++
+				break
+			}
+			parts = append(parts, data[p])
+			p++
+		}
+		o.Variations = append(o.Variations, parts)
+	}
+	p += int(o.MaxNumBuildings)   // buildings
+	p += (2 + 3 + 4 + 1 + 1) * 16 // produced, required cargo; wall types; buildingWall; buildingWallEntrance
+	if err := need(0); err != nil {
+		return nil, err
+	}
+	o.RemainingAtTable = len(data) - p
+	if g1 != nil {
+		res, err := g1.LoadImageTable(data[p:])
+		if err != nil {
+			return nil, fmt.Errorf("industry %q image table: %w", o.Name, err)
+		}
+		o.TableLength = res.TableLength
+		o.ShadowImageIDs = res.ImageOffset
+		o.BuildingImageIDs = o.ShadowImageIDs
+		if o.Flags&IndustryFlagHasShadows != 0 {
+			o.BuildingImageIDs += uint32(o.NumBuildingVariations) * 4
+		}
+		o.FieldImageIDs = uint32(o.NumBuildingParts)*4 + o.BuildingImageIDs
+		o.NumImagesPerFieldGrowthStage = uint32(o.FarmTileNumImageAngles) * 21
+	}
+	return o, nil
+}

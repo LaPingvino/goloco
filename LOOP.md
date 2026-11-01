@@ -280,6 +280,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    NEXT: (2) IndustryObject loader (port IndustryObject::load's section walk: building parts, heights,
    animations, sequences, buildingImageIds/shadowImageIds, buildingSizeFlags, scaffolding) with a test that every
    ObjData industry parses to the end; (3) paintIndustry.
+   Tick 41 — step (2) DONE: pkg/objects/industry.go (IndustryObject::load's walk: 8 string tables, part heights,
+   part animations, 4 animation sequences, var_38 pairs, variations, buildings, 2+3 cargo + 4+1+1 wall headers,
+   image table; image bases as load()). Test (pkg/scene): all 22 ObjData industries walk EXACTLY to their image
+   table (upstream's assert). NEXT: (3) paintIndustry + ReorderIndustryObjects (the scenario's industry slot order).
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -370,3 +374,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 38 (item 3j) — signals ported; fixed two parse gaps (right-side signal object, track flag_6); signal offsets generated from upstream TrackData.
 - 2026-11-01 tick 39 (item 3j) — train stations (style 0) in the CPU renderer; additions priority list ported; station image ids generated.
 - 2026-11-01 tick 40 (item 3j) — industries step 1: GameState industry records parsed (offsets checked with the compiler). Video: Whisper at ~3.5 min of 71 after 8 min (slow on CPU); caption strips 7,356/8,560.
+- 2026-11-01 tick 41 (item 3j) — IndustryObject loader ported; all 22 industry objects walk exactly to their image tables. (OCR of the caption strips running in a second agent.)
