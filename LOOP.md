@@ -2,7 +2,8 @@
 
 Started 2026-11-01 (Joop: "set up a loop to correct all things previous you disregarded and got wrong").
 Runs by day as a session cron (~15 min); overnight via the idle-loop Stop hook: .idle-loop.json here,
-switched on with `.idle-loop-on` (content 'until HH:MM'; off after 24 h) in a session started from ~/Projects/goloco.
+switched on with `.idle-loop-on` (content 'until HH:MM'; off after 24 h) in the session's working directory —
+currently ~/Projects/empty (its .idle-loop.json points here; status goes to ~/Projects/empty/.idle-loop-status).
 Each overnight tick ends by writing work/nowork to .idle-loop-status. Each tick: read this file, do ONE bounded chunk (~10 min),
 verify it, commit, update this file (queue + one tick-log line), stop. Don't start two items.
 
@@ -20,8 +21,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - **Game data is not ours.** ~/Projects/locomotion (from ~/locodata.tar.gz) is never committed and
   never published publicly. The wasm test page is a PRIVATE artifact for Joop only — never make it
   public, never share its link; public builds wait until the data is properly substituted.
-- **Git:** commit each tick to main locally with a clear message. Pushing to origin waits for Joop's
-  go (asked 2026-11-01). Never commit data, reference screenshots or build output.
+- **Git:** commit each tick to main with a clear message and push to origin main (Joop, 2026-11-01:
+  'feel free to push to Github'). Never commit data, reference screenshots or build output.
 - Design questions (architecture splits beyond the queue, gameplay choices) → write them under
   "Questions for Joop" and move to the next item.
 
@@ -61,7 +62,6 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    'simplified approximation', depth-sort approximation for vehicles, g1font width fudge, …).
 
 ## Questions for Joop
-- Push each tick's commits to origin main, or keep them local until you review?
 - Item 4 (splitting pkg/world into simulation and rendering): go?
 
 ## Blocked
@@ -70,3 +70,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 ## Tick log
 - 2026-11-01 (setup) — LOOP.md written; Locomotion data extracted to ~/Projects/locomotion; native and
   wasm builds confirmed; tests pass except pkg/world (needs a display).
+- 2026-11-01 (setup) — pushing allowed (Joop); overnight idle-loop configured in ~/Projects/empty, the session's directory.
