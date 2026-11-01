@@ -38,7 +38,8 @@ func TestStyle2PieceCounts(t *testing.T) {
 // TestStyle0StraightNonZero guards against the bug where Style0 straight
 // roads had all-zero offsets (making them invisible).
 // OpenLoco reference: src/OpenLoco/src/Objects/RoadObject.h Style0 namespace
-//   kStraight0NE=34, kStraight0SE=35
+//
+//	kStraight0NE=34, kStraight0SE=35
 func TestStyle0StraightNonZero(t *testing.T) {
 	pieces := kRoadPartsStyle0[0]
 	if len(pieces) == 0 {
@@ -103,9 +104,9 @@ func TestRoadMergeExitsStraight(t *testing.T) {
 // straight, T-junctions, and crossroads.
 func TestExitsToMergeIdKeyValues(t *testing.T) {
 	cases := []struct {
-		exits    uint8
-		wantID   uint8
-		desc     string
+		exits  uint8
+		wantID uint8
+		desc   string
 	}{
 		{0b0101, 0, "NE+SW straight"},
 		{0b1010, 1, "SE+NW straight"},

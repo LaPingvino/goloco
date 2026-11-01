@@ -50,6 +50,8 @@ reads them in principle.
 1. A `-open` mode in cmd/webpack: pack only OG objects (no Data/, no original ObjData, no scenarios), and
    a startup path in goloco that works without g1.DAT (TTF text, no g1 UI sprites) — shows how far it gets.
 2. A generated open scenario (after the MapGenerator port) as the title scene and first level.
-3. Decide (a) vs (b) for the g1 gap.
+3. The g1 gap: Joop (2026-11-01) allows drawing open replacements ourselves, or borrowing from OpenTTD.
+   Licences decide what can be mixed: OpenGraphics is MIT; OpenTTD's OpenGFX base set is GPL-2.0, so
+   borrowed sprites make that part of the build GPL — keep their source and licence with them.
 4. Only then a public link — under a separate route without basic auth, built only from MIT/open sources,
    with the OpenGraphics licence and credits on the page.

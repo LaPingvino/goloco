@@ -79,7 +79,15 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    OpenGraphics replaces; write docs/open-build.md with the gap. A public build also needs its own title
    scene and scenario made only from open objects (Joop: 'we might need a custom level/title screen') —
    design, wait for Joop before building. Never publish anything containing the original data.
-4. [ ] **Split simulation from rendering** (APPROVED by Joop 2026-11-01: 'the split is perfectly okay. Free to make bold decisions.'). pkg/world imports
+4. [~] **Split simulation from rendering** (APPROVED by Joop 2026-11-01: 'the split is perfectly okay. Free to make bold decisions.').
+   Plan: new pkg/sim (no ebiten/render imports — ebiten panics at init without a display, so headless
+   tests need a package that never imports it) holding map state + rules; pkg/world keeps drawing and embeds
+   it. Steps: (1) Tile → sim.Tile, fields exported [DONE tick 8; the write-only invented TileType
+   (grass/dirt/water) and NewWorld's placeholder 'variety' map removed]; (2) sim.Map {Width, Height, Tiles,
+   Towns, Entities} + getTile/LoadFromScenario's data part, World embeds *sim.Map; (3) construction logic
+   (placedPiece, ConstructionHead, track/road data tables); (4) stations + vehicles + lists; (5) move their
+   tests to pkg/sim and run them headless. Tooling: `gofmt -r 'a.old -> a.New'` is NOT type-aware — it also
+   renames same-named fields of other types; check with `go build -gcflags=-e`. pkg/world imports
    Ebiten in world.go, construction.go, overlay.go; its tests panic without a display.
 5. [ ] **Vehicle movement port.** Generate SubpositionData.cpp into Go like track_data_gen.go;
    port the movement step (VehicleBogie/VehicleHead/VehicleManager) in faithful slices with tests
@@ -91,6 +99,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    'simplified approximation', depth-sort approximation for vehicles, g1font width fudge, …).
 
 ## Questions for Joop
+- (answered 2026-11-01) g1 gap: Joop allows drawing replacements myself, or borrowing from OpenTTD
+  (check licences first: OpenTTD's OpenGFX is GPL-2.0; OpenGraphics is MIT).
 - docs/open-build.md: go for step 1 (an '-open' pack with only OpenGraphics objects and a goloco start path
   without g1.DAT)? And for the g1 gap: (a) draw open replacements for the ~85 g1 ids goloco uses, or (b)
   goloco-only UI art with TTF fonts in the public build?
@@ -112,3 +122,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 — Caddy route live (Joop ran the script): 401 without auth, 200 with; wasm served in 0.07 s → slowness is client-side; queued 3c (lazy sprite preload).
 - 2026-11-01 tick 6 (item 3c done) — blocking sprite preload replaced by lazy decode + 4 ms/frame background prewarm; title visible at the first 3 s capture (was 1% loading bar); all scenarios in the local build; OpenGraphics noted for a future public build (3d).
 - 2026-11-01 tick 7 (item 3d research) — OpenGraphics v0.1.8 (MIT) compared with the original data per object type; gap = g1.DAT (UI, fonts, logo), title/scenarios, sounds/music, variety → docs/open-build.md with a 4-step plan awaiting Joop.
+- 2026-11-01 tick 8 (item 4 step 1) — pkg/sim created with sim.Tile (exported fields); world uses it via an alias; dropped the write-only invented TileType and the placeholder 'variety' map; build+vet green; title capture identical. Joop: may draw g1 replacements or borrow from OpenTTD (licence check).

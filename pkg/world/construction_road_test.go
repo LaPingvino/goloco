@@ -9,7 +9,7 @@ func newTestWorld(w, h int, baseZ uint8) *World {
 	for y := 0; y < h; y++ {
 		tiles[y] = make([]tile, w)
 		for x := 0; x < w; x++ {
-			tiles[y][x] = tile{tileType: TileGrass, baseZ: baseZ}
+			tiles[y][x] = tile{BaseZ: baseZ}
 		}
 	}
 	return &World{width: w, height: h, tiles: tiles}
@@ -56,7 +56,7 @@ func TestPlaceRoadAtHeadSequence(t *testing.T) {
 		// The origin element must have landed on the expected tile.
 		ot := wld.getTile(s.originX, s.originY)
 		found := false
-		for _, re := range ot.roads {
+		for _, re := range ot.Roads {
 			if re.RoadID == uint8(s.roadID) {
 				found = true
 			}
@@ -78,15 +78,15 @@ func TestPlaceRoadAtHeadSequence(t *testing.T) {
 		t.Errorf("after undo: head = (%d,%d z%d r%d), want (8,12 z10 r0)", h.X, h.Y, h.BaseZ, h.Rotation)
 	}
 	// The slope-up piece spanned (8,12)+(7,12); both must be cleared by undo.
-	if tl := wld.getTile(8, 12); len(tl.roads) != 0 {
-		t.Errorf("after undo: tile (8,12) has %d road elements, want 0", len(tl.roads))
+	if tl := wld.getTile(8, 12); len(tl.Roads) != 0 {
+		t.Errorf("after undo: tile (8,12) has %d road elements, want 0", len(tl.Roads))
 	}
-	if tl := wld.getTile(7, 12); len(tl.roads) != 0 {
-		t.Errorf("after undo: tile (7,12) has %d road elements, want 0", len(tl.roads))
+	if tl := wld.getTile(7, 12); len(tl.Roads) != 0 {
+		t.Errorf("after undo: tile (7,12) has %d road elements, want 0", len(tl.Roads))
 	}
 	// The left-curve origin (placed earlier at (9,12)) must remain untouched.
-	if tl := wld.getTile(9, 12); len(tl.roads) != 1 {
-		t.Errorf("after undo: tile (9,12) has %d road elements, want 1", len(tl.roads))
+	if tl := wld.getTile(9, 12); len(tl.Roads) != 1 {
+		t.Errorf("after undo: tile (9,12) has %d road elements, want 1", len(tl.Roads))
 	}
 }
 

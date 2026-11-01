@@ -20,7 +20,7 @@ func TestStationDeliveryLoop(t *testing.T) {
 				continue
 			}
 			tl := wld.getTile(15+dx, 15+dy)
-			tl.buildings = append(tl.buildings, scenario.BuildingElement{})
+			tl.Buildings = append(tl.Buildings, scenario.BuildingElement{})
 		}
 	}
 
@@ -42,13 +42,13 @@ func TestStationDeliveryLoop(t *testing.T) {
 	}
 	// The near-end station must have found the 8 nearby buildings.
 	near := wld.stationAt(15, 15, 4)
-	if near == nil || near.buildings != 8 {
+	if near == nil || near.Buildings != 8 {
 		t.Fatalf("near station supply = %v (want buildings=8)", near)
 	}
 	// The station element and HasStation flag must be present for the renderer.
-	if tl := wld.getTile(15, 15); len(tl.stations) != 1 || !tl.tracks[0].HasStation {
+	if tl := wld.getTile(15, 15); len(tl.Stations) != 1 || !tl.Tracks[0].HasStation {
 		t.Fatalf("station element/flag not set on tile (15,15): stations=%d hasFlag=%v",
-			len(tl.stations), tl.tracks[0].HasStation)
+			len(tl.Stations), tl.Tracks[0].HasStation)
 	}
 
 	var delivered uint32

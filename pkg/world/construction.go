@@ -33,7 +33,7 @@ type placedPiece struct {
 	trackID  int
 	rotation uint8
 	tiles    [][2]int // tile coords that received elements
-	baseZ    []uint8  // element BaseZ per tile
+	BaseZ    []uint8  // element BaseZ per tile
 }
 
 // rotOffset rotates a rotation-0 world offset to the given rotation.
@@ -60,7 +60,7 @@ func (w *World) SetConstructionHead(tileX, tileY int) {
 	w.consHead.Active = true
 	w.consHead.X = tileX
 	w.consHead.Y = tileY
-	w.consHead.BaseZ = t.baseZ
+	w.consHead.BaseZ = t.BaseZ
 }
 
 // ConstructionHeadState returns the current head (value copy).
@@ -128,7 +128,7 @@ func (w *World) PlaceTrackAtHead(trackID int, trackObjID uint8) bool {
 	}
 	_ = h
 
-	placed := placedPiece{trackID: trackID, rotation: w.consHead.Rotation, tiles: tiles, baseZ: baseZ}
+	placed := placedPiece{trackID: trackID, rotation: w.consHead.Rotation, tiles: tiles, BaseZ: baseZ}
 	for i, tc := range tiles {
 		w.AddTrack(tc[0], tc[1], scenario.TrackElement{
 			TrackObjectID: trackObjID,
@@ -160,11 +160,11 @@ func (w *World) UndoLastTrack() bool {
 	p := w.consStack[len(w.consStack)-1]
 	w.consStack = w.consStack[:len(w.consStack)-1]
 	for i, tc := range p.tiles {
-		w.removeTrackElement(tc[0], tc[1], uint8(p.trackID), p.rotation, uint8(i), p.baseZ[i])
+		w.removeTrackElement(tc[0], tc[1], uint8(p.trackID), p.rotation, uint8(i), p.BaseZ[i])
 	}
 	w.consHead.X = p.tiles[0][0]
 	w.consHead.Y = p.tiles[0][1]
-	w.consHead.BaseZ = p.baseZ[0]
+	w.consHead.BaseZ = p.BaseZ[0]
 	w.consHead.Rotation = p.rotation
 	w.consHead.Active = true
 	return true
@@ -199,10 +199,10 @@ func (w *World) removeTrackElement(x, y int, trackID, rotation, seq, baseZ uint8
 	if t == nil {
 		return
 	}
-	for i, te := range t.tracks {
+	for i, te := range t.Tracks {
 		if te.TrackID == trackID && te.Rotation == rotation &&
 			te.SequenceIndex == seq && te.BaseZ == baseZ {
-			t.tracks = append(t.tracks[:i], t.tracks[i+1:]...)
+			t.Tracks = append(t.Tracks[:i], t.Tracks[i+1:]...)
 			return
 		}
 	}
@@ -265,7 +265,7 @@ func (w *World) PlaceRoadAtHead(roadID int, roadObjID uint8) bool {
 		return false
 	}
 
-	placed := placedPiece{trackID: roadID, rotation: w.consHead.Rotation, tiles: tiles, baseZ: baseZ}
+	placed := placedPiece{trackID: roadID, rotation: w.consHead.Rotation, tiles: tiles, BaseZ: baseZ}
 	for i, tc := range tiles {
 		w.AddRoad(tc[0], tc[1], scenario.RoadElement{
 			RoadObjectID:  roadObjID,
@@ -296,11 +296,11 @@ func (w *World) UndoLastRoad() bool {
 	p := w.consRoadStack[len(w.consRoadStack)-1]
 	w.consRoadStack = w.consRoadStack[:len(w.consRoadStack)-1]
 	for i, tc := range p.tiles {
-		w.removeRoadElement(tc[0], tc[1], uint8(p.trackID), p.rotation, uint8(i), p.baseZ[i])
+		w.removeRoadElement(tc[0], tc[1], uint8(p.trackID), p.rotation, uint8(i), p.BaseZ[i])
 	}
 	w.consHead.X = p.tiles[0][0]
 	w.consHead.Y = p.tiles[0][1]
-	w.consHead.BaseZ = p.baseZ[0]
+	w.consHead.BaseZ = p.BaseZ[0]
 	w.consHead.Rotation = p.rotation
 	w.consHead.Active = true
 	return true
@@ -312,10 +312,10 @@ func (w *World) removeRoadElement(x, y int, roadID, rotation, seq, baseZ uint8) 
 	if t == nil {
 		return
 	}
-	for i, re := range t.roads {
+	for i, re := range t.Roads {
 		if re.RoadID == roadID && re.Rotation == rotation &&
 			re.SequenceIndex == seq && re.BaseZ == baseZ {
-			t.roads = append(t.roads[:i], t.roads[i+1:]...)
+			t.Roads = append(t.Roads[:i], t.Roads[i+1:]...)
 			return
 		}
 	}
