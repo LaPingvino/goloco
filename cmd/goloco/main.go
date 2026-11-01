@@ -109,8 +109,15 @@ type Game struct {
 
 	// Loading-screen state.  When loadingSpriteIDs != nil, the game is in the
 	// sprite-preload phase and will draw the OpenLoco-style loading screen.
-	loadingSpriteIDs []int  // full list collected from the world
-	loadingStep      int    // next index to process
+	loadingSpriteIDs []int // full list collected from the world
+	loadingStep      int   // next index to process
+
+	// Background sprite prewarm: decode+pack a few sprites per frame within a
+	// small time budget, so the game shows at once instead of after a blocking
+	// preload of every sprite (11,057 for the title).
+	prewarmIDs       []int
+	prewarmPos       int
+	firstFrameLogged bool   // the start-to-first-world-frame time has been logged
 	loadingStepSize  int    // sprites per frame
 	loadingCaption   string // text shown in the loading window caption
 	loadingStyleFlip bool   // alternates between train style 0 and 1 each load
@@ -390,11 +397,11 @@ func NewGame() *Game {
 		speedMult:     1,
 		hoverTileX:    -1,
 		hoverTileY:    -1,
-		// Begin preloading title sprites on the first Draw() frame.
-		loadingSpriteIDs: titleSpriteIDs,
-		loadingStep:      0,
-		loadingStepSize:  60,
-		loadingCaption:   "title.dat",
+		// Warm the title's sprites in the background (prewarmTick); the title
+		// draws at once and decodes anything it needs first on use, as upstream
+		// draws g1 sprites directly with no preload phase.
+		prewarmIDs:     titleSpriteIDs,
+		loadingCaption: "title.dat",
 	}
 }
 
@@ -799,6 +806,12 @@ func (g *Game) handleToolbarButton(idx int) {
 }
 
 // drawLoadingScreen draws the OpenLoco-style progress window.
+//
+// NOT REACHED since the blocking sprite preload was dropped (loop tick 6):
+// upstream shows this window while an S5 file loads (S5/S5.cpp:728,
+// Ui::ProgressBar::begin(StringIds::loading)), not for sprites. goloco loads
+// the file synchronously before the next frame; wire this to real S5 load
+// progress (Ui/Windows/ProgressBar.cpp) when loading moves off the frame.
 // The G1 progress bar sprites are:
 //
 //	2326-2329 style-0 train (green locomotive, 4 frames)
@@ -892,6 +905,28 @@ func (g *Game) doLoadingStep() bool {
 	return false
 }
 
+// prewarmBudget is the per-frame time spent warming sprites in the background.
+const prewarmBudget = 4 * time.Millisecond
+
+// prewarmTick decodes and packs queued sprites until the frame budget is used.
+func (g *Game) prewarmTick() {
+	if g.prewarmPos >= len(g.prewarmIDs) {
+		return
+	}
+	deadline := time.Now().Add(prewarmBudget)
+	for g.prewarmPos < len(g.prewarmIDs) && time.Now().Before(deadline) {
+		g.r.GetSprite(g.prewarmIDs[g.prewarmPos])
+		g.prewarmPos++
+	}
+	if g.prewarmPos >= len(g.prewarmIDs) {
+		log.Printf("[Game] Background prewarm complete after %v — atlas has %d sprites", time.Since(processStart).Round(time.Millisecond), g.r.AtlasPackedCount())
+		g.prewarmIDs, g.prewarmPos = nil, 0
+	}
+}
+
+// processStart is when the program started; used for startup timings.
+var processStart = time.Now()
+
 func (g *Game) Draw(screen *ebiten.Image) {
 	// ── Loading screen ──────────────────────────────────────────────────────
 	// When loadingSpriteIDs is set, show OpenLoco-style progress window and
@@ -902,6 +937,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.maybeSaveShot(screen)
 		return
 	}
+	if !g.firstFrameLogged {
+		g.firstFrameLogged = true
+		log.Printf("[Game] First world frame %v after start", time.Since(processStart).Round(time.Millisecond))
+	}
+	defer g.prewarmTick()
 
 	if g.diagPending {
 		diagBackground(screen)
@@ -1442,13 +1482,11 @@ func (g *Game) loadScenario(filePath string) error {
 	g.currentScenarioPath = filePath
 	g.inTitleScreen = false
 
-	// Kick off sprite preload for the new scenario's sprites.
-	g.loadingSpriteIDs = gameW.CollectSpriteIDs()
-	g.loadingStep = 0
-	g.loadingStepSize = 60
+	// Warm the new scenario's sprites in the background (see prewarmTick).
+	g.prewarmIDs, g.prewarmPos = gameW.CollectSpriteIDs(), 0
 	g.loadingCaption = filepath.Base(filePath)
 	g.loadingStyleFlip = !g.loadingStyleFlip
-	log.Printf("[Game] Queued %d sprites for preload from %s", len(g.loadingSpriteIDs), filePath)
+	log.Printf("[Game] Queued %d sprites for background prewarm from %s", len(g.prewarmIDs), filePath)
 
 	mapW, mapH := g.w.GetMapSize()
 	g.gameState = game.NewGameState(mapW, mapH)

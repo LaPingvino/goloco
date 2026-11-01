@@ -64,11 +64,19 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    Note: pkg/ui's GPT-generated Window/Widget system (window_manager.go header: 'batch_ai_impl … GPT-5-mini')
    is still LIVE via input.go and title_menu.go, next to the SimpleWindow system the game windows use — two
    window systems. Unify on a port of Ui/WindowManager.cpp later (→ deviations C).
-3c. [ ] **Startup speed (Joop: the browser build is slow).** Delivery is fast (Caddy, 5 MB wasm in 0.07 s on the
-   server); the cost is client-side: unpack, wasm start, then an up-front preload of 11,057 sprites
-   ('Collected N sprite IDs for preload' in cmd/goloco/main.go). Upstream decodes g1 sprites when first drawn
-   (Gfx drawImage) — make goloco's preload lazy or spread over frames, measure before/after with timestamps
-   in the browser log.
+3c. [x] **Startup speed** DONE tick 6: the blocking preload of every sprite before the first frame (11,057 for
+   the title) is gone; sprites decode on first use (as upstream draws g1 directly) and the rest warm in the
+   background within 4 ms per frame (prewarmTick). Headless capture at 3 s now shows the title screen (it showed
+   the loading bar at 1% before). Startup timings logged ('First world frame …', 'Background prewarm complete
+   …'). The progress window is now unreached — marked: upstream shows it during S5 loading (S5.cpp:728).
+   Local test build now carries all 46 scenarios (631 files, 47 MB).
+3d. [ ] **Open-graphics build (Joop: a public link once possible).** OpenLoco fetches OpenGraphics
+   (github.com/OpenLoco/OpenGraphics, objects.zip v0.1.8 in OpenLoco's CMakeLists.txt): so far the interface
+   skin, walls, tunnels, land, road stations, streetlights, hill shapes, some vehicles. Research step: list
+   what goloco loads (g1.DAT base sprites, fonts, objects per type, title.dat, scenarios) against what
+   OpenGraphics replaces; write docs/open-build.md with the gap. A public build also needs its own title
+   scene and scenario made only from open objects (Joop: 'we might need a custom level/title screen') —
+   design, wait for Joop before building. Never publish anything containing the original data.
 4. [ ] **Split simulation from rendering** (APPROVED by Joop 2026-11-01: 'the split is perfectly okay. Free to make bold decisions.'). pkg/world imports
    Ebiten in world.go, construction.go, overlay.go; its tests panic without a display.
 5. [ ] **Vehicle movement port.** Generate SubpositionData.cpp into Go like track_data_gen.go;
@@ -97,3 +105,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 (Joop: artifact too slow → Caddy with password) — webpack -local writes plain .gz (page decodes both forms); scripts/caddy-goloco.sh inserts a marked /goloco/ block with basic_auth into the kiefte.eu site, backs up, validates (restores on failure), reloads; dry run on a copy validated and replaced cleanly on a second run. Needs Joop's sudo run.
 - 2026-11-01 tick 5 (item 3b done) — removed 6 dead packages and 11 uncalled pkg/ui stubs (−~1,400 lines incl. packages); build + vet green; tests as before (pkg/world needs a display → item 4). Found two coexisting window systems (GPT-generated Window + SimpleWindow) → noted.
 - 2026-11-01 — Caddy route live (Joop ran the script): 401 without auth, 200 with; wasm served in 0.07 s → slowness is client-side; queued 3c (lazy sprite preload).
+- 2026-11-01 tick 6 (item 3c done) — blocking sprite preload replaced by lazy decode + 4 ms/frame background prewarm; title visible at the first 3 s capture (was 1% loading bar); all scenarios in the local build; OpenGraphics noted for a future public build (3d).
