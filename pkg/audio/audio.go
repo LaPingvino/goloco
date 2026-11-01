@@ -209,3 +209,11 @@ func (m *Manager) Context() *audio.Context {
 	}
 	return m.context
 }
+
+// MusicVolume returns the music volume (0.0 to 1.0).
+func (m *Manager) MusicVolume() float64 {
+	if m == nil {
+		return 0
+	}
+	return m.musicVolume
+}
