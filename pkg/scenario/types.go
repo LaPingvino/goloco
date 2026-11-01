@@ -50,6 +50,10 @@ type Scenario struct {
 	// Slots 305-312 (8 slots, ObjectType::bridge).
 	BridgeObjectOrder []string
 
+	// IndustryObjectIDs[industry index] = that industry's object id (GameState
+	// industries table); IndustryElement.IndustryID indexes it.
+	IndustryObjectIDs []uint8
+
 	// TrainStationObjectOrder is the list of train-station-object names in slot order.
 	// Slots 313-328 (16 slots).
 	TrainStationObjectOrder []string
