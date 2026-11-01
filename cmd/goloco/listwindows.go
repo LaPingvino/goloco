@@ -116,18 +116,24 @@ func (g *Game) openListWindow(title string, x, y int, rows []listRow, emptyMsg s
 const simpleWindowChrome = 22 + 3
 
 // openVehiclesWindow lists save-loaded vehicle entities and runtime SimVehicles.
-func (g *Game) openVehiclesWindow() {
-	infos := g.w.VehicleList()
-	rows := make([]listRow, len(infos))
-	for i, v := range infos {
-		rows[i] = listRow{
-			label:  fmt.Sprintf("%s  (%d,%d)", v.Name, v.TileX, v.TileY),
-			tileX:  v.TileX,
-			tileY:  v.TileY,
-			hasPos: true,
+func (g *Game) openVehiclesWindow() { g.openVehicleList(0) }
+
+// openVehicleList opens the ported VehicleList window on a tab (vehicle type).
+func (g *Game) openVehicleList(tab int) {
+	var rows []ui.VehicleRow
+	for _, v := range g.w.VehicleListRows() {
+		if v.Type == tab {
+			rows = append(rows, ui.VehicleRow{Name: v.Name, Profit: v.Profit, AgeYears: v.AgeYears, Reliability: v.Reliability})
 		}
 	}
-	g.openListWindow("Vehicles", 60, 60, rows, "No vehicles")
+	var tc, wc uint8 = 0, 1
+	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowPlayerColor
+	}
+	w := ui.NewVehicleList(g.sw, tab, rows, tc, wc)
+	w.OnClose = func() { g.townList = nil }
+	w.OnTab = g.openVehicleList
+	g.townList = w
 }
 
 // openStationsWindow lists every placed/loaded station on the map.

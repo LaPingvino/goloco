@@ -103,6 +103,8 @@ type Scenario struct {
 	Objective        Objective // win condition (valid when HasObjective)
 	HasObjective     bool
 	Entities         []VehicleEntity
+	VehicleList      []VehicleListEntry // heads with veh1/veh2 list data (VehicleList.cpp)
+	CurrentDay       uint32             // GameState general.currentDay
 
 	// Towns holds the non-empty town records parsed from the scenario Towns
 	// chunk (or the towns array embedded in a saved-game GameState chunk).
