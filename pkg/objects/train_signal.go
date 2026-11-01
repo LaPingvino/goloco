@@ -32,6 +32,11 @@ type TrainSignalObject struct {
 	IsLeft    bool // flags bit 0: left vs right orientation
 	HasLights bool // flags bit 1
 
+	// DesignedYear/ObsoleteYear (0x1A/0x1C): when it is available.
+	DesignedYear, ObsoleteYear uint16
+	// CompatibleNames are the DAT names of the tracks it fits (its mods).
+	CompatibleNames []string
+
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
 	// All sprite lookups: ImageOffset + local_index
 	ImageOffset uint32
@@ -96,6 +101,8 @@ func ParseTrainSignalObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader
 		HasLights: flags&0x02 != 0,
 	}
 	numCompatible := data[0x12]
+	obj.DesignedYear = uint16(data[0x1A]) | uint16(data[0x1B])<<8
+	obj.ObsoleteYear = uint16(data[0x1C]) | uint16(data[0x1D])<<8
 
 	offset := fixedSize
 
@@ -115,7 +122,11 @@ func ParseTrainSignalObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader
 		}
 	}
 
-	// Skip numCompatible ObjectHeaders (HeaderSize bytes each)
+	// numCompatible ObjectHeaders: the tracks it fits (TrainSignalObject::load
+	// resolves them into mods[]).
+	for i := range int(numCompatible) {
+		obj.CompatibleNames = append(obj.CompatibleNames, headerName(data, offset+i*HeaderSize))
+	}
 	offset += int(numCompatible) * HeaderSize
 
 	if offset > len(data) {
