@@ -18,10 +18,14 @@ import "fmt"
 //	+13 diagonalSE1  +14 diagonalSE2  +15 diagonalSE3
 //	+16 diagonalCanopyTranslucentSE3
 type TrainStationObject struct {
-	Header     *ObjectHeader
-	Name       string
-	PaintStyle uint8
-	Flags      uint8 // TrainStationFlags: bit0=recolourable, bit1=noCanopy
+	Header *ObjectHeader
+	// DesignedYear/ObsoleteYear: when it is available; CompatibleNames: the
+	// DAT names of the tracks/roads it fits.
+	DesignedYear, ObsoleteYear uint16
+	CompatibleNames            []string
+	Name                       string
+	PaintStyle                 uint8
+	Flags                      uint8 // TrainStationFlags: bit0=recolourable, bit1=noCanopy
 
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
 	// Preview images:  ImageOffset+0 (base), ImageOffset+1 (windows overlay).
@@ -77,6 +81,8 @@ func ParseTrainStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loade
 		Flags:      data[TrainStationFlagsOffset], // TrainStationFlags (uint8 — only lower byte used; offset from the compiler)
 	}
 	numCompatible := data[0x22]
+	obj.DesignedYear = uint16(data[0x2A]) | uint16(data[0x2B])<<8
+	obj.ObsoleteYear = uint16(data[0x2C]) | uint16(data[0x2D])<<8
 
 	offset := fixedSize
 
@@ -96,7 +102,11 @@ func ParseTrainStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loade
 		offset++ // skip 0xFF end marker
 	}
 
-	// Skip numCompatible ObjectHeaders (HeaderSize bytes each)
+	// numCompatible ObjectHeaders: the tracks/roads it fits (load resolves them
+	// into mods[]).
+	for i := range int(numCompatible) {
+		obj.CompatibleNames = append(obj.CompatibleNames, headerName(data, offset+i*HeaderSize))
+	}
 	offset += int(numCompatible) * HeaderSize
 	if offset > len(data) {
 		return nil, fmt.Errorf("train station object: compatible headers exceed data length")

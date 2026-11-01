@@ -23,3 +23,16 @@ func hdr(name string) *ObjectHeader {
 	copy(h.Name[:], name)
 	return h
 }
+
+func TestAvailableCompatibleStations(t *testing.T) {
+	trk := &TrackObject{Header: hdr("TRACKA"), StationNames: []string{"STAOWN"}}
+	own := &TrainStationObject{Header: hdr("STAOWN"), DesignedYear: 1900, ObsoleteYear: 2100}
+	lists := &TrainStationObject{Header: hdr("STALIST"), DesignedYear: 1900, ObsoleteYear: 1940, CompatibleNames: []string{"TRACKA"}}
+	m := &ObjectManager{TrackObjects: []*TrackObject{trk}, TrainStationObjects: []*TrainStationObject{own, nil, lists}}
+	if got := m.AvailableCompatibleStations(0, false, 1930); len(got) != 2 || got[0] != 0 || got[1] != 2 {
+		t.Errorf("1930: %v, want [0 2]", got)
+	}
+	if got := m.AvailableCompatibleStations(0, false, 1950); len(got) != 1 || got[0] != 0 {
+		t.Errorf("1950: %v, want [0] (STALIST obsolete)", got)
+	}
+}

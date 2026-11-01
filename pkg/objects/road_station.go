@@ -14,10 +14,14 @@ import "fmt"
 //	+2  straightCanopyNE  +6  straightCanopySE
 //	+3  straightCanopyTranslucentNE  +7  straightCanopyTranslucentSE
 type RoadStationObject struct {
-	Header     *ObjectHeader
-	Name       string
-	PaintStyle uint8
-	Flags      uint8 // RoadStationFlags (bit0 recolourable, from the generated layout)
+	Header *ObjectHeader
+	// DesignedYear/ObsoleteYear: when it is available; CompatibleNames: the
+	// DAT names of the tracks/roads it fits.
+	DesignedYear, ObsoleteYear uint16
+	CompatibleNames            []string
+	Name                       string
+	PaintStyle                 uint8
+	Flags                      uint8 // RoadStationFlags (bit0 recolourable, from the generated layout)
 
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
 	// Preview images:  ImageOffset+0 (base), ImageOffset+1 (windows overlay).
@@ -71,6 +75,8 @@ func ParseRoadStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader
 		PaintStyle: data[0x02],
 	}
 	numCompatible := data[0x20]
+	obj.DesignedYear = uint16(data[0x28]) | uint16(data[0x29])<<8
+	obj.ObsoleteYear = uint16(data[0x2A]) | uint16(data[0x2B])<<8
 	flags := data[RoadStationFlagsOffset] // RoadStationFlags (offset from the compiler)
 	obj.Flags = flags
 
@@ -92,7 +98,11 @@ func ParseRoadStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader
 		offset++ // skip 0xFF end marker
 	}
 
-	// Skip numCompatible ObjectHeaders (HeaderSize bytes each)
+	// numCompatible ObjectHeaders: the tracks/roads it fits (load resolves them
+	// into mods[]).
+	for i := range int(numCompatible) {
+		obj.CompatibleNames = append(obj.CompatibleNames, headerName(data, offset+i*HeaderSize))
+	}
 	offset += int(numCompatible) * HeaderSize
 	if offset > len(data) {
 		return nil, fmt.Errorf("road station object: compatible headers exceed data length")

@@ -1265,3 +1265,60 @@ func (m *ObjectManager) AvailableCompatibleSignals(trackSlot, year int) []int {
 	}
 	return out
 }
+
+// AvailableCompatibleStations is ObjectUtils getAvailableCompatibleStations:
+// the station slots for the track (or road) slot available in the year —
+// the track's own stations and every station that lists the track among its
+// compatible ones, each between its designed and obsolete years; sorted.
+func (m *ObjectManager) AvailableCompatibleStations(slot int, road bool, year int) []int {
+	type st struct {
+		name               string
+		designed, obsolete uint16
+		compatible         []string
+	}
+	var own []string
+	var self string
+	var stations []*st
+	if road {
+		if slot < 0 || slot >= len(m.RoadObjects) || m.RoadObjects[slot] == nil {
+			return nil
+		}
+		own, self = m.RoadObjects[slot].StationNames, m.RoadObjects[slot].Header.GetName()
+		for _, s := range m.RoadStationObjects {
+			if s == nil || s.Header == nil {
+				stations = append(stations, nil)
+				continue
+			}
+			stations = append(stations, &st{s.Header.GetName(), s.DesignedYear, s.ObsoleteYear, s.CompatibleNames})
+		}
+	} else {
+		if slot < 0 || slot >= len(m.TrackObjects) || m.TrackObjects[slot] == nil {
+			return nil
+		}
+		own, self = m.TrackObjects[slot].StationNames, m.TrackObjects[slot].Header.GetName()
+		for _, s := range m.TrainStationObjects {
+			if s == nil || s.Header == nil {
+				stations = append(stations, nil)
+				continue
+			}
+			stations = append(stations, &st{s.Header.GetName(), s.DesignedYear, s.ObsoleteYear, s.CompatibleNames})
+		}
+	}
+	var out []int
+	for i, s := range stations {
+		if s == nil || year < int(s.designed) || year > int(s.obsolete) {
+			continue
+		}
+		listed := false
+		for _, n := range own {
+			listed = listed || strings.EqualFold(n, s.name)
+		}
+		for _, n := range s.compatible {
+			listed = listed || strings.EqualFold(n, self)
+		}
+		if listed {
+			out = append(out, i)
+		}
+	}
+	return out
+}
