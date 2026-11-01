@@ -48,12 +48,74 @@ var constructionButtons = []ConstructionButton{
 	{"steep_slope_up", 105, 96, 24, 24, 2352},
 }
 
-// ConstructionTabState is what activateSelectedTrackWidgets reads.
+// RoadTraitFlags (World::Track::RoadTraitFlags).
+const (
+	RoadSmallCurve     = 1 << 0
+	RoadVerySmallCurve = 1 << 1
+	RoadSlope          = 1 << 2
+	RoadSteepSlope     = 1 << 3
+	RoadTurnaround     = 1 << 5
+)
+
+// RoadButtons is activateSelectedRoadWidgets' layout: only small and very
+// small curves (normal and large curves and s-bends stay hidden), straight,
+// the turnaround in the first s-bend slot (construction_left_turnaround when
+// trafficHandedness is 0, else the right one), slopes by the road's traits.
+func RoadButtons(traits uint16, trafficHandedness uint8) []ConstructionButton {
+	var out []ConstructionButton
+	vs := traits&RoadVerySmallCurve != 0
+	for _, b := range constructionButtons {
+		show := false
+		switch b.Name {
+		case "left_hand_curve_very_small", "right_hand_curve_very_small":
+			show = vs
+		case "left_hand_curve_small", "right_hand_curve_small":
+			show = traits&RoadSmallCurve != 0
+		case "straight", "level":
+			show = true
+		case "s_bend_dual_track_left":
+			show = traits&RoadTurnaround != 0
+			b.Name, b.Image = "turnaround", imgConstructionRightTurnaround
+			if trafficHandedness == 0 {
+				b.Image = imgConstructionLeftTurnaround
+			}
+		case "slope_down", "slope_up":
+			show = traits&RoadSlope != 0
+		case "steep_slope_down", "steep_slope_up":
+			show = traits&RoadSteepSlope != 0
+		}
+		if !show {
+			continue
+		}
+		if vs {
+			switch b.Name {
+			case "left_hand_curve_small":
+				b.X = 25
+			case "right_hand_curve_small":
+				b.X = 91
+			}
+		}
+		out = append(out, b)
+	}
+	return out
+}
+
+// Buttons is the visible button set for the state (track or road).
+func (st ConstructionTabState) Buttons() []ConstructionButton {
+	if st.IsRoad {
+		return RoadButtons(st.Traits, st.TrafficHandedness)
+	}
+	return TrackButtons(st.Traits)
+}
+
+// ConstructionTabState is what activateSelected{Track,Road}Widgets read.
 type ConstructionTabState struct {
-	Traits   uint16 // the track object's TrackPieces
-	Piece    string // the activated piece widget ("straight", …); "" none
-	Gradient string // the activated gradient widget ("level", …)
-	Hover    bool   // constructionHover: placing the first piece
+	IsRoad            bool
+	TrafficHandedness uint8
+	Traits            uint16 // the track object's TrackPieces or the road's RoadPieces
+	Piece             string // the activated piece widget ("straight", …); "" none
+	Gradient          string // the activated gradient widget ("level", …)
+	Hover             bool   // constructionHover: placing the first piece
 }
 
 // TrackButtons is activateSelectedTrackWidgets' layout for a track: the
@@ -133,7 +195,7 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 				gfx8.DrawSpriteNoise(rt, sp, ic[0], ic[1], gfx8.OpFor(sp, true, false), sec, nil)
 			}
 		}
-		for _, b := range TrackButtons(st.Traits) {
+		for _, b := range st.Buttons() {
 			if b.Name == st.Piece || b.Name == st.Gradient {
 				gfx8.FillRectInset(rt, b.X, b.Y, b.X+b.W-1, b.Y+b.H-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
 			}
@@ -159,6 +221,9 @@ const (
 	imgConstructionRemove      = 2361
 	imgConstructionNewPosition = 2362
 	imgRotateObject            = 2365
+
+	imgConstructionRightTurnaround = 2359
+	imgConstructionLeftTurnaround  = 2360
 )
 
 // ConstructionHit returns the construction tab widget under (rx, ry) relative
@@ -166,7 +231,7 @@ const (
 // "copy", "paste", or "" (tabs and the close button are the caller's).
 func ConstructionHit(rx, ry int, st ConstructionTabState) string {
 	in := func(x, y, w, h int) bool { return rx >= x && rx < x+w && ry >= y && ry < y+h }
-	for _, b := range TrackButtons(st.Traits) {
+	for _, b := range st.Buttons() {
 		if in(b.X, b.Y, b.W, b.H) {
 			return b.Name
 		}

@@ -279,6 +279,9 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.CompanyColours = parseCompanyColours(gameState)
 		sc.CompanyNames = parseCompanyNames(gameState)
 		sc.ControllingCompany = parseControllingCompany(gameState)
+		if len(gameState) > 0x196 { // general.trafficHandedness (from the compiler)
+			sc.TrafficHandedness = gameState[0x196]
+		}
 		sc.StationOwners = parseStationOwners(gameState)
 		sc.UserStrings = parseUserStrings(gameState)
 		sc.StationNames = parseStationNames(gameState)

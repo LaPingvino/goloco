@@ -13,7 +13,8 @@ type Map struct {
 	VehicleListData    []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
 	CurrentDay         uint32                      // GameState general.currentDay
 	CompanyNames       []uint16                    // company slot → name StringId
-	ControllingCompany uint8                       // playerCompanies[0] // real vehicle entities from the scenario / saved game
+	ControllingCompany uint8                       // playerCompanies[0] (getControllingId)
+	TrafficHandedness  uint8                       // GameState trafficHandedness
 
 	IndustryObjectIDs []uint8                // industry index → industry object (GameState industries)
 	CompanyColours    []uint8                // owner → main colour (CompanyManager::updateColours); nil if none
@@ -108,6 +109,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.CurrentDay = sc.CurrentDay
 	m.CompanyNames = sc.CompanyNames
 	m.ControllingCompany = sc.ControllingCompany
+	m.TrafficHandedness = sc.TrafficHandedness
 	m.IndustryObjectIDs = sc.IndustryObjectIDs
 	m.CompanyColours = sc.CompanyColours
 	m.StationOwners = sc.StationOwners

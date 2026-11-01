@@ -23,6 +23,9 @@ type ConstructionFrame struct {
 	TrackImage    int   // the track object's image (TrackObject::image)
 	Tab           int   // 0 construction, 1 station, 2 signal, 3 overhead
 	FrameNo       int   // window frameNo (counts updates; animates the tab)
+	// TabFrames is how many preview frames the construction tab cycles through
+	// (drawTrackTabs: 16, drawRoadTabs: 32).
+	TabFrames int
 }
 
 // ConstructionW/H is Construction::kWindowSize.
@@ -50,7 +53,7 @@ func (w *ConstructionFrame) Draw(screen *ebiten.Image) {
 		// company colour.
 		icon := w.TrackImage
 		if w.Tab == 0 {
-			icon += (w.FrameNo / 4) % 16
+			icon += (w.FrameNo / 4) % max(w.TabFrames, 1)
 		}
 		drawTab(rt, 3, 15, w.Tab == 0, sec, icon, prim)
 		for i := 1; i < 4; i++ {

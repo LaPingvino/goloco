@@ -18,6 +18,9 @@ type RoadObject struct {
 	NumMods     uint8  // Number of road extra/modifications (max 2)
 	NumBridges  uint8  // Number of supported bridges (max 7)
 	NumStations uint8  // Number of supported stations (max 7)
+	// RoadPieces (0x02) is the RoadTraitFlags set: small / very small curves,
+	// slope, steep slope, turnaround, junction.
+	RoadPieces uint16
 }
 
 func (r *RoadObject) GetHeader() *ObjectHeader { return r.Header }
@@ -77,6 +80,7 @@ func ParseRoadObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Roa
 		NumMods:     numMods,
 		NumBridges:  numBridges,
 		NumStations: numStations,
+		RoadPieces:  uint16(data[0x02]) | uint16(data[0x03])<<8,
 	}
 
 	offset := fixedSize
