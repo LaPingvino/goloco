@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/LaPingvino/goloco/pkg/construct"
 	"image"
 
@@ -106,7 +107,7 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 		om := g.r.ObjMgr
 		// lastSelectedBridge: the first available (PARTIAL: the scenario's remembered bridges[]).
 		if list := om.AvailableCompatibleBridges(g.buildObjID, g.consIsRoad(), int(g.w.CurrentYear)); len(list) > 0 {
-			if b := om.GetBridgeObjectByIndex(list[0]); b != nil {
+			if b := om.GetBridgeObjectByIndex(pickSlot(list, g.consBridge)); b != nil {
 				st.BridgeImage = int(b.ImageOffset)
 			}
 		}
@@ -185,6 +186,8 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 			if id := g.consSelectedID(); id >= 0 {
 				g.consPlace(id)
 			}
+		case "bridge":
+			g.openBridgeDropdown(win.X, win.Y, f.SkinColour, f.CompanyColour)
 		case "rotate":
 			g.w.RotateConstructionHead()
 		case "remove":
@@ -351,6 +354,49 @@ func (g *Game) openConsDropdown(wx, wy int, colour uint8, station bool) {
 	d.OnSelect = func(i int) {
 		if i >= 0 && i < len(list) {
 			*sel = list[i]
+		}
+	}
+	g.dropdown = d
+}
+
+// openBridgeDropdown is bridgeDropdown (ConstructionTab.cpp): Dropdown::show
+// at the bridge box (40, 123), 155 wide, items 22 high, in the window's
+// colour: each bridge's image (company colour) with "Max. speed:" and
+// "Height limit:" (dropdown_bridge_stats), the current one highlighted.
+// Units as goloco's Regional settings show them (Imperial: mph, and the
+// height × 16 in ft; metric would be km/h × 1.609375 and × 5 m).
+func (g *Game) openBridgeDropdown(wx, wy int, colour, company uint8) {
+	if g.r == nil || g.r.ObjMgr == nil {
+		return
+	}
+	om := g.r.ObjMgr
+	list := om.AvailableCompatibleBridges(g.buildObjID, g.consIsRoad(), int(g.w.CurrentYear))
+	if len(list) == 0 {
+		return
+	}
+	cur := pickSlot(list, g.consBridge)
+	items := make([]ui.DropdownItem, len(list))
+	hl := -1
+	for i, s := range list {
+		b := om.GetBridgeObjectByIndex(s)
+		if b == nil {
+			continue
+		}
+		speed := "Unlimited"
+		if b.MaxSpeed != 0xFFFF { // kSpeed16Null
+			speed = fmt.Sprintf("%dmph", b.MaxSpeed)
+		}
+		items[i] = ui.DropdownItem{Sprite: int(b.ImageOffset), SpriteColour: company,
+			Lines: []string{"Max. speed: " + speed, fmt.Sprintf("Height limit: %dft", int(b.MaxHeight)*16)}}
+		if s == cur {
+			hl = i
+		}
+	}
+	d := ui.NewDropdownShowItemHeight(wx+40, wy+123, 155, 19, colour, items, 22, g.sw, g.sh)
+	d.Highlighted = hl
+	d.OnSelect = func(i int) {
+		if i >= 0 && i < len(list) {
+			g.consBridge = list[i]
 		}
 	}
 	g.dropdown = d

@@ -28,7 +28,9 @@ type DropdownMenu struct {
 	Translucent bool
 	Highlighted int
 	OnSelect    func(index int)
-	Visible     bool
+	// ItemHeight is _dropdownItemHeight (0 = 10; show's flag 1<<6 sets it).
+	ItemHeight int
+	Visible    bool
 }
 
 // DropdownItem represents a single item in a dropdown menu
@@ -37,7 +39,13 @@ type DropdownItem struct {
 	Disabled  bool
 	Selected  bool // Shows checkmark
 	Separator bool // Is this a separator line?
-	Action    func()
+	// Sprite, if > 0, is drawn at the item's (0, 1), recoloured to
+	// SpriteColour; Lines are small-font lines at (45, 1 + 10·i)
+	// (dropdown_bridge_stats' layout).
+	Sprite       int
+	SpriteColour uint8
+	Lines        []string
+	Action       func()
 }
 
 // Dropdown geometry (Dropdown.cpp common::showText): items 10 px high
@@ -122,13 +130,20 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 		inset color.Color // non-nil: inset text (drawn first, offset (-1,-1) from color)
 	}
 	var labels []label
+	ih := d.itemHeight()
+	type small struct {
+		text string
+		x, y int
+		c    color.Color
+	}
+	var smalls []small
 	draw := func(rt *gfx8.RenderTarget) {
 		gfx8.FillRectInset(rt, 0, 0, d.Width-1, d.Height-1, gfx8.InsetColour{Map: cmap, Translucent: d.Translucent, Trans: trans}, 0) // the Wt3 panel
 		for i, it := range d.Items {
 			if it.Separator {
 				// Two lines at mid-row, item width - 1 wide: shades 3 and 7, or for a
 				// translucent colour getTranslucent(c)+1 (highlight) then +2 (shadow).
-				sy := 1 + i*dropdownItemHeight + dropdownItemHeight/2
+				sy := 1 + i*ih + ih/2
 				if d.Translucent {
 					base := int(paint.TranslucentColour[d.Colour][1])
 					m1, _ := g1.GetPaletteMap(base + 1)
@@ -145,7 +160,7 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 			// (setTextColours(shade 9, black0, black0), no outline).
 			var c color.Color = pal[gfx8.Shade(cmap, 9)]
 			if i == d.Highlighted {
-				gfx8.FillRectTranslucent(rt, 2, 2+i*dropdownItemHeight, 2+d.ItemWidth-1, 2+i*dropdownItemHeight+dropdownItemHeight-1, highlight)
+				gfx8.FillRectTranslucent(rt, 2, 2+i*ih, 2+d.ItemWidth-1, 2+i*ih+ih-1, highlight)
 				if wm, err := g1.GetPaletteMap(colourWhite); err == nil {
 					c = pal[gfx8.Shade(wm, 9)] // Colour::white through the same rule
 				}
@@ -156,7 +171,18 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 				// (+1,+1) (TextRenderer inset, font without the dark flag).
 				inset, c = pal[gfx8.Shade(cmap, 6)], pal[gfx8.Shade(cmap, 4)]
 			}
-			labels = append(labels, label{it.Text, 2, 1 + i*dropdownItemHeight, c, inset})
+			if it.Sprite > 0 && it.Sprite < len(g1.Elements) {
+				if sp, err := gfx8.Decode(&g1.Elements[it.Sprite]); err == nil {
+					m, _ := g1.GetPaletteMap(int(it.SpriteColour))
+					gfx8.DrawSpriteNoise(rt, sp, 2, 1+i*ih+1, gfx8.OpFor(sp, m != nil, false), m, nil)
+				}
+			}
+			for k, ln := range it.Lines {
+				smalls = append(smalls, small{ln, 2 + 45, 1 + i*ih + 1 + 10*k, c})
+			}
+			if it.Text != "" {
+				labels = append(labels, label{it.Text, 2, 1 + i*ih, c, inset})
+			}
 		}
 	}
 	if d.Translucent {
@@ -180,6 +206,16 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 		}
 		DrawTextBold(screen, l.text, d.X+l.x, d.Y+l.y, l.color)
 	}
+	for _, l := range smalls {
+		DrawText(screen, l.text, d.X+l.x, d.Y+l.y, l.c)
+	}
+}
+
+func (d *DropdownMenu) itemHeight() int {
+	if d.ItemHeight > 0 {
+		return d.ItemHeight
+	}
+	return dropdownItemHeight
 }
 
 // colourWhite is Colour::white.
@@ -202,7 +238,7 @@ func (d *DropdownMenu) HandleClick(x, y int) bool {
 		return false
 	}
 
-	const itemHeight = dropdownItemHeight
+	itemHeight := d.itemHeight()
 	relY := y - d.Y - 2 // getItemIndexAtPosition: "2px of padding on the top of the list"
 	if relY < 0 {
 		return false
@@ -245,7 +281,7 @@ func (d *DropdownMenu) UpdateHover(x, y int) {
 		return
 	}
 
-	const itemHeight = dropdownItemHeight
+	itemHeight := d.itemHeight()
 	relY := y - d.Y - 2 // getItemIndexAtPosition: "2px of padding on the top of the list"
 	if relY < 0 {
 		d.Highlighted = -1
@@ -269,7 +305,13 @@ func (d *DropdownMenu) UpdateHover(x, y int) {
 // top), width + 4 wide, kept on the sw × sh screen; in the window's colour
 // (opaque unless the colour is translucent).
 func NewDropdownShow(x, y, width, height int, colour uint8, items []DropdownItem, sw, sh int) *DropdownMenu {
-	h := len(items)*dropdownItemHeight + 3 + 1
+	return NewDropdownShowItemHeight(x, y, width, height, colour, items, dropdownItemHeight, sw, sh)
+}
+
+// NewDropdownShowItemHeight is Dropdown::show with flag 1<<6: items of the
+// given height.
+func NewDropdownShowItemHeight(x, y, width, height int, colour uint8, items []DropdownItem, itemHeight, sw, sh int) *DropdownMenu {
+	h := len(items)*itemHeight + 3 + 1
 	oy := y + height
 	if h+oy > sh || oy < 0 {
 		oy -= height + h
@@ -286,5 +328,5 @@ func NewDropdownShow(x, y, width, height int, colour uint8, items []DropdownItem
 	x = max(x, 0)
 	x = min(x+w, sw) - w
 	return &DropdownMenu{X: x, Y: oy, Width: w, Height: h, ItemWidth: width, Colour: colour,
-		Items: items, Highlighted: -1, Visible: true}
+		Items: items, Highlighted: -1, Visible: true, ItemHeight: itemHeight}
 }

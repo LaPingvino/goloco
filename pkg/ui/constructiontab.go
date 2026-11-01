@@ -279,6 +279,8 @@ func ConstructionHit(rx, ry int, st ConstructionTabState) string {
 		}
 	}
 	switch {
+	case st.Hover && st.BridgeImage >= 0 && in(40, 123, 58, 20):
+		return "bridge" // the bridge box (bridge_dropdown opens the list)
 	case in(3, 145, 132, 100):
 		return "construct"
 	case in(111, 248, 24, 24):
