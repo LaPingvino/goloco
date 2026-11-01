@@ -176,6 +176,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    underground view NOT ported. render8 now fills the cliff gaps with rock faces sorted against the surfaces.
    NEXT: water in render8 (main water +35 as a dst mask through the +41 map — gfx8 OpDst — +30 attached, waves,
    water cliff edges), then the aligned pixel diff against the wasm --diag crop.
+   Tick 24: water DONE in render8 (paint.PaintWater: +35+shape as gfx8 OpDst through the +41 map at waterHeight,
+   bbox 32,32,-1; +30+shape attached; water cliff edges; no waves in a still frame). At Weatherworld (231,25) —
+   where the Ebiten renderer blends water over the town — the water now stops cleanly at the coast; the land in
+   front is untouched (in-order blending). NEXT: objects in render8, in the order the deviations list ranks them
+   (trees + buildings first: they are what water was painted over), each from its upstream painter.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -249,3 +254,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 21 (item 3i step 3a) — cmd/render8: headless CPU render of land surfaces via gfx8+paint; title-map region matches goloco's diag structure; cliffs next, then an aligned pixel diff.
 - 2026-11-01 tick 22 (item 3i) — land image formula verified against LandObject::load; gfx8 masked draw (bitwise AND as upstream) + paint support, tested; cliffs next.
 - 2026-11-01 tick 23 (item 3i) — cliff edges ported (pkg/paint/surface.go) and drawn by render8; gaps filled.
+- 2026-11-01 tick 24 (item 3i) — water ported into the CPU renderer (exact dst blend in paint order); at the town-by-the-sea spot the water no longer spills onto the land in front.
