@@ -306,6 +306,16 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    PaintSurface.cpp by gen.sh into surfacedata_gen.go (literal integer table, no hand copy). Title farm: crop rows
    render. FOUND: goloco doesn't parse SNOW COVERAGE at all — both the land and field branches draw snow
    (SnowObject image + kSnowCoverageSlopeToMask) → item 3k.
+3l. [ ] **Keep tile element order (blocks tunnels; removes 3 APPROXIMATIONs).** Upstream paints a tile's
+   elements in stored (height) order: an underground tunnel track comes BEFORE the surface, registers
+   insertTunnel, and the surface's cliff edges then draw the portal (PaintSurface.cpp 1248-1301); signals and
+   stations paint against `entry.prev()`; tracks/roads interleave per baseZ. goloco keeps typed slices only.
+   Plan: scenario.Tile gets `Order []ElemRef{Kind, Index}` appended in parseTileElements (each case; kept through
+   the surface rebuild at loader.go ~396); sim.Tile copies it (map.go ~88) and EVERY mutation keeps it in step:
+   sim/map.go AddTrack (42) / AddRoad (61) insert by baseZ like TileManager::insertElement; sim/construction.go
+   181/294 removals; world/world.go 1033/1043 undo pops; world/station.go 82. Then scene walks Order and
+   dispatches like paintTileElements, with prev() available — signal/station/track-road APPROXIMATIONs go, and
+   tunnels (insertTunnel from the track/road tunnel tables + the cliff-edge portal code) can be ported.
 3k. [x] **Snow cover.** DONE tick 44 for land tiles (coverage = slope byte bits 5-7, already parsed; SnowObject loader;
    full cover → snow image, 1-4 → snow attached masked by kSnowCoverageSlopeToMask — table names extracted from
    PaintSurface.cpp and resolved by the compiler via gen.sh). Bottleneck Blues renders snow. NOT YET: industry
@@ -421,3 +431,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 55 (item 3j) — FIX: GetPaletteMap assumed palette maps at 2170+colour; true for colours 0..31 only — ExtColour 32..42 are g1 417..427 and later ones are 11 lower. Now from kDefaultPaletteToG1Offset (generated, pkg/assets/palettedata_gen.go). Translucent/shadow colour tables generated too (pkg/paint/colourdata_gen.go). No visible change today (all callers pass 0..31; render8 byte-identical) — needed for the translucent canopy (next) and shadows.
 - 2026-11-01 tick 56 (item 3j) — translucent station canopies (train straight + diagonal NE1/SE3, road stations): getTranslucent(companyColour) or unk2E when not recolourable; station flag offsets now from the compiler (agreed with the hand values). Title station's glass canopy renders tinted.
 - 2026-11-01 tick 57 (item 3j) — shadows: buildings ((parts+elevators+variation)*4, getShadow(orange)), industries (getShadow(own colour), primary → src+dst blend), airports, docks; added after resetLastPS as upstream (before the 2×2 front test). Original data: only BLDPYLON/BLDTRANS have shadows (Bottleneck Blues 246,54: shadow patch under trees; reference views unchanged, as they contain no shadowed objects). gfx8 blend: out-of-range src row now leaves dst (upstream asserts; Go would panic).
+- 2026-11-01 tick 58 (item 3l, design) — tunnels need the tile's element order (tunnel track precedes the surface); goloco loses it in typed slices. Plan + every mutation site recorded under 3l; no code yet (switched to Joop's video request).
