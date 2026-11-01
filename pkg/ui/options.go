@@ -6,21 +6,17 @@ import (
 )
 
 // Options — a port of Ui/Windows/Options.cpp: the common frame (caption,
-// close button, panel, seven 31 px tabs) and the Audio tab (Sound group with
-// the device row and "Play title screen music", Volume group with six
-// sliders in two columns). Colours: the skin's windowTitlebarColour and
-// windowOptionsColour.
-// Tabs switch with upstream's size and caption per tab; Display, Audio,
-// Rendering, Regional, Controls and Company have their contents (Rendering and
-// Company: display only, at Config's defaults) (Display: display only, at Config's
-// defaults — goloco has no screen-mode/scale/frame-limit settings yet) (Regional: display only — its dropdowns don't
-// open, and currency symbols/formatting are not applied yet).
-// PARTIAL: Misc shows only the common
-// frame (their widgets aren't ported yet); Controls: only edge scrolling has a
-// goloco counterpart, Customize Keys opens nothing; tab icon
-// animation; the device dropdown (shows "Default"); goloco has only a music
-// channel, so the master/effects/vehicles/interface/ambient sliders are drawn
-// at 100% and inert; slider dragging (a click sets the music volume).
+// close button, panel, seven 31 px tabs, each tab with upstream's size and
+// caption) and all seven tabs' widgets. Colours: the skin's
+// windowTitlebarColour and windowOptionsColour.
+// Working: the tabs, Audio's title-music checkbox and music volume, Controls'
+// edge scrolling. Display only (at Config's defaults, goloco has no such
+// settings yet): Display, Rendering, Regional (dropdowns don't open), Company,
+// Misc, and Controls' other two checkboxes.
+// PARTIAL: tab icon animation; Customize Keys opens nothing; the audio device
+// dropdown (shows "Default"); goloco has only a music channel, so the
+// master/effects/vehicles/interface/ambient sliders are drawn at 100% and
+// inert; slider dragging (a click sets the music volume).
 
 const (
 	optW           = 366
@@ -221,6 +217,19 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			gfx8.FillRectInset(rt, 26, 94, 26+160-1, 94+12-1, gfx8.InsetColour{Map: sec}, 0)
 			return
 		}
+		if w.Tab == OptTabMisc {
+			groupBox(rt, 4, 49, 412, 62, sec, "Gameplay tweaks")
+			groupBox(rt, 4, 115, 412, 77, sec, "Vehicle/track behaviour")
+			groupBox(rt, 4, 196, 412, 65, sec, "Autosave preferences")
+			for _, y := range []int{64, 79, 94, 130, 145, 160, 175} {
+				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			}
+			optDropdown(rt, 250, 211, 156, sec)
+			gfx8.FillRectInset(rt, 250, 226, 250+156-1, 226+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			gfx8.FillRectInset(rt, 250+156-26, 227, 250+156-26+13-1, 227+10-1, gfx8.InsetColour{Map: sec}, 0)
+			gfx8.FillRectInset(rt, 250+156-13, 227, 250+156-13+12-1, 227+10-1, gfx8.InsetColour{Map: sec}, 0)
+			return
+		}
 		if w.Tab == OptTabRendering {
 			groupBox(rt, 4, 49, 392, 128, sec, "Map rendering")
 			groupBox(rt, 4, 180, 392, 32, sec, "User interface")
@@ -309,6 +318,34 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 	inset := func(t string, x, y int) { // colour.inset(): shade 4 at +1,+1, then shade 6
 		DrawTextBold(screen, t, x+1, y+1, pal[gfx8.Shade(sec, 4)])
 		DrawTextBold(screen, t, x, y, pal[gfx8.Shade(sec, 6)])
+	}
+	if w.Tab == OptTabMisc {
+		// Config defaults: every tweak off, autosave every month, 12 autosaves.
+		// "Export plug-in objects with saved games" is hidden: it shows only when
+		// the object index holds custom objects.
+		DrawTextBold(screen, "Gameplay tweaks", w.X+4+5, w.Y+49, text)
+		DrawTextBold(screen, "Vehicle/track behaviour", w.X+4+5, w.Y+115, text)
+		DrawTextBold(screen, "Autosave preferences", w.X+4+5, w.Y+196, text)
+		for _, c := range []struct {
+			y     int
+			label string
+		}{{64, "Enable cheats/debugging toolbar menu"}, {79, "Disable AI companies"}, {94, "Disable town expansion"},
+			{130, "Disable vehicle breakdowns"}, {145, "Disable vehicle load penalty"},
+			{160, "Disable station size limitations"}, {175, "Trains reverse at signals"}} {
+			DrawTextBold(screen, c.label, w.X+10+10+4, w.Y+c.y, text)
+		}
+		DrawTextBold(screen, "Autosave frequency:", w.X+10, w.Y+211, text)
+		DrawTextBold(screen, "Autosave amount:", w.X+10, w.Y+226, text)
+		DrawTextBold(screen, "Every month", w.X+250+1, w.Y+211+1, black) // drawDropdownContent
+		DrawTextBold(screen, "12", w.X+250+1, w.Y+226+1, black)
+		arrow := string(rune(170))
+		aw, _ := MeasureTextBold(arrow)
+		DrawTextBold(screen, arrow, w.X+250+156-12+(11-1)/2-aw/2, w.Y+211+1, black)
+		mw, _ := MeasureTextBold("-")
+		pw, _ := MeasureTextBold("+")
+		DrawTextBold(screen, "-", w.X+250+156-26+(13-1)/2-mw/2, w.Y+227, black)
+		DrawTextBold(screen, "+", w.X+250+156-13+(12-1)/2-pw/2, w.Y+227, black)
+		return
 	}
 	if w.Tab == OptTabRendering {
 		// Config defaults: vehicles/station names min. scale 2 (Quarter-scale),
