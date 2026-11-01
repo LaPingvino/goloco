@@ -14,7 +14,6 @@ g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/gen_track" "$here/gen
 "$tmp/gen" > "$repo/pkg/paint/roaddata_gen.go"
 "$tmp/gen_track" > "$repo/pkg/paint/trackdata_gen.go"
 gofmt -w "$repo/pkg/paint/roaddata_gen.go" "$repo/pkg/paint/trackdata_gen.go"
-rm -rf "$tmp"
 echo "wrote pkg/paint/roaddata_gen.go + trackdata_gen.go (OpenLoco $(git -C "$OL" rev-parse --short HEAD 2>/dev/null || echo '?'))"
 
 # Plain integer tables that live inside upstream .cpp files (static, not in a
@@ -31,3 +30,31 @@ echo "wrote pkg/paint/roaddata_gen.go + trackdata_gen.go (OpenLoco $(git -C "$OL
   echo "}"
 } > "$repo/pkg/paint/surfacedata_gen.go"
 gofmt -w "$repo/pkg/paint/surfacedata_gen.go"
+
+# Tables of ImageIds names inside upstream .cpp files: take the names in order
+# from the source, let the compiler resolve their values.
+snowNames=$(awk '/kSnowCoverageSlopeToMask = \{/,/^    \};/' "$OL/src/OpenLoco/src/Paint/PaintSurface.cpp" | grep -o 'ImageIds::[A-Za-z0-9_]*')
+{
+  echo '#include "Graphics/ImageIds.h"'
+  echo '#include "Objects/SnowObject.h"'
+  echo '#include <cstdio>'
+  echo 'using namespace OpenLoco;'
+  echo 'int main() {'
+  echo '  std::printf("// SnowCoverageSlopeToMask is PaintSurface.cpp kSnowCoverageSlopeToMask [coverage-1][displaySlope].\n");'
+  echo '  std::printf("var SnowCoverageSlopeToMask = [4][19]uint32{\n");'
+  i=0
+  for n in $snowNames; do
+    if [ $((i % 19)) -eq 0 ]; then echo '  std::printf("\t{");'; fi
+    echo "  std::printf(\"%u, \", (unsigned)$n);"
+    if [ $((i % 19)) -eq 18 ]; then echo '  std::printf("},\n");'; fi
+    i=$((i+1))
+  done
+  echo '  std::printf("}\n\n");'
+  echo '  std::printf("// SnowObjectSize is sizeof(SnowObject); SnowSurfaceFullZoom is SnowLine::ImageIds::surfaceFullZoom.\n");'
+  echo '  std::printf("const (\n\tSnowObjectSize = %zu\n\tSnowSurfaceFullZoom = %u\n)\n", sizeof(SnowObject), (unsigned)SnowLine::ImageIds::surfaceFullZoom);'
+  echo '}'
+} > "$tmp/snow.cpp"
+g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/snow" "$tmp/snow.cpp"
+"$tmp/snow" >> "$repo/pkg/paint/surfacedata_gen.go"
+gofmt -w "$repo/pkg/paint/surfacedata_gen.go"
+rm -rf "$tmp"

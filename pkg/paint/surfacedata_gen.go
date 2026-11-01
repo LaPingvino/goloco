@@ -5,3 +5,17 @@ package paint
 // SurfaceTreeHeight is PaintSurface.cpp k4FD30C: height offset of an industry field's
 // tree image per display slope.
 var SurfaceTreeHeight = [19]int16{0, 0, 0, 8, 0, 0, 8, 16, 0, 8, 0, 16, 8, 16, 16, 16, 16, 16, 16}
+
+// SnowCoverageSlopeToMask is PaintSurface.cpp kSnowCoverageSlopeToMask [coverage-1][displaySlope].
+var SnowCoverageSlopeToMask = [4][19]uint32{
+	{3822, 3823, 3824, 3825, 3826, 3827, 3828, 3829, 3830, 3831, 3832, 3833, 3834, 3835, 3836, 3837, 3838, 3839, 3840},
+	{3841, 3842, 3843, 3844, 3845, 3846, 3847, 3848, 3849, 3850, 3851, 3852, 3853, 3854, 3855, 3856, 3857, 3858, 3859},
+	{3860, 3861, 3862, 3863, 3864, 3865, 3866, 3867, 3868, 3869, 3870, 3871, 3872, 3873, 3874, 3875, 3876, 3877, 3878},
+	{3879, 3880, 3881, 3882, 3883, 3884, 3885, 3886, 3887, 3888, 3889, 3890, 3891, 3892, 3893, 3894, 3895, 3896, 3897},
+}
+
+// SnowObjectSize is sizeof(SnowObject); SnowSurfaceFullZoom is SnowLine::ImageIds::surfaceFullZoom.
+const (
+	SnowObjectSize      = 6
+	SnowSurfaceFullZoom = 95
+)

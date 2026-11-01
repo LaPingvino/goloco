@@ -43,6 +43,7 @@ type ObjectManager struct {
 	LandObjects          []*LandObject
 	TreeObjects          []*TreeObject               // all loaded tree objects
 	IndustryObjects      []*IndustryObject           // all loaded industry objects
+	SnowObj              *SnowObject                 // the single snow object
 	BuildingObjects      []*BuildingObject           // all loaded building objects
 	WallObjects          []*WallObject               // all loaded wall objects
 	TrackObjects         []*TrackObject              // all loaded track objects
@@ -347,6 +348,19 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		loaded.Object = bldg
 		loaded.ImageOffset = bldg.ImageOffset
 		m.BuildingObjects = append(m.BuildingObjects, bldg)
+
+	case ObjectTypeSnow:
+		var g1Loader G1Loader
+		if m.G1File != nil {
+			g1Loader, _ = m.G1File.(G1Loader)
+		}
+		snow, err := ParseSnowObjectWithG1(header, decompressed, SnowObjectSize, g1Loader)
+		if err != nil {
+			return fmt.Errorf("parsing snow: %w", err)
+		}
+		loaded.Object = snow
+		loaded.ImageOffset = snow.ImageOffset
+		m.SnowObj = snow
 
 	case ObjectTypeIndustry:
 		var g1Loader G1Loader
@@ -1104,3 +1118,7 @@ func (m *ObjectManager) ReorderIndustryObjects(order []string) {
 	}
 	m.IndustryObjects = reordered
 }
+
+// SnowObjectSize is sizeof(SnowObject) upstream (6: StringId name + uint32 image;
+// checked by tools/gen-paintdata, see pkg/paint SnowObjectSize).
+const SnowObjectSize = 6
