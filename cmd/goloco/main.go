@@ -1172,6 +1172,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regional" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "renderscale" && g.options != nil {
+			g.options.Tab = ui.OptTabRendering // and a click on Vehicles min. display scale
+			g.options.HandleClick(g.options.X+240, g.options.Y+66)
+		}
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "framelimit" && g.options != nil {
 			g.options.Tab = ui.OptTabDisplay // and a click on Frame rate limit
 			g.options.HandleClick(g.options.X+240, g.options.Y+114)

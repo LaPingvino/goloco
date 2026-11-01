@@ -98,7 +98,11 @@ type OptionsWindow struct {
 	// (uncapFPS / display.vsync); OnFrameLimit is told a new one.
 	FrameLimit   int
 	OnFrameLimit func(int)
-	TitleMode    bool
+	// The Rendering tab's Config (vehiclesMinScale, stationNamesMinScale:
+	// 0 full … 3 eighth, default 2; constructionMarker: 0 white, 1
+	// translucent). PARTIAL: goloco's renderer doesn't read them yet.
+	VehiclesMinScale, StationNamesMinScale, ConstructionMarker int
+	TitleMode                                                  bool
 }
 
 // Regional tab rows (Regional::_widgets): label at x 10, dropdown at x 183,
@@ -108,6 +112,12 @@ var optScreenModes = []string{"Windowed", "Fullscreen", "Fullscreen (borderless 
 
 // optFrameLimits are frameRateLimitInternal / Vsync / Unrestricted.
 var optFrameLimits = []string{"Internal speed (default)", "Vertical sync", "Unrestricted"}
+
+// optScales are full_scale … eighth_scale; optMarkers white / translucent.
+var (
+	optScales  = []string{"Full-scale", "Half-scale", "Quarter-scale", "Eighth-scale"}
+	optMarkers = []string{"White", "Translucent"}
+)
 
 var optRegionalRows = [5]struct {
 	y     int
@@ -126,7 +136,8 @@ func (w *OptionsWindow) size() (int, int) { s := optTabSize[w.Tab]; return s[0],
 
 // NewOptions opens the window centred (createWindowCentred).
 func NewOptions(sw, sh int, titleColour, colour uint8) *OptionsWindow {
-	return &OptionsWindow{X: (sw - optW) / 2, Y: (sh - optH) / 2, TitleColour: titleColour, Colour: colour, Tab: OptTabAudio}
+	return &OptionsWindow{X: (sw - optW) / 2, Y: (sh - optH) / 2, TitleColour: titleColour, Colour: colour, Tab: OptTabAudio,
+		VehiclesMinScale: 2, StationNamesMinScale: 2}
 }
 
 func (w *OptionsWindow) in(r [4]int, px, py int) bool {
@@ -170,6 +181,31 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 					w.OnControl(i, w.Controls[i])
 				}
 				return
+			}
+		}
+		return
+	}
+	if w.Tab == OptTabRendering {
+		// vehicleZoomMouseDown, stationNamesScaleMouseDown,
+		// constructionMarkerMouseDown: Dropdown::show at the combobox, width() − 4.
+		for _, c := range []struct {
+			y     int
+			items []string
+			v     *int
+		}{{63, optScales, &w.VehiclesMinScale}, {79, optScales, &w.StationNamesMinScale}, {95, optMarkers, &w.ConstructionMarker}} {
+			if w.in([4]int{235, c.y, 154, 12}, px, py) && w.OpenDropdown != nil {
+				v := c.v
+				items := make([]DropdownItem, len(c.items))
+				for i, t := range c.items {
+					items[i] = DropdownItem{Text: t, Selected: i == *v, MoveX10: true}
+				}
+				d := NewDropdownShow(w.X+235, w.Y+c.y, 154-1-4, 11, w.Colour, items, 1<<20, 1<<20)
+				d.OnSelect = func(i int) {
+					if i >= 0 {
+						*v = i // (PARTIAL: Config::write)
+					}
+				}
+				w.OpenDropdown(d)
 			}
 		}
 		return
@@ -447,8 +483,8 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		for _, r := range []struct {
 			ly, y        int
 			label, value string
-		}{{63, 63, "Vehicles min. display scale:", "Quarter-scale"}, {79, 79, "Station names min. display scale:", "Quarter-scale"},
-			{95, 95, "Construction Marker:", "White"}, {195, 194, "Window frame style:", "Gradient (default)"}} {
+		}{{63, 63, "Vehicles min. display scale:", optScales[w.VehiclesMinScale]}, {79, 79, "Station names min. display scale:", optScales[w.StationNamesMinScale]},
+			{95, 95, "Construction Marker:", optMarkers[w.ConstructionMarker]}, {195, 194, "Window frame style:", "Gradient (default)"}} {
 			DrawTextBold(screen, r.label, w.X+10, w.Y+r.ly, text)
 			DrawTextBold(screen, r.value, w.X+235+1, w.Y+r.y+1, black)
 			DrawTextBold(screen, arrow, w.X+235+154-12+(11-1)/2-aw/2, w.Y+r.y+1, black)
