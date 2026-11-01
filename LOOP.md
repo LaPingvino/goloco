@@ -128,6 +128,15 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    surface at baseHeight with its displaySlope (paintMainSurface, ~1545-1569). Fixed: the seabed's real slope
    now shows through the blend — shallow bands along the coast, as in the reference. Open: the light-green tile
    at the waterline in the Weatherworld diag (growth stage or variation?) — check against PaintSurface next.
+   Tick 18: that tile is (251,137), slope 0x6 → display slope 9, a light-facing facet; data consistent (growth 4
+   land, 0 under water, water level = next land step) and the reference shows the same bright coast slopes →
+   not a bug. Roads: a headless test (pkg/sim) places slope pieces 5-8 in all rotations and moves the head by DZ
+   — construction is fine; the problem must be drawing. Real slope pieces exist in Weatherworld at (228,23)…
+   (233,28) (road 8, rot 3). Their capture showed a WORSE issue: water blended OVER the town in front of the sea
+   — the blend recolours every pixel in a water tile's footprint, buildings drawn later included (the old opaque
+   'pass 1.5' covered the same buildings). NEXT TICK (interim, until 3i): draw tracks/roads/buildings/trees/
+   walls/stations/signals also into an object-mask buffer and make palblend skip pixels an object covers; then
+   capture (231,25) again to judge the road slopes.
 3i. [ ] **DESIGN (bold, Joop-approved direction): port the software renderer.** OpenLoco draws into an 8-bit
    palette-indexed RenderTarget with software sprite blits (Graphics/DrawSpriteHelper.hpp ops: none,
    transparent, src remap, dst blend, src+dst blend, noise mask) and a sorted paint session (Paint/Paint.cpp:
@@ -203,3 +212,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 15 (item 3e water c) — exact palette-map blend implemented as a Kage shader; terrain read comes back black under headless WebGL, so it's switched off (exactWaterBlend=false) pending a repro; water looks as before; ripple/wave draw order now after the blend; dead CPU tint pass removed.
 - 2026-11-01 tick 16 (item 3e water c done) — exact palette-map blend on the CPU (pkg/palblend + test); mask bug (DecodeSprite drops palette-alpha-0 indices) fixed; water now matches the reference look; live. New rule from Joop: exact CPU first, optimise with equivalence checks. Queued 3i: port OpenLoco's indexed software renderer + paint sort.
 - 2026-11-01 tick 17 (item 3e water d / slopes) — submerged terrain is no longer flattened and lifted (a misread of getWaterSurface); seabed slopes show through the water like the reference; slope→display table checked equal to upstream. Live build updated.
+- 2026-11-01 tick 18 (item 3e) — waterline tile explained (light-facing slope, not a bug); road slope placement proven by a headless test; found water blended over buildings near the coast (draw order) → interim object-mask fix queued, then the road slope capture.
