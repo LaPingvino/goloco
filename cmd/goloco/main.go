@@ -1104,6 +1104,9 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			g.options.Tab = ui.OptTabControls
 			g.options.Controls = [3]bool{true, false, true}
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regional" && g.options != nil {
+			g.options.Tab = ui.OptTabRegional
+		}
 	}
 	if os.Getenv("GOLOCO_DIAG_BROWSE") != "" && g.browse == nil && !g.diagBrowseDone {
 		g.diagBrowseDone = true
@@ -1658,6 +1661,17 @@ func (g *Game) openOptionsWindow() {
 		w.MusicVolume = g.audioMgr.MusicVolume()
 	}
 	w.OnClose = func() { g.options = nil }
+	// Regional tab: the scenario's currency object, the preferred one
+	// (Config default CURRDOLL), and title mode.
+	w.TitleMode = g.inTitleScreen
+	if g.objMgr != nil {
+		if c := g.objMgr.GetCurrencyObject(g.objMgr.CurrencySlot); c != nil {
+			w.CurrencyName = c.Name
+		}
+		if c := g.objMgr.GetCurrencyObject("CURRDOLL"); c != nil {
+			w.PreferredCurrencyName = c.Name
+		}
+	}
 	// Controls tab: Config::edgeScrolling (default on). zoomToCursor and
 	// invertRightMouseViewPan are kept in the window only: goloco has neither yet.
 	w.Controls[0] = !g.noEdgeScrolling

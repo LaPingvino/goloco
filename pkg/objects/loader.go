@@ -40,6 +40,8 @@ type LoadedObject struct {
 type ObjectManager struct {
 	Objects              map[string]*LoadedObject
 	Vehicles             []*VehicleObject
+	CurrencyObjects      []*CurrencyObject // every loaded currency object (one is in use per scenario)
+	CurrencySlot         string            // DAT name of the scenario's currency (its one currency slot)
 	LandObjects          []*LandObject
 	TreeObjects          []*TreeObject               // all loaded tree objects
 	IndustryObjects      []*IndustryObject           // all loaded industry objects
@@ -226,6 +228,14 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		vehicle.DisplayName = extractFirstString(decompressed)
 		loaded.Object = vehicle
 		m.Vehicles = append(m.Vehicles, vehicle)
+
+	case ObjectTypeCurrency:
+		cur, err := ParseCurrencyObject(header, decompressed)
+		if err != nil {
+			return fmt.Errorf("parsing currency: %w", err)
+		}
+		loaded.Object = cur
+		m.CurrencyObjects = append(m.CurrencyObjects, cur)
 
 	case ObjectTypeCargo:
 		var g1Loader G1Loader
@@ -1211,4 +1221,14 @@ func (m *ObjectManager) ReorderDockObjects(order []string) {
 		}
 	}
 	m.DockObjects = reordered
+}
+
+// GetCurrencyObject returns the loaded currency object with that DAT name.
+func (m *ObjectManager) GetCurrencyObject(name string) *CurrencyObject {
+	if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+		if c, ok := obj.Object.(*CurrencyObject); ok {
+			return c
+		}
+	}
+	return nil
 }

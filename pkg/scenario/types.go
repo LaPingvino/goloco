@@ -52,6 +52,8 @@ type Scenario struct {
 
 	// IndustryObjectOrder is the list of industry-object names in slot order.
 	IndustryObjectOrder []string
+	// CurrencyObject is the DAT name in the currency slot (RequiredObjects 129).
+	CurrencyObject string
 
 	// IndustryObjectIDs[industry index] = that industry's object id (GameState
 	// industries table); IndustryElement.IndustryID indexes it.
