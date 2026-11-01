@@ -111,6 +111,7 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 		text  string
 		x, y  int
 		color color.Color
+		inset color.Color // non-nil: inset text (drawn first, offset (-1,-1) from color)
 	}
 	var labels []label
 	draw := func(rt *gfx8.RenderTarget) {
@@ -132,18 +133,22 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 				}
 				continue
 			}
-			// PARTIAL: upstream draws the string in the window's primary colour
-			// through the text renderer's colour handling (not ported); shade 9
-			// stands in.
+			// TextRenderer: a plain colour draws glyphs in getShade(colour, 9)
+			// (setTextColours(shade 9, black0, black0), no outline).
 			var c color.Color = pal[gfx8.Shade(cmap, 9)]
 			if i == d.Highlighted {
 				gfx8.FillRectTranslucent(rt, 2, 2+i*dropdownItemHeight, 2+d.ItemWidth-1, 2+i*dropdownItemHeight+dropdownItemHeight-1, highlight)
-				c = color.White
+				if wm, err := g1.GetPaletteMap(colourWhite); err == nil {
+					c = pal[gfx8.Shade(wm, 9)] // Colour::white through the same rule
+				}
 			}
+			var inset color.Color
 			if it.Disabled {
-				c = pal[gfx8.Shade(cmap, 7)] // PARTIAL: upstream draws the inset (embossed) text style
+				// colour.inset(): each glyph drawn solid in shade 6, then shade 4 at
+				// (+1,+1) (TextRenderer inset, font without the dark flag).
+				inset, c = pal[gfx8.Shade(cmap, 6)], pal[gfx8.Shade(cmap, 4)]
 			}
-			labels = append(labels, label{it.Text, 2, 1 + i*dropdownItemHeight, c})
+			labels = append(labels, label{it.Text, 2, 1 + i*dropdownItemHeight, c, inset})
 		}
 	}
 	if d.Translucent {
@@ -160,9 +165,17 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 		screen.DrawImage(ebiten.NewImageFromImage(img), op)
 	}
 	for _, l := range labels {
+		if l.inset != nil {
+			DrawTextBold(screen, l.text, d.X+l.x, d.Y+l.y, l.inset)
+			DrawTextBold(screen, l.text, d.X+l.x+1, d.Y+l.y+1, l.color)
+			continue
+		}
 		DrawTextBold(screen, l.text, d.X+l.x, d.Y+l.y, l.color)
 	}
 }
+
+// colourWhite is Colour::white.
+const colourWhite = 2
 
 // extColourUnk2E is ExtColour::unk2E, the dropdown's highlight translucency.
 const extColourUnk2E = 0x2E
