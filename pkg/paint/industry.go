@@ -24,6 +24,7 @@ type IndustryObj struct {
 	PartAnimSpeed      []uint8
 	AnimationSequences [4][]uint8
 	LargeTile          bool // buildingSizeFlags & (1 << buildingType)
+	Shadow             Shadow
 }
 
 // PaintIndustry paints an industry element at the current sprite position.
@@ -39,6 +40,7 @@ func (s *Session) PaintIndustry(el IndustryEl, obj IndustryObj, colourMap []uint
 	bbOff.Z += baseHeight
 	bbSz.Z += bbz
 	s.last = nil // session.resetLastPS()
+	s.paintShadow(obj.Shadow, rotation, imgOff, bbOff, bbSz, sprite)
 	if obj.LargeTile && int(el.SequenceIndex^2) != int(-int(s.Rotation))&3 {
 		return
 	}
@@ -105,6 +107,7 @@ type AirportObj struct {
 	PartAnimSpeed  []uint8
 	LargeTile      bool    // largeTiles & (1 << variation)
 	Remap          []uint8 // company colour of elStation.owner()
+	Shadow         Shadow
 }
 
 // PaintAirport — a port of Paint/PaintAirport.cpp paintAirport and
@@ -130,6 +133,7 @@ func (s *Session) PaintAirport(rotationEl, sequenceIndex, baseZ uint8, obj Airpo
 	bbOff.Z += baseHeight
 	bbSz.Z += bbz
 	s.last = nil // session.resetLastPS()
+	s.paintShadow(obj.Shadow, rotation, imgOff, bbOff, bbSz, sprite)
 	if obj.LargeTile && int(sequenceIndex^2) != int(-int(s.Rotation))&3 {
 		return // only the front tile of a 2×2 draws
 	}
@@ -170,6 +174,7 @@ func (s *Session) PaintDocks(rotationEl, sequenceIndex, baseZ, clearZ uint8, obj
 	bbOff.Z += baseHeight
 	bbSz.Z += bbz
 	s.last = nil // session.resetLastPS()
+	s.paintShadow(obj.Shadow, rotation, imgOff, bbOff, bbSz, sprite)
 	if int(sequenceIndex^2) == int(-int(s.Rotation))&3 {
 		s.paintStationBuilding(obj, imgOff, bbOff, bbSz, rotation, tileX, tileY, ticks, sprite)
 	}

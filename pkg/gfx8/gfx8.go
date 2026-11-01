@@ -105,6 +105,12 @@ func blitPixel(op BlendOp, src uint8, dst *uint8, palMap []uint8, noise uint8) b
 	}
 	switch {
 	case op&OpSrc != 0 && op&OpDst != 0:
+		// Upstream asserts the src row exists in the map (DrawSpriteHelper.hpp
+		// blend); release builds read past it. Shadow maps are one row, so their
+		// images are masks of index 1. Out of range: leave dst (Go would panic).
+		if (int(src)-1)*256+int(*dst) >= len(palMap) {
+			return false
+		}
 		px := blend(palMap, src, *dst)
 		if op&OpTransparent != 0 && px == Transparent {
 			return false
