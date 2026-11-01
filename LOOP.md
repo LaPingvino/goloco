@@ -232,12 +232,18 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    split for style 2 (upstream: one exits mask per tile, merge base from the element's own MergeType).
    DECISION: the payoff now is switching the game's World.Draw onto gfx8+paint (render8's pipeline), then
    retiring the per-tile painters one by one. → new item 3j.
-3j. [ ] **Switch the live renderer to gfx8+paint.** World.Draw builds a paint session from the visible tiles with
+3j. [~] **Switch the live renderer to gfx8+paint.** World.Draw builds a paint session from the visible tiles with
    the ported painters (surface, cliffs, water, trees, buildings, roads), draws into an 8-bit target, converts
    through the palette into one Ebiten image. Keep the old path behind a flag (GOLOCO_OLD_RENDER=1) for comparison
    until tracks, stations, signals, walls, bridges and vehicles are ported; elements not ported yet are drawn by
    the old painters on top meanwhile (marked). Check: title capture + Weatherworld town + a slope road built in
    the game (scripted), vs the old path.
+   Tick 33 — step 1 DONE: pkg/scene (Renderer.Render(sim.Map, View) → 8-bit target; ToRGBA) holds render8's
+   painting, reading sim.Map instead of the raw scenario; sim.Map.LoadScenario does the scenario→map copy (World
+   uses it); tile walk = the box of tiles that can reach the view (or an explicit window). Water now in upstream's
+   place (right after the surface). EQUIVALENCE: render8 via pkg/scene is pixel-identical to the pre-refactor
+   output on both reference views (title 196,190 and Weatherworld 231,25). NEXT: World.Draw → scene (behind a flag
+   first), old painters on top for the elements not ported yet.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -320,3 +326,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 30 (item 3i roads a) — road paint tables generated from upstream via the C++ compiler; found and fixed a swapped left-curve piece in goloco's hand table; slope sprites verified equal (bug is in placement).
 - 2026-11-01 tick 31 (item 3i roads b-d) — road painter + track/road priority ordering ported; town streets and junctions render in the CPU renderer.
 - 2026-11-01 tick 32 (item 3i roads e) — slope comparison: tables and placement fine; the current renderer's unsorted per-tile drawing is the likely cause; found two more invented behaviours in its road merge. New item 3j: switch the live renderer to gfx8+paint.
+- 2026-11-01 tick 33 (item 3j step 1) — pkg/scene: the CPU renderer as a reusable package reading sim.Map; sim.Map.LoadScenario; refactor proven pixel-identical on both reference views.

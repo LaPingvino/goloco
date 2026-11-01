@@ -173,37 +173,11 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 	if sc == nil || sc.Tiles == nil {
 		return
 	}
-	w.Width = sc.MapWidth
-	w.Height = sc.MapHeight
-	w.Tiles = make([][]tile, w.Height)
+	w.Map.LoadScenario(sc)
 	totalBuildings := 0
-	for y := 0; y < w.Height; y++ {
-		w.Tiles[y] = make([]tile, w.Width)
-		for x := 0; x < w.Width; x++ {
-			st := sc.GetTile(x, y)
-			if st == nil {
-				w.Tiles[y][x] = tile{}
-				continue
-			}
-			totalBuildings += len(st.Buildings)
-
-			w.Tiles[y][x] = tile{
-				TerrainIndex: st.TerrainIndex,
-				BaseZ:        st.Height,
-				Slope:        st.Slope,
-				WaterLevel:   st.Water,
-				GrowthStage:  st.GrowthStage,
-				Variation:    st.Variation,
-				IsIndustrial: st.IsIndustrial,
-				Trees:        st.Trees,
-				Buildings:    st.Buildings,
-				Walls:        st.Walls,
-				Tracks:       st.Tracks,
-				Roads:        st.Roads,
-				Stations:     st.Stations,
-				Signals:      st.Signals,
-				Industries:   st.Industries,
-			}
+	for y := range w.Tiles {
+		for x := range w.Tiles[y] {
+			totalBuildings += len(w.Tiles[y][x].Buildings)
 		}
 	}
 
@@ -214,13 +188,9 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 	w.camX = cx - 400
 	w.camY = cy - 300
 
-	// Store parsed town records for the Towns list window.
-	w.Towns = sc.Towns
-
-	// Store real vehicle entities from saved games.  When entities are present
-	// they are rendered by paintVehicleEntities; otherwise fall back to demo trains.
-	w.Entities = sc.Entities
-
+	// Towns and saved vehicle entities were filled by Map.LoadScenario. When
+	// entities are present they are rendered by paintVehicleEntities; otherwise
+	// fall back to demo trains.
 	if len(w.Entities) == 0 {
 		// No real entities (scenario file or empty save) — spawn scripted demo trains
 		// so the title screen and freshly-loaded scenarios show some movement.
