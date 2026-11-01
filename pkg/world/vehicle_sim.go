@@ -17,9 +17,9 @@ import (
 // when it runs off the end. With no continuation it reverses (bounces).
 //
 // This is deliberately simple: curves are treated as straight segments between
-// their two endpoints. The piece-to-piece hand-off mirrors the construction
-// validation in CanPlaceTrackAtHead — a piece begins where the previous piece
-// ends when their rotations and positions agree (sim.TrackCoordinates RotBegin /
+// their two endpoints. The piece-to-piece hand-off follows connected track as
+// upstream's Track.cpp does — a piece begins where the previous piece ends
+// when their rotations and positions agree (sim.TrackCoordinates RotBegin /
 // RotEnd + the DX/DY/DZ world-unit delta).
 //
 // OpenLoco reference: src/OpenLoco/src/Vehicles/VehicleManager.cpp (movement),
@@ -93,7 +93,7 @@ func rotToYaw(r uint8) uint8 {
 // findTrackOrigin returns the sequence-0 track element on tile (x,y) at the
 // given BaseZ whose piece begins with rotation beginRot (sim.TrackCoordinates
 // RotBegin). This is the forward hand-off: the next piece starts where the
-// current one ends, exactly as CanPlaceTrackAtHead validates a placement.
+// current one ends (rotationBegin, as Track.cpp follows connected track).
 func (w *World) findTrackOrigin(x, y int, baseZ, beginRot uint8) (scenario.TrackElement, bool) {
 	t := w.getTile(x, y)
 	if t == nil {

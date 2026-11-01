@@ -8,18 +8,18 @@ import (
 
 // The pieces construct.GetTrackPieceID gives for a head heading straight
 // (rotation 0–3) can be built there and move the head: the s-bends, the
-// s-bends to and from dual track, and the slopes on small curves (pieces
-// goloco couldn't build before).
-// OPEN: the turnaround — getTrackPieceId gives track 42 at rotation 0–3, but
-// kTrackCoordinates has 42 begin at 4–7 and the button only shows at 4–11;
-// goloco's CanPlaceTrackAtHead (rotationBegin == heading) is not upstream's
-// check, which lives in the unported CreateTrack command (LOOP 3o).
+// s-bends to and from dual track, the turnaround, and the slopes on small
+// curves (pieces goloco couldn't build before). getTrackPieceId gives the
+// turnaround (track 42) at 0–3 though kTrackCoordinates begins it at 4–7:
+// CreateTrack doesn't check rotationBegin, so it builds (the button that
+// chooses it only shows at 4–11, where 4–7 gives no piece: upstream as is).
 func TestGetTrackPieceIDPiecesPlace(t *testing.T) {
 	pieces := []struct {
 		piece, gradient uint8
 	}{
 		{construct.SBendLeft, construct.Level}, {construct.SBendRight, construct.Level},
 		{construct.SBendToDualTrack, construct.Level}, {construct.SBendToSingleTrack, construct.Level},
+		{construct.Turnaround, construct.Level},
 		{construct.LeftCurveSmall, construct.SlopeUp}, {construct.RightCurveSmall, construct.SteepSlopeDown},
 	}
 	for _, pc := range pieces {
