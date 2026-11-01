@@ -312,6 +312,14 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    dialog replaced by the port of its upstream window (Ui/Windows/*.cpp). Start: inventory every goloco
    menu/dialog → its upstream window; fix the shared layer first (widget positions, font metrics — deviations C:
    g1font width fudge, DrawStringCentered len×7), since misalignment everywhere points there.
+   Tick 76 INVENTORY (goloco → upstream): toolbar + dropdowns (pkg/ui/toolbar.go, dropdown.go) → ToolbarTop.cpp +
+   Dropdown.cpp; New Game (cmd/goloco openNewGameWindow) → ScenarioSelect.cpp; Options → Options.cpp (tabs);
+   Load/Save (openFileWindow) → PromptBrowse.cpp; Vehicles/Stations/Towns lists (listwindows.go) → VehicleList/
+   StationList/TownList.cpp; progress (progress.go) → ProgressBar.cpp; widgets (pkg/ui *_widget.go) → Widget.cpp
+   + Gfx drawRectInset (3D bevels from Colours::getShade). Title screen checked: upstream-faithful (TitleLogo IS at
+   0,0; menu centred, 25 px margin) except goloco's invented subtitle line. g1 font widths = upstream (not a fudge).
+   ORDER: (1) drawRectInset + getShade + window frame/caption/button widget drawing in the 8-bit pipeline;
+   (2) Dropdown.cpp (Joop named 'menus'); (3) ToolbarTop; (4) each dialog → its upstream window.
 3m. [~] **Zoom 1-3 in the CPU renderer (blocks making scene mode the default).** Upstream
    (Graphics/SoftwareDrawingContext.cpp drawImagePaletteSet + getDrawImagePosArgs, DrawSpriteBMP.hpp /
    DrawSpriteRLE.hpp, 248 lines): an element with hasZoomSprites (G1 flag 1<<4) at zoom>0 recurses at half
@@ -372,6 +380,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    'simplified approximation', depth-sort approximation for vehicles, g1font width fudge, …).
 
 ## Questions for Joop
+- UI: which menus look most misaligned to you (toolbar dropdowns? the New Game / Options / Load windows?) — I'll start there.
 - Bridges (scene mode, title map river crossing near tile 90,99): do they look like the original? A reference screenshot from OpenLoco/Locomotion at the same spot would let me check pixel-exactness.
 - Does the music still stutter on the test page (rebuilt tick 75: music now played by the browser's <audio> element) (rebuilt 2026-11-01 tick 63, audio now at the music's native 22050 Hz)?
 - (answered 2026-11-01: Joop — 'looks a lot better and isn't as slow as I expected; use that as the baseline') Try the test page with 'Use the ported renderer' ticked: does it look right, and what frame time does the console log
@@ -468,3 +477,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 73 (item 3m step a) — gfx8 zoom: getDrawImagePosArgs + drawBMPSprite/drawRLESprite for zoom 1-3 ported (zoom.go); Sprite keeps hasZoomSprites/noZoomDraw/zoomOffset and the RLE runs. Property test: 2^z-upscaled sprite at zoom z == original at zoom 0 (BMP and RLE, 300 random cases each); noZoomDraw skipped. Joop reported misaligned menus + improvised dialogs → new item 3n (HIGH), next.
 - 2026-11-01 tick 74 (item 3j / 3n) — CPU renderer is now the DEFAULT (Joop: 'use that as the baseline'); GOLOCO_SCENE=0 or the test page's 'Use the old renderer' box selects the old one; zoom>0 still falls back to the old renderer (3m). Test page redeployed. 3n: g1 font widthFudge is upstream's own table (deviations C entry was wrong); title screen captured headless — logo top-left, menu buttons without their window, hand-placed texts; upstream positions read (TitleLogo 298×170, TitleMenu centred at height-kWH-25, TitleVersion (8, h-kHeight), TitleOptions 60×15 top-right, TitleExit 40×28 bottom-right) → next: port the title windows.
 - 2026-11-01 tick 75 (Joop: 'the biggest issue is the sound … separate goroutine for desktop, piggyback on browser features for the web') — js/wasm music now plays through an HTMLAudioElement (Blob URL of the WAV; the browser decodes on its own audio thread, so slow wasm frames can't starve it); desktop keeps Ebitengine's player, which already runs on its own goroutine/thread (and since tick 63 at the native 22050 Hz). Headless check: title track css5.dat (12.9 MB) plays via <audio>, no autoplay refusal. Test page redeployed. Title windows (3n) paused mid-read: upstream TitleLogo/TitleMenu sizes noted in tick 74.
+- 2026-11-01 tick 76 (item 3n) — UI inventory: every improvised goloco window/menu mapped to its upstream Ui/Windows file; title screen found upstream-faithful (logo top-left is upstream) apart from the invented subtitle; order set: widget drawing (drawRectInset/getShade) → Dropdown → ToolbarTop → dialogs.
