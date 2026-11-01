@@ -13,6 +13,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/paint"
+	"github.com/LaPingvino/goloco/pkg/scenario"
 	"github.com/LaPingvino/goloco/pkg/sim"
 )
 
@@ -165,7 +166,6 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 	if !v.Tiles.Empty() {
 		x0, y0, x1, y1 = max(v.Tiles.Min.X, 0), max(v.Tiles.Min.Y, 0), min(v.Tiles.Max.X, m.Width-1), min(v.Tiles.Max.Y, m.Height-1)
 	}
-	om := r.Objects
 	sprite := r.Sprite
 	for y := y0; y <= y1; y++ {
 		for x := x0; x <= x1; x++ {
@@ -173,247 +173,22 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 			if t == nil {
 				continue
 			}
-			ti := int(t.TerrainIndex)
-			if t.IsIndustrial {
-				ti = 0
-			}
-			land := om.GetLandObjectByIndex(ti)
-			if land == nil {
-				continue
-			}
-			ds := slopeToDisplay[t.Slope&0x1F]
-			growth := int(t.GrowthStage)
-			if t.IsIndustrial || growth >= int(land.NumGrowthStages) {
-				growth = 0
-			}
-			idx := int(land.ImageOffset) + land.GetFlatTerrainSpriteIndex() + growth*int(land.NumImagesPerGrowthStage) + ds
-			if !t.IsIndustrial && t.Variation != 0 && ds == 0 && t.WaterLevel == 0 && land.NumGrowthStages > 0 && t.GrowthStage == land.NumGrowthStages-1 {
-				idx = int(land.MapPixelImage) + 3 + int(t.Variation)
-			}
-			z := int(t.BaseZ) * 4
 			s.SetSpritePosition(x*32, y*32)
-			// Industry fields (PaintSurface.cpp industrial branch): the field surface and
-			// its tree image come from the industry object; the tile's byte 7 (goloco's
-			// Variation) is then the industry id. PARTIAL: snow cover not drawn.
-			if t.IsIndustrial && int(t.Variation) < len(m.IndustryObjectIDs) {
-				if io := om.GetIndustryObjectByIndex(int(m.IndustryObjectIDs[t.Variation])); io != nil && io.FieldImageIDs != 0 {
-					variation := int(io.NumImagesPerFieldGrowthStage)*int(t.GrowthStage) + ((int(io.FarmTileNumImageAngles)-1)&0)*21
-					th := z + int(paint.SurfaceTreeHeight[ds])
-					if tree := sprite(int(io.FieldImageIDs) + variation + 19); tree != nil {
-						s.AddAsParent(paint.Image{Sprite: tree, Op: gfx8.OpFor(tree, false, false)}, paint.Pos3{Z: th}, paint.Pos3{X: 14, Y: 14, Z: th + 4}, paint.Pos3{X: 4, Y: 4, Z: 14})
-					}
-					idx = int(io.FieldImageIDs) + variation + ds
+			// paintTileElements: the tile's elements in stored order, each followed by
+			// paintTileElementsEndLoop. Signals and stations read entry.prev().
+			for i, ref := range t.Order {
+				var prev *scenario.ElemRef
+				if i > 0 {
+					prev = &t.Order[i-1]
 				}
-			}
-			sp := sprite(idx)
-			if sp == nil {
-				continue
-			}
-			// Snow (PaintSurface.cpp snow branch, land tiles): full cover replaces the
-			// surface image; partial cover attaches the snow image masked per slope.
-			// PARTIAL: industry fields' snow (farmTilesDrawAboveSnow) not ported.
-			var snowAttach *paint.Image
-			if cov := int(t.Slope >> 5); cov != 0 && !t.IsIndustrial && om.SnowObj != nil {
-				snowImg := int(om.SnowObj.ImageOffset) + paint.SnowSurfaceFullZoom + ds
-				if cov == 5 {
-					if full := sprite(snowImg); full != nil {
-						sp = full
-					}
-				} else if cov <= 4 {
-					if si, mk := sprite(snowImg), sprite(int(paint.SnowCoverageSlopeToMask[cov-1][ds])); si != nil && mk != nil {
-						snowAttach = &paint.Image{Sprite: si, Mask: mk}
-					}
+				r.paintElement(s, m, t, ref, prev, x, y, v.Ticks)
+				// paintTileElementsEndLoop: at the last element or a change of baseZ.
+				// PARTIAL: supports and bridges (not ported) are skipped here.
+				if i == len(t.Order)-1 || tileElemZ(t, t.Order[i+1]) != tileElemZ(t, ref) {
+					s.FinalisePaintRoad(sprite)
+					s.FinaliseTrackRoadOrdering()
+					s.FinaliseTrackRoadAdditionsOrdering()
 				}
-			}
-			// PaintSurface.cpp paintMainSurface: offset (0,0,baseHeight), bbox (32,32,-1).
-			s.AddAsParent(paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, paint.Pos3{Z: z}, paint.Pos3{Z: z}, paint.Pos3{X: 32, Y: 32, Z: -1})
-			if snowAttach != nil {
-				s.AttachToPrevious(*snowAttach, 0, 0)
-			}
-
-			var nbs [4]*paint.Surface
-			for d, o := range paint.NeighbourOffsets {
-				if nt := m.TileAt(x+o[0]/32, y+o[1]/32); nt != nil {
-					// Scratch kept on the renderer: &Surface{} here escaped, 4 allocations per tile.
-					r.nbBuf[d] = paint.Surface{BaseZ: nt.BaseZ, Slope: nt.Slope, Water: nt.WaterLevel}
-					nbs[d] = &r.nbBuf[d]
-				}
-			}
-			self := paint.Surface{BaseZ: t.BaseZ, Slope: t.Slope, Water: t.WaterLevel}
-			if land.CliffEdgeImage > 0 {
-				s.PaintCliffEdges(paint.Surface{BaseZ: t.BaseZ, Slope: t.Slope}, nbs, int(land.CliffEdgeImage), sprite)
-			}
-			if t.WaterLevel != 0 && r.water.PalMap != nil {
-				s.PaintWater(self, nbs, r.water, objects.KSlopeToWaterShape[:], int(land.CliffEdgeImage), sprite)
-			}
-
-			// Tracks and roads, then the per-group finalise passes (PaintTile.cpp
-			// paintTileElementsEndLoop: at the end of each run of elements with the
-			// same baseZ). Tile elements are stored in ascending baseZ; the order of
-			// tracks vs roads within one baseZ is not kept by the tile (separate
-			// slices), so tracks go first — APPROXIMATION until the tile keeps the
-			// element order.
-			ti, ri := 0, 0
-			for ti < len(t.Tracks) || ri < len(t.Roads) {
-				z := 256
-				if ti < len(t.Tracks) {
-					z = int(t.Tracks[ti].BaseZ)
-				}
-				if ri < len(t.Roads) && int(t.Roads[ri].BaseZ) < z {
-					z = int(t.Roads[ri].BaseZ)
-				}
-				for ; ti < len(t.Tracks) && int(t.Tracks[ti].BaseZ) == z; ti++ {
-					tk := t.Tracks[ti]
-					if to := om.GetTrackObjectByIndex(int(tk.TrackObjectID)); to != nil {
-						s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ, Remap: r.companyRemap(m, tk.Owner)}, int(to.Image), sprite)
-					}
-				}
-				for ; ri < len(t.Roads) && int(t.Roads[ri].BaseZ) == z; ri++ {
-					rd := t.Roads[ri]
-					if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
-						s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: r.companyRemap(m, rd.Owner)}, int(ro.Image), ro.PaintStyle, sprite)
-					}
-				}
-				s.FinalisePaintRoad(sprite)
-				s.FinaliseTrackRoadOrdering()
-				s.FinaliseTrackRoadAdditionsOrdering()
-			}
-			// Signals: upstream paints a signal against the track element just before it
-			// in the tile; the tile keeps signals in their own slice, so the track with
-			// the same baseZ stands in for it (APPROXIMATION until element order is kept).
-			for _, sg := range t.Signals {
-				for _, tk := range t.Tracks {
-					if tk.BaseZ != sg.BaseZ {
-						continue
-					}
-					s.PaintSignal(sg.Rotation, sg.BaseZ, int(tk.TrackID), int(tk.SequenceIndex), tk.IsLast,
-						paint.SignalSide{Has: sg.HasLeftSignal, Object: int(sg.SignalObjectID), Frame: sg.LeftFrame},
-						paint.SignalSide{Has: sg.HasRightSignal, Object: int(sg.RightSignalObjectID), Frame: sg.RightFrame},
-						r.signalObj, sprite)
-					break
-				}
-			}
-			// Train stations (style 0), against the track of the same baseZ (upstream:
-			// the element before — same APPROXIMATION as signals).
-			for _, st := range t.Stations {
-				if st.StationType == 1 { // road station, on the road of the same baseZ
-					rso := om.GetRoadStationObjectByIndex(int(st.ObjectID))
-					if rso == nil || rso.PaintStyle != 0 {
-						continue
-					}
-					for _, rd := range t.Roads {
-						if rd.BaseZ == st.BaseZ {
-							var remap []uint8 // getCompanyColour(station->owner)
-							if int(st.StationID) < len(m.StationOwners) {
-								remap = r.companyRemap(m, m.StationOwners[st.StationID])
-							}
-							var tl []uint8
-							if int(st.StationID) < len(m.StationOwners) {
-								tl = r.canopyTranslucent(m, m.StationOwners[st.StationID], rso.Flags&objects.RoadStationFlagRecolourable != 0)
-							}
-							s.PaintRoadStation(st.Rotation, st.BaseZ, rd.RoadID, int(rso.SequenceImageOffsets[1]), remap, tl, sprite)
-							break
-						}
-					}
-					continue
-				}
-				if st.StationType == 2 { // airport
-					ao := om.GetAirportObjectByIndex(int(st.ObjectID))
-					if ao == nil || int(st.BuildingType) >= len(ao.Variations) {
-						continue
-					}
-					an := r.animOf(ao, ao.PartAnimations)
-					s.PaintAirport(st.Rotation, st.SequenceIndex, st.BaseZ, paint.AirportObj{BuildingImage: int(ao.BuildingImage),
-						Parts: ao.Variations[st.BuildingType], PartHeights: ao.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds,
-						LargeTile: ao.LargeTiles&(1<<st.BuildingType) != 0, Remap: r.companyRemap(m, st.Owner),
-						Shadow: r.shadow(ao.HasShadows(), int(st.BuildingType)*4+int(ao.Image)+1, colourOrange, false)}, x, y, v.Ticks, sprite)
-					continue
-				}
-				if st.StationType == 3 { // docks
-					do := om.GetDockObjectByIndex(int(st.ObjectID))
-					if do == nil || int(st.BuildingType) >= len(do.Variations) {
-						continue
-					}
-					an := r.animOf(do, do.PartAnimations)
-					s.PaintDocks(st.Rotation, st.SequenceIndex, st.BaseZ, st.ClearZ, paint.AirportObj{BuildingImage: int(do.BuildingImage),
-						Parts: do.Variations[st.BuildingType], PartHeights: do.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds, Remap: r.companyRemap(m, st.Owner),
-						Shadow: r.shadow(do.Flags&objects.DockFlagHasShadows != 0, int(st.BuildingType)*4+int(do.Image)+1, colourOrange, false)}, x, y, v.Ticks, sprite)
-					continue
-				}
-				if st.StationType != 0 {
-					continue
-				}
-				so := om.GetTrainStationObjectByIndex(int(st.ObjectID))
-				if so == nil || so.PaintStyle != 0 || int(st.SequenceIndex) >= len(so.SequenceImageOffsets) {
-					continue
-				}
-				for _, tk := range t.Tracks {
-					if tk.BaseZ == st.BaseZ {
-						s.PaintTrainStation(paint.StationEl{Rotation: st.Rotation, BaseZ: st.BaseZ, TrackID: tk.TrackID, TrackSeq: tk.SequenceIndex, Remap: r.companyRemap(m, tk.Owner),
-							Translucent: r.canopyTranslucent(m, tk.Owner, so.Flags&objects.TrainStationFlagRecolourable != 0)},
-							int(so.SequenceImageOffsets[st.SequenceIndex]), sprite)
-						break
-					}
-				}
-			}
-			s.FinaliseTrackRoadAdditionsOrdering()
-			for _, b := range t.Buildings {
-				bo := om.GetBuildingObjectByIndex(int(b.ObjectID))
-				if bo == nil || int(b.Variation) >= len(bo.VariationParts) {
-					continue
-				}
-				an := r.animOf(bo, bo.PartAnimations)
-				frames, speeds := an.frames, an.speeds
-				cmap := r.colourMap(int(b.Colour))
-				s.PaintBuilding(paint.BuildingEl{Rotation: b.Rotation, SequenceIndex: b.SequenceIndex, Variation: b.Variation, BaseZ: b.BaseZ, ClearZ: b.ClearZ},
-					paint.BuildingObj{Image: int(bo.ImageOffset), NumParts: int(bo.NumParts), Parts: bo.VariationParts[b.Variation], PartHeights: bo.PartHeights,
-						PartAnimFrames: frames, PartAnimSpeed: speeds, ElevatorSequences: bo.ElevatorSequences, LargeTile: bo.HasFlags(objects.BuildingFlagLargeTile),
-						Shadow: r.shadow(bo.HasFlags(objects.BuildingFlagHasShadows), (int(bo.NumParts)+int(bo.NumElevatorSequences)+int(b.Variation))*4+int(bo.ImageOffset), colourOrange, false)},
-					cmap, x, y, v.Ticks, sprite)
-			}
-			for _, ie := range t.Industries {
-				if int(ie.IndustryID) >= len(m.IndustryObjectIDs) {
-					continue
-				}
-				io := om.GetIndustryObjectByIndex(int(m.IndustryObjectIDs[ie.IndustryID]))
-				if io == nil || int(ie.BuildingType) >= len(io.Variations) {
-					continue
-				}
-				an := r.animOf(io, io.PartAnimations)
-				frames, speeds := an.frames, an.speeds
-				cmap := r.colourMap(int(ie.Colour))
-				s.PaintIndustry(paint.IndustryEl{Rotation: ie.Rotation, SequenceIndex: ie.SequenceIndex, BuildingType: ie.BuildingType,
-					Var6Low: ie.Var6Low, SectionProgress: ie.SectionProgress, IsConstructed: ie.IsConstructed, BaseZ: ie.BaseZ, ClearZ: ie.ClearZ},
-					paint.IndustryObj{BuildingImageIDs: int(io.BuildingImageIDs), Parts: io.Variations[ie.BuildingType], PartHeights: io.PartHeights,
-						PartAnimFrames: frames, PartAnimSpeed: speeds, AnimationSequences: io.AnimationSequences,
-						LargeTile: io.BuildingSizeFlags&(1<<ie.BuildingType) != 0,
-						Shadow:    r.shadow(io.Flags&objects.IndustryFlagHasShadows != 0, int(ie.BuildingType)*4+int(io.ShadowImageIDs), int(ie.Colour), true)},
-					cmap, x, y, v.Ticks, sprite)
-			}
-			for _, wl := range t.Walls {
-				wo := om.GetWallObjectByIndex(int(wl.WallObjectID))
-				if wo == nil {
-					continue
-				}
-				var cmap []uint8
-				if wo.Flags&objects.WallFlagHasPrimaryColour != 0 {
-					cmap = r.colourMap(int(wl.PrimaryColour))
-				}
-				s.PaintWall(paint.WallEl{Rotation: wl.Rotation, EdgeSlope: wl.EdgeSlope, PrimaryColour: wl.PrimaryColour, BaseZ: wl.BaseZ},
-					paint.WallObj{Sprite: int(wo.Sprite), Height: wo.Height, TwoSided: wo.Flags&objects.WallFlagTwoSided != 0,
-						HasPrimary: wo.Flags&objects.WallFlagHasPrimaryColour != 0, HasGlass: wo.Flags&objects.WallFlagHasGlass != 0},
-					cmap, sprite)
-			}
-			for _, tr := range t.Trees {
-				to := om.GetTreeObjectByIndex(int(tr.TreeObjectID))
-				if to == nil {
-					continue
-				}
-				s.PaintTree(paint.TreeEl{Rotation: tr.Rotation, Quadrant: tr.Quadrant, Growth: tr.Growth, Season: tr.Season,
-					Unk7l: tr.Unk7l, HasSnow: tr.HasSnow, BaseZ: tr.BaseZ, ClearZ: tr.ClearZ},
-					paint.TreeObj{NumRotations: to.NumRotations, Sprites: to.Sprites, SnowSprites: to.SnowSprites,
-						ShadowImageOffset: uint32(to.ShadowImageOffset), HasShadow: to.Flags&objects.TreeFlagHasShadow != 0},
-					sprite, r.shadowMap)
 			}
 		}
 	}
@@ -450,4 +225,255 @@ func (r *Renderer) signalObj(i int) (paint.SignalObj, bool) {
 		return paint.SignalObj{}, false
 	}
 	return paint.SignalObj{Image: int(o.ImageOffset), IsLeft: o.IsLeft}, true
+}
+
+// tileElemZ is an element's baseZ (the surface's for KindSurface).
+func tileElemZ(t *sim.Tile, ref scenario.ElemRef) uint8 {
+	switch ref.Kind {
+	case scenario.KindTrack:
+		return t.Tracks[ref.Index].BaseZ
+	case scenario.KindStation:
+		return t.Stations[ref.Index].BaseZ
+	case scenario.KindSignal:
+		return t.Signals[ref.Index].BaseZ
+	case scenario.KindBuilding:
+		return t.Buildings[ref.Index].BaseZ
+	case scenario.KindTree:
+		return t.Trees[ref.Index].BaseZ
+	case scenario.KindWall:
+		return t.Walls[ref.Index].BaseZ
+	case scenario.KindRoad:
+		return t.Roads[ref.Index].BaseZ
+	case scenario.KindIndustry:
+		return t.Industries[ref.Index].BaseZ
+	}
+	return t.BaseZ
+}
+
+// paintElement is the switch in paintTileElements.
+func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref scenario.ElemRef, prev *scenario.ElemRef, x, y int, ticks uint32) {
+	om, sprite, v := r.Objects, r.Sprite, struct{ Ticks uint32 }{ticks}
+	_ = v
+	switch ref.Kind {
+	case scenario.KindSurface:
+		r.paintSurface(s, m, t, x, y)
+	case scenario.KindTrack:
+		tk := t.Tracks[ref.Index]
+		if to := om.GetTrackObjectByIndex(int(tk.TrackObjectID)); to != nil {
+			s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ, Remap: r.companyRemap(m, tk.Owner)}, int(to.Image), sprite)
+		}
+	case scenario.KindRoad:
+		rd := t.Roads[ref.Index]
+		if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
+			s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: r.companyRemap(m, rd.Owner)}, int(ro.Image), ro.PaintStyle, sprite)
+		}
+	case scenario.KindSignal:
+		// paintSignal: against entry.prev(), which must be a track element.
+		sg := t.Signals[ref.Index]
+		if prev == nil || prev.Kind != scenario.KindTrack {
+			return
+		}
+		tk := t.Tracks[prev.Index]
+		s.PaintSignal(sg.Rotation, sg.BaseZ, int(tk.TrackID), int(tk.SequenceIndex), tk.IsLast,
+			paint.SignalSide{Has: sg.HasLeftSignal, Object: int(sg.SignalObjectID), Frame: sg.LeftFrame},
+			paint.SignalSide{Has: sg.HasRightSignal, Object: int(sg.RightSignalObjectID), Frame: sg.RightFrame},
+			r.signalObj, sprite)
+	case scenario.KindStation:
+		r.paintStation(s, m, t, t.Stations[ref.Index], prev, x, y, ticks)
+	case scenario.KindBuilding:
+		b := t.Buildings[ref.Index]
+		bo := om.GetBuildingObjectByIndex(int(b.ObjectID))
+		if bo == nil || int(b.Variation) >= len(bo.VariationParts) {
+			return
+		}
+		an := r.animOf(bo, bo.PartAnimations)
+		frames, speeds := an.frames, an.speeds
+		cmap := r.colourMap(int(b.Colour))
+		s.PaintBuilding(paint.BuildingEl{Rotation: b.Rotation, SequenceIndex: b.SequenceIndex, Variation: b.Variation, BaseZ: b.BaseZ, ClearZ: b.ClearZ},
+			paint.BuildingObj{Image: int(bo.ImageOffset), NumParts: int(bo.NumParts), Parts: bo.VariationParts[b.Variation], PartHeights: bo.PartHeights,
+				PartAnimFrames: frames, PartAnimSpeed: speeds, ElevatorSequences: bo.ElevatorSequences, LargeTile: bo.HasFlags(objects.BuildingFlagLargeTile),
+				Shadow: r.shadow(bo.HasFlags(objects.BuildingFlagHasShadows), (int(bo.NumParts)+int(bo.NumElevatorSequences)+int(b.Variation))*4+int(bo.ImageOffset), colourOrange, false)},
+			cmap, x, y, v.Ticks, sprite)
+	case scenario.KindIndustry:
+		ie := t.Industries[ref.Index]
+		if int(ie.IndustryID) >= len(m.IndustryObjectIDs) {
+			return
+		}
+		io := om.GetIndustryObjectByIndex(int(m.IndustryObjectIDs[ie.IndustryID]))
+		if io == nil || int(ie.BuildingType) >= len(io.Variations) {
+			return
+		}
+		an := r.animOf(io, io.PartAnimations)
+		frames, speeds := an.frames, an.speeds
+		cmap := r.colourMap(int(ie.Colour))
+		s.PaintIndustry(paint.IndustryEl{Rotation: ie.Rotation, SequenceIndex: ie.SequenceIndex, BuildingType: ie.BuildingType,
+			Var6Low: ie.Var6Low, SectionProgress: ie.SectionProgress, IsConstructed: ie.IsConstructed, BaseZ: ie.BaseZ, ClearZ: ie.ClearZ},
+			paint.IndustryObj{BuildingImageIDs: int(io.BuildingImageIDs), Parts: io.Variations[ie.BuildingType], PartHeights: io.PartHeights,
+				PartAnimFrames: frames, PartAnimSpeed: speeds, AnimationSequences: io.AnimationSequences,
+				LargeTile: io.BuildingSizeFlags&(1<<ie.BuildingType) != 0,
+				Shadow:    r.shadow(io.Flags&objects.IndustryFlagHasShadows != 0, int(ie.BuildingType)*4+int(io.ShadowImageIDs), int(ie.Colour), true)},
+			cmap, x, y, v.Ticks, sprite)
+	case scenario.KindWall:
+		wl := t.Walls[ref.Index]
+		wo := om.GetWallObjectByIndex(int(wl.WallObjectID))
+		if wo == nil {
+			return
+		}
+		var cmap []uint8
+		if wo.Flags&objects.WallFlagHasPrimaryColour != 0 {
+			cmap = r.colourMap(int(wl.PrimaryColour))
+		}
+		s.PaintWall(paint.WallEl{Rotation: wl.Rotation, EdgeSlope: wl.EdgeSlope, PrimaryColour: wl.PrimaryColour, BaseZ: wl.BaseZ},
+			paint.WallObj{Sprite: int(wo.Sprite), Height: wo.Height, TwoSided: wo.Flags&objects.WallFlagTwoSided != 0,
+				HasPrimary: wo.Flags&objects.WallFlagHasPrimaryColour != 0, HasGlass: wo.Flags&objects.WallFlagHasGlass != 0},
+			cmap, sprite)
+	case scenario.KindTree:
+		tr := t.Trees[ref.Index]
+		to := om.GetTreeObjectByIndex(int(tr.TreeObjectID))
+		if to == nil {
+			return
+		}
+		s.PaintTree(paint.TreeEl{Rotation: tr.Rotation, Quadrant: tr.Quadrant, Growth: tr.Growth, Season: tr.Season,
+			Unk7l: tr.Unk7l, HasSnow: tr.HasSnow, BaseZ: tr.BaseZ, ClearZ: tr.ClearZ},
+			paint.TreeObj{NumRotations: to.NumRotations, Sprites: to.Sprites, SnowSprites: to.SnowSprites,
+				ShadowImageOffset: uint32(to.ShadowImageOffset), HasShadow: to.Flags&objects.TreeFlagHasShadow != 0},
+			sprite, r.shadowMap)
+	}
+}
+
+// paintSurface is PaintSurface.cpp paintSurface for one tile (surface, industry
+// field, snow, cliff edges, water).
+func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y int) {
+	om, sprite := r.Objects, r.Sprite
+	ti := int(t.TerrainIndex)
+	if t.IsIndustrial {
+		ti = 0
+	}
+	land := om.GetLandObjectByIndex(ti)
+	if land == nil {
+		return
+	}
+	ds := slopeToDisplay[t.Slope&0x1F]
+	growth := int(t.GrowthStage)
+	if t.IsIndustrial || growth >= int(land.NumGrowthStages) {
+		growth = 0
+	}
+	idx := int(land.ImageOffset) + land.GetFlatTerrainSpriteIndex() + growth*int(land.NumImagesPerGrowthStage) + ds
+	if !t.IsIndustrial && t.Variation != 0 && ds == 0 && t.WaterLevel == 0 && land.NumGrowthStages > 0 && t.GrowthStage == land.NumGrowthStages-1 {
+		idx = int(land.MapPixelImage) + 3 + int(t.Variation)
+	}
+	z := int(t.BaseZ) * 4
+	// Industry fields (PaintSurface.cpp industrial branch): the field surface and
+	// its tree image come from the industry object; the tile's byte 7 (goloco's
+	// Variation) is then the industry id. PARTIAL: snow cover not drawn.
+	if t.IsIndustrial && int(t.Variation) < len(m.IndustryObjectIDs) {
+		if io := om.GetIndustryObjectByIndex(int(m.IndustryObjectIDs[t.Variation])); io != nil && io.FieldImageIDs != 0 {
+			variation := int(io.NumImagesPerFieldGrowthStage)*int(t.GrowthStage) + ((int(io.FarmTileNumImageAngles)-1)&0)*21
+			th := z + int(paint.SurfaceTreeHeight[ds])
+			if tree := sprite(int(io.FieldImageIDs) + variation + 19); tree != nil {
+				s.AddAsParent(paint.Image{Sprite: tree, Op: gfx8.OpFor(tree, false, false)}, paint.Pos3{Z: th}, paint.Pos3{X: 14, Y: 14, Z: th + 4}, paint.Pos3{X: 4, Y: 4, Z: 14})
+			}
+			idx = int(io.FieldImageIDs) + variation + ds
+		}
+	}
+	sp := sprite(idx)
+	if sp == nil {
+		return
+	}
+	// Snow (PaintSurface.cpp snow branch, land tiles): full cover replaces the
+	// surface image; partial cover attaches the snow image masked per slope.
+	// PARTIAL: industry fields' snow (farmTilesDrawAboveSnow) not ported.
+	var snowAttach *paint.Image
+	if cov := int(t.Slope >> 5); cov != 0 && !t.IsIndustrial && om.SnowObj != nil {
+		snowImg := int(om.SnowObj.ImageOffset) + paint.SnowSurfaceFullZoom + ds
+		if cov == 5 {
+			if full := sprite(snowImg); full != nil {
+				sp = full
+			}
+		} else if cov <= 4 {
+			if si, mk := sprite(snowImg), sprite(int(paint.SnowCoverageSlopeToMask[cov-1][ds])); si != nil && mk != nil {
+				snowAttach = &paint.Image{Sprite: si, Mask: mk}
+			}
+		}
+	}
+	// PaintSurface.cpp paintMainSurface: offset (0,0,baseHeight), bbox (32,32,-1).
+	s.AddAsParent(paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, paint.Pos3{Z: z}, paint.Pos3{Z: z}, paint.Pos3{X: 32, Y: 32, Z: -1})
+	if snowAttach != nil {
+		s.AttachToPrevious(*snowAttach, 0, 0)
+	}
+
+	var nbs [4]*paint.Surface
+	for d, o := range paint.NeighbourOffsets {
+		if nt := m.TileAt(x+o[0]/32, y+o[1]/32); nt != nil {
+			// Scratch kept on the renderer: &Surface{} here escaped, 4 allocations per tile.
+			r.nbBuf[d] = paint.Surface{BaseZ: nt.BaseZ, Slope: nt.Slope, Water: nt.WaterLevel}
+			nbs[d] = &r.nbBuf[d]
+		}
+	}
+	self := paint.Surface{BaseZ: t.BaseZ, Slope: t.Slope, Water: t.WaterLevel}
+	if land.CliffEdgeImage > 0 {
+		s.PaintCliffEdges(paint.Surface{BaseZ: t.BaseZ, Slope: t.Slope}, nbs, int(land.CliffEdgeImage), sprite)
+	}
+	if t.WaterLevel != 0 && r.water.PalMap != nil {
+		s.PaintWater(self, nbs, r.water, objects.KSlopeToWaterShape[:], int(land.CliffEdgeImage), sprite)
+	}
+
+}
+
+// paintStation is PaintStation.cpp paintStation: by station type; train and road
+// stations paint against entry.prev() (a track / road element).
+func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st scenario.StationElement, prev *scenario.ElemRef, x, y int, ticks uint32) {
+	om, sprite, v := r.Objects, r.Sprite, struct{ Ticks uint32 }{ticks}
+	if st.StationType == 1 { // road station: paintRoadStation, against entry.prev() (a road element)
+		rso := om.GetRoadStationObjectByIndex(int(st.ObjectID))
+		if rso == nil || rso.PaintStyle != 0 || prev == nil || prev.Kind != scenario.KindRoad {
+			return
+		}
+		rd := t.Roads[prev.Index]
+		var remap, tl []uint8 // getCompanyColour(station->owner) and its translucent canopy colour
+		if int(st.StationID) < len(m.StationOwners) {
+			remap = r.companyRemap(m, m.StationOwners[st.StationID])
+			tl = r.canopyTranslucent(m, m.StationOwners[st.StationID], rso.Flags&objects.RoadStationFlagRecolourable != 0)
+		}
+		s.PaintRoadStation(st.Rotation, st.BaseZ, rd.RoadID, int(rso.SequenceImageOffsets[1]), remap, tl, sprite)
+		return
+	}
+	if st.StationType == 2 { // airport
+		ao := om.GetAirportObjectByIndex(int(st.ObjectID))
+		if ao == nil || int(st.BuildingType) >= len(ao.Variations) {
+			return
+		}
+		an := r.animOf(ao, ao.PartAnimations)
+		s.PaintAirport(st.Rotation, st.SequenceIndex, st.BaseZ, paint.AirportObj{BuildingImage: int(ao.BuildingImage),
+			Parts: ao.Variations[st.BuildingType], PartHeights: ao.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds,
+			LargeTile: ao.LargeTiles&(1<<st.BuildingType) != 0, Remap: r.companyRemap(m, st.Owner),
+			Shadow: r.shadow(ao.HasShadows(), int(st.BuildingType)*4+int(ao.Image)+1, colourOrange, false)}, x, y, v.Ticks, sprite)
+		return
+	}
+	if st.StationType == 3 { // docks
+		do := om.GetDockObjectByIndex(int(st.ObjectID))
+		if do == nil || int(st.BuildingType) >= len(do.Variations) {
+			return
+		}
+		an := r.animOf(do, do.PartAnimations)
+		s.PaintDocks(st.Rotation, st.SequenceIndex, st.BaseZ, st.ClearZ, paint.AirportObj{BuildingImage: int(do.BuildingImage),
+			Parts: do.Variations[st.BuildingType], PartHeights: do.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds, Remap: r.companyRemap(m, st.Owner),
+			Shadow: r.shadow(do.Flags&objects.DockFlagHasShadows != 0, int(st.BuildingType)*4+int(do.Image)+1, colourOrange, false)}, x, y, v.Ticks, sprite)
+		return
+	}
+	if st.StationType != 0 {
+		return
+	}
+	so := om.GetTrainStationObjectByIndex(int(st.ObjectID))
+	if so == nil || so.PaintStyle != 0 || int(st.SequenceIndex) >= len(so.SequenceImageOffsets) {
+		return
+	}
+	// paintTrainStation: against entry.prev(), which must be a track element.
+	if prev == nil || prev.Kind != scenario.KindTrack {
+		return
+	}
+	tk := t.Tracks[prev.Index]
+	s.PaintTrainStation(paint.StationEl{Rotation: st.Rotation, BaseZ: st.BaseZ, TrackID: tk.TrackID, TrackSeq: tk.SequenceIndex, Remap: r.companyRemap(m, tk.Owner),
+		Translucent: r.canopyTranslucent(m, tk.Owner, so.Flags&objects.TrainStationFlagRecolourable != 0)},
+		int(so.SequenceImageOffsets[st.SequenceIndex]), sprite)
 }
