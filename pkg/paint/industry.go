@@ -132,7 +132,12 @@ func (s *Session) PaintAirport(rotationEl, sequenceIndex, baseZ uint8, obj Airpo
 	if obj.LargeTile && int(sequenceIndex^2) != int(-int(s.Rotation))&3 {
 		return // only the front tile of a 2×2 draws
 	}
-	off := imgOff
+	s.paintStationBuilding(obj, imgOff, bbOff, bbSz, rotation, tileX, tileY, ticks, sprite)
+}
+
+// paintStationBuilding is paintAirportBuilding / paintDocksBuilding (the same
+// code upstream): parts stacked by height, each advanced by its animation.
+func (s *Session) paintStationBuilding(obj AirportObj, off, bbOff, bbSz Pos3, rotation uint8, tileX, tileY int, ticks uint32, sprite func(int) *gfx8.Sprite) {
 	for _, part := range obj.Parts {
 		// Upstream applies numFrames-1 unchecked (no numFrames==0 test as in
 		// buildings): uint8 - 1 → int -1 → all bits.
@@ -150,5 +155,21 @@ func (s *Session) PaintAirport(rotationEl, sequenceIndex, baseZ uint8, obj Airpo
 			s.AddAsChild(Image{Sprite: sp, Op: gfx8.OpTransparent}, off, bbOff, bbSz)
 		}
 		off.Z += int(obj.PartHeights[adj])
+	}
+}
+
+// PaintDocks — a port of Paint/PaintDocks.cpp paintDocks (always 2×2; bbox
+// height from the element's clear height). PARTIAL: shadows, company colour, ghosts.
+func (s *Session) PaintDocks(rotationEl, sequenceIndex, baseZ, clearZ uint8, obj AirportObj, tileX, tileY int, ticks uint32, sprite func(int) *gfx8.Sprite) {
+	rotation := (s.Rotation + rotationEl) & 3
+	baseHeight := int(baseZ) * 4
+	bbz := min(int(clearZ)*4-baseHeight, 128) - 2
+	imgOff, bbOff, bbSz := bldImgOff2x2, bldBBOff2x2, bldBBSz2x2
+	imgOff.Z += baseHeight
+	bbOff.Z += baseHeight
+	bbSz.Z += bbz
+	s.last = nil // session.resetLastPS()
+	if int(sequenceIndex^2) == int(-int(s.Rotation))&3 {
+		s.paintStationBuilding(obj, imgOff, bbOff, bbSz, rotation, tileX, tileY, ticks, sprite)
 	}
 }

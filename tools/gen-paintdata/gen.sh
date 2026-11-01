@@ -62,6 +62,7 @@ gofmt -w "$repo/pkg/paint/surfacedata_gen.go"
 cat > "$tmp/layout.cpp" <<'CPP'
 #include "Objects/AirportObject.h"
 #include "Objects/BuildingObject.h"
+#include "Objects/DockObject.h"
 #include <cstddef>
 #include <cstdio>
 using namespace OpenLoco;
@@ -80,6 +81,11 @@ int main() {
   std::printf("\tAirportMovementEdgeSize = %zu\n", sizeof(AirportObject::MovementEdge));
   std::printf("\tAirportFlagHasShadows = %u\n", (unsigned)AirportObjectFlags::hasShadows);
   std::printf("\tBuildingPartAnimationSize = %zu\n", sizeof(BuildingPartAnimation));
+  std::printf("\tDockObjectSize = %zu\n", sizeof(DockObject));
+  std::printf("\tDockFlagsOffset = %zu\n", offsetof(DockObject, flags));
+  std::printf("\tDockNumBuildingPartsOffset = %zu\n", offsetof(DockObject, numBuildingParts));
+  std::printf("\tDockNumBuildingVariationsOffset = %zu\n", offsetof(DockObject, numBuildingVariations));
+  std::printf("\tDockFlagHasShadows = %u\n", (unsigned)DockObjectFlags::hasShadows);
   std::printf(")\n");
 }
 CPP

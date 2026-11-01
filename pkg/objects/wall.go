@@ -38,12 +38,13 @@ func ParseWallObject(header *ObjectHeader, data []byte) (*WallObject, error) {
 // OpenLoco reference: src/OpenLoco/src/Objects/WallObject.cpp::load
 //
 // Header layout (10 bytes):
-//   0x00: StringId name (2 bytes, placeholder)
-//   0x02: uint32 sprite (4 bytes, set after image table load)
-//   0x06: uint8 var_06 (tool cursor, unused)
-//   0x07: uint8 flags (WallObjectFlags)
-//   0x08: uint8 height (SmallZ units)
-//   0x09: uint8 var_09 (flags2, unused)
+//
+//	0x00: StringId name (2 bytes, placeholder)
+//	0x02: uint32 sprite (4 bytes, set after image table load)
+//	0x06: uint8 var_06 (tool cursor, unused)
+//	0x07: uint8 flags (WallObjectFlags)
+//	0x08: uint8 height (SmallZ units)
+//	0x09: uint8 var_09 (flags2, unused)
 func ParseWallObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*WallObject, error) {
 	if len(data) < 0x0A {
 		return nil, fmt.Errorf("wall object data too small: %d bytes", len(data))

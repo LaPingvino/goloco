@@ -54,10 +54,10 @@ const maxScoreTotal = 100
 
 // scenarioReport holds one scenario's score and diagnostic notes.
 type scenarioReport struct {
-	name    string
-	score   int
-	issues  []string // ⚠ something wrong / unimplemented
-	notes   []string // · informational
+	name   string
+	score  int
+	issues []string // ⚠ something wrong / unimplemented
+	notes  []string // · informational
 }
 
 func (r *scenarioReport) pct() float64 {
@@ -105,17 +105,17 @@ func evaluateScenario(filePath string) scenarioReport {
 
 	// Collect per-tile statistics.
 	var (
-		totalTiles   int
-		heightFreq   [256]int
-		slopeFreq    [32]int
-		terrainFreq  [32]int
-		growthFreq   [8]int
+		totalTiles    int
+		heightFreq    [256]int
+		slopeFreq     [32]int
+		terrainFreq   [32]int
+		growthFreq    [8]int
 		variationFreq [256]int
-		waterTiles   int
-		treeTiles    int
-		buildTiles   int
-		trackTiles   int
-		roadTiles    int
+		waterTiles    int
+		treeTiles     int
+		buildTiles    int
+		trackTiles    int
+		roadTiles     int
 	)
 	for _, row := range sc.Tiles {
 		for _, t := range row {

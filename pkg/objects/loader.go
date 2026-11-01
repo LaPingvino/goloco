@@ -44,6 +44,7 @@ type ObjectManager struct {
 	TreeObjects          []*TreeObject               // all loaded tree objects
 	IndustryObjects      []*IndustryObject           // all loaded industry objects
 	SnowObj              *SnowObject                 // the single snow object
+	DockObjects          []*DockObject               // dock objects (scenario slot order after ReorderDockObjects)
 	AirportObjects       []*AirportObject            // airport objects (scenario slot order after ReorderAirportObjects)
 	BuildingObjects      []*BuildingObject           // all loaded building objects
 	WallObjects          []*WallObject               // all loaded wall objects
@@ -349,6 +350,19 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		loaded.Object = bldg
 		loaded.ImageOffset = bldg.ImageOffset
 		m.BuildingObjects = append(m.BuildingObjects, bldg)
+
+	case ObjectTypeDock:
+		var g1Loader G1Loader
+		if m.G1File != nil {
+			g1Loader, _ = m.G1File.(G1Loader)
+		}
+		dk, err := ParseDockObjectWithG1(header, decompressed, g1Loader)
+		if err != nil {
+			return fmt.Errorf("parsing dock: %w", err)
+		}
+		loaded.Object = dk
+		loaded.ImageOffset = dk.Image
+		m.DockObjects = append(m.DockObjects, dk)
 
 	case ObjectTypeAirport:
 		var g1Loader G1Loader
@@ -1160,4 +1174,29 @@ func (m *ObjectManager) ReorderAirportObjects(order []string) {
 		}
 	}
 	m.AirportObjects = reordered
+}
+
+// GetDockObjectByIndex returns the dock object in scenario slot index.
+func (m *ObjectManager) GetDockObjectByIndex(index int) *DockObject {
+	if index < 0 || index >= len(m.DockObjects) {
+		return nil
+	}
+	return m.DockObjects[index]
+}
+
+// ReorderDockObjects puts DockObjects in the scenario's dock slot order
+// (RequiredObjects slots 381..388).
+func (m *ObjectManager) ReorderDockObjects(order []string) {
+	reordered := make([]*DockObject, len(order))
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if d, ok := obj.Object.(*DockObject); ok {
+				reordered[i] = d
+			}
+		}
+	}
+	m.DockObjects = reordered
 }

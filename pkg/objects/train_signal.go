@@ -24,13 +24,13 @@ import "fmt"
 //	  + 96: greenLights
 //	  + 104: greenLights2
 type TrainSignalObject struct {
-	Header      *ObjectHeader
-	Name        string
-	Flags       uint16 // TrainSignalObjectFlags
-	AnimSpeed   uint8
-	NumFrames   uint8
-	IsLeft      bool // flags bit 0: left vs right orientation
-	HasLights   bool // flags bit 1
+	Header    *ObjectHeader
+	Name      string
+	Flags     uint16 // TrainSignalObjectFlags
+	AnimSpeed uint8
+	NumFrames uint8
+	IsLeft    bool // flags bit 0: left vs right orientation
+	HasLights bool // flags bit 1
 
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
 	// All sprite lookups: ImageOffset + local_index
@@ -40,9 +40,9 @@ type TrainSignalObject struct {
 // Signal-specific image offset constants (relative to ImageOffset).
 // OpenLoco reference: TrainSignalObject.h TrainSignal::ImageIds
 const (
-	TrainSignalRedLights   = 80
-	TrainSignalRedLights2  = 88
-	TrainSignalGreenLights = 96
+	TrainSignalRedLights    = 80
+	TrainSignalRedLights2   = 88
+	TrainSignalGreenLights  = 96
 	TrainSignalGreenLights2 = 104
 )
 

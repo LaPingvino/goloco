@@ -17,8 +17,8 @@ type ScenarioMeta struct {
 	Description string           // scenarioDetails (offset 0x6A)
 	Category    ScenarioCategory // difficulty (offset 0x01)
 	StartYear   uint16
-	HasPreview  bool             // landscapeGenerationDone flag set → hand-crafted map
-	IsGenerated bool             // !HasPreview → map generated from parameters on load
+	HasPreview  bool // landscapeGenerationDone flag set → hand-crafted map
+	IsGenerated bool // !HasPreview → map generated from parameters on load
 	// Preview is the raw 128×128 palette-indexed image.
 	// Zero-filled when IsGenerated is true (no preview stored).
 	Preview        [PreviewSize * PreviewSize]byte

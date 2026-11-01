@@ -4,16 +4,21 @@ package objects
 
 // AirportObject layout (Objects/AirportObject.h).
 const (
-	AirportObjectSize             = 186
-	AirportFlagsOffset            = 16
-	AirportNumSpriteSetsOffset    = 18
-	AirportNumTilesOffset         = 19
-	AirportLargeTilesOffset       = 160
-	AirportNumMovementNodesOffset = 172
-	AirportNumMovementEdgesOffset = 173
-	AirportBuildingSize           = 4
-	AirportMovementNodeSize       = 8
-	AirportMovementEdgeSize       = 12
-	AirportFlagHasShadows         = 1
-	BuildingPartAnimationSize     = 2
+	AirportObjectSize               = 186
+	AirportFlagsOffset              = 16
+	AirportNumSpriteSetsOffset      = 18
+	AirportNumTilesOffset           = 19
+	AirportLargeTilesOffset         = 160
+	AirportNumMovementNodesOffset   = 172
+	AirportNumMovementEdgesOffset   = 173
+	AirportBuildingSize             = 4
+	AirportMovementNodeSize         = 8
+	AirportMovementEdgeSize         = 12
+	AirportFlagHasShadows           = 1
+	BuildingPartAnimationSize       = 2
+	DockObjectSize                  = 40
+	DockFlagsOffset                 = 16
+	DockNumBuildingPartsOffset      = 18
+	DockNumBuildingVariationsOffset = 19
+	DockFlagHasShadows              = 1
 )

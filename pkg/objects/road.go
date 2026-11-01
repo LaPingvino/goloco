@@ -31,29 +31,30 @@ func ParseRoadObject(header *ObjectHeader, data []byte) (*RoadObject, error) {
 // OpenLoco reference: src/OpenLoco/src/Objects/RoadObject.cpp::load
 //
 // Fixed struct (0x30 = 48 bytes):
-//   0x00 StringId  name
-//   0x02 uint16    roadPieces
-//   0x04 int16     buildCostFactor
-//   0x06 int16     sellCostFactor
-//   0x08 int16     tunnelCostFactor
-//   0x0A uint8     costIndex
-//   0x0B uint8     tunnel
-//   0x0C uint16    maxSpeed
-//   0x0E uint32    image  ← filled at load time
-//   0x12 uint16    flags
-//   0x14 uint8     numBridges
-//   0x15 uint8[7]  bridges
-//   0x1C uint8     numStations
-//   0x1D uint8[7]  stations
-//   0x24 uint8     paintStyle  ← 0=normal, 1=ballast style
-//   0x25 uint8     numMods
-//   0x26 uint8[2]  mods
-//   0x28 uint8     numCompatible
-//   0x29 uint8     displayOffset
-//   0x2A uint16    compatibleRoads
-//   0x2C uint16    compatibleTracks
-//   0x2E uint8     targetTownSize
-//   0x2F uint8     pad
+//
+//	0x00 StringId  name
+//	0x02 uint16    roadPieces
+//	0x04 int16     buildCostFactor
+//	0x06 int16     sellCostFactor
+//	0x08 int16     tunnelCostFactor
+//	0x0A uint8     costIndex
+//	0x0B uint8     tunnel
+//	0x0C uint16    maxSpeed
+//	0x0E uint32    image  ← filled at load time
+//	0x12 uint16    flags
+//	0x14 uint8     numBridges
+//	0x15 uint8[7]  bridges
+//	0x1C uint8     numStations
+//	0x1D uint8[7]  stations
+//	0x24 uint8     paintStyle  ← 0=normal, 1=ballast style
+//	0x25 uint8     numMods
+//	0x26 uint8[2]  mods
+//	0x28 uint8     numCompatible
+//	0x29 uint8     displayOffset
+//	0x2A uint16    compatibleRoads
+//	0x2C uint16    compatibleTracks
+//	0x2E uint8     targetTownSize
+//	0x2F uint8     pad
 //
 // After the fixed struct: string table, then numCompatible + numMods + 1
 // ObjectHeaders (16 bytes each) for compatible objects, then the image table.

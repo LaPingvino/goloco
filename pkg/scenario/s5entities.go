@@ -109,68 +109,68 @@ const (
 // VehicleHead status values — VehicleHead byte 0x5D.
 // OpenLoco reference: src/OpenLoco/src/Vehicles/Vehicle.h  Status
 const (
-	VehicleStatusUnplaced   = uint8(0) // not yet placed on the map
-	VehicleStatusStopped    = uint8(1) // parked at a station
-	VehicleStatusTravelling = uint8(2) // moving along track
-	VehicleStatusWaiting    = uint8(3) // waiting at a signal
-	VehicleStatusLoading    = uint8(4) // loading/unloading cargo
+	VehicleStatusUnplaced    = uint8(0) // not yet placed on the map
+	VehicleStatusStopped     = uint8(1) // parked at a station
+	VehicleStatusTravelling  = uint8(2) // moving along track
+	VehicleStatusWaiting     = uint8(3) // waiting at a signal
+	VehicleStatusLoading     = uint8(4) // loading/unloading cargo
 	VehicleStatusApproaching = uint8(5) // approaching station
-	VehicleStatusBrokenDown = uint8(6)
-	VehicleStatusCrashed    = uint8(7)
+	VehicleStatusBrokenDown  = uint8(6)
+	VehicleStatusCrashed     = uint8(7)
 )
 
 // EntityBase byte offsets — sizeof = 0x24.
 // OpenLoco reference: src/OpenLoco/src/S5/S5Entity.h  struct EntityBase
 const (
-	ebBaseType            = 0x00 // uint8  — EntityBaseTypeVehicle / EntityBaseTypeFree
-	ebType                = 0x01 // uint8  — VehicleType* or misc entity subtype
-	ebNextQuadrantId      = 0x02 // uint16 — spatial hash next-entity for quadrant
-	ebNextEntityId        = 0x04 // uint16 — intrusive linked-list next ID
-	ebLLPreviousId        = 0x06 // uint16 — intrusive linked-list previous ID
-	ebLinkedListOffset    = 0x08 // uint8  — which list this entity belongs to
-	ebSpriteHeightNeg     = 0x09 // uint8  — negative sprite extent above position
-	ebID                  = 0x0A // uint16 — this entity's own slot index
-	ebVehicleFlags        = 0x0C // uint16 — vehicle-specific bit flags
-	ebPosX                = 0x0E // int16  — world X in sub-tile units (1 tile = 32 units)
-	ebPosY                = 0x10 // int16  — world Y in sub-tile units
-	ebPosZ                = 0x12 // int16  — world Z (1 unit = 1 px at zoom 0; = SmallZ*4)
-	ebSpriteWidth         = 0x14 // uint8  — sprite bounding box width
-	ebSpriteHeightPos     = 0x15 // uint8  — sprite bounding box height (positive)
-	ebSpriteLeft          = 0x16 // int16  — sprite bounding box left edge
-	ebSpriteTop           = 0x18 // int16  — sprite bounding box top edge
-	ebSpriteRight         = 0x1A // int16  — sprite bounding box right edge
-	ebSpriteBottom        = 0x1C // int16  — sprite bounding box bottom edge
-	ebSpriteYaw           = 0x1E // uint8  — rotation 0-63 (64 steps = full circle)
-	ebSpritePitch         = 0x1F // uint8  — pitch (used by aircraft/boats)
-	ebOwner               = 0x21 // uint8  — company index that owns this entity
-	ebName                = 0x22 // uint16 — display name (string table ID)
+	ebBaseType         = 0x00 // uint8  — EntityBaseTypeVehicle / EntityBaseTypeFree
+	ebType             = 0x01 // uint8  — VehicleType* or misc entity subtype
+	ebNextQuadrantId   = 0x02 // uint16 — spatial hash next-entity for quadrant
+	ebNextEntityId     = 0x04 // uint16 — intrusive linked-list next ID
+	ebLLPreviousId     = 0x06 // uint16 — intrusive linked-list previous ID
+	ebLinkedListOffset = 0x08 // uint8  — which list this entity belongs to
+	ebSpriteHeightNeg  = 0x09 // uint8  — negative sprite extent above position
+	ebID               = 0x0A // uint16 — this entity's own slot index
+	ebVehicleFlags     = 0x0C // uint16 — vehicle-specific bit flags
+	ebPosX             = 0x0E // int16  — world X in sub-tile units (1 tile = 32 units)
+	ebPosY             = 0x10 // int16  — world Y in sub-tile units
+	ebPosZ             = 0x12 // int16  — world Z (1 unit = 1 px at zoom 0; = SmallZ*4)
+	ebSpriteWidth      = 0x14 // uint8  — sprite bounding box width
+	ebSpriteHeightPos  = 0x15 // uint8  — sprite bounding box height (positive)
+	ebSpriteLeft       = 0x16 // int16  — sprite bounding box left edge
+	ebSpriteTop        = 0x18 // int16  — sprite bounding box top edge
+	ebSpriteRight      = 0x1A // int16  — sprite bounding box right edge
+	ebSpriteBottom     = 0x1C // int16  — sprite bounding box bottom edge
+	ebSpriteYaw        = 0x1E // uint8  — rotation 0-63 (64 steps = full circle)
+	ebSpritePitch      = 0x1F // uint8  — pitch (used by aircraft/boats)
+	ebOwner            = 0x21 // uint8  — company index that owns this entity
+	ebName             = 0x22 // uint16 — display name (string table ID)
 )
 
 // Common vehicle field offsets — shared by all 6 VehicleType* subtypes.
 // These come after EntityBase (0x00–0x23) in every vehicle struct.
 // OpenLoco reference: src/OpenLoco/src/S5/S5Entity.h  VehicleHead / VehicleBody / …
 const (
-	vhCommonHead             = 0x26 // uint16 — ID of the VehicleHead entity for this train
-	vhCommonRemainingDist    = 0x28 // int32  — remaining movement distance (sub-tile units)
-	vhCommonTrackAndDir      = 0x2C // uint16 — packed track ID + direction bits
-	vhCommonSubPosition      = 0x2E // uint16 — sub-tile position within track segment
-	vhCommonTileX            = 0x30 // int16  — tile-space X coordinate
-	vhCommonTileY            = 0x32 // int16  — tile-space Y coordinate
-	vhCommonTileBaseZ        = 0x34 // uint8  — tile-space height (SmallZ units)
-	vhCommonTrackType        = 0x35 // uint8  — track object type index
-	vhCommonRoutingHandle    = 0x36 // uint16 — order routing handle
-	vhCommonNextCarId        = 0x3A // uint16 — ID of next entity in the car chain (0xFFFF = end)
-	vhCommonMode             = 0x42 // uint8  — driving mode (same in all vehicle types)
+	vhCommonHead          = 0x26 // uint16 — ID of the VehicleHead entity for this train
+	vhCommonRemainingDist = 0x28 // int32  — remaining movement distance (sub-tile units)
+	vhCommonTrackAndDir   = 0x2C // uint16 — packed track ID + direction bits
+	vhCommonSubPosition   = 0x2E // uint16 — sub-tile position within track segment
+	vhCommonTileX         = 0x30 // int16  — tile-space X coordinate
+	vhCommonTileY         = 0x32 // int16  — tile-space Y coordinate
+	vhCommonTileBaseZ     = 0x34 // uint8  — tile-space height (SmallZ units)
+	vhCommonTrackType     = 0x35 // uint8  — track object type index
+	vhCommonRoutingHandle = 0x36 // uint16 — order routing handle
+	vhCommonNextCarId     = 0x3A // uint16 — ID of next entity in the car chain (0xFFFF = end)
+	vhCommonMode          = 0x42 // uint8  — driving mode (same in all vehicle types)
 )
 
 // VehicleBody / VehicleBogie specific offsets (type = VehicleTypeBody or VehicleTypeBogie).
 // OpenLoco reference: src/OpenLoco/src/S5/S5Entity.h  struct VehicleBody / VehicleBogie
 const (
-	vbColourPrimary   = 0x24 // uint8  — company primary colour
-	vbColourSecondary = 0x25 // uint8  — company secondary colour
+	vbColourPrimary    = 0x24 // uint8  — company primary colour
+	vbColourSecondary  = 0x25 // uint8  — company secondary colour
 	vbObjectSpriteType = 0x39 // uint8  — body component index for sprite lookup
-	vbObjectId        = 0x40 // uint16 — vehicle object slot index (→ ObjMgr.Vehicles[N])
-	vbBodyIndex       = 0x54 // uint8  — body index within the vehicle's body list
+	vbObjectId         = 0x40 // uint16 — vehicle object slot index (→ ObjMgr.Vehicles[N])
+	vbBodyIndex        = 0x54 // uint8  — body index within the vehicle's body list
 )
 
 // VehicleHead specific offsets (type = VehicleTypeHead).
@@ -209,7 +209,7 @@ type VehicleEntity struct {
 	TileX     coords.WorldUnits // vhCommonTileX (0x30) — tile-aligned X in WorldUnits
 	TileY     coords.WorldUnits // vhCommonTileY (0x32) — tile-aligned Y in WorldUnits
 	TileBaseZ uint8             // vhCommonTileBaseZ (0x34) — height in SmallZ units
-	NextCarID uint16 // vhCommonNextCarId (0x3A) — next entity in car chain (0xFFFF = end)
+	NextCarID uint16            // vhCommonNextCarId (0x3A) — next entity in car chain (0xFFFF = end)
 
 	// ---- VehicleBody / VehicleBogie sprite fields ----
 	ObjectID         uint16 // vbObjectId (0x40) — vehicle object slot (ObjMgr.Vehicles[N])
@@ -301,4 +301,3 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 	}
 	return result
 }
-
