@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/construct"
 	"image"
 
 	"github.com/LaPingvino/goloco/pkg/ui"
@@ -81,6 +82,20 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 		}
 	}
 	st.Piece = nameFor(consPieceCurve, g.consCurve)
+	if g.consOneShot >= 0 && !g.consIsRoad() { // the one-shot piece's button is the active one
+		switch g.consOneShot {
+		case construct.SBendLeft:
+			st.Piece = "s_bend_left"
+		case construct.SBendRight:
+			st.Piece = "s_bend_right"
+		default:
+			rot := g.w.ConstructionHeadState().Rotation
+			st.Piece = "s_bend_dual_track_left"
+			if consDualTrackPiece(false, rot) != g.consOneShot {
+				st.Piece = "s_bend_dual_track_right"
+			}
+		}
+	}
 	st.Gradient = nameFor(consGradientSlope, g.consSlope)
 	st.Hover = !g.w.ConstructionHeadState().Active
 	st.BridgeImage, st.Company = -1, f.CompanyColour
@@ -172,17 +187,30 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		case "remove":
 			g.consUndo()
 		case "copy", "paste": // PARTIAL: blueprints not ported
+		case "s_bend_left", "s_bend_right":
+			if !g.consIsRoad() { // changeTrackPiece(s_bend_…)
+				g.consOneShot = map[string]int{"s_bend_left": construct.SBendLeft, "s_bend_right": construct.SBendRight}[hit]
+			}
+		case "s_bend_dual_track_left", "s_bend_dual_track_right", "turnaround":
+			if !g.consIsRoad() {
+				g.consOneShot = consDualTrackPiece(hit == "s_bend_dual_track_right", g.w.ConstructionHeadState().Rotation)
+			}
+			// PARTIAL: the road turnaround (getRoadPieceId not ported yet).
 		default:
 			if v, ok := consPieceCurve[hit]; ok {
 				g.consCurve = v
-				g.consSlope = 0
+				g.consOneShot = -1
+				if g.consIsRoad() {
+					g.consSlope = 0
+				}
 			} else if v, ok := consGradientSlope[hit]; ok {
+				// Track: piece and gradient are separate choices (changeTrackPiece);
+				// a combination that can't be built gives no piece.
 				g.consSlope = v
-				if v != 0 {
+				if v != 0 && g.consIsRoad() {
 					g.consCurve = 0
 				}
 			}
-			// PARTIAL: s-bends and the road turnaround (no goloco piece mapping yet).
 		}
 	}
 	return win

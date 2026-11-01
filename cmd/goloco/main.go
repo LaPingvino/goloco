@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/LaPingvino/goloco/pkg/construct"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"image"
 	"image/color"
@@ -99,6 +100,7 @@ type Game struct {
 	consCurve   int   // construction curve selection: -4 (left large) … 0 … +4
 	consTab     int   // construction window tab: 0 construction, 2 signal (1 station places directly)
 	consSigOne  bool  // signal tab: single direction chosen (isSignalBothDirections = 0)
+	consOneShot int   // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
 	consSignal  int   // signal tab: lastSelectedSignal (slot; -1 = the first available)
 	consStation int   // station tab: lastSelectedStationType (slot; -1 = the first available)
 	consMods    uint8 // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
@@ -353,6 +355,7 @@ func NewGame() *Game {
 	return &Game{
 		w:             w,
 		consSignal:    -1,
+		consOneShot:   -1,
 		consStation:   -1,
 		titleWorld:    w, // keep a reference so Quit to Menu can restore it
 		r:             r,
@@ -2130,58 +2133,81 @@ func (g *Game) checkObjective() {
 // Curve row + slope row of sprite buttons, Rotate/Undo, and a Build action.
 // Click the map to place the construction head; pieces then chain from it.
 
-// consTrackCandidates maps the selected curve (-4 left large … 0 straight …
-// +4 right large) and slope (-2 steep down … 0 level … +2 steep up) to track
-// piece candidates; the first placeable at the head's heading wins (this is
-// how straight-vs-diagonal and cardinal-vs-diagonal larges resolve).
-func consTrackCandidates(curve, slope int) []int {
-	if curve == 0 {
-		switch slope {
-		case -2:
-			return []int{17}
-		case -1:
-			return []int{15}
-		case 1:
-			return []int{14}
-		case 2:
-			return []int{16}
-		default:
-			return []int{0, 1} // straight, or diagonal when heading is diagonal
-		}
-	}
-	if slope != 0 {
-		return nil // curved slopes not yet supported
-	}
-	switch curve {
-	case -1:
-		return []int{2} // left very small
-	case 1:
-		return []int{3}
-	case -2:
-		return []int{4} // left small
-	case 2:
-		return []int{5}
-	case -3:
-		return []int{6} // left medium
-	case 3:
-		return []int{7}
-	case -4:
-		return []int{8, 10} // left large (to/from diagonal)
-	case 4:
-		return []int{9, 11}
-	}
-	return nil
-}
-
 // consSelectedTrackID resolves the current curve/slope selection to the first
 // placeable track id at the head, or -1.
 func (g *Game) consSelectedTrackID() int {
-	for _, id := range consTrackCandidates(g.consCurve, g.consSlope) {
-		if g.w.CanPlaceTrackAtHead(id) {
-			return id
-		}
+	// getTrackPieceId (pkg/construct) for the chosen piece and gradient at
+	// the head's constructionRotation.
+	rot := g.w.ConstructionHeadState().Rotation
+	p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), rot)
+	if !ok || !g.w.CanPlaceTrackAtHead(int(p.ID)) {
+		return -1
 	}
-	return -1
+	return int(p.ID)
+}
+
+// consTrackPiece is lastSelectedTrackPiece: a one-shot piece if chosen, else
+// the curve buttons' piece.
+func (g *Game) consTrackPiece() uint8 {
+	if g.consOneShot >= 0 {
+		return uint8(g.consOneShot)
+	}
+	switch g.consCurve {
+	case -1:
+		return construct.LeftCurveVerySmall
+	case 1:
+		return construct.RightCurveVerySmall
+	case -2:
+		return construct.LeftCurveSmall
+	case 2:
+		return construct.RightCurveSmall
+	case -3:
+		return construct.LeftCurve
+	case 3:
+		return construct.RightCurve
+	case -4:
+		return construct.LeftCurveLarge
+	case 4:
+		return construct.RightCurveLarge
+	}
+	return construct.Straight
+}
+
+// consTrackGradient is lastSelectedTrackGradient for goloco's slope choice.
+func consTrackGradient(slope int) uint8 {
+	switch slope {
+	case -2:
+		return construct.SteepSlopeDown
+	case -1:
+		return construct.SlopeDown
+	case 1:
+		return construct.SlopeUp
+	case 2:
+		return construct.SteepSlopeUp
+	}
+	return construct.Level
+}
+
+// consDualTrackPiece is what the two s-bend-to-dual-track buttons choose at
+// this heading (onMouseDown reads the buttons' images, which
+// activateSelectedTrackWidgets sets by constructionRotation): heading
+// straight or diagonal both choose s_bend_to_dual_track (as upstream, the
+// right one too); at 4–7 left = turnaround, right = s-bend to single track;
+// at 8–11 left = s-bend to single track, right = turnaround.
+func consDualTrackPiece(right bool, rot uint8) int {
+	switch {
+	case rot >= 4 && rot < 8:
+		if right {
+			return construct.SBendToSingleTrack
+		}
+		return construct.Turnaround
+	case rot >= 8 && rot < 12:
+		if right {
+			return construct.Turnaround
+		}
+		return construct.SBendToSingleTrack
+	}
+	return construct.SBendToDualTrack
 }
 
 // consRoadCandidates maps the selected curve/slope to road piece ids. Roads
@@ -2231,11 +2257,13 @@ func (g *Game) consSelectedRoadID() int {
 
 func (g *Game) consIsRoad() bool { return g.buildMode == buildModeRoad }
 
+// consCandidates is the road's piece candidates (track pieces come from
+// construct.GetTrackPieceID).
 func (g *Game) consCandidates(curve, slope int) []int {
 	if g.consIsRoad() {
 		return consRoadCandidates(curve, slope)
 	}
-	return consTrackCandidates(curve, slope)
+	return nil
 }
 
 func (g *Game) consCanPlace(id int) bool {
@@ -2260,6 +2288,13 @@ func (g *Game) consDisplayID() int {
 	if id := g.consSelectedID(); id >= 0 {
 		return id
 	}
+	if !g.consIsRoad() { // the piece getTrackPieceId gives; none (−1) when it can't be built here
+		rot := g.w.ConstructionHeadState().Rotation
+		if p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), rot); ok {
+			return int(p.ID)
+		}
+		return -1
+	}
 	if cs := g.consCandidates(g.consCurve, g.consSlope); len(cs) > 0 {
 		return cs[0]
 	}
@@ -2270,7 +2305,10 @@ func (g *Game) consPlace(id int) {
 	if g.consIsRoad() {
 		g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
 	} else {
-		g.w.PlaceTrackAtHead(id, uint8(g.buildObjID))
+		if g.w.PlaceTrackAtHead(id, uint8(g.buildObjID)) && g.consOneShot >= 0 {
+			// constructTrack: one-shot pieces (≥ 9) go back to straight.
+			g.consOneShot, g.consCurve = -1, 0
+		}
 	}
 }
 
