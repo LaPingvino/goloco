@@ -69,6 +69,8 @@ type Scenario struct {
 	AirportObjectOrder []string
 	// CompanyColours is owner → main colour (neutral 15 = grey); nil without a GameState.
 	CompanyColours []uint8
+	// StationOwners is station id → owner (GameState stations); nil without a GameState.
+	StationOwners []uint8
 	// DockObjectOrder is the dock-object names in slot order (slots 381..388).
 	DockObjectOrder []string
 

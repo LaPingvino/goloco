@@ -271,6 +271,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 
 		sc.IndustryObjectIDs = parseIndustryObjectIDs(gameState)
 		sc.CompanyColours = parseCompanyColours(gameState)
+		sc.StationOwners = parseStationOwners(gameState)
 
 		// Towns live inside the GameState chunk for saved games.
 		sc.Towns = parseTownsFromGameState(gameState)
@@ -1147,6 +1148,33 @@ func parseCompanyColours(gs []byte) []uint8 {
 	}
 	c[companyNeutral] = colourGrey
 	return c
+}
+
+// Stations in the GameState (S5/S5Station.h; from the compiler): stations at
+// 0xC10C4 (GameStateType2: 0xBF4A4), 1024 records of 978 bytes, owner at 0x28.
+const (
+	stationsGameStateOffset      = 0xC10C4
+	stationsGameStateOffsetType2 = 0xBF4A4
+	stationMaxCount              = 1024
+	stationRecordSize            = 978
+	stationOwnerOffset           = 0x28
+)
+
+// parseStationOwners returns, per station id, its owner (Station::owner). nil if
+// the chunk is too short.
+func parseStationOwners(gs []byte) []uint8 {
+	off := stationsGameStateOffset
+	if len(gs) == GameStateSizeType2 {
+		off = stationsGameStateOffsetType2
+	}
+	if len(gs) < off+stationMaxCount*stationRecordSize {
+		return nil
+	}
+	o := make([]uint8, stationMaxCount)
+	for i := range o {
+		o[i] = gs[off+i*stationRecordSize+stationOwnerOffset]
+	}
+	return o
 }
 
 // parseIndustryObjectIDs returns, per industry index, its industry object id
