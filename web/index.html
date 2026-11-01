@@ -68,13 +68,18 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
     $("misscount").innerHTML = m.length ? "· <b>" + m.length + " missing</b>" : "";
   }, 1000);
 
-  // Each file is base64 text of a gzip stream (the host serves text, not gzip).
+  // Files are gzip streams: plain .gz from a local server, or base64 text of
+  // gzip (.b64.txt) from the artifact host, which serves text but not gzip.
   const gunzip = async (resp) => {
     if (!resp.ok) throw new Error(resp.url.split("/").pop() + ": HTTP " + resp.status);
-    const bin = atob((await resp.text()).trim());
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const s = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    let body = resp.body;
+    if (resp.url.endsWith(".b64.txt")) {
+      const bin = atob((await resp.text()).trim());
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      body = new Blob([bytes]).stream();
+    }
+    const s = body.pipeThrough(new DecompressionStream("gzip"));
     return new Uint8Array(await new Response(s).arrayBuffer());
   };
 
@@ -89,7 +94,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
       fill((c + 1) / steps);
     }
     status("Loading the game…");
-    wasm = await gunzip(await fetch("goloco.wasm.b64.txt"));
+    wasm = await gunzip(await fetch(man.wasm || "goloco.wasm.b64.txt"));
     fill(1);
     status(man.files.length + " files ready · " + (wasm.length / 1e6).toFixed(1) + " MB of game code");
     $("start").disabled = false;

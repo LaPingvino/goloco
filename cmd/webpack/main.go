@@ -43,6 +43,7 @@ type manifest struct {
 	Chunks []string `json:"chunks"`
 	Files  []entry  `json:"files"`
 	Args   []string `json:"args"`
+	Wasm   string   `json:"wasm"` // file holding the game code
 }
 
 // mount maps a host directory onto a virtual one, with a filter.
@@ -58,6 +59,7 @@ func main() {
 	scenarios := flag.String("scenarios", "", "comma-separated scenario file names to include (default: all)")
 	chunkRaw := flag.Int("chunk", 18<<20, "raw bytes per chunk before gzip")
 	args := flag.String("args", "", "space-separated command-line arguments passed to goloco")
+	local := flag.Bool("local", false, "write plain .gz files for a local server (the artifact host needs base64 text)")
 	flag.Parse()
 	if *out == "" {
 		log.Fatal("webpack: -out is required")
@@ -113,13 +115,20 @@ func main() {
 	if *args != "" {
 		man.Args = strings.Fields(*args)
 	}
+	// The artifact host serves text but not gzip, so its chunks are base64 text
+	// of gzip; a local server can hand out the .gz files as they are.
+	ext, enc := ".b64.txt", b64
+	if *local {
+		ext, enc = ".gz", func(b []byte) []byte { return b }
+	}
+	man.Wasm = "goloco.wasm" + ext
 	var raw bytes.Buffer
 	flush := func() {
 		if raw.Len() == 0 {
 			return
 		}
-		name := fmt.Sprintf("pack-%d.b64.txt", len(man.Chunks))
-		gz := b64(gzipBytes(raw.Bytes()))
+		name := fmt.Sprintf("pack-%d%s", len(man.Chunks), ext)
+		gz := enc(gzipBytes(raw.Bytes()))
 		if len(gz) > maxChunk {
 			log.Fatalf("webpack: %s is %d bytes gzipped (max %d) — lower -chunk", name, len(gz), maxChunk)
 		}
@@ -151,7 +160,7 @@ func main() {
 	must(build.Run())
 	wb, err := os.ReadFile(wasm)
 	must(err)
-	must(os.WriteFile(filepath.Join(*out, "goloco.wasm.b64.txt"), b64(gzipBytes(wb)), 0o644))
+	must(os.WriteFile(filepath.Join(*out, man.Wasm), enc(gzipBytes(wb)), 0o644))
 	must(os.Remove(wasm))
 
 	for _, f := range []struct{ from, to string }{
