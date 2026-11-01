@@ -11,9 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version-file: go.mod
+      # Ebitengine (GLFW, oto) needs the X11, OpenGL and ALSA headers to build,
+      # and the pkg/ui and pkg/world tests need a display: run under Xvfb.
+      - name: Install Ebitengine's system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libgl1-mesa-dev libxcursor-dev libxi-dev \
+            libxinerama-dev libxrandr-dev libxxf86vm-dev xvfb
       - name: Run tests
-        run: go test ./... -v
+        run: xvfb-run -a go test ./...
