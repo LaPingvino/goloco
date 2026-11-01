@@ -43,6 +43,7 @@ type Sprite struct {
 	XOffset, YOffset int
 	Pix              []uint8 // Width×Height indices; 0 = transparent
 	HasTransparency  bool
+	RLE              bool // stored RLE-compressed (no noise mask: vanilla didn't support it)
 }
 
 // Decode turns a g1 element into indices (raw or RLE, as stored).
@@ -61,6 +62,7 @@ func Decode(e *assets.G1Element) (*Sprite, error) {
 		return s, nil
 	}
 	s.HasTransparency = true
+	s.RLE = true
 	d := e.Data
 	if len(d) < h*2 {
 		return nil, errors.New("gfx8: RLE data too short")
@@ -144,6 +146,20 @@ func OpFor(s *Sprite, hasPrimary, blended bool) BlendOp {
 
 // DrawSprite draws s with its offsets at (x, y) on rt (zoom 0), clipped.
 func DrawSprite(rt *RenderTarget, s *Sprite, x, y int, op BlendOp, palMap []uint8) {
+	DrawSpriteNoise(rt, s, x, y, op, palMap, nil)
+}
+
+// DrawSpriteNoise is DrawSprite with an optional noise image (ImageId
+// withNoiseMask). As upstream (DrawSprite.cpp getDrawBlendOp) the noise op only
+// applies to non-RLE sprites, and (DrawSpriteBMP.hpp) the noise byte for sprite
+// pixel (x, y) is read at noise[sprite.Width*y + x] — the sprite's width is the
+// stride into the noise image.
+func DrawSpriteNoise(rt *RenderTarget, s *Sprite, x, y int, op BlendOp, palMap []uint8, noise *Sprite) {
+	if noise != nil && !s.RLE {
+		op |= OpNoiseMask
+	} else {
+		op &^= OpNoiseMask
+	}
 	x0, y0 := x+s.XOffset, y+s.YOffset
 	for sy := 0; sy < s.Height; sy++ {
 		ty := y0 + sy
@@ -155,7 +171,15 @@ func DrawSprite(rt *RenderTarget, s *Sprite, x, y int, op BlendOp, palMap []uint
 			if tx < 0 || tx >= rt.Width {
 				continue
 			}
-			blitPixel(op, s.Pix[sy*s.Width+sx], &rt.Bits[ty*rt.Width+tx], palMap, 0xFF)
+			nm := uint8(0xFF)
+			if op&OpNoiseMask != 0 {
+				if i := s.Width*sy + sx; i < len(noise.Pix) {
+					nm = noise.Pix[i]
+				} else {
+					nm = 0
+				}
+			}
+			blitPixel(op, s.Pix[sy*s.Width+sx], &rt.Bits[ty*rt.Width+tx], palMap, nm)
 		}
 	}
 }
