@@ -59,16 +59,17 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 		road := g.consIsRoad()
 		f.Disabled[2] = road || len(om.AvailableCompatibleSignals(g.buildObjID, year)) == 0
 		f.Disabled[1] = len(om.AvailableCompatibleStations(g.buildObjID, road, year)) == 0
-		if road {
-			f.Disabled[3] = true // PARTIAL: road extras (getAvailableCompatibleMods for roads) not ported
-		} else {
-			unlocked := func(v int) bool {
-				if company < len(g.w.UnlockedVehicles) && v < 224 {
-					return g.w.UnlockedVehicles[company][v/32]&(1<<(v%32)) != 0
-				}
-				return false
+		unlocked := func(v int) bool {
+			if company < len(g.w.UnlockedVehicles) && v < 224 {
+				return g.w.UnlockedVehicles[company][v/32]&(1<<(v%32)) != 0
 			}
-			f.Disabled[3] = om.AvailableCompatibleMods(g.buildObjID, unlocked) == [4]uint8{0xFF, 0xFF, 0xFF, 0xFF}
+			return false
+		}
+		none := [4]uint8{0xFF, 0xFF, 0xFF, 0xFF}
+		if road {
+			f.Disabled[3] = om.AvailableCompatibleRoadMods(g.buildObjID, unlocked) == none
+		} else {
+			f.Disabled[3] = om.AvailableCompatibleMods(g.buildObjID, unlocked) == none
 		}
 	}
 	st.Piece = nameFor(consPieceCurve, g.consCurve)

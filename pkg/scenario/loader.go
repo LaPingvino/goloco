@@ -191,6 +191,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.IndustryObjectOrder = parseIndustryObjectOrder(reqObjBytes)
 	// Track extras: 8 slots after the train stations (313 + 16), ObjectType 16.
 	sc.TrackExtraOrder = parseObjectOrder(reqObjBytes, 329, 8, 16)
+	// Road extras: 4 slots after the tracks (337 + 8) and road stations (345 + 16), ObjectType 19.
+	sc.RoadExtraOrder = parseObjectOrder(reqObjBytes, 361, 4, 19)
 	// Currency: one slot, after the interface skin (1) and the sounds (128).
 	if o := parseObjectOrder(reqObjBytes, 129, 1, objectTypeCurrency); len(o) == 1 {
 		sc.CurrencyObject = o[0]

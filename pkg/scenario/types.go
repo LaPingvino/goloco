@@ -56,6 +56,8 @@ type Scenario struct {
 	CurrencyObject string
 	// TrackExtraOrder is the track-extra DAT names in slot order (329..336).
 	TrackExtraOrder []string
+	// RoadExtraOrder is the road-extra DAT names in slot order (361..364).
+	RoadExtraOrder []string
 	// UnlockedVehicles is each company's unlockedVehicles bitset.
 	UnlockedVehicles [][7]uint32
 	// CurrentYear is GameState general.currentYear (getCurrentYear).

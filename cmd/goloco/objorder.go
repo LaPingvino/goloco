@@ -40,6 +40,7 @@ func reorderScenarioObjects(om *objects.ObjectManager, sc *scenario.Scenario) {
 	}
 	om.CurrencySlot = sc.CurrencyObject
 	om.TrackExtraOrder = sc.TrackExtraOrder
+	om.RoadExtraOrder = sc.RoadExtraOrder
 	// Gfx::loadCurrency and formatCurrency's object, as on scenario load.
 	if c := om.GetCurrencyObject(sc.CurrencyObject); c != nil {
 		ui.LoadCurrency(c.ObjectIcon)
