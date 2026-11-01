@@ -1104,8 +1104,13 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.townList.Hover = 2
 	}
-	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road") && !g.diagConsDone {
+	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend") && !g.diagConsDone {
 		g.diagConsDone = true
+		if d == "extend" {
+			g.buildMode = buildModeTrack
+			mw, mh := g.w.GetMapSize()
+			g.w.SetConstructionHead(mw/2, mh/2)
+		}
 		if d == "road" {
 			g.buildMode = buildModeRoad
 			if names := g.consObjectNames(); len(names) > 0 && names[0] == "" {

@@ -207,6 +207,15 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 	// Button labels (Label::draw centred, opaque window colour).
 	pal := g1.GetPalette()
 	text := pal[gfx8.Shade(sec, 9)]
+	// drawCostString: "Build this..." centred at the construct widget's midX,
+	// its bottom - 23, while extending (not while placing the first piece).
+	// PARTIAL: the "Cost: …" line 11 px below (goloco has no construction cost
+	// yet: the CreateTrack/CreateRoad game commands' cost isn't ported).
+	if !st.Hover {
+		const midX, y = (3 + 3 + 132 - 1) / 2, 145 + 100 - 1 - 23
+		bw, _ := MeasureTextBold("Build this...")
+		DrawTextBold(screen, "Build this...", f.X+midX-bw/2, f.Y+y, text)
+	}
 	for _, l := range []struct {
 		x, w int
 		s    string
