@@ -24,30 +24,72 @@ type TownRow struct {
 	Population, Stations int
 }
 
-// TownListWindow is the window state.
+// TableColumn is one column of a table list window: its header widget
+// (x, width, label) and where/how wide the row text is drawn.
+type TableColumn struct {
+	HeaderX, HeaderW int
+	Label            string
+	TextX, TextW     int
+}
+
+// TownListWindow is a 600×197 table list window (TownList.cpp, StationList.cpp
+// share the layout): caption, close, panel, tabs, column headers, a scroll
+// view of 10 px rows and a status line.
 type TownListWindow struct {
 	X, Y        int
 	TitleColour uint8
 	Colour      uint8
-	Rows        []TownRow
+	Caption     string
+	Tabs        int
+	Columns     []TableColumn
+	Rows        [][]string
+	Status      string
 	Hover       int
 	Scroll      int
 	content     [4]int
 	OnClose     func()
 }
 
-// NewTownList opens the window at (sw - 600, 30), as TownList::open.
-func NewTownList(sw int, rows []TownRow, titleColour, colour uint8) *TownListWindow {
-	return &TownListWindow{X: sw - tlW, Y: 30, Rows: rows, TitleColour: titleColour, Colour: colour, Hover: -1}
+// NewTownList opens the town list at (sw - 600, 30), as TownList::open.
+func NewTownList(sw int, towns []TownRow, titleColour, colour uint8) *TownListWindow {
+	rows := make([][]string, len(towns))
+	for i, t := range towns {
+		rows[i] = []string{t.Name, t.Type, itoa3(t.Population), itoa3(t.Stations)}
+	}
+	status := itoa3(len(rows)) + " towns"
+	if len(rows) == 1 {
+		status = "1 town"
+	}
+	return &TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: "Towns", Tabs: 4,
+		Columns: []TableColumn{{4, 200, "Name", 0, 198}, {204, 80, "Type", 200, 78}, {284, 70, "Population", 280, 68}, {354, 70, "Stations", 350, 68}},
+		Rows:    rows, Status: status, Hover: -1}
 }
 
-var (
-	tlHeaders = [4]struct {
-		x, w  int
-		label string
-	}{{4, 200, "Name"}, {204, 80, "Type"}, {284, 70, "Population"}, {354, 70, "Stations"}}
-	tlList = [4]int{3, 56, 594, 126}
-)
+// StationRow is one station of the station list.
+type StationRow struct {
+	Name, Status, Accepts string
+	Waiting               int
+}
+
+// NewStationList opens the station list (StationList.cpp): columns Name,
+// Status, Total waiting, Accepts; five tabs. PARTIAL: the caption lacks the
+// company name ("{STRINGID} - All Stations"), the transport-mode icons after
+// the name, the per-mode tabs' filtering, the company select button.
+func NewStationList(sw int, stations []StationRow, titleColour, colour uint8) *TownListWindow {
+	rows := make([][]string, len(stations))
+	for i, s := range stations {
+		rows[i] = []string{s.Name, s.Status, itoa3(s.Waiting) + " units", s.Accepts}
+	}
+	status := itoa3(len(rows)) + " stations"
+	if len(rows) == 1 {
+		status = "1 station"
+	}
+	return &TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: "All Stations", Tabs: 5,
+		Columns: []TableColumn{{4, 200, "Name", 0, 198}, {204, 200, "Status", 200, 198}, {404, 90, "Total waiting", 400, 88}, {494, 120, "Accepts", 490, 118}},
+		Rows:    rows, Status: status, Hover: -1}
+}
+
+var tlList = [4]int{3, 56, 594, 126}
 
 func (w *TownListWindow) in(r [4]int, px, py int) bool {
 	return px >= w.X+r[0] && px < w.X+r[0]+r[2] && py >= w.Y+r[1] && py < w.Y+r[1]+r[3]
@@ -96,7 +138,7 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, tlW-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := range 4 {
+		for i := range w.Tabs {
 			img := imgTab
 			if i == 0 {
 				img++
@@ -105,8 +147,9 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 				gfx8.DrawSpriteNoise(rt, sp, 3+31*i, 15, gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
 			}
 		}
-		for _, h := range tlHeaders {
-			gfx8.FillRectInset(rt, h.x, 43, h.x+h.w-1, 43+12-1, gfx8.InsetColour{Map: sec}, 0)
+		for _, c := range w.Columns {
+			hw := min(c.HeaderW, tlW-4-c.HeaderX) // headers are clipped to the window (prepareDraw)
+			gfx8.FillRectInset(rt, c.HeaderX, 43, c.HeaderX+hw-1, 43+12-1, gfx8.InsetColour{Map: sec}, 0)
 		}
 		l := tlList
 		cx, cy, cw, ch, _ := drawVScrollView(rt, l[0], l[1], l[2], l[3], gfx8.InsetColour{Map: sec}, len(w.Rows)*tlRowHeight, w.Scroll)
@@ -120,9 +163,9 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 			}
 		}
 	})
-	DrawWindowCaption(screen, w.X+1, w.Y+1, tlW-2, "Towns")
-	for _, h := range tlHeaders {
-		DrawTextBold(screen, h.label, w.X+h.x, w.Y+43, black)
+	DrawWindowCaption(screen, w.X+1, w.Y+1, tlW-2, w.Caption)
+	for _, c := range w.Columns {
+		DrawTextBold(screen, c.Label, w.X+c.HeaderX, w.Y+43, black)
 	}
 	ct := w.content
 	if len(w.Rows)*tlRowHeight > tlList[3] {
@@ -138,24 +181,19 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 			c = win2
 		}
 		x := w.X + ct[0]
-		cols := [4]struct {
-			dx, maxw int
-			s        string
-		}{{0, 198, r.Name}, {200, 78, r.Type}, {280, 68, itoa3(r.Population)}, {350, 68, itoa3(r.Stations)}}
-		for _, cl := range cols {
-			s := cl.s
-			for len(s) > 0 {
-				if tw, _ := MeasureTextBold(s); tw <= cl.maxw {
+		for k, cl := range w.Columns {
+			if k >= len(r) {
+				break
+			}
+			t := r[k]
+			for len(t) > 0 {
+				if tw, _ := MeasureTextBold(t); tw <= cl.TextW {
 					break
 				}
-				s = s[:len(s)-1]
+				t = t[:len(t)-1]
 			}
-			DrawTextBold(screen, s, x+cl.dx, y, c)
+			DrawTextBold(screen, t, x+cl.TextX, y, c)
 		}
 	}
-	status := itoa3(len(w.Rows)) + " towns"
-	if len(w.Rows) == 1 {
-		status = "1 town"
-	}
-	DrawTextBold(screen, status, w.X+4, w.Y+tlH-17, black)
+	DrawTextBold(screen, w.Status, w.X+4, w.Y+tlH-17, black)
 }
