@@ -128,8 +128,27 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 			if sp == nil {
 				continue
 			}
+			// Snow (PaintSurface.cpp snow branch, land tiles): full cover replaces the
+			// surface image; partial cover attaches the snow image masked per slope.
+			// PARTIAL: industry fields' snow (farmTilesDrawAboveSnow) not ported.
+			var snowAttach *paint.Image
+			if cov := int(t.Slope >> 5); cov != 0 && !t.IsIndustrial && om.SnowObj != nil {
+				snowImg := int(om.SnowObj.ImageOffset) + paint.SnowSurfaceFullZoom + ds
+				if cov == 5 {
+					if full := sprite(snowImg); full != nil {
+						sp = full
+					}
+				} else if cov <= 4 {
+					if si, mk := sprite(snowImg), sprite(int(paint.SnowCoverageSlopeToMask[cov-1][ds])); si != nil && mk != nil {
+						snowAttach = &paint.Image{Sprite: si, Mask: mk}
+					}
+				}
+			}
 			// PaintSurface.cpp paintMainSurface: offset (0,0,baseHeight), bbox (32,32,-1).
 			s.AddAsParent(paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, paint.Pos3{Z: z}, paint.Pos3{Z: z}, paint.Pos3{X: 32, Y: 32, Z: -1})
+			if snowAttach != nil {
+				s.AttachToPrevious(*snowAttach, 0, 0)
+			}
 
 			var nbs [4]*paint.Surface
 			for d, o := range paint.NeighbourOffsets {

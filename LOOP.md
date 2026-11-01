@@ -295,7 +295,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    PaintSurface.cpp by gen.sh into surfacedata_gen.go (literal integer table, no hand copy). Title farm: crop rows
    render. FOUND: goloco doesn't parse SNOW COVERAGE at all — both the land and field branches draw snow
    (SnowObject image + kSnowCoverageSlopeToMask) → item 3k.
-3k. [ ] **Snow cover.** Parse SurfaceElement snowCoverage (SurfaceElement.h), load the SnowObject, port the
+3k. [x] **Snow cover.** DONE tick 44 for land tiles (coverage = slope byte bits 5-7, already parsed; SnowObject loader;
+   full cover → snow image, 1-4 → snow attached masked by kSnowCoverageSlopeToMask — table names extracted from
+   PaintSurface.cpp and resolved by the compiler via gen.sh). Bottleneck Blues renders snow. NOT YET: industry
+   fields' snow (farmTilesDrawAboveSnow), the SurfaceElement::update snow step (coverage drifting to target). Parse SurfaceElement snowCoverage (SurfaceElement.h), load the SnowObject, port the
    snow branch of paintSurface (coverage 5 → snow image; 1-4 → surface + snow image masked by
    kSnowCoverageSlopeToMask) and the SurfaceElement::update snow step (coverage moving toward the target).
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
@@ -391,3 +394,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 41 (item 3j) — IndustryObject loader ported; all 22 industry objects walk exactly to their image tables. (OCR of the caption strips running in a second agent.)
 - 2026-11-01 tick 42 (item 3j) — industries render in the CPU renderer (farm, refinery); slot order and element fields parsed; farm fields next.
 - 2026-11-01 tick 43 (item 3j) — farm fields render (industrial surface branch); k4FD30C extracted from upstream source; snow cover found missing → 3k.
+- 2026-11-01 tick 44 (item 3k) — snow cover on land in the CPU renderer; SnowObject loader; mask table generated (names from the .cpp, values from the compiler).
