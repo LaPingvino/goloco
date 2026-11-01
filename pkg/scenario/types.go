@@ -62,6 +62,8 @@ type Scenario struct {
 	UnlockedVehicles [][7]uint32
 	// CurrentYear is GameState general.currentYear (getCurrentYear).
 	CurrentYear uint16
+	// CurrencyMultiplicationFactor is GameState general.currencyMultiplicationFactor.
+	CurrencyMultiplicationFactor [32]uint32
 
 	// IndustryObjectIDs[industry index] = that industry's object id (GameState
 	// industries table); IndustryElement.IndustryID indexes it.

@@ -286,6 +286,13 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		if len(gameState) > GeneralCurrentYearOffset+1 { // general.currentYear (from the compiler: 0x1A)
 			sc.CurrentYear = binary.LittleEndian.Uint16(gameState[GeneralCurrentYearOffset:])
 		}
+		// general.currencyMultiplicationFactor[32] (0x46, from the compiler): the
+		// inflation-adjusted price of each cost index.
+		if len(gameState) >= 0x46+32*4 {
+			for i := range sc.CurrencyMultiplicationFactor {
+				sc.CurrencyMultiplicationFactor[i] = binary.LittleEndian.Uint32(gameState[0x46+4*i:])
+			}
+		}
 		sc.ControllingCompany = parseControllingCompany(gameState)
 		if len(gameState) > 0x196 { // general.trafficHandedness (from the compiler)
 			sc.TrafficHandedness = gameState[0x196]
