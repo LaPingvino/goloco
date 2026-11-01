@@ -41,9 +41,9 @@ type DemoTrain struct {
 
 // World holds a tile grid for an isometric game world
 type World struct {
-	sim.Map  // map state: size, tiles, towns, saved vehicle entities (pkg/sim)
-	renderer *render.Renderer
-	trains   []*DemoTrain // demo trains (title screen / scenarios without saved entities)
+	sim.State // simulation state: map, construction head, undo history (pkg/sim)
+	renderer  *render.Renderer
+	trains    []*DemoTrain // demo trains (title screen / scenarios without saved entities)
 	// isometric tile dimensions (standard 2:1 ratio)
 	tileW int // tile width in pixels (64)
 	tileH int // tile height in pixels (32)
@@ -65,15 +65,12 @@ type World struct {
 	animTick int // incremented every frame; drives water wave animation
 
 	// 2-pass blend rendering (water, glass, etc.)
-	worldBuf      *ebiten.Image      // pass-1 target: all opaque sprites
-	blendBuf      *ebiten.Image      // pass-2 target: blend-mode overlay
-	blendOps      []worldBlendOp     // queued during pass 1
-	consHead      ConstructionHead   // shared track/road construction head
-	frameCounter  int                // draw-frame counter for UI pulses
-	consStack     []placedPiece      // undo stack for placed track pieces
-	consRoadStack []placedPiece      // undo stack for placed road pieces
-	highlightOps  []worldHighlightOp // ripple/wave sprites drawn after blend
-	waterOps      []worldHighlightOp // water surface ops drawn after all terrain (pass 1.5)
+	worldBuf     *ebiten.Image      // pass-1 target: all opaque sprites
+	blendBuf     *ebiten.Image      // pass-2 target: blend-mode overlay
+	blendOps     []worldBlendOp     // queued during pass 1
+	frameCounter int                // draw-frame counter for UI pulses
+	highlightOps []worldHighlightOp // ripple/wave sprites drawn after blend
+	waterOps     []worldHighlightOp // water surface ops drawn after all terrain (pass 1.5)
 
 	// RenderIssues tracks tiles where rendering failed silently during the last Draw().
 	// Accumulated per-frame; exposed via WorstRenderIssue() for --diag targeting.
@@ -140,7 +137,7 @@ type worldHighlightOp struct {
 func NewWorld(r *render.Renderer) *World {
 	w := &World{
 		renderer: r,
-		Map:      sim.Map{Width: 20, Height: 15, Tiles: make([][]tile, 15)},
+		State:    sim.State{Map: sim.Map{Width: 20, Height: 15, Tiles: make([][]tile, 15)}},
 		tileW:    64, // standard isometric tile width
 		tileH:    32, // standard isometric tile height (64×32 = 2:1 ratio)
 		zoom:     0,  // start at full zoom (1× scale)
@@ -1033,44 +1030,6 @@ func (w *World) GetTileBaseZ(x, y int) int {
 		return -1
 	}
 	return int(t.BaseZ)
-}
-
-// AddTrack appends a track element to tile (x, y).
-// Returns false if the tile is out of bounds or an identical element already exists.
-func (w *World) AddTrack(x, y int, te scenario.TrackElement) bool {
-	t := w.getTile(x, y)
-	if t == nil {
-		return false
-	}
-	for _, ex := range t.Tracks {
-		if ex.TrackObjectID == te.TrackObjectID &&
-			ex.TrackID == te.TrackID &&
-			ex.Rotation == te.Rotation &&
-			ex.BaseZ == te.BaseZ {
-			return false
-		}
-	}
-	t.Tracks = append(t.Tracks, te)
-	return true
-}
-
-// AddRoad appends a road element to tile (x, y).
-// Returns false if the tile is out of bounds or an identical element already exists.
-func (w *World) AddRoad(x, y int, re scenario.RoadElement) bool {
-	t := w.getTile(x, y)
-	if t == nil {
-		return false
-	}
-	for _, ex := range t.Roads {
-		if ex.RoadObjectID == re.RoadObjectID &&
-			ex.RoadID == re.RoadID &&
-			ex.Rotation == re.Rotation &&
-			ex.BaseZ == re.BaseZ {
-			return false
-		}
-	}
-	t.Roads = append(t.Roads, re)
-	return true
 }
 
 // RemoveLastTrack removes the most recently placed track element from tile (x, y).

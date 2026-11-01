@@ -52,7 +52,7 @@ type SimStation struct {
 // construction head. Returns false when the head is inactive or its tile has no
 // track origin element to carry the station.
 func (w *World) PlaceStationAtHead(stationObjID uint8) bool {
-	h := w.consHead
+	h := w.ConsHead
 	if !h.Active {
 		return false
 	}

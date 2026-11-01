@@ -14,7 +14,7 @@ func newTestWorld(w, h int, baseZ uint8) *World {
 			tiles[y][x] = tile{BaseZ: baseZ}
 		}
 	}
-	return &World{Map: sim.Map{Width: w, Height: h, Tiles: tiles}}
+	return &World{State: sim.State{Map: sim.Map{Width: w, Height: h, Tiles: tiles}}}
 }
 
 // TestPlaceRoadAtHeadSequence walks a road piece sequence through the shared
