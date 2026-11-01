@@ -19,7 +19,7 @@ func newTestWorld(w, h int, baseZ uint8) *World {
 
 // TestPlaceRoadAtHeadSequence walks a road piece sequence through the shared
 // construction head and asserts the head advances to the expected tile,
-// height and rotation after each piece — mirroring kRoadCoordinates.
+// height and rotation after each piece — mirroring sim.RoadCoordinates.
 func TestPlaceRoadAtHeadSequence(t *testing.T) {
 	wld := newTestWorld(20, 20, 10)
 	wld.SetConstructionHead(10, 10) // head at (10,10), rot 0, baseZ 10
@@ -31,15 +31,15 @@ func TestPlaceRoadAtHeadSequence(t *testing.T) {
 		originX, originY   int // tile that should receive the piece origin element
 		desc               string
 	}{
-		// straight rot0: kRoadCoordinates[0] = {0,0,-32,0,0}
+		// straight rot0: sim.RoadCoordinates[0] = {0,0,-32,0,0}
 		{0, 9, 10, 10, 0, 10, 10, "straight NE"},
-		// rightCurveVerySmall rot0: kRoadCoordinates[16] = {0,1,0,32,0}
+		// rightCurveVerySmall rot0: sim.RoadCoordinates[16] = {0,1,0,32,0}
 		{2, 9, 11, 10, 1, 9, 10, "right very-small curve → heading 1"},
-		// straight rot1: kRoadCoordinates[1] = {1,1,0,32,0}
+		// straight rot1: sim.RoadCoordinates[1] = {1,1,0,32,0}
 		{0, 9, 12, 10, 1, 9, 11, "straight SE"},
-		// leftCurveVerySmall rot1: kRoadCoordinates[9] = {1,0,-32,0,0}
+		// leftCurveVerySmall rot1: sim.RoadCoordinates[9] = {1,0,-32,0,0}
 		{1, 8, 12, 10, 0, 9, 12, "left very-small curve → heading 0"},
-		// straightSlopeUp rot0: kRoadCoordinates[40] = {0,0,-64,0,16}
+		// straightSlopeUp rot0: sim.RoadCoordinates[40] = {0,0,-64,0,16}
 		{5, 6, 12, 14, 0, 8, 12, "slope up: +2 tiles, +4 baseZ"},
 	}
 
