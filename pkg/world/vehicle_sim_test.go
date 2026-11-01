@@ -24,11 +24,11 @@ func TestVehicleSimStraightLine(t *testing.T) {
 	if !wld.SpawnTestVehicle(0) {
 		t.Fatal("SpawnTestVehicle returned false")
 	}
-	if len(wld.simVehicles) != 1 || len(wld.entities) != 1 {
-		t.Fatalf("expected 1 sim vehicle + 1 entity, got %d/%d", len(wld.simVehicles), len(wld.entities))
+	if len(wld.simVehicles) != 1 || len(wld.Entities) != 1 {
+		t.Fatalf("expected 1 sim vehicle + 1 entity, got %d/%d", len(wld.simVehicles), len(wld.Entities))
 	}
 	sv := wld.simVehicles[0]
-	ent := &wld.entities[0]
+	ent := &wld.Entities[0]
 
 	// The line runs along -X (rot 0 straight: DX=-32). The vehicle should start
 	// at the line's beginning (highest X, tile 15) with no predecessor.

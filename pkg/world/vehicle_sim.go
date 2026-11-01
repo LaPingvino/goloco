@@ -52,7 +52,7 @@ type SimVehicle struct {
 	dwell          int    // remaining dwell ticks at a station
 
 	// consist: rendered body entities driven by this vehicle. Indices into
-	// w.entities. For the slice a single body is enough, but the field is a
+	// w.Entities. For the slice a single body is enough, but the field is a
 	// slice so a multi-car consist can be added later.
 	entityIdx []int
 }
@@ -119,9 +119,9 @@ func (w *World) findTrackOrigin(x, y int, baseZ, beginRot uint8) (scenario.Track
 // be on any tile, so this is a full scan; acceptable for the small piece counts
 // of the vertical slice.
 func (w *World) findTrackEnding(x, y int, baseZ, endRot uint8) (tileX, tileY int, te scenario.TrackElement, ok bool) {
-	for ty := 0; ty < w.height; ty++ {
-		for tx := 0; tx < w.width; tx++ {
-			for _, cand := range w.tiles[ty][tx].Tracks {
+	for ty := 0; ty < w.Height; ty++ {
+		for tx := 0; tx < w.Width; tx++ {
+			for _, cand := range w.Tiles[ty][tx].Tracks {
 				if cand.SequenceIndex != 0 {
 					continue
 				}
@@ -155,10 +155,10 @@ func (w *World) SpawnTestVehicle(objID int) bool {
 		bestScore int // 2: trackID0 + no predecessor, 1: no predecessor, 0: any
 		found     bool
 	)
-	for ty := 0; ty < w.height; ty++ {
-		for tx := 0; tx < w.width; tx++ {
-			for i := range w.tiles[ty][tx].Tracks {
-				te := &w.tiles[ty][tx].Tracks[i]
+	for ty := 0; ty < w.Height; ty++ {
+		for tx := 0; tx < w.Width; tx++ {
+			for i := range w.Tiles[ty][tx].Tracks {
+				te := &w.Tiles[ty][tx].Tracks[i]
 				if te.SequenceIndex != 0 || int(te.TrackID)<<3 >= len(kTrackCoordinates) {
 					continue
 				}
@@ -201,8 +201,8 @@ func (w *World) SpawnTestVehicle(objID int) bool {
 		ObjectSpriteType: 0,
 		Owner:            0,
 	}
-	w.entities = append(w.entities, ent)
-	sv.entityIdx = []int{len(w.entities) - 1}
+	w.Entities = append(w.Entities, ent)
+	sv.entityIdx = []int{len(w.Entities) - 1}
 
 	w.simVehicles = append(w.simVehicles, sv)
 	w.writeVehicleEntity(sv)
@@ -337,10 +337,10 @@ func (w *World) writeVehicleEntity(sv *SimVehicle) {
 	}
 
 	for _, idx := range sv.entityIdx {
-		if idx < 0 || idx >= len(w.entities) {
+		if idx < 0 || idx >= len(w.Entities) {
 			continue
 		}
-		e := &w.entities[idx]
+		e := &w.Entities[idx]
 		e.PosX = coords.WorldUnits(int16(math.Round(px)))
 		e.PosY = coords.WorldUnits(int16(math.Round(py)))
 		e.PosZ = int16(math.Round(pz))

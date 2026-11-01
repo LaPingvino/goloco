@@ -1,5 +1,7 @@
 package world
 
+import "github.com/LaPingvino/goloco/pkg/sim"
+
 import "testing"
 
 // newTestWorld builds a synthetic flat World (no renderer) suitable for
@@ -12,7 +14,7 @@ func newTestWorld(w, h int, baseZ uint8) *World {
 			tiles[y][x] = tile{BaseZ: baseZ}
 		}
 	}
-	return &World{width: w, height: h, tiles: tiles}
+	return &World{Map: sim.Map{Width: w, Height: h, Tiles: tiles}}
 }
 
 // TestPlaceRoadAtHeadSequence walks a road piece sequence through the shared

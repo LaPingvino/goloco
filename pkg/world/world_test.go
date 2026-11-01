@@ -8,6 +8,7 @@ package world
 // World.hpp constants.  See /home/joop/goloco-project/MEASUREMENTS.md.
 
 import (
+	"github.com/LaPingvino/goloco/pkg/sim"
 	"testing"
 )
 
@@ -19,7 +20,7 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestTileToScreen(t *testing.T) {
-	w := &World{tileW: 64, tileH: 32, width: 20, height: 15}
+	w := &World{tileW: 64, tileH: 32, Map: sim.Map{Width: 20, Height: 15}}
 
 	cases := []struct {
 		tileX, tileY int
@@ -130,14 +131,14 @@ func TestGetCornerHeights(t *testing.T) {
 
 func TestNeighborOffsets(t *testing.T) {
 	const sz = 5
-	w := &World{width: sz, height: sz, tiles: make([][]tile, sz)}
-	for y := range w.tiles {
-		w.tiles[y] = make([]tile, sz)
+	w := &World{Map: sim.Map{Width: sz, Height: sz, Tiles: make([][]tile, sz)}}
+	for y := range w.Tiles {
+		w.Tiles[y] = make([]tile, sz)
 	}
 	// Mark each tile with unique base values we can identify.
 	for y := 0; y < sz; y++ {
 		for x := 0; x < sz; x++ {
-			w.tiles[y][x].BaseZ = uint8(y*sz + x)
+			w.Tiles[y][x].BaseZ = uint8(y*sz + x)
 		}
 	}
 

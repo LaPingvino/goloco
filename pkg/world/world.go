@@ -41,12 +41,9 @@ type DemoTrain struct {
 
 // World holds a tile grid for an isometric game world
 type World struct {
+	sim.Map  // map state: size, tiles, towns, saved vehicle entities (pkg/sim)
 	renderer *render.Renderer
-	width    int
-	height   int
-	tiles    [][]tile
-	trains   []*DemoTrain             // demo trains (title screen / scenarios without saved entities)
-	entities []scenario.VehicleEntity // real vehicle entities from .SV5 saved-game files
+	trains   []*DemoTrain // demo trains (title screen / scenarios without saved entities)
 	// isometric tile dimensions (standard 2:1 ratio)
 	tileW int // tile width in pixels (64)
 	tileH int // tile height in pixels (32)
@@ -86,7 +83,7 @@ type World struct {
 	mapSave *mapSaveState
 
 	// simVehicles are minimal track-following vehicles advanced by TickVehicles
-	// (gameplay simulation). Each drives one or more w.entities body sprites.
+	// (gameplay simulation). Each drives one or more w.Entities body sprites.
 	simVehicles []*SimVehicle
 
 	// simStations is the passenger-supply registry (see station.go).
@@ -94,9 +91,6 @@ type World struct {
 
 	// moneyFloats are rising "+£N" income indicators (see overlay.go).
 	moneyFloats []moneyFloat
-
-	// towns holds the parsed town records for the loaded scenario (list window).
-	towns []scenario.Town
 
 	// OnCargoDelivered is invoked when a vehicle delivers cargo to a station
 	// different from where it picked it up. cmd/goloco wires this to
@@ -146,20 +140,18 @@ type worldHighlightOp struct {
 func NewWorld(r *render.Renderer) *World {
 	w := &World{
 		renderer: r,
-		width:    20,
-		height:   15,
+		Map:      sim.Map{Width: 20, Height: 15, Tiles: make([][]tile, 15)},
 		tileW:    64, // standard isometric tile width
 		tileH:    32, // standard isometric tile height (64×32 = 2:1 ratio)
-		tiles:    make([][]tile, 15),
-		zoom:     0, // start at full zoom (1× scale)
+		zoom:     0,  // start at full zoom (1× scale)
 	}
 
-	for y := 0; y < w.height; y++ {
-		w.tiles[y] = make([]tile, w.width)
+	for y := 0; y < w.Height; y++ {
+		w.Tiles[y] = make([]tile, w.Width)
 	}
 
 	// Center camera on the map
-	cx, cy := w.tileToScreen(w.width/2, w.height/2)
+	cx, cy := w.tileToScreen(w.Width/2, w.Height/2)
 	w.camX = cx - 400 // half screen width
 	w.camY = cy - 300 // half screen height
 	return w
@@ -183,21 +175,21 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 	if sc == nil || sc.Tiles == nil {
 		return
 	}
-	w.width = sc.MapWidth
-	w.height = sc.MapHeight
-	w.tiles = make([][]tile, w.height)
+	w.Width = sc.MapWidth
+	w.Height = sc.MapHeight
+	w.Tiles = make([][]tile, w.Height)
 	totalBuildings := 0
-	for y := 0; y < w.height; y++ {
-		w.tiles[y] = make([]tile, w.width)
-		for x := 0; x < w.width; x++ {
+	for y := 0; y < w.Height; y++ {
+		w.Tiles[y] = make([]tile, w.Width)
+		for x := 0; x < w.Width; x++ {
 			st := sc.GetTile(x, y)
 			if st == nil {
-				w.tiles[y][x] = tile{}
+				w.Tiles[y][x] = tile{}
 				continue
 			}
 			totalBuildings += len(st.Buildings)
 
-			w.tiles[y][x] = tile{
+			w.Tiles[y][x] = tile{
 				TerrainIndex: st.TerrainIndex,
 				BaseZ:        st.Height,
 				Slope:        st.Slope,
@@ -217,21 +209,21 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 		}
 	}
 
-	log.Printf("[World] LoadFromScenario: %dx%d tiles, totalBuildings=%d", w.width, w.height, totalBuildings)
+	log.Printf("[World] LoadFromScenario: %dx%d tiles, totalBuildings=%d", w.Width, w.Height, totalBuildings)
 
 	// Center camera on the map
-	cx, cy := w.tileToScreen(w.width/2, w.height/2)
+	cx, cy := w.tileToScreen(w.Width/2, w.Height/2)
 	w.camX = cx - 400
 	w.camY = cy - 300
 
 	// Store parsed town records for the Towns list window.
-	w.towns = sc.Towns
+	w.Towns = sc.Towns
 
 	// Store real vehicle entities from saved games.  When entities are present
 	// they are rendered by paintVehicleEntities; otherwise fall back to demo trains.
-	w.entities = sc.Entities
+	w.Entities = sc.Entities
 
-	if len(w.entities) == 0 {
+	if len(w.Entities) == 0 {
 		// No real entities (scenario file or empty save) — spawn scripted demo trains
 		// so the title screen and freshly-loaded scenarios show some movement.
 		w.spawnDemoTrains()
@@ -251,12 +243,12 @@ func (w *World) spawnDemoTrains() {
 	type trackPos struct{ x, y int }
 	var trackTiles []trackPos
 	step := 1
-	if w.width*w.height > 1000 {
+	if w.Width*w.Height > 1000 {
 		step = 8 // sample every 8th tile on large maps
 	}
-	for y := 0; y < w.height; y += step {
-		for x := 0; x < w.width; x += step {
-			if len(w.tiles[y][x].Tracks) > 0 {
+	for y := 0; y < w.Height; y += step {
+		for x := 0; x < w.Width; x += step {
+			if len(w.Tiles[y][x].Tracks) > 0 {
 				trackTiles = append(trackTiles, trackPos{x, y})
 			}
 		}
@@ -278,8 +270,8 @@ func (w *World) spawnDemoTrains() {
 		dx, dy := 0, 1
 		for _, cand := range [][2]int{{0, 1}, {1, 0}, {0, -1}, {-1, 0}} {
 			nx, ny := tp.x+cand[0], tp.y+cand[1]
-			if nx >= 0 && nx < w.width && ny >= 0 && ny < w.height &&
-				len(w.tiles[ny][nx].Tracks) > 0 {
+			if nx >= 0 && nx < w.Width && ny >= 0 && ny < w.Height &&
+				len(w.Tiles[ny][nx].Tracks) > 0 {
 				dx, dy = cand[0], cand[1]
 				break
 			}
@@ -368,7 +360,7 @@ func (w *World) SetZoom(level int) {
 
 // GetMapSize returns the map dimensions in tiles
 func (w *World) GetMapSize() (width, height int) {
-	return w.width, w.height
+	return w.Width, w.Height
 }
 
 // VehicleCount returns the number of simulated (track-following) vehicles.
@@ -482,7 +474,7 @@ func (w *World) CollectSpriteIDs() []int {
 
 	// Tree objects — scan tiles for used tree object IDs
 	usedTrees := make(map[uint8]struct{})
-	for _, row := range w.tiles {
+	for _, row := range w.Tiles {
 		for _, t := range row {
 			for _, te := range t.Trees {
 				usedTrees[te.TreeObjectID] = struct{}{}
@@ -502,7 +494,7 @@ func (w *World) CollectSpriteIDs() []int {
 
 	// Building objects — scan tiles
 	usedBuildings := make(map[uint8]struct{})
-	for _, row := range w.tiles {
+	for _, row := range w.Tiles {
 		for _, t := range row {
 			for _, be := range t.Buildings {
 				usedBuildings[be.ObjectID] = struct{}{}
@@ -539,8 +531,8 @@ func (w *World) Update() {
 			nx := tr.tileX + tr.dx
 			ny := tr.tileY + tr.dy
 			// Bounce if out-of-bounds or no track at destination
-			if nx < 0 || nx >= w.width || ny < 0 || ny >= w.height ||
-				len(w.tiles[ny][nx].Tracks) == 0 {
+			if nx < 0 || nx >= w.Width || ny < 0 || ny >= w.Height ||
+				len(w.Tiles[ny][nx].Tracks) == 0 {
 				tr.dx = -tr.dx
 				tr.dy = -tr.dy
 			} else {
@@ -559,10 +551,10 @@ const mapSaveChunkSize = 512
 // frame; when it returns true, call FinishMapSave to write the PNG.
 func (w *World) StartMapSave(filename string) {
 	const chunkMax = mapSaveChunkSize
-	minVpX := -(float64(w.width) - 1) * 32.0
-	maxVpX := (float64(w.height) - 1) * 32.0
+	minVpX := -(float64(w.Width) - 1) * 32.0
+	maxVpX := (float64(w.Height) - 1) * 32.0
 	minVpY := -512.0
-	maxVpY := (float64(w.width)+float64(w.height)-2)*16.0 + 64.0
+	maxVpY := (float64(w.Width)+float64(w.Height)-2)*16.0 + 64.0
 	imgW := int(maxVpX-minVpX) + 128
 	imgH := int(maxVpY-minVpY) + 64
 
@@ -702,13 +694,13 @@ func (w *World) CenterOn(kind string) bool {
 	if kind == "train" || kind == "trains" || kind == "vehicle" || kind == "vehicles" {
 		// Find first placed Body entity with valid tile coordinates.
 		// Skip entities at tile (0,0) — those are unplaced/invalid slots.
-		for i := range w.entities {
-			e := &w.entities[i]
+		for i := range w.Entities {
+			e := &w.Entities[i]
 			if e.EntityType != scenario.VehicleTypeBody {
 				continue
 			}
 			tx, ty := e.PosX.Tile(), e.PosY.Tile()
-			if tx <= 0 || ty <= 0 || tx.Int() >= w.width || ty.Int() >= w.height {
+			if tx <= 0 || ty <= 0 || tx.Int() >= w.Width || ty.Int() >= w.Height {
 				continue
 			}
 			log.Printf("[World] CenterOn(%q): entity at (%d,%d)", kind, tx, ty)
@@ -733,10 +725,10 @@ func (w *World) CenterOn(kind string) bool {
 	// and jumps to the tile with the highest score.
 	if kind == "worst" {
 		bestScore := -1
-		bestX, bestY := w.width/2, w.height/2
-		for y := 0; y < w.height; y++ {
-			for x := 0; x < w.width; x++ {
-				t := &w.tiles[y][x]
+		bestX, bestY := w.Width/2, w.Height/2
+		for y := 0; y < w.Height; y++ {
+			for x := 0; x < w.Width; x++ {
+				t := &w.Tiles[y][x]
 				score := 0
 				// Water tile: known rendering issues
 				if t.WaterLevel > 0 && uint16(t.WaterLevel)*16 > uint16(t.BaseZ)*4 {
@@ -796,18 +788,18 @@ func (w *World) CenterOn(kind string) bool {
 		return false
 	}
 
-	cx, cy := w.width/2, w.height/2
-	for r := 0; r < w.width/2+w.height/2; r++ {
+	cx, cy := w.Width/2, w.Height/2
+	for r := 0; r < w.Width/2+w.Height/2; r++ {
 		for dy := -r; dy <= r; dy++ {
 			for dx := -r; dx <= r; dx++ {
 				if abs(dx) != r && abs(dy) != r {
 					continue
 				}
 				x, y := cx+dx, cy+dy
-				if x < 0 || y < 0 || x >= w.width || y >= w.height {
+				if x < 0 || y < 0 || x >= w.Width || y >= w.Height {
 					continue
 				}
-				if match(&w.tiles[y][x]) {
+				if match(&w.Tiles[y][x]) {
 					log.Printf("[World] CenterOn(%q): found at (%d,%d)", kind, x, y)
 					w.LastCenterTileX, w.LastCenterTileY = x, y
 					w.SetCamera(float64(x), float64(y))
@@ -853,12 +845,7 @@ func warnOncef(format string, args ...any) {
 }
 
 // getTile returns a pointer to the tile at (x, y), or nil if out of bounds
-func (w *World) getTile(x, y int) *tile {
-	if x < 0 || x >= w.width || y < 0 || y >= w.height {
-		return nil
-	}
-	return &w.tiles[y][x]
-}
+func (w *World) getTile(x, y int) *tile { return w.TileAt(x, y) }
 
 // TileToScreenPx returns the screen pixel (sx, sy) for the centre of tile (tileX, tileY)
 // given the current camera and zoom. Inverse of ScreenToTile.
@@ -906,7 +893,7 @@ func (w *World) ScreenToTile(sx, sy int) (int, int) {
 		}
 		adjY = vpY + float64(t.BaseZ)*4.0
 	}
-	if tileX < 0 || tileX >= w.width || tileY < 0 || tileY >= w.height {
+	if tileX < 0 || tileX >= w.Width || tileY < 0 || tileY >= w.Height {
 		return -1, -1
 	}
 	return tileX, tileY
@@ -2516,7 +2503,7 @@ func (w *World) Draw(screen *ebiten.Image) {
 	const maxHeightOffsetPx = 512.0
 
 	// Draw tiles in depth order (back to front)
-	for depth := 0; depth < w.width+w.height; depth++ {
+	for depth := 0; depth < w.Width+w.Height; depth++ {
 		// Y-cull entire depth slice before iterating tiles within it.
 		drawYBase := (float64(depth)*16.0 - w.camY) * scale
 		if drawYBase < -(float64(sh)+maxHeightOffsetPx) || drawYBase > float64(sh)+maxHeightOffsetPx {
@@ -2532,17 +2519,17 @@ func (w *World) Draw(screen *ebiten.Image) {
 		if yMin < 0 {
 			yMin = 0
 		}
-		if yMax >= w.height {
-			yMax = w.height - 1
+		if yMax >= w.Height {
+			yMax = w.Height - 1
 		}
 
 		for y := yMin; y <= yMax; y++ {
 			x := depth - y
-			if x < 0 || x >= w.width {
+			if x < 0 || x >= w.Width {
 				continue
 			}
 
-			t := w.tiles[y][x]
+			t := w.Tiles[y][x]
 			screenX, screenY := w.tileToScreen(x, y)
 
 			// OpenLoco: loc.z = baseZ * kSmallZStep = baseZ * 4 viewport pixels.
@@ -2723,7 +2710,7 @@ func (w *World) Draw(screen *ebiten.Image) {
 
 	// ── Vehicle rendering — post-tile pass (depth approximation) ──
 	// Use real parsed entities when available (loaded .SV5), otherwise demo trains.
-	if len(w.entities) > 0 {
+	if len(w.Entities) > 0 {
 		w.paintVehicleEntities(screen, scale)
 	} else {
 		w.paintDemoTrains(screen, scale)
@@ -2745,7 +2732,7 @@ func (w *World) paintDemoTrains(screen *ebiten.Image, scale float64) {
 	}
 
 	for _, tr := range w.trains {
-		if tr.tileX < 0 || tr.tileX >= w.width || tr.tileY < 0 || tr.tileY >= w.height {
+		if tr.tileX < 0 || tr.tileX >= w.Width || tr.tileY < 0 || tr.tileY >= w.Height {
 			continue
 		}
 
@@ -2756,11 +2743,11 @@ func (w *World) paintDemoTrains(screen *ebiten.Image, scale float64) {
 		vpY := (fracY + fracX) * 16.0
 
 		// Height: interpolate between current and next tile
-		baseZ := float64(w.tiles[tr.tileY][tr.tileX].BaseZ)
+		baseZ := float64(w.Tiles[tr.tileY][tr.tileX].BaseZ)
 		nx := tr.tileX + tr.dx
 		ny := tr.tileY + tr.dy
-		if nx >= 0 && nx < w.width && ny >= 0 && ny < w.height {
-			nextZ := float64(w.tiles[ny][nx].BaseZ)
+		if nx >= 0 && nx < w.Width && ny >= 0 && ny < w.Height {
+			nextZ := float64(w.Tiles[ny][nx].BaseZ)
 			baseZ = baseZ*(1.0-tr.progress) + nextZ*tr.progress
 		}
 		vpY -= baseZ * 4.0
@@ -2830,8 +2817,8 @@ func (w *World) paintVehicleEntities(screen *ebiten.Image, scale float64) {
 		return
 	}
 
-	for i := range w.entities {
-		ent := &w.entities[i]
+	for i := range w.Entities {
+		ent := &w.Entities[i]
 		if ent.EntityType != scenario.VehicleTypeBody {
 			continue // only Body entities have renderable car sprites
 		}
@@ -2841,7 +2828,7 @@ func (w *World) paintVehicleEntities(screen *ebiten.Image, scale float64) {
 		// OpenLoco reference: VehicleHead::Status::unplaced → position is zeroed.
 		tx := ent.PosX.Tile()
 		ty := ent.PosY.Tile()
-		if tx <= 0 || ty <= 0 || tx.Int() >= w.width || ty.Int() >= w.height {
+		if tx <= 0 || ty <= 0 || tx.Int() >= w.Width || ty.Int() >= w.Height {
 			continue
 		}
 
