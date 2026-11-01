@@ -109,12 +109,25 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 			if !t.IsIndustrial && t.Variation != 0 && ds == 0 && t.WaterLevel == 0 && land.NumGrowthStages > 0 && t.GrowthStage == land.NumGrowthStages-1 {
 				idx = int(land.MapPixelImage) + 3 + int(t.Variation)
 			}
+			z := int(t.BaseZ) * 4
+			s.SetSpritePosition(x*32, y*32)
+			// Industry fields (PaintSurface.cpp industrial branch): the field surface and
+			// its tree image come from the industry object; the tile's byte 7 (goloco's
+			// Variation) is then the industry id. PARTIAL: snow cover not drawn.
+			if t.IsIndustrial && int(t.Variation) < len(m.IndustryObjectIDs) {
+				if io := om.GetIndustryObjectByIndex(int(m.IndustryObjectIDs[t.Variation])); io != nil && io.FieldImageIDs != 0 {
+					variation := int(io.NumImagesPerFieldGrowthStage)*int(t.GrowthStage) + ((int(io.FarmTileNumImageAngles)-1)&0)*21
+					th := z + int(paint.SurfaceTreeHeight[ds])
+					if tree := sprite(int(io.FieldImageIDs) + variation + 19); tree != nil {
+						s.AddAsParent(paint.Image{Sprite: tree, Op: gfx8.OpFor(tree, false, false)}, paint.Pos3{Z: th}, paint.Pos3{X: 14, Y: 14, Z: th + 4}, paint.Pos3{X: 4, Y: 4, Z: 14})
+					}
+					idx = int(io.FieldImageIDs) + variation + ds
+				}
+			}
 			sp := sprite(idx)
 			if sp == nil {
 				continue
 			}
-			z := int(t.BaseZ) * 4
-			s.SetSpritePosition(x*32, y*32)
 			// PaintSurface.cpp paintMainSurface: offset (0,0,baseHeight), bbox (32,32,-1).
 			s.AddAsParent(paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, paint.Pos3{Z: z}, paint.Pos3{Z: z}, paint.Pos3{X: 32, Y: 32, Z: -1})
 
