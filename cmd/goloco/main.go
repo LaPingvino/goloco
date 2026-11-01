@@ -51,6 +51,8 @@ type Game struct {
 	audioMgr            *audio.Manager
 	scenarioSelect      *ui.ScenarioSelectWindow // the New Game window when open
 	diagNewGameDone     bool
+	browse              *ui.PromptBrowseWindow // the Load window when open
+	diagBrowseDone      bool
 	titleSeq            *title.Sequence
 	gameState           *game.GameState
 	dropdown            *ui.DropdownMenu
@@ -439,7 +441,9 @@ func (g *Game) Update() error {
 		}
 		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 			// The ScenarioSelect window, then the window manager, take priority.
-			if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
+			if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
+				g.browse.HandleClick(g.mouseX, g.mouseY)
+			} else if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
 				g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
 			} else if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
 				g.handleTitleMenuClick(g.mouseX, g.mouseY)
@@ -489,7 +493,9 @@ func (g *Game) Update() error {
 	}
 	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 		// Check dropdown first (it's on top)
-		if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
+		if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
+			g.browse.HandleClick(g.mouseX, g.mouseY)
+		} else if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
 			g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
 		} else if g.dropdown != nil && g.dropdown.Visible {
 			if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
@@ -1095,6 +1101,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		if g.scenarioSelect != nil {
 			g.scenarioSelect.Draw(screen)
 		}
+		if g.browse != nil {
+			g.browse.Draw(screen)
+		}
 		ui.DrawText(screen, fmt.Sprintf("%.0ffps", ebiten.ActualFPS()), 4, g.sh-8, color.RGBA{200, 200, 200, 200})
 		g.maybeSaveShot(screen)
 		return
@@ -1105,6 +1114,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.windowMgr.Draw(screen, g.r)
 	if g.scenarioSelect != nil {
 		g.scenarioSelect.Draw(screen)
+	}
+	if g.browse != nil {
+		g.browse.Draw(screen)
 	}
 
 	// Draw dropdown menu on top of everything else
@@ -1155,6 +1167,10 @@ func debugPath(name string) string {
 // quit when the requested count has been captured. Script `shot` commands are
 // honoured here too.
 func (g *Game) maybeSaveShot(screen *ebiten.Image) {
+	if os.Getenv("GOLOCO_DIAG_BROWSE") != "" && g.browse == nil && !g.diagBrowseDone {
+		g.diagBrowseDone = true
+		g.openFileWindow("Load Game", false)
+	}
 	if os.Getenv("GOLOCO_DIAG_NEWGAME") != "" && g.scenarioSelect == nil && !g.diagNewGameDone {
 		// Diagnostic: open the ScenarioSelect window with its first scenario selected.
 		g.diagNewGameDone = true
@@ -1685,6 +1701,10 @@ func (g *Game) routeWheelToWindows() bool {
 		g.scenarioSelect.HandleWheel(dy)
 		return true
 	}
+	if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
+		g.browse.HandleWheel(dy)
+		return true
+	}
 	for i := len(g.windowMgr.Windows) - 1; i >= 0; i-- {
 		w := g.windowMgr.Windows[i]
 		if w.Visible && w.OnScrollWheel != nil &&
@@ -1807,29 +1827,7 @@ func (g *Game) openLoadGameWindow() { g.openFileWindow("Load Game", false) }
 // title is the window title (also used as the CloseWindow key).
 // scenariosOnly restricts the file list to .SC5 files when true.
 func (g *Game) openFileWindow(title string, scenariosOnly bool) {
-	const (
-		winW      = 540
-		winH      = 380
-		itemH     = 18
-		dirPanelW = 165 // width of the left directory panel
-		sepW      = 2   // vertical separator between panels
-		bottomH   = 46  // path display + button row at the bottom
-	)
-
-	// Colour scheme — all text is dark on the beige window background so it
-	// stays readable regardless of the global palette.
-	var (
-		colText    = color.RGBA{20, 12, 4, 255}     // dark on beige — main text
-		colLight   = color.RGBA{240, 238, 232, 255} // light — text on dark bg
-		colDir     = color.RGBA{25, 60, 140, 255}   // blue — directory labels
-		colSep     = color.RGBA{140, 132, 115, 255} // panel separator line
-		colSelFile = color.RGBA{50, 100, 185, 220}  // selected file highlight
-		colSelDir  = color.RGBA{35, 100, 45, 220}   // navigating into a dir
-		colPathBg  = color.RGBA{178, 172, 155, 255} // path display bar
-		colPanelHd = color.RGBA{155, 148, 130, 255} // panel header strip
-	)
-
-	// ── State captured in closure ──────────────────────────────────────────
+	// The ported PromptBrowse window (pkg/ui/promptbrowse.go), load mode.
 	startDir := ""
 	if home, err := os.UserHomeDir(); err == nil {
 		startDir = home
@@ -1837,261 +1835,19 @@ func (g *Game) openFileWindow(title string, scenariosOnly bool) {
 	if g.dataDir != "" {
 		startDir = filepath.Dir(g.dataDir) // one level up from "Data/"
 	}
-
-	var currentDir string
-	var subDirs []string  // directory names within currentDir (basenames only)
-	var fileList []string // full paths of .SC5/.SV5/.goloco files in currentDir
-	selectedFile := -1
-	dirScroll := 0
-	fileScroll := 0
-	lastFileIdx := -1
-	var lastClickTime time.Time
-
-	rescanDir := func(dir string) {
-		currentDir = dir
-		subDirs = nil
-		fileList = nil
-		selectedFile = -1
-		dirScroll = 0
-		fileScroll = 0
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			return
-		}
-		for _, e := range entries {
-			if e.IsDir() {
-				subDirs = append(subDirs, e.Name())
-			} else {
-				ext := strings.ToLower(filepath.Ext(e.Name()))
-				isScenario := ext == ".sc5"
-				isSave := ext == ".sv5" || ext == ".goloco"
-				if isScenario || (!scenariosOnly && isSave) {
-					fileList = append(fileList, filepath.Join(dir, e.Name()))
-				}
-			}
+	exts := []string{".sv5", ".sc5", ".goloco"}
+	if scenariosOnly {
+		exts = []string{".sc5"}
+	}
+	w := ui.NewPromptBrowse(title, startDir, exts, g.sw, g.sh)
+	w.OnClose = func() { g.browse = nil }
+	w.OnPick = func(path string) {
+		g.browse = nil
+		if err := g.loadScenario(path); err != nil {
+			log.Printf("[Game] Load error: %v", err)
 		}
 	}
-	rescanDir(startDir)
-
-	win := ui.NewSimpleWindow(title, 60, 60, winW, winH)
-
-	// ── DrawContent ────────────────────────────────────────────────────────
-	win.DrawContent = func(screen *ebiten.Image, cx, cy, cw, ch int, r *render.Renderer) {
-		listH := ch - bottomH
-		visible := listH / itemH
-		if visible < 1 {
-			visible = 1
-		}
-		filePanelX := cx + dirPanelW + sepW
-		filePanelW := cw - dirPanelW - sepW
-
-		// ── Left panel header ──────────────────────────────────────────────
-		fillRect(screen, float64(cx), float64(cy), float64(dirPanelW), float64(itemH), colPanelHd)
-		ui.DrawText(screen, "Folders", cx+4, cy+itemH-4, colText)
-
-		// ── Parent dir entry ──────────────────────────────────────────────
-		parentY := cy + itemH
-		parentLbl := "[↑  ..]"
-		parent := filepath.Dir(currentDir)
-		if parent == currentDir {
-			// at filesystem root — dim the entry
-			ui.DrawText(screen, parentLbl, cx+4, parentY+itemH-4, colSep)
-		} else {
-			ui.DrawText(screen, parentLbl, cx+4, parentY+itemH-4, colDir)
-		}
-
-		// ── Subdirectory list ──────────────────────────────────────────────
-		// The parent entry occupies row 0; subdirs start at row 1.
-		// We reserve 1 slot for the parent, so only (visible-2) subdir rows
-		// fit below it (minus 1 for header).
-		subVisible := visible - 2
-		if subVisible < 0 {
-			subVisible = 0
-		}
-		for i := 0; i < subVisible; i++ {
-			idx := dirScroll + i
-			if idx >= len(subDirs) {
-				break
-			}
-			ry := cy + (i+2)*itemH // +2: skip header and parent rows
-			label := "[" + subDirs[idx] + "]"
-			ui.DrawText(screen, label, cx+4, ry+itemH-4, colDir)
-		}
-
-		// Dir scroll indicator
-		if len(subDirs) > subVisible && subVisible > 0 {
-			total := len(subDirs)
-			barH := listH * subVisible / total
-			if barH < 6 {
-				barH = 6
-			}
-			barY := listH * dirScroll / total
-			fillRect(screen, float64(cx+dirPanelW-5), float64(cy), 5, float64(listH), colPanelHd)
-			fillRect(screen, float64(cx+dirPanelW-5), float64(cy+barY), 5, float64(barH), colSep)
-		}
-
-		// ── Vertical separator ─────────────────────────────────────────────
-		fillRect(screen, float64(cx+dirPanelW), float64(cy), float64(sepW), float64(listH), colSep)
-
-		// ── Right panel header ─────────────────────────────────────────────
-		fillRect(screen, float64(filePanelX), float64(cy), float64(filePanelW), float64(itemH), colPanelHd)
-		ui.DrawText(screen, "Scenarios / Saves", filePanelX+4, cy+itemH-4, colText)
-
-		// ── File list ──────────────────────────────────────────────────────
-		// Files start below the header row.
-		fileVisible := visible - 1
-		if fileVisible < 0 {
-			fileVisible = 0
-		}
-		for i := 0; i < fileVisible; i++ {
-			idx := fileScroll + i
-			if idx >= len(fileList) {
-				break
-			}
-			ry := cy + (i+1)*itemH
-			label := filepath.Base(fileList[idx])
-			if idx == selectedFile {
-				fillRect(screen, float64(filePanelX), float64(ry), float64(filePanelW), float64(itemH), colSelFile)
-				ui.DrawText(screen, label, filePanelX+4, ry+itemH-4, colLight)
-			} else {
-				ui.DrawText(screen, label, filePanelX+4, ry+itemH-4, colText)
-			}
-		}
-		if len(fileList) == 0 {
-			ui.DrawText(screen, "No files here.", filePanelX+6, cy+itemH+14, colSep)
-		}
-
-		// File scroll indicator
-		if len(fileList) > fileVisible && fileVisible > 0 {
-			total := len(fileList)
-			barH := listH * fileVisible / total
-			if barH < 6 {
-				barH = 6
-			}
-			barY := listH * fileScroll / total
-			fillRect(screen, float64(filePanelX+filePanelW-5), float64(cy), 5, float64(listH), colPanelHd)
-			fillRect(screen, float64(filePanelX+filePanelW-5), float64(cy+barY), 5, float64(barH), colSep)
-		}
-
-		// ── Bottom strip: current path + buttons ───────────────────────────
-		stripY := cy + listH
-		fillRect(screen, float64(cx), float64(stripY), float64(cw), float64(bottomH), colPathBg)
-
-		// Path text (truncated on the left if too long)
-		pathLabel := currentDir
-		maxPathW := cw - 8
-		for {
-			w, _ := ui.MeasureText(pathLabel)
-			if w <= maxPathW || len(pathLabel) < 4 {
-				break
-			}
-			pathLabel = "…" + pathLabel[len(pathLabel)/4:]
-		}
-		ui.DrawText(screen, pathLabel, cx+4, stripY+14, colText)
-
-		// Buttons
-		btnY := stripY + bottomH - 26
-		canLoad := selectedFile >= 0 && selectedFile < len(fileList)
-		drawButton(screen, cx+4, btnY, 80, 22, "Cancel", false, true)
-		drawButton(screen, cx+cw-84, btnY, 80, 22, "Load", false, canLoad)
-		_ = colSelDir
-	}
-
-	// ── OnContentClick ─────────────────────────────────────────────────────
-	win.OnContentClick = func(relX, relY int) {
-		ch := win.Height - 22 - 3 // content height
-		listH := ch - bottomH
-		visible := listH / itemH
-
-		if relY >= listH {
-			// Button row
-			btnRelY := relY - listH
-			if btnRelY >= bottomH-26 {
-				if relX >= 4 && relX < 84 {
-					// Cancel
-					g.windowMgr.CloseWindow(title)
-				} else if relX >= win.Width-6-84 {
-					// Load
-					if selectedFile >= 0 && selectedFile < len(fileList) {
-						if err := g.loadScenario(fileList[selectedFile]); err != nil {
-							log.Printf("[Game] Load error: %v", err)
-						}
-					}
-				}
-			}
-			return
-		}
-
-		row := relY / itemH
-
-		if relX < dirPanelW {
-			// ── Dir panel click ────────────────────────────────────────────
-			switch row {
-			case 0:
-				// header — ignore
-			case 1:
-				// parent dir
-				parent := filepath.Dir(currentDir)
-				if parent != currentDir {
-					rescanDir(parent)
-				}
-			default:
-				// subdir rows start at row 2
-				subVisible := visible - 2
-				if subVisible < 0 {
-					subVisible = 0
-				}
-				idx := dirScroll + (row - 2)
-				if idx >= 0 && idx < len(subDirs) {
-					rescanDir(filepath.Join(currentDir, subDirs[idx]))
-				}
-			}
-		} else if relX >= dirPanelW+sepW {
-			// ── File panel click ───────────────────────────────────────────
-			if row == 0 {
-				return // header
-			}
-			fileRow := row - 1
-			idx := fileScroll + fileRow
-			if idx < 0 || idx >= len(fileList) {
-				return
-			}
-			now := time.Now()
-			if idx == lastFileIdx && now.Sub(lastClickTime) < 400*time.Millisecond {
-				// Double-click: load immediately
-				if err := g.loadScenario(fileList[idx]); err != nil {
-					log.Printf("[Game] Load error: %v", err)
-				}
-				return
-			}
-			selectedFile = idx
-			lastFileIdx = idx
-			lastClickTime = now
-		}
-	}
-
-	// ── OnScrollWheel ──────────────────────────────────────────────────────
-	win.OnScrollWheel = func(dy float64) {
-		ch := win.Height - 22 - 3
-		listH := ch - bottomH
-		visible := listH / itemH
-		subVisible := visible - 2
-		fileVisible := visible - 1
-
-		mx, _ := ebiten.CursorPosition()
-		relX := mx - (win.X + 3)
-		if relX < dirPanelW {
-			// scroll dir panel
-			maxD := iclamp(len(subDirs)-subVisible, 0, len(subDirs))
-			dirScroll = iclamp(dirScroll-int(dy), 0, maxD)
-		} else {
-			// scroll file panel
-			maxF := iclamp(len(fileList)-fileVisible, 0, len(fileList))
-			fileScroll = iclamp(fileScroll-int(dy), 0, maxF)
-		}
-	}
-
-	g.windowMgr.OpenWindow(win)
+	g.browse = w
 }
 
 // -----------------------------------------------------------------------
