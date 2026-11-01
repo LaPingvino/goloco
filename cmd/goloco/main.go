@@ -1076,6 +1076,15 @@ func debugPath(name string) string {
 // quit when the requested count has been captured. Script `shot` commands are
 // honoured here too.
 func (g *Game) maybeSaveShot(screen *ebiten.Image) {
+	if os.Getenv("GOLOCO_DIAG_DROPDOWN") != "" {
+		// Diagnostic: a toolbar-style dropdown on every frame (drawn last, just
+		// before the capture), for headless screenshots of the Dropdown.cpp port.
+		d := ui.NewDropdownMenu(40, 28, []ui.DropdownItem{{Text: "Load Game"}, {Text: "Save Game"}, {Separator: true},
+			{Text: "Screenshot"}, {Separator: true}, {Text: "About"}, {Text: "Options"}, {Separator: true},
+			{Text: "Quit to Menu"}, {Text: "Quit to Desktop"}})
+		d.Highlighted = 1
+		d.Draw(screen)
+	}
 	if name := g.scriptShotName(); name != "" {
 		name = debugPath(name)
 		if f, err := os.Create(name); err == nil {
