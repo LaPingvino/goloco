@@ -17,6 +17,7 @@ type RoadStationObject struct {
 	Header     *ObjectHeader
 	Name       string
 	PaintStyle uint8
+	Flags      uint8 // RoadStationFlags (bit0 recolourable, from the generated layout)
 
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
 	// Preview images:  ImageOffset+0 (base), ImageOffset+1 (windows overlay).
@@ -70,7 +71,8 @@ func ParseRoadStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader
 		PaintStyle: data[0x02],
 	}
 	numCompatible := data[0x20]
-	flags := data[0x0B] // RoadStationFlags
+	flags := data[RoadStationFlagsOffset] // RoadStationFlags (offset from the compiler)
+	obj.Flags = flags
 
 	offset := fixedSize
 

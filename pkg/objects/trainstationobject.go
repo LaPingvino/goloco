@@ -74,7 +74,7 @@ func ParseTrainStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loade
 	obj := &TrainStationObject{
 		Header:     header,
 		PaintStyle: data[0x02],
-		Flags:      data[0x0C], // TrainStationFlags (uint8 — only lower byte used)
+		Flags:      data[TrainStationFlagsOffset], // TrainStationFlags (uint8 — only lower byte used; offset from the compiler)
 	}
 	numCompatible := data[0x22]
 
