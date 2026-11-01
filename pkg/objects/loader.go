@@ -42,6 +42,7 @@ type ObjectManager struct {
 	Vehicles             []*VehicleObject
 	LandObjects          []*LandObject
 	TreeObjects          []*TreeObject               // all loaded tree objects
+	IndustryObjects      []*IndustryObject           // all loaded industry objects
 	BuildingObjects      []*BuildingObject           // all loaded building objects
 	WallObjects          []*WallObject               // all loaded wall objects
 	TrackObjects         []*TrackObject              // all loaded track objects
@@ -346,6 +347,19 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		loaded.Object = bldg
 		loaded.ImageOffset = bldg.ImageOffset
 		m.BuildingObjects = append(m.BuildingObjects, bldg)
+
+	case ObjectTypeIndustry:
+		var g1Loader G1Loader
+		if m.G1File != nil {
+			g1Loader, _ = m.G1File.(G1Loader)
+		}
+		ind, err := ParseIndustryObjectWithG1(header, decompressed, g1Loader)
+		if err != nil {
+			return fmt.Errorf("parsing industry: %w", err)
+		}
+		loaded.Object = ind
+		loaded.ImageOffset = ind.ShadowImageIDs
+		m.IndustryObjects = append(m.IndustryObjects, ind)
 
 	case ObjectTypeWall:
 		var wall *WallObject
@@ -1064,4 +1078,12 @@ func (m *ObjectManager) ReorderRoadStationObjects(order []string) {
 	}
 	m.RoadStationObjects = reordered
 	fmt.Printf("Reordered road station objects: %d matched out of %d slots\n", matched, len(order))
+}
+
+// GetIndustryObjectByIndex returns the IndustryObject at index, or nil.
+func (m *ObjectManager) GetIndustryObjectByIndex(index int) *IndustryObject {
+	if index < 0 || index >= len(m.IndustryObjects) {
+		return nil
+	}
+	return m.IndustryObjects[index]
 }
