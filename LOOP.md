@@ -50,9 +50,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    transport/track tabs, raw cost factor as 'Cost', placed running trains on track instead of VehicleCreate
    into a depot) → parked on branch wip/build-vehicles-july (pushed), main clean. CLAUDE.md paths updated
    for this machine. Real port of the window queued after item 5 (needs depots + VehicleCreate).
-3. [ ] **Inventory of deviations.** Walk the ~90 markers (approximat|simplif|fudge|hack|stub|TODO|
-   FIXME|placeholder|not yet implemented) and every invented heuristic; write docs/deviations.md:
-   file:line, what upstream does instead (file/function), severity, fix size. This becomes the queue.
+3. [x] **Inventory of deviations.** DONE tick 4: docs/deviations.md — 103 markers sorted into gameplay (A),
+   rendering (B), text/UI (C), dead scaffolding (D: pkg/loco/*, pkg/tests, uncalled ui stubs — keep pkg/core
+   and pkg/olmath, real ports), not implemented (E); with the upstream file for each and a fix order.
+3b. [ ] **Remove dead scaffolding** (deviations D): delete pkg/loco/*, pkg/tests, the uncalled stubs in
+   pkg/ui/window_manager.go and types.go; `go build ./... && go vet ./...` must stay green. Own commit.
 4. [ ] **Split simulation from rendering** (APPROVED by Joop 2026-11-01: 'the split is perfectly okay. Free to make bold decisions.'). pkg/world imports
    Ebiten in world.go, construction.go, overlay.go; its tests panic without a display.
 5. [ ] **Vehicle movement port.** Generate SubpositionData.cpp into Go like track_data_gen.go;
@@ -79,3 +81,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 1 (item 1) — wasm test page parts (a)–(c): in-memory fs shim for Go's js/wasm syscalls (open/read/fstat/stat/readdir…, O_DIRECTORY fixed after the first run), cmd/webpack (data pack in gzipped chunks < 15 MB, no music, refuses an output dir inside the repo), page with progress + Start + log drawer. Headless run: g1, 544 objects, title scenario load; canvas black → next tick. Split approved by Joop.
 - 2026-11-01 tick 2 (item 1 done) — black screenshots were a WebGL readback artefact: goloco's own --shots capture shows its loading screen drawing correctly. Artifacts serve no gzip, so the pack ships as base64 text of gzip; published privately; verified headless (544 objects, init complete). Body padding no longer squeezes the canvas.
 - 2026-11-01 tick 3 (item 2 done) — July WIP reviewed against upstream BuildVehicle.cpp: an invented list + track placement, not a port → parked on wip/build-vehicles-july; main clean; CLAUDE.md paths fixed (~/Projects/OpenLoco, ~/Projects/locomotion; no Xvfb yet, wasm page instead). Queued the real window as 5b.
+- 2026-11-01 tick 4 (item 3 done) — docs/deviations.md: 103 markers + invented heuristics, each with the upstream file it should follow, severity and size; found 5 dead packages (pkg/loco/*, pkg/tests) → new item 3b.
