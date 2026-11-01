@@ -24,6 +24,28 @@ type BuildingObj struct {
 	PartAnimSpeed     []uint8
 	ElevatorSequences [][]uint8
 	LargeTile         bool // BuildingObjectFlags::largeTile (2×2)
+	Shadow            Shadow
+}
+
+// Shadow is the object's shadow image (hasShadows, zoom <= 1): Image is its base
+// before + rotation; Pal the palette map of its translucency (Colours::getShadow);
+// Primary when the image also carries a primary colour (industries), which
+// makes the blend src+dst as getDrawBlendOp. Pal nil: no shadow.
+type Shadow struct {
+	Image   int
+	Pal     []uint8
+	Primary bool
+}
+
+// paintShadow adds the shadow as a child, as upstream does right after
+// resetLastPS (before the 2×2 front-tile test, so every tile draws it).
+func (s *Session) paintShadow(sh Shadow, rotation uint8, imgOff, bbOff, bbSz Pos3, sprite func(int) *gfx8.Sprite) {
+	if sh.Pal == nil {
+		return
+	}
+	if sp := sprite(sh.Image + int(rotation)); sp != nil {
+		s.AddAsChild(Image{Sprite: sp, Op: gfx8.OpFor(sp, sh.Primary, true), PalMap: sh.Pal}, imgOff, bbOff, bbSz)
+	}
 }
 
 var (
@@ -47,6 +69,7 @@ func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint
 	bbOff.Z += baseHeight
 	bbSz.Z += bbz
 	s.last = nil // session.resetLastPS()
+	s.paintShadow(obj.Shadow, rotation, imgOff, bbOff, bbSz, sprite)
 	if obj.LargeTile && int(el.SequenceIndex^2) != int(-int(s.Rotation))&3 {
 		return // only the front tile of a 2×2 draws; images overlap the others
 	}
