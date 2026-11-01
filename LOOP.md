@@ -105,6 +105,14 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    NEXT TICK: make the blend pass exact — at zoom 0 every drawn pixel is a palette colour, so reverse-look-up the
    index (RGB→index table from the G1 palette), map it through the 256-entry map, write the mapped palette colour;
    route water +35 through it as a mask (and glass, which uses the same op); compare with gallery-screenshot-7.
+   Tick 15: built it — pkg/world/blend.go (Kage shader: mask + destination sub-image + a mask-sized table of
+   palette[i] and palette[map[i]]; exact match search over 256 entries), the dead CPU tint pass removed, water
+   sprites (+30, waves, zoomed-out fallback) now drawn after the blend composite. BUT the shader's read of the
+   worldBuf sub-image (imageSrc1At) returns black in headless swiftshader although the seabed is drawn there
+   (debug variant returning the terrain colour: black). Probe (throwaway program): the water map +41 is fine
+   (256 entries, land colours → indices 192–197, dark teal). So the exact path is behind `exactWaterBlend =
+   false`; NEXT: a tiny Kage repro of sub-image sampling in pixel mode (origin mapping; maybe copy the region
+   into a mask-sized temp image first and sample that at src), then switch it on and compare with the reference.
 3f. [ ] **Standing (Joop: 'go through all of it and fix by bits and pieces'):** walk the paint code element by
    element against upstream Paint/: surface (slopes, corners, cliffs, water, snow), track, road (incl. slopes),
    stations, signals, bridges, tunnels, trees, buildings, industries, walls, vehicles — one element per tick:
@@ -169,3 +177,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 12 (item 3e water) — coast diag captured; found invented all-tile waves and a late water pass vs upstream's paint sort; ported WaveManager + the tile loop's water branch to pkg/sim (first headless tests in pkg/sim, all pass). Queued: 3f element-by-element paint audit (Joop), 3g music stutter, 3h draft g1 (after fidelity).
 - 2026-11-01 tick 13 (item 3e water a) — waves wired: tile loop + wave update per tick, frames drawn only on wave tiles; diag shows plain water instead of flecks everywhere; live build updated. Noted the 60 vs 40 ticks/s deviation.
 - 2026-11-01 tick 14 (item 3e) — reference gallery found in goloco/reference/; water colour cause traced to upstream's mask-blend (dst through the water palette map +41) vs goloco's opaque remap + tint lerp; plan recorded; no code change.
+- 2026-11-01 tick 15 (item 3e water c) — exact palette-map blend implemented as a Kage shader; terrain read comes back black under headless WebGL, so it's switched off (exactWaterBlend=false) pending a repro; water looks as before; ripple/wave draw order now after the blend; dead CPU tint pass removed.

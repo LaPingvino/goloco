@@ -2,7 +2,6 @@ package world
 
 import (
 	"fmt"
-	"github.com/LaPingvino/goloco/pkg/sim"
 	"image"
 	"image/color"
 	"image/png"
@@ -10,6 +9,8 @@ import (
 	"math"
 	"os"
 	"time"
+
+	"github.com/LaPingvino/goloco/pkg/sim"
 
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/render"
@@ -126,8 +127,7 @@ type RenderIssue struct {
 type worldBlendOp struct {
 	maskImg  *ebiten.Image   // white-mask from Renderer.GetSpriteMask
 	tileRect image.Rectangle // screen-space pixel region for the mask
-	tint     color.RGBA
-	strength float32
+	table    *ebiten.Image   // palette + mapped palette (paletteBlendTable), mask-sized
 }
 
 // worldHighlightOp records a post-blend sprite draw (ripple, wave, etc.).
@@ -2295,6 +2295,24 @@ func (w *World) getWaterImage() *ebiten.Image {
 	return img
 }
 
+// queueWaterBlend queues the palette-map blend of water sprite spriteID at
+// (x, y) (sprite offsets applied). Returns false if it can't (no mask, no table).
+func (w *World) queueWaterBlend(tileX, tileY, spriteID int, palMap []byte, x, y float64) bool {
+	mask := w.renderer.GetSpriteMask(spriteID)
+	_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
+	if mask == nil || !ok || w.renderer.G1 == nil {
+		return false
+	}
+	mw, mh := mask.Bounds().Dx(), mask.Bounds().Dy()
+	table := paletteBlendTable(&w.renderer.G1.Palette, palMap, mw, mh)
+	if table == nil {
+		return false
+	}
+	x0, y0 := int(x)+int(xOff), int(y)+int(yOff)
+	w.blendOps = append(w.blendOps, worldBlendOp{maskImg: mask, tileRect: image.Rect(x0, y0, x0+mw, y0+mh), table: table})
+	return true
+}
+
 // paintWater renders a water surface overlay on a tile.
 //
 // Approach (2-layer):
@@ -2374,8 +2392,14 @@ func (w *World) paintWater(target *ebiten.Image, tileX, tileY int, t *tile, draw
 	// Blend sprite (+35, full 64×31 tile) with water remap applied — opaque blue base.
 	// Flat ripple sprite (+30, 45×27) on top for surface detail.
 	// OpenLoco reference: PaintSurface.cpp paintSurfaceWater()
-	if !queueWater(blendID, waterPalMap) {
-		w.noteRenderIssue(tileX, tileY, "water:no-blend-sprite")
+	// Zoom 0: the exact op — +35 is a mask and the seabed already drawn under it is
+	// mapped through the water palette map (blend.go). Zoomed out, pixels are no
+	// longer exact palette colours, so the old opaque remap stays there.
+	// KNOWN GAP: zoom > 0 still remaps the +35 sprite to an opaque colour.
+	if !(exactWaterBlend && scale == 1 && w.queueWaterBlend(tileX, tileY, blendID, waterPalMap, drawX, drawY-waterHeightDiff)) {
+		if !queueWater(blendID, waterPalMap) {
+			w.noteRenderIssue(tileX, tileY, "water:no-blend-sprite")
+		}
 	}
 	queueWater(flatID, nil)
 
@@ -2632,56 +2656,20 @@ func (w *World) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// ── Pass 1.5: flush water surface sprites after ALL terrain ──
-	// Water must be drawn after all opaque terrain so it appears on top
-	// rather than being overwritten by terrain tiles drawn "in front".
-	for _, hi := range w.waterOps {
-		w.worldBuf.DrawImage(hi.img, hi.opts)
-	}
-
-	// ── Pass 2: apply blend ops (CPU terrain tint) → blendBuf ──
-	// Sample the original terrain from worldBuf, tint it toward the water colour
-	// where the mask is opaque, then draw into blendBuf.
-	// worldBuf is never modified, so every terrain sample is pristine.
-	for _, op := range w.blendOps {
-		if op.tileRect.Empty() || op.maskImg == nil {
-			continue
-		}
-		mw, mh := op.maskImg.Bounds().Dx(), op.maskImg.Bounds().Dy()
-		if mw <= 0 || mh <= 0 {
-			continue
-		}
-		terrainImg := ebiten.NewImage(mw, mh)
-		copyOpts := &ebiten.DrawImageOptions{}
-		copyOpts.GeoM.Translate(-float64(op.tileRect.Min.X), -float64(op.tileRect.Min.Y))
-		terrainImg.DrawImage(w.worldBuf, copyOpts)
-		maskPx := make([]byte, mw*mh*4)
-		op.maskImg.ReadPixels(maskPx)
-		terrainPx := make([]byte, mw*mh*4)
-		terrainImg.ReadPixels(terrainPx)
-		tR := float32(op.tint.R)
-		tG := float32(op.tint.G)
-		tB := float32(op.tint.B)
-		s := op.strength
-		for i := 0; i < len(maskPx); i += 4 {
-			if maskPx[i+3] == 0 {
-				terrainPx[i+3] = 0 // transparent outside mask — worldBuf shows through
-				continue
-			}
-			terrainPx[i] = byte(float32(terrainPx[i])*(1-s) + tR*s)
-			terrainPx[i+1] = byte(float32(terrainPx[i+1])*(1-s) + tG*s)
-			terrainPx[i+2] = byte(float32(terrainPx[i+2])*(1-s) + tB*s)
-			terrainPx[i+3] = 255
-		}
-		terrainImg.WritePixels(terrainPx)
-		drawOpts := &ebiten.DrawImageOptions{}
-		drawOpts.GeoM.Translate(float64(op.tileRect.Min.X), float64(op.tileRect.Min.Y))
-		w.blendBuf.DrawImage(terrainImg, drawOpts)
-	}
+	// ── Pass 2: palette-map blends (water) → blendBuf ──
+	// Each op maps the terrain already drawn under its mask through a palette
+	// map (blend.go) — upstream's DrawBlendOp::dst. worldBuf stays untouched.
+	w.applyPaletteBlends(w.worldBuf, w.blendBuf)
 
 	// ── Pass 3: composite worldBuf + blendBuf → screen ──
 	screen.DrawImage(w.worldBuf, nil)
 	screen.DrawImage(w.blendBuf, nil)
+
+	// ── Pass 3.5: water sprites drawn after the blend, as upstream attaches the
+	// +30 surface image (and the +60 wave frames) on top of the blended +35 ──
+	for _, hi := range w.waterOps {
+		screen.DrawImage(hi.img, hi.opts)
+	}
 
 	// ── Pass 4: highlight/wave sprites on top of everything ──
 	for _, hi := range w.highlightOps {
