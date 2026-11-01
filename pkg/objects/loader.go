@@ -53,6 +53,7 @@ type ObjectManager struct {
 	TrackObjects         []*TrackObject              // all loaded track objects
 	TrackExtraOrder      []string                    // track-extra DAT names in scenario slot order
 	RoadExtraOrder       []string                    // road-extra DAT names in scenario slot order
+	extraNames           map[string]string           // track/road extra DAT name → display name
 	RoadObjects          []*RoadObject               // all loaded road objects
 	TrainStationObjects  []*TrainStationObject       // all loaded train-station objects
 	RoadStationObjects   []*RoadStationObject        // all loaded road-station objects
@@ -366,6 +367,17 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		loaded.Object = bldg
 		loaded.ImageOffset = bldg.ImageOffset
 		m.BuildingObjects = append(m.BuildingObjects, bldg)
+
+	case ObjectTypeTrackExtra, ObjectTypeRoadExtra:
+		ex, err := ParseExtraObject(header, decompressed)
+		if err != nil {
+			return fmt.Errorf("parsing extra: %w", err)
+		}
+		loaded.Object = ex
+		if m.extraNames == nil {
+			m.extraNames = map[string]string{}
+		}
+		m.extraNames[upperName(header.GetName())] = ex.Name
 
 	case ObjectTypeTunnel:
 		var g1Loader G1Loader

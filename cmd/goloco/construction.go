@@ -34,8 +34,11 @@ func nameFor(m map[string]int, v int) string {
 
 func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.ConstructionTabState) {
 	f := &ui.ConstructionFrame{X: x, Y: y, Title: g.consObjName(), FrameNo: g.titleFrame, Tab: g.consTab}
-	if g.consTab == 2 {
+	switch g.consTab {
+	case 2:
 		f.H = ui.SignalTabH
+	case 3:
+		f.H = ui.OverheadTabH
 	}
 	var st ui.ConstructionTabState
 	company, _ := g.w.ControllingCompany()
@@ -92,8 +95,12 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		}
 		win.Height = f.Height()
 		f.Draw(screen)
-		if g.consTab == 2 {
+		switch g.consTab {
+		case 2:
 			ui.DrawSignalTab(screen, f, g.signalTabState())
+			return
+		case 3:
+			ui.DrawOverheadTab(screen, f, g.overheadTabState())
 			return
 		}
 		ui.DrawConstructionTab(screen, f, st)
@@ -110,9 +117,15 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 			switch tab {
 			case 1:
 				g.consPlaceStation()
-			case 0, 2:
+			case 0, 2, 3:
 				g.consTab = tab // switchTab; tabReset picks the both-directions tool
 				g.consSigOne = false
+			}
+			return
+		}
+		if g.consTab == 3 {
+			if i := ui.OverheadHit(rx, ry, g.overheadTabState()); i >= 0 {
+				g.consMods ^= 1 << i // lastSelectedMods ^= (1 << checkbox)
 			}
 			return
 		}
@@ -168,6 +181,36 @@ func (g *Game) signalTabState() ui.SignalTabState {
 	}
 	if s := om.GetTrainSignalObjectByIndex(list[0]); s != nil {
 		st.Name, st.Description, st.Image = s.Name, s.Description, int(s.ImageOffset)
+	}
+	return st
+}
+
+// overheadTabState is the overhead tab: the mods available to the company
+// (getAvailableCompatibleMods: modList) with their names, and the ticked ones.
+func (g *Game) overheadTabState() ui.OverheadTabState {
+	st := ui.OverheadTabState{Selected: g.consMods}
+	if g.r == nil || g.r.ObjMgr == nil {
+		return st
+	}
+	om := g.r.ObjMgr
+	company, _ := g.w.ControllingCompany()
+	unlocked := func(v int) bool {
+		if company < len(g.w.UnlockedVehicles) && v < 224 {
+			return g.w.UnlockedVehicles[company][v/32]&(1<<(v%32)) != 0
+		}
+		return false
+	}
+	var mods [4]uint8
+	order := om.TrackExtraOrder
+	if g.consIsRoad() {
+		mods, order = om.AvailableCompatibleRoadMods(g.buildObjID, unlocked), om.RoadExtraOrder
+	} else {
+		mods = om.AvailableCompatibleMods(g.buildObjID, unlocked)
+	}
+	for i, m := range mods {
+		if int(m) < len(order) {
+			st.Names[i] = om.ExtraName(order[m])
+		}
 	}
 	return st
 }
