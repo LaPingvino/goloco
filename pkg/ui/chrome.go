@@ -57,12 +57,19 @@ func DrawWindowFrame(screen *ebiten.Image, x, y, w, h int, colour uint8, lighter
 // 2 + (w - 18) / 2, 1 px down, white text with the outline style (black0).
 // PARTIAL: clipping truncates without upstream's "..." (TextRenderer::clipString).
 func DrawWindowCaption(screen *ebiten.Image, x, y, w int, text string) {
+	DrawWindowCaptionColour(screen, x, y, w, text, colourWhite)
+}
+
+// DrawWindowCaptionColour is Caption::drawSimple for a given text colour:
+// Style::whiteText is colourWhite, Style::colourText the window's primary
+// colour (ControlCodes::windowColour1). Outline style (black0) either way.
+func DrawWindowCaptionColour(screen *ebiten.Image, x, y, w int, text string, colour int) {
 	if globalG1Font == nil {
 		return
 	}
 	g1 := globalG1Font.g1
 	pal := g1.GetPalette()
-	wm, err := g1.GetPaletteMap(colourWhite)
+	wm, err := g1.GetPaletteMap(colour)
 	if err != nil {
 		return
 	}
