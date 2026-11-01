@@ -82,7 +82,9 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 		}
 	}
 	st.Piece = nameFor(consPieceCurve, g.consCurve)
-	if g.consOneShot >= 0 && !g.consIsRoad() { // the one-shot piece's button is the active one
+	if g.consOneShot >= 0 && g.consIsRoad() {
+		st.Piece = "turnaround"
+	} else if g.consOneShot >= 0 { // the one-shot piece's button is the active one
 		switch g.consOneShot {
 		case construct.SBendLeft:
 			st.Piece = "s_bend_left"
@@ -192,24 +194,19 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 				g.consOneShot = map[string]int{"s_bend_left": construct.SBendLeft, "s_bend_right": construct.SBendRight}[hit]
 			}
 		case "s_bend_dual_track_left", "s_bend_dual_track_right", "turnaround":
-			if !g.consIsRoad() {
+			if g.consIsRoad() {
+				g.consOneShot = construct.Turnaround // the road's turnaround button
+			} else {
 				g.consOneShot = consDualTrackPiece(hit == "s_bend_dual_track_right", g.w.ConstructionHeadState().Rotation)
 			}
-			// PARTIAL: the road turnaround (getRoadPieceId not ported yet).
 		default:
 			if v, ok := consPieceCurve[hit]; ok {
 				g.consCurve = v
 				g.consOneShot = -1
-				if g.consIsRoad() {
-					g.consSlope = 0
-				}
 			} else if v, ok := consGradientSlope[hit]; ok {
-				// Track: piece and gradient are separate choices (changeTrackPiece);
-				// a combination that can't be built gives no piece.
+				// Piece and gradient are separate choices (changeTrackPiece); a
+				// combination that can't be built gives no piece.
 				g.consSlope = v
-				if v != 0 && g.consIsRoad() {
-					g.consCurve = 0
-				}
 			}
 		}
 	}

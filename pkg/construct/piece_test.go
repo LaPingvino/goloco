@@ -43,3 +43,29 @@ func TestGetTrackPieceID(t *testing.T) {
 		}
 	}
 }
+
+// Cases read off getRoadPieceId's branches.
+func TestGetRoadPieceID(t *testing.T) {
+	cases := []struct {
+		piece, gradient, rotation uint8
+		ok                        bool
+		id, rot                   uint8
+	}{
+		{Straight, Level, 2, true, 0, 2},
+		{Straight, SteepSlopeDown, 1, true, 8, 1},
+		{Straight, Level, 5, false, 0, 0},
+		{LeftCurveVerySmall, Level, 3, true, 1, 3},
+		{RightCurveSmall, Level, 0, true, 4, 0},
+		{RightCurveSmall, SlopeUp, 0, false, 0, 0},
+		{LeftCurve, Level, 0, false, 0, 0},
+		{SBendLeft, Level, 0, false, 0, 0},
+		{Turnaround, Level, 6, true, 9, 2},
+		{Turnaround, Level, 12, false, 0, 0},
+	}
+	for _, c := range cases {
+		got, ok := GetRoadPieceID(c.piece, c.gradient, c.rotation)
+		if ok != c.ok || (ok && (got.ID != c.id || got.Rotation != c.rot)) {
+			t.Errorf("piece %d gradient %d rotation %d: %v %v, want %v {%d %d}", c.piece, c.gradient, c.rotation, got, ok, c.ok, c.id, c.rot)
+		}
+	}
+}
