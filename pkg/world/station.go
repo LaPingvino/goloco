@@ -220,8 +220,8 @@ func (w *World) FindTownsideRun(n int) (int, int, bool) {
 		}
 		return c
 	}
-	for y := 2; y < w.height-2; y++ {
-		for x := n + 1; x < w.width-2; x++ {
+	for y := 2; y < w.Height-2; y++ {
+		for x := n + 1; x < w.Width-2; x++ {
 			ok := true
 			var z uint8
 			for i := 0; i < n; i++ {

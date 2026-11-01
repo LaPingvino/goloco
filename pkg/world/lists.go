@@ -28,8 +28,8 @@ type TownInfo struct {
 // dynamically-registered StringIds that are non-trivial to resolve, so each
 // town is labelled "Town N" and shown with its population and coordinates.
 func (w *World) TownList() []TownInfo {
-	out := make([]TownInfo, 0, len(w.towns))
-	for i, t := range w.towns {
+	out := make([]TownInfo, 0, len(w.Towns))
+	for i, t := range w.Towns {
 		size := ""
 		if int(t.Size) < len(townSizeNames) {
 			size = townSizeNames[t.Size]
@@ -64,10 +64,10 @@ type StationInfo struct {
 func (w *World) StationList() []StationInfo {
 	seen := make(map[int]bool)
 	var out []StationInfo
-	for y := range w.tiles {
-		for x := range w.tiles[y] {
-			for i := range w.tiles[y][x].Stations {
-				se := &w.tiles[y][x].Stations[i]
+	for y := range w.Tiles {
+		for x := range w.Tiles[y] {
+			for i := range w.Tiles[y][x].Stations {
+				se := &w.Tiles[y][x].Stations[i]
 				id := int(se.StationID)
 				if seen[id] {
 					continue
@@ -98,8 +98,8 @@ func (w *World) VehicleList() []VehicleInfo {
 
 	// Map each head entity ID to the object name of its first body car.
 	bodyName := make(map[uint16]string)
-	for i := range w.entities {
-		e := &w.entities[i]
+	for i := range w.Entities {
+		e := &w.Entities[i]
 		if e.EntityType != scenario.VehicleTypeBody {
 			continue
 		}
@@ -109,8 +109,8 @@ func (w *World) VehicleList() []VehicleInfo {
 	}
 
 	n := 0
-	for i := range w.entities {
-		e := &w.entities[i]
+	for i := range w.Entities {
+		e := &w.Entities[i]
 		if e.EntityType != scenario.VehicleTypeHead {
 			continue
 		}

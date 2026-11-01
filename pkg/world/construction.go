@@ -101,7 +101,7 @@ func (w *World) trackPieceTiles(trackID int) (tiles [][2]int, baseZ []uint8, ok 
 		dx, dy := rotOffset(off[0], off[1], h.Rotation)
 		tx := h.X + int(dx)/32
 		ty := h.Y + int(dy)/32
-		if tx < 0 || ty < 0 || tx >= w.width || ty >= w.height {
+		if tx < 0 || ty < 0 || tx >= w.Width || ty >= w.Height {
 			return nil, nil, false
 		}
 		z := int(h.BaseZ) + int(off[2])/4 // piece z is world units; BaseZ is SmallZ
@@ -241,7 +241,7 @@ func (w *World) roadPieceTiles(roadID int) (tiles [][2]int, baseZ []uint8, ok bo
 		dx, dy := rotOffset(off[0], off[1], h.Rotation)
 		tx := h.X + int(dx)/32
 		ty := h.Y + int(dy)/32
-		if tx < 0 || ty < 0 || tx >= w.width || ty >= w.height {
+		if tx < 0 || ty < 0 || tx >= w.Width || ty >= w.Height {
 			return nil, nil, false
 		}
 		z := int(h.BaseZ) + int(off[2])/4 // piece z is world units; BaseZ is SmallZ
