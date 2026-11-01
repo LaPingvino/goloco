@@ -76,6 +76,7 @@ type Session struct {
 
 	// Slabs for paint structs and attachments (reused across frames by Reset).
 	structs        []Struct
+	tunnels        [4][]tunnelEntry
 	attachedSlab   []Attached
 	chunks         [][]Struct
 	attachedChunks [][]Attached
@@ -99,9 +100,10 @@ func Colour(sp *gfx8.Sprite, remap []uint8) Image {
 // Reset prepares the session for a new frame, keeping its allocations (the
 // struct and attachment slabs) so a frame allocates nothing in steady state.
 func (s *Session) Reset(rotation uint8, x, y, w, h int) {
-	structs, attached := s.structs[:0], s.attachedSlab[:0]
+	structs, attached, tunnels := s.structs[:0], s.attachedSlab[:0], s.tunnels
 	*s = Session{Rotation: rotation, rtX: x, rtY: y, rtW: w, rtH: h, back: noBackIndex,
-		structs: structs, attachedSlab: attached}
+		structs: structs, attachedSlab: attached, tunnels: tunnels}
+	s.ResetTunnels()
 }
 
 // newStruct returns a zeroed struct from the slab (upstream allocatePaintStruct).
@@ -127,6 +129,44 @@ func (s *Session) newAttached() *Attached {
 
 // SetSpritePosition sets the world position painters' offsets are relative to.
 func (s *Session) SetSpritePosition(x, y int) { s.spriteX, s.spriteY = x, y }
+
+// Tunnels — Paint.cpp resetTunnels / insertTunnel / insertTunnels. Per edge a
+// list of (MicroZ height, tunnel) in insertion order; reading past the end
+// gives upstream's {0xFF, 0xFF} terminator. Tunnel is the tunnel object's image
+// base (one per tunnel object, so equality matches upstream's type compare).
+type tunnelEntry struct{ height, tunnel int }
+
+// ResetTunnels is resetTunnels, called once per tile (paintTileElementsSetup).
+func (s *Session) ResetTunnels() {
+	for i := range s.tunnels {
+		s.tunnels[i] = s.tunnels[i][:0]
+	}
+}
+
+// InsertTunnels is insertTunnels: an entry per edge whose height is not -1, at
+// (tunnelHeight + height) / kMicroZStep; a repeat of the edge's last entry is dropped.
+func (s *Session) InsertTunnels(heights [4]int16, height, tunnel int) {
+	if tunnel < 0 {
+		return // no tunnel object resolved (upstream: tunnel 0xFF)
+	}
+	for edge, th := range heights {
+		if th == -1 {
+			continue
+		}
+		e := tunnelEntry{(int(th) + height) / microZStep, tunnel}
+		if n := len(s.tunnels[edge]); n > 0 && s.tunnels[edge][n-1] == e {
+			continue
+		}
+		s.tunnels[edge] = append(s.tunnels[edge], e)
+	}
+}
+
+func (s *Session) tunnelAt(edge, i int) tunnelEntry {
+	if i < len(s.tunnels[edge]) {
+		return s.tunnels[edge][i]
+	}
+	return tunnelEntry{0xFF, 0xFF}
+}
 
 // rotate is Math::Vector::rotate.
 func rotate(x, y int, dir uint8) (int, int) {

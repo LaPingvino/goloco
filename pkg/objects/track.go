@@ -13,6 +13,7 @@ type TrackObject struct {
 
 	Name        string
 	Image       uint32 // Base G1 sprite index (set after image table load)
+	TunnelName  string // name of the embedded tunnel ObjectHeader (trackObj/roadObj->tunnel)
 	NumMods     uint8  // Number of track extra/modifications (max 4)
 	NumSignals  uint8  // Number of signal types
 	NumBridges  uint8  // Number of supported bridges (max 7)
@@ -106,6 +107,8 @@ func ParseTrackObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tr
 	//   1 tunnel object
 	//   numBridges bridge objects
 	//   numStations station objects
+	// TrackObject::load: the tunnel header follows the compatible, mod and signal headers.
+	track.TunnelName = headerName(data, offset+(int(numCompatible)+int(numMods)+int(numSignals))*HeaderSize)
 	numHeaders := int(numCompatible) + int(numMods) + int(numSignals) + 1 + int(numBridges) + int(numStations)
 	offset += numHeaders * HeaderSize
 

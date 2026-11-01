@@ -12,6 +12,7 @@ type TrackEl struct {
 	TrackID, SequenceIndex, Rotation uint8
 	BaseZ                            uint8   // SmallZ
 	Remap                            []uint8 // company colour of elTrack.owner() (nil: none)
+	Tunnel                           int     // trackObj->tunnel's image base (-1: none)
 }
 
 // PaintTrack paints one track element at the current sprite position; image
@@ -37,10 +38,12 @@ func (s *Session) PaintTrack(el TrackEl, image int, sprite func(int) *gfx8.Sprit
 				s.AddTrackRoad(i, prio, ho, bbOff, tpp.BBSizes[rot])
 			}
 		}
+		s.InsertTunnels(tpp.TunnelHeights[rot], height, el.Tunnel)
 		return
 	}
 	// paintTrackPPStandard: one image via addToPlotList4FD150 (= AsParent).
 	if i := img(tpp.ImageIndexOffsets[rot][0]); i.Sprite != nil {
 		s.AddAsParent(i, ho, bbOff, tpp.BBSizes[rot])
 	}
+	s.InsertTunnels(tpp.TunnelHeights[rot], height, el.Tunnel)
 }
