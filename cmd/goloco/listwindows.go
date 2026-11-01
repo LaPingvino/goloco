@@ -24,6 +24,11 @@ func (g *Game) openVehicleList(tab int) {
 	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
 		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowPlayerColor
 	}
+	// The window's owner is the company, so WindowManager draws its primary
+	// colour as the company's colour (CompanyManager::getCompanyColour).
+	if company < len(g.w.CompanyColours) {
+		tc = g.w.CompanyColours[company]
+	}
 	w := ui.NewVehicleList(g.sw, tab, rows, tc, wc)
 	if cname != "" {
 		w.Caption = cname + " - " + w.Caption // stringid_trains etc.
@@ -48,6 +53,11 @@ func (g *Game) openStationsWindow() {
 	var tc, wc uint8 = 0, 1
 	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
 		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowPlayerColor
+	}
+	// The window's owner is the company, so WindowManager draws its primary
+	// colour as the company's colour (CompanyManager::getCompanyColour).
+	if company < len(g.w.CompanyColours) {
+		tc = g.w.CompanyColours[company]
 	}
 	w := ui.NewStationList(g.sw, rows, tc, wc)
 	if cname != "" {

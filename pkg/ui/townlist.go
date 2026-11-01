@@ -64,6 +64,9 @@ type TownListWindow struct {
 	// CurrentTab is the selected tab; OnTab is called when a tab is clicked.
 	CurrentTab int
 	OnTab      func(tab int)
+	// ColourCaption: the caption is Style::colourText (StationList,
+	// VehicleList) rather than whiteText (TownList).
+	ColourCaption bool
 }
 
 // setTableGeometry fills the 600×197 town/station list geometry.
@@ -105,7 +108,7 @@ func NewStationList(sw int, stations []StationRow, titleColour, colour uint8) *T
 	if len(rows) == 1 {
 		status = "1 station"
 	}
-	return (&TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: "All Stations", Tabs: 5,
+	return (&TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: "All Stations", Tabs: 5, ColourCaption: true,
 		Columns: []TableColumn{{4, 200, "Name", 0, 198}, {204, 200, "Status", 200, 198}, {404, 90, "Total waiting", 400, 88}, {494, 120, "Accepts", 490, 118}},
 		Rows:    rows, Status: status, Hover: -1}).setTableGeometry()
 }
@@ -196,7 +199,11 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 			}
 		}
 	})
-	DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, w.Caption)
+	if w.ColourCaption { // Caption::Style::colourText: the window's primary colour
+		DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Caption, int(w.TitleColour))
+	} else {
+		DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, w.Caption)
+	}
 	for _, c := range w.Columns {
 		DrawTextBold(screen, c.Label, w.X+c.HeaderX, w.Y+43, black)
 	}
@@ -287,7 +294,7 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 		Columns: []TableColumn{{4, 310, "Name", 4 + 1 - 4, 310 - 2}, {314, 100, "Monthly Profit", 314 + 1 - 4, 100 - 2}, {414, 65, "Age", 414 + 1 - 4, 65 - 2}, {479, 67, "Reliability", 479 + 1 - 4, 67 - 2}},
 		Rows:    rows, Status: status, Hover: -1, CurrentTab: tab,
 		W: 550, H: 213, RowHeight: vehicleListRowHeights[tab], StatusY: 213 - 13, TextDY: 2, List: [4]int{3, 56, 544, 138},
-		Outline: true, HoverSolid: true}
+		Outline: true, HoverSolid: true, ColourCaption: true}
 	w.CellColour = func(r, c int) int {
 		if c == 1 && vehicles[r].Profit < 0 {
 			return 27 // Colour::red ({COLOUR RED})
