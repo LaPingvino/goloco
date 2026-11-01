@@ -1172,6 +1172,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regional" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "framesolid" && g.options != nil {
+			ui.FrameStyle = 1 // the Rendering tab with solid frames
+			g.options.Tab = ui.OptTabRendering
+		}
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "renderscale" && g.options != nil {
 			g.options.Tab = ui.OptTabRendering // and a click on Vehicles min. display scale
 			g.options.HandleClick(g.options.X+240, g.options.Y+66)

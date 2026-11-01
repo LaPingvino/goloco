@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/paint"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -21,6 +22,10 @@ const (
 // across the window width and clipped to the top 41 px, then a 1-px shadow
 // (shade 3, or shade 1 with WindowFlags::lighterFrame) down the right edge.
 // PARTIAL: drawResizeHandle (resizable windows) is not drawn.
+// FrameStyle is Config windowFrameStyle: 0 background (the gradient image,
+// default), 1 solid, 2 transparent (Options' Rendering tab sets it).
+var FrameStyle int
+
 func DrawWindowFrame(screen *ebiten.Image, x, y, w, h int, colour uint8, lighterFrame bool) {
 	if globalG1Font == nil {
 		return
@@ -40,9 +45,28 @@ func DrawWindowFrame(screen *ebiten.Image, x, y, w, h int, colour uint8, lighter
 	}
 	hh := min(41, h)
 	draw8(screen, x, y, w, hh, func(rt *gfx8.RenderTarget) {
-		passes := (w + sp.Width - 1) / sp.Width
-		for i := passes; i >= 0; i-- {
-			gfx8.DrawSpriteNoise(rt, sp, i*(sp.Width-1), 0, gfx8.OpTransparent|gfx8.OpSrc, cmap, nil)
+		// Frame::draw by Config windowFrameStyle: the background image
+		// (drawBackground), a solid inset (drawSolid) or a translucent one
+		// (drawTransparent). goloco draws the frame's top 41 px here (the rest
+		// is under the window's panel).
+		// PARTIAL: with the transparent style upstream also makes the whole
+		// window translucent (Window::isTranslucent).
+		switch FrameStyle {
+		case 1:
+			gfx8.FillRectInset(rt, 0, 0, w-1, hh-1, gfx8.InsetColour{Map: cmap}, 0)
+		case 2:
+			var trans [3][]uint8
+			if int(colour) < len(paint.TranslucentColour) {
+				for k := range trans {
+					trans[k], _ = g1.GetPaletteMap(int(paint.TranslucentColour[colour][k]))
+				}
+			}
+			gfx8.FillRectInset(rt, 0, 0, w-1, hh-1, gfx8.InsetColour{Map: cmap, Translucent: true, Trans: trans}, 0)
+		default:
+			passes := (w + sp.Width - 1) / sp.Width
+			for i := passes; i >= 0; i-- {
+				gfx8.DrawSpriteNoise(rt, sp, i*(sp.Width-1), 0, gfx8.OpTransparent|gfx8.OpSrc, cmap, nil)
+			}
 		}
 		shade := gfx8.Shade(cmap, 3)
 		if lighterFrame {
