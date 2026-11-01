@@ -51,6 +51,7 @@ type ObjectManager struct {
 	BuildingObjects      []*BuildingObject           // all loaded building objects
 	WallObjects          []*WallObject               // all loaded wall objects
 	TrackObjects         []*TrackObject              // all loaded track objects
+	TrackExtraOrder      []string                    // track-extra DAT names in scenario slot order
 	RoadObjects          []*RoadObject               // all loaded road objects
 	TrainStationObjects  []*TrainStationObject       // all loaded train-station objects
 	RoadStationObjects   []*RoadStationObject        // all loaded road-station objects
@@ -1321,4 +1322,47 @@ func (m *ObjectManager) AvailableCompatibleStations(slot int, road bool, year in
 		}
 	}
 	return out
+}
+
+// AvailableCompatibleMods is ObjectUtils getAvailableCompatibleMods for a
+// track: the track's mods (slot list, 0xFF for none) that a vehicle the company
+// has unlocked needs — a rail vehicle of this track type requiring the extra,
+// or a rack-rail vehicle whose rack rail it is. unlocked reports
+// Company::isVehicleIndexUnlocked for a vehicle slot.
+// PARTIAL: roads (road extras) not yet.
+func (m *ObjectManager) AvailableCompatibleMods(trackSlot int, unlocked func(vehicleSlot int) bool) [4]uint8 {
+	out := [4]uint8{0xFF, 0xFF, 0xFF, 0xFF}
+	if trackSlot < 0 || trackSlot >= len(m.TrackObjects) || m.TrackObjects[trackSlot] == nil {
+		return out
+	}
+	t := m.TrackObjects[trackSlot]
+	need := map[string]bool{}
+	for i, v := range m.Vehicles {
+		if v == nil || v.Mode != TransportModeRail || !strings.EqualFold(v.TrackName, t.Header.GetName()) || !unlocked(i) {
+			continue
+		}
+		for _, n := range v.ExtraNames {
+			need[strings.ToUpper(n)] = true
+		}
+		if v.RackRailName != "" {
+			need[strings.ToUpper(v.RackRailName)] = true
+		}
+	}
+	for i, n := range t.ModNames {
+		if i < 4 && need[strings.ToUpper(n)] {
+			out[i] = uint8(m.trackExtraSlot(n))
+		}
+	}
+	return out
+}
+
+// trackExtraSlot is the slot of the named track extra in the scenario's order
+// (the index the mods list holds); 0xFF if it isn't loaded.
+func (m *ObjectManager) trackExtraSlot(name string) int {
+	for i, n := range m.TrackExtraOrder {
+		if strings.EqualFold(n, name) {
+			return i
+		}
+	}
+	return 0xFF
 }

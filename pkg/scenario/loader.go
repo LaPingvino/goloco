@@ -189,6 +189,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.WallObjectOrder = parseWallObjectOrder(reqObjBytes)
 	sc.TrainSignalObjectOrder = parseTrainSignalObjectOrder(reqObjBytes)
 	sc.IndustryObjectOrder = parseIndustryObjectOrder(reqObjBytes)
+	// Track extras: 8 slots after the train stations (313 + 16), ObjectType 16.
+	sc.TrackExtraOrder = parseObjectOrder(reqObjBytes, 329, 8, 16)
 	// Currency: one slot, after the interface skin (1) and the sounds (128).
 	if o := parseObjectOrder(reqObjBytes, 129, 1, objectTypeCurrency); len(o) == 1 {
 		sc.CurrencyObject = o[0]
@@ -278,6 +280,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.IndustryObjectIDs = parseIndustryObjectIDs(gameState)
 		sc.CompanyColours = parseCompanyColours(gameState)
 		sc.CompanyNames = parseCompanyNames(gameState)
+		sc.UnlockedVehicles = parseUnlockedVehicles(gameState)
 		sc.ControllingCompany = parseControllingCompany(gameState)
 		if len(gameState) > 0x196 { // general.trafficHandedness (from the compiler)
 			sc.TrafficHandedness = gameState[0x196]
@@ -1172,6 +1175,26 @@ func parseCompanyNames(gs []byte) []uint16 {
 		n[i] = uint16(gs[o]) | uint16(gs[o+1])<<8
 	}
 	return n
+}
+
+// parseUnlockedVehicles returns every company's unlockedVehicles bitset
+// (S5::Company 0x34, uint32_t[7]: one bit per vehicle object slot).
+func parseUnlockedVehicles(gs []byte) [][7]uint32 {
+	size := companyRecordSize
+	if len(gs) == GameStateSizeType2 {
+		size = companyRecordSizeType2
+	}
+	if len(gs) < companiesGameStateOffset+companyMaxCount*size {
+		return nil
+	}
+	out := make([][7]uint32, companyMaxCount)
+	for c := range out {
+		o := companiesGameStateOffset + c*size + 0x34
+		for w := range 7 {
+			out[c][w] = binary.LittleEndian.Uint32(gs[o+4*w:])
+		}
+	}
+	return out
 }
 
 // playerCompaniesOffset is GameState general.playerCompanies (uint8[2]; from

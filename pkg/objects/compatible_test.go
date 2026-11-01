@@ -36,3 +36,20 @@ func TestAvailableCompatibleStations(t *testing.T) {
 		t.Errorf("1950: %v, want [0] (STALIST obsolete)", got)
 	}
 }
+
+func TestAvailableCompatibleMods(t *testing.T) {
+	trk := &TrackObject{Header: hdr("TRACKA"), ModNames: []string{"CATENARY", "THIRDRL"}}
+	electric := &VehicleObject{Mode: TransportModeRail, TrackName: "TRACKA", ExtraNames: []string{"THIRDRL"}}
+	steam := &VehicleObject{Mode: TransportModeRail, TrackName: "TRACKA"}
+	tram := &VehicleObject{Mode: TransportModeRail, TrackName: "OTHER", ExtraNames: []string{"CATENARY"}}
+	m := &ObjectManager{TrackObjects: []*TrackObject{trk}, Vehicles: []*VehicleObject{electric, steam, tram},
+		TrackExtraOrder: []string{"THIRDRL", "CATENARY"}}
+	all := func(int) bool { return true }
+	if got := m.AvailableCompatibleMods(0, all); got != [4]uint8{0xFF, 0, 0xFF, 0xFF} {
+		t.Errorf("all unlocked: %v, want third rail (slot 0) in the track's second mod place", got)
+	}
+	none := func(int) bool { return false }
+	if got := m.AvailableCompatibleMods(0, none); got != [4]uint8{0xFF, 0xFF, 0xFF, 0xFF} {
+		t.Errorf("nothing unlocked: %v", got)
+	}
+}

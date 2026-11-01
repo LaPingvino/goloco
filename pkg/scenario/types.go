@@ -54,6 +54,10 @@ type Scenario struct {
 	IndustryObjectOrder []string
 	// CurrencyObject is the DAT name in the currency slot (RequiredObjects 129).
 	CurrencyObject string
+	// TrackExtraOrder is the track-extra DAT names in slot order (329..336).
+	TrackExtraOrder []string
+	// UnlockedVehicles is each company's unlockedVehicles bitset.
+	UnlockedVehicles [][7]uint32
 
 	// IndustryObjectIDs[industry index] = that industry's object id (GameState
 	// industries table); IndustryElement.IndustryID indexes it.
