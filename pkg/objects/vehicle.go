@@ -8,7 +8,13 @@ import (
 
 // VehicleObject represents a vehicle from a DAT file
 type VehicleObject struct {
-	Header ObjectHeader
+	// TrackName, ExtraNames, RackRailName are the DAT names load resolves into
+	// trackType, requiredTrackExtras[] and rackRailType (slots); TrackType and
+	// RequiredTrackExtras below are the raw bytes of the file's fixed struct.
+	TrackName    string
+	ExtraNames   []string
+	RackRailName string
+	Header       ObjectHeader
 
 	// Basic properties (from the decompressed data)
 	Name                uint16 // String ID
@@ -263,10 +269,14 @@ func ParseVehicleObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 	// 2. Track/road type header — only for rail/road vehicles without anyRoadType.
 	if v.Flags&flagAnyRoadType == 0 &&
 		(v.Mode == TransportModeRail || v.Mode == TransportModeRoad) {
+		v.TrackName = headerName(data, offset) // VehicleObject::load resolves it into trackType
 		offset += HeaderSize
 	}
 
 	// 3. Required track-extra headers.
+	for i := range int(v.NumTrackExtras) {
+		v.ExtraNames = append(v.ExtraNames, headerName(data, offset+i*HeaderSize))
+	}
 	offset += int(v.NumTrackExtras) * HeaderSize
 
 	// 4. Cargo section: 2 × [maxCargo u8; if ≠0: (category u16, spriteOffset u8)*
@@ -296,6 +306,7 @@ func ParseVehicleObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 
 	// 7. Rack-rail object header.
 	if v.Flags&flagRackRail != 0 {
+		v.RackRailName = headerName(data, offset)
 		offset += HeaderSize
 	}
 

@@ -2370,4 +2370,3 @@ const (
 	spriteRotateObject = 2365 // ImageIds::rotate_object (red curved arrow)
 	spriteRemoveObject = 2361 // ImageIds::construction_remove (undo/remove)
 )
-
