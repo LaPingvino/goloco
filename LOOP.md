@@ -64,6 +64,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    Note: pkg/ui's GPT-generated Window/Widget system (window_manager.go header: 'batch_ai_impl … GPT-5-mini')
    is still LIVE via input.go and title_menu.go, next to the SimpleWindow system the game windows use — two
    window systems. Unify on a port of Ui/WindowManager.cpp later (→ deviations C).
+3c. [ ] **Startup speed (Joop: the browser build is slow).** Delivery is fast (Caddy, 5 MB wasm in 0.07 s on the
+   server); the cost is client-side: unpack, wasm start, then an up-front preload of 11,057 sprites
+   ('Collected N sprite IDs for preload' in cmd/goloco/main.go). Upstream decodes g1 sprites when first drawn
+   (Gfx drawImage) — make goloco's preload lazy or spread over frames, measure before/after with timestamps
+   in the browser log.
 4. [ ] **Split simulation from rendering** (APPROVED by Joop 2026-11-01: 'the split is perfectly okay. Free to make bold decisions.'). pkg/world imports
    Ebiten in world.go, construction.go, overlay.go; its tests panic without a display.
 5. [ ] **Vehicle movement port.** Generate SubpositionData.cpp into Go like track_data_gen.go;
@@ -76,8 +81,6 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    'simplified approximation', depth-sort approximation for vehicles, g1font width fudge, …).
 
 ## Questions for Joop
-- Wasm test page: how long does it take to get from Start to the title screen in your browser? (Headless it was
-  still preloading sprites after a minute.)
 
 ## Blocked
 - 2026-11-01 tick 1: serving the test page from a local web server (python -m http.server) was refused by the auto-mode check ('Expose Local Services'). Test from file:// with chromium --allow-file-access-from-files instead.
@@ -93,3 +96,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-01 tick 4 (item 3 done) — docs/deviations.md: 103 markers + invented heuristics, each with the upstream file it should follow, severity and size; found 5 dead packages (pkg/loco/*, pkg/tests) → new item 3b.
 - 2026-11-01 (Joop: artifact too slow → Caddy with password) — webpack -local writes plain .gz (page decodes both forms); scripts/caddy-goloco.sh inserts a marked /goloco/ block with basic_auth into the kiefte.eu site, backs up, validates (restores on failure), reloads; dry run on a copy validated and replaced cleanly on a second run. Needs Joop's sudo run.
 - 2026-11-01 tick 5 (item 3b done) — removed 6 dead packages and 11 uncalled pkg/ui stubs (−~1,400 lines incl. packages); build + vet green; tests as before (pkg/world needs a display → item 4). Found two coexisting window systems (GPT-generated Window + SimpleWindow) → noted.
+- 2026-11-01 — Caddy route live (Joop ran the script): 401 without auth, 200 with; wasm served in 0.07 s → slowness is client-side; queued 3c (lazy sprite preload).
