@@ -64,6 +64,14 @@ type Session struct {
 	back, front        int
 	last               *Struct
 	head               *Struct
+
+	trackRoad [5]*Struct // _trackRoadPaintStructs, by priority
+
+	// Road merging (PaintRoad.cpp): set by merge pieces, drawn by FinalisePaintRoad.
+	roadExits       uint8
+	mergeRoadImage  int // absolute image of the merge set's first sprite
+	mergeRoadHeight int
+	mergeRoadPal    []uint8
 }
 
 // NewSession starts a session for a render target covering viewport rectangle
@@ -345,4 +353,65 @@ func (s *Session) Draw(rt *gfx8.RenderTarget) {
 		}
 		attached(ps)
 	}
+}
+
+// AddTrackRoad is addToPlotListTrackRoad: the struct goes into the priority
+// list (newest first through children) instead of a quadrant.
+func (s *Session) AddTrackRoad(img Image, priority int, off, bbOff, bbSize Pos3) *Struct {
+	s.last = nil
+	ps := s.create(img, off, bbOff, bbSize)
+	if ps != nil {
+		s.last = ps
+		ps.children = s.trackRoad[priority]
+		s.trackRoad[priority] = ps
+	}
+	return ps
+}
+
+func lastChild(ps *Struct) *Struct {
+	for ps.children != nil {
+		ps = ps.children
+	}
+	return ps
+}
+
+// FinaliseTrackRoadOrdering is finaliseTrackRoadOrdering → finaliseOrdering:
+// chain the priority lists in order as one struct, give it the min/max XY
+// bounds of the chain (getMinMaxXYBounding) and add it to a quadrant.
+func (s *Session) FinaliseTrackRoadOrdering() {
+	var route, lastEntry *Struct
+	for i, e := range s.trackRoad {
+		if e == nil {
+			continue
+		}
+		if lastEntry == nil {
+			route = e
+		} else {
+			lastEntry.children = e
+		}
+		lastEntry = lastChild(e)
+		s.trackRoad[i] = nil
+	}
+	if route == nil {
+		return
+	}
+	mins, maxs := route.Mins, route.Maxs
+	for c := route.children; c != nil; c = c.children {
+		switch s.Rotation {
+		case 0:
+			mins.X, mins.Y = min(mins.X, c.Mins.X), min(mins.Y, c.Mins.Y)
+			maxs.X, maxs.Y = max(maxs.X, c.Maxs.X), max(maxs.Y, c.Maxs.Y)
+		case 1:
+			mins.X, mins.Y = max(mins.X, c.Mins.X), min(mins.Y, c.Mins.Y)
+			maxs.X, maxs.Y = min(maxs.X, c.Maxs.X), max(maxs.Y, c.Maxs.Y)
+		case 2:
+			mins.X, mins.Y = max(mins.X, c.Mins.X), max(mins.Y, c.Mins.Y)
+			maxs.X, maxs.Y = min(maxs.X, c.Maxs.X), min(maxs.Y, c.Maxs.Y)
+		case 3:
+			mins.X, mins.Y = min(mins.X, c.Mins.X), max(mins.Y, c.Mins.Y)
+			maxs.X, maxs.Y = max(maxs.X, c.Maxs.X), min(maxs.Y, c.Maxs.Y)
+		}
+	}
+	route.Mins, route.Maxs = mins, maxs
+	s.addToQuadrant(route)
 }
