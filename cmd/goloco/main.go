@@ -22,6 +22,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/scenario"
 	"github.com/LaPingvino/goloco/pkg/title"
 	"github.com/LaPingvino/goloco/pkg/ui"
+	"github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/LaPingvino/goloco/pkg/world"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -490,7 +491,21 @@ func (g *Game) Update() error {
 				g.dropdown = nil
 			}
 		} else if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
-			if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
+			if sp := uilayout.TimePanelSpeedAt(g.mouseX, g.mouseY, g.sw, g.sh); sp >= 0 && !g.inTitleScreen {
+				// TimePanel speed buttons: pause toggles; the others set the speed.
+				switch sp {
+				case 0:
+					g.isPaused = !g.isPaused
+				case 1:
+					g.speedMult, g.isPaused = 1, false
+				case 2:
+					g.speedMult, g.isPaused = 2, false
+				case 3:
+					g.speedMult, g.isPaused = 4, false
+				}
+			} else if uilayout.InTimePanel(g.mouseX, g.mouseY, g.sw, g.sh) && !g.inTitleScreen {
+				// the rest of the time panel window swallows the click
+			} else if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
 				g.toolbar.Buttons[btnIdx].Pressed = true
 				g.handleToolbarButton(btnIdx)
 			} else if g.buildMode != buildModeNone && g.hoverTileX >= 0 {
@@ -673,6 +688,48 @@ func (g *Game) handleTitleMenuClick(mx, my int) {
 		log.Println("[Game] Title menu: Tutorial (not yet implemented)")
 	case 3:
 		log.Println("[Game] Title menu: Scenario Editor (not yet implemented)")
+	}
+}
+
+// drawTimePanel draws the ported TimePanel (bottom-right) and, when its date
+// is hovered, the date tooltip with the scenario objective.
+func (g *Game) drawTimePanel(screen *ebiten.Image) {
+	if g.gameState == nil {
+		return
+	}
+	date := g.gameState.GameDate
+	st := ui.TimePanelState{Date: uilayout.DateDMY(date.Day(), i18n.Month(int(date.Month())), date.Year())}
+	switch {
+	case g.isPaused:
+		st.Speed = 0
+	case g.speedMult <= 1:
+		st.Speed = 1
+	case g.speedMult == 2:
+		st.Speed = 2
+	default:
+		st.Speed = 3
+	}
+	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+		st.SkinColour = g.r.ObjMgr.InterfaceSkin.TimeToolbarColour
+		st.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
+	}
+	wx, wy := uilayout.TimePanelPos(g.sw, g.sh)
+	d := uilayout.TimePanelDate
+	st.HoverDate = g.mouseX >= wx+d[0] && g.mouseX < wx+d[0]+d[2] && g.mouseY >= wy+d[1] && g.mouseY < wy+d[1]+d[3]
+	ui.DrawTimePanel(screen, st)
+	if st.HoverDate && g.hasObjective {
+		tip := st.Date
+		obj := g.objective.Describe()
+		if g.objective.Type == 3 {
+			ct := int(g.objective.DeliveredCargoType) % len(g.gameState.CargoDelivered)
+			obj += fmt.Sprintf(" (%d/%d)", g.gameState.CargoDelivered[ct], g.objective.DeliveredCargoAmount)
+		}
+		tip += " - " + i18n.T("game.objective") + " " + obj // PARTIAL: upstream's challenge tooltip string not ported
+		var c uint8
+		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+			c = g.r.ObjMgr.InterfaceSkin.TooltipColour
+		}
+		ui.DrawTooltip(screen, tip, g.mouseX, g.mouseY, c)
 	}
 }
 
@@ -1029,22 +1086,18 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	statusY := g.sh - 20
-	fillRect(screen, 0, float64(statusY), float64(g.sw), 20, color.RGBA{50, 50, 50, 240})
+	// IMPROVISED status strip (left part only, until PlayerInfoPanel.cpp is
+	// ported); the right end is the ported TimePanel.
+	fillRect(screen, 0, float64(statusY), float64(g.sw-uilayout.TimePanelW), 20, color.RGBA{50, 50, 50, 240})
 	var statusText string
 	speedStr := fmt.Sprintf("×%d", g.speedMult)
 	if g.isPaused {
 		speedStr = "PAUSED"
 	}
 	fps := ebiten.ActualFPS()
-	// Objective HUD line under the toolbar, and the win banner.
-	if g.hasObjective && !g.inTitleScreen {
-		obj := i18n.T("game.objective") + " " + g.objective.Describe()
-		if g.objective.Type == 3 && g.gameState != nil {
-			ct := int(g.objective.DeliveredCargoType) % len(g.gameState.CargoDelivered)
-			obj += fmt.Sprintf("  (%d/%d)", g.gameState.CargoDelivered[ct], g.objective.DeliveredCargoAmount)
-		}
-		drawOutlinedText(screen, obj, 6, 34, color.RGBA{255, 240, 160, 255})
-	}
+	// The objective is not an overlay upstream: it is the time panel's date
+	// tooltip (StringIds::tooltip_daymonthyear_challenge), shown on hover.
+	g.drawTimePanel(screen)
 	if g.gameWon {
 		msg := "OBJECTIVE ACHIEVED!"
 		mw, _ := ui.MeasureTextBold(msg)
@@ -1055,8 +1108,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	fpsStr := fmt.Sprintf("%.0ffps", fps)
 	if g.gameState != nil {
 		date := g.gameState.GameDate
-		statusText = fmt.Sprintf("%s %d  |  £%d  |  %s  |  Space=pause F3-F6=speed  |  %s",
-			i18n.Month(int(date.Month())), date.Year(), g.gameState.PlayerMoney, speedStr, fpsStr)
+		_ = date
+		statusText = fmt.Sprintf("£%d  |  %s  |  Space=pause F3-F6=speed  |  %s",
+			g.gameState.PlayerMoney, speedStr, fpsStr)
 	} else {
 		statusText = fmt.Sprintf("GoLoco | %s | Scroll to zoom | %s", speedStr, fpsStr)
 	}
@@ -1092,6 +1146,14 @@ func debugPath(name string) string {
 // quit when the requested count has been captured. Script `shot` commands are
 // honoured here too.
 func (g *Game) maybeSaveShot(screen *ebiten.Image) {
+	if os.Getenv("GOLOCO_DIAG_TIMEPANEL") != "" {
+		st := ui.TimePanelState{Date: uilayout.DateDMY(1, "January", 1950), Speed: 1}
+		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+			st.SkinColour = g.r.ObjMgr.InterfaceSkin.TimeToolbarColour
+			st.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
+		}
+		ui.DrawTimePanel(screen, st)
+	}
 	if os.Getenv("GOLOCO_DIAG_WINDOW") != "" {
 		// Diagnostic: an upstream-style window frame + caption (FrameWidget,
 		// CaptionWidget ports) for headless shots; the colour is the skin's window colour.
