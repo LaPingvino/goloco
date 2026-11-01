@@ -2,6 +2,8 @@ package world
 
 import (
 	"fmt"
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"strconv"
 	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/scenario"
@@ -59,6 +61,9 @@ type StationInfo struct {
 	TileX, TileY int
 	Kind         string
 	Name         string
+	Status       string
+	Waiting      int
+	Accepts      string
 }
 
 // StationList returns every placed/loaded station on the map.  A station spans
@@ -81,7 +86,9 @@ func (w *World) StationList() []StationInfo {
 				if int(se.StationType) < len(stationKindNames) {
 					kind = stationKindNames[se.StationType]
 				}
-				out = append(out, StationInfo{ID: id, TileX: x, TileY: y, Kind: kind, Name: w.stationName(id)})
+				status, waiting, accepts := w.stationCargoText(id)
+				out = append(out, StationInfo{ID: id, TileX: x, TileY: y, Kind: kind, Name: w.stationName(id),
+					Status: status, Waiting: waiting, Accepts: accepts})
 			}
 		}
 	}
@@ -202,4 +209,68 @@ func (w *World) stationName(id int) string {
 		}
 	}
 	return fmt.Sprintf("Station %d", id)
+}
+
+// stationCargoText is Station::getStatusString, the total units waiting and
+// the accepted-cargo list of StationList's drawScroll, from the saved cargo
+// stats and the cargo objects (scenario slot order).
+func (w *World) stationCargoText(id int) (status string, waiting int, accepts string) {
+	if id >= len(w.StationNames) || w.renderer == nil || w.renderer.ObjMgr == nil {
+		return "", 0, ""
+	}
+	cargos := w.renderer.ObjMgr.CargoObjects
+	var st, acc []string
+	for c, cs := range w.StationNames[id].Cargo {
+		var co *objects.CargoObject
+		if c < len(cargos) {
+			co = cargos[c]
+		}
+		if cs.Quantity > 0 {
+			waiting += int(cs.Quantity)
+			if co != nil {
+				unit := co.UnitNamePlural
+				if cs.Quantity == 1 {
+					unit = co.UnitNameSingular
+				}
+				st = append(st, formatCount(unit, int(cs.Quantity)))
+			}
+		}
+		if cs.Flags&1 != 0 && co != nil {
+			acc = append(acc, co.Name)
+		}
+	}
+	if len(st) == 0 {
+		status = "Nothing waiting"
+	} else {
+		status = strings.Join(st, " + ") + " waiting"
+	}
+	return status, waiting, strings.Join(acc, ", ")
+}
+
+// formatCount fills a cargo unit string's number argument. Object strings
+// carry Locomotion control codes as raw bytes: 123 is int32_grouped (the
+// number with thousands separators, Formatting.h ControlCodes).
+func formatCount(s string, n int) string {
+	if i := strings.IndexRune(s, rune(123)); i >= 0 && !strings.HasPrefix(s[i:], "{COMMA") && !strings.HasPrefix(s[i:], "{INT") && !strings.HasPrefix(s[i:], "{UINT") {
+		return s[:i] + grouped(n) + s[i+1:]
+	}
+	for _, code := range []string{"{COMMA16}", "{INT32}", "{INT16}", "{UINT16}", "{COMMA32}"} {
+		if strings.Contains(s, code) {
+			return strings.Replace(s, code, strconv.Itoa(n), 1)
+		}
+	}
+	return s
+}
+
+// grouped formats n with comma thousands separators (int32_grouped, en-GB).
+func grouped(n int) string {
+	d := strconv.Itoa(n)
+	out := ""
+	for i, c := range d {
+		if i > 0 && (len(d)-i)%3 == 0 {
+			out += ","
+		}
+		out += string(c)
+	}
+	return out
 }

@@ -132,17 +132,19 @@ func (g *Game) openVehiclesWindow() {
 
 // openStationsWindow lists every placed/loaded station on the map.
 func (g *Game) openStationsWindow() {
+	// The ported StationList window (pkg/ui/townlist.go, shared table layout).
 	infos := g.w.StationList()
-	rows := make([]listRow, len(infos))
+	rows := make([]ui.StationRow, len(infos))
 	for i, s := range infos {
-		rows[i] = listRow{
-			label:  fmt.Sprintf("%s — %s  (%d,%d)", s.Name, s.Kind, s.TileX, s.TileY),
-			tileX:  s.TileX,
-			tileY:  s.TileY,
-			hasPos: true,
-		}
+		rows[i] = ui.StationRow{Name: s.Name, Status: s.Status, Waiting: s.Waiting, Accepts: s.Accepts}
 	}
-	g.openListWindow("Stations", 90, 60, rows, "No stations")
+	var tc, wc uint8 = 0, 1
+	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowPlayerColor
+	}
+	w := ui.NewStationList(g.sw, rows, tc, wc)
+	w.OnClose = func() { g.townList = nil }
+	g.townList = w
 }
 
 // openTownsWindow lists the scenario's towns with population and size.

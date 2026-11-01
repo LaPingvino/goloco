@@ -1,4 +1,4 @@
-// Code generated from OpenLoco data/language/en-GB.yml (StringIds station_town*). DO NOT EDIT.
+// Code generated from OpenLoco data/language/en-GB.yml (station name StringIds 281..327). DO NOT EDIT.
 
 package world
 
@@ -24,6 +24,8 @@ var stationNameTemplates = map[uint16]string{
 	298: "{STRINGID} Annexe",
 	299: "{STRINGID} Sidings",
 	300: "{STRINGID} Branch",
+	301: "Upper {STRINGID}",
+	302: "Lower {STRINGID}",
 	303: "{STRINGID} Heliport",
 	304: "{STRINGID} Forest",
 	305: "{STRINGID} Junction",

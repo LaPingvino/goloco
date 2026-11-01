@@ -1193,7 +1193,11 @@ func debugPath(name string) string {
 func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	if os.Getenv("GOLOCO_DIAG_TOWNS") != "" && g.townList == nil && !g.diagTownsDone && g.w != nil {
 		g.diagTownsDone = true
-		g.openTownsWindow()
+		if os.Getenv("GOLOCO_DIAG_TOWNS") == "stations" {
+			g.openStationsWindow()
+		} else {
+			g.openTownsWindow()
+		}
 		g.townList.Hover = 2
 	}
 	if os.Getenv("GOLOCO_DIAG_OPTIONS") != "" && g.options == nil && !g.diagOptionsDone {

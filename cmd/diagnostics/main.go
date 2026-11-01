@@ -143,9 +143,9 @@ func conf(sigs ...func(string) float64) func(string) float64 {
 // Feature is a single checkable capability.
 type Feature struct {
 	Name       string
-	Detect     func(root string) bool          // true if the feature is implemented
-	Confidence func(root string) float64       // nil = unknown; else 0-1 accuracy estimate
-	Note       string                          // printed alongside the feature name
+	Detect     func(root string) bool    // true if the feature is implemented
+	Confidence func(root string) float64 // nil = unknown; else 0-1 accuracy estimate
+	Note       string                    // printed alongside the feature name
 }
 
 // Category groups related features and carries a weight for the overall score.
@@ -449,38 +449,40 @@ func catalogue() []Category {
 			Weight: 0.10,
 			Features: []Feature{
 				{
-					Name:   "Straight pieces",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `Straight`) },
+					Name:       "Straight pieces",
+					Detect:     func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `Straight`) },
 					Confidence: conf(sigOLRef("pkg/world/track_sprites.go"), sigBonus("pkg/world/track_sprites.go", "rotateTrackPP")),
 				},
 				{
-					Name:   "Small curves (4 pieces each)",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `CurveSmall`) },
+					Name:       "Small curves (4 pieces each)",
+					Detect:     func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `CurveSmall`) },
 					Confidence: conf(sigOLRef("pkg/world/track_sprites.go"), sigBonus("pkg/world/track_sprites.go", "rotateTrackPP")),
 				},
 				{
-					Name:   "Large curves (4 pieces each)",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `CurveLarge|LargeCurve`) },
+					Name:       "Large curves (4 pieces each)",
+					Detect:     func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `CurveLarge|LargeCurve`) },
 					Confidence: conf(sigOLRef("pkg/world/track_sprites.go"), sigBonus("pkg/world/track_sprites.go", "rotateTrackPP")),
 				},
 				{
-					Name:   "Slope pieces (SlopeUp/Down)",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `SlopeUp`) },
+					Name:       "Slope pieces (SlopeUp/Down)",
+					Detect:     func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `SlopeUp`) },
 					Confidence: conf(sigOLRef("pkg/world/track_sprites.go"), sigBonus("pkg/world/track_sprites.go", "rotateTrackPP")),
 				},
 				{
-					Name:   "Steep slope pieces",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `SteepSlope`) },
+					Name:       "Steep slope pieces",
+					Detect:     func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `SteepSlope`) },
 					Confidence: conf(sigOLRef("pkg/world/track_sprites.go"), sigBonus("pkg/world/track_sprites.go", "rotateTrackPP")),
 				},
 				{
-					Name:   "Slope curve pieces (18 variants)",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `SlopeCurve|slopeCurve|LeftCurveSmallSlopeUp`) },
+					Name: "Slope curve pieces (18 variants)",
+					Detect: func(r string) bool {
+						return hasPattern(r, "pkg/world/track_sprites.go", `SlopeCurve|slopeCurve|LeftCurveSmallSlopeUp`)
+					},
 					Confidence: conf(sigOLRef("pkg/world/track_sprites.go"), sigBonus("pkg/world/track_sprites.go", "rotateTrackPP")),
 				},
 				{
-					Name:   "S-bends",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `SBend|sBend`) },
+					Name:       "S-bends",
+					Detect:     func(r string) bool { return hasPattern(r, "pkg/world/track_sprites.go", `SBend|sBend`) },
 					Confidence: conf(sigOLRef("pkg/world/track_sprites.go"), sigBonus("pkg/world/track_sprites.go", "rotateTrackPP")),
 				},
 				{Name: "Bridge fallback rendering", Detect: func(r string) bool { return hasPattern(r, "pkg/world/world.go", `hasBridge.*track|trackBridge`) }, Note: "elevated tracks on bridges"},
@@ -510,8 +512,10 @@ func catalogue() []Category {
 					),
 				},
 				{
-					Name:   "RequiredObjects slot map",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/scenario/loader.go", `parseObjectOrder|RequiredObjects`) },
+					Name: "RequiredObjects slot map",
+					Detect: func(r string) bool {
+						return hasPattern(r, "pkg/scenario/loader.go", `parseObjectOrder|RequiredObjects`)
+					},
 					Confidence: conf(
 						sigOLRef("pkg/scenario/loader.go"),
 						sigBonus("pkg/scenario/loader.go", "trainStationSlotStart|roadStationSlotStart"),
@@ -526,13 +530,15 @@ func catalogue() []Category {
 					),
 				},
 				{
-					Name:   "ScenarioOptions chunk (name/desc/preview)",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/scenario/loader.go", `parseOptions|ScenarioOptions`) },
+					Name:       "ScenarioOptions chunk (name/desc/preview)",
+					Detect:     func(r string) bool { return hasPattern(r, "pkg/scenario/loader.go", `parseOptions|ScenarioOptions`) },
 					Confidence: conf(sigOLRef("pkg/scenario/loader.go")),
 				},
 				{
-					Name:   "GameState chunk (SV5 entities)",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/scenario/loader.go", `GameState|parseEntityChunk|VehicleHead`) },
+					Name: "GameState chunk (SV5 entities)",
+					Detect: func(r string) bool {
+						return hasPattern(r, "pkg/scenario/loader.go", `GameState|parseEntityChunk|VehicleHead`)
+					},
 					Confidence: conf(
 						sigOLRef("pkg/scenario/loader.go"),
 						sigBonus("pkg/scenario/loader.go", "VehicleHead|entityTable|EntityType"),
@@ -540,8 +546,8 @@ func catalogue() []Category {
 					Note: "companies/towns/stations not yet used",
 				},
 				{
-					Name:   "PackedObjects chunk",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/scenario/loader.go", `PackedObject`) },
+					Name:       "PackedObjects chunk",
+					Detect:     func(r string) bool { return hasPattern(r, "pkg/scenario/loader.go", `PackedObject`) },
 					Confidence: conf(sigOLRef("pkg/scenario/loader.go")),
 				},
 				{
@@ -578,36 +584,38 @@ func catalogue() []Category {
 					),
 				},
 				{
-					Name:   "Toolbar with dropdown menus",
-					Detect: func(r string) bool { return fileExists(r, "pkg/ui/dropdown.go") && hasPattern(r, "pkg/ui/dropdown.go", `DropdownItem`) },
+					Name: "Toolbar with dropdown menus",
+					Detect: func(r string) bool {
+						return fileExists(r, "pkg/ui/dropdown.go") && hasPattern(r, "pkg/ui/dropdown.go", `DropdownItem`)
+					},
 					Confidence: conf(
 						sigOLRef("pkg/ui/dropdown.go"),
 						sigNoTodo("pkg/ui/toolbar.go"),
 					),
 				},
 				{
-					Name:   "Draggable window system",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/ui/simplewindow.go", `HandleDrag`) },
+					Name:       "Draggable window system",
+					Detect:     func(r string) bool { return hasPattern(r, "pkg/ui/simplewindow.go", `HandleDrag`) },
 					Confidence: conf(sigNoTodo("pkg/ui/simplewindow.go")),
 				},
 				{
-					Name:   "Load game file browser",
-					Detect: func(r string) bool { return hasPattern(r, "cmd/goloco/main.go", `openLoadGameWindow|openFileWindow`) },
+					Name:       "Load game file browser",
+					Detect:     func(r string) bool { return hasPattern(r, "cmd/goloco/main.go", `openLoadGameWindow|openFileWindow`) },
 					Confidence: conf(sigBonus("cmd/goloco/main.go", "openLoadGameWindow")),
 				},
 				{
-					Name:   "Save game (.goloco JSON)",
-					Detect: func(r string) bool { return hasPattern(r, "cmd/goloco/main.go", `saveGame|GoLocoSave`) },
+					Name:       "Save game (.goloco JSON)",
+					Detect:     func(r string) bool { return hasPattern(r, "cmd/goloco/main.go", `saveGame|GoLocoSave`) },
 					Confidence: conf(sigBonus("cmd/goloco/main.go", "GoLocoSave")),
 				},
 				{
-					Name:   "Options dialog (sound/music)",
-					Detect: func(r string) bool { return hasPattern(r, "cmd/goloco/main.go", `openOptionsWindow`) },
+					Name:       "Options dialog (sound/music)",
+					Detect:     func(r string) bool { return hasPattern(r, "cmd/goloco/main.go", `openOptionsWindow`) },
 					Confidence: conf(sigBonus("cmd/goloco/main.go", "soundEnabled|musicEnabled")),
 				},
 				{
-					Name:   "Music playback",
-					Detect: func(r string) bool { return hasPattern(r, "pkg/audio/audio.go", `LoadAndPlayMusic|PlayMusic`) },
+					Name:       "Music playback",
+					Detect:     func(r string) bool { return hasPattern(r, "pkg/audio/audio.go", `LoadAndPlayMusic|PlayMusic`) },
 					Confidence: conf(sigOLRef("pkg/audio/audio.go")),
 				},
 				{

@@ -1237,9 +1237,16 @@ func parseStationOwners(gs []byte) []uint8 {
 }
 
 // StationName is a station record's name StringId and town (S5::Station 0x00
-// and 0x2C).
+// and 0x2C) and its cargo stats.
 type StationName struct {
 	Name, Town uint16
+	Cargo      [32]StationCargo
+}
+
+// StationCargo is the part of StationCargoStats the station list reads.
+type StationCargo struct {
+	Quantity uint16
+	Flags    uint8 // bit 0: acceptedForConsumer (isAccepted)
 }
 
 // parseStationNames returns, per station id, its name and town. nil if short.
@@ -1254,7 +1261,12 @@ func parseStationNames(gs []byte) []StationName {
 	out := make([]StationName, stationMaxCount)
 	for i := range out {
 		rec := gs[off+i*stationRecordSize:]
-		out[i] = StationName{binary.LittleEndian.Uint16(rec[0x00:]), binary.LittleEndian.Uint16(rec[0x2C:])}
+		out[i] = StationName{Name: binary.LittleEndian.Uint16(rec[0x00:]), Town: binary.LittleEndian.Uint16(rec[0x2C:])}
+		// cargoStats: 32 × 13 bytes at 0x2E (quantity @0, flags @4; from the compiler).
+		for c := range out[i].Cargo {
+			e := rec[0x2E+c*13:]
+			out[i].Cargo[c] = StationCargo{Quantity: binary.LittleEndian.Uint16(e[0:]), Flags: e[4]}
+		}
 	}
 	return out
 }
