@@ -41,7 +41,7 @@ internal. Size: S (one tick), M (2–4 ticks), L (a series).
 
 ## C. Text and UI
 
-| pkg/world/lists.go TownList | Town names are placeholders "Town N" | Town::name is a StringId resolved through the town-names object and user strings (StringManager) | M | M |
+| pkg/world/lists.go TownList | FIXED 2026-11-01: town names from the GameState user strings (StringIds 0x8000+). Was: placeholders "Town N" | Town::name is a user StringId (the town name generator allocates user strings) | M | M |
 
 | Where | What goloco does | What upstream does | Sev | Size |
 |---|---|---|---|---|

@@ -11,9 +11,10 @@ type Map struct {
 	Towns         []scenario.Town          // parsed town records
 	Entities      []scenario.VehicleEntity // real vehicle entities from the scenario / saved game
 
-	IndustryObjectIDs []uint8 // industry index → industry object (GameState industries)
-	CompanyColours    []uint8 // owner → main colour (CompanyManager::updateColours); nil if none
-	StationOwners     []uint8 // station id → owner (Station::owner); nil if none
+	IndustryObjectIDs []uint8  // industry index → industry object (GameState industries)
+	CompanyColours    []uint8  // owner → main colour (CompanyManager::updateColours); nil if none
+	StationOwners     []uint8  // station id → owner (Station::owner); nil if none
+	UserStrings       []string // GameState userStrings (StringIds 0x8000+); town names
 }
 
 // TileAt returns the tile at (x, y), or nil outside the map.
@@ -101,4 +102,5 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.IndustryObjectIDs = sc.IndustryObjectIDs
 	m.CompanyColours = sc.CompanyColours
 	m.StationOwners = sc.StationOwners
+	m.UserStrings = sc.UserStrings
 }
