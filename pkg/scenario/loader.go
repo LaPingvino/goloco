@@ -699,6 +699,11 @@ func parseScenarioOptions(data []byte) Options {
 		opts.MinLandHeight = data[0x184]
 		opts.TopographyStyle = data[0x185]
 		opts.HillDensity = data[0x186]
+		opts.NumberOfForests = binary.LittleEndian.Uint16(data[0x17A:]) // trees (offsets from the compiler)
+		opts.MinForestRadius, opts.MaxForestRadius = data[0x17C], data[0x17D]
+		opts.MinForestDensity, opts.MaxForestDensity = data[0x17E], data[0x17F]
+		opts.NumberRandomTrees = binary.LittleEndian.Uint16(data[0x180:])
+		opts.MinAltitudeForTrees, opts.MaxAltitudeForTrees = data[0x182], data[0x183]
 		copy(opts.LandDistributionPatterns[:], data[0x0A:0x0A+32]) // landDistributionPatterns
 		if len(data) > 0x41C3 {                                    // OpenLoco's new fields (zero — padding — in vanilla files)
 			opts.Generator = data[0x41BD]
