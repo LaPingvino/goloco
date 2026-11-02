@@ -73,3 +73,30 @@ func titleView(b testing.TB) (*Renderer, *sim.Map, View) {
 	cx, cy := paint.GameToScreen(paint.Pos3{X: 169*32 + 16, Y: 150*32 + 16}, 0)
 	return r, &m, View{X: cx - 400, Y: cy - 300, W: 800, H: 600}
 }
+
+// The tram track's road extra (RDEXCAT1, overhead wires) is drawn: a view of
+// a tram street at tile (225, 246) changes when the extra's image is taken away.
+func TestRoadExtrasDrawn(t *testing.T) {
+	r, m, _ := titleView(t)
+	cx, cy := paint.GameToScreen(paint.Pos3{X: 225*32 + 16, Y: 246*32 + 16}, 0)
+	v := View{X: cx - 200, Y: cy - 150, W: 400, H: 300}
+	with := append([]uint8(nil), r.Render(m, v).Bits...)
+	ex := r.Objects.Extra("RDEXCAT1")
+	if ex == nil {
+		t.Skip("RDEXCAT1 not loaded")
+	}
+	img := ex.Image
+	ex.Image = 0
+	defer func() { ex.Image = img }()
+	without := r.Render(m, v).Bits
+	diff := 0
+	for i := range with {
+		if with[i] != without[i] {
+			diff++
+		}
+	}
+	t.Logf("%d pixels differ", diff)
+	if diff == 0 {
+		t.Error("the overhead wires change nothing in the view")
+	}
+}

@@ -16,6 +16,9 @@ g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/gen_track" "$here/gen
 g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/gen_trackaddition" "$here/gen_trackaddition.cpp"
 "$tmp/gen_trackaddition" > "$repo/pkg/paint/trackadditiondata_gen.go"
 gofmt -w "$repo/pkg/paint/trackadditiondata_gen.go"
+g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/gen_roadaddition" "$here/gen_roadaddition.cpp"
+"$tmp/gen_roadaddition" > "$repo/pkg/paint/roadadditiondata_gen.go"
+gofmt -w "$repo/pkg/paint/roadadditiondata_gen.go"
 gofmt -w "$repo/pkg/paint/roaddata_gen.go" "$repo/pkg/paint/trackdata_gen.go"
 echo "wrote pkg/paint/roaddata_gen.go + trackdata_gen.go (OpenLoco $(git -C "$OL" rev-parse --short HEAD 2>/dev/null || echo '?'))"
 

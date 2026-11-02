@@ -22,6 +22,11 @@ type RoadEl struct {
 	// StreetlightImage is the StreetLight object's image.
 	Streetlight      uint8
 	StreetlightImage int
+	// Mods are the road object's two mods (TrackMod: the element's hasMod,
+	// the road extra's image and paint style); AnyRoadTypeCompatible is the
+	// road object's flag (then no mods are drawn).
+	Mods                  [2]TrackMod
+	AnyRoadTypeCompatible bool
 	// Crossing is the level crossing on this road (nil: none): its object's
 	// image and animation, the element's frame (unk6l) and the scenario ticks.
 	Crossing *LevelCrossing
@@ -95,10 +100,43 @@ var (
 func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(int) *gfx8.Sprite) {
 	s.paintRoadPiece(el, image, paintStyle, sprite)
 	// paintRoad, after the piece: beyond zoom 1 nothing more; the level crossing.
-	if s.Zoom > 1 || el.Crossing == nil {
+	if s.Zoom > 1 {
 		return
 	}
-	s.paintLevelCrossing(el, int((s.Rotation+el.Rotation)&3), sprite)
+	rot := int((s.Rotation + el.Rotation) & 3)
+	if el.Crossing != nil {
+		s.paintLevelCrossing(el, rot, sprite)
+	}
+	// The road extras (zoom 0, not for anyRoadTypeCompatible roads): each mod
+	// the element has, AdditionStyle1's piece (the null piece — image 3 = 0 —
+	// skipped) — mergeable into track/road addition priority 0, else as a
+	// parent (addToPlotList4FD150). PARTIAL: the pieces' supports
+	// (setAdditionSupport / paintSupports) and ghost mods.
+	if s.Zoom > 0 || el.AnyRoadTypeCompatible {
+		return
+	}
+	rid, seq := int(el.RoadID), int(el.SequenceIndex)
+	h := Pos3{0, 0, int(el.BaseZ) * 4}
+	for _, m := range el.Mods {
+		if !m.Has || m.PaintStyle != 1 || rid >= len(RoadAdditionParts) || seq >= len(RoadAdditionParts[rid]) {
+			continue
+		}
+		p := RoadAdditionParts[rid][seq]
+		if p.ImageIDs[3] == 0 {
+			continue
+		}
+		sp := sprite(m.Image + int(p.ImageIDs[rot]))
+		if sp == nil {
+			continue
+		}
+		img := Colour(sp, el.Remap)
+		bbOff := Pos3{p.BBOffsets[rot].X, p.BBOffsets[rot].Y, p.BBOffsets[rot].Z + h.Z}
+		if p.IsMergeable {
+			s.AddTrackRoadAddition(img, 0, h, bbOff, p.BBSizes[rot])
+		} else {
+			s.AddAsParent(img, h, bbOff, p.BBSizes[rot])
+		}
+	}
 }
 
 // paintRoadPiece is paintRoad's piece part (paintRoadPP / PCP).

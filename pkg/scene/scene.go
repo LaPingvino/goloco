@@ -346,7 +346,8 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			}
 			s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: r.companyRemap(m, rd.Owner),
 				Tunnel: r.tunnelImage(ro.TunnelName), HasBridge: rd.HasBridge, Bridge: rd.BridgeID,
-				Streetlight: light, StreetlightImage: int(om.StreetLightImage), Crossing: r.levelCrossing(rd, v.Ticks)}, int(ro.Image), ro.PaintStyle, sprite)
+				Streetlight: light, StreetlightImage: int(om.StreetLightImage), Crossing: r.levelCrossing(rd, v.Ticks),
+				Mods: r.roadMods(ro, rd), AnyRoadTypeCompatible: ro.Flags&(1<<3) != 0}, int(ro.Image), ro.PaintStyle, sprite)
 		}
 	case scenario.KindSignal:
 		// paintSignal: against entry.prev(), which must be a track element.
@@ -710,4 +711,16 @@ func (r *Renderer) levelCrossing(rd scenario.RoadElement, ticks uint32) *paint.L
 	}
 	return &paint.LevelCrossing{Image: int(lc.ImageOffset), AnimationSpeed: lc.AnimSpeed, ClosingFrames: lc.ClosingFrames,
 		ClosedFrames: lc.ClosedFrames, Frame: rd.AnimFrame, Ticks: ticks}
+}
+
+// roadMods is the road object's mods as paintRoad reads them: the extras (by
+// DAT name) with the element's hasMod bits (byte 7 bits 6, 7).
+func (r *Renderer) roadMods(ro *objects.RoadObject, rd scenario.RoadElement) [2]paint.TrackMod {
+	var mods [2]paint.TrackMod
+	for i, name := range ro.ModNames {
+		if ex := r.Objects.Extra(name); i < 2 && ex != nil && ex.Image != 0 {
+			mods[i] = paint.TrackMod{Has: rd.Mods&(1<<i) != 0, Image: int(ex.Image), PaintStyle: ex.PaintStyle}
+		}
+	}
+	return mods
 }
