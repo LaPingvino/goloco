@@ -226,8 +226,10 @@ type WallElement struct {
 	Rotation      uint8 // byte 0 bits [1:0]
 	EdgeSlope     uint8 // byte 0 bits [7:6]: 0=none, 1=upwards, 2=downwards
 	PrimaryColour uint8 // byte 6 bits [4:0]
-	BaseZ         uint8 // byte 2: height in SmallZ
-	ClearZ        uint8 // byte 3: clear height
+	// SecondaryColour is getSecondaryColour: byte 6 bits 7:5 | byte 1 (_flags) bits 6:5 << 3.
+	SecondaryColour uint8
+	BaseZ           uint8 // byte 2: height in SmallZ
+	ClearZ          uint8 // byte 3: clear height
 }
 
 // TrackElement represents a railway track section on a tile.

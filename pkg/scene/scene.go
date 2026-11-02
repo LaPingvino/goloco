@@ -411,13 +411,21 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		if wo == nil {
 			return
 		}
+		// getWallImageId: withPrimary / withSecondary as the object has them
+		// (an image with a secondary but no primary colour uses primary 0).
 		var cmap []uint8
+		primary := uint8(0)
 		if wo.Flags&objects.WallFlagHasPrimaryColour != 0 {
-			cmap = r.colourMap(int(wl.PrimaryColour))
+			primary = wl.PrimaryColour
+			cmap = r.colourMap(int(primary))
+		}
+		if wo.Flags&objects.WallFlagHasSecondaryColour != 0 {
+			cmap = r.palette2()(primary, wl.SecondaryColour)
 		}
 		s.PaintWall(paint.WallEl{Rotation: wl.Rotation, EdgeSlope: wl.EdgeSlope, PrimaryColour: wl.PrimaryColour, BaseZ: wl.BaseZ},
 			paint.WallObj{Sprite: int(wo.Sprite), Height: wo.Height, TwoSided: wo.Flags&objects.WallFlagTwoSided != 0,
-				HasPrimary: wo.Flags&objects.WallFlagHasPrimaryColour != 0, HasGlass: wo.Flags&objects.WallFlagHasGlass != 0},
+				HasPrimary: wo.Flags&objects.WallFlagHasPrimaryColour != 0, HasGlass: wo.Flags&objects.WallFlagHasGlass != 0,
+				GlassPal: r.colourMap(int(primary) + 0x74)},
 			cmap, sprite)
 	case scenario.KindTree:
 		tr := t.Trees[ref.Index]

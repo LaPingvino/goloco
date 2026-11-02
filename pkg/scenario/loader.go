@@ -484,12 +484,13 @@ func (sc *Scenario) parseTileElements(data []byte) {
 			case elementTypeWall:
 				// WallElement: byte layout from WallElement.h
 				we := WallElement{
-					WallObjectID:  elem[4],
-					Rotation:      typeByte & 0x03,
-					EdgeSlope:     (typeByte >> 6) & 0x03,
-					PrimaryColour: elem[6] & 0x1F,
-					BaseZ:         baseZ,
-					ClearZ:        elem[3],
+					WallObjectID:    elem[4],
+					Rotation:        typeByte & 0x03,
+					EdgeSlope:       (typeByte >> 6) & 0x03,
+					PrimaryColour:   elem[6] & 0x1F,
+					SecondaryColour: (elem[6]>>5)&0x7 | (elem[1]>>2)&0x18,
+					BaseZ:           baseZ,
+					ClearZ:          elem[3],
 				}
 				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeWall, Index: uint16(len(sc.Tiles[y][x].Walls))})
 				sc.Tiles[y][x].Walls = append(sc.Tiles[y][x].Walls, we)
