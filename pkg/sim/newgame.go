@@ -224,3 +224,28 @@ func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectM
 	c.CargoDelivered = [32]uint32{}
 	return uint8(id)
 }
+
+// StartScenario is Scenario::start's game-state part for a new game from a
+// .SC5, in upstream's order: companies reset and the player company created
+// (before the date, so its loan uses the file's inflation), initialiseDate
+// for the scenario's start year (every company's unlocked vehicles
+// redetermined), sub_4748D4's default level crossing, the objective's time
+// limit and month count.
+//
+// PARTIAL: the snow line and season, sub_4748D4's road object flags, last
+// track type, infrastructure options and terraform objects, setRecords(zero),
+// initialiseDefaultTrackRoadMods, the scenario name / details copy, labels
+// and the windows / viewport / music resets (cmd/goloco's side).
+func (m *Map) StartScenario(startYear uint16, om *objects.ObjectManager) {
+	m.ResetCompanies()
+	m.CreatePlayerCompany(om)
+	m.InitialiseDate(startYear)
+	for id := range m.Companies {
+		if !m.CompanyEmpty(id) {
+			m.UnlockedVehicles[id] = m.DetermineUnlockedVehicles(id, om) // CompanyManager::determineAvailableVehicles
+		}
+	}
+	m.UpdateDefaultLevelCrossingType(om)
+	m.ObjectiveUntilYear = uint16(m.Objective.TimeLimitYears) - 1 + m.CurrentYear
+	m.ObjectiveMonthsInChallenge = 0
+}
