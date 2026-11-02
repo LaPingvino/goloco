@@ -589,3 +589,30 @@ func TestSavedVehicle1RoadPieces(t *testing.T) {
 	copy(m.Routings, saved)
 	t.Logf("road Vehicle1s %d; overtake/lane-change checked on %d", n, marked)
 }
+
+// getRoadOccupation at every saved road Vehicle1's own piece reports the
+// lane occupied — by itself (veh1UpdateRoadMotionNewRoadPiece marked it).
+func TestSavedRoadOccupation(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, occ := 0, 0
+	for _, tr := range trains {
+		e := m.Entities[tr.Veh1]
+		if e.Mode != 1 {
+			continue
+		}
+		n++
+		if m.RoadOccupation(int32(e.TileX), int32(e.TileY), int32(e.TileBaseZ)*4, e.TrackAndDirection&0x1FF, r.Objects)&sim.RoadLaneOccupied != 0 {
+			occ++
+		} else {
+			t.Logf("head %d: tad %#x not occupied", m.Entities[tr.Head].ID, e.TrackAndDirection)
+		}
+	}
+	t.Logf("road Vehicle1s %d, own lane occupied %d", n, occ)
+	if occ != n {
+		t.Errorf("%d road Vehicle1s on a lane getRoadOccupation calls free", n-occ)
+	}
+}

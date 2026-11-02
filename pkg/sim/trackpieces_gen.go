@@ -85,5 +85,8 @@ var TrackCurveSpeedFraction = [44]uint16{65535, 65535, 3277, 3277, 6554, 6554, 9
 // RoadCurveSpeedFraction is getRoadMiscData(id).curveSpeedFraction.
 var RoadCurveSpeedFraction = [10]uint16{65535, 3277, 3277, 6554, 6554, 65535, 65535, 65535, 65535, 3277}
 
+// RoadReverseLane is getRoadMiscData(id).reverseLane.
+var RoadReverseLane = [10]uint8{1, 1, 1, 4, 4, 2, 2, 1, 1, 1}
+
 // RoadOccupationMasks is getRoadOccupationMask (kRoadOccupationMasks).
 var RoadOccupationMasks = [128]uint8{16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 32, 16, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48}
