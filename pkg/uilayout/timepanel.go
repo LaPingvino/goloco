@@ -199,3 +199,35 @@ func groupInt(v int64) string {
 	}
 	return s
 }
+
+// CalcDate is Date.cpp calcDate: a day count from 1 January 1800 (the Julian
+// 4-year cycle Locomotion uses) as year, month (0–11) and day of month
+// (1-based); getMonthDay's table is the 366-day layout.
+func CalcDate(totalDays uint32) (year, month, day int) {
+	const daysInYear, daysInOlympiad, feb29 = 365, 365*4 + 1, 31 + 28
+	years := int((totalDays/daysInOlympiad)&0xFFFF) * 4
+	d := int(totalDays % daysInOlympiad)
+	if d > daysInYear {
+		d -= daysInYear
+		d--
+		for {
+			years++
+			d -= daysInYear
+			if d < 0 {
+				break
+			}
+		}
+		d += daysInYear
+		if d >= feb29 {
+			d++
+		}
+	}
+	lengths := [12]int{31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+	for m, n := range lengths {
+		if d < n {
+			return 1800 + years, m, d + 1
+		}
+		d -= n
+	}
+	return 1800 + years, 11, 31
+}

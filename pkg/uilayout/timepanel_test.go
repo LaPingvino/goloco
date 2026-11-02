@@ -73,3 +73,18 @@ func TestVelocityHeight(t *testing.T) {
 		t.Errorf("units: %s", Height(10))
 	}
 }
+
+// calcDate against hand-counted days (1800 is a leap year in Loco's Julian
+// calendar: day 59 is 29 February, day 366 is 1 January 1801).
+func TestCalcDate(t *testing.T) {
+	for _, c := range []struct {
+		days    uint32
+		y, m, d int
+	}{{0, 1800, 0, 1}, {58, 1800, 1, 28}, {59, 1800, 1, 29}, {60, 1800, 2, 1}, {365, 1800, 11, 31}, {366, 1801, 0, 1},
+		{366 + 59, 1801, 2, 1}, {1461, 1804, 0, 1}} {
+		y, m, d := CalcDate(c.days)
+		if y != c.y || m != c.m || d != c.d {
+			t.Errorf("day %d: %d-%d-%d, want %d-%d-%d", c.days, y, m+1, d, c.y, c.m+1, c.d)
+		}
+	}
+}
