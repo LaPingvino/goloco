@@ -23,7 +23,44 @@ func (w *World) cargoObjects() []*objects.CargoObject {
 }
 
 // StationList is sim.Map.StationList with the loaded cargo objects.
-func (w *World) StationList() []StationInfo { return w.Map.StationList(w.cargoObjects()) }
+func (w *World) StationList() []StationInfo {
+	// Cached between game ticks (LOOP item 0: building it scans every tile, and
+	// the station labels asked for it every frame): rebuilt when the sim has
+	// ticked, the map changed, or a station was placed (stationsGen).
+	k := stationListKey{m: &w.Map, ticks: w.Map.ScenarioTicks, gen: w.stationsGen}
+	if w.stationList == nil || w.stationListKey != k {
+		w.stationList = w.Map.StationList(w.cargoObjects())
+		if w.stationList == nil {
+			w.stationList = []StationInfo{}
+		}
+		w.stationListKey = k
+	}
+	return w.stationList
+}
+
+// stationTiles is each station's first tile, for the station labels drawn
+// every frame: rebuilt only when stations change (one is placed through the
+// world, or the sim's station records grow), not every tick as StationList.
+func (w *World) stationTiles() [][2]int {
+	k := stationListKey{m: &w.Map, ticks: uint32(len(w.Map.StationNames)), gen: w.stationsGen}
+	if w.stationTileList == nil || w.stationTilesKey != k {
+		w.stationTileList = w.stationTileList[:0]
+		for _, st := range w.Map.StationList(nil) {
+			w.stationTileList = append(w.stationTileList, [2]int{st.TileX, st.TileY})
+		}
+		if w.stationTileList == nil {
+			w.stationTileList = [][2]int{}
+		}
+		w.stationTilesKey = k
+	}
+	return w.stationTileList
+}
+
+type stationListKey struct {
+	m     *sim.Map
+	ticks uint32
+	gen   int
+}
 
 // StationAcceptsKey is sim.Map.StationAcceptsKey with the loaded cargo objects.
 func (w *World) StationAcceptsKey(id int) string {

@@ -82,8 +82,8 @@ func (w *World) drawOverlay(screen *ebiten.Image) {
 
 	// Station name plaques: orange box, 1px dark border, white 10px text,
 	// centred above the station's origin tile.
-	for i, st := range w.StationList() {
-		sx, sy := w.TileToScreenPx(st.TileX, st.TileY)
+	for i, st := range w.stationTiles() {
+		sx, sy := w.TileToScreenPx(st[0], st[1])
 		if sx < -200 || sx > sw+200 || sy < -100 || sy > sh+100 {
 			continue // cull off-screen
 		}

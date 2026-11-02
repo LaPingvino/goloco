@@ -44,10 +44,17 @@ type DemoTrain struct {
 
 // World holds a tile grid for an isometric game world
 type World struct {
-	vehicleTickMs float64 // elapsed time not yet spent on vehicle ticks (TickSavedVehicles)
-	sim.State             // simulation state: map, construction head, undo history (pkg/sim)
-	renderer      *render.Renderer
-	trains        []*DemoTrain // demo trains (title screen / scenarios without saved entities)
+	// stationList caches StationList between ticks; stationsGen counts the
+	// stations placed through the world (the cache's key with the tick).
+	stationList     []StationInfo
+	stationListKey  stationListKey
+	stationsGen     int
+	stationTileList [][2]int
+	stationTilesKey stationListKey
+	vehicleTickMs   float64 // elapsed time not yet spent on vehicle ticks (TickSavedVehicles)
+	sim.State               // simulation state: map, construction head, undo history (pkg/sim)
+	renderer        *render.Renderer
+	trains          []*DemoTrain // demo trains (title screen / scenarios without saved entities)
 	// isometric tile dimensions (standard 2:1 ratio)
 	tileW int // tile width in pixels (64)
 	tileH int // tile height in pixels (32)
