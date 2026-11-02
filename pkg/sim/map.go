@@ -20,6 +20,7 @@ type Map struct {
 	RoadAnyTypeCompatible uint32                      // GameState roadObjectIdIsAnyRoadTypeCompatible
 	RoadUsableByAll       uint32                      // GameState roadObjectIdIsUsableByAllCompanies
 	Rng1                  core.Prng                   // GameState rng (gPrng1), from the save
+	TitleMode             bool                        // SceneManager::isTitleMode (pending breakdowns don\'t happen)
 	ScenarioTicks         uint32                      // GameState scenarioTicks: +1 per game tick (UpdateVehicles)
 	Companies             []scenario.CompanyEconomy   // the save\'s companies (economy)
 	Industries            []scenario.Industry         // the save\'s industries (deliveries)

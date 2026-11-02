@@ -216,6 +216,7 @@ func (w *World) TickVehicles() {
 	w.tickStations()
 	w.UpdateVehicles()
 	w.tickMoneyFloats()
+	w.Map.TitleMode = false
 	w.TickSavedVehicles()
 }
 

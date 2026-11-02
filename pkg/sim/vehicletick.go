@@ -79,6 +79,7 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 	if head.Var5C != 0 { // VehicleHead::update
 		head.Var5C--
 	}
+	m.updateBreakdown(tr, om)
 	// VehicleHead::updateLand (headupdate.go; its PARTIAL states do nothing).
 	m.updateHead(tr, d.D1, om)
 

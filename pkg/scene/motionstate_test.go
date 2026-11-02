@@ -1685,3 +1685,55 @@ func TestSavedTrainLeavesSignal(t *testing.T) {
 		t.Errorf("%d trains still waiting after 2500 ticks", len(waiting)-len(left))
 	}
 }
+
+// A pending breakdown on a powered car breaks the train down in a game (not
+// on the title screen): brokenDown set, breakdownTimeout 5, Vehicle2's
+// var_73 broken down; the head's update then stops it (stoppingUpdate →
+// status brokenDown once Vehicle2 has caught up).
+func TestPendingBreakdown(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tr sim.Train
+	found := false
+	for _, c := range trains {
+		h := m.Entities[c.Head]
+		if h.Mode == 0 && h.Status == sim.StatusTravelling && m.Entities[c.Veh2].Var73 == 0 {
+			tr, found = c, true
+			break
+		}
+	}
+	if !found {
+		t.Skip("no travelling train")
+	}
+	front := tr.Cars[0][0].Front
+	m.Entities[front].BreakdownFlags |= sim.BreakdownPending
+	m.TitleMode = true
+	m.UpdateVehicles(r.Objects)
+	if m.Entities[front].BreakdownFlags&sim.BreakdownBrokenDn != 0 {
+		t.Fatal("broke down on the title screen")
+	}
+	m.TitleMode = false
+	m.UpdateVehicles(r.Objects)
+	f := m.Entities[front]
+	if f.BreakdownFlags&(sim.BreakdownBrokenDn|sim.BreakdownPending) != sim.BreakdownBrokenDn || f.BreakdownTimeout != 5 {
+		t.Fatalf("front flags %#x timeout %d", f.BreakdownFlags, f.BreakdownTimeout)
+	}
+	if m.Entities[tr.Veh2].Var73&1 == 0 {
+		t.Fatalf("Vehicle2 var_73 %#x", m.Entities[tr.Veh2].Var73)
+	}
+	stopped := -1
+	for i := range 2000 {
+		m.UpdateVehicles(r.Objects)
+		if m.Entities[tr.Head].Status == sim.StatusBrokenDown {
+			stopped = i
+			break
+		}
+	}
+	t.Logf("var_73 %#x; status brokenDown after %d ticks", m.Entities[tr.Veh2].Var73, stopped)
+	if stopped < 0 {
+		t.Error("never stopped as broken down")
+	}
+}
