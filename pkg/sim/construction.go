@@ -133,6 +133,7 @@ func (s *State) PlaceTrackAtHead(trackID int, trackObjID uint8) bool {
 			SequenceIndex: uint8(i),
 			BaseZ:         baseZ[i],
 			ClearZ:        baseZ[i] + 8,
+			IsLast:        i == len(tiles)-1, // CreateTrack: setFlag6 on the piece's last tile
 		})
 	}
 	s.consStack = append(s.consStack, placed)
