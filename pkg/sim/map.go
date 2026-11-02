@@ -32,6 +32,8 @@ type Map struct {
 	UnlockedVehicles      [][7]uint32                 // per company: Company::unlockedVehicles
 	CurrentYear           uint16                      // GameState general.currentYear
 	CurrentMonth          uint8                       // GameState general.currentMonth
+	CurrentDayOfMonth     uint8                       // GameState general.currentDayOfMonth
+	DayCounter            uint16                      // GameState general.dayCounter
 	Objective             scenario.Objective          // the scenario objective
 	ObjectiveUntilYear    uint16                      // scenarioObjectiveProgress.timeLimitUntilYear
 	// CurrencyMultiplicationFactor prices cost indices (Economy).
@@ -143,6 +145,8 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.UnlockedVehicles = sc.UnlockedVehicles
 	m.CurrentYear = sc.CurrentYear
 	m.CurrentMonth = sc.CurrentMonth
+	m.CurrentDayOfMonth = sc.CurrentDayOfMonth
+	m.DayCounter = sc.DayCounter
 	m.Objective = sc.Objective
 	m.ObjectiveUntilYear = sc.ObjectiveTimeLimitUntilYear
 	m.CurrencyMultiplicationFactor = sc.CurrencyMultiplicationFactor
