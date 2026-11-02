@@ -45,13 +45,24 @@ func draw8(screen *ebiten.Image, x, y, w, h int, draw func(rt *gfx8.RenderTarget
 	}
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(r.Min.X), float64(r.Min.Y))
-	tmp := ebiten.NewImageFromImage(img)
-	screen.DrawImage(tmp, op)
-	// Free the texture now: draw8 runs many times a frame (panels, toolbar,
-	// windows) and leaving each one to the garbage collector piled up GPU
-	// textures every frame until the browser's GPU process was killed
-	// (the headless gameplay stall of ticks 248–249).
-	tmp.Deallocate()
+	screen.DrawImage(draw8Texture(r.Dx(), r.Dy(), img.Pix), op)
+}
+
+// draw8Textures keeps one texture per size for draw8: it runs many times a
+// frame (panels, toolbar, windows), and a new texture per call — even freed
+// with Deallocate — let the browser's GPU process grow ~1 GB/s in gameplay
+// until it was killed (ticks 259–261, measured).
+var draw8Textures = map[[2]int]*ebiten.Image{}
+
+func draw8Texture(w, h int, pix []byte) *ebiten.Image {
+	k := [2]int{w, h}
+	t := draw8Textures[k]
+	if t == nil {
+		t = ebiten.NewImage(w, h)
+		draw8Textures[k] = t
+	}
+	t.WritePixels(pix)
+	return t
 }
 
 type palInverse map[[3]uint8]uint8
