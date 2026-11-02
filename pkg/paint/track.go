@@ -67,8 +67,8 @@ type TrackMod struct {
 // PaintTrackMods is paintTrack's track extras (zoom 0 only): for each mod the
 // element has, the Style0/Style1 addition piece for its track id and sequence
 // index (paintTrackAdditionPP) in the track's colour — mergeable pieces into
-// track/road priority 4, the others as a child of the last struct. PARTIAL:
-// Style1's supports (setAdditionSupport / paintSupports) and ghost mods.
+// track/road priority 4, the others as a child of the last struct; Style1's
+// supports via setAdditionSupport (drawn by paintSupports). PARTIAL: ghost mods.
 func (s *Session) PaintTrackMods(el TrackEl, mods [4]TrackMod, sprite func(int) *gfx8.Sprite) {
 	if s.Zoom > 0 {
 		return
