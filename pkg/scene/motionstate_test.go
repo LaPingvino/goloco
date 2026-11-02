@@ -1532,3 +1532,38 @@ func TestSavedPositionVehicleOnTrack(t *testing.T) {
 	}
 	t.Logf("land vehicles %d; placement failures %d", n, failed)
 }
+
+// flipCar twice on every saved car gives back exactly the saved entities,
+// and after one flip the train's structure is still valid (Vehicle(head)).
+func TestFlipCarRoundTrip(t *testing.T) {
+	_, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved := append([]scenario.VehicleEntity(nil), m.Entities...)
+	multi, n := 0, 0
+	for _, tr := range trains {
+		if m.Entities[tr.Head].Mode > 1 {
+			continue
+		}
+		for _, car := range tr.Cars {
+			n++
+			if len(car) > 1 {
+				multi++
+			}
+			nf := m.FlipCar(tr, car[0].Front)
+			tr1, err := m.TrainOf(m.Entities[tr.Head].ID)
+			if err != nil {
+				t.Fatalf("head %d after one flip: %v", m.Entities[tr.Head].ID, err)
+			}
+			m.FlipCar(tr1, nf)
+			for i := range m.Entities {
+				if m.Entities[i] != saved[i] {
+					t.Fatalf("head %d: entity %d differs after two flips", m.Entities[tr.Head].ID, m.Entities[i].ID)
+				}
+			}
+		}
+	}
+	t.Logf("cars flipped twice %d (multi-component %d)", n, multi)
+}

@@ -260,11 +260,14 @@ type VehicleEntity struct {
 	LastAverageSpeed     int16  // VehicleHead 0x77
 	// Cargo is VehicleCargo at 0x48: VehicleBody primaryCargo / VehicleBogie
 	// secondaryCargo (offsets from the compiler).
-	Cargo         VehicleCargo
-	CreationDay   uint32 // VehicleBogie creationDay (0x56; the same bytes are Vehicle2 currentSpeed)
-	CurrentSpeed  int32  // Vehicle2 currentSpeed (0x56): Speed32, mph << 16
-	Var44         uint16 // VehicleBogie var_44 (0x44): wheel roll accumulator (updateRoll)
-	WheelSlipping uint8  // VehicleBogie wheelSlipping (0x5E): ticks, counts up
+	Cargo              VehicleCargo
+	CreationDay        uint32 // VehicleBogie creationDay (0x56; the same bytes are Vehicle2 currentSpeed)
+	Reliability        uint16 // VehicleBogie 0x66 (front bogies)
+	TimeoutToBreakdown uint16 // VehicleBogie 0x68 (front bogies, days)
+	BreakdownTimeout   uint8  // VehicleBogie / VehicleBody 0x6A
+	CurrentSpeed       int32  // Vehicle2 currentSpeed (0x56): Speed32, mph << 16
+	Var44              uint16 // VehicleBogie var_44 (0x44): wheel roll accumulator (updateRoll)
+	WheelSlipping      uint8  // VehicleBogie wheelSlipping (0x5E): ticks, counts up
 	// Driving state (offsets from the compiler over S5Entity.h).
 	VehicleFlags     uint16 // EntityBase vehicleFlags (0x0C): unk_0 = 1, manualControl = 1<<6
 	ManualPower      int8   // VehicleHead manualPower (0x6E)
@@ -398,7 +401,8 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			LastAverageSpeed:        int16(binary.LittleEndian.Uint16(e[0x77:])),
 			Cargo: VehicleCargo{AcceptedTypes: binary.LittleEndian.Uint32(e[0x48:]), Type: e[0x4C], MaxQty: e[0x4D],
 				TownFrom: binary.LittleEndian.Uint16(e[0x4E:]), NumDays: e[0x50], Qty: e[0x51]},
-			CreationDay:      binary.LittleEndian.Uint32(e[0x56:]),
+			CreationDay: binary.LittleEndian.Uint32(e[0x56:]),
+			Reliability: binary.LittleEndian.Uint16(e[0x66:]), TimeoutToBreakdown: binary.LittleEndian.Uint16(e[0x68:]), BreakdownTimeout: e[0x6A],
 			CurrentSpeed:     int32(binary.LittleEndian.Uint32(e[0x56:])),
 			Var44:            binary.LittleEndian.Uint16(e[0x44:]),
 			WheelSlipping:    e[0x5E],
