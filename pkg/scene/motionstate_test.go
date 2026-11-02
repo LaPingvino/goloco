@@ -2164,3 +2164,59 @@ func TestTerrainHeightMapMatchesUpstream(t *testing.T) {
 	}
 	t.Logf("%d height maps compared with upstream's generator", n)
 }
+
+// The map generator through terrain styles (height map, rivers, land, water,
+// generateTerrain with getRandomTerrainVariation) against upstream's own
+// MapGenerator.cpp code compiled with stub tiles
+// (tools/gen-paintdata/gen_terrain_styles.cpp): Aerophobia's land objects
+// with their own distribution patterns and with an alternative set (far from
+// water, on mountains, large random areas), four seeds; every tile's terrain,
+// variation, water, baseZ and slope compared by FNV-1a hash.
+func TestTerrainStylesMatchUpstream(t *testing.T) {
+	r, m, _ := saveView(t, "Scenarios/Aerophobia.SC5", false)
+	sc, err := scenario.LoadScenarioData("../../../locomotion/Scenarios/Aerophobia.SC5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile("testdata/terrain_styles_hashes.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		var c, ps, style, dens int
+		var s0, s1 uint32
+		var want uint64
+		fmt.Sscanf(line, "%d %d %d %d %d %d %x", &c, &ps, &style, &dens, &s0, &s1, &want)
+		pats := sc.Options.LandDistributionPatterns
+		if ps == 1 {
+			copy(pats[:4], []uint8{2, 0, 4, 7})
+		}
+		beds := uint8(0)
+		if c == 3 {
+			beds = 1
+		}
+		o := sim.TerrainOptions{MinLandHeight: 2, TopographyStyle: uint8(style), HillDensity: uint8(dens), HillsEdgeOfMap: true, SeaLevel: sc.SeaLevel,
+			NumRiverbeds: beds, MinRiverWidth: 3, MaxRiverWidth: 6, RiverbankWidth: 1, RiverMeanderRate: 2, LandDistributionPatterns: pats}
+		m.Rng1 = *core.NewPrngSeed(s0, s1)
+		m.InitialiseTiles()
+		hm := sim.NewHeightMap(384, 384)
+		m.GenerateTerrainHeightMap(o, r.Objects.HillShapes, r.G1, hm)
+		m.GenerateRivers(o, hm)
+		m.GenerateLand(hm)
+		m.GenerateWater(o.SeaLevel)
+		m.GenerateTerrain(hm, pats, o.SeaLevel, r.Objects)
+		h := uint64(1469598103934665603)
+		for y := range 384 {
+			for x := range 384 {
+				tl := m.TileAt(x, y)
+				for _, v := range []uint8{tl.TerrainIndex, tl.Variation, tl.WaterLevel, tl.BaseZ, tl.Slope} {
+					h ^= uint64(v)
+					h *= 1099511628211
+				}
+			}
+		}
+		if h != want {
+			t.Errorf("case %d (patterns %d, style %d, density %d): hash %x, upstream %x", c, ps, style, dens, h, want)
+		}
+	}
+}
