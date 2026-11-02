@@ -5,6 +5,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/objects"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
+	"strconv"
 )
 
 // Options — a port of Ui/Windows/Options.cpp: the common frame (caption,
@@ -106,6 +107,12 @@ type OptionsWindow struct {
 	// fullscreen window); OnScreenMode is told a new one (setDisplayMode).
 	ScreenMode   int
 	OnScreenMode func(int)
+	// Resolution is Config display.fullscreenResolution (default 1920×1080);
+	// Resolutions are getFullscreenResolutions; OnResolution is
+	// resolutionDropdown (setDisplayMode fullscreen at that size).
+	Resolution   [2]int
+	Resolutions  [][2]int
+	OnResolution func(i int)
 	// FrameLimit is 0 internal speed, 1 vertical sync, 2 unrestricted
 	// (uncapFPS / display.vsync); OnFrameLimit is told a new one.
 	FrameLimit   int
@@ -239,6 +246,26 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 					w.ScreenMode = i
 					if w.OnScreenMode != nil {
 						w.OnScreenMode(i)
+					}
+				}
+			}
+			w.OpenDropdown(d)
+		}
+		// resolutionMouseDown: Dropdown::showText2 at the combobox, width();
+		// "W x H" (display_resolution_dropdown_format), the configured one
+		// selected. Enabled only in fullscreen mode (screenModeToggleEnabled).
+		if w.ScreenMode == 1 && w.in([4]int{235, 79, 154, 12}, px, py) && w.OpenDropdown != nil && len(w.Resolutions) > 0 {
+			items := make([]DropdownItem, len(w.Resolutions))
+			for i, r := range w.Resolutions {
+				items[i] = DropdownItem{Text: resolutionText(r), Selected: r == w.Resolution, MoveX10: true}
+			}
+			d := NewDropdownShow(w.X+235, w.Y+79, 154, 11, w.Colour, items, 1<<20, 1<<20)
+			d.OnSelect = func(i int) {
+				if i >= 0 && i < len(w.Resolutions) {
+					w.Resolution = w.Resolutions[i]
+					w.ScreenMode = 1
+					if w.OnResolution != nil {
+						w.OnResolution(i)
 					}
 				}
 			}
@@ -595,7 +622,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			y            int
 			label, value string
 			disabled     bool
-		}{{63, "Screen mode:", optScreenModes[w.ScreenMode], false}, {79, "Display Resolution:", "1920 x 1080", w.ScreenMode != 1},
+		}{{63, "Screen mode:", optScreenModes[w.ScreenMode], false}, {79, "Display Resolution:", resolutionText(w.Resolution), w.ScreenMode != 1},
 			{95, "Window scale factor:", "1.00", false}, {111, "Frame rate limit:", optFrameLimits[w.FrameLimit], false}}
 		for _, r := range rows {
 			DrawTextBold(screen, r.label, w.X+10, w.Y+r.y, text)
@@ -704,3 +731,6 @@ func groupBox(rt *gfx8.RenderTarget, x, y, w, h int, cmap []uint8, label string)
 // currencyDisabled is prepareDraw's test for the current-currency dropdown:
 // usePreferredCurrencyAlways or title mode.
 func (w *OptionsWindow) currencyDisabled() bool { return w.PreferredCurrency[1] || w.TitleMode }
+
+// resolutionText is display_resolution_dropdown_format "{UINT16} x {UINT16}".
+func resolutionText(r [2]int) string { return strconv.Itoa(r[0]) + " x " + strconv.Itoa(r[1]) }
