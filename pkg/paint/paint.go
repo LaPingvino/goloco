@@ -533,8 +533,11 @@ func (s *Session) Order() []*Struct {
 func (s *Session) Draw(rt *gfx8.RenderTarget) {
 	draw := func(img Image, x, y int) {
 		if img.Mask != nil {
-			if s.Zoom > 0 {
-				return // PARTIAL: drawImageMaskedZoom<1-3> not ported (masked images skipped when zoomed out)
+			if s.Zoom > 0 { // drawImageMaskedZoom<zoom>
+				zt := *rt
+				zt.OriginX, zt.OriginY = s.rtX, s.rtY
+				gfx8.DrawSpriteMaskedZoom(&zt, img.Sprite, img.Mask, s.SpriteFor, x, y, s.Zoom)
+				return
 			}
 			gfx8.DrawSpriteMasked(rt, img.Sprite, img.Mask, x-s.rtX, y-s.rtY)
 			return

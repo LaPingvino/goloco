@@ -174,3 +174,99 @@ func DrawSpriteAtZoom(rt *RenderTarget, s *Sprite, sprite func(id int) *Sprite, 
 	}
 	DrawSpriteZoom(rt, s, x, y, zoom, op, palMap, noise)
 }
+
+// DrawSpriteMaskedZoom is drawImageMasked (0x00450705, drawImageMaskedZoom<z>
+// and drawMaskedZoom) at zoom 0-3 with the target's origin: BMP image and
+// mask only (RLE is unsupported upstream). At zoom > 0 an image with zoom
+// sprites whose mask also has them recurses one level closer (origin and
+// position halved, both images − their zoomOffset); a mask with noZoomDraw
+// draws nothing. The mask is read at the image's own offsets.
+func DrawSpriteMaskedZoom(rt *RenderTarget, img, mask *Sprite, sprite func(id int) *Sprite, x, y, zoom int) {
+	if img == nil || mask == nil || img.RLE || mask.RLE {
+		return
+	}
+	if zoom > 0 && img.HasZoomSprites {
+		if mask.NoZoomDraw {
+			return
+		}
+		if mask.HasZoomSprites && img.Index > 0 && mask.Index > 0 && sprite != nil {
+			half := *rt
+			half.OriginX, half.OriginY = rt.OriginX>>1, rt.OriginY>>1
+			DrawSpriteMaskedZoom(&half, sprite(img.Index-img.ZoomOffset), sprite(mask.Index-mask.ZoomOffset), sprite, x>>1, y>>1, zoom-1)
+			return
+		}
+	}
+	if zoom == 0 {
+		DrawSpriteMasked(rt, img, mask, x-rt.OriginX, y-rt.OriginY)
+		return
+	}
+	h, w := img.Height, img.Width
+	data := 0 // imageDataPos − offset
+	zm := int(uint16(0xFFFF << zoom))
+	offsetX := 1<<zoom - 1
+	rtW, rtH := rt.Width<<zoom, rt.Height<<zoom // rt.width / rt.height
+	dst := 0
+	dstTop := int(int16(int(int16((img.YOffset+y)&zm)) - rt.OriginY))
+	if dstTop >= 0 {
+		dst += (dstTop >> zoom) * rt.Width // pitch 0 + width >> zoom
+	} else {
+		if dstTop+h == 0 {
+			return
+		}
+		h += dstTop
+		if h < 0 {
+			return
+		}
+		data = int(uint16(-dstTop)) * img.Width
+		dstTop = 0
+	}
+	if b := h + dstTop; b > rtH {
+		h -= b - rtH
+		if h <= 0 {
+			return
+		}
+	}
+	rowSize := 0
+	dstWrap := rt.Width
+	dstLeft := int(int16(int(int16((img.XOffset+x+offsetX)&zm)) - rt.OriginX))
+	if dstLeft < 0 {
+		w += dstLeft
+		if w <= 0 {
+			return
+		}
+		rowSize -= dstLeft
+		data -= dstLeft
+		dstLeft = 0
+	}
+	if w+dstLeft > rtW {
+		r := w + dstLeft - rtW
+		w -= r
+		if w <= 0 {
+			return
+		}
+		rowSize += r
+	}
+	dst += dstLeft >> zoom
+	// drawMaskedZoom<zoom>
+	sh, sw := h>>zoom, w>>zoom
+	if sh == 0 || sw == 0 {
+		return
+	}
+	skip := 1 << zoom
+	low := skip - 1
+	scaledRowSize := int(uint16(w))&low + low*int(uint16(rowSize+w)) + rowSize
+	dstWrap -= sw
+	for row := 0; row < sh; row++ {
+		for col := 0; col < sw; col++ {
+			if data >= 0 && data < len(img.Pix) && data < len(mask.Pix) && dst >= 0 && dst < len(rt.Bits) {
+				if v := mask.Pix[data] & img.Pix[data]; v != 0 {
+					rt.Bits[dst] = v
+				}
+			}
+			data += skip
+			dst++
+		}
+		data += scaledRowSize
+		dst += dstWrap
+	}
+}
