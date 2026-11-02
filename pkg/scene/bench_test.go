@@ -35,6 +35,12 @@ func TestRenderSteadyStateAllocs(t *testing.T) {
 }
 
 func titleView(b testing.TB) (*Renderer, *sim.Map, View) {
+	return saveView(b, "Data/title.dat", true)
+}
+
+// saveView loads a save or scenario from the game data directory (path
+// relative to it) the way the game does; title marks title.dat.
+func saveView(b testing.TB, path string, title bool) (*Renderer, *sim.Map, View) {
 	const data = "../../../locomotion"
 	if _, err := os.Stat(data + "/Data/g1.DAT"); err != nil {
 		b.Skip("game data not present")
@@ -49,7 +55,10 @@ func titleView(b testing.TB) (*Renderer, *sim.Map, View) {
 	if err := om.LoadAllObjects(); err != nil {
 		b.Fatal(err)
 	}
-	sc, err := scenario.LoadScenarioData(data + "/Data/title.dat")
+	if _, err := os.Stat(data + "/" + path); err != nil {
+		b.Skip(path + " not present")
+	}
+	sc, err := scenario.LoadScenarioData(data + "/" + path)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -57,7 +66,7 @@ func titleView(b testing.TB) (*Renderer, *sim.Map, View) {
 	om.ResolveCliffEdges()
 	var m sim.Map
 	m.LoadScenario(sc)
-	m.TitleMode = true // title.dat runs as the title screen
+	m.TitleMode = title // title.dat runs as the title screen
 	r := New(g1, om)
 	cx, cy := paint.GameToScreen(paint.Pos3{X: 169*32 + 16, Y: 150*32 + 16}, 0)
 	return r, &m, View{X: cx - 400, Y: cy - 300, W: 800, H: 600}

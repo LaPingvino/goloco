@@ -1737,3 +1737,29 @@ func TestPendingBreakdown(t *testing.T) {
 		t.Error("never stopped as broken down")
 	}
 }
+
+// getNewChallengeProgress against the challengeProgress a saved game stored
+// for its player company (updateDailyPlayer recomputes it daily outside the
+// title and editor; AI companies are never updated, so only the controlling
+// company is compared).
+func TestChallengeProgressMatchesSave(t *testing.T) {
+	r, m, _ := saveView(t, "Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false)
+	checked, same := 0, 0
+	for id := range m.Companies {
+		if m.CompanyEmpty(id) || id != int(m.ControllingCompany) {
+			continue
+		}
+		checked++
+		got, want := m.NewChallengeProgress(id, r.Objects), m.Companies[id].ChallengeProgress
+		t.Logf("company %d: computed %d, saved %d (performance %d, flags %#x)", id, got, want, m.CompanyFaces[id].Performance, m.CompanyFaces[id].ChallengeFlags)
+		if got == want {
+			same++
+		} else {
+			t.Logf("company %d: computed %d, saved %d (objective type %d)", id, got, want, m.Objective.Type)
+		}
+	}
+	t.Logf("objective %+v: %d/%d companies match the saved challengeProgress", m.Objective, same, checked)
+	if checked == 0 || same != checked {
+		t.Errorf("%d of %d companies differ", checked-same, checked)
+	}
+}

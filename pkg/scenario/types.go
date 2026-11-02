@@ -114,8 +114,11 @@ type Scenario struct {
 	CargoObjectOrder []string  // cargo slot -> DAT name (for objective cargo names)
 	Objective        Objective // win condition (valid when HasObjective)
 	HasObjective     bool
-	Orders           []byte   // GameState orders[] (ParseOrders)
-	Routings         []uint16 // GameState routings[] (ParseRoutings), by RoutingHandle
+	// ObjectiveTimeLimitUntilYear / MonthsInChallenge: scenarioObjectiveProgress.
+	ObjectiveTimeLimitUntilYear, ObjectiveMonthsInChallenge uint16
+	CurrentMonth                                            uint8    // general.currentMonth (0x1C)
+	Orders                                                  []byte   // GameState orders[] (ParseOrders)
+	Routings                                                []uint16 // GameState routings[] (ParseRoutings), by RoutingHandle
 	// GameState roadObjectIdIsAnyRoadTypeCompatible (0x1A4) and
 	// roadObjectIdIsUsableByAllCompanies (0x1A8): bit per road object id.
 	RoadAnyTypeCompatible uint32
