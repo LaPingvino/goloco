@@ -88,3 +88,23 @@ func TestMonth(t *testing.T) {
 		t.Errorf("Month(0) = %q, want empty", got)
 	}
 }
+
+// The packs in data/language are listed, sorted by native name, English among them.
+func TestAvailable(t *testing.T) {
+	ls := Available()
+	if len(ls) == 0 {
+		t.Skip("no language packs here")
+	}
+	found := false
+	for i, l := range ls {
+		if l.Locale == "en-GB" {
+			found = true
+		}
+		if i > 0 && ls[i-1].NativeName > l.NativeName {
+			t.Errorf("not sorted at %d: %q > %q", i, ls[i-1].NativeName, l.NativeName)
+		}
+	}
+	if !found {
+		t.Error("en-GB missing")
+	}
+}

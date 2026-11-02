@@ -30,6 +30,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -283,4 +284,42 @@ func isFormatOnly(s string) bool {
 		}
 	}
 	return strings.TrimSpace(b.String()) == ""
+}
+
+// Language is an available pack: its locale and native name.
+type Language struct{ Locale, NativeName string }
+
+// Available is enumerateLanguages: every pack in the first language folder
+// that has any (./data/language, then ~/OpenLoco/data/language), sorted by
+// native name.
+// ASSUMPTION: upstream sorts the names after converting them to Locomotion's
+// character set; this sorts the UTF-8, so non-ASCII names may order
+// differently.
+func Available() []Language {
+	for _, dir := range []string{filepath.Join("data", "language"), filepath.Join(os.Getenv("HOME"), "OpenLoco", "data", "language")} {
+		ents, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		var out []Language
+		for _, e := range ents {
+			if e.IsDir() || filepath.Ext(e.Name()) != ".yml" {
+				continue
+			}
+			f, err := os.Open(filepath.Join(dir, e.Name()))
+			if err != nil {
+				continue
+			}
+			_, hdr := parse(f)
+			f.Close()
+			if hdr.locale != "" {
+				out = append(out, Language{Locale: hdr.locale, NativeName: hdr.nativeName})
+			}
+		}
+		if len(out) > 0 {
+			sort.Slice(out, func(i, j int) bool { return out[i].NativeName < out[j].NativeName })
+			return out
+		}
+	}
+	return nil
 }
