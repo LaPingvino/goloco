@@ -1114,3 +1114,70 @@ func TestUpdateVehiclesLongRun(t *testing.T) {
 		t.Errorf("vehicles did not get past their saved reservations")
 	}
 }
+
+// landTryBeginUnloading on every saved approaching vehicle: those whose whole
+// train is in (Vehicle2 at the head) begin unloading — status 5, cargo
+// transfer timeout 10, the station marked visited by their vehicle type, the
+// order moved on when it was this station; the rest stay approaching.
+func TestSavedArrivals(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	began, waiting, advanced := 0, 0, 0
+	for _, tr := range trains {
+		h := &m.Entities[tr.Head]
+		if h.Mode > 1 || h.Status != sim.StatusApproaching {
+			continue
+		}
+		v2 := m.Entities[tr.Veh2]
+		in := h.RoutingHandle == v2.RoutingHandle && h.SubPosition == v2.SubPosition
+		order := h.CurrentOrder
+		orders := m.OrderRing(h.OrderTableOffset, h.CurrentOrder)
+		atOrder := len(orders) > 0 && orders[0].HasFlags(sim.OrderHasStation) && orders[0].Station() == int(h.StationID)
+		m.LandTryBeginUnloading(tr)
+		switch {
+		case in && h.VehicleFlags&sim.VehicleFlagManualControl == 0:
+			if h.Status != sim.StatusUnloading || h.CargoTransferTimeout != 10 {
+				t.Errorf("head %d: status %d timeout %d after arriving", h.ID, h.Status, h.CargoTransferTimeout)
+			}
+			if m.StationNames[h.StationID].VisitedTypes&(1<<(h.VehicleType&7)) == 0 {
+				t.Errorf("head %d: station %d not marked visited", h.ID, h.StationID)
+			}
+			if atOrder && h.CurrentOrder == order && len(orders) > 1 {
+				t.Errorf("head %d: order not advanced at its order station", h.ID)
+			}
+			if atOrder {
+				advanced++
+			}
+			began++
+		default:
+			if h.Status != sim.StatusApproaching {
+				t.Errorf("head %d: status %d though the train is not all in", h.ID, h.Status)
+			}
+			waiting++
+		}
+	}
+	t.Logf("approaching vehicles: began unloading %d (at their order station %d), still coming in %d", began, advanced, waiting)
+	// Run on until they arrive: every unloading head then has the arrival
+	// state beginUnloading gives (unloading itself is not ported, so it stays).
+	for range 600 {
+		m.UpdateVehicles(r.Objects)
+	}
+	unloading := 0
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.Mode > 1 || h.Status != sim.StatusUnloading {
+			continue
+		}
+		unloading++
+		if h.CargoTransferTimeout != 10 || m.StationNames[h.StationID].VisitedTypes&(1<<(h.VehicleType&7)) == 0 {
+			t.Errorf("head %d: unloading with timeout %d, station visited %#x", h.ID, h.CargoTransferTimeout, m.StationNames[h.StationID].VisitedTypes)
+		}
+	}
+	t.Logf("after 600 ticks: %d vehicles unloading", unloading)
+	if unloading == 0 {
+		t.Error("no vehicle arrived")
+	}
+}

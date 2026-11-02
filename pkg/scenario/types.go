@@ -121,6 +121,7 @@ type Scenario struct {
 	RoadAnyTypeCompatible uint32
 	// Rng is GameState rng (gPrng1: srand0, srand1 at 0x00); UnkRng gPrng2 (0x08).
 	Rng, UnkRng           [2]uint32
+	ScenarioTicks         uint32 // GameState scenarioTicks (0x146)
 	RoadUsableByAll       uint32
 	Entities              []VehicleEntity
 	VehicleList           []VehicleListEntry // heads with veh1/veh2 list data (VehicleList.cpp)
