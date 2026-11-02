@@ -450,7 +450,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 ## Questions for Joop
 - (answered 2026-11-01, Joop: 'the top bar mouseover text menus are misaligned', 'text doesn't fit boxes') UI: which menus look most misaligned?
 - Bridges (scene mode, title map river crossing near tile 90,99): do they look like the original? A reference screenshot from OpenLoco/Locomotion at the same spot would let me check pixel-exactness.
-- Does the music still stutter on the test page (rebuilt tick 75: music now played by the browser's <audio> element) (rebuilt 2026-11-01 tick 63, audio now at the music's native 22050 Hz)?
+- (ANSWERED 2026-11-02, Joop: 'The web fix fixed the music stutter in Goloco') Does the music still stutter on the test page (rebuilt tick 75: music now played by the browser's <audio> element) (rebuilt 2026-11-01 tick 63, audio now at the music's native 22050 Hz)?
 - (answered 2026-11-01: Joop — 'looks a lot better and isn't as slow as I expected; use that as the baseline') Try the test page with 'Use the ported renderer' ticked: does it look right, and what frame time does the console log
   ('[Scene] CPU renderer: … per frame')? That decides how soon it can become the default.
 - (answered 2026-11-01) g1 gap: Joop allows drawing replacements myself, or borrowing from OpenTTD
@@ -468,7 +468,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
   `gh workflow disable` was refused by the permission check as a CI bypass. Joop: `gh auth refresh -h
   github.com -s workflow`, then `git mv docs/ci.yml.pending .github/workflows/ci.yml` and push (or ask me to).
 - 2026-11-01 tick 1: serving the test page from a local web server (python -m http.server) was refused by the auto-mode check ('Expose Local Services'). Test from file:// with chromium --allow-file-access-from-files instead.
-- 2026-11-01: Xvfb is not installed on the VPS (`sudo pacman -S xorg-server-xvfb` — needs Joop).
+- 2026-11-01: Xvfb is not installed on the VPS (`sudo pacman -S xorg-server-xvfb` — needs Joop; he will run the sudo commands later 2026-11-02).
 
 ## Questions (goloco, open)
 
