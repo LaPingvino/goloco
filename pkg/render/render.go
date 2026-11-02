@@ -195,6 +195,7 @@ func (r *Renderer) GetSprite(index int) *ebiten.Image {
 
 	// Pack into atlas; if atlas is full fall back to individual sprite cache
 	if sub := atlas.pack(index, tmp); sub != nil {
+		tmp.Deallocate() // copied into the atlas; the upload is not kept
 		return sub
 	}
 	r.spriteCache[index] = tmp
