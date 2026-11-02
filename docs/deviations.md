@@ -14,7 +14,7 @@ internal. Size: S (one tick), M (2–4 ticks), L (a series).
 |---|---|---|---|---|
 | ~~pkg/world/vehicle_sim.go (whole file)~~ RESOLVED tick 243 | (was: straight-segment SimVehicles) | the ported sim (pkg/sim) runs every vehicle; SimVehicles retired | — | — |
 | ~~pkg/game flat fare~~ RESOLVED tick 247 | (was: flat fare per unit) | ported: calculateDeliveredCargoPayment (pkg/sim/economy.go); pkg/game deleted | — | — |
-| (partly ported, tick 250) vehicle running costs | Charged monthly as upstream (VehicleHead::updateMonthly); the company's expenditure months are not yet rotated (CompanyManager::updateMonthly1), so they pile into month 0 | Vehicles: VehicleHead::updateMonthly / the running-cost expenditure, per vehicle object, inflated | H | M |
+| (partly ported, tick 250) vehicle running costs | Charged monthly as upstream (VehicleHead::updateMonthly); the expenditure table is per YEAR (16 years); its yearly rotation (Company.cpp updateYearly) is not ported yet, so expenditures pile into the current year's column | Vehicles: VehicleHead::updateMonthly / the running-cost expenditure, per vehicle object, inflated | H | M |
 | cmd/goloco/main.go:2448 | Company value = player money | Company value from assets (vehicles, infrastructure) — Company.cpp | M | M |
 | pkg/world/station.go (PlaceStationOnTile) | Places only the station element; no Station record, name, catchment or cargo (the invented passenger supply was retired tick 243) | GameCommands createTrainStation, StationManager, Station.cpp | H | M |
 | pkg/scenario/generate.go:9 | "Simplified approximation" of landscape generation | Map/MapGenerator/ with the game's PRNG (pkg/core/prng.go is already ported, unused) | M | L |
