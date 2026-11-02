@@ -93,6 +93,9 @@ type RoutingResults struct {
 	HasDeadEnd bool
 }
 
+// TrackEndTile is trackEndTile, exported for tests and callers.
+func TrackEndTile(x, y, z int32, tad uint16) (int32, int32, int32) { return trackEndTile(x, y, z, tad) }
+
 // trackEndTile is the tile a (reversed) piece's far end sits on: start +
 // getUnkTrack.pos, minus kRotationOffset[rotationEnd] for non-diagonal ends.
 func trackEndTile(x, y, z int32, tad uint16) (int32, int32, int32) {

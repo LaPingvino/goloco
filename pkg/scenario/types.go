@@ -368,7 +368,29 @@ type SignalElement struct {
 	ClearZ              uint8 // byte 3
 	Ghost               bool  // byte 1 bit 4: ElementFlags::ghost
 	AiAllocated         bool  // byte 1 bit 5: ElementFlags::aiAllocated
+	// Sides are SignalElement::sides (left = bytes 4–5, right = 6–7) as
+	// stored: the simulation changes their occupied / state / light bits
+	// (the fields above are load-time copies of the parts it never changes).
+	Sides      [2]SignalSide
+	LeftGhost  bool // byte 0 bit 7: isLeftGhost
+	RightGhost bool // byte 0 bit 6: isRightGhost
 }
+
+// SignalSide is SignalElement::Side (_4, _5).
+type SignalSide struct{ B4, B5 uint8 }
+
+func (s SignalSide) HasSignal() bool  { return s.B4&0x80 != 0 }
+func (s SignalSide) IsOccupied() bool { return s.B4&0x40 != 0 }
+func (s SignalSide) Unk4() uint8      { return (s.B4 >> 4) & 3 }
+func (s SignalSide) AllLights() uint8 { return s.B5 >> 4 }
+func (s *SignalSide) SetIsOccupied(v bool) {
+	s.B4 &^= 0x40
+	if v {
+		s.B4 |= 0x40
+	}
+}
+func (s *SignalSide) SetUnk4(v uint8)      { s.B4 = s.B4&^0x30 | (v&3)<<4 }
+func (s *SignalSide) SetAllLights(v uint8) { s.B5 = s.B5&0x0F | v<<4 }
 
 // IndustryElement represents an industry building tile.
 //
