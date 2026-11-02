@@ -133,3 +133,23 @@ func TestDrawItemsMatchesUpstream(t *testing.T) {
 		t.Errorf("%d of %d cases differ", bad, line)
 	}
 }
+
+// testdata/screen_distance.txt is toScreenDistDrawItems' getScreenDistance
+// (computeXYVector, Pos3, gameToScreen at rotation 0 — compiled) for yaw
+// 0–63 × distance −300…300 step 7.
+func TestScreenDistanceMatchesUpstream(t *testing.T) {
+	data, err := os.ReadFile("testdata/screen_distance.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Split(strings.TrimSuffix(strings.TrimSpace(string(data)), ","), ",")
+	i := 0
+	for yaw := 0; yaw < 64; yaw++ {
+		for d := -300; d <= 300; d += 7 {
+			if g := strconv.Itoa(int(screenDistance(int32(d), uint8(yaw)))); g != want[i] {
+				t.Errorf("yaw %d dist %d: %s, upstream %s", yaw, d, g, want[i])
+			}
+			i++
+		}
+	}
+}

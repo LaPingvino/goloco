@@ -15,7 +15,9 @@ type RoadObject struct {
 	Image      uint32 // Base G1 sprite index (set after image table load)
 	TunnelName string // name of the embedded tunnel ObjectHeader (trackObj/roadObj->tunnel)
 	PaintStyle uint8  // Sprite style: 0=normal, 1=ballast/sleeper, 2=left-curve
-	NumMods    uint8  // Number of road extra/modifications (max 2)
+	// DisplayOffset (0x29) lowers this road's vehicles in inline pictures.
+	DisplayOffset uint8
+	NumMods       uint8 // Number of road extra/modifications (max 2)
 	// ModNames are the road extras' DAT names (load resolves them into mods).
 	ModNames []string
 	// BridgeNames are its bridges' DAT names.
@@ -84,12 +86,13 @@ func ParseRoadObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Roa
 	numCompatible := data[0x28]
 
 	road := &RoadObject{
-		Header:      header,
-		PaintStyle:  paintStyle,
-		NumMods:     numMods,
-		NumBridges:  numBridges,
-		NumStations: numStations,
-		RoadPieces:  uint16(data[0x02]) | uint16(data[0x03])<<8,
+		Header:        header,
+		PaintStyle:    paintStyle,
+		NumMods:       numMods,
+		NumBridges:    numBridges,
+		NumStations:   numStations,
+		RoadPieces:    uint16(data[0x02]) | uint16(data[0x03])<<8,
+		DisplayOffset: data[0x29],
 		// buildCostFactor 0x04, costIndex 0x0A (offsets from the compiler)
 		BuildCostFactor: int16(uint16(data[0x04]) | uint16(data[0x05])<<8),
 		CostIndex:       data[0x0A],

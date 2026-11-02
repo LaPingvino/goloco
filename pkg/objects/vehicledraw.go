@@ -1,5 +1,7 @@
 package objects
 
+import "github.com/LaPingvino/goloco/pkg/olmath"
+
 // Body image selection, ported from Vehicles/VehicleDraw.cpp
 // (getBodyImageIndex / getBrakingImageIndex and the per-pitch helpers). Image
 // ids are relative to the object's ImageOffset, as BodySprites are stored.
@@ -217,4 +219,42 @@ func (v *VehicleObject) DrawItems(yaw, roll uint8) ([]DrawItem, int32) {
 		total += length
 	}
 	return items, total
+}
+
+// screenDistance is toScreenDistDrawItems' getScreenDistance: a distance
+// along the vehicle at yaw, as a screen x offset (gameToScreen at rotation 0
+// of the int16 Pos3, then −x / 4).
+func screenDistance(gameDist int32, yaw uint8) int32 {
+	x, y := olmath.ComputeXYVector(gameDist, yaw)
+	px := int16(int16(y) - int16(x))
+	return -int32(px) / 4
+}
+
+// InlineDrawItems is getDrawItemsForVehicle then toScreenDistDrawItems: the
+// object's items with screen distances, and its screen length.
+func (v *VehicleObject) InlineDrawItems(yaw, roll uint8) ([]DrawItem, int32) {
+	items, total := v.DrawItems(yaw, roll)
+	for i := range items {
+		items[i].Dist = screenDistance(items[i].Dist, yaw)
+	}
+	return items, screenDistance(total, yaw)
+}
+
+// VehicleYDisplayOffset is getVehicleObjectYDisplayOffset: a road vehicle
+// sits at its road's displayOffset (0 with no road type), anything else at
+// its track's (3 with no track type).
+func (m *ObjectManager) VehicleYDisplayOffset(v *VehicleObject) int {
+	if v.Mode == TransportModeRoad {
+		if v.TrackType != 0xFF && int(v.TrackType) < len(m.RoadObjects) && m.RoadObjects[v.TrackType] != nil {
+			return int(m.RoadObjects[v.TrackType].DisplayOffset)
+		}
+		return 0
+	}
+	if v.TrackType == 0xFF {
+		return 3
+	}
+	if int(v.TrackType) < len(m.TrackObjects) && m.TrackObjects[v.TrackType] != nil {
+		return int(m.TrackObjects[v.TrackType].DisplayOffset)
+	}
+	return 0
 }
