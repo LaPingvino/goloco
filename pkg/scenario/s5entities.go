@@ -252,6 +252,7 @@ type VehicleEntity struct {
 	TotalWeight  uint16 // Vehicle2 totalWeight (0x52); VehicleBogie totalCarWeight (0x52, first bogie of a car)
 	MotorState   uint8  // Vehicle2 motorState (0x5A)
 	Var73        uint8  // Vehicle2 var_73 (0x73): bit 0 broken down
+	Var3C        int32  // VehicleHead / Vehicle1 var_3C (0x3C): distance budget the moves draw down
 
 	// ---- VehicleBody / VehicleBogie sprite fields ----
 	ObjectID         uint16 // vbObjectId (0x40) — vehicle object slot (ObjMgr.Vehicles[N])
@@ -364,6 +365,7 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			TotalWeight:       binary.LittleEndian.Uint16(e[0x52:]),
 			MotorState:        e[0x5A],
 			Var73:             e[0x73],
+			Var3C:             int32(binary.LittleEndian.Uint32(e[0x3C:])),
 
 			ObjectID:         uint16(e[vbObjectId]) | uint16(e[vbObjectId+1])<<8,
 			ObjectSpriteType: e[vbObjectSpriteType],

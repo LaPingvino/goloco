@@ -7,7 +7,7 @@ package sim
 // The per-car inputs come from Map.CarPhysicsOf (isOnRackRail,
 // shouldStartWheelSlipping: wheelslip.go). PARTIAL: the "vehicle slipped"
 // news message is not posted. sub_4A9F20 (the move that
-// follows) is Vehicle2Motion.
+// follows) is Map.Vehicle2Move.
 
 // MotorState values.
 const (
@@ -154,4 +154,46 @@ func (v *Vehicle2Speed) UpdateSpeed(targetSpeed int16, headFlags uint16, manualP
 		}
 	}
 	v.CurrentSpeed = ns
+}
+
+// BrakeLightTimeout is kBrakeLightTimeout (ticks the brake lights stay on).
+const BrakeLightTimeout = 7
+
+// VehicleUpdateDistances is VehicleUpdateDistances (0x0113612C/30).
+type VehicleUpdateDistances struct{ D1, D2 int32 }
+
+// Vehicle2Move is sub_4A9F20 (0x004A9F20): Vehicle2 moves by D1 with
+// isVeh2UnkM15 (it stops where Vehicle1's routing is); what it could not
+// travel comes off both distances; blocked, it stops (unless manual); the
+// distance travelled comes off the head's and Vehicle1's var_3C; the brake
+// lights hold for kBrakeLightTimeout ticks after braking. false: the train is
+// destroyed (noRouteFound). (Sprite invalidation is upstream's redraw only.)
+func (m *Map) Vehicle2Move(c *MotionComponent, v *Vehicle2Speed, d *VehicleUpdateDistances, manual bool, veh1Handle RoutingHandle, requiredMods uint8, headVar3C, veh1Var3C *int32, brakeLight *uint8) bool {
+	next := m.TrackNewPiece
+	if c.Road {
+		next = m.RoadNewPiece
+	}
+	res := c.UpdateMotion(d.D1, func(c *MotionComponent, f *uint32) bool {
+		return next(c, f, requiredMods, true, veh1Handle)
+	})
+	d.D1 -= res.RemainingDistance
+	d.D2 -= res.RemainingDistance
+	if res.Flags&MotionNoRouteFound != 0 {
+		return false
+	}
+	if res.Blocked() && !manual {
+		v.CurrentSpeed = 0
+		v.MotorState = MotorStopped
+	}
+	if v.MotorState == MotorStoppedOnIncline {
+		d.D2 = d.D1 + 0x1388
+	}
+	*headVar3C -= d.D1
+	*veh1Var3C -= d.D1
+	if v.MotorState == MotorBraking {
+		*brakeLight = BrakeLightTimeout
+	} else if *brakeLight != 0 {
+		*brakeLight--
+	}
+	return true
 }
