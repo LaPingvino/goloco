@@ -97,19 +97,20 @@ type Game struct {
 	gameWon      bool
 	progress     *progressFile
 
-	consCurve         int    // construction curve selection: -4 (left large) … 0 … +4
-	consTab           int    // construction window tab: 0 construction, 2 signal (1 station places directly)
-	consSigOne        bool   // signal tab: single direction chosen (isSignalBothDirections = 0)
-	preferredCurrency string // Config::preferredCurrency (DAT name; PARTIAL: not saved)
-	frameLimit        int    // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
-	consBridge        int    // lastSelectedBridge (slot; -1 = the first available)
-	consOneShot       int    // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
-	consSignal        int    // signal tab: lastSelectedSignal (slot; -1 = the first available)
-	consStation       int    // station tab: lastSelectedStationType (slot; -1 = the first available)
-	consMods          uint8  // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
-	consSlope         int    // construction slope selection: -2 (steep down) … 0 … +2
-	buildObjID        int    // index into TrackObjects / RoadObjects
-	hoverTileX        int    // tile under cursor in build mode (-1 if invalid)
+	consCurve         int                // construction curve selection: -4 (left large) … 0 … +4
+	consTab           int                // construction window tab: 0 construction, 2 signal (1 station places directly)
+	consSigOne        bool               // signal tab: single direction chosen (isSignalBothDirections = 0)
+	preferredCurrency string             // Config::preferredCurrency (DAT name; PARTIAL: not saved)
+	frameLimit        int                // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
+	prompt            *ui.PromptOkCancel // an open confirmation (modal: it takes all input)
+	consBridge        int                // lastSelectedBridge (slot; -1 = the first available)
+	consOneShot       int                // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
+	consSignal        int                // signal tab: lastSelectedSignal (slot; -1 = the first available)
+	consStation       int                // station tab: lastSelectedStationType (slot; -1 = the first available)
+	consMods          uint8              // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
+	consSlope         int                // construction slope selection: -2 (steep down) … 0 … +2
+	buildObjID        int                // index into TrackObjects / RoadObjects
+	hoverTileX        int                // tile under cursor in build mode (-1 if invalid)
 	hoverTileY        int
 
 	// Diagnostic crop: when set, save a 480×360 PNG centred on diagTileX/Y after the next Draw.
@@ -386,6 +387,18 @@ func NewGame() *Game {
 }
 
 func (g *Game) Update() error {
+	if g.prompt != nil { // the modal confirmation takes all input (setCurrentModalType)
+		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
+			mx, my := ebiten.CursorPosition()
+			g.prompt.HandleClick(mx, my)
+		}
+		g.prompt.Key(inpututil.IsKeyJustPressed(ebiten.KeyEscape),
+			inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
+		if g.prompt.Closed {
+			g.prompt = nil
+		}
+		return nil
+	}
 	if g.quitAfterSave {
 		return ebiten.Termination
 	}
@@ -1054,6 +1067,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		if g.dropdown != nil && g.dropdown.Visible { // a window's dropdown, on top
 			g.dropdown.Draw(screen)
 		}
+		if g.prompt != nil { // a confirmation, on top of everything
+			g.prompt.Draw(screen)
+		}
 		g.maybeSaveShot(screen)
 		return
 	}
@@ -1077,6 +1093,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw dropdown menu on top of everything else
 	if g.dropdown != nil && g.dropdown.Visible {
 		g.dropdown.Draw(screen)
+	}
+	if g.prompt != nil { // a confirmation, on top of everything
+		g.prompt.Draw(screen)
 	}
 
 	statusY := g.sh - 20
@@ -1191,6 +1210,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "framesolid" && g.options != nil {
 			ui.FrameStyle = 1 // the Rendering tab with solid frames
 			g.options.Tab = ui.OptTabRendering
+		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "prompt" { // the replace-file confirmation
+			g.options = nil
+			g.prompt = ui.NewPromptOkCancel("Save Game", "Replace existing file: “Bottleneck Blues”?", "Replace", g.sw, g.sh, nil)
 		}
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "renderscale" && g.options != nil {
 			g.options.Tab = ui.OptTabRendering // and a click on Vehicles min. display scale
@@ -1728,6 +1751,9 @@ func (g *Game) openSaveWindow() {
 	}
 	w := ui.NewPromptBrowseSave("Save Game", goLocoSavesDir(), name, ".goloco", g.sw, g.sh)
 	w.OnClose = func() { g.browse = nil }
+	w.Confirm = func(caption, text, ok string, then func()) {
+		g.prompt = ui.NewPromptOkCancel(caption, text, ok, g.sw, g.sh, then)
+	}
 	w.OnSave = func(path string) {
 		g.browse = nil
 		if err := g.saveGameTo(path); err != nil {
