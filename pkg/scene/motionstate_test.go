@@ -2314,7 +2314,8 @@ func TestTreesMatchUpstream(t *testing.T) {
 	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
 		var c, forests, random, maxAlt, count int
 		var want uint64
-		fmt.Sscanf(line, "%d %d %d %d %d %x", &c, &forests, &random, &maxAlt, &count, &want)
+		var townX, townY int32
+		fmt.Sscanf(line, "%d %d %d %d %d %x %d %d", &c, &forests, &random, &maxAlt, &count, &want, &townX, &townY)
 		for y := range m.Tiles {
 			for x := range m.Tiles[y] {
 				st := saved[y][x]
@@ -2352,7 +2353,12 @@ func TestTreesMatchUpstream(t *testing.T) {
 				}
 			}
 		}
-		t.Logf("case %d: %d trees (upstream %d)", c, n, count)
+		m.Towns = nil
+		tx, ty, ok := m.FindTownSite(r.Objects) // CreateTown's placement, the first town, right after the trees
+		if !ok || tx != townX || ty != townY {
+			t.Errorf("case %d: first town at (%d,%d) ok %v, upstream (%d,%d)", c, tx, ty, ok, townX, townY)
+		}
+		t.Logf("case %d: %d trees (upstream %d); first town (%d,%d)", c, n, count, tx, ty)
 		if h != want || n != count {
 			t.Errorf("case %d (forests %d, random %d, max altitude %d): %d trees hash %x, upstream %d trees %x", c, forests, random, maxAlt, n, h, count, want)
 		}
