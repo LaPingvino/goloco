@@ -44,3 +44,49 @@ func TestSavedVehicleMotionState(t *testing.T) {
 		t.Fatal("no vehicles")
 	}
 }
+
+// Driving each saved rail component forward with updateTrackMotion and
+// updateTrackMotionNewTrackPiece follows its reserved routings over real
+// track connections: no noRouteFound, it stops (unk_m00) where its
+// reservation ends, and it ends on its routing, exactly on its path.
+func TestSavedTrainsDriveTheirRoutings(t *testing.T) {
+	_, m, _ := titleView(t)
+	mods := map[uint16]uint8{}
+	for _, e := range m.Entities {
+		if e.EntityType == scenario.VehicleTypeHead {
+			mods[e.ID] = e.HeadVar53
+		}
+	}
+	driven, pieces := 0, 0
+	for _, e := range m.Entities {
+		if e.EntityType > scenario.VehicleTypeTail || e.EntityType == scenario.VehicleTypeBodyStart || e.EntityType == scenario.VehicleTypeBodyContinued || e.Mode != 0 {
+			continue
+		}
+		c := sim.MotionComponent{
+			TrackAndDirection: e.TrackAndDirection & sim.TaDBasicMask, SubPosition: e.SubPosition,
+			TileX: int32(e.TileX), TileY: int32(e.TileY), TileBaseZ: e.TileBaseZ,
+			RemainingDistance: e.RemainingDistance, X: int32(e.PosX), Y: int32(e.PosY), Z: int32(e.PosZ),
+			RoutingHandle: sim.RoutingHandle(e.RoutingHandle), Owner: e.Owner, TrackType: e.TrackType,
+		}
+		start := c.RoutingHandle
+		r := c.UpdateMotion(0x7FFFFFF, func(c *sim.MotionComponent, f *uint32) bool {
+			return m.TrackNewPiece(c, f, mods[e.HeadID], false, 0)
+		})
+		driven++
+		pieces += int(c.RoutingHandle.Index()-start.Index()) & 63
+		if r.Flags&sim.MotionNoRouteFound != 0 || !r.Blocked() {
+			t.Errorf("entity %d: flags %#x", e.ID, r.Flags)
+		}
+		if got := m.Routing(c.RoutingHandle) & sim.TaDBasicMask; got != c.TrackAndDirection {
+			t.Errorf("entity %d: on %d but its routing is %d", e.ID, c.TrackAndDirection, got)
+		}
+		p := sim.TrackSubPosition(c.TrackAndDirection)
+		if mi := p[c.SubPosition]; int32(mi.X)+c.TileX != c.X || int32(mi.Y)+c.TileY != c.Y || int32(mi.Z)+int32(c.TileBaseZ)*4 != c.Z {
+			t.Errorf("entity %d: off its path", e.ID)
+		}
+	}
+	t.Logf("%d rail components drove %d reserved pieces in all", driven, pieces)
+	if pieces == 0 {
+		t.Error("no component moved onto another piece")
+	}
+}
