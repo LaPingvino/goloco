@@ -1652,3 +1652,36 @@ func TestReverseSavedVehicles(t *testing.T) {
 		t.Error("reversal check failed")
 	}
 }
+
+// A saved train waiting at a signal does not wait for ever: within 2500
+// ticks it gets through or turns round (the one-way timeout is 1920 ticks,
+// the two-way one 640).
+func TestSavedTrainLeavesSignal(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiting := map[int]bool{}
+	for _, tr := range trains {
+		if h := m.Entities[tr.Head]; h.Mode == 0 && h.Status == sim.StatusWaitingAtSignal {
+			waiting[tr.Head] = true
+		}
+	}
+	if len(waiting) == 0 {
+		t.Skip("no train waiting at a signal in the save")
+	}
+	left := map[int]int{}
+	for tick := range 2500 {
+		m.UpdateVehicles(r.Objects)
+		for i := range waiting {
+			if _, done := left[i]; !done && m.Entities[i].Status != sim.StatusWaitingAtSignal {
+				left[i] = tick
+			}
+		}
+	}
+	t.Logf("trains waiting at a signal %d; left after ticks %v", len(waiting), left)
+	if len(left) != len(waiting) {
+		t.Errorf("%d trains still waiting after 2500 ticks", len(waiting)-len(left))
+	}
+}

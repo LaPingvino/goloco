@@ -10,9 +10,8 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // Approaching runs landTryBeginUnloading (arrival.go), unloading
 // updateUnloadCargo (unload.go), loading landLoadingUpdate (load.go).
 // PARTIAL (item 5.6): crashed, stoppingUpdate (command stop, breakdowns), manual
-// control's sub_4A8C81 and the rail signal-wait reversing
-// (timeAtSignal, landReverseFromSignal, sub_4AC1C2) are not ported: a head in
-// those states does nothing this tick.
+// control's sub_4A8C81 and sub_4AD93A (noRouteFound) are not ported: a head
+// in those states does nothing this tick.
 
 // Head statuses (VehicleHead.h Status).
 const (
@@ -91,11 +90,7 @@ func (m *Map) updateHead(tr Train, unkDistance1 int32, om *objects.ObjectManager
 		}
 		return
 	}
-	if head.Mode == 0 && r.Al == 3 {
-		if v2.RoutingHandle != head.RoutingHandle || v2.SubPosition != head.SubPosition {
-			return
-		}
-		head.Status = StatusWaitingAtSignal
-		// trainsReverseAtSignals (default on): timeAtSignal / reversing — PARTIAL
+	if head.Mode == 0 {
+		m.trainSignalUpdate(tr, r, om) // reversal.go
 	}
 }
