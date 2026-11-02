@@ -85,6 +85,12 @@ var TrackCurveSpeedFraction = [44]uint16{65535, 65535, 3277, 3277, 6554, 6554, 9
 // RoadCurveSpeedFraction is getRoadMiscData(id).curveSpeedFraction.
 var RoadCurveSpeedFraction = [10]uint16{65535, 3277, 3277, 6554, 6554, 65535, 65535, 65535, 65535, 3277}
 
+// TrackUnkWeighting is getTrackMiscData(id).unkWeighting (pathing weight).
+var TrackUnkWeighting = [44]uint32{32, 45, 25, 25, 75, 75, 126, 126, 88, 88, 88, 88, 106, 106, 66, 66, 36, 36, 77, 77, 77, 77, 82, 82, 82, 82, 32, 32, 13, 38, 38, 13, 36, 36, 36, 36, 36, 36, 34, 34, 34, 34, 26, 26}
+
+// RoadUnkWeighting is getRoadMiscData(id).unkWeighting.
+var RoadUnkWeighting = [10]uint32{32, 25, 25, 75, 75, 66, 66, 36, 36, 26}
+
 // RoadReverseLane is getRoadMiscData(id).reverseLane.
 var RoadReverseLane = [10]uint8{1, 1, 1, 4, 4, 2, 2, 1, 1, 1}
 
