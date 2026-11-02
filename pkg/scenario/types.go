@@ -308,6 +308,8 @@ type RoadElement struct {
 	HasBridge             bool  // byte 4 bit 7
 	BridgeID              uint8 // byte 6 bits [7:5]: bridge object slot index (only valid if HasBridge)
 	HasLevelCrossing      bool  // byte 7 bit 5
+	HasStationElement     bool  // byte 0 bit 7 (hasStationElement)
+	HasSignalElement      bool  // byte 0 bit 6 (hasSignalElement)
 	LevelCrossingObjectID uint8 // byte 5 bits [3:2]: index into RequiredObjects level-crossing slots
 	AnimFrame             uint8 // byte 6 bits [3:0]: level crossing animation state
 	Owner                 uint8 // byte 7 bits [3:0]

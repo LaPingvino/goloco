@@ -527,6 +527,8 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					RoadObjectID:          (elem[5] >> 4) & 0x0F,
 					AnimFrame:             elem[6] & 0x0F,
 					HasLevelCrossing:      elem[7]&(1<<5) != 0,
+					HasStationElement:     typeByte&0x80 != 0,
+					HasSignalElement:      typeByte&0x40 != 0,
 					Rotation:              typeByte & 0x03,
 					Owner:                 elem[7] & 0x0F,
 					Mods:                  (elem[7] >> 6) & 0x03,
