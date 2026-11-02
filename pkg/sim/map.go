@@ -21,6 +21,7 @@ type Map struct {
 	RoadAnyTypeCompatible uint32                      // GameState roadObjectIdIsAnyRoadTypeCompatible
 	RoadUsableByAll       uint32                      // GameState roadObjectIdIsUsableByAllCompanies
 	Rng1                  core.Prng                   // GameState rng (gPrng1), from the save
+	vehicleMangled113623B uint8                       // VehicleHead.cpp module static _vehicleMangled_113623B (sub_4ACEF1)
 	CurrentDay            uint32                      // GameState general.currentDay
 	CompanyNames          []uint16                    // company slot → name StringId
 	ControllingCompany    uint8                       // playerCompanies[0] (getControllingId)
