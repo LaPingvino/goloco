@@ -2519,7 +2519,9 @@ func (w *World) Draw(screen *ebiten.Image) {
 		w.drawScene(screen) // saved vehicles are painted in the scene (paintEntities)
 		if len(w.Entities) == 0 {
 			w.paintDemoTrains(screen, scale)
-			ui.MarkForeign(screen.Bounds()) // drawn over the 8-bit world
+			if len(w.trains) > 0 {
+				ui.MarkForeign(screen.Bounds()) // drawn over the 8-bit world
+			}
 		}
 		w.drawOverlay(screen)
 		return
