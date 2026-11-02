@@ -28,19 +28,22 @@ const (
 type TreeObject struct {
 	Header *ObjectHeader
 
-	Name          string
-	InitialHeight uint8           // 0x02
-	Height        uint8           // 0x03
-	Var04         uint8           // 0x04
-	Var05         uint8           // 0x05
-	NumRotations  uint8           // 0x06 (1, 2, or 4)
-	Growth        uint8           // 0x07 (number of tree size images)
-	Flags         TreeObjectFlags // 0x08
-	Var3C         uint8           // 0x3C — bitmask controlling which season variants exist
-	SeasonState   uint8           // 0x3D
-	CurrentSeason uint8           // 0x3E
-	Rating        int16           // 0x48 (town rating effect)
-	Colours       uint32          // 0x44
+	Name                    string
+	InitialHeight           uint8           // 0x02
+	Height                  uint8           // 0x03
+	Var04                   uint8           // 0x04
+	Var05                   uint8           // 0x05
+	NumRotations            uint8           // 0x06 (1, 2, or 4)
+	Growth                  uint8           // 0x07 (number of tree size images)
+	Flags                   TreeObjectFlags // 0x08
+	Var3C                   uint8           // 0x3C — bitmask controlling which season variants exist
+	SeasonState             uint8           // 0x3D
+	CurrentSeason           uint8           // 0x3E
+	Rating                  int16           // 0x48 (town rating effect)
+	CostIndex               uint8           // 0x3F
+	ClearCostFactor         int16           // 0x42
+	DemolishRatingReduction int16           // 0x4A
+	Colours                 uint32          // 0x44
 
 	// Calculated from image table during load
 	Sprites           [6]uint32 // Base image indices for 6 season variants
@@ -64,19 +67,22 @@ func ParseTreeObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tre
 	}
 
 	tree := &TreeObject{
-		Header:        header,
-		InitialHeight: data[0x02],
-		Height:        data[0x03],
-		Var04:         data[0x04],
-		Var05:         data[0x05],
-		NumRotations:  data[0x06],
-		Growth:        data[0x07],
-		Flags:         TreeObjectFlags(binary.LittleEndian.Uint16(data[0x08:0x0A])),
-		Var3C:         data[0x3C],
-		SeasonState:   data[0x3D],
-		CurrentSeason: data[0x3E],
-		Rating:        int16(binary.LittleEndian.Uint16(data[0x48:])),
-		Colours:       binary.LittleEndian.Uint32(data[0x44:0x48]),
+		Header:                  header,
+		InitialHeight:           data[0x02],
+		Height:                  data[0x03],
+		Var04:                   data[0x04],
+		Var05:                   data[0x05],
+		NumRotations:            data[0x06],
+		Growth:                  data[0x07],
+		Flags:                   TreeObjectFlags(binary.LittleEndian.Uint16(data[0x08:0x0A])),
+		Var3C:                   data[0x3C],
+		SeasonState:             data[0x3D],
+		CurrentSeason:           data[0x3E],
+		Rating:                  int16(binary.LittleEndian.Uint16(data[0x48:])),
+		CostIndex:               data[0x3F],
+		ClearCostFactor:         int16(binary.LittleEndian.Uint16(data[0x42:])),
+		DemolishRatingReduction: int16(binary.LittleEndian.Uint16(data[0x4A:])),
+		Colours:                 binary.LittleEndian.Uint32(data[0x44:0x48]),
 	}
 
 	// Skip past fixed structure
