@@ -1467,6 +1467,11 @@ type CompanyEconomy struct {
 	CompanyValueHistory0     int64         // 0x88CE companyValueHistory[0] (currency48_t)
 	VehicleProfit            int64         // 0x8B9E currency48_t
 	ChallengeProgress        uint8         // 0x8C4E
+	CurrentRating            uint8         // 0x25BF
+	HistorySize              uint16        // 0x88CC
+	NumMonthsInTheRed        uint8         // 0x8C4F
+	CargoUnitsDistanceHist0  uint32        // 0x8C54 cargoUnitsDistanceHistory[0]
+	PerformanceIndexHist0    int16         // 0x87DC performanceIndexHistory[0]
 }
 
 // parseCompanyEconomy reads every company slot's CompanyEconomy.
@@ -1500,6 +1505,11 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 		c.CompanyValueHistory0 = currency48(r[0x88CE:])
 		c.VehicleProfit = currency48(r[0x8B9E:])
 		c.ChallengeProgress = r[0x8C4E]
+		c.CurrentRating = r[0x25BF]
+		c.HistorySize = binary.LittleEndian.Uint16(r[0x88CC:])
+		c.NumMonthsInTheRed = r[0x8C4F]
+		c.CargoUnitsDistanceHist0 = binary.LittleEndian.Uint32(r[0x8C54:])
+		c.PerformanceIndexHist0 = int16(binary.LittleEndian.Uint16(r[0x87DC:]))
 	}
 	return out
 }
