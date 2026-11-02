@@ -39,6 +39,10 @@ type IndustryObject struct {
 // IndustryFlagHasShadows is IndustryObjectFlags::hasShadows.
 const IndustryFlagHasShadows = 1 << 21
 
+// IndustryFlagFarmTilesDrawAboveSnow is IndustryObjectFlags::farmTilesDrawAboveSnow
+// (ski slopes; other farm tiles draw below snow).
+const IndustryFlagFarmTilesDrawAboveSnow = 1 << 26
+
 const industryObjectSize = 0xF4
 
 // ParseIndustryObjectWithG1 parses an industry object (IndustryObject::load) and

@@ -442,7 +442,9 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	}
 	// Industry fields (PaintSurface.cpp industrial branch): the field surface and
 	// its tree image come from the industry object; the tile's byte 7 (goloco's
-	// Variation) is then the industry id. PARTIAL: snow cover not drawn.
+	// Variation) is then the industry id. Snow: below (fieldSnow) unless the
+	// object draws its farm tiles above snow (at zoom 0).
+	fieldSnow := false
 	if t.IsIndustrial && int(t.Variation) < len(m.IndustryObjectIDs) {
 		if io := om.GetIndustryObjectByIndex(int(m.IndustryObjectIDs[t.Variation])); io != nil && io.FieldImageIDs != 0 {
 			variation := int(io.NumImagesPerFieldGrowthStage)*int(t.GrowthStage) + ((int(io.FarmTileNumImageAngles)-1)&0)*21
@@ -451,17 +453,18 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 				s.AddAsParent(paint.Image{Sprite: tree, Op: gfx8.OpFor(tree, false, false)}, paint.Pos3{Z: th}, paint.Pos3{X: 14, Y: 14, Z: th + 4}, paint.Pos3{X: 4, Y: 4, Z: 14})
 			}
 			idx = int(io.FieldImageIDs) + variation + ds
+			fieldSnow = !(s.Zoom == 0 && io.Flags&objects.IndustryFlagFarmTilesDrawAboveSnow != 0) && t.Slope>>5 != 0
 		}
 	}
 	sp := sprite(idx)
 	if sp == nil {
 		return
 	}
-	// Snow (PaintSurface.cpp snow branch, land tiles): full cover replaces the
-	// surface image; partial cover attaches the snow image masked per slope.
-	// PARTIAL: industry fields' snow (farmTilesDrawAboveSnow) not ported.
+	// Snow (PaintSurface.cpp snow branch): full cover replaces the surface
+	// image; partial cover attaches the snow image masked per slope — on land
+	// tiles, and on industry fields unless farmTilesDrawAboveSnow (zoom 0).
 	var snowAttach *paint.Image
-	if cov := int(t.Slope >> 5); cov != 0 && !t.IsIndustrial && om.SnowObj != nil {
+	if cov := int(t.Slope >> 5); cov != 0 && (!t.IsIndustrial || fieldSnow) && om.SnowObj != nil {
 		snowImg := int(om.SnowObj.ImageOffset) + paint.SnowSurfaceFullZoom + ds
 		if cov == 5 {
 			if full := sprite(snowImg); full != nil {
