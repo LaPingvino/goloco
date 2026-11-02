@@ -423,11 +423,11 @@ func yawAccuracySloped(numFrames uint8) uint8 {
 	}
 }
 
-// GetBodySpriteID returns the G1 sprite index for the given body sprite slot
-// (bodyIdx 0-3), rotation direction (0-31 in OpenLoco convention), and flat
-// (non-sloped) ground.  Returns 0 and false if the slot has no sprites.
-// OpenLoco reference: src/OpenLoco/src/Paint/PaintVehicle.cpp
-func (v *VehicleObject) GetBodySpriteID(bodyIdx, direction32 int) (uint32, bool) {
+// GetBodySpriteID is the G1 image of a body sprite slot (bodyIdx 0-3) at an
+// entity's 0-63 sprite yaw and pitch: getBodyImageIndex (VehicleDraw.cpp)
+// with no roll or cargo frame, plus the object's image offset. Returns 0 and
+// false if the slot has no sprites.
+func (v *VehicleObject) GetBodySpriteID(bodyIdx int, yaw uint8, pitch Pitch) (uint32, bool) {
 	if bodyIdx < 0 || bodyIdx >= 4 {
 		return 0, false
 	}
@@ -435,26 +435,7 @@ func (v *VehicleObject) GetBodySpriteID(bodyIdx, direction32 int) (uint32, bool)
 	if bs.Flags&BodyFlagHasSprites == 0 {
 		return 0, false
 	}
-
-	// Reduce the 32-direction to the number of unique flat frames.
-	yawAcc := int(bs.FlatYawAccuracy)
-	frameIdx := direction32 >> yawAcc
-
-	// Rotational symmetry: only the first half of frames are stored; the
-	// second half mirrors them (renderer should flip horizontally — for now
-	// we just clamp to the stored range).
-	if bs.Flags&BodyFlagRotationalSymmetry != 0 {
-		maxFrame := int(bs.NumFlatRotationFrames)
-		if frameIdx >= maxFrame {
-			frameIdx = (2*maxFrame - 1) - frameIdx
-			if frameIdx < 0 {
-				frameIdx = 0
-			}
-		}
-	}
-
-	spriteID := v.ImageOffset + bs.FlatImageID + uint32(frameIdx)*uint32(bs.NumFramesPerRotation)
-	return spriteID, true
+	return v.ImageOffset + bs.BodyImageIndex(pitch, yaw, 0, 0), true
 }
 
 // Helper for reading binary data
