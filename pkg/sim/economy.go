@@ -46,3 +46,28 @@ func (m *Map) ApplyPaymentToCompany(id uint8, payment int32, expenditureType uin
 	c.Cash -= int64(payment)
 	c.Expenditures[0][expenditureType] -= payment
 }
+
+// inflationFactors is Economy.cpp's kInflationFactors (monthly, /4096).
+var inflationFactors = [32]uint32{20, 20, 20, 20, 23, 20, 23, 23, 20, 17, 17, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20}
+
+// EconomyUpdateMonthly is Economy::updateMonthly (dateTick runs it while the
+// year is ≤ 2029). PARTIAL: buildDeliveredCargoPaymentsTable (the company
+// list's cargo payment graph) and the window invalidations.
+func (m *Map) EconomyUpdateMonthly() {
+	for i := range m.CurrencyMultiplicationFactor {
+		f := &m.CurrencyMultiplicationFactor[i]
+		*f += uint32(uint64(inflationFactors[i]) * uint64(*f) >> 12)
+	}
+}
+
+// SetInflationForYear is Economy::setInflationForYear: the factors from 1024
+// through one monthly update per month since 1900 (years clamped to
+// 1900–2030). The unused factors are not kept.
+func (m *Map) SetInflationForYear(year uint16) {
+	for i := range m.CurrencyMultiplicationFactor {
+		m.CurrencyMultiplicationFactor[i] = 1024
+	}
+	for n := (uint32(min(max(year, 1900), 2030)) - 1900) * 12; n > 0; n-- {
+		m.EconomyUpdateMonthly()
+	}
+}
