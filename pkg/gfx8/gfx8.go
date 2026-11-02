@@ -54,6 +54,9 @@ type Sprite struct {
 	// sprites are not drawn at all.
 	HasZoomSprites, NoZoomDraw bool
 	ZoomOffset                 int
+	// Index is the g1 image index, set by a sprite cache that knows it
+	// (DrawSpriteAtZoom recurses through Index − ZoomOffset); 0 = unknown.
+	Index int
 	// Runs are the RLE rows as stored: per row, [x0, n] pairs (drawRLESprite
 	// walks these; the pixels themselves are in Pix).
 	Runs [][][2]int

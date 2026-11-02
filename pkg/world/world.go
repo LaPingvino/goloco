@@ -2440,6 +2440,11 @@ func (w *World) getCliffEdgeOffset(edge int, h uint8) (int16, int16) {
 func (w *World) Draw(screen *ebiten.Image) {
 	w.viewW, w.viewH = screen.Bounds().Dx(), screen.Bounds().Dy()
 	w.frameCounter++
+	if z := os.Getenv("GOLOCO_DIAG_ZOOM"); z != "" && w.frameCounter == 1 { // diagnostics: start at zoom n
+		for range int(z[0] - '0') {
+			w.ZoomOut()
+		}
+	}
 	sw := screen.Bounds().Dx()
 	sh := screen.Bounds().Dy()
 	scale := 1.0 / float64(int(1)<<w.zoom) // zoom 0→1.0, 1→0.5, 2→0.25, 3→0.125
