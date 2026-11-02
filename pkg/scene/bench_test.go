@@ -100,3 +100,53 @@ func TestRoadExtrasDrawn(t *testing.T) {
 		t.Error("the overhead wires change nothing in the view")
 	}
 }
+
+// Station cargo is drawn on the platforms: a view of the first straight
+// station tile with waiting cargo changes when every station's cargo is cleared.
+func TestStationCargoDrawn(t *testing.T) {
+	r, m, _ := titleView(t)
+	tx, ty, found := -1, -1, 0
+	for y := range m.Height {
+		for x := range m.Width {
+			t0 := m.TileAt(x, y)
+			for _, st := range t0.Stations {
+				if st.StationType != 0 || int(st.StationID) >= len(m.StationCargoDensity) {
+					continue
+				}
+				d := m.StationCargoDensity[st.StationID]
+				sum := 0
+				for _, v := range d {
+					sum += int(v)
+				}
+				if sum > 0 && len(t0.Tracks) > 0 && t0.Tracks[0].TrackID == 0 {
+					found++
+					if tx < 0 {
+						tx, ty = x*32+16, y*32+16
+						t.Logf("station %d at tile (%d, %d): density %v", st.StationID, x, y, d)
+					}
+				}
+			}
+		}
+	}
+	t.Logf("%d straight station tiles with waiting cargo", found)
+	if tx < 0 {
+		t.Skip("no station with waiting cargo")
+	}
+	cx, cy := paint.GameToScreen(paint.Pos3{X: tx, Y: ty}, 0)
+	v := View{X: cx - 300, Y: cy - 200, W: 600, H: 400}
+	with := append([]uint8(nil), r.Render(m, v).Bits...)
+	saved := m.StationCargoDensity
+	m.StationCargoDensity = make([][32]uint8, len(saved))
+	defer func() { m.StationCargoDensity = saved }()
+	without := r.Render(m, v).Bits
+	diff := 0
+	for i := range with {
+		if with[i] != without[i] {
+			diff++
+		}
+	}
+	t.Logf("%d pixels differ", diff)
+	if diff == 0 {
+		t.Error("station cargo changes nothing in the view")
+	}
+}
