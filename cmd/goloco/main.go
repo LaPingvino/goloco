@@ -399,6 +399,12 @@ func (g *Game) Update() error {
 		}
 		return nil
 	}
+	// A right click on the load/save list deletes a file (after asking).
+	if g.browse != nil && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+		if mx, my := ebiten.CursorPosition(); g.browse.Contains(mx, my) {
+			g.browse.HandleRightClick(mx, my)
+		}
+	}
 	if g.quitAfterSave {
 		return ebiten.Termination
 	}
@@ -1926,6 +1932,9 @@ func (g *Game) openFileWindow(title string, scenariosOnly bool) {
 	}
 	w := ui.NewPromptBrowse(title, startDir, exts, g.sw, g.sh)
 	w.OnClose = func() { g.browse = nil }
+	w.Confirm = func(caption, text, ok string, then func()) { // right-click delete asks first
+		g.prompt = ui.NewPromptOkCancel(caption, text, ok, g.sw, g.sh, then)
+	}
 	w.OnPick = func(path string) {
 		g.browse = nil
 		if err := g.loadScenario(path); err != nil {

@@ -370,3 +370,28 @@ func (w *PromptBrowseWindow) Drag(py int, held bool) {
 		w.dragY = py
 	}
 }
+
+// HandleRightClick is a right click on the list (onScrollMouseDown with the
+// right button): on a file it asks "Delete file: “name”?" (Delete) and then
+// removes the file and refreshes the list (processFileForDelete). Folders
+// are left alone.
+func (w *PromptBrowseWindow) HandleRightClick(px, py int) {
+	l := w.list()
+	if !w.in(l, px, py) || w.onScrollbar(px, py) {
+		return
+	}
+	idx := (py - (w.Y + l[1] + 1) + w.Scroll) / pbRowHeight
+	if idx < 0 || idx >= len(w.entries) || w.entries[idx].dir {
+		return
+	}
+	path := w.entries[idx].path
+	remove := func() {
+		_ = os.Remove(path)
+		w.chdir(w.Dir) // refreshDirectoryList
+	}
+	if w.Confirm == nil {
+		return // no prompt to ask with: never delete unasked
+	}
+	name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+	w.Confirm(w.Title, "Delete file: “"+name+"”?", "Delete", remove)
+}
