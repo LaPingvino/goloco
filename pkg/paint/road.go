@@ -5,7 +5,7 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 // Roads — a port of Paint/PaintRoad.cpp paintRoad (Style02::paintRoadPP
 // standard and multi-tile merge, Style1::paintRoadPP) and finalisePaintRoad,
 // with the tables generated from upstream (roaddata_gen.go). PARTIAL: company
-// colour remap (needs the saved company colours), streetlights, bridges and
+// colour remap (needs the saved company colours), bridges and
 // tunnels (paintRoadPCP), level crossings, road extras, height markers and
 // one-way arrows are not ported yet.
 
@@ -17,6 +17,30 @@ type RoadEl struct {
 	Tunnel                          int     // roadObj->tunnel's image base (-1: none)
 	HasBridge                       bool
 	Bridge                          uint8 // elRoad.bridge(): bridge object slot
+	// Streetlight is elRoad.streetLightStyle() (0: none) when the road has no
+	// level crossing, signal or station element (zero otherwise);
+	// StreetlightImage is the StreetLight object's image.
+	Streetlight      uint8
+	StreetlightImage int
+}
+
+// kStreetlightOffsets / BoundingBoxOffsets / Size (PaintRoad.cpp), by edge.
+var (
+	streetlightOffsets   = [4]Pos3{{2, 15, 0}, {15, 28, 0}, {28, 15, 0}, {15, 2, 0}}
+	streetlightBBOffsets = [4]Pos3{{2, 15, 6}, {15, 28, 6}, {28, 15, 6}, {15, 2, 6}}
+	streetlightBBSize    = Pos3{1, 1, 6}
+)
+
+// paintRoadStreetlight: the style's image for this edge (Streetlight::ImageIds
+// kStyle<n><dir> = style·4 + edge) at baseHeight + streetlightHeight.
+func (s *Session) paintRoadStreetlight(image, baseHeight, style, streetlightHeight, edge int, sprite func(int) *gfx8.Sprite) {
+	sp := sprite(image + style*4 + edge)
+	if sp == nil {
+		return
+	}
+	h := baseHeight + streetlightHeight
+	o, b := streetlightOffsets[edge], streetlightBBOffsets[edge]
+	s.AddAsParent(Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, Pos3{o.X, o.Y, o.Z + h}, Pos3{b.X, b.Y, b.Z + h}, streetlightBBSize)
 }
 
 var (
@@ -64,10 +88,20 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 			s.mergeRoadImage = image + int(RoadMergeBaseImage[rpp.MergeType[rot]-1])
 			s.mergeRoadHeight = height
 			s.mergeRoadPal = el.Remap // the merge base image carries the road's colour
+			if s.Zoom == 0 && el.Streetlight != 0 {
+				s.mergeRoadStreetlight, s.streetlightImage = el.Streetlight, el.StreetlightImage
+			}
 			return
 		}
 		if i := img(rpp.ImageIndexOffsets[rot]); i.Sprite != nil {
 			s.AddTrackRoad(i, 2, ho, bbOff, rpcp.BBSizes[rot])
+		}
+		if s.Zoom == 0 && el.Streetlight != 0 { // paintRoadStreetlights
+			for edge, sh := range rpp.StreetlightHeights[rot] {
+				if sh != -1 { // kNoStreetlight
+					s.paintRoadStreetlight(el.StreetlightImage, height, int(el.Streetlight)-1, int(sh), edge, sprite)
+				}
+			}
 		}
 	case 1:
 		if seq >= len(RoadStyle1Parts[rid]) {
@@ -88,12 +122,21 @@ func (s *Session) FinalisePaintRoad(sprite func(int) *gfx8.Sprite) {
 	if s.roadExits == 0 {
 		return
 	}
-	id := roadExitsToMergeID[s.roadExits&0xF]
-	s.roadExits = 0
+	exits := s.roadExits & 0xF
+	id := roadExitsToMergeID[exits]
+	light := s.mergeRoadStreetlight
+	s.roadExits, s.mergeRoadStreetlight = 0, 0
 	ho := Pos3{0, 0, s.mergeRoadHeight}
 	bb := roadMergeBBOff[id]
 	bb.Z += s.mergeRoadHeight
 	if sp := sprite(s.mergeRoadImage + id); sp != nil {
 		s.AddTrackRoad(Colour(sp, s.mergeRoadPal), 2, ho, bb, roadMergeBBSize[id])
+	}
+	if light != 0 { // a streetlight on every edge without an exit
+		for edge := range 4 {
+			if exits&(1<<edge) == 0 {
+				s.paintRoadStreetlight(s.streetlightImage, s.mergeRoadHeight, int(light)-1, 0, edge, sprite)
+			}
+		}
 	}
 }

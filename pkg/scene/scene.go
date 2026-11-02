@@ -340,8 +340,13 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 	case scenario.KindRoad:
 		rd := t.Roads[ref.Index]
 		if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
+			var light uint8 // streetLightStyle shares the level crossing id's bits; only without crossing, signal or station
+			if !rd.HasLevelCrossing && !rd.HasSignalElement && !rd.HasStationElement {
+				light = rd.LevelCrossingObjectID
+			}
 			s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: r.companyRemap(m, rd.Owner),
-				Tunnel: r.tunnelImage(ro.TunnelName), HasBridge: rd.HasBridge, Bridge: rd.BridgeID}, int(ro.Image), ro.PaintStyle, sprite)
+				Tunnel: r.tunnelImage(ro.TunnelName), HasBridge: rd.HasBridge, Bridge: rd.BridgeID,
+				Streetlight: light, StreetlightImage: int(om.StreetLightImage)}, int(ro.Image), ro.PaintStyle, sprite)
 		}
 	case scenario.KindSignal:
 		// paintSignal: against entry.prev(), which must be a track element.

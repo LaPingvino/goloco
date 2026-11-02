@@ -64,6 +64,7 @@ type ObjectManager struct {
 	BridgeObjects        []*BridgeObject             // all loaded bridge objects (slots 305-312)
 	CargoObjects         []*CargoObject              // cargo slot order (reordered per scenario)
 	CompetitorObjects    []*CompetitorObject         // competitor slot order (reordered per scenario)
+	StreetLightImage     uint32                      // the StreetLight object's image (0: none loaded)
 	CliffEdgeObjs        map[string]*CliffEdgeObject // keyed by upper-case name
 	WaterObj             *WaterObject                // the single water object (slot 170)
 	InterfaceSkin        *InterfaceSkinObject
@@ -401,6 +402,16 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 			m.extras = map[string]*ExtraObject{}
 		}
 		m.extras[upperName(header.GetName())] = ex
+
+	case ObjectTypeStreetLight: // StreetLightObject::load: name, then the image table (image = its base)
+		if len(decompressed) >= 0xC {
+			off, _ := walkStringTableLang(decompressed, 0xC)
+			if l, ok := m.G1File.(G1Loader); ok && off < len(decompressed) {
+				if res, err := l.LoadImageTable(decompressed[off:]); err == nil {
+					m.StreetLightImage = res.ImageOffset
+				}
+			}
+		}
 
 	case ObjectTypeTunnel:
 		var g1Loader G1Loader

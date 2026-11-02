@@ -77,6 +77,10 @@ type Session struct {
 	mergeRoadImage  int // absolute image of the merge set's first sprite
 	mergeRoadHeight int
 	mergeRoadPal    []uint8
+	// mergeRoadStreetlight is setMergeRoadStreetlight's style (0: none) and
+	// streetlightImage the StreetLight object's image it uses.
+	mergeRoadStreetlight uint8
+	streetlightImage     int
 
 	// Slabs for paint structs and attachments (reused across frames by Reset).
 	structs         []Struct
