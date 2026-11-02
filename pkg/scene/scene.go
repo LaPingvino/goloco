@@ -765,7 +765,7 @@ func (r *Renderer) bridgeHasRoof(id uint8) bool {
 // object's cargo offsets for (rotation, (x + y) & 3) — kept per key so a
 // frame allocates nothing; nil without station data.
 func (r *Renderer) stationCargo(m *sim.Map, so any, offsets [4][4][][2][3]int, types uint32, station uint16, rot, hash int) *paint.StationCargo {
-	if int(station) >= len(m.StationCargoDensity) {
+	if int(station) >= len(m.StationNames) {
 		return nil
 	}
 	if r.cargoPlatforms == nil {
@@ -790,7 +790,7 @@ func (r *Renderer) stationCargo(m *sim.Map, so any, offsets [4][4][][2][3]int, t
 		}
 		r.stationCargos[k] = c
 	}
-	c.Density = m.StationCargoDensity[station]
+	c.Density = m.StationCargoDensities(int(station))
 	return c
 }
 

@@ -1244,3 +1244,36 @@ func TestSavedCompanies(t *testing.T) {
 		t.Error("no active company")
 	}
 }
+
+// updateCargoDistribution recomputed for every saved station from its saved
+// quantities and tile counts: equal to the saved densityPerTile, except a few
+// saved densities that are higher (open question in LOOP.md: title.dat comes
+// from vanilla, which may skip a recompute OpenLoco's port does); never lower.
+func TestSavedStationCargoDistribution(t *testing.T) {
+	r, m, _ := titleView(t)
+	exact, higher, waiting := 0, 0, 0
+	for id := range m.StationNames {
+		saved := m.StationCargoDensities(id)
+		m.UpdateCargoDistribution(id, r.Objects)
+		got := m.StationCargoDensities(id)
+		for c := range got {
+			if m.StationNames[id].Cargo[c].Quantity == 0 {
+				continue
+			}
+			waiting++
+			switch {
+			case got[c] == saved[c]:
+				exact++
+			case saved[c] > got[c]:
+				higher++
+				t.Logf("station %d cargo %d: saved %d, recomputed %d (qty %d, tiles %d)", id, c, saved[c], got[c], m.StationNames[id].Cargo[c].Quantity, m.StationNames[id].TileSize)
+			default:
+				t.Errorf("station %d cargo %d: recomputed %d above saved %d", id, c, got[c], saved[c])
+			}
+		}
+	}
+	t.Logf("waiting cargo stats %d: exact %d, saved higher %d", waiting, exact, higher)
+	if waiting == 0 || exact < waiting*9/10 {
+		t.Errorf("too few exact")
+	}
+}
