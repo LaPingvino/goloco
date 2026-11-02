@@ -12,11 +12,11 @@ internal. Size: S (one tick), M (2–4 ticks), L (a series).
 
 | Where | What goloco does | What upstream does | Sev | Size |
 |---|---|---|---|---|
-| pkg/world/vehicle_sim.go (whole file) | Floats along a piece's two endpoints; curves as straight segments; trains bounce at dead ends | Vehicles/ (VehicleHead, VehicleBogie, VehicleManager) move in integer steps along Map/Track/SubpositionData.cpp paths; orders and routing (Orders.cpp, Routing.cpp) | H | L |
+| ~~pkg/world/vehicle_sim.go (whole file)~~ RESOLVED tick 243 | (was: straight-segment SimVehicles) | the ported sim (pkg/sim) runs every vehicle; SimVehicles retired | — | — |
 | pkg/game/state.go:34, 194–197; cmd/goloco/main.go:1388 | Flat fare per cargo unit × paymentFactor | Economy/ calculateTransportPayment: distance and days-in-transit curves per cargo | H | M |
 | pkg/game/state.go:188–190 | Running cost simplified | Vehicles/Vehicle.cpp — per-vehicle running cost from the object, inflated | H | S |
 | cmd/goloco/main.go:2448 | Company value = player money | Company value from assets (vehicles, infrastructure) — Company.cpp | M | M |
-| pkg/world/station.go:24 | Cargo typing not derived from objects | Station cargo acceptance/production from industry and building objects (StationManager, Station.cpp) | H | M |
+| pkg/world/station.go (PlaceStationOnTile) | Places only the station element; no Station record, name, catchment or cargo (the invented passenger supply was retired tick 243) | GameCommands createTrainStation, StationManager, Station.cpp | H | M |
 | pkg/scenario/generate.go:9 | "Simplified approximation" of landscape generation | Map/MapGenerator/ with the game's PRNG (pkg/core/prng.go is already ported, unused) | M | L |
 | pkg/game/state.go:264, 326 | Placeholder movement ("move in a circle"), dirt tiles "for now" | — (check whether pkg/game is still live; see D) | L | S |
 

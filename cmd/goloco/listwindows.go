@@ -8,7 +8,7 @@ import (
 // listwindows.go — the right-toolbar list windows: the ported VehicleList,
 // StationList and TownList (pkg/ui/townlist.go's table window).
 
-// openVehiclesWindow lists save-loaded vehicle entities and runtime SimVehicles.
+// openVehiclesWindow lists the scenario's vehicles.
 func (g *Game) openVehiclesWindow() { g.openVehicleList(0) }
 
 // openVehicleList opens the ported VehicleList window on a tab (vehicle type).

@@ -666,7 +666,7 @@ func (g *Game) Update() error {
 	if !g.isPaused {
 		for i := 0; i < g.speedMult; i++ {
 			g.w.Update()
-			g.w.TickVehicles() // gameplay-only: advance track-following vehicles
+			g.w.TickVehicles() // gameplay: the ported vehicle tick
 			if g.gameState != nil {
 				g.gameState.Update()
 				g.checkObjective()
@@ -1793,22 +1793,6 @@ func (g *Game) loadScenario(filePath string) error {
 	mapW, mapH := g.w.GetMapSize()
 	g.gameState = game.NewGameState(mapW, mapH)
 
-	// Wire cargo delivery: vehicles that deliver passengers to a station
-	// increment the objective's cargo counter (see World.OnCargoDelivered).
-	gs := g.gameState
-	// Charge the monthly running cost against the live sim-vehicle count.
-	gs.VehicleCount = gameW.VehicleCount
-	gameW.OnCargoDelivered = func(slot uint8, amount uint32) {
-		if gs == nil || int(slot) >= len(gs.CargoDelivered) {
-			return
-		}
-		gs.CargoDelivered[slot] += amount
-		// Pay the company for the delivery (income + monthly income).
-		gs.CreditDelivery(slot, amount)
-		log.Printf("[Cargo] delivered %d units to slot %d (total %d, £%d)",
-			amount, slot, gs.CargoDelivered[slot], gs.PlayerMoney)
-	}
-
 	if g.titleSeq != nil {
 		g.titleSeq.Stop()
 	}
@@ -2223,30 +2207,6 @@ func main() {
 	if os.Getenv("GOLOCO_OPEN") == "newgame" {
 		game.openNewGameWindow()
 	}
-	if os.Getenv("GOLOCO_OPEN") == "win" && game.w != nil {
-		// Autonomous win attempt: build a passenger shuttle beside a town and
-		// let the game run; the objective counter does the rest.
-		if x, y, ok := game.w.FindTownsideRun(6); ok {
-			game.buildMode = buildModeTrack
-			game.w.SetConstructionHead(x, y)
-			placed := 0
-			for i := 0; i < 5; i++ {
-				if game.w.PlaceTrackAtHead(0, uint8(game.buildObjID)) {
-					placed++
-				}
-			}
-			sA := game.w.PlaceStationOnTile(x, y, uint8(game.firstTrainStationSlot()))
-			h := game.w.ConstructionHeadState()
-			sB := game.w.PlaceStationOnTile(h.X+1, h.Y, uint8(game.firstTrainStationSlot()))
-			sp := game.w.SpawnTestVehicle(0)
-			log.Printf("[WinRun] line at (%d,%d): placed=%d stations=%v/%v vehicle=%v", x, y, placed, sA, sB, sp)
-			// Point the camera at the shuttle so the autonomous attempt is visible
-			// (also lets headless captures see the station plaques / income floats).
-			game.w.CenterOn("station")
-		} else {
-			log.Printf("[WinRun] no townside run found")
-		}
-	}
 	if os.Getenv("GOLOCO_OPEN") == "track" && game.w != nil {
 		// Headless construction test: open the window and chain a piece
 		// sequence from the map centre so captures verify connections.
@@ -2278,19 +2238,6 @@ func main() {
 		}
 		if game.w.PlaceStationOnTile(lastX, lastY, stationSlot) {
 			log.Printf("[ConsTest] station B placed at (%d,%d)", lastX, lastY)
-		}
-		// Seed waiting passengers so the headless run demonstrates delivery
-		// without waiting for slow building-based accumulation.
-		game.w.SeedStationWaiting(firstX, firstY, 200)
-		if game.w.SpawnTestVehicle(0) {
-			log.Printf("[ConsTest] test vehicle spawned; ticking board→travel→deliver")
-			for i := 0; i < 2000; i++ {
-				game.w.TickVehicles()
-			}
-			if game.gameState != nil {
-				log.Printf("[ConsTest] delivered PASS so far: %d",
-					game.gameState.CargoDelivered[world.CargoSlotPass])
-			}
 		}
 	}
 	if os.Getenv("GOLOCO_OPEN") == "road" && game.w != nil {
