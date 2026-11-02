@@ -393,6 +393,10 @@ func NewGame() *Game {
 }
 
 func (g *Game) Update() error {
+	if fstats.on {
+		t0 := time.Now()
+		defer func() { fstats.addUpdate(time.Since(t0)) }()
+	}
 	if g.prompt != nil { // the modal confirmation takes all input (setCurrentModalType)
 		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 			mx, my := ebiten.CursorPosition()
@@ -1032,6 +1036,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.firstFrameLogged = true
 		log.Printf("[Game] First world frame %v after start", time.Since(processStart).Round(time.Millisecond))
 	}
+	if fstats.on {
+		t0 := time.Now()
+		defer func() { fstats.addDraw(t0, time.Since(t0)) }() // runs last: the prewarm is included
+	}
 	defer g.prewarmTick()
 
 	if g.diagPending {
@@ -1067,7 +1075,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	g.r.SetScreen(screen)
+	tw := time.Now()
 	g.w.Draw(screen)
+	fstats.addWorld(time.Since(tw))
 
 	// Diagnostic crop: save a small PNG centred on the requested tile.
 	if g.diagPending {
@@ -2279,6 +2289,7 @@ func main() {
 	ebiten.SetWindowSize(defaultWidth, defaultHeight)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetWindowTitle("GoLoco - Locomotion Reimplementation")
+	defer startCPUProfile()() // GOLOCO_CPUPROFILE=file (LOOP item 0)
 	if err := ebiten.RunGame(game); err != nil && err != ebiten.Termination {
 		log.Fatal(err)
 	}
