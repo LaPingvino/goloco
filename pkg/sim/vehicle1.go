@@ -9,8 +9,9 @@ import (
 // curves, bridges and rack rail on its reserved route, then Vehicle1's own
 // move by the distance Vehicle2's speed gives, against var_3C.
 //
-// PARTIAL: updateRoad (0x004A9969: the road target speed and Vehicle1's own
-// overtaking road motion) is not ported; on noRouteFound upstream calls the
+// Vehicle1::updateRoad's target speed (0x004A9969) is
+// Vehicle1RoadTargetSpeed. PARTIAL: Vehicle1's own road motion (its
+// updateRoadMotion with overtaking and lane changes) is not ported; on noRouteFound upstream calls the
 // head's sub_4AD93A (not ported: Vehicle1RailMove reports it); the level
 // crossing whistle is sound only.
 
@@ -82,4 +83,50 @@ func (m *Map) Vehicle1RailMove(c *MotionComponent, veh2CurrentSpeed int32, unkDi
 	})
 	*var3C += d - res.RemainingDistance
 	return res.Flags
+}
+
+// Vehicle1RoadTargetSpeed is updateRoad's targetSpeed (Speed16, mph): the
+// reserved route's curves and bridges, the road object Vehicle2 is on
+// (var_4F; none: 60 mph × curve fraction), Vehicle2 maxSpeed, rack rail,
+// var_3C (upstream's original bug kept) and command stop.
+func (m *Map) Vehicle1RoadTargetSpeed(head, veh1, veh2 *scenario.VehicleEntity, om *objects.ObjectManager) int16 {
+	curve := uint16(0xFFFF)
+	target := speed16Max
+	onRack := false
+	for _, h := range m.RoutingRing(RoutingHandle(veh1.RoutingHandle), true) {
+		res := m.Routing(h)
+		onRack = onRack || res&(1<<13) != 0
+		curve = min(curve, RoadCurveSpeedFraction[((res>>3)&0xF)%10])
+		if res&(1<<12) != 0 {
+			if b := om.GetBridgeObjectByIndex(int(res&0xE00) >> 9); b != nil && int16(b.MaxSpeed) != speed16Null {
+				target = min(int16(b.MaxSpeed), target)
+			}
+		}
+	}
+	if veh2.Var4F != -1 {
+		var maxSpeed int16
+		if rd := om.GetRoadObjectByIndex(int(uint8(veh2.Var4F))); rd != nil {
+			maxSpeed = rd.MaxSpeed
+		}
+		frac := int32(uint32(curve) * uint32(uint16(maxSpeed)))
+		target = min(int16((frac+mph)/65536), target)
+		target = max(target, 12)
+		if head.Flags38&flags38FasterCurves != 0 {
+			target += target / 4
+			target = min(maxSpeed, target)
+		}
+	} else {
+		target = int16(int32(uint32(curve)*60) / 65536)
+	}
+	target = min(target, veh2.MaxSpeed)
+	if onRack {
+		target = min(target, veh2.RackRailMaxSpeed)
+	}
+	target = min(target, int16(uint32(veh1.Var3C)>>15)+5)
+	if (head.VehicleFlags&VehicleFlagManualControl != 0 && head.ManualPower <= -20) || head.VehicleFlags&VehicleFlagCommandStop != 0 {
+		if veh2.CurrentSpeed == 0 {
+			target = 0
+		}
+	}
+	return target
 }
