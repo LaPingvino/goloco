@@ -11,7 +11,7 @@ import (
 //
 // PARTIAL: updateLastIncomeStats (Vehicle1 lastIncome, the vehicle window's
 // statistics), the workersCelebrate / citizensCelebrate messages, the AI
-// thought revenue (aiThoughts[].var_80), Vehicle2 curMonthRevenue, the
+// thought revenue (aiThoughts[].var_80), the
 // money effect and income sound are not ported.
 
 const (
@@ -211,6 +211,7 @@ func (m *Map) UpdateUnloadCargo(tr Train, om *objects.ObjectManager) {
 	profit := int32(head.Var58)
 	head.Var58 = 0
 	if profit != 0 {
+		m.Entities[tr.Veh2].CurMonthRevenue += profit
 		m.Entities[tr.Veh1].Var48 |= 1 << 2 // Flags48::flag2
 		m.ApplyPaymentToCompany(head.Owner, -profit, head.VehicleType*2)
 	}
