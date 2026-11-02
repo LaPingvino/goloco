@@ -137,3 +137,40 @@ func TestSavedRoadVehiclesDriveTheirRoutings(t *testing.T) {
 		t.Error("no component moved onto another piece")
 	}
 }
+
+// Every saved head builds upstream's Vehicle structure (head, Vehicle1,
+// Vehicle2, cars of bogie/bogie/body components, tail); every car begins
+// with a body_start; the trains' Vehicle2 speeds include the 60 mph the
+// Vehicles window shows for train 2.
+func TestSavedTrainStructure(t *testing.T) {
+	_, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rail, road, cars, at60 := 0, 0, 0, 0
+	for _, tr := range trains {
+		switch m.Entities[tr.Head].Mode {
+		case 0:
+			rail++
+		case 1:
+			road++
+		}
+		for _, c := range tr.Cars {
+			cars++
+			if m.Entities[c[0].Body].EntityType != scenario.VehicleTypeBodyStart {
+				t.Errorf("head %d: a car starts with body type %d", m.Entities[tr.Head].ID, m.Entities[c[0].Body].EntityType)
+			}
+		}
+		if sp := m.Entities[tr.Veh2].CurrentSpeed; sp>>16 == 60 && m.Entities[tr.Head].Mode == 0 {
+			at60++
+		}
+	}
+	t.Logf("%d vehicles (%d rail, %d road, the rest air/water), %d cars; rail at 60 mph: %d", len(trains), rail, road, cars, at60)
+	if rail != 14 || road != 83 {
+		t.Errorf("want 14 rail and 83 road vehicles")
+	}
+	if at60 == 0 {
+		t.Error("no train at 60 mph (Vehicle2 currentSpeed offset?)")
+	}
+}
