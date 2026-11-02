@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/objects"
+import (
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // Trees — Map/Tree.cpp (getRandomTreeTypeFromSurface; placeRandomTree and
 // placeTreeCluster need the CreateTree game command, not ported yet),
@@ -103,4 +106,104 @@ func (m *Map) RandomTreeTypeFromSurface(tx, ty int, unk bool, om *objects.Object
 	}
 	r := m.Rng1.RandNext()
 	return ok[int(r&0xFFFF)*len(ok)/65536], true
+}
+
+// quadrantCentreOffsets is CreateTree's _quadrantCentreOffsets.
+var quadrantCentreOffsets = [4][2]int32{{7, 7}, {7, 23}, {23, 23}, {23, 7}}
+
+// quadrantFromPos is getQuadrantFromPos.
+func quadrantFromPos(px, py int32) uint8 {
+	xn, yn := px&0x1F, py&0x1F
+	if xn > 16 {
+		if yn >= 16 {
+			return 0
+		}
+		return 1
+	}
+	if yn >= 16 {
+		return 3
+	}
+	return 2
+}
+
+// CreateTree is the CreateTree game command (apply, built immediately, no
+// ghost) as the map generator uses it: on the tile at (px, py) — already
+// tile-aligned — in the quadrant, unless underwater, on no-trees land or
+// without clearance (full clearance when requiresFullClearance). PARTIAL:
+// TownManager::updateTownInfo (the tree's rating effect on a town), the
+// command's cost, error texts and the free-elements check.
+func (m *Map) CreateTree(px, py int32, quadrant, rotation, treeType, colour uint8, requiresFullClearance bool, om *objects.ObjectManager) bool {
+	if px < 0 || py < 0 || px >= int32(m.Width*tileSize) || py >= int32(m.Height*tileSize) {
+		return false
+	}
+	if int(treeType) >= len(om.TreeObjects) || om.TreeObjects[treeType] == nil {
+		return false
+	}
+	to := om.TreeObjects[treeType]
+	qLand, _ := m.GetHeight(px+quadrantCentreOffsets[quadrant][0]-1, py+quadrantCentreOffsets[quadrant][1]-1)
+	t := m.TileAt(int(px/tileSize), int(py/tileSize))
+	if t.WaterLevel&0x1F != 0 && int16(t.WaterLevel&0x1F)*microZStep-1 > qLand {
+		return false // cant_build_this_underwater
+	}
+	if int(t.TerrainIndex) < len(om.LandObjects) && om.LandObjects[t.TerrainIndex] != nil && om.LandObjects[t.TerrainIndex].Flags&objects.LandFlagNoTrees != 0 {
+		return false
+	}
+	baseZ := uint8(qLand / smallZStep)
+	clearZ := baseZ + to.InitialHeight/smallZStep
+	if requiresFullClearance {
+		clearZ = 0xFF
+	}
+	baseQuarter := uint8(1) << (quadrant ^ 2)
+	if !m.CanConstructAt(px, py, baseZ, clearZ, baseQuarter, 0x0F) {
+		return false
+	}
+	el := scenario.TreeElement{TreeObjectID: treeType, Rotation: rotation, Quadrant: quadrant, Colour: colour,
+		Season: to.CurrentSeason, Unk7l: 7, BaseZ: baseZ}
+	el.Growth = to.Growth - 1 // buildImmediately
+	el.ClearZ = to.Height/smallZStep + baseZ
+	if int(baseZ)-4 > int(m.CurrentSnowLine) && uint16(to.Flags)&treeHasSnowVariation != 0 {
+		el.HasSnow = true
+	}
+	t.Trees = append(t.Trees, el)
+	t.insertRef(scenario.KindTree, len(t.Trees)-1, baseZ)
+	for i := range t.Order { // the new ref carries the occupied quarter
+		if t.Order[i].Kind == scenario.KindTree && int(t.Order[i].Index) == len(t.Trees)-1 {
+			t.Order[i].Flags = baseQuarter
+		}
+	}
+	return true
+}
+
+// PlaceRandomTree is placeRandomTree: a tree at a world point — its quadrant
+// from the point, a random rotation, a type for the surface unless given —
+// placed if CreateTree allows (with full clearance).
+func (m *Map) PlaceRandomTree(px, py int32, treeType int, om *objects.ObjectManager) bool {
+	quadrant := quadrantFromPos(px, py)
+	ax, ay := px&0xFFE0, py&0xFFE0
+	rotation := uint8(m.Rng1.RandNextBound(3))
+	tt := uint8(treeType)
+	if treeType < 0 {
+		var ok bool
+		if tt, ok = m.RandomTreeTypeFromSurface(int(ax/tileSize), int(ay/tileSize), false, om); !ok {
+			return false
+		}
+	}
+	return m.CreateTree(ax, ay, quadrant, rotation, tt, 0, true, om)
+}
+
+// PlaceTreeCluster is placeTreeCluster: range² × density / 8192 trees at
+// random points within range of the tile's corner (gPrng1, the high-precision
+// sine / cosine); true when any was placed.
+func (m *Map) PlaceTreeCluster(tx, ty int, rng, density uint16, treeType int, om *objects.ObjectManager) bool {
+	n := int(rng) * int(rng) * int(density) / 8192
+	errors := 0
+	for range n {
+		mag := m.Rng1.RandNextBound(0xFFFF) * int32(rng) / 65536
+		dir := uint16(m.Rng1.RandNextBound(0x4000 - 1))
+		ox, oy := IntegerSinePrecisionHigh(dir, mag), IntegerCosinePrecisionHigh(dir, mag)
+		if !m.PlaceRandomTree(ox+int32(tx*tileSize), oy+int32(ty*tileSize), treeType, om) {
+			errors++
+		}
+	}
+	return errors < n
 }

@@ -38,6 +38,8 @@ type TreeObject struct {
 	Flags         TreeObjectFlags // 0x08
 	Var3C         uint8           // 0x3C — bitmask controlling which season variants exist
 	SeasonState   uint8           // 0x3D
+	CurrentSeason uint8           // 0x3E
+	Rating        int16           // 0x48 (town rating effect)
 	Colours       uint32          // 0x44
 
 	// Calculated from image table during load
@@ -72,6 +74,8 @@ func ParseTreeObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tre
 		Flags:         TreeObjectFlags(binary.LittleEndian.Uint16(data[0x08:0x0A])),
 		Var3C:         data[0x3C],
 		SeasonState:   data[0x3D],
+		CurrentSeason: data[0x3E],
+		Rating:        int16(binary.LittleEndian.Uint16(data[0x48:])),
 		Colours:       binary.LittleEndian.Uint32(data[0x44:0x48]),
 	}
 
