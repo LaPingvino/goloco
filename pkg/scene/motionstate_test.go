@@ -1277,3 +1277,48 @@ func TestSavedStationCargoDistribution(t *testing.T) {
 		t.Errorf("too few exact")
 	}
 }
+
+// Towns and industries from the save: every cargo a town got this month is
+// among the types it ever got (var_1A8 is set on each delivery, never
+// cleared); the parsed industries are exactly those the map's industry
+// tiles reference.
+func TestSavedTownsAndIndustries(t *testing.T) {
+	_, m, _ := titleView(t)
+	deliveredTowns := 0
+	for _, tw := range m.Towns {
+		any := false
+		for c, q := range tw.MonthlyCargoDelivered {
+			if q == 0 {
+				continue
+			}
+			any = true
+			if tw.Var1A8&(1<<c) == 0 {
+				t.Errorf("town %d: %d of cargo %d this month but not in var_1A8 %#x", tw.ID, q, c, tw.Var1A8)
+			}
+		}
+		if any {
+			deliveredTowns++
+		}
+	}
+	onMap := map[uint8]bool{}
+	for y := range m.Height {
+		for x := range m.Width {
+			for _, in := range m.TileAt(x, y).Industries {
+				onMap[in.IndustryID] = true
+			}
+		}
+	}
+	parsed := map[uint8]bool{}
+	for _, in := range m.Industries {
+		parsed[in.ID] = true
+		if !onMap[in.ID] {
+			t.Errorf("industry %d parsed but on no tile", in.ID)
+		}
+	}
+	for id := range onMap {
+		if !parsed[id] {
+			t.Errorf("industry %d on the map but not parsed", id)
+		}
+	}
+	t.Logf("towns %d (with deliveries this month %d); industries %d", len(m.Towns), deliveredTowns, len(m.Industries))
+}

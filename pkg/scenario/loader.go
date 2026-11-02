@@ -281,6 +281,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.Rng = [2]uint32{binary.LittleEndian.Uint32(gameState[0:]), binary.LittleEndian.Uint32(gameState[4:])}
 		sc.ScenarioTicks = binary.LittleEndian.Uint32(gameState[0x146:])
 		sc.Companies = parseCompanyEconomy(gameState)
+		sc.Industries = parseIndustries(gameState)
 		sc.UnkRng = [2]uint32{binary.LittleEndian.Uint32(gameState[8:]), binary.LittleEndian.Uint32(gameState[12:])}
 		sc.RoadUsableByAll = binary.LittleEndian.Uint32(gameState[0x1A8:])
 		sc.CurrentDay = ParseCurrentDay(gameState)
@@ -1107,8 +1108,13 @@ func parseTowns(buf []byte) []Town {
 			Population:   binary.LittleEndian.Uint32(rec[townPopulationOffset:]),
 			NumBuildings: int16(binary.LittleEndian.Uint16(rec[townNumBuildingsOffset:])),
 			NumStations:  int16(binary.LittleEndian.Uint16(rec[townNumStationsOffset:])),
+			ID:           uint16(i),
+			Var1A8:       binary.LittleEndian.Uint32(rec[0x1A8:]),
 			Size:         rec[townSizeOffset],
 		})
+		for c := range 32 {
+			towns[len(towns)-1].MonthlyCargoDelivered[c] = binary.LittleEndian.Uint16(rec[0x158+2*c:])
+		}
 	}
 	return towns
 }
@@ -1478,6 +1484,33 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 			c.CargoDelivered[k] = binary.LittleEndian.Uint32(r[0x8BCE+4*k:])
 		}
 		c.CargoUnitsTotalDistance = binary.LittleEndian.Uint32(r[0x8C50:])
+	}
+	return out
+}
+
+// parseIndustries reads the non-empty industry slots (Industry::empty: name
+// is StringIds::null).
+func parseIndustries(gs []byte) []Industry {
+	off := industriesGameStateOffset
+	if len(gs) == GameStateSizeType2 {
+		off = industriesGameStateOffsetType2
+	}
+	if len(gs) < off+industryMaxCount*industryRecordSize {
+		return nil
+	}
+	var out []Industry
+	for i := range industryMaxCount {
+		r := gs[off+i*industryRecordSize:]
+		if binary.LittleEndian.Uint16(r[0:]) == 0xFFFF {
+			continue
+		}
+		ind := Industry{ID: uint8(i), ObjectID: r[0x10], Town: binary.LittleEndian.Uint16(r[0xD5:]),
+			HistoryMinProduction: binary.LittleEndian.Uint32(r[0x38B:])}
+		for k := range 3 {
+			ind.ReceivedMonthlyTotal[k] = binary.LittleEndian.Uint16(r[0x18D+2*k:])
+			ind.ReceivedDailyTotal[k] = binary.LittleEndian.Uint16(r[0x199+2*k:])
+		}
+		out = append(out, ind)
 	}
 	return out
 }

@@ -123,6 +123,7 @@ type Scenario struct {
 	Rng, UnkRng           [2]uint32
 	ScenarioTicks         uint32           // GameState scenarioTicks (0x146)
 	Companies             []CompanyEconomy // per company slot (parseCompanyEconomy)
+	Industries            []Industry       // non-empty industry slots (parseIndustries)
 	RoadUsableByAll       uint32
 	Entities              []VehicleEntity
 	VehicleList           []VehicleListEntry // heads with veh1/veh2 list data (VehicleList.cpp)
@@ -153,6 +154,24 @@ type Town struct {
 	NumBuildings int16  // 0x38
 	Size         uint8  // 0x5A TownSize: 0 hamlet .. 4 metropolis
 	NumStations  int16  // 0x1A6 (offsetof(S5::Town, numStations), from the compiler)
+	// ID is the town's slot (TownId): Towns skips empty slots, so ids and
+	// indices differ when an empty slot comes first.
+	ID uint16
+	// Delivery state (offsets from the compiler): monthlyCargoDelivered[32]
+	// at 0x158, var_1A8 (cargo types ever delivered here, bits) at 0x1A8.
+	MonthlyCargoDelivered [32]uint16
+	Var1A8                uint32
+}
+
+// Industry is what deliveries read and write of an S5 Industry (offsets from
+// the compiler; 128 slots at GameState 0x09E744, Type2 0x09CB24).
+type Industry struct {
+	ID                   uint8
+	ObjectID             uint8     // 0x10
+	Town                 uint16    // 0xD5
+	ReceivedMonthlyTotal [3]uint16 // 0x18D receivedCargoQuantityMonthlyTotal
+	ReceivedDailyTotal   [3]uint16 // 0x199 receivedCargoQuantityDailyTotal
+	HistoryMinProduction uint32    // 0x38B history_min_production[0] (cargo types that celebrated)
 }
 
 // GetTile returns tile at the given coordinates
