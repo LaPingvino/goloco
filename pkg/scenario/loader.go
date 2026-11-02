@@ -312,7 +312,10 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 			}
 		}
 		sc.ControllingCompany = parseControllingCompany(gameState)
-		if len(gameState) > 0x196 { // general.trafficHandedness (from the compiler)
+		sc.PlayerCompanies = [2]uint8{gameState[playerCompaniesOffset], gameState[playerCompaniesOffset+1]}
+		sc.LoanInterestRate = gameState[0x1AE]                         // loanInterestRate
+		sc.MaxLoanSize = binary.LittleEndian.Uint16(gameState[0x402:]) // maxLoanSize
+		if len(gameState) > 0x196 {                                    // general.trafficHandedness (from the compiler)
 			sc.TrafficHandedness = gameState[0x196]
 		}
 		sc.StationOwners = parseStationOwners(gameState)
@@ -1464,14 +1467,15 @@ type CompanyEconomy struct {
 	CargoUnitsTotalDelivered uint32        // 0x85F8
 	CargoDelivered           [32]uint32    // 0x8BCE
 	CargoUnitsTotalDistance  uint32        // 0x8C50
-	CompanyValueHistory0     int64         // 0x88CE companyValueHistory[0] (currency48_t)
+	CompanyValueHistory      [120]int64    // 0x88CE currency48_t
 	VehicleProfit            int64         // 0x8B9E currency48_t
 	ChallengeProgress        uint8         // 0x8C4E
 	CurrentRating            uint8         // 0x25BF
 	HistorySize              uint16        // 0x88CC
 	NumMonthsInTheRed        uint8         // 0x8C4F
-	CargoUnitsDistanceHist0  uint32        // 0x8C54 cargoUnitsDistanceHistory[0]
-	PerformanceIndexHist0    int16         // 0x87DC performanceIndexHistory[0]
+	CargoUnitsDistanceHist   [120]uint32   // 0x8C54
+	CargoUnitsDeliveredHist  [120]uint32   // 0x85FC
+	PerformanceIndexHist     [120]int16    // 0x87DC
 }
 
 // parseCompanyEconomy reads every company slot's CompanyEconomy.
@@ -1502,14 +1506,17 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 			c.CargoDelivered[k] = binary.LittleEndian.Uint32(r[0x8BCE+4*k:])
 		}
 		c.CargoUnitsTotalDistance = binary.LittleEndian.Uint32(r[0x8C50:])
-		c.CompanyValueHistory0 = currency48(r[0x88CE:])
+		for k := range 120 {
+			c.CompanyValueHistory[k] = currency48(r[0x88CE+6*k:])
+			c.CargoUnitsDistanceHist[k] = binary.LittleEndian.Uint32(r[0x8C54+4*k:])
+			c.CargoUnitsDeliveredHist[k] = binary.LittleEndian.Uint32(r[0x85FC+4*k:])
+			c.PerformanceIndexHist[k] = int16(binary.LittleEndian.Uint16(r[0x87DC+2*k:]))
+		}
 		c.VehicleProfit = currency48(r[0x8B9E:])
 		c.ChallengeProgress = r[0x8C4E]
 		c.CurrentRating = r[0x25BF]
 		c.HistorySize = binary.LittleEndian.Uint16(r[0x88CC:])
 		c.NumMonthsInTheRed = r[0x8C4F]
-		c.CargoUnitsDistanceHist0 = binary.LittleEndian.Uint32(r[0x8C54:])
-		c.PerformanceIndexHist0 = int16(binary.LittleEndian.Uint16(r[0x87DC:]))
 	}
 	return out
 }

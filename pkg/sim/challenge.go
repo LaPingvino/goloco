@@ -69,10 +69,10 @@ func (m *Map) NewChallengeProgress(id int, om *objects.ObjectManager) uint8 {
 	progress := 0
 	switch o.Type {
 	case 0: // companyValue
-		if c.CompanyValueHistory0 >= int64(int32(o.CompanyValue)) {
+		if c.CompanyValueHistory[0] >= int64(int32(o.CompanyValue)) {
 			return 100
 		}
-		return uint8(c.CompanyValueHistory0 / int64(o.CompanyValue/100))
+		return uint8(c.CompanyValueHistory[0] / int64(o.CompanyValue/100))
 	case 1: // vehicleProfit
 		if c.VehicleProfit <= 0 {
 			return 0

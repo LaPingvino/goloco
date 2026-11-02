@@ -119,6 +119,9 @@ type Scenario struct {
 	CurrentMonth                                            uint8    // general.currentMonth (0x1C)
 	CurrentDayOfMonth                                       uint8    // general.currentDayOfMonth (0x1D)
 	DayCounter                                              uint16   // general.dayCounter (0x18)
+	PlayerCompanies                                         [2]uint8 // playerCompanies (0x24)
+	LoanInterestRate                                        uint8    // loanInterestRate (0x1AE)
+	MaxLoanSize                                             uint16   // maxLoanSize (0x402)
 	Orders                                                  []byte   // GameState orders[] (ParseOrders)
 	Routings                                                []uint16 // GameState routings[] (ParseRoutings), by RoutingHandle
 	// GameState roadObjectIdIsAnyRoadTypeCompatible (0x1A4) and
