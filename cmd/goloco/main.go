@@ -1213,6 +1213,15 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	if os.Getenv("GOLOCO_DIAG_VEHLIST") != "" && !g.vehDiagDone && g.w != nil { // the vehicle list (trains of their first owner)
 		g.vehDiagDone = true
 		g.openVehicleList(0)
+		if os.Getenv("GOLOCO_DIAG_VEHLIST") == "cargo" && g.townList != nil { // transporting cargo, the cargo dropdown open
+			w := g.townList
+			w.HandleClick(w.X+270, w.Y+205)
+			if g.dropdown != nil && g.dropdown.OnSelect != nil {
+				g.dropdown.OnSelect(1)
+				g.dropdown = nil
+			}
+			w.HandleClick(w.X+400, w.Y+205)
+		}
 	}
 	if os.Getenv("GOLOCO_DIAG_OPTIONS") != "" && g.options == nil && !g.diagOptionsDone {
 		g.diagOptionsDone = true

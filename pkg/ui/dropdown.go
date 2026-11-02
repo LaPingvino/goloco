@@ -49,6 +49,9 @@ type DropdownItem struct {
 	Lines        []string
 	MoveX10      bool
 	Action       func()
+	// TrailSprite, if > 0, is an inline {SPRITE} drawn after the text at the
+	// pen position (carrying_cargoid_sprite).
+	TrailSprite int
 }
 
 // Dropdown geometry (Dropdown.cpp common::showText): items 10 px high
@@ -179,6 +182,14 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 					m, _ := g1.GetPaletteMap(int(it.SpriteColour))
 					gfx8.DrawSpriteNoise(rt, sp, 2, 1+i*ih+1, gfx8.OpFor(sp, m != nil, false), m, nil)
 				}
+			}
+			if it.TrailSprite > 0 && it.Text != "" {
+				tx := 2
+				if it.MoveX10 {
+					tx += 10
+				}
+				tw, _ := MeasureTextBold(it.Text)
+				drawG1At(rt, it.TrailSprite, tx+tw, 1+i*ih)
 			}
 			for k, ln := range it.Lines {
 				smalls = append(smalls, small{ln, 2 + 45, 1 + i*ih + 1 + 10*k, c})

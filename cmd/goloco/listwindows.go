@@ -31,7 +31,7 @@ func (g *Game) openVehicleList(tab int) {
 				cars = append(cars, ui.TrainCarDraw(c))
 			}
 			rows = append(rows, ui.VehicleRow{Name: v.Name, Profit: v.Profit, AgeYears: v.AgeYears, Reliability: v.Reliability,
-				RecentProfit: v.RecentProfit, DayCreated: v.DayCreated, Cars: cars, Status: v.Status, StatusRed: v.StatusRed})
+				RecentProfit: v.RecentProfit, DayCreated: v.DayCreated, Cars: cars, Status: v.Status, StatusRed: v.StatusRed, Cargos: v.Cargos})
 		}
 	}
 	var tc, wc uint8 = 0, 1
@@ -43,7 +43,17 @@ func (g *Game) openVehicleList(tab int) {
 	if company < len(g.w.CompanyColours) {
 		tc = g.w.CompanyColours[company]
 	}
-	w := ui.NewVehicleList(g.sw, tab, rows, tc, wc)
+	// The cargo filter's list: every loaded cargo object, by its slot.
+	var cargos []ui.VehicleListCargo
+	if g.objMgr != nil {
+		for id, c := range g.objMgr.CargoObjects {
+			if c != nil {
+				cargos = append(cargos, ui.VehicleListCargo{ID: id, Name: c.Name, Sprite: int(c.ImageOffset)}) // unitInlineSprite
+			}
+		}
+	}
+	w := ui.NewVehicleList(g.sw, tab, rows, tc, wc, cargos)
+	w.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
 	if cname != "" {
 		w.Caption = cname + " - " + w.Caption // stringid_trains etc.
 	}

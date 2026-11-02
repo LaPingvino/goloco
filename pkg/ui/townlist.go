@@ -65,7 +65,14 @@ type TownListWindow struct {
 	// in another colour (a mid-string {COLOUR …}, as VehicleList's red
 	// statuses).
 	CellSplit func(r, c int) (at, colour int)
-	List      [4]int
+	// Window-specific widgets: Extra8 draws into the 8-bit frame, ExtraText
+	// draws text over it, ExtraClick takes a click first (true = handled);
+	// OpenDropdown shows a dropdown for the window.
+	Extra8       func(rt *gfx8.RenderTarget, sec []uint8)
+	ExtraText    func(screen *ebiten.Image)
+	ExtraClick   func(px, py int) bool
+	OpenDropdown func(*DropdownMenu)
+	List         [4]int
 	// Outline draws row text outlined (VehicleList: AdvancedColour(black).outline()
 	// with {COLOUR WINDOW_2}); HoverSolid highlights the hovered row with a solid
 	// shade-0 rect instead of the translucent one.
@@ -201,6 +208,9 @@ func (w *TownListWindow) HandleClick(px, py int) {
 		}
 		return
 	}
+	if w.ExtraClick != nil && w.ExtraClick(px, py) {
+		return
+	}
 	for i := range w.Tabs {
 		if w.in([4]int{3 + 31*i, 15, 31, 27}, px, py) {
 			if w.OnTab != nil && i != w.CurrentTab {
@@ -290,6 +300,9 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 				}
 			}
 		}
+		if w.Extra8 != nil {
+			w.Extra8(rt, sec)
+		}
 		if w.RowDraw != nil && cw > 0 && ch > 0 { // drawn into the scroll view's own target (its clip)
 			sub := gfx8.NewRenderTarget(cw, ch)
 			for yy := range ch {
@@ -366,6 +379,9 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 		}
 	}
 	DrawTextBold(screen, w.Status, w.X+4, w.Y+w.StatusY, black)
+	if w.ExtraText != nil {
+		w.ExtraText(screen)
+	}
 }
 
 // VehicleRow is one vehicle of the vehicle list.
@@ -382,6 +398,9 @@ type VehicleRow struct {
 	// Status is VehicleHead::getStatus as text; StatusRed its {COLOUR RED}.
 	Status    string
 	StatusRed bool
+	// Cargos are the cargo ids of its UnloadAll / WaitFor orders
+	// (vehicleIsTransportingCargo).
+	Cargos []int
 }
 
 // vehicleOrder is VehicleList.cpp getOrder: name (strcmp, default), profit
@@ -412,7 +431,8 @@ var vehicleListRowHeights = [6]int{28, 28, 28, 28, 48, 36}
 // for a loss), each train drawn inline at the bottom of its row
 // (drawTrainInline). PARTIAL: the status after the name
 // (VehicleHead::getStatus), the filter dropdowns, the company select button.
-func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour uint8) *TownListWindow {
+func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour uint8, cargos []VehicleListCargo) *TownListWindow {
+	all := append([]VehicleRow(nil), vehicles...)
 	vehicles = append([]VehicleRow(nil), vehicles...)
 	rows := make([][]string, len(vehicles))
 	cells := func(v VehicleRow) []string {
@@ -437,10 +457,7 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 	for i, v := range vehicles {
 		rows[i] = cells(v)
 	}
-	status := itoa3(len(rows)) + " vehicles"
-	if len(rows) == 1 {
-		status = "1 vehicle"
-	}
+	status := vehicleListFooter(tab, len(rows))
 	w := &TownListWindow{X: sw - 550, Y: 30, TitleColour: titleColour, Colour: colour, Caption: vehicleListCaptions[tab], Tabs: 6,
 		Columns: []TableColumn{{4, 310, "Name", 4 + 1 - 4, 310 - 2}, {314, 100, "Monthly Profit", 314 + 1 - 4, 100 - 2}, {414, 65, "Age", 414 + 1 - 4, 65 - 2}, {479, 67, "Reliability", 479 + 1 - 4, 67 - 2}},
 		Rows:    rows, Status: status, Hover: -1, CurrentTab: tab,
@@ -471,6 +488,7 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 		}
 	}
 	w.Sort(0)
+	addVehicleListFilters(w, tab, &vehicles, all, cells, cargos)
 	return w
 }
 
