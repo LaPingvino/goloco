@@ -132,6 +132,7 @@ func townOrder(mode int, a, b TownRow) bool {
 type StationRow struct {
 	Name, Status, Accepts string
 	Waiting               int
+	AcceptsKey            string // orderByAccepts: the accepted cargo names run together
 }
 
 // NewStationList opens the station list (StationList.cpp): columns Name,
@@ -146,9 +147,34 @@ func NewStationList(sw int, stations []StationRow, titleColour, colour uint8) *T
 	if len(rows) == 1 {
 		status = "1 station"
 	}
-	return (&TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: "All Stations", Tabs: 5, ColourCaption: true,
+	w := (&TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: "All Stations", Tabs: 5, ColourCaption: true,
 		Columns: []TableColumn{{4, 200, "Name", 0, 198}, {204, 200, "Status", 200, 198}, {404, 90, "Total waiting", 400, 88}, {494, 120, "Accepts", 490, 118}},
 		Rows:    rows, Status: status, Hover: -1}).setTableGeometry()
+	// sortStationList: a stable sort by the header clicked, name by default.
+	w.Sort = func(mode int) {
+		order := append([]StationRow(nil), stations...)
+		sort.SliceStable(order, func(i, j int) bool { return stationOrder(mode, order[i], order[j]) })
+		for i, s := range order {
+			w.Rows[i] = []string{s.Name, s.Status, itoa3(s.Waiting) + " units", s.Accepts}
+		}
+	}
+	w.Sort(0)
+	return w
+}
+
+// stationOrder is StationList.cpp getOrder: name (strcmp), status and total
+// waiting both by the units waiting (descending), accepts (strcmp of the
+// accepted cargo names run together).
+func stationOrder(mode int, a, b StationRow) bool {
+	switch mode {
+	case 0:
+		return a.Name < b.Name
+	case 1, 2:
+		return b.Waiting < a.Waiting
+	case 3:
+		return a.AcceptsKey < b.AcceptsKey
+	}
+	return false
 }
 
 var tlList = [4]int{3, 56, 594, 126}

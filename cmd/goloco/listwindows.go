@@ -48,7 +48,8 @@ func (g *Game) openStationsWindow() {
 		if s.Owner >= 0 && s.Owner != company {
 			continue
 		}
-		rows = append(rows, ui.StationRow{Name: s.Name, Status: s.Status, Waiting: s.Waiting, Accepts: s.Accepts})
+		rows = append(rows, ui.StationRow{Name: s.Name, Status: s.Status, Waiting: s.Waiting, Accepts: s.Accepts,
+			AcceptsKey: g.w.StationAcceptsKey(s.ID)})
 	}
 	var tc, wc uint8 = 0, 1
 	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {

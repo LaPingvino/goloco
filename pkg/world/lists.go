@@ -254,6 +254,22 @@ func (w *World) stationCargoText(id int) (status string, waiting int, accepts st
 	return status, waiting, strings.Join(acc, ", ")
 }
 
+// StationAcceptsKey is StationList's orderByAccepts key: the accepted
+// cargoes' names run together, in cargo order.
+func (w *World) StationAcceptsKey(id int) string {
+	if id >= len(w.StationNames) || w.renderer == nil || w.renderer.ObjMgr == nil {
+		return ""
+	}
+	cargos := w.renderer.ObjMgr.CargoObjects
+	var b strings.Builder
+	for c, cs := range w.StationNames[id].Cargo {
+		if cs.Flags&1 != 0 && c < len(cargos) && cargos[c] != nil {
+			b.WriteString(cargos[c].Name)
+		}
+	}
+	return b.String()
+}
+
 // formatCount fills a cargo unit string's number argument. Object strings
 // carry Locomotion control codes as raw bytes: 123 is int32_grouped (the
 // number with thousands separators, Formatting.h ControlCodes).
