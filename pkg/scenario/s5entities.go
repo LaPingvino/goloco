@@ -244,6 +244,14 @@ type VehicleEntity struct {
 	CurrentSpeed      int32  // Vehicle2 currentSpeed (0x56): Speed32, mph << 16
 	Var44             uint16 // VehicleBogie var_44 (0x44): wheel roll accumulator (updateRoll)
 	WheelSlipping     uint8  // VehicleBogie wheelSlipping (0x5E): ticks, counts up
+	// Driving state (offsets from the compiler over S5Entity.h).
+	VehicleFlags uint16 // EntityBase vehicleFlags (0x0C): unk_0 = 1, manualControl = 1<<6
+	ManualPower  int8   // VehicleHead manualPower (0x6E)
+	TargetSpeed  int16  // Vehicle1 targetSpeed (0x44): Speed16, mph
+	TotalPower   uint16 // Vehicle2 totalPower (0x50)
+	TotalWeight  uint16 // Vehicle2 totalWeight (0x52); VehicleBogie totalCarWeight (0x52, first bogie of a car)
+	MotorState   uint8  // Vehicle2 motorState (0x5A)
+	Var73        uint8  // Vehicle2 var_73 (0x73): bit 0 broken down
 
 	// ---- VehicleBody / VehicleBogie sprite fields ----
 	ObjectID         uint16 // vbObjectId (0x40) — vehicle object slot (ObjMgr.Vehicles[N])
@@ -349,6 +357,13 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			CurrentSpeed:      int32(binary.LittleEndian.Uint32(e[0x56:])),
 			Var44:             binary.LittleEndian.Uint16(e[0x44:]),
 			WheelSlipping:     e[0x5E],
+			VehicleFlags:      binary.LittleEndian.Uint16(e[0x0C:]),
+			ManualPower:       int8(e[0x6E]),
+			TargetSpeed:       int16(binary.LittleEndian.Uint16(e[0x44:])),
+			TotalPower:        binary.LittleEndian.Uint16(e[0x50:]),
+			TotalWeight:       binary.LittleEndian.Uint16(e[0x52:]),
+			MotorState:        e[0x5A],
+			Var73:             e[0x73],
 
 			ObjectID:         uint16(e[vbObjectId]) | uint16(e[vbObjectId+1])<<8,
 			ObjectSpriteType: e[vbObjectSpriteType],

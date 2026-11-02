@@ -119,6 +119,8 @@ type Scenario struct {
 	// GameState roadObjectIdIsAnyRoadTypeCompatible (0x1A4) and
 	// roadObjectIdIsUsableByAllCompanies (0x1A8): bit per road object id.
 	RoadAnyTypeCompatible uint32
+	// Rng is GameState rng (gPrng1: srand0, srand1 at 0x00); UnkRng gPrng2 (0x08).
+	Rng, UnkRng           [2]uint32
 	RoadUsableByAll       uint32
 	Entities              []VehicleEntity
 	VehicleList           []VehicleListEntry // heads with veh1/veh2 list data (VehicleList.cpp)
