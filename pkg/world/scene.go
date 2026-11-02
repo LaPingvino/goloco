@@ -36,6 +36,16 @@ func (w *World) drawScene(screen *ebiten.Image) {
 			w.sceneFrames, w.sceneTime = 0, 0
 		}
 	}()
+	// Responsiveness first (LOOP item 0, Joop: "give up internal speed for
+	// responsiveness"): while a window or menu is open the world is re-rendered
+	// only every SceneEvery-th frame, the last picture reused in between, so the
+	// UI runs at the full frame rate.
+	w.sceneSkip++
+	if w.SceneEvery > 1 && w.sceneImg != nil && w.sceneImg.Bounds().Dx() == sw && w.sceneImg.Bounds().Dy() == sh &&
+		w.sceneSkip%w.SceneEvery != 0 {
+		screen.DrawImage(w.sceneImg, nil)
+		return
+	}
 	rt := w.scene.Render(&w.Map, scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: uint32(w.animTick)})
 	if w.sceneImg == nil || w.sceneImg.Bounds().Dx() != sw || w.sceneImg.Bounds().Dy() != sh {
 		w.sceneImg = ebiten.NewImage(sw, sh)
