@@ -547,6 +547,8 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					IsLast:                elem[1]&0x40 != 0,
 					Ghost:                 elem[1]&0x10 != 0,
 					AiAllocated:           elem[1]&0x20 != 0,
+					LaneOccupation:        (elem[4] >> 4) & 3,
+					Unk7_10:               elem[7]&0x10 != 0,
 				}
 				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeRoad, Index: uint16(len(sc.Tiles[y][x].Roads))})
 				sc.Tiles[y][x].Roads = append(sc.Tiles[y][x].Roads, re)

@@ -37,5 +37,7 @@ int main()
     for (auto& p : kRotationOffset) std::printf("{%d, %d}, ", p.x, p.y);
     std::printf("}\n\n// ReverseRotation is World::kReverseRotation.\nvar ReverseRotation = [16]uint8{");
     for (auto r : kReverseRotation) std::printf("%u, ", r);
+    std::printf("}\n\n// RoadOccupationMasks is getRoadOccupationMask (kRoadOccupationMasks).\nvar RoadOccupationMasks = [128]uint8{");
+    for (int i = 0; i < 128; i++) std::printf("%u, ", getRoadOccupationMask(i));
     std::printf("}\n");
 }

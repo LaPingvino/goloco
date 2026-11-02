@@ -225,3 +225,68 @@ func TestTrackNetworkSearch(t *testing.T) {
 		}
 	}
 }
+
+// Under every saved road vehicle's tail the lanes its piece uses are marked
+// occupied (getRoadOccupationMask); then every tail, driven 100 ticks at its
+// train's saved speed (VehicleTail::update), never loses its route and
+// frees each routing it leaves.
+func TestSavedTailsUpdate(t *testing.T) {
+	_, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	laneOK, laneN := 0, 0
+	for _, tr := range trains {
+		e := m.Entities[tr.Tail]
+		if e.Mode != 1 {
+			continue
+		}
+		laneN++
+		lanes := sim.RoadOccupationMasks[(e.TrackAndDirection&0x1FF)>>2] >> 4
+		for _, el := range m.TileAt(int(e.TileX)>>5, int(e.TileY)>>5).Roads {
+			if uint16(el.RoadID) == e.TrackAndDirection>>3&0xF && uint16(el.Rotation) == e.TrackAndDirection&3 && el.LaneOccupation&lanes == lanes {
+				laneOK++
+				break
+			}
+		}
+	}
+	t.Logf("road tails on occupied lanes: %d of %d", laneOK, laneN)
+	if laneOK != laneN {
+		t.Errorf("%d road tails stand on lanes not marked occupied", laneN-laneOK)
+	}
+	freed := 0
+	for _, tr := range trains {
+		head, tail := m.Entities[tr.Head], m.Entities[tr.Tail]
+		if tail.Mode > 1 {
+			continue
+		}
+		c := sim.MotionComponent{
+			Road: tail.Mode == 1, RightHand: m.TrafficHandedness != 0,
+			TrackAndDirection: tail.TrackAndDirection, SubPosition: tail.SubPosition,
+			TileX: int32(tail.TileX), TileY: int32(tail.TileY), TileBaseZ: tail.TileBaseZ,
+			RemainingDistance: tail.RemainingDistance, X: int32(tail.PosX), Y: int32(tail.PosY), Z: int32(tail.PosZ),
+			RoutingHandle: sim.RoutingHandle(tail.RoutingHandle), Owner: tail.Owner, TrackType: tail.TrackType,
+		}
+		if !c.Road {
+			c.TrackAndDirection &= sim.TaDBasicMask
+		}
+		d1, _ := sim.UpdateDistances(m.Entities[tr.Veh2].CurrentSpeed)
+		for range 100 {
+			before := c.RoutingHandle
+			if !m.TailUpdate(&c, d1, head.HeadVar53) {
+				t.Fatalf("head %d: tail lost its route", head.ID)
+			}
+			if c.RoutingHandle != before {
+				freed++
+				if m.Routing(before) != sim.RoutingAllocatedButFree {
+					t.Errorf("head %d: routing left behind not freed", head.ID)
+				}
+			}
+		}
+	}
+	t.Logf("tails freed %d routings in 100 ticks", freed)
+	if freed == 0 {
+		t.Error("no tail left a piece")
+	}
+}
