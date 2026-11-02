@@ -203,3 +203,89 @@ func (s *Session) PaintWater(self Surface, neighbours [4]*Surface, w WaterImages
 		s.paintCliffEdgeImpl(sprite, edge, edgeHeight{wz, eh.neighbour0, wz, eh.neighbour1}, cliffBase)
 	}
 }
+
+// SmoothTile is what paintSurfaceSmoothenEdge reads of a tile descriptor:
+// the surface, its land object (0xFF for an industry field), display slope,
+// snow coverage and growth stage. Present is false for no neighbour surface.
+type SmoothTile struct {
+	Surface
+	Present      bool
+	Land         uint8
+	DisplaySlope int
+	Snow, Growth uint8
+}
+
+// SmoothLand is what the smoothing reads of a land object.
+type SmoothLand struct {
+	Image, ImagesPerGrowthStage int
+	SharpSlopeTransition        bool // LandObjectFlags::hasSharpSlopeTransition
+	DisableSmoothTransition     bool // LandObjectFlags::disableSmoothTileTransition
+}
+
+// PaintSurfaceSmoothing is paintSurface's landscape smoothing (zoom 0,
+// Config::landscapeSmoothing, not underground): paintSurfaceSmoothenEdge for
+// edges 2, 3, 0, 1, each attached to the surface.
+func (s *Session) PaintSurfaceSmoothing(self SmoothTile, nbs [4]SmoothTile, land func(id uint8) (SmoothLand, bool), snowImage int, sprite func(int) *gfx8.Sprite) {
+	sc := corners(self.Surface)
+	for _, edge := range [4]int{2, 3, 0, 1} {
+		s.smoothenEdge(edge, self, sc, nbs[edge], land, snowImage, sprite)
+	}
+}
+
+// smoothenEdge is paintSurfaceSmoothenEdge.
+func (s *Session) smoothenEdge(edge int, self SmoothTile, selfCorners [4]int, nb SmoothTile, land func(uint8) (SmoothLand, bool), snowImage int, sprite func(int) *gfx8.Sprite) {
+	if !nb.Present {
+		return
+	}
+	eh := edgeHeightFor(selfCorners, nb.Surface, edge)
+	if eh.neighbour1 != eh.self1 || eh.neighbour0 != eh.self0 {
+		return
+	}
+	if nb.Land == 0xFF || self.Land == 0xFF { // either is industrial
+		return
+	}
+	if self.Snow == 3 {
+		return
+	}
+	var dh, cl uint8
+	switch edge {
+	case 0:
+		dh, cl = Surfacek4FDA5E[self.DisplaySlope], Surfacek4FDA84[nb.DisplaySlope]
+	case 1:
+		dh, cl = Surfacek4FDA97[self.DisplaySlope], Surfacek4FDA71[nb.DisplaySlope]
+	case 2:
+		dh, cl = Surfacek4FDA71[self.DisplaySlope], Surfacek4FDA97[nb.DisplaySlope]
+	case 3:
+		dh, cl = Surfacek4FDA84[self.DisplaySlope], Surfacek4FDA5E[nb.DisplaySlope]
+	}
+	selfObj, nbObj := self.Land, nb.Land
+	if self.Snow >= 4 {
+		selfObj = 0xFF
+	}
+	if nb.Snow >= 4 {
+		nbObj = 0xFF
+	}
+	selfLand, ok1 := land(self.Land)
+	nbLand, ok2 := land(nb.Land)
+	if !ok1 || !ok2 {
+		return
+	}
+	if self.Growth == nb.Growth && selfObj == nbObj { // same tint
+		if cl == dh || selfLand.SharpSlopeTransition {
+			return
+		}
+	} else if selfLand.DisableSmoothTransition || nbLand.DisableSmoothTransition {
+		return
+	}
+	base := sprite(int(SurfaceSmoothFromSlope[edge][self.DisplaySlope]))
+	var mask *gfx8.Sprite
+	if nbObj == 0xFF { // the neighbour is snow
+		mask = sprite(snowImage + 38 + int(cl))
+	} else {
+		mask = sprite(nbLand.Image + nbLand.ImagesPerGrowthStage*int(nb.Growth) + 19 + int(cl))
+	}
+	if base == nil || mask == nil {
+		return
+	}
+	s.AttachToPrevious(Image{Sprite: base, Mask: mask}, 0, 0)
+}

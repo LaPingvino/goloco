@@ -478,6 +478,28 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	if snowAttach != nil && s.Zoom <= 2 { // the partial snow image only up to zoom 2
 		s.AttachToPrevious(*snowAttach, 0, 0)
 	}
+	// Landscape smoothing (zoom 0; Config::landscapeSmoothing, default on).
+	if s.Zoom == 0 {
+		desc := func(tt *sim.Tile) paint.SmoothTile {
+			d := paint.SmoothTile{Surface: paint.Surface{BaseZ: tt.BaseZ, Slope: tt.Slope & 0x1F, Water: tt.WaterLevel}, Present: true,
+				Land: tt.TerrainIndex, DisplaySlope: slopeToDisplay[tt.Slope&0x1F], Snow: tt.Slope >> 5, Growth: tt.GrowthStage}
+			if tt.IsIndustrial {
+				d.Land = 0xFF
+			}
+			return d
+		}
+		var nbd [4]paint.SmoothTile
+		for d, o := range paint.NeighbourOffsets {
+			if nt := m.TileAt(x+o[0]/32, y+o[1]/32); nt != nil {
+				nbd[d] = desc(nt)
+			}
+		}
+		snowImage := 0
+		if om.SnowObj != nil {
+			snowImage = int(om.SnowObj.ImageOffset) + paint.SnowSurfaceFullZoom // SnowObject::image
+		}
+		s.PaintSurfaceSmoothing(desc(t), nbd, r.smoothLand, snowImage, sprite)
+	}
 
 	var nbs [4]*paint.Surface
 	for d, o := range paint.NeighbourOffsets {
@@ -647,4 +669,15 @@ func (r *Renderer) palette2() func(p, q uint8) []uint8 {
 		}
 	}
 	return r.pal2Fn
+}
+
+// smoothLand is what landscape smoothing reads of a land object (by terrain).
+func (r *Renderer) smoothLand(id uint8) (paint.SmoothLand, bool) {
+	l := r.Objects.GetLandObjectByIndex(int(id))
+	if l == nil {
+		return paint.SmoothLand{}, false
+	}
+	return paint.SmoothLand{Image: int(l.ImageOffset) + l.GetFlatTerrainSpriteIndex(), ImagesPerGrowthStage: int(l.NumImagesPerGrowthStage), // LandObject::image
+		SharpSlopeTransition:    l.Flags&objects.LandFlagHasSharpSlopeTransition != 0,
+		DisableSmoothTransition: l.Flags&objects.LandFlagDisableSmoothTileTransition != 0}, true
 }

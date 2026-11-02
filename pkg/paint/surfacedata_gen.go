@@ -19,3 +19,23 @@ const (
 	SnowObjectSize      = 6
 	SnowSurfaceFullZoom = 95
 )
+
+// Surfacek4FDA5E is PaintSurface.cpp k4FDA5E (paintSurfaceSmoothenEdge), by display slope.
+var Surfacek4FDA5E = [19]uint8{2, 5, 1, 4, 2, 5, 1, 2, 2, 4, 1, 2, 1, 3, 0, 3, 1, 5, 0}
+
+// Surfacek4FDA71 is PaintSurface.cpp k4FDA71 (paintSurfaceSmoothenEdge), by display slope.
+var Surfacek4FDA71 = [19]uint8{2, 5, 2, 4, 2, 5, 1, 1, 3, 4, 3, 2, 1, 2, 0, 3, 1, 5, 0}
+
+// Surfacek4FDA84 is PaintSurface.cpp k4FDA84 (paintSurfaceSmoothenEdge), by display slope.
+var Surfacek4FDA84 = [19]uint8{2, 2, 2, 4, 0, 0, 1, 1, 3, 4, 3, 5, 1, 2, 2, 3, 1, 5, 0}
+
+// Surfacek4FDA97 is PaintSurface.cpp k4FDA97 (paintSurfaceSmoothenEdge), by display slope.
+var Surfacek4FDA97 = [19]uint8{2, 2, 1, 4, 0, 0, 1, 2, 2, 4, 1, 5, 1, 3, 2, 3, 1, 5, 0}
+
+// SurfaceSmoothFromSlope is PaintSurface.cpp kSurfaceSmoothFromSlope [edge][displaySlope].
+var SurfaceSmoothFromSlope = [4][19]uint32{
+	{3784, 3785, 3786, 3787, 3788, 3789, 3790, 3791, 3792, 3793, 3794, 3795, 3796, 3797, 3798, 3799, 3800, 3801, 3802},
+	{3765, 3766, 3767, 3768, 3769, 3770, 3771, 3772, 3773, 3774, 3775, 3776, 3777, 3778, 3779, 3780, 3781, 3782, 3783},
+	{3803, 3804, 3805, 3806, 3807, 3808, 3809, 3810, 3811, 3812, 3813, 3814, 3815, 3816, 3817, 3818, 3819, 3820, 3821},
+	{3746, 3747, 3748, 3749, 3750, 3751, 3752, 3753, 3754, 3755, 3756, 3757, 3758, 3759, 3760, 3761, 3762, 3763, 3764},
+}
