@@ -91,16 +91,22 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 		f := m.Vehicle1RoadMove(v, v2.CurrentSpeed, d.D1, om)
 		m.store(tr.Veh1, &v.MotionComponent)
 		v1.Var3C = v.Var3C
-		if f&MotionNoRouteFound != 0 {
-			return
+		if f&MotionNoRouteFound != 0 { // Vehicle1::update: sub_4AD93A, stop approaching
+			m.Sub4AD93A(tr)
+			if head.Status == StatusApproaching {
+				head.Status = StatusTravelling
+			}
 		}
 	} else {
 		v1.TargetSpeed = m.Vehicle1RailTargetSpeed(head, v1, v2, om)
 		c := m.component(tr.Veh1)
 		f := m.Vehicle1RailMove(&c, v2.CurrentSpeed, d.D1, &v1.Var3C, head.HeadVar53)
 		m.store(tr.Veh1, &c)
-		if f&MotionNoRouteFound != 0 {
-			return
+		if f&MotionNoRouteFound != 0 { // Vehicle1::update: sub_4AD93A, stop approaching
+			m.Sub4AD93A(tr)
+			if head.Status == StatusApproaching {
+				head.Status = StatusTravelling
+			}
 		}
 	}
 
