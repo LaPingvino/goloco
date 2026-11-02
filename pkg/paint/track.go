@@ -54,3 +54,55 @@ func (s *Session) PaintTrack(el TrackEl, image int, sprite func(int) *gfx8.Sprit
 	s.InsertTunnels(tpp.TunnelHeights[rot], height, el.Tunnel)
 	s.AddPendingSegments(tpp.Segments[rot])
 }
+
+// TrackMod is one of the track object's mods (trackObj->mods[i]) as
+// paintTrack reads it: the track extra's image and paint style; Has is
+// elTrack.hasMod(i).
+type TrackMod struct {
+	Has        bool
+	Image      int
+	PaintStyle uint8
+}
+
+// PaintTrackMods is paintTrack's track extras (zoom 0 only): for each mod the
+// element has, the Style0/Style1 addition piece for its track id and sequence
+// index (paintTrackAdditionPP) in the track's colour — mergeable pieces into
+// track/road priority 4, the others as a child of the last struct. PARTIAL:
+// Style1's supports (setAdditionSupport / paintSupports) and ghost mods.
+func (s *Session) PaintTrackMods(el TrackEl, mods [4]TrackMod, sprite func(int) *gfx8.Sprite) {
+	if s.Zoom > 0 {
+		return
+	}
+	rot := int((s.Rotation + el.Rotation) & 3)
+	h := Pos3{0, 0, int(el.BaseZ) * 4}
+	tid, seq := int(el.TrackID), int(el.SequenceIndex)
+	for _, m := range mods {
+		if !m.Has {
+			continue
+		}
+		var parts [][]TrackAdditionPiece
+		switch m.PaintStyle {
+		case 0:
+			parts = TrackAdditionParts0[:]
+		case 1:
+			parts = TrackAdditionParts1[:]
+		default:
+			continue
+		}
+		if tid >= len(parts) || seq >= len(parts[tid]) {
+			continue
+		}
+		p := parts[tid][seq]
+		sp := sprite(m.Image + int(p.ImageIDs[rot]))
+		if sp == nil {
+			continue
+		}
+		img := Colour(sp, el.Remap)
+		bbOff := Pos3{p.BBOffsets[rot].X, p.BBOffsets[rot].Y, p.BBOffsets[rot].Z + h.Z}
+		if p.IsMergeable {
+			s.AddTrackRoad(img, 4, h, bbOff, p.BBSizes[rot])
+		} else {
+			s.AddAsChild(img, h, bbOff, p.BBSizes[rot])
+		}
+	}
+}
