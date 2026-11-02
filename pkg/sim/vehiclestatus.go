@@ -27,7 +27,6 @@ const (
 
 // orderSizes is OrderManager kOrderSizes (End, StopAt, RouteThrough,
 // RouteWaypoint, UnloadAll, WaitFor).
-var orderSizes = [6]int{1, 2, 2, 6, 1, 1}
 
 // VehicleStatus is VehicleHead::getStatus formatted as VehicleList shows it
 // after the name (vehicle_list_status_2pos / _3pos): status1, then status2

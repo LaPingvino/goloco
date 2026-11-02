@@ -768,3 +768,42 @@ func TestUpdateVehiclesTicks(t *testing.T) {
 		t.Error("nothing moved")
 	}
 }
+
+// Orders: every saved land vehicle's order ring is well formed, and for a
+// travelling one (landNormalMovementUpdate calls advanceToNextRoutableOrder
+// every tick) the current order is already routable, so advancing keeps it.
+func TestSavedOrders(t *testing.T) {
+	_, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	travelling, kept, ringed := 0, 0, 0
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.Mode > 1 {
+			continue
+		}
+		if ring := m.OrderRing(h.OrderTableOffset, h.CurrentOrder); len(ring) > 0 {
+			ringed++
+			if ring[0].Offset != int(h.OrderTableOffset)+int(h.CurrentOrder) {
+				t.Errorf("head %d: ring does not start at the current order", h.ID)
+			}
+		}
+		if h.Status != sim.StatusTravelling {
+			continue
+		}
+		travelling++
+		cur := h.CurrentOrder
+		m.AdvanceToNextRoutableOrder(h.OrderTableOffset, &cur, h.SizeOfOrderTable)
+		if cur == h.CurrentOrder {
+			kept++
+		} else {
+			t.Logf("head %d: current order %d → %d", h.ID, h.CurrentOrder, cur)
+		}
+	}
+	t.Logf("land vehicles with orders %d; travelling %d, current order already routable %d", ringed, travelling, kept)
+	if travelling == 0 || kept != travelling {
+		t.Errorf("%d travelling vehicles whose current order was not routable", travelling-kept)
+	}
+}
