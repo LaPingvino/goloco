@@ -895,3 +895,45 @@ func TestSavedTrainStationLookup(t *testing.T) {
 		t.Errorf("%d station track tiles without their station", n-ok)
 	}
 }
+
+// sub_4ACEF1 on every saved train, once from the saved state: the head stays
+// on its path; when it reserves a new piece that piece is a real connection
+// from the head's piece end; the results are logged by kind.
+func TestSavedTrainsSub4ACEF1(t *testing.T) {
+	_, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	kinds := map[uint8]int{}
+	for _, tr := range trains {
+		h := &m.Entities[tr.Head]
+		if h.Mode != 0 {
+			continue
+		}
+		d1, _ := sim.UpdateDistances(m.Entities[tr.Veh2].CurrentSpeed)
+		before := sim.RoutingHandle(h.RoutingHandle)
+		r := m.Sub4ACEF1(tr, 0xD4CB00, uint32(d1), false)
+		kinds[r.Al]++
+		p := sim.TrackSubPosition(h.TrackAndDirection & sim.TaDBasicMask)
+		if mi := p[h.SubPosition]; int32(mi.X)+int32(h.TileX) != int32(h.PosX) || int32(mi.Y)+int32(h.TileY) != int32(h.PosY) {
+			t.Errorf("head %d: off its path", h.ID)
+		}
+		next := sim.RoutingHandle(h.RoutingHandle)
+		next = next.WithIndex(next.Index() + 1)
+		if r.Al == 0 && m.Routing(next) != sim.RoutingAllocatedButFree && next != before.WithIndex(before.Index()+1) {
+			e, _ := sim.TrackConnectionEnd(int32(h.TileX), int32(h.TileY), int32(h.TileBaseZ)*4, h.TrackAndDirection&sim.TaDBasicMask)
+			tc := m.TrackConnections(e.X, e.Y, e.Z, e.NextRotation, h.Owner, h.TrackType, h.HeadVar53, m.Entities[tr.Veh1].Var49)
+			found := false
+			for _, c := range tc.Connections {
+				if c&sim.TaDBasicMask == m.Routing(next)&sim.TaDBasicMask {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("head %d: reserved %#x, not a connection", h.ID, m.Routing(next))
+			}
+		}
+	}
+	t.Logf("sub_4ACEF1 results by kind (0 moved, 1 full, 2 no route, 3 signal, 4 station): %v", kinds)
+}

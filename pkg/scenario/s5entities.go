@@ -241,10 +241,14 @@ type VehicleEntity struct {
 	RoutingHandle     uint16 // vhCommonRoutingHandle (0x36): vehicleRef·64 | index
 	Mode              uint8  // vhCommonMode (0x42) — TransportMode (0 rail, 1 road, 2 air, 3 water)
 	HeadVar53         uint8  // VehicleHead var_53 (0x53): the train's required track mods
-	HeadVar52         uint8  // VehicleHead var_52 (0x52): 1 = no lookahead / level crossings ignored on road
+	HeadVar52         uint8  // var_52 (0x52): VehicleHead (1 = placement mode: no lookahead) / Vehicle1 (one-way signal countdown)
 	OrderTableOffset  uint32 // VehicleHead orderTableOffset (0x46): its orders in GameState orders[]
 	CurrentOrder      uint16 // VehicleHead currentOrder (0x4A): offset from orderTableOffset
 	SizeOfOrderTable  uint16 // VehicleHead sizeOfOrderTable (0x4C)
+	Var48             uint8  // Vehicle1 var_48 (0x48): Flags48 (passSignal 1, expressMode 2)
+	Var49             uint8  // Vehicle1 var_49 (0x49): the train's query mods
+	Var5C             uint8  // VehicleHead var_5C (0x5C): pass-signal countdown
+	StationID         uint16 // VehicleHead stationId (0x54); the same bytes are Vehicle2's maxSpeed
 	CurrentSpeed      int32  // Vehicle2 currentSpeed (0x56): Speed32, mph << 16
 	Var44             uint16 // VehicleBogie var_44 (0x44): wheel roll accumulator (updateRoll)
 	WheelSlipping     uint8  // VehicleBogie wheelSlipping (0x5E): ticks, counts up
@@ -366,6 +370,10 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			OrderTableOffset:  binary.LittleEndian.Uint32(e[0x46:]),
 			CurrentOrder:      binary.LittleEndian.Uint16(e[0x4A:]),
 			SizeOfOrderTable:  binary.LittleEndian.Uint16(e[0x4C:]),
+			Var48:             e[0x48],
+			Var49:             e[0x49],
+			Var5C:             e[0x5C],
+			StationID:         binary.LittleEndian.Uint16(e[0x54:]),
 			CurrentSpeed:      int32(binary.LittleEndian.Uint32(e[0x56:])),
 			Var44:             binary.LittleEndian.Uint16(e[0x44:]),
 			WheelSlipping:     e[0x5E],
