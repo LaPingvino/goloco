@@ -30,6 +30,10 @@ const (
 type RenderTarget struct {
 	Width, Height int
 	Bits          []uint8 // Width×Height palette indices, row-major
+	// OriginX, OriginY are rt.x / rt.y: the viewport position (zoom-0
+	// pixels) of the target's top-left, subtracted after the zoom alignment
+	// (DrawSpriteZoom / DrawImageZoom; zero for plain UI drawing).
+	OriginX, OriginY int
 }
 
 // NewRenderTarget returns a target filled with index 0.
