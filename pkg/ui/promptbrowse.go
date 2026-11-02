@@ -1,6 +1,7 @@
 package ui
 
 import (
+	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"image"
 	"os"
 	"path/filepath"
@@ -24,7 +25,7 @@ import (
 // PARTIAL: the text box edits only at its end (no caret movement, no scrolling
 // offset); overwrite confirmation; right-click delete; the saved-game / landscape
 // preview pane (drawSavePreview), root-path drives, the folder line's "..."
-// shortening, scrollbar mouse interaction, window resizing.
+// shortening, window resizing.
 
 const (
 	pbW, pbH        = 500, 380
@@ -51,6 +52,8 @@ type PromptBrowseWindow struct {
 	entries  []pbEntry
 	Selected int
 	Scroll   int
+	dragging bool // the scrollbar's thumb is being dragged
+	dragY    int
 	content  [4]int
 	OnPick   func(path string)
 	OnClose  func()
@@ -199,6 +202,16 @@ func (w *PromptBrowseWindow) HandleClick(px, py int) {
 		}
 	case w.Save && w.in(pbOK, px, py):
 		w.ok()
+	case w.onScrollbar(px, py):
+		// The scrollbar (ScrollView): buttons and track move the list, the
+		// thumb starts a drag (Drag).
+		l := w.list()
+		switch part := L.VScrollPart(py-(w.Y+l[1]), l[3], len(w.entries)*pbRowHeight, w.Scroll); part {
+		case "thumb":
+			w.dragY, w.dragging = py, true
+		default:
+			w.Scroll = L.VScrollClick(part, l[3], len(w.entries)*pbRowHeight, w.Scroll)
+		}
 	case w.in(w.list(), px, py):
 		l := w.list()
 		idx := (py - (w.Y + l[1] + 1) + w.Scroll) / pbRowHeight
@@ -318,5 +331,29 @@ func (w *PromptBrowseWindow) Draw(screen *ebiten.Image) {
 		name := stem(w.entries[w.Selected].path)
 		tw, _ := MeasureTextBold(name)
 		DrawTextBold(screen, name, x+width/2-tw/2, w.Y+45, win2)
+	}
+}
+
+// onScrollbar reports a point on the list's scrollbar (shown when the rows
+// don't fit).
+func (w *PromptBrowseWindow) onScrollbar(px, py int) bool {
+	l := w.list()
+	return w.in(l, px, py) && len(w.entries)*pbRowHeight > l[3] &&
+		px >= w.X+l[0]+l[2]-L.ScrollbarSize-L.ScrollbarMargin
+}
+
+// Drag follows the mouse while the thumb is held (verticalDragFollow); held
+// false ends the drag.
+func (w *PromptBrowseWindow) Drag(py int, held bool) {
+	if !w.dragging {
+		return
+	}
+	if !held {
+		w.dragging = false
+		return
+	}
+	if dy := py - w.dragY; dy != 0 {
+		w.Scroll = L.VScrollDrag(w.list()[3], len(w.entries)*pbRowHeight, w.Scroll, dy)
+		w.dragY = py
 	}
 }
