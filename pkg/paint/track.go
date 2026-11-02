@@ -104,5 +104,8 @@ func (s *Session) PaintTrackMods(el TrackEl, mods [4]TrackMod, sprite func(int) 
 		} else {
 			s.AddAsChild(img, h, bbOff, p.BBSizes[rot])
 		}
+		if sup := p.Supports; sup != nil && m.PaintStyle == 1 { // Style1::paintSupport
+			s.setAdditionSupport(h.Z+int(sup.Height), sup.Segments[rot], sup.ImageIDs[rot][:], false, sup.Frequencies[rot], m.Image, el.Remap)
+		}
 	}
 }

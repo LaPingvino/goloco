@@ -80,7 +80,11 @@ type Session struct {
 	// mergeRoadStreetlight is setMergeRoadStreetlight's style (0: none) and
 	// streetlightImage the StreetLight object's image it uses.
 	mergeRoadStreetlight uint8
-	streetlightImage     int
+	// supports / occupiedSupports: TrackRoadAdditionSupports and
+	// occupiedAdditionSupportSegments (supports.go).
+	supports         additionSupports
+	occupiedSupports uint16
+	streetlightImage int
 
 	// Slabs for paint structs and attachments (reused across frames by Reset).
 	structs         []Struct

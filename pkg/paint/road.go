@@ -136,6 +136,9 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 		} else {
 			s.AddAsParent(img, h, bbOff, p.BBSizes[rot])
 		}
+		if sup := p.Supports; sup != nil { // AdditionStyle1::paintSupport
+			s.setAdditionSupport(h.Z+int(sup.Height), sup.Segments[rot], sup.ImageIDs[rot][:], true, sup.Frequencies[rot], m.Image, el.Remap)
+		}
 	}
 }
 

@@ -47,6 +47,7 @@ var (
 // PaintTrainStation paints a style-0 train station element at the current
 // sprite position; base is stationObj->imageOffsets[sequenceIndex].
 func (s *Session) PaintTrainStation(el StationEl, base int, sprite func(int) *gfx8.Sprite) {
+	s.SetOccupiedAdditionSupportSegments(SegmentsAll) // stations block addition supports
 	rot := int((s.Rotation + el.Rotation) & 3)
 	ho := Pos3{0, 0, int(el.BaseZ) * 4}
 	img := func(off int) Image {
@@ -131,6 +132,7 @@ var (
 // stationObj->imageOffsets[1] (upstream always uses index 1), roadID the road
 // element before it.
 func (s *Session) PaintRoadStation(rotation, baseZ, roadID uint8, base int, remap, translucent []uint8, sprite func(int) *gfx8.Sprite) {
+	s.SetOccupiedAdditionSupportSegments(SegmentsAll) // stations block addition supports
 	if roadID != 0 {
 		return // paintRoadStationStyle0: only straight road
 	}

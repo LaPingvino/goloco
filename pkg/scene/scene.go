@@ -236,11 +236,12 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 				}
 				r.paintElement(s, m, t, ref, prev, x, y, v.Ticks)
 				// paintTileElementsEndLoop: at the last element or a change of baseZ.
-				// PARTIAL: paintSupports (track/road addition supports) is not ported yet.
 				if i == len(t.Order)-1 || tileElemZ(t, t.Order[i+1]) != tileElemZ(t, ref) {
 					s.FinalisePaintRoad(sprite)
+					s.PaintSupports(r.bridgeHasRoof, sprite)
 					s.FinaliseTrackRoadOrdering()
 					s.FinaliseTrackRoadAdditionsOrdering()
+					s.SetOccupiedAdditionSupportSegments(0)
 					if b, ok := s.TakeBridge(); ok {
 						if r.paintBridge(s, b, x, y) {
 							s.SetSegmentsSupportHeight(paint.SegmentsAll, 0xFFFF, 0)
@@ -723,4 +724,10 @@ func (r *Renderer) roadMods(ro *objects.RoadObject, rd scenario.RoadElement) [2]
 		}
 	}
 	return mods
+}
+
+// bridgeHasRoof is BridgeObjectFlags::hasRoof of a bridge slot (paintSupports).
+func (r *Renderer) bridgeHasRoof(id uint8) bool {
+	bo := r.Objects.GetBridgeObjectByIndex(int(id))
+	return bo != nil && bo.Flags&1 != 0
 }
