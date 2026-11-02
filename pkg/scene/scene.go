@@ -172,7 +172,10 @@ type View struct {
 	// H<<Zoom viewport pixels).
 	X, Y, W, H int
 	Zoom       int
-	Ticks      uint32
+	// VehiclesMinScale is Config::vehiclesMinScale (0 = its default 2):
+	// vehicles are not drawn at a greater zoom.
+	VehiclesMinScale int
+	Ticks            uint32
 	// Tiles optionally restricts the tile walk to a window (minX, minY, maxX,
 	// maxY inclusive); empty = every tile that can reach the view.
 	Tiles image.Rectangle
@@ -207,6 +210,7 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 		x0, y0, x1, y1 = max(v.Tiles.Min.X, 0), max(v.Tiles.Min.Y, 0), min(v.Tiles.Max.X, m.Width-1), min(v.Tiles.Max.Y, m.Height-1)
 	}
 	sprite := r.Sprite
+	ents := r.entitiesByTile(m, v, lw, lh)
 	for y := y0; y <= y1; y++ {
 		for x := x0; x <= x1; x++ {
 			t := m.TileAt(x, y)
@@ -241,6 +245,10 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 					}
 					s.FlushPendingSegments()
 				}
+			}
+			// paintEntities(loc): the tile's vehicle entities after its elements.
+			for _, e := range ents[[2]int{x, y}] {
+				r.paintVehicleEntity(s, m, e)
 			}
 		}
 	}
@@ -539,4 +547,78 @@ func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st sc
 	s.PaintTrainStation(paint.StationEl{Rotation: st.Rotation, BaseZ: st.BaseZ, TrackID: tk.TrackID, TrackSeq: tk.SequenceIndex, Remap: r.companyRemap(m, tk.Owner),
 		Translucent: r.canopyTranslucent(m, tk.Owner, so.Flags&objects.TrainStationFlagRecolourable != 0)},
 		int(so.SequenceImageOffsets[st.SequenceIndex]), sprite)
+}
+
+// entitiesByTile is EntityTileList per tile for paintEntities: the bogie and
+// body entities (the only vehicle parts paintVehicleEntity draws) whose
+// screen rectangle meets the render target (lw × lh viewport pixels at
+// v.X, v.Y); none beyond Config::vehiclesMinScale. ASSUMPTION: within a
+// tile, entity slot order (upstream walks its spatial list).
+func (r *Renderer) entitiesByTile(m *sim.Map, v View, lw, lh int) map[[2]int][]*scenario.VehicleEntity {
+	minScale := v.VehiclesMinScale
+	if minScale == 0 {
+		minScale = 2 // Config default
+	}
+	if minScale < v.Zoom || len(m.Entities) == 0 {
+		return nil
+	}
+	out := map[[2]int][]*scenario.VehicleEntity{}
+	left, top := v.X, v.Y
+	right, bottom := left+lw, top+lh
+	for i := range m.Entities {
+		e := &m.Entities[i]
+		if e.EntityType != scenario.VehicleTypeBogie && !scenario.IsVehicleBody(e.EntityType) {
+			continue
+		}
+		if int(e.PosX) >= 0x4000 || int(e.PosY) >= 0x4000 || int(e.PosX) < 0 || int(e.PosY) < 0 {
+			continue
+		}
+		if int(e.SpriteTop) > bottom || int(e.SpriteBottom) <= top || int(e.SpriteLeft) > right || int(e.SpriteRight) <= left {
+			continue
+		}
+		k := [2]int{int(e.PosX) / 32, int(e.PosY) / 32}
+		out[k] = append(out[k], e)
+	}
+	return out
+}
+
+// paintVehicleEntity is PaintVehicle.cpp paintVehicleEntity: a ghost of
+// another company is not drawn; bogies and bodies by their painters at the
+// entity's position (setEntityPosition), in their colour schemes.
+func (r *Renderer) paintVehicleEntity(s *paint.Session, m *sim.Map, e *scenario.VehicleEntity) {
+	const isReversed, isGhost = 1 << 1, 1 << 4
+	if e.Flags38&isGhost != 0 && int(e.Owner) != int(m.ControllingCompany) {
+		return
+	}
+	om := r.Objects
+	if int(e.ObjectID) >= len(om.Vehicles) || om.Vehicles[e.ObjectID] == nil {
+		return
+	}
+	v := om.Vehicles[e.ObjectID]
+	s.SetSpritePosition(int(e.PosX), int(e.PosY))
+	pal := func(p, q uint8) []uint8 {
+		pm, _ := r.G1.GetPaletteMap2(int(p), int(q))
+		return pm
+	}
+	col := [2]uint8{e.ColourPrimary, e.ColourSecondary}
+	if e.EntityType == scenario.VehicleTypeBogie {
+		s.PaintBogie(paint.BogieEl{ObjectSpriteType: e.ObjectSpriteType, SpriteYaw: e.SpriteYaw, SpritePitch: e.SpritePitch,
+			Reversed: e.Flags38&isReversed != 0, AnimationIndex: e.Animation, Z: int(e.PosZ), Air: v.Mode == objects.TransportModeAir,
+			Colour: col, Ghost: e.Flags38&isGhost != 0}, v, r.Sprite, pal, r.colourMap(0x32))
+		return
+	}
+	s.PaintBody(paint.BodyEl{ObjectSpriteType: e.ObjectSpriteType, SpriteYaw: e.SpriteYaw, SpritePitch: e.SpritePitch,
+		Reversed: e.Flags38&isReversed != 0, AnimationFrame: e.Animation, CargoFrame: e.CargoFrame, BodyIndex: e.BodyIndex,
+		Z: int(e.PosZ), AirOrWater: v.Mode == objects.TransportModeAir || v.Mode == objects.TransportModeWater,
+		Colour: col, BrakeLights: r.brakeLights(m, e.HeadID), Ghost: e.Flags38&isGhost != 0}, v, r.Sprite, pal)
+}
+
+// brakeLights is the train's veh2 brakeLightTimeout != 0 (head → veh1 → veh2).
+func (r *Renderer) brakeLights(m *sim.Map, head uint16) bool {
+	for i := range m.Entities {
+		if e := &m.Entities[i]; e.EntityType == scenario.VehicleTypeVeh2 && e.HeadID == head {
+			return e.BrakeLightTimeout != 0
+		}
+	}
+	return false
 }

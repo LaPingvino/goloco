@@ -31,3 +31,32 @@ func TestBodyBoundsMatchUpstream(t *testing.T) {
 		}
 	}
 }
+
+// paintBogie's branches, worked by hand from PaintVehicle.cpp.
+func TestBogieImage(t *testing.T) {
+	sym := objects.VehicleBogieSprite{Flags: objects.BogieFlagRotationalSymmetry, NumFramesPerRotation: 2, FlatImageIDs: 100, GentleImageIDs: 200, SteepImageIDs: 300}
+	big := objects.VehicleBogieSprite{Flags: objects.BogieFlagLargerBoundingBox, NumFramesPerRotation: 3, FlatImageIDs: 100, GentleImageIDs: 200, SteepImageIDs: 300}
+	for i, c := range []struct {
+		b      BogieEl
+		sp     objects.VehicleBogieSprite
+		img    uint32
+		table  int
+		bbSize Pos3
+	}{
+		// flat, yaw 40 → 20 & 15 = 4: 2·4 + 1 + 100
+		{BogieEl{SpriteYaw: 40, AnimationIndex: 1}, sym, 109, 0, Pos3{12, 12, 1}},
+		// reversed flat: yaw 40^32 = 8 → 4; larger box
+		{BogieEl{SpriteYaw: 40, Reversed: true}, big, 112, 0, Pos3{18, 18, 5}},
+		// down12 (6), not symmetric: yaw 10 → 5 ^ 32 = 37: 3·37 + 200
+		{BogieEl{SpriteYaw: 10, SpritePitch: 6}, big, 311, 1, Pos3{16, 16, 1}},
+		// down25 (8), symmetric: yaw 10 → 5 ^ 16 = 21: 2·21 + 300
+		{BogieEl{SpriteYaw: 10, SpritePitch: 8}, sym, 342, 2, Pos3{12, 12, 1}},
+		// up25 reversed → down25: yaw 10^32 = 42 → 21 ^ 16 = 5 (symmetric): 2·5 + 300
+		{BogieEl{SpriteYaw: 10, SpritePitch: 4, Reversed: true}, sym, 310, 2, Pos3{12, 12, 1}},
+	} {
+		img, table, _, size := bogieImage(c.b, &c.sp, 0)
+		if img != c.img || table != c.table || size != c.bbSize {
+			t.Errorf("case %d: image %d table %d size %v, want %d %d %v", i, img, table, size, c.img, c.table, c.bbSize)
+		}
+	}
+}
