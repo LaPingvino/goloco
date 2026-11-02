@@ -808,8 +808,8 @@ func (w *World) CenterOn(kind string) bool {
 			return false
 		case "stationcargo": // a straight train station tile with waiting cargo
 			for _, st := range t.Stations {
-				if st.StationType == 0 && len(t.Tracks) > 0 && t.Tracks[0].TrackID == 0 && int(st.StationID) < len(w.StationCargoDensity) {
-					for _, d := range w.StationCargoDensity[st.StationID] {
+				if st.StationType == 0 && len(t.Tracks) > 0 && t.Tracks[0].TrackID == 0 && int(st.StationID) < len(w.StationNames) {
+					for _, d := range w.Map.StationCargoDensities(int(st.StationID)) {
 						if d != 0 {
 							return true
 						}

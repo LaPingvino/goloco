@@ -127,7 +127,6 @@ type Scenario struct {
 	Entities              []VehicleEntity
 	VehicleList           []VehicleListEntry // heads with veh1/veh2 list data (VehicleList.cpp)
 	CurrentDay            uint32             // GameState general.currentDay
-	StationCargoDensity   [][32]uint8        // station id → cargoStats[].densityPerTile
 	CompanyNames          []uint16           // company slot → name StringId
 	CompanyFaces          []CompanyFace      // company slot → competitor, emotion, performance
 	CompetitorObjectOrder []string           // competitor slot → DAT name

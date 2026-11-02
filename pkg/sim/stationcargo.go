@@ -1,0 +1,65 @@
+package sim
+
+import "github.com/LaPingvino/goloco/pkg/objects"
+
+// Station cargo — World/Station.cpp updateCargoDistribution (0x0049218F-side)
+// and deliverCargoToStation (0x0042F489), over the station records' full
+// StationCargoStats (Map.StationNames[id].Cargo).
+
+const maxStationCargoDensity = 15 // Limits::kMaxStationCargoDensity
+
+// StationCargoDensities is each cargo's densityPerTile at a station (what
+// paintStationCargo draws).
+func (m *Map) StationCargoDensities(id int) [32]uint8 {
+	var out [32]uint8
+	if id < 0 || id >= len(m.StationNames) {
+		return out
+	}
+	for i, c := range m.StationNames[id].Cargo {
+		out[i] = c.DensityPerTile
+	}
+	return out
+}
+
+// UpdateCargoDistribution is Station::updateCargoDistribution: per cargo,
+// ceil(quantity / tiles / 2^stationCargoDensity), at most 15. (Its viewport
+// invalidation is upstream's redraw only.)
+func (m *Map) UpdateCargoDistribution(id int, om *objects.ObjectManager) {
+	if id < 0 || id >= len(m.StationNames) {
+		return
+	}
+	st := &m.StationNames[id]
+	for i := range st.Cargo {
+		c := &st.Cargo[i]
+		d := 0
+		if c.Quantity != 0 && st.TileSize != 0 {
+			d = int(c.Quantity) / int(st.TileSize)
+			var shift uint8
+			if i < len(om.CargoObjects) && om.CargoObjects[i] != nil {
+				shift = om.CargoObjects[i].StationCargoDensity
+			}
+			d += 1<<shift - 1
+			d >>= shift
+			d = min(d, maxStationCargoDensity)
+		}
+		c.DensityPerTile = uint8(d)
+	}
+}
+
+// boundAdd16 is Math::Bound::add for uint16.
+func boundAdd16(a uint16, b uint32) uint16 {
+	return uint16(min(uint32(a)+b, 0xFFFF))
+}
+
+// DeliverCargoToStation is Station::deliverCargoToStation: cargo produced
+// here (industries, towns) joins the waiting quantity, fresh, from here.
+func (m *Map) DeliverCargoToStation(id int, cargoType, qty uint8, om *objects.ObjectManager) {
+	if id < 0 || id >= len(m.StationNames) || cargoType >= 32 {
+		return
+	}
+	c := &m.StationNames[id].Cargo[cargoType]
+	c.Quantity = boundAdd16(c.Quantity, uint32(qty))
+	c.EnrouteAge = 0
+	c.Origin = uint16(id)
+	m.UpdateCargoDistribution(id, om)
+}

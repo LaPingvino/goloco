@@ -17,6 +17,7 @@ type CargoObject struct {
 	CargoCategory         uint16 // 0x10
 	Flags                 uint8  // 0x12
 	NumPlatformVariations uint8  // 0x13: platform images after unitInlineSprite + kStationPlatformBegin
+	StationCargoDensity   uint8  // 0x14: log2 of units per visible cargo pile (updateCargoDistribution)
 	PremiumDays           uint8  // 0x15
 	MaxNonPremiumDays     uint8  // 0x16
 	NonPremiumRate        uint16 // 0x17
@@ -92,6 +93,7 @@ func ParseCargoObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Ca
 		CargoCategory:         binary.LittleEndian.Uint16(data[0x10:]),
 		Flags:                 data[0x12],
 		NumPlatformVariations: data[0x13],
+		StationCargoDensity:   data[0x14],
 		PremiumDays:           data[0x15],
 		MaxNonPremiumDays:     data[0x16],
 		NonPremiumRate:        binary.LittleEndian.Uint16(data[0x17:]),

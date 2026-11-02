@@ -15,7 +15,6 @@ type Map struct {
 	Entities              []scenario.VehicleEntity
 	VehicleListData       []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
 	CompanyFaces          []scenario.CompanyFace      // company slot → competitor, emotion, performance
-	StationCargoDensity   [][32]uint8                 // station id → cargoStats[].densityPerTile
 	Orders                []byte                      // GameState orders[]
 	Routings              []uint16                    // GameState routings[], by RoutingHandle (routing.go)
 	RoadAnyTypeCompatible uint32                      // GameState roadObjectIdIsAnyRoadTypeCompatible
@@ -133,7 +132,6 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.CurrentDay = sc.CurrentDay
 	m.CompanyNames = sc.CompanyNames
 	m.CompanyFaces = sc.CompanyFaces
-	m.StationCargoDensity = sc.StationCargoDensity
 	m.ControllingCompany = sc.ControllingCompany
 	m.TrafficHandedness = sc.TrafficHandedness
 	m.UnlockedVehicles = sc.UnlockedVehicles

@@ -310,7 +310,6 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.StationOwners = parseStationOwners(gameState)
 		sc.UserStrings = parseUserStrings(gameState)
 		sc.StationNames = parseStationNames(gameState)
-		sc.StationCargoDensity = parseStationCargoDensity(gameState)
 
 		// Towns live inside the GameState chunk for saved games.
 		sc.Towns = parseTownsFromGameState(gameState)
@@ -1377,12 +1376,23 @@ type StationName struct {
 	X, Y, Z    int16 // Station x, y, z (0x02, 0x04, 0x06): its position (world units)
 	// VisitedTypes is var_3B2: a bit per VehicleType that has called here.
 	VisitedTypes uint8
+	Flags        uint16 // Station flags (0x2A)
+	Var3B1       uint8  // var_3B1 (0x3B1)
+	TileSize     uint16 // stationTileSize (0x1CE)
 }
 
-// StationCargo is the part of StationCargoStats the station list reads.
+// StationCargo is S5 StationCargoStats (13 bytes).
 type StationCargo struct {
-	Quantity uint16
-	Flags    uint8 // bit 0: acceptedForConsumer (isAccepted)
+	Quantity       uint16
+	Origin         uint16 // station the cargo came from
+	Flags          uint8  // bit 0: acceptedForConsumer (isAccepted), bit 3: flag3
+	Age            uint8
+	Rating         uint8
+	EnrouteAge     uint8
+	VehicleSpeed   int16 // max speed of the vehicle that brought it
+	VehicleAge     uint8
+	IndustryID     uint8
+	DensityPerTile uint8 // cargo visible per station tile (paintStationCargo)
 }
 
 // parseStationNames returns, per station id, its name and town. nil if short.
@@ -1399,11 +1409,14 @@ func parseStationNames(gs []byte) []StationName {
 		rec := gs[off+i*stationRecordSize:]
 		out[i] = StationName{Name: binary.LittleEndian.Uint16(rec[0x00:]), Town: binary.LittleEndian.Uint16(rec[0x2C:]),
 			X: int16(binary.LittleEndian.Uint16(rec[0x02:])), Y: int16(binary.LittleEndian.Uint16(rec[0x04:])), Z: int16(binary.LittleEndian.Uint16(rec[0x06:])),
-			VisitedTypes: rec[0x3B2]}
+			VisitedTypes: rec[0x3B2], Flags: binary.LittleEndian.Uint16(rec[0x2A:]), Var3B1: rec[0x3B1],
+			TileSize: binary.LittleEndian.Uint16(rec[0x1CE:])}
 		// cargoStats: 32 × 13 bytes at 0x2E (quantity @0, flags @4; from the compiler).
 		for c := range out[i].Cargo {
 			e := rec[0x2E+c*13:]
-			out[i].Cargo[c] = StationCargo{Quantity: binary.LittleEndian.Uint16(e[0:]), Flags: e[4]}
+			out[i].Cargo[c] = StationCargo{Quantity: binary.LittleEndian.Uint16(e[0:]), Origin: binary.LittleEndian.Uint16(e[2:]),
+				Flags: e[4], Age: e[5], Rating: e[6], EnrouteAge: e[7], VehicleSpeed: int16(binary.LittleEndian.Uint16(e[8:])),
+				VehicleAge: e[10], IndustryID: e[11], DensityPerTile: e[12]}
 		}
 	}
 	return out
@@ -1424,27 +1437,6 @@ func parseIndustryObjectIDs(gs []byte) []uint8 {
 		ids[i] = gs[off+i*industryRecordSize+industryObjectIDOffset]
 	}
 	return ids
-}
-
-// parseStationCargoDensity returns, per station id, its cargoStats[]
-// densityPerTile (S5::Station cargoStats at 0x2E, 32 × 13 bytes, density at
-// +0xC; offsets from the compiler) — what paintStationCargo draws.
-func parseStationCargoDensity(gs []byte) [][32]uint8 {
-	off := stationsGameStateOffset
-	if len(gs) == GameStateSizeType2 {
-		off = stationsGameStateOffsetType2
-	}
-	if len(gs) < off+stationMaxCount*stationRecordSize {
-		return nil
-	}
-	out := make([][32]uint8, stationMaxCount)
-	for i := range out {
-		rec := gs[off+i*stationRecordSize:]
-		for c := range 32 {
-			out[i][c] = rec[0x2E+c*13+0xC]
-		}
-	}
-	return out
 }
 
 // CompanyEconomy is what the economy reads and writes of a company (S5
