@@ -36,11 +36,14 @@ type Renderer struct {
 	// entities by tile (slices truncated, keys kept), two-colour palette maps
 	// (GetPaletteMap2 allocates), and the palette lookup handed to the painters.
 	entsByTile map[[2]int][]*scenario.VehicleEntity
-	pal2       map[[2]uint8][]uint8
-	pal2Fn     func(p, q uint8) []uint8
-	anims      map[any]anim     // per object: part animation frames and speeds
-	tunnels    map[string]int   // tunnel header name → tunnel image base
-	nbBuf      [4]paint.Surface // neighbour surfaces of the tile being painted
+	// station cargo inputs, kept (stationCargo)
+	cargoPlatforms map[int]*paint.CargoPlatform
+	stationCargos  map[stationCargoKey]*paint.StationCargo
+	pal2           map[[2]uint8][]uint8
+	pal2Fn         func(p, q uint8) []uint8
+	anims          map[any]anim     // per object: part animation frames and speeds
+	tunnels        map[string]int   // tunnel header name → tunnel image base
+	nbBuf          [4]paint.Surface // neighbour surfaces of the tile being painted
 }
 
 type anim struct{ frames, speeds []uint8 }
@@ -591,7 +594,8 @@ func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st sc
 	}
 	tk := t.Tracks[prev.Index]
 	s.PaintTrainStation(paint.StationEl{Rotation: st.Rotation, BaseZ: st.BaseZ, TrackID: tk.TrackID, TrackSeq: tk.SequenceIndex, Remap: r.companyRemap(m, tk.Owner),
-		Translucent: r.canopyTranslucent(m, tk.Owner, so.Flags&objects.TrainStationFlagRecolourable != 0)},
+		Translucent: r.canopyTranslucent(m, tk.Owner, so.Flags&objects.TrainStationFlagRecolourable != 0),
+		Cargo:       r.stationCargo(m, so, st.StationID, int((s.Rotation+st.Rotation)&3), x+y)},
 		int(so.SequenceImageOffsets[st.SequenceIndex]), sprite)
 }
 
@@ -730,4 +734,44 @@ func (r *Renderer) roadMods(ro *objects.RoadObject, rd scenario.RoadElement) [2]
 func (r *Renderer) bridgeHasRoof(id uint8) bool {
 	bo := r.Objects.GetBridgeObjectByIndex(int(id))
 	return bo != nil && bo.Flags&1 != 0
+}
+
+// stationCargo is paintStationCargo's input for a station element: the
+// station's densities, the cargo objects' platform images, and the station
+// object's cargo offsets for (rotation, (x + y) & 3) — kept per key so a
+// frame allocates nothing; nil without station data.
+func (r *Renderer) stationCargo(m *sim.Map, so *objects.TrainStationObject, station uint16, rot, hash int) *paint.StationCargo {
+	if int(station) >= len(m.StationCargoDensity) {
+		return nil
+	}
+	if r.cargoPlatforms == nil {
+		r.cargoPlatforms = map[int]*paint.CargoPlatform{}
+		r.stationCargos = map[stationCargoKey]*paint.StationCargo{}
+	}
+	k := stationCargoKey{so, station, rot, hash}
+	c, ok := r.stationCargos[k]
+	if !ok {
+		c = &paint.StationCargo{Offsets: so.CargoOffsets[rot][hash&3], Hash: hash}
+		for id := range 32 {
+			if id >= len(r.Objects.CargoObjects) || r.Objects.CargoObjects[id] == nil {
+				continue
+			}
+			p, ok := r.cargoPlatforms[id]
+			if !ok {
+				co := r.Objects.CargoObjects[id]
+				p = &paint.CargoPlatform{Sprite: int(co.ImageOffset), Variations: co.NumPlatformVariations, Unk0: co.Flags&1 != 0}
+				r.cargoPlatforms[id] = p
+			}
+			c.Cargos[id] = p
+		}
+		r.stationCargos[k] = c
+	}
+	c.Density = m.StationCargoDensity[station]
+	return c
+}
+
+type stationCargoKey struct {
+	so        *objects.TrainStationObject
+	station   uint16
+	rot, hash int
 }
