@@ -436,6 +436,7 @@ func (g *Game) Update() error {
 		// drives water wave animation and demo train movement.
 		g.titleFrame++
 		g.w.Update()
+		g.w.TickSavedVehicles() // the title is a running game upstream: its vehicles move
 		if g.titleSeq != nil {
 			g.titleSeq.Update()
 			cx, cy := g.titleSeq.GetCameraPosition()
