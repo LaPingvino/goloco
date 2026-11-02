@@ -240,6 +240,7 @@ type VehicleEntity struct {
 	TrackType         uint8  // vhCommonTrackType (0x35) — track/road object id
 	RoutingHandle     uint16 // vhCommonRoutingHandle (0x36): vehicleRef·64 | index
 	Mode              uint8  // vhCommonMode (0x42) — TransportMode (0 rail, 1 road, 2 air, 3 water)
+	HeadVar53         uint8  // VehicleHead var_53 (0x53): the train's required track mods
 
 	// ---- VehicleBody / VehicleBogie sprite fields ----
 	ObjectID         uint16 // vbObjectId (0x40) — vehicle object slot (ObjMgr.Vehicles[N])
@@ -341,6 +342,7 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			TrackType:         e[vhCommonTrackType],
 			RoutingHandle:     binary.LittleEndian.Uint16(e[vhCommonRoutingHandle:]),
 			Mode:              e[vhCommonMode],
+			HeadVar53:         e[0x53],
 
 			ObjectID:         uint16(e[vbObjectId]) | uint16(e[vbObjectId+1])<<8,
 			ObjectSpriteType: e[vbObjectSpriteType],

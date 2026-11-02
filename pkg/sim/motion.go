@@ -5,9 +5,9 @@ package sim
 // a component advances sub-position by sub-position along its piece's
 // TrackData::MoveInfo path while it has distance to spend.
 //
-// PARTIAL: the step onto the next piece (updateTrackMotionNewTrackPiece /
-// updateRoadMotionNewRoadPiece) is a caller-supplied hook, not ported yet;
-// bogie collision checks (checkForCollisions) are not ported yet.
+// The step onto the next piece is a hook: Map.TrackNewPiece is
+// updateTrackMotionNewTrackPiece. PARTIAL: updateRoadMotionNewRoadPiece and
+// the bogie collision checks (checkForCollisions) are not ported yet.
 
 // MovementNibble is getMovementNibble: bit 0 x changed, bit 1 y, bit 2 z.
 func MovementNibble(ax, ay, az, bx, by, bz int32) uint8 {
@@ -39,14 +39,30 @@ type MotionComponent struct {
 	X, Y, Z           int32 // position (moveTo)
 	SpriteYaw         uint8
 	SpritePitch       uint8
+	RoutingHandle     RoutingHandle
+	Owner             uint8 // company
+	TrackType         uint8 // track (or road) object id
 }
 
-// MotionResult is UpdateMotionResult: Blocked is UpdateVar1136114Flags::unk_m00
-// (no next piece), RemainingDistance what was left over then.
+// UpdateVar1136114Flags (Vehicles/Vehicle.h).
+const (
+	MotionUnkM00                   uint32 = 1 << 0 // stopped: no next piece
+	MotionNoRouteFound             uint32 = 1 << 1
+	MotionCrashed                  uint32 = 1 << 2
+	MotionUnkM03                   uint32 = 1 << 3
+	MotionApproachingGradeCrossing uint32 = 1 << 4
+)
+
+// MotionResult is UpdateMotionResult: Flags are UpdateVar1136114Flags
+// (unk_m00: stopped with no next piece; RemainingDistance is what was left
+// over then).
 type MotionResult struct {
 	RemainingDistance int32
-	Blocked           bool
+	Flags             uint32
 }
+
+// Blocked is Flags & unk_m00.
+func (r MotionResult) Blocked() bool { return r.Flags&MotionUnkM00 != 0 }
 
 func (c *MotionComponent) path() []MoveInfo {
 	if c.Road {
@@ -57,8 +73,9 @@ func (c *MotionComponent) path() []MoveInfo {
 
 // UpdateMotion is updateTrackMotion / updateRoadMotion. nextPiece is the
 // new-piece step: it moves c onto the following piece (TrackAndDirection,
-// TileX/Y, TileBaseZ) and reports whether there is one; nil means none.
-func (c *MotionComponent) UpdateMotion(distance int32, nextPiece func(*MotionComponent) bool) MotionResult {
+// TileX/Y, TileBaseZ), may add flags, and reports whether there is one; nil
+// means none.
+func (c *MotionComponent) UpdateMotion(distance int32, nextPiece func(c *MotionComponent, flags *uint32) bool) MotionResult {
 	var res MotionResult
 	c.RemainingDistance += distance
 	moved := false
@@ -67,10 +84,10 @@ func (c *MotionComponent) UpdateMotion(distance int32, nextPiece func(*MotionCom
 		moved = true
 		sub := c.SubPosition + 1
 		if int(sub) >= len(c.path()) {
-			if nextPiece == nil || !nextPiece(c) {
+			if nextPiece == nil || !nextPiece(c, &res.Flags) {
 				res.RemainingDistance = c.RemainingDistance - 0x3689
 				c.RemainingDistance = 0x3689
-				res.Blocked = true
+				res.Flags |= MotionUnkM00
 				break
 			}
 			sub = 0
@@ -86,4 +103,46 @@ func (c *MotionComponent) UpdateMotion(distance int32, nextPiece func(*MotionCom
 		c.X, c.Y, c.Z = ix, iy, iz
 	}
 	return res
+}
+
+// TrackNewPiece is updateTrackMotionNewTrackPiece: c moves onto the piece its
+// next routing names, if that routing is set and the track there really
+// connects (getTrackConnections). requiredMods is the head's var_53;
+// isVeh2UnkM15 with veh1Handle stops vehicle 2 where vehicle 1's routing is.
+func (m *Map) TrackNewPiece(c *MotionComponent, flags *uint32, requiredMods uint8, isVeh2UnkM15 bool, veh1Handle RoutingHandle) bool {
+	next := c.RoutingHandle.WithIndex(c.RoutingHandle.Index() + 1)
+	routing := m.Routing(next)
+	if routing == RoutingAllocatedButFree {
+		return false
+	}
+	if isVeh2UnkM15 && veh1Handle == c.RoutingHandle {
+		*flags |= MotionUnkM03
+		return false
+	}
+	x, y, z := c.TileX, c.TileY, int32(c.TileBaseZ)*4
+	e, ok := TrackConnectionEnd(x, y, z, c.TrackAndDirection)
+	if !ok {
+		return false
+	}
+	tc := m.TrackConnections(e.X, e.Y, e.Z, e.NextRotation, c.Owner, c.TrackType, requiredMods, 0)
+	if tc.HasLevelCrossing {
+		*flags |= MotionApproachingGradeCrossing
+	}
+	found := false
+	for _, conn := range tc.Connections {
+		if conn&TaDBasicMask == routing&TaDBasicMask {
+			found = true
+			break
+		}
+	}
+	if !found {
+		*flags |= MotionNoRouteFound
+		return false
+	}
+	c.RoutingHandle = next
+	old := TrackCoordinates[c.TrackAndDirection]
+	c.TrackAndDirection = routing & TaDBasicMask
+	c.TileX, c.TileY = x+int32(old.DX), y+int32(old.DY)
+	c.TileBaseZ = uint8((z + int32(old.DZ)) / 4)
+	return true
 }
