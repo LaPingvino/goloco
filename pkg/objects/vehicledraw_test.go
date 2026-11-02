@@ -1,6 +1,8 @@
 package objects
 
 import (
+	"compress/gzip"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -40,5 +42,94 @@ func TestBodyImageIndexMatchesUpstream(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// testdata/draw_items.txt.gz is upstream's getDrawItemsForVehicle (object
+// variant, VehicleDraw.cpp compiled) for 200 pseudo-random vehicle objects ×
+// 13 yaws × 8 rolls: "total image:dist:isBody …" per line. The objects come
+// from the same LCG in the C++ harness and here.
+func TestDrawItemsMatchesUpstream(t *testing.T) {
+	f, err := os.Open("testdata/draw_items.txt.gz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	zr, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := io.ReadAll(zr)
+	lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
+	st := uint32(12345)
+	rnd := func(n uint32) uint32 { st = st*1103515245 + 12345; return (st >> 16) % n }
+	line, bad := 0, 0
+	for c := 0; c < 200; c++ {
+		var v VehicleObject
+		v.Mode = TransportMode(rnd(3))
+		v.Flags = uint16(rnd(4) << 2)
+		v.NumCarComponents = uint8(1 + rnd(4))
+		for i := range 4 {
+			b := &v.BodySprites[i]
+			b.HalfLength = uint8(rnd(20))
+			f1 := rnd(2) << 1
+			f6 := rnd(2) << 6
+			b.Flags = uint8(1 | f1 | f6)
+			b.NumAnimationFrames = uint8(1 << rnd(3))
+			b.NumRollFrames = 1
+			if rnd(2) != 0 {
+				b.NumRollFrames = 3
+			}
+			b.FlatYawAccuracy = uint8(1 + rnd(4))
+			b.NumFramesPerRotation = uint8(1 + rnd(9))
+			b.FlatImageID = rnd(500)
+		}
+		for i := range 2 {
+			g := &v.BogieSprites[i]
+			g.Flags = uint8(1 | rnd(2)<<1)
+			g.NumFramesPerRotation = uint8(1 << rnd(3))
+			g.FlatImageIDs = rnd(500)
+		}
+		pick := func() uint8 {
+			if rnd(3) == 0 {
+				return 0xFF
+			}
+			return uint8(rnd(2))
+		}
+		for i := range 4 {
+			k := &v.CarComponents[i]
+			k.FrontBogiePosition = uint8(rnd(16))
+			k.BackBogiePosition = uint8(rnd(16))
+			k.FrontBogieSpriteIdx = pick()
+			k.BackBogieSpriteIdx = pick()
+			if rnd(5) == 0 {
+				k.BodySpriteIdx = 0xFF
+			} else {
+				lo := rnd(4)
+				k.BodySpriteIdx = uint8(lo | rnd(2)<<7)
+			}
+		}
+		for yaw := 0; yaw < 64; yaw += 5 {
+			for roll := range 8 {
+				items, total := v.DrawItems(uint8(yaw), uint8(roll))
+				got := strconv.Itoa(int(total))
+				for _, it := range items {
+					b := 0
+					if it.IsBody {
+						b = 1
+					}
+					got += " " + strconv.Itoa(int(it.Image)) + ":" + strconv.Itoa(int(it.Dist)) + ":" + strconv.Itoa(b)
+				}
+				if got != lines[line] {
+					if bad++; bad < 5 {
+						t.Errorf("object %d yaw %d roll %d:\n got %s\nwant %s", c, yaw, roll, got, lines[line])
+					}
+				}
+				line++
+			}
+		}
+	}
+	if bad > 0 {
+		t.Errorf("%d of %d cases differ", bad, line)
 	}
 }
