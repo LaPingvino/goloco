@@ -2455,3 +2455,50 @@ func TestGenerateTownName(t *testing.T) {
 		t.Error("the game rng moved")
 	}
 }
+
+// resetBuildingsInfluence on title.dat and the SV5 recounts every town's
+// buildings, population, capacity and amenities from the map = the saved
+// counts (which the game keeps by the same updateTownInfo calls as buildings
+// go up and come down).
+func TestResetBuildingsInfluenceMatchesSaves(t *testing.T) {
+	for _, s := range []struct {
+		path  string
+		title bool
+	}{{"Data/title.dat", true}, {"Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false}} {
+		r, m, _ := saveView(t, s.path, s.title)
+		saved := append([]scenario.Town(nil), m.Towns...)
+		m.ResetBuildingsInfluence(r.Objects)
+		ok := 0
+		for i, tw := range m.Towns {
+			w := saved[i]
+			if tw.NumBuildings == w.NumBuildings && tw.Population == w.Population && tw.PopulationCapacity == w.PopulationCapacity && tw.AmenityCounts == w.AmenityCounts {
+				ok++
+			} else if i-ok < 4 {
+				t.Logf("%s town %d: buildings %d/%d population %d/%d capacity %d/%d amenities %v/%v", s.path, tw.ID, tw.NumBuildings, w.NumBuildings, tw.Population, w.Population, tw.PopulationCapacity, w.PopulationCapacity, tw.AmenityCounts, w.AmenityCounts)
+			}
+		}
+		t.Logf("%s: %d/%d towns match", s.path, ok, len(m.Towns))
+		if ok != len(m.Towns) {
+			t.Errorf("%s: mismatches", s.path)
+		}
+	}
+}
+
+// initialiseTown on title.dat: a new town takes the first free id, starts as
+// a hamlet with ratings of 500 and the game rng as its prng (then moved by
+// its name draws), gets a fresh name, and the recount leaves the other towns'
+// counts as they were (the new one has no buildings yet; the closest-town
+// test may move a few buildings to it if it sits nearer).
+func TestInitialiseTown(t *testing.T) {
+	r, m, _ := titleView(t)
+	n := len(m.Towns)
+	i := m.InitialiseTown(int16(m.Width/2*32), int16(m.Height/2*32), r.G1, r.Objects)
+	if i < 0 {
+		t.Fatal("no town")
+	}
+	tw := m.Towns[i]
+	t.Logf("town %d (id %d) %q at (%d,%d): size %d history %d ratings %d build speed %d influence %#x buildings %d", i, tw.ID, m.TownName(tw.Name, i), tw.X, tw.Y, tw.Size, tw.HistorySize, tw.CompanyRatings[0], tw.BuildSpeed, tw.CargoInfluenceFlags, tw.NumBuildings)
+	if len(m.Towns) != n+1 || tw.ID != uint16(n) || tw.HistorySize != 1 || tw.CompanyRatings[14] != 500 || tw.BuildSpeed != 1 || tw.Name < 0x8000 {
+		t.Error("record not as initialiseTown sets it")
+	}
+}

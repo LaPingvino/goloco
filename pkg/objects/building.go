@@ -37,6 +37,8 @@ type BuildingObject struct {
 
 	PartAnimations         []BuildingPartAnimation // per part (BuildingCommon.h)
 	NumElevatorSequences   uint8                   // 0xAD
+	ProducedQuantity       [2]uint8                // 0xA0 (passengers: the building\'s population)
+	TownAmenityCategory    uint8                   // 0xAC (0xFF none)
 	ElevatorSequences      [][]uint8               // heights; size is a power of 2
 	ScaffoldingSegmentType uint8                   // 0x9C (0xFF = none)
 	ScaffoldingColour      uint8                   // 0x9D
@@ -120,6 +122,8 @@ func ParseBuildingObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 
 	// Elevator sequences: uint16 size, then size height bytes each
 	bldg.NumElevatorSequences = data[0xAD]
+	copy(bldg.ProducedQuantity[:], data[0xA0:0xA2])
+	bldg.TownAmenityCategory = data[0xAC]
 	bldg.ScaffoldingSegmentType = data[0x9C]
 	bldg.ScaffoldingColour = data[0x9D]
 	for i := 0; i < int(bldg.NumElevatorSequences) && offset+2 <= len(data); i++ {
