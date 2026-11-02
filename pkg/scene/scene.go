@@ -81,8 +81,9 @@ const colourOrange = 18
 
 // shadow builds a paint.Shadow: image (before + rotation) through
 // Colours::getShadow(colour). zoom is always 0 here (upstream: zoomLevel <= 1).
-func (r *Renderer) shadow(has bool, image, colour int, primary bool) paint.Shadow {
-	if !has || colour < 0 || colour >= len(paint.ShadowColour) {
+// zoom: the shadows are drawn only up to zoom 1 (zoomLevel <= 1 in each painter).
+func (r *Renderer) shadow(zoom int, has bool, image, colour int, primary bool) paint.Shadow {
+	if !has || zoom > 1 || colour < 0 || colour >= len(paint.ShadowColour) {
 		return paint.Shadow{}
 	}
 	return paint.Shadow{Image: image, Pal: r.colourMap(int(paint.ShadowColour[colour])), Primary: primary}
@@ -345,7 +346,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		s.PaintBuilding(paint.BuildingEl{Rotation: b.Rotation, SequenceIndex: b.SequenceIndex, Variation: b.Variation, BaseZ: b.BaseZ, ClearZ: b.ClearZ},
 			paint.BuildingObj{Image: int(bo.ImageOffset), NumParts: int(bo.NumParts), Parts: bo.VariationParts[b.Variation], PartHeights: bo.PartHeights,
 				PartAnimFrames: frames, PartAnimSpeed: speeds, ElevatorSequences: bo.ElevatorSequences, LargeTile: bo.HasFlags(objects.BuildingFlagLargeTile),
-				Shadow: r.shadow(bo.HasFlags(objects.BuildingFlagHasShadows), (int(bo.NumParts)+int(bo.NumElevatorSequences)+int(b.Variation))*4+int(bo.ImageOffset), colourOrange, false)},
+				Shadow: r.shadow(s.Zoom, bo.HasFlags(objects.BuildingFlagHasShadows), (int(bo.NumParts)+int(bo.NumElevatorSequences)+int(b.Variation))*4+int(bo.ImageOffset), colourOrange, false)},
 			cmap, x, y, v.Ticks, sprite)
 	case scenario.KindIndustry:
 		ie := t.Industries[ref.Index]
@@ -364,7 +365,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			paint.IndustryObj{BuildingImageIDs: int(io.BuildingImageIDs), Parts: io.Variations[ie.BuildingType], PartHeights: io.PartHeights,
 				PartAnimFrames: frames, PartAnimSpeed: speeds, AnimationSequences: io.AnimationSequences,
 				LargeTile: io.BuildingSizeFlags&(1<<ie.BuildingType) != 0,
-				Shadow:    r.shadow(io.Flags&objects.IndustryFlagHasShadows != 0, int(ie.BuildingType)*4+int(io.ShadowImageIDs), int(ie.Colour), true)},
+				Shadow:    r.shadow(s.Zoom, io.Flags&objects.IndustryFlagHasShadows != 0, int(ie.BuildingType)*4+int(io.ShadowImageIDs), int(ie.Colour), true)},
 			cmap, x, y, v.Ticks, sprite)
 	case scenario.KindWall:
 		wl := t.Walls[ref.Index]
@@ -422,7 +423,7 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 		growth = 0
 	}
 	idx := int(land.ImageOffset) + land.GetFlatTerrainSpriteIndex() + growth*int(land.NumImagesPerGrowthStage) + ds
-	if !t.IsIndustrial && t.Variation != 0 && ds == 0 && t.WaterLevel == 0 && land.NumGrowthStages > 0 && t.GrowthStage == land.NumGrowthStages-1 {
+	if !t.IsIndustrial && t.Variation != 0 && s.Zoom == 0 && ds == 0 && t.WaterLevel == 0 && land.NumGrowthStages > 0 && t.GrowthStage == land.NumGrowthStages-1 {
 		idx = int(land.MapPixelImage) + 3 + int(t.Variation)
 	}
 	// Industry fields (PaintSurface.cpp industrial branch): the field surface and
@@ -460,7 +461,7 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	}
 	// PaintSurface.cpp paintMainSurface: offset (0,0,baseHeight), bbox (32,32,-1).
 	s.AddAsParent(paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, paint.Pos3{Z: z}, paint.Pos3{Z: z}, paint.Pos3{X: 32, Y: 32, Z: -1})
-	if snowAttach != nil {
+	if snowAttach != nil && s.Zoom <= 2 { // the partial snow image only up to zoom 2
 		s.AttachToPrevious(*snowAttach, 0, 0)
 	}
 
@@ -509,7 +510,7 @@ func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st sc
 		s.PaintAirport(st.Rotation, st.SequenceIndex, st.BaseZ, paint.AirportObj{BuildingImage: int(ao.BuildingImage),
 			Parts: ao.Variations[st.BuildingType], PartHeights: ao.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds,
 			LargeTile: ao.LargeTiles&(1<<st.BuildingType) != 0, Remap: r.companyRemap(m, st.Owner),
-			Shadow: r.shadow(ao.HasShadows(), int(st.BuildingType)*4+int(ao.Image)+1, colourOrange, false)}, x, y, v.Ticks, sprite)
+			Shadow: r.shadow(s.Zoom, ao.HasShadows(), int(st.BuildingType)*4+int(ao.Image)+1, colourOrange, false)}, x, y, v.Ticks, sprite)
 		return
 	}
 	if st.StationType == 3 { // docks
@@ -520,7 +521,7 @@ func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st sc
 		an := r.animOf(do, do.PartAnimations)
 		s.PaintDocks(st.Rotation, st.SequenceIndex, st.BaseZ, st.ClearZ, paint.AirportObj{BuildingImage: int(do.BuildingImage),
 			Parts: do.Variations[st.BuildingType], PartHeights: do.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds, Remap: r.companyRemap(m, st.Owner),
-			Shadow: r.shadow(do.Flags&objects.DockFlagHasShadows != 0, int(st.BuildingType)*4+int(do.Image)+1, colourOrange, false)}, x, y, v.Ticks, sprite)
+			Shadow: r.shadow(s.Zoom, do.Flags&objects.DockFlagHasShadows != 0, int(st.BuildingType)*4+int(do.Image)+1, colourOrange, false)}, x, y, v.Ticks, sprite)
 		return
 	}
 	if st.StationType != 0 {
