@@ -552,7 +552,11 @@ func (s *Session) Draw(rt *gfx8.RenderTarget) {
 	}
 	attached := func(ps *Struct) {
 		for a := ps.attached; a != nil; a = a.next {
-			draw(a.Img, ps.VpX+a.X, ps.VpY+a.Y)
+			x, y := ps.VpX+a.X, ps.VpY+a.Y
+			if s.Zoom != 0 { // drawAttachStruct: floor2(pos, 2) when zoomed out
+				x, y = x&^1, y&^1
+			}
+			draw(a.Img, x, y)
 		}
 	}
 	for ps := s.head; ps != nil; ps = ps.next {

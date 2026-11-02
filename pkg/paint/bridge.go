@@ -122,7 +122,7 @@ func (s *Session) PaintBridge(b BridgeEntry, obj BridgeObj, sprite func(int) *gf
 		}
 	}
 	// Shadow (zoom <= 1): on the water, else on the surface by its display slope.
-	if obj.ShadowPal != nil {
+	if obj.ShadowPal != nil && s.Zoom <= 1 {
 		displaySlope := 0
 		height := s.waterHeight2
 		if height == 0 {

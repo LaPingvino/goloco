@@ -82,6 +82,9 @@ func (s *Session) PaintSignal(rotation uint8, baseZ uint8, trackID, trackSeq int
 	if trackID >= len(TrackSignalHeightOffset) {
 		return
 	}
+	if s.Zoom > 1 { // paintSignal: no signals beyond zoom 1
+		return
+	}
 	rot := int((s.Rotation + rotation) & 3)
 	height := int(baseZ) * 4
 	if trackSeq == 0 {
