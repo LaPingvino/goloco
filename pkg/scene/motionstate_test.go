@@ -402,3 +402,57 @@ func TestSavedVehicle2Speeds(t *testing.T) {
 	}
 	t.Logf("%d land vehicles; %d at their target (or braking to it) after 200 ticks", n, settled)
 }
+
+// Vehicle2's speed step and move (sub_4A9F20) on every saved land vehicle
+// for 100 ticks, with Vehicle1 held where it was saved: Vehicle2 never
+// passes Vehicle1's routing (it stops there: isVeh2UnkM15), stays on its
+// path, and the brake lights follow kBrakeLightTimeout.
+func TestSavedVehicle2Move(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	moved := 0
+	for _, tr := range trains {
+		head, v1, v2 := m.Entities[tr.Head], m.Entities[tr.Veh1], m.Entities[tr.Veh2]
+		if head.Mode > 1 {
+			continue
+		}
+		cars := m.CarPhysicsOf(tr, r.Objects)
+		c := sim.MotionComponent{
+			Road: v2.Mode == 1, RightHand: m.TrafficHandedness != 0,
+			TrackAndDirection: v2.TrackAndDirection, SubPosition: v2.SubPosition,
+			TileX: int32(v2.TileX), TileY: int32(v2.TileY), TileBaseZ: v2.TileBaseZ,
+			RemainingDistance: v2.RemainingDistance, X: int32(v2.PosX), Y: int32(v2.PosY), Z: int32(v2.PosZ),
+			RoutingHandle: sim.RoutingHandle(v2.RoutingHandle), Owner: v2.Owner, TrackType: v2.TrackType, IsVehicle2: true,
+		}
+		if !c.Road {
+			c.TrackAndDirection &= sim.TaDBasicMask
+		}
+		v := sim.Vehicle2Speed{CurrentSpeed: v2.CurrentSpeed, MotorState: v2.MotorState}
+		hv, v1v, bl := head.Var3C, v1.Var3C, v2.BrakeLightTimeout
+		veh1Handle := sim.RoutingHandle(v1.RoutingHandle)
+		start := c.RoutingHandle
+		for range 100 {
+			v.UpdateSpeed(v1.TargetSpeed, head.VehicleFlags, head.ManualPower, v2.TotalPower, v2.TotalWeight, v2.Var73&1 != 0, cars)
+			d1, d2 := sim.UpdateDistances(v.CurrentSpeed)
+			d := sim.VehicleUpdateDistances{D1: d1, D2: d2}
+			if !m.Vehicle2Move(&c, &v, &d, false, veh1Handle, head.HeadVar53, &hv, &v1v, &bl) {
+				t.Fatalf("head %d: Vehicle2 lost its route", head.ID)
+			}
+			if v.MotorState == sim.MotorBraking && bl != sim.BrakeLightTimeout {
+				t.Fatalf("head %d: braking with brake light timeout %d", head.ID, bl)
+			}
+		}
+		ahead := int(c.RoutingHandle.Index()-start.Index()) & 63
+		toVeh1 := int(veh1Handle.Index()-start.Index()) & 63
+		if ahead > toVeh1 {
+			t.Errorf("head %d: Vehicle2 went %d pieces, past Vehicle1 at %d", head.ID, ahead, toVeh1)
+		}
+		if ahead > 0 {
+			moved++
+		}
+	}
+	t.Logf("Vehicle2s that moved onto a new piece: %d", moved)
+}
