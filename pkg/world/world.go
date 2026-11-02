@@ -279,10 +279,18 @@ func (w *World) spawnDemoTrains() {
 func (w *World) SetCamera(tileX, tileY float64) {
 	w.externalCamera = true
 	// Mirror of tileToScreen: vpX = (tileY-tileX)*32, vpY = (tileY+tileX)*16
+	// minus the tile's height (gameToScreen: y − z), so raised tiles centre too.
 	worldX := (tileY - tileX) * 32.0
 	worldY := (tileY + tileX) * 16.0
-	halfW := 400.0 * float64(int(1)<<w.zoom)
-	halfH := 300.0 * float64(int(1)<<w.zoom)
+	if tx, ty := int(tileX), int(tileY); ty >= 0 && ty < len(w.Tiles) && tx >= 0 && tx < len(w.Tiles[ty]) {
+		worldY -= float64(w.Tiles[ty][tx].BaseZ) * 4
+	}
+	vw, vh := 800.0, 600.0 // the view's size once drawn (Draw sets viewW/H)
+	if w.viewW > 0 && w.viewH > 0 {
+		vw, vh = float64(w.viewW), float64(w.viewH)
+	}
+	halfW := vw / 2 * float64(int(1)<<w.zoom)
+	halfH := vh / 2 * float64(int(1)<<w.zoom)
 	w.camX = worldX - halfW
 	w.camY = worldY - halfH
 }
@@ -774,6 +782,17 @@ func (w *World) CenterOn(kind string) bool {
 				}
 				if ro := w.renderer.ObjMgr.GetRoadObjectByIndex(int(r.RoadObjectID)); ro != nil && len(ro.ModNames) > 0 {
 					return true
+				}
+			}
+			return false
+		case "stationcargo": // a straight train station tile with waiting cargo
+			for _, st := range t.Stations {
+				if st.StationType == 0 && len(t.Tracks) > 0 && t.Tracks[0].TrackID == 0 && int(st.StationID) < len(w.StationCargoDensity) {
+					for _, d := range w.StationCargoDensity[st.StationID] {
+						if d != 0 {
+							return true
+						}
+					}
 				}
 			}
 			return false
