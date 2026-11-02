@@ -45,7 +45,13 @@ func draw8(screen *ebiten.Image, x, y, w, h int, draw func(rt *gfx8.RenderTarget
 	}
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(r.Min.X), float64(r.Min.Y))
-	screen.DrawImage(ebiten.NewImageFromImage(img), op)
+	tmp := ebiten.NewImageFromImage(img)
+	screen.DrawImage(tmp, op)
+	// Free the texture now: draw8 runs many times a frame (panels, toolbar,
+	// windows) and leaving each one to the garbage collector piled up GPU
+	// textures every frame until the browser's GPU process was killed
+	// (the headless gameplay stall of ticks 248–249).
+	tmp.Deallocate()
 }
 
 type palInverse map[[3]uint8]uint8
