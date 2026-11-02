@@ -32,3 +32,13 @@ func IdealTownRoadIDForTest(m *Map, i int, om *objects.ObjectManager) int {
 func TileClearFunctionForTest(m *Map, c *Cmd, t *Tile, k int, px, py int32, flags uint8, cost *int32) ClearResult {
 	return m.tileClearFunction(c, t, k, px, py, RemovedBuildings{}, flags, cost, true)
 }
+
+// ClearTrackForTest runs createRoad's clearTrack for the road piece rd placed
+// over track element k of t (query flags); it reports a level crossing and the
+// clear result.
+func ClearTrackForTest(m *Map, c *Cmd, t *Tile, k int, rd scenario.RoadElement, bridge uint8) (bool, ClearResult) {
+	st := &roadCmdState{Bridge: 0xFF, AltRoadObject: 0xFF}
+	a := roadClearArgs{Z: int32(rd.BaseZ) * 4, Rotation: rd.Rotation, RoadID: rd.RoadID, BridgeID: bridge, RoadObjectID: rd.RoadObjectID}
+	r := m.clearTrack(c, st, &t.Tracks[t.Order[k].Index], a)
+	return r.HasLevelCrossing, r.Res
+}

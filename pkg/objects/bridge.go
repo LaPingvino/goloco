@@ -34,8 +34,10 @@ type BridgeObject struct {
 	PillarSpacing uint8
 	MaxSpeed      uint16
 	MaxHeight     uint8
-	CostIndex     uint8
-	DesignedYear  uint16
+	// DisabledTrackCfg (0x14) is the CommonTraitFlags the bridge cannot carry.
+	DisabledTrackCfg uint16
+	CostIndex        uint8
+	DesignedYear     uint16
 
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
 	ImageOffset uint32
@@ -78,16 +80,17 @@ func ParseBridgeObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*B
 	}
 
 	obj := &BridgeObject{
-		Header:        header,
-		Flags:         data[BridgeFlagsOffset],
-		ClearHeight:   binary.LittleEndian.Uint16(data[BridgeClearHeightOffset:]),
-		DeckDepth:     int16(binary.LittleEndian.Uint16(data[BridgeDeckDepthOffset:])),
-		SpanLength:    data[BridgeSpanLengthOffset],
-		PillarSpacing: data[BridgePillarSpacingOffset],
-		MaxSpeed:      binary.LittleEndian.Uint16(data[BridgeMaxSpeedOffset:]),
-		MaxHeight:     data[BridgeMaxHeightOffset],
-		CostIndex:     data[0x0D],
-		DesignedYear:  binary.LittleEndian.Uint16(data[BridgeDesignedYearOffset:]),
+		Header:           header,
+		Flags:            data[BridgeFlagsOffset],
+		ClearHeight:      binary.LittleEndian.Uint16(data[BridgeClearHeightOffset:]),
+		DeckDepth:        int16(binary.LittleEndian.Uint16(data[BridgeDeckDepthOffset:])),
+		SpanLength:       data[BridgeSpanLengthOffset],
+		PillarSpacing:    data[BridgePillarSpacingOffset],
+		MaxSpeed:         binary.LittleEndian.Uint16(data[BridgeMaxSpeedOffset:]),
+		MaxHeight:        data[BridgeMaxHeightOffset],
+		DisabledTrackCfg: binary.LittleEndian.Uint16(data[0x14:]),
+		CostIndex:        data[0x0D],
+		DesignedYear:     binary.LittleEndian.Uint16(data[BridgeDesignedYearOffset:]),
 	}
 	trackNumCompatible := data[BridgeTrackNumCompatibleOffset]
 	roadNumCompatible := data[BridgeRoadNumCompatibleOffset]

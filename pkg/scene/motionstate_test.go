@@ -2687,3 +2687,69 @@ func TestRemoveBuilding(t *testing.T) {
 	}
 	t.Fatal("no building")
 }
+
+// createRoad's clearTrack with the title's objects (no save or scenario has a
+// level crossing to check against): a straight road across straight track at
+// right angles and the same height is a level crossing (marked on the track
+// when applied); parallel, another height, a signal, or an incompatible
+// road / track pair are refused.
+func TestClearTrackLevelCrossing(t *testing.T) {
+	r, m, _ := titleView(t)
+	om := r.Objects
+	c := &sim.Cmd{Company: sim.CompanyNeutral, Objects: om}
+	tr, rd, found := -1, -1, false
+	for ti, to := range om.TrackObjects {
+		if to == nil {
+			continue
+		}
+		_, troads := om.CompatibleSets(to.CompatibleNames)
+		for ri, ro := range om.RoadObjects {
+			if ro == nil {
+				continue
+			}
+			rtracks, _ := om.CompatibleSets(ro.CompatibleNames)
+			if !found && (troads&(1<<ri) != 0 || rtracks&(1<<ti) != 0) {
+				tr, rd, found = ti, ri, true
+				t.Logf("track %d %q × road %d %q compatible (track's roads %#x, road's tracks %#x)", ti, to.Name, ri, ro.Name, troads, rtracks)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no compatible track / road pair")
+	}
+	try := func(trk scenario.TrackElement, road scenario.RoadElement) (bool, sim.ClearResult) {
+		tl := &sim.Tile{Tracks: []scenario.TrackElement{trk}, Order: []scenario.ElemRef{{Kind: scenario.KindTrack}}}
+		return sim.ClearTrackForTest(m, c, tl, 0, road, 0)
+	}
+	trk := scenario.TrackElement{TrackObjectID: uint8(tr), TrackID: 0, Rotation: 0, BaseZ: 20}
+	road := scenario.RoadElement{RoadObjectID: uint8(rd), RoadID: 0, Rotation: 1, BaseZ: 20}
+	if lc, res := try(trk, road); !lc || res != sim.ClearNoCollision {
+		t.Errorf("crossing: %v %v", lc, res)
+	}
+	parallel := road
+	parallel.Rotation = 2
+	higher := road
+	higher.BaseZ = 24
+	signalled := trk
+	signalled.HasSignal = true
+	for name, cse := range map[string][2]any{"parallel": {trk, parallel}, "other height": {trk, higher}, "signal": {signalled, road}} {
+		if _, res := try(cse[0].(scenario.TrackElement), cse[1].(scenario.RoadElement)); res != sim.ClearCollisionErrorSet {
+			t.Errorf("%s: %v", name, res)
+		}
+	}
+	for ri, ro := range om.RoadObjects {
+		if ro == nil || ri == rd {
+			continue
+		}
+		rtracks, _ := om.CompatibleSets(ro.CompatibleNames)
+		_, troads := om.CompatibleSets(om.TrackObjects[tr].CompatibleNames)
+		if rtracks&(1<<tr) == 0 && troads&(1<<ri) == 0 {
+			other := road
+			other.RoadObjectID = uint8(ri)
+			if _, res := try(trk, other); res != sim.ClearCollisionErrorSet {
+				t.Errorf("incompatible road %d: %v", ri, res)
+			}
+			break
+		}
+	}
+}

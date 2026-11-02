@@ -9,7 +9,9 @@ import (
 // OpenLoco reference: src/OpenLoco/src/Objects/TrackObject.h
 // Header size: 0x36 (54 bytes)
 type TrackObject struct {
-	Header *ObjectHeader
+	// CompatibleNames: as RoadObject.CompatibleNames.
+	CompatibleNames []string
+	Header          *ObjectHeader
 
 	Name        string
 	Image       uint32 // Base G1 sprite index (set after image table load)
@@ -137,6 +139,9 @@ func ParseTrackObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tr
 	// TrackObject::load: the tunnel header follows the compatible, mod and signal headers.
 	track.TunnelName = headerName(data, offset+(int(numCompatible)+int(numMods)+int(numSignals))*HeaderSize)
 	hdr := func(i int) string { return headerName(data, offset+i*HeaderSize) }
+	for i := range int(numCompatible) { // TrackObject::load: compatibleTracks / compatibleRoads
+		track.CompatibleNames = append(track.CompatibleNames, hdr(i))
+	}
 	for i := range int(numMods) {
 		track.ModNames = append(track.ModNames, hdr(int(numCompatible)+i))
 	}
