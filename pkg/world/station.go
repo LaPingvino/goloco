@@ -47,6 +47,7 @@ func (w *World) PlaceStationOnTile(x, y int, stationObjID uint8) bool {
 		return false
 	}
 	te.HasStation = true
+	w.stationsGen++
 	t.Stations = append(t.Stations, scenario.StationElement{
 		StationType:   0, // train station
 		ObjectID:      stationObjID,
