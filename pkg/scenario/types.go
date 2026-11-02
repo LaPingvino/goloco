@@ -522,6 +522,8 @@ type Options struct {
 	MinLandHeight   uint8 // base height (0-15)
 	TopographyStyle uint8 // 0=flat,1=smallHills,2=mountains,3=halfMtHills,4=halfMtFlat
 	HillDensity     uint8 // 0-100
+	// OpenLoco additions (0x41BD…, offsets from the compiler): generator, rivers.
+	Generator, NumRiverbeds, MinRiverWidth, MaxRiverWidth, RiverbankWidth, RiverMeanderRate uint8
 
 	// Legacy / unused fields kept for compatibility
 	EndYear    uint16

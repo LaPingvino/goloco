@@ -1,4 +1,3 @@
-// Generates pkg/scene/testdata/terrain_hashes.txt (run: ./tg hs1.txt; hs1.txt dumped from HS1 by a test — game data, never committed).
 // Generates the expected hash for pkg/sim TestTerrainHeightMapMatchesUpstream: upstream's
 // OriginalTerrainGenerator.cpp (includes stripped by sed, stubs below) on HS1's height-map images
 // read from a dump (game data, not committed) with a fixed Prng seed.
@@ -19,7 +18,7 @@ namespace OpenLoco {
     enum class ScenarioFlags : uint16_t { none = 0, hillsEdgeOfMap = 2 };
     constexpr ScenarioFlags operator&(ScenarioFlags a, ScenarioFlags b) { return ScenarioFlags(uint16_t(a) & uint16_t(b)); }
     enum class TopographyStyle : uint8_t {};
-    struct Options { uint8_t minLandHeight; TopographyStyle topographyStyle; uint8_t hillDensity; ScenarioFlags scenarioFlags; };
+    struct Options { uint8_t minLandHeight; TopographyStyle topographyStyle; uint8_t hillDensity; ScenarioFlags scenarioFlags; uint8_t numRiverbeds, minRiverWidth, maxRiverWidth, riverbankWidth, riverMeanderRate; };
   }
   enum class HillShapeFlags : uint16_t { none = 0, isHeightMap = 1 };
   constexpr HillShapeFlags operator&(HillShapeFlags a, HillShapeFlags b) { return HillShapeFlags(uint16_t(a) & uint16_t(b)); }
@@ -29,6 +28,7 @@ namespace OpenLoco {
   GameState& getGameState();
   namespace World {
     constexpr int kMapPitch = 512;
+    constexpr bool validCoords(const TilePos2& c) { return int16_t(c.x) >= 0 && int16_t(c.x) < 384 && int16_t(c.y) >= 0 && int16_t(c.y) < 384; }
     namespace MapGenerator {
       struct HeightMap {
         std::vector<uint8_t> h; uint16_t width, height;
@@ -317,6 +317,85 @@ namespace OpenLoco::World::MapGenerator
         capSeaLevels(heightMap);
     }
 }
+namespace OpenLoco::World::MapGenerator {
+    static void generateRivers(const Scenario::Options& options, HeightMap& heightMap)
+    {
+        for (auto i = 0; i < options.numRiverbeds; i++)
+        {
+            auto& gs = getGameState();
+            const auto riverEastWest = gs.rng.randBool();
+            const auto riverWidth = gs.rng.randNext(options.minRiverWidth, options.maxRiverWidth);
+            const auto riverbedHeight = std::max<uint8_t>(gs.seaLevel > 0 ? gs.seaLevel - 1 : 1, options.minLandHeight);
+
+            // We'll be varying the bank width as we meander
+            auto riverbankWidth = options.riverbankWidth;
+            auto totalRiverWidth = riverWidth + 2 * riverbankWidth;
+            auto easternBankOffset = riverWidth + riverbankWidth;
+
+            // Pivot: generate a random X position
+            auto xStartPos = getGameState().rng.randNext(0.15 * heightMap.width, 0.85 * heightMap.width);
+            for (auto yPos = 0; yPos < heightMap.height; yPos++)
+            {
+                for (auto xOffset = 0; xOffset < totalRiverWidth; xOffset++)
+                {
+                    auto pos = TilePos2(xStartPos + xOffset, yPos);
+                    if (!riverEastWest)
+                    {
+                        pos = TilePos2(pos.y, pos.x);
+                    }
+
+                    if (!validCoords(pos))
+                    {
+                        // We might meander back to a valid position later,
+                        // so we're only breaking out of the inner loop.
+                        break;
+                    }
+
+                    if (riverbankWidth > 0 && xOffset < riverbankWidth)
+                    {
+                        // Western riverbank (high to low)
+                        auto bankPos = riverbankWidth - xOffset;
+                        auto bankHeight = heightMap[pos] * bankPos / riverbankWidth;
+                        heightMap[pos] = std::max<uint8_t>(riverbedHeight, bankHeight);
+                    }
+                    else if (riverbankWidth > 0 && xOffset > easternBankOffset)
+                    {
+                        // Eastern riverbank (low to high)
+                        auto bankPos = xOffset - easternBankOffset;
+                        auto bankHeight = heightMap[pos] * bankPos / riverbankWidth;
+                        heightMap[pos] = std::max<uint8_t>(riverbedHeight, bankHeight);
+                    }
+                    else
+                    {
+                        // Simply carve out the river
+                        heightMap[pos] = riverbedHeight;
+                    }
+                }
+
+                // Let the river meander slightly
+                const auto meanderRate = options.riverMeanderRate;
+                if (meanderRate > 0 && yPos % 4 == 0)
+                {
+                    const auto halfMeanderRate = meanderRate / 2;
+
+                    int8_t meanderOffset = getGameState().rng.randNext(0, meanderRate) - halfMeanderRate;
+                    xStartPos += meanderOffset;
+
+                    // Adjust bank width slightly as well
+                    if (options.riverbankWidth > 0 && halfMeanderRate != 0)
+                    {
+                        riverbankWidth += meanderOffset / halfMeanderRate;
+                        easternBankOffset += meanderOffset / halfMeanderRate;
+                        totalRiverWidth += meanderOffset / halfMeanderRate * 2;
+                    }
+                }
+            }
+        }
+    }
+
+
+  void riversFor(const Scenario::Options& o, HeightMap& h) { generateRivers(o, h); }
+}
 namespace OpenLoco {
   static GameState gs; GameState& getGameState() { return gs; }
   static HillShapesObject hso; template<> HillShapesObject* ObjectManager::get<HillShapesObject>() { return &hso; }
@@ -333,9 +412,9 @@ int main(int argc, char** argv) {
   for (int c = 0; c < 6; c++) { // cases: style, density, edge, seed
     const uint8_t styles[6] = {2, 4, 1, 3, 2, 0}; const uint8_t dens[6] = {24, 50, 10, 80, 30, 24};
     gs.rng = Core::Prng(12345u + c * 7919u, 67890u + c * 104729u); gs.seaLevel = 4;
-    Scenario::Options o{ 2, Scenario::TopographyStyle(styles[c]), dens[c], c % 2 ? Scenario::ScenarioFlags::hillsEdgeOfMap : Scenario::ScenarioFlags::none };
-    World::MapGenerator::HeightMap hm(384, 384); World::MapGenerator::OriginalTerrainGenerator g; g.generate(o, hm);
+    Scenario::Options o{ 2, Scenario::TopographyStyle(styles[c]), dens[c], c % 2 ? Scenario::ScenarioFlags::hillsEdgeOfMap : Scenario::ScenarioFlags::none, uint8_t(c % 3), uint8_t(2 + c), uint8_t(5 + c), uint8_t(c % 4), uint8_t(c * 3 % 7) };
+    World::MapGenerator::HeightMap hm(384, 384); World::MapGenerator::OriginalTerrainGenerator g; g.generate(o, hm); World::MapGenerator::riversFor(o, hm);
     uint64_t hsh = 1469598103934665603ull; for (auto v : hm.h) { hsh ^= v; hsh *= 1099511628211ull; }
-    printf("%d %u %u %d %u %u %llx\n", c, styles[c], dens[c], c % 2, 12345u + c * 7919u, 67890u + c * 104729u, (unsigned long long)hsh);
+    printf("%d %u %u %d %u %u %u %u %u %u %u %llx\n", c, styles[c], dens[c], c % 2, c % 3, 2 + c, 5 + c, c % 4, c * 3 % 7, 12345u + c * 7919u, 67890u + c * 104729u, (unsigned long long)hsh);
   }
 }

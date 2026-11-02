@@ -20,6 +20,8 @@ type TerrainOptions struct {
 	HillDensity     uint8
 	HillsEdgeOfMap  bool // ScenarioFlags::hillsEdgeOfMap
 	SeaLevel        uint8
+	// Rivers (OpenLoco's options; none in vanilla scenarios).
+	NumRiverbeds, MinRiverWidth, MaxRiverWidth, RiverbankWidth, RiverMeanderRate uint8
 }
 
 const (
@@ -155,6 +157,67 @@ func (m *Map) blitHill(o TerrainOptions, hs *objects.HillShapesObject, g1 G1Raw,
 				x = (x + 1) % mw
 			}
 			y = (y + 1) % mh
+		}
+	}
+}
+
+// GenerateRivers is generateRivers: each riverbed a band carved to just below
+// sea level (banks sloping), north–south or east–west, meandering every 4 rows.
+func (m *Map) GenerateRivers(o TerrainOptions, hm *HeightMap) {
+	for range int(o.NumRiverbeds) {
+		eastWest := m.Rng1.RandBool()
+		riverWidth := int(m.Rng1.RandNextRange(int32(o.MinRiverWidth), int32(o.MaxRiverWidth)))
+		bed := uint8(1)
+		if o.SeaLevel > 0 {
+			bed = o.SeaLevel - 1
+		}
+		bed = max(bed, o.MinLandHeight)
+		bank := o.RiverbankWidth // auto from a uint8_t: it wraps as it meanders
+		total := riverWidth + 2*int(bank)
+		eastOffset := riverWidth + int(bank)
+		xStart := int(m.Rng1.RandNextRange(int32(0.15*float64(hm.Width)), int32(0.85*float64(hm.Width))))
+		for yPos := 0; yPos < hm.Height; yPos++ {
+			for xOff := 0; xOff < total; xOff++ {
+				px, py := xStart+xOff, yPos
+				if !eastWest {
+					px, py = py, px
+				}
+				if int16(px) < 0 || int(int16(px)) >= hm.Width || int16(py) < 0 || int(int16(py)) >= hm.Height { // validCoords (tile_coord_t)
+					break
+				}
+				px, py = int(int16(px)), int(int16(py))
+				h := hm.At(px, py)
+				switch {
+				case bank > 0 && xOff < int(bank):
+					*h = max(bed, uint8(int(*h)*(int(bank)-xOff)/int(bank)))
+				case bank > 0 && xOff > eastOffset:
+					*h = max(bed, uint8(int(*h)*(xOff-eastOffset)/int(bank)))
+				default:
+					*h = bed
+				}
+			}
+			if rate := int(o.RiverMeanderRate); rate > 0 && yPos%4 == 0 {
+				half := rate / 2
+				off := int(int8(m.Rng1.RandNextRange(0, int32(rate)) - int32(half)))
+				xStart += off
+				if o.RiverbankWidth > 0 && half != 0 {
+					bank += uint8(off / half)
+					eastOffset += off / half
+					total += off / half * 2
+				}
+			}
+		}
+	}
+}
+
+// GenerateWater is generateWater: every drawable surface below sea level
+// (baseZ < seaLevel × 4) gets water at sea level.
+func (m *Map) GenerateWater(seaLevel uint8) {
+	for y := 1; y <= m.Height-2; y++ {
+		for x := 1; x <= m.Width-2; x++ {
+			if t := m.TileAt(x, y); t != nil && int(t.BaseZ) < int(seaLevel)<<2 {
+				t.WaterLevel = seaLevel & 0x1F // setWater keeps the update timer bits; goloco stores only the level
+			}
 		}
 	}
 }
