@@ -460,6 +460,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
           f3. Town::grow (World/Town.cpp ~1800 lines): roads by the CreateRoad game command, buildings by CreateBuilding,
               recalculateSize — the big one; town placement for later towns depends on it (shared rng)
           f4. CreateIndustry (713) + generateIndustries; f5. CreateBuilding (280) + generateMiscBuildings
+5d. [ ] **Opus for sound and music on the web page** (Joop 2026-11-02: "maybe we can also use that for Goloco …
+   see if it would be a win there", "using Opus for sound and music"). Measure first: the music (Data/css*.dat,
+   over 3 MB each, fetched on first use) and the sound objects' PCM in the pack vs Ogg Opus via gopus
+   (github.com/LaPingvino/gopus, pure Go, bit-exact with libopus; decodes ~18× real time in wasm). If it wins:
+   cmd/webpack converts them at pack time (the private page only — game data never published), the player
+   decodes with gopus. The desktop keeps reading the original files.
 5c. [ ] **CJK fallback font** (Joop 2026-11-02: '?? languages behave the same in OpenLoco afaik. Probably good to add
    fallback font support'; approved, no specific priority — after 5.9f3). A deliberate addition beyond upstream:
    record it in docs/deviations.md. (a) keep outside text Unicode — i18n.Available's ToLoco(nativeName) turns
