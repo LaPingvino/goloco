@@ -38,11 +38,17 @@ func reorderScenarioObjects(om *objects.ObjectManager, sc *scenario.Scenario) {
 			r.apply(r.order)
 		}
 	}
-	om.CurrencySlot = sc.CurrencyObject
 	om.TrackExtraOrder = sc.TrackExtraOrder
 	om.RoadExtraOrder = sc.RoadExtraOrder
-	// Gfx::loadCurrency and formatCurrency's object, as on scenario load.
-	if c := om.GetCurrencyObject(sc.CurrencyObject); c != nil {
+	useCurrency(om, sc.CurrencyObject)
+}
+
+// useCurrency makes dat the loaded currency object: its slot, then
+// Gfx::loadCurrency and formatCurrency's object (scenario load, and Options'
+// currencyDropdown).
+func useCurrency(om *objects.ObjectManager, dat string) {
+	om.CurrencySlot = dat
+	if c := om.GetCurrencyObject(dat); c != nil {
 		ui.LoadCurrency(c.ObjectIcon)
 		uilayout.SetCurrency(c.Prefix, c.Suffix, c.Separator, c.Factor)
 	}

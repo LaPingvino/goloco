@@ -89,6 +89,8 @@ type OptionsWindow struct {
 	OnPreferredCurrency func(dat string)
 	// Languages are the available packs (native names, sorted) and Language
 	// the current one's index; OnLanguage loads the chosen one.
+	// OnCurrency switches the current currency object (currencyDropdown).
+	OnCurrency func(dat string)
 	Languages  []string
 	Language   int
 	OnLanguage func(i int)
@@ -278,6 +280,24 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 					w.Language = i
 					if w.OnLanguage != nil {
 						w.OnLanguage(i)
+					}
+				}
+			}
+			w.OpenDropdown(d)
+		}
+		// currencyMouseDown: every installed currency, the loaded one selected;
+		// the widget is disabled in title mode (prepareDraw).
+		if r := optRegionalRows[3]; !w.TitleMode && w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil && len(w.Currencies) > 0 {
+			items := make([]DropdownItem, len(w.Currencies))
+			for i, c := range w.Currencies {
+				items[i] = DropdownItem{Text: c.Name, Selected: c.Name == w.CurrencyName, MoveX10: true}
+			}
+			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour, items, 1<<20, 1<<20)
+			d.OnSelect = func(i int) {
+				if i >= 0 && i < len(w.Currencies) {
+					w.CurrencyName = w.Currencies[i].Name
+					if w.OnCurrency != nil {
+						w.OnCurrency(w.Currencies[i].DAT)
 					}
 				}
 			}
