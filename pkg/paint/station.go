@@ -24,6 +24,9 @@ type StationEl struct {
 // densityPerTile, the cargo objects (by cargo id; nil = none) and the station
 // object's getCargoOffsets(rotation, (x + y) & 3) with the variation hash x + y.
 type StationCargo struct {
+	// Types is the cargoTypes mask (train stations: all; road stations by
+	// their passenger/freight flags and cargo type).
+	Types   uint32
 	Density [32]uint8
 	Cargos  [32]*CargoPlatform
 	Offsets [][2][3]int
@@ -54,7 +57,7 @@ func (s *Session) paintStationCargo(c *StationCargo, flags uint8, offsetZ int, b
 	hasDrawn := false
 	for id := range 32 {
 		obj := c.Cargos[id]
-		if c.Density[id] == 0 || obj == nil || obj.Variations == 0 {
+		if c.Types&(1<<id) == 0 || c.Density[id] == 0 || obj == nil || obj.Variations == 0 {
 			continue
 		}
 		variation := uint32(obj.Variations-1) & uint32(c.Hash)
@@ -216,7 +219,7 @@ var (
 // PaintRoadStation paints a style-0 road station element; base is
 // stationObj->imageOffsets[1] (upstream always uses index 1), roadID the road
 // element before it.
-func (s *Session) PaintRoadStation(rotation, baseZ, roadID uint8, base int, remap, translucent []uint8, sprite func(int) *gfx8.Sprite) {
+func (s *Session) PaintRoadStation(rotation, baseZ, roadID uint8, base int, remap, translucent []uint8, cargo *StationCargo, sprite func(int) *gfx8.Sprite) {
 	s.SetOccupiedAdditionSupportSegments(SegmentsAll) // stations block addition supports
 	if roadID != 0 {
 		return // paintRoadStationStyle0: only straight road
@@ -227,10 +230,14 @@ func (s *Session) PaintRoadStation(rotation, baseZ, roadID uint8, base int, rema
 	if rot&1 == 1 {
 		d = roadStationSE
 	}
-	for _, part := range d[:2] {
+	flags := cargoRotationFlags[rot]
+	for k, part := range d[:2] {
+		bb := Pos3{part.bbOff.X, part.bbOff.Y, part.bbOff.Z + ho.Z}
 		if sp := sprite(base + part.img); sp != nil {
-			s.AddAsParent(Colour(sp, remap), ho, Pos3{part.bbOff.X, part.bbOff.Y, part.bbOff.Z + ho.Z}, part.bbSz)
+			s.AddAsParent(Colour(sp, remap), ho, bb, part.bbSz)
 		}
+		s.paintStationCargo(cargo, flags[k*2], ho.Z, bb, part.bbSz, sprite) // back: 0, 1; front: 2, 3
+		s.paintStationCargo(cargo, flags[k*2+1], ho.Z, bb, part.bbSz, sprite)
 	}
 	if sp := sprite(base + d[2].img); sp != nil {
 		s.AddTrackRoadAddition(Colour(sp, remap), 1, ho, Pos3{d[2].bbOff.X, d[2].bbOff.Y, d[2].bbOff.Z + ho.Z}, d[2].bbSz)

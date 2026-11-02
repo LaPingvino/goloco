@@ -150,3 +150,47 @@ func TestStationCargoDrawn(t *testing.T) {
 		t.Error("station cargo changes nothing in the view")
 	}
 }
+
+// Road station cargo: the first road station tile (straight road) with waiting
+// cargo that has platform images changes when the cargo is cleared.
+func TestRoadStationCargoDrawn(t *testing.T) {
+	r, m, _ := titleView(t)
+	tx, ty := -1, -1
+	for y := range m.Height {
+		for x := range m.Width {
+			t0 := m.TileAt(x, y)
+			for _, st := range t0.Stations {
+				if st.StationType != 1 || int(st.StationID) >= len(m.StationCargoDensity) || len(t0.Roads) == 0 || t0.Roads[0].RoadID != 0 {
+					continue
+				}
+				for c, v := range m.StationCargoDensity[st.StationID] {
+					// cargo that has platform images (e.g. grapes have none)
+					if v != 0 && tx < 0 && c < len(r.Objects.CargoObjects) && r.Objects.CargoObjects[c] != nil && r.Objects.CargoObjects[c].NumPlatformVariations > 0 {
+						tx, ty = x*32+16, y*32+16
+						t.Logf("road station %d at tile (%d, %d)", st.StationID, x, y)
+					}
+				}
+			}
+		}
+	}
+	if tx < 0 {
+		t.Skip("no road station with waiting cargo")
+	}
+	cx, cy := paint.GameToScreen(paint.Pos3{X: tx, Y: ty}, 0)
+	v := View{X: cx - 300, Y: cy - 200, W: 600, H: 400}
+	with := append([]uint8(nil), r.Render(m, v).Bits...)
+	saved := m.StationCargoDensity
+	m.StationCargoDensity = make([][32]uint8, len(saved))
+	defer func() { m.StationCargoDensity = saved }()
+	without := r.Render(m, v).Bits
+	diff := 0
+	for i := range with {
+		if with[i] != without[i] {
+			diff++
+		}
+	}
+	t.Logf("%d pixels differ", diff)
+	if diff == 0 {
+		t.Error("road station cargo changes nothing in the view")
+	}
+}

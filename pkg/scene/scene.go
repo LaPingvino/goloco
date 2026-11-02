@@ -8,6 +8,7 @@ package scene
 import (
 	"image"
 	"image/color"
+	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"github.com/LaPingvino/goloco/pkg/gfx8"
@@ -38,6 +39,7 @@ type Renderer struct {
 	entsByTile map[[2]int][]*scenario.VehicleEntity
 	// station cargo inputs, kept (stationCargo)
 	cargoPlatforms map[int]*paint.CargoPlatform
+	cargoSlots     map[string]int // cargoSlot cache (GetName allocates)
 	stationCargos  map[stationCargoKey]*paint.StationCargo
 	pal2           map[[2]uint8][]uint8
 	pal2Fn         func(p, q uint8) []uint8
@@ -555,7 +557,17 @@ func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st sc
 			remap = r.companyRemap(m, m.StationOwners[st.StationID])
 			tl = r.canopyTranslucent(m, m.StationOwners[st.StationID], rso.Flags&objects.RoadStationFlagRecolourable != 0)
 		}
-		s.PaintRoadStation(st.Rotation, st.BaseZ, rd.RoadID, int(rso.SequenceImageOffsets[1]), remap, tl, sprite)
+		// cargoTypeFlags: all; a passenger/freight station drops its cargo type,
+		// a passenger-only one then keeps just that type.
+		types := uint32(0xFFFFFFFF)
+		if rso.Flags&(1<<1|1<<2) != 0 {
+			types &^= 1 << (r.cargoSlot(rso.CargoName) & 31)
+			if rso.Flags&(1<<2) == 0 {
+				types = ^types
+			}
+		}
+		cargo := r.stationCargo(m, rso, rso.CargoOffsets, types, st.StationID, int((s.Rotation+st.Rotation)&3), x+y)
+		s.PaintRoadStation(st.Rotation, st.BaseZ, rd.RoadID, int(rso.SequenceImageOffsets[1]), remap, tl, cargo, sprite)
 		return
 	}
 	if st.StationType == 2 { // airport
@@ -595,7 +607,7 @@ func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st sc
 	tk := t.Tracks[prev.Index]
 	s.PaintTrainStation(paint.StationEl{Rotation: st.Rotation, BaseZ: st.BaseZ, TrackID: tk.TrackID, TrackSeq: tk.SequenceIndex, Remap: r.companyRemap(m, tk.Owner),
 		Translucent: r.canopyTranslucent(m, tk.Owner, so.Flags&objects.TrainStationFlagRecolourable != 0),
-		Cargo:       r.stationCargo(m, so, st.StationID, int((s.Rotation+st.Rotation)&3), x+y)},
+		Cargo:       r.stationCargo(m, so, so.CargoOffsets, 0xFFFFFFFF, st.StationID, int((s.Rotation+st.Rotation)&3), x+y)},
 		int(so.SequenceImageOffsets[st.SequenceIndex]), sprite)
 }
 
@@ -740,7 +752,7 @@ func (r *Renderer) bridgeHasRoof(id uint8) bool {
 // station's densities, the cargo objects' platform images, and the station
 // object's cargo offsets for (rotation, (x + y) & 3) — kept per key so a
 // frame allocates nothing; nil without station data.
-func (r *Renderer) stationCargo(m *sim.Map, so *objects.TrainStationObject, station uint16, rot, hash int) *paint.StationCargo {
+func (r *Renderer) stationCargo(m *sim.Map, so any, offsets [4][4][][2][3]int, types uint32, station uint16, rot, hash int) *paint.StationCargo {
 	if int(station) >= len(m.StationCargoDensity) {
 		return nil
 	}
@@ -751,7 +763,7 @@ func (r *Renderer) stationCargo(m *sim.Map, so *objects.TrainStationObject, stat
 	k := stationCargoKey{so, station, rot, hash}
 	c, ok := r.stationCargos[k]
 	if !ok {
-		c = &paint.StationCargo{Offsets: so.CargoOffsets[rot][hash&3], Hash: hash}
+		c = &paint.StationCargo{Offsets: offsets[rot][hash&3], Hash: hash, Types: types}
 		for id := range 32 {
 			if id >= len(r.Objects.CargoObjects) || r.Objects.CargoObjects[id] == nil {
 				continue
@@ -771,7 +783,30 @@ func (r *Renderer) stationCargo(m *sim.Map, so *objects.TrainStationObject, stat
 }
 
 type stationCargoKey struct {
-	so        *objects.TrainStationObject
+	so        any // the train or road station object
 	station   uint16
 	rot, hash int
+}
+
+// cargoSlot is the loaded cargo object's id (slot) for a DAT name (load's
+// findObjectHandle); 0 when not found, as cargoType stays 0.
+func (r *Renderer) cargoSlot(name string) int {
+	if v, ok := r.cargoSlots[name]; ok {
+		return v
+	}
+	if r.cargoSlots == nil {
+		r.cargoSlots = map[string]int{}
+	}
+	v := r.findCargoSlot(name)
+	r.cargoSlots[name] = v
+	return v
+}
+
+func (r *Renderer) findCargoSlot(name string) int {
+	for i, c := range r.Objects.CargoObjects {
+		if c != nil && c.Header != nil && strings.EqualFold(strings.TrimSpace(c.Header.GetName()), strings.TrimSpace(name)) {
+			return i
+		}
+	}
+	return 0
 }
