@@ -500,19 +500,22 @@ func (sc *Scenario) parseTileElements(data []byte) {
 				// TrackElement: byte layout from TrackElement.h
 				// bridge(): elem[6] >> 5 (bits [7:5]) — OpenLoco TrackElement.h
 				te := TrackElement{
-					TrackID:       elem[4] & 0x3F,
-					IsLast:        elem[1]&0x40 != 0, // ElementFlags::flag_6
-					HasBridge:     elem[4]&0x80 != 0,
-					BridgeID:      elem[6] >> 5,
-					SequenceIndex: elem[5] & 0x0F,
-					TrackObjectID: (elem[5] >> 4) & 0x0F,
-					Rotation:      typeByte & 0x03,
-					HasSignal:     typeByte&0x40 != 0,
-					HasStation:    typeByte&0x80 != 0,
-					Owner:         elem[7] & 0x0F,
-					Mods:          (elem[7] >> 4) & 0x0F,
-					BaseZ:         baseZ,
-					ClearZ:        elem[3],
+					TrackID:          elem[4] & 0x3F,
+					IsLast:           elem[1]&0x40 != 0, // ElementFlags::flag_6
+					HasLevelCrossing: elem[6]&0x10 != 0,
+					Ghost:            elem[1]&0x10 != 0,
+					AiAllocated:      elem[1]&0x20 != 0,
+					HasBridge:        elem[4]&0x80 != 0,
+					BridgeID:         elem[6] >> 5,
+					SequenceIndex:    elem[5] & 0x0F,
+					TrackObjectID:    (elem[5] >> 4) & 0x0F,
+					Rotation:         typeByte & 0x03,
+					HasSignal:        typeByte&0x40 != 0,
+					HasStation:       typeByte&0x80 != 0,
+					Owner:            elem[7] & 0x0F,
+					Mods:             (elem[7] >> 4) & 0x0F,
+					BaseZ:            baseZ,
+					ClearZ:           elem[3],
 				}
 				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeTrack, Index: uint16(len(sc.Tiles[y][x].Tracks))})
 				sc.Tiles[y][x].Tracks = append(sc.Tiles[y][x].Tracks, te)
@@ -556,6 +559,8 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					Owner:         elem[4] & 0x0F,
 					BaseZ:         baseZ,
 					ClearZ:        elem[3],
+					Ghost:         elem[1]&0x10 != 0,
+					AiAllocated:   elem[1]&0x20 != 0,
 				}
 				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeStation, Index: uint16(len(sc.Tiles[y][x].Stations))})
 				sc.Tiles[y][x].Stations = append(sc.Tiles[y][x].Stations, se)
@@ -573,6 +578,8 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					RightFrame:          elem[7] & 0x0F,
 					BaseZ:               baseZ,
 					ClearZ:              elem[3],
+					Ghost:               elem[1]&0x10 != 0,
+					AiAllocated:         elem[1]&0x20 != 0,
 				}
 				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeSignal, Index: uint16(len(sc.Tiles[y][x].Signals))})
 				sc.Tiles[y][x].Signals = append(sc.Tiles[y][x].Signals, sig)

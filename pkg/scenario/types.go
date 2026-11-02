@@ -301,6 +301,10 @@ type TrackElement struct {
 	BaseZ         uint8 // byte 2
 	ClearZ        uint8 // byte 3
 	IsLast        bool  // byte 1 (element flags) bit 6: flag_6 — last tile of the piece
+	// HasLevelCrossing is TrackElement::hasLevelCrossing (byte 6 bit 4).
+	HasLevelCrossing bool
+	Ghost            bool // byte 1 bit 4: ElementFlags::ghost
+	AiAllocated      bool // byte 1 bit 5: ElementFlags::aiAllocated
 }
 
 // RoadElement represents a road section on a tile.
@@ -337,6 +341,8 @@ type StationElement struct {
 	Owner         uint8  // byte 4 bits [3:0]
 	BaseZ         uint8  // byte 2
 	ClearZ        uint8  // byte 3
+	Ghost         bool   // byte 1 bit 4: ElementFlags::ghost
+	AiAllocated   bool   // byte 1 bit 5: ElementFlags::aiAllocated
 }
 
 // SignalElement represents a railway signal on a tile.
@@ -352,6 +358,8 @@ type SignalElement struct {
 	HasRightSignal      bool  // byte 6 bit 7
 	BaseZ               uint8 // byte 2
 	ClearZ              uint8 // byte 3
+	Ghost               bool  // byte 1 bit 4: ElementFlags::ghost
+	AiAllocated         bool  // byte 1 bit 5: ElementFlags::aiAllocated
 }
 
 // IndustryElement represents an industry building tile.
