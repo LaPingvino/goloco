@@ -616,3 +616,45 @@ func TestSavedRoadOccupation(t *testing.T) {
 		t.Errorf("%d road Vehicle1s on a lane getRoadOccupation calls free", n-occ)
 	}
 }
+
+// Vehicle1::updateRoad's move (lookahead, overtaking, lane changes, level
+// crossings, lane occupancy) on every saved road vehicle for 100 ticks at its
+// Vehicle2's saved speed (Vehicle2's draw on var_3C applied each tick, as
+// sub_4A9F20 does after Vehicle1): no lost routes.
+func TestSavedVehicle1RoadMove(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pieces, n := 0, 0
+	for _, tr := range trains {
+		h, e, v2 := m.Entities[tr.Head], m.Entities[tr.Veh1], m.Entities[tr.Veh2]
+		if h.Mode != 1 {
+			continue
+		}
+		n++
+		hv, htad := h.Var3C, h.TrackAndDirection
+		v := &sim.Veh1{MotionComponent: sim.MotionComponent{
+			Road: true, RightHand: m.TrafficHandedness != 0,
+			TrackAndDirection: e.TrackAndDirection, SubPosition: e.SubPosition,
+			TileX: int32(e.TileX), TileY: int32(e.TileY), TileBaseZ: e.TileBaseZ,
+			RemainingDistance: e.RemainingDistance, X: int32(e.PosX), Y: int32(e.PosY), Z: int32(e.PosZ),
+			RoutingHandle: sim.RoutingHandle(e.RoutingHandle), Owner: e.Owner, TrackType: e.TrackType,
+		}, Var3C: e.Var3C, Veh2MaxSpeed: v2.MaxSpeed, HeadVar3C: &hv, HeadTaD: &htad,
+			HeadVar52: h.HeadVar52, HeadTrackType: h.TrackType, HeadVar53: h.HeadVar53}
+		start := v.RoutingHandle
+		d1, _ := sim.UpdateDistances(v2.CurrentSpeed)
+		for range 100 {
+			if f := m.Vehicle1RoadMove(v, v2.CurrentSpeed, d1, r.Objects); f&sim.MotionNoRouteFound != 0 {
+				t.Fatalf("head %d: Vehicle1 lost its route", h.ID)
+			}
+			v.Var3C -= d1 // Vehicle2's move (sub_4A9F20) draws var_3C down after Vehicle1
+		}
+		pieces += int(v.RoutingHandle.Index()-start.Index()) & 63
+	}
+	t.Logf("%d road Vehicle1s moved %d pieces in 100 ticks", n, pieces)
+	if pieces == 0 {
+		t.Error("no road Vehicle1 moved")
+	}
+}
