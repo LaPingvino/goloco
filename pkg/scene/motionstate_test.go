@@ -2502,3 +2502,39 @@ func TestInitialiseTown(t *testing.T) {
 		t.Error("record not as initialiseTown sets it")
 	}
 }
+
+// On title.dat and the SV5: every town's saved size is what recalculateSize
+// keeps (it runs after each growth step, and capacity only changes with
+// buildings), findRoadExtent finds a town road near each town that has
+// buildings, and the ideal town road is a loaded one.
+func TestTownSizeAndRoadExtent(t *testing.T) {
+	for _, s := range []struct {
+		path  string
+		title bool
+	}{{"Data/title.dat", true}, {"Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false}} {
+		r, m, _ := saveView(t, s.path, s.title)
+		stable, roads := 0, 0
+		for i := range m.Towns {
+			before := m.Towns[i].Size
+			m.RecalculateTownSize(i)
+			if m.Towns[i].Size == before {
+				stable++
+			} else {
+				t.Logf("%s town %d: size %d → %d (capacity %d)", s.path, m.Towns[i].ID, before, m.Towns[i].Size, m.Towns[i].PopulationCapacity)
+			}
+			m.Towns[i].Size = before
+			if e, ok := sim.FindRoadExtentForTest(m, i, r.Objects); ok {
+				roads++
+				if i == 0 {
+					t.Logf("%s town 0 at (%d,%d): road at (%d,%d,%d) tad %#x bridge %v; ideal road %v", s.path, m.Towns[i].X, m.Towns[i].Y, e.X, e.Y, e.Z, e.TAD, e.IsBridge, sim.IdealTownRoadIDForTest(m, i, r.Objects))
+				}
+			} else if m.Towns[i].NumBuildings > 0 {
+				t.Errorf("%s town %d (%d buildings): no road found", s.path, m.Towns[i].ID, m.Towns[i].NumBuildings)
+			}
+		}
+		t.Logf("%s: sizes stable %d/%d, roads found %d", s.path, stable, len(m.Towns), roads)
+		if stable != len(m.Towns) {
+			t.Errorf("%s: sizes not stable", s.path)
+		}
+	}
+}
