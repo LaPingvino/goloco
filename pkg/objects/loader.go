@@ -67,6 +67,7 @@ type ObjectManager struct {
 	HillShapesObjects    []*HillShapesObject     // every loaded hill shapes object; HillShapes is the scenario's
 	HillShapes           *HillShapesObject
 	Climate              *ClimateObject              // the scenario's climate
+	Region               *RegionObject               // the scenario\'s region
 	CompetitorObjects    []*CompetitorObject         // competitor slot order (reordered per scenario)
 	StreetLightImage     uint32                      // the StreetLight object's image (0: none loaded)
 	Scaffolding          *ScaffoldingObject          // the Scaffolding object (nil: none loaded)
@@ -470,6 +471,9 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		loaded.Object = ap
 		loaded.ImageOffset = ap.Image
 		m.AirportObjects = append(m.AirportObjects, ap)
+
+	case ObjectTypeRegion:
+		loaded.Object = ParseRegionObject(header, decompressed)
 
 	case ObjectTypeClimate:
 		cl := ParseClimateObject(header, decompressed)

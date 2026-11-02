@@ -184,6 +184,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	log.Println("[Scenario] Read RequiredObjects,", len(reqObjBytes), "bytes")
 	sc.LandObjectOrder = parseLandObjectOrder(reqObjBytes)
 	sc.CargoObjectOrder = parseObjectOrder(reqObjBytes, cargoSlotStart, cargoSlotCount, objectTypeCargo)
+	sc.RegionObjectOrder = parseObjectOrder(reqObjBytes, 825, 1, 31)      // ObjectType::region (slot start from the compiler)
 	sc.ClimateObjectOrder = parseObjectOrder(reqObjBytes, 678, 1, 26)     // ObjectType::climate (slot start from the compiler)
 	sc.HillShapesObjectOrder = parseObjectOrder(reqObjBytes, 679, 1, 27)  // ObjectType::hillShapes (slot start from the compiler)
 	sc.CompetitorObjectOrder = parseObjectOrder(reqObjBytes, 826, 32, 32) // ObjectType::competitor (slot start from the compiler)

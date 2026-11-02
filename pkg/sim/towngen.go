@@ -67,3 +67,52 @@ func (m *Map) FindTownSite(om *objects.ObjectManager) (px, py int32, ok bool) {
 	}
 	return 0, 0, false
 }
+
+// countSurroundingDesertTiles is TileManager::countSurroundingDesertTiles:
+// dry surfaces on desert land in the 11×11 tiles (clamped) around a tile.
+func (m *Map) countSurroundingDesertTiles(tx, ty int, om *objects.ObjectManager) int {
+	n := 0
+	for y := max(0, ty-5); y <= min(m.Height-1, ty+5); y++ {
+		for x := max(0, tx-5); x <= min(m.Width-1, tx+5); x++ {
+			t := m.TileAt(x, y)
+			if t == nil || t.WaterLevel != 0 || int(t.TerrainIndex) >= len(om.LandObjects) || om.LandObjects[t.TerrainIndex] == nil {
+				continue
+			}
+			if om.LandObjects[t.TerrainIndex].Flags&objects.LandFlagIsDesert != 0 {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// CalcCargoInfluenceFlags is TownManager's calcCargoInfluenceFlags: a bit per
+// region cargo influence object whose town filter the town passes (all towns;
+// may snow — its tile at or above the summer snow line; in desert — ≥ 100
+// desert tiles around).
+func (m *Map) CalcCargoInfluenceFlags(townX, townY int16, om *objects.ObjectManager) uint32 {
+	r := om.Region
+	if r == nil {
+		return 0
+	}
+	ids := om.CargoInfluenceObjectIDs(r)
+	var flags uint32
+	tx, ty := int(townX)/tileSize, int(townY)/tileSize
+	for i := range ids {
+		has := false
+		switch r.CargoInfluenceTownFilter[i] {
+		case 0:
+			has = true
+		case 1:
+			if t := m.TileAt(tx, ty); t != nil && om.Climate != nil {
+				has = t.BaseZ >= om.Climate.SummerSnowLine
+			}
+		case 2:
+			has = m.countSurroundingDesertTiles(tx, ty, om) >= 100
+		}
+		if has {
+			flags |= 1 << ids[i]
+		}
+	}
+	return flags
+}

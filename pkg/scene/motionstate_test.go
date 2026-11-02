@@ -2364,3 +2364,31 @@ func TestTreesMatchUpstream(t *testing.T) {
 		}
 	}
 }
+
+// calcCargoInfluenceFlags (the region object's cargo influence filters) for
+// every town in title.dat and the SV5 = the flags initialiseTown stored when
+// the town was made (nothing else sets them).
+func TestCargoInfluenceMatchesSaves(t *testing.T) {
+	for _, s := range []struct {
+		path  string
+		title bool
+	}{{"Data/title.dat", true}, {"Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false}} {
+		r, m, _ := saveView(t, s.path, s.title)
+		if r.Objects.Region == nil {
+			t.Fatalf("%s: no region object", s.path)
+		}
+		ok := 0
+		for _, tw := range m.Towns {
+			got := m.CalcCargoInfluenceFlags(tw.X, tw.Y, r.Objects)
+			if got == tw.CargoInfluenceFlags {
+				ok++
+			} else {
+				t.Logf("%s town %d: %#x, saved %#x", s.path, tw.ID, got, tw.CargoInfluenceFlags)
+			}
+		}
+		t.Logf("%s: region %s, influence %v / filters %v; %d/%d towns match", s.path, r.Objects.Region.Name, r.Objects.Region.CargoInfluenceNames, r.Objects.Region.CargoInfluenceTownFilter, ok, len(m.Towns))
+		if len(m.Towns) == 0 || ok != len(m.Towns) {
+			t.Errorf("%s: mismatches", s.path)
+		}
+	}
+}
