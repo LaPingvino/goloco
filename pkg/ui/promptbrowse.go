@@ -65,6 +65,9 @@ type PromptBrowseWindow struct {
 	SaveExt string
 	frame   int
 	OnSave  func(path string)
+	// Confirm asks before replacing an existing file (PromptOkCancel:
+	// caption, text, OK label, then the save); nil saves straight away.
+	Confirm func(caption, text, ok string, then func())
 }
 
 // NewPromptBrowseSave opens the window in save mode with name in the text box.
@@ -135,9 +138,21 @@ func (w *PromptBrowseWindow) ok() {
 	if name == "" || strings.ContainsAny(name, `/\:*?"<>|`) { // filenameContainsInvalidChars
 		return
 	}
-	if w.OnSave != nil {
-		w.OnSave(filepath.Join(w.Dir, name+w.SaveExt))
+	w.save(filepath.Join(w.Dir, name+w.SaveExt))
+}
+
+// save is processFileForLoadSave in save mode: an existing file is replaced
+// only after "Replace existing file: “name”?" is confirmed.
+func (w *PromptBrowseWindow) save(path string) {
+	if w.OnSave == nil {
+		return
 	}
+	if _, err := os.Stat(path); err == nil && w.Confirm != nil {
+		name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+		w.Confirm(w.Title, "Replace existing file: “"+name+"”?", "Replace", func() { w.OnSave(path) })
+		return
+	}
+	w.OnSave(path)
 }
 
 type pbEntry struct {
@@ -223,9 +238,7 @@ func (w *PromptBrowseWindow) HandleClick(px, py int) {
 		case e.dir:
 			w.chdir(e.path)
 		case w.Save:
-			if w.OnSave != nil {
-				w.OnSave(e.path) // PARTIAL: upstream asks before overwriting
-			}
+			w.save(e.path) // asks before replacing it
 		case w.OnPick != nil:
 			w.OnPick(e.path)
 		}
