@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+
+	"github.com/LaPingvino/goloco/pkg/ui"
 	"os"
 	"runtime/pprof"
 	"slices"
@@ -17,6 +19,8 @@ type frameStats struct {
 	on                       bool
 	lastDraw, windowStart    time.Time
 	interval, upd, draw, wld []time.Duration
+	d8calls                  int
+	d8read, d8total          time.Duration
 }
 
 var fstats = frameStats{on: os.Getenv("GOLOCO_FRAMESTATS") != ""}
@@ -43,12 +47,19 @@ func (f *frameStats) addDraw(start time.Time, d time.Duration) {
 	}
 	f.lastDraw = start
 	f.draw = append(f.draw, d)
+	f.d8calls += ui.Draw8Stats.Calls
+	f.d8read += ui.Draw8Stats.Readback
+	f.d8total += ui.Draw8Stats.Total
+	ui.Draw8Stats.Calls, ui.Draw8Stats.Readback, ui.Draw8Stats.Total = 0, 0, 0
 	if f.windowStart.IsZero() {
 		f.windowStart = start
 	}
 	if time.Since(f.windowStart) >= 2*time.Second {
-		log.Printf("[Frames] %d frames | interval %s | update %s | draw %s | world %s",
-			len(f.draw), summary(f.interval), summary(f.upd), summary(f.draw), summary(f.wld))
+		n := max(len(f.draw), 1)
+		log.Printf("[Frames] %d frames | interval %s | update %s | draw %s | world %s | draw8 %.1f calls, readback %.1f ms, total %.1f ms a frame",
+			len(f.draw), summary(f.interval), summary(f.upd), summary(f.draw), summary(f.wld),
+			float64(f.d8calls)/float64(n), float64(f.d8read.Microseconds())/1000/float64(n), float64(f.d8total.Microseconds())/1000/float64(n))
+		f.d8calls, f.d8read, f.d8total = 0, 0, 0
 		f.interval, f.upd, f.draw, f.wld = f.interval[:0], f.upd[:0], f.draw[:0], f.wld[:0]
 		f.windowStart = time.Now()
 	}

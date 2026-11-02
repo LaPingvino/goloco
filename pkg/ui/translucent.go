@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"strings"
+	"time"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -25,8 +26,11 @@ func draw8(screen *ebiten.Image, x, y, w, h int, draw func(rt *gfx8.RenderTarget
 	}
 	pal := globalG1Font.g1.GetPalette()
 	inv := paletteIndex(pal)
+	t0 := time.Now()
+	defer func() { Draw8Stats.Calls++; Draw8Stats.Total += time.Since(t0) }()
 	buf := make([]byte, 4*r.Dx()*r.Dy())
 	screen.SubImage(r).(*ebiten.Image).ReadPixels(buf)
+	Draw8Stats.Readback += time.Since(t0)
 	rt := gfx8.NewRenderTarget(w, h)
 	ox, oy := r.Min.X-x, r.Min.Y-y
 	for j := 0; j < r.Dy(); j++ {
@@ -47,6 +51,13 @@ func draw8(screen *ebiten.Image, x, y, w, h int, draw func(rt *gfx8.RenderTarget
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(r.Min.X), float64(r.Min.Y))
 	screen.DrawImage(draw8Texture(r.Dx(), r.Dy(), img.Pix), op)
+}
+
+// Draw8Stats counts draw8's calls and time (frame stats, LOOP item 0): the
+// GPU readback is what is left of the UI's cost.
+var Draw8Stats struct {
+	Calls           int
+	Readback, Total time.Duration
 }
 
 // draw8Textures keeps one texture per size for draw8: it runs many times a
