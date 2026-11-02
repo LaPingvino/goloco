@@ -142,6 +142,7 @@ type Scenario struct {
 	CurrentDay            uint32             // GameState general.currentDay
 	CompanyNames          []uint16           // company slot → name StringId
 	CompanyFaces          []CompanyFace      // company slot → competitor, emotion, performance
+	HillShapesObjectOrder []string           // the hill shapes slot → DAT name
 	CompetitorObjectOrder []string           // competitor slot → DAT name
 	ControllingCompany    uint8              // playerCompanies[0] (getControllingId)
 	TrafficHandedness     uint8              // GameState trafficHandedness: 0 left-hand traffic, 1 right-hand

@@ -25,9 +25,7 @@ func (p *Prng) RandNext() uint32 {
 
 // RandNextBound returns random int32 in [0, high]
 func (p *Prng) RandNextBound(high int32) int32 {
-	if high <= 0 {
-		return 0
-	}
+	high &= 0x7FFFFFFF // randNext(high): no negatives, and it always draws
 	positive := int32(p.RandNext() & 0x7FFFFFFF)
 	return positive % (high + 1)
 }

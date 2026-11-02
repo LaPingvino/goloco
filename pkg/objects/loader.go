@@ -45,25 +45,27 @@ type ObjectManager struct {
 	CurrencyObjects      []*CurrencyObject // every loaded currency object (one is in use per scenario)
 	CurrencySlot         string            // DAT name of the scenario's currency (its one currency slot)
 	LandObjects          []*LandObject
-	TreeObjects          []*TreeObject               // all loaded tree objects
-	IndustryObjects      []*IndustryObject           // all loaded industry objects
-	SnowObj              *SnowObject                 // the single snow object
-	DockObjects          []*DockObject               // dock objects (scenario slot order after ReorderDockObjects)
-	AirportObjects       []*AirportObject            // airport objects (scenario slot order after ReorderAirportObjects)
-	BuildingObjects      []*BuildingObject           // all loaded building objects
-	WallObjects          []*WallObject               // all loaded wall objects
-	TrackObjects         []*TrackObject              // all loaded track objects
-	TrackExtraOrder      []string                    // track-extra DAT names in scenario slot order
-	RoadExtraOrder       []string                    // road-extra DAT names in scenario slot order
-	extraNames           map[string]string           // track/road extra DAT name → display name
-	extras               map[string]*ExtraObject     // track/road extra DAT name → object
-	RoadObjects          []*RoadObject               // all loaded road objects
-	TrainStationObjects  []*TrainStationObject       // all loaded train-station objects
-	RoadStationObjects   []*RoadStationObject        // all loaded road-station objects
-	TrainSignalObjects   []*TrainSignalObject        // all loaded train-signal objects (slots 268-283)
-	LevelCrossingObjects []*LevelCrossingObject      // all loaded level-crossing objects (slots 284-287)
-	BridgeObjects        []*BridgeObject             // all loaded bridge objects (slots 305-312)
-	CargoObjects         []*CargoObject              // cargo slot order (reordered per scenario)
+	TreeObjects          []*TreeObject           // all loaded tree objects
+	IndustryObjects      []*IndustryObject       // all loaded industry objects
+	SnowObj              *SnowObject             // the single snow object
+	DockObjects          []*DockObject           // dock objects (scenario slot order after ReorderDockObjects)
+	AirportObjects       []*AirportObject        // airport objects (scenario slot order after ReorderAirportObjects)
+	BuildingObjects      []*BuildingObject       // all loaded building objects
+	WallObjects          []*WallObject           // all loaded wall objects
+	TrackObjects         []*TrackObject          // all loaded track objects
+	TrackExtraOrder      []string                // track-extra DAT names in scenario slot order
+	RoadExtraOrder       []string                // road-extra DAT names in scenario slot order
+	extraNames           map[string]string       // track/road extra DAT name → display name
+	extras               map[string]*ExtraObject // track/road extra DAT name → object
+	RoadObjects          []*RoadObject           // all loaded road objects
+	TrainStationObjects  []*TrainStationObject   // all loaded train-station objects
+	RoadStationObjects   []*RoadStationObject    // all loaded road-station objects
+	TrainSignalObjects   []*TrainSignalObject    // all loaded train-signal objects (slots 268-283)
+	LevelCrossingObjects []*LevelCrossingObject  // all loaded level-crossing objects (slots 284-287)
+	BridgeObjects        []*BridgeObject         // all loaded bridge objects (slots 305-312)
+	CargoObjects         []*CargoObject          // cargo slot order (reordered per scenario)
+	HillShapesObjects    []*HillShapesObject     // every loaded hill shapes object; HillShapes is the scenario's
+	HillShapes           *HillShapesObject
 	CompetitorObjects    []*CompetitorObject         // competitor slot order (reordered per scenario)
 	StreetLightImage     uint32                      // the StreetLight object's image (0: none loaded)
 	Scaffolding          *ScaffoldingObject          // the Scaffolding object (nil: none loaded)
@@ -467,6 +469,19 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		loaded.Object = ap
 		loaded.ImageOffset = ap.Image
 		m.AirportObjects = append(m.AirportObjects, ap)
+
+	case ObjectTypeHillShapes:
+		var g1Loader G1Loader
+		if m.G1File != nil {
+			g1Loader, _ = m.G1File.(G1Loader)
+		}
+		hs, err := ParseHillShapesObjectWithG1(header, decompressed, g1Loader)
+		if err != nil {
+			return fmt.Errorf("parsing hill shapes: %w", err)
+		}
+		loaded.Object = hs
+		loaded.ImageOffset = hs.Image
+		m.HillShapesObjects = append(m.HillShapesObjects, hs)
 
 	case ObjectTypeSnow:
 		var g1Loader G1Loader
