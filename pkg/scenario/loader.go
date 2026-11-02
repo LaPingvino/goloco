@@ -586,6 +586,9 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					ClearZ:              elem[3],
 					Ghost:               elem[1]&0x10 != 0,
 					AiAllocated:         elem[1]&0x20 != 0,
+					Sides:               [2]SignalSide{{elem[4], elem[5]}, {elem[6], elem[7]}},
+					LeftGhost:           typeByte&0x80 != 0,
+					RightGhost:          typeByte&0x40 != 0,
 				}
 				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeSignal, Index: uint16(len(sc.Tiles[y][x].Signals))})
 				sc.Tiles[y][x].Signals = append(sc.Tiles[y][x].Signals, sig)
