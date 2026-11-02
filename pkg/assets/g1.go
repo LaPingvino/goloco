@@ -730,3 +730,13 @@ func (g1 *G1File) GetTotalSprites() uint32 {
 func (g1 *G1File) SetTotalSprites(count uint32) {
 	g1.totalSprites = count
 }
+
+// ElementRaw is Gfx::getG1Element's width, height and raw data (offset) for
+// an image index — the hill shapes' height maps are read byte by byte.
+func (g1 *G1File) ElementRaw(i int) (w, h int, data []byte, ok bool) {
+	if i < 0 || i >= len(g1.Elements) {
+		return 0, 0, nil, false
+	}
+	e := &g1.Elements[i]
+	return int(e.Width), int(e.Height), e.Data, true
+}
