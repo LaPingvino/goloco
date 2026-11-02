@@ -27,3 +27,8 @@ func IdealTownRoadIDForTest(m *Map, i int, om *objects.ObjectManager) int {
 	}
 	return -1
 }
+
+// TileClearFunctionForTest exposes tileClearFunction (default collision).
+func TileClearFunctionForTest(m *Map, c *Cmd, t *Tile, k int, px, py int32, flags uint8, cost *int32) ClearResult {
+	return m.tileClearFunction(c, t, k, px, py, flags, cost, true)
+}

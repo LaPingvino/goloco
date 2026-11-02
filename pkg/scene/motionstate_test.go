@@ -2586,3 +2586,51 @@ func TestApplyClearWithClearFunction(t *testing.T) {
 	}
 	t.Fatal("no tree tile")
 }
+
+// clearTreeCollision through tileClearFunction on title.dat: a query (no
+// apply) costs the tree's clear cost and leaves it; applied by the neutral
+// company the tree goes and gPrng2 is untouched; applied by a company the
+// demolish sound draws gPrng2 once.
+func TestClearTreeCollision(t *testing.T) {
+	r, m, _ := titleView(t)
+	var tx, ty int
+	for ty = 2; ty < m.Height-2 && tx == 0; ty++ {
+		for x := 2; x < m.Width-2; x++ {
+			if len(m.TileAt(x, ty).Trees) >= 1 {
+				tx = x
+				break
+			}
+		}
+	}
+	ty--
+	tl := m.TileAt(tx, ty)
+	k := 0
+	for tl.Order[k].Kind != scenario.KindTree {
+		k++
+	}
+	rng := core.NewPrngSeed(1, 2)
+	c := &sim.Cmd{Company: sim.CompanyNeutral, Rng2: rng, Objects: r.Objects}
+	var cost int32
+	n := len(tl.Trees)
+	if res := sim.TileClearFunctionForTest(m, c, tl, k, int32(tx*32), int32(ty*32), 0, &cost); res != sim.ClearNoCollision || len(tl.Trees) != n || cost <= 0 {
+		t.Fatalf("query: %v, trees %d, cost %d", res, len(tl.Trees), cost)
+	}
+	before := *rng
+	cost = 0
+	res := sim.TileClearFunctionForTest(m, c, tl, k, int32(tx*32), int32(ty*32), sim.CmdApply, &cost)
+	t.Logf("tile (%d,%d): applied → %v, trees %d → %d, cost %d", tx, ty, res, n, len(tl.Trees), cost)
+	if len(tl.Trees) != n-1 || (res != sim.ClearCollisionRemoved && res != sim.ClearAllCollisionsRemoved) || *rng != before {
+		t.Error("neutral apply")
+	}
+	if n >= 2 {
+		k = 0
+		for tl.Order[k].Kind != scenario.KindTree {
+			k++
+		}
+		c.Company = 0
+		sim.TileClearFunctionForTest(m, c, tl, k, int32(tx*32), int32(ty*32), sim.CmdApply, &cost)
+		if *rng == before {
+			t.Error("company apply drew nothing from gPrng2")
+		}
+	}
+}
