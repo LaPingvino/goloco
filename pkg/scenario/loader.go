@@ -280,6 +280,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.RoadAnyTypeCompatible = binary.LittleEndian.Uint32(gameState[0x1A4:])
 		sc.Rng = [2]uint32{binary.LittleEndian.Uint32(gameState[0:]), binary.LittleEndian.Uint32(gameState[4:])}
 		sc.ScenarioTicks = binary.LittleEndian.Uint32(gameState[0x146:])
+		sc.Companies = parseCompanyEconomy(gameState)
 		sc.UnkRng = [2]uint32{binary.LittleEndian.Uint32(gameState[8:]), binary.LittleEndian.Uint32(gameState[12:])}
 		sc.RoadUsableByAll = binary.LittleEndian.Uint32(gameState[0x1A8:])
 		sc.CurrentDay = ParseCurrentDay(gameState)
@@ -1442,6 +1443,49 @@ func parseStationCargoDensity(gs []byte) [][32]uint8 {
 		for c := range 32 {
 			out[i][c] = rec[0x2E+c*13+0xC]
 		}
+	}
+	return out
+}
+
+// CompanyEconomy is what the economy reads and writes of a company (S5
+// Company / CompanyType2: the same offsets in both, from the compiler).
+type CompanyEconomy struct {
+	Cash                     int64         // 0x08 currency48_t
+	CurrentLoan              int32         // 0x0E
+	Expenditures             [16][17]int32 // 0x58 [month][ExpenditureType]
+	Var4A0                   uint32        // 0x4A0 cargo types delivered (bits)
+	CargoUnitsTotalDelivered uint32        // 0x85F8
+	CargoDelivered           [32]uint32    // 0x8BCE
+	CargoUnitsTotalDistance  uint32        // 0x8C50
+}
+
+// parseCompanyEconomy reads every company slot's CompanyEconomy.
+func parseCompanyEconomy(gs []byte) []CompanyEconomy {
+	size := companyRecordSize
+	if len(gs) == GameStateSizeType2 {
+		size = companyRecordSizeType2
+	}
+	if len(gs) < companiesGameStateOffset+companyMaxCount*size {
+		return nil
+	}
+	out := make([]CompanyEconomy, companyMaxCount)
+	for i := range out {
+		r := gs[companiesGameStateOffset+i*size:]
+		c := &out[i]
+		raw := uint64(binary.LittleEndian.Uint32(r[0x08:])) | uint64(binary.LittleEndian.Uint16(r[0x0C:]))<<32
+		c.Cash = int64(raw<<16) >> 16 // sign-extend the 48 bits
+		c.CurrentLoan = int32(binary.LittleEndian.Uint32(r[0x0E:]))
+		for mo := range c.Expenditures {
+			for t := range c.Expenditures[mo] {
+				c.Expenditures[mo][t] = int32(binary.LittleEndian.Uint32(r[0x58+4*(mo*17+t):]))
+			}
+		}
+		c.Var4A0 = binary.LittleEndian.Uint32(r[0x4A0:])
+		c.CargoUnitsTotalDelivered = binary.LittleEndian.Uint32(r[0x85F8:])
+		for k := range c.CargoDelivered {
+			c.CargoDelivered[k] = binary.LittleEndian.Uint32(r[0x8BCE+4*k:])
+		}
+		c.CargoUnitsTotalDistance = binary.LittleEndian.Uint32(r[0x8C50:])
 	}
 	return out
 }
