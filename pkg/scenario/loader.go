@@ -244,6 +244,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		log.Println("[Scenario] Read GeneralState,", len(generalState), "bytes")
 		generalStateFlags = readGeneralStateFlags(generalState)
 		parseObjective(generalState)
+		parseGeneralState(sc, generalState)
 
 		// Towns.  The chunk begins with kMaxTowns (80) Town records, followed by
 		// the Industries and Stations arrays (the writer bundles all three under
@@ -272,6 +273,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		log.Println("[Scenario] Read GameState,", len(gameState), "bytes")
 		generalStateFlags = readGeneralStateFlags(gameState)
 		parseObjective(gameState)
+		parseGeneralState(sc, gameState)
 
 		// Parse vehicle entities from the entity table embedded in the GameState.
 		// This is only present in .SV5 saved-game files; ParseVehicleEntities
@@ -281,17 +283,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.VehicleList = ParseVehicleListEntries(gameState)
 		sc.Orders = ParseOrders(gameState)
 		sc.Routings = ParseRoutings(gameState)
-		sc.RoadAnyTypeCompatible = binary.LittleEndian.Uint32(gameState[0x1A4:])
-		sc.Rng = [2]uint32{binary.LittleEndian.Uint32(gameState[0:]), binary.LittleEndian.Uint32(gameState[4:])}
-		sc.ScenarioTicks = binary.LittleEndian.Uint32(gameState[0x146:])
 		sc.Companies = parseCompanyEconomy(gameState)
 		sc.Industries = parseIndustries(gameState)
-		sc.UnkRng = [2]uint32{binary.LittleEndian.Uint32(gameState[8:]), binary.LittleEndian.Uint32(gameState[12:])}
-		sc.RoadUsableByAll = binary.LittleEndian.Uint32(gameState[0x1A8:])
-		sc.CurrentDay = ParseCurrentDay(gameState)
-		sc.DayCounter = binary.LittleEndian.Uint16(gameState[0x18:]) // general.dayCounter
-		sc.CurrentMonth = gameState[0x1C]                            // general.currentMonth
-		sc.CurrentDayOfMonth = gameState[0x1D]                       // general.currentDayOfMonth
 		if sc.Entities != nil {
 			log.Printf("[Scenario] Parsed %d vehicle entities (Head+Body) from GameState", len(sc.Entities))
 		}
@@ -301,27 +294,6 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.CompanyNames = parseCompanyNames(gameState)
 		sc.CompanyFaces = parseCompanyFaces(gameState)
 		sc.UnlockedVehicles = parseUnlockedVehicles(gameState)
-		if len(gameState) > GeneralCurrentYearOffset+1 { // general.currentYear (from the compiler: 0x1A)
-			sc.CurrentYear = binary.LittleEndian.Uint16(gameState[GeneralCurrentYearOffset:])
-		}
-		// general.currencyMultiplicationFactor[32] (0x46, from the compiler): the
-		// inflation-adjusted price of each cost index.
-		if len(gameState) >= 0x46+32*4 {
-			for i := range sc.CurrencyMultiplicationFactor {
-				sc.CurrencyMultiplicationFactor[i] = binary.LittleEndian.Uint32(gameState[0x46+4*i:])
-			}
-		}
-		sc.ControllingCompany = parseControllingCompany(gameState)
-		sc.PlayerCompanies = [2]uint8{gameState[playerCompaniesOffset], gameState[playerCompaniesOffset+1]}
-		sc.LoanInterestRate = gameState[0x1AE]                              // loanInterestRate
-		sc.MaxLoanSize = binary.LittleEndian.Uint16(gameState[0x402:])      // maxLoanSize
-		sc.StartingLoanSize = binary.LittleEndian.Uint16(gameState[0x400:]) // startingLoanSize
-		sc.DefaultLevelCrossingType = gameState[0x1AC]                      // currentDefaultLevelCrossingType
-		sc.ForbiddenVehiclesPlayers = binary.LittleEndian.Uint16(gameState[0x430:])
-		sc.ForbiddenVehiclesCompetitors = binary.LittleEndian.Uint16(gameState[0x432:])
-		if len(gameState) > 0x196 { // general.trafficHandedness (from the compiler)
-			sc.TrafficHandedness = gameState[0x196]
-		}
 		sc.StationOwners = parseStationOwners(gameState)
 		sc.UserStrings = parseUserStrings(gameState)
 		sc.StationNames = parseStationNames(gameState)
@@ -1558,4 +1530,44 @@ func parseIndustries(gs []byte) []Industry {
 func currency48(b []byte) int64 {
 	raw := uint64(binary.LittleEndian.Uint32(b)) | uint64(binary.LittleEndian.Uint16(b[4:]))<<32
 	return int64(raw<<16) >> 16
+}
+
+// parseGeneralState reads GameState's general part (everything before the
+// companies, offsets from the compiler): it heads a saved game's one GameState
+// chunk and is a scenario's whole first GameState chunk ("up to just before
+// companies", S5.cpp importSave).
+func parseGeneralState(sc *Scenario, gs []byte) {
+	if len(gs) < 0x434 {
+		return
+	}
+	sc.RoadAnyTypeCompatible = binary.LittleEndian.Uint32(gs[0x1A4:])
+	sc.Rng = [2]uint32{binary.LittleEndian.Uint32(gs[0:]), binary.LittleEndian.Uint32(gs[4:])}
+	sc.ScenarioTicks = binary.LittleEndian.Uint32(gs[0x146:])
+	sc.UnkRng = [2]uint32{binary.LittleEndian.Uint32(gs[8:]), binary.LittleEndian.Uint32(gs[12:])}
+	sc.RoadUsableByAll = binary.LittleEndian.Uint32(gs[0x1A8:])
+	sc.CurrentDay = ParseCurrentDay(gs)
+	sc.DayCounter = binary.LittleEndian.Uint16(gs[0x18:]) // general.dayCounter
+	sc.CurrentMonth = gs[0x1C]                            // general.currentMonth
+	sc.CurrentDayOfMonth = gs[0x1D]                       // general.currentDayOfMonth
+	if len(gs) > GeneralCurrentYearOffset+1 {             // general.currentYear (from the compiler: 0x1A)
+		sc.CurrentYear = binary.LittleEndian.Uint16(gs[GeneralCurrentYearOffset:])
+	}
+	// general.currencyMultiplicationFactor[32] (0x46, from the compiler): the
+	// inflation-adjusted price of each cost index.
+	if len(gs) >= 0x46+32*4 {
+		for i := range sc.CurrencyMultiplicationFactor {
+			sc.CurrencyMultiplicationFactor[i] = binary.LittleEndian.Uint32(gs[0x46+4*i:])
+		}
+	}
+	sc.ControllingCompany = parseControllingCompany(gs)
+	sc.PlayerCompanies = [2]uint8{gs[playerCompaniesOffset], gs[playerCompaniesOffset+1]}
+	sc.LoanInterestRate = gs[0x1AE]                              // loanInterestRate
+	sc.MaxLoanSize = binary.LittleEndian.Uint16(gs[0x402:])      // maxLoanSize
+	sc.StartingLoanSize = binary.LittleEndian.Uint16(gs[0x400:]) // startingLoanSize
+	sc.DefaultLevelCrossingType = gs[0x1AC]                      // currentDefaultLevelCrossingType
+	sc.ForbiddenVehiclesPlayers = binary.LittleEndian.Uint16(gs[0x430:])
+	sc.ForbiddenVehiclesCompetitors = binary.LittleEndian.Uint16(gs[0x432:])
+	if len(gs) > 0x196 { // general.trafficHandedness (from the compiler)
+		sc.TrafficHandedness = gs[0x196]
+	}
 }
