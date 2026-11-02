@@ -1115,6 +1115,23 @@ func parseTowns(buf []byte) []Town {
 		for c := range 32 {
 			towns[len(towns)-1].MonthlyCargoDelivered[c] = binary.LittleEndian.Uint16(rec[0x158+2*c:])
 		}
+		tw := &towns[len(towns)-1] // the rest of S5::Town (offsets from S5Town.h)
+		tw.Flags = binary.LittleEndian.Uint16(rec[0x06:])
+		tw.Prng = [2]uint32{binary.LittleEndian.Uint32(rec[0x28:]), binary.LittleEndian.Uint32(rec[0x2C:])}
+		tw.PopulationCapacity = binary.LittleEndian.Uint32(rec[0x34:])
+		for c := range 15 {
+			tw.CompanyRatings[c] = int16(binary.LittleEndian.Uint16(rec[0x3A+2*c:]))
+		}
+		tw.CompaniesWithRating = binary.LittleEndian.Uint16(rec[0x58:])
+		tw.HistorySize = rec[0x5B]
+		copy(tw.History[:], rec[0x5C:0x5C+240])
+		tw.HistoryMinPopulation = int32(binary.LittleEndian.Uint32(rec[0x14C:]))
+		copy(tw.AmenityCounts[:], rec[0x150:0x158])
+		tw.CargoInfluenceFlags = binary.LittleEndian.Uint32(rec[0x198:])
+		for k := range 4 {
+			tw.Var19C[k/2][k%2] = binary.LittleEndian.Uint16(rec[0x19C+2*k:])
+		}
+		tw.BuildSpeed, tw.NumberOfAirports = rec[0x1A4], rec[0x1A5]
 	}
 	return towns
 }
