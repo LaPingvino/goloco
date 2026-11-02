@@ -276,6 +276,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.Entities = ParseVehicleEntities(gameState)
 		sc.VehicleList = ParseVehicleListEntries(gameState)
 		sc.Orders = ParseOrders(gameState)
+		sc.Routings = ParseRoutings(gameState)
 		sc.CurrentDay = ParseCurrentDay(gameState)
 		if sc.Entities != nil {
 			log.Printf("[Scenario] Parsed %d vehicle entities (Head+Body) from GameState", len(sc.Entities))
