@@ -453,9 +453,17 @@ func (g *Game) Update() error {
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 		}
+		if g.dropdown != nil && g.dropdown.Visible { // a window's dropdown (Options' language, heights …)
+			g.dropdown.UpdateHover(g.mouseX, g.mouseY)
+		}
 		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
-			// The ScenarioSelect window, then the window manager, take priority.
-			if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
+			// An open dropdown is on top: it takes the click (a click outside
+			// closes it); then the ScenarioSelect window, then the window manager.
+			if g.dropdown != nil && g.dropdown.Visible {
+				if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
+					g.dropdown = nil
+				}
+			} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
 				g.townList.HandleClick(g.mouseX, g.mouseY)
 			} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
 				g.options.HandleClick(g.mouseX, g.mouseY)
@@ -516,8 +524,14 @@ func (g *Game) Update() error {
 		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 	}
 	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
-		// Check dropdown first (it's on top)
-		if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
+		// Check dropdown first (it's on top: a window's dropdown lies over the
+		// window that opened it)
+		if g.dropdown != nil && g.dropdown.Visible {
+			if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
+				// Click outside dropdown - close it
+				g.dropdown = nil
+			}
+		} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
 			g.townList.HandleClick(g.mouseX, g.mouseY)
 		} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
 			g.options.HandleClick(g.mouseX, g.mouseY)
@@ -525,11 +539,6 @@ func (g *Game) Update() error {
 			g.browse.HandleClick(g.mouseX, g.mouseY)
 		} else if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
 			g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
-		} else if g.dropdown != nil && g.dropdown.Visible {
-			if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
-				// Click outside dropdown - close it
-				g.dropdown = nil
-			}
 		} else if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
 			if sp := uilayout.TimePanelSpeedAt(g.mouseX, g.mouseY, g.sw, g.sh); sp >= 0 && !g.inTitleScreen {
 				// TimePanel speed buttons: pause toggles; the others set the speed.
