@@ -61,7 +61,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    scene.Render 23%, ui.draw8 11% (mostly palInverse.lookup — a map lookup per pixel), sim.StationList 6% (rebuilt
    every frame by world.drawOverlay for the station labels). NEXT (b), in this order: StationList cached between
    sim ticks (DONE tick 295); palInverse as a flat table (DONE tick 296); draw8's GPU readback (ReadPixels per UI
-   element per frame — what remains of draw8's cost; translucency needs the pixels under it: render the UI's 8-bit
+   element per frame — what remains of draw8's cost; MEASURED tick 298: 2 calls a frame with Options + dropdown,
+   readback 50–110 ms of 54–112 ms — nearly all of it. PLAN: draw8 takes the palette indices under it from the world's
+   own 8-bit frame (pkg/scene renders indices; draw8 converts the readback back to them) plus a CPU copy of what
+   earlier draw8 calls drew this frame; a GPU readback only where a window overlaps other drawing (town / station
+   labels, the toolbar, the title buttons — registered as foreign rectangles); translucency needs the pixels under it: render the UI's 8-bit
    layer on the CPU over the CPU-rendered world instead, or blend on the GPU); UI windows only re-drawn into their images when they change; then the
    world: reuse the last world frame when the camera / map hasn't changed, and a per-frame budget so menus never
    wait for it. Measure before / after each.
@@ -831,3 +835,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-02 tick 295 (item 0b, first fix) — the station list: World.StationList cached per game tick / map / stations placed (stationsGen), and the station labels use their own position cache (stationTiles, rebuilt only when stations change — the title is a running game, so per-tick caching alone still rebuilt it nearly every frame). Profile: sim.StationList 6% → 2.7% → gone. Frame times hardly move (the world render dominates — the next steps). pkg/world tests green under xvfb; gate green.
 - 2026-11-02 tick 296 (item 0b, second fix) — the UI's palette lookup: the RGB → index map (a hash per pixel) is now a flat 16 MB table (made once; 0 = not yet), draw8's output written straight into the image. TestPaletteIndexTable (kept): the table answers as brute force on 20 000 random colours and keeps the lowest index for a repeated palette colour. Options + dropdown open (Xvfb): draw8 0.57 s → 0.29 s of the 20 s profile, palInverse.lookup gone; the UI's share of a frame (draw − world) ~100–150 ms → ~55–70 ms. What is left in draw8 is the GPU readback — next. (/tmp was full: removed my stale scratch test copies, 1.7 GB.)
 - 2026-11-02 tick 297 (item 0b, third fix) — while a window, dropdown or prompt is open (Game.uiOpen) the world is re-rendered every 3rd frame (World.SceneEvery; the last picture reused in between), so the UI runs at the full rate. Options + dropdown (Xvfb): world 50–90 ms → 10–35 ms a frame on average. Left: draw8's GPU readback (the UI's own cost, ~55–70 ms here). Test page rebuilt for Joop.
+- 2026-11-02 tick 298 (item 0b, measuring draw8) — ui.Draw8Stats (calls, readback, total) in the frame stats: title — no draw8; Options + dropdown — 2 calls a frame, the GPU readback 50–110 ms of draw8's 54–112 ms. The plan to drop the readback (indices from the world's 8-bit frame) is in item 0b.
