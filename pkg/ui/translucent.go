@@ -3,6 +3,8 @@ package ui
 import (
 	"image"
 	"image/color"
+	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -28,18 +30,41 @@ func draw8(screen *ebiten.Image, x, y, w, h int, draw func(rt *gfx8.RenderTarget
 	inv := paletteIndex(pal)
 	t0 := time.Now()
 	defer func() { Draw8Stats.Calls++; Draw8Stats.Total += time.Since(t0) }()
-	buf := make([]byte, 4*r.Dx()*r.Dy())
-	screen.SubImage(r).(*ebiten.Image).ReadPixels(buf)
-	Draw8Stats.Readback += time.Since(t0)
 	rt := gfx8.NewRenderTarget(w, h)
 	ox, oy := r.Min.X-x, r.Min.Y-y
-	for j := 0; j < r.Dy(); j++ {
-		for i := 0; i < r.Dx(); i++ {
-			p := buf[4*(j*r.Dx()+i):]
-			rt.Bits[(oy+j)*w+ox+i] = inv.lookup(pal, p[0], p[1], p[2])
+	if screen8.usable(r) { // the indices under it, from the CPU copy of the screen: no GPU readback
+		for j := 0; j < r.Dy(); j++ {
+			copy(rt.Bits[(oy+j)*w+ox:(oy+j)*w+ox+r.Dx()], screen8.bits[(r.Min.Y+j)*screen8.w+r.Min.X:])
+		}
+		if draw8Check { // GOLOCO_DRAW8_CHECK: compare with the readback
+			buf := make([]byte, 4*r.Dx()*r.Dy())
+			screen.SubImage(r).(*ebiten.Image).ReadPixels(buf)
+			diff := 0
+			for j := 0; j < r.Dy(); j++ {
+				for i := 0; i < r.Dx(); i++ {
+					p := buf[4*(j*r.Dx()+i):]
+					if pal[rt.Bits[(oy+j)*w+ox+i]] != pal[inv.lookup(pal, p[0], p[1], p[2])] {
+						diff++
+					}
+				}
+			}
+			Draw8Stats.CheckPixels += r.Dx() * r.Dy()
+			Draw8Stats.CheckDiff += diff
+		}
+	} else {
+		buf := make([]byte, 4*r.Dx()*r.Dy())
+		screen.SubImage(r).(*ebiten.Image).ReadPixels(buf)
+		Draw8Stats.Readback += time.Since(t0)
+		Draw8Stats.Readbacks++
+		for j := 0; j < r.Dy(); j++ {
+			for i := 0; i < r.Dx(); i++ {
+				p := buf[4*(j*r.Dx()+i):]
+				rt.Bits[(oy+j)*w+ox+i] = inv.lookup(pal, p[0], p[1], p[2])
+			}
 		}
 	}
 	draw(rt)
+	screen8.store(r, rt, ox, oy)
 	img := image.NewRGBA(image.Rect(0, 0, r.Dx(), r.Dy()))
 	for j := 0; j < r.Dy(); j++ {
 		row := img.Pix[j*img.Stride:]
@@ -56,8 +81,11 @@ func draw8(screen *ebiten.Image, x, y, w, h int, draw func(rt *gfx8.RenderTarget
 // Draw8Stats counts draw8's calls and time (frame stats, LOOP item 0): the
 // GPU readback is what is left of the UI's cost.
 var Draw8Stats struct {
-	Calls           int
-	Readback, Total time.Duration
+	Calls, Readbacks int
+	// CheckPixels / CheckDiff: GOLOCO_DRAW8_CHECK — pixels compared with a
+	// readback, and how many differed in colour.
+	CheckPixels, CheckDiff int
+	Readback, Total        time.Duration
 }
 
 // draw8Textures keeps one texture per size for draw8: it runs many times a
@@ -222,4 +250,72 @@ func splitWords(s string) []string {
 		out = append(out, w)
 	}
 	return out
+}
+
+// screen8 is a CPU copy of the screen as palette indices, so draw8 can take
+// what lies under it without reading the GPU back (that readback was nearly
+// all of the UI's cost, LOOP item 0): the world's own 8-bit frame
+// (BeginFrame8, from pkg/scene), updated by every draw8. Whatever else is drawn
+// on the screen meanwhile (labels, the toolbar, the title menu, old-style
+// windows, construction ghosts) marks its rectangle foreign (MarkForeign); a
+// draw8 over a foreign rectangle, or without a world frame this frame, reads
+// the GPU back as before.
+type screen8Copy struct {
+	bits    []uint8
+	w, h    int
+	valid   bool
+	foreign []image.Rectangle
+}
+
+var screen8 screen8Copy
+
+var draw8Check = os.Getenv("GOLOCO_DRAW8_CHECK") != ""
+
+// BeginFrame8 starts the frame's copy from the world's 8-bit frame (w×h
+// palette indices at the screen's origin).
+func BeginFrame8(bits []uint8, w, h int) {
+	if len(screen8.bits) != len(bits) {
+		screen8.bits = make([]uint8, len(bits))
+	}
+	copy(screen8.bits, bits)
+	screen8.w, screen8.h, screen8.valid = w, h, true
+	screen8.foreign = screen8.foreign[:0]
+}
+
+// InvalidateFrame8 drops the copy (a frame without the 8-bit world).
+func InvalidateFrame8() { screen8.valid = false; screen8.foreign = screen8.foreign[:0] }
+
+// MarkForeign records a rectangle drawn on the screen other than by draw8.
+func MarkForeign(r image.Rectangle) {
+	if screen8.valid && !r.Empty() {
+		screen8.foreign = append(screen8.foreign, r)
+	}
+}
+
+func (s *screen8Copy) usable(r image.Rectangle) bool {
+	if !s.valid || !r.In(image.Rect(0, 0, s.w, s.h)) {
+		if draw8Check {
+			log.Printf("[draw8] %v: no copy (valid %v, %dx%d)", r, s.valid, s.w, s.h)
+		}
+		return false
+	}
+	for _, f := range s.foreign {
+		if f.Overlaps(r) {
+			if draw8Check {
+				log.Printf("[draw8] %v: foreign %v", r, f)
+			}
+			return false
+		}
+	}
+	return true
+}
+
+// store keeps what draw8 drew in the copy (later draw8s see it).
+func (s *screen8Copy) store(r image.Rectangle, rt *gfx8.RenderTarget, ox, oy int) {
+	if !s.valid || !r.In(image.Rect(0, 0, s.w, s.h)) {
+		return
+	}
+	for j := 0; j < r.Dy(); j++ {
+		copy(s.bits[(r.Min.Y+j)*s.w+r.Min.X:(r.Min.Y+j)*s.w+r.Max.X], rt.Bits[(oy+j)*rt.Width+ox:])
+	}
 }

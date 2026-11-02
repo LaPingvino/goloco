@@ -2,6 +2,7 @@ package world
 
 import (
 	"fmt"
+	"github.com/LaPingvino/goloco/pkg/ui"
 	"image"
 	"image/color"
 	"image/png"
@@ -47,6 +48,7 @@ type World struct {
 	// SceneEvery: render the world every n-th frame (≤ 1: every frame); the
 	// game raises it while its UI is open (drawScene).
 	SceneEvery int
+	lastBits   []uint8 // the last world frame's palette indices (draw8's screen copy)
 	sceneSkip  int
 	// stationList caches StationList between ticks; stationsGen counts the
 	// stations placed through the world (the cache's key with the tick).
@@ -2517,6 +2519,7 @@ func (w *World) Draw(screen *ebiten.Image) {
 		w.drawScene(screen) // saved vehicles are painted in the scene (paintEntities)
 		if len(w.Entities) == 0 {
 			w.paintDemoTrains(screen, scale)
+			ui.MarkForeign(screen.Bounds()) // drawn over the 8-bit world
 		}
 		w.drawOverlay(screen)
 		return

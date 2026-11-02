@@ -1,6 +1,7 @@
 package world
 
 import (
+	"github.com/LaPingvino/goloco/pkg/ui"
 	"log"
 	"os"
 	"time"
@@ -44,6 +45,9 @@ func (w *World) drawScene(screen *ebiten.Image) {
 	if w.SceneEvery > 1 && w.sceneImg != nil && w.sceneImg.Bounds().Dx() == sw && w.sceneImg.Bounds().Dy() == sh &&
 		w.sceneSkip%w.SceneEvery != 0 {
 		screen.DrawImage(w.sceneImg, nil)
+		if w.lastBits != nil {
+			ui.BeginFrame8(w.lastBits, sw, sh) // the picture reused: its indices too
+		}
 		return
 	}
 	rt := w.scene.Render(&w.Map, scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: uint32(w.animTick)})
@@ -52,4 +56,8 @@ func (w *World) drawScene(screen *ebiten.Image) {
 	}
 	w.sceneImg.WritePixels(w.scene.ToRGBA(rt).Pix)
 	screen.DrawImage(w.sceneImg, nil)
+	if rt.Width == sw && rt.Height == sh { // the palette indices under the UI, for draw8 (no GPU readback)
+		w.lastBits = rt.Bits
+		ui.BeginFrame8(rt.Bits, sw, sh)
+	}
 }

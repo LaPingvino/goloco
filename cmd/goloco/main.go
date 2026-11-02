@@ -1075,6 +1075,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	g.r.SetScreen(screen)
+	ui.InvalidateFrame8() // the world (drawScene) starts draw8's screen copy
 	g.w.SceneEvery = 1
 	if g.uiOpen() {
 		g.w.SceneEvery = 3 // the world at a third of the rate, the menus at full (LOOP item 0)
@@ -1096,13 +1097,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Ghost preview for build mode (both chain from the construction head).
 	if g.buildMode == buildModeTrack {
 		g.w.DrawConstructionGhost(screen, g.consSelectedTrackID(), g.buildObjID)
+		ui.MarkForeign(screen.Bounds())
 	} else if g.buildMode == buildModeRoad {
 		g.w.DrawRoadConstructionGhost(screen, g.consSelectedRoadID(), g.buildObjID)
+		ui.MarkForeign(screen.Bounds())
 	}
 
 	if g.inTitleScreen {
 		g.drawTitleMenu(screen)
 		g.windowMgr.Draw(screen, g.r) // allow windows (e.g. Load Game) on title screen
+		g.windowMgr.MarkForeign()
 		if g.scenarioSelect != nil {
 			g.scenarioSelect.Draw(screen)
 		}
@@ -1128,7 +1132,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// --- Gameplay HUD ---
 	g.toolbar.Draw(screen, g.r)
+	ui.MarkForeign(image.Rect(g.toolbar.X, g.toolbar.Y, g.toolbar.X+g.toolbar.Width, g.toolbar.Y+g.toolbar.Height))
 	g.windowMgr.Draw(screen, g.r)
+	g.windowMgr.MarkForeign()
 	if g.scenarioSelect != nil {
 		g.scenarioSelect.Draw(screen)
 	}
@@ -1578,6 +1584,12 @@ func (g *Game) drawUISprite(screen *ebiten.Image, spriteID, x, y, colour int) {
 }
 
 func (g *Game) drawTitleMenu(screen *ebiten.Image) {
+	var logoRect image.Rectangle
+	defer func() { // what the title menu draws, for draw8's screen copy (pkg/ui translucent.go)
+		ui.MarkForeign(logoRect)                                                     // the logo
+		ui.MarkForeign(image.Rect(g.sw-titleOptionsW, 0, g.sw, 30))                  // Options
+		ui.MarkForeign(image.Rect(0, g.sh-titleMenuH-titleMenuMargin-4, g.sw, g.sh)) // the globes, the corner texts
+	}()
 	// Sprite ID constants.
 	// OpenLoco reference: src/OpenLoco/src/Graphics/ImageIds.h
 	const (
@@ -1601,6 +1613,7 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 		op.GeoM.Translate(float64(xOff), float64(yOff))
 		screen.DrawImage(logo, op)
 		subY = int(yOff) + int(lh) + 6
+		logoRect = logo.Bounds().Add(image.Pt(int(xOff), int(yOff)))
 	} else {
 		// Fallback branding when the logo sprite is unavailable.
 		const logoScale = 4.0
@@ -1614,6 +1627,7 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 		}
 		ui.DrawTextBoldScaled(screen, logoText, logoX, logoY, logoScale, color.RGBA{220, 220, 255, 255})
 		subY = logoY + int(9.0*logoScale) + 8
+		logoRect = image.Rect(0, 0, 298, subY)
 	}
 
 	_ = subY // upstream draws no subtitle under the logo (TitleLogo.cpp)
