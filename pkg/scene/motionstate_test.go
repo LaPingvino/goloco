@@ -2295,7 +2295,6 @@ func TestCanConstructAtTrees(t *testing.T) {
 // every tree's tile, heights, quarter, type, rotation, growth, snow and
 // season compared by hash.
 func TestTreesMatchUpstream(t *testing.T) {
-	t.Skip("MISMATCH under investigation (LOOP tick 280): the first forest already lands elsewhere — upstream (133,268) vs goloco (267,134), later trees ±1 tile")
 	r, m, _ := saveView(t, "Scenarios/Aerophobia.SC5", false)
 	sc, err := scenario.LoadScenarioData("../../../locomotion/Scenarios/Aerophobia.SC5")
 	if err != nil {
