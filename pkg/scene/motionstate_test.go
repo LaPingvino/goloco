@@ -2021,3 +2021,65 @@ func TestInflationMatchesSave(t *testing.T) {
 	}
 	t.Logf("32 factors match (e.g. [0] %d → %d)", saved[0], m.CurrencyMultiplicationFactor[0])
 }
+
+// determineUnlockedVehicles for the saved year = every company's saved
+// unlockedVehicles (set at creation, then kept by updateYearly2's unlocks and
+// obsolescence), in title.dat and the SV5.
+func TestUnlockedVehiclesMatchSaves(t *testing.T) {
+	for _, s := range []struct {
+		path  string
+		title bool
+	}{{"Data/title.dat", true}, {"Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false}} {
+		r, m, _ := saveView(t, s.path, s.title)
+		n, ok := 0, 0
+		for id := range m.Companies {
+			if m.CompanyEmpty(id) || id >= len(m.UnlockedVehicles) {
+				continue
+			}
+			n++
+			if got := m.DetermineUnlockedVehicles(id, r.Objects); got == m.UnlockedVehicles[id] {
+				ok++
+			} else {
+				t.Logf("%s company %d: computed %x, saved %x", s.path, id, got, m.UnlockedVehicles[id])
+			}
+		}
+		t.Logf("%s (%d): %d/%d companies' unlocked vehicles match", s.path, m.CurrentYear, ok, n)
+		if n == 0 || ok != n {
+			t.Errorf("%s: mismatches", s.path)
+		}
+	}
+}
+
+// Scenario::start's CompanyManager::reset + createPlayerCompany, run on
+// title.dat's state (a .SC5's general game state is not parsed yet — 5.8c):
+// the player company: slot 0, named
+// new_company, a free competitor's face, a colour no other company
+// competes with, the inflation-adjusted starting loan as cash and loan,
+// the year's unlocked vehicles, history size 1.
+func TestCreatePlayerCompany(t *testing.T) {
+	r, m, _ := titleView(t)
+	before := len(m.Companies)
+	m.ResetCompanies()
+	id := m.CreatePlayerCompany(r.Objects)
+	if id != 0 {
+		t.Fatalf("player company %d", id)
+	}
+	c, f := m.Companies[id], m.CompanyFaces[id]
+	t.Logf("companies parsed %d; player %d: competitor %d of %d, colour %d, loan %d (starting loan size %d, year %d), unlocked %x",
+		before, id, f.Competitor, len(r.Objects.CompetitorObjects), m.CompanyColours[id], c.CurrentLoan, m.StartingLoanSize, m.CurrentYear, m.UnlockedVehicles[id])
+	if m.CompanyEmpty(int(id)) || m.CompanyNames[id] != 2 || m.ControllingCompany != id || m.PlayerCompanies != [2]uint8{0, 0xFF} {
+		t.Error("company not set up")
+	}
+	if int(f.Competitor) >= len(r.Objects.CompetitorObjects) || r.Objects.CompetitorObjects[f.Competitor] == nil {
+		t.Error("no competitor face")
+	}
+	if c.CurrentLoan <= 0 || c.CurrentLoan%100 != 0 || c.Cash != int64(c.CurrentLoan) {
+		t.Errorf("loan %d cash %d", c.CurrentLoan, c.Cash)
+	}
+	if m.UnlockedVehicles[id] != m.DetermineUnlockedVehicles(int(id), r.Objects) || m.UnlockedVehicles[id] == ([7]uint32{}) {
+		t.Error("unlocked vehicles")
+	}
+	if m.CompanyColours[id] >= 31 || c.HistorySize != 1 || c.NumExpenditureYears != 1 {
+		t.Error("colour / history")
+	}
+}
