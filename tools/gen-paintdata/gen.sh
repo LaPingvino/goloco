@@ -57,6 +57,31 @@ snowNames=$(awk '/kSnowCoverageSlopeToMask = \{/,/^    \};/' "$OL/src/OpenLoco/s
 g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/snow" "$tmp/snow.cpp"
 "$tmp/snow" >> "$repo/pkg/paint/surfacedata_gen.go"
 gofmt -w "$repo/pkg/paint/surfacedata_gen.go"
+# Landscape smoothing tables (paintSurfaceSmoothenEdge): the definitions are
+# copied out of PaintSurface.cpp verbatim and printed by the compiler.
+{
+  echo '#include "Graphics/ImageIds.h"'
+  echo '#include <array>'
+  echo '#include <cstdint>'
+  echo '#include <cstdio>'
+  echo 'using namespace OpenLoco;'
+  for t in k4FDA5E k4FDA71 k4FDA84 k4FDA97 kSurfaceSmoothFromSlope; do
+    awk "/$t = \\{/,/^    \\};/" "$OL/src/OpenLoco/src/Paint/PaintSurface.cpp"
+  done
+  echo 'int main() {'
+  for t in k4FDA5E k4FDA71 k4FDA84 k4FDA97; do
+    echo "  std::printf(\"// Surface$t is PaintSurface.cpp $t (paintSurfaceSmoothenEdge), by display slope.\\nvar Surface$t = [19]uint8{\");"
+    echo "  for (auto v : $t) std::printf(\"%u, \", (unsigned)v);"
+    echo '  std::printf("}\n\n");'
+  done
+  echo '  std::printf("// SurfaceSmoothFromSlope is PaintSurface.cpp kSurfaceSmoothFromSlope [edge][displaySlope].\nvar SurfaceSmoothFromSlope = [4][19]uint32{\n");'
+  echo '  for (auto& e : kSurfaceSmoothFromSlope) { std::printf("\t{"); for (auto v : e) std::printf("%u, ", (unsigned)v); std::printf("},\n"); }'
+  echo '  std::printf("}\n");'
+  echo '}'
+} > "$tmp/smooth.cpp"
+g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -o "$tmp/smooth" "$tmp/smooth.cpp"
+"$tmp/smooth" >> "$repo/pkg/paint/surfacedata_gen.go"
+gofmt -w "$repo/pkg/paint/surfacedata_gen.go"
 # Object struct layouts for pkg/objects (sizes and field offsets the loaders
 # read), straight from the compiler.
 cat > "$tmp/layout.cpp" <<'CPP'
