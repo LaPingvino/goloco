@@ -937,3 +937,37 @@ func TestSavedTrainsSub4ACEF1(t *testing.T) {
 	}
 	t.Logf("sub_4ACEF1 results by kind (0 moved, 1 full, 2 no route, 3 signal, 4 station): %v", kinds)
 }
+
+// Road pathing on the saved road vehicles: aimless wander always returns 0
+// (roads have no signals); the targeted search toward each one's station
+// order (all station types allowed here: calculateCompatibleRoadStations
+// comes with roadPathing) is logged by how many reach it.
+func TestSavedRoadPathing(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, reached := 0, 0
+	for _, tr := range trains {
+		h, v1 := m.Entities[tr.Head], m.Entities[tr.Veh1]
+		if h.Mode != 1 {
+			continue
+		}
+		p := sim.Pathing{Company: h.Owner, TrackType: h.TrackType, RequiredMods: h.HeadVar53, QueryMods: v1.Var49}
+		x, y, z := int32(v1.TileX), int32(v1.TileY), int32(v1.TileBaseZ)*4
+		if f := m.RoadAimlessWanderPathing(x, y, z, v1.TrackAndDirection&0x7F, p, r.Objects); f != 0 {
+			t.Errorf("head %d: road wander flags %#x", h.ID, f)
+		}
+		ring := m.OrderRing(h.OrderTableOffset, h.CurrentOrder)
+		if len(ring) == 0 || !ring[0].HasFlags(sim.OrderHasStation) {
+			continue
+		}
+		n++
+		res := m.RoadTargetedPathing(x, y, z, v1.TrackAndDirection&0x7F, p, 0xFFFFFFFF, &sim.RouteTarget{StationID: ring[0].Station()}, r.Objects)
+		if res.BestDistToTarget == 0 {
+			reached++
+		}
+	}
+	t.Logf("road vehicles heading for a station %d; reach a free stop of it within the horizon %d", n, reached)
+}
