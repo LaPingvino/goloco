@@ -384,7 +384,11 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		m.BuildingObjects = append(m.BuildingObjects, bldg)
 
 	case ObjectTypeTrackExtra, ObjectTypeRoadExtra:
-		ex, err := ParseExtraObject(header, decompressed)
+		var g1Loader G1Loader
+		if l, ok := m.G1File.(G1Loader); ok {
+			g1Loader = l
+		}
+		ex, err := ParseExtraObject(header, decompressed, g1Loader)
 		if err != nil {
 			return fmt.Errorf("parsing extra: %w", err)
 		}

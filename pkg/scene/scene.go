@@ -328,6 +328,14 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		if to := om.GetTrackObjectByIndex(int(tk.TrackObjectID)); to != nil {
 			s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ, Remap: r.companyRemap(m, tk.Owner),
 				Tunnel: r.tunnelImage(to.TunnelName), HasBridge: tk.HasBridge, Bridge: tk.BridgeID}, int(to.Image), sprite)
+			var mods [4]paint.TrackMod // trackObj->mods: the track extras, by the element's hasMod bits
+			for i, name := range to.ModNames {
+				if ex := om.Extra(name); i < 4 && ex != nil && ex.Image != 0 {
+					mods[i] = paint.TrackMod{Has: tk.Mods&(1<<i) != 0, Image: int(ex.Image), PaintStyle: ex.PaintStyle}
+				}
+			}
+			s.PaintTrackMods(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ,
+				Remap: r.companyRemap(m, tk.Owner)}, mods, sprite)
 		}
 	case scenario.KindRoad:
 		rd := t.Roads[ref.Index]
