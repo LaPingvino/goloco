@@ -1763,3 +1763,47 @@ func TestChallengeProgressMatchesSave(t *testing.T) {
 		t.Errorf("%d of %d companies differ", checked-same, checked)
 	}
 }
+
+// calcDate of the saved currentDay gives the saved year / month / day of
+// month (title.dat and a saved game); the day counter advances one day every
+// ~96 ticks; broken-down vehicles recover once their breakdownTimeout days
+// have passed.
+func TestDateTick(t *testing.T) {
+	for _, s := range []struct {
+		path  string
+		title bool
+	}{{"Data/title.dat", true}, {"Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false}} {
+		_, m, _ := saveView(t, s.path, s.title)
+		d := sim.CalcDate(m.CurrentDay)
+		t.Logf("%s: day %d → %d-%02d-%02d; saved %d-%02d-%02d", s.path, m.CurrentDay, d.Year, d.Month+1, d.Day+1, m.CurrentYear, m.CurrentMonth+1, m.CurrentDayOfMonth+1)
+		if d.Year != int(m.CurrentYear) || d.Month != int(m.CurrentMonth) || d.Day != int(m.CurrentDayOfMonth) {
+			t.Errorf("%s: calcDate disagrees with the saved date", s.path)
+		}
+	}
+	r, m, _ := titleView(t)
+	trains, _ := m.Trains()
+	broken := map[int]bool{}
+	for _, tr := range trains {
+		if m.Entities[tr.Veh2].Var73&1 != 0 {
+			broken[tr.Head] = true
+		}
+	}
+	day0 := m.CurrentDay
+	for range 961 {
+		m.UpdateVehicles(r.Objects)
+	}
+	still := 0
+	for i := range broken {
+		tr, _ := m.TrainOf(m.Entities[i].ID)
+		if m.Entities[tr.Veh2].Var73&1 != 0 {
+			still++
+		}
+	}
+	t.Logf("961 ticks: %d days passed; broken down %d → still %d", m.CurrentDay-day0, len(broken), still)
+	if m.CurrentDay-day0 != 10 {
+		t.Errorf("961 ticks gave %d days, want 10 (682 per tick on a 65536 counter)", m.CurrentDay-day0)
+	}
+	if len(broken) > 0 && still != 0 {
+		t.Errorf("%d vehicles still broken down after 10 days (breakdownTimeout starts at 5)", still)
+	}
+}

@@ -277,6 +277,8 @@ type VehicleEntity struct {
 	TotalWeight      uint16 // Vehicle2 totalWeight (0x52); VehicleBogie totalCarWeight (0x52, first bogie of a car)
 	MotorState       uint8  // Vehicle2 motorState (0x5A)
 	Var73            uint8  // Vehicle2 var_73 (0x73): bit 0 broken down
+	Veh2Reliability  uint8  // Vehicle2 reliability (0x72), percent
+	CrashedTimeout   uint8  // VehicleHead crashedTimeout (0x6D)
 	Var3C            int32  // VehicleHead / Vehicle1 var_3C (0x3C): distance budget the moves draw down
 	Var4F            int8   // Vehicle2 var_4F (0x4F): the road object it is on (-1 none)
 	MaxSpeed         int16  // Vehicle2 maxSpeed (0x54): Speed16
@@ -415,6 +417,8 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			TotalWeight:      binary.LittleEndian.Uint16(e[0x52:]),
 			MotorState:       e[0x5A],
 			Var73:            e[0x73],
+			Veh2Reliability:  e[0x72],
+			CrashedTimeout:   e[0x6D],
 			Var3C:            int32(binary.LittleEndian.Uint32(e[0x3C:])),
 			Var4F:            int8(e[0x4F]),
 			MaxSpeed:         int16(binary.LittleEndian.Uint16(e[0x54:])),

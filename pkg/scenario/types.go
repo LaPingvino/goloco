@@ -117,6 +117,8 @@ type Scenario struct {
 	// ObjectiveTimeLimitUntilYear / MonthsInChallenge: scenarioObjectiveProgress.
 	ObjectiveTimeLimitUntilYear, ObjectiveMonthsInChallenge uint16
 	CurrentMonth                                            uint8    // general.currentMonth (0x1C)
+	CurrentDayOfMonth                                       uint8    // general.currentDayOfMonth (0x1D)
+	DayCounter                                              uint16   // general.dayCounter (0x18)
 	Orders                                                  []byte   // GameState orders[] (ParseOrders)
 	Routings                                                []uint16 // GameState routings[] (ParseRoutings), by RoutingHandle
 	// GameState roadObjectIdIsAnyRoadTypeCompatible (0x1A4) and

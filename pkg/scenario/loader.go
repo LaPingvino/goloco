@@ -227,9 +227,6 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 			sc.ObjectiveTimeLimitUntilYear = binary.LittleEndian.Uint16(buf[0x429:])
 			sc.ObjectiveMonthsInChallenge = binary.LittleEndian.Uint16(buf[0x42B:])
 		}
-		if len(buf) > 0x1C {
-			sc.CurrentMonth = buf[0x1C] // general.currentMonth
-		}
 		sc.HasObjective = true
 		log.Printf("[Scenario] Objective: %s", sc.Objective.Describe())
 	}
@@ -292,6 +289,9 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.UnkRng = [2]uint32{binary.LittleEndian.Uint32(gameState[8:]), binary.LittleEndian.Uint32(gameState[12:])}
 		sc.RoadUsableByAll = binary.LittleEndian.Uint32(gameState[0x1A8:])
 		sc.CurrentDay = ParseCurrentDay(gameState)
+		sc.DayCounter = binary.LittleEndian.Uint16(gameState[0x18:]) // general.dayCounter
+		sc.CurrentMonth = gameState[0x1C]                            // general.currentMonth
+		sc.CurrentDayOfMonth = gameState[0x1D]                       // general.currentDayOfMonth
 		if sc.Entities != nil {
 			log.Printf("[Scenario] Parsed %d vehicle entities (Head+Body) from GameState", len(sc.Entities))
 		}
