@@ -420,6 +420,9 @@ func (g *Game) Update() error {
 		if g.browse != nil { // the load/save list's thumb follows the mouse while held
 			g.browse.Drag(g.mouseY, ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft))
 		}
+		if g.scenarioSelect != nil { // and the scenario list's
+			g.scenarioSelect.Drag(g.mouseY, ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft))
+		}
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 		}

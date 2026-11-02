@@ -1,6 +1,7 @@
 package ui
 
 import (
+	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"image/color"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
@@ -11,8 +12,7 @@ import (
 // ScenarioSelect — a port of Ui/Windows/ScenarioSelect.cpp (the New Game
 // window): 610×412, centred (y at least 28), five category tabs, the scenario
 // list (24 px rows) and the selected scenario's details.
-// PARTIAL: the scrollbar is drawn but only the wheel scrolls (its buttons,
-// track and thumb don't respond to the mouse yet), {COLOUR BLACK} uses PaletteIndex::black0 rather than the g1
+// PARTIAL: {COLOUR BLACK} uses PaletteIndex::black0 rather than the g1
 // text_palette, wrapping breaks at spaces, the completed tick / "completed by"
 // line (no high scores yet), currency swapping.
 
@@ -40,7 +40,9 @@ var (
 type ScenarioSelectWindow struct {
 	X, Y     int
 	Tab      int
-	Scroll   int // list scroll offset in px
+	Scroll   int  // list scroll offset in px
+	dragging bool // the scrollbar's thumb is being dragged
+	dragY    int
 	Selected *scenario.ScenarioMeta
 	byCat    [5][]*scenario.ScenarioMeta
 	OnStart  func(*scenario.ScenarioMeta)
@@ -85,6 +87,18 @@ func (w *ScenarioSelectWindow) HandleClick(px, py int) {
 			w.Tab, w.Scroll = i, 0
 			return
 		}
+	}
+	if content := len(w.byCat[w.Tab]) * ssRowHeight; w.in(ssList, px, py) && content > ssList[3] &&
+		px >= w.X+ssList[0]+ssList[2]-L.ScrollbarSize-L.ScrollbarMargin {
+		// The scrollbar (ScrollView): buttons and track move the list, the
+		// thumb starts a drag (Drag).
+		switch part := L.VScrollPart(py-(w.Y+ssList[1]), ssList[3], content, w.Scroll); part {
+		case "thumb":
+			w.dragY, w.dragging = py, true
+		default:
+			w.Scroll = L.VScrollClick(part, ssList[3], content, w.Scroll)
+		}
+		return
 	}
 	if w.in(ssList, px, py) {
 		idx := (py - (w.Y + ssList[1] + 1) + w.Scroll) / ssRowHeight
@@ -271,5 +285,21 @@ func (w *ScenarioSelectWindow) DiagRepeat(n int) {
 		for i := 1; i < n; i++ {
 			w.byCat[c] = append(w.byCat[c], base...)
 		}
+	}
+}
+
+// Drag follows the mouse while the thumb is held (verticalDragFollow); held
+// false ends the drag.
+func (w *ScenarioSelectWindow) Drag(py int, held bool) {
+	if !w.dragging {
+		return
+	}
+	if !held {
+		w.dragging = false
+		return
+	}
+	if dy := py - w.dragY; dy != 0 {
+		w.Scroll = L.VScrollDrag(ssList[3], len(w.byCat[w.Tab])*ssRowHeight, w.Scroll, dy)
+		w.dragY = py
 	}
 }
