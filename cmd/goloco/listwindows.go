@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/LaPingvino/goloco/pkg/ui"
+	"os"
 )
 
 // listwindows.go — the right-toolbar list windows: the ported VehicleList,
@@ -14,11 +15,23 @@ func (g *Game) openVehiclesWindow() { g.openVehicleList(0) }
 func (g *Game) openVehicleList(tab int) {
 	// VehicleList::open(getControllingId(), type): that company's vehicles.
 	company, cname := g.w.ControllingCompany()
+	if os.Getenv("GOLOCO_DIAG_VEHLIST") != "" { // diagnostics: the first company owning this type
+		for _, v := range g.w.VehicleListRows() {
+			if v.Type == tab {
+				company = v.Owner
+				break
+			}
+		}
+	}
 	var rows []ui.VehicleRow
 	for _, v := range g.w.VehicleListRows() {
 		if v.Type == tab && v.Owner == company {
+			var cars []ui.TrainCarDraw
+			for _, c := range g.w.TrainCars(v.HeadID) {
+				cars = append(cars, ui.TrainCarDraw(c))
+			}
 			rows = append(rows, ui.VehicleRow{Name: v.Name, Profit: v.Profit, AgeYears: v.AgeYears, Reliability: v.Reliability,
-				RecentProfit: v.RecentProfit, DayCreated: v.DayCreated})
+				RecentProfit: v.RecentProfit, DayCreated: v.DayCreated, Cars: cars})
 		}
 	}
 	var tc, wc uint8 = 0, 1

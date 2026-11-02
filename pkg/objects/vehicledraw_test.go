@@ -146,7 +146,7 @@ func TestScreenDistanceMatchesUpstream(t *testing.T) {
 	i := 0
 	for yaw := 0; yaw < 64; yaw++ {
 		for d := -300; d <= 300; d += 7 {
-			if g := strconv.Itoa(int(screenDistance(int32(d), uint8(yaw)))); g != want[i] {
+			if g := strconv.Itoa(int(ScreenDistance(int32(d), uint8(yaw)))); g != want[i] {
 				t.Errorf("yaw %d dist %d: %s, upstream %s", yaw, d, g, want[i])
 			}
 			i++
