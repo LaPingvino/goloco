@@ -698,7 +698,8 @@ func parseScenarioOptions(data []byte) Options {
 		opts.MinLandHeight = data[0x184]
 		opts.TopographyStyle = data[0x185]
 		opts.HillDensity = data[0x186]
-		if len(data) > 0x41C3 { // OpenLoco's new fields (zero — padding — in vanilla files)
+		copy(opts.LandDistributionPatterns[:], data[0x0A:0x0A+32]) // landDistributionPatterns
+		if len(data) > 0x41C3 {                                    // OpenLoco's new fields (zero — padding — in vanilla files)
 			opts.Generator = data[0x41BD]
 			opts.NumRiverbeds, opts.MinRiverWidth, opts.MaxRiverWidth = data[0x41BF], data[0x41C0], data[0x41C1]
 			opts.RiverbankWidth, opts.RiverMeanderRate = data[0x41C2], data[0x41C3]
