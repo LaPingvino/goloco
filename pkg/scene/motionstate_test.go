@@ -1484,3 +1484,51 @@ func TestSavedPathingShouldReverse(t *testing.T) {
 	}
 	t.Logf("land vehicles %d: pathing says reverse for %d (trains at a dead end: %d)", n, yes, deadEnd)
 }
+
+// positionVehicleOnTrack on every saved land vehicle as it stands (already
+// validly placed): no failure reported, every moving component exactly on its
+// path, every body between its bogies; applyVehicleObjectLength lays a train
+// out from its length (the head, Vehicle1/2) down to 0 at the tail.
+func TestSavedPositionVehicleOnTrack(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	failed, n := 0, 0
+	for _, tr := range trains {
+		if m.Entities[tr.Head].Mode > 1 {
+			continue
+		}
+		n++
+		if m.PositionVehicleOnTrack(tr, false, r.Objects) {
+			failed++
+			t.Logf("head %d: placement reports failure", m.Entities[tr.Head].ID)
+		}
+		for _, car := range tr.Cars {
+			for _, cc := range car {
+				f, b, body := m.Entities[cc.Front], m.Entities[cc.Back], m.Entities[cc.Body]
+				if int32(body.PosX) != (int32(f.PosX)+int32(b.PosX))/2 || int32(body.PosY) != (int32(f.PosY)+int32(b.PosY))/2 {
+					t.Errorf("head %d: body %d off its bogies", m.Entities[tr.Head].ID, body.ID)
+				}
+				for _, i := range []int{cc.Front, cc.Back} {
+					e := m.Entities[i]
+					var p []sim.MoveInfo
+					if e.Mode == 1 {
+						p = sim.RoadSubPosition(e.TrackAndDirection, m.TrafficHandedness != 0)
+					} else {
+						p = sim.TrackSubPosition(e.TrackAndDirection & sim.TaDBasicMask)
+					}
+					if int(e.SubPosition) >= len(p) || int32(p[e.SubPosition].X)+int32(e.TileX) != int32(e.PosX) {
+						t.Errorf("head %d: bogie %d off its path", m.Entities[tr.Head].ID, e.ID)
+					}
+				}
+			}
+		}
+		m.ApplyVehicleObjectLength(tr, r.Objects)
+		if m.Entities[tr.Tail].RemainingDistance != 0 || m.Entities[tr.Head].RemainingDistance <= 0 {
+			t.Errorf("head %d: layout head %d tail %d", m.Entities[tr.Head].ID, m.Entities[tr.Head].RemainingDistance, m.Entities[tr.Tail].RemainingDistance)
+		}
+	}
+	t.Logf("land vehicles %d; placement failures %d", n, failed)
+}
