@@ -32,6 +32,7 @@ namespace OpenLoco {
   struct TreeObject { TreeObjectFlags flags; uint8_t initialHeight, height, growth, currentSeason, costIndex = 0; int16_t buildCostFactor = 0, rating = 0;
     bool hasFlags(TreeObjectFlags f) const { return (flags & f) != TreeObjectFlags::none; } };
   enum class LandObjectFlags : uint8_t { none = 0, isDesert = 4, noTrees = 8 };
+  constexpr LandObjectFlags operator|(LandObjectFlags a, LandObjectFlags b) { return LandObjectFlags(uint8_t(a) | uint8_t(b)); }
   struct LandObject { uint8_t flags; bool hasFlags(LandObjectFlags f) const { return flags & uint8_t(f); } };
   namespace ObjectManager { template<class T> T* get(size_t i); template<> TreeObject* get<TreeObject>(size_t); template<> LandObject* get<LandObject>(size_t); constexpr size_t getMaxObjects(ObjectType t) { return t == ObjectType::tree ? 64 : 32; } }
   namespace Scenario { struct Options { uint16_t numberOfForests; uint8_t minForestRadius, maxForestRadius, minForestDensity, maxForestDensity; uint16_t numberRandomTrees; uint8_t minAltitudeForTrees, maxAltitudeForTrees; uint8_t madeAnyChanges; };
@@ -149,6 +150,28 @@ namespace OpenLoco::World::MapGenerator {
 #include "tt_gen.inc"
   void runTrees() { generateTrees(); }
 }
+
+// ---- town stubs ----
+namespace OpenLoco {
+  namespace Math::Vector { inline int32_t manhattanDistance2D(const World::Pos2& a, const World::Pos2& b) { return std::abs(a.x - b.x) + std::abs(a.y - b.y); } }
+  enum class TownGrowFlags : uint8_t { all = 0xFF };
+  struct Town { int16_t x, y; uint16_t name; uint32_t population; uint8_t historySize = 1; uint8_t history[20];
+    void grow(TownGrowFlags) {} void recalculateSize() {} };
+  namespace TownManager { inline std::vector<Town>& towns() { static std::vector<Town> v; return v; } Town* initialiseTown(World::Pos2 pos); }
+  namespace StringManager { inline void emptyUserString(uint16_t) {} }
+  namespace StringIds { constexpr int too_close_to_another_town = 0, too_many_towns = 0; constexpr uint16_t null = 0xFFFF; }
+  inline uint16_t getCurrentYear() { return 1975; } inline void setCurrentYear(uint16_t) {}
+  namespace GameCommands { struct TownPlacementArgs { World::Pos2 pos; uint8_t size; }; }
+}
+namespace OpenLoco::World::TileManager {
+#include "tt_water.inc"
+}
+namespace OpenLoco::GameCommands {
+  using namespace OpenLoco::World;
+#include "tt_town.inc"
+}
+static OpenLoco::World::Pos2 townPos{-1, -1};
+OpenLoco::Town* OpenLoco::TownManager::initialiseTown(World::Pos2 pos) { townPos = pos; return nullptr; }
 // ---- stub storage ----
 namespace OpenLoco {
   static GameState gs; GameState& getGameState() { return gs; }
@@ -166,7 +189,7 @@ namespace OpenLoco {
     auto& t = tiles[(pos.y / 32) * 384 + pos.x / 32]; entriesEnd += t.size() + 1;
     size_t at = 0; while (at < t.size() && baseZ >= t[at]._baseZ) at++;
     TileElementEntry e{}; e._type = ElementType::tree; e._baseZ = baseZ; e._clearZ = baseZ; e._flags = quarters & 0xF; e.tileIndex = (pos.y / 32) * 384 + pos.x / 32;
-    if (getenv("TTLOG") && entriesEnd < 147456 + 400) fprintf(stderr, "ins %d %d bz %d q %d\n", (pos.x / 32), (pos.y / 32), baseZ, quarters); // TTLOG=1: the first inserts
+    if (getenv("TTLOG") && entriesEnd < 147456 + 400) fprintf(stderr, "ins %d %d bz %d q %d\n", (pos.x / 32), (pos.y / 32), baseZ, quarters);
     t.insert(t.begin() + at, e); return &t[at]; }
   void World::TileManager::removeElement(TileElementEntry& el) { auto& t = tiles[el.tileIndex]; for (size_t i = 0; i < t.size(); i++) if (&t[i] == &el) { t.erase(t.begin() + i); return; } }
 }
@@ -188,9 +211,10 @@ int main(int argc, char** argv) {
     gs.rng = Core::Prng(4242u + c * 101u, 1717u + c * 13u);
     // generateTrees' updateTreeSeasons reads getGameState().currentSeason: stubbed through the dump's season
     World::MapGenerator::runTrees();
+    townPos = { -1, -1 }; { GameCommands::TownPlacementArgs ta{ World::Pos2(-1, -1), 1 }; GameCommands::createTown(ta, GameCommands::Flags::apply); }
     uint64_t h = 1469598103934665603ull; unsigned count = 0;
     for (int i = 0; i < 384 * 384; i++) for (auto& e : tiles[i]) if (e._type == World::ElementType::tree) { count++;
       for (int v : { i, (int)e._baseZ, (int)e._clearZ, (int)e._flags, (int)e.treeType_, (int)e.rot_, (int)e.quad_, (int)e.growth_, (int)e.snow_, (int)e.season_, (int)e.unk7l_ }) { h ^= (uint32_t)v; h *= 1099511628211ull; } }
-    printf("%d %u %u %u %u %llx\n", c, forests[c], randomTrees[c], c == 1 ? 18u : maxA, count, (unsigned long long)h);
+    printf("%d %u %u %u %u %llx %d %d\n", c, forests[c], randomTrees[c], c == 1 ? 18u : maxA, count, (unsigned long long)h, townPos.x, townPos.y);
   }
 }
