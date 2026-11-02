@@ -2247,3 +2247,41 @@ func TestSeasonMatchesSaves(t *testing.T) {
 		}
 	}
 }
+
+// Element flags and canConstructAt on title.dat's trees: each tree's
+// occupied quarter is 1 << (quadrant ^ 2) (CreateTree's QuarterTile), its own
+// space collides, and the space just above it is free unless another
+// element is there.
+func TestCanConstructAtTrees(t *testing.T) {
+	_, m, _ := titleView(t)
+	trees, quarterOK, own, above, aboveBlocked := 0, 0, 0, 0, 0
+	for y := 1; y < m.Height-1; y++ {
+		for x := 1; x < m.Width-1; x++ {
+			tl := m.TileAt(x, y)
+			for _, r := range tl.Order {
+				if r.Kind != scenario.KindTree {
+					continue
+				}
+				tr := tl.Trees[r.Index]
+				trees++
+				q := uint8(1) << (tr.Quadrant ^ 2)
+				if r.Flags&0x0F == q {
+					quarterOK++
+				}
+				px, py := int32(x*32), int32(y*32)
+				if !m.CanConstructAt(px, py, tr.BaseZ, tr.ClearZ, q, 0x0F) {
+					own++
+				}
+				if m.CanConstructAt(px, py, tr.ClearZ, tr.ClearZ+4, q, 0x0F) {
+					above++
+				} else {
+					aboveBlocked++
+				}
+			}
+		}
+	}
+	t.Logf("%d trees: occupied quarter = 1 << (quadrant ^ 2) for %d; own space blocked %d; space above free %d (blocked by something else %d)", trees, quarterOK, own, above, aboveBlocked)
+	if trees == 0 || quarterOK != trees || own != trees {
+		t.Error("tree flags / own-space collision")
+	}
+}
