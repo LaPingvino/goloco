@@ -45,6 +45,8 @@ int main()
     for (int i = 0; i < 44; i++) std::printf("%u, ", getTrackMiscData(i).unkWeighting);
     std::printf("}\n\n// RoadUnkWeighting is getRoadMiscData(id).unkWeighting.\nvar RoadUnkWeighting = [10]uint32{");
     for (int i = 0; i < 10; i++) std::printf("%u, ", getRoadMiscData(i).unkWeighting);
+    std::printf("}\n\n// CurvatureDegrees is getCurvatureDegree(trackAndDirection >> 2).\nvar CurvatureDegrees = [88]int8{");
+    for (int i = 0; i < 88; i++) std::printf("%d, ", getCurvatureDegree(i));
     std::printf("}\n\n// RoadReverseLane is getRoadMiscData(id).reverseLane.\nvar RoadReverseLane = [10]uint8{");
     for (int i = 0; i < 10; i++) std::printf("%u, ", getRoadMiscData(i).reverseLane);
     std::printf("}\n\n// RoadOccupationMasks is getRoadOccupationMask (kRoadOccupationMasks).\nvar RoadOccupationMasks = [128]uint8{");
