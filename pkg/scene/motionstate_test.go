@@ -1567,3 +1567,85 @@ func TestFlipCarRoundTrip(t *testing.T) {
 	}
 	t.Logf("cars flipped twice %d (multi-component %d)", n, multi)
 }
+
+// tryReverse on every saved land vehicle on its expected piece: the train
+// stays valid, its new front lies toward where the tail was, every moving
+// component is on its path, and the sim runs on 300 ticks with every component still on
+// its path. Logged: placement failures (liftUpVehicle is PARTIAL) and
+// Jacobs-bogie vehicles (connectJacobsBogies is PARTIAL).
+func TestReverseSavedVehicles(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	reversed, failed, jacobs := 0, 0, 0
+	onPath := func(i int) bool {
+		e := m.Entities[i]
+		var p []sim.MoveInfo
+		if e.Mode == 1 {
+			p = sim.RoadSubPosition(e.TrackAndDirection, m.TrafficHandedness != 0)
+		} else {
+			p = sim.TrackSubPosition(e.TrackAndDirection & sim.TaDBasicMask)
+		}
+		return int(e.SubPosition) < len(p) && int32(p[e.SubPosition].X)+int32(e.TileX) == int32(e.PosX) && int32(p[e.SubPosition].Y)+int32(e.TileY) == int32(e.PosY)
+	}
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.Mode > 1 || !m.IsOnExpectedRoadOrTrack(tr) {
+			continue
+		}
+		for _, car := range tr.Cars {
+			if m.Entities[car[0].Front].Flags38&(1<<3) != 0 {
+				jacobs++
+			}
+		}
+		oh, ot := m.Entities[tr.Veh2], m.Entities[tr.Tail]
+		if !m.TryReverse(tr, r.Objects) {
+			continue
+		}
+		reversed++
+		if m.Entities[tr.Head].VehicleFlags&sim.VehicleFlagCommandStop != 0 && h.VehicleFlags&sim.VehicleFlagCommandStop == 0 {
+			failed++
+		}
+		tr2, err := m.TrainOf(h.ID)
+		if err != nil {
+			t.Fatalf("head %d after reversing: %v", h.ID, err)
+		}
+		// The train is re-laid from where Vehicle2 stood, facing the other
+		// way: its new front (Vehicle2) lies nearer the old tail than the old
+		// front did (unless the train is a single short car on one tile).
+		nv := m.Entities[tr2.Veh2]
+		d := func(a, b scenario.VehicleEntity) int {
+			dx, dy := int(a.PosX)-int(b.PosX), int(a.PosY)-int(b.PosY)
+			return dx*dx + dy*dy
+		}
+		if d(nv, ot) > d(oh, ot) {
+			t.Errorf("head %d: new front farther from the old tail (%d) than the old front was (%d)", h.ID, d(nv, ot), d(oh, ot))
+		}
+		for _, i := range []int{tr2.Veh2, tr2.Tail} {
+			if !onPath(i) {
+				t.Errorf("head %d: component %d off its path after reversing", h.ID, m.Entities[i].ID)
+			}
+		}
+	}
+	for range 300 {
+		m.UpdateVehicles(r.Objects)
+	}
+	trains, _ = m.Trains()
+	off := 0
+	for _, tr := range trains {
+		if m.Entities[tr.Head].Mode > 1 {
+			continue
+		}
+		for _, i := range []int{tr.Veh2, tr.Tail} {
+			if !onPath(i) {
+				off++
+			}
+		}
+	}
+	t.Logf("reversed %d land vehicles (placement failures %d; Jacobs-bogie cars %d); after 300 more ticks off path %d", reversed, failed, jacobs, off)
+	if reversed == 0 || off != 0 {
+		t.Error("reversal check failed")
+	}
+}
