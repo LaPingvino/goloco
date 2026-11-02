@@ -1896,4 +1896,3 @@ func TestMonthEndRunningCosts(t *testing.T) {
 		t.Error("monthsInChallenge not counted")
 	}
 }
-
