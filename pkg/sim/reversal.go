@@ -299,3 +299,59 @@ func (m *Map) TryReverse(tr Train, om *objects.ObjectManager) bool {
 	head.HeadVar52 = tmp
 	return true
 }
+
+// Signal timeouts (categoriseTimeElapsed).
+const (
+	TimeoutOK         = 0
+	TimeoutFirst      = 1
+	TimeoutTurnaround = 2
+	busSignalTimeout  = 960  // kBusSignalTimeout
+	tramSignalTimeout = 2880 // kTramSignalTimeout
+)
+
+// CategoriseTimeElapsed is categoriseTimeElapsed (road): how long Vehicle2
+// has stood at Vehicle1's spot — a first timeout (160, or 128 / 64 while
+// overtaking) and a turn-round one (960 bus / 2880 tram; 544 / 128 while
+// overtaking, which also sets var_5C 40).
+func (m *Map) CategoriseTimeElapsed(tr Train, om *objects.ObjectManager) int {
+	head, v1, v2 := &m.Entities[tr.Head], &m.Entities[tr.Veh1], &m.Entities[tr.Veh2]
+	if v2.RoutingHandle != v1.RoutingHandle || v2.SubPosition != v1.SubPosition {
+		v1.TimeAtSignal = 0
+		return TimeoutOK
+	}
+	first, turn := uint16(160), uint16(busSignalTimeout)
+	isRoad := head.TrackType == 0xFF
+	if !isRoad {
+		rd := om.GetRoadObjectByIndex(int(head.TrackType))
+		isRoad = rd != nil && rd.Flags&roadFlagIsRoad != 0
+	}
+	overtaking := v1.TrackAndDirection&RaDIsOvertaking != 0
+	if isRoad {
+		if overtaking {
+			first, turn = 128, 544
+		}
+	} else {
+		turn = tramSignalTimeout
+		if overtaking {
+			first, turn = 64, 128
+		}
+	}
+	v1.TimeAtSignal++
+	if v1.TimeAtSignal == first {
+		return TimeoutFirst
+	}
+	if v1.TimeAtSignal == turn {
+		head.Var5C = 40
+		return TimeoutTurnaround
+	}
+	return TimeoutOK
+}
+
+// Sub4A8DB7 is sub_4A8DB7: give up the reservation ahead (sub_4AD778) and
+// stop approaching.
+func (m *Map) Sub4A8DB7(tr Train, om *objects.ObjectManager) {
+	m.Sub4AD778(tr, om)
+	if h := &m.Entities[tr.Head]; h.Status == StatusApproaching {
+		h.Status = StatusTravelling
+	}
+}
