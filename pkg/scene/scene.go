@@ -402,7 +402,8 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			paint.IndustryObj{BuildingImageIDs: int(io.BuildingImageIDs), Parts: io.Variations[ie.BuildingType], PartHeights: io.PartHeights,
 				PartAnimFrames: frames, PartAnimSpeed: speeds, AnimationSequences: io.AnimationSequences,
 				LargeTile: io.BuildingSizeFlags&(1<<ie.BuildingType) != 0,
-				Shadow:    r.shadow(s.Zoom, io.Flags&objects.IndustryFlagHasShadows != 0, int(ie.BuildingType)*4+int(io.ShadowImageIDs), int(ie.Colour), true)},
+				Shadow:    r.shadow(s.Zoom, io.Flags&objects.IndustryFlagHasShadows != 0, int(ie.BuildingType)*4+int(io.ShadowImageIDs), int(ie.Colour), true),
+				Scaffold:  r.scaffold(io.ScaffoldingSegmentType, io.ScaffoldingColour)},
 			cmap, x, y, v.Ticks, sprite)
 	case scenario.KindWall:
 		wl := t.Walls[ref.Index]
