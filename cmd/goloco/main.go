@@ -741,9 +741,11 @@ func (g *Game) drawPlayerPanel(screen *ebiten.Image) {
 	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
 		st.SkinColour = g.r.ObjMgr.InterfaceSkin.PlayerInfoToolbarColour
 	}
+	g.playerPanelCompany(&st)
 	wx, wy := uilayout.PlayerPanelPos(g.sw, g.sh)
-	cv := uilayout.PlayerPanelCompanyVal
+	cv, pf := uilayout.PlayerPanelCompanyVal, uilayout.PlayerPanelPerformance
 	st.HoverCash = g.mouseX >= wx+cv[0] && g.mouseX < wx+cv[0]+cv[2] && g.mouseY >= wy+cv[1] && g.mouseY < wy+cv[1]+cv[3]
+	st.HoverPerf = g.mouseX >= wx+pf[0] && g.mouseX < wx+pf[0]+pf[2] && g.mouseY >= wy+pf[1] && g.mouseY < wy+pf[1]+pf[3]
 	ui.DrawPlayerPanel(screen, st)
 }
 
@@ -1342,6 +1344,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
 			ps.SkinColour = g.r.ObjMgr.InterfaceSkin.PlayerInfoToolbarColour
 		}
+		g.playerPanelCompany(&ps)
 		ui.DrawPlayerPanel(screen, ps)
 	}
 	if os.Getenv("GOLOCO_DIAG_WINDOW") != "" {
@@ -2617,4 +2620,26 @@ func (g *Game) drawInlineDiag(screen *ebiten.Image) {
 	}
 	log.Printf("[diag] inline: %d vehicle types", len(vs))
 	ui.DrawVehiclesInlineDiag(screen, 20, 60, vs, offs)
+}
+
+// playerPanelCompany fills the player panel's company part from the
+// controlling company: the owner's image (companyFace), performanceIndex and
+// the increased/decreasedPerformance flags.
+func (g *Game) playerPanelCompany(st *ui.PlayerPanelState) {
+	if g.w == nil {
+		return
+	}
+	id, _ := g.w.ControllingCompany()
+	if id >= len(g.w.CompanyFaces) {
+		return
+	}
+	st.Face, st.FaceColour = g.companyFace(id)
+	f := g.w.CompanyFaces[id]
+	st.Performance = f.Performance
+	switch {
+	case f.ChallengeFlags&(1<<4) != 0:
+		st.Trend = 1
+	case f.ChallengeFlags&(1<<5) != 0:
+		st.Trend = -1
+	}
 }
