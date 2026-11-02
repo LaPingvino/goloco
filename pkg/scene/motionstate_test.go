@@ -457,38 +457,61 @@ func TestSavedVehicle2Move(t *testing.T) {
 	t.Logf("Vehicle2s that moved onto a new piece: %d", moved)
 }
 
-// Vehicle1::updateRail's target speed recomputed from the save brackets the
-// saved targetSpeed for every train. Vehicle1 saw var_3C before Vehicle2's
-// move of that tick drew it down (sub_4A9F20 runs after Vehicle1) by what
-// Vehicle2 travelled — between 0 and its distance (speed >> 7); the save does
-// not keep how much — and the target rises with var_3C, so the saved target
-// lies between the targets at those two bounds.
+// Vehicle1's target speed (updateRail / updateRoad) recomputed from the save
+// brackets the saved targetSpeed for every land vehicle. Vehicle1 computed it
+// from var_3C before two moves of that tick changed it: its own move added
+// what it travelled (at most max(unkDistance1·4, 0xCC48)) and Vehicle2's
+// (sub_4A9F20) took off what Vehicle2 travelled (at most its distance, speed
+// >> 7). The save keeps neither amount, and the target rises with var_3C, so
+// the saved target lies between the targets at those two bounds — or, for a
+// road vehicle whose tail just left a piece, is that freed piece's curve limit.
 func TestSavedVehicle1TargetSpeed(t *testing.T) {
 	r, m, _ := titleView(t)
 	trains, err := m.Trains()
 	if err != nil {
 		t.Fatal(err)
 	}
-	n, exact := 0, 0
+	n, exact, freed := 0, 0, 0
 	for _, tr := range trains {
 		h, v2 := &m.Entities[tr.Head], &m.Entities[tr.Veh2]
-		if h.Mode != 0 {
+		if h.Mode > 1 {
 			continue
+		}
+		target := m.Vehicle1RailTargetSpeed
+		if h.Mode == 1 {
+			target = m.Vehicle1RoadTargetSpeed
 		}
 		n++
 		v1 := m.Entities[tr.Veh1]
-		lo := m.Vehicle1RailTargetSpeed(h, &v1, v2, r.Objects)
+		saved := v1.Var3C
 		d1, _ := sim.UpdateDistances(v2.CurrentSpeed)
-		v1.Var3C += d1
-		hi := m.Vehicle1RailTargetSpeed(h, &v1, v2, r.Objects)
-		if v1.TargetSpeed < lo || v1.TargetSpeed > hi {
+		v1.Var3C = saved - max(d1*4, 0xCC48) // before Vehicle1's own move added up to this
+		lo := target(h, &v1, v2, r.Objects)
+		v1.Var3C = saved + d1 // before Vehicle2's move drew up to this
+		hi := target(h, &v1, v2, r.Objects)
+		ok := v1.TargetSpeed >= lo && v1.TargetSpeed <= hi
+		// The tail frees the piece it leaves after Vehicle1's update, so when
+		// it has just changed piece Vehicle1's route walk saw one more piece
+		// behind: its curve may set the target (a road one, on Vehicle2's road).
+		tail := m.Entities[tr.Tail]
+		if !ok && h.Mode == 1 && int32(tail.SubPosition) <= (d1+0x368A)/0x220C && v1.TargetSpeed <= hi {
+			if rd := r.Objects.GetRoadObjectByIndex(int(uint8(v2.Var4F))); rd != nil {
+				for _, f := range sim.RoadCurveSpeedFraction {
+					if lim := max(int16((int32(uint32(f)*uint32(uint16(rd.MaxSpeed)))+1<<16)/65536), 12); lim == v1.TargetSpeed {
+						ok, freed = true, freed+1
+						break
+					}
+				}
+			}
+		}
+		if !ok {
 			t.Errorf("head %d: saved target %d outside [%d, %d]", h.ID, v1.TargetSpeed, lo, hi)
 		}
 		if lo == hi {
 			exact++
 		}
 	}
-	t.Logf("%d trains; %d with the bracket a single value", n, exact)
+	t.Logf("%d land vehicles (rail and road); %d with the bracket a single value; %d set by the curve the tail just left", n, exact, freed)
 	if n == 0 {
 		t.Fatal("no trains")
 	}
