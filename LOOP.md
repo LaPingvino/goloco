@@ -447,6 +447,15 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
           f3. Town::grow (World/Town.cpp ~1800 lines): roads by the CreateRoad game command, buildings by CreateBuilding,
               recalculateSize — the big one; town placement for later towns depends on it (shared rng)
           f4. CreateIndustry (713) + generateIndustries; f5. CreateBuilding (280) + generateMiscBuildings
+5c. [ ] **CJK fallback font** (Joop 2026-11-02: '?? languages behave the same in OpenLoco afaik. Probably good to add
+   fallback font support'; approved, no specific priority — after 5.9f3). A deliberate addition beyond upstream:
+   record it in docs/deviations.md. (a) keep outside text Unicode — i18n.Available's ToLoco(nativeName) turns
+   日本語 into ??? before any drawing; convert only where the g1 font draws (g1Font.supports already routes
+   unsupported strings to the TTF path). (b) a third fallback face after the OpenTTD / Go fonts: Noto Sans CJK
+   (SIL OFL, /usr/share/fonts/noto-cjk), subset with the installed pyftsubset to the 1,415 characters of the
+   ja-JP / ko-KR / zh-CN packs + the native names, embedded (a few hundred KB; desktop and web alike), its
+   licence text alongside; chained with text/v2 MultiFace. (c) check: the language list shows 日本語 / 한국어 /
+   中文, and a Japanese UI string renders (headless shot under Xvfb). CJK text is smooth TTF, not Loco pixels.
 5b. [ ] **Build Vehicle window**, ported from Ui/Windows/BuildVehicle.cpp (tabs per transport type and
    track type, availability by year, VehicleCreate into a depot). Needs item 5. Reference: the parked
    branch wip/build-vehicles-july.
