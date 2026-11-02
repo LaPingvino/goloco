@@ -4,10 +4,10 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 
 // Roads — a port of Paint/PaintRoad.cpp paintRoad (Style02::paintRoadPP
 // standard and multi-tile merge, Style1::paintRoadPP) and finalisePaintRoad,
-// with the tables generated from upstream (roaddata_gen.go). PARTIAL: company
-// colour remap (needs the saved company colours), bridges and
-// tunnels (paintRoadPCP), level crossings, road extras, height markers and
-// one-way arrows are not ported yet.
+// with the tables generated from upstream (roaddata_gen.go); company colour,
+// bridges and tunnels (paintRoadPCP), streetlights, level crossings, road
+// extras and their supports. PARTIAL: height markers, one-way arrows (view
+// flags) and ghost mods are not ported yet.
 
 // RoadEl is what paintRoad reads from a road element.
 type RoadEl struct {
@@ -110,8 +110,8 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 	// The road extras (zoom 0, not for anyRoadTypeCompatible roads): each mod
 	// the element has, AdditionStyle1's piece (the null piece — image 3 = 0 —
 	// skipped) — mergeable into track/road addition priority 0, else as a
-	// parent (addToPlotList4FD150). PARTIAL: the pieces' supports
-	// (setAdditionSupport / paintSupports) and ghost mods.
+	// parent (addToPlotList4FD150); a piece's supports via setAdditionSupport
+	// (drawn by paintSupports). PARTIAL: ghost mods.
 	if s.Zoom > 0 || el.AnyRoadTypeCompatible {
 		return
 	}

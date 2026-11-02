@@ -3,9 +3,9 @@ package paint
 import "github.com/LaPingvino/goloco/pkg/gfx8"
 
 // Industries — a port of Paint/PaintIndustry.cpp paintIndustry /
-// paintIndustryBuilding. PARTIAL: shadows (translucency Colours::getShadow),
-// scaffolding while under construction, ghosts and industry fields (the
-// surface painter's industrial branch) are not ported yet.
+// paintIndustryBuilding, with shadows and the under-construction sections
+// (industry fields are the surface painter's industrial branch, in scene).
+// PARTIAL: scaffolding while under construction and ghosts are not ported yet.
 
 // IndustryEl is what paintIndustry reads from an industry element.
 type IndustryEl struct {
@@ -116,7 +116,7 @@ type AirportObj struct {
 }
 
 // PaintAirport — a port of Paint/PaintAirport.cpp paintAirport and
-// paintAirportBuilding. PARTIAL: shadows, company colour, ghosts.
+// paintAirportBuilding, with shadows and the company colour. PARTIAL: ghosts.
 func (s *Session) PaintAirport(rotationEl, sequenceIndex, baseZ uint8, obj AirportObj, tileX, tileY int, ticks uint32, sprite func(int) *gfx8.Sprite) {
 	rotation := (s.Rotation + rotationEl) & 3
 	// "Odd... different to industry, building, dock": the clear height is the
@@ -172,7 +172,8 @@ func (s *Session) paintStationBuilding(obj AirportObj, off, bbOff, bbSz Pos3, ro
 }
 
 // PaintDocks — a port of Paint/PaintDocks.cpp paintDocks (always 2×2; bbox
-// height from the element's clear height). PARTIAL: shadows, company colour, ghosts.
+// height from the element's clear height), with shadows and the company
+// colour. PARTIAL: ghosts.
 func (s *Session) PaintDocks(rotationEl, sequenceIndex, baseZ, clearZ uint8, obj AirportObj, tileX, tileY int, ticks uint32, sprite func(int) *gfx8.Sprite) {
 	rotation := (s.Rotation + rotationEl) & 3
 	baseHeight := int(baseZ) * 4

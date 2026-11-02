@@ -3,8 +3,8 @@ package paint
 import "github.com/LaPingvino/goloco/pkg/gfx8"
 
 // Train stations — a port of Paint/PaintTrainStation.cpp (paint style 0:
-// straight and diagonal track). PARTIAL: cargo on the platforms
-// (paintStationCargo needs the station's cargo stats) and ghosts. Company colour
+// straight and diagonal track), with the cargo on the platforms
+// (paintStationCargo). PARTIAL: ghosts. Company colour
 // (StationEl.Remap) and the translucent canopy layer (StationEl.Translucent) are
 // ported; road stations below, airports and docks in industry.go.
 
@@ -200,8 +200,8 @@ func (s *Session) PaintTrainStation(el StationEl, base int, sprite func(int) *gf
 }
 
 // Road stations — a port of Paint/PaintRoadStation.cpp (paint style 0, straight
-// road only: upstream's "simplified copy of train station paint"). Same PARTIAL
-// set as train stations: no cargo, no ghosts.
+// road only: upstream's "simplified copy of train station paint"), with cargo
+// filtered by the station's cargo type. PARTIAL: no ghosts.
 // Company colour by station->owner (remap). Image indices are RoadStation::ImageIds::Style0 (0..7).
 var (
 	roadStationNE = [3]stationDetail{

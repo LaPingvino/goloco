@@ -3,10 +3,10 @@ package paint
 import "github.com/LaPingvino/goloco/pkg/gfx8"
 
 // Buildings — a port of Paint/PaintBuilding.cpp paintBuilding /
-// paintBuildingBuilding. PARTIAL: scaffolding and the under-construction
+// paintBuildingBuilding, with the shadow (translucency
+// Colours::getShadow(orange)). PARTIAL: scaffolding and the under-construction
 // stages (age/unk5u are not parsed yet: unconstructed buildings draw as
-// constructed), the shadow (translucency Colours::getShadow(orange)) and ghost
-// buildings are not ported.
+// constructed) and ghost buildings are not ported.
 
 // BuildingEl is what paintBuilding reads from a building element.
 type BuildingEl struct {
