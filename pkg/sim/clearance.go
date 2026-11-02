@@ -2,14 +2,16 @@ package sim
 
 import "github.com/LaPingvino/goloco/pkg/scenario"
 
-// Tile clearance — Map/TileClearance.cpp canConstructAt (standard height,
-// no clear function: any collision fails).
+// Tile clearance — Map/TileClearance.cpp canConstructAtWithClear (the
+// standard and any-height collision types, a clear function, the position
+// flags) and canConstructAt (no clear function: any collision fails).
 //
-// PARTIAL: aiCompanyAboutToBuildCheck is taken as a collision (what it is
-// for the neutral company the map generator runs as; a player building over
-// an AI's allocation is decided by the updating company there), the clear
-// functions (applyClearAt…), the anyHeight collision type, the
-// position flags (underwater / underground …) and the error texts.
+// PARTIAL (aiCompanyAboutToBuildCheck): exact for a neutral or non-player
+// updating company (the map generator, towns, AIs: always "another company is
+// about to build here"); for a player company building over an AI's
+// allocation upstream checks the tile owner and the AI's challenge flags —
+// taken as a collision here until companies' tile ownership is ported. The
+// error texts are not kept.
 
 const (
 	elemFlagGhost       = 1 << 4
@@ -39,47 +41,166 @@ func (t *Tile) clearZOf(r scenario.ElemRef) uint8 {
 	return t.SurfaceClearZ()
 }
 
+// ClearResult is TileClearance's ClearFuncResult.
+type ClearResult uint8
+
+const (
+	ClearAllCollisionsRemoved ClearResult = iota
+	ClearCollision
+	ClearCollisionErrorSet
+	ClearNoCollision
+	ClearCollisionRemoved
+)
+
+func isCollisionResult(r ClearResult) bool {
+	return r == ClearCollision || r == ClearCollisionErrorSet
+}
+
+// ClearFunc is the clear function a game command passes: called on a
+// colliding element (t.Order[k]); it may remove it (ClearCollisionRemoved —
+// the tile is then scanned again from the start).
+type ClearFunc func(t *Tile, k int) ClearResult
+
+// ElementPositionFlags (TileManager.h).
+const (
+	PosAboveGround         = 1 << 0
+	PosUnderground         = 1 << 1
+	PosPartiallyUnderwater = 1 << 2
+	PosUnderwater          = 1 << 3
+)
+
+// aiCompanyAboutToBuildCheck: see PARTIAL above.
+func aiCompanyAboutToBuildCheck() ClearResult {
+	return ClearCollisionErrorSet
+}
+
+func callClear(t *Tile, k int, clear ClearFunc) ClearResult {
+	if clear == nil {
+		return ClearCollision
+	}
+	return clear(t, k)
+}
+
+// canConstructAtWithClear is TileClearance's canConstructAtWithClear: ok,
+// and the position flags it leaves (getPositionFlags).
+func (m *Map) canConstructAtWithClear(px, py int32, baseZ, clearZ, baseQuarter, zQuarter uint8, anyHeight bool, clear ClearFunc) (bool, uint8) {
+	var pos uint8 = PosAboveGround
+	drawable := func(c int32) bool { return c >= tileSize && c < int32(m.Width*tileSize)-tileSize-1 }
+	if !drawable(px) || !drawable(py) {
+		return false, pos
+	}
+	t := m.TileAt(int(px/tileSize), int(py/tileSize))
+	for {
+		removed := false
+		for k := 0; k < len(t.Order); k++ {
+			var res ClearResult
+			if t.Order[k].Kind == scenario.KindSurface {
+				res = m.checkSurface(t, k, baseZ, clearZ, baseQuarter, zQuarter, clear, &pos)
+			} else {
+				res = checkNonSurface(t, k, baseZ, clearZ, baseQuarter, anyHeight, clear)
+			}
+			switch res {
+			case ClearAllCollisionsRemoved:
+				return true, pos
+			case ClearCollision, ClearCollisionErrorSet:
+				return false, pos
+			case ClearCollisionRemoved:
+				removed = true
+			}
+			if removed {
+				break
+			}
+		}
+		if !removed {
+			return true, pos
+		}
+	}
+}
+
+// ApplyClearAtStandardHeight / ApplyClearAtAllHeights are TileClearance's.
+func (m *Map) ApplyClearAtStandardHeight(px, py int32, baseZ, clearZ, baseQuarter, zQuarter uint8, clear ClearFunc) (bool, uint8) {
+	return m.canConstructAtWithClear(px, py, baseZ, clearZ, baseQuarter, zQuarter, false, clear)
+}
+
+func (m *Map) ApplyClearAtAllHeights(px, py int32, baseZ, clearZ, baseQuarter, zQuarter uint8, clear ClearFunc) (bool, uint8) {
+	return m.canConstructAtWithClear(px, py, baseZ, clearZ, baseQuarter, zQuarter, true, clear)
+}
+
 // CanConstructAt is TileClearance::canConstructAt: whether something from
 // baseZ to clearZ over the quarters baseQuarter (z quarters zQuarter) fits on
 // the tile at world (px, py).
 func (m *Map) CanConstructAt(px, py int32, baseZ, clearZ uint8, baseQuarter, zQuarter uint8) bool {
-	drawable := func(c int32) bool { return c >= tileSize && c < int32(m.Width*tileSize)-tileSize-1 }
-	if !drawable(px) || !drawable(py) {
-		return false
-	}
-	t := m.TileAt(int(px/tileSize), int(py/tileSize))
-	for _, r := range t.Order {
-		if r.Kind == scenario.KindSurface {
-			if !m.surfaceAllows(t, r, baseZ, clearZ, baseQuarter, zQuarter) {
-				return false
-			}
-			continue
-		}
-		bz, cz := t.baseZOf(r), t.clearZOf(r)
-		if baseZ >= cz || clearZ <= bz || r.Flags&elemFlagGhost != 0 || r.Flags&0x0F&baseQuarter == 0 {
-			continue
-		}
-		return false // a collision (or an AI's allocation — see PARTIAL)
-	}
-	return true
+	ok, _ := m.canConstructAtWithClear(px, py, baseZ, clearZ, baseQuarter, zQuarter, false, nil)
+	return ok
 }
 
-// surfaceAllows is canConstructAtCheckSurfaceElement without a clear function.
-func (m *Map) surfaceAllows(t *Tile, r scenario.ElemRef, baseZ, clearZ, baseQuarter, zQuarter uint8) bool {
+// checkNonSurface is canConstructAtCheckNonSurfaceElement.
+func checkNonSurface(t *Tile, k int, baseZ, clearZ, baseQuarter uint8, anyHeight bool, clear ClearFunc) ClearResult {
+	r := t.Order[k]
+	if anyHeight {
+		if r.Kind == scenario.KindTree || r.Kind == scenario.KindBuilding || r.Kind == scenario.KindIndustry {
+			return callClear(t, k, clear)
+		}
+		if r.Kind == scenario.KindStation {
+			if st := t.Stations[r.Index].StationType; st == 2 || st == 3 {
+				return callClear(t, k, clear)
+			}
+		}
+	}
+	if baseZ >= t.clearZOf(r) || clearZ <= t.baseZOf(r) || r.Flags&elemFlagGhost != 0 || r.Flags&0x0F&baseQuarter == 0 {
+		return ClearNoCollision
+	}
+	if r.Flags&elemFlagAiAllocated == 0 {
+		return callClear(t, k, clear)
+	}
+	if clear != nil {
+		if res := clear(t, k); !isCollisionResult(res) {
+			return res
+		}
+	}
+	return aiCompanyAboutToBuildCheck()
+}
+
+// checkSurface is canConstructAtCheckSurfaceElement.
+func (m *Map) checkSurface(t *Tile, k int, baseZ, clearZ, baseQuarter, zQuarter uint8, clear ClearFunc, pos *uint8) ClearResult {
+	r := t.Order[k]
 	if r.Flags&elemFlagAiAllocated != 0 {
-		return false // aiCompanyAboutToBuildCheck: PARTIAL
+		if res := aiCompanyAboutToBuildCheck(); res != ClearNoCollision {
+			return res
+		}
 	}
 	if waterZ := int(t.WaterLevel&0x1F) * microToSmallZStep; waterZ != 0 {
-		if clearZ > t.SurfaceClearZ() && int(baseZ) < waterZ+4 && int(baseZ) < waterZ && int(clearZ) > waterZ {
-			return false // partly above, partly below water
+		if clearZ > t.SurfaceClearZ() && int(baseZ) < waterZ+4 {
+			*pos |= PosPartiallyUnderwater
+			if int(baseZ) < waterZ {
+				*pos |= PosUnderwater
+				if int(clearZ) > waterZ {
+					if clear == nil {
+						return ClearCollisionErrorSet
+					}
+					if res := clear(t, k); isCollisionResult(res) {
+						return ClearCollisionErrorSet
+					}
+				}
+			}
 		}
 	}
 	if zQuarter == 0x0F {
-		return true
+		return ClearNoCollision
 	}
 	if clearZ <= t.BaseZ {
-		return true // underground
+		*pos |= PosUnderground
+		*pos &^= PosAboveGround
+		return ClearNoCollision
 	}
+	if surfaceCornersFit(t, baseZ, baseQuarter, zQuarter) {
+		return ClearNoCollision
+	}
+	return callClear(t, k, clear)
+}
+
+// surfaceCornersFit is the slope-corner part of canConstructAtCheckSurfaceElement.
+func surfaceCornersFit(t *Tile, baseZ, baseQuarter, zQuarter uint8) bool {
 	slope := t.Slope & 0x1F
 	n, e, s, w := t.BaseZ, t.BaseZ, t.BaseZ, t.BaseZ
 	if slope&slopeCornerNorth != 0 {

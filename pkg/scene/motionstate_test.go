@@ -2538,3 +2538,51 @@ func TestTownSizeAndRoadExtent(t *testing.T) {
 		}
 	}
 }
+
+// applyClearAtStandardHeight on title.dat: a tree in the way fails without a
+// clear function; a clear function that removes it (collisionRemoved) makes
+// the tile be scanned again and pass, with the tree gone; a box under the
+// surface leaves the underground position flag and no aboveGround.
+func TestApplyClearWithClearFunction(t *testing.T) {
+	_, m, _ := titleView(t)
+	for ty := 2; ty < m.Height-2; ty++ {
+		for tx := 2; tx < m.Width-2; tx++ {
+			tl := m.TileAt(tx, ty)
+			if len(tl.Trees) == 0 || tl.WaterLevel != 0 {
+				continue
+			}
+			tr := tl.Trees[0]
+			px, py := int32(tx*32), int32(ty*32)
+			if m.CanConstructAt(px, py, tr.BaseZ, tr.ClearZ, 0xF, 0) {
+				continue
+			}
+			calls := 0
+			ok, pos := m.ApplyClearAtStandardHeight(px, py, tr.BaseZ, tr.ClearZ, 0xF, 0, func(tt *sim.Tile, k int) sim.ClearResult {
+				calls++
+				if tt.Order[k].Kind != scenario.KindTree {
+					return sim.ClearCollision
+				}
+				tt.Order = append(tt.Order[:k:k], tt.Order[k+1:]...)
+				return sim.ClearCollisionRemoved
+			})
+			trees := 0
+			for _, r := range tl.Order {
+				if r.Kind == scenario.KindTree {
+					trees++
+				}
+			}
+			t.Logf("tile (%d,%d): tree %d–%d; clear ok %v pos %#x calls %d, trees left %d", tx, ty, tr.BaseZ, tr.ClearZ, ok, pos, calls, trees)
+			if !ok || calls == 0 || trees != 0 || pos&sim.PosAboveGround == 0 {
+				t.Error("clear function path")
+			}
+			if tl.BaseZ >= 8 {
+				_, under := m.ApplyClearAtStandardHeight(px, py, tl.BaseZ-8, tl.BaseZ, 0xF, 0, nil)
+				if under&sim.PosUnderground == 0 || under&sim.PosAboveGround != 0 {
+					t.Errorf("underground flags %#x", under)
+				}
+			}
+			return
+		}
+	}
+	t.Fatal("no tree tile")
+}
