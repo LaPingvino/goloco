@@ -54,3 +54,27 @@ func TestCalcDays(t *testing.T) {
 		t.Fatal("vectors")
 	}
 }
+
+// IntegerSine / CosinePrecisionHigh against 2000 values from upstream's own
+// functions (tools/gen-paintdata/gen_trig.cpp).
+func TestIntegerTrigVectors(t *testing.T) {
+	f, err := os.Open("testdata/trig.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	n := 0
+	for sc.Scan() {
+		var d uint16
+		var mag, s, c int32
+		fmt.Sscan(sc.Text(), &d, &mag, &s, &c)
+		if gs, gc := IntegerSinePrecisionHigh(d, mag), IntegerCosinePrecisionHigh(d, mag); gs != s || gc != c {
+			t.Fatalf("dir %d mag %d: sin %d cos %d, want %d %d", d, mag, gs, gc, s, c)
+		}
+		n++
+	}
+	if n != 2000 {
+		t.Fatalf("%d vectors", n)
+	}
+}
