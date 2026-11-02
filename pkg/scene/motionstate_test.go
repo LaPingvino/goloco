@@ -1,6 +1,10 @@
 package scene
 
 import (
+	"fmt"
+	"github.com/LaPingvino/goloco/pkg/core"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/LaPingvino/goloco/pkg/scenario"
@@ -2121,4 +2125,39 @@ func TestStartScenario(t *testing.T) {
 		t.Errorf("a month did not pass: month %d, months in challenge %d", m.CurrentMonth, m.ObjectiveMonthsInChallenge)
 	}
 	t.Logf("after 3000 ticks: %d-%02d-%02d, cash %d, loan interest so far %d", m.CurrentYear, m.CurrentMonth+1, m.CurrentDayOfMonth+1, m.Companies[id].Cash, m.Companies[id].Expenditures[0][15])
+}
+
+// The original terrain generator against upstream's own
+// OriginalTerrainGenerator.cpp (tools/gen-paintdata/gen_terrain.cpp, compiled
+// on HS1's height-map images): six seeds / styles / densities / edge flags,
+// the 384×384 height maps compared by FNV-1a hash (testdata — hashes only,
+// no game data).
+func TestTerrainHeightMapMatchesUpstream(t *testing.T) {
+	r, m, _ := saveView(t, "Scenarios/Aerophobia.SC5", false)
+	data, err := os.ReadFile("testdata/terrain_hashes.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		var c, style, dens, edge int
+		var s0, s1 uint32
+		var want uint64
+		fmt.Sscanf(line, "%d %d %d %d %d %d %x", &c, &style, &dens, &edge, &s0, &s1, &want)
+		m.Rng1 = *core.NewPrngSeed(s0, s1)
+		hm := sim.NewHeightMap(384, 384)
+		m.GenerateTerrainHeightMap(sim.TerrainOptions{MinLandHeight: 2, TopographyStyle: uint8(style), HillDensity: uint8(dens), HillsEdgeOfMap: edge == 1, SeaLevel: 4}, r.Objects.HillShapes, r.G1, hm)
+		h := uint64(1469598103934665603)
+		for y := range 384 {
+			for x := range 384 {
+				h ^= uint64(*hm.At(x, y))
+				h *= 1099511628211
+			}
+		}
+		if h != want {
+			t.Errorf("case %d (style %d density %d edge %d): hash %x, upstream %x", c, style, dens, edge, h, want)
+		}
+		n++
+	}
+	t.Logf("%d height maps compared with upstream's generator", n)
 }
