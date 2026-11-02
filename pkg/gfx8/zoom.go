@@ -159,3 +159,18 @@ func DrawImageZoom(rt *RenderTarget, sprite func(id int) *Sprite, id, x, y, zoom
 	}
 	DrawSpriteZoom(rt, s, x, y, zoom, op, palMap, noise)
 }
+
+// DrawSpriteAtZoom is DrawImageZoom starting from an already looked-up
+// sprite (its Index names the image for the hasZoomSprites recursion).
+func DrawSpriteAtZoom(rt *RenderTarget, s *Sprite, sprite func(id int) *Sprite, x, y, zoom int, op BlendOp, palMap []uint8, noise *Sprite) {
+	if s == nil {
+		return
+	}
+	if zoom > 0 && s.HasZoomSprites && s.Index > 0 {
+		half := *rt
+		half.OriginX, half.OriginY = rt.OriginX>>1, rt.OriginY>>1
+		DrawImageZoom(&half, sprite, s.Index-s.ZoomOffset, x>>1, y>>1, zoom-1, op, palMap, noise)
+		return
+	}
+	DrawSpriteZoom(rt, s, x, y, zoom, op, palMap, noise)
+}

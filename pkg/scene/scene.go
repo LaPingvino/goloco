@@ -153,6 +153,9 @@ func (r *Renderer) Sprite(i int) *gfx8.Sprite {
 	var sp *gfx8.Sprite
 	if i >= 0 && i < len(r.G1.Elements) {
 		sp, _ = gfx8.Decode(&r.G1.Elements[i])
+		if sp != nil {
+			sp.Index = i // for the zoom-sprite recursion
+		}
 	}
 	r.sprites[i] = sp
 	return sp
@@ -163,7 +166,11 @@ func (r *Renderer) SpriteCount() int { return len(r.sprites) }
 
 // View is the part of the viewport to draw (viewport coordinates, rotation 0).
 type View struct {
+	// X, Y are the viewport position (zoom-0 pixels); W, H the screen size
+	// in pixels; Zoom 0-3 (each level halves: the view covers W<<Zoom ×
+	// H<<Zoom viewport pixels).
 	X, Y, W, H int
+	Zoom       int
 	Ticks      uint32
 	// Tiles optionally restricts the tile walk to a window (minX, minY, maxX,
 	// maxY inclusive); empty = every tile that can reach the view.
@@ -186,13 +193,15 @@ func tileWindow(m *sim.Map, v View) (x0, y0, x1, y1 int) {
 
 // Render draws the view of m into a new 8-bit target.
 func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
+	lw, lh := v.W<<v.Zoom, v.H<<v.Zoom // the render target in viewport units (rt.width/height)
 	if r.sess == nil {
-		r.sess = paint.NewSession(0, v.X, v.Y, v.W, v.H)
+		r.sess = paint.NewSession(0, v.X, v.Y, lw, lh)
 	} else {
-		r.sess.Reset(0, v.X, v.Y, v.W, v.H)
+		r.sess.Reset(0, v.X, v.Y, lw, lh)
 	}
 	s := r.sess
-	x0, y0, x1, y1 := tileWindow(m, v)
+	s.Zoom, s.SpriteFor = v.Zoom, r.Sprite
+	x0, y0, x1, y1 := tileWindow(m, View{X: v.X, Y: v.Y, W: lw, H: lh})
 	if !v.Tiles.Empty() {
 		x0, y0, x1, y1 = max(v.Tiles.Min.X, 0), max(v.Tiles.Min.Y, 0), min(v.Tiles.Max.X, m.Width-1), min(v.Tiles.Max.Y, m.Height-1)
 	}

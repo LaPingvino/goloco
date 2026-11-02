@@ -60,10 +60,14 @@ type Session struct {
 	Rotation           uint8
 	spriteX, spriteY   int // world position of the tile being painted
 	rtX, rtY, rtW, rtH int // render target in viewport coordinates
-	quadrants          [MaxQuadrants]*Struct
-	back, front        int
-	last               *Struct
-	head               *Struct
+	// Zoom is the render target's zoomLevel (0-3); SpriteFor looks an image
+	// up for the hasZoomSprites recursion (needed when Zoom > 0).
+	Zoom        int
+	SpriteFor   func(id int) *gfx8.Sprite
+	quadrants   [MaxQuadrants]*Struct
+	back, front int
+	last        *Struct
+	head        *Struct
 
 	trackRoad    [5]*Struct // _trackRoadPaintStructs, by priority
 	trackRoadAdd [2]*Struct // _trackRoadAdditionsPaintStructs, by priority
@@ -109,7 +113,8 @@ func Colour(sp *gfx8.Sprite, remap []uint8) Image {
 // struct and attachment slabs) so a frame allocates nothing in steady state.
 func (s *Session) Reset(rotation uint8, x, y, w, h int) {
 	structs, attached, tunnels := s.structs[:0], s.attachedSlab[:0], s.tunnels
-	*s = Session{Rotation: rotation, rtX: x, rtY: y, rtW: w, rtH: h, back: noBackIndex,
+	zoom, spriteFor := s.Zoom, s.SpriteFor
+	*s = Session{Rotation: rotation, rtX: x, rtY: y, rtW: w, rtH: h, back: noBackIndex, Zoom: zoom, SpriteFor: spriteFor,
 		structs: structs, attachedSlab: attached, tunnels: tunnels, bridge: BridgeEntry{Height: -1}}
 	s.ResetTunnels()
 }
@@ -528,7 +533,16 @@ func (s *Session) Order() []*Struct {
 func (s *Session) Draw(rt *gfx8.RenderTarget) {
 	draw := func(img Image, x, y int) {
 		if img.Mask != nil {
+			if s.Zoom > 0 {
+				return // PARTIAL: drawImageMaskedZoom<1-3> not ported (masked images skipped when zoomed out)
+			}
 			gfx8.DrawSpriteMasked(rt, img.Sprite, img.Mask, x-s.rtX, y-s.rtY)
+			return
+		}
+		if s.Zoom > 0 { // drawImagePaletteSet at the target's zoom: rt.x/y = the session's
+			zt := *rt
+			zt.OriginX, zt.OriginY = s.rtX, s.rtY
+			gfx8.DrawSpriteAtZoom(&zt, img.Sprite, s.SpriteFor, x, y, s.Zoom, img.Op, img.PalMap, img.Noise)
 			return
 		}
 		gfx8.DrawSpriteNoise(rt, img.Sprite, x-s.rtX, y-s.rtY, img.Op, img.PalMap, img.Noise)

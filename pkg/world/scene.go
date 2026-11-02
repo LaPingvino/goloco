@@ -17,7 +17,11 @@ import (
 
 // sceneEnabled reports whether this frame is drawn by pkg/scene.
 func (w *World) sceneEnabled() bool {
-	return os.Getenv("GOLOCO_SCENE") != "0" && w.zoom == 0 &&
+	// Zoom > 0 goes through it only on request (GOLOCO_SCENE_ZOOM=1, or the
+	// GOLOCO_DIAG_ZOOM diagnostic) until drawImageMaskedZoom is ported: masked
+	// images are skipped when zoomed out (item 3m).
+	zoomOK := w.zoom == 0 || os.Getenv("GOLOCO_SCENE_ZOOM") == "1" || os.Getenv("GOLOCO_DIAG_ZOOM") != ""
+	return os.Getenv("GOLOCO_SCENE") != "0" && zoomOK &&
 		w.renderer != nil && w.renderer.G1 != nil && w.renderer.ObjMgr != nil
 }
 
@@ -35,7 +39,7 @@ func (w *World) drawScene(screen *ebiten.Image) {
 			w.sceneFrames, w.sceneTime = 0, 0
 		}
 	}()
-	rt := w.scene.Render(&w.Map, scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Ticks: uint32(w.animTick)})
+	rt := w.scene.Render(&w.Map, scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: uint32(w.animTick)})
 	if w.sceneImg == nil || w.sceneImg.Bounds().Dx() != sw || w.sceneImg.Bounds().Dy() != sh {
 		w.sceneImg = ebiten.NewImage(sw, sh)
 	}
