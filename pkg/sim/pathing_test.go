@@ -38,3 +38,37 @@ func TestTrackLongestPathing(t *testing.T) {
 		t.Errorf("wander on plain track: flags %#x", f)
 	}
 }
+
+// trackTargetedPathing at the same junction: aiming at the straight line's
+// far piece, the straight branch reaches it (distance 0, no signals) and the
+// curve does not; isTrackRoutingResultBetter prefers the straight.
+func TestTrackTargetedPathing(t *testing.T) {
+	s := flatState(40, 64)
+	s.ConsHead = ConstructionHead{Active: true, X: 30, Y: 20, BaseZ: 64, Rotation: 0}
+	for range 9 {
+		s.PlaceTrackAtHead(0, 0)
+	}
+	s.ConsHead = ConstructionHead{Active: true, X: 25, Y: 20, BaseZ: 64, Rotation: 0}
+	s.PlaceTrackAtHead(4, 0)
+	e, _ := TrackConnectionEnd(26*32, 20*32, 64*4, 0)
+	tc := s.TrackConnections(e.X, e.Y, e.Z, e.NextRotation, 0, 0, 0, 0)
+	target := &RouteTarget{StationID: -1, X: 22 * 32, Y: 20 * 32, Z: 64 * 4, TaD: 0, RX: -1, RY: -1}
+	var straight, curve RoutingResult
+	for _, c := range tc.Connections {
+		r := s.TrackTargetedPathing(e.X, e.Y, e.Z, c&(TaDBasicMask|TaDHasSignal), Pathing{}, target)
+		if c&TaDBasicMask == 0 {
+			straight = r
+		} else {
+			curve = r
+		}
+	}
+	if straight.BestDistToTarget != 0 || straight.SignalState != RouteNoSignals {
+		t.Errorf("straight branch: %+v, want the target reached with no signals", straight)
+	}
+	if curve.BestDistToTarget == 0 {
+		t.Errorf("curve branch reached the target: %+v", curve)
+	}
+	if !IsTrackRoutingResultBetter(curve, straight) || IsTrackRoutingResultBetter(straight, curve) {
+		t.Error("isTrackRoutingResultBetter does not prefer the reached target")
+	}
+}
