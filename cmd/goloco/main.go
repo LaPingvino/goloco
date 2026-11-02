@@ -17,6 +17,7 @@ import (
 
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"github.com/LaPingvino/goloco/pkg/audio"
+	"github.com/LaPingvino/goloco/pkg/core"
 	"github.com/LaPingvino/goloco/pkg/graphics"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -1771,8 +1772,15 @@ func (g *Game) loadScenario(filePath string) error {
 	}
 
 	// Create a fresh world for the new scenario so the title world is preserved.
+	oldRng := g.w.Map.Rng1 // loadAndStart: the rng before the load
 	gameW := world.NewWorld(g.r)
 	gameW.LoadFromScenario(sc)
+	if strings.EqualFold(filepath.Ext(filePath), ".sc5") && g.objMgr != nil {
+		// Scenario::loadAndStart: a new rng seed from the time and the old
+		// rng, then Scenario::start (pkg/sim StartScenario).
+		gameW.Map.Rng1 = *core.NewPrngSeed(uint32(time.Now().UnixMilli())^oldRng.Srand0(), oldRng.Srand1())
+		gameW.Map.StartScenario(sc.Options.StartYear, g.objMgr)
+	}
 	g.w = gameW
 	g.currentScenarioPath = filePath
 	g.inTitleScreen = false

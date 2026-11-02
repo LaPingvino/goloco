@@ -2090,3 +2090,35 @@ func TestCreatePlayerCompany(t *testing.T) {
 		t.Error("colour / history")
 	}
 }
+
+// Scenario::start on Aerophobia.SC5: 1 January of the options' start year,
+// a player company with a face and the starting loan, the objective's time
+// limit from the start year, and the sim runs a month on it.
+func TestStartScenario(t *testing.T) {
+	r, m, _ := saveView(t, "Scenarios/Aerophobia.SC5", false)
+	sc, err := scenario.LoadScenarioData("../../../locomotion/Scenarios/Aerophobia.SC5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.StartScenario(sc.Options.StartYear, r.Objects)
+	id := int(m.ControllingCompany)
+	c := m.Companies[id]
+	t.Logf("start year %d (general %d): %d-%02d-%02d day %d; player %d loan %d; objective %+v until %d",
+		sc.Options.StartYear, sc.CurrentYear, m.CurrentYear, m.CurrentMonth+1, m.CurrentDayOfMonth+1, m.CurrentDay, id, c.CurrentLoan, m.Objective, m.ObjectiveUntilYear)
+	if m.CurrentYear != sc.Options.StartYear || m.CurrentMonth != 0 || m.CurrentDayOfMonth != 0 || m.CurrentDay != sim.CalcDays(int(sc.Options.StartYear), 0, 1) {
+		t.Error("date")
+	}
+	if m.CompanyEmpty(id) || m.CompanyFaces[id].Competitor == 0xFF || c.CurrentLoan <= 0 {
+		t.Error("player company")
+	}
+	if m.ObjectiveUntilYear != uint16(m.Objective.TimeLimitYears)-1+sc.Options.StartYear || m.ObjectiveMonthsInChallenge != 0 {
+		t.Error("objective progress")
+	}
+	for range 3000 {
+		m.UpdateVehicles(r.Objects)
+	}
+	if m.CurrentMonth == 0 || m.ObjectiveMonthsInChallenge == 0 {
+		t.Errorf("a month did not pass: month %d, months in challenge %d", m.CurrentMonth, m.ObjectiveMonthsInChallenge)
+	}
+	t.Logf("after 3000 ticks: %d-%02d-%02d, cash %d, loan interest so far %d", m.CurrentYear, m.CurrentMonth+1, m.CurrentDayOfMonth+1, m.Companies[id].Cash, m.Companies[id].Expenditures[0][15])
+}
