@@ -216,6 +216,27 @@ func (w *World) TickVehicles() {
 	w.tickStations()
 	w.UpdateVehicles()
 	w.tickMoneyFloats()
+	w.TickSavedVehicles()
+}
+
+// TickSavedVehicles runs the ported vehicle tick (sim.Map.UpdateVehicles) on
+// the scenario's own vehicles at upstream's rate: one game tick per 31 ms of
+// elapsed time, 1–3 per frame (OpenLoco.cpp: numUpdates = clamp(elapsed /
+// 31, 1, 3)); goloco's update runs at Ebitengine's 60 per second.
+func (w *World) TickSavedVehicles() {
+	if w.renderer == nil || w.renderer.ObjMgr == nil {
+		return
+	}
+	w.vehicleTickMs += 1000.0 / 60
+	n := 0
+	for w.vehicleTickMs >= 31 && n < 3 {
+		w.vehicleTickMs -= 31
+		w.Map.UpdateVehicles(w.renderer.ObjMgr)
+		n++
+	}
+	if n == 3 {
+		w.vehicleTickMs = 0
+	}
 }
 
 // UpdateVehicles advances every SimVehicle by its speed and writes the new

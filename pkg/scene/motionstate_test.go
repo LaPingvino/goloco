@@ -704,3 +704,67 @@ func TestSavedBodiesPlacedFromBogies(t *testing.T) {
 		t.Errorf("%d bodies not at their bogies' midpoint", n-pos)
 	}
 }
+
+// 200 full vehicle ticks (UpdateVehicles: head distances, Vehicle1, Vehicle2,
+// bogies, bodies, tail) on the title map: every moving component stays
+// exactly on its path (Vehicle1 except vanilla's early-return case) and every
+// land body stays at its bogies' midpoint; vehicles move.
+func TestUpdateVehiclesTicks(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := map[int][2]int32{}
+	for _, tr := range trains {
+		e := m.Entities[tr.Veh2]
+		start[tr.Head] = [2]int32{int32(e.PosX), int32(e.PosY)}
+	}
+	for range 200 {
+		m.UpdateVehicles(r.Objects)
+	}
+	moved, off := 0, 0
+	for _, tr := range trains {
+		if m.Entities[tr.Head].Mode > 1 {
+			continue
+		}
+		comps := []int{tr.Veh2, tr.Tail}
+		for _, car := range tr.Cars {
+			for _, cc := range car {
+				comps = append(comps, cc.Front, cc.Back)
+				f, b, body := m.Entities[cc.Front], m.Entities[cc.Back], m.Entities[cc.Body]
+				if int32(body.PosX) != (int32(f.PosX)+int32(b.PosX))/2 || int32(body.PosY) != (int32(f.PosY)+int32(b.PosY))/2 {
+					t.Errorf("head %d: body %d off its bogies' midpoint", m.Entities[tr.Head].ID, body.ID)
+				}
+			}
+		}
+		for _, i := range comps {
+			e := m.Entities[i]
+			var p []sim.MoveInfo
+			if e.Mode == 1 {
+				p = sim.RoadSubPosition(e.TrackAndDirection, m.TrafficHandedness != 0)
+			} else {
+				p = sim.TrackSubPosition(e.TrackAndDirection & sim.TaDBasicMask)
+			}
+			if int(e.SubPosition) >= len(p) {
+				off++
+				continue
+			}
+			mi := p[e.SubPosition]
+			if int32(mi.X)+int32(e.TileX) != int32(e.PosX) || int32(mi.Y)+int32(e.TileY) != int32(e.PosY) {
+				off++
+			}
+		}
+		e := m.Entities[tr.Veh2]
+		if s := start[tr.Head]; s != [2]int32{int32(e.PosX), int32(e.PosY)} {
+			moved++
+		}
+	}
+	t.Logf("after 200 ticks: %d vehicles moved; components off their path: %d", moved, off)
+	if off != 0 {
+		t.Errorf("%d components off their path", off)
+	}
+	if moved == 0 {
+		t.Error("nothing moved")
+	}
+}
