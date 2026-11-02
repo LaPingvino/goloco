@@ -36,3 +36,13 @@ func (w *World) ControllingCompany() (int, string) {
 	id := int(w.Map.ControllingCompany)
 	return id, w.CompanyName(id)
 }
+
+// ControllingCompanyCash is the controlling company's cash (Company::cash,
+// as PlayerInfoPanel shows it); false when the save has no companies.
+func (w *World) ControllingCompanyCash() (int64, bool) {
+	id := int(w.Map.ControllingCompany)
+	if id >= len(w.Map.Companies) {
+		return 0, false
+	}
+	return w.Map.Companies[id].Cash, true
+}
