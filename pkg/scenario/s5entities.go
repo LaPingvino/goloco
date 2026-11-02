@@ -234,24 +234,25 @@ type VehicleEntity struct {
 	TileBaseZ uint8             // vhCommonTileBaseZ (0x34) — height in SmallZ units
 	NextCarID uint16            // vhCommonNextCarId (0x3A) — next entity in car chain (0xFFFF = end)
 	// VehicleBase motion state (updateTrackMotion / updateRoadMotion).
-	RemainingDistance int32  // vhCommonRemainingDist (0x28)
-	TrackAndDirection uint16 // vhCommonTrackAndDir (0x2C)
-	SubPosition       uint16 // vhCommonSubPosition (0x2E)
-	TrackType         uint8  // vhCommonTrackType (0x35) — track/road object id
-	RoutingHandle     uint16 // vhCommonRoutingHandle (0x36): vehicleRef·64 | index
-	Mode              uint8  // vhCommonMode (0x42) — TransportMode (0 rail, 1 road, 2 air, 3 water)
-	HeadVar53         uint8  // VehicleHead var_53 (0x53): the train's required track mods
-	HeadVar52         uint8  // var_52 (0x52): VehicleHead (1 = placement mode: no lookahead) / Vehicle1 (one-way signal countdown)
-	OrderTableOffset  uint32 // VehicleHead orderTableOffset (0x46): its orders in GameState orders[]
-	CurrentOrder      uint16 // VehicleHead currentOrder (0x4A): offset from orderTableOffset
-	SizeOfOrderTable  uint16 // VehicleHead sizeOfOrderTable (0x4C)
-	Var48             uint8  // Vehicle1 var_48 (0x48): Flags48 (passSignal 1, expressMode 2)
-	Var49             uint8  // Vehicle1 var_49 (0x49): the train's query mods
-	Var5C             uint8  // VehicleHead var_5C (0x5C): pass-signal countdown
-	StationID         uint16 // VehicleHead stationId (0x54); the same bytes are Vehicle2's maxSpeed
-	CurrentSpeed      int32  // Vehicle2 currentSpeed (0x56): Speed32, mph << 16
-	Var44             uint16 // VehicleBogie var_44 (0x44): wheel roll accumulator (updateRoll)
-	WheelSlipping     uint8  // VehicleBogie wheelSlipping (0x5E): ticks, counts up
+	RemainingDistance       int32  // vhCommonRemainingDist (0x28)
+	TrackAndDirection       uint16 // vhCommonTrackAndDir (0x2C)
+	SubPosition             uint16 // vhCommonSubPosition (0x2E)
+	TrackType               uint8  // vhCommonTrackType (0x35) — track/road object id
+	RoutingHandle           uint16 // vhCommonRoutingHandle (0x36): vehicleRef·64 | index
+	Mode                    uint8  // vhCommonMode (0x42) — TransportMode (0 rail, 1 road, 2 air, 3 water)
+	HeadVar53               uint8  // VehicleHead var_53 (0x53): the train's required track mods
+	HeadVar52               uint8  // var_52 (0x52): VehicleHead (1 = placement mode: no lookahead) / Vehicle1 (one-way signal countdown)
+	OrderTableOffset        uint32 // VehicleHead orderTableOffset (0x46): its orders in GameState orders[]
+	CurrentOrder            uint16 // VehicleHead currentOrder (0x4A): offset from orderTableOffset
+	SizeOfOrderTable        uint16 // VehicleHead sizeOfOrderTable (0x4C)
+	Var48                   uint8  // Vehicle1 var_48 (0x48): Flags48 (passSignal 1, expressMode 2)
+	Var49                   uint8  // Vehicle1 var_49 (0x49): the train's query mods
+	Var5C                   uint8  // VehicleHead var_5C (0x5C): pass-signal countdown
+	StationID               uint16 // VehicleHead stationId (0x54); the same bytes are Vehicle2's maxSpeed
+	TrainAcceptedCargoTypes uint32 // VehicleHead trainAcceptedCargoTypes (0x4E): cargo slots its cars carry
+	CurrentSpeed            int32  // Vehicle2 currentSpeed (0x56): Speed32, mph << 16
+	Var44                   uint16 // VehicleBogie var_44 (0x44): wheel roll accumulator (updateRoll)
+	WheelSlipping           uint8  // VehicleBogie wheelSlipping (0x5E): ticks, counts up
 	// Driving state (offsets from the compiler over S5Entity.h).
 	VehicleFlags     uint16 // EntityBase vehicleFlags (0x0C): unk_0 = 1, manualControl = 1<<6
 	ManualPower      int8   // VehicleHead manualPower (0x6E)
@@ -359,35 +360,36 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			TileBaseZ: e[vhCommonTileBaseZ],
 			NextCarID: uint16(e[vhCommonNextCarId]) | uint16(e[vhCommonNextCarId+1])<<8,
 
-			RemainingDistance: int32(binary.LittleEndian.Uint32(e[vhCommonRemainingDist:])),
-			TrackAndDirection: binary.LittleEndian.Uint16(e[vhCommonTrackAndDir:]),
-			SubPosition:       binary.LittleEndian.Uint16(e[vhCommonSubPosition:]),
-			TrackType:         e[vhCommonTrackType],
-			RoutingHandle:     binary.LittleEndian.Uint16(e[vhCommonRoutingHandle:]),
-			Mode:              e[vhCommonMode],
-			HeadVar53:         e[0x53],
-			HeadVar52:         e[0x52],
-			OrderTableOffset:  binary.LittleEndian.Uint32(e[0x46:]),
-			CurrentOrder:      binary.LittleEndian.Uint16(e[0x4A:]),
-			SizeOfOrderTable:  binary.LittleEndian.Uint16(e[0x4C:]),
-			Var48:             e[0x48],
-			Var49:             e[0x49],
-			Var5C:             e[0x5C],
-			StationID:         binary.LittleEndian.Uint16(e[0x54:]),
-			CurrentSpeed:      int32(binary.LittleEndian.Uint32(e[0x56:])),
-			Var44:             binary.LittleEndian.Uint16(e[0x44:]),
-			WheelSlipping:     e[0x5E],
-			VehicleFlags:      binary.LittleEndian.Uint16(e[0x0C:]),
-			ManualPower:       int8(e[0x6E]),
-			TargetSpeed:       int16(binary.LittleEndian.Uint16(e[0x44:])),
-			TotalPower:        binary.LittleEndian.Uint16(e[0x50:]),
-			TotalWeight:       binary.LittleEndian.Uint16(e[0x52:]),
-			MotorState:        e[0x5A],
-			Var73:             e[0x73],
-			Var3C:             int32(binary.LittleEndian.Uint32(e[0x3C:])),
-			Var4F:             int8(e[0x4F]),
-			MaxSpeed:          int16(binary.LittleEndian.Uint16(e[0x54:])),
-			RackRailMaxSpeed:  int16(binary.LittleEndian.Uint16(e[0x5C:])),
+			RemainingDistance:       int32(binary.LittleEndian.Uint32(e[vhCommonRemainingDist:])),
+			TrackAndDirection:       binary.LittleEndian.Uint16(e[vhCommonTrackAndDir:]),
+			SubPosition:             binary.LittleEndian.Uint16(e[vhCommonSubPosition:]),
+			TrackType:               e[vhCommonTrackType],
+			RoutingHandle:           binary.LittleEndian.Uint16(e[vhCommonRoutingHandle:]),
+			Mode:                    e[vhCommonMode],
+			HeadVar53:               e[0x53],
+			HeadVar52:               e[0x52],
+			OrderTableOffset:        binary.LittleEndian.Uint32(e[0x46:]),
+			CurrentOrder:            binary.LittleEndian.Uint16(e[0x4A:]),
+			SizeOfOrderTable:        binary.LittleEndian.Uint16(e[0x4C:]),
+			Var48:                   e[0x48],
+			Var49:                   e[0x49],
+			Var5C:                   e[0x5C],
+			StationID:               binary.LittleEndian.Uint16(e[0x54:]),
+			TrainAcceptedCargoTypes: binary.LittleEndian.Uint32(e[0x4E:]),
+			CurrentSpeed:            int32(binary.LittleEndian.Uint32(e[0x56:])),
+			Var44:                   binary.LittleEndian.Uint16(e[0x44:]),
+			WheelSlipping:           e[0x5E],
+			VehicleFlags:            binary.LittleEndian.Uint16(e[0x0C:]),
+			ManualPower:             int8(e[0x6E]),
+			TargetSpeed:             int16(binary.LittleEndian.Uint16(e[0x44:])),
+			TotalPower:              binary.LittleEndian.Uint16(e[0x50:]),
+			TotalWeight:             binary.LittleEndian.Uint16(e[0x52:]),
+			MotorState:              e[0x5A],
+			Var73:                   e[0x73],
+			Var3C:                   int32(binary.LittleEndian.Uint32(e[0x3C:])),
+			Var4F:                   int8(e[0x4F]),
+			MaxSpeed:                int16(binary.LittleEndian.Uint16(e[0x54:])),
+			RackRailMaxSpeed:        int16(binary.LittleEndian.Uint16(e[0x5C:])),
 
 			ObjectID:         uint16(e[vbObjectId]) | uint16(e[vbObjectId+1])<<8,
 			ObjectSpriteType: e[vbObjectSpriteType],

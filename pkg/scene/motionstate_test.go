@@ -971,3 +971,48 @@ func TestSavedRoadPathing(t *testing.T) {
 	}
 	t.Logf("road vehicles heading for a station %d; reach a free stop of it within the horizon %d", n, reached)
 }
+
+// roadPathing on the saved road vehicles: every one may use some stop type
+// (calculateCompatibleRoadStations); at each junction just ahead of its
+// Vehicle1 the choice is one of that junction's connections (logged count).
+func TestSavedRoadPathingChoice(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	junctions, compat := 0, 0
+	for _, tr := range trains {
+		h, v1 := m.Entities[tr.Head], m.Entities[tr.Veh1]
+		if h.Mode != 1 {
+			continue
+		}
+		allowed := sim.CalculateCompatibleRoadStations(h.TrainAcceptedCargoTypes, r.Objects)
+		if allowed != 0 {
+			compat++
+		}
+		e, ok := sim.RoadConnectionEnd(int32(v1.TileX), int32(v1.TileY), int32(v1.TileBaseZ)*4, v1.TrackAndDirection&0x7F)
+		if !ok {
+			continue
+		}
+		rc := m.RoadConnections(e.X, e.Y, e.Z, e.NextRotation, h.Owner, h.TrackType, h.HeadVar53, v1.Var49)
+		if len(rc.Connections) < 2 {
+			continue
+		}
+		junctions++
+		var st sim.PathingState
+		got := m.RoadPathing(h.OrderTableOffset, h.CurrentOrder, e.X, e.Y, e.Z, rc.Connections,
+			sim.Pathing{Company: h.Owner, TrackType: h.TrackType, RequiredMods: h.HeadVar53, QueryMods: v1.Var49}, allowed, false, &st, r.Objects)
+		found := false
+		for _, c := range rc.Connections {
+			found = found || c == got
+		}
+		if !found {
+			t.Errorf("head %d: roadPathing chose %#x, not a connection", h.ID, got)
+		}
+	}
+	t.Logf("road vehicles with a usable stop type %d; at a junction just ahead %d", compat, junctions)
+	if compat == 0 {
+		t.Error("no road vehicle may use any stop type")
+	}
+}
