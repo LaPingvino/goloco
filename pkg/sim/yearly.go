@@ -80,3 +80,20 @@ func (m *Map) updateYearly2(om *objects.ObjectManager) {
 		}
 	}
 }
+
+// DetermineUnlockedVehicles is VehicleManager's determineUnlockedVehicles:
+// every vehicle object designed by now and not yet obsolete, unless the
+// company's kind (player / competitor) is forbidden its type.
+func (m *Map) DetermineUnlockedVehicles(id int, om *objects.ObjectManager) (bits [7]uint32) {
+	forbidden := m.ForbiddenVehiclesCompetitors
+	if m.IsPlayerCompany(id) {
+		forbidden = m.ForbiddenVehiclesPlayers
+	}
+	for i, v := range om.Vehicles {
+		if v == nil || m.CurrentYear < v.Designed || m.CurrentYear >= v.Obsolete || forbidden&(1<<v.Type) != 0 {
+			continue
+		}
+		bits[i/32] |= 1 << (i % 32)
+	}
+	return bits
+}

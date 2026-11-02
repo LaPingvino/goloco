@@ -313,9 +313,10 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		}
 		sc.ControllingCompany = parseControllingCompany(gameState)
 		sc.PlayerCompanies = [2]uint8{gameState[playerCompaniesOffset], gameState[playerCompaniesOffset+1]}
-		sc.LoanInterestRate = gameState[0x1AE]                         // loanInterestRate
-		sc.MaxLoanSize = binary.LittleEndian.Uint16(gameState[0x402:]) // maxLoanSize
-		sc.DefaultLevelCrossingType = gameState[0x1AC]                 // currentDefaultLevelCrossingType
+		sc.LoanInterestRate = gameState[0x1AE]                              // loanInterestRate
+		sc.MaxLoanSize = binary.LittleEndian.Uint16(gameState[0x402:])      // maxLoanSize
+		sc.StartingLoanSize = binary.LittleEndian.Uint16(gameState[0x400:]) // startingLoanSize
+		sc.DefaultLevelCrossingType = gameState[0x1AC]                      // currentDefaultLevelCrossingType
 		sc.ForbiddenVehiclesPlayers = binary.LittleEndian.Uint16(gameState[0x430:])
 		sc.ForbiddenVehiclesCompetitors = binary.LittleEndian.Uint16(gameState[0x432:])
 		if len(gameState) > 0x196 { // general.trafficHandedness (from the compiler)

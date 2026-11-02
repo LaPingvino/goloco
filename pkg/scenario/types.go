@@ -122,6 +122,7 @@ type Scenario struct {
 	PlayerCompanies                                         [2]uint8 // playerCompanies (0x24)
 	LoanInterestRate                                        uint8    // loanInterestRate (0x1AE)
 	MaxLoanSize                                             uint16   // maxLoanSize (0x402)
+	StartingLoanSize                                        uint16   // startingLoanSize (0x400)
 	DefaultLevelCrossingType                                uint8    // currentDefaultLevelCrossingType (0x1AC)
 	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors  uint16   // 0x430 / 0x432
 	Orders                                                  []byte   // GameState orders[] (ParseOrders)
