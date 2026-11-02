@@ -22,6 +22,7 @@ type Map struct {
 	Rng1                  core.Prng                   // GameState rng (gPrng1), from the save
 	ScenarioTicks         uint32                      // GameState scenarioTicks: +1 per game tick (UpdateVehicles)
 	Companies             []scenario.CompanyEconomy   // the save\'s companies (economy)
+	Industries            []scenario.Industry         // the save\'s industries (deliveries)
 	vehicleMangled113623B uint8                       // VehicleHead.cpp module static _vehicleMangled_113623B (sub_4ACEF1)
 	CurrentDay            uint32                      // GameState general.currentDay
 	CompanyNames          []uint16                    // company slot → name StringId
@@ -128,6 +129,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.Rng1 = *core.NewPrngSeed(sc.Rng[0], sc.Rng[1])
 	m.ScenarioTicks = sc.ScenarioTicks
 	m.Companies = sc.Companies
+	m.Industries = sc.Industries
 	m.Companies = sc.Companies
 	m.CurrentDay = sc.CurrentDay
 	m.CompanyNames = sc.CompanyNames

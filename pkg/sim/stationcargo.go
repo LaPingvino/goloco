@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/objects"
+import (
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // Station cargo — World/Station.cpp updateCargoDistribution (0x0049218F-side)
 // and deliverCargoToStation (0x0042F489), over the station records' full
@@ -62,4 +65,26 @@ func (m *Map) DeliverCargoToStation(id int, cargoType, qty uint8, om *objects.Ob
 	c.EnrouteAge = 0
 	c.Origin = uint16(id)
 	m.UpdateCargoDistribution(id, om)
+}
+
+// TownByID is TownManager::get: the town in slot id (Towns skips empty
+// slots, so this looks it up by its ID).
+func (m *Map) TownByID(id uint16) *scenario.Town {
+	for i := range m.Towns {
+		if m.Towns[i].ID == id {
+			return &m.Towns[i]
+		}
+	}
+	return nil
+}
+
+// DeliverCargoToTown is Station::deliverCargoToTown: the station's town
+// counts the cargo among this month's deliveries.
+func (m *Map) DeliverCargoToTown(stationID int, cargoType uint8, qty uint16) {
+	if stationID < 0 || stationID >= len(m.StationNames) || cargoType >= 32 {
+		return
+	}
+	if t := m.TownByID(m.StationNames[stationID].Town); t != nil {
+		t.MonthlyCargoDelivered[cargoType] = boundAdd16(t.MonthlyCargoDelivered[cargoType], uint32(qty))
+	}
 }
