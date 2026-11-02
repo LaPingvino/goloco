@@ -384,6 +384,23 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 5. [~] **Vehicle movement port.** Generate SubpositionData.cpp into Go like track_data_gen.go;
    port the movement step (VehicleBogie/VehicleHead/VehicleManager) in faithful slices with tests
    against upstream values; retire vehicle_sim.go's straight-segment approximation.
+   Done (ticks 193–212): sub-position tables, updateTrackMotion/RoadMotion, new-piece steps, connections,
+   RoutingManager + RingView, track network search, signals / block occupancy, tail, bogies, Vehicle2 (speed,
+   slip, rack rail, move), Vehicle1 rail + road (target speed, lookahead, overtaking), each checked against title.dat.
+   Plan for the rest (scoped tick 213):
+   5.1 Sim tick wiring FIRST: VehicleHead::update's component order (distances, head logic, veh1, veh2, per car
+       front bogie / back bogie / body, tail) over the sim entities in the game loop, replacing vehicle_sim.go's
+       invented movement. The head logic is a stub that reserves nothing, so vehicles drive faithfully along the
+       route already reserved in the save and stop at its end (a gap, not an approximation). Needs
+       VehicleBody::update (the body placed from its bogies) for drawing. First visual check of item 5.
+   5.2 Orders: advanceToNextRoutableOrder and order reading (the orders table is already parsed).
+   5.3 Track pathing: trackTargetedPathing / trackAimlessWanderPathing with their recursion and weighting
+       (VehicleHead.cpp ~5700–5900 plus helpers).
+   5.4 sub_4ACEF1 (rail: reserve ahead through signals and blocks, ~300 lines).
+   5.5 Road pathing + sub_47DA8D (~186 lines plus the road recursion ~4760–5240).
+   5.6 Head status machine: updateLand, approaching / stopping, signal waits and reversing (categoriseTimeElapsed,
+       tryReverse, landReverseFromSignal, sub_4AD93A).
+   5.7 Stations: landTryBeginUnloading, unloading / loading cargo (may become its own item with cargo and economy).
 5b. [ ] **Build Vehicle window**, ported from Ui/Windows/BuildVehicle.cpp (tabs per transport type and
    track type, availability by year, VehicleCreate into a depot). Needs item 5. Reference: the parked
    branch wip/build-vehicles-july.
@@ -637,3 +654,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-02 tick 210 (item 5 step 18; Stelo, Pacmanio and Pits wait on Joop) — Vehicle1 road motion helpers ported (pkg/sim/vehicle1road.go: getRoadOvertakeAvailability, veh1UpdateRoadMotionNewRoadPiece (sets the new piece's lanes occupied), vehicle1UpdateRoadMotionByPieces with vanilla's no-moveTo early return kept, its NoMove twin, applyOvertakeToVehicle1 / applyChangeLaneToVehicle1 with the routing lane flags and head var_3C / trackAndDirection). PARTIAL (in the file): lookaheadRoad, getRoadOccupation, Vehicle1::updateRoadMotion. Verified (TestSavedVehicle1RoadPieces, kept): for all 83 saved road Vehicle1s NoMove predicts exactly the distance the move covers and the move stays on the path except where the routings run out (vanilla's early return); overtake/lane-change flags as upstream on 61 with room ahead. NEXT: getRoadOccupation + lookaheadRoad + Vehicle1::updateRoadMotion.
 - 2026-11-02 tick 211 (item 5 step 19; Stelo, Pacmanio and Pits wait on Joop) — getRoadOccupation ported (pkg/sim/roadoccupation.go: both upstream paths — per-piece lane check for reverseLane≠1 pieces with back-to-front/overlap lanes and one-way roads; the k4F7338 lane-mask path (right-hand swaps lanes) with level crossing closed/station/one-way); generated getRoadMiscData reverseLane; the two k4F7338 lane rows extracted mechanically from VehicleHead.cpp. Verified (TestSavedRoadOccupation, kept): all 83 saved road Vehicle1s find their own lane occupied. NEXT: lookaheadRoad, Vehicle1's updateRoadMotionNewRoadPiece and updateRoadMotion (all read; uses head var_52 and RoadObject isRoad flag).
 - 2026-11-02 tick 212 (item 5 step 20; Stelo, Pacmanio and Pits wait on Joop) — lookaheadRoad (level-crossing runs, overtake availability, lane change into a station, the 5-piece clear run for overtaking, isRoad/tram check), Vehicle1's updateRoadMotionNewRoadPiece (lookahead unless head var_52 = 1, getRoadConnections with the head's track type / mods, occupancy refusal incl. closed crossings, lane occupancy and track type update) and Vehicle1::updateRoadMotion (performed-lookahead ends the step with 0) ported, plus Vehicle1RoadMove (the end of updateRoad). Head var_52 (0x52) parsed. Vehicle1's road side is now whole (its file's PARTIAL note gone; vehicle1.go keeps the head sub_4AD93A note). Verified (TestSavedVehicle1RoadMove, kept): 83 saved road Vehicle1s, 100 ticks with Vehicle2's var_3C draw applied as sub_4A9F20 does, keep their routes and cover 153 pieces. NEXT: the head — VehicleHead::update / updateLand (the big one: route finding sub_4ACEE7 / sub_47DA8D, status changes, stations) — scope it first.
+- 2026-11-02 tick 213 (item 5 scoping; Stelo, Pacmanio and Pits wait on Joop) — scoped the head: updateLand's status machine → landNormalMovementUpdate → sub_4ACEE7 (rail sub_4ACEF1 ~300 lines, road sub_47DA8D ~186) on top of the targeted / aimless pathing recursion (~1100 lines, VehicleHead.cpp 4760–5900), signal timeouts and reversing, orders, station loading/unloading. Plan written into the item 5 entry as 5.1–5.7 (5.1 wiring first, so everything ported so far drives on screen along the saved reservations). No code this tick.
