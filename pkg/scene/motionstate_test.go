@@ -1824,3 +1824,75 @@ func TestChallengeCompletes(t *testing.T) {
 		t.Error("challenge not completed")
 	}
 }
+
+// The month's end (VehicleHead::updateMonthly): each company's running-cost
+// expenditures fall by exactly its vehicles' running costs, every Vehicle2's
+// curMonthRevenue moves into profit[0] (minus the costs) with the history
+// shifted, and monthsInChallenge counts up.
+func TestMonthEndRunningCosts(t *testing.T) {
+	r, m, _ := saveView(t, "Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false)
+	month := m.CurrentMonth
+	var before []int64
+	var revBefore map[int]int32
+	snap := func() {
+		before = before[:0]
+		for _, c := range m.Companies {
+			var s int64
+			for vt := 1; vt < 12; vt += 2 {
+				s += int64(c.Expenditures[0][vt])
+			}
+			before = append(before, s)
+		}
+		revBefore = map[int]int32{}
+		trains, _ := m.Trains()
+		for _, tr := range trains {
+			revBefore[tr.Veh2] = m.Entities[tr.Veh2].CurMonthRevenue
+		}
+	}
+	months0 := m.ObjectiveMonthsInChallenge
+	ticks := 0
+	for m.CurrentMonth == month && ticks < 4000 {
+		snap()
+		m.UpdateVehicles(r.Objects)
+		ticks++
+	}
+	if m.CurrentMonth == month {
+		t.Fatal("no month end within 4000 ticks")
+	}
+	trains, _ := m.Trains()
+	want := map[uint8]int64{}
+	checked := 0
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.Mode > 1 {
+			continue
+		}
+		var cost int32
+		for _, car := range tr.Cars {
+			o := r.Objects.Vehicles[m.Entities[car[0].Front].ObjectID]
+			if o != nil {
+				cost += m.InflationAdjustedCost(o.RunCostFactor, o.RunCostIndex, 10)
+			}
+		}
+		want[h.Owner] += int64(cost)
+		v2 := m.Entities[tr.Veh2]
+		if v2.CurMonthRevenue != 0 {
+			t.Errorf("head %d: curMonthRevenue %d after the month end", h.ID, v2.CurMonthRevenue)
+		}
+		checked++
+	}
+	t.Logf("month end after %d ticks; %d land vehicles; monthsInChallenge %d → %d", ticks, checked, months0, m.ObjectiveMonthsInChallenge)
+	for id, w := range want {
+		var after int64
+		for vt := 1; vt < 12; vt += 2 {
+			after += int64(m.Companies[id].Expenditures[0][vt])
+		}
+		t.Logf("company %d: running costs %d (expenditures %d → %d)", id, w, before[id], after)
+		if before[id]-after != w {
+			t.Errorf("company %d: running-cost expenditures fell by %d, want %d", id, before[id]-after, w)
+		}
+	}
+	if m.ObjectiveMonthsInChallenge != months0+1 {
+		t.Error("monthsInChallenge not counted")
+	}
+}

@@ -12,7 +12,8 @@ import (
 // PARTIAL: of dateTick only the day itself, VehicleManager::updateDaily and
 // the player companies' challenge progress run; StationManager /
 // IndustryManager / MessageManager daily updates, the snow line, the monthly,
-// quarterly and yearly updates (monthsInChallenge included), and the rest of
+// quarterly and yearly updates (of the monthly ones only monthsInChallenge
+// and VehicleManager::updateMonthly run), and the rest of
 // Company::updateDaily (emotions, AI logic, jail) are not ported.
 // VehicleHead::updateDaily: the stopped-road-vehicle restart (a game
 // command) and selling crashed AI vehicles are not ported.
@@ -70,8 +71,14 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 		return
 	}
 	m.vehiclesUpdateDaily(om)
-	today := CalcDate(m.CurrentDay)
+	yesterday, today := CalcDate(m.CurrentDay-1), CalcDate(m.CurrentDay)
 	m.CurrentYear, m.CurrentMonth, m.CurrentDayOfMonth = uint16(today.Year), uint8(today.Month), uint8(today.Day)
+	if today.Month != yesterday.Month { // end of every month
+		m.ObjectiveMonthsInChallenge++
+		// TownManager / IndustryManager / CompanyManager monthly, headquarters: PARTIAL
+		m.vehiclesUpdateMonthly(om)
+		// Economy::updateMonthly, quarterly, yearly, autosave: PARTIAL
+	}
 	m.companiesUpdateDaily(om)
 }
 
@@ -202,4 +209,45 @@ func (m *Map) Sub4BA873(b *scenario.VehicleEntity) {
 	f -= f / 4
 	f += randVal
 	b.TimeoutToBreakdown = uint16(max(4, f))
+}
+
+const flags38IsGhost uint8 = 1 << 4
+
+// vehiclesUpdateMonthly is VehicleManager::updateMonthly →
+// VehicleHead::updateMonthly: running costs charged (expenditure by vehicle
+// type), Vehicle2's monthly profit history, refund value decay.
+func (m *Map) vehiclesUpdateMonthly(om *objects.ObjectManager) {
+	trains, err := m.Trains()
+	if err != nil {
+		return
+	}
+	for _, tr := range trains {
+		head := &m.Entities[tr.Head]
+		if head.TileX != -1 && head.Flags38&flags38IsGhost == 0 {
+			costs := m.calculateRunningCost(tr, om)
+			m.ApplyPaymentToCompany(head.Owner, costs, head.VehicleType*2+1) // vehTypeToCost
+			v2 := &m.Entities[tr.Veh2]
+			copy(v2.Profit[1:], v2.Profit[:3])
+			v2.Profit[0] = v2.CurMonthRevenue - costs
+			v2.CurMonthRevenue = 0
+		}
+		var total uint32
+		for _, car := range tr.Cars {
+			f := &m.Entities[car[0].Front]
+			f.RefundCost -= f.RefundCost / 128 // -0.78% a month
+			total += f.RefundCost
+		}
+		head.TotalRefundCost = total // calculateRefundCost
+	}
+}
+
+// calculateRunningCost: each car's object running cost, inflation adjusted.
+func (m *Map) calculateRunningCost(tr Train, om *objects.ObjectManager) int32 {
+	var total int32
+	for _, car := range tr.Cars {
+		if obj := vehicleObject(om, m.Entities[car[0].Front].ObjectID); obj != nil {
+			total += m.InflationAdjustedCost(obj.RunCostFactor, obj.RunCostIndex, 10)
+		}
+	}
+	return total
 }
