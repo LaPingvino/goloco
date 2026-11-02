@@ -1016,3 +1016,43 @@ func TestSavedRoadPathingChoice(t *testing.T) {
 		t.Error("no road vehicle may use any stop type")
 	}
 }
+
+// sub_47DA8D on every saved road vehicle, once from the saved state: the head
+// stays on its path; a new reservation is a real road connection from the
+// head's piece end; results logged by kind.
+func TestSavedRoadSub47DA8D(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	kinds := map[uint8]int{}
+	for _, tr := range trains {
+		h := &m.Entities[tr.Head]
+		if h.Mode != 1 {
+			continue
+		}
+		d1, _ := sim.UpdateDistances(m.Entities[tr.Veh2].CurrentSpeed)
+		before := sim.RoutingHandle(h.RoutingHandle)
+		nextBefore := m.Routing(before.WithIndex(before.Index() + 1))
+		res := m.Sub47DA8D(tr, 0xD4CB00, uint32(d1), r.Objects)
+		kinds[res.Al]++
+		p := sim.RoadSubPosition(h.TrackAndDirection, m.TrafficHandedness != 0)
+		if mi := p[h.SubPosition]; int32(mi.X)+int32(h.TileX) != int32(h.PosX) || int32(mi.Y)+int32(h.TileY) != int32(h.PosY) {
+			t.Errorf("head %d: off its path", h.ID)
+		}
+		cur := sim.RoutingHandle(h.RoutingHandle)
+		if nr := m.Routing(cur.WithIndex(cur.Index() + 1)); res.Al == 0 && nr != sim.RoutingAllocatedButFree && (cur != before || nr != nextBefore) {
+			e, _ := sim.RoadConnectionEnd(int32(h.TileX), int32(h.TileY), int32(h.TileBaseZ)*4, h.TrackAndDirection&0x7F)
+			rc := m.RoadConnections(e.X, e.Y, e.Z, e.NextRotation, h.Owner, h.TrackType, h.HeadVar53, m.Entities[tr.Veh1].Var49)
+			found := false
+			for _, c := range rc.Connections {
+				found = found || c&0x7F == nr&0x7F
+			}
+			if !found {
+				t.Errorf("head %d: reserved %#x, not a road connection", h.ID, nr)
+			}
+		}
+	}
+	t.Logf("sub_47DA8D results by kind (0 moved, 1 full, 2 no route, 4 stop): %v", kinds)
+}

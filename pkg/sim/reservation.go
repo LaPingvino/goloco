@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/scenario"
+import (
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // Helpers of the rail reservation step (sub_4ACEF1) — Tile::trainStation,
 // VehicleHead.cpp's bringTrackElementToFront and updateJunctionSignalLights,
@@ -361,3 +364,126 @@ func (m *Map) Sub4ACEF1(tr Train, unk1 uint32, var113612C uint32, isPlaceDown bo
 	head.CurrentOrder = uint16(next.Offset - int(head.OrderTableOffset))
 	return null
 }
+
+// Sub47DA8D is sub_47DA8D (road): as sub_4ACEF1 — room check, the head's own
+// move — then at the end of its reservation: the road stop it is on (only of
+// a type it may use: calculateCompatibleRoadStations; a non-express stop only
+// at its own company's station), the junction choice (roadPathing / longest),
+// the lane flags carried over from an overtake or lane change in progress,
+// the reservation, and a waypoint order advance.
+func (m *Map) Sub47DA8D(tr Train, unk1, var113612C uint32, om *objects.ObjectManager) Sub4ACEE7Result {
+	head, v1 := &m.Entities[tr.Head], &m.Entities[tr.Veh1]
+	compatible := CalculateCompatibleRoadStations(head.TrainAcceptedCargoTypes, om)
+	null := Sub4ACEE7Result{StationID: -1}
+	hh := RoutingHandle(head.RoutingHandle)
+	if m.Routing(hh.WithIndex(hh.Index()+2)) != RoutingAllocatedButFree || m.Routing(hh.WithIndex(hh.Index()+3)) != RoutingAllocatedButFree {
+		return Sub4ACEE7Result{Al: 1, StationID: -1}
+	}
+	c := m.component(tr.Head)
+	next := func(c *MotionComponent, f *uint32) bool { return m.RoadNewPiece(c, f, head.HeadVar53, false, 0) }
+	var res MotionResult
+	if head.HeadVar52 == 1 {
+		res = c.UpdateMotion(0, next)
+		c.RemainingDistance += res.RemainingDistance
+	} else {
+		d := min(int32(unk1)-head.Var3C, int32(max(var113612C*4, 0xCC48)))
+		res = c.UpdateMotion(d, next)
+		head.Var3C += d - res.RemainingDistance
+	}
+	m.store(tr.Head, &c)
+	if !res.Blocked() {
+		return null
+	}
+	x, y, z := int32(head.TileX), int32(head.TileY), int32(head.TileBaseZ)*4
+	rad := head.TrackAndDirection
+	tileStation, stationObj := -1, uint8(0xFF)
+	if t := m.TileAt(int(x>>5), int(y>>5)); t != nil {
+		if st := t.roadStation(uint8(rad>>3&0xF), uint8(rad&3), head.TileBaseZ); st != nil && !st.Ghost && !st.AiAllocated {
+			tileStation, stationObj = int(st.StationID), st.ObjectID
+		}
+	}
+	requiredMods, queryMods := head.HeadVar53, v1.Var49
+	e, _ := RoadConnectionEnd(x, y, z, rad&0x7F)
+	var rc RoadConnections
+	if head.Var5C == 0 && head.HeadVar52 != 1 {
+		rc = m.RoadConnectionsOneWay(e.X, e.Y, e.Z, e.NextRotation, head.Owner, head.TrackType, requiredMods, queryMods, om)
+	} else {
+		rc = m.RoadConnections(e.X, e.Y, e.Z, e.NextRotation, head.Owner, head.TrackType, requiredMods, queryMods)
+	}
+	if head.HeadVar52 != 1 && tileStation >= 0 && tileStation != rc.StationID && compatible&(1<<(stationObj&31)) != 0 {
+		orders := m.OrderRing(head.OrderTableOffset, head.CurrentOrder)
+		processed := false
+		if len(orders) > 0 {
+			o := orders[0]
+			switch o.Type() {
+			case OrderStopAt:
+				if tileStation == o.Station() {
+					return Sub4ACEE7Result{Al: 4, StationID: tileStation}
+				}
+			case OrderRouteThrough:
+				if tileStation == o.Station() {
+					nx := orders[1%len(orders)]
+					head.CurrentOrder = uint16(nx.Offset - int(head.OrderTableOffset))
+					processed = true
+				}
+			}
+		}
+		if !processed && int(head.StationID) != tileStation && v1.Var48&flags48ExpressMode == 0 {
+			if tileStation < len(m.StationOwners) && m.StationOwners[tileStation] == v1.Owner {
+				return Sub4ACEE7Result{Al: 4, StationID: tileStation}
+			}
+		}
+	}
+	if len(rc.Connections) == 0 {
+		return Sub4ACEE7Result{Al: 2, StationID: -1}
+	}
+	conn := rc.Connections[0]
+	if len(rc.Connections) > 1 {
+		p := Pathing{Company: head.Owner, TrackType: head.TrackType, RequiredMods: requiredMods, QueryMods: queryMods}
+		if head.HeadVar52 == 1 {
+			conn = m.RoadLongestPathing(e.X, e.Y, e.Z, rc.Connections, p)
+		} else {
+			var st PathingState
+			conn = m.RoadPathing(head.OrderTableOffset, head.CurrentOrder, e.X, e.Y, e.Z, rc.Connections, p, compatible, false, &st, om)
+		}
+		conn |= 1 << 14
+	}
+	if (rad&RaDIsOvertaking != 0) != (rad&RaDIsChangingLane != 0) {
+		conn ^= RaDIsOvertaking
+		if head.HeadVar52 != 1 {
+			if head.TrackType != 0xFF {
+				if rd := om.GetRoadObjectByIndex(int(head.TrackType)); rd != nil && rd.Flags&roadFlagIsRoad != 0 {
+					conn ^= RaDIsChangingLane
+				}
+			} else {
+				conn ^= RaDIsChangingLane
+			}
+		}
+	}
+	m.SetRouting(hh2(head).WithIndex(hh2(head).Index()+1), conn)
+	if head.HeadVar52 == 1 {
+		return null
+	}
+	orders := m.OrderRing(head.OrderTableOffset, head.CurrentOrder)
+	if len(orders) == 0 || orders[0].Type() != OrderRouteWaypoint {
+		return null
+	}
+	wx, wy, wz := orders[0].Waypoint()
+	cx, cy, cz := x+int32(RoadCoordinates[rad&0x7F].DX), y+int32(RoadCoordinates[rad&0x7F].DY), z+int32(RoadCoordinates[rad&0x7F].DZ)
+	if cx != wx || cy != wy || cz != wz {
+		rcd := RoadCoordinates[conn&0x7F]
+		px, py, pz := cx+int32(rcd.DX), cy+int32(rcd.DY), cz+int32(rcd.DZ)
+		if rcd.RotEnd < 12 {
+			px -= int32(RotationOffset[rcd.RotEnd][0])
+			py -= int32(RotationOffset[rcd.RotEnd][1])
+		}
+		if px != wx || py != wy || pz != wz {
+			return null
+		}
+	}
+	nx := orders[1%len(orders)]
+	head.CurrentOrder = uint16(nx.Offset - int(head.OrderTableOffset))
+	return null
+}
+
+func hh2(head *scenario.VehicleEntity) RoutingHandle { return RoutingHandle(head.RoutingHandle) }
