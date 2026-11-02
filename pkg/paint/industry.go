@@ -5,7 +5,7 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 // Industries — a port of Paint/PaintIndustry.cpp paintIndustry /
 // paintIndustryBuilding, with shadows and the under-construction sections
 // (industry fields are the surface painter's industrial branch, in scene).
-// PARTIAL: scaffolding while under construction and ghosts are not ported yet.
+// with their scaffolding while under construction. PARTIAL: ghosts.
 
 // IndustryEl is what paintIndustry reads from an industry element.
 type IndustryEl struct {
@@ -25,6 +25,7 @@ type IndustryObj struct {
 	AnimationSequences [4][]uint8
 	LargeTile          bool // buildingSizeFlags & (1 << buildingType)
 	Shadow             Shadow
+	Scaffold           *Scaffold // scaffolding while under construction (nil: none)
 }
 
 // PaintIndustry paints an industry element at the current sprite position.
@@ -57,6 +58,21 @@ func (s *Session) PaintIndustry(el IndustryEl, obj IndustryObj, colourMap []uint
 		numSections = int(el.Var6Low)
 		sectionProgress = int(el.SectionProgress)
 	}
+	// The scaffolding while under construction: back segments before the parts.
+	totalSectionHeight := sectionsHeight(numSections, obj.Parts, obj.PartHeights)
+	sc := obj.Scaffold
+	set, ok := scaffoldSet(sc, obj.LargeTile)
+	if !ok {
+		sc = nil
+	}
+	if totalSectionHeight != 0 && sc != nil {
+		s.scaffoldSegments(sc, set.back, totalSectionHeight, imgOff, bbOff, bbSz, sprite)
+	}
+	defer func() { // front segments and the roof after the parts
+		if totalSectionHeight != 0 && sc != nil {
+			s.scaffoldFrontAndRoof(sc, set.front, set.roof, rotation, totalSectionHeight, imgOff, bbOff, bbSz, sprite)
+		}
+	}()
 	var seq []uint8
 	if el.Var6Low&(1<<5) != 0 && el.Var6Low&(1<<4) != 0 {
 		seq = obj.AnimationSequences[el.Var6Low&3]

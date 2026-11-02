@@ -140,33 +140,11 @@ func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint
 		ticks = 0
 		numSections, sectionProgress = int(el.Age), int(el.SectionProgress)
 	}
-	totalSectionHeight := 0 // uint8: the built height (≥ 1 once counting stops)
-	if numSections != 0xF0 {
-		sc := int(int8(uint8(numSections)))
-		for _, part := range obj.Parts {
-			if int(part) < len(obj.PartHeights) {
-				totalSectionHeight = (totalSectionHeight + int(obj.PartHeights[part])) & 0xFF
-			}
-			sc--
-			if sc == -1 {
-				totalSectionHeight = max(1, totalSectionHeight)
-				break
-			}
-		}
-	}
+	totalSectionHeight := sectionsHeight(numSections, obj.Parts, obj.PartHeights)
 	// The scaffolding's back segments, before the parts.
 	sc := obj.Scaffold
-	var set struct {
-		back, front int
-		roof        [4]int
-	}
-	if sc != nil && sc.Type >= 0 && sc.Type < 3 {
-		size := 0
-		if obj.LargeTile {
-			size = 1
-		}
-		set = scaffoldingImages[sc.Type][size]
-	} else {
+	set, ok := scaffoldSet(sc, obj.LargeTile)
+	if !ok {
 		sc = nil
 	}
 	if totalSectionHeight != 0 && sc != nil {
@@ -204,10 +182,7 @@ func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint
 	}
 	// The scaffolding's front segments and its roof, after the parts.
 	if totalSectionHeight != 0 && sc != nil {
-		roofOff := s.scaffoldSegments(sc, set.front, totalSectionHeight, imgOff, bbOff, bbSz, sprite)
-		if sp := sprite(sc.Image + set.roof[rotation&3]); sp != nil {
-			s.AddAsChild(Colour(sp, sc.Colour), roofOff, bbOff, bbSz)
-		}
+		s.scaffoldFrontAndRoof(sc, set.front, set.roof, rotation, totalSectionHeight, imgOff, bbOff, bbSz, sprite)
 	}
 	// Elevators, only once nothing is left to build (totalSectionHeight == 0).
 	if totalSectionHeight != 0 {
@@ -223,5 +198,51 @@ func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint
 		if sprite(i) != nil {
 			s.AddAsChild(img(i), Pos3{imgOff.X, imgOff.Y, imgOff.Z + h}, bbOff, bbSz)
 		}
+	}
+}
+
+// scaffoldSet is getScaffoldingImages(type).get1x1() / get2x2(); ok false
+// without scaffolding.
+func scaffoldSet(sc *Scaffold, large bool) (set struct {
+	back, front int
+	roof        [4]int
+}, ok bool) {
+	if sc == nil || sc.Type < 0 || sc.Type >= 3 {
+		return set, false
+	}
+	size := 0
+	if large {
+		size = 1
+	}
+	return scaffoldingImages[sc.Type][size], true
+}
+
+// sectionsHeight is the 0x00525D4F loop: under construction (numSections ≠
+// 0xF0) the height of the built parts as uint8, at least 1 once the int8
+// section count reaches −1; 0 when constructed.
+func sectionsHeight(numSections int, parts, partHeights []uint8) int {
+	if numSections == 0xF0 {
+		return 0
+	}
+	total := 0
+	sc := int(int8(uint8(numSections)))
+	for _, part := range parts {
+		if int(part) < len(partHeights) {
+			total = (total + int(partHeights[part])) & 0xFF
+		}
+		sc--
+		if sc == -1 {
+			return max(1, total)
+		}
+	}
+	return total
+}
+
+// scaffoldFrontAndRoof draws the front segments and the rotation's roof
+// after the parts.
+func (s *Session) scaffoldFrontAndRoof(sc *Scaffold, front int, roof [4]int, rotation uint8, height int, imgOff, bbOff, bbSz Pos3, sprite func(int) *gfx8.Sprite) {
+	roofOff := s.scaffoldSegments(sc, front, height, imgOff, bbOff, bbSz, sprite)
+	if sp := sprite(sc.Image + roof[rotation&3]); sp != nil {
+		s.AddAsChild(Colour(sp, sc.Colour), roofOff, bbOff, bbSz)
 	}
 }
