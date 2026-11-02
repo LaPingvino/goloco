@@ -688,6 +688,26 @@ func (w *World) CenterOn(kind string) bool {
 		return false
 	}
 
+	// "travelling": the first rail vehicle whose head is travelling (diagnostics
+	// of the ported vehicle tick follow one that is actually driving).
+	if kind == "travelling" {
+		if trains, err := w.Map.Trains(); err == nil {
+			for _, tr := range trains {
+				h, v2 := &w.Entities[tr.Head], &w.Entities[tr.Veh2]
+				if h.Mode != 0 || h.Status != sim.StatusTravelling {
+					continue
+				}
+				tx, ty := v2.PosX.Tile(), v2.PosY.Tile()
+				log.Printf("[World] CenterOn(%q): head %d at (%d,%d)", kind, h.ID, tx, ty)
+				w.LastCenterTileX, w.LastCenterTileY = tx.Int(), ty.Int()
+				w.SetCamera(float64(tx), float64(ty))
+				w.externalCamera = false
+				return true
+			}
+		}
+		return false
+	}
+
 	// Trains live outside the tile grid; handle separately.
 	if kind == "train" || kind == "trains" || kind == "vehicle" || kind == "vehicles" {
 		// Find first placed Body entity with valid tile coordinates.
