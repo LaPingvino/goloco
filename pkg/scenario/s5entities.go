@@ -190,10 +190,11 @@ const (
 // OpenLoco reference: src/OpenLoco/src/S5/S5Entity.h
 type VehicleEntity struct {
 	// ---- EntityBase ----
-	ID         uint16 // ebID (0x0A) — slot index in the entity array
-	EntityType uint8  // ebType (0x01) — VehicleType* constant
-	SpriteYaw  uint8  // ebSpriteYaw (0x1E) — 0-63; halve for 32-direction sprite index
-	Owner      uint8  // ebOwner (0x21) — company index
+	ID          uint16 // ebID (0x0A) — slot index in the entity array
+	EntityType  uint8  // ebType (0x01) — VehicleType* constant
+	SpriteYaw   uint8  // ebSpriteYaw (0x1E) — 0-63
+	SpritePitch uint8  // ebSpritePitch (0x1F) — Entity.h Pitch
+	Owner       uint8  // ebOwner (0x21) — company index
 
 	// Sub-tile world position (ebPosX/Y/Z, 0x0E-0x12).
 	// 1 tile = 32 WorldUnits.  Call .Tile() for tile index, .SubOffset() for intra-tile.
@@ -270,10 +271,11 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 		}
 
 		ent := VehicleEntity{
-			ID:         uint16(e[ebID]) | uint16(e[ebID+1])<<8,
-			EntityType: entityType,
-			SpriteYaw:  e[ebSpriteYaw],
-			Owner:      e[ebOwner],
+			ID:          uint16(e[ebID]) | uint16(e[ebID+1])<<8,
+			EntityType:  entityType,
+			SpriteYaw:   e[ebSpriteYaw],
+			SpritePitch: e[ebSpritePitch],
+			Owner:       e[ebOwner],
 
 			PosX: coords.WorldUnits(int16(e[ebPosX]) | int16(e[ebPosX+1])<<8),
 			PosY: coords.WorldUnits(int16(e[ebPosY]) | int16(e[ebPosY+1])<<8),

@@ -2717,7 +2717,7 @@ func (w *World) paintDemoTrains(screen *ebiten.Image, scale float64) {
 
 		// Use the body sprite for car component 0
 		bodyIdx := int(v.CarComponents[0].BodySpriteIdx)
-		spriteID, ok := v.GetBodySpriteID(bodyIdx, dir32)
+		spriteID, ok := v.GetBodySpriteID(bodyIdx, uint8(dir32*2), objects.PitchFlat) // 32 directions → 0-63 yaw
 		if !ok {
 			continue
 		}
@@ -2804,12 +2804,10 @@ func (w *World) paintVehicleEntities(screen *ebiten.Image, scale float64) {
 			continue
 		}
 
-		// Direction: spriteYaw is stored 0-63 (64 steps per full rotation).
-		// Halve to get 0-31 for 32-direction sprite tables.
-		dir32 := int(ent.SpriteYaw) >> 1
-
+		// spriteYaw (0-63) and spritePitch pick the frame as upstream
+		// getBodyImageIndex does (the yaw accuracy tables reduce it).
 		bodyIdx := int(ent.ObjectSpriteType)
-		spriteID, ok := v.GetBodySpriteID(bodyIdx, dir32)
+		spriteID, ok := v.GetBodySpriteID(bodyIdx, ent.SpriteYaw, objects.Pitch(ent.SpritePitch))
 		if !ok {
 			continue
 		}
