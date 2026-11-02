@@ -1080,6 +1080,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		if g.prompt != nil { // a confirmation, on top of everything
 			g.prompt.Draw(screen)
 		}
+		g.drawInlineDiag(screen)
 		g.maybeSaveShot(screen)
 		return
 	}
@@ -1134,6 +1135,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		ui.DrawText(screen, g.saveMsg, mx, statusY-12, color.RGBA{100, 255, 100, alpha})
 	}
 
+	g.drawInlineDiag(screen)
 	g.maybeSaveShot(screen)
 }
 
@@ -2580,3 +2582,21 @@ const (
 	spriteRotateObject = 2365 // ImageIds::rotate_object (red curved arrow)
 	spriteRemoveObject = 2361 // ImageIds::construction_remove (undo/remove)
 )
+
+// drawInlineDiag (GOLOCO_DIAG_INLINE) is drawVehicleInline for the first ten
+// rail and road vehicle types, in a panel at (20, 60).
+func (g *Game) drawInlineDiag(screen *ebiten.Image) {
+	if os.Getenv("GOLOCO_DIAG_INLINE") == "" || g.objMgr == nil {
+		return
+	}
+	var vs []*objects.VehicleObject
+	var offs []int
+	for _, v := range g.objMgr.Vehicles {
+		if v != nil && v.ImageOffset != 0 && (v.Mode == objects.TransportModeRail || v.Mode == objects.TransportModeRoad) && len(vs) < 10 {
+			vs = append(vs, v)
+			offs = append(offs, g.objMgr.VehicleYDisplayOffset(v))
+		}
+	}
+	log.Printf("[diag] inline: %d vehicle types", len(vs))
+	ui.DrawVehiclesInlineDiag(screen, 20, 60, vs, offs)
+}
