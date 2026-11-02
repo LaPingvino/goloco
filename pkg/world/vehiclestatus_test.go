@@ -39,3 +39,20 @@ func TestVehicleStatus(t *testing.T) {
 		}
 	}
 }
+
+// vehicleIsTransportingCargo's orders: UnloadAll (4) and WaitFor (5) carry
+// the cargo in type >> 3; the ring is read from the table start to End.
+func TestVehicleCargos(t *testing.T) {
+	orders := make([]byte, 32)
+	// StopAt st 3, UnloadAll cargo 7, RouteThrough st 2, WaitFor cargo 2, End; then another table.
+	copy(orders[4:], []byte{1, 3, 4 | 7<<3, 2, 2, 5 | 2<<3, 0, 4 | 9<<3, 0})
+	w := &World{}
+	w.Orders = orders
+	got := w.VehicleCargos(scenario.VehicleListEntry{OrderTableOffset: 4, CurrentOrder: 3})
+	if len(got) != 2 || got[0] != 7 || got[1] != 2 {
+		t.Errorf("cargos %v, want [7 2]", got)
+	}
+	if got := w.VehicleCargos(scenario.VehicleListEntry{OrderTableOffset: 10}); got != nil {
+		t.Errorf("empty table: %v", got)
+	}
+}

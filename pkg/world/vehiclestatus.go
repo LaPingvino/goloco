@@ -146,3 +146,30 @@ func (w *World) secondStatus(v scenario.VehicleListEntry) string {
 	}
 	return "at " + L.Velocity(int(v.CurrentSpeed/65536)) // toSpeed16: raw / 65536
 }
+
+// VehicleCargos is what vehicleIsTransportingCargo reads: the cargo ids of
+// the UnloadAll and WaitFor orders (getCargo = type >> 3) in the vehicle's
+// order ring from the table's start.
+func (w *World) VehicleCargos(v scenario.VehicleListEntry) []int {
+	orders := w.Orders
+	begin := int(v.OrderTableOffset)
+	if begin >= len(orders) || orders[begin]&7 == 0 {
+		return nil
+	}
+	var out []int
+	cur := begin
+	for steps := 0; steps < 4096; steps++ {
+		t := orders[cur] & 7
+		if t >= uint8(len(orderSizes)) {
+			return out
+		}
+		if t == 4 || t == 5 { // UnloadAll, WaitFor
+			out = append(out, int(orders[cur]>>3))
+		}
+		cur += orderSizes[t]
+		if cur >= len(orders) || orders[cur]&7 == 0 {
+			break // back to the start: the ring is done
+		}
+	}
+	return out
+}
