@@ -290,3 +290,82 @@ func TestSavedTailsUpdate(t *testing.T) {
 		t.Error("no tail left a piece")
 	}
 }
+
+// Every saved bogie's wheel frame is updateRoll's (numAnimationFrames-1) &
+// (var_44/4096) — the var_44 offset and the formula against the save; then
+// the bogies of every train, driven 50 ticks at its saved speed with
+// VehicleBogie::update, keep their routes and stay on their paths.
+func TestSavedBogies(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	roll := func(e *scenario.VehicleEntity) sim.BogieRoll {
+		b := sim.BogieRoll{Var44: e.Var44, WheelSlipping: e.WheelSlipping, Reversed: e.Flags38&2 != 0, AnimationIndex: e.Animation}
+		if vs := r.Objects.Vehicles; int(e.ObjectID) < len(vs) && vs[e.ObjectID] != nil && e.ObjectSpriteType != 0xFF {
+			b.NumAnimationFrames = vs[e.ObjectID].BogieSprites[e.ObjectSpriteType&1].NumAnimationFrames
+		}
+		return b
+	}
+	match, n := 0, 0
+	for _, tr := range trains {
+		for _, car := range tr.Cars {
+			for _, cc := range car {
+				for _, i := range []int{cc.Front, cc.Back} {
+					b := roll(&m.Entities[i])
+					if b.NumAnimationFrames == 0 {
+						continue
+					}
+					n++
+					if (b.NumAnimationFrames-1)&uint8(b.Var44/4096) == b.AnimationIndex {
+						match++
+					}
+				}
+			}
+		}
+	}
+	t.Logf("animated bogies %d: frame matches var_44 in %d", n, match)
+	if n == 0 || match != n {
+		t.Errorf("%d of %d bogie frames differ from updateRoll", n-match, n)
+	}
+	moved := 0
+	for _, tr := range trains {
+		head := m.Entities[tr.Head]
+		if head.Mode > 1 {
+			continue
+		}
+		d1, d2 := sim.UpdateDistances(m.Entities[tr.Veh2].CurrentSpeed)
+		for _, car := range tr.Cars {
+			for _, cc := range car {
+				for _, i := range []int{cc.Front, cc.Back} {
+					e := &m.Entities[i]
+					c := sim.MotionComponent{
+						Road: e.Mode == 1, RightHand: m.TrafficHandedness != 0,
+						TrackAndDirection: e.TrackAndDirection, SubPosition: e.SubPosition,
+						TileX: int32(e.TileX), TileY: int32(e.TileY), TileBaseZ: e.TileBaseZ,
+						RemainingDistance: e.RemainingDistance, X: int32(e.PosX), Y: int32(e.PosY), Z: int32(e.PosZ),
+						RoutingHandle: sim.RoutingHandle(e.RoutingHandle), Owner: e.Owner, TrackType: e.TrackType,
+					}
+					if !c.Road {
+						c.TrackAndDirection &= sim.TaDBasicMask
+					}
+					b := roll(e)
+					x0, y0 := c.X, c.Y
+					for range 50 {
+						if !m.BogieUpdate(&c, &b, d1, d2, head.HeadVar53) {
+							t.Fatalf("head %d: bogie lost its route", head.ID)
+						}
+					}
+					if c.X != x0 || c.Y != y0 {
+						moved++
+					}
+				}
+			}
+		}
+	}
+	t.Logf("bogies moved in 50 ticks: %d", moved)
+	if moved == 0 {
+		t.Error("no bogie moved")
+	}
+}
