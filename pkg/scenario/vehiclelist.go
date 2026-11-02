@@ -9,7 +9,32 @@ const (
 	vVeh1DayCreated           = 0x4A // uint32 Vehicle1::dayCreated
 	vVeh2Profit               = 0x62 // currency32_t Vehicle2::profit[4]
 	vVeh2Reliability          = 0x72 // uint8 Vehicle2::reliability
+	// getStatus's fields (S5Entity.h / S5GameState.h, from the compiler).
+	vHeadTileX            = 0x30 // int16 tileX (-1: not placed)
+	vHeadVehicleFlags     = 0x0C // uint16 EntityBase vehicleFlags
+	vHeadOrderTableOffset = 0x46 // uint32
+	vHeadCurrentOrder     = 0x4A // uint16
+	vHeadSizeOfOrderTable = 0x4C // uint16
+	vHeadStationID        = 0x54 // uint16
+	vHeadManualPower      = 0x6E // int8
+	vVeh2CurrentSpeed     = 0x56 // int32 Speed32 (16.16 mph)
+	vVeh2Flags73          = 0x73 // uint8 bit 0 isBrokenDown
+	gameStateOrders       = 0x461E44
+	gameStateOrdersType2  = 0x460224
+	maxOrders             = 256000
 )
+
+// ParseOrders returns GameState orders[] (the shared order table).
+func ParseOrders(gs []byte) []byte {
+	off := gameStateOrders
+	if len(gs) == GameStateSizeType2 {
+		off = gameStateOrdersType2
+	}
+	if len(gs) < off+maxOrders {
+		return nil
+	}
+	return append([]byte(nil), gs[off:off+maxOrders]...)
+}
 
 // VehicleListEntry is what VehicleList.cpp's drawScroll reads of one train:
 // the head's name, ordinal, type and owner, veh1's day created and veh2's
@@ -24,6 +49,17 @@ type VehicleListEntry struct {
 	DayCreated   uint32
 	RecentProfit int32 // veh2->totalRecentProfit()
 	Reliability  uint8
+	// getStatus: the head's tileX, vehicleFlags, orders, stationId and
+	// manualPower; veh2's broken-down flag and currentSpeed.
+	TileX            int16
+	VehicleFlags     uint16
+	OrderTableOffset uint32
+	CurrentOrder     uint16
+	SizeOfOrderTable uint16
+	StationID        uint16
+	ManualPower      int8
+	BrokenDown       bool
+	CurrentSpeed     int32
 }
 
 // ParseCurrentDay returns GameState general.currentDay.
@@ -64,6 +100,9 @@ func ParseVehicleListEntries(gs []byte) []VehicleListEntry {
 			out = append(out, VehicleListEntry{
 				HeadID: u16(e, ebID), Owner: e[ebOwner], VehicleType: e[vHeadVehicleType],
 				Name: u16(e, ebName), Ordinal: int16(u16(e, vHeadOrdinal)), Status: e[vHeadStatus],
+				TileX: int16(u16(e, vHeadTileX)), VehicleFlags: u16(e, vHeadVehicleFlags),
+				OrderTableOffset: binary.LittleEndian.Uint32(e[vHeadOrderTableOffset:]), CurrentOrder: u16(e, vHeadCurrentOrder),
+				SizeOfOrderTable: u16(e, vHeadSizeOfOrderTable), StationID: u16(e, vHeadStationID), ManualPower: int8(e[vHeadManualPower]),
 			})
 		case VehicleTypeVeh1, VehicleTypeVeh2:
 			parts = append(parts, part{e[ebType], u16(e, vhCommonHead), e})
@@ -84,6 +123,8 @@ func ParseVehicleListEntries(gs []byte) []VehicleListEntry {
 		}
 		out[i].RecentProfit = sum
 		out[i].Reliability = p.e[vVeh2Reliability]
+		out[i].BrokenDown = p.e[vVeh2Flags73]&1 != 0
+		out[i].CurrentSpeed = int32(binary.LittleEndian.Uint32(p.e[vVeh2CurrentSpeed:]))
 	}
 	return out
 }

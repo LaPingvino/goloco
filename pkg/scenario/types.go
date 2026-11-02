@@ -114,6 +114,7 @@ type Scenario struct {
 	CargoObjectOrder   []string  // cargo slot -> DAT name (for objective cargo names)
 	Objective          Objective // win condition (valid when HasObjective)
 	HasObjective       bool
+	Orders             []byte // GameState orders[] (ParseOrders)
 	Entities           []VehicleEntity
 	VehicleList        []VehicleListEntry // heads with veh1/veh2 list data (VehicleList.cpp)
 	CurrentDay         uint32             // GameState general.currentDay

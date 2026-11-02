@@ -61,7 +61,11 @@ type TownListWindow struct {
 	// RowDraw draws extra content into row i whose top is at y in the scroll
 	// view's own coordinates (VehicleList's drawTrainInline); clipped to it.
 	RowDraw func(rt *gfx8.RenderTarget, i, y int)
-	List    [4]int
+	// CellSplit, if it returns at ≥ 0, draws a cell's text from byte at on
+	// in another colour (a mid-string {COLOUR …}, as VehicleList's red
+	// statuses).
+	CellSplit func(r, c int) (at, colour int)
+	List      [4]int
 	// Outline draws row text outlined (VehicleList: AdvancedColour(black).outline()
 	// with {COLOUR WINDOW_2}); HoverSolid highlights the hovered row with a solid
 	// shade-0 rect instead of the translucent one.
@@ -347,6 +351,14 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 						body, _ = TextColours(ci)
 					}
 				}
+				if w.CellSplit != nil {
+					if at, ci := w.CellSplit(i, k); at >= 0 && at < len(t) {
+						lw := DrawTextOutlined(screen, t[:at], x+cl.TextX, y, body, black)
+						c2, _ := TextColours(ci)
+						DrawTextOutlined(screen, t[at:], x+cl.TextX+lw, y, c2, black)
+						break
+					}
+				}
 				DrawTextOutlined(screen, t, x+cl.TextX, y, body, black)
 			default:
 				DrawTextBold(screen, t, x+cl.TextX, y, c)
@@ -367,6 +379,9 @@ type VehicleRow struct {
 	DayCreated   uint32
 	// Cars are the train drawn inline at the row's bottom.
 	Cars []TrainCarDraw
+	// Status is VehicleHead::getStatus as text; StatusRed its {COLOUR RED}.
+	Status    string
+	StatusRed bool
 }
 
 // vehicleOrder is VehicleList.cpp getOrder: name (strcmp, default), profit
@@ -413,7 +428,11 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 		if v.Profit < 0 {
 			p = "-" + p
 		}
-		return []string{v.Name, p, age, itoa3(v.Reliability) + "%"}
+		name := v.Name // vehicle_list_status_2pos/3pos: "{name} - {status1}[ {status2}]"
+		if v.Status != "" {
+			name += " - " + v.Status
+		}
+		return []string{name, p, age, itoa3(v.Reliability) + "%"}
 	}
 	for i, v := range vehicles {
 		rows[i] = cells(v)
@@ -430,6 +449,12 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 	// drawScroll: drawTrainInline at (0, y + (rowHeight − 28) / 2 + 6).
 	w.RowDraw = func(rt *gfx8.RenderTarget, i, y int) {
 		DrawTrainInline(rt, vehicles[i].Cars, 0, y+(w.RowHeight-28)/2+6)
+	}
+	w.CellSplit = func(r, c int) (int, int) {
+		if c == 0 && vehicles[r].StatusRed && vehicles[r].Status != "" {
+			return len(vehicles[r].Name) + len(" - "), 27 // Colour::red
+		}
+		return -1, 0
 	}
 	w.CellColour = func(r, c int) int {
 		if c == 1 && vehicles[r].Profit < 0 {
