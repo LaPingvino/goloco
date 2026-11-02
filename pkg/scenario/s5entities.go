@@ -245,14 +245,17 @@ type VehicleEntity struct {
 	Var44             uint16 // VehicleBogie var_44 (0x44): wheel roll accumulator (updateRoll)
 	WheelSlipping     uint8  // VehicleBogie wheelSlipping (0x5E): ticks, counts up
 	// Driving state (offsets from the compiler over S5Entity.h).
-	VehicleFlags uint16 // EntityBase vehicleFlags (0x0C): unk_0 = 1, manualControl = 1<<6
-	ManualPower  int8   // VehicleHead manualPower (0x6E)
-	TargetSpeed  int16  // Vehicle1 targetSpeed (0x44): Speed16, mph
-	TotalPower   uint16 // Vehicle2 totalPower (0x50)
-	TotalWeight  uint16 // Vehicle2 totalWeight (0x52); VehicleBogie totalCarWeight (0x52, first bogie of a car)
-	MotorState   uint8  // Vehicle2 motorState (0x5A)
-	Var73        uint8  // Vehicle2 var_73 (0x73): bit 0 broken down
-	Var3C        int32  // VehicleHead / Vehicle1 var_3C (0x3C): distance budget the moves draw down
+	VehicleFlags     uint16 // EntityBase vehicleFlags (0x0C): unk_0 = 1, manualControl = 1<<6
+	ManualPower      int8   // VehicleHead manualPower (0x6E)
+	TargetSpeed      int16  // Vehicle1 targetSpeed (0x44): Speed16, mph
+	TotalPower       uint16 // Vehicle2 totalPower (0x50)
+	TotalWeight      uint16 // Vehicle2 totalWeight (0x52); VehicleBogie totalCarWeight (0x52, first bogie of a car)
+	MotorState       uint8  // Vehicle2 motorState (0x5A)
+	Var73            uint8  // Vehicle2 var_73 (0x73): bit 0 broken down
+	Var3C            int32  // VehicleHead / Vehicle1 var_3C (0x3C): distance budget the moves draw down
+	Var4F            int8   // Vehicle2 var_4F (0x4F): the road object it is on (-1 none)
+	MaxSpeed         int16  // Vehicle2 maxSpeed (0x54): Speed16
+	RackRailMaxSpeed int16  // Vehicle2 rackRailMaxSpeed (0x5C): Speed16
 
 	// ---- VehicleBody / VehicleBogie sprite fields ----
 	ObjectID         uint16 // vbObjectId (0x40) — vehicle object slot (ObjMgr.Vehicles[N])
@@ -366,6 +369,9 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			MotorState:        e[0x5A],
 			Var73:             e[0x73],
 			Var3C:             int32(binary.LittleEndian.Uint32(e[0x3C:])),
+			Var4F:             int8(e[0x4F]),
+			MaxSpeed:          int16(binary.LittleEndian.Uint16(e[0x54:])),
+			RackRailMaxSpeed:  int16(binary.LittleEndian.Uint16(e[0x5C:])),
 
 			ObjectID:         uint16(e[vbObjectId]) | uint16(e[vbObjectId+1])<<8,
 			ObjectSpriteType: e[vbObjectSpriteType],
