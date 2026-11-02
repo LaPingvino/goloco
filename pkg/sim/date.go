@@ -79,7 +79,14 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 		m.companiesUpdateMonthly1()
 		// CompanyManager::updateMonthlyHeadquarters: PARTIAL
 		m.vehiclesUpdateMonthly(om)
-		// Economy::updateMonthly, quarterly, yearly, autosave: PARTIAL
+		// Economy::updateMonthly, quarterly: PARTIAL
+		if today.Year != yesterday.Year { // end of every year
+			m.companiesUpdateYearly()
+			m.UpdateDefaultLevelCrossingType(om)
+			m.updateYearly2(om)
+			// TileManager::updateYearly: PARTIAL
+		}
+		// autosave: not ported
 	}
 	m.companiesUpdateDaily(om)
 }

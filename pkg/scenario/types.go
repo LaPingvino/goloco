@@ -122,6 +122,8 @@ type Scenario struct {
 	PlayerCompanies                                         [2]uint8 // playerCompanies (0x24)
 	LoanInterestRate                                        uint8    // loanInterestRate (0x1AE)
 	MaxLoanSize                                             uint16   // maxLoanSize (0x402)
+	DefaultLevelCrossingType                                uint8    // currentDefaultLevelCrossingType (0x1AC)
+	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors  uint16   // 0x430 / 0x432
 	Orders                                                  []byte   // GameState orders[] (ParseOrders)
 	Routings                                                []uint16 // GameState routings[] (ParseRoutings), by RoutingHandle
 	// GameState roadObjectIdIsAnyRoadTypeCompatible (0x1A4) and
