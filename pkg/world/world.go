@@ -44,6 +44,10 @@ type DemoTrain struct {
 
 // World holds a tile grid for an isometric game world
 type World struct {
+	// SceneEvery: render the world every n-th frame (≤ 1: every frame); the
+	// game raises it while its UI is open (drawScene).
+	SceneEvery int
+	sceneSkip  int
 	// stationList caches StationList between ticks; stationsGen counts the
 	// stations placed through the world (the cache's key with the tick).
 	stationList     []StationInfo

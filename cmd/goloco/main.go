@@ -1075,6 +1075,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	g.r.SetScreen(screen)
+	g.w.SceneEvery = 1
+	if g.uiOpen() {
+		g.w.SceneEvery = 3 // the world at a third of the rate, the menus at full (LOOP item 0)
+	}
 	tw := time.Now()
 	g.w.Draw(screen)
 	fstats.addWorld(time.Since(tw))
@@ -2624,4 +2628,11 @@ func (g *Game) playerPanelCompany(st *ui.PlayerPanelState) {
 	case f.ChallengeFlags&(1<<5) != 0:
 		st.Trend = -1
 	}
+}
+
+// uiOpen reports a window, menu or prompt open: the world may then be drawn
+// less often so the UI stays responsive (LOOP item 0).
+func (g *Game) uiOpen() bool {
+	return g.prompt != nil || g.options != nil || g.townList != nil || g.browse != nil || g.scenarioSelect != nil ||
+		(g.dropdown != nil && g.dropdown.Visible) || (g.windowMgr != nil && len(g.windowMgr.Windows) > 0)
 }
