@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"image"
 	"image/color"
 
 	"github.com/LaPingvino/goloco/pkg/gfx"
@@ -332,5 +333,14 @@ func (w *SimpleWindow) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 	// Draw content if callback is set
 	if w.DrawContent != nil {
 		w.DrawContent(screen, contentX, contentY, contentW, contentH, renderer)
+	}
+}
+
+// MarkForeign marks the open windows' rectangles for draw8's screen copy.
+func (wm *SimpleWindowManager) MarkForeign() {
+	for _, w := range wm.Windows {
+		if w.Visible {
+			MarkForeign(image.Rect(w.X, w.Y, w.X+w.Width, w.Y+w.Height))
+		}
 	}
 }

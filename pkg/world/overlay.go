@@ -2,6 +2,7 @@ package world
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 
 	"github.com/LaPingvino/goloco/pkg/ui"
@@ -89,6 +90,7 @@ func (w *World) drawOverlay(screen *ebiten.Image) {
 		}
 		name := fmt.Sprintf("Station %d", i+1)
 		drawStationPlaque(screen, name, sx, sy)
+		ui.MarkForeign(image.Rect(sx-80, sy-30, sx+80, sy)) // the plaque (draw8's screen copy)
 	}
 
 	// Town name labels: white text with a 1px dark outline, no box.
@@ -99,6 +101,7 @@ func (w *World) drawOverlay(screen *ebiten.Image) {
 		}
 		lw, _ := ui.MeasureText(t.Name)
 		drawOutlinedLabel(screen, t.Name, sx-lw/2, sy-6, color.RGBA{255, 255, 255, 255})
+		ui.MarkForeign(image.Rect(sx-lw/2-2, sy-20, sx+lw/2+2, sy+12))
 	}
 
 	// Money floats: green "+£N" rising and fading near end of life.
@@ -108,6 +111,7 @@ func (w *World) drawOverlay(screen *ebiten.Image) {
 			continue
 		}
 		label := fmt.Sprintf("+£%d", m.amount)
+		ui.MarkForeign(image.Rect(sx-60, sy-60, sx+60, sy+10)) // the rising float (draw8's screen copy)
 		lw, _ := ui.MeasureText(label)
 		ty := sy - 18 - int(float64(m.age)*moneyFloatRisePerTick)
 		// Fade the last moneyFloatFadeTicks of life.
