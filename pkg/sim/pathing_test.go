@@ -72,3 +72,39 @@ func TestTrackTargetedPathing(t *testing.T) {
 		t.Error("isTrackRoutingResultBetter does not prefer the reached target")
 	}
 }
+
+// trackPathing with a RouteWaypoint order (encoded as upstream's
+// setWaypoint/setDirection/setTrackId do) at the straight line's far piece
+// picks the straight connection; aimed at the junction's own straight
+// connection it is a direct hit (noSignals, distance 0).
+func TestTrackPathingWaypoint(t *testing.T) {
+	s := flatState(40, 64)
+	s.ConsHead = ConstructionHead{Active: true, X: 30, Y: 20, BaseZ: 64, Rotation: 0}
+	for range 9 {
+		s.PlaceTrackAtHead(0, 0)
+	}
+	s.ConsHead = ConstructionHead{Active: true, X: 25, Y: 20, BaseZ: 64, Rotation: 0}
+	s.PlaceTrackAtHead(4, 0)
+	e, _ := TrackConnectionEnd(26*32, 20*32, 64*4, 0)
+	tc := s.TrackConnections(e.X, e.Y, e.Z, e.NextRotation, 0, 0, 0, 0)
+	waypoint := func(tx, ty int, z uint8, dir, track uint8) []byte {
+		o := make([]byte, 7) // RouteWaypoint (6 bytes) then End
+		o[0] = OrderRouteWaypoint | uint8((tx&0x100)>>1)
+		o[1] = uint8(tx)
+		o[2] = z/2 | uint8((ty&0x100)>>1) // baseZ is stored as z/8 world units: (z*4)/8
+		o[3] = uint8(ty)
+		o[4] = dir&7 | (track&0x1F)<<3
+		o[5] = (track >> 5) & 1
+		return o
+	}
+	s.Orders = waypoint(22, 20, 64, 0, 0)
+	var st PathingState
+	if got := s.TrackPathing(0, 0, e.X, e.Y, e.Z, tc.Connections, Pathing{}, false, &st); got&TaDBasicMask != 0 || !st.HadNewResult {
+		t.Errorf("waypoint far down the straight: chose %d (new result %v)", got&TaDBasicMask, st.HadNewResult)
+	}
+	s.Orders = waypoint(int(e.X/32), int(e.Y/32), uint8(e.Z/4), 0, 0)
+	st = PathingState{}
+	if got := s.TrackPathing(0, 0, e.X, e.Y, e.Z, tc.Connections, Pathing{}, false, &st); got&TaDBasicMask != 0 || st.Result.SignalState != RouteNoSignals || st.Result.BestDistToTarget != 0 {
+		t.Errorf("waypoint at the junction: chose %d, result %+v", got&TaDBasicMask, st.Result)
+	}
+}

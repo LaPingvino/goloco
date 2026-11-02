@@ -345,3 +345,76 @@ func IsTrackRoutingResultBetter(base, n RoutingResult) bool {
 	}
 	return n.BestDistToTarget == base.BestDistToTarget && n.BestTrackWeighting <= base.BestTrackWeighting
 }
+
+// k500234: aimless wander score by trackAimlessWanderPathing's flags.
+var wanderScore = [8]uint16{10, 0, 70, 70, 40, 40, 70, 70}
+
+// PathingState is Sub4AC3D3State.
+type PathingState struct {
+	Result       RoutingResult
+	HadNewResult bool
+}
+
+// TrackPathing is trackPathing (0x004AC3D3): which of a junction's
+// connections the head takes. With a station or waypoint order the targeted
+// search decides (isTrackRoutingResultBetter), otherwise the aimless wander
+// scores plus 3 random bits each (gPrng1, drawn once — the tutorial is never
+// on in goloco).
+func (m *Map) TrackPathing(orderTableOffset uint32, currentOrder uint16, x, y, z int32, conns []uint16, p Pathing, isSecondRun bool, st *PathingState) uint16 {
+	st.HadNewResult = false
+	if !isSecondRun {
+		st.Result.SignalState = RouteNull
+	}
+	randVal := m.Rng1.RandNext()
+	var target *RouteTarget
+	if ring := m.OrderRing(orderTableOffset, currentOrder); len(ring) > 0 {
+		o := ring[0]
+		switch o.Type() {
+		case OrderStopAt, OrderRouteThrough:
+			// Sub4AC94FTarget{} is zeroed: tad, reversePos, reverseTad stay 0.
+			target = &RouteTarget{StationID: o.Station()}
+			if o.Station() < len(m.StationNames) {
+				sn := m.StationNames[o.Station()]
+				target.X, target.Y, target.Z = int32(sn.X), int32(sn.Y), int32(sn.Z)
+			}
+		case OrderRouteWaypoint:
+			wx, wy, wz := o.Waypoint()
+			tad := uint16(o.TrackID())<<3 | uint16(o.Direction())
+			rx, ry, rz := trackEndTile(wx, wy, wz, tad)
+			target = &RouteTarget{StationID: -1, X: wx, Y: wy, Z: wz, TaD: tad, RX: rx, RY: ry, RZ: rz, ReverseTaD: tad ^ 4}
+		}
+	}
+	if target != nil {
+		best := 0
+		for i, c := range conns {
+			conn := c & (TaDBasicMask | TaDHasSignal)
+			ct := conn & TaDBasicMask
+			if (x == target.X && y == target.Y && z == target.Z && ct == target.TaD) ||
+				(x == target.RX && y == target.RY && z == target.RZ && ct == target.ReverseTaD) {
+				st.Result = RoutingResult{SignalState: RouteNoSignals}
+				st.HadNewResult = true
+				return c
+			}
+			r := m.TrackTargetedPathing(x, y, z, conn, p, target)
+			if r.SignalState == RouteNull {
+				r.SignalState = RouteSignalClear
+			}
+			if IsTrackRoutingResultBetter(st.Result, r) {
+				st.Result = r
+				st.HadNewResult = true
+				best = i
+			}
+		}
+		return conns[best]
+	}
+	var bestValue uint16
+	best := 0
+	for i, c := range conns {
+		f := m.TrackAimlessWanderPathing(x, y, z, c&(TaDBasicMask|TaDHasSignal), p)
+		if v := wanderScore[f&7] + uint16(randVal&7); v >= bestValue {
+			bestValue, best = v, i
+		}
+		randVal = randVal>>3 | randVal<<29 // std::rotr(randVal, 3)
+	}
+	return conns[best]
+}

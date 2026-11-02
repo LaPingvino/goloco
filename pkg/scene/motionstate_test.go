@@ -839,3 +839,34 @@ func TestSavedTrainsTargetedPathing(t *testing.T) {
 	}
 	t.Logf("trains heading for a station %d; reach it within the horizon %d; signal states %v", n, reached, states)
 }
+
+// Station x, y (0x02/0x04) lie on or beside one of the station's own tiles.
+func TestSavedStationPositions(t *testing.T) {
+	_, m, _ := titleView(t)
+	tiles := map[int][][2]int{}
+	for y := range m.Height {
+		for x := range m.Width {
+			for _, st := range m.TileAt(x, y).Stations {
+				tiles[int(st.StationID)] = append(tiles[int(st.StationID)], [2]int{x, y})
+			}
+		}
+	}
+	near := 0
+	for id, ts := range tiles {
+		if id >= len(m.StationNames) {
+			continue
+		}
+		sn := m.StationNames[id]
+		px, py := int(sn.X)/32, int(sn.Y)/32
+		for _, tl := range ts {
+			if dx, dy := px-tl[0], py-tl[1]; dx >= -8 && dx <= 8 && dy >= -8 && dy <= 8 {
+				near++
+				break
+			}
+		}
+	}
+	t.Logf("stations %d, position within 8 tiles of one of their tiles %d", len(tiles), near)
+	if len(tiles) == 0 || near != len(tiles) {
+		t.Errorf("%d stations whose position is far from all their tiles", len(tiles)-near)
+	}
+}
