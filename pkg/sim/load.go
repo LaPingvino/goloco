@@ -13,8 +13,8 @@ import (
 // (0x004A9011).
 //
 // PARTIAL: the cantWaitForFullLoad message, the cargo sprite update (drawn
-// from the cargo state anyway), pathingShouldReverse / tryReverse after
-// loading (5.6), and the Ui invalidations are not ported.
+// from the cargo state anyway) and the Ui invalidations are not ported.
+// After loading, pathingShouldReverse / tryReverse run as upstream.
 
 const stationFlag7 uint16 = 1 << 7 // StationFlags::flag_7
 const cargoStatFlag2 uint8 = 1 << 2
@@ -208,5 +208,10 @@ func (m *Map) LandLoadingUpdate(tr Train, om *objects.ObjectManager) {
 	head.BreakdownFlags |= BreakdownJourneyStarted
 	head.Status = StatusStopped
 	m.AdvanceToNextRoutableOrder(head.OrderTableOffset, &head.CurrentOrder, head.SizeOfOrderTable)
-	// manual control / pathingShouldReverse → tryReverse: PARTIAL (5.6)
+	if head.VehicleFlags&VehicleFlagManualControl != 0 {
+		return
+	}
+	if m.PathingShouldReverse(tr, om) {
+		m.TryReverse(tr, om)
+	}
 }

@@ -1077,7 +1077,10 @@ func TestUpdateVehiclesLongRun(t *testing.T) {
 		m.UpdateVehicles(r.Objects)
 		for i, h := range last {
 			if cur := m.Entities[i].RoutingHandle; cur != h {
-				travelled += int(sim.RoutingHandle(cur).Index()-sim.RoutingHandle(h).Index()) & 63
+				// forward steps only: a reversal restarts the table at index 0
+				if step := int(sim.RoutingHandle(cur).Index()-sim.RoutingHandle(h).Index()) & 63; step < 32 {
+					travelled += step
+				}
 				last[i] = cur
 			}
 		}

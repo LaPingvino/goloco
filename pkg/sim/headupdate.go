@@ -10,8 +10,7 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // Approaching runs landTryBeginUnloading (arrival.go), unloading
 // updateUnloadCargo (unload.go), loading landLoadingUpdate (load.go).
 // PARTIAL (item 5.6): crashed, stoppingUpdate (command stop, breakdowns), manual
-// control's sub_4A8C81, the road signal timeouts (categoriseTimeElapsed,
-// sub_4A8DB7, tryReverse) and the rail signal-wait reversing
+// control's sub_4A8C81 and the rail signal-wait reversing
 // (timeAtSignal, landReverseFromSignal, sub_4AC1C2) are not ported: a head in
 // those states does nothing this tick.
 
@@ -32,7 +31,17 @@ func (m *Map) updateHead(tr Train, unkDistance1 int32, om *objects.ObjectManager
 	head, v2 := &m.Entities[tr.Head], &m.Entities[tr.Veh2]
 	notBroken := v2.Var73&1 == 0 || v2.Var73&2 != 0 // !isBrokenDown || isStillPowered
 	if notBroken && head.Status == StatusApproaching {
-		// (road signal timeouts, command stop, manual: PARTIAL)
+		if head.Mode == 1 {
+			switch m.CategoriseTimeElapsed(tr, om) {
+			case TimeoutFirst:
+				m.Sub4A8DB7(tr, om)
+				return
+			case TimeoutTurnaround:
+				m.TryReverse(tr, om)
+				return
+			}
+		}
+		// (command stop → stoppingUpdate, manual ≤ −20 → sub_4A8C81: PARTIAL)
 		m.LandTryBeginUnloading(tr)
 		return
 	}
@@ -59,12 +68,27 @@ func (m *Map) updateHead(tr Train, unkDistance1 int32, om *objects.ObjectManager
 	var r Sub4ACEE7Result
 	if head.Mode == 1 {
 		r = m.Sub47DA8D(tr, 0xD4CB00, uint32(unkDistance1), om)
+		// roadNormalMovementUpdate: the timeouts first.
+		switch m.CategoriseTimeElapsed(tr, om) {
+		case TimeoutFirst:
+			m.Sub4A8DB7(tr, om)
+			return
+		case TimeoutTurnaround:
+			m.TryReverse(tr, om)
+			return
+		}
 	} else {
 		r = m.Sub4ACEF1(tr, 0xD4CB00, uint32(unkDistance1), false)
 	}
 	if r.Al == 4 { // both: arrived at a station to stop at
 		head.Status = StatusApproaching
 		head.StationID = uint16(r.StationID)
+		return
+	}
+	if head.Mode == 1 && r.Al == 2 { // no route: turn round once Vehicle2 has caught up
+		if head.RoutingHandle == v2.RoutingHandle && v2.SubPosition == head.SubPosition {
+			m.TryReverse(tr, om)
+		}
 		return
 	}
 	if head.Mode == 0 && r.Al == 3 {
@@ -74,5 +98,4 @@ func (m *Map) updateHead(tr Train, unkDistance1 int32, om *objects.ObjectManager
 		head.Status = StatusWaitingAtSignal
 		// trainsReverseAtSignals (default on): timeAtSignal / reversing — PARTIAL
 	}
-	// road al == 2 (tryReverse when Vehicle2 has caught up): PARTIAL
 }
