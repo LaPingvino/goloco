@@ -739,6 +739,12 @@ func (g *Game) drawPlayerPanel(screen *ebiten.Image) {
 		return
 	}
 	st := ui.PlayerPanelState{Cash: int64(g.gameState.PlayerMoney)}
+	// The ported economy: the controlling company's own cash from the save
+	// (pkg/game's PlayerMoney is goloco's invented stand-in, kept only for
+	// what still reads it until it is retired).
+	if cash, ok := g.w.ControllingCompanyCash(); ok {
+		st.Cash = cash
+	}
 	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
 		st.SkinColour = g.r.ObjMgr.InterfaceSkin.PlayerInfoToolbarColour
 	}

@@ -34,3 +34,15 @@ func (m *Map) DeliveredCargoPayment(c *objects.CargoObject, numUnits, distance i
 	unit := int64(m.InflationAdjustedCost(int16(pf), c.PaymentIndex, 8))
 	return int32(unit * int64(numUnits) * int64(distance) / 4096)
 }
+
+// ApplyPaymentToCompany is CompanyManager::applyPaymentToCompany: a payment
+// (negative: income) comes off the company's cash and is booked under this
+// month's expenditure type (Expenditures[0][type]).
+func (m *Map) ApplyPaymentToCompany(id uint8, payment int32, expenditureType uint8) {
+	if int(id) >= len(m.Companies) || expenditureType >= 17 {
+		return
+	}
+	c := &m.Companies[id]
+	c.Cash -= int64(payment)
+	c.Expenditures[0][expenditureType] -= payment
+}
