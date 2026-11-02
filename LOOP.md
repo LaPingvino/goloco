@@ -43,6 +43,15 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
   Blocked and move on — don't work around it.
 
 ## Queue (top = next)
+0. [ ] **Responsiveness first** (Joop 2026-11-02: 'the system is a bit slow, so we might want to start optimizing
+   etc, at least strongly prioritizing UI actions so menus feel smooth'). Before 5.9f3 resumes: (a) measure — per-frame
+   time split (sim tick, scene draw, UI draw, sprite prewarm) on the wasm page (headless chromium + console timings)
+   and natively under Xvfb; (b) input never waits: handle mouse / keys and draw windows / dropdowns every frame, and
+   let the heavy parts (sprite prewarm, world redraw, sim catch-up) yield when a window or dropdown is open or the
+   mouse just moved (budget them per frame); (c) the biggest measured hot spots, one by one, each with before / after
+   numbers in the tick log. Rendering stays the ported renderer's; nothing changes what is drawn.
+   Open: Joop saw a crash on changing language (2026-11-02) — not reproduced (desktop: ja / ru / zh / de; web:
+   de / ja all fine); waiting for which language and where.
 1. [x] **Private wasm test page.** Since 2026-11-01 (Joop: the artifact is slow; serve it from the VPS
    behind Caddy with HTTP auth): `go run ./cmd/webpack -local -out ~/Projects/goloco-web-local` and
    https://kiefte.eu/goloco/ (basic auth; set up once by Joop with `sudo bash scripts/caddy-goloco.sh`).
