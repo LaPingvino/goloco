@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/scenario"
+import (
+	"github.com/LaPingvino/goloco/pkg/core"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // Map is the loaded map: its size, tiles, towns and the vehicle entities saved
 // in the scenario (OpenLoco: Map/TileManager for tiles, Towns/TownManager,
@@ -17,6 +20,7 @@ type Map struct {
 	Routings              []uint16                    // GameState routings[], by RoutingHandle (routing.go)
 	RoadAnyTypeCompatible uint32                      // GameState roadObjectIdIsAnyRoadTypeCompatible
 	RoadUsableByAll       uint32                      // GameState roadObjectIdIsUsableByAllCompanies
+	Rng1                  core.Prng                   // GameState rng (gPrng1), from the save
 	CurrentDay            uint32                      // GameState general.currentDay
 	CompanyNames          []uint16                    // company slot → name StringId
 	ControllingCompany    uint8                       // playerCompanies[0] (getControllingId)
@@ -119,6 +123,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.Orders = sc.Orders
 	m.Routings = sc.Routings
 	m.RoadAnyTypeCompatible, m.RoadUsableByAll = sc.RoadAnyTypeCompatible, sc.RoadUsableByAll
+	m.Rng1 = *core.NewPrngSeed(sc.Rng[0], sc.Rng[1])
 	m.CurrentDay = sc.CurrentDay
 	m.CompanyNames = sc.CompanyNames
 	m.CompanyFaces = sc.CompanyFaces

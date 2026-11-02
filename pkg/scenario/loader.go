@@ -278,6 +278,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.Orders = ParseOrders(gameState)
 		sc.Routings = ParseRoutings(gameState)
 		sc.RoadAnyTypeCompatible = binary.LittleEndian.Uint32(gameState[0x1A4:])
+		sc.Rng = [2]uint32{binary.LittleEndian.Uint32(gameState[0:]), binary.LittleEndian.Uint32(gameState[4:])}
+		sc.UnkRng = [2]uint32{binary.LittleEndian.Uint32(gameState[8:]), binary.LittleEndian.Uint32(gameState[12:])}
 		sc.RoadUsableByAll = binary.LittleEndian.Uint32(gameState[0x1A8:])
 		sc.CurrentDay = ParseCurrentDay(gameState)
 		if sc.Entities != nil {
