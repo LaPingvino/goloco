@@ -103,6 +103,7 @@ type Game struct {
 	preferredCurrency string // Config::preferredCurrency (DAT name; PARTIAL: not saved)
 	// preferredCurrencyFlags are Config usePreferredCurrencyForNewGames and
 	// usePreferredCurrencyAlways (default off).
+	fsResolution           [2]int // Config display.fullscreenResolution
 	preferredCurrencyFlags [2]bool
 	frameLimit             int                // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
 	prompt                 *ui.PromptOkCancel // an open confirmation (modal: it takes all input)
@@ -1232,6 +1233,11 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			g.options.Tab = ui.OptTabDisplay // and a click on Frame rate limit
 			g.options.HandleClick(g.options.X+240, g.options.Y+114)
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "displayres" && g.options != nil {
+			g.options.Tab = ui.OptTabDisplay // in fullscreen mode, a click on Display Resolution
+			g.options.ScreenMode = 1
+			g.options.HandleClick(g.options.X+240, g.options.Y+82)
+		}
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "displaymode" && g.options != nil {
 			g.options.Tab = ui.OptTabDisplay // and a click on Screen mode
 			g.options.HandleClick(g.options.X+240, g.options.Y+66)
@@ -1900,6 +1906,20 @@ func (g *Game) openOptionsWindow() {
 		w.ScreenMode = 2
 	}
 	w.OnScreenMode = func(m int) { ebiten.SetFullscreen(m != 0) }
+	// getFullscreenResolutions: SDL lists the display's modes; Ebitengine's
+	// fullscreen always uses the monitor's own mode, so that is the one
+	// resolution it can offer (PLATFORM: no mode switching).
+	if g.fsResolution == [2]int{} {
+		g.fsResolution = [2]int{1920, 1080} // Config default
+	}
+	w.Resolution = g.fsResolution
+	if mw, mh := ebiten.Monitor().Size(); mw > 0 && mh > 0 {
+		w.Resolutions = [][2]int{{mw, mh}}
+	}
+	w.OnResolution = func(i int) {
+		g.fsResolution = w.Resolutions[i]
+		ebiten.SetFullscreen(true)
+	}
 	// Frame rate limit: vertical sync = Ebitengine's vsync; unrestricted =
 	// vsync off; internal speed draws with vsync too (upstream draws only at
 	// its update rate — goloco draws every frame; noted in LOOP).
