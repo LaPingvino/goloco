@@ -1783,7 +1783,9 @@ func (g *Game) loadScenario(filePath string) error {
 		var gen *sim.TerrainOptions
 		if sc.LandscapeToGenerate {
 			gen = &sim.TerrainOptions{MinLandHeight: sc.Options.MinLandHeight, TopographyStyle: sc.Options.TopographyStyle,
-				HillDensity: sc.Options.HillDensity, HillsEdgeOfMap: sc.Options.Flags&2 != 0, SeaLevel: sc.SeaLevel}
+				HillDensity: sc.Options.HillDensity, HillsEdgeOfMap: sc.Options.Flags&2 != 0, SeaLevel: sc.SeaLevel,
+				NumRiverbeds: sc.Options.NumRiverbeds, MinRiverWidth: sc.Options.MinRiverWidth, MaxRiverWidth: sc.Options.MaxRiverWidth,
+				RiverbankWidth: sc.Options.RiverbankWidth, RiverMeanderRate: sc.Options.RiverMeanderRate}
 		}
 		gameW.Map.StartScenarioGenerating(sc.Options.StartYear, gen, g.r.G1, g.objMgr)
 	}

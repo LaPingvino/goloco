@@ -2127,8 +2127,8 @@ func TestStartScenario(t *testing.T) {
 	t.Logf("after 3000 ticks: %d-%02d-%02d, cash %d, loan interest so far %d", m.CurrentYear, m.CurrentMonth+1, m.CurrentDayOfMonth+1, m.Companies[id].Cash, m.Companies[id].Expenditures[0][15])
 }
 
-// The original terrain generator against upstream's own
-// OriginalTerrainGenerator.cpp (tools/gen-paintdata/gen_terrain.cpp, compiled
+// The original terrain generator and generateRivers against upstream's own
+// OriginalTerrainGenerator.cpp and MapGenerator.cpp's generateRivers (tools/gen-paintdata/gen_terrain.cpp, compiled
 // on HS1's height-map images): six seeds / styles / densities / edge flags,
 // the 384×384 height maps compared by FNV-1a hash (testdata — hashes only,
 // no game data).
@@ -2140,13 +2140,16 @@ func TestTerrainHeightMapMatchesUpstream(t *testing.T) {
 	}
 	n := 0
 	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
-		var c, style, dens, edge int
+		var c, style, dens, edge, beds, minW, maxW, bank, meander int
 		var s0, s1 uint32
 		var want uint64
-		fmt.Sscanf(line, "%d %d %d %d %d %d %x", &c, &style, &dens, &edge, &s0, &s1, &want)
+		fmt.Sscanf(line, "%d %d %d %d %d %d %d %d %d %d %d %x", &c, &style, &dens, &edge, &beds, &minW, &maxW, &bank, &meander, &s0, &s1, &want)
 		m.Rng1 = *core.NewPrngSeed(s0, s1)
 		hm := sim.NewHeightMap(384, 384)
-		m.GenerateTerrainHeightMap(sim.TerrainOptions{MinLandHeight: 2, TopographyStyle: uint8(style), HillDensity: uint8(dens), HillsEdgeOfMap: edge == 1, SeaLevel: 4}, r.Objects.HillShapes, r.G1, hm)
+		o := sim.TerrainOptions{MinLandHeight: 2, TopographyStyle: uint8(style), HillDensity: uint8(dens), HillsEdgeOfMap: edge == 1, SeaLevel: 4,
+			NumRiverbeds: uint8(beds), MinRiverWidth: uint8(minW), MaxRiverWidth: uint8(maxW), RiverbankWidth: uint8(bank), RiverMeanderRate: uint8(meander)}
+		m.GenerateTerrainHeightMap(o, r.Objects.HillShapes, r.G1, hm)
+		m.GenerateRivers(o, hm)
 		h := uint64(1469598103934665603)
 		for y := range 384 {
 			for x := range 384 {
