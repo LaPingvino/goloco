@@ -178,6 +178,21 @@ type Town struct {
 	// at 0x158, var_1A8 (cargo types ever delivered here, bits) at 0x1A8.
 	MonthlyCargoDelivered [32]uint16
 	Var1A8                uint32
+	// The rest of S5::Town (S5Town.h offsets): what TownManager::initialiseTown
+	// sets and Town::grow / the monthly updates use.
+	Flags                uint16     // 0x06 TownFlags
+	Prng                 [2]uint32  // 0x28 the town's own prng (names, growth)
+	PopulationCapacity   uint32     // 0x34
+	CompanyRatings       [15]int16  // 0x3A
+	CompaniesWithRating  uint16     // 0x58
+	HistorySize          uint8      // 0x5B
+	History              [240]uint8 // 0x5C (20 years × 12 months)
+	HistoryMinPopulation int32      // 0x14C
+	AmenityCounts        [8]uint8   // 0x150
+	CargoInfluenceFlags  uint32     // 0x198
+	Var19C               [2][2]uint16
+	BuildSpeed           uint8 // 0x1A4 (1 slow … 4 fast)
+	NumberOfAirports     uint8 // 0x1A5
 }
 
 // Industry is what deliveries read and write of an S5 Industry (offsets from

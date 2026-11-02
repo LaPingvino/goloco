@@ -387,3 +387,29 @@ func TestScenarioCoverage(t *testing.T) {
 		t.Errorf("Overall coverage %.1f%% < 30%% — major parsing regression", overallPct)
 	}
 }
+
+// title.dat's towns carry the full S5::Town record: sane ratings (−1000 …
+// 1000, untouched ones 500 as initialiseTown sets), a history no longer than
+// 240 months, build speed 1–4, and population within capacity.
+func TestTownRecordsParsed(t *testing.T) {
+	sc, err := LoadScenarioData("../../../locomotion/Data/title.dat")
+	if err != nil {
+		t.Skip("game data not present")
+	}
+	if len(sc.Towns) == 0 {
+		t.Fatal("no towns")
+	}
+	for _, tw := range sc.Towns {
+		if tw.BuildSpeed < 1 || tw.BuildSpeed > 4 || tw.HistorySize > 240 || tw.HistorySize == 0 || tw.Population > tw.PopulationCapacity*2+1000 {
+			t.Errorf("town %d: build speed %d history %d population %d / %d", tw.ID, tw.BuildSpeed, tw.HistorySize, tw.Population, tw.PopulationCapacity)
+		}
+		for c, r := range tw.CompanyRatings {
+			if r < -1000 || r > 1000 {
+				t.Errorf("town %d company %d rating %d", tw.ID, c, r)
+			}
+		}
+	}
+	tw := sc.Towns[0]
+	t.Logf("%d towns; first: flags %#x prng %x population %d / %d, history %d (last %d), amenities %v, influence %#x, build speed %d, ratings %v",
+		len(sc.Towns), tw.Flags, tw.Prng, tw.Population, tw.PopulationCapacity, tw.HistorySize, tw.History[max(int(tw.HistorySize)-1, 0)], tw.AmenityCounts, tw.CargoInfluenceFlags, tw.BuildSpeed, tw.CompanyRatings)
+}
