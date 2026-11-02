@@ -1,5 +1,10 @@
 package sim
 
+import (
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
+
 // Map generation — Map/MapGenerator (item 5.9). This file: HeightMap and
 // generateLand (the height map's corner heights → each surface's baseZ and
 // slope). Not yet ported: the height map itself (OriginalTerrainGenerator:
@@ -98,4 +103,32 @@ func (m *Map) GenerateLand(hm *HeightMap) {
 			t.Slope = slope
 		}
 	}
+}
+
+// InitialiseTiles is TileManager::initialise: every tile a single surface of
+// the last land option (else land object 0) at baseZ 4.
+func (m *Map) InitialiseTiles() {
+	land := m.LastLandOption
+	if land == 0xFF {
+		land = 0
+	}
+	for y := range m.Tiles {
+		for x := range m.Tiles[y] {
+			m.Tiles[y][x] = Tile{TerrainIndex: land, BaseZ: 4, Order: []scenario.ElemRef{{Kind: scenario.KindSurface}}}
+		}
+	}
+}
+
+// GenerateLandscape is MapGenerator::generate as far as it is ported:
+// initialiseDate, TileManager::initialise, the height map (original
+// generator), generateLand. PARTIAL: Scenario::reset, the snow line, rivers,
+// water, terrain styles, surface variation, trees, towns, industries, misc
+// buildings, sub_4969E0 / sub_4748D4 — so a generated map is bare land of one
+// type for now.
+func (m *Map) GenerateLandscape(startYear uint16, o TerrainOptions, g1 G1Raw, om *objects.ObjectManager) {
+	m.InitialiseDate(startYear)
+	m.InitialiseTiles()
+	hm := NewHeightMap(m.Width, m.Height)
+	m.GenerateTerrainHeightMap(o, om.HillShapes, g1, hm)
+	m.GenerateLand(hm)
 }
