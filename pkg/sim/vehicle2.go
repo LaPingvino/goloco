@@ -4,10 +4,9 @@ package sim
 // currentSpeed from Vehicle1's targetSpeed, the cars' weight on slopes,
 // power over weight and air drag.
 //
-// PARTIAL: shouldStartWheelSlipping (0x004A9BA0) and isOnRackRail need the
-// vehicle / track / road objects' rack-rail and slip fields, which goloco does
-// not parse yet: they come in per car (CarPhysics.StartSlipping, OnRackRail).
-// The "vehicle slipped" news message is not posted. sub_4A9F20 (the move that
+// The per-car inputs come from Map.CarPhysicsOf (isOnRackRail,
+// shouldStartWheelSlipping: wheelslip.go). PARTIAL: the "vehicle slipped"
+// news message is not posted. sub_4A9F20 (the move that
 // follows) is Vehicle2Motion.
 
 // MotorState values.

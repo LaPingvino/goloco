@@ -34,6 +34,8 @@ type TrackObject struct {
 	// DisplayOffset (0x34) lowers this track's vehicles in inline pictures
 	// (getVehicleObjectYDisplayOffset).
 	DisplayOffset uint8
+	// Flags (0x22) is TrackObjectFlags: hasRackRail 1<<0, noSlipSurface 1<<1.
+	Flags uint16
 }
 
 // GetObjectByIndex accessor sentinel — use ObjectManager.GetTrackObjectByIndex
@@ -97,6 +99,7 @@ func ParseTrackObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tr
 		NumBridges:    numBridges,
 		NumStations:   numStations,
 		TrackPieces:   uint16(data[0x02]) | uint16(data[0x03])<<8,
+		Flags:         uint16(data[0x22]) | uint16(data[0x23])<<8,
 		DisplayOffset: data[0x34],
 		// buildCostFactor 0x14, costIndex 0x1A (offsets from the compiler)
 		BuildCostFactor: int16(uint16(data[0x14]) | uint16(data[0x15])<<8),

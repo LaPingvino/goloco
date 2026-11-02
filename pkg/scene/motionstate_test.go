@@ -369,3 +369,36 @@ func TestSavedBogies(t *testing.T) {
 		t.Error("no bogie moved")
 	}
 }
+
+// Vehicle2's speed step on every saved land vehicle, 200 ticks from its saved
+// state with its real per-car inputs (isOnRackRail, shouldStartWheelSlipping
+// drawing from the saved gPrng1): speeds stay within [0, target] once not
+// braking, and settle within 1.5 mph of the target or brake toward it.
+func TestSavedVehicle2Speeds(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, settled := 0, 0
+	for _, tr := range trains {
+		head, v1, v2 := m.Entities[tr.Head], m.Entities[tr.Veh1], m.Entities[tr.Veh2]
+		if head.Mode > 1 {
+			continue
+		}
+		n++
+		cars := m.CarPhysicsOf(tr, r.Objects)
+		v := sim.Vehicle2Speed{CurrentSpeed: v2.CurrentSpeed, MotorState: v2.MotorState}
+		target := int32(v1.TargetSpeed) << 16
+		for range 200 {
+			v.UpdateSpeed(v1.TargetSpeed, head.VehicleFlags, head.ManualPower, v2.TotalPower, v2.TotalWeight, v2.Var73&1 != 0, cars)
+			if v.CurrentSpeed < 0 || (v.MotorState != sim.MotorBraking && v.CurrentSpeed > target) {
+				t.Fatalf("head %d: speed %#x target %#x state %d", head.ID, v.CurrentSpeed, target, v.MotorState)
+			}
+		}
+		if target-v.CurrentSpeed <= 0x18000 || v.MotorState == sim.MotorBraking {
+			settled++
+		}
+	}
+	t.Logf("%d land vehicles; %d at their target (or braking to it) after 200 ticks", n, settled)
+}
