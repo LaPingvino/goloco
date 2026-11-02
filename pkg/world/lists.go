@@ -315,6 +315,9 @@ type VehicleListRow struct {
 	Name                  string
 	Profit                int64
 	AgeYears, Reliability int
+	// The sort keys (VehicleList getOrder): totalRecentProfit, dayCreated.
+	RecentProfit int64
+	DayCreated   uint32
 }
 
 // VehicleListRows returns the saved vehicles' list data: name (the head's
@@ -334,7 +337,7 @@ func (w *World) VehicleListRows() []VehicleListRow {
 			age = int((w.CurrentDay - v.DayCreated) / 365)
 		}
 		out = append(out, VehicleListRow{Type: int(v.VehicleType), Owner: int(v.Owner), Name: name, Profit: int64(v.RecentProfit / 4),
-			AgeYears: age, Reliability: int(v.Reliability)})
+			AgeYears: age, Reliability: int(v.Reliability), RecentProfit: int64(v.RecentProfit), DayCreated: v.DayCreated})
 	}
 	return out
 }

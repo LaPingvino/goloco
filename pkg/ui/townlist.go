@@ -345,6 +345,26 @@ type VehicleRow struct {
 	Profit      int64 // totalRecentProfit / 4
 	AgeYears    int
 	Reliability int
+	// Sort keys: totalRecentProfit, dayCreated.
+	RecentProfit int64
+	DayCreated   uint32
+}
+
+// vehicleOrder is VehicleList.cpp getOrder: name (strcmp, default), profit
+// (descending), age (dayCreated ascending: the oldest first), reliability
+// (descending).
+func vehicleOrder(mode int, a, b VehicleRow) bool {
+	switch mode {
+	case 0:
+		return a.Name < b.Name
+	case 1:
+		return b.RecentProfit-a.RecentProfit < 0
+	case 2:
+		return int32(a.DayCreated-b.DayCreated) < 0
+	case 3:
+		return b.Reliability < a.Reliability
+	}
+	return false
 }
 
 var vehicleListCaptions = [6]string{"Trains", "Buses", "Trucks", "Trams", "Aircraft", "Ships"}
@@ -357,10 +377,11 @@ var vehicleListRowHeights = [6]int{28, 28, 28, 28, 48, 36}
 // row_heights[tab] tall, text outlined in the window's secondary colour (red
 // for a loss). PARTIAL: the vehicle drawn inline at the bottom of each row
 // (drawTrainInline), the status after the name (VehicleHead::getStatus), the
-// filter dropdowns, sorting, the company select button.
+// filter dropdowns, the company select button.
 func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour uint8) *TownListWindow {
+	vehicles = append([]VehicleRow(nil), vehicles...)
 	rows := make([][]string, len(vehicles))
-	for i, v := range vehicles {
+	cells := func(v VehicleRow) []string {
 		profit := v.Profit
 		if profit < 0 {
 			profit = -profit
@@ -373,7 +394,10 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 		if v.Profit < 0 {
 			p = "-" + p
 		}
-		rows[i] = []string{v.Name, p, age, itoa3(v.Reliability) + "%"}
+		return []string{v.Name, p, age, itoa3(v.Reliability) + "%"}
+	}
+	for i, v := range vehicles {
+		rows[i] = cells(v)
 	}
 	status := itoa3(len(rows)) + " vehicles"
 	if len(rows) == 1 {
@@ -390,6 +414,15 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 		}
 		return -1
 	}
+	// sortVehicleList: a stable sort by the header clicked, name by default
+	// (the rows and their colours follow the sorted vehicles).
+	w.Sort = func(mode int) {
+		sort.SliceStable(vehicles, func(i, j int) bool { return vehicleOrder(mode, vehicles[i], vehicles[j]) })
+		for i, v := range vehicles {
+			w.Rows[i] = cells(v)
+		}
+	}
+	w.Sort(0)
 	return w
 }
 

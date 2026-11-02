@@ -17,7 +17,8 @@ func (g *Game) openVehicleList(tab int) {
 	var rows []ui.VehicleRow
 	for _, v := range g.w.VehicleListRows() {
 		if v.Type == tab && v.Owner == company {
-			rows = append(rows, ui.VehicleRow{Name: v.Name, Profit: v.Profit, AgeYears: v.AgeYears, Reliability: v.Reliability})
+			rows = append(rows, ui.VehicleRow{Name: v.Name, Profit: v.Profit, AgeYears: v.AgeYears, Reliability: v.Reliability,
+				RecentProfit: v.RecentProfit, DayCreated: v.DayCreated})
 		}
 	}
 	var tc, wc uint8 = 0, 1
