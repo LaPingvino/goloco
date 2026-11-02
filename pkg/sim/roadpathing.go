@@ -7,8 +7,8 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // (0x0047E72F), and roadTargetedPathing with roadUpdateDistanceToTarget
 // (0x0047E582). Like the track walks: ≤ 5 deep, ≤ 1280 weight.
 //
-// PARTIAL: roadPathing (0x0047DFD0, the junction choice) and
-// isRoadRoutingResultBetter are not ported yet.
+// roadPathing (0x0047DFD0, the junction choice), isRoadRoutingResultBetter
+// and calculateCompatibleRoadStations follow below.
 
 const raDWithSignalMask = 0x7F | TaDHasSignal // basicRaDWithSignalMask
 
@@ -178,4 +178,134 @@ func (m *Map) RoadTargetedPathing(x, y, z int32, tad uint16, p Pathing, allowedS
 	st := targetedState{result: RoutingResult{BestDistToTarget: 0xFFFF, BestTrackWeighting: 0xFFFFFFFF, SignalState: RouteNull}}
 	m.roadTargetedRecurse(x, y, z, tad, p, allowedStationTypes, t, om, &st)
 	return st.result
+}
+
+// RoadStationFlags.
+const (
+	roadStationPassenger uint8 = 1 << 1
+	roadStationFreight   uint8 = 1 << 2
+)
+
+// cargoSlotByName is the cargo slot a dependency header names (the
+// renderer's cargoSlot: case-insensitive, 0 if absent).
+func cargoSlotByName(om *objects.ObjectManager, name string) int {
+	for i, c := range om.CargoObjects {
+		if c != nil && c.Header != nil && sameObject(c.Header.GetName(), name) {
+			return i
+		}
+	}
+	return 0
+}
+
+// CalculateCompatibleRoadStations is calculateCompatibleRoadStations: the
+// road station types (of kMaxRoadStationObjects = 16) this vehicle may use —
+// passenger stops for cargo it carries, freight stops for cargo it doesn't
+// (upstream's "Eh?" kept), and every other kind.
+func CalculateCompatibleRoadStations(trainAcceptedCargoTypes uint32, om *objects.ObjectManager) uint32 {
+	var out uint32
+	for i := 0; i < 16; i++ {
+		rs := om.GetRoadStationObjectByIndex(i)
+		if rs == nil {
+			continue
+		}
+		cargo := uint32(1) << (cargoSlotByName(om, rs.CargoName) & 31)
+		switch {
+		case rs.Flags&roadStationPassenger != 0:
+			if trainAcceptedCargoTypes&cargo != 0 {
+				out |= 1 << i
+			}
+		case rs.Flags&roadStationFreight != 0:
+			if trainAcceptedCargoTypes&cargo == 0 {
+				out |= 1 << i
+			}
+		default:
+			out |= 1 << i
+		}
+	}
+	return out
+}
+
+// IsRoadRoutingResultBetter is isRoadRoutingResultBetter.
+func IsRoadRoutingResultBetter(base, n RoutingResult) bool {
+	newReached, baseReached := n.BestDistToTarget == 0, base.BestDistToTarget == 0
+	if newReached && n.SignalState != RouteNull {
+		if base.SignalState == RouteNull || !baseReached {
+			return true
+		}
+		return n.BestTrackWeighting < base.BestTrackWeighting
+	}
+	if baseReached && base.SignalState != RouteNull {
+		return false
+	}
+	if n.SignalState != RouteNull && base.SignalState == RouteNull {
+		return true
+	}
+	if n.BestDistToTarget < base.BestDistToTarget {
+		return true
+	}
+	return n.BestDistToTarget == base.BestDistToTarget && n.BestTrackWeighting < base.BestTrackWeighting
+}
+
+// RoadPathing is roadPathing (0x0047DFD0): the junction choice for a road
+// vehicle, as trackPathing but with the road searches, the road target
+// (getUnkRoad for a waypoint's reverse end), allowed station types, and the
+// first result taken on a first run whatever it is.
+func (m *Map) RoadPathing(orderTableOffset uint32, currentOrder uint16, x, y, z int32, conns []uint16, p Pathing, allowedStationTypes uint32, isSecondRun bool, st *PathingState, om *objects.ObjectManager) uint16 {
+	st.HadNewResult = false
+	if !isSecondRun {
+		st.Result.SignalState = RouteNull
+	}
+	randVal := m.Rng1.RandNext()
+	var target *RouteTarget
+	if ring := m.OrderRing(orderTableOffset, currentOrder); len(ring) > 0 {
+		o := ring[0]
+		switch o.Type() {
+		case OrderStopAt, OrderRouteThrough:
+			target = &RouteTarget{StationID: o.Station()}
+			if o.Station() < len(m.StationNames) {
+				sn := m.StationNames[o.Station()]
+				target.X, target.Y, target.Z = int32(sn.X), int32(sn.Y), int32(sn.Z)
+			}
+		case OrderRouteWaypoint:
+			wx, wy, wz := o.Waypoint()
+			tad := uint16(o.TrackID())<<3 | uint16(o.Direction())
+			c := RoadCoordinates[tad%80]
+			rx, ry, rz := wx+int32(c.DX), wy+int32(c.DY), wz+int32(c.DZ)
+			if c.RotEnd < 12 {
+				rx -= int32(RotationOffset[c.RotEnd][0])
+				ry -= int32(RotationOffset[c.RotEnd][1])
+			}
+			target = &RouteTarget{StationID: -1, X: wx, Y: wy, Z: wz, TaD: tad, RX: rx, RY: ry, RZ: rz, ReverseTaD: tad ^ 4}
+		}
+	}
+	if target != nil {
+		best := 0
+		for i, c := range conns {
+			conn := c & raDWithSignalMask
+			ct := conn & 0x7F
+			if (x == target.X && y == target.Y && z == target.Z && ct == target.TaD) ||
+				(x == target.RX && y == target.RY && z == target.RZ && ct == target.ReverseTaD) {
+				st.Result = RoutingResult{SignalState: RouteNoSignals}
+				st.HadNewResult = true
+				return c
+			}
+			r := m.RoadTargetedPathing(x, y, z, conn, p, allowedStationTypes, target, om)
+			if (!st.HadNewResult && !isSecondRun) || IsRoadRoutingResultBetter(st.Result, r) {
+				st.Result = r
+				st.HadNewResult = true
+				best = i
+			}
+		}
+		return conns[best]
+	}
+	var bestValue uint16
+	best := 0
+	for i, c := range conns {
+		f := m.RoadAimlessWanderPathing(x, y, z, c&raDWithSignalMask, p, om)
+		if v := wanderScore[f&7] + uint16(randVal&7); v >= bestValue {
+			bestValue, best = v, i
+		}
+		randVal = randVal>>3 | randVal<<29
+	}
+	return conns[best]
 }
