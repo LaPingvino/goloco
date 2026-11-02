@@ -870,3 +870,28 @@ func TestSavedStationPositions(t *testing.T) {
 		t.Errorf("%d stations whose position is far from all their tiles", len(tiles)-near)
 	}
 }
+
+// Tile::trainStation finds, for every saved station track tile, that tile's
+// own station element.
+func TestSavedTrainStationLookup(t *testing.T) {
+	_, m, _ := titleView(t)
+	n, ok := 0, 0
+	for y := range m.Height {
+		for x := range m.Width {
+			tl := m.TileAt(x, y)
+			for _, el := range tl.Tracks {
+				if !el.HasStation || el.Ghost {
+					continue
+				}
+				n++
+				if st := sim.ExportTrainStation(tl, el.TrackID, el.Rotation, el.BaseZ); st != nil && len(tl.Stations) > 0 {
+					ok++
+				}
+			}
+		}
+	}
+	t.Logf("station track tiles %d, found %d", n, ok)
+	if n == 0 || ok != n {
+		t.Errorf("%d station track tiles without their station", n-ok)
+	}
+}

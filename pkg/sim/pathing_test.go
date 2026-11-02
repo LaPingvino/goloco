@@ -108,3 +108,33 @@ func TestTrackPathingWaypoint(t *testing.T) {
 		t.Errorf("waypoint at the junction: chose %d, result %+v", got&TaDBasicMask, st.Result)
 	}
 }
+
+// bringTrackElementToFront: at the junction tile (straight and curve both
+// start there), the chosen piece moves to the front of the tile's track run.
+func TestBringTrackElementToFront(t *testing.T) {
+	s := flatState(40, 64)
+	s.ConsHead = ConstructionHead{Active: true, X: 25, Y: 20, BaseZ: 64, Rotation: 0}
+	s.PlaceTrackAtHead(0, 0)
+	s.ConsHead = ConstructionHead{Active: true, X: 25, Y: 20, BaseZ: 64, Rotation: 0}
+	s.PlaceTrackAtHead(4, 0)
+	tl := s.TileAt(25, 20)
+	first := func() uint8 {
+		for _, r := range tl.Order {
+			if r.Kind == 1 {
+				return tl.Tracks[r.Index].TrackID
+			}
+		}
+		return 0xFF
+	}
+	if first() != 0 {
+		t.Fatalf("before: first track %d, want the straight (built first)", first())
+	}
+	s.BringTrackElementToFront(25*32, 20*32, 64*4, 0, 4<<3)
+	if first() != 4 {
+		t.Errorf("after bringing the curve forward: first track %d, want 4", first())
+	}
+	s.BringTrackElementToFront(25*32, 20*32, 64*4, 0, 0)
+	if first() != 0 {
+		t.Errorf("after bringing the straight back: first track %d, want 0", first())
+	}
+}

@@ -91,6 +91,9 @@ var TrackUnkWeighting = [44]uint32{32, 45, 25, 25, 75, 75, 126, 126, 88, 88, 88,
 // RoadUnkWeighting is getRoadMiscData(id).unkWeighting.
 var RoadUnkWeighting = [10]uint32{32, 25, 25, 75, 75, 66, 66, 36, 36, 26}
 
+// CurvatureDegrees is getCurvatureDegree(trackAndDirection >> 2).
+var CurvatureDegrees = [88]int8{0, 0, 0, 0, -60, 60, 61, -61, -50, 50, 51, -51, -40, 40, 41, -41, -30, 30, 31, -31, -32, 32, 33, -33, -20, -20, 21, 21, 0, 0, 0, 0, 0, 0, 0, 0, -50, 50, 50, -50, -50, 50, 50, -50, -50, 50, 50, -50, -50, 50, 50, -50, 0, 0, 0, 0, -60, 60, -61, 61, 62, -62, 63, -63, 22, 22, -23, -23, 0, 0, 0, 0, 0, 0, 0, 0, -10, -10, 11, 11, 12, 12, -13, -13, 70, -70, -71, 71}
+
 // RoadReverseLane is getRoadMiscData(id).reverseLane.
 var RoadReverseLane = [10]uint8{1, 1, 1, 4, 4, 2, 2, 1, 1, 1}
 
