@@ -1,6 +1,6 @@
 // Code generated from OpenLoco data/language/en-GB.yml (station name StringIds 281..327). DO NOT EDIT.
 
-package world
+package sim
 
 // stationNameTemplates are the en-GB station name templates by StringId; {STRINGID} is the town name.
 var stationNameTemplates = map[uint16]string{

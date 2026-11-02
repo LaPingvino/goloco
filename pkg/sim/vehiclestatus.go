@@ -1,4 +1,4 @@
-package world
+package sim
 
 import (
 	"strings"
@@ -33,7 +33,7 @@ var orderSizes = [6]int{1, 2, 2, 6, 1, 1}
 // after the name (vehicle_list_status_2pos / _3pos): status1, then status2
 // after a space. red reports a {COLOUR RED} status (crashed, stuck, broken
 // down), which colours the whole status.
-func (w *World) VehicleStatus(v scenario.VehicleListEntry) (text string, red bool) {
+func (w *Map) VehicleStatus(v scenario.VehicleListEntry) (text string, red bool) {
 	s1, s2, red := w.vehicleStatusParts(v)
 	if s2 != "" {
 		return s1 + " " + s2, red
@@ -41,7 +41,7 @@ func (w *World) VehicleStatus(v scenario.VehicleListEntry) (text string, red boo
 	return s1, red
 }
 
-func (w *World) vehicleStatusParts(v scenario.VehicleListEntry) (string, string, bool) {
+func (w *Map) vehicleStatusParts(v scenario.VehicleListEntry) (string, string, bool) {
 	if v.TileX == -1 {
 		return "No position", "", false
 	}
@@ -56,7 +56,7 @@ func (w *World) vehicleStatusParts(v scenario.VehicleListEntry) (string, string,
 		if second {
 			s2 = w.secondStatus(v)
 		}
-		return strings.Replace(format, "{STRINGID}", w.stationName(int(v.StationID)), 1), s2, false
+		return strings.Replace(format, "{STRINGID}", w.StationName(int(v.StationID)), 1), s2, false
 	}
 	switch v.Status {
 	case headStatusUnk0:
@@ -90,7 +90,7 @@ func (w *World) vehicleStatusParts(v scenario.VehicleListEntry) (string, string,
 // statusTravelling is getStatusTravelling: stopping (commanded, or manual
 // power ≤ −20), travelling with a one-entry order table, else heading for
 // the first stop-at order from the current one round the ring.
-func (w *World) statusTravelling(v scenario.VehicleListEntry) (string, string, bool) {
+func (w *Map) statusTravelling(v scenario.VehicleListEntry) (string, string, bool) {
 	const commandStop, manualControl = 1 << 1, 1 << 6
 	s1 := "Travelling"
 	switch {
@@ -99,7 +99,7 @@ func (w *World) statusTravelling(v scenario.VehicleListEntry) (string, string, b
 	case v.SizeOfOrderTable == 1:
 	default:
 		if st, ok := w.firstStopAt(v); ok {
-			s1 = "Heading for " + w.stationName(st)
+			s1 = "Heading for " + w.StationName(st)
 		}
 	}
 	return s1, w.secondStatus(v), false
@@ -108,7 +108,7 @@ func (w *World) statusTravelling(v scenario.VehicleListEntry) (string, string, b
 // firstStopAt walks OrderRingView(orderTableOffset, currentOrder) once: from
 // the current order, each by its size, an End going back to the table's
 // start, until back at the current one.
-func (w *World) firstStopAt(v scenario.VehicleListEntry) (int, bool) {
+func (w *Map) firstStopAt(v scenario.VehicleListEntry) (int, bool) {
 	orders := w.Orders
 	begin := int(v.OrderTableOffset)
 	cur := begin + int(v.CurrentOrder)
@@ -140,7 +140,7 @@ func (w *World) firstStopAt(v scenario.VehicleListEntry) (int, bool) {
 
 // secondStatus is getSecondStatus: "/ Waiting at signal", or "at" the speed
 // (toSpeed16(veh2 currentSpeed), {VELOCITY}).
-func (w *World) secondStatus(v scenario.VehicleListEntry) string {
+func (w *Map) secondStatus(v scenario.VehicleListEntry) string {
 	if v.Status == headStatusWaitingAtSignal {
 		return "/ Waiting at signal"
 	}
@@ -150,7 +150,7 @@ func (w *World) secondStatus(v scenario.VehicleListEntry) string {
 // VehicleCargos is what vehicleIsTransportingCargo reads: the cargo ids of
 // the UnloadAll and WaitFor orders (getCargo = type >> 3) in the vehicle's
 // order ring from the table's start.
-func (w *World) VehicleCargos(v scenario.VehicleListEntry) []int {
+func (w *Map) VehicleCargos(v scenario.VehicleListEntry) []int {
 	orders := w.Orders
 	begin := int(v.OrderTableOffset)
 	if begin >= len(orders) || orders[begin]&7 == 0 {

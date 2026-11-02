@@ -4,8 +4,9 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 
 // Surface cliff edges — a port of PaintSurface.cpp paintSurfaceCliffEdge /
 // paintSurfaceCliffEdgeImpl / paintEdgeSection and getTileDescriptor's edge
-// heights. PARTIAL: rotation 0 only; tunnels (track/road entering a slope)
-// and the underground view are not ported yet.
+// heights, with the tunnel portals (track/road entering a slope, inserted by
+// the elements painted before the surface). PARTIAL: rotation 0 only; the
+// underground view is not ported yet.
 
 // Surface is what the cliff code needs of a tile's surface element.
 type Surface struct {

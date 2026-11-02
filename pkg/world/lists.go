@@ -40,7 +40,7 @@ func (w *World) TownList() []TownInfo {
 			size = townSizeNames[t.Size]
 		}
 		out = append(out, TownInfo{
-			Name:         w.townName(t.Name, i),
+			Name:         w.TownName(t.Name, i),
 			TileX:        int(t.X) / 32,
 			TileY:        int(t.Y) / 32,
 			Population:   t.Population,
@@ -94,7 +94,7 @@ func (w *World) StationList() []StationInfo {
 				if id < len(w.StationOwners) {
 					owner = int(w.StationOwners[id])
 				}
-				out = append(out, StationInfo{ID: id, TileX: x, TileY: y, Kind: kind, Name: w.stationName(id), Owner: owner,
+				out = append(out, StationInfo{ID: id, TileX: x, TileY: y, Kind: kind, Name: w.StationName(id), Owner: owner,
 					Status: status, Waiting: waiting, Accepts: accepts})
 			}
 		}
@@ -173,49 +173,6 @@ func (w *World) vehicleObjectName(objID uint16) string {
 		return vs[objID].Header.GetName()
 	}
 	return ""
-}
-
-// townName is Town::name formatted: a user string (StringIds 0x8000+, where the
-// town name generator puts them); otherwise goloco's placeholder "Town N".
-func (w *World) townName(id uint16, i int) string {
-	if id >= 0x8000 && int(id-0x8000) < len(w.UserStrings) && w.UserStrings[id-0x8000] != "" {
-		return w.UserStrings[id-0x8000]
-	}
-	return fmt.Sprintf("Town %d", i+1)
-}
-
-// Town name StringIds (StringManager.h): kTownNamesStart + a template id, or
-// kTownNamesEnd for the plain town name.
-const (
-	townNamesStart = 0x9EE7
-	townNamesEnd   = townNamesStart + 345
-)
-
-// stationName formats Station::name as formatStringImpl does: a town-name
-// template ({STRINGID} = the station's town's name), the plain town name, or a
-// user string. Falls back to "Station N".
-func (w *World) stationName(id int) string {
-	if id >= len(w.StationNames) {
-		return fmt.Sprintf("Station %d", id)
-	}
-	sn := w.StationNames[id]
-	town := ""
-	if int(sn.Town) < len(w.Towns) {
-		town = w.townName(w.Towns[sn.Town].Name, int(sn.Town))
-	}
-	switch {
-	case sn.Name >= 0x8000 && sn.Name < 0x8000+2048:
-		if int(sn.Name-0x8000) < len(w.UserStrings) {
-			return w.UserStrings[sn.Name-0x8000]
-		}
-	case sn.Name == townNamesEnd:
-		return town
-	case sn.Name >= townNamesStart && sn.Name < townNamesEnd:
-		if t, ok := stationNameTemplates[sn.Name-townNamesStart]; ok {
-			return strings.Replace(t, "{STRINGID}", town, 1)
-		}
-	}
-	return fmt.Sprintf("Station %d", id)
 }
 
 // stationCargoText is Station::getStatusString, the total units waiting and
