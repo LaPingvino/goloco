@@ -87,6 +87,11 @@ type OptionsWindow struct {
 	// OnPreferredCurrency is told the DAT name chosen as preferred.
 	Currencies          []objects.CurrencyChoice
 	OnPreferredCurrency func(dat string)
+	// Languages are the available packs (native names, sorted) and Language
+	// the current one's index; OnLanguage loads the chosen one.
+	Languages  []string
+	Language   int
+	OnLanguage func(i int)
 	// OpenDropdown shows a dropdown for the window (the game's single
 	// dropdown); nil: the Regional dropdowns don't open.
 	OpenDropdown func(*DropdownMenu)
@@ -258,6 +263,24 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour,
 				[]DropdownItem{{Text: "Imperial", Selected: !L.Metric, MoveX10: true}, {Text: "Metric", Selected: L.Metric, MoveX10: true}}, 1<<20, 1<<20)
 			d.OnSelect = func(i int) { L.Metric = i == 1 } // distanceSpeedDropdown (PARTIAL: Config::write)
+			w.OpenDropdown(d)
+		}
+		// languageMouseDown: the available languages (dropdown_stringptr), the
+		// current one selected.
+		if r := optRegionalRows[0]; w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil && len(w.Languages) > 0 {
+			items := make([]DropdownItem, len(w.Languages))
+			for i, n := range w.Languages {
+				items[i] = DropdownItem{Text: n, Selected: i == w.Language, MoveX10: true}
+			}
+			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour, items, 1<<20, 1<<20)
+			d.OnSelect = func(i int) {
+				if i >= 0 && i < len(w.Languages) {
+					w.Language = i
+					if w.OnLanguage != nil {
+						w.OnLanguage(i)
+					}
+				}
+			}
 			w.OpenDropdown(d)
 		}
 		// preferredCurrencyMouseDown: every installed currency (dropdown_stringptr
@@ -569,7 +592,11 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		if L.HeightUnits {
 			heights = "Units"
 		}
-		values := [5]string{"English (UK)", measure, heights, w.CurrencyName, w.PreferredCurrencyName}
+		lang := "English (UK)"
+		if w.Language >= 0 && w.Language < len(w.Languages) {
+			lang = w.Languages[w.Language]
+		}
+		values := [5]string{lang, measure, heights, w.CurrencyName, w.PreferredCurrencyName}
 		arrow := string(rune(170)) // LocoChar::down, StringIds::dropdown "{COLOUR BLACK}▼"
 		aw, _ := MeasureTextBold(arrow)
 		for i, r := range optRegionalRows {

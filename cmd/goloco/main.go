@@ -1237,6 +1237,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			g.options.Tab = ui.OptTabRegional // and a click on Preferred currency
 			g.options.HandleClick(g.options.X+190, g.options.Y+122)
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionallang" && g.options != nil {
+			g.options.Tab = ui.OptTabRegional // and a click on Language
+			g.options.HandleClick(g.options.X+190, g.options.Y+52)
+		}
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionalheights" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional // and a click on Heights
 			g.options.HandleClick(g.options.X+190, g.options.Y+87)
@@ -1898,6 +1902,18 @@ func (g *Game) openOptionsWindow() {
 			w.PreferredCurrencyName = c.Name
 		}
 		w.Currencies = g.objMgr.AvailableCurrencies()
+		langs := i18n.Available()
+		for i, l := range langs {
+			w.Languages = append(w.Languages, l.NativeName)
+			if l.Locale == i18n.Locale() {
+				w.Language = i
+			}
+		}
+		w.OnLanguage = func(i int) { // languageDropdown (PARTIAL: Config::write; goloco's own texts stay English)
+			if err := i18n.Load(langs[i].Locale); err != nil {
+				log.Printf("[Options] language: %v", err)
+			}
+		}
 		w.OnPreferredCurrency = func(dat string) { g.preferredCurrency = dat }
 	}
 	// Controls tab: Config::edgeScrolling (default on). zoomToCursor and
