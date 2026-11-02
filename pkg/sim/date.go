@@ -86,7 +86,35 @@ func (m *Map) companiesUpdateDaily(om *objects.ObjectManager) {
 		return
 	}
 	m.Companies[id].ChallengeProgress = m.NewChallengeProgress(id, om)
-	// evaluateChallengeProgress (flags, messages, window): PARTIAL
+	if m.CompanyFaces[id].ChallengeFlags&(companyFlagChallengeBeaten|companyFlagChallengeCompleted|companyFlagChallengeFailed) != 0 {
+		return
+	}
+	m.evaluateChallengeProgress(id)
+}
+
+// evaluateChallengeProgress: progress 100 completes the challenge, 255 fails
+// it (the player company; no secondary player). PARTIAL: the messages, owner
+// emotions, the company window's challenge tab and saveNewScore
+// (completedChallengeInMonths is set).
+func (m *Map) evaluateChallengeProgress(id int) {
+	switch m.Companies[id].ChallengeProgress {
+	case 100:
+		m.CompanyFaces[id].ChallengeFlags |= companyFlagChallengeCompleted
+		m.ObjectiveCompletedInMonths = m.ObjectiveMonthsInChallenge
+	case 255:
+		m.CompanyFaces[id].ChallengeFlags |= companyFlagChallengeFailed
+	}
+}
+
+// ChallengeStatus is what TimePanel's formatChallenge reads of the player
+// company: its flags and progress.
+func (m *Map) ChallengeStatus() (completed, failed, beaten bool, progress uint8) {
+	id := int(m.ControllingCompany)
+	if id >= len(m.Companies) || id >= len(m.CompanyFaces) {
+		return
+	}
+	f := m.CompanyFaces[id].ChallengeFlags
+	return f&companyFlagChallengeCompleted != 0, f&companyFlagChallengeFailed != 0, f&companyFlagChallengeBeaten != 0, m.Companies[id].ChallengeProgress
 }
 
 const (

@@ -763,8 +763,8 @@ func (g *Game) drawTimePanel(screen *ebiten.Image) {
 	if g.gameState == nil {
 		return
 	}
-	date := g.gameState.GameDate
-	st := ui.TimePanelState{Date: uilayout.DateDMY(date.Day(), i18n.Month(int(date.Month())), date.Year())}
+	mp := &g.w.Map // getCurrentDay's date (pkg/sim dateTick)
+	st := ui.TimePanelState{Date: uilayout.DateDMY(int(mp.CurrentDayOfMonth)+1, i18n.Month(int(mp.CurrentMonth)+1), int(mp.CurrentYear))}
 	switch {
 	case g.isPaused:
 		st.Speed = 0
@@ -784,13 +784,22 @@ func (g *Game) drawTimePanel(screen *ebiten.Image) {
 	st.HoverDate = g.mouseX >= wx+d[0] && g.mouseX < wx+d[0]+d[2] && g.mouseY >= wy+d[1] && g.mouseY < wy+d[1]+d[3]
 	ui.DrawTimePanel(screen, st)
 	if st.HoverDate && g.hasObjective {
+		// formatChallenge (string 647: date, then 695 / 696 / 699 + 700).
 		tip := st.Date
-		obj := g.objective.Describe()
-		if g.objective.Type == 3 {
-			ct := int(g.objective.DeliveredCargoType) % len(g.gameState.CargoDelivered)
-			obj += fmt.Sprintf(" (%d/%d)", g.gameState.CargoDelivered[ct], g.objective.DeliveredCargoAmount)
+		completed, failed, beaten, progress := mp.ChallengeStatus()
+		switch {
+		case completed:
+			tip += "\nChallenge completed!"
+		case failed:
+			tip += "\nChallenge failed!"
+		case beaten:
+		default:
+			tip += fmt.Sprintf("\nChallenge progress: %d%%", progress)
+			if mp.Objective.Flags&(1<<2) != 0 { // withinTimeLimit
+				left := uint16(mp.Objective.TimeLimitYears)*12 - mp.ObjectiveMonthsInChallenge
+				tip += fmt.Sprintf("\nTime left: %d years %d months", left/12, left%12)
+			}
 		}
-		tip += " - " + i18n.T("game.objective") + " " + obj // PARTIAL: upstream's challenge tooltip string not ported
 		var c uint8
 		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
 			c = g.r.ObjMgr.InterfaceSkin.TooltipColour
@@ -2262,36 +2271,24 @@ func main() {
 	}
 }
 
-// checkObjective evaluates the scenario win condition against the current
-// game state. Company value approximates to player money until a real
-// valuation model exists; performance index and top-company flags are not
-// evaluated yet.
+// checkObjective reports the scenario won once the sim has marked the player
+// company's challenge completed (Company::evaluateChallengeProgress).
 // OpenLoco reference: src/OpenLoco/src/Scenario/ScenarioObjective.cpp
 func (g *Game) checkObjective() {
 	if !g.hasObjective || g.gameWon || g.gameState == nil {
 		return
 	}
-	switch g.objective.Type {
-	case 0: // company value
-		if g.gameState.PlayerMoney >= int64(g.objective.CompanyValue) {
-			g.gameWon = true
-		}
-	case 1: // monthly vehicle profit
-		if g.gameState.LastMonthProfit >= int64(g.objective.MonthlyVehicleProfit) {
-			g.gameWon = true
-		}
-	case 3: // cargo delivery
-		ct := int(g.objective.DeliveredCargoType) % len(g.gameState.CargoDelivered)
-		if g.gameState.CargoDelivered[ct] >= g.objective.DeliveredCargoAmount {
-			g.gameWon = true
-		}
+	// The player company's challengeCompleted flag (set by the sim's daily
+	// evaluateChallengeProgress).
+	if completed, _, _, _ := g.w.Map.ChallengeStatus(); completed {
+		g.gameWon = true
 	}
 	if g.gameWon {
 		log.Printf("[Game] OBJECTIVE ACHIEVED: %s", g.objective.Describe())
 		if g.progress != nil && g.currentScenarioPath != "" {
 			score := uint32(0)
-			if g.objective.Type == 3 && g.gameState != nil {
-				score = g.gameState.CargoDelivered[int(g.objective.DeliveredCargoType)%len(g.gameState.CargoDelivered)]
+			if id := int(g.w.Map.ControllingCompany); g.objective.Type == 3 && id < len(g.w.Map.Companies) {
+				score = g.w.Map.Companies[id].CargoDelivered[g.objective.DeliveredCargoType&31]
 			}
 			g.progress.markCompleted(g.currentScenarioPath, g.objective.Describe(), score)
 		}
