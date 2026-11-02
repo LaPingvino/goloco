@@ -150,6 +150,9 @@ type DrawItem struct {
 	Image  uint32
 	Dist   int32
 	IsBody bool
+	// Colour is the car part's colour scheme (primary, secondary) in the car
+	// variant; zero in the object variant, whose caller passes one.
+	Colour [2]uint8
 }
 
 // bogieImage is the bogie frame: yaw (turned round for the given end) / 2,
@@ -187,7 +190,7 @@ func (v *VehicleObject) DrawItems(yaw, roll uint8) ([]DrawItem, int32) {
 		reversed := c.BodySpriteIdx&SpriteIndexIsReversed != 0
 		frontDist := int32(c.FrontBogiePosition)
 		if c.FrontBogieSpriteIdx != SpriteIndexNull && bogies {
-			items = append(items, DrawItem{v.bogieImage(c.FrontBogieSpriteIdx, yaw, roll, reversed), total + frontDist, false})
+			items = append(items, DrawItem{v.bogieImage(c.FrontBogieSpriteIdx, yaw, roll, reversed), total + frontDist, false, [2]uint8{}})
 		}
 		length := int32(0)
 		backDist := total
@@ -198,7 +201,7 @@ func (v *VehicleObject) DrawItems(yaw, roll uint8) ([]DrawItem, int32) {
 		backPos := int32(c.BackBogiePosition)
 		backDist -= backPos
 		if c.BackBogieSpriteIdx != SpriteIndexNull && bogies {
-			items = append(items, DrawItem{v.bogieImage(c.BackBogieSpriteIdx, yaw, roll, !reversed), backDist, false})
+			items = append(items, DrawItem{v.bogieImage(c.BackBogieSpriteIdx, yaw, roll, !reversed), backDist, false, [2]uint8{}})
 		}
 		bodyDist := total + (frontDist+length-backPos)/2
 		if c.BodySpriteIdx != SpriteIndexNull {
@@ -214,7 +217,7 @@ func (v *VehicleObject) DrawItems(yaw, roll uint8) ([]DrawItem, int32) {
 			if b.NumRollFrames != 1 {
 				rollIndex += rollOff
 			}
-			items = append(items, DrawItem{b.BodyImageIndex(PitchFlat, by, rollIndex, 0), bodyDist, true})
+			items = append(items, DrawItem{b.BodyImageIndex(PitchFlat, by, rollIndex, 0), bodyDist, true, [2]uint8{}})
 		}
 		total += length
 	}
@@ -257,4 +260,94 @@ func (m *ObjectManager) VehicleYDisplayOffset(v *VehicleObject) int {
 		return int(m.TrackObjects[v.TrackType].DisplayOffset)
 	}
 	return 0
+}
+
+// CarPart is one bogie or body entity as getDrawItemsForVehicle reads it:
+// its objectSpriteType, Flags38 isReversed, animation (bogie animationIndex /
+// body animationFrame), cargo frame (body) and colour scheme.
+type CarPart struct {
+	SpriteType uint8
+	Reversed   bool
+	Animation  uint8
+	CargoFrame uint8
+	Colour     [2]uint8
+}
+
+// CarComponent is a car component's front bogie, back bogie and body.
+type CarComponent struct{ Front, Back, Body CarPart }
+
+// CarDrawItems is getDrawItemsForVehicle for a Car: its components walked in
+// order (the object's components from the last one when the car's body is
+// reversed), bogies and bodies from the entities' own sprite types, reversal,
+// animation frames (only when animated) and colours; with brakeLights (the
+// train's veh2 brakeLightTimeout, animated, and a body with braking lights)
+// the braking frame is added over the body.
+func (v *VehicleObject) CarDrawItems(yaw uint8, comps []CarComponent, carReversed, animated, brakeLights bool) ([]DrawItem, int32) {
+	var items []DrawItem
+	total := int32(0)
+	bogies := v.Mode == TransportModeRail || v.Mode == TransportModeRoad
+	ci := 0
+	if carReversed {
+		ci = int(v.NumCarComponents) - 1
+	}
+	anim := func(a uint8) uint8 {
+		if animated {
+			return a
+		}
+		return 0
+	}
+	bogie := func(p CarPart) uint32 {
+		y := yaw
+		if p.Reversed {
+			y ^= 1 << 5
+		}
+		y /= 2
+		b := &v.BogieSprites[p.SpriteType] // callers keep SpriteType < 2 (guarded below)
+		if b.Flags&BogieFlagRotationalSymmetry != 0 {
+			y &= 0xF
+		}
+		return uint32(b.NumFramesPerRotation)*uint32(y) + uint32(anim(p.Animation)) + b.FlatImageIDs
+	}
+	for _, cc := range comps {
+		if ci < 0 || ci >= len(v.CarComponents) {
+			break
+		}
+		c := &v.CarComponents[ci]
+		front, back := int32(c.FrontBogiePosition), int32(c.BackBogiePosition)
+		if carReversed {
+			front, back = back, front
+		}
+		if cc.Front.SpriteType != SpriteIndexNull && bogies && int(cc.Front.SpriteType) < len(v.BogieSprites) {
+			items = append(items, DrawItem{bogie(cc.Front), total + front, false, cc.Front.Colour})
+		}
+		length := int32(0)
+		backDist := total
+		if c.BodySpriteIdx != SpriteIndexNull {
+			length = int32(v.BodySprites[c.BodySpriteIdx&^SpriteIndexIsReversed].HalfLength) * 2
+			backDist += length
+		}
+		backDist -= back
+		if cc.Back.SpriteType != SpriteIndexNull && bogies && int(cc.Back.SpriteType) < len(v.BogieSprites) {
+			items = append(items, DrawItem{bogie(cc.Back), backDist, false, cc.Back.Colour})
+		}
+		bodyDist := total + (front+length-back)/2
+		if cc.Body.SpriteType != SpriteIndexNull && int(cc.Body.SpriteType) < len(v.BodySprites) {
+			b := &v.BodySprites[cc.Body.SpriteType]
+			y := yaw
+			if cc.Body.Reversed {
+				y ^= 1 << 5
+			}
+			items = append(items, DrawItem{b.BodyImageIndex(PitchFlat, y, anim(cc.Body.Animation), cc.Body.CargoFrame), bodyDist, true, cc.Body.Colour})
+			if animated && b.Flags&BodyFlagHasBrakingLights != 0 && brakeLights {
+				items = append(items, DrawItem{b.BrakingImageIndex(PitchFlat, yaw), bodyDist, true, cc.Body.Colour})
+			}
+		}
+		total += length
+		if carReversed {
+			ci--
+		} else {
+			ci++
+		}
+	}
+	return items, total
 }

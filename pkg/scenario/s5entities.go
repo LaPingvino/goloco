@@ -166,11 +166,15 @@ const (
 // VehicleBody / VehicleBogie specific offsets (type = VehicleTypeBody or VehicleTypeBogie).
 // OpenLoco reference: src/OpenLoco/src/S5/S5Entity.h  struct VehicleBody / VehicleBogie
 const (
-	vbColourPrimary    = 0x24 // uint8  — company primary colour
-	vbColourSecondary  = 0x25 // uint8  — company secondary colour
-	vbObjectSpriteType = 0x39 // uint8  — body component index for sprite lookup
-	vbObjectId         = 0x40 // uint16 — vehicle object slot index (→ ObjMgr.Vehicles[N])
-	vbBodyIndex        = 0x54 // uint8  — body index within the vehicle's body list
+	vbColourPrimary     = 0x24 // uint8  — company primary colour
+	vbColourSecondary   = 0x25 // uint8  — company secondary colour
+	vbObjectSpriteType  = 0x39 // uint8  — body component index for sprite lookup
+	vbObjectId          = 0x40 // uint16 — vehicle object slot index (→ ObjMgr.Vehicles[N])
+	vbFlags38           = 0x38 // uint8  — Flags38 (bit 1 isReversed); bogie and body
+	vbAnimation         = 0x46 // uint8  — bogie animationIndex / body animationFrame
+	vbCargoFrame        = 0x47 // uint8  — body cargoFrame
+	v2BrakeLightTimeout = 0x5B // uint8  — Vehicle2 brakeLightTimeout
+	vbBodyIndex         = 0x54 // uint8  — body index within the vehicle's body list
 )
 
 // VehicleHead specific offsets (type = VehicleTypeHead).
@@ -220,6 +224,14 @@ type VehicleEntity struct {
 
 	// ---- VehicleHead status (only meaningful when EntityType == VehicleTypeHead) ----
 	Status uint8 // vHeadStatus (0x5D) — VehicleStatus* constant
+
+	// Drawing state (S5Entity.h, offsets from the compiler): Flags38
+	// (isReversed = bit 1), the bogie's animationIndex / body's animationFrame,
+	// the body's cargoFrame, and veh2's brakeLightTimeout.
+	Flags38           uint8
+	Animation         uint8
+	CargoFrame        uint8
+	BrakeLightTimeout uint8
 }
 
 // ParseVehicleEntities extracts VehicleHead and VehicleBody entities from a
@@ -271,11 +283,15 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 		}
 
 		ent := VehicleEntity{
-			ID:          uint16(e[ebID]) | uint16(e[ebID+1])<<8,
-			EntityType:  entityType,
-			SpriteYaw:   e[ebSpriteYaw],
-			SpritePitch: e[ebSpritePitch],
-			Owner:       e[ebOwner],
+			ID:                uint16(e[ebID]) | uint16(e[ebID+1])<<8,
+			EntityType:        entityType,
+			SpriteYaw:         e[ebSpriteYaw],
+			SpritePitch:       e[ebSpritePitch],
+			Flags38:           e[vbFlags38],
+			Animation:         e[vbAnimation],
+			CargoFrame:        e[vbCargoFrame],
+			BrakeLightTimeout: e[v2BrakeLightTimeout],
+			Owner:             e[ebOwner],
 
 			PosX: coords.WorldUnits(int16(e[ebPosX]) | int16(e[ebPosX+1])<<8),
 			PosY: coords.WorldUnits(int16(e[ebPosY]) | int16(e[ebPosY+1])<<8),

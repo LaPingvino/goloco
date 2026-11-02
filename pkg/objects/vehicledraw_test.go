@@ -153,3 +153,86 @@ func TestScreenDistanceMatchesUpstream(t *testing.T) {
 		}
 	}
 }
+
+// A car whose parts mirror its object's components (front bogie turned as
+// the body, back bogie the other way, no animation) draws as the object at
+// roll 0 — the object variant is checked against upstream above.
+func TestCarDrawItemsMatchesObjectVariant(t *testing.T) {
+	st := uint32(777)
+	rnd := func(n uint32) uint32 { st = st*1103515245 + 12345; return (st >> 16) % n }
+	for c := 0; c < 300; c++ {
+		var v VehicleObject
+		v.Mode = TransportMode(rnd(3))
+		v.NumCarComponents = uint8(1 + rnd(4))
+		for i := range 4 {
+			b := &v.BodySprites[i]
+			b.HalfLength, b.Flags = uint8(rnd(20)), uint8(1|rnd(2)<<1)
+			b.NumAnimationFrames, b.NumRollFrames = 1, 1
+			b.FlatYawAccuracy, b.NumFramesPerRotation, b.FlatImageID = uint8(1+rnd(4)), uint8(1+rnd(9)), rnd(500)
+		}
+		for i := range 2 {
+			g := &v.BogieSprites[i]
+			g.Flags, g.NumFramesPerRotation, g.FlatImageIDs = uint8(1|rnd(2)<<1), uint8(1<<rnd(3)), rnd(500)
+		}
+		var comps []CarComponent
+		for i := range int(v.NumCarComponents) {
+			k := &v.CarComponents[i]
+			k.FrontBogiePosition, k.BackBogiePosition = uint8(rnd(16)), uint8(rnd(16))
+			k.FrontBogieSpriteIdx, k.BackBogieSpriteIdx = uint8(rnd(2)), uint8(rnd(2))
+			k.BodySpriteIdx = uint8(rnd(4) | rnd(2)<<7)
+			rev := k.BodySpriteIdx&SpriteIndexIsReversed != 0
+			comps = append(comps, CarComponent{
+				Front: CarPart{SpriteType: k.FrontBogieSpriteIdx, Reversed: rev},
+				Back:  CarPart{SpriteType: k.BackBogieSpriteIdx, Reversed: !rev},
+				Body:  CarPart{SpriteType: k.BodySpriteIdx &^ SpriteIndexIsReversed, Reversed: rev},
+			})
+		}
+		for yaw := 0; yaw < 64; yaw += 3 {
+			want, wt := v.DrawItems(uint8(yaw), 0)
+			got, gt := v.CarDrawItems(uint8(yaw), comps, false, true, false)
+			if wt != gt || len(want) != len(got) {
+				t.Fatalf("object %d yaw %d: %v/%d vs %v/%d", c, yaw, got, gt, want, wt)
+			}
+			for i := range want {
+				if want[i] != got[i] {
+					t.Fatalf("object %d yaw %d item %d: %+v, object variant %+v", c, yaw, i, got[i], want[i])
+				}
+			}
+		}
+	}
+}
+
+// A reversed two-component car, animated, with cargo and brake lights:
+// components from the last, bogie positions swapped, animation and cargo
+// frames added, the braking frame over the body.
+func TestCarDrawItemsReversedAnimated(t *testing.T) {
+	var v VehicleObject
+	v.Mode = TransportModeRail
+	v.NumCarComponents = 2
+	v.BodySprites[0] = VehicleBodySprite{Flags: BodyFlagHasSprites | BodyFlagHasBrakingLights, HalfLength: 10, FlatYawAccuracy: 3, NumFramesPerRotation: 4, FlatImageID: 100}
+	v.BodySprites[1] = VehicleBodySprite{Flags: BodyFlagHasSprites, HalfLength: 6, FlatYawAccuracy: 3, NumFramesPerRotation: 2, FlatImageID: 300}
+	v.BogieSprites[0] = VehicleBogieSprite{Flags: BogieFlagHasSprites, NumFramesPerRotation: 2, FlatImageIDs: 50}
+	v.CarComponents[0] = VehicleCarComponent{FrontBogiePosition: 2, BackBogiePosition: 3, FrontBogieSpriteIdx: 0, BackBogieSpriteIdx: 0, BodySpriteIdx: 0}
+	v.CarComponents[1] = VehicleCarComponent{FrontBogiePosition: 4, BackBogiePosition: 5, FrontBogieSpriteIdx: 0, BackBogieSpriteIdx: 0xFF, BodySpriteIdx: 1}
+	col := [2]uint8{7, 2}
+	comps := []CarComponent{
+		{Front: CarPart{SpriteType: 0, Reversed: true, Animation: 1, Colour: col}, Back: CarPart{SpriteType: 0xFF}, Body: CarPart{SpriteType: 1, Reversed: true, Animation: 1, CargoFrame: 0, Colour: col}},
+		{Front: CarPart{SpriteType: 0, Animation: 1, Colour: col}, Back: CarPart{SpriteType: 0, Reversed: true, Colour: col}, Body: CarPart{SpriteType: 0, Animation: 2, CargoFrame: 1, Colour: col}},
+	}
+	got, total := v.CarDrawItems(8, comps, true, true, true)
+	// yaw 8: bogie (8^32)/2 = 20 → 2*20+1+50 = 91; unreversed (8/2) = 4 → 2*4+1+50 = 59, reversed back 2*20+0+50 = 90.
+	// component 1 first (reversed): front pos = back 5, back pos = front 4, length 12; body (8^32)>>1 = 20 → 20*2+300+1 = 341 at (5+12-4)/2 = 6.
+	// component 0: front = 3, back = 2, length 20, at total 12; body 8>>1 = 4 → 4*4+100+2+1 = 119 at 12+(3+20-2)/2 = 22; braking 4*4+100+3 = 119.
+	want := []DrawItem{
+		{91, 5, false, col}, {341, 6, true, col},
+		{59, 15, false, col}, {90, 30, false, col}, {119, 22, true, col}, {119, 22, true, col},
+	}
+	if total != 32 || len(got) != len(want) {
+		t.Fatalf("got %+v total %d", got, total)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("item %d: %+v, want %+v", i, got[i], want[i])
+		}
+	}
+}
