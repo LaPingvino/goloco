@@ -145,6 +145,7 @@ type Scenario struct {
 	CompanyNames          []uint16           // company slot → name StringId
 	CompanyFaces          []CompanyFace      // company slot → competitor, emotion, performance
 	LandscapeToGenerate   bool               // a .SC5 without tile elements: Scenario::start generates the landscape
+	TownNamesObjectOrder  []string
 	RegionObjectOrder     []string
 	ClimateObjectOrder    []string
 	HillShapesObjectOrder []string // the hill shapes slot → DAT name

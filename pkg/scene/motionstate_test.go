@@ -2392,3 +2392,38 @@ func TestCargoInfluenceMatchesSaves(t *testing.T) {
 		}
 	}
 }
+
+// townNameFromNamesObject over the title's town names object against
+// upstream's own copyTownNameToBuffer + townNameFromNamesObject compiled on
+// the object's bytes (tools/gen-paintdata/gen_townnames.cpp): 5000 random
+// values' names and location flags, compared by hash.
+func TestTownNamesMatchUpstream(t *testing.T) {
+	r, _, _ := titleView(t)
+	tn := r.Objects.TownNames
+	if tn == nil {
+		t.Fatal("no town names object")
+	}
+	data, err := os.ReadFile("testdata/townnames_hash.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want uint64
+	fmt.Sscanf(strings.TrimSpace(string(data)), "%x", &want)
+	h, rnd := uint64(1469598103934665603), uint32(7)
+	for i := range 5000 {
+		rnd = rnd*1664525 + 1013904223
+		name, fl := tn.NameFromRand(rnd)
+		if i < 3 {
+			t.Logf("%d → %q (%d)", rnd, name, fl)
+		}
+		for _, c := range []byte(name) {
+			h ^= uint64(c)
+			h *= 1099511628211
+		}
+		h ^= 0x100 | uint64(fl)
+		h *= 1099511628211
+	}
+	if h != want {
+		t.Errorf("hash %x, upstream %x", h, want)
+	}
+}
