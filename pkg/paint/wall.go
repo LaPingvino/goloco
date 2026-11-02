@@ -2,10 +2,9 @@ package paint
 
 import "github.com/LaPingvino/goloco/pkg/gfx8"
 
-// Walls — a port of Paint/PaintWall.cpp paintWall (0x004C3D7C). PARTIAL: the
-// glass second image (translucency Colours::getGlass) and the secondary colour
-// (the wall element's secondary colour isn't parsed yet) are not drawn; ghost
-// walls are not ported.
+// Walls — a port of Paint/PaintWall.cpp paintWall (0x004C3D7C), with the
+// primary and secondary colours and the glass layer. PARTIAL: ghost walls are
+// not ported.
 
 // WallEl is what paintWall reads from a wall element.
 type WallEl struct {
@@ -22,6 +21,16 @@ type WallObj struct {
 	TwoSided   bool
 	HasPrimary bool
 	HasGlass   bool
+	// GlassImage is wallObject->sprite (the glass images are offsets from it,
+	// kImageOffsetsGlass); GlassPal the glass translucency
+	// (Colours::getGlass(primary) = ExtColour unk74 + primary).
+	GlassPal []uint8
+}
+
+// kImageOffsetsGlass [rotation][slopeIndex].
+var wallGlassOffsets = [4][3]int{
+	{WallGlassSlopedNE, WallGlassSlopedSW, WallGlassFlatNE}, {WallGlassSlopedSE, WallGlassSlopedNW, WallGlassFlatSE},
+	{WallGlassSlopedSW, WallGlassSlopedNE, WallGlassFlatNE}, {WallGlassSlopedNW, WallGlassSlopedSE, WallGlassFlatSE},
 }
 
 var (
@@ -64,8 +73,14 @@ func (s *Session) PaintWall(el WallEl, obj WallObj, colourMap []uint8, sprite fu
 		return
 	}
 	img := Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}
-	if obj.HasPrimary && colourMap != nil {
+	if colourMap != nil { // getWallImageId: primary and/or secondary colour
 		img = Image{Sprite: sp, Op: gfx8.OpFor(sp, true, false), PalMap: colourMap}
 	}
 	s.AddAsParent(img, off, bbOff, bbLen)
+	// A glass wall: the glass image as a child, blended in getGlass(primary).
+	if obj.HasGlass && obj.GlassPal != nil {
+		if gl := sprite(obj.Sprite + wallGlassOffsets[rot][slopeFlagsToIndex(el.EdgeSlope)]); gl != nil {
+			s.AddAsChild(Image{Sprite: gl, Op: gfx8.OpFor(gl, false, true), PalMap: obj.GlassPal}, off, bbOff, bbLen)
+		}
+	}
 }
