@@ -18,8 +18,8 @@ import (
 // sceneEnabled reports whether this frame is drawn by pkg/scene.
 func (w *World) sceneEnabled() bool {
 	// Zoom > 0 goes through it only on request (GOLOCO_SCENE_ZOOM=1, or the
-	// GOLOCO_DIAG_ZOOM diagnostic) until drawImageMaskedZoom is ported: masked
-	// images are skipped when zoomed out (item 3m).
+	// GOLOCO_DIAG_ZOOM diagnostic) until the zoom-dependent paint branches
+	// (shadows, snow, gridlines…) are ported (item 3m).
 	zoomOK := w.zoom == 0 || os.Getenv("GOLOCO_SCENE_ZOOM") == "1" || os.Getenv("GOLOCO_DIAG_ZOOM") != ""
 	return os.Getenv("GOLOCO_SCENE") != "0" && zoomOK &&
 		w.renderer != nil && w.renderer.G1 != nil && w.renderer.ObjMgr != nil
