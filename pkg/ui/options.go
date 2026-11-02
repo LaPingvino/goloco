@@ -89,6 +89,11 @@ type OptionsWindow struct {
 	OnPreferredCurrency func(dat string)
 	// Languages are the available packs (native names, sorted) and Language
 	// the current one's index; OnLanguage loads the chosen one.
+	// PreferredCurrency are Config's usePreferredCurrencyForNewGames and
+	// usePreferredCurrencyAlways (the two checkboxes); OnPreferredToggle runs
+	// after a click (preferredCurrency*MouseUp).
+	PreferredCurrency [2]bool
+	OnPreferredToggle func(i int, v bool)
 	// OnCurrency switches the current currency object (currencyDropdown).
 	OnCurrency func(dat string)
 	Languages  []string
@@ -285,9 +290,19 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			}
 			w.OpenDropdown(d)
 		}
+		// preferredCurrencyNewGameMouseUp / preferredCurrencyAlwaysMouseUp.
+		for i := range 2 {
+			if w.in([4]int{10, 134 + 14*i, 346, 12}, px, py) {
+				w.PreferredCurrency[i] = !w.PreferredCurrency[i]
+				if w.OnPreferredToggle != nil {
+					w.OnPreferredToggle(i, w.PreferredCurrency[i])
+				}
+				return
+			}
+		}
 		// currencyMouseDown: every installed currency, the loaded one selected;
-		// the widget is disabled in title mode (prepareDraw).
-		if r := optRegionalRows[3]; !w.TitleMode && w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil && len(w.Currencies) > 0 {
+		// the widget is disabled in title mode or with 'always' (prepareDraw).
+		if r := optRegionalRows[3]; !w.currencyDisabled() && w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil && len(w.Currencies) > 0 {
 			items := make([]DropdownItem, len(w.Currencies))
 			for i, c := range w.Currencies {
 				items[i] = DropdownItem{Text: c.Name, Selected: c.Name == w.CurrencyName, MoveX10: true}
@@ -628,7 +643,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 				}
 				v = v[:len(v)-1]
 			}
-			if i == 3 && w.TitleMode { // disabled: colour.inset()
+			if i == 3 && w.currencyDisabled() { // disabled: colour.inset()
 				c6, c4 := pal[gfx8.Shade(sec, 6)], pal[gfx8.Shade(sec, 4)]
 				DrawTextBold(screen, v, w.X+183+1+1, w.Y+r.y+1+1, c4)
 				DrawTextBold(screen, v, w.X+183+1, w.Y+r.y+1, c6)
@@ -638,8 +653,13 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			bx := 183 + 173 - 12
 			DrawTextBold(screen, arrow, w.X+bx+(11-1)/2-aw/2, w.Y+r.y+1, black)
 		}
-		DrawTextBold(screen, "Use preferred currency when starting new game", w.X+10+10+4, w.Y+134, text)
-		DrawTextBold(screen, "Use preferred currency always", w.X+10+10+4, w.Y+148, text)
+		for i, l := range [2]string{"Use preferred currency when starting new game", "Use preferred currency always"} {
+			y := 134 + 14*i
+			if w.PreferredCurrency[i] { // activatedWidgets: the checkbox's tick
+				DrawTextBold(screen, string(rune(0xAC)), w.X+10, w.Y+y, text)
+			}
+			DrawTextBold(screen, l, w.X+10+10+4, w.Y+y, text)
+		}
 		return
 	}
 	if w.Tab != OptTabAudio {
@@ -680,3 +700,7 @@ func groupBox(rt *gfx8.RenderTarget, x, y, w, h int, cmap []uint8, label string)
 	f(x, by+1, 1, bh-2, s4)
 	f(x+1, by+2, 1, bh-3, s7)
 }
+
+// currencyDisabled is prepareDraw's test for the current-currency dropdown:
+// usePreferredCurrencyAlways or title mode.
+func (w *OptionsWindow) currencyDisabled() bool { return w.PreferredCurrency[1] || w.TitleMode }

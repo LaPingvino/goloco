@@ -53,3 +53,33 @@ func useCurrency(om *objects.ObjectManager, dat string) {
 		uilayout.SetCurrency(c.Prefix, c.Suffix, c.Separator, c.Factor)
 	}
 }
+
+// loadPreferredCurrency is Scenario.cpp loadPreferredCurrency: the preferred
+// currency becomes the loaded one, unless it already is or it can't be
+// loaded (then the old one stays).
+func (g *Game) loadPreferredCurrency() {
+	if g.objMgr == nil || g.preferredCurrency == "" || g.preferredCurrency == g.objMgr.CurrencySlot {
+		return
+	}
+	if g.objMgr.GetCurrencyObject(g.preferredCurrency) == nil {
+		return
+	}
+	useCurrency(g.objMgr, g.preferredCurrency)
+}
+
+// loadPreferredCurrencyAlways: only with usePreferredCurrencyAlways.
+func (g *Game) loadPreferredCurrencyAlways() {
+	if g.preferredCurrencyFlags[1] {
+		g.loadPreferredCurrency()
+	}
+}
+
+// loadPreferredCurrencyNewGame: with usePreferredCurrencyForNewGames, else
+// as loadPreferredCurrencyAlways.
+func (g *Game) loadPreferredCurrencyNewGame() {
+	if !g.preferredCurrencyFlags[0] {
+		g.loadPreferredCurrencyAlways()
+		return
+	}
+	g.loadPreferredCurrency()
+}

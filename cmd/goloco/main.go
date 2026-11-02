@@ -97,21 +97,24 @@ type Game struct {
 	gameWon      bool
 	progress     *progressFile
 
-	consCurve         int                // construction curve selection: -4 (left large) … 0 … +4
-	consTab           int                // construction window tab: 0 construction, 2 signal (1 station places directly)
-	consSigOne        bool               // signal tab: single direction chosen (isSignalBothDirections = 0)
-	preferredCurrency string             // Config::preferredCurrency (DAT name; PARTIAL: not saved)
-	frameLimit        int                // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
-	prompt            *ui.PromptOkCancel // an open confirmation (modal: it takes all input)
-	consBridge        int                // lastSelectedBridge (slot; -1 = the first available)
-	consOneShot       int                // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
-	consSignal        int                // signal tab: lastSelectedSignal (slot; -1 = the first available)
-	consStation       int                // station tab: lastSelectedStationType (slot; -1 = the first available)
-	consMods          uint8              // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
-	consSlope         int                // construction slope selection: -2 (steep down) … 0 … +2
-	buildObjID        int                // index into TrackObjects / RoadObjects
-	hoverTileX        int                // tile under cursor in build mode (-1 if invalid)
-	hoverTileY        int
+	consCurve         int    // construction curve selection: -4 (left large) … 0 … +4
+	consTab           int    // construction window tab: 0 construction, 2 signal (1 station places directly)
+	consSigOne        bool   // signal tab: single direction chosen (isSignalBothDirections = 0)
+	preferredCurrency string // Config::preferredCurrency (DAT name; PARTIAL: not saved)
+	// preferredCurrencyFlags are Config usePreferredCurrencyForNewGames and
+	// usePreferredCurrencyAlways (default off).
+	preferredCurrencyFlags [2]bool
+	frameLimit             int                // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
+	prompt                 *ui.PromptOkCancel // an open confirmation (modal: it takes all input)
+	consBridge             int                // lastSelectedBridge (slot; -1 = the first available)
+	consOneShot            int                // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
+	consSignal             int                // signal tab: lastSelectedSignal (slot; -1 = the first available)
+	consStation            int                // station tab: lastSelectedStationType (slot; -1 = the first available)
+	consMods               uint8              // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
+	consSlope              int                // construction slope selection: -2 (steep down) … 0 … +2
+	buildObjID             int                // index into TrackObjects / RoadObjects
+	hoverTileX             int                // tile under cursor in build mode (-1 if invalid)
+	hoverTileY             int
 
 	// Diagnostic crop: when set, save a 480×360 PNG centred on diagTileX/Y after the next Draw.
 	// diagQuit=true means quit afterwards (CLI --diag mode); false keeps the game running (F12).
@@ -1242,6 +1245,11 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			g.options.TitleMode = false
 			g.options.HandleClick(g.options.X+190, g.options.Y+107)
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionalalways" && g.options != nil {
+			g.options.Tab = ui.OptTabRegional // in a game, a click on 'always' (the current currency greys)
+			g.options.TitleMode = false
+			g.options.HandleClick(g.options.X+100, g.options.Y+153)
+		}
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionallang" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional // and a click on Language
 			g.options.HandleClick(g.options.X+190, g.options.Y+52)
@@ -1723,6 +1731,13 @@ func (g *Game) loadScenario(filePath string) error {
 
 	if g.objMgr != nil {
 		reorderScenarioObjects(g.objMgr, sc)
+		// Scenario::start (a .SC5: a new game) runs loadPreferredCurrencyNewGame;
+		// loading a saved game (S5 import) runs loadPreferredCurrencyAlways.
+		if strings.EqualFold(filepath.Ext(filePath), ".sc5") {
+			g.loadPreferredCurrencyNewGame()
+		} else {
+			g.loadPreferredCurrencyAlways()
+		}
 	}
 
 	// Create a fresh world for the new scenario so the title world is preserved.
@@ -1919,7 +1934,23 @@ func (g *Game) openOptionsWindow() {
 				log.Printf("[Options] language: %v", err)
 			}
 		}
-		w.OnPreferredCurrency = func(dat string) { g.preferredCurrency = dat }
+		w.OnPreferredCurrency = func(dat string) { // preferredCurrencyDropdown
+			g.preferredCurrency = dat
+			g.loadPreferredCurrencyAlways()
+			if c := g.objMgr.GetCurrencyObject(g.objMgr.CurrencySlot); c != nil {
+				w.CurrencyName = c.Name
+			}
+		}
+		w.PreferredCurrency = g.preferredCurrencyFlags
+		w.OnPreferredToggle = func(i int, v bool) { // PARTIAL: Config::write
+			g.preferredCurrencyFlags[i] = v
+			if i == 1 {
+				g.loadPreferredCurrencyAlways()
+				if c := g.objMgr.GetCurrencyObject(g.objMgr.CurrencySlot); c != nil {
+					w.CurrencyName = c.Name
+				}
+			}
+		}
 		w.OnCurrency = func(dat string) { useCurrency(g.objMgr, dat) } // currencyDropdown
 	}
 	// Controls tab: Config::edgeScrolling (default on). zoomToCursor and
