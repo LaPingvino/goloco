@@ -1146,6 +1146,7 @@ func (sc *Scenario) initPlaceholderMap() {
 			sc.Tiles[y][x] = Tile{
 				Surface: surface,
 				Height:  uint8((x + y) % 4),
+				Order:   []ElemRef{{Kind: KindSurface}},
 			}
 		}
 	}

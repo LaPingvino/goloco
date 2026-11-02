@@ -82,6 +82,7 @@ func (sc *Scenario) initGeneratedLandscape() {
 			sc.Tiles[y][x] = Tile{
 				Surface: surface,
 				Height:  uint8(elev),
+				Order:   []ElemRef{{Kind: KindSurface}}, // the surface element (painted from Order)
 			}
 		}
 	}
