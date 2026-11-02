@@ -456,3 +456,40 @@ func TestSavedVehicle2Move(t *testing.T) {
 	}
 	t.Logf("Vehicle2s that moved onto a new piece: %d", moved)
 }
+
+// Vehicle1::updateRail's target speed recomputed from the save brackets the
+// saved targetSpeed for every train. Vehicle1 saw var_3C before Vehicle2's
+// move of that tick drew it down (sub_4A9F20 runs after Vehicle1) by what
+// Vehicle2 travelled — between 0 and its distance (speed >> 7); the save does
+// not keep how much — and the target rises with var_3C, so the saved target
+// lies between the targets at those two bounds.
+func TestSavedVehicle1TargetSpeed(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, exact := 0, 0
+	for _, tr := range trains {
+		h, v2 := &m.Entities[tr.Head], &m.Entities[tr.Veh2]
+		if h.Mode != 0 {
+			continue
+		}
+		n++
+		v1 := m.Entities[tr.Veh1]
+		lo := m.Vehicle1RailTargetSpeed(h, &v1, v2, r.Objects)
+		d1, _ := sim.UpdateDistances(v2.CurrentSpeed)
+		v1.Var3C += d1
+		hi := m.Vehicle1RailTargetSpeed(h, &v1, v2, r.Objects)
+		if v1.TargetSpeed < lo || v1.TargetSpeed > hi {
+			t.Errorf("head %d: saved target %d outside [%d, %d]", h.ID, v1.TargetSpeed, lo, hi)
+		}
+		if lo == hi {
+			exact++
+		}
+	}
+	t.Logf("%d trains; %d with the bracket a single value", n, exact)
+	if n == 0 {
+		t.Fatal("no trains")
+	}
+}

@@ -37,6 +37,10 @@ int main()
     for (auto& p : kRotationOffset) std::printf("{%d, %d}, ", p.x, p.y);
     std::printf("}\n\n// ReverseRotation is World::kReverseRotation.\nvar ReverseRotation = [16]uint8{");
     for (auto r : kReverseRotation) std::printf("%u, ", r);
+    std::printf("}\n\n// TrackCurveSpeedFraction is getTrackMiscData(id).curveSpeedFraction.\nvar TrackCurveSpeedFraction = [44]uint16{");
+    for (int i = 0; i < 44; i++) std::printf("%u, ", getTrackMiscData(i).curveSpeedFraction);
+    std::printf("}\n\n// RoadCurveSpeedFraction is getRoadMiscData(id).curveSpeedFraction.\nvar RoadCurveSpeedFraction = [10]uint16{");
+    for (int i = 0; i < 10; i++) std::printf("%u, ", getRoadMiscData(i).curveSpeedFraction);
     std::printf("}\n\n// RoadOccupationMasks is getRoadOccupationMask (kRoadOccupationMasks).\nvar RoadOccupationMasks = [128]uint8{");
     for (int i = 0; i < 128; i++) std::printf("%u, ", getRoadOccupationMask(i));
     std::printf("}\n");

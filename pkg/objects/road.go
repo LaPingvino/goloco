@@ -17,6 +17,8 @@ type RoadObject struct {
 	PaintStyle uint8  // Sprite style: 0=normal, 1=ballast/sleeper, 2=left-curve
 	// Flags (0x12) is RoadObjectFlags (anyRoadTypeCompatible = 1<<3: no mods drawn).
 	Flags uint16
+	// MaxSpeed (0x0C) is the road's speed limit (Speed16, mph).
+	MaxSpeed int16
 	// DisplayOffset (0x29) lowers this road's vehicles in inline pictures.
 	DisplayOffset uint8
 	NumMods       uint8 // Number of road extra/modifications (max 2)
@@ -99,6 +101,7 @@ func ParseRoadObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Roa
 		BuildCostFactor: int16(uint16(data[0x04]) | uint16(data[0x05])<<8),
 		CostIndex:       data[0x0A],
 		Flags:           uint16(data[0x12]) | uint16(data[0x13])<<8,
+		MaxSpeed:        int16(uint16(data[0x0C]) | uint16(data[0x0D])<<8),
 	}
 
 	offset := fixedSize

@@ -6,7 +6,6 @@ import "github.com/LaPingvino/goloco/pkg/scenario"
 // (Map.Routings, flat [vehicleRef*64 + index]). Each routing is the
 // trackAndDirection (with AdditionalTaDFlags) of a piece a vehicle is on or
 // has reserved ahead; a vehicle's routings form a 64-entry ring.
-// PARTIAL: RingView (the ring iterator) is not ported yet.
 
 const (
 	// RoutingAllocatedButFree is kAllocatedButFreeRouting.
@@ -95,6 +94,29 @@ func (m *Map) SetRouting(h RoutingHandle, routing uint16) {
 
 // FreeRouting is freeRouting.
 func (m *Map) FreeRouting(h RoutingHandle) { m.SetRouting(h, RoutingAllocatedButFree) }
+
+// RoutingRing is RingView(begin) iterated forwards (begin()…end()) or, with
+// reverse, backwards (rbegin()…rend()): empty if begin's routing is free;
+// otherwise begin, then each next index (wrapping within the vehicle's 64)
+// until a free routing or back at begin.
+func (m *Map) RoutingRing(begin RoutingHandle, reverse bool) []RoutingHandle {
+	if m.Routing(begin) == RoutingAllocatedButFree {
+		return nil
+	}
+	out := []RoutingHandle{begin}
+	cur := begin
+	for {
+		if reverse {
+			cur = cur.WithIndex(cur.Index() - 1)
+		} else {
+			cur = cur.WithIndex(cur.Index() + 1)
+		}
+		if cur == begin || m.Routing(cur) == RoutingAllocatedButFree {
+			return out
+		}
+		out = append(out, cur)
+	}
+}
 
 func fill(s []uint16, v uint16) {
 	for i := range s {
