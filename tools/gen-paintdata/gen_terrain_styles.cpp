@@ -1,4 +1,4 @@
-// Generates pkg/scene/testdata/terrain_styles_hashes.txt: ./tg3 hs1.txt land.txt — upstream MapGenerator.cpp generateLand … generateTerrain (sed-copied) with stub tiles / land objects; hs1.txt and land.txt are dumped from the game data by a throwaway test (never committed).
+// Generates pkg/scene/testdata/terrain_styles_hashes.txt: ./tg3 hs1.txt land2.txt — upstream MapGenerator.cpp generateLand … generateTerrain and generateSurfaceVariation (sed-copied) with stub tiles / land objects; hs1.txt and land2.txt are dumped from the game data by a throwaway test (never committed).
 // Generates the expected hash for pkg/sim TestTerrainHeightMapMatchesUpstream: upstream's
 // OriginalTerrainGenerator.cpp (includes stripped by sed, stubs below) on HS1's height-map images
 // read from a dump (game data, not committed) with a fixed Prng seed.
@@ -327,11 +327,12 @@ namespace OpenLoco {
   struct Pos2 { int32_t x, y; Pos2 operator+(const Pos2& o) const { return {x+o.x, y+o.y}; } Pos2& operator+=(const Pos2& o) { x+=o.x; y+=o.y; return *this; } };
   constexpr Pos2 kRotationOffset[4] = { {-32,0}, {0,32}, {32,0}, {0,-32} };
   enum class ObjectType { land, hillShapes };
-  struct LandObject { uint8_t numVariations, variationLikelihood; };
+  enum class LandObjectFlags : uint8_t { none = 0, hasGrowthStages = 1 };
+  struct LandObject { uint8_t numVariations, variationLikelihood, flags, numGrowthStages; bool hasFlags(LandObjectFlags f) const { return flags & uint8_t(f); } };
   namespace Scenario { enum class LandDistributionPattern : uint8_t { everywhere, nowhere, farFromWater, nearWater, onMountains, farFromMountains, inSmallRandomAreas, inLargeRandomAreas, aroundCliffs };
-    struct GenOptions { LandDistributionPattern landDistributionPatterns[32]; }; GenOptions& getOptions(); }
+    struct GenOptions { LandDistributionPattern landDistributionPatterns[32]; }; GenOptions& getOptions(); uint8_t getCurrentSnowLine(); }
   struct SurfaceElement { uint8_t t=0, var=0, g=0, w=0, sl=0; int bz=0, cz=0;
-    void setTerrain(uint8_t v){t=v;} uint8_t terrain() const {return t;} void setVariation(uint8_t v){var=v;} void setGrowthStage(uint8_t v){g=v;}
+    uint8_t snow=0; void setSnowCoverage(uint8_t v){snow=v;} void setTerrain(uint8_t v){t=v;} uint8_t terrain() const {return t;} void setVariation(uint8_t v){var=v;} void setGrowthStage(uint8_t v){g=v;}
     uint8_t water() const {return w;} void setWater(uint8_t v){w=v&0x1F;} bool isIndustrial() const {return false;}
     uint8_t slope() const {return sl;} uint8_t slopeCorners() const {return sl&0xF;} bool isSlopeDoubleHeight() const {return sl&0x10;}
     void setSlope(uint8_t v){sl=v;} int baseZ() const {return bz;} void setBaseZ(int v){bz=v;} void setClearZ(int v){cz=v;} };
@@ -865,7 +866,58 @@ namespace OpenLoco::World::MapGenerator {
 
 
   void riversFor(const Scenario::Options& o, HeightMap& h) { generateRivers(o, h); }
-  void restFor(HeightMap& h) { generateLand(h); generateWater(h); generateTerrain(h); }
+    static void generateSurfaceVariation()
+    {
+        for (auto& pos : World::getDrawableTileRange())
+        {
+            auto tile = TileManager::get(pos);
+            auto* surface = tile.surface();
+
+            if (surface == nullptr)
+            {
+                continue;
+            }
+
+            if (!surface->isIndustrial())
+            {
+                auto* landObj = ObjectManager::get<LandObject>(surface->terrain());
+                if (landObj->hasFlags(LandObjectFlags::hasGrowthStages))
+                {
+                    bool setVariation = false;
+                    if (surface->water())
+                    {
+                        auto waterBaseZ = surface->water() * kMicroToSmallZStep;
+                        if (surface->slope())
+                        {
+                            waterBaseZ -= 4;
+                        }
+
+                        if (waterBaseZ > surface->baseZ())
+                        {
+                            if (surface->terrain() != 0)
+                            {
+                                surface->setGrowthStage(0);
+                                setVariation = true;
+                            }
+                        }
+                    }
+
+                    if (!setVariation)
+                    {
+                        surface->setGrowthStage(landObj->numGrowthStages - 1);
+                    }
+                }
+            }
+
+            auto snowLine = Scenario::getCurrentSnowLine() / kMicroToSmallZStep;
+            MicroZ baseMicroZ = (surface->baseZ() / kMicroToSmallZStep) + 1;
+            auto unk = std::clamp(baseMicroZ - snowLine, 0, 5);
+            surface->setSnowCoverage(unk);
+        }
+    }
+
+
+  void restFor(HeightMap& h) { generateLand(h); generateWater(h); generateTerrain(h); generateSurfaceVariation(); }
 }
 namespace OpenLoco {
   static GameState gs; GameState& getGameState() { return gs; }
@@ -881,12 +933,13 @@ namespace OpenLoco {
   static LandObject lands[32]; static bool landOk[32];
   template<> LandObject* ObjectManager::get<LandObject>(size_t i) { return landOk[i] ? &lands[i] : nullptr; }
   static Scenario::GenOptions gopts; Scenario::GenOptions& Scenario::getOptions() { return gopts; }
+  static uint8_t snowLine; uint8_t Scenario::getCurrentSnowLine() { return snowLine; }
 }
 using namespace OpenLoco;
 int main(int argc, char** argv) {
   FILE* lf = fopen(argv[2], "r"); unsigned last, sea; fscanf(lf, "%u %u", &last, &sea);
   uint8_t pats[2][32];
-  for (int i = 0; i < 32; i++) { unsigned ok, nv, lk, pt; fscanf(lf, "%u %u %u %u", &ok, &nv, &lk, &pt); landOk[i] = ok; lands[i] = { (uint8_t)nv, (uint8_t)lk }; pats[0][i] = pt; pats[1][i] = pt; }
+  for (int i = 0; i < 32; i++) { unsigned ok, nv, lk, pt, fl, ng; fscanf(lf, "%u %u %u %u %u %u", &ok, &nv, &lk, &pt, &fl, &ng); landOk[i] = ok; lands[i] = { (uint8_t)nv, (uint8_t)lk, (uint8_t)fl, (uint8_t)ng }; pats[0][i] = pt; pats[1][i] = pt; }
   // second pattern set: slots 0..3 far from water, everywhere, on mountains, large random areas
   const uint8_t alt[4] = {2, 0, 4, 7}; for (int i = 0; i < 4; i++) pats[1][i] = alt[i];
   FILE* f = fopen(argv[1], "r"); unsigned hc, mc, fl; fscanf(f, "%u %u %u", &hc, &mc, &fl);
@@ -897,12 +950,12 @@ int main(int argc, char** argv) {
     int ps = c % 2;
     for (int i = 0; i < 32; i++) gopts.landDistributionPatterns[i] = Scenario::LandDistributionPattern(pats[ps][i]);
     for (auto& t : tiles) { t = SurfaceElement{}; t.t = last; t.bz = 4; }
-    gs.rng = Core::Prng(777u + c * 31u, 999u + c * 17u); gs.seaLevel = sea; gs.lastLandOption = last;
+    gs.rng = Core::Prng(777u + c * 31u, 999u + c * 17u); gs.seaLevel = sea; gs.lastLandOption = last; snowLine = c % 2 ? 44 : 20;
     Scenario::Options o{ 2, Scenario::TopographyStyle(c < 2 ? 2 : 4), uint8_t(c < 2 ? 24 : 60), Scenario::ScenarioFlags::hillsEdgeOfMap, uint8_t(c == 3 ? 1 : 0), 3, 6, 1, 2 };
     World::MapGenerator::HeightMap hm(384, 384); World::MapGenerator::OriginalTerrainGenerator g; g.generate(o, hm);
     World::MapGenerator::riversFor(o, hm); World::MapGenerator::restFor(hm);
     uint64_t hsh = 1469598103934665603ull;
-    for (auto& t : tiles) { for (int v : { (int)t.t, (int)t.var, (int)t.w, t.bz, (int)t.sl }) { hsh ^= (uint8_t)v; hsh *= 1099511628211ull; } }
-    printf("%d %d %u %u %u %u %llx\n", c, ps, c < 2 ? 2 : 4, c < 2 ? 24 : 60, 777u + c * 31u, 999u + c * 17u, (unsigned long long)hsh);
+    for (auto& t : tiles) { for (int v : { (int)t.t, (int)t.var, (int)t.w, t.bz, (int)t.sl, (int)t.g, (int)t.snow }) { hsh ^= (uint8_t)v; hsh *= 1099511628211ull; } }
+    printf("%d %d %u %u %u %u %u %llx\n", c, ps, c % 2 ? 44 : 20, c < 2 ? 2 : 4, c < 2 ? 24 : 60, 777u + c * 31u, 999u + c * 17u, (unsigned long long)hsh);
   }
 }

@@ -2165,13 +2165,15 @@ func TestTerrainHeightMapMatchesUpstream(t *testing.T) {
 	t.Logf("%d height maps compared with upstream's generator", n)
 }
 
-// The map generator through terrain styles (height map, rivers, land, water,
-// generateTerrain with getRandomTerrainVariation) against upstream's own
+// The map generator through surface variation (height map, rivers, land,
+// water, generateTerrain with getRandomTerrainVariation, then
+// generateSurfaceVariation's growth stages and snow coverage at snow lines
+// 20 / 44) against upstream's own
 // MapGenerator.cpp code compiled with stub tiles
 // (tools/gen-paintdata/gen_terrain_styles.cpp): Aerophobia's land objects
 // with their own distribution patterns and with an alternative set (far from
 // water, on mountains, large random areas), four seeds; every tile's terrain,
-// variation, water, baseZ and slope compared by FNV-1a hash.
+// variation, water, baseZ, slope, growth stage and snow compared by hash.
 func TestTerrainStylesMatchUpstream(t *testing.T) {
 	r, m, _ := saveView(t, "Scenarios/Aerophobia.SC5", false)
 	sc, err := scenario.LoadScenarioData("../../../locomotion/Scenarios/Aerophobia.SC5")
@@ -2183,10 +2185,10 @@ func TestTerrainStylesMatchUpstream(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
-		var c, ps, style, dens int
+		var c, ps, snowLine, style, dens int
 		var s0, s1 uint32
 		var want uint64
-		fmt.Sscanf(line, "%d %d %d %d %d %d %x", &c, &ps, &style, &dens, &s0, &s1, &want)
+		fmt.Sscanf(line, "%d %d %d %d %d %d %d %x", &c, &ps, &snowLine, &style, &dens, &s0, &s1, &want)
 		pats := sc.Options.LandDistributionPatterns
 		if ps == 1 {
 			copy(pats[:4], []uint8{2, 0, 4, 7})
@@ -2205,11 +2207,13 @@ func TestTerrainStylesMatchUpstream(t *testing.T) {
 		m.GenerateLand(hm)
 		m.GenerateWater(o.SeaLevel)
 		m.GenerateTerrain(hm, pats, o.SeaLevel, r.Objects)
+		m.CurrentSnowLine = uint8(snowLine)
+		m.GenerateSurfaceVariation(r.Objects)
 		h := uint64(1469598103934665603)
 		for y := range 384 {
 			for x := range 384 {
 				tl := m.TileAt(x, y)
-				for _, v := range []uint8{tl.TerrainIndex, tl.Variation, tl.WaterLevel, tl.BaseZ, tl.Slope} {
+				for _, v := range []uint8{tl.TerrainIndex, tl.Variation, tl.WaterLevel, tl.BaseZ, tl.Slope & 0x1F, tl.GrowthStage, tl.Slope >> 5} {
 					h ^= uint64(v)
 					h *= 1099511628211
 				}
