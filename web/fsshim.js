@@ -77,7 +77,7 @@
 
 	const fetchLazy = async (path) => {
 		const { url } = lazy.get(path);
-		const resp = await fetch(url);
+		const resp = await fetch(url, { cache: "no-cache" }); // revalidate: a rebuilt page must not run stale files
 		if (!resp.ok) throw new Error(url + ": HTTP " + resp.status);
 		const s = resp.body.pipeThrough(new DecompressionStream("gzip"));
 		files.set(path, new Uint8Array(await new Response(s).arrayBuffer()));
