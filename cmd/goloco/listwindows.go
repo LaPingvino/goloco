@@ -13,8 +13,7 @@ func (g *Game) openVehiclesWindow() { g.openVehicleList(0) }
 
 // openVehicleList opens the ported VehicleList window on a tab (vehicle type).
 func (g *Game) openVehicleList(tab int) {
-	// VehicleList::open(getControllingId(), type): that company's vehicles.
-	company, cname := g.w.ControllingCompany()
+	company, _ := g.w.ControllingCompany()
 	if os.Getenv("GOLOCO_DIAG_VEHLIST") != "" { // diagnostics: the first company owning this type
 		for _, v := range g.w.VehicleListRows() {
 			if v.Type == tab {
@@ -23,6 +22,12 @@ func (g *Game) openVehicleList(tab int) {
 			}
 		}
 	}
+	g.openVehicleListFor(company, tab)
+}
+
+// openVehicleListFor is VehicleList::open(company, type).
+func (g *Game) openVehicleListFor(company, tab int) {
+	cname := g.w.CompanyName(company)
 	var rows []ui.VehicleRow
 	for _, v := range g.w.VehicleListRows() {
 		if v.Type == tab && v.Owner == company {
@@ -55,11 +60,23 @@ func (g *Game) openVehicleList(tab int) {
 	w := ui.NewVehicleList(g.sw, tab, rows, tc, wc, cargos)
 	w.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
 	w.Face, w.FaceColour = g.companyFace(company)
+	// populateCompanySelect's companies: every non-empty slot.
+	for id := range g.w.CompanyNames {
+		if g.w.CompanyNames[id] == 0 || id >= len(g.w.CompanyFaces) { // StringIds::empty: no company
+			continue
+		}
+		face, col := g.companyFace(id)
+		w.Companies = append(w.Companies, ui.CompanyChoice{ID: id, Name: g.w.CompanyName(id), Performance: int(g.w.CompanyFaces[id].Performance), Face: face, Colour: col})
+	}
+	w.OwnerID = company
+	w.ScreenW, w.ScreenH = g.sw, g.sh
+	w.OnCompany = func(id int) { g.openVehicleListFor(id, tab) } // onCompanyDropdown: the window turns to that company
+	w.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
 	if cname != "" {
 		w.Caption = cname + " - " + w.Caption // stringid_trains etc.
 	}
 	w.OnClose = func() { g.townList = nil }
-	w.OnTab = g.openVehicleList
+	w.OnTab = func(t int) { g.openVehicleListFor(company, t) }
 	g.townList = w
 }
 

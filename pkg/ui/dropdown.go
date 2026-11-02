@@ -52,6 +52,10 @@ type DropdownItem struct {
 	// TrailSprite, if > 0, is an inline {SPRITE} drawn after the text at the
 	// pen position (carrying_cargoid_sprite).
 	TrailSprite int
+	// CompanySelect is dropdown_company_select's layout
+	// "{NEWLINE 1 2}{SPRITE}{NEWLINE 26 8}{STRINGID}": Sprite (the owner's
+	// face, recoloured to SpriteColour) at the item's (1, 2), Text at (26, 8).
+	CompanySelect bool
 }
 
 // Dropdown geometry (Dropdown.cpp common::showText): items 10 px high
@@ -180,8 +184,16 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 			if it.Sprite > 0 && it.Sprite < len(g1.Elements) {
 				if sp, err := gfx8.Decode(&g1.Elements[it.Sprite]); err == nil {
 					m, _ := g1.GetPaletteMap(int(it.SpriteColour))
-					gfx8.DrawSpriteNoise(rt, sp, 2, 1+i*ih+1, gfx8.OpFor(sp, m != nil, false), m, nil)
+					sx, sy := 2, 1+i*ih+1
+					if it.CompanySelect {
+						sx, sy = 2+1, 1+i*ih+2
+					}
+					gfx8.DrawSpriteNoise(rt, sp, sx, sy, gfx8.OpFor(sp, m != nil, false), m, nil)
 				}
+			}
+			if it.CompanySelect {
+				labels = append(labels, label{it.Text, 2 + 26, 1 + i*ih + 8, c, inset})
+				continue
 			}
 			if it.TrailSprite > 0 && it.Text != "" {
 				tx := 2
@@ -349,5 +361,56 @@ func NewDropdownShowItemHeight(x, y, width, height int, colour uint8, items []Dr
 	x = max(x, 0)
 	x = min(x+w, sw) - w
 	return &DropdownMenu{X: x, Y: oy, Width: w, Height: h, ItemWidth: width, Colour: colour,
+		Items: items, Highlighted: -1, Visible: true, ItemHeight: itemHeight}
+}
+
+// itemTextWidth is getMaxStringWidth of an item's formatted string: the text
+// in medium bold (after MOVE_X 10), or for company select max(1 + the face's
+// width, 26 + the name's).
+func itemTextWidth(it DropdownItem) int {
+	tw, _ := MeasureTextBold(it.Text)
+	if it.CompanySelect {
+		sw := 0
+		if g1 := globalG1Font.g1; it.Sprite > 0 && it.Sprite < len(g1.Elements) {
+			sw = int(g1.Elements[it.Sprite].Width)
+		}
+		return max(1+sw, 26+tw)
+	}
+	if it.MoveX10 {
+		tw += 10
+	}
+	return tw
+}
+
+// NewDropdownShowText is Dropdown::showText (common::showText): items
+// itemHeight high (flag 1<<6), as wide as the widest formatted item + 3; the
+// list below the widget, above it if it doesn't fit, else beside it at the
+// top (to the left when that runs off the screen); width + 3 + 1 wide.
+func NewDropdownShowText(x, y, width, height int, colour uint8, items []DropdownItem, itemHeight, sw, sh int) *DropdownMenu {
+	maxW := 0
+	for _, it := range items {
+		maxW = max(maxW, itemTextWidth(it))
+	}
+	maxW += 3
+	h := len(items)*itemHeight + 3 + 1
+	ox, oy := x, y+height
+	if h+oy > sh || oy < 0 {
+		oy -= height + h
+		bottom := oy
+		if oy >= 0 {
+			bottom = oy + h
+		}
+		if oy < 0 || bottom > sh {
+			ox += width + maxW
+			if ox > sw {
+				ox = x - (maxW + 4)
+			}
+			oy = 0
+		}
+	}
+	w := maxW + 3 + 1
+	ox = max(ox, 0)
+	ox = min(ox+w, sw) - w
+	return &DropdownMenu{X: ox, Y: oy, Width: w, Height: h, ItemWidth: maxW, Colour: colour,
 		Items: items, Highlighted: -1, Visible: true, ItemHeight: itemHeight}
 }

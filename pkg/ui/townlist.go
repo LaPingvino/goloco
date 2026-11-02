@@ -77,7 +77,14 @@ type TownListWindow struct {
 	// FaceColour (the company's primary colour).
 	Face       int
 	FaceColour uint8
-	List       [4]int
+	// Companies feed the company select dropdown (populateCompanySelect);
+	// OnCompany switches the window to the chosen company.
+	Companies []CompanyChoice
+	OwnerID   int
+	OnCompany func(id int)
+	// ScreenW, ScreenH keep dropdowns on the screen (Ui::width/height).
+	ScreenW, ScreenH int
+	List             [4]int
 	// Outline draws row text outlined (VehicleList: AdvancedColour(black).outline()
 	// with {COLOUR WINDOW_2}); HoverSolid highlights the hovered row with a solid
 	// shade-0 rect instead of the translucent one.
@@ -214,6 +221,10 @@ func (w *TownListWindow) HandleClick(px, py int) {
 		return
 	}
 	if w.ExtraClick != nil && w.ExtraClick(px, py) {
+		return
+	}
+	if len(w.Companies) > 0 && w.OpenDropdown != nil && w.in([4]int{w.W - 28, 14, 26, 26}, px, py) {
+		w.OpenDropdown(w.companySelect())
 		return
 	}
 	for i := range w.Tabs {

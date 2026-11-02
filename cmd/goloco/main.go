@@ -1222,6 +1222,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			}
 			w.HandleClick(w.X+400, w.Y+205)
 		}
+		if os.Getenv("GOLOCO_DIAG_VEHLIST") == "company" && g.townList != nil { // the company select dropdown open
+			w := g.townList
+			w.HandleClick(w.X+w.W-20, w.Y+20)
+		}
 	}
 	if os.Getenv("GOLOCO_DIAG_OPTIONS") != "" && g.options == nil && !g.diagOptionsDone {
 		g.diagOptionsDone = true
