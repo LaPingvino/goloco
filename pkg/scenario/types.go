@@ -605,6 +605,9 @@ const (
 type ElemRef struct {
 	Kind  uint8
 	Index uint16
+	// Flags is the element's flags byte (TileElementBase::_flags): the low
+	// nibble its occupied quarters, bit 4 ghost, bit 5 AI-allocated.
+	Flags uint8
 }
 
 // Element kinds of ElemRef (upstream World::ElementType).
