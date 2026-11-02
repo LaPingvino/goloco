@@ -1937,3 +1937,62 @@ func TestMonthEndCompanies(t *testing.T) {
 		t.Error("historySize")
 	}
 }
+
+// updateDefaultLevelCrossingType for the saved year gives the saved choice
+// (it ran at the start of the year, and nothing else changes it); at the
+// year's end every company's expenditure table moves on a year.
+func TestYearEnd(t *testing.T) {
+	for _, s := range []struct {
+		path  string
+		title bool
+	}{{"Data/title.dat", true}, {"Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false}} {
+		r, m, _ := saveView(t, s.path, s.title)
+		saved := m.DefaultLevelCrossingType
+		m.UpdateDefaultLevelCrossingType(r.Objects)
+		t.Logf("%s (%d): default level crossing %d, saved %d (of %d)", s.path, m.CurrentYear, m.DefaultLevelCrossingType, saved, len(r.Objects.LevelCrossingObjects))
+		if m.DefaultLevelCrossingType != saved {
+			t.Errorf("%s: default level crossing %d, saved %d", s.path, m.DefaultLevelCrossingType, saved)
+		}
+	}
+	r, m, _ := titleView(t)
+	year := m.CurrentYear
+	var before []scenario.CompanyEconomy
+	ticks := 0
+	for m.CurrentYear == year && ticks < 5000 {
+		before = append(before[:0], m.Companies...)
+		m.UpdateVehicles(r.Objects)
+		ticks++
+	}
+	if m.CurrentYear == year {
+		t.Fatal("no year end")
+	}
+	checked := 0
+	for id := range m.Companies {
+		if m.CompanyEmpty(id) {
+			continue
+		}
+		b, a := before[id], m.Companies[id]
+		for ty := range 17 {
+			if a.Expenditures[0][ty] != 0 { // the month end's charges went in before the rotation
+				t.Errorf("company %d: new year expenditure %d = %d", id, ty, a.Expenditures[0][ty])
+			}
+			for i := 1; i < 16; i++ {
+				want := b.Expenditures[i-1][ty]
+				if i == 1 && ty == 15 {
+					continue // the year-end tick's month end charged interest before the rotation
+				}
+				if i == 1 && (ty%2 == 1 && ty < 12) {
+					continue // running costs charged by the same tick's month end, before the rotation
+				}
+				if a.Expenditures[i][ty] != want {
+					t.Errorf("company %d: year %d type %d = %d, want %d", id, i, ty, a.Expenditures[i][ty], want)
+				}
+			}
+		}
+		if a.NumExpenditureYears != min(b.NumExpenditureYears+1, 16) {
+			t.Errorf("company %d: numExpenditureYears %d → %d", id, b.NumExpenditureYears, a.NumExpenditureYears)
+		}
+		checked++
+	}
+	t.Logf("year %d → %d after %d ticks; %d companies' expenditure tables moved on", year, m.CurrentYear, ticks, checked)
+}

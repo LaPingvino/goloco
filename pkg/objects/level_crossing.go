@@ -1,5 +1,7 @@
 package objects
 
+import "encoding/binary"
+
 import "fmt"
 
 // LevelCrossingObject represents a level crossing (road-over-rail barrier) object.
@@ -24,6 +26,7 @@ type LevelCrossingObject struct {
 	AnimSpeed     uint8
 	ClosingFrames uint8
 	ClosedFrames  uint8
+	DesignedYear  uint16 // 0x0C (LevelCrossingObject::designedYear)
 
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
 	ImageOffset uint32
@@ -54,6 +57,7 @@ func ParseLevelCrossingObjectWithG1(header *ObjectHeader, data []byte, g1 G1Load
 		AnimSpeed:     data[0x07],
 		ClosingFrames: data[0x08],
 		ClosedFrames:  data[0x09],
+		DesignedYear:  binary.LittleEndian.Uint16(data[0x0C:]),
 	}
 
 	offset := fixedSize

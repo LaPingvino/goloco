@@ -315,7 +315,10 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.PlayerCompanies = [2]uint8{gameState[playerCompaniesOffset], gameState[playerCompaniesOffset+1]}
 		sc.LoanInterestRate = gameState[0x1AE]                         // loanInterestRate
 		sc.MaxLoanSize = binary.LittleEndian.Uint16(gameState[0x402:]) // maxLoanSize
-		if len(gameState) > 0x196 {                                    // general.trafficHandedness (from the compiler)
+		sc.DefaultLevelCrossingType = gameState[0x1AC]                 // currentDefaultLevelCrossingType
+		sc.ForbiddenVehiclesPlayers = binary.LittleEndian.Uint16(gameState[0x430:])
+		sc.ForbiddenVehiclesCompetitors = binary.LittleEndian.Uint16(gameState[0x432:])
+		if len(gameState) > 0x196 { // general.trafficHandedness (from the compiler)
 			sc.TrafficHandedness = gameState[0x196]
 		}
 		sc.StationOwners = parseStationOwners(gameState)
@@ -1471,6 +1474,7 @@ type CompanyEconomy struct {
 	VehicleProfit            int64         // 0x8B9E currency48_t
 	ChallengeProgress        uint8         // 0x8C4E
 	CurrentRating            uint8         // 0x25BF
+	NumExpenditureYears      uint8         // 0x57
 	HistorySize              uint16        // 0x88CC
 	NumMonthsInTheRed        uint8         // 0x8C4F
 	CargoUnitsDistanceHist   [120]uint32   // 0x8C54
@@ -1515,6 +1519,7 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 		c.VehicleProfit = currency48(r[0x8B9E:])
 		c.ChallengeProgress = r[0x8C4E]
 		c.CurrentRating = r[0x25BF]
+		c.NumExpenditureYears = r[0x57]
 		c.HistorySize = binary.LittleEndian.Uint16(r[0x88CC:])
 		c.NumMonthsInTheRed = r[0x8C4F]
 	}
