@@ -50,6 +50,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    let the heavy parts (sprite prewarm, world redraw, sim catch-up) yield when a window or dropdown is open or the
    mouse just moved (budget them per frame); (c) the biggest measured hot spots, one by one, each with before / after
    numbers in the tick log. Rendering stays the ported renderer's; nothing changes what is drawn.
+   RULE (Joop 2026-11-02: 'the most important speed thing is making sure that it remains responsive, it's okay to
+   give up internal speed for responsiveness'): responsiveness wins every trade-off — the sim may run slower than
+   real time, prewarm and redraws may take longer, as long as input and UI never stall. Measure success as input-to-
+   screen latency and worst frame time while using menus, not throughput.
    Open: Joop saw a crash on changing language (2026-11-02) — not reproduced (desktop: ja / ru / zh / de; web:
    de / ja all fine); waiting for which language and where.
 1. [x] **Private wasm test page.** Since 2026-11-01 (Joop: the artifact is slow; serve it from the VPS
