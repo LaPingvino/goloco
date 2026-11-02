@@ -21,8 +21,10 @@ func posArgs(rt *RenderTarget, s *Sprite, x, y, zoom int, rle bool) (srcX, srcY,
 	}
 	h = s.Height
 	dstTop := y + s.YOffset
-	if !rle {
-		dstTop &= zoomMask // "the RLE version does not use the zoom mask on y"
+	if rle {
+		dstTop -= rt.OriginY
+	} else {
+		dstTop = (dstTop & zoomMask) - rt.OriginY // "the RLE version does not use the zoom mask on y"
 	}
 	if dstTop < 0 {
 		h += dstTop
@@ -43,7 +45,7 @@ func posArgs(rt *RenderTarget, s *Sprite, x, y, zoom int, rle bool) (srcX, srcY,
 	}
 	dstY = dstTop >> zoom
 	w = s.Width
-	dstLeft := (x + s.XOffset + low) & zoomMask
+	dstLeft := ((x + s.XOffset + low) & zoomMask) - rt.OriginX
 	if dstLeft < 0 {
 		w += dstLeft
 		if w <= 0 {
@@ -68,7 +70,7 @@ func posArgs(rt *RenderTarget, s *Sprite, x, y, zoom int, rle bool) (srcX, srcY,
 // hasZoomSprites recursion, which needs the sprite table: see the caller).
 func DrawSpriteZoom(rt *RenderTarget, s *Sprite, x, y, zoom int, op BlendOp, palMap []uint8, noise *Sprite) {
 	if zoom == 0 {
-		DrawSpriteNoise(rt, s, x, y, op, palMap, noise)
+		DrawSpriteNoise(rt, s, x-rt.OriginX, y-rt.OriginY, op, palMap, noise)
 		return
 	}
 	if noise != nil && !s.RLE {
@@ -137,4 +139,23 @@ func DrawSpriteZoom(rt *RenderTarget, s *Sprite, x, y, zoom int, op BlendOp, pal
 			}
 		}
 	}
+}
+
+// DrawImageZoom is drawImagePaletteSet (0x00448D90) for image id: at zoom > 0
+// an image with hasZoomSprites is drawn instead as image − zoomOffset into the
+// same pixels seen one zoom level closer (rt.x/y and the position halved,
+// zoom − 1), recursively; otherwise DrawSpriteZoom. sprite looks an image up
+// (nil = no element). The blend op is the caller's for the whole recursion.
+func DrawImageZoom(rt *RenderTarget, sprite func(id int) *Sprite, id, x, y, zoom int, op BlendOp, palMap []uint8, noise *Sprite) {
+	s := sprite(id)
+	if s == nil {
+		return
+	}
+	if zoom > 0 && s.HasZoomSprites {
+		half := *rt // the same bits; width/height in zoomed pixels are unchanged
+		half.OriginX, half.OriginY = rt.OriginX>>1, rt.OriginY>>1
+		DrawImageZoom(&half, sprite, id-s.ZoomOffset, x>>1, y>>1, zoom-1, op, palMap, noise)
+		return
+	}
+	DrawSpriteZoom(rt, s, x, y, zoom, op, palMap, noise)
 }
