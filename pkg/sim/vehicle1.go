@@ -9,10 +9,9 @@ import (
 // curves, bridges and rack rail on its reserved route, then Vehicle1's own
 // move by the distance Vehicle2's speed gives, against var_3C.
 //
-// Vehicle1::updateRoad's target speed (0x004A9969) is
-// Vehicle1RoadTargetSpeed. PARTIAL: Vehicle1's own road motion (its
-// updateRoadMotion with overtaking and lane changes) is not ported; on noRouteFound upstream calls the
-// head's sub_4AD93A (not ported: Vehicle1RailMove reports it); the level
+// Vehicle1::updateRoad (0x004A9969) is Vehicle1RoadTargetSpeed plus
+// Vehicle1RoadMove (vehicle1road.go). PARTIAL: on noRouteFound upstream calls
+// the head's sub_4AD93A (not ported: the moves report the flag); the level
 // crossing whistle is sound only.
 
 const (
