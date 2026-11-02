@@ -658,3 +658,49 @@ func TestSavedVehicle1RoadMove(t *testing.T) {
 		t.Error("no road Vehicle1 moved")
 	}
 }
+
+// Every saved land body sits exactly where sub_4AC255 puts it from its saved
+// bogies (bodies update after their bogies in a tick): the midpoint is
+// asserted; pitch and yaw are counted (see the open question in LOOP.md).
+func TestSavedBodiesPlacedFromBogies(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, pos, turned := 0, 0, 0
+	for _, tr := range trains {
+		if m.Entities[tr.Head].Mode > 1 {
+			continue
+		}
+		for _, car := range tr.Cars {
+			for _, cc := range car {
+				f, b, body := m.Entities[cc.Front], m.Entities[cc.Back], m.Entities[cc.Body]
+				if body.Mode > 1 { // air / water bodies are not placed by sub_4AC255
+					continue
+				}
+				n++
+				veh := r.Objects.Vehicles[body.ObjectID]
+				p := sim.PlaceBody(int32(f.PosX), int32(f.PosY), int32(f.PosZ), int32(b.PosX), int32(b.PosY), int32(b.PosZ), body.ObjectSpriteType, veh)
+				if p.X == int32(body.PosX) && p.Y == int32(body.PosY) && p.Z == int32(body.PosZ) {
+					pos++
+				} else if n-pos <= 3 {
+					t.Logf("body %d: at (%d,%d,%d), placement (%d,%d,%d)", body.ID, body.PosX, body.PosY, body.PosZ, p.X, p.Y, p.Z)
+				}
+				if p.Turned {
+					if p.Pitch == body.SpritePitch && p.Yaw == body.SpriteYaw {
+						turned++
+					} else {
+						// Open question (LOOP.md): some saved yaws differ by a step in
+						// both directions of accuracy; logged, not asserted, until explained.
+						t.Logf("body %d: pitch/yaw %d/%d, placement %d/%d", body.ID, body.SpritePitch, body.SpriteYaw, p.Pitch, p.Yaw)
+					}
+				}
+			}
+		}
+	}
+	t.Logf("bodies %d: position exact %d, pitch+yaw exact %d", n, pos, turned)
+	if pos != n {
+		t.Errorf("%d bodies not at their bogies' midpoint", n-pos)
+	}
+}
