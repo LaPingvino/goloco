@@ -291,10 +291,8 @@ type Language struct{ Locale, NativeName string }
 
 // Available is enumerateLanguages: every pack in the first language folder
 // that has any (./data/language, then ~/OpenLoco/data/language), sorted by
-// native name.
-// ASSUMPTION: upstream sorts the names after converting them to Locomotion's
-// character set; this sorts the UTF-8, so non-ASCII names may order
-// differently.
+// native name converted to Locomotion's characters (ToLoco: Č → C, CJK → ?),
+// sorted by that converted name.
 func Available() []Language {
 	for _, dir := range []string{filepath.Join("data", "language"), filepath.Join(os.Getenv("HOME"), "OpenLoco", "data", "language")} {
 		ents, err := os.ReadDir(dir)
@@ -313,7 +311,7 @@ func Available() []Language {
 			_, hdr := parse(f)
 			f.Close()
 			if hdr.locale != "" {
-				out = append(out, Language{Locale: hdr.locale, NativeName: hdr.nativeName})
+				out = append(out, Language{Locale: hdr.locale, NativeName: ToLoco(hdr.nativeName)})
 			}
 		}
 		if len(out) > 0 {
@@ -322,4 +320,29 @@ func Available() []Language {
 		}
 	}
 	return nil
+}
+
+// LocoChar is convertUnicodeToLoco for one rune: goloco's strings carry Loco
+// codes 32–255 as runes (e.g. 170 ▼), and text from outside (language packs,
+// file and object names) is Unicode — letters without a Loco glyph lose their
+// accent, others above U+00FF become their Loco code or '?'
+// (replacement_character). The four ASCII entries upstream turns into '?'
+// ({ | } ~) are left alone: goloco formats its strings itself.
+func LocoChar(r rune) int {
+	if l, ok := unicodeToLoco[r]; ok {
+		return int(l)
+	}
+	if r < 32 || r > 255 {
+		return '?'
+	}
+	return int(r)
+}
+
+// ToLoco is convertUnicodeToLoco for a string (runes of Loco codes).
+func ToLoco(s string) string {
+	out := make([]rune, 0, len(s))
+	for _, r := range s {
+		out = append(out, rune(LocoChar(r)))
+	}
+	return string(out)
 }

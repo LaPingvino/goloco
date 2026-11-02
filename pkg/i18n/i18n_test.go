@@ -108,3 +108,17 @@ func TestAvailable(t *testing.T) {
 		t.Error("en-GB missing")
 	}
 }
+
+// convertUnicodeToLoco: Č and š lose their accents, ą has a Loco glyph (221),
+// CJK becomes '?', Latin-1 stays.
+func TestToLoco(t *testing.T) {
+	if got := ToLoco("Čeština"); got != "Cestina" {
+		t.Errorf("Čeština → %q", got)
+	}
+	if got := ToLoco("日本語 Türkçe"); got != "??? Türkçe" {
+		t.Errorf("CJK → %q", got)
+	}
+	if LocoChar('ą') != 221 {
+		t.Errorf("ą → %d", LocoChar('ą'))
+	}
+}
