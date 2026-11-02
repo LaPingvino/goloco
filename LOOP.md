@@ -43,6 +43,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
   Blocked and move on — don't work around it.
 
 ## Queue (top = next)
+
+> NEXT (Joop 2026-11-02, "we got out of sync"): item 0 (responsiveness) comes first. 5.9f3 (town growth /
+> createRoad) is PAUSED where it stands (clear function done; clearRoad and createRoad's body next) until item 0
+> is done or Joop says otherwise — "continue the one in progress" does not apply to a paused item.
 0. [ ] **Responsiveness first** (Joop 2026-11-02: 'the system is a bit slow, so we might want to start optimizing
    etc, at least strongly prioritizing UI actions so menus feel smooth'). Before 5.9f3 resumes: (a) measure — per-frame
    time split (sim tick, scene draw, UI draw, sprite prewarm) on the wasm page (headless chromium + console timings)
