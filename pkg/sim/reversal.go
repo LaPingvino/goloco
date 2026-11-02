@@ -355,3 +355,103 @@ func (m *Map) Sub4A8DB7(tr Train, om *objects.ObjectManager) {
 		h.Status = StatusTravelling
 	}
 }
+
+const (
+	trainOneWaySignalTimeout = 1920 // kTrainOneWaySignalTimeout
+	trainTwoWaySignalTimeout = 640  // kTrainTwoWaySignalTimeout
+)
+
+// LandReverseFromSignal is landReverseFromSignal: reverse once Vehicle2 has
+// caught up with the head.
+func (m *Map) LandReverseFromSignal(tr Train, om *objects.ObjectManager) {
+	head, v1, v2 := &m.Entities[tr.Head], &m.Entities[tr.Veh1], &m.Entities[tr.Veh2]
+	v1.TimeAtSignal = 0
+	if head.RoutingHandle != v2.RoutingHandle || v2.SubPosition != head.SubPosition {
+		return
+	}
+	m.TryReverse(tr, om)
+}
+
+// OpposingTrainAtSignal is opposingTrainAtSignal: a train facing us on the
+// piece two ahead (on any of its connections).
+func (m *Map) OpposingTrainAtSignal(tr Train) bool {
+	head := &m.Entities[tr.Head]
+	e1, ok := TrackConnectionEnd(int32(head.TileX), int32(head.TileY), int32(head.TileBaseZ)*4, head.TrackAndDirection&TaDBasicMask)
+	if !ok {
+		return false
+	}
+	tc1 := m.TrackConnections(e1.X, e1.Y, e1.Z, e1.NextRotation, head.Owner, head.TrackType, 0, 0)
+	if len(tc1.Connections) != 1 {
+		return false
+	}
+	e2, _ := TrackConnectionEnd(e1.X, e1.Y, e1.Z, tc1.Connections[0]&TaDBasicMask)
+	tc2 := m.TrackConnections(e2.X, e2.Y, e2.Z, e2.NextRotation, head.Owner, head.TrackType, 0, 0)
+	trains, err := m.Trains()
+	if err != nil {
+		return false
+	}
+	for _, c := range tc2.Connections {
+		tad := c & TaDBasicMask
+		x, y, z := trackEndTile(e2.X, e2.Y, e2.Z, tad)
+		for _, t := range trains {
+			v2 := &m.Entities[t.Veh2]
+			if int32(v2.TileX) == x && int32(v2.TileY) == y && int32(v2.TileBaseZ) == z/4 && v2.TrackAndDirection == tad^4 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// trainNormalMovementUpdate's signal branches (al 3: waiting; al 2: no
+// route) — trainsReverseAtSignals is on (upstream's default).
+func (m *Map) trainSignalUpdate(tr Train, r Sub4ACEE7Result, om *objects.ObjectManager) {
+	head, v1, v2 := &m.Entities[tr.Head], &m.Entities[tr.Veh1], &m.Entities[tr.Veh2]
+	if r.Al != 3 {
+		v1.TimeAtSignal = 0
+		if r.Al == 2 {
+			if head.VehicleFlags&VehicleFlagManualControl != 0 && head.RoutingHandle == v2.RoutingHandle && v2.SubPosition == head.SubPosition {
+				return // crash (destroyTrain): PARTIAL
+			}
+			m.LandReverseFromSignal(tr, om)
+		}
+		return
+	}
+	if v2.RoutingHandle != head.RoutingHandle || v2.SubPosition != head.SubPosition {
+		return
+	}
+	head.Status = StatusWaitingAtSignal
+	v1.TimeAtSignal++
+	pass := func() { head.Var5C = 2; v1.Var48 |= flags48PassSignal }
+	if head.VehicleFlags&VehicleFlagManualControl != 0 {
+		pass()
+		return
+	}
+	if r.Flags&(1<<1) != 0 { // one-way
+		if v1.TimeAtSignal >= trainOneWaySignalTimeout {
+			if r.Flags&(1<<7) != 0 {
+				m.LandReverseFromSignal(tr, om)
+				return
+			}
+			if m.Sub4AC1C2(tr) {
+				pass()
+				return
+			}
+			m.LandReverseFromSignal(tr, om)
+		}
+		return
+	}
+	if v1.TimeAtSignal&0x3F == 0 {
+		if r.Flags&(1<<7) == 0 && m.Sub4AC1C2(tr) {
+			pass()
+			return
+		}
+		if m.OpposingTrainAtSignal(tr) {
+			m.LandReverseFromSignal(tr, om)
+			return
+		}
+	}
+	if v1.TimeAtSignal >= trainTwoWaySignalTimeout {
+		m.LandReverseFromSignal(tr, om)
+	}
+}
