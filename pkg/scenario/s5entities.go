@@ -258,9 +258,12 @@ type VehicleEntity struct {
 	JourneyStartY        int16
 	JourneyStartTicks    uint32 // VehicleHead 0x73
 	LastAverageSpeed     int16  // VehicleHead 0x77
-	CurrentSpeed         int32  // Vehicle2 currentSpeed (0x56): Speed32, mph << 16
-	Var44                uint16 // VehicleBogie var_44 (0x44): wheel roll accumulator (updateRoll)
-	WheelSlipping        uint8  // VehicleBogie wheelSlipping (0x5E): ticks, counts up
+	// Cargo is VehicleCargo at 0x48: VehicleBody primaryCargo / VehicleBogie
+	// secondaryCargo (offsets from the compiler).
+	Cargo         VehicleCargo
+	CurrentSpeed  int32  // Vehicle2 currentSpeed (0x56): Speed32, mph << 16
+	Var44         uint16 // VehicleBogie var_44 (0x44): wheel roll accumulator (updateRoll)
+	WheelSlipping uint8  // VehicleBogie wheelSlipping (0x5E): ticks, counts up
 	// Driving state (offsets from the compiler over S5Entity.h).
 	VehicleFlags     uint16 // EntityBase vehicleFlags (0x0C): unk_0 = 1, manualControl = 1<<6
 	ManualPower      int8   // VehicleHead manualPower (0x6E)
@@ -392,20 +395,22 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			JourneyStartY:           int16(binary.LittleEndian.Uint16(e[0x71:])),
 			JourneyStartTicks:       binary.LittleEndian.Uint32(e[0x73:]),
 			LastAverageSpeed:        int16(binary.LittleEndian.Uint16(e[0x77:])),
-			CurrentSpeed:            int32(binary.LittleEndian.Uint32(e[0x56:])),
-			Var44:                   binary.LittleEndian.Uint16(e[0x44:]),
-			WheelSlipping:           e[0x5E],
-			VehicleFlags:            binary.LittleEndian.Uint16(e[0x0C:]),
-			ManualPower:             int8(e[0x6E]),
-			TargetSpeed:             int16(binary.LittleEndian.Uint16(e[0x44:])),
-			TotalPower:              binary.LittleEndian.Uint16(e[0x50:]),
-			TotalWeight:             binary.LittleEndian.Uint16(e[0x52:]),
-			MotorState:              e[0x5A],
-			Var73:                   e[0x73],
-			Var3C:                   int32(binary.LittleEndian.Uint32(e[0x3C:])),
-			Var4F:                   int8(e[0x4F]),
-			MaxSpeed:                int16(binary.LittleEndian.Uint16(e[0x54:])),
-			RackRailMaxSpeed:        int16(binary.LittleEndian.Uint16(e[0x5C:])),
+			Cargo: VehicleCargo{AcceptedTypes: binary.LittleEndian.Uint32(e[0x48:]), Type: e[0x4C], MaxQty: e[0x4D],
+				TownFrom: binary.LittleEndian.Uint16(e[0x4E:]), NumDays: e[0x50], Qty: e[0x51]},
+			CurrentSpeed:     int32(binary.LittleEndian.Uint32(e[0x56:])),
+			Var44:            binary.LittleEndian.Uint16(e[0x44:]),
+			WheelSlipping:    e[0x5E],
+			VehicleFlags:     binary.LittleEndian.Uint16(e[0x0C:]),
+			ManualPower:      int8(e[0x6E]),
+			TargetSpeed:      int16(binary.LittleEndian.Uint16(e[0x44:])),
+			TotalPower:       binary.LittleEndian.Uint16(e[0x50:]),
+			TotalWeight:      binary.LittleEndian.Uint16(e[0x52:]),
+			MotorState:       e[0x5A],
+			Var73:            e[0x73],
+			Var3C:            int32(binary.LittleEndian.Uint32(e[0x3C:])),
+			Var4F:            int8(e[0x4F]),
+			MaxSpeed:         int16(binary.LittleEndian.Uint16(e[0x54:])),
+			RackRailMaxSpeed: int16(binary.LittleEndian.Uint16(e[0x5C:])),
 
 			ObjectID:         uint16(e[vbObjectId]) | uint16(e[vbObjectId+1])<<8,
 			ObjectSpriteType: e[vbObjectSpriteType],
@@ -423,4 +428,15 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 		result = append(result, ent)
 	}
 	return result
+}
+
+// VehicleCargo is S5 VehicleCargo (0xA bytes): townFrom is the station the
+// cargo was loaded at.
+type VehicleCargo struct {
+	AcceptedTypes uint32
+	Type          uint8 // 0xFF: none
+	MaxQty        uint8
+	TownFrom      uint16
+	NumDays       uint8
+	Qty           uint8
 }

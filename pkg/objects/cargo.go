@@ -17,7 +17,11 @@ type CargoObject struct {
 	CargoCategory         uint16 // 0x10
 	Flags                 uint8  // 0x12
 	NumPlatformVariations uint8  // 0x13: platform images after unitInlineSprite + kStationPlatformBegin
-	PaymentFactor         uint16 // 0x1B — the real fare basis (economy TODO)
+	PremiumDays           uint8  // 0x15
+	MaxNonPremiumDays     uint8  // 0x16
+	NonPremiumRate        uint16 // 0x17
+	PenaltyRate           uint16 // 0x19
+	PaymentFactor         uint16 // 0x1B — calculateDeliveredCargoPayment's basis
 	PaymentIndex          uint8  // 0x1D
 	UnitSize              uint8  // 0x1E
 
@@ -88,6 +92,10 @@ func ParseCargoObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Ca
 		CargoCategory:         binary.LittleEndian.Uint16(data[0x10:]),
 		Flags:                 data[0x12],
 		NumPlatformVariations: data[0x13],
+		PremiumDays:           data[0x15],
+		MaxNonPremiumDays:     data[0x16],
+		NonPremiumRate:        binary.LittleEndian.Uint16(data[0x17:]),
+		PenaltyRate:           binary.LittleEndian.Uint16(data[0x19:]),
 		PaymentFactor:         binary.LittleEndian.Uint16(data[0x1B:]),
 		PaymentIndex:          data[0x1D],
 		UnitSize:              data[0x1E],

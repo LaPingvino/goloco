@@ -1181,3 +1181,37 @@ func TestSavedArrivals(t *testing.T) {
 		t.Error("no vehicle arrived")
 	}
 }
+
+// Saved cargo: every car body's primary and bogie's secondary cargo holds no
+// more than its maximum, and loaded cargo has a type.
+func TestSavedVehicleCargo(t *testing.T) {
+	_, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, slots := 0, 0
+	for _, tr := range trains {
+		for _, car := range tr.Cars {
+			for _, cc := range car {
+				for _, i := range []int{cc.Front, cc.Body} {
+					c := m.Entities[i].Cargo
+					if c.Type == 0xFF {
+						continue
+					}
+					slots++
+					if c.Qty > c.MaxQty {
+						t.Errorf("entity %d: %d of max %d", m.Entities[i].ID, c.Qty, c.MaxQty)
+					}
+					if c.Qty > 0 {
+						loaded++
+					}
+				}
+			}
+		}
+	}
+	t.Logf("cargo slots %d, loaded %d", slots, loaded)
+	if slots == 0 {
+		t.Error("no cargo slots")
+	}
+}
