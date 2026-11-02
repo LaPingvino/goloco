@@ -53,19 +53,7 @@ func titleView(b testing.TB) (*Renderer, *sim.Map, View) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	om.ReorderLandObjects(sc.LandObjectOrder)
-	om.ReorderTreeObjects(sc.TreeObjectOrder)
-	om.ReorderBuildingObjects(sc.BuildingObjectOrder)
-	om.ReorderWallObjects(sc.WallObjectOrder)
-	om.ReorderRoadObjects(sc.RoadObjectOrder)
-	om.ReorderTrackObjects(sc.TrackObjectOrder)
-	om.ReorderTrainSignalObjects(sc.TrainSignalObjectOrder)
-	om.ReorderTrainStationObjects(sc.TrainStationObjectOrder)
-	om.ReorderIndustryObjects(sc.IndustryObjectOrder)
-	om.ReorderRoadStationObjects(sc.RoadStationObjectOrder)
-	om.ReorderAirportObjects(sc.AirportObjectOrder)
-	om.ReorderBridgeObjects(sc.BridgeObjectOrder)
-	om.ReorderDockObjects(sc.DockObjectOrder)
+	sim.ReorderObjectsForScenario(om, sc) // the game's own list (cargo and vehicles were missing here)
 	om.ResolveCliffEdges()
 	var m sim.Map
 	m.LoadScenario(sc)

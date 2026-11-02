@@ -660,8 +660,7 @@ func TestSavedVehicle1RoadMove(t *testing.T) {
 }
 
 // Every saved land body sits exactly where sub_4AC255 puts it from its saved
-// bogies (bodies update after their bogies in a tick): the midpoint is
-// asserted; pitch and yaw are counted (see the open question in LOOP.md).
+// bogies (bodies update after their bogies in a tick): midpoint, pitch, yaw.
 func TestSavedBodiesPlacedFromBogies(t *testing.T) {
 	r, m, _ := titleView(t)
 	trains, err := m.Trains()
@@ -691,9 +690,7 @@ func TestSavedBodiesPlacedFromBogies(t *testing.T) {
 					if p.Pitch == body.SpritePitch && p.Yaw == body.SpriteYaw {
 						turned++
 					} else {
-						// Open question (LOOP.md): some saved yaws differ by a step in
-						// both directions of accuracy; logged, not asserted, until explained.
-						t.Logf("body %d: pitch/yaw %d/%d, placement %d/%d", body.ID, body.SpritePitch, body.SpriteYaw, p.Pitch, p.Yaw)
+						t.Errorf("body %d: pitch/yaw %d/%d, placement %d/%d", body.ID, body.SpritePitch, body.SpriteYaw, p.Pitch, p.Yaw)
 					}
 				}
 			}
@@ -1246,9 +1243,7 @@ func TestSavedCompanies(t *testing.T) {
 }
 
 // updateCargoDistribution recomputed for every saved station from its saved
-// quantities and tile counts: equal to the saved densityPerTile, except a few
-// saved densities that are higher (open question in LOOP.md: title.dat comes
-// from vanilla, which may skip a recompute OpenLoco's port does); never lower.
+// quantities and tile counts gives back exactly the saved densityPerTile.
 func TestSavedStationCargoDistribution(t *testing.T) {
 	r, m, _ := titleView(t)
 	exact, higher, waiting := 0, 0, 0
@@ -1264,17 +1259,15 @@ func TestSavedStationCargoDistribution(t *testing.T) {
 			switch {
 			case got[c] == saved[c]:
 				exact++
-			case saved[c] > got[c]:
-				higher++
-				t.Logf("station %d cargo %d: saved %d, recomputed %d (qty %d, tiles %d)", id, c, saved[c], got[c], m.StationNames[id].Cargo[c].Quantity, m.StationNames[id].TileSize)
 			default:
-				t.Errorf("station %d cargo %d: recomputed %d above saved %d", id, c, got[c], saved[c])
+				higher++
+				t.Errorf("station %d cargo %d: recomputed %d, saved %d", id, c, got[c], saved[c])
 			}
 		}
 	}
-	t.Logf("waiting cargo stats %d: exact %d, saved higher %d", waiting, exact, higher)
-	if waiting == 0 || exact < waiting*9/10 {
-		t.Errorf("too few exact")
+	t.Logf("waiting cargo stats %d: exact %d, differing %d", waiting, exact, higher)
+	if waiting == 0 {
+		t.Error("no waiting cargo")
 	}
 }
 
@@ -1321,4 +1314,52 @@ func TestSavedTownsAndIndustries(t *testing.T) {
 		}
 	}
 	t.Logf("towns %d (with deliveries this month %d); industries %d", len(m.Towns), deliveredTowns, len(m.Industries))
+}
+
+// updateTrainProperties recomputed for every saved land vehicle gives back
+// its saved power, weight, max / rack speeds, accepted cargo, track mods
+// (var_53, var_49), fasterAroundCurves and each car's weight.
+func TestSavedTrainProperties(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, bad := 0, map[string]int{}
+	for _, tr := range trains {
+		h0, v10, v20 := m.Entities[tr.Head], m.Entities[tr.Veh1], m.Entities[tr.Veh2]
+		if h0.Mode > 1 {
+			continue
+		}
+		cars0 := map[int]uint16{}
+		for _, car := range tr.Cars {
+			cars0[car[0].Front] = m.Entities[car[0].Front].TotalWeight
+		}
+		m.UpdateTrainProperties(tr, r.Objects)
+		n++
+		h, v1, v2 := m.Entities[tr.Head], m.Entities[tr.Veh1], m.Entities[tr.Veh2]
+		check := func(name string, got, want int64) {
+			if got != want {
+				bad[name]++
+				if bad[name] <= 2 {
+					t.Logf("head %d %s: %d, saved %d", h.ID, name, got, want)
+				}
+			}
+		}
+		check("totalPower", int64(v2.TotalPower), int64(v20.TotalPower))
+		check("totalWeight", int64(v2.TotalWeight), int64(v20.TotalWeight))
+		check("maxSpeed", int64(v2.MaxSpeed), int64(v20.MaxSpeed))
+		check("rackRailMaxSpeed", int64(v2.RackRailMaxSpeed), int64(v20.RackRailMaxSpeed))
+		check("trainAcceptedCargoTypes", int64(h.TrainAcceptedCargoTypes), int64(h0.TrainAcceptedCargoTypes))
+		check("var_53", int64(h.HeadVar53), int64(h0.HeadVar53))
+		check("var_49", int64(v1.Var49), int64(v10.Var49))
+		check("fasterAroundCurves", int64(h.Flags38&(1<<5)), int64(h0.Flags38&(1<<5)))
+		for i, w := range cars0 {
+			check("totalCarWeight", int64(m.Entities[i].TotalWeight), int64(w))
+		}
+	}
+	t.Logf("land vehicles %d; mismatches by field %v", n, bad)
+	for f, c := range bad {
+		t.Errorf("%s differs for %d", f, c)
+	}
 }
