@@ -57,6 +57,7 @@ func titleView(b testing.TB) (*Renderer, *sim.Map, View) {
 	om.ResolveCliffEdges()
 	var m sim.Map
 	m.LoadScenario(sc)
+	m.TitleMode = true // title.dat runs as the title screen
 	r := New(g1, om)
 	cx, cy := paint.GameToScreen(paint.Pos3{X: 169*32 + 16, Y: 150*32 + 16}, 0)
 	return r, &m, View{X: cx - 400, Y: cy - 300, W: 800, H: 600}
