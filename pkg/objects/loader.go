@@ -63,6 +63,7 @@ type ObjectManager struct {
 	LevelCrossingObjects []*LevelCrossingObject      // all loaded level-crossing objects (slots 284-287)
 	BridgeObjects        []*BridgeObject             // all loaded bridge objects (slots 305-312)
 	CargoObjects         []*CargoObject              // cargo slot order (reordered per scenario)
+	CompetitorObjects    []*CompetitorObject         // competitor slot order (reordered per scenario)
 	CliffEdgeObjs        map[string]*CliffEdgeObject // keyed by upper-case name
 	WaterObj             *WaterObject                // the single water object (slot 170)
 	InterfaceSkin        *InterfaceSkinObject
@@ -245,6 +246,18 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		}
 		loaded.Object = cur
 		m.CurrencyObjects = append(m.CurrencyObjects, cur)
+
+	case ObjectTypeCompetitor:
+		var g1Loader G1Loader
+		if l, ok := m.G1File.(G1Loader); ok {
+			g1Loader = l
+		}
+		comp, err := ParseCompetitorObjectWithG1(header, decompressed, g1Loader)
+		if err != nil {
+			return fmt.Errorf("parsing competitor: %w", err)
+		}
+		loaded.Object = comp
+		m.CompetitorObjects = append(m.CompetitorObjects, comp)
 
 	case ObjectTypeCargo:
 		var g1Loader G1Loader
@@ -1474,4 +1487,21 @@ func (m *ObjectManager) AvailableCurrencies() []CurrencyChoice {
 		return out[i].DAT < out[j].DAT
 	})
 	return out
+}
+
+// ReorderCompetitorObjects rebuilds CompetitorObjects in the scenario's
+// competitor slot order (Company::competitorId indexes it).
+func (m *ObjectManager) ReorderCompetitorObjects(order []string) {
+	reordered := make([]*CompetitorObject, len(order))
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if obj := m.GetObject(strings.ToUpper(name)); obj != nil {
+			if c, ok := obj.Object.(*CompetitorObject); ok {
+				reordered[i] = c
+			}
+		}
+	}
+	m.CompetitorObjects = reordered
 }

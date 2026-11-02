@@ -19,6 +19,7 @@ func reorderScenarioObjects(om *objects.ObjectManager, sc *scenario.Scenario) {
 	}{
 		{sc.LandObjectOrder, om.ReorderLandObjects},
 		{sc.CargoObjectOrder, om.ReorderCargoObjects},
+		{sc.CompetitorObjectOrder, om.ReorderCompetitorObjects},
 		{sc.TreeObjectOrder, om.ReorderTreeObjects},
 		{sc.BuildingObjectOrder, om.ReorderBuildingObjects},
 		{sc.WallObjectOrder, om.ReorderWallObjects},
