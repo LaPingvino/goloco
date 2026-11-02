@@ -31,7 +31,13 @@ type Renderer struct {
 	rt   *gfx8.RenderTarget
 	rgba *image.RGBA
 
-	colourMaps map[int][]uint8  // GetPaletteMap(colour), which copies, cached
+	colourMaps map[int][]uint8 // GetPaletteMap(colour), which copies, cached
+	// Per-frame scratch kept for a frame without allocations: vehicle
+	// entities by tile (slices truncated, keys kept), two-colour palette maps
+	// (GetPaletteMap2 allocates), and the palette lookup handed to the painters.
+	entsByTile map[[2]int][]*scenario.VehicleEntity
+	pal2       map[[2]uint8][]uint8
+	pal2Fn     func(p, q uint8) []uint8
 	anims      map[any]anim     // per object: part animation frames and speeds
 	tunnels    map[string]int   // tunnel header name → tunnel image base
 	nbBuf      [4]paint.Surface // neighbour surfaces of the tile being painted
@@ -562,7 +568,13 @@ func (r *Renderer) entitiesByTile(m *sim.Map, v View, lw, lh int) map[[2]int][]*
 	if minScale < v.Zoom || len(m.Entities) == 0 {
 		return nil
 	}
-	out := map[[2]int][]*scenario.VehicleEntity{}
+	if r.entsByTile == nil {
+		r.entsByTile = map[[2]int][]*scenario.VehicleEntity{}
+	}
+	out := r.entsByTile
+	for k, l := range out {
+		out[k] = l[:0]
+	}
 	left, top := v.X, v.Y
 	right, bottom := left+lw, top+lh
 	for i := range m.Entities {
@@ -596,10 +608,7 @@ func (r *Renderer) paintVehicleEntity(s *paint.Session, m *sim.Map, e *scenario.
 	}
 	v := om.Vehicles[e.ObjectID]
 	s.SetSpritePosition(int(e.PosX), int(e.PosY))
-	pal := func(p, q uint8) []uint8 {
-		pm, _ := r.G1.GetPaletteMap2(int(p), int(q))
-		return pm
-	}
+	pal := r.palette2()
 	col := [2]uint8{e.ColourPrimary, e.ColourSecondary}
 	if e.EntityType == scenario.VehicleTypeBogie {
 		s.PaintBogie(paint.BogieEl{ObjectSpriteType: e.ObjectSpriteType, SpriteYaw: e.SpriteYaw, SpritePitch: e.SpritePitch,
@@ -621,4 +630,21 @@ func (r *Renderer) brakeLights(m *sim.Map, head uint16) bool {
 		}
 	}
 	return false
+}
+
+// palette2 returns the cached GetPaletteMap2 lookup (one closure, maps kept).
+func (r *Renderer) palette2() func(p, q uint8) []uint8 {
+	if r.pal2Fn == nil {
+		r.pal2 = map[[2]uint8][]uint8{}
+		r.pal2Fn = func(p, q uint8) []uint8 {
+			k := [2]uint8{p, q}
+			if pm, ok := r.pal2[k]; ok {
+				return pm
+			}
+			pm, _ := r.G1.GetPaletteMap2(int(p), int(q))
+			r.pal2[k] = pm
+			return pm
+		}
+	}
+	return r.pal2Fn
 }
