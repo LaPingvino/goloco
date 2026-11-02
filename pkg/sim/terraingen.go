@@ -249,7 +249,7 @@ func (m *Map) randomTerrainVariation(t *Tile, om *objects.ObjectManager) (uint8,
 		return 0, false
 	}
 	lo := om.LandObjects[t.TerrainIndex]
-	if lo.NumVariations == 0 || t.Slope != 0 {
+	if lo.NumVariations == 0 || t.Slope&0x1F != 0 { // slope(): the snow coverage bits excluded
 		return 0, true
 	}
 	r := uint16(m.Rng1.RandNext())
@@ -378,6 +378,66 @@ func (m *Map) GenerateTerrain(hm *HeightMap, patterns [32]uint8, seaLevel uint8,
 				hm.ResetMarkerFlags()
 				m.applySurfaceStyleToMarkedTiles(hm, s, true, om)
 			}
+		}
+	}
+}
+
+// Seasons (Scenario::Season): autumn, winter, spring, summer.
+const seasonWinter = 1
+
+// InitialiseSnowLine is initialiseSnowLine: the season for today's day of
+// the year from the climate (updateSeason), and that season's snow line.
+func (m *Map) InitialiseSnowLine(om *objects.ObjectManager) {
+	c := om.Climate
+	if c == nil {
+		return
+	}
+	day := CalcDate(m.CurrentDay).DayOfYear
+	season := c.FirstSeason
+	for _, l := range c.SeasonLength {
+		day -= int(l)
+		if day < 0 {
+			break
+		}
+		season = (season + 1) % 4 // nextSeason: autumn → winter → spring → summer → autumn
+	}
+	m.CurrentSeason = season
+	if season == seasonWinter {
+		m.CurrentSnowLine = c.WinterSnowLine
+	} else {
+		m.CurrentSnowLine = c.SummerSnowLine
+	}
+}
+
+// GenerateSurfaceVariation is generateSurfaceVariation: growth stages for
+// land that has them (0 under water above the surface, unless terrain 0;
+// else the last stage) and snow coverage from the snow line (0–5, kept in
+// the slope byte's top bits as upstream).
+func (m *Map) GenerateSurfaceVariation(om *objects.ObjectManager) {
+	snow := int(m.CurrentSnowLine) / microToSmallZStep
+	for y := 1; y <= m.Height-2; y++ {
+		for x := 1; x <= m.Width-2; x++ {
+			t := m.TileAt(x, y)
+			if !t.IsIndustrial && int(t.TerrainIndex) < len(om.LandObjects) && om.LandObjects[t.TerrainIndex] != nil {
+				lo := om.LandObjects[t.TerrainIndex]
+				if lo.Flags&objects.LandFlagHasGrowthStages != 0 {
+					set := false
+					if t.WaterLevel != 0 {
+						wz := int(t.WaterLevel) * microToSmallZStep
+						if t.Slope&0x1F != 0 {
+							wz -= 4
+						}
+						if wz > int(t.BaseZ) && t.TerrainIndex != 0 {
+							t.GrowthStage, set = 0, true
+						}
+					}
+					if !set {
+						t.GrowthStage = lo.NumGrowthStages - 1
+					}
+				}
+			}
+			cover := min(max(int(t.BaseZ)/microToSmallZStep+1-snow, 0), 5)
+			t.Slope = t.Slope&^0xE0 | uint8(cover)<<5
 		}
 	}
 }

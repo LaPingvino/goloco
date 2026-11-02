@@ -2220,3 +2220,26 @@ func TestTerrainStylesMatchUpstream(t *testing.T) {
 		}
 	}
 }
+
+// initialiseSnowLine's season (updateSeason from the climate object and the
+// day of the year) = the season the saves stored, in title.dat and the SV5;
+// the snow line it picks is the climate's for that season.
+func TestSeasonMatchesSaves(t *testing.T) {
+	for _, s := range []struct {
+		path  string
+		title bool
+	}{{"Data/title.dat", true}, {"Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false}} {
+		r, m, _ := saveView(t, s.path, s.title)
+		saved, savedLine := m.CurrentSeason, m.CurrentSnowLine
+		m.InitialiseSnowLine(r.Objects)
+		c := r.Objects.Climate
+		if c == nil {
+			t.Fatalf("%s: no climate object", s.path)
+		}
+		t.Logf("%s: day of year %d; climate %s (first %d, lengths %v, snow lines %d / %d); season %d, saved %d; snow line %d, saved %d",
+			s.path, sim.CalcDate(m.CurrentDay).DayOfYear, c.Name, c.FirstSeason, c.SeasonLength, c.WinterSnowLine, c.SummerSnowLine, m.CurrentSeason, saved, m.CurrentSnowLine, savedLine)
+		if m.CurrentSeason != saved {
+			t.Errorf("%s: season %d, saved %d", s.path, m.CurrentSeason, saved)
+		}
+	}
+}
