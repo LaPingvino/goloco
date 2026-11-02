@@ -17,7 +17,6 @@ import (
 
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"github.com/LaPingvino/goloco/pkg/audio"
-	"github.com/LaPingvino/goloco/pkg/game"
 	"github.com/LaPingvino/goloco/pkg/graphics"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -63,7 +62,7 @@ type Game struct {
 	diagOptionsDone     bool
 	diagBrowseDone      bool
 	titleSeq            *title.Sequence
-	gameState           *game.GameState
+	inGame              bool // a scenario / save is loaded into gameplay
 	dropdown            *ui.DropdownMenu
 	mouseX              int
 	mouseY              int
@@ -667,8 +666,7 @@ func (g *Game) Update() error {
 		for i := 0; i < g.speedMult; i++ {
 			g.w.Update()
 			g.w.TickVehicles() // gameplay: the ported vehicle tick
-			if g.gameState != nil {
-				g.gameState.Update()
+			if g.inGame {
 				g.checkObjective()
 			}
 		}
@@ -736,13 +734,11 @@ func (g *Game) handleTitleMenuClick(mx, my int) {
 
 // drawPlayerPanel draws the ported PlayerInfoPanel (bottom-left).
 func (g *Game) drawPlayerPanel(screen *ebiten.Image) {
-	if g.gameState == nil {
+	if !g.inGame {
 		return
 	}
-	st := ui.PlayerPanelState{Cash: int64(g.gameState.PlayerMoney)}
-	// The ported economy: the controlling company's own cash from the save
-	// (pkg/game's PlayerMoney is goloco's invented stand-in, kept only for
-	// what still reads it until it is retired).
+	var st ui.PlayerPanelState
+	// The controlling company's own cash (the save, kept by the ported sim).
 	if cash, ok := g.w.ControllingCompanyCash(); ok {
 		st.Cash = cash
 	}
@@ -760,7 +756,7 @@ func (g *Game) drawPlayerPanel(screen *ebiten.Image) {
 // drawTimePanel draws the ported TimePanel (bottom-right) and, when its date
 // is hovered, the date tooltip with the scenario objective.
 func (g *Game) drawTimePanel(screen *ebiten.Image) {
-	if g.gameState == nil {
+	if !g.inGame {
 		return
 	}
 	mp := &g.w.Map // getCurrentDay's date (pkg/sim dateTick)
@@ -1762,18 +1758,6 @@ func (g *Game) loadScenario(filePath string) error {
 	g.objective = sc.Objective
 	g.hasObjective = sc.HasObjective
 	g.gameWon = false
-	defer func() {
-		if g.gameState != nil && g.objMgr != nil {
-			g.gameState.FareFor = func(slot uint8) int64 {
-				if int(slot) < len(g.objMgr.CargoObjects) && g.objMgr.CargoObjects[slot] != nil {
-					// Authentic per-unit basis: cargo paymentFactor scaled down
-					// (upstream applies distance/time curves — TODO Economy/).
-					return int64(g.objMgr.CargoObjects[slot].PaymentFactor) / 4
-				}
-				return 0
-			}
-		}
-	}()
 
 	if g.objMgr != nil {
 		reorderScenarioObjects(g.objMgr, sc)
@@ -1799,8 +1783,7 @@ func (g *Game) loadScenario(filePath string) error {
 	g.loadingStyleFlip = !g.loadingStyleFlip
 	log.Printf("[Game] Queued %d sprites for background prewarm from %s", len(g.prewarmIDs), filePath)
 
-	mapW, mapH := g.w.GetMapSize()
-	g.gameState = game.NewGameState(mapW, mapH)
+	g.inGame = true
 
 	if g.titleSeq != nil {
 		g.titleSeq.Stop()
@@ -2275,7 +2258,7 @@ func main() {
 // company's challenge completed (Company::evaluateChallengeProgress).
 // OpenLoco reference: src/OpenLoco/src/Scenario/ScenarioObjective.cpp
 func (g *Game) checkObjective() {
-	if !g.hasObjective || g.gameWon || g.gameState == nil {
+	if !g.hasObjective || g.gameWon || !g.inGame {
 		return
 	}
 	// The player company's challengeCompleted flag (set by the sim's daily
