@@ -31,12 +31,6 @@ const (
 	// moneyFloatFadeTicks is the number of ticks over which the float fades out
 	// at the end of its life.
 	moneyFloatFadeTicks = 30
-
-	// passengerFare mirrors game.cargoFare(CargoSlotPass) — £6 per passenger
-	// unit. Duplicated here (pkg/world does not import pkg/game) purely to label
-	// the money float; the authoritative credit still runs through
-	// game.CreditDelivery via OnCargoDelivered.
-	passengerFare int64 = 6
 )
 
 // moneyFloat is one rising "+£N" income indicator anchored to a world tile.
@@ -48,7 +42,8 @@ type moneyFloat struct {
 }
 
 // SpawnMoneyFloat creates a rising "+£amount" float anchored above tile
-// (tileX,tileY) at height baseZ. Called from the delivery path in station.go.
+// (tileX,tileY) at height baseZ. Nothing spawns one since the invented
+// delivery loop was retired; upstream's MoneyEffect (on payment) is unported.
 func (w *World) SpawnMoneyFloat(tileX, tileY int, baseZ uint8, amount int64) {
 	if amount <= 0 {
 		return
