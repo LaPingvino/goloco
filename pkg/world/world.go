@@ -767,6 +767,16 @@ func (w *World) CenterOn(kind string) bool {
 			return len(t.Tracks) > 0
 		case "road", "roads":
 			return len(t.Roads) > 0
+		case "roadextra": // a road whose object has mods, with one set (e.g. tram wires)
+			for _, r := range t.Roads {
+				if r.Mods == 0 || w.renderer == nil || w.renderer.ObjMgr == nil {
+					continue
+				}
+				if ro := w.renderer.ObjMgr.GetRoadObjectByIndex(int(r.RoadObjectID)); ro != nil && len(ro.ModNames) > 0 {
+					return true
+				}
+			}
+			return false
 		case "crossing", "level crossing":
 			for _, r := range t.Roads {
 				if r.HasLevelCrossing {

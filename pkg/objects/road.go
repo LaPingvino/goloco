@@ -15,6 +15,8 @@ type RoadObject struct {
 	Image      uint32 // Base G1 sprite index (set after image table load)
 	TunnelName string // name of the embedded tunnel ObjectHeader (trackObj/roadObj->tunnel)
 	PaintStyle uint8  // Sprite style: 0=normal, 1=ballast/sleeper, 2=left-curve
+	// Flags (0x12) is RoadObjectFlags (anyRoadTypeCompatible = 1<<3: no mods drawn).
+	Flags uint16
 	// DisplayOffset (0x29) lowers this road's vehicles in inline pictures.
 	DisplayOffset uint8
 	NumMods       uint8 // Number of road extra/modifications (max 2)
@@ -96,6 +98,7 @@ func ParseRoadObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Roa
 		// buildCostFactor 0x04, costIndex 0x0A (offsets from the compiler)
 		BuildCostFactor: int16(uint16(data[0x04]) | uint16(data[0x05])<<8),
 		CostIndex:       data[0x0A],
+		Flags:           uint16(data[0x12]) | uint16(data[0x13])<<8,
 	}
 
 	offset := fixedSize
