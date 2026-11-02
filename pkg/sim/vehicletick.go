@@ -11,8 +11,9 @@ import (
 // Vehicle2 (speed, then sub_4A9F20 which trims the distances the rest use),
 // each car's front bogie, back bogie and body, then the tail.
 //
-// PARTIAL: the head's own logic (updateLand: route reservation, orders,
-// stations, signals, reversing — item 5.2–5.7) is not ported: the head
+// PARTIAL: the head's own logic (updateLand: route reservation, stations,
+// signals, reversing — item 5.3–5.7; of it only advanceToNextRoutableOrder
+// runs) is not ported: the head
 // reserves nothing, so vehicles drive along the routes already reserved in
 // the save and stop where those end. Air and water vehicles are not updated.
 // On noRouteFound upstream destroys the train or calls sub_4AD93A; here that
@@ -74,6 +75,10 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 	// VehicleHead::update: the distances (head logic: see PARTIAL).
 	d1, d2 := UpdateDistances(v2.CurrentSpeed)
 	d := VehicleUpdateDistances{D1: d1, D2: d2}
+	// landNormalMovementUpdate's first step, for a travelling head.
+	if head.Status == StatusTravelling {
+		m.AdvanceToNextRoutableOrder(head.OrderTableOffset, &head.CurrentOrder, head.SizeOfOrderTable)
+	}
 
 	// Vehicle1::update.
 	if road {
