@@ -466,14 +466,16 @@ func (sc *Scenario) parseTileElements(data []byte) {
 
 			case elementTypeBuilding:
 				be := BuildingElement{
-					ObjectID:      elem[4],
-					Rotation:      typeByte & 0x03,
-					SequenceIndex: elem[5] & 0x03,
-					Variation:     ((elem[7] & 0x07) << 2) | ((elem[6] >> 6) & 0x03),
-					Colour:        (elem[7] >> 3) & 0x1F,
-					IsConstructed: typeByte&0x80 != 0,
-					BaseZ:         baseZ,
-					ClearZ:        elem[3],
+					ObjectID:        elem[4],
+					Rotation:        typeByte & 0x03,
+					SequenceIndex:   elem[5] & 0x03,
+					Variation:       ((elem[7] & 0x07) << 2) | ((elem[6] >> 6) & 0x03),
+					Colour:          (elem[7] >> 3) & 0x1F,
+					IsConstructed:   typeByte&0x80 != 0,
+					BaseZ:           baseZ,
+					ClearZ:          elem[3],
+					Age:             elem[6] & 0x3F,
+					SectionProgress: elem[5] >> 5,
 				}
 				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeBuilding, Index: uint16(len(sc.Tiles[y][x].Buildings))})
 				sc.Tiles[y][x].Buildings = append(sc.Tiles[y][x].Buildings, be)

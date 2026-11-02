@@ -4,14 +4,18 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 
 // Buildings — a port of Paint/PaintBuilding.cpp paintBuilding /
 // paintBuildingBuilding, with the shadow (translucency
-// Colours::getShadow(orange)). PARTIAL: scaffolding and the under-construction
-// stages (age/unk5u are not parsed yet: unconstructed buildings draw as
-// constructed) and ghost buildings are not ported.
+// Colours::getShadow(orange)) and the under-construction stages (built
+// sections by age, the newest noise-masked). PARTIAL: scaffolding and ghost
+// buildings are not ported.
 
 // BuildingEl is what paintBuilding reads from a building element.
 type BuildingEl struct {
 	Rotation, SequenceIndex, Variation uint8
 	BaseZ, ClearZ                      uint8 // SmallZ
+	// Under construction (!IsConstructed): Age sections are built, the next
+	// one at SectionProgress (unk5u).
+	IsConstructed        bool
+	Age, SectionProgress uint8
 }
 
 // BuildingObj is what paintBuilding reads from a building object.
@@ -86,9 +90,36 @@ func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint
 		}
 		return Image{Sprite: sp, Op: op, PalMap: colourMap}
 	}
-	// Parts, bottom to top (constructed: numSections = 0xF0 → all parts).
+	// paintBuildingBuilding: under construction the clock stops and only the
+	// built sections (age) draw, the newest with the noise mask of its progress;
+	// constructed, numSections = 0xF0 (int8 −16: every part).
+	numSections, sectionProgress := 0xF0, 0
+	if !el.IsConstructed {
+		ticks = 0
+		numSections, sectionProgress = int(el.Age), int(el.SectionProgress)
+	}
+	totalSectionHeight := 0 // uint8: the built height (≥ 1 once counting stops)
+	if numSections != 0xF0 {
+		sc := int(int8(uint8(numSections)))
+		for _, part := range obj.Parts {
+			if int(part) < len(obj.PartHeights) {
+				totalSectionHeight = (totalSectionHeight + int(obj.PartHeights[part])) & 0xFF
+			}
+			sc--
+			if sc == -1 {
+				totalSectionHeight = max(1, totalSectionHeight)
+				break
+			}
+		}
+	}
+	// PARTIAL: the scaffolding (back before the parts, front and roof after)
+	// is not drawn yet.
+	sectionCount := int(int8(uint8(numSections)))
 	off := imgOff
 	for _, part := range obj.Parts {
+		if sectionCount == -1 {
+			break
+		}
 		p := int(part)
 		if p < len(obj.PartAnimFrames) {
 			frameMask := int(obj.PartAnimFrames[p]) - 1
@@ -100,13 +131,23 @@ func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint
 			p += frameMask & tick
 		}
 		if i := p*4 + obj.Image + int(rotation); sprite(i) != nil {
-			s.AddAsChild(img(i), off, bbOff, bbSz)
+			im := img(i)
+			if sectionCount == 0 { // withNoiseMask((sectionProgress + 1) & 7); 0 = none
+				if n := (sectionProgress + 1) & 7; n != 0 {
+					im.Noise = sprite(3478 + n)
+				}
+			}
+			s.AddAsChild(im, off, bbOff, bbSz)
 		}
 		if p < len(obj.PartHeights) {
 			off.Z += int(obj.PartHeights[p])
 		}
+		sectionCount--
 	}
-	// Elevators (totalSectionHeight == 0 when constructed).
+	// Elevators, only once nothing is left to build (totalSectionHeight == 0).
+	if totalSectionHeight != 0 {
+		return
+	}
 	for a, seq := range obj.ElevatorSequences {
 		if len(seq) == 0 {
 			continue

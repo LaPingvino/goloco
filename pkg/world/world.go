@@ -796,6 +796,13 @@ func (w *World) CenterOn(kind string) bool {
 				}
 			}
 			return false
+		case "construction": // a building under construction
+			for _, b := range t.Buildings {
+				if !b.IsConstructed {
+					return true
+				}
+			}
+			return false
 		case "crossing", "level crossing":
 			for _, r := range t.Roads {
 				if r.HasLevelCrossing {
