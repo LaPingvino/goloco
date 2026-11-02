@@ -8,7 +8,8 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // roadNormalMovementUpdate.
 //
 // Approaching runs landTryBeginUnloading (arrival.go), unloading
-// updateUnloadCargo (unload.go). PARTIAL (item 5.6/5.7): loading, crashed, stoppingUpdate (command stop, breakdowns), manual
+// updateUnloadCargo (unload.go), loading landLoadingUpdate (load.go).
+// PARTIAL (item 5.6): crashed, stoppingUpdate (command stop, breakdowns), manual
 // control's sub_4A8C81, the road signal timeouts (categoriseTimeElapsed,
 // sub_4A8DB7, tryReverse) and the rail signal-wait reversing
 // (timeAtSignal, landReverseFromSignal, sub_4AC1C2) are not ported: a head in
@@ -39,7 +40,10 @@ func (m *Map) updateHead(tr Train, unkDistance1 int32, om *objects.ObjectManager
 	case StatusUnloading:
 		m.UpdateUnloadCargo(tr, om) // unload.go
 		return
-	case StatusLoading, StatusCrashed, StatusStuck:
+	case StatusLoading:
+		m.LandLoadingUpdate(tr, om) // load.go
+		return
+	case StatusCrashed, StatusStuck:
 		return // PARTIAL: see the file comment
 	}
 	head.Status = StatusTravelling

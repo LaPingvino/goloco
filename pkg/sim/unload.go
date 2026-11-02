@@ -12,7 +12,7 @@ import (
 // PARTIAL: updateLastIncomeStats (Vehicle1 lastIncome, the vehicle window's
 // statistics), the workersCelebrate / citizensCelebrate messages, the AI
 // thought revenue (aiThoughts[].var_80), Vehicle2 curMonthRevenue, the
-// money effect and income sound, and beginLoading (5.7f) are not ported.
+// money effect and income sound are not ported.
 
 const (
 	stationIDNull         = 0xFFFF
@@ -214,5 +214,5 @@ func (m *Map) UpdateUnloadCargo(tr Train, om *objects.ObjectManager) {
 		m.Entities[tr.Veh1].Var48 |= 1 << 2 // Flags48::flag2
 		m.ApplyPaymentToCompany(head.Owner, -profit, head.VehicleType*2)
 	}
-	// beginLoading: 5.7f (PARTIAL) — the head stays unloading until then.
+	m.BeginLoading(tr)
 }
