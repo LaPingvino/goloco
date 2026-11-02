@@ -353,12 +353,18 @@ func (w *World) VehicleListRows() []VehicleListRow {
 // string; "" if unknown).
 func (w *World) ControllingCompany() (int, string) {
 	id := int(w.Map.ControllingCompany)
-	if id < len(w.CompanyNames) {
+	return id, w.CompanyName(id)
+}
+
+// CompanyName is a company's name (a user string, or StringIds 2 "New
+// Company"); "" if unknown.
+func (w *World) CompanyName(id int) string {
+	if id >= 0 && id < len(w.CompanyNames) {
 		if n := w.CompanyNames[id]; n >= 0x8000 && int(n-0x8000) < len(w.UserStrings) {
-			return id, w.UserStrings[n-0x8000]
-		} else if n == 2 { // StringIds 2: "New Company{POP16}" (en-GB)
-			return id, "New Company"
+			return w.UserStrings[n-0x8000]
+		} else if n == 2 {
+			return "New Company"
 		}
 	}
-	return id, ""
+	return ""
 }
