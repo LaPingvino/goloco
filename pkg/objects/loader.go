@@ -2,6 +2,7 @@ package objects
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
@@ -65,6 +66,7 @@ type ObjectManager struct {
 	CargoObjects         []*CargoObject              // cargo slot order (reordered per scenario)
 	CompetitorObjects    []*CompetitorObject         // competitor slot order (reordered per scenario)
 	StreetLightImage     uint32                      // the StreetLight object's image (0: none loaded)
+	Scaffolding          *ScaffoldingObject          // the Scaffolding object (nil: none loaded)
 	CliffEdgeObjs        map[string]*CliffEdgeObject // keyed by upper-case name
 	WaterObj             *WaterObject                // the single water object (slot 170)
 	InterfaceSkin        *InterfaceSkinObject
@@ -402,6 +404,21 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 			m.extras = map[string]*ExtraObject{}
 		}
 		m.extras[upperName(header.GetName())] = ex
+
+	case ObjectTypeScaffolding: // ScaffoldingObject::load: name, then the image table (image = its base)
+		if len(decompressed) >= 0x12 {
+			sc := &ScaffoldingObject{}
+			for i := range 3 {
+				sc.SegmentHeights[i] = binary.LittleEndian.Uint16(decompressed[0x06+2*i:])
+			}
+			off, _ := walkStringTableLang(decompressed, 0x12)
+			if l, ok := m.G1File.(G1Loader); ok && off < len(decompressed) {
+				if res, err := l.LoadImageTable(decompressed[off:]); err == nil {
+					sc.Image = res.ImageOffset
+				}
+			}
+			m.Scaffolding = sc
+		}
 
 	case ObjectTypeStreetLight: // StreetLightObject::load: name, then the image table (image = its base)
 		if len(decompressed) >= 0xC {
@@ -1519,4 +1536,11 @@ func (m *ObjectManager) ReorderCompetitorObjects(order []string) {
 		}
 	}
 	m.CompetitorObjects = reordered
+}
+
+// ScaffoldingObject is ScaffoldingObject.h: its image base and the segment
+// height per scaffolding type.
+type ScaffoldingObject struct {
+	Image          uint32
+	SegmentHeights [3]uint16
 }

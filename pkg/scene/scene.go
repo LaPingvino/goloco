@@ -39,7 +39,8 @@ type Renderer struct {
 	entsByTile map[[2]int][]*scenario.VehicleEntity
 	// station cargo inputs, kept (stationCargo)
 	cargoPlatforms map[int]*paint.CargoPlatform
-	cargoSlots     map[string]int // cargoSlot cache (GetName allocates)
+	cargoSlots     map[string]int               // cargoSlot cache (GetName allocates)
+	scaffolds      map[[2]uint8]*paint.Scaffold // scaffold inputs, kept
 	stationCargos  map[stationCargoKey]*paint.StationCargo
 	pal2           map[[2]uint8][]uint8
 	pal2Fn         func(p, q uint8) []uint8
@@ -381,7 +382,8 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			IsConstructed: b.IsConstructed, Age: b.Age, SectionProgress: b.SectionProgress},
 			paint.BuildingObj{Image: int(bo.ImageOffset), NumParts: int(bo.NumParts), Parts: bo.VariationParts[b.Variation], PartHeights: bo.PartHeights,
 				PartAnimFrames: frames, PartAnimSpeed: speeds, ElevatorSequences: bo.ElevatorSequences, LargeTile: bo.HasFlags(objects.BuildingFlagLargeTile),
-				Shadow: r.shadow(s.Zoom, bo.HasFlags(objects.BuildingFlagHasShadows), (int(bo.NumParts)+int(bo.NumElevatorSequences)+int(b.Variation))*4+int(bo.ImageOffset), colourOrange, false)},
+				Shadow:   r.shadow(s.Zoom, bo.HasFlags(objects.BuildingFlagHasShadows), (int(bo.NumParts)+int(bo.NumElevatorSequences)+int(b.Variation))*4+int(bo.ImageOffset), colourOrange, false),
+				Scaffold: r.scaffold(bo.ScaffoldingSegmentType, bo.ScaffoldingColour)},
 			cmap, x, y, v.Ticks, sprite)
 	case scenario.KindIndustry:
 		ie := t.Industries[ref.Index]
@@ -810,4 +812,23 @@ func (r *Renderer) findCargoSlot(name string) int {
 		}
 	}
 	return 0
+}
+
+// scaffold is the Scaffolding object's input for a building or industry of
+// this scaffolding type (0xFF: none) and colour; kept per (type, colour).
+func (r *Renderer) scaffold(segType, colour uint8) *paint.Scaffold {
+	so := r.Objects.Scaffolding
+	if so == nil || segType >= 3 || so.Image == 0 {
+		return nil
+	}
+	k := [2]uint8{segType, colour}
+	if sc, ok := r.scaffolds[k]; ok {
+		return sc
+	}
+	if r.scaffolds == nil {
+		r.scaffolds = map[[2]uint8]*paint.Scaffold{}
+	}
+	sc := &paint.Scaffold{Image: int(so.Image), Type: int(segType), SegmentHeight: int(so.SegmentHeights[segType]), Colour: r.colourMap(int(colour))}
+	r.scaffolds[k] = sc
+	return sc
 }
