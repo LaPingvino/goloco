@@ -303,6 +303,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.StationOwners = parseStationOwners(gameState)
 		sc.UserStrings = parseUserStrings(gameState)
 		sc.StationNames = parseStationNames(gameState)
+		sc.StationCargoDensity = parseStationCargoDensity(gameState)
 
 		// Towns live inside the GameState chunk for saved games.
 		sc.Towns = parseTownsFromGameState(gameState)
@@ -1393,4 +1394,25 @@ func parseIndustryObjectIDs(gs []byte) []uint8 {
 		ids[i] = gs[off+i*industryRecordSize+industryObjectIDOffset]
 	}
 	return ids
+}
+
+// parseStationCargoDensity returns, per station id, its cargoStats[]
+// densityPerTile (S5::Station cargoStats at 0x2E, 32 × 13 bytes, density at
+// +0xC; offsets from the compiler) — what paintStationCargo draws.
+func parseStationCargoDensity(gs []byte) [][32]uint8 {
+	off := stationsGameStateOffset
+	if len(gs) == GameStateSizeType2 {
+		off = stationsGameStateOffsetType2
+	}
+	if len(gs) < off+stationMaxCount*stationRecordSize {
+		return nil
+	}
+	out := make([][32]uint8, stationMaxCount)
+	for i := range out {
+		rec := gs[off+i*stationRecordSize:]
+		for c := range 32 {
+			out[i][c] = rec[0x2E+c*13+0xC]
+		}
+	}
+	return out
 }

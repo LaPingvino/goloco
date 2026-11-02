@@ -27,6 +27,10 @@ type TrainStationObject struct {
 	PaintStyle                 uint8
 	Flags                      uint8 // TrainStationFlags: bit0=recolourable, bit1=noCanopy
 
+	// CargoOffsets is getCargoOffsets [rotation][nibble]: the cargo positions
+	// on a platform (two per entry), from the cargoOffsetBytes blobs.
+	CargoOffsets [4][4][][2][3]int
+
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
 	// Preview images:  ImageOffset+0 (base), ImageOffset+1 (windows overlay).
 	// Sequence images: SequenceImageOffsets[seqIdx] + Style0::{sprite constant}
@@ -121,11 +125,16 @@ func ParseTrainStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loade
 			if offset >= len(data) {
 				return nil, fmt.Errorf("train station object: blob %d/%d out of data", blobSet, i)
 			}
-			offset++ // z byte
+			z := int(data[offset]) // uint8 z
+			offset++               // z byte
 			for offset+4 <= len(data) {
 				if data[offset] == 0xFF { // int8(-1) terminator
 					offset += 4
 					break
+				}
+				if blobSet == 0 { // getCargoOffsets: (x, y, z) and (x', y', z) per entry
+					obj.CargoOffsets[i/4][i%4] = append(obj.CargoOffsets[i/4][i%4], [2][3]int{
+						{int(int8(data[offset])), int(int8(data[offset+1])), z}, {int(int8(data[offset+2])), int(int8(data[offset+3])), z}})
 				}
 				offset += 4 // x, y, x, y
 			}

@@ -12,13 +12,14 @@ import (
 type CargoObject struct {
 	Header *ObjectHeader
 
-	UnitWeight        uint16 // 0x02
-	CargoTransferTime uint16 // 0x04
-	CargoCategory     uint16 // 0x10
-	Flags             uint8  // 0x12
-	PaymentFactor     uint16 // 0x1B — the real fare basis (economy TODO)
-	PaymentIndex      uint8  // 0x1D
-	UnitSize          uint8  // 0x1E
+	UnitWeight            uint16 // 0x02
+	CargoTransferTime     uint16 // 0x04
+	CargoCategory         uint16 // 0x10
+	Flags                 uint8  // 0x12
+	NumPlatformVariations uint8  // 0x13: platform images after unitInlineSprite + kStationPlatformBegin
+	PaymentFactor         uint16 // 0x1B — the real fare basis (economy TODO)
+	PaymentIndex          uint8  // 0x1D
+	UnitSize              uint8  // 0x1E
 
 	// Localized display strings picked from the DAT string tables using
 	// SelectedLocoLanguage (falling back to English).
@@ -81,14 +82,15 @@ func ParseCargoObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Ca
 		return nil, fmt.Errorf("cargo object too small: %d bytes", len(data))
 	}
 	c := &CargoObject{
-		Header:            header,
-		UnitWeight:        binary.LittleEndian.Uint16(data[0x02:]),
-		CargoTransferTime: binary.LittleEndian.Uint16(data[0x04:]),
-		CargoCategory:     binary.LittleEndian.Uint16(data[0x10:]),
-		Flags:             data[0x12],
-		PaymentFactor:     binary.LittleEndian.Uint16(data[0x1B:]),
-		PaymentIndex:      data[0x1D],
-		UnitSize:          data[0x1E],
+		Header:                header,
+		UnitWeight:            binary.LittleEndian.Uint16(data[0x02:]),
+		CargoTransferTime:     binary.LittleEndian.Uint16(data[0x04:]),
+		CargoCategory:         binary.LittleEndian.Uint16(data[0x10:]),
+		Flags:                 data[0x12],
+		NumPlatformVariations: data[0x13],
+		PaymentFactor:         binary.LittleEndian.Uint16(data[0x1B:]),
+		PaymentIndex:          data[0x1D],
+		UnitSize:              data[0x1E],
 	}
 
 	offset := fixedSize
