@@ -29,13 +29,16 @@ internal. Size: S (one tick), M (2–4 ticks), L (a series).
 | pkg/world/world.go:2767 | Vehicles drawn in a post-tile pass ("depth approximation") | Paint/ — vehicles go through the same paint session and sort as everything else (addToPlotList, quadrant sort) | H | M |
 | pkg/world/world.go:1590 | Buildings: first variation's parts stacked | Paint/PaintBuilding.cpp — the tile's variation and part heights | M | S |
 | pkg/world/world.go:1611 | Buildings under construction skipped | PaintBuilding draws construction stages | M | S |
-| pkg/world/world.go:2615 | Industry fields not drawn | Paint/PaintIndustry.cpp via IndustryObject | M | S |
+| pkg/world/world.go:2615 (old renderer only; the ported default draws them) | Industry fields not drawn | Paint/PaintIndustry.cpp via IndustryObject | M | S |
 | pkg/world/world.go:1541 | Viewport rotation fixed at 0 | Rotation 0–3 throughout the paint code | M | M |
 | pkg/world/track_sprites.go:20–26 | Large curves, small-curve slopes and pieces 20–25 TODO | Paint/PaintTrack.cpp — every track piece | H | M |
 | pkg/objects/vehicle.go:433 | Second half of rotation frames not mirrored | Vehicle sprite selection in VehicleDraw.cpp | M | S |
 | pkg/ui/title_menu.go:199–204 | Globe drawn as a square "for now" | The animated globe sprites in the title menu window | L | S |
 | pkg/ui/toolbar.go:94, 219 | Placeholder positions and colours | Toolbar layout and colours from the InterfaceSkin object | L | S |
 | pkg/graphics/drawing_context.go:199 | Palette "heuristic" | Palette maps (Gfx/PaletteMap) | M | S |
+| pkg/scene, pkg/sim (2026-11-02 survey) | Effect entities not drawn or created: smoke, steam, sparks (VehicleBody::animationUpdate), explosions, splash, the money / income text | Paint/PaintEffectEntity.cpp, Entities/Effects | M | M |
+| pkg/scene (2026-11-02 survey) | Tile decorations (PaintTileDecorations.cpp: construction ghosts, selection / catchment highlights) not painted by the ported renderer | Paint/PaintTileDecorations.cpp | M | M |
+| pkg/paint/bridgedata_gen.go (UPSTREAM SLIP, kept: upstream is the truth) | bridgeShadowQuarter3Slope10–18 = 3617–3625 as upstream ImageIds.h has them — those ids are the intro logos; the sequence should continue 3717–3725 (cliff masks start at 3726). goloco draws what upstream draws | report upstream (OpenLoco ImageIds.h) | L | S |
 
 | pkg/world/world.go paintWater + pass-2 blend | FIXED 2026-11-01 (pkg/palblend, zoom 0; zoom > 0 still the old opaque remap). Was: water +35 remapped to an opaque flat colour; blend pass lerps the terrain toward one tint | Blended image without primary = mask: each covered destination pixel is mapped through the palette map (water: image +41) — Graphics/DrawSprite.cpp getDrawBlendOp | H | S |
 
