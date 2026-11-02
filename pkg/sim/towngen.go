@@ -8,9 +8,10 @@ import (
 )
 
 // New towns — GameCommands/Town/CreateTown.cpp's placement (item 5.9f).
-// PARTIAL: TownManager::initialiseTown (the town record, its name), the
-// growth (Town::grow eight rounds of size² with the year moved back 51 years),
-// recalculateSize — so the generator does not place towns yet.
+// initialiseTown (the record, its name) and recalculateSize are ported below
+// and in towngrow.go.
+// PARTIAL: the growth (Town::grow, eight rounds of size² with the year moved
+// back 51 years) — so the generator does not place towns yet.
 
 // countNearbyWaterTiles is TileManager::countNearbyWaterTiles: water
 // surfaces on every other tile (a checkerboard keyed to the area's corner) of
@@ -247,10 +248,11 @@ func (m *Map) ClosestTownAndDensity(x, y int32) (idx int, density uint8, ok bool
 	return idx, uint8(min(4-unk, 3)), true
 }
 
-// updateTownInfo is TownManager::updateTownInfo without the rating branch
-// (rating 0 here; the company rating path comes with the game commands): the
-// closest town gains population, capacity and buildings.
-func (m *Map) updateTownInfo(x, y int32, population, capacity uint32, numBuildings int16) int {
+// updateTownInfo is TownManager::updateTownInfo: the closest town gains
+// population (uint32: a negative amount wraps, as upstream subtracts),
+// capacity and buildings, and — for a company other than the neutral one,
+// outside the editor — the rating change (Town::adjustCompanyRating).
+func (m *Map) updateTownInfo(x, y int32, population, capacity uint32, rating, numBuildings int16, c *Cmd) int {
 	i, _, ok := m.ClosestTownAndDensity(x, y)
 	if !ok {
 		return -1
@@ -258,10 +260,21 @@ func (m *Map) updateTownInfo(x, y int32, population, capacity uint32, numBuildin
 	tw := &m.Towns[i]
 	tw.PopulationCapacity += capacity
 	tw.Population += population
+	if rating != 0 && c != nil && c.Company != CompanyNeutral && !c.Editor {
+		m.adjustCompanyRating(i, c.Company, int(rating))
+	}
 	if int32(tw.NumBuildings)+int32(numBuildings) <= 32767 {
 		tw.NumBuildings += numBuildings
 	}
 	return i
+}
+
+// adjustCompanyRating is Town::adjustCompanyRating: the company's rating
+// moved and clamped to −1000…1000, its bit set in companiesWithRating.
+func (m *Map) adjustCompanyRating(i int, company uint8, amount int) {
+	tw := &m.Towns[i]
+	tw.CompaniesWithRating |= 1 << company
+	tw.CompanyRatings[company] = int16(min(max(int(tw.CompanyRatings[company])+amount, -1000), 1000))
 }
 
 // ResetBuildingsInfluence is TownManager::resetBuildingsInfluence: every
@@ -297,7 +310,7 @@ func (m *Map) ResetBuildingsInfluence(om *objects.ObjectManager) {
 				if b.IsConstructed {
 					pop = produced
 				}
-				if i := m.updateTownInfo(int32(tx*tileSize), int32(ty*tileSize), pop, produced, 1); i >= 0 && obj.TownAmenityCategory != 0xFF {
+				if i := m.updateTownInfo(int32(tx*tileSize), int32(ty*tileSize), pop, produced, 0, 1, nil); i >= 0 && obj.TownAmenityCategory != 0xFF {
 					m.Towns[i].AmenityCounts[obj.TownAmenityCategory&7]++
 				}
 			}

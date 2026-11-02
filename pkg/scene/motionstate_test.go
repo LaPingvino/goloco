@@ -3,6 +3,7 @@ package scene
 import (
 	"fmt"
 	"github.com/LaPingvino/goloco/pkg/core"
+	"github.com/LaPingvino/goloco/pkg/objects"
 	"os"
 	"strings"
 	"testing"
@@ -2633,4 +2634,56 @@ func TestClearTreeCollision(t *testing.T) {
 			t.Error("company apply drew nothing from gPrng2")
 		}
 	}
+}
+
+// The removeBuilding command on the SV5's first town building (first tile,
+// not misc): a query costs the clear cost and leaves it; applied by the
+// neutral company it goes from all its tiles, and its town loses one
+// building, its capacity (and population, built) and its amenity — exactly
+// what resetBuildingsInfluence then recounts; a company with a negative
+// rating there is refused.
+func TestRemoveBuilding(t *testing.T) {
+	r, m, _ := saveView(t, "Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false)
+	for ty := 1; ty < m.Height-1; ty++ {
+		for tx := 1; tx < m.Width-1; tx++ {
+			tl := m.TileAt(tx, ty)
+			for _, ref := range tl.Order {
+				if ref.Kind != scenario.KindBuilding {
+					continue
+				}
+				b := tl.Buildings[ref.Index]
+				obj := r.Objects.GetBuildingObjectByIndex(int(b.ObjectID))
+				if b.SequenceIndex != 0 || b.IsMisc || obj == nil || obj.Flags&objects.BuildingFlagIndestructible != 0 {
+					continue
+				}
+				x, y, z := int32(tx*32), int32(ty*32), int32(b.BaseZ)*4
+				ti, _, _ := m.ClosestTownAndDensity(x, y)
+				before := m.Towns[ti]
+				c := &sim.Cmd{Company: sim.CompanyNeutral, Rng2: core.NewPrngSeed(1, 2), Objects: r.Objects}
+				cost, ok := m.RemoveBuilding(c, x, y, z, 0)
+				if !ok || cost <= 0 || len(tl.Buildings) == 0 {
+					t.Fatalf("query: ok %v cost %d", ok, cost)
+				}
+				m.Towns[ti].CompanyRatings[0] = -5
+				if _, ok := m.RemoveBuilding(&sim.Cmd{Company: 0, Objects: r.Objects}, x, y, z, sim.CmdApply); ok {
+					t.Error("negative rating: removal allowed")
+				}
+				m.Towns[ti].CompanyRatings[0] = before.CompanyRatings[0]
+				nb := len(tl.Buildings)
+				cost, ok = m.RemoveBuilding(c, x, y, z, sim.CmdApply)
+				after := m.Towns[ti]
+				t.Logf("building %q at (%d,%d,%d): cost %d; town %d buildings %d → %d, capacity %d → %d, population %d → %d", obj.Name, tx, ty, z, cost, before.ID, before.NumBuildings, after.NumBuildings, before.PopulationCapacity, after.PopulationCapacity, before.Population, after.Population)
+				if !ok || len(tl.Buildings) != nb-1 || after.NumBuildings != before.NumBuildings-1 || after.PopulationCapacity != before.PopulationCapacity-uint32(obj.ProducedQuantity[0]) {
+					t.Error("apply")
+				}
+				m.ResetBuildingsInfluence(r.Objects)
+				re := m.Towns[ti]
+				if re.NumBuildings != after.NumBuildings || re.PopulationCapacity != after.PopulationCapacity || re.Population != after.Population || re.AmenityCounts != after.AmenityCounts {
+					t.Errorf("recount differs: %+v vs %+v", re.NumBuildings, after.NumBuildings)
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("no building")
 }
