@@ -12,8 +12,8 @@ import (
 // PARTIAL: of dateTick only the day itself, VehicleManager::updateDaily and
 // the player companies' challenge progress run; StationManager /
 // IndustryManager / MessageManager daily updates, the snow line, the monthly,
-// quarterly and yearly updates (of the monthly ones only monthsInChallenge
-// and VehicleManager::updateMonthly run), and the rest of
+// quarterly and yearly updates (of the monthly ones monthsInChallenge,
+// CompanyManager::updateMonthly1 and VehicleManager::updateMonthly run), and the rest of
 // Company::updateDaily (emotions, AI logic, jail) are not ported.
 // VehicleHead::updateDaily: the stopped-road-vehicle restart (a game
 // command) and selling crashed AI vehicles are not ported.
@@ -75,7 +75,9 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 	m.CurrentYear, m.CurrentMonth, m.CurrentDayOfMonth = uint16(today.Year), uint8(today.Month), uint8(today.Day)
 	if today.Month != yesterday.Month { // end of every month
 		m.ObjectiveMonthsInChallenge++
-		// TownManager / IndustryManager / CompanyManager monthly, headquarters: PARTIAL
+		// TownManager / IndustryManager monthly: PARTIAL
+		m.companiesUpdateMonthly1()
+		// CompanyManager::updateMonthlyHeadquarters: PARTIAL
 		m.vehiclesUpdateMonthly(om)
 		// Economy::updateMonthly, quarterly, yearly, autosave: PARTIAL
 	}

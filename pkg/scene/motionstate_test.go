@@ -1896,3 +1896,44 @@ func TestMonthEndRunningCosts(t *testing.T) {
 		t.Error("monthsInChallenge not counted")
 	}
 }
+
+// The month's end for companies (Company::updateMonthly1), on the SV5: the
+// cargo histories take the month's totals, which reset; vehicleProfit,
+// company value and the performance index are those of the vehicles'
+// profit history BEFORE the vehicles' own month end rotates it (dateTick
+// order — computed here one tick before); loan interest is charged;
+// historySize counts up.
+func TestMonthEndCompanies(t *testing.T) {
+	r, m, _ := saveView(t, "Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false)
+	month := m.CurrentMonth
+	id := int(m.ControllingCompany)
+	var c0 scenario.CompanyEconomy
+	var wantVP int64
+	for m.CurrentMonth == month {
+		c0 = m.Companies[id]
+		wantVP, _ = m.CalculateCompanyValue(id)
+		m.UpdateVehicles(r.Objects)
+	}
+	c := m.Companies[id]
+	interest := c0.CurrentLoan * int32(m.LoanInterestRate) / 1200
+	t.Logf("company %d: distance %d → history, delivered %d → history; perf %d (hist %v); vehicleProfit %d; value %d; loan %d × %d%% → interest %d; historySize %d → %d",
+		id, c0.CargoUnitsTotalDistance, c0.CargoUnitsTotalDelivered, m.CompanyFaces[id].Performance, c.PerformanceIndexHist[:3], c.VehicleProfit, c.CompanyValueHistory[0], c0.CurrentLoan, m.LoanInterestRate, interest, c0.HistorySize, c.HistorySize)
+	if c.CargoUnitsDistanceHist[0] != c0.CargoUnitsTotalDistance || c.CargoUnitsDistanceHist[1] != c0.CargoUnitsDistanceHist[0] || c.CargoUnitsTotalDistance != 0 {
+		t.Error("cargo distance history not rotated")
+	}
+	if c.CargoUnitsDeliveredHist[0] != c0.CargoUnitsTotalDelivered || c.CargoUnitsTotalDelivered != 0 {
+		t.Error("cargo delivered history not rotated")
+	}
+	if c.VehicleProfit != wantVP {
+		t.Errorf("vehicleProfit %d, want %d (from the profit history before the vehicles' month end)", c.VehicleProfit, wantVP)
+	}
+	if c.PerformanceIndexHist[0] != m.CompanyFaces[id].Performance || c.PerformanceIndexHist[1] != c0.PerformanceIndexHist[0] {
+		t.Error("performance history not rotated")
+	}
+	if c.Expenditures[0][15]-c0.Expenditures[0][15] != -interest {
+		t.Errorf("loan interest expenditure moved by %d, want %d", c.Expenditures[0][15]-c0.Expenditures[0][15], -interest)
+	}
+	if c.HistorySize != min(c0.HistorySize+1, 120) {
+		t.Error("historySize")
+	}
+}

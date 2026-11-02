@@ -34,6 +34,9 @@ type Map struct {
 	CurrentMonth               uint8                       // GameState general.currentMonth
 	CurrentDayOfMonth          uint8                       // GameState general.currentDayOfMonth
 	DayCounter                 uint16                      // GameState general.dayCounter
+	PlayerCompanies            [2]uint8                    // GameState playerCompanies
+	LoanInterestRate           uint8                       // GameState loanInterestRate
+	MaxLoanSize                uint16                      // GameState maxLoanSize
 	Objective                  scenario.Objective          // the scenario objective
 	ObjectiveUntilYear         uint16                      // scenarioObjectiveProgress.timeLimitUntilYear
 	ObjectiveMonthsInChallenge uint16                      // scenarioObjectiveProgress.monthsInChallenge
@@ -149,6 +152,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.CurrentMonth = sc.CurrentMonth
 	m.CurrentDayOfMonth = sc.CurrentDayOfMonth
 	m.DayCounter = sc.DayCounter
+	m.PlayerCompanies, m.LoanInterestRate, m.MaxLoanSize = sc.PlayerCompanies, sc.LoanInterestRate, sc.MaxLoanSize
 	m.Objective = sc.Objective
 	m.ObjectiveUntilYear = sc.ObjectiveTimeLimitUntilYear
 	m.ObjectiveMonthsInChallenge = sc.ObjectiveMonthsInChallenge
