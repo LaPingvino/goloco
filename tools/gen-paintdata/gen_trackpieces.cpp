@@ -41,6 +41,8 @@ int main()
     for (int i = 0; i < 44; i++) std::printf("%u, ", getTrackMiscData(i).curveSpeedFraction);
     std::printf("}\n\n// RoadCurveSpeedFraction is getRoadMiscData(id).curveSpeedFraction.\nvar RoadCurveSpeedFraction = [10]uint16{");
     for (int i = 0; i < 10; i++) std::printf("%u, ", getRoadMiscData(i).curveSpeedFraction);
+    std::printf("}\n\n// RoadReverseLane is getRoadMiscData(id).reverseLane.\nvar RoadReverseLane = [10]uint8{");
+    for (int i = 0; i < 10; i++) std::printf("%u, ", getRoadMiscData(i).reverseLane);
     std::printf("}\n\n// RoadOccupationMasks is getRoadOccupationMask (kRoadOccupationMasks).\nvar RoadOccupationMasks = [128]uint8{");
     for (int i = 0; i < 128; i++) std::printf("%u, ", getRoadOccupationMask(i));
     std::printf("}\n");
