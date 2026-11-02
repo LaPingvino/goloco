@@ -58,7 +58,10 @@ type TownListWindow struct {
 	// Geometry: window size, row height, the scroll view rect, the status
 	// label's y and the text's y offset in a row (VehicleList: +2).
 	W, H, RowHeight, StatusY, TextDY int
-	List                             [4]int
+	// RowDraw draws extra content into row i whose top is at y in the scroll
+	// view's own coordinates (VehicleList's drawTrainInline); clipped to it.
+	RowDraw func(rt *gfx8.RenderTarget, i, y int)
+	List    [4]int
 	// Outline draws row text outlined (VehicleList: AdvancedColour(black).outline()
 	// with {COLOUR WINDOW_2}); HoverSolid highlights the hovered row with a solid
 	// shade-0 rect instead of the translucent one.
@@ -283,6 +286,20 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 				}
 			}
 		}
+		if w.RowDraw != nil && cw > 0 && ch > 0 { // drawn into the scroll view's own target (its clip)
+			sub := gfx8.NewRenderTarget(cw, ch)
+			for yy := range ch {
+				copy(sub.Bits[yy*cw:(yy+1)*cw], rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw])
+			}
+			for i := range w.Rows {
+				if y := i*w.RowHeight - w.Scroll; y+w.RowHeight > 0 && y < ch {
+					w.RowDraw(sub, i, y)
+				}
+			}
+			for yy := range ch {
+				copy(rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw], sub.Bits[yy*cw:(yy+1)*cw])
+			}
+		}
 	})
 	if w.ColourCaption { // Caption::Style::colourText: the window's primary colour
 		DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Caption, int(w.TitleColour))
@@ -348,6 +365,8 @@ type VehicleRow struct {
 	// Sort keys: totalRecentProfit, dayCreated.
 	RecentProfit int64
 	DayCreated   uint32
+	// Cars are the train drawn inline at the row's bottom.
+	Cars []TrainCarDraw
 }
 
 // vehicleOrder is VehicleList.cpp getOrder: name (strcmp, default), profit
@@ -375,9 +394,9 @@ var vehicleListRowHeights = [6]int{28, 28, 28, 28, 48, 36}
 // NewVehicleList opens the vehicle list (VehicleList.cpp) on a tab: 550×213,
 // six tabs, columns Name / Monthly Profit / Age / Reliability, rows
 // row_heights[tab] tall, text outlined in the window's secondary colour (red
-// for a loss). PARTIAL: the vehicle drawn inline at the bottom of each row
-// (drawTrainInline), the status after the name (VehicleHead::getStatus), the
-// filter dropdowns, the company select button.
+// for a loss), each train drawn inline at the bottom of its row
+// (drawTrainInline). PARTIAL: the status after the name
+// (VehicleHead::getStatus), the filter dropdowns, the company select button.
 func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour uint8) *TownListWindow {
 	vehicles = append([]VehicleRow(nil), vehicles...)
 	rows := make([][]string, len(vehicles))
@@ -408,6 +427,10 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 		Rows:    rows, Status: status, Hover: -1, CurrentTab: tab,
 		W: 550, H: 213, RowHeight: vehicleListRowHeights[tab], StatusY: 213 - 13, TextDY: 2, List: [4]int{3, 56, 544, 138},
 		Outline: true, HoverSolid: true, ColourCaption: true}
+	// drawScroll: drawTrainInline at (0, y + (rowHeight − 28) / 2 + 6).
+	w.RowDraw = func(rt *gfx8.RenderTarget, i, y int) {
+		DrawTrainInline(rt, vehicles[i].Cars, 0, y+(w.RowHeight-28)/2+6)
+	}
 	w.CellColour = func(r, c int) int {
 		if c == 1 && vehicles[r].Profit < 0 {
 			return 27 // Colour::red ({COLOUR RED})

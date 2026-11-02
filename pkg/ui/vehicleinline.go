@@ -43,3 +43,52 @@ func DrawVehiclesInlineDiag(screen *ebiten.Image, x, y int, vs []*objects.Vehicl
 		}
 	})
 }
+
+// TrainCarDraw is one car for DrawTrainInline (world.TrainCar's fields).
+type TrainCarDraw struct {
+	Object     *objects.VehicleObject
+	YOffset    int
+	Components []objects.CarComponent
+	Reversed   bool
+	Brake      bool
+}
+
+// drawCarInline is drawVehicleInline for a Car (animated): y + 19 + the
+// object's offset, the parts asked for (bogies or bodies) at their screen
+// distances, each in its own colour scheme. Returns the car's screen length.
+func drawCarInline(rt *gfx8.RenderTarget, c TrainCarDraw, x, y int, bodies bool) int {
+	g1 := globalG1Font.g1
+	y += 19 + c.YOffset
+	items, total := c.Object.CarDrawItems(40, c.Components, c.Reversed, true, c.Brake)
+	for _, it := range items {
+		if it.IsBody != bodies {
+			continue
+		}
+		id := int(c.Object.ImageOffset + it.Image)
+		if id <= 0 || id >= len(g1.Elements) {
+			continue
+		}
+		sp, err := gfx8.Decode(&g1.Elements[id])
+		if err != nil {
+			continue
+		}
+		pal, _ := g1.GetPaletteMap2(int(it.Colour[0]), int(it.Colour[1]))
+		gfx8.DrawSpriteNoise(rt, sp, x+int(objects.ScreenDistance(it.Dist, 40)), y, gfx8.OpFor(sp, pal != nil, false), pal, nil)
+	}
+	return int(objects.ScreenDistance(total, 40))
+}
+
+// DrawTrainInline is VehicleDraw.cpp drawTrainInline: every car's bogies
+// left to right, then from the start again every car's bodies. Returns the
+// end x.
+func DrawTrainInline(rt *gfx8.RenderTarget, cars []TrainCarDraw, x, y int) int {
+	start := x
+	for _, c := range cars {
+		x += drawCarInline(rt, c, x, y, false)
+	}
+	x = start
+	for _, c := range cars {
+		x += drawCarInline(rt, c, x, y, true)
+	}
+	return x
+}

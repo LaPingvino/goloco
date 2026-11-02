@@ -103,6 +103,7 @@ type Game struct {
 	preferredCurrency string // Config::preferredCurrency (DAT name; PARTIAL: not saved)
 	// preferredCurrencyFlags are Config usePreferredCurrencyForNewGames and
 	// usePreferredCurrencyAlways (default off).
+	vehDiagDone            bool   // GOLOCO_DIAG_VEHLIST opened
 	fsResolution           [2]int // Config display.fullscreenResolution
 	preferredCurrencyFlags [2]bool
 	frameLimit             int                // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
@@ -1208,6 +1209,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			}
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+	}
+	if os.Getenv("GOLOCO_DIAG_VEHLIST") != "" && !g.vehDiagDone && g.w != nil { // the vehicle list (trains of their first owner)
+		g.vehDiagDone = true
+		g.openVehicleList(0)
 	}
 	if os.Getenv("GOLOCO_DIAG_OPTIONS") != "" && g.options == nil && !g.diagOptionsDone {
 		g.diagOptionsDone = true

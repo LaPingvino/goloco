@@ -224,10 +224,10 @@ func (v *VehicleObject) DrawItems(yaw, roll uint8) ([]DrawItem, int32) {
 	return items, total
 }
 
-// screenDistance is toScreenDistDrawItems' getScreenDistance: a distance
+// ScreenDistance is toScreenDistDrawItems' getScreenDistance: a distance
 // along the vehicle at yaw, as a screen x offset (gameToScreen at rotation 0
 // of the int16 Pos3, then −x / 4).
-func screenDistance(gameDist int32, yaw uint8) int32 {
+func ScreenDistance(gameDist int32, yaw uint8) int32 {
 	x, y := olmath.ComputeXYVector(gameDist, yaw)
 	px := int16(int16(y) - int16(x))
 	return -int32(px) / 4
@@ -238,9 +238,9 @@ func screenDistance(gameDist int32, yaw uint8) int32 {
 func (v *VehicleObject) InlineDrawItems(yaw, roll uint8) ([]DrawItem, int32) {
 	items, total := v.DrawItems(yaw, roll)
 	for i := range items {
-		items[i].Dist = screenDistance(items[i].Dist, yaw)
+		items[i].Dist = ScreenDistance(items[i].Dist, yaw)
 	}
-	return items, screenDistance(total, yaw)
+	return items, ScreenDistance(total, yaw)
 }
 
 // VehicleYDisplayOffset is getVehicleObjectYDisplayOffset: a road vehicle
