@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"image"
 	"image/color"
 	"os"
@@ -116,8 +117,8 @@ func (f *g1Font) glyph(font, chr int) *ebiten.Image {
 // Chars 123-150 are unused in the game's fonts (includes {|}~), and anything
 // outside Latin-1 needs the TTF fallback.
 func (f *g1Font) supports(str string) bool {
-	for _, r := range str {
-		if r < 32 || r > 255 || (r >= 123 && r <= 150) {
+	for _, r := range str { // after convertUnicodeToLoco (i18n.LocoChar)
+		if c := i18n.LocoChar(r); c < 32 || c > 255 || (c >= 123 && c <= 150) || (c == '?' && r != '?') {
 			return false
 		}
 	}
@@ -129,10 +130,7 @@ func (f *g1Font) supports(str string) bool {
 func (f *g1Font) drawString(dst *ebiten.Image, str string, font, x, y int, scale float64, clr color.Color) int {
 	penX := 0
 	for _, r := range str {
-		chr := int(r)
-		if chr < 32 || chr > 255 {
-			chr = '?'
-		}
+		chr := i18n.LocoChar(r)
 		w := int(f.widths[font][chr-32])
 		if dst != nil {
 			if g := f.glyph(font, chr); g != nil {
@@ -215,10 +213,7 @@ func DrawTextOutlined(screen *ebiten.Image, str string, x, y int, clr, outlineCl
 	}
 	penX := 0
 	for _, r := range str {
-		chr := int(r)
-		if chr < 32 || chr > 255 {
-			chr = '?'
-		}
+		chr := i18n.LocoChar(r)
 		idx := g1FontBase + G1FontMediumBold*224 + (chr - 32)
 		e := &f.g1.Elements[idx]
 		for _, plane := range [2]struct {
