@@ -184,6 +184,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	log.Println("[Scenario] Read RequiredObjects,", len(reqObjBytes), "bytes")
 	sc.LandObjectOrder = parseLandObjectOrder(reqObjBytes)
 	sc.CargoObjectOrder = parseObjectOrder(reqObjBytes, cargoSlotStart, cargoSlotCount, objectTypeCargo)
+	sc.ClimateObjectOrder = parseObjectOrder(reqObjBytes, 678, 1, 26)     // ObjectType::climate (slot start from the compiler)
 	sc.HillShapesObjectOrder = parseObjectOrder(reqObjBytes, 679, 1, 27)  // ObjectType::hillShapes (slot start from the compiler)
 	sc.CompetitorObjectOrder = parseObjectOrder(reqObjBytes, 826, 32, 32) // ObjectType::competitor (slot start from the compiler)
 	sc.TreeObjectOrder = parseTreeObjectOrder(reqObjBytes)
@@ -1574,9 +1575,10 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 	sc.MaxLoanSize = binary.LittleEndian.Uint16(gs[0x402:])      // maxLoanSize
 	sc.StartingLoanSize = binary.LittleEndian.Uint16(gs[0x400:]) // startingLoanSize
 	sc.SeaLevel = uint8(binary.LittleEndian.Uint16(gs[0x19A:]))  // seaLevel
-	sc.LastLandOption = gs[0x19E]                                // lastLandOption
-	sc.PreferredAI = [3]uint8{gs[0x3FD], gs[0x3FE], gs[0x3FF]}   // preferredAIIntelligence / Aggressiveness / Competitiveness
-	sc.DefaultLevelCrossingType = gs[0x1AC]                      // currentDefaultLevelCrossingType
+	sc.CurrentSnowLine, sc.CurrentSeason = gs[0x19C], gs[0x19D]
+	sc.LastLandOption = gs[0x19E]                              // lastLandOption
+	sc.PreferredAI = [3]uint8{gs[0x3FD], gs[0x3FE], gs[0x3FF]} // preferredAIIntelligence / Aggressiveness / Competitiveness
+	sc.DefaultLevelCrossingType = gs[0x1AC]                    // currentDefaultLevelCrossingType
 	sc.ForbiddenVehiclesPlayers = binary.LittleEndian.Uint16(gs[0x430:])
 	sc.ForbiddenVehiclesCompetitors = binary.LittleEndian.Uint16(gs[0x432:])
 	if len(gs) > 0x196 { // general.trafficHandedness (from the compiler)
