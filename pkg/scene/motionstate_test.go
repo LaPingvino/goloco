@@ -2427,3 +2427,31 @@ func TestTownNamesMatchUpstream(t *testing.T) {
 		t.Errorf("hash %x, upstream %x", h, want)
 	}
 }
+
+// generateTownName on title.dat: five towns renamed from their own prngs get
+// names that are new (not another town's), ≤ 32 characters and ≤ 200 px of
+// medium bold; each draw moves only that town's prng.
+func TestGenerateTownName(t *testing.T) {
+	r, m, _ := titleView(t)
+	rng := m.Rng1
+	seen := map[string]bool{}
+	for i := range m.Towns {
+		seen[m.TownName(m.Towns[i].Name, i)] = true
+	}
+	for i := range 5 {
+		before := m.Towns[i].Prng
+		if !m.GenerateTownName(i, r.G1, r.Objects) {
+			t.Fatalf("town %d: no name", i)
+		}
+		name := m.TownName(m.Towns[i].Name, i)
+		w := sim.MediumBoldStringWidth(r.G1, name)
+		t.Logf("town %d: %q (%d px), prng %x → %x", i, name, w, before, m.Towns[i].Prng)
+		if seen[name] || len(name) > 32 || w > 200 || w == 0 || m.Towns[i].Prng == before {
+			t.Errorf("town %d: %q", i, name)
+		}
+		seen[name] = true
+	}
+	if m.Rng1 != rng {
+		t.Error("the game rng moved")
+	}
+}

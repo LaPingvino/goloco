@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/objects"
+import (
+	"github.com/LaPingvino/goloco/pkg/core"
+	"github.com/LaPingvino/goloco/pkg/objects"
+)
 
 // New towns — GameCommands/Town/CreateTown.cpp's placement (item 5.9f).
 // PARTIAL: TownManager::initialiseTown (the town record, its name), the
@@ -115,4 +118,106 @@ func (m *Map) CalcCargoInfluenceFlags(townX, townY int16, om *objects.ObjectMana
 		}
 	}
 	return flags
+}
+
+const (
+	g1FontBase        = 1116 // the first glyph image (medium normal, then medium bold, small, large; 224 each)
+	kUserStringSize   = 32
+	kMaxUserStrings   = 2048
+	kUserStringsStart = 0x8000
+)
+
+// MediumBoldStringWidth is Gfx::TextRenderer::getStringWidth for
+// Font::medium_bold on plain text: the characters' widths (initialiseCharacterWidths:
+// the glyph's g1 width − 1, characters 123–150 zero).
+func MediumBoldStringWidth(g1 G1Raw, s string) int {
+	w := 0
+	for i := 0; i < len(s); i++ {
+		chr := int(s[i])
+		if chr < 32 || chr >= 123 && chr <= 150 {
+			continue
+		}
+		if gw, _, _, ok := g1.ElementRaw(g1FontBase + 224 + chr - 32); ok {
+			w += int(uint8(int8(gw) - 1))
+		}
+	}
+	return w
+}
+
+// userStringAllocate is StringManager::userStringAllocate: the text into the
+// LAST empty user string slot (upstream's loop keeps the last one it sees),
+// refused when unique and already there; 0 (StringIds::empty) on failure.
+func (m *Map) userStringAllocate(s string, unique bool) uint16 {
+	for len(m.UserStrings) < kMaxUserStrings {
+		m.UserStrings = append(m.UserStrings, "")
+	}
+	best := -1
+	for i, u := range m.UserStrings[:kMaxUserStrings] {
+		if u == "" {
+			best = i
+		} else if unique && u == s {
+			return 0
+		}
+	}
+	if best < 0 {
+		return 0
+	}
+	if len(s) > kUserStringSize-1 {
+		s = s[:kUserStringSize-1]
+	}
+	m.UserStrings[best] = s
+	return uint16(best + kUserStringsStart)
+}
+
+// GenerateTownName is TownManager's generateTownName for town i: up to 400
+// names drawn from the town's own prng, the first that is not empty, fits 32
+// characters and 200 pixels of medium bold, suits the place (large / small
+// water body nearby, not mountainous), and no other town has.
+func (m *Map) GenerateTownName(i int, g1 G1Raw, om *objects.ObjectManager) bool {
+	tw := &m.Towns[i]
+	tn := om.TownNames
+	if tn == nil {
+		return false
+	}
+	p := core.NewPrngSeed(tw.Prng[0], tw.Prng[1])
+	defer func() { tw.Prng = [2]uint32{p.Srand0(), p.Srand1()} }()
+	waterAbove := func(threshold int) bool {
+		tx, ty := int(tw.X)/tileSize, int(tw.Y)/tileSize
+		return m.countSurroundingWaterTiles(tx+6, ty) > threshold || m.countSurroundingWaterTiles(tx, ty+6) > threshold ||
+			m.countSurroundingWaterTiles(tx-6, ty) > threshold || m.countSurroundingWaterTiles(tx, ty-6) > threshold
+	}
+	for attempts := 400; attempts > 0; attempts-- {
+		name, flags := tn.NameFromRand(p.RandNext())
+		if name == "" || len(name) > kUserStringSize || MediumBoldStringWidth(g1, name) > 200 {
+			continue
+		}
+		if flags&objects.TownNameAdjacentToLargeWater != 0 && !waterAbove(65) {
+			continue
+		}
+		if flags&objects.TownNameNotMountainous != 0 {
+			if land, _ := m.GetHeight(int32(tw.X)+tileSize/2, int32(tw.Y)+tileSize/2); land < 192 {
+				continue
+			}
+		}
+		if flags&objects.TownNameAdjacentToSmallWater != 0 && !waterAbove(15) {
+			continue
+		}
+		inUse := false
+		for j := range m.Towns {
+			if m.TownName(m.Towns[j].Name, j) == name {
+				inUse = true
+				break
+			}
+		}
+		if inUse {
+			continue
+		}
+		id := m.userStringAllocate(name, true)
+		if id == 0 {
+			continue
+		}
+		tw.Name = id
+		return true // (updateLabel: the Ui's)
+	}
+	return false
 }
