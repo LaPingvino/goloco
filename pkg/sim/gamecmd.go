@@ -28,7 +28,13 @@ type Cmd struct {
 	Company uint8
 	Rng2    *core.Prng
 	Objects *objects.ObjectManager
+	// Editor and Sandbox are SceneManager::isEditorMode / isSandboxMode.
+	Editor, Sandbox bool
+	// Players reports CompanyManager::isPlayerCompany.
+	Players func(company uint8) bool
 }
+
+func (c *Cmd) isPlayer(company uint8) bool { return c.Players != nil && c.Players(company) }
 
 // TileClearance::clearTreeCollision: the tree's clear cost (inflation
 // adjusted, divisor 12); applied (not ghost / AI allocated) the tree is
@@ -55,15 +61,19 @@ func (m *Map) clearTreeCollision(c *Cmd, t *Tile, k int, px, py int32, flags uin
 
 // removeTree is TileManager::removeTree: the demolish sound (a gPrng2 draw —
 // randNext(20003, 24098) — when a company, not the neutral one, removes a
-// real tree), the town rating reduction (updateTownInfo; its rating branch
-// applies to companies only and is not ported yet), and the element removed.
+// real tree), the town rating reduction (updateTownInfo: companies only), and
+// the element removed.
 func (m *Map) removeTree(c *Cmd, t *Tile, k int, px, py int32, flags uint8, obj *objects.TreeObject) {
 	r := t.Order[k]
 	if r.Flags&(elemFlagGhost|elemFlagAiAllocated) == 0 && c.Company != CompanyNeutral && c.Rng2 != nil {
 		c.Rng2.RandNextRange(20003, 24098) // playDemolishTreeSound's frequency
 	}
 	if flags&CmdGhost == 0 {
-		m.updateTownInfo(px, py, 0, 0, 0)
+		var rating int16
+		if obj != nil {
+			rating = obj.DemolishRatingReduction
+		}
+		m.updateTownInfo(px, py, 0, 0, rating, 0, c)
 	}
 	idx := int(r.Index)
 	t.Trees = append(t.Trees[:idx], t.Trees[idx+1:]...)
@@ -73,17 +83,14 @@ func (m *Map) removeTree(c *Cmd, t *Tile, k int, px, py int32, flags uint8, obj 
 // tileClearFunction is TileClearance's tileClearFunction (clearWithDefaultCollision
 // / clearWithoutDefaultCollision): surfaces pass, trees are cleared, buildings
 // removed, anything else a collision or not as asked.
-//
-// PARTIAL: the building branch (clearBuildingCollision → the removeBuilding
-// game command) is a collision until removeBuilding is ported (next in 5.9f3).
-func (m *Map) tileClearFunction(c *Cmd, t *Tile, k int, px, py int32, flags uint8, cost *int32, defaultCollision bool) ClearResult {
+func (m *Map) tileClearFunction(c *Cmd, t *Tile, k int, px, py int32, removed RemovedBuildings, flags uint8, cost *int32, defaultCollision bool) ClearResult {
 	switch t.Order[k].Kind {
 	case scenario.KindSurface:
 		return ClearNoCollision
 	case scenario.KindTree:
 		return m.clearTreeCollision(c, t, k, px, py, flags, cost)
 	case scenario.KindBuilding:
-		return ClearCollision // PARTIAL: see above
+		return m.clearBuildingCollision(c, t, k, px, py, removed, flags, cost)
 	}
 	if defaultCollision {
 		return ClearCollision
@@ -105,4 +112,137 @@ func isBridgeRequired(baseZ uint8, t *Tile, pieceUnk4 bool, unk uint8) bool {
 		return true
 	}
 	return false
+}
+
+// RemovedBuildings is TileClearance::RemovedBuildings: the start (x, y, z) of
+// each building a command has already removed.
+type RemovedBuildings map[[3]int32]bool
+
+// buildingTileOffsets is getBuildingTileOffsets (Industry.cpp): one tile, or
+// the four of a large one (World::kOffsets order).
+func buildingTileOffsets(large bool) [][2]int32 {
+	if large {
+		return [][2]int32{{0, 0}, {0, 32}, {32, 32}, {32, 0}}
+	}
+	return [][2]int32{{0, 0}}
+}
+
+// clearBuildingCollision is TileClearance::clearBuildingCollision: a
+// headquarters is a collision; any other building is removed once (by its
+// start tile) through the removeBuilding command, its cost added.
+func (m *Map) clearBuildingCollision(c *Cmd, t *Tile, k int, px, py int32, removed RemovedBuildings, flags uint8, cost *int32) ClearResult {
+	b := t.Buildings[t.Order[k].Index]
+	obj := c.Objects.GetBuildingObjectByIndex(int(b.ObjectID))
+	if obj != nil && obj.Flags&objects.BuildingFlagIsHeadquarters != 0 {
+		return ClearCollision
+	}
+	off := buildingTileOffsets(true)[b.SequenceIndex&3]
+	start := [3]int32{px - off[0], py - off[1], int32(b.BaseZ) * 4}
+	if removed[start] {
+		return ClearNoCollision
+	}
+	removed[start] = true
+	rf := flags
+	if flags&CmdApply != 0 || len(removed) != 1 {
+		rf |= CmdFlag7
+	}
+	if flags&(CmdGhost|CmdAiAllocated) != 0 {
+		rf &^= CmdGhost | CmdAiAllocated | CmdApply
+	}
+	last := k == len(t.Order)-1 // wasRemoveOnLastElement (the element checked is the one removed)
+	bc, ok := m.RemoveBuilding(c, start[0], start[1], start[2], rf)
+	if !ok {
+		return ClearCollisionErrorSet
+	}
+	*cost += bc
+	if flags&CmdApply == 0 || flags&(CmdGhost|CmdAiAllocated) != 0 {
+		return ClearNoCollision
+	}
+	if last {
+		return ClearAllCollisionsRemoved
+	}
+	return ClearCollisionRemoved
+}
+
+// RemoveBuilding is the removeBuilding game command (RemoveBuilding.cpp): the
+// building at (x, y, z) on the tile — refused, outside the editor and unless
+// ghost / flag 7, when indestructible (a player in sandbox excepted) or, for
+// a town building, when the company's rating in the closest town is below 0
+// — its tiles' building elements at that height removed when applied, and
+// its clear cost (inflation adjusted, divisor 8). ok false on failure.
+//
+// PARTIAL: createDestructExplosion (a company's real building) draws gPrng2
+// for the sound here but does not create the ExplosionSmoke entity yet.
+func (m *Map) RemoveBuilding(c *Cmd, x, y, z int32, flags uint8) (int32, bool) {
+	t := m.TileAt(int(x/tileSize), int(y/tileSize))
+	if t == nil {
+		return 0, false
+	}
+	for _, r := range t.Order {
+		if r.Kind != scenario.KindBuilding || int32(t.Buildings[r.Index].BaseZ) != z/4 {
+			continue
+		}
+		obj := c.Objects.GetBuildingObjectByIndex(int(t.Buildings[r.Index].ObjectID))
+		if obj == nil {
+			return 0, false
+		}
+		if !c.Editor && flags&(CmdGhost|CmdFlag7) == 0 {
+			if !(c.Sandbox && c.isPlayer(c.Company)) && obj.Flags&objects.BuildingFlagIndestructible != 0 {
+				return 0, false
+			}
+			if obj.Flags&objects.BuildingFlagMiscBuilding == 0 && c.Company != CompanyNeutral {
+				if i, _, ok := m.ClosestTownAndDensity(x, y); ok && m.Towns[i].CompanyRatings[c.Company] < 0 {
+					return 0, false
+				}
+			}
+		}
+		for _, o := range buildingTileOffsets(obj.Flags&objects.BuildingFlagLargeTile != 0) {
+			sx, sy := x+o[0], y+o[1]
+			st := m.TileAt(int(sx/tileSize), int(sy/tileSize))
+			if st == nil {
+				continue
+			}
+			// upstream's loop moves on after a removal (the next element slid
+			// into the removed one's place is not looked at), as here.
+			for k := 0; k < len(st.Order); k++ {
+				sr := st.Order[k]
+				if sr.Kind != scenario.KindBuilding || int32(st.Buildings[sr.Index].BaseZ) != z/4 {
+					continue
+				}
+				if flags&CmdApply != 0 {
+					m.removeBuildingElement(c, st, k, sx, sy)
+				}
+			}
+		}
+		return m.InflationAdjustedCost(obj.ClearCostFactor, obj.ClearCostIndex, 8), true
+	}
+	return 0, false
+}
+
+// removeBuildingElement is TileManager::removeBuildingElement: a company's
+// real building explodes (see RemoveBuilding's PARTIAL); the first tile of a
+// real town building takes its capacity (and, built, its population), the
+// rating reduction, one building and its amenity from the closest town; the
+// element goes.
+func (m *Map) removeBuildingElement(c *Cmd, t *Tile, k int, px, py int32) {
+	r := t.Order[k]
+	b := t.Buildings[r.Index]
+	if r.Flags&(elemFlagGhost|elemFlagAiAllocated) == 0 && c.Company != CompanyNeutral && c.Rng2 != nil {
+		c.Rng2.RandNextRange(20003, 24098) // createDestructExplosion's sound frequency
+	}
+	if b.SequenceIndex == 0 && r.Flags&elemFlagGhost == 0 {
+		if obj := c.Objects.GetBuildingObjectByIndex(int(b.ObjectID)); obj != nil && obj.Flags&objects.BuildingFlagMiscBuilding == 0 {
+			capacity := uint32(-int32(obj.ProducedQuantity[0]))
+			pop := capacity
+			if !b.IsConstructed {
+				pop = 0
+			}
+			if i := m.updateTownInfo(px, py, pop, capacity, obj.DemolishRatingReduction, -1, c); i >= 0 && obj.TownAmenityCategory != 0xFF {
+				m.Towns[i].AmenityCounts[obj.TownAmenityCategory&7]--
+			}
+		}
+	}
+	idx := int(r.Index)
+	t.Buildings = append(t.Buildings[:idx], t.Buildings[idx+1:]...)
+	t.removeRef(scenario.KindBuilding, idx)
 }
