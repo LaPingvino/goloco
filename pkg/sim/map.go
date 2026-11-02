@@ -14,6 +14,7 @@ type Map struct {
 	CompanyFaces        []scenario.CompanyFace      // company slot → competitor, emotion, performance
 	StationCargoDensity [][32]uint8                 // station id → cargoStats[].densityPerTile
 	Orders              []byte                      // GameState orders[]
+	Routings            []uint16                    // GameState routings[], by RoutingHandle (routing.go)
 	CurrentDay          uint32                      // GameState general.currentDay
 	CompanyNames        []uint16                    // company slot → name StringId
 	ControllingCompany  uint8                       // playerCompanies[0] (getControllingId)
@@ -114,6 +115,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.Entities = sc.Entities
 	m.VehicleListData = sc.VehicleList
 	m.Orders = sc.Orders
+	m.Routings = sc.Routings
 	m.CurrentDay = sc.CurrentDay
 	m.CompanyNames = sc.CompanyNames
 	m.CompanyFaces = sc.CompanyFaces

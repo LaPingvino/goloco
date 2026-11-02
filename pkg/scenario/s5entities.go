@@ -1,6 +1,10 @@
 package scenario
 
-import "github.com/LaPingvino/goloco/pkg/coords"
+import (
+	"encoding/binary"
+
+	"github.com/LaPingvino/goloco/pkg/coords"
+)
 
 // s5entities.go — Go types mirroring the S5 entity table binary format.
 //
@@ -229,6 +233,13 @@ type VehicleEntity struct {
 	TileY     coords.WorldUnits // vhCommonTileY (0x32) — tile-aligned Y in WorldUnits
 	TileBaseZ uint8             // vhCommonTileBaseZ (0x34) — height in SmallZ units
 	NextCarID uint16            // vhCommonNextCarId (0x3A) — next entity in car chain (0xFFFF = end)
+	// VehicleBase motion state (updateTrackMotion / updateRoadMotion).
+	RemainingDistance int32  // vhCommonRemainingDist (0x28)
+	TrackAndDirection uint16 // vhCommonTrackAndDir (0x2C)
+	SubPosition       uint16 // vhCommonSubPosition (0x2E)
+	TrackType         uint8  // vhCommonTrackType (0x35) — track/road object id
+	RoutingHandle     uint16 // vhCommonRoutingHandle (0x36): vehicleRef·64 | index
+	Mode              uint8  // vhCommonMode (0x42) — TransportMode (0 rail, 1 road, 2 air, 3 water)
 
 	// ---- VehicleBody / VehicleBogie sprite fields ----
 	ObjectID         uint16 // vbObjectId (0x40) — vehicle object slot (ObjMgr.Vehicles[N])
@@ -323,6 +334,13 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			TileY:     coords.WorldUnits(int16(e[vhCommonTileY]) | int16(e[vhCommonTileY+1])<<8),
 			TileBaseZ: e[vhCommonTileBaseZ],
 			NextCarID: uint16(e[vhCommonNextCarId]) | uint16(e[vhCommonNextCarId+1])<<8,
+
+			RemainingDistance: int32(binary.LittleEndian.Uint32(e[vhCommonRemainingDist:])),
+			TrackAndDirection: binary.LittleEndian.Uint16(e[vhCommonTrackAndDir:]),
+			SubPosition:       binary.LittleEndian.Uint16(e[vhCommonSubPosition:]),
+			TrackType:         e[vhCommonTrackType],
+			RoutingHandle:     binary.LittleEndian.Uint16(e[vhCommonRoutingHandle:]),
+			Mode:              e[vhCommonMode],
 
 			ObjectID:         uint16(e[vbObjectId]) | uint16(e[vbObjectId+1])<<8,
 			ObjectSpriteType: e[vbObjectSpriteType],

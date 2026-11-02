@@ -25,6 +25,34 @@ const (
 )
 
 // ParseOrders returns GameState orders[] (the shared order table).
+// GameState routings[kMaxVehicles][kMaxRoutingsPerVehicle] (uint16): directly
+// after userStrings, so 0x442A44 (GameStateType2: 0x440E24, the same 0x1C20
+// shift as userStrings and orders).
+const (
+	gameStateRoutings      = 0x442A44
+	gameStateRoutingsType2 = 0x440E24
+	MaxRoutingVehicles     = 1000
+	RoutingsPerVehicle     = 64
+)
+
+// ParseRoutings reads the routing table (RoutingManager), flat:
+// [vehicleRef*64 + index] — i.e. indexed by a RoutingHandle's _data.
+func ParseRoutings(gs []byte) []uint16 {
+	off := gameStateRoutings
+	if len(gs) == GameStateSizeType2 {
+		off = gameStateRoutingsType2
+	}
+	n := MaxRoutingVehicles * RoutingsPerVehicle
+	if len(gs) < off+2*n {
+		return nil
+	}
+	r := make([]uint16, n)
+	for i := range r {
+		r[i] = binary.LittleEndian.Uint16(gs[off+2*i:])
+	}
+	return r
+}
+
 func ParseOrders(gs []byte) []byte {
 	off := gameStateOrders
 	if len(gs) == GameStateSizeType2 {
