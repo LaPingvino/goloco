@@ -174,3 +174,54 @@ func TestSavedTrainStructure(t *testing.T) {
 		t.Error("no train at 60 mph (Vehicle2 currentSpeed offset?)")
 	}
 }
+
+// findAllTracksFilterTransform from each saved train's head piece reaches a
+// set of real pieces (each forward result is a built piece origin at that
+// height; reversed results end there), and searching again from any result
+// reaches the same network: the walk is a closed connected component.
+func TestTrackNetworkSearch(t *testing.T) {
+	_, m, _ := titleView(t)
+	search := func(l sim.LocationOfInterest, flags uint16) *sim.RoutingResults {
+		res := &sim.RoutingResults{Reachable: sim.NewInterestSet(sim.TrackModHashSetSize)}
+		m.FindAllTracksFilterTransform(res, flags, l.X, l.Y, l.Z, l.TrackAndDirection, l.Company, l.TrackType, func(sim.LocationOfInterest) bool { return false }, nil)
+		return res
+	}
+	isPiece := func(l sim.LocationOfInterest) bool {
+		tad := l.TaD()
+		x, y, z := l.X, l.Y, l.Z
+		if tad&4 != 0 { // reversed: the piece starts where a forward walk of it ends
+			return true // checked through its forward twin below
+		}
+		tl := m.TileAt(int(x>>5), int(y>>5))
+		if tl == nil {
+			return false
+		}
+		for _, el := range tl.Tracks {
+			if el.SequenceIndex == 0 && uint16(el.TrackID) == tad>>3 && uint16(el.Rotation) == tad&3 &&
+				int32(el.BaseZ)*4-int32(sim.TrackPieces[el.TrackID][0].Z) == z {
+				return true
+			}
+		}
+		return false
+	}
+	for _, e := range m.Entities {
+		if e.EntityType != scenario.VehicleTypeHead || e.Mode != 0 {
+			continue
+		}
+		start := sim.LocationOfInterest{X: int32(e.TileX), Y: int32(e.TileY), Z: int32(e.TileBaseZ) * 4, TrackAndDirection: e.TrackAndDirection & 0x1FF, Company: e.Owner, TrackType: e.TrackType}
+		for _, flags := range []uint16{0, sim.SearchUnk2} {
+			all := search(start, flags).Reachable.All()
+			bad := 0
+			for _, l := range all {
+				if !isPiece(l) {
+					bad++
+				}
+			}
+			again := search(all[len(all)/2], flags).Reachable.All()
+			t.Logf("train %d flags %d: %d reachable, %d not real pieces; from a middle one %d", e.ID, flags, len(all), bad, len(again))
+			if bad != 0 || len(again) != len(all) {
+				t.Errorf("train %d flags %d: %d bad, %d vs %d", e.ID, flags, bad, len(again), len(all))
+			}
+		}
+	}
+}
