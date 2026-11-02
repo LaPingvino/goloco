@@ -3,6 +3,8 @@ package sim
 import (
 	"github.com/LaPingvino/goloco/pkg/core"
 	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/olmath"
+	"github.com/LaPingvino/goloco/pkg/scenario"
 )
 
 // New towns — GameCommands/Town/CreateTown.cpp's placement (item 5.9f).
@@ -220,4 +222,135 @@ func (m *Map) GenerateTownName(i int, g1 G1Raw, om *objects.ObjectManager) bool 
 		return true // (updateLabel: the Ui's)
 	}
 	return false
+}
+
+const kMaxTowns = 80
+
+// ClosestTownAndDensity is TownManager::getClosestTownAndDensity: the town
+// nearest loc by Manhattan distance (the first in id order on a tie), and how
+// built-up loc is around it (0–3) by the real distance and the town's
+// building count. ok false without towns.
+func (m *Map) ClosestTownAndDensity(x, y int32) (idx int, density uint8, ok bool) {
+	closest, idx := int32(0xFFFF), -1
+	for i := range m.Towns {
+		d := olmath.ManhattanDistance2D(olmath.Vector2i{X: int32(m.Towns[i].X), Y: int32(m.Towns[i].Y)}, olmath.Vector2i{X: x, Y: y})
+		if d < closest {
+			closest, idx = d, i
+		}
+	}
+	if closest == 0xFFFF || idx < 0 {
+		return -1, 0, false
+	}
+	tw := &m.Towns[idx]
+	real := int32(olmath.Distance2D(olmath.Vector2i{X: int32(tw.X), Y: int32(tw.Y)}, olmath.Vector2i{X: x, Y: y}))
+	unk := min(max((real-int32(tw.NumBuildings)*4+512)/128, 0), 4)
+	return idx, uint8(min(4-unk, 3)), true
+}
+
+// updateTownInfo is TownManager::updateTownInfo without the rating branch
+// (rating 0 here; the company rating path comes with the game commands): the
+// closest town gains population, capacity and buildings.
+func (m *Map) updateTownInfo(x, y int32, population, capacity uint32, numBuildings int16) int {
+	i, _, ok := m.ClosestTownAndDensity(x, y)
+	if !ok {
+		return -1
+	}
+	tw := &m.Towns[i]
+	tw.PopulationCapacity += capacity
+	tw.Population += population
+	if int32(tw.NumBuildings)+int32(numBuildings) <= 32767 {
+		tw.NumBuildings += numBuildings
+	}
+	return i
+}
+
+// ResetBuildingsInfluence is TownManager::resetBuildingsInfluence: every
+// town's buildings, population, capacity and amenities recounted from the
+// map's buildings (first tile of each; no ghosts, no misc buildings), each
+// counted for its closest town.
+func (m *Map) ResetBuildingsInfluence(om *objects.ObjectManager) {
+	for i := range m.Towns {
+		tw := &m.Towns[i]
+		tw.NumBuildings, tw.Population, tw.PopulationCapacity = 0, 0, 0
+		tw.AmenityCounts = [8]uint8{}
+	}
+	for ty := 0; ty < m.Height; ty++ {
+		for tx := 0; tx < m.Width; tx++ {
+			t := m.TileAt(tx, ty)
+			if t == nil {
+				continue
+			}
+			for _, r := range t.Order {
+				if r.Kind != scenario.KindBuilding || r.Flags&0x10 != 0 {
+					continue
+				}
+				b := t.Buildings[r.Index]
+				if b.IsMisc || b.SequenceIndex != 0 {
+					continue
+				}
+				obj := om.GetBuildingObjectByIndex(int(b.ObjectID))
+				if obj == nil {
+					continue
+				}
+				produced := uint32(obj.ProducedQuantity[0])
+				pop := uint32(0)
+				if b.IsConstructed {
+					pop = produced
+				}
+				if i := m.updateTownInfo(int32(tx*tileSize), int32(ty*tileSize), pop, produced, 1); i >= 0 && obj.TownAmenityCategory != 0xFF {
+					m.Towns[i].AmenityCounts[obj.TownAmenityCategory&7]++
+				}
+			}
+		}
+	}
+}
+
+// InitialiseTown is TownManager::initialiseTown: a new town record in the
+// first empty slot at (x, y) — a hamlet with no people, ratings of 500, the
+// game rng copied as its own prng, its cargo influence flags and a generated
+// name — and, if any other town already has buildings or people, the
+// building influence recounted. Returns its index in m.Towns, or −1 (no slot,
+// or no name found: the slot stays empty).
+func (m *Map) InitialiseTown(x, y int16, g1 G1Raw, om *objects.ObjectManager) int {
+	used := map[uint16]bool{}
+	for _, tw := range m.Towns {
+		used[tw.ID] = true
+	}
+	id := -1
+	for i := range kMaxTowns {
+		if !used[uint16(i)] {
+			id = i
+			break
+		}
+	}
+	if id < 0 {
+		return -1
+	}
+	tw := scenario.Town{ID: uint16(id), X: x, Y: y, HistorySize: 1, BuildSpeed: 1, Prng: [2]uint32{m.Rng1.Srand0(), m.Rng1.Srand1()}}
+	for c := range tw.CompanyRatings {
+		tw.CompanyRatings[c] = 500
+	}
+	tw.CargoInfluenceFlags = m.CalcCargoInfluenceFlags(x, y, om)
+	// towns() runs in id order: keep m.Towns sorted by ID.
+	at := len(m.Towns)
+	for i := range m.Towns {
+		if m.Towns[i].ID > tw.ID {
+			at = i
+			break
+		}
+	}
+	m.Towns = append(m.Towns[:at], append([]scenario.Town{tw}, m.Towns[at:]...)...)
+	if !m.GenerateTownName(at, g1, om) {
+		m.Towns = append(m.Towns[:at], m.Towns[at+1:]...)
+		return -1
+	}
+	for i := range m.Towns {
+		o := &m.Towns[i]
+		if o.NumBuildings == 0 && o.Population == 0 && o.PopulationCapacity == 0 {
+			continue
+		}
+		m.ResetBuildingsInfluence(om)
+		break
+	}
+	return at
 }

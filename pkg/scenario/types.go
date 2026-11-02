@@ -272,6 +272,7 @@ type BuildingElement struct {
 	Variation     uint8 // building variant
 	Colour        uint8 // company/building color
 	IsConstructed bool  // byte 0 bit 7
+	IsMisc        bool  // byte 0 bit 6 (isMiscBuilding)
 	BaseZ         uint8 // byte 2
 	ClearZ        uint8 // byte 3
 	// Age (byte 6 & 0x3F: the sections built so far while under construction)
