@@ -57,6 +57,7 @@ func (m *Map) store(i int, c *MotionComponent) {
 
 // UpdateVehicles runs one vehicle tick for every land vehicle.
 func (m *Map) UpdateVehicles(om *objects.ObjectManager) {
+	m.ScenarioTicks++ // ScenarioManager: one scenario tick per game tick
 	trains, err := m.Trains()
 	if err != nil {
 		return

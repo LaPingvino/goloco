@@ -250,9 +250,17 @@ type VehicleEntity struct {
 	Var5C                   uint8  // VehicleHead var_5C (0x5C): pass-signal countdown
 	StationID               uint16 // VehicleHead stationId (0x54); the same bytes are Vehicle2's maxSpeed
 	TrainAcceptedCargoTypes uint32 // VehicleHead trainAcceptedCargoTypes (0x4E): cargo slots its cars carry
-	CurrentSpeed            int32  // Vehicle2 currentSpeed (0x56): Speed32, mph << 16
-	Var44                   uint16 // VehicleBogie var_44 (0x44): wheel roll accumulator (updateRoll)
-	WheelSlipping           uint8  // VehicleBogie wheelSlipping (0x5E): ticks, counts up
+	// Arrival / journey state (offsets from the compiler).
+	BreakdownFlags       uint8  // 0x5F (head and components): awaitingCargoTransfer 1, journeyStarted 8
+	CargoTransferTimeout uint16 // VehicleHead 0x56 (the same bytes are Vehicle2's currentSpeed)
+	Var58                uint32 // VehicleHead var_58 (0x58)
+	JourneyStartX        int16  // VehicleHead journeyStartPos (0x6F)
+	JourneyStartY        int16
+	JourneyStartTicks    uint32 // VehicleHead 0x73
+	LastAverageSpeed     int16  // VehicleHead 0x77
+	CurrentSpeed         int32  // Vehicle2 currentSpeed (0x56): Speed32, mph << 16
+	Var44                uint16 // VehicleBogie var_44 (0x44): wheel roll accumulator (updateRoll)
+	WheelSlipping        uint8  // VehicleBogie wheelSlipping (0x5E): ticks, counts up
 	// Driving state (offsets from the compiler over S5Entity.h).
 	VehicleFlags     uint16 // EntityBase vehicleFlags (0x0C): unk_0 = 1, manualControl = 1<<6
 	ManualPower      int8   // VehicleHead manualPower (0x6E)
@@ -273,7 +281,8 @@ type VehicleEntity struct {
 	ColourSecondary  uint8  // vbColourSecondary (0x25) — company secondary colour index
 
 	// ---- VehicleHead status (only meaningful when EntityType == VehicleTypeHead) ----
-	Status uint8 // vHeadStatus (0x5D) — VehicleStatus* constant
+	Status      uint8 // vHeadStatus (0x5D) — VehicleStatus* constant
+	VehicleType uint8 // vHeadVehicleType (0x5E) — VehicleType (train, bus, truck, tram, aircraft, ship)
 
 	// Drawing state (S5Entity.h, offsets from the compiler): Flags38
 	// (isReversed = bit 1), the bogie's animationIndex / body's animationFrame,
@@ -376,6 +385,13 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			Var5C:                   e[0x5C],
 			StationID:               binary.LittleEndian.Uint16(e[0x54:]),
 			TrainAcceptedCargoTypes: binary.LittleEndian.Uint32(e[0x4E:]),
+			BreakdownFlags:          e[0x5F],
+			CargoTransferTimeout:    binary.LittleEndian.Uint16(e[0x56:]),
+			Var58:                   binary.LittleEndian.Uint32(e[0x58:]),
+			JourneyStartX:           int16(binary.LittleEndian.Uint16(e[0x6F:])),
+			JourneyStartY:           int16(binary.LittleEndian.Uint16(e[0x71:])),
+			JourneyStartTicks:       binary.LittleEndian.Uint32(e[0x73:]),
+			LastAverageSpeed:        int16(binary.LittleEndian.Uint16(e[0x77:])),
 			CurrentSpeed:            int32(binary.LittleEndian.Uint32(e[0x56:])),
 			Var44:                   binary.LittleEndian.Uint16(e[0x44:]),
 			WheelSlipping:           e[0x5E],
@@ -401,6 +417,7 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 		// padding in VehicleBody — only read it for Head entities.
 		if entityType == VehicleTypeHead {
 			ent.Status = e[vHeadStatus]
+			ent.VehicleType = e[vHeadVehicleType]
 		}
 
 		result = append(result, ent)

@@ -279,6 +279,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.Routings = ParseRoutings(gameState)
 		sc.RoadAnyTypeCompatible = binary.LittleEndian.Uint32(gameState[0x1A4:])
 		sc.Rng = [2]uint32{binary.LittleEndian.Uint32(gameState[0:]), binary.LittleEndian.Uint32(gameState[4:])}
+		sc.ScenarioTicks = binary.LittleEndian.Uint32(gameState[0x146:])
 		sc.UnkRng = [2]uint32{binary.LittleEndian.Uint32(gameState[8:]), binary.LittleEndian.Uint32(gameState[12:])}
 		sc.RoadUsableByAll = binary.LittleEndian.Uint32(gameState[0x1A8:])
 		sc.CurrentDay = ParseCurrentDay(gameState)
@@ -1373,6 +1374,8 @@ type StationName struct {
 	Name, Town uint16
 	Cargo      [32]StationCargo
 	X, Y, Z    int16 // Station x, y, z (0x02, 0x04, 0x06): its position (world units)
+	// VisitedTypes is var_3B2: a bit per VehicleType that has called here.
+	VisitedTypes uint8
 }
 
 // StationCargo is the part of StationCargoStats the station list reads.
@@ -1394,7 +1397,8 @@ func parseStationNames(gs []byte) []StationName {
 	for i := range out {
 		rec := gs[off+i*stationRecordSize:]
 		out[i] = StationName{Name: binary.LittleEndian.Uint16(rec[0x00:]), Town: binary.LittleEndian.Uint16(rec[0x2C:]),
-			X: int16(binary.LittleEndian.Uint16(rec[0x02:])), Y: int16(binary.LittleEndian.Uint16(rec[0x04:])), Z: int16(binary.LittleEndian.Uint16(rec[0x06:]))}
+			X: int16(binary.LittleEndian.Uint16(rec[0x02:])), Y: int16(binary.LittleEndian.Uint16(rec[0x04:])), Z: int16(binary.LittleEndian.Uint16(rec[0x06:])),
+			VisitedTypes: rec[0x3B2]}
 		// cargoStats: 32 × 13 bytes at 0x2E (quantity @0, flags @4; from the compiler).
 		for c := range out[i].Cargo {
 			e := rec[0x2E+c*13:]
