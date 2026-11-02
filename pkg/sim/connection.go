@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/scenario"
+import (
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // Track and road connection ends — Map/Track/Track.cpp getTrackConnectionEnd /
 // getRoadConnectionEnd over TrackData::getUnkTrack / getUnkRoad
@@ -181,6 +184,18 @@ func (t *Tile) roadStation(roadID, rotation, baseZ uint8) *scenario.StationEleme
 // arriving with nextRotation continues onto. roadObjectID 0xFF accepts any
 // road type compatible with any vehicle.
 func (m *Map) RoadConnections(x, y, z int32, nextRotation, company, roadObjectID, requiredMods, queryMods uint8) RoadConnections {
+	return m.roadConnections(x, y, z, nextRotation, company, roadObjectID, requiredMods, queryMods, nil)
+}
+
+// RoadConnectionsOneWay is getRoadConnectionsOneWay (<true,false>): as
+// RoadConnections, but a one-way road is not entered from its far end.
+func (m *Map) RoadConnectionsOneWay(x, y, z int32, nextRotation, company, roadObjectID, requiredMods, queryMods uint8, om *objects.ObjectManager) RoadConnections {
+	return m.roadConnections(x, y, z, nextRotation, company, roadObjectID, requiredMods, queryMods, om)
+}
+
+// roadConnections is getRoadConnectionsImpl; oneWay (non-nil om) is its
+// checkOneWay template flag.
+func (m *Map) roadConnections(x, y, z int32, nextRotation, company, roadObjectID, requiredMods, queryMods uint8, oneWay *objects.ObjectManager) RoadConnections {
 	res := RoadConnections{StationID: -1, RoadObjectID: 0xFF}
 	baseZ := uint8(z / 4)
 	t := m.TileAt(int(x/32), int(y/32))
@@ -240,6 +255,9 @@ func (m *Map) RoadConnections(x, y, z int32, nextRotation, company, roadObjectID
 			continue
 		}
 		if int(baseZ) != int(el.BaseZ)-(int(RoadCoordinates[tad].DZ)+int(piece[el.SequenceIndex][2]))/4 {
+			continue
+		}
+		if oneWay != nil && roadIsOneWay(oneWay, el.RoadObjectID) {
 			continue
 		}
 		add(tad)
