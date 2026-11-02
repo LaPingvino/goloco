@@ -1452,3 +1452,35 @@ func TestStationCycle(t *testing.T) {
 		t.Error("no complete station visit")
 	}
 }
+
+// pathingShouldReverse on every saved land vehicle (logged), and its first
+// rule: a head with nothing connecting ahead is never told to reverse here.
+func TestSavedPathingShouldReverse(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	yes, n, deadEnd := 0, 0, 0
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.Mode > 1 {
+			continue
+		}
+		n++
+		rev := m.PathingShouldReverse(tr, r.Objects)
+		if rev {
+			yes++
+		}
+		if h.Mode == 0 {
+			e, _ := sim.TrackConnectionEnd(int32(h.TileX), int32(h.TileY), int32(h.TileBaseZ)*4, h.TrackAndDirection&sim.TaDBasicMask)
+			if len(m.TrackConnections(e.X, e.Y, e.Z, e.NextRotation, h.Owner, h.TrackType, h.HeadVar53, m.Entities[tr.Veh1].Var49).Connections) == 0 {
+				deadEnd++
+				if rev {
+					t.Errorf("head %d: nothing ahead, yet reverse", h.ID)
+				}
+			}
+		}
+	}
+	t.Logf("land vehicles %d: pathing says reverse for %d (trains at a dead end: %d)", n, yes, deadEnd)
+}
