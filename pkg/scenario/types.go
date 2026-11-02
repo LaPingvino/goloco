@@ -334,6 +334,8 @@ type RoadElement struct {
 	IsLast                bool  // byte 1 bit 6: ElementFlags::flag_6 — last tile of the piece
 	Ghost                 bool  // byte 1 bit 4: ElementFlags::ghost
 	AiAllocated           bool  // byte 1 bit 5: ElementFlags::aiAllocated
+	LaneOccupation        uint8 // byte 4 bits [5:4]: laneOccupation
+	Unk7_10               bool  // byte 7 bit 4: level crossing in use (setUnk7_10)
 }
 
 // StationElement represents a station tile (rail, road, airport, or dock).
