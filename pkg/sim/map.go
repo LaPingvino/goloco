@@ -40,6 +40,7 @@ type Map struct {
 	StartingLoanSize                                       uint16                      // GameState startingLoanSize
 	SeaLevel, LastLandOption                               uint8                       // GameState seaLevel, lastLandOption
 	CurrentSnowLine, CurrentSeason                         uint8                       // GameState currentSnowLine, currentSeason
+	EntriesEnd                                             int                         // TileManager entriesEnd as the generator's inserts move it (numFreeElements = kMaxElements − EntriesEnd)
 	PreferredAI                                            [3]uint8                    // GameState preferredAI intelligence / aggressiveness / competitiveness
 	DefaultLevelCrossingType                               uint8                       // GameState currentDefaultLevelCrossingType
 	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors uint16

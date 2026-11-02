@@ -117,14 +117,15 @@ func (m *Map) InitialiseTiles() {
 			m.Tiles[y][x] = Tile{TerrainIndex: land, BaseZ: 4, Order: []scenario.ElemRef{{Kind: scenario.KindSurface}}}
 		}
 	}
+	m.EntriesEnd = m.Width * m.Height // one surface element each
 }
 
 // GenerateLandscape is MapGenerator::generate as far as it is ported:
 // initialiseDate, TileManager::initialise, the height map (original
 // generator), rivers, generateLand, water, terrain styles, the snow line,
-// surface variation. PARTIAL: Scenario::reset, trees, towns, industries, misc
+// surface variation, trees. PARTIAL: Scenario::reset, towns, industries, misc
 // buildings, sub_4969E0 / sub_4748D4 — so a generated map has land types
-// and water but no trees, towns or industries yet.
+// water and trees but no towns or industries yet.
 func (m *Map) GenerateLandscape(startYear uint16, o TerrainOptions, g1 G1Raw, om *objects.ObjectManager) {
 	m.InitialiseDate(startYear)
 	m.InitialiseSnowLine(om)
@@ -136,7 +137,9 @@ func (m *Map) GenerateLandscape(startYear uint16, o TerrainOptions, g1 G1Raw, om
 	m.GenerateWater(o.SeaLevel)
 	m.GenerateTerrain(hm, o.LandDistributionPatterns, o.SeaLevel, om)
 	m.GenerateSurfaceVariation(om)
-	// trees, towns, industries, misc buildings: PARTIAL; then generateSurfaceVariation again
+	m.GenerateTrees(o, om)
+	// towns, industries, misc buildings: PARTIAL
+	m.GenerateSurfaceVariation(om)
 }
 
 // Surface slope shapes (SurfaceSlope).

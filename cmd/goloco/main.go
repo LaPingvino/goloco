@@ -1786,7 +1786,11 @@ func (g *Game) loadScenario(filePath string) error {
 				HillDensity: sc.Options.HillDensity, HillsEdgeOfMap: sc.Options.Flags&2 != 0, SeaLevel: sc.SeaLevel,
 				NumRiverbeds: sc.Options.NumRiverbeds, MinRiverWidth: sc.Options.MinRiverWidth, MaxRiverWidth: sc.Options.MaxRiverWidth,
 				RiverbankWidth: sc.Options.RiverbankWidth, RiverMeanderRate: sc.Options.RiverMeanderRate,
-				LandDistributionPatterns: sc.Options.LandDistributionPatterns}
+				LandDistributionPatterns: sc.Options.LandDistributionPatterns,
+				NumberOfForests:          sc.Options.NumberOfForests, NumberRandomTrees: sc.Options.NumberRandomTrees,
+				MinForestRadius: sc.Options.MinForestRadius, MaxForestRadius: sc.Options.MaxForestRadius,
+				MinForestDensity: sc.Options.MinForestDensity, MaxForestDensity: sc.Options.MaxForestDensity,
+				MinAltitudeForTrees: sc.Options.MinAltitudeForTrees, MaxAltitudeForTrees: sc.Options.MaxAltitudeForTrees}
 		}
 		gameW.Map.StartScenarioGenerating(sc.Options.StartYear, gen, g.r.G1, g.objMgr)
 	}

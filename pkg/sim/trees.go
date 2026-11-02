@@ -164,6 +164,10 @@ func (m *Map) CreateTree(px, py int32, quadrant, rotation, treeType, colour uint
 	if int(baseZ)-4 > int(m.CurrentSnowLine) && uint16(to.Flags)&treeHasSnowVariation != 0 {
 		el.HasSnow = true
 	}
+	if kMaxElements-m.EntriesEnd <= kMaxElementsOnOneTile { // checkFreeElementsAndReorganise
+		m.EntriesEnd = m.countElements() // its full reorganise (the periodic defrags first: PARTIAL)
+	}
+	m.EntriesEnd += len(t.Order) + 1 // insertElement copies the tile to the end of the entries
 	t.Trees = append(t.Trees, el)
 	t.insertRef(scenario.KindTree, len(t.Trees)-1, baseZ)
 	for i := range t.Order { // the new ref carries the occupied quarter
@@ -206,4 +210,78 @@ func (m *Map) PlaceTreeCluster(tx, ty int, rng, density uint16, treeType int, om
 		}
 	}
 	return errors < n
+}
+
+const (
+	kMaxElements          = 442368 // TileManager::kMaxElements
+	kMaxElementsOnOneTile = 1024
+)
+
+func (m *Map) countElements() int {
+	n := 0
+	for y := range m.Tiles {
+		for x := range m.Tiles[y] {
+			n += len(m.Tiles[y][x].Order)
+		}
+	}
+	return n
+}
+
+// GenerateTrees is generateTrees: forests (random radius, place, density;
+// stopping once fewer than 0x1B000 elements are free), random single trees,
+// then the altitude cull — on each tile the first tree at or beyond the
+// options' altitudes goes (at exactly the limit only when the rotating bit of
+// one random mask is set) — and updateTreeSeasons.
+func (m *Map) GenerateTrees(o TerrainOptions, om *objects.ObjectManager) {
+	for range int(o.NumberOfForests) {
+		r := (m.Rng1.RandNextBound(255)*int32(max(int(o.MaxForestRadius)-int(o.MinForestRadius), 0))/255 + int32(o.MinForestRadius)) * tileSize
+		lx := int(m.Rng1.RandNextBound(int32(m.Height))) // TilePos2(randNext(kMapRows), randNext(kMapColumns))
+		ly := int(m.Rng1.RandNextBound(int32(m.Width)))
+		density := m.Rng1.RandNextBound(15)*int32(max(int(o.MaxForestDensity)-int(o.MinForestDensity), 0))/15 + int32(o.MinForestDensity)
+		m.PlaceTreeCluster(lx, ly, uint16(r), uint16(density), -1, om)
+		if kMaxElements-m.EntriesEnd < 0x1B000 {
+			break
+		}
+	}
+	for range int(o.NumberRandomTrees) {
+		px := m.Rng1.RandNextBound(int32(m.Width * tileSize))
+		py := m.Rng1.RandNextBound(int32(m.Height * tileSize))
+		m.PlaceRandomTree(px, py, -1, om)
+	}
+	mask := m.Rng1.RandNext()
+	bit := uint32(0)
+	for y := range m.Height {
+		for x := range m.Width {
+			t := m.TileAt(x, y)
+			for _, r := range t.Order {
+				if r.Kind != scenario.KindTree {
+					continue
+				}
+				h := t.Trees[r.Index].BaseZ // baseHeight / kMicroToSmallZStep
+				cull := (h <= o.MinAltitudeForTrees && (h != o.MinAltitudeForTrees || mask&(1<<bit) != 0)) ||
+					(h >= o.MaxAltitudeForTrees && (h != o.MaxAltitudeForTrees || mask&(1<<bit) != 0))
+				if cull {
+					idx := int(r.Index)
+					t.Trees = append(t.Trees[:idx], t.Trees[idx+1:]...)
+					t.removeRef(scenario.KindTree, idx) // drops the ref, renumbers the later trees
+					bit = (bit + 1) % 32
+					break
+				}
+			}
+		}
+	}
+	// updateTreeSeasons: each drawable tile's first tree takes the season.
+	for y := 1; y <= m.Height-2; y++ {
+		for x := 1; x <= m.Width-2; x++ {
+			t := m.TileAt(x, y)
+			for _, r := range t.Order {
+				if r.Kind == scenario.KindTree {
+					if tr := &t.Trees[r.Index]; tr.Season < 4 { // isDying is never set on generated trees
+						tr.Season, tr.Unk7l = m.CurrentSeason, 7
+					}
+					break
+				}
+			}
+		}
+	}
 }
