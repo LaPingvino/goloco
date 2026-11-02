@@ -235,8 +235,12 @@ func (m *Map) countElements() int {
 func (m *Map) GenerateTrees(o TerrainOptions, om *objects.ObjectManager) {
 	for range int(o.NumberOfForests) {
 		r := (m.Rng1.RandNextBound(255)*int32(max(int(o.MaxForestRadius)-int(o.MinForestRadius), 0))/255 + int32(o.MinForestRadius)) * tileSize
-		lx := int(m.Rng1.RandNextBound(int32(m.Height))) // TilePos2(randNext(kMapRows), randNext(kMapColumns))
+		// TilePos2(randNext(kMapRows), randNext(kMapColumns)): C++ leaves the
+		// order of argument evaluation open; GCC and MSVC evaluate right to
+		// left, so the second (y) draws first — as the upstream harness
+		// (GCC) does. A Clang build of OpenLoco would swap them.
 		ly := int(m.Rng1.RandNextBound(int32(m.Width)))
+		lx := int(m.Rng1.RandNextBound(int32(m.Height)))
 		density := m.Rng1.RandNextBound(15)*int32(max(int(o.MaxForestDensity)-int(o.MinForestDensity), 0))/15 + int32(o.MinForestDensity)
 		m.PlaceTreeCluster(lx, ly, uint16(r), uint16(density), -1, om)
 		if kMaxElements-m.EntriesEnd < 0x1B000 {
@@ -244,8 +248,8 @@ func (m *Map) GenerateTrees(o TerrainOptions, om *objects.ObjectManager) {
 		}
 	}
 	for range int(o.NumberRandomTrees) {
+		py := m.Rng1.RandNextBound(int32(m.Height * tileSize)) // Pos2(randNext(kMapWidth), randNext(kMapHeight)): right to left, as above
 		px := m.Rng1.RandNextBound(int32(m.Width * tileSize))
-		py := m.Rng1.RandNextBound(int32(m.Height * tileSize))
 		m.PlaceRandomTree(px, py, -1, om)
 	}
 	mask := m.Rng1.RandNext()
