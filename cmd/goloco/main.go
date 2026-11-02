@@ -2607,6 +2607,12 @@ const (
 // drawInlineDiag (GOLOCO_DIAG_INLINE) is drawVehicleInline for the first ten
 // rail and road vehicle types, in a panel at (20, 60).
 func (g *Game) drawInlineDiag(screen *ebiten.Image) {
+	if os.Getenv("GOLOCO_DIAG_TTF") != "" { // the G1 font and the TTF fallback on one line
+		fillRect(screen, 10, 10, 300, 30, color.RGBA{200, 200, 200, 255})
+		fillRect(screen, 10, 20, 300, 1, color.RGBA{255, 0, 0, 255}) // y = 20: the text tops
+		ui.DrawTextBold(screen, "Bitmap text", 20, 20, color.Black)
+		ui.DrawTextBold(screen, "TTF 日本語 text", 120, 20, color.Black)
+	}
 	if os.Getenv("GOLOCO_DIAG_INLINE") == "" || g.objMgr == nil {
 		return
 	}

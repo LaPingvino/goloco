@@ -180,9 +180,9 @@ func DrawText(screen *ebiten.Image, str string, x, y int, clr color.Color) {
 	}
 
 	op := &text.DrawOptions{}
-	// text/v2 uses baseline positioning, but Y should be top of text
-	// Subtract to move text up to align properly
-	op.GeoM.Translate(float64(x), float64(y-9))
+	// text/v2 puts the rendering region's top-left at the origin (unlike
+	// text v1's baseline origin), so y is already the top of the text.
+	op.GeoM.Translate(float64(x), float64(y))
 	op.ColorScale.ScaleWithColor(clr)
 	text.Draw(screen, str, globalFontManager.Regular, op)
 }
@@ -199,9 +199,9 @@ func DrawTextBold(screen *ebiten.Image, str string, x, y int, clr color.Color) {
 	}
 
 	op := &text.DrawOptions{}
-	// text/v2 uses baseline positioning, but Y should be top of text
-	// Subtract to move text up to align properly
-	op.GeoM.Translate(float64(x), float64(y-9))
+	// text/v2 puts the rendering region's top-left at the origin (unlike
+	// text v1's baseline origin), so y is already the top of the text.
+	op.GeoM.Translate(float64(x), float64(y))
 	op.ColorScale.ScaleWithColor(clr)
 	text.Draw(screen, str, globalFontManager.Bold, op)
 }
@@ -236,8 +236,7 @@ func DrawTextBoldScaled(screen *ebiten.Image, str string, x, y int, scale float6
 	}
 	op := &text.DrawOptions{}
 	op.GeoM.Scale(scale, scale)
-	// Ascender at 10pt ≈ 9px; at scale s the baseline sits 9*s px below the visual top.
-	op.GeoM.Translate(float64(x), float64(y)-9.0*scale)
+	op.GeoM.Translate(float64(x), float64(y)) // text/v2: y is the top (see DrawTextBold)
 	op.ColorScale.ScaleWithColor(clr)
 	text.Draw(screen, str, globalFontManager.Bold, op)
 }
