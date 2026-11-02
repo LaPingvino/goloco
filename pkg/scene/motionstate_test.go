@@ -807,3 +807,35 @@ func TestSavedOrders(t *testing.T) {
 		t.Errorf("%d travelling vehicles whose current order was not routable", travelling-kept)
 	}
 }
+
+// trackTargetedPathing from each saved train's Vehicle1 piece toward the
+// station its current order names (logged sanity: how many reach it within
+// upstream's 1280-weight horizon, and with which signal state).
+func TestSavedTrainsTargetedPathing(t *testing.T) {
+	_, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	reached, n := 0, 0
+	states := map[uint32]int{}
+	for _, tr := range trains {
+		h, v1 := m.Entities[tr.Head], m.Entities[tr.Veh1]
+		if h.Mode != 0 {
+			continue
+		}
+		ring := m.OrderRing(h.OrderTableOffset, h.CurrentOrder)
+		if len(ring) == 0 || !ring[0].HasFlags(sim.OrderHasStation) {
+			continue
+		}
+		n++
+		r := m.TrackTargetedPathing(int32(v1.TileX), int32(v1.TileY), int32(v1.TileBaseZ)*4, v1.TrackAndDirection&sim.TaDBasicMask,
+			sim.Pathing{Company: h.Owner, TrackType: h.TrackType, RequiredMods: h.HeadVar53},
+			&sim.RouteTarget{StationID: ring[0].Station(), RX: -1, RY: -1})
+		states[r.SignalState]++
+		if r.BestDistToTarget == 0 {
+			reached++
+		}
+	}
+	t.Logf("trains heading for a station %d; reach it within the horizon %d; signal states %v", n, reached, states)
+}
