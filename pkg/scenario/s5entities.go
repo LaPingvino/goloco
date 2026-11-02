@@ -113,16 +113,24 @@ func IsVehicleBody(entityType uint8) bool {
 }
 
 // VehicleHead status values — VehicleHead byte 0x5D.
-// OpenLoco reference: src/OpenLoco/src/Vehicles/Vehicle.h  Status
+// OpenLoco reference: include/OpenLoco/Vehicles/VehicleHead.h  Status
+// (FIXED 2026-11-02: these were renumbered from 4 on; world/vehiclestatus.go
+// reads them).
 const (
-	VehicleStatusUnplaced    = uint8(0) // not yet placed on the map
-	VehicleStatusStopped     = uint8(1) // parked at a station
-	VehicleStatusTravelling  = uint8(2) // moving along track
-	VehicleStatusWaiting     = uint8(3) // waiting at a signal
-	VehicleStatusLoading     = uint8(4) // loading/unloading cargo
-	VehicleStatusApproaching = uint8(5) // approaching station
-	VehicleStatusBrokenDown  = uint8(6)
-	VehicleStatusCrashed     = uint8(7)
+	VehicleStatusUnplaced        = uint8(0) // unk_0: no position (not placed)
+	VehicleStatusStopped         = uint8(1)
+	VehicleStatusTravelling      = uint8(2)
+	VehicleStatusWaitingAtSignal = uint8(3)
+	VehicleStatusApproaching     = uint8(4)
+	VehicleStatusUnloading       = uint8(5)
+	VehicleStatusLoading         = uint8(6)
+	VehicleStatusBrokenDown      = uint8(7)
+	VehicleStatusCrashed         = uint8(8)
+	VehicleStatusStuck           = uint8(9)
+	VehicleStatusLanding         = uint8(10)
+	VehicleStatusTaxiing1        = uint8(11)
+	VehicleStatusTaxiing2        = uint8(12)
+	VehicleStatusTakingOff       = uint8(13)
 )
 
 // EntityBase byte offsets — sizeof = 0x24.

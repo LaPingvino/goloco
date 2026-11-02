@@ -31,7 +31,7 @@ func (g *Game) openVehicleList(tab int) {
 				cars = append(cars, ui.TrainCarDraw(c))
 			}
 			rows = append(rows, ui.VehicleRow{Name: v.Name, Profit: v.Profit, AgeYears: v.AgeYears, Reliability: v.Reliability,
-				RecentProfit: v.RecentProfit, DayCreated: v.DayCreated, Cars: cars})
+				RecentProfit: v.RecentProfit, DayCreated: v.DayCreated, Cars: cars, Status: v.Status, StatusRed: v.StatusRed})
 		}
 	}
 	var tc, wc uint8 = 0, 1

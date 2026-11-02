@@ -274,6 +274,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		// OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h  GameState::entities
 		sc.Entities = ParseVehicleEntities(gameState)
 		sc.VehicleList = ParseVehicleListEntries(gameState)
+		sc.Orders = ParseOrders(gameState)
 		sc.CurrentDay = ParseCurrentDay(gameState)
 		if sc.Entities != nil {
 			log.Printf("[Scenario] Parsed %d vehicle entities (Head+Body) from GameState", len(sc.Entities))

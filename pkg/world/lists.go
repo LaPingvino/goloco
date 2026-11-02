@@ -319,6 +319,9 @@ type VehicleListRow struct {
 	RecentProfit int64
 	DayCreated   uint32
 	HeadID       uint16
+	// Status is getStatus's text; StatusRed its {COLOUR RED}.
+	Status    string
+	StatusRed bool
 }
 
 // VehicleListRows returns the saved vehicles' list data: name (the head's
@@ -339,6 +342,7 @@ func (w *World) VehicleListRows() []VehicleListRow {
 		}
 		out = append(out, VehicleListRow{Type: int(v.VehicleType), Owner: int(v.Owner), Name: name, Profit: int64(v.RecentProfit / 4),
 			AgeYears: age, Reliability: int(v.Reliability), RecentProfit: int64(v.RecentProfit), DayCreated: v.DayCreated, HeadID: v.HeadID})
+		out[len(out)-1].Status, out[len(out)-1].StatusRed = w.VehicleStatus(v)
 	}
 	return out
 }
