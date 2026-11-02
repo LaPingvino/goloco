@@ -6,8 +6,8 @@ package sim
 // TrackData::MoveInfo path while it has distance to spend.
 //
 // The step onto the next piece is a hook: Map.TrackNewPiece is
-// updateTrackMotionNewTrackPiece. PARTIAL: updateRoadMotionNewRoadPiece and
-// the bogie collision checks (checkForCollisions) are not ported yet.
+// updateTrackMotionNewTrackPiece, Map.RoadNewPiece updateRoadMotionNewRoadPiece.
+// PARTIAL: the bogie collision checks (checkForCollisions) are not ported yet.
 
 // MovementNibble is getMovementNibble: bit 0 x changed, bit 1 y, bit 2 z.
 func MovementNibble(ax, ay, az, bx, by, bz int32) uint8 {
@@ -42,6 +42,8 @@ type MotionComponent struct {
 	RoutingHandle     RoutingHandle
 	Owner             uint8 // company
 	TrackType         uint8 // track (or road) object id
+	IsVehicle2        bool  // the component is the train's Vehicle2
+	Var4F             uint8 // Vehicle2 var_4F: the road object it is on (RoadNewPiece)
 }
 
 // UpdateVar1136114Flags (Vehicles/Vehicle.h).
@@ -142,6 +144,50 @@ func (m *Map) TrackNewPiece(c *MotionComponent, flags *uint32, requiredMods uint
 	c.RoutingHandle = next
 	old := TrackCoordinates[c.TrackAndDirection]
 	c.TrackAndDirection = routing & TaDBasicMask
+	c.TileX, c.TileY = x+int32(old.DX), y+int32(old.DY)
+	c.TileBaseZ = uint8((z + int32(old.DZ)) / 4)
+	return true
+}
+
+// RoadNewPiece is updateRoadMotionNewRoadPiece: as TrackNewPiece over road
+// (getRoadConnectionEnd of basicRad, getRoadConnections, routing compared on
+// basicRaDMask, trackAndDirection = routing & 0x1FF keeping the overtaking /
+// lane-change bits). Vehicle 2 records the connection's road object (var_4F)
+// in Var4F.
+func (m *Map) RoadNewPiece(c *MotionComponent, flags *uint32, requiredMods uint8, isVeh2UnkM15 bool, veh1Handle RoutingHandle) bool {
+	next := c.RoutingHandle.WithIndex(c.RoutingHandle.Index() + 1)
+	routing := m.Routing(next)
+	if routing == RoutingAllocatedButFree {
+		return false
+	}
+	if isVeh2UnkM15 && veh1Handle == c.RoutingHandle {
+		*flags |= MotionUnkM03
+		return false
+	}
+	const basicRaD = 0x7F
+	x, y, z := c.TileX, c.TileY, int32(c.TileBaseZ)*4
+	e, ok := RoadConnectionEnd(x, y, z, c.TrackAndDirection&basicRaD)
+	if !ok {
+		return false
+	}
+	tc := m.RoadConnections(e.X, e.Y, e.Z, e.NextRotation, c.Owner, c.TrackType, requiredMods, 0)
+	found := false
+	for _, conn := range tc.Connections {
+		if conn&basicRaD == routing&basicRaD {
+			found = true
+			break
+		}
+	}
+	if !found {
+		*flags |= MotionNoRouteFound
+		return false
+	}
+	c.RoutingHandle = next
+	old := RoadCoordinates[c.TrackAndDirection&basicRaD]
+	c.TrackAndDirection = routing & 0x1FF
+	if c.IsVehicle2 {
+		c.Var4F = tc.RoadObjectID
+	}
 	c.TileX, c.TileY = x+int32(old.DX), y+int32(old.DY)
 	c.TileBaseZ = uint8((z + int32(old.DZ)) / 4)
 	return true

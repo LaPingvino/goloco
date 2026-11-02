@@ -250,6 +250,7 @@ func (s *State) PlaceRoadAtHead(roadID int, roadObjID uint8) bool {
 			SequenceIndex: uint8(i),
 			BaseZ:         baseZ[i],
 			ClearZ:        baseZ[i] + 8,
+			IsLast:        i == len(tiles)-1, // CreateRoad: setFlag6 on the piece's last tile
 		})
 	}
 	s.consRoadStack = append(s.consRoadStack, placed)

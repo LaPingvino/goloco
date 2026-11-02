@@ -6,21 +6,23 @@ import "github.com/LaPingvino/goloco/pkg/scenario"
 // in the scenario (OpenLoco: Map/TileManager for tiles, Towns/TownManager,
 // Entities/EntityManager — state only, no drawing).
 type Map struct {
-	Width, Height       int
-	Tiles               [][]Tile        // [y][x]
-	Towns               []scenario.Town // parsed town records
-	Entities            []scenario.VehicleEntity
-	VehicleListData     []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
-	CompanyFaces        []scenario.CompanyFace      // company slot → competitor, emotion, performance
-	StationCargoDensity [][32]uint8                 // station id → cargoStats[].densityPerTile
-	Orders              []byte                      // GameState orders[]
-	Routings            []uint16                    // GameState routings[], by RoutingHandle (routing.go)
-	CurrentDay          uint32                      // GameState general.currentDay
-	CompanyNames        []uint16                    // company slot → name StringId
-	ControllingCompany  uint8                       // playerCompanies[0] (getControllingId)
-	TrafficHandedness   uint8                       // GameState trafficHandedness
-	UnlockedVehicles    [][7]uint32                 // per company: Company::unlockedVehicles
-	CurrentYear         uint16                      // GameState general.currentYear
+	Width, Height         int
+	Tiles                 [][]Tile        // [y][x]
+	Towns                 []scenario.Town // parsed town records
+	Entities              []scenario.VehicleEntity
+	VehicleListData       []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
+	CompanyFaces          []scenario.CompanyFace      // company slot → competitor, emotion, performance
+	StationCargoDensity   [][32]uint8                 // station id → cargoStats[].densityPerTile
+	Orders                []byte                      // GameState orders[]
+	Routings              []uint16                    // GameState routings[], by RoutingHandle (routing.go)
+	RoadAnyTypeCompatible uint32                      // GameState roadObjectIdIsAnyRoadTypeCompatible
+	RoadUsableByAll       uint32                      // GameState roadObjectIdIsUsableByAllCompanies
+	CurrentDay            uint32                      // GameState general.currentDay
+	CompanyNames          []uint16                    // company slot → name StringId
+	ControllingCompany    uint8                       // playerCompanies[0] (getControllingId)
+	TrafficHandedness     uint8                       // GameState trafficHandedness
+	UnlockedVehicles      [][7]uint32                 // per company: Company::unlockedVehicles
+	CurrentYear           uint16                      // GameState general.currentYear
 	// CurrencyMultiplicationFactor prices cost indices (Economy).
 	CurrencyMultiplicationFactor [32]uint32
 
@@ -116,6 +118,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.VehicleListData = sc.VehicleList
 	m.Orders = sc.Orders
 	m.Routings = sc.Routings
+	m.RoadAnyTypeCompatible, m.RoadUsableByAll = sc.RoadAnyTypeCompatible, sc.RoadUsableByAll
 	m.CurrentDay = sc.CurrentDay
 	m.CompanyNames = sc.CompanyNames
 	m.CompanyFaces = sc.CompanyFaces
