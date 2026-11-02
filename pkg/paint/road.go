@@ -22,6 +22,47 @@ type RoadEl struct {
 	// StreetlightImage is the StreetLight object's image.
 	Streetlight      uint8
 	StreetlightImage int
+	// Crossing is the level crossing on this road (nil: none): its object's
+	// image and animation, the element's frame (unk6l) and the scenario ticks.
+	Crossing *LevelCrossing
+}
+
+// LevelCrossing is what paintLevelCrossing reads.
+type LevelCrossing struct {
+	Image                                       int
+	AnimationSpeed, ClosingFrames, ClosedFrames uint8
+	Frame                                       uint8 // elRoad.unk6l(): 0 open, 15 animating
+	Ticks                                       uint32
+}
+
+// paintLevelCrossing (0x00475DDF): four images (the gates at the corners)
+// for the crossing's frame (frame 15 animates through the closing frames by
+// the ticks), the fourth's box depending on the rotation while animating.
+func (s *Session) paintLevelCrossing(el RoadEl, rot int, sprite func(int) *gfx8.Sprite) {
+	c := el.Crossing
+	frame := uint32(c.Frame)
+	if frame == 15 {
+		frame = (c.Ticks/(1<<c.AnimationSpeed))&(uint32(c.ClosingFrames)-1) + uint32(c.ClosedFrames) + 1
+	}
+	img0 := c.Image + (rot&1)*4 + int(frame)*8
+	h := int(el.BaseZ) * 4
+	ho := Pos3{0, 0, h}
+	add := func(i int, bbOff, bbSize Pos3) {
+		if sp := sprite(img0 + i); sp != nil {
+			s.AddAsParent(Colour(sp, el.Remap), ho, Pos3{bbOff.X, bbOff.Y, bbOff.Z + h}, bbSize) // addToPlotList4FD150
+		}
+	}
+	add(0, Pos3{2, 2, 1}, Pos3{1, 1, 8})
+	add(1, Pos3{2, 30, 1}, Pos3{1, 1, 8})
+	add(2, Pos3{30, 2, 1}, Pos3{1, 1, 8})
+	switch {
+	case c.Frame != 15:
+		add(3, Pos3{30, 30, 1}, Pos3{1, 1, 8})
+	case rot&1 != 0:
+		add(3, Pos3{17, 30, 1}, Pos3{14, 1, 8})
+	default:
+		add(3, Pos3{30, 17, 1}, Pos3{1, 14, 8})
+	}
 }
 
 // kStreetlightOffsets / BoundingBoxOffsets / Size (PaintRoad.cpp), by edge.
@@ -52,6 +93,16 @@ var (
 // PaintRoad paints one road element at the current sprite position. image is
 // the road object's image base, paintStyle its paint style (0, 1, 2).
 func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(int) *gfx8.Sprite) {
+	s.paintRoadPiece(el, image, paintStyle, sprite)
+	// paintRoad, after the piece: beyond zoom 1 nothing more; the level crossing.
+	if s.Zoom > 1 || el.Crossing == nil {
+		return
+	}
+	s.paintLevelCrossing(el, int((s.Rotation+el.Rotation)&3), sprite)
+}
+
+// paintRoadPiece is paintRoad's piece part (paintRoadPP / PCP).
+func (s *Session) paintRoadPiece(el RoadEl, image int, paintStyle uint8, sprite func(int) *gfx8.Sprite) {
 	rid, seq := int(el.RoadID), int(el.SequenceIndex)
 	if rid >= len(RoadCommonParts) || seq >= len(RoadCommonParts[rid]) {
 		return
