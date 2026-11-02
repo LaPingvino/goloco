@@ -1996,3 +1996,28 @@ func TestYearEnd(t *testing.T) {
 	}
 	t.Logf("year %d → %d after %d ticks; %d companies' expenditure tables moved on", year, m.CurrentYear, ticks, checked)
 }
+
+// The SV5's game started in January 1925 (monthsInChallenge 8 in September
+// 1925): its saved inflation factors are setInflationForYear(1925) and eight
+// monthly Economy updates — all 32 exactly. And the month end applies one more.
+func TestInflationMatchesSave(t *testing.T) {
+	r, m, _ := saveView(t, "Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false)
+	saved := m.CurrencyMultiplicationFactor
+	var x sim.Map
+	x.SetInflationForYear(1925)
+	for range m.ObjectiveMonthsInChallenge {
+		x.EconomyUpdateMonthly()
+	}
+	if x.CurrencyMultiplicationFactor != saved {
+		t.Fatalf("computed %v\nsaved    %v", x.CurrencyMultiplicationFactor, saved)
+	}
+	x.EconomyUpdateMonthly()
+	month := m.CurrentMonth
+	for m.CurrentMonth == month {
+		m.UpdateVehicles(r.Objects)
+	}
+	if m.CurrencyMultiplicationFactor != x.CurrencyMultiplicationFactor {
+		t.Errorf("after the month end %v, want %v", m.CurrencyMultiplicationFactor, x.CurrencyMultiplicationFactor)
+	}
+	t.Logf("32 factors match (e.g. [0] %d → %d)", saved[0], m.CurrencyMultiplicationFactor[0])
+}

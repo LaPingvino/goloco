@@ -13,7 +13,8 @@ import (
 // the player companies' challenge progress run; StationManager /
 // IndustryManager / MessageManager daily updates, the snow line, the monthly,
 // quarterly and yearly updates (of the monthly ones monthsInChallenge,
-// CompanyManager::updateMonthly1 and VehicleManager::updateMonthly run), and the rest of
+// CompanyManager::updateMonthly1, VehicleManager::updateMonthly and
+// Economy::updateMonthly run), and the rest of
 // Company::updateDaily (emotions, AI logic, jail) are not ported.
 // VehicleHead::updateDaily: the stopped-road-vehicle restart (a game
 // command) and selling crashed AI vehicles are not ported.
@@ -79,7 +80,10 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 		m.companiesUpdateMonthly1()
 		// CompanyManager::updateMonthlyHeadquarters: PARTIAL
 		m.vehiclesUpdateMonthly(om)
-		// Economy::updateMonthly, quarterly: PARTIAL
+		if today.Year <= 2029 {
+			m.EconomyUpdateMonthly()
+		}
+		// CompanyManager::updateQuarterly (AI thoughts): PARTIAL
 		if today.Year != yesterday.Year { // end of every year
 			m.companiesUpdateYearly()
 			m.UpdateDefaultLevelCrossingType(om)
@@ -259,4 +263,31 @@ func (m *Map) calculateRunningCost(tr Train, om *objects.ObjectManager) int32 {
 		}
 	}
 	return total
+}
+
+// CalcDays is calcDays: the day number of a date (month 0–11, day 1-based as
+// upstream's Date). Note upstream's quirk, kept: calcDays(1 January) is one
+// more than the day calcDate reads as 1 January.
+func CalcDays(year, month, day int) uint32 {
+	diff := year - 1800
+	n := uint32(diff*365 + diff/4)
+	for mo := range month {
+		n += uint32(monthLengths[mo])
+		if mo == 1 && year%4 != 0 { // getMonthTotalDay: February 28, 29 in a leap year (year % 4 == 0)
+			n--
+		}
+	}
+	return n + uint32(day)
+}
+
+// InitialiseDate is Scenario's initialiseDate(year): 1 January of the year,
+// day progression and scenario ticks reset, inflation set for the year.
+// PARTIAL: the season, the vehicle preview rotation and
+// CompanyManager::determineAvailableVehicles.
+func (m *Map) InitialiseDate(year uint16) {
+	m.CurrentDay = CalcDays(int(year), 0, 1)
+	m.CurrentYear, m.CurrentMonth, m.CurrentDayOfMonth = year, 0, 0 // setDate: day − 1
+	m.DayCounter = 0
+	m.ScenarioTicks = 0
+	m.SetInflationForYear(m.CurrentYear)
 }
