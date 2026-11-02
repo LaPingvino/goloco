@@ -2050,15 +2050,16 @@ func TestUnlockedVehiclesMatchSaves(t *testing.T) {
 	}
 }
 
-// Scenario::start's CompanyManager::reset + createPlayerCompany, run on
-// title.dat's state (a .SC5's general game state is not parsed yet — 5.8c):
-// the player company: slot 0, named
+// A new game from a .SC5 (Scenario::start's CompanyManager::reset +
+// createPlayerCompany, after initialiseDate for the scenario's year): the
+// player company: slot 0, named
 // new_company, a free competitor's face, a colour no other company
 // competes with, the inflation-adjusted starting loan as cash and loan,
 // the year's unlocked vehicles, history size 1.
 func TestCreatePlayerCompany(t *testing.T) {
-	r, m, _ := titleView(t)
+	r, m, _ := saveView(t, "Scenarios/Aerophobia.SC5", false)
 	before := len(m.Companies)
+	m.InitialiseDate(m.CurrentYear)
 	m.ResetCompanies()
 	id := m.CreatePlayerCompany(r.Objects)
 	if id != 0 {
@@ -2070,8 +2071,11 @@ func TestCreatePlayerCompany(t *testing.T) {
 	if m.CompanyEmpty(int(id)) || m.CompanyNames[id] != 2 || m.ControllingCompany != id || m.PlayerCompanies != [2]uint8{0, 0xFF} {
 		t.Error("company not set up")
 	}
-	if int(f.Competitor) >= len(r.Objects.CompetitorObjects) || r.Objects.CompetitorObjects[f.Competitor] == nil {
-		t.Error("no competitor face")
+	// A .SC5 requires no competitor objects, so upstream takes
+	// selectNewCompetitor's fallback (load an installed competitor chosen by
+	// the preferred-AI metric) — not ported yet (5.8 b3): no face here.
+	if f.Competitor != 0xFF {
+		t.Errorf("competitor %d without any loaded competitor object", f.Competitor)
 	}
 	if c.CurrentLoan <= 0 || c.CurrentLoan%100 != 0 || c.Cash != int64(c.CurrentLoan) {
 		t.Errorf("loan %d cash %d", c.CurrentLoan, c.Cash)
