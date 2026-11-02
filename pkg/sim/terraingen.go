@@ -22,6 +22,7 @@ type TerrainOptions struct {
 	SeaLevel        uint8
 	// Rivers (OpenLoco's options; none in vanilla scenarios).
 	NumRiverbeds, MinRiverWidth, MaxRiverWidth, RiverbankWidth, RiverMeanderRate uint8
+	LandDistributionPatterns                                                     [32]uint8 // per land object slot
 }
 
 const (
@@ -217,6 +218,165 @@ func (m *Map) GenerateWater(seaLevel uint8) {
 		for x := 1; x <= m.Width-2; x++ {
 			if t := m.TileAt(x, y); t != nil && int(t.BaseZ) < int(seaLevel)<<2 {
 				t.WaterLevel = seaLevel & 0x1F // setWater keeps the update timer bits; goloco stores only the level
+			}
+		}
+	}
+}
+
+// Land distribution patterns (Scenario::LandDistributionPattern).
+const (
+	landEverywhere = iota
+	landNowhere
+	landFarFromWater
+	landNearWater
+	landOnMountains
+	landFarFromMountains
+	landSmallRandomAreas
+	landLargeRandomAreas
+	landAroundCliffs
+)
+
+const (
+	cliffTerrainHeightDiff = 4  // kCliffTerrainHeightDiff
+	mountainTerrainHeight  = 26 // kMountainTerrainHeight
+)
+
+// randomTerrainVariation is getRandomTerrainVariation (gPrng1): none on
+// water / industrial / unknown land; 0 on slopes or land without variations;
+// else a variation by the land object's likelihood.
+func (m *Map) randomTerrainVariation(t *Tile, om *objects.ObjectManager) (uint8, bool) {
+	if t.WaterLevel != 0 || t.IsIndustrial || int(t.TerrainIndex) >= len(om.LandObjects) || om.LandObjects[t.TerrainIndex] == nil {
+		return 0, false
+	}
+	lo := om.LandObjects[t.TerrainIndex]
+	if lo.NumVariations == 0 || t.Slope != 0 {
+		return 0, true
+	}
+	r := uint16(m.Rng1.RandNext())
+	if uint16(lo.VariationLikelihood) <= r>>8 {
+		return 0, true
+	}
+	return uint8(uint32(r&0xFF) * uint32(lo.NumVariations) >> 8), true
+}
+
+func (m *Map) setTerrainWithVariation(t *Tile, style uint8, om *objects.ObjectManager) {
+	t.TerrainIndex = style
+	if v, ok := m.randomTerrainVariation(t, om); ok {
+		t.Variation = v
+	}
+}
+
+// markAround marks every tile within r of (x, y), clamped to the map
+// (getClampedRange).
+func markAround(hm *HeightMap, x, y, r int) {
+	for my := max(0, y-r); my <= min(hm.Height-1, y+r); my++ {
+		for mx := max(0, x-r); mx <= min(hm.Width-1, x+r); mx++ {
+			hm.SetMarker(mx, my)
+		}
+	}
+}
+
+// applySurfaceStyleToMarkedTiles over the drawable tiles.
+func (m *Map) applySurfaceStyleToMarkedTiles(hm *HeightMap, style uint8, requireMark bool, om *objects.ObjectManager) {
+	for y := 1; y <= m.Height-2; y++ {
+		for x := 1; x <= m.Width-2; x++ {
+			if hm.IsMarkerSet(x, y) == requireMark {
+				m.setTerrainWithVariation(m.TileAt(x, y), style, om)
+			}
+		}
+	}
+}
+
+// markWhere marks around every world tile whose height passes test.
+func markWhere(hm *HeightMap, r int, test func(h uint8) bool) {
+	hm.ResetMarkerFlags()
+	for y := range hm.Height {
+		for x := range hm.Width {
+			if test(hm.GetHeight(x, y)) {
+				markAround(hm, x, y, r)
+			}
+		}
+	}
+}
+
+// generateTerrainInRandomAreas: 80–143 random walks of minTiles … maxTiles−1
+// steps, each step above sea level taking the style.
+func (m *Map) generateTerrainInRandomAreas(style uint8, minTiles, maxTiles int32, seaLevel uint8, om *objects.ObjectManager) {
+	n := m.Rng1.RandNextRange(80, 143)
+	for range n {
+		r := m.Rng1.RandNext()
+		px := int32(((r & 0xFFFF) * uint32(m.Width)) >> 16 * 32) // toWorldSpace
+		py := int32(((r >> 16) * uint32(m.Height)) >> 16 * 32)
+		steps := m.Rng1.RandNextRange(minTiles, maxTiles-1)
+		for range steps {
+			if px >= 0 && px < int32(m.Width*32) && py >= 0 && py < int32(m.Height*32) {
+				t := m.TileAt(int(px/32), int(py/32))
+				if t != nil && t.SurfaceClearZ()/microToSmallZStep > seaLevel { // getSurfaceCornerHeight / 4
+					m.setTerrainWithVariation(t, style, om)
+				}
+			}
+			d := RotationOffset[m.Rng1.RandNextBound(3)]
+			px += int32(d[0])
+			py += int32(d[1])
+		}
+	}
+}
+
+// GenerateTerrain is generateTerrain: every drawable surface the
+// "everywhere" land (else lastLandOption), growth 0, a variation; then each
+// pattern in turn for the land objects that use it.
+func (m *Map) GenerateTerrain(hm *HeightMap, patterns [32]uint8, seaLevel uint8, om *objects.ObjectManager) {
+	style, ok := uint8(0), false
+	for i, lo := range om.LandObjects {
+		if lo != nil && i < 32 && patterns[i] == landEverywhere {
+			style, ok = uint8(i), true
+			break
+		}
+	}
+	if !ok && m.LastLandOption != 0xFF {
+		style, ok = m.LastLandOption, true
+	}
+	if !ok {
+		return
+	}
+	for y := 1; y <= m.Height-2; y++ {
+		for x := 1; x <= m.Width-2; x++ {
+			t := m.TileAt(x, y)
+			t.TerrainIndex, t.GrowthStage = style, 0
+			if v, ok := m.randomTerrainVariation(t, om); ok {
+				t.Variation = v
+			}
+		}
+	}
+	for _, p := range []int{landFarFromWater, landNearWater, landOnMountains, landFarFromMountains, landSmallRandomAreas, landLargeRandomAreas, landAroundCliffs} {
+		for i, lo := range om.LandObjects {
+			if lo == nil || i >= 32 || int(patterns[i]) != p {
+				continue
+			}
+			s := uint8(i)
+			switch p {
+			case landFarFromWater:
+				markWhere(hm, 25, func(h uint8) bool { return h <= seaLevel })
+				m.applySurfaceStyleToMarkedTiles(hm, s, false, om)
+			case landNearWater:
+				markWhere(hm, 25, func(h uint8) bool { return h >= seaLevel })
+				m.applySurfaceStyleToMarkedTiles(hm, s, true, om)
+			case landOnMountains:
+				markWhere(hm, 12, func(h uint8) bool { return h > mountainTerrainHeight })
+				m.applySurfaceStyleToMarkedTiles(hm, s, true, om)
+			case landFarFromMountains:
+				markWhere(hm, 25, func(h uint8) bool { return h >= mountainTerrainHeight })
+				m.applySurfaceStyleToMarkedTiles(hm, s, false, om)
+			case landSmallRandomAreas:
+				m.generateTerrainInRandomAreas(s, 24, 56, seaLevel, om)
+			case landLargeRandomAreas:
+				m.generateTerrainInRandomAreas(s, 128, 388, seaLevel, om)
+			case landAroundCliffs:
+				// generateTerrainAroundCliffs compares the same position, (x, y+1),
+				// with itself (A = B, C = D), so it never finds a cliff and marks
+				// nothing — kept as upstream.
+				hm.ResetMarkerFlags()
+				m.applySurfaceStyleToMarkedTiles(hm, s, true, om)
 			}
 		}
 	}
