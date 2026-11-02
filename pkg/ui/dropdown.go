@@ -229,7 +229,9 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 		}
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(float64(d.X), float64(d.Y))
-		screen.DrawImage(ebiten.NewImageFromImage(img), op)
+		tmp := ebiten.NewImageFromImage(img)
+		screen.DrawImage(tmp, op)
+		tmp.Deallocate() // a texture per frame otherwise (see draw8)
 	}
 	for _, l := range labels {
 		if l.inset != nil {
