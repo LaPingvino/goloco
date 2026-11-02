@@ -123,6 +123,7 @@ type Scenario struct {
 	LoanInterestRate                                        uint8    // loanInterestRate (0x1AE)
 	MaxLoanSize                                             uint16   // maxLoanSize (0x402)
 	StartingLoanSize                                        uint16   // startingLoanSize (0x400)
+	SeaLevel, LastLandOption                                uint8    // GameState seaLevel (0x19A), lastLandOption (0x19E)
 	PreferredAI                                             [3]uint8 // preferredAIIntelligence / Aggressiveness / Competitiveness (0x3FD)
 	DefaultLevelCrossingType                                uint8    // currentDefaultLevelCrossingType (0x1AC)
 	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors  uint16   // 0x430 / 0x432
@@ -142,6 +143,7 @@ type Scenario struct {
 	CurrentDay            uint32             // GameState general.currentDay
 	CompanyNames          []uint16           // company slot → name StringId
 	CompanyFaces          []CompanyFace      // company slot → competitor, emotion, performance
+	LandscapeToGenerate   bool               // a .SC5 without tile elements: Scenario::start generates the landscape
 	HillShapesObjectOrder []string           // the hill shapes slot → DAT name
 	CompetitorObjectOrder []string           // competitor slot → DAT name
 	ControllingCompany    uint8              // playerCompanies[0] (getControllingId)

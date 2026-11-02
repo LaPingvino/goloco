@@ -325,7 +325,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		if sc.Options.Flags&ScenarioFlagLandscapeGenerationDone == 0 &&
 			(sc.Header.Type == assets.S5TypeScenario || sc.Header.Type == assets.S5TypeLandscape) {
 			log.Println("[Scenario] Generating landscape from scenario parameters")
-			sc.initGeneratedLandscape()
+			sc.initGeneratedLandscape() // stand-in until the game's Scenario::start runs sim.GenerateLandscape
+			sc.LandscapeToGenerate = true
 		} else {
 			log.Println("[Scenario] tileManagerLoaded flag not set — using placeholder map")
 			sc.initPlaceholderMap()
@@ -1566,6 +1567,8 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 	sc.LoanInterestRate = gs[0x1AE]                              // loanInterestRate
 	sc.MaxLoanSize = binary.LittleEndian.Uint16(gs[0x402:])      // maxLoanSize
 	sc.StartingLoanSize = binary.LittleEndian.Uint16(gs[0x400:]) // startingLoanSize
+	sc.SeaLevel = uint8(binary.LittleEndian.Uint16(gs[0x19A:]))  // seaLevel
+	sc.LastLandOption = gs[0x19E]                                // lastLandOption
 	sc.PreferredAI = [3]uint8{gs[0x3FD], gs[0x3FE], gs[0x3FF]}   // preferredAIIntelligence / Aggressiveness / Competitiveness
 	sc.DefaultLevelCrossingType = gs[0x1AC]                      // currentDefaultLevelCrossingType
 	sc.ForbiddenVehiclesPlayers = binary.LittleEndian.Uint16(gs[0x430:])

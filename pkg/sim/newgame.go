@@ -237,6 +237,16 @@ func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectM
 // initialiseDefaultTrackRoadMods, the scenario name / details copy, labels
 // and the windows / viewport / music resets (cmd/goloco's side).
 func (m *Map) StartScenario(startYear uint16, om *objects.ObjectManager) {
+	m.StartScenarioGenerating(startYear, nil, nil, om)
+}
+
+// StartScenarioGenerating is StartScenario for a .SC5 whose landscape is not
+// in the file (tileManagerLoaded clear): generateLandscape runs first, on
+// the freshly seeded rng, with the scenario's terrain options (gen non-nil).
+func (m *Map) StartScenarioGenerating(startYear uint16, gen *TerrainOptions, g1 G1Raw, om *objects.ObjectManager) {
+	if gen != nil {
+		m.GenerateLandscape(startYear, *gen, g1, om)
+	}
 	m.ResetCompanies()
 	m.CreatePlayerCompany(om)
 	m.InitialiseDate(startYear)

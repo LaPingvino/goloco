@@ -17,7 +17,7 @@ internal. Size: S (one tick), M (2–4 ticks), L (a series).
 | ~~vehicle running costs~~ RESOLVED ticks 250–253 | (was: not charged) | VehicleHead::updateMonthly charges them; the 16-year expenditure table rotates yearly (Company.cpp updateYearly) | Vehicles: VehicleHead::updateMonthly / the running-cost expenditure, per vehicle object, inflated | H | M |
 | cmd/goloco/main.go:2448 | Company value = player money | Company value from assets (vehicles, infrastructure) — Company.cpp | M | M |
 | pkg/world/station.go (PlaceStationOnTile) | Places only the station element; no Station record, name, catchment or cargo (the invented passenger supply was retired tick 243) | GameCommands createTrainStation, StationManager, Station.cpp | H | M |
-| pkg/scenario/generate.go:9 | "Simplified approximation" of landscape generation | Map/MapGenerator/ with the game's PRNG (pkg/core/prng.go is already ported, unused) | M | L |
+| pkg/scenario/generate.go:9 (partly replaced, tick 268) | The invented sum-of-sines terrain now only fills the tiles until Scenario::start runs sim.GenerateLandscape (ported: TileManager::initialise, the original terrain generator — hash-identical to upstream — and generateLand); still missing there: rivers, water, terrain styles, surface variation, trees, towns, industries, misc buildings | Map/MapGenerator/ (item 5.9 c–f) | M | L |
 | ~~pkg/game placeholders~~ RESOLVED tick 247 | (was: placeholder movement, dirt tiles) | pkg/game deleted | — | — |
 
 | cmd/goloco/main.go (Update) | One world tick per frame (60/s) | Game tick every 25 ms (40/s), independent of frame rate (OpenLoco.cpp tick loop) | M | S |

@@ -23,6 +23,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/render"
 	"github.com/LaPingvino/goloco/pkg/scenario"
+	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/title"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/uilayout"
@@ -1779,7 +1780,12 @@ func (g *Game) loadScenario(filePath string) error {
 		// Scenario::loadAndStart: a new rng seed from the time and the old
 		// rng, then Scenario::start (pkg/sim StartScenario).
 		gameW.Map.Rng1 = *core.NewPrngSeed(uint32(time.Now().UnixMilli())^oldRng.Srand0(), oldRng.Srand1())
-		gameW.Map.StartScenario(sc.Options.StartYear, g.objMgr)
+		var gen *sim.TerrainOptions
+		if sc.LandscapeToGenerate {
+			gen = &sim.TerrainOptions{MinLandHeight: sc.Options.MinLandHeight, TopographyStyle: sc.Options.TopographyStyle,
+				HillDensity: sc.Options.HillDensity, HillsEdgeOfMap: sc.Options.Flags&2 != 0, SeaLevel: sc.SeaLevel}
+		}
+		gameW.Map.StartScenarioGenerating(sc.Options.StartYear, gen, g.r.G1, g.objMgr)
 	}
 	g.w = gameW
 	g.currentScenarioPath = filePath
