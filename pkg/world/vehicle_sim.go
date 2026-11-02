@@ -197,7 +197,7 @@ func (w *World) SpawnTestVehicle(objID int) bool {
 	}
 
 	ent := scenario.VehicleEntity{
-		EntityType:       scenario.VehicleTypeBody,
+		EntityType:       scenario.VehicleTypeBodyStart,
 		ObjectID:         uint16(objID),
 		ObjectSpriteType: 0,
 		Owner:            0,

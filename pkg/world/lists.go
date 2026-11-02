@@ -118,7 +118,7 @@ func (w *World) VehicleList() []VehicleInfo {
 	bodyName := make(map[uint16]string)
 	for i := range w.Entities {
 		e := &w.Entities[i]
-		if e.EntityType != scenario.VehicleTypeBody {
+		if !scenario.IsVehicleBody(e.EntityType) {
 			continue
 		}
 		if _, ok := bodyName[e.HeadID]; !ok {

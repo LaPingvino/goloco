@@ -685,7 +685,7 @@ func (w *World) CenterOn(kind string) bool {
 		// Skip entities at tile (0,0) — those are unplaced/invalid slots.
 		for i := range w.Entities {
 			e := &w.Entities[i]
-			if e.EntityType != scenario.VehicleTypeBody {
+			if !scenario.IsVehicleBody(e.EntityType) {
 				continue
 			}
 			tx, ty := e.PosX.Tile(), e.PosY.Tile()
@@ -2761,7 +2761,7 @@ func (w *World) paintVehicleEntities(screen *ebiten.Image, scale float64) {
 
 	for i := range w.Entities {
 		ent := &w.Entities[i]
-		if ent.EntityType != scenario.VehicleTypeBody {
+		if !scenario.IsVehicleBody(ent.EntityType) {
 			continue // only Body entities have renderable car sprites
 		}
 

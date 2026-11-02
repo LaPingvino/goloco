@@ -98,13 +98,19 @@ const (
 // Valid only when EntityBase.baseType == EntityBaseTypeVehicle.
 // OpenLoco reference: src/OpenLoco/src/Vehicles/VehicleBase.h  VehicleEntityType
 const (
-	VehicleTypeHead  = uint8(0) // VehicleHead  — lead car; has status, orders, route
-	VehicleTypeVeh1  = uint8(1) // Vehicle1     — front physics / income-tracking car
-	VehicleTypeVeh2  = uint8(2) // Vehicle2     — speed / power / weight / sound car
-	VehicleTypeBody  = uint8(3) // VehicleBody  — visible cargo/passenger body (has sprites)
-	VehicleTypeBogie = uint8(4) // VehicleBogie — undercarriage / wheels (has sprites)
-	VehicleTypeTail  = uint8(5) // VehicleTail  — rear car; sound output
+	VehicleTypeHead          = uint8(0) // VehicleHead  — lead car; has status, orders, route
+	VehicleTypeVeh1          = uint8(1) // Vehicle1     — front physics / income-tracking car
+	VehicleTypeVeh2          = uint8(2) // Vehicle2     — speed / power / weight / sound car
+	VehicleTypeBogie         = uint8(3) // VehicleBogie — undercarriage / wheels (has sprites)
+	VehicleTypeBodyStart     = uint8(4) // VehicleBody  — the first body of a car (has sprites)
+	VehicleTypeBodyContinued = uint8(5) // VehicleBody  — a car's further component bodies
+	VehicleTypeTail          = uint8(6) // VehicleTail  — rear car; sound output
 )
+
+// IsVehicleBody reports a body entity (body_start or body_continued).
+func IsVehicleBody(entityType uint8) bool {
+	return entityType == VehicleTypeBodyStart || entityType == VehicleTypeBodyContinued
+}
 
 // VehicleHead status values — VehicleHead byte 0x5D.
 // OpenLoco reference: src/OpenLoco/src/Vehicles/Vehicle.h  Status
@@ -163,7 +169,7 @@ const (
 	vhCommonMode          = 0x42 // uint8  — driving mode (same in all vehicle types)
 )
 
-// VehicleBody / VehicleBogie specific offsets (type = VehicleTypeBody or VehicleTypeBogie).
+// VehicleBody / VehicleBogie specific offsets (type = VehicleTypeBogie, VehicleTypeBodyStart or VehicleTypeBodyContinued).
 // OpenLoco reference: src/OpenLoco/src/S5/S5Entity.h  struct VehicleBody / VehicleBogie
 const (
 	vbColourPrimary     = 0x24 // uint8  — company primary colour
@@ -276,11 +282,9 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 		}
 
 		entityType := e[ebType]
-		// We only extract Head (for status checks) and Body (for sprites).
-		// Vehicle1/2/Bogie/Tail entities carry no information we need here.
-		if entityType != VehicleTypeHead && entityType != VehicleTypeBody {
-			continue
-		}
+		// Every vehicle entity is kept: the head (status), bogies and bodies
+		// (sprites), veh1/veh2/tail for walking a train's chain (NextCarID).
+		// The bogie/body fields read garbage for the other types.
 
 		ent := VehicleEntity{
 			ID:                uint16(e[ebID]) | uint16(e[ebID+1])<<8,
