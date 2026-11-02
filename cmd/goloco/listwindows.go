@@ -73,7 +73,7 @@ func (g *Game) openTownsWindow() {
 	infos := g.w.TownList()
 	rows := make([]ui.TownRow, len(infos))
 	for i, t := range infos {
-		rows[i] = ui.TownRow{Name: t.Name, Type: t.Size, Population: int(t.Population), Stations: t.NumStations}
+		rows[i] = ui.TownRow{Name: t.Name, Type: t.Size, Size: t.SizeIndex, Population: int(t.Population), Stations: t.NumStations}
 	}
 	var tc, wc uint8 = 0, 1
 	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {

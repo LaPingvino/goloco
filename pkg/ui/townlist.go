@@ -5,6 +5,7 @@ import (
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 	"image/color"
+	"sort"
 )
 
 // TownList — a port of Ui/Windows/TownList.cpp, the town list tab: 600×197 at
@@ -23,6 +24,7 @@ const (
 // TownRow is one town.
 type TownRow struct {
 	Name, Type           string
+	Size                 int // Town::size (orderByType)
 	Population, Stations int
 }
 
@@ -69,6 +71,10 @@ type TownListWindow struct {
 	// ColourCaption: the caption is Style::colourText (StationList,
 	// VehicleList) rather than whiteText (TownList).
 	ColourCaption bool
+	// Sort, if set, re-sorts Rows by a column (the header clicked); SortMode
+	// is the current one, its header shows "▼" (table_header_*_desc).
+	Sort     func(mode int)
+	SortMode int
 }
 
 // setTableGeometry fills the 600×197 town/station list geometry.
@@ -87,9 +93,39 @@ func NewTownList(sw int, towns []TownRow, titleColour, colour uint8) *TownListWi
 	if len(rows) == 1 {
 		status = "1 town"
 	}
-	return (&TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: "Towns", Tabs: 4,
+	w := (&TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: "Towns", Tabs: 4,
 		Columns: []TableColumn{{4, 200, "Name", 0, 198}, {204, 80, "Type", 200, 78}, {284, 70, "Population", 280, 68}, {354, 70, "Stations", 350, 68}},
 		Rows:    rows, Status: status, Hover: -1}).setTableGeometry()
+	// sortTownList (run every update): a stable sort by the header clicked,
+	// name by default.
+	w.Sort = func(mode int) {
+		order := append([]TownRow(nil), towns...)
+		sort.SliceStable(order, func(i, j int) bool { return townOrder(mode, order[i], order[j]) })
+		for i, t := range order {
+			w.Rows[i] = []string{t.Name, t.Type, itoa3(t.Population), itoa3(t.Stations)}
+		}
+	}
+	w.Sort(0)
+	return w
+}
+
+// townOrder is TownList.cpp getOrder: name (strcmp, ascending), type (size
+// descending, then population), population and stations (descending).
+func townOrder(mode int, a, b TownRow) bool {
+	switch mode {
+	case 0:
+		return a.Name < b.Name
+	case 1:
+		if a.Size != b.Size {
+			return b.Size < a.Size
+		}
+		return b.Population < a.Population
+	case 2:
+		return b.Population < a.Population
+	case 3:
+		return b.Stations < a.Stations
+	}
+	return false
 }
 
 // StationRow is one station of the station list.
@@ -138,6 +174,18 @@ func (w *TownListWindow) HandleClick(px, py int) {
 				w.OnTab(i)
 			}
 			return
+		}
+	}
+	// A column header (TableHeader, 12 px at y 43): sort by it, once per change.
+	if w.Sort != nil {
+		for i, c := range w.Columns {
+			if w.in([4]int{c.HeaderX, 43, c.HeaderW, 12}, px, py) {
+				if i != w.SortMode {
+					w.SortMode, w.Hover = i, -1
+					w.Sort(i)
+				}
+				return
+			}
 		}
 	}
 	// The scrollbar (when the rows don't fit): buttons and track move the
@@ -215,8 +263,12 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 	} else {
 		DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, w.Caption)
 	}
-	for _, c := range w.Columns {
-		DrawTextBold(screen, c.Label, w.X+c.HeaderX, w.Y+43, black)
+	for i, c := range w.Columns {
+		label := c.Label
+		if w.Sort != nil && i == w.SortMode {
+			label += " " + string(rune(170)) // LocoChar ▼
+		}
+		DrawTextBold(screen, label, w.X+c.HeaderX, w.Y+43, black)
 	}
 	ct := w.content
 	if len(w.Rows)*w.RowHeight > w.List[3] {

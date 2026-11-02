@@ -24,6 +24,7 @@ type TownInfo struct {
 	TileX, TileY int    // town centre, tile grid
 	Population   uint32
 	Size         string
+	SizeIndex    int // Town::size (hamlet 0 … metropolis 5)
 	NumBuildings int
 	NumStations  int
 }
@@ -44,6 +45,7 @@ func (w *World) TownList() []TownInfo {
 			TileY:        int(t.Y) / 32,
 			Population:   t.Population,
 			Size:         size,
+			SizeIndex:    int(t.Size),
 			NumBuildings: int(t.NumBuildings),
 			NumStations:  int(t.NumStations),
 		})
