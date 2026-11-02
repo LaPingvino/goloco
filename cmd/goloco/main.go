@@ -1237,6 +1237,11 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			g.options.Tab = ui.OptTabRegional // and a click on Preferred currency
 			g.options.HandleClick(g.options.X+190, g.options.Y+122)
 		}
+		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionalcurrent" && g.options != nil {
+			g.options.Tab = ui.OptTabRegional // and a click on Current currency (as in a game)
+			g.options.TitleMode = false
+			g.options.HandleClick(g.options.X+190, g.options.Y+107)
+		}
 		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionallang" && g.options != nil {
 			g.options.Tab = ui.OptTabRegional // and a click on Language
 			g.options.HandleClick(g.options.X+190, g.options.Y+52)
@@ -1915,6 +1920,7 @@ func (g *Game) openOptionsWindow() {
 			}
 		}
 		w.OnPreferredCurrency = func(dat string) { g.preferredCurrency = dat }
+		w.OnCurrency = func(dat string) { useCurrency(g.objMgr, dat) } // currencyDropdown
 	}
 	// Controls tab: Config::edgeScrolling (default on). zoomToCursor and
 	// invertRightMouseViewPan are kept in the window only: goloco has neither yet.
