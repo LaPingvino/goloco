@@ -11,8 +11,7 @@ import (
 // determineAvailableVehicles' unlocked set.
 //
 // PARTIAL: createCompany's competitor branch (AI names, playstyles, town),
-// selectNewCompetitor's fallback that loads an installed competitor object
-// when every loaded one is taken, the preferred owner face / name options,
+// the preferred owner face / name options,
 // the network player slots, the owner name, startedDate, secondary and
 // vehicle colours, availableVehicles, AI state, transport type counts,
 // observation / owner status, town company ratings, and
@@ -70,7 +69,7 @@ func (m *Map) competingColourMask(id int) uint32 {
 }
 
 // selectNewCompetitor: a loaded competitor object no company uses, chosen
-// by gPrng1; 0xFF when none (the installed-object fallback is PARTIAL).
+// by gPrng1; else an installed one by the preferred-AI metric.
 func (m *Map) selectNewCompetitor(om *objects.ObjectManager) uint8 {
 	var free []int
 	for i, c := range om.CompetitorObjects {
@@ -87,10 +86,89 @@ func (m *Map) selectNewCompetitor(om *objects.ObjectManager) uint8 {
 			free = append(free, i)
 		}
 	}
-	if len(free) == 0 {
+	if len(free) > 0 {
+		return uint8(free[int(m.Rng1.RandNext()&0xFFFF)*len(free)/65536])
+	}
+	// No loaded competitor is free: the installed one closest to the
+	// preferred AI character (ties all kept), chosen by gPrng1, is loaded.
+	var best []*objects.CompetitorObject
+	bestValue := 0xFF
+	for _, c := range om.InstalledCompetitors() {
+		inUse := false
+		for _, l := range om.CompetitorObjects {
+			if l == c {
+				inUse = true
+			}
+		}
+		if inUse {
+			continue
+		}
+		metric := 0
+		for k, v := range [3]uint8{c.Intelligence, c.Aggressiveness, c.Competitiveness} {
+			if p := int(m.PreferredAI[k]); p != 0 && int(v) < len(aiToMetric) {
+				metric += absInt(int(aiToMetric[v]) - p)
+			}
+		}
+		if metric < bestValue {
+			best, bestValue = []*objects.CompetitorObject{c}, metric
+		} else if metric == bestValue {
+			best = append(best, c)
+		}
+	}
+	if len(best) == 0 {
 		return 0xFF
 	}
-	return uint8(free[int(m.Rng1.RandNext()&0xFFFF)*len(free)/65536])
+	return m.selectNewCompetitorFromHeader(best[int(m.Rng1.RandNext()&0xFFFF)*len(best)/65536], om)
+}
+
+var aiToMetric = [10]uint8{1, 1, 1, 1, 2, 2, 2, 3, 3, 3} // kAiToMetric
+
+func absInt(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+// selectNewCompetitorFromHeader: the object's slot if loaded; else it is
+// loaded into the first free competitor slot (ObjectManager::load's
+// findFreeObjectId), unloading the first competitor no company uses when all
+// 32 are taken.
+func (m *Map) selectNewCompetitorFromHeader(c *objects.CompetitorObject, om *objects.ObjectManager) uint8 {
+	for len(om.CompetitorObjects) < 32 {
+		om.CompetitorObjects = append(om.CompetitorObjects, nil)
+	}
+	for i, l := range om.CompetitorObjects {
+		if l == c {
+			return uint8(i)
+		}
+	}
+	slot := -1
+	for i, l := range om.CompetitorObjects {
+		if l == nil {
+			slot = i
+			break
+		}
+	}
+	if slot < 0 {
+		for i := range om.CompetitorObjects {
+			used := false
+			for o := range m.CompanyNames {
+				if !m.CompanyEmpty(o) && int(m.CompanyFaces[o].Competitor) == i {
+					used = true
+				}
+			}
+			if !used {
+				slot = i
+				break
+			}
+		}
+		if slot < 0 {
+			return 0xFF
+		}
+	}
+	om.CompetitorObjects[slot] = c
+	return uint8(slot)
 }
 
 // startingLoan is getInflationAdjustedStartingLoan.

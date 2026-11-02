@@ -1564,6 +1564,7 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 	sc.LoanInterestRate = gs[0x1AE]                              // loanInterestRate
 	sc.MaxLoanSize = binary.LittleEndian.Uint16(gs[0x402:])      // maxLoanSize
 	sc.StartingLoanSize = binary.LittleEndian.Uint16(gs[0x400:]) // startingLoanSize
+	sc.PreferredAI = [3]uint8{gs[0x3FD], gs[0x3FE], gs[0x3FF]}   // preferredAIIntelligence / Aggressiveness / Competitiveness
 	sc.DefaultLevelCrossingType = gs[0x1AC]                      // currentDefaultLevelCrossingType
 	sc.ForbiddenVehiclesPlayers = binary.LittleEndian.Uint16(gs[0x430:])
 	sc.ForbiddenVehiclesCompetitors = binary.LittleEndian.Uint16(gs[0x432:])

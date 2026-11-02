@@ -3,6 +3,7 @@ package objects
 import (
 	"encoding/binary"
 	"fmt"
+	"sort"
 )
 
 // CompetitorObject is CompetitorObject.h (0x38 bytes): the company owner's
@@ -15,6 +16,9 @@ type CompetitorObject struct {
 	// present emotion before it (absent ones keep the base).
 	Emotions uint32
 	Images   [9]uint32
+	// Intelligence, Aggressiveness, Competitiveness (0x34–0x36): 1–9, the
+	// AI's character (ObjectIndex display data).
+	Intelligence, Aggressiveness, Competitiveness uint8
 }
 
 // ParseCompetitorObjectWithG1 is CompetitorObject::load: the two string
@@ -24,7 +28,8 @@ func ParseCompetitorObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader)
 	if len(data) < fixedSize {
 		return nil, fmt.Errorf("competitor object too small: %d bytes", len(data))
 	}
-	c := &CompetitorObject{Header: header, Emotions: binary.LittleEndian.Uint32(data[0x0C:])}
+	c := &CompetitorObject{Header: header, Emotions: binary.LittleEndian.Uint32(data[0x0C:]),
+		Intelligence: data[0x34], Aggressiveness: data[0x35], Competitiveness: data[0x36]}
 	offset := fixedSize
 	offset, c.Name = walkStringTableLang(data, offset)
 	offset, _ = walkStringTableLang(data, offset)
@@ -48,4 +53,18 @@ func (c *CompetitorObject) setImages(base uint32) {
 			off += 2
 		}
 	}
+}
+
+// InstalledCompetitors is ObjectIndex::getAvailableObjects(competitor): every
+// installed competitor object, in the index's order (sorted by display name,
+// ObjectIndex.cpp createIndex).
+func (m *ObjectManager) InstalledCompetitors() []*CompetitorObject {
+	var out []*CompetitorObject
+	for _, lo := range m.Objects {
+		if c, ok := lo.Object.(*CompetitorObject); ok {
+			out = append(out, c)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
 }

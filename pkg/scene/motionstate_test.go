@@ -2071,11 +2071,14 @@ func TestCreatePlayerCompany(t *testing.T) {
 	if m.CompanyEmpty(int(id)) || m.CompanyNames[id] != 2 || m.ControllingCompany != id || m.PlayerCompanies != [2]uint8{0, 0xFF} {
 		t.Error("company not set up")
 	}
-	// A .SC5 requires no competitor objects, so upstream takes
-	// selectNewCompetitor's fallback (load an installed competitor chosen by
-	// the preferred-AI metric) — not ported yet (5.8 b3): no face here.
-	if f.Competitor != 0xFF {
-		t.Errorf("competitor %d without any loaded competitor object", f.Competitor)
+	// A .SC5 requires no competitor objects: selectNewCompetitor's fallback
+	// loads the installed one closest to the preferred AI character into
+	// slot 0.
+	if f.Competitor != 0 || r.Objects.CompetitorObjects[0] == nil {
+		t.Errorf("competitor %d", f.Competitor)
+	} else {
+		c := r.Objects.CompetitorObjects[0]
+		t.Logf("face: %s (%d/%d/%d; preferred %v; %d installed)", c.Name, c.Intelligence, c.Aggressiveness, c.Competitiveness, m.PreferredAI, len(r.Objects.InstalledCompetitors()))
 	}
 	if c.CurrentLoan <= 0 || c.CurrentLoan%100 != 0 || c.Cash != int64(c.CurrentLoan) {
 		t.Errorf("loan %d cash %d", c.CurrentLoan, c.Cash)
