@@ -1260,7 +1260,18 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	}
 	if os.Getenv("GOLOCO_DIAG_BROWSE") != "" && g.browse == nil && !g.diagBrowseDone {
 		g.diagBrowseDone = true
-		if os.Getenv("GOLOCO_DIAG_BROWSE") == "save" {
+		if os.Getenv("GOLOCO_DIAG_BROWSE") == "preview" { // a synthetic saved-game preview on the first file
+			g.openLoadGameWindow()
+			if g.browse != nil {
+				img := make([]byte, 250*200)
+				for i := range img {
+					img[i] = byte(10 + (i%250)/25*10 + (i/250)/50) // bands of palette colours
+				}
+				g.browse.Preview = &scenario.SaveDetails{Company: "Joop's Railways", Owner: "Joop", Date: 55000, ChallengeProgress: 42, Image: img}
+				g.browse.ChangeDir(filepath.Join(g.browse.Dir, "Scenarios"))
+				g.browse.SelectFirstFile()
+			}
+		} else if os.Getenv("GOLOCO_DIAG_BROWSE") == "save" {
 			g.openSaveWindow()
 		} else {
 			g.openFileWindow("Load Game", false)

@@ -1,11 +1,14 @@
 package ui
 
 import (
+	"github.com/LaPingvino/goloco/pkg/scenario"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"image"
+	"image/color"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
@@ -65,6 +68,11 @@ type PromptBrowseWindow struct {
 	SaveExt string
 	frame   int
 	OnSave  func(path string)
+	// Preview, if set, is shown for any selected file (diagnostics);
+	// otherwise a saved game's own details are read (loadFileDetails).
+	Preview     *scenario.SaveDetails
+	detailsPath string
+	detailsData *scenario.SaveDetails
 	// Confirm asks before replacing an existing file (PromptOkCancel:
 	// caption, text, OK label, then the save); nil saves straight away.
 	Confirm func(caption, text, ok string, then func())
@@ -344,8 +352,68 @@ func (w *PromptBrowseWindow) Draw(screen *ebiten.Image) {
 		name := stem(w.entries[w.Selected].path)
 		tw, _ := MeasureTextBold(name)
 		DrawTextBold(screen, name, x+width/2-tw/2, w.Y+45, win2)
+		if d := w.details(w.entries[w.Selected].path); d != nil {
+			w.drawSavePreview(screen, x, w.Y+45+12, width, 201, d, sec, win2, black)
+		}
 	}
 }
+
+// details is loadFileDetails for a saved game: its SaveDetails, read once
+// per file (nil when it has none). Preview, if set, stands in (diagnostics).
+func (w *PromptBrowseWindow) details(path string) *scenario.SaveDetails {
+	if w.Preview != nil {
+		return w.Preview
+	}
+	if !strings.EqualFold(filepath.Ext(path), ".sv5") {
+		return nil
+	}
+	if w.detailsPath != path {
+		w.detailsPath = path
+		w.detailsData, _ = scenario.ReadSaveDetails(path)
+	}
+	return w.detailsData
+}
+
+// drawSavePreview is PromptBrowseWindow.cpp drawSavePreview: an inset frame
+// (borderInset, fillNone) with the 250×200 image at (x+1, y+1), then at
+// y + 207 the company, owner, date and the challenge line ("Company:"
+// labels in the window colour, values black).
+func (w *PromptBrowseWindow) drawSavePreview(screen *ebiten.Image, x, y, width, height int, d *scenario.SaveDetails, sec []uint8, win2, black color.Color) {
+	rx, ry := x-w.X, y-w.Y
+	draw8(screen, w.X, w.Y, pbW, pbH, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, rx, ry, rx+width, ry+height, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillNone)
+		for iy := 0; iy < 200 && len(d.Image) >= 250*200; iy++ { // the image as a plain (opaque) G1 bitmap
+			for ix := 0; ix < 250; ix++ {
+				if px, py := rx+1+ix, ry+1+iy; px >= 0 && px < rt.Width && py >= 0 && py < rt.Height {
+					rt.Bits[py*rt.Width+px] = d.Image[iy*250+ix]
+				}
+			}
+		}
+	})
+	ty := y + 207
+	line := func(label, value string) {
+		lw, _ := MeasureTextBold(label)
+		DrawTextBold(screen, label, x, ty, win2)
+		DrawTextBold(screen, value, x+lw, ty, black)
+		ty += 10
+	}
+	line("Company: ", d.Company)
+	line("Owner: ", d.Owner)
+	yy, m, day := L.CalcDate(d.Date)
+	line("Date: ", L.DateDMY(day, monthNames[m], yy))
+	const completed, failed, beatenByOpponent = 1 << 6, 1 << 7, 1 << 8 // CompanyFlags (Company.h)
+	switch f := d.ChallengeFlags; {
+	case f&beatenByOpponent != 0:
+	case f&completed != 0:
+		line("Challenge: ", "Completed")
+	case f&failed != 0:
+		line("Challenge: ", "Failed")
+	default:
+		line("Challenge progress: ", strconv.Itoa(int(d.ChallengeProgress))+"%")
+	}
+}
+
+var monthNames = [12]string{"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
 
 // onScrollbar reports a point on the list's scrollbar (shown when the rows
 // don't fit).
@@ -394,4 +462,18 @@ func (w *PromptBrowseWindow) HandleRightClick(px, py int) {
 	}
 	name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 	w.Confirm(w.Title, "Delete file: “"+name+"”?", "Delete", remove)
+}
+
+// ChangeDir lists another folder (as a click on a folder row).
+func (w *PromptBrowseWindow) ChangeDir(dir string) { w.chdir(dir) }
+
+// SelectFirstFile selects the list's first file (not a folder), as a hover
+// would (diagnostics).
+func (w *PromptBrowseWindow) SelectFirstFile() {
+	for i, e := range w.entries {
+		if !e.dir {
+			w.Selected = i
+			return
+		}
+	}
 }
