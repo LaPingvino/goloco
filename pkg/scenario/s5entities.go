@@ -241,6 +241,7 @@ type VehicleEntity struct {
 	RoutingHandle     uint16 // vhCommonRoutingHandle (0x36): vehicleRef·64 | index
 	Mode              uint8  // vhCommonMode (0x42) — TransportMode (0 rail, 1 road, 2 air, 3 water)
 	HeadVar53         uint8  // VehicleHead var_53 (0x53): the train's required track mods
+	HeadVar52         uint8  // VehicleHead var_52 (0x52): 1 = no lookahead / level crossings ignored on road
 	CurrentSpeed      int32  // Vehicle2 currentSpeed (0x56): Speed32, mph << 16
 	Var44             uint16 // VehicleBogie var_44 (0x44): wheel roll accumulator (updateRoll)
 	WheelSlipping     uint8  // VehicleBogie wheelSlipping (0x5E): ticks, counts up
@@ -358,6 +359,7 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			RoutingHandle:     binary.LittleEndian.Uint16(e[vhCommonRoutingHandle:]),
 			Mode:              e[vhCommonMode],
 			HeadVar53:         e[0x53],
+			HeadVar52:         e[0x52],
 			CurrentSpeed:      int32(binary.LittleEndian.Uint32(e[0x56:])),
 			Var44:             binary.LittleEndian.Uint16(e[0x44:]),
 			WheelSlipping:     e[0x5E],

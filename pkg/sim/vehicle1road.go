@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/scenario"
+import (
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // Vehicle1's road motion helpers — a port of Vehicle1.cpp's
 // getRoadOvertakeAvailability, veh1UpdateRoadMotionNewRoadPiece (0x0047D308),
@@ -8,8 +11,9 @@ import "github.com/LaPingvino/goloco/pkg/scenario"
 // (0x0047D142), applyOvertakeToVehicle1 (0x0047D46F) and
 // applyChangeLaneToVehicle1 (0x0047D52B).
 //
-// PARTIAL: lookaheadRoad, getRoadOccupation and Vehicle1::updateRoadMotion
-// that drive these are not ported yet.
+// lookaheadRoad (0x0047CEB7), updateRoadMotionNewRoadPiece (0x0047CABF) and
+// Vehicle1::updateRoadMotion (0x0047CA71) drive them (getRoadOccupation:
+// roadoccupation.go).
 
 // Road trackAndDirection flags (AdditionalTaDFlags).
 const (
@@ -29,10 +33,13 @@ const (
 // needs of its train (the Vehicle2 behind it, the head).
 type Veh1 struct {
 	MotionComponent
-	Var3C        int32
-	Veh2MaxSpeed int16
-	HeadVar3C    *int32  // the head's var_3C (applyOvertake / applyChangeLane)
-	HeadTaD      *uint16 // the head's trackAndDirection (applyChangeLane)
+	Var3C         int32
+	Veh2MaxSpeed  int16
+	HeadVar3C     *int32  // the head's var_3C (applyOvertake / applyChangeLane)
+	HeadTaD       *uint16 // the head's trackAndDirection (applyChangeLane)
+	HeadVar52     uint8   // the head's var_52 (1: no lookahead)
+	HeadTrackType uint8   // the head's trackType (getRoadConnections)
+	HeadVar53     uint8   // the head's required mods
 }
 
 // RoadOvertakeAvailability is getRoadOvertakeAvailability: a road tail on
@@ -205,4 +212,228 @@ func (m *Map) ApplyChangeLane(v *Veh1, n uint8) {
 			*v.HeadTaD |= RaDIsOvertaking
 		}
 	}
+}
+
+// Lookahead types (LookaheadType).
+const (
+	LookaheadNone = iota
+	LookaheadOvertake
+	LookaheadNoRoute
+	LookaheadLevelCrossing
+	LookaheadChangeLane
+)
+
+const roadFlagIsRoad uint16 = 1 << 6 // RoadObjectFlags::isRoad (else tram track)
+
+// LookaheadRoad is lookaheadRoad: whether Vehicle1, entering its next piece,
+// should cross a level crossing in one go, overtake or change lane, or may
+// not go on — and over how many pieces.
+func (m *Map) LookaheadRoad(v *Veh1, om *objects.ObjectManager) (int, uint8) {
+	n := uint8(1)
+	c := RoadCoordinates[v.TrackAndDirection&0x7F]
+	x, y, z := v.TileX+int32(c.DX), v.TileY+int32(c.DY), int32(v.TileBaseZ)*4+int32(c.DZ)
+	ring := m.RoutingRing(v.RoutingHandle, false)
+	if len(ring) < 2 {
+		return LookaheadNone, 0
+	}
+	k := 1
+	tad := m.Routing(ring[k]) & TaDBasicMask
+	occ := m.RoadOccupation(x, y, z, tad, om)
+	step := func() bool { // pos += getUnkRoad(tad); routingIter++; false at end()
+		c := RoadCoordinates[tad&0x7F]
+		x, y, z = x+int32(c.DX), y+int32(c.DY), z+int32(c.DZ)
+		k++
+		return k < len(ring)
+	}
+	if occ&RoadHasLevelCrossing != 0 {
+		if occ&(RoadLaneOccupied|RoadLevelCrossingClosed) != 0 {
+			return LookaheadNoRoute, 0
+		}
+		for n++; n < 255; n++ {
+			if !step() {
+				return LookaheadNoRoute, 0
+			}
+			tad = m.Routing(ring[k]) & TaDBasicMask
+			f := m.RoadOccupation(x, y, z, tad, om)
+			if f&(RoadLaneOccupied|RoadLevelCrossingClosed) != 0 {
+				return LookaheadNoRoute, 0
+			}
+			if f&RoadHasLevelCrossing == 0 {
+				return LookaheadLevelCrossing, n
+			}
+		}
+		return LookaheadNoRoute, 0
+	}
+	overtake := OvertakeAvailable
+	if occ&RoadLaneOccupied != 0 {
+		overtake = m.RoadOvertakeAvailability(v, x, y, z, tad)
+		if overtake == MayBeOvertaken {
+			return LookaheadNone, 0
+		}
+	} else {
+		nc := RoadCoordinates[tad&0x7F]
+		nx, ny, nz := x+int32(nc.DX), y+int32(nc.DY), z+int32(nc.DZ)
+		if k+1 >= len(ring) {
+			return LookaheadNone, 0
+		}
+		ntad := m.Routing(ring[k+1]) & TaDBasicMask
+		if m.RoadOccupation(nx, ny, nz, ntad, om)&RoadLaneOccupied == 0 {
+			return LookaheadNone, 0
+		}
+		overtake = m.RoadOvertakeAvailability(v, nx, ny, nz, ntad)
+		if overtake == MayBeOvertaken {
+			return LookaheadNone, 0
+		}
+	}
+	if v.TrackType != 0xFF {
+		if rd := om.GetRoadObjectByIndex(int(v.TrackType)); rd == nil || rd.Flags&roadFlagIsRoad == 0 {
+			return LookaheadNone, 0
+		}
+	}
+	if tad&(RaDIsChangingLane|RaDIsOvertaking) != 0 {
+		return LookaheadNone, 0
+	}
+	btf := m.RoadOccupation(x, y, z, tad^RaDIsOvertaking, om)
+	if btf&(RoadHasLevelCrossing|RoadLaneOccupied) != 0 {
+		return LookaheadNone, 0
+	}
+	need := 0
+	if overtake == OvertakeAvailable {
+		need = 5
+	}
+	i := 0
+	for n++; n < 11; n++ {
+		if !step() {
+			if btf&RoadHasStation == 0 {
+				return LookaheadNone, 0
+			}
+			return LookaheadChangeLane, n - 1
+		}
+		tad = m.Routing(ring[k]) & TaDBasicMask
+		btf = m.RoadOccupation(x, y, z, tad^RaDIsOvertaking, om)
+		if btf&(RoadHasLevelCrossing|RoadLaneOccupied) != 0 {
+			return LookaheadNone, 0
+		}
+		if m.RoadOccupation(x, y, z, tad, om)&RoadLaneOccupied != 0 {
+			i = 0
+			continue
+		}
+		i++
+		if i <= need {
+			continue
+		}
+		return LookaheadOvertake, n
+	}
+	return LookaheadNone, 0
+}
+
+// RoadMotionNewPieceResult.
+const (
+	roadContinue = iota
+	roadNoFurther
+	roadPerformedLookahead
+)
+
+// veh1RoadNewPiece is Vehicle1's updateRoadMotionNewRoadPiece.
+func (m *Map) veh1RoadNewPiece(v *Veh1, flags *uint32, om *objects.ObjectManager) int {
+	next := v.RoutingHandle.WithIndex(v.RoutingHandle.Index() + 1)
+	routing := m.Routing(next)
+	if routing == RoutingAllocatedButFree {
+		return roadNoFurther
+	}
+	if v.HeadVar52 != 1 {
+		switch typ, n := m.LookaheadRoad(v, om); typ {
+		case LookaheadOvertake:
+			m.ApplyOvertake(v, n)
+			return roadPerformedLookahead
+		case LookaheadNoRoute:
+			return roadNoFurther
+		case LookaheadLevelCrossing:
+			v.Var3C += m.veh1MoveByPieces(v, n)
+			return roadPerformedLookahead
+		case LookaheadChangeLane:
+			m.ApplyChangeLane(v, n)
+			return roadPerformedLookahead
+		}
+	}
+	x, y, z := v.TileX, v.TileY, int32(v.TileBaseZ)*4
+	e, ok := RoadConnectionEnd(x, y, z, v.TrackAndDirection&0x7F)
+	if !ok {
+		return roadNoFurther
+	}
+	tc := m.RoadConnections(e.X, e.Y, e.Z, e.NextRotation, v.Owner, v.HeadTrackType, v.HeadVar53, 0)
+	rad := routing & 0x1FF
+	found := false
+	for _, conn := range tc.Connections {
+		if conn&0x7F == routing&0x7F {
+			found = true
+			break
+		}
+	}
+	if !found {
+		*flags |= MotionNoRouteFound
+		return roadNoFurther
+	}
+	bad := RoadLaneOccupied
+	if v.HeadVar52 != 1 {
+		bad |= RoadLevelCrossingClosed
+	}
+	if m.RoadOccupation(e.X, e.Y, e.Z, rad, om)&bad != 0 {
+		return roadNoFurther
+	}
+	v.TrackType = m.UpdateRoadTileOccupancy(e.X, e.Y, e.Z, rad, v.TrackType, true)
+	v.RoutingHandle = next
+	v.TrackAndDirection = rad
+	v.TileX, v.TileY, v.TileBaseZ = e.X, e.Y, uint8(e.Z/4)
+	return roadContinue
+}
+
+// Veh1UpdateRoadMotion is Vehicle1::updateRoadMotion: as updateRoadMotion,
+// but a new piece goes through the lookahead (an overtake, lane change or
+// level crossing run ends the step with remainingDistance 0, unmoved further).
+func (m *Map) Veh1UpdateRoadMotion(v *Veh1, distance int32, om *objects.ObjectManager) MotionResult {
+	var res MotionResult
+	v.RemainingDistance += distance
+	moved := false
+	ix, iy, iz := v.X, v.Y, v.Z
+	for v.RemainingDistance >= 0x368A {
+		moved = true
+		sub := v.SubPosition + 1
+		if int(sub) >= len(RoadSubPosition(v.TrackAndDirection, v.RightHand)) {
+			switch m.veh1RoadNewPiece(v, &res.Flags, om) {
+			case roadNoFurther:
+				res.RemainingDistance = v.RemainingDistance - 0x3689
+				v.RemainingDistance = 0x3689
+				res.Flags |= MotionUnkM00
+				goto done
+			case roadPerformedLookahead:
+				res.RemainingDistance = 0
+				return res
+			}
+			sub = 0
+		}
+		v.SubPosition = sub
+		mi := RoadSubPosition(v.TrackAndDirection, v.RightHand)[sub]
+		nx, ny, nz := int32(mi.X)+v.TileX, int32(mi.Y)+v.TileY, int32(mi.Z)+int32(v.TileBaseZ)*4
+		v.RemainingDistance -= MovementNibbleToDistance[MovementNibble(ix, iy, iz, nx, ny, nz)]
+		ix, iy, iz = nx, ny, nz
+		v.SpriteYaw, v.SpritePitch = mi.Yaw, mi.Pitch
+	}
+done:
+	if moved {
+		v.X, v.Y, v.Z = ix, iy, iz
+	}
+	return res
+}
+
+// Vehicle1RoadMove is the move that ends Vehicle1::updateRoad: by
+// min(currentSpeed/2 − var_3C, max(unkDistance1·4, 0xCC48)) through
+// Veh1UpdateRoadMotion; var_3C grows by what was travelled. It returns the
+// motion flags (noRouteFound: upstream then calls the head's sub_4AD93A).
+func (m *Map) Vehicle1RoadMove(v *Veh1, veh2CurrentSpeed, unkDistance1 int32, om *objects.ObjectManager) uint32 {
+	d := veh2CurrentSpeed/2 - v.Var3C
+	d = min(d, max(unkDistance1*4, 0xCC48))
+	res := m.Veh1UpdateRoadMotion(v, d, om)
+	v.Var3C += d - res.RemainingDistance
+	return res.Flags
 }
