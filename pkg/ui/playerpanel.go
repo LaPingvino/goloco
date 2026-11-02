@@ -4,6 +4,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
+	"strconv"
 )
 
 // colourRed is Colour::red ({COLOUR RED} in the negative-cash string).
@@ -27,7 +28,7 @@ type PlayerPanelState struct {
 
 // int16OneDecimal is formatShortWithOneDecimal ({INT16_1DP}): value / 10,
 // ".", value % 10 (C++ truncation; the C locale, so no grouping).
-func int16OneDecimal(v int16) string { return itoa3(int(v/10)) + "." + itoa3(int(v%10)) }
+func int16OneDecimal(v int16) string { return strconv.Itoa(int(v/10)) + "." + strconv.Itoa(int(v%10)) }
 
 // DrawPlayerPanel is PlayerInfoPanel.cpp draw: the translucent bottom-left
 // window, cash centred on frame.width/2 + 12 in the top row ({CURRENCY48}, red
