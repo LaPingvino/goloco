@@ -455,3 +455,82 @@ func (m *Map) trainSignalUpdate(tr Train, r Sub4ACEE7Result, om *objects.ObjectM
 		m.LandReverseFromSignal(tr, om)
 	}
 }
+
+// StatusBrokenDown is Status::brokenDown.
+const StatusBrokenDown uint8 = 7
+
+// Sub4AD93A is sub_4AD93A (Vehicle1 found no route): the head is brought
+// back onto Vehicle1; on rail what was reserved beyond it is released
+// (blocks re-evaluated, signals freed, crossings left). Upstream's `unk`
+// local is never set, so every routing's block is re-evaluated.
+func (m *Map) Sub4AD93A(tr Train) {
+	head, v1 := &m.Entities[tr.Head], &m.Entities[tr.Veh1]
+	if head.Mode == 1 {
+		m.roadResetHead(tr)
+		return
+	}
+	head.Flags38 |= flags38Unk2
+	v1h := RoutingHandle(v1.RoutingHandle)
+	x, y, z := int32(v1.TileX), int32(v1.TileY), int32(v1.TileBaseZ)*4
+	for _, h := range m.RoutingRing(v1h, false) {
+		r := m.Routing(h)
+		tad := r & TaDBasicMask
+		m.UpdateBlockSignals(x, y, z, tad|r&TaDHasSignal, v1.Owner, v1.TrackType)
+		if h != v1h {
+			if r&TaDHasSignal != 0 {
+				m.SetSignalState(x, y, z, tad, v1.TrackType, 0)
+			}
+			m.LeaveLevelCrossing(x, y, z, tad, LevelCrossingLeave)
+		}
+		c := TrackCoordinates[tad]
+		x, y, z = x+int32(c.DX), y+int32(c.DY), z+int32(c.DZ)
+		if h != v1h {
+			m.SetRouting(h, RoutingAllocatedButFree)
+		}
+	}
+	m.copyMotion(tr.Head, tr.Veh1)
+	head.Var3C = v1.Var3C
+	head.Flags38 &^= flags38Unk2
+}
+
+// StoppingUpdate is stoppingUpdate: the head is pulled back onto Vehicle1
+// (an approach abandoned); once Vehicle2 has caught up the train is stopped
+// (broken down if it is).
+func (m *Map) StoppingUpdate(tr Train) {
+	head, v1, v2 := &m.Entities[tr.Head], &m.Entities[tr.Veh1], &m.Entities[tr.Veh2]
+	if head.PosX != v1.PosX || head.PosY != v1.PosY || head.PosZ != v1.PosZ {
+		m.Sub4AD93A(tr)
+		if head.Status == StatusApproaching {
+			head.StationID = stationIDNull
+			head.Status = StatusTravelling
+		}
+	}
+	if v2.RoutingHandle != head.RoutingHandle || v2.SubPosition != head.SubPosition {
+		return
+	}
+	head.Status = StatusStopped
+	if v2.Var73&1 != 0 {
+		head.StationID = stationIDNull
+		head.Status = StatusBrokenDown
+	}
+}
+
+// manualFindTrainStationAtLocation: the station under any of the train's
+// bogies.
+func (m *Map) manualFindTrainStationAtLocation(tr Train) int {
+	for _, car := range tr.Cars {
+		for _, cc := range car {
+			for _, i := range []int{cc.Front, cc.Back} {
+				b := &m.Entities[i]
+				t := m.TileAt(int(b.TileX)>>5, int(b.TileY)>>5)
+				if t == nil {
+					continue
+				}
+				if st := t.trainStation(uint8(b.TrackAndDirection>>3&0x3F), uint8(b.TrackAndDirection&3), b.TileBaseZ); st != nil && !st.AiAllocated && !st.Ghost {
+					return int(st.StationID)
+				}
+			}
+		}
+	}
+	return -1
+}

@@ -43,7 +43,12 @@ func (m *Map) LandTryBeginUnloading(tr Train) {
 		head.CurrentOrder = uint16(next.Offset - int(head.OrderTableOffset))
 	}
 	m.updateLastJourneyAverageSpeed(tr)
-	// beginUnloading
+	m.beginUnloading(tr)
+}
+
+// beginUnloading is beginUnloading.
+func (m *Map) beginUnloading(tr Train) {
+	head := &m.Entities[tr.Head]
 	head.BreakdownFlags &^= BreakdownAwaitingCargoTransfer
 	head.Status = StatusUnloading
 	head.CargoTransferTimeout = 10
