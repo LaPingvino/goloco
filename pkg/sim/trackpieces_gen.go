@@ -109,4 +109,7 @@ var RoadCostFactor = [10]uint16{256, 201, 201, 603, 603, 544, 544, 312, 312, 603
 
 var RoadMiscFlags = [10]uint16{0x0, 0x10, 0x10, 0x20, 0x20, 0x1, 0x1, 0x2, 0x2, 0x0}
 
+// RoadReverseRoadID is getRoadMiscData(id).reverseRoadId.
+var RoadReverseRoadID = [10]uint8{0, 2, 1, 4, 3, 6, 5, 8, 7, 9}
+
 var RoadCompatibleFlags = [10]uint16{0x0, 0x2, 0x2, 0x1, 0x1, 0x4, 0x4, 0x8, 0x8, 0x20}

@@ -60,6 +60,8 @@ int main()
     for (int i = 0; i < 10; i++) std::printf("%u, ", getRoadMiscData(i).costFactor);
     std::printf("}\n\nvar RoadMiscFlags = [10]uint16{");
     for (int i = 0; i < 10; i++) std::printf("0x%X, ", (unsigned)getRoadMiscData(i).flags);
+    std::printf("}\n\n// RoadReverseRoadID is getRoadMiscData(id).reverseRoadId.\nvar RoadReverseRoadID = [10]uint8{");
+    for (int i = 0; i < 10; i++) std::printf("%u, ", getRoadMiscData(i).reverseRoadId);
     std::printf("}\n\nvar RoadCompatibleFlags = [10]uint16{");
     for (int i = 0; i < 10; i++) std::printf("0x%X, ", (unsigned)getRoadMiscData(i).compatibleFlags);
     std::printf("}\n");

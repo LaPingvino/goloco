@@ -24,6 +24,10 @@ type RoadObject struct {
 	// DisplayOffset (0x29) lowers this road's vehicles in inline pictures.
 	DisplayOffset uint8
 	NumMods       uint8 // Number of road extra/modifications (max 2)
+	// CompatibleNames are the compatible roads' / tracks' DAT names (load
+	// resolves them into the compatibleRoads / compatibleTracks slot bitsets:
+	// ObjectManager.CompatibleSets).
+	CompatibleNames []string
 	// ModNames are the road extras' DAT names (load resolves them into mods).
 	ModNames []string
 	// BridgeNames are its bridges' DAT names.
@@ -132,6 +136,9 @@ func ParseRoadObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Roa
 	//   numBridges bridge objects
 	//   numStations station objects
 	// RoadObject::load: the tunnel header follows the compatible and mod headers.
+	for i := range int(numCompatible) { // RoadObject::load: compatibleTracks / compatibleRoads
+		road.CompatibleNames = append(road.CompatibleNames, headerName(data, offset+i*HeaderSize))
+	}
 	for i := 0; i < int(numMods); i++ { // RoadObject::load: mods[i] from these headers
 		road.ModNames = append(road.ModNames, headerName(data, offset+(int(numCompatible)+i)*HeaderSize))
 	}
