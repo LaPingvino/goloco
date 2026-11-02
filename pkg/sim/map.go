@@ -38,6 +38,7 @@ type Map struct {
 	LoanInterestRate                                       uint8                       // GameState loanInterestRate
 	MaxLoanSize                                            uint16                      // GameState maxLoanSize
 	StartingLoanSize                                       uint16                      // GameState startingLoanSize
+	PreferredAI                                            [3]uint8                    // GameState preferredAI intelligence / aggressiveness / competitiveness
 	DefaultLevelCrossingType                               uint8                       // GameState currentDefaultLevelCrossingType
 	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors uint16
 	Objective                                              scenario.Objective // the scenario objective
@@ -158,6 +159,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.PlayerCompanies, m.LoanInterestRate, m.MaxLoanSize = sc.PlayerCompanies, sc.LoanInterestRate, sc.MaxLoanSize
 	m.DefaultLevelCrossingType = sc.DefaultLevelCrossingType
 	m.StartingLoanSize = sc.StartingLoanSize
+	m.PreferredAI = sc.PreferredAI
 	m.ForbiddenVehiclesPlayers, m.ForbiddenVehiclesCompetitors = sc.ForbiddenVehiclesPlayers, sc.ForbiddenVehiclesCompetitors
 	m.Objective = sc.Objective
 	m.ObjectiveUntilYear = sc.ObjectiveTimeLimitUntilYear
