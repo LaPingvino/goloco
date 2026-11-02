@@ -1157,23 +1157,28 @@ func TestSavedArrivals(t *testing.T) {
 		}
 	}
 	t.Logf("approaching vehicles: began unloading %d (at their order station %d), still coming in %d", began, advanced, waiting)
-	// Run on until they arrive: every unloading head then has the arrival
-	// state beginUnloading gives (unloading itself is not ported, so it stays).
+	// Run on: each head is checked in the tick it arrives (approaching →
+	// unloading), when beginUnloading's state is fresh (unloading counts the
+	// timeout down from the next tick on).
+	unloading := 0
+	prev := map[int]uint8{}
+	for _, tr := range trains {
+		prev[tr.Head] = m.Entities[tr.Head].Status
+	}
 	for range 600 {
 		m.UpdateVehicles(r.Objects)
-	}
-	unloading := 0
-	for _, tr := range trains {
-		h := m.Entities[tr.Head]
-		if h.Mode > 1 || h.Status != sim.StatusUnloading {
-			continue
+		for _, tr := range trains {
+			h := m.Entities[tr.Head]
+			if prev[tr.Head] == sim.StatusApproaching && h.Status == sim.StatusUnloading {
+				unloading++
+				if h.CargoTransferTimeout != 10 || m.StationNames[h.StationID].VisitedTypes&(1<<(h.VehicleType&7)) == 0 {
+					t.Errorf("head %d: arrived with timeout %d, station visited %#x", h.ID, h.CargoTransferTimeout, m.StationNames[h.StationID].VisitedTypes)
+				}
+			}
+			prev[tr.Head] = h.Status
 		}
-		unloading++
-		if h.CargoTransferTimeout != 10 || m.StationNames[h.StationID].VisitedTypes&(1<<(h.VehicleType&7)) == 0 {
-			t.Errorf("head %d: unloading with timeout %d, station visited %#x", h.ID, h.CargoTransferTimeout, m.StationNames[h.StationID].VisitedTypes)
-		}
 	}
-	t.Logf("after 600 ticks: %d vehicles unloading", unloading)
+	t.Logf("arrivals in 600 ticks: %d", unloading)
 	if unloading == 0 {
 		t.Error("no vehicle arrived")
 	}
