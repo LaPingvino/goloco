@@ -246,6 +246,10 @@ type VehicleEntity struct {
 	Animation         uint8
 	CargoFrame        uint8
 	BrakeLightTimeout uint8
+	BodyIndex         uint8
+	// The entity's screen rectangle (EntityBase spriteLeft/Top/Right/Bottom),
+	// for paintEntities' culling.
+	SpriteLeft, SpriteTop, SpriteRight, SpriteBottom int16
 }
 
 // ParseVehicleEntities extracts VehicleHead and VehicleBody entities from a
@@ -303,6 +307,11 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			Animation:         e[vbAnimation],
 			CargoFrame:        e[vbCargoFrame],
 			BrakeLightTimeout: e[v2BrakeLightTimeout],
+			BodyIndex:         e[vbBodyIndex],
+			SpriteLeft:        int16(uint16(e[ebSpriteLeft]) | uint16(e[ebSpriteLeft+1])<<8),
+			SpriteTop:         int16(uint16(e[ebSpriteTop]) | uint16(e[ebSpriteTop+1])<<8),
+			SpriteRight:       int16(uint16(e[ebSpriteRight]) | uint16(e[ebSpriteRight+1])<<8),
+			SpriteBottom:      int16(uint16(e[ebSpriteBottom]) | uint16(e[ebSpriteBottom+1])<<8),
 			Owner:             e[ebOwner],
 
 			PosX: coords.WorldUnits(int16(e[ebPosX]) | int16(e[ebPosX+1])<<8),

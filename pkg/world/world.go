@@ -2440,6 +2440,9 @@ func (w *World) getCliffEdgeOffset(edge int, h uint8) (int16, int16) {
 func (w *World) Draw(screen *ebiten.Image) {
 	w.viewW, w.viewH = screen.Bounds().Dx(), screen.Bounds().Dy()
 	w.frameCounter++
+	if c := os.Getenv("GOLOCO_DIAG_CENTER"); c != "" { // diagnostics: centre on a train, … (every frame: the title sequence moves the camera)
+		w.CenterOn(c)
+	}
 	if z := os.Getenv("GOLOCO_DIAG_ZOOM"); z != "" && w.frameCounter == 1 { // diagnostics: start at zoom n
 		for range int(z[0] - '0') {
 			w.ZoomOut()
@@ -2451,10 +2454,8 @@ func (w *World) Draw(screen *ebiten.Image) {
 
 	// The ported software renderer (scene.go): the default; GOLOCO_SCENE=0 selects the old one.
 	if w.sceneEnabled() {
-		w.drawScene(screen)
-		if len(w.Entities) > 0 {
-			w.paintVehicleEntities(screen, scale)
-		} else {
+		w.drawScene(screen) // saved vehicles are painted in the scene (paintEntities)
+		if len(w.Entities) == 0 {
 			w.paintDemoTrains(screen, scale)
 		}
 		w.drawOverlay(screen)

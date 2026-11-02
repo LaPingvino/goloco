@@ -116,6 +116,7 @@ const (
 	BogieFlagRotationalSymmetry = 1 << 1
 	BogieFlagHasGentleSprites   = 1 << 2
 	BogieFlagHasSteepSprites    = 1 << 3
+	BogieFlagLargerBoundingBox  = 1 << 4 // increases the bounding box (paintBogie)
 )
 
 // BodySpriteFlags

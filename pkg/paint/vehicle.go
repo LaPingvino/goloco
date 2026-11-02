@@ -173,3 +173,87 @@ func (s *Session) Add4FD200(img Image, off, bbOff, bbSize Pos3) *Struct {
 	s.addToQuadrant(ps)
 	return ps
 }
+
+// BogieEl is what paintBogie reads of a VehicleBogie entity.
+type BogieEl struct {
+	ObjectSpriteType   uint8 // 0xFF: none
+	SpriteYaw          uint8
+	SpritePitch        uint8
+	Reversed           bool
+	AnimationIndex     uint8
+	Z                  int
+	Air                bool // getTransportMode() == air: the bogie is the plane's shadow
+	Colour             [2]uint8
+	Ghost, VehicleUnk5 bool
+}
+
+// bogieImage is paintBogie's image and bounding box: the yaw (view rotation,
+// reversed: ^32 and kReversePitch) halved to 32 steps, flipped for the down
+// pitches (^16 symmetric, else ^32); flat images (yaw & 15 if symmetric),
+// gentle (±12°, ±10°) or steep, with the animation frame; boxes by pitch and
+// largerBoundingBox. table: 0 flat, 1 gentle, 2 steep.
+func bogieImage(b BogieEl, sp *objects.VehicleBogieSprite, rotation uint8) (image uint32, table int, bbOff, bbSize Pos3) {
+	yaw := (b.SpriteYaw + rotation<<4) & 0x3F
+	pitch := objects.Pitch(b.SpritePitch)
+	if b.Reversed {
+		yaw ^= 1 << 5
+		if int(b.SpritePitch) < len(reversePitch) {
+			pitch = reversePitch[b.SpritePitch]
+		}
+	}
+	yawIndex := uint32(yaw>>1) & 0x1F
+	const up10, down10, up20 = 9, 10, 11
+	switch pitch {
+	case objects.PitchFlat, objects.PitchUp12, up10, objects.PitchUp25, up20:
+	default:
+		if sp.Flags&objects.BogieFlagRotationalSymmetry != 0 {
+			yawIndex ^= 1 << 4
+		} else {
+			yawIndex ^= 1 << 5
+		}
+	}
+	larger := sp.Flags&objects.BogieFlagLargerBoundingBox != 0
+	small := Pos3{-6, -6, b.Z + 3}
+	switch pitch {
+	case objects.PitchFlat:
+		if sp.Flags&objects.BogieFlagRotationalSymmetry != 0 {
+			yawIndex &= 0xF
+		}
+		image = uint32(sp.NumFramesPerRotation)*yawIndex + uint32(b.AnimationIndex) + sp.FlatImageIDs
+		if larger {
+			return image, 0, Pos3{-9, -9, b.Z + 3}, Pos3{18, 18, 5}
+		}
+		return image, 0, small, Pos3{12, 12, 1}
+	case objects.PitchUp12, up10, objects.PitchDown12, down10:
+		image = uint32(sp.NumFramesPerRotation)*yawIndex + uint32(b.AnimationIndex) + sp.GentleImageIDs
+		if larger {
+			return image, 1, Pos3{-8, -8, b.Z + 3}, Pos3{16, 16, 1}
+		}
+		return image, 1, small, Pos3{12, 12, 1}
+	}
+	image = uint32(sp.NumFramesPerRotation)*yawIndex + uint32(b.AnimationIndex) + sp.SteepImageIDs
+	return image, 2, small, Pos3{12, 12, 1}
+}
+
+// PaintBogie is paintBogie (0x004B0CFC's sibling): the bogie image at
+// (0, 0, z) as a parent with its bounding box, in the bogie's colour scheme;
+// a flat aircraft bogie is the plane's shadow — translucent (ExtColour::unk32,
+// shadowPal), through addToPlotList4FD200, box (8, 8, z + 6) 48×48×2, and
+// none for a ghost. PARTIAL: ghost and VehicleFlags::unk_5 drawn plainly.
+func (s *Session) PaintBogie(b BogieEl, v *objects.VehicleObject, sprite func(int) *gfx8.Sprite, palMap func(primary, secondary uint8) []uint8, shadowPal []uint8) {
+	if v == nil || b.ObjectSpriteType == objects.SpriteIndexNull || int(b.ObjectSpriteType) >= len(v.BogieSprites) {
+		return
+	}
+	sp := &v.BogieSprites[b.ObjectSpriteType]
+	img, table, bbOff, bbSize := bogieImage(b, sp, s.Rotation)
+	spr := sprite(int(v.ImageOffset + img))
+	if spr == nil {
+		return
+	}
+	if table == 0 && b.Air && !b.Ghost && !b.VehicleUnk5 {
+		s.Add4FD200(Image{Sprite: spr, Op: gfx8.OpFor(spr, false, true), PalMap: shadowPal}, Pos3{0, 0, b.Z}, Pos3{8, 8, b.Z + 6}, Pos3{48, 48, 2})
+		return
+	}
+	pm := palMap(b.Colour[0], b.Colour[1])
+	s.AddAsParent(Image{Sprite: spr, Op: gfx8.OpFor(spr, pm != nil, false), PalMap: pm}, Pos3{0, 0, b.Z}, bbOff, bbSize)
+}
