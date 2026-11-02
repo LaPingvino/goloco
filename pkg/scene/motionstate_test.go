@@ -1807,3 +1807,20 @@ func TestDateTick(t *testing.T) {
 		t.Errorf("%d vehicles still broken down after 10 days (breakdownTimeout starts at 5)", still)
 	}
 }
+
+// In a game, the daily update marks the player's challenge completed once
+// getNewChallengeProgress reaches 100 (evaluateChallengeProgress), and leaves
+// it alone on the title screen.
+func TestChallengeCompletes(t *testing.T) {
+	r, m, _ := saveView(t, "Single Player Saved Games/DEBUG_AUTO_DUMP.SV5", false)
+	id := int(m.ControllingCompany)
+	m.CompanyFaces[id].Performance = int16(m.Objective.PerformanceIndex) * 10 // the objective's index reached
+	for range 200 {                                                           // two days
+		m.UpdateVehicles(r.Objects)
+	}
+	completed, failed, _, progress := m.ChallengeStatus()
+	t.Logf("objective type %d; progress %d completed %v failed %v", m.Objective.Type, progress, completed, failed)
+	if !completed || failed || progress != 100 {
+		t.Error("challenge not completed")
+	}
+}

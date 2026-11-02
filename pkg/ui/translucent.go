@@ -3,6 +3,7 @@ package ui
 import (
 	"image"
 	"image/color"
+	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -143,6 +144,9 @@ func DrawTooltip(screen *ebiten.Image, text string, cursorX, cursorY int, toolti
 }
 
 func wrapTooltip(text string, maxW int) []string {
+	if i := strings.IndexByte(text, '\n'); i >= 0 { // {NEWLINE}
+		return append(wrapTooltip(text[:i], maxW), wrapTooltip(text[i+1:], maxW)...)
+	}
 	if w, _ := MeasureTextBold(text); w <= maxW {
 		return []string{text}
 	}
