@@ -1384,6 +1384,7 @@ type StationName struct {
 	VisitedTypes uint8
 	Flags        uint16 // Station flags (0x2A)
 	Var3B1       uint8  // var_3B1 (0x3B1)
+	Var3B0       uint8  // var_3B0 (0x3B0)
 	TileSize     uint16 // stationTileSize (0x1CE)
 }
 
@@ -1415,7 +1416,7 @@ func parseStationNames(gs []byte) []StationName {
 		rec := gs[off+i*stationRecordSize:]
 		out[i] = StationName{Name: binary.LittleEndian.Uint16(rec[0x00:]), Town: binary.LittleEndian.Uint16(rec[0x2C:]),
 			X: int16(binary.LittleEndian.Uint16(rec[0x02:])), Y: int16(binary.LittleEndian.Uint16(rec[0x04:])), Z: int16(binary.LittleEndian.Uint16(rec[0x06:])),
-			VisitedTypes: rec[0x3B2], Flags: binary.LittleEndian.Uint16(rec[0x2A:]), Var3B1: rec[0x3B1],
+			VisitedTypes: rec[0x3B2], Flags: binary.LittleEndian.Uint16(rec[0x2A:]), Var3B1: rec[0x3B1], Var3B0: rec[0x3B0],
 			TileSize: binary.LittleEndian.Uint16(rec[0x1CE:])}
 		// cargoStats: 32 × 13 bytes at 0x2E (quantity @0, flags @4; from the compiler).
 		for c := range out[i].Cargo {
@@ -1452,6 +1453,7 @@ type CompanyEconomy struct {
 	CurrentLoan              int32         // 0x0E
 	Expenditures             [16][17]int32 // 0x58 [month][ExpenditureType]
 	Var4A0                   uint32        // 0x4A0 cargo types delivered (bits)
+	Var49C                   uint32        // 0x49C cargo types loaded (bits)
 	CargoUnitsTotalDelivered uint32        // 0x85F8
 	CargoDelivered           [32]uint32    // 0x8BCE
 	CargoUnitsTotalDistance  uint32        // 0x8C50
@@ -1479,6 +1481,7 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 			}
 		}
 		c.Var4A0 = binary.LittleEndian.Uint32(r[0x4A0:])
+		c.Var49C = binary.LittleEndian.Uint32(r[0x49C:])
 		c.CargoUnitsTotalDelivered = binary.LittleEndian.Uint32(r[0x85F8:])
 		for k := range c.CargoDelivered {
 			c.CargoDelivered[k] = binary.LittleEndian.Uint32(r[0x8BCE+4*k:])

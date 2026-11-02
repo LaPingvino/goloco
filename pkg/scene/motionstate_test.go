@@ -1401,3 +1401,54 @@ func TestUnloadingPays(t *testing.T) {
 		t.Error("no deliveries paid")
 	}
 }
+
+// The station cycle in the running sim: within 3000 ticks vehicles complete
+// arrive → unload → load → leave (loading ends with a new journey and the
+// head stopped, then travelling again), and cargo gets loaded.
+func TestStationCycle(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stage := map[int]int{} // 0 none, 1 unloading seen, 2 loading seen
+	departed, loaded := 0, 0
+	before := map[int]uint8{}
+	for _, tr := range trains {
+		for _, car := range tr.Cars {
+			for _, cc := range car {
+				before[cc.Body] = m.Entities[cc.Body].Cargo.Qty
+			}
+		}
+	}
+	for range 3000 {
+		m.UpdateVehicles(r.Objects)
+		for _, tr := range trains {
+			h := m.Entities[tr.Head]
+			switch {
+			case h.Status == sim.StatusUnloading:
+				stage[tr.Head] = max(stage[tr.Head], 1)
+			case h.Status == sim.StatusLoading && stage[tr.Head] >= 1:
+				stage[tr.Head] = 2
+			case (h.Status == sim.StatusStopped || h.Status == sim.StatusTravelling) && stage[tr.Head] == 2:
+				if h.BreakdownFlags&sim.BreakdownJourneyStarted == 0 {
+					t.Errorf("head %d left without a new journey", h.ID)
+				}
+				departed++
+				stage[tr.Head] = 0
+			}
+			for _, car := range tr.Cars {
+				for _, cc := range car {
+					if q := m.Entities[cc.Body].Cargo.Qty; q > before[cc.Body] {
+						loaded++
+					}
+					before[cc.Body] = m.Entities[cc.Body].Cargo.Qty
+				}
+			}
+		}
+	}
+	t.Logf("3000 ticks: %d departures after unloading and loading; %d car loadings", departed, loaded)
+	if departed == 0 || loaded == 0 {
+		t.Error("no complete station visit")
+	}
+}
