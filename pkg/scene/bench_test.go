@@ -194,3 +194,46 @@ func TestRoadStationCargoDrawn(t *testing.T) {
 		t.Error("road station cargo changes nothing in the view")
 	}
 }
+
+// Buildings under construction draw their built sections only: the title
+// map's unconstructed buildings change the view when marked constructed.
+func TestBuildingsUnderConstruction(t *testing.T) {
+	r, m, _ := titleView(t)
+	tx, ty, n := -1, -1, 0
+	for y := range m.Height {
+		for x := range m.Width {
+			for _, b := range m.TileAt(x, y).Buildings {
+				if !b.IsConstructed {
+					n++
+					if tx < 0 {
+						tx, ty = x, y
+					}
+				}
+			}
+		}
+	}
+	t.Logf("%d building elements under construction", n)
+	if tx < 0 {
+		t.Skip("none under construction")
+	}
+	cx, cy := paint.GameToScreen(paint.Pos3{X: tx*32 + 16, Y: ty*32 + 16, Z: int(m.TileAt(tx, ty).BaseZ) * 4}, 0)
+	v := View{X: cx - 200, Y: cy - 200, W: 400, H: 300}
+	with := append([]uint8(nil), r.Render(m, v).Bits...)
+	bs := m.TileAt(tx, ty).Buildings
+	saved := append(bs[:0:0], bs...)
+	for i := range bs {
+		bs[i].IsConstructed = true
+	}
+	defer copy(bs, saved)
+	without := r.Render(m, v).Bits
+	diff := 0
+	for i := range with {
+		if with[i] != without[i] {
+			diff++
+		}
+	}
+	t.Logf("tile (%d, %d): %d pixels differ", tx, ty, diff)
+	if diff == 0 {
+		t.Error("an unconstructed building draws like a finished one")
+	}
+}

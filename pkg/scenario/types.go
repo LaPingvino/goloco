@@ -213,6 +213,9 @@ type BuildingElement struct {
 	IsConstructed bool  // byte 0 bit 7
 	BaseZ         uint8 // byte 2
 	ClearZ        uint8 // byte 3
+	// Age (byte 6 & 0x3F: the sections built so far while under construction)
+	// and SectionProgress (unk5u, byte 5 >> 5).
+	Age, SectionProgress uint8
 }
 
 // WallElement represents a wall/fence on a tile edge.
