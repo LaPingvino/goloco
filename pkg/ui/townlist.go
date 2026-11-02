@@ -72,7 +72,12 @@ type TownListWindow struct {
 	ExtraText    func(screen *ebiten.Image)
 	ExtraClick   func(px, py int) bool
 	OpenDropdown func(*DropdownMenu)
-	List         [4]int
+	// Face, if > 0, is the company owner's image drawn on the company select
+	// button (ImageButton at width − 28, 14; image at +1, +1) recoloured to
+	// FaceColour (the company's primary colour).
+	Face       int
+	FaceColour uint8
+	List       [4]int
 	// Outline draws row text outlined (VehicleList: AdvancedColour(black).outline()
 	// with {COLOUR WINDOW_2}); HoverSolid highlights the hovered row with a solid
 	// shade-0 rect instead of the translucent one.
@@ -302,6 +307,12 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 		}
 		if w.Extra8 != nil {
 			w.Extra8(rt, sec)
+		}
+		if w.Face > 0 && w.Face < len(g1.Elements) { // draw: the company owner's image
+			if sp, err := gfx8.Decode(&g1.Elements[w.Face]); err == nil {
+				m, _ := g1.GetPaletteMap(int(w.FaceColour))
+				gfx8.DrawSpriteNoise(rt, sp, w.W-28+1, 14+1, gfx8.OpFor(sp, m != nil, false), m, nil)
+			}
 		}
 		if w.RowDraw != nil && cw > 0 && ch > 0 { // drawn into the scroll view's own target (its clip)
 			sub := gfx8.NewRenderTarget(cw, ch)

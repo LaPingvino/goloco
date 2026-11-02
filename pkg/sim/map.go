@@ -11,6 +11,7 @@ type Map struct {
 	Towns              []scenario.Town // parsed town records
 	Entities           []scenario.VehicleEntity
 	VehicleListData    []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
+	CompanyFaces       []scenario.CompanyFace      // company slot → competitor, emotion, performance
 	Orders             []byte                      // GameState orders[]
 	CurrentDay         uint32                      // GameState general.currentDay
 	CompanyNames       []uint16                    // company slot → name StringId
@@ -114,6 +115,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.Orders = sc.Orders
 	m.CurrentDay = sc.CurrentDay
 	m.CompanyNames = sc.CompanyNames
+	m.CompanyFaces = sc.CompanyFaces
 	m.ControllingCompany = sc.ControllingCompany
 	m.TrafficHandedness = sc.TrafficHandedness
 	m.UnlockedVehicles = sc.UnlockedVehicles

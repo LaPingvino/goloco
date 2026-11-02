@@ -184,6 +184,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	log.Println("[Scenario] Read RequiredObjects,", len(reqObjBytes), "bytes")
 	sc.LandObjectOrder = parseLandObjectOrder(reqObjBytes)
 	sc.CargoObjectOrder = parseObjectOrder(reqObjBytes, cargoSlotStart, cargoSlotCount, objectTypeCargo)
+	sc.CompetitorObjectOrder = parseObjectOrder(reqObjBytes, 826, 32, 32) // ObjectType::competitor (slot start from the compiler)
 	sc.TreeObjectOrder = parseTreeObjectOrder(reqObjBytes)
 	sc.BuildingObjectOrder = parseBuildingObjectOrder(reqObjBytes)
 	sc.WallObjectOrder = parseWallObjectOrder(reqObjBytes)
@@ -283,6 +284,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.IndustryObjectIDs = parseIndustryObjectIDs(gameState)
 		sc.CompanyColours = parseCompanyColours(gameState)
 		sc.CompanyNames = parseCompanyNames(gameState)
+		sc.CompanyFaces = parseCompanyFaces(gameState)
 		sc.UnlockedVehicles = parseUnlockedVehicles(gameState)
 		if len(gameState) > GeneralCurrentYearOffset+1 { // general.currentYear (from the compiler: 0x1A)
 			sc.CurrentYear = binary.LittleEndian.Uint16(gameState[GeneralCurrentYearOffset:])
@@ -1188,6 +1190,31 @@ func parseCompanyNames(gs []byte) []uint16 {
 		n[i] = uint16(gs[o]) | uint16(gs[o+1])<<8
 	}
 	return n
+}
+
+// CompanyFace is what the owner's face and the company select order read of
+// a company (S5::Company, offsets from the compiler, both layouts):
+// competitorId 0x18, ownerEmotion 0x19, performanceIndex 0x16.
+type CompanyFace struct {
+	Competitor, Emotion uint8
+	Performance         int16
+}
+
+// parseCompanyFaces returns every company slot's CompanyFace.
+func parseCompanyFaces(gs []byte) []CompanyFace {
+	size := companyRecordSize
+	if len(gs) == GameStateSizeType2 {
+		size = companyRecordSizeType2
+	}
+	if len(gs) < companiesGameStateOffset+companyMaxCount*size {
+		return nil
+	}
+	out := make([]CompanyFace, companyMaxCount)
+	for i := range out {
+		o := companiesGameStateOffset + i*size
+		out[i] = CompanyFace{gs[o+0x18], gs[o+0x19], int16(binary.LittleEndian.Uint16(gs[o+0x16:]))}
+	}
+	return out
 }
 
 // parseUnlockedVehicles returns every company's unlockedVehicles bitset

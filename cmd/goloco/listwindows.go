@@ -54,6 +54,7 @@ func (g *Game) openVehicleList(tab int) {
 	}
 	w := ui.NewVehicleList(g.sw, tab, rows, tc, wc, cargos)
 	w.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
+	w.Face, w.FaceColour = g.companyFace(company)
 	if cname != "" {
 		w.Caption = cname + " - " + w.Caption // stringid_trains etc.
 	}
@@ -107,4 +108,21 @@ func (g *Game) openTownsWindow() {
 	w := ui.NewTownList(g.sw, rows, tc, wc)
 	w.OnClose = func() { g.townList = nil }
 	g.townList = w
+}
+
+// companyFace is the owner's image of a company: its competitor object's
+// images[ownerEmotion], recoloured to mainColours.primary (0 if unknown).
+func (g *Game) companyFace(company int) (int, uint8) {
+	if g.objMgr == nil || company >= len(g.w.CompanyFaces) {
+		return 0, 0
+	}
+	f := g.w.CompanyFaces[company]
+	if int(f.Competitor) >= len(g.objMgr.CompetitorObjects) || g.objMgr.CompetitorObjects[f.Competitor] == nil || f.Emotion >= 9 {
+		return 0, 0
+	}
+	var colour uint8
+	if company < len(g.w.CompanyColours) {
+		colour = g.w.CompanyColours[company]
+	}
+	return int(g.objMgr.CompetitorObjects[f.Competitor].Images[f.Emotion]), colour
 }
