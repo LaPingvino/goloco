@@ -22,6 +22,7 @@ type Map struct {
 	RoadUsableByAll       uint32                      // GameState roadObjectIdIsUsableByAllCompanies
 	Rng1                  core.Prng                   // GameState rng (gPrng1), from the save
 	ScenarioTicks         uint32                      // GameState scenarioTicks: +1 per game tick (UpdateVehicles)
+	Companies             []scenario.CompanyEconomy   // the save\'s companies (economy)
 	vehicleMangled113623B uint8                       // VehicleHead.cpp module static _vehicleMangled_113623B (sub_4ACEF1)
 	CurrentDay            uint32                      // GameState general.currentDay
 	CompanyNames          []uint16                    // company slot → name StringId
@@ -127,6 +128,8 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.RoadAnyTypeCompatible, m.RoadUsableByAll = sc.RoadAnyTypeCompatible, sc.RoadUsableByAll
 	m.Rng1 = *core.NewPrngSeed(sc.Rng[0], sc.Rng[1])
 	m.ScenarioTicks = sc.ScenarioTicks
+	m.Companies = sc.Companies
+	m.Companies = sc.Companies
 	m.CurrentDay = sc.CurrentDay
 	m.CompanyNames = sc.CompanyNames
 	m.CompanyFaces = sc.CompanyFaces

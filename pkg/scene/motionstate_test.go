@@ -1215,3 +1215,32 @@ func TestSavedVehicleCargo(t *testing.T) {
 		t.Error("no cargo slots")
 	}
 }
+
+// The save's companies: each delivery adds its quantity to both
+// cargoUnitsTotalDelivered and cargoDelivered[type]; the former is reset each
+// month (Company::updateMonthly1), the latter is cumulative — so the per-type
+// sum is at least this month's total.
+func TestSavedCompanies(t *testing.T) {
+	_, m, _ := titleView(t)
+	if len(m.Companies) != 15 {
+		t.Fatalf("%d company slots", len(m.Companies))
+	}
+	active := 0
+	for i, c := range m.Companies {
+		var sum uint64
+		for _, d := range c.CargoDelivered {
+			sum += uint64(d)
+		}
+		if c.CargoUnitsTotalDelivered == 0 && c.Cash == 0 {
+			continue
+		}
+		active++
+		t.Logf("company %d: cash %d, loan %d, delivered %d (per type sum %d), distance %d", i, c.Cash, c.CurrentLoan, c.CargoUnitsTotalDelivered, sum, c.CargoUnitsTotalDistance)
+		if sum < uint64(c.CargoUnitsTotalDelivered) {
+			t.Errorf("company %d: per-type delivered %d < this month's %d", i, sum, c.CargoUnitsTotalDelivered)
+		}
+	}
+	if active == 0 {
+		t.Error("no active company")
+	}
+}
