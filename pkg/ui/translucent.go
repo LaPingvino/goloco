@@ -38,9 +38,10 @@ func draw8(screen *ebiten.Image, x, y, w, h int, draw func(rt *gfx8.RenderTarget
 	draw(rt)
 	img := image.NewRGBA(image.Rect(0, 0, r.Dx(), r.Dy()))
 	for j := 0; j < r.Dy(); j++ {
+		row := img.Pix[j*img.Stride:]
 		for i := 0; i < r.Dx(); i++ {
 			c := pal[rt.Bits[(oy+j)*w+ox+i]]
-			img.SetRGBA(i, j, color.RGBA{c.R, c.G, c.B, 255})
+			row[4*i], row[4*i+1], row[4*i+2], row[4*i+3] = c.R, c.G, c.B, 255
 		}
 	}
 	op := &ebiten.DrawImageOptions{}
@@ -65,25 +66,34 @@ func draw8Texture(w, h int, pix []byte) *ebiten.Image {
 	return t
 }
 
-type palInverse map[[3]uint8]uint8
+// palInverse is the RGB → palette index table: a flat entry per 24-bit
+// colour (16 MB, made once), 0 = not looked up yet (index 0, transparent, is
+// never an answer). It was a map keyed by [3]uint8 — a hash per pixel, a tenth
+// of the CPU with a window open (LOOP item 0).
+type palInverse []uint8
 
 var palInv palInverse
 
-// paletteIndex is the RGB → palette index map (the first index for a colour;
-// index 0 is skipped, it is transparent).
+// paletteIndex is the table, with the palette's own colours filled in (the
+// first index for a colour; index 0 skipped).
 func paletteIndex(pal []color.RGBA) palInverse {
 	if palInv == nil {
-		palInv = palInverse{}
+		palInv = make(palInverse, 1<<24)
 		for i := len(pal) - 1; i >= 1; i-- {
 			c := pal[i]
-			palInv[[3]uint8{c.R, c.G, c.B}] = uint8(i)
+			palInv[rgbKey(c.R, c.G, c.B)] = uint8(i)
 		}
 	}
 	return palInv
 }
 
+func rgbKey(r, g, b uint8) int { return int(r)<<16 | int(g)<<8 | int(b) }
+
+// lookup is the palette index of a colour: its own, or the nearest (squared
+// RGB distance, the lowest index on a tie), remembered.
 func (m palInverse) lookup(pal []color.RGBA, r, g, b uint8) uint8 {
-	if i, ok := m[[3]uint8{r, g, b}]; ok {
+	k := rgbKey(r, g, b)
+	if i := m[k]; i != 0 {
 		return i
 	}
 	best, bd := uint8(1), 1<<30
@@ -94,7 +104,7 @@ func (m palInverse) lookup(pal []color.RGBA, r, g, b uint8) uint8 {
 			best, bd = uint8(i), d
 		}
 	}
-	m[[3]uint8{r, g, b}] = best
+	m[k] = best
 	return best
 }
 
