@@ -31,6 +31,9 @@ type Map struct {
 	TrafficHandedness     uint8                       // GameState trafficHandedness
 	UnlockedVehicles      [][7]uint32                 // per company: Company::unlockedVehicles
 	CurrentYear           uint16                      // GameState general.currentYear
+	CurrentMonth          uint8                       // GameState general.currentMonth
+	Objective             scenario.Objective          // the scenario objective
+	ObjectiveUntilYear    uint16                      // scenarioObjectiveProgress.timeLimitUntilYear
 	// CurrencyMultiplicationFactor prices cost indices (Economy).
 	CurrencyMultiplicationFactor [32]uint32
 
@@ -139,6 +142,9 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.TrafficHandedness = sc.TrafficHandedness
 	m.UnlockedVehicles = sc.UnlockedVehicles
 	m.CurrentYear = sc.CurrentYear
+	m.CurrentMonth = sc.CurrentMonth
+	m.Objective = sc.Objective
+	m.ObjectiveUntilYear = sc.ObjectiveTimeLimitUntilYear
 	m.CurrencyMultiplicationFactor = sc.CurrencyMultiplicationFactor
 	m.IndustryObjectIDs = sc.IndustryObjectIDs
 	m.CompanyColours = sc.CompanyColours

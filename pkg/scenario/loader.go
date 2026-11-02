@@ -223,6 +223,13 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 			DeliveredCargoAmount: binary.LittleEndian.Uint32(buf[0x424:]),
 			TimeLimitYears:       buf[0x428],
 		}
+		if len(buf) >= 0x42F { // scenarioObjectiveProgress (0x429)
+			sc.ObjectiveTimeLimitUntilYear = binary.LittleEndian.Uint16(buf[0x429:])
+			sc.ObjectiveMonthsInChallenge = binary.LittleEndian.Uint16(buf[0x42B:])
+		}
+		if len(buf) > 0x1C {
+			sc.CurrentMonth = buf[0x1C] // general.currentMonth
+		}
 		sc.HasObjective = true
 		log.Printf("[Scenario] Objective: %s", sc.Objective.Describe())
 	}
@@ -1457,6 +1464,9 @@ type CompanyEconomy struct {
 	CargoUnitsTotalDelivered uint32        // 0x85F8
 	CargoDelivered           [32]uint32    // 0x8BCE
 	CargoUnitsTotalDistance  uint32        // 0x8C50
+	CompanyValueHistory0     int64         // 0x88CE companyValueHistory[0] (currency48_t)
+	VehicleProfit            int64         // 0x8B9E currency48_t
+	ChallengeProgress        uint8         // 0x8C4E
 }
 
 // parseCompanyEconomy reads every company slot's CompanyEconomy.
@@ -1487,6 +1497,9 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 			c.CargoDelivered[k] = binary.LittleEndian.Uint32(r[0x8BCE+4*k:])
 		}
 		c.CargoUnitsTotalDistance = binary.LittleEndian.Uint32(r[0x8C50:])
+		c.CompanyValueHistory0 = currency48(r[0x88CE:])
+		c.VehicleProfit = currency48(r[0x8B9E:])
+		c.ChallengeProgress = r[0x8C4E]
 	}
 	return out
 }
@@ -1516,4 +1529,10 @@ func parseIndustries(gs []byte) []Industry {
 		out = append(out, ind)
 	}
 	return out
+}
+
+// currency48 reads a little-endian currency48_t (sign-extended).
+func currency48(b []byte) int64 {
+	raw := uint64(binary.LittleEndian.Uint32(b)) | uint64(binary.LittleEndian.Uint16(b[4:]))<<32
+	return int64(raw<<16) >> 16
 }
