@@ -1056,3 +1056,61 @@ func TestSavedRoadSub47DA8D(t *testing.T) {
 	}
 	t.Logf("sub_47DA8D results by kind (0 moved, 1 full, 2 no route, 4 stop): %v", kinds)
 }
+
+// 3000 vehicle ticks (≈ 96 s of game time) with the head's normal movement:
+// every moving component stays on its path, and vehicles travel beyond what
+// their saved reservations held (the heads now reserve track ahead).
+func TestUpdateVehiclesLongRun(t *testing.T) {
+	r, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	reserved := 0 // pieces the save had reserved ahead of each Vehicle2
+	last := map[int]uint16{}
+	for _, tr := range trains {
+		if m.Entities[tr.Head].Mode > 1 {
+			continue
+		}
+		reserved += len(m.RoutingRing(sim.RoutingHandle(m.Entities[tr.Veh2].RoutingHandle), false)) - 1
+		last[tr.Veh2] = m.Entities[tr.Veh2].RoutingHandle
+	}
+	travelled := 0
+	for range 3000 {
+		m.UpdateVehicles(r.Objects)
+		for i, h := range last {
+			if cur := m.Entities[i].RoutingHandle; cur != h {
+				travelled += int(sim.RoutingHandle(cur).Index()-sim.RoutingHandle(h).Index()) & 63
+				last[i] = cur
+			}
+		}
+	}
+	off := 0
+	statuses := map[uint8]int{}
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.Mode > 1 {
+			continue
+		}
+		statuses[h.Status]++
+		for _, i := range []int{tr.Veh2, tr.Tail} {
+			e := m.Entities[i]
+			var p []sim.MoveInfo
+			if e.Mode == 1 {
+				p = sim.RoadSubPosition(e.TrackAndDirection, m.TrafficHandedness != 0)
+			} else {
+				p = sim.TrackSubPosition(e.TrackAndDirection & sim.TaDBasicMask)
+			}
+			if int(e.SubPosition) >= len(p) || int32(p[e.SubPosition].X)+int32(e.TileX) != int32(e.PosX) || int32(p[e.SubPosition].Y)+int32(e.TileY) != int32(e.PosY) {
+				off++
+			}
+		}
+	}
+	t.Logf("saved reservations ahead: %d pieces; Vehicle2s travelled %d pieces in 3000 ticks; statuses %v; off path %d", reserved, travelled, statuses, off)
+	if off != 0 {
+		t.Errorf("%d components off their path", off)
+	}
+	if travelled <= reserved {
+		t.Errorf("vehicles did not get past their saved reservations")
+	}
+}
