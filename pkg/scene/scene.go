@@ -346,7 +346,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			}
 			s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: r.companyRemap(m, rd.Owner),
 				Tunnel: r.tunnelImage(ro.TunnelName), HasBridge: rd.HasBridge, Bridge: rd.BridgeID,
-				Streetlight: light, StreetlightImage: int(om.StreetLightImage)}, int(ro.Image), ro.PaintStyle, sprite)
+				Streetlight: light, StreetlightImage: int(om.StreetLightImage), Crossing: r.levelCrossing(rd, v.Ticks)}, int(ro.Image), ro.PaintStyle, sprite)
 		}
 	case scenario.KindSignal:
 		// paintSignal: against entry.prev(), which must be a track element.
@@ -696,4 +696,18 @@ func (r *Renderer) smoothLand(id uint8) (paint.SmoothLand, bool) {
 	return paint.SmoothLand{Image: int(l.ImageOffset) + l.GetFlatTerrainSpriteIndex(), ImagesPerGrowthStage: int(l.NumImagesPerGrowthStage), // LandObject::image
 		SharpSlopeTransition:    l.Flags&objects.LandFlagHasSharpSlopeTransition != 0,
 		DisableSmoothTransition: l.Flags&objects.LandFlagDisableSmoothTileTransition != 0}, true
+}
+
+// levelCrossing is the road's level crossing for paintLevelCrossing (nil:
+// none or its object not loaded).
+func (r *Renderer) levelCrossing(rd scenario.RoadElement, ticks uint32) *paint.LevelCrossing {
+	if !rd.HasLevelCrossing {
+		return nil
+	}
+	lc := r.Objects.GetLevelCrossingObjectByIndex(int(rd.LevelCrossingObjectID))
+	if lc == nil {
+		return nil
+	}
+	return &paint.LevelCrossing{Image: int(lc.ImageOffset), AnimationSpeed: lc.AnimSpeed, ClosingFrames: lc.ClosingFrames,
+		ClosedFrames: lc.ClosedFrames, Frame: rd.AnimFrame, Ticks: ticks}
 }

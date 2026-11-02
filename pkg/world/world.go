@@ -767,6 +767,13 @@ func (w *World) CenterOn(kind string) bool {
 			return len(t.Tracks) > 0
 		case "road", "roads":
 			return len(t.Roads) > 0
+		case "crossing", "level crossing":
+			for _, r := range t.Roads {
+				if r.HasLevelCrossing {
+					return true
+				}
+			}
+			return false
 		case "station", "stations":
 			return len(t.Stations) > 0
 		case "industry", "industries":
