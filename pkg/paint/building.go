@@ -5,8 +5,8 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 // Buildings — a port of Paint/PaintBuilding.cpp paintBuilding /
 // paintBuildingBuilding, with the shadow (translucency
 // Colours::getShadow(orange)) and the under-construction stages (built
-// sections by age, the newest noise-masked). PARTIAL: scaffolding and ghost
-// buildings are not ported.
+// sections by age, the newest noise-masked) with their scaffolding. PARTIAL:
+// ghost buildings are not ported.
 
 // BuildingEl is what paintBuilding reads from a building element.
 type BuildingEl struct {
@@ -29,6 +29,48 @@ type BuildingObj struct {
 	ElevatorSequences [][]uint8
 	LargeTile         bool // BuildingObjectFlags::largeTile (2×2)
 	Shadow            Shadow
+	// Scaffold is the scaffolding drawn while under construction (nil: the
+	// object has none — segment type 0xFF — or no Scaffolding object).
+	Scaffold *Scaffold
+}
+
+// Scaffold is what paintBuildingBuilding reads for the scaffolding: the
+// Scaffolding object's image, the type's segment height and image set
+// (getScaffoldingImages(type).get1x1/get2x2 is picked by the painter), and
+// the object's scaffoldingColour palette map.
+type Scaffold struct {
+	Image, Type   int
+	SegmentHeight int
+	Colour        []uint8
+}
+
+// scaffoldingImages is kScaffoldingImages [type][1x1, 2x2]: back, front and
+// the roof per rotation (printed from the compiled header).
+var scaffoldingImages = [3][2]struct {
+	back, front int
+	roof        [4]int
+}{
+	{{0, 1, [4]int{2, 3, 4, 5}}, {6, 7, [4]int{8, 9, 10, 11}}},
+	{{12, 13, [4]int{14, 15, 16, 17}}, {18, 19, [4]int{20, 21, 22, 23}}},
+	{{24, 25, [4]int{26, 27, 28, 29}}, {30, 31, [4]int{32, 33, 34, 35}}},
+}
+
+// scaffoldSegments adds the scaffolding image (Scaffolding image + idx) as
+// children from imgOff up, one per segment height, until the built height is
+// covered; returns the offset after the last segment (the roof's).
+func (s *Session) scaffoldSegments(sc *Scaffold, idx, height int, imgOff, bbOff, bbSz Pos3, sprite func(int) *gfx8.Sprite) Pos3 {
+	off := imgOff
+	if sc.SegmentHeight <= 0 {
+		return off
+	}
+	sp := sprite(sc.Image + idx)
+	for remaining := height; remaining > 0; remaining -= sc.SegmentHeight {
+		if sp != nil {
+			s.AddAsChild(Colour(sp, sc.Colour), off, bbOff, bbSz)
+		}
+		off.Z += sc.SegmentHeight
+	}
+	return off
 }
 
 // Shadow is the object's shadow image (hasShadows, zoom <= 1): Image is its base
@@ -112,8 +154,24 @@ func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint
 			}
 		}
 	}
-	// PARTIAL: the scaffolding (back before the parts, front and roof after)
-	// is not drawn yet.
+	// The scaffolding's back segments, before the parts.
+	sc := obj.Scaffold
+	var set struct {
+		back, front int
+		roof        [4]int
+	}
+	if sc != nil && sc.Type >= 0 && sc.Type < 3 {
+		size := 0
+		if obj.LargeTile {
+			size = 1
+		}
+		set = scaffoldingImages[sc.Type][size]
+	} else {
+		sc = nil
+	}
+	if totalSectionHeight != 0 && sc != nil {
+		s.scaffoldSegments(sc, set.back, totalSectionHeight, imgOff, bbOff, bbSz, sprite)
+	}
 	sectionCount := int(int8(uint8(numSections)))
 	off := imgOff
 	for _, part := range obj.Parts {
@@ -143,6 +201,13 @@ func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint
 			off.Z += int(obj.PartHeights[p])
 		}
 		sectionCount--
+	}
+	// The scaffolding's front segments and its roof, after the parts.
+	if totalSectionHeight != 0 && sc != nil {
+		roofOff := s.scaffoldSegments(sc, set.front, totalSectionHeight, imgOff, bbOff, bbSz, sprite)
+		if sp := sprite(sc.Image + set.roof[rotation&3]); sp != nil {
+			s.AddAsChild(Colour(sp, sc.Colour), roofOff, bbOff, bbSz)
+		}
 	}
 	// Elevators, only once nothing is left to build (totalSectionHeight == 0).
 	if totalSectionHeight != 0 {
