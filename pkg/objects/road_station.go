@@ -22,6 +22,11 @@ type RoadStationObject struct {
 	Name                       string
 	PaintStyle                 uint8
 	Flags                      uint8 // RoadStationFlags (bit0 recolourable, from the generated layout)
+	// CargoName is the cargo ObjectHeader's DAT name (cargoType's object,
+	// passenger/freight stations only); CargoOffsets getCargoOffsets
+	// [rotation][nibble] (as TrainStationObject's).
+	CargoName    string
+	CargoOffsets [4][4][][2][3]int
 
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
 	// Preview images:  ImageOffset+0 (base), ImageOffset+1 (windows overlay).
@@ -111,6 +116,9 @@ func ParseRoadStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader
 	// If passenger or freight flags set (bits 1 or 2), skip 1 cargo ObjectHeader.
 	// RoadStationFlags: passenger=bit1, freight=bit2
 	if flags&0x06 != 0 {
+		if offset+HeaderSize <= len(data) {
+			obj.CargoName = headerName(data, offset)
+		}
 		offset += HeaderSize
 		if offset > len(data) {
 			return nil, fmt.Errorf("road station object: cargo header exceeds data length")
@@ -124,12 +132,15 @@ func ParseRoadStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader
 		if offset >= len(data) {
 			return nil, fmt.Errorf("road station object: cargo blob %d out of data", i)
 		}
-		offset++ // z byte
+		z := int(data[offset]) // uint8 z
+		offset++               // z byte
 		for offset+4 <= len(data) {
 			if data[offset] == 0xFF {
 				offset += 4 // consume the 4-byte terminator
 				break
 			}
+			obj.CargoOffsets[i/4][i%4] = append(obj.CargoOffsets[i/4][i%4], [2][3]int{
+				{int(int8(data[offset])), int(int8(data[offset+1])), z}, {int(int8(data[offset+2])), int(int8(data[offset+3])), z}})
 			offset += 4 // x, y, x, y
 		}
 	}
