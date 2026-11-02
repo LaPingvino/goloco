@@ -1363,3 +1363,36 @@ func TestSavedTrainProperties(t *testing.T) {
 		t.Errorf("%s differs for %d", f, c)
 	}
 }
+
+// Unloading in the running sim: after 1500 ticks the companies have more
+// cargo delivered and their takings booked — cash and this month's
+// expenditure table move by the same amount (applyPaymentToCompany).
+func TestUnloadingPays(t *testing.T) {
+	r, m, _ := titleView(t)
+	before := append([]scenario.CompanyEconomy(nil), m.Companies...)
+	for range 1500 {
+		m.UpdateVehicles(r.Objects)
+	}
+	delivered, paid := uint64(0), int64(0)
+	for i := range m.Companies {
+		var a, b uint64
+		for c := range 32 {
+			a += uint64(m.Companies[i].CargoDelivered[c])
+			b += uint64(before[i].CargoDelivered[c])
+		}
+		delivered += a - b
+		dCash := m.Companies[i].Cash - before[i].Cash
+		var dBook int64
+		for typ := range 17 {
+			dBook += int64(m.Companies[i].Expenditures[0][typ]) - int64(before[i].Expenditures[0][typ])
+		}
+		if dCash != dBook {
+			t.Errorf("company %d: cash moved %d but the books %d", i, dCash, dBook)
+		}
+		paid += dCash
+	}
+	t.Logf("1500 ticks: %d units delivered, %d paid to companies", delivered, paid)
+	if delivered == 0 || paid <= 0 {
+		t.Error("no deliveries paid")
+	}
+}

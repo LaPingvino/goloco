@@ -33,7 +33,11 @@ type IndustryObject struct {
 	FieldImageIDs                uint32
 	NumImagesPerFieldGrowthStage uint32
 	TableLength                  uint32 // image table length (for the exact-walk check)
-	RemainingAtTable             int    // bytes left when the image table starts
+	// ProducedCargoNames / RequiredCargoNames are the cargo DAT names
+	// (producedCargoType / requiredCargoType); "" for none.
+	ProducedCargoNames [2]string
+	RequiredCargoNames [3]string
+	RemainingAtTable   int // bytes left when the image table starts
 }
 
 // IndustryFlagHasShadows is IndustryObjectFlags::hasShadows.
@@ -124,7 +128,19 @@ func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 		}
 		o.Variations = append(o.Variations, parts)
 	}
-	p += int(o.MaxNumBuildings)   // buildings
+	p += int(o.MaxNumBuildings) // buildings
+	// produced (2) and required (3) cargo headers (load resolves them into
+	// producedCargoType / requiredCargoType; 0xFF: none).
+	for i := range o.ProducedCargoNames {
+		if data[p+i*16] != 0xFF {
+			o.ProducedCargoNames[i] = headerName(data, p+i*16)
+		}
+	}
+	for i := range o.RequiredCargoNames {
+		if data[p+(2+i)*16] != 0xFF {
+			o.RequiredCargoNames[i] = headerName(data, p+(2+i)*16)
+		}
+	}
 	p += (2 + 3 + 4 + 1 + 1) * 16 // produced, required cargo; wall types; buildingWall; buildingWallEntrance
 	if err := need(0); err != nil {
 		return nil, err
