@@ -516,3 +516,76 @@ func TestSavedVehicle1TargetSpeed(t *testing.T) {
 		t.Fatal("no trains")
 	}
 }
+
+// Vehicle1's road motion helpers on every saved road vehicle: the NoMove
+// advance predicts exactly the distance the real one covers and both end on
+// the path; applyOvertake marks the next routings changing-lane then
+// changing-lane+overtaking, and applyChangeLane flags the head.
+func TestSavedVehicle1RoadPieces(t *testing.T) {
+	_, m, _ := titleView(t)
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	veh1 := func(tr sim.Train) *sim.Veh1 {
+		e, v2 := m.Entities[tr.Veh1], m.Entities[tr.Veh2]
+		return &sim.Veh1{MotionComponent: sim.MotionComponent{
+			Road: true, RightHand: m.TrafficHandedness != 0,
+			TrackAndDirection: e.TrackAndDirection, SubPosition: e.SubPosition,
+			TileX: int32(e.TileX), TileY: int32(e.TileY), TileBaseZ: e.TileBaseZ,
+			X: int32(e.PosX), Y: int32(e.PosY), Z: int32(e.PosZ),
+			RoutingHandle: sim.RoutingHandle(e.RoutingHandle), Owner: e.Owner, TrackType: e.TrackType,
+		}, Var3C: e.Var3C, Veh2MaxSpeed: v2.MaxSpeed}
+	}
+	n, marked := 0, 0
+	for _, tr := range trains {
+		if m.Entities[tr.Head].Mode != 1 {
+			continue
+		}
+		n++
+		v := veh1(tr)
+		want := sim.ExportVeh1MoveNoMove(m, v, 1)
+		got := sim.ExportVeh1Move(m, v, 1)
+		if got != want {
+			t.Errorf("head %d: moved %d, NoMove said %d", m.Entities[tr.Head].ID, got, want)
+		}
+		// Where the routings run out vanilla returns without moveTo (the
+		// position stays behind): only then may it be off its path.
+		ranOut := m.Routing(v.RoutingHandle.WithIndex(v.RoutingHandle.Index()+1)) == sim.RoutingAllocatedButFree
+		p := sim.RoadSubPosition(v.TrackAndDirection, v.RightHand)
+		if mi := p[v.SubPosition]; (int32(mi.X)+v.TileX != v.X || int32(mi.Y)+v.TileY != v.Y) && !ranOut {
+			t.Errorf("head %d: off its path", m.Entities[tr.Head].ID)
+		}
+	}
+	// Overtake / change lane on fresh copies of the routing table.
+	saved := append([]uint16(nil), m.Routings...)
+	for _, tr := range trains {
+		if m.Entities[tr.Head].Mode != 1 {
+			continue
+		}
+		copy(m.Routings, saved)
+		v := veh1(tr)
+		ring := m.RoutingRing(v.RoutingHandle, false)
+		if len(ring) < 3 {
+			continue
+		}
+		hv := int32(0)
+		v.HeadVar3C = &hv
+		m.ApplyOvertake(v, 2)
+		if m.Routing(ring[1])&(sim.RaDIsChangingLane|sim.RaDIsOvertaking) != sim.RaDIsChangingLane ||
+			m.Routing(ring[2])&(sim.RaDIsChangingLane|sim.RaDIsOvertaking) != sim.RaDIsChangingLane|sim.RaDIsOvertaking {
+			t.Errorf("head %d: overtake flags %#x %#x", m.Entities[tr.Head].ID, m.Routing(ring[1]), m.Routing(ring[2]))
+		}
+		copy(m.Routings, saved)
+		v = veh1(tr)
+		var tad uint16
+		v.HeadTaD = &tad
+		m.ApplyChangeLane(v, 1)
+		if tad&sim.RaDIsChangingLane == 0 {
+			t.Errorf("head %d: change lane did not flag the head", m.Entities[tr.Head].ID)
+		}
+		marked++
+	}
+	copy(m.Routings, saved)
+	t.Logf("road Vehicle1s %d; overtake/lane-change checked on %d", n, marked)
+}
