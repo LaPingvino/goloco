@@ -277,6 +277,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.VehicleList = ParseVehicleListEntries(gameState)
 		sc.Orders = ParseOrders(gameState)
 		sc.Routings = ParseRoutings(gameState)
+		sc.RoadAnyTypeCompatible = binary.LittleEndian.Uint32(gameState[0x1A4:])
+		sc.RoadUsableByAll = binary.LittleEndian.Uint32(gameState[0x1A8:])
 		sc.CurrentDay = ParseCurrentDay(gameState)
 		if sc.Entities != nil {
 			log.Printf("[Scenario] Parsed %d vehicle entities (Head+Body) from GameState", len(sc.Entities))
@@ -542,6 +544,9 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					Mods:                  (elem[7] >> 6) & 0x03,
 					BaseZ:                 baseZ,
 					ClearZ:                elem[3],
+					IsLast:                elem[1]&0x40 != 0,
+					Ghost:                 elem[1]&0x10 != 0,
+					AiAllocated:           elem[1]&0x20 != 0,
 				}
 				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeRoad, Index: uint16(len(sc.Tiles[y][x].Roads))})
 				sc.Tiles[y][x].Roads = append(sc.Tiles[y][x].Roads, re)

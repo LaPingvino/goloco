@@ -111,11 +111,15 @@ type Scenario struct {
 	// included — enough for world-space rendering.  Nil for .SC5 scenarios.
 	//
 	// OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h  GameState::entities
-	CargoObjectOrder      []string  // cargo slot -> DAT name (for objective cargo names)
-	Objective             Objective // win condition (valid when HasObjective)
-	HasObjective          bool
-	Orders                []byte   // GameState orders[] (ParseOrders)
-	Routings              []uint16 // GameState routings[] (ParseRoutings), by RoutingHandle
+	CargoObjectOrder []string  // cargo slot -> DAT name (for objective cargo names)
+	Objective        Objective // win condition (valid when HasObjective)
+	HasObjective     bool
+	Orders           []byte   // GameState orders[] (ParseOrders)
+	Routings         []uint16 // GameState routings[] (ParseRoutings), by RoutingHandle
+	// GameState roadObjectIdIsAnyRoadTypeCompatible (0x1A4) and
+	// roadObjectIdIsUsableByAllCompanies (0x1A8): bit per road object id.
+	RoadAnyTypeCompatible uint32
+	RoadUsableByAll       uint32
 	Entities              []VehicleEntity
 	VehicleList           []VehicleListEntry // heads with veh1/veh2 list data (VehicleList.cpp)
 	CurrentDay            uint32             // GameState general.currentDay
@@ -327,6 +331,9 @@ type RoadElement struct {
 	Mods                  uint8 // byte 7 bits [7:6]: modifier bitmask
 	BaseZ                 uint8 // byte 2
 	ClearZ                uint8 // byte 3
+	IsLast                bool  // byte 1 bit 6: ElementFlags::flag_6 — last tile of the piece
+	Ghost                 bool  // byte 1 bit 4: ElementFlags::ghost
+	AiAllocated           bool  // byte 1 bit 5: ElementFlags::aiAllocated
 }
 
 // StationElement represents a station tile (rail, road, airport, or dock).

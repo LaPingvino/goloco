@@ -142,3 +142,107 @@ func (m *Map) TrackConnections(x, y, z int32, nextRotation, company, trackObject
 	}
 	return res
 }
+
+// RoadConnections is Track::RoadConnections; StationID is -1 for null.
+type RoadConnections struct {
+	Connections     []uint16
+	StationID       int
+	StationObjectID uint8
+	RoadObjectID    uint8 // 0xFF if none
+}
+
+// roadStation is Tile::roadStation: the station element after a road element
+// with this road id, rotation and height that has a station (road elements
+// at the same height may lie between).
+func (t *Tile) roadStation(roadID, rotation, baseZ uint8) *scenario.StationElement {
+	found := false
+	for _, r := range t.Order {
+		if found && r.Kind == scenario.KindStation {
+			return &t.Stations[r.Index]
+		}
+		if r.Kind != scenario.KindRoad {
+			continue
+		}
+		el := &t.Roads[r.Index]
+		if el.BaseZ != baseZ {
+			found = false
+			continue
+		}
+		if el.Rotation != rotation || el.RoadID != roadID || !el.HasStationElement {
+			continue
+		}
+		found = true
+	}
+	return nil
+}
+
+// RoadConnections is getRoadConnections (getRoadConnectionsImpl<false,
+// false>, 0x004788C8): the road pieces on the tile at (x, y, z) a vehicle
+// arriving with nextRotation continues onto. roadObjectID 0xFF accepts any
+// road type compatible with any vehicle.
+func (m *Map) RoadConnections(x, y, z int32, nextRotation, company, roadObjectID, requiredMods, queryMods uint8) RoadConnections {
+	res := RoadConnections{StationID: -1, RoadObjectID: 0xFF}
+	baseZ := uint8(z / 4)
+	t := m.TileAt(int(x/32), int(y/32))
+	if t == nil || x < 0 || y < 0 {
+		return res
+	}
+	for _, r := range t.Order {
+		if r.Kind != scenario.KindRoad {
+			continue
+		}
+		el := &t.Roads[r.Index]
+		if m.RoadUsableByAll&(1<<el.RoadObjectID) == 0 && el.Owner != company {
+			continue
+		}
+		if el.RoadObjectID != roadObjectID && (roadObjectID != 0xFF || m.RoadAnyTypeCompatible&(1<<el.RoadObjectID) == 0) {
+			continue
+		}
+		if el.Mods&requiredMods != requiredMods || el.Ghost || el.AiAllocated || int(el.RoadID) >= len(RoadPieceTiles) {
+			continue
+		}
+		piece := RoadPieceTiles[el.RoadID]
+		// add is the bridge/mods/station part common to both directions;
+		// false where upstream `continue`s (a station flag with no station).
+		add := func(tad uint16) bool {
+			if el.HasBridge {
+				tad |= uint16(el.BridgeID)<<9 | TaDHasBridge
+			}
+			if queryMods&el.Mods != 0 {
+				tad |= TaDHasMods
+			}
+			if el.HasStationElement {
+				st := t.roadStation(el.RoadID, el.Rotation, el.BaseZ)
+				if st == nil {
+					return false
+				}
+				if !st.AiAllocated && !st.Ghost {
+					res.StationID, res.StationObjectID = int(st.StationID), st.ObjectID
+				}
+			}
+			res.RoadObjectID = el.RoadObjectID
+			res.Connections = append(res.Connections, tad)
+			return true
+		}
+		if el.SequenceIndex == 0 {
+			tad := uint16(el.RoadID)<<3 | uint16(el.Rotation)
+			if nextRotation == RoadCoordinates[tad].RotBegin && int(baseZ) == int(el.BaseZ)-int(piece[0][2])/4 {
+				if !add(tad) {
+					continue
+				}
+			}
+		}
+		if !el.IsLast {
+			continue
+		}
+		tad := uint16(el.RoadID)<<3 | 1<<2 | uint16(el.Rotation)
+		if nextRotation != RoadCoordinates[tad].RotBegin || int(el.SequenceIndex) >= len(piece) {
+			continue
+		}
+		if int(baseZ) != int(el.BaseZ)-(int(RoadCoordinates[tad].DZ)+int(piece[el.SequenceIndex][2]))/4 {
+			continue
+		}
+		add(tad)
+	}
+	return res
+}
