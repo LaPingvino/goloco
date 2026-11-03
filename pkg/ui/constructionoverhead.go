@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -60,7 +61,7 @@ func DrawOverheadTab(screen *ebiten.Image, f *ConstructionFrame, st OverheadTabS
 		DrawTextBold(screen, n, f.X+3+10+4, f.Y+y, text)
 	}
 	if any {
-		DrawTextBold(screen, "Single section", f.X+3+1, f.Y+95+1, black) // modString[lastSelectedTrackModSection]
+		DrawTextBold(screen, i18n.Label(i18n.SingleSection), f.X+3+1, f.Y+95+1, black) // modString[lastSelectedTrackModSection]
 		arrow := string(rune(170))
 		aw, _ := MeasureTextBold(arrow)
 		DrawTextBold(screen, arrow, f.X+3+132-12+(11-1)/2-aw/2, f.Y+95+1, black)
