@@ -152,6 +152,9 @@ func (s *Session) newAttached() *Attached {
 // SetSpritePosition sets the world position painters' offsets are relative to.
 func (s *Session) SetSpritePosition(x, y int) { s.spriteX, s.spriteY = x, y }
 
+// RTRect is the render target in viewport coordinates (x, y, width, height).
+func (s *Session) RTRect() (x, y, w, h int) { return s.rtX, s.rtY, s.rtW, s.rtH }
+
 // SupportHeight is the session's general support height (Paint.h _support:
 // height, slope); 0xFFFF height = nothing to support from.
 type SupportHeight struct {
