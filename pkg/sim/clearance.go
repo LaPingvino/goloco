@@ -233,3 +233,24 @@ func surfaceCornersFit(t *Tile, baseZ, baseQuarter, zQuarter uint8) bool {
 	}
 	return ok(1, n) && ok(2, e) && ok(4, s) && ok(8, w)
 }
+
+// MaxHeight is PaintSession::setMaxHeight's _maxHeight for this tile: the
+// highest clearZ of its elements (water, and an industrial surface + 24,
+// count too), × kSmallZStep, + 32 — how far the tile can reach up the
+// screen (the paint's vertical cull).
+func (t *Tile) MaxHeight() int {
+	var maxClearZ uint8
+	for _, r := range t.Order {
+		maxClearZ = max(maxClearZ, t.clearZOf(r))
+		if r.Kind != scenario.KindSurface {
+			continue
+		}
+		if t.WaterLevel != 0 {
+			maxClearZ = max(maxClearZ, uint8(int(t.WaterLevel)*microToSmallZStep))
+		}
+		if t.IsIndustrial {
+			maxClearZ = max(maxClearZ, t.SurfaceClearZ()+24)
+		}
+	}
+	return int(maxClearZ)*smallZStep + 32
+}
