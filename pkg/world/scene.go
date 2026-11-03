@@ -49,17 +49,16 @@ func (w *World) drawScene(screen *ebiten.Image) {
 	// a whole world render; a moved camera, zoom or size repaints all of it.
 	view := scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: uint32(w.animTick)}
 	var rt *gfx8.RenderTarget
-	var x0, x1 int
 	same := view.X == w.lastView.X && view.Y == w.lastView.Y && view.W == w.lastView.W && view.H == w.lastView.H && view.Zoom == w.lastView.Zoom
 	if w.sceneImg == nil || w.sceneImg.Bounds().Dx() != sw || w.sceneImg.Bounds().Dy() != sh {
 		w.sceneImg = ebiten.NewImage(sw, sh)
 		same = false // a new image: all of it
 	}
 	parts := 1
-	if w.SceneEvery > 1 && same {
-		// Adaptive (tick 309): as many parts as keep the world within the
-		// budget, judged by what a whole frame costs (an average); at least
-		// SceneEvery, at most a column a part.
+	if same && (w.SceneEvery > 1 || w.frameCost > sceneBudgetMS) {
+		// Adaptive (ticks 309, 311): as many parts as keep the world within
+		// the budget, judged by what a whole frame costs (an average); at
+		// least SceneEvery while a window is open, at most a column a part.
 		parts = max(w.SceneEvery, int(math.Ceil(w.frameCost/sceneBudgetMS)))
 		parts = min(parts, max(sw/32, 1))
 		w.sceneSkip = (w.sceneSkip + 1) % parts
@@ -67,9 +66,20 @@ func (w *World) drawScene(screen *ebiten.Image) {
 		w.sceneSkip = 0
 	}
 	t1 := time.Now()
-	rt, x0, x1 = w.scene.RenderPart(&w.Map, view, w.sceneSkip, parts)
-	if x1 > x0 { // the whole frame's cost, from this part's
-		whole := float64(time.Since(t1).Microseconds()) / 1000 * float64(sw) / float64(x1-x0)
+	var ranges [][2]int
+	if w.SceneEvery > 1 { // a window open: the part alone
+		var x0, x1 int
+		rt, x0, x1 = w.scene.RenderPart(&w.Map, view, w.sceneSkip, parts)
+		ranges = [][2]int{{x0, x1}}
+	} else { // in play: the part and every column with a vehicle (no torn trains)
+		rt, ranges = w.scene.RenderPlay(&w.Map, view, w.sceneSkip, parts)
+	}
+	if p := ranges[0]; p[1] > p[0] { // the whole frame's cost, from this frame's part
+		painted := 0
+		for _, r := range ranges {
+			painted += r[1] - r[0]
+		}
+		whole := float64(time.Since(t1).Microseconds()) / 1000 * float64(sw) / float64(painted)
 		if w.frameCost == 0 {
 			w.frameCost = whole
 		} else {
@@ -78,10 +88,12 @@ func (w *World) drawScene(screen *ebiten.Image) {
 	}
 	w.SceneParts = parts
 	w.lastView = view
-	if x0 == 0 && x1 == sw {
-		w.sceneImg.WritePixels(w.scene.ToRGBA(rt).Pix)
-	} else { // only the repainted columns converted and uploaded
-		w.sceneImg.SubImage(image.Rect(x0, 0, x1, sh)).(*ebiten.Image).WritePixels(w.scene.ToRGBAColumns(rt, x0, x1))
+	for _, r := range ranges {
+		if r[0] == 0 && r[1] == sw {
+			w.sceneImg.WritePixels(w.scene.ToRGBA(rt).Pix)
+		} else { // only the repainted columns converted and uploaded
+			w.sceneImg.SubImage(image.Rect(r[0], 0, r[1], sh)).(*ebiten.Image).WritePixels(w.scene.ToRGBAColumns(rt, r[0], r[1]))
+		}
 	}
 	screen.DrawImage(w.sceneImg, nil)
 	if rt.Width == sw && rt.Height == sh { // the palette indices under the UI, for draw8 (no GPU readback)
