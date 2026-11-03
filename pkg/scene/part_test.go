@@ -37,3 +37,15 @@ func TestRenderPartWhole(t *testing.T) {
 		}
 	}
 }
+
+// BenchmarkRenderColumn is one column a call (the adaptive parts' cap).
+func BenchmarkRenderColumn(b *testing.B) {
+	r, m, v := titleView(b)
+	r.Render(m, v)
+	n := v.W / 32
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		rt, x0, x1 := r.RenderPart(m, v, i%n, n)
+		r.ToRGBAColumns(rt, x0, x1)
+	}
+}
