@@ -98,9 +98,6 @@ func isPotentialOverlayRoad(e *scenario.RoadElement, a roadClearArgs) bool {
 }
 
 // roadClearFunction is CreateRoad.cpp's clearFunction (0x0047744C).
-//
-// PARTIAL: the road branch (clearRoad: overlays, junctions, station roads) is
-// a collision until clearRoad is ported (next in 5.9f3).
 func (m *Map) roadClearFunction(c *Cmd, st *roadCmdState, t *Tile, k int, cost *int32, removed RemovedBuildings, a roadClearArgs) roadClearResult {
 	r := t.Order[k]
 	switch r.Kind {
@@ -119,7 +116,7 @@ func (m *Map) roadClearFunction(c *Cmd, st *roadCmdState, t *Tile, k int, cost *
 	case scenario.KindTree:
 		return roadRes(m.clearTreeCollision(c, t, k, a.X, a.Y, a.Flags, cost))
 	case scenario.KindRoad:
-		return roadRes(ClearCollision) // PARTIAL: clearRoad
+		return m.clearRoad(c, st, &t.Roads[r.Index], a)
 	}
 	return roadRes(ClearCollision)
 }
