@@ -57,6 +57,7 @@ type Attached struct {
 
 // Session is a PaintSession for one view.
 type Session struct {
+	arrangeHead        Struct // Arrange's list head
 	Rotation           uint8
 	spriteX, spriteY   int // world position of the tile being painted
 	rtX, rtY, rtW, rtH int // render target in viewport coordinates
@@ -509,7 +510,8 @@ func (s *Session) Arrange() {
 	if s.back == noBackIndex {
 		return
 	}
-	head := &Struct{}
+	head := &s.arrangeHead // reused: a new one a session (a column) allocated
+	*head = Struct{}
 	ps := head
 	for qi := s.back; qi <= s.front; qi++ {
 		if n := s.quadrants[qi]; n != nil {
