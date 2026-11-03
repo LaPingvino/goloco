@@ -1053,9 +1053,6 @@ func floor2(x, n int) int { return x &^ (n - 1) }
 // paintTile is paintTileElements (tall = false) or paintTileElements2 (tall:
 // only buildings, trees, industries, and airport / dock stations — the things
 // that reach into the neighbouring column).
-// PARTIAL: paintTileElementsSetup's vertical cull (the tile's screen y
-// against the target, with the tile's max height) and paintVoid for tiles
-// outside the drawable coordinates are not ported: such tiles paint as before.
 func (r *Renderer) paintTile(s *paint.Session, m *sim.Map, x, y int, tall bool, ticks uint32) {
 	// World::drawableCoords: outside it, paintTileElements paints the void
 	// and paintTileElements2 nothing.
@@ -1068,6 +1065,13 @@ func (r *Renderer) paintTile(s *paint.Session, m *sim.Map, x, y int, tall bool, 
 	}
 	t := m.TileAt(x, y)
 	if t == nil {
+		return
+	}
+	// paintTileElementsSetup's vertical cull (rotation 0: the tile's corner
+	// at z 0): above the target, or below it even at the tile's full height.
+	vy := (x*32 + y*32) >> 1
+	_, rtY, _, rtH := s.RTRect()
+	if vy+52 <= rtY || vy-t.MaxHeight() > rtY+rtH {
 		return
 	}
 	sprite := r.spriteFor
