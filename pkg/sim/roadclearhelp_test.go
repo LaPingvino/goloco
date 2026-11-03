@@ -133,3 +133,37 @@ func TestCreateRoadCost(t *testing.T) {
 		t.Errorf("piece 3 cost %d, want %d", curve, want)
 	}
 }
+
+// createRoad's checks on a flat map: a straight road on the ground passes (one
+// piece, its heights, the base cost); raised it needs a bridge; below 16 it is
+// too low.
+func TestCreateRoadCheck(t *testing.T) {
+	hdr := func(name string) *objects.ObjectHeader {
+		h := &objects.ObjectHeader{}
+		copy(h.Name[:], name)
+		return h
+	}
+	road := &objects.RoadObject{Header: hdr("ROADTOWN"), BuildCostFactor: 100}
+	c := &Cmd{Company: CompanyNeutral, Objects: &objects.ObjectManager{RoadObjects: []*objects.RoadObject{road}}}
+	m := &Map{Width: 8, Height: 8, Tiles: make([][]Tile, 8)}
+	for y := range m.Tiles {
+		m.Tiles[y] = make([]Tile, 8)
+		for x := range m.Tiles[y] {
+			m.Tiles[y][x].BaseZ = 4 // the ground at z 16
+		}
+	}
+	a := roadPlacementArgs{X: 3 * 32, Y: 3 * 32, Z: 16, RoadID: 0, RoadObjectID: 0, Bridge: 0xFF}
+	r, ok := m.createRoadCheck(c, a, 0)
+	_, base, _ := m.createRoadCost(c, a)
+	if !ok || len(r.Pieces) != 1 || r.Pieces[0].BaseZ != 4 || r.Pieces[0].ClearZ != 12 || r.Cost != base {
+		t.Fatalf("flat straight road: ok %v, %+v", ok, r)
+	}
+	a.Z = 32
+	if _, ok := m.createRoadCheck(c, a, 0); ok {
+		t.Error("raised without a bridge: must fail")
+	}
+	a.Z = 8
+	if _, ok := m.createRoadCheck(c, a, 0); ok {
+		t.Error("below 16: too low")
+	}
+}
