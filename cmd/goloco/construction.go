@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/LaPingvino/goloco/pkg/construct"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"image"
 
@@ -142,7 +143,7 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 }
 
 func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
-	win := ui.NewSimpleWindow("Construction", 10, 40, ui.ConstructionW, ui.ConstructionH)
+	win := ui.NewSimpleWindow(i18n.Label(i18n.Construction), 10, 40, ui.ConstructionW, ui.ConstructionH)
 	win.Ported = true
 	win.PortedDraw = func(screen *ebiten.Image, x, y int) {
 		f, st := g.constructionFrame(x, y)

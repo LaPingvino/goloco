@@ -3,6 +3,7 @@ package ui
 import (
 	"github.com/LaPingvino/goloco/pkg/construct"
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -246,8 +247,9 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 	// and mods aren't added yet.
 	const midX, y = (3 + 3 + 132 - 1) / 2, 145 + 100 - 1 - 23
 	if !st.Hover {
-		bw, _ := MeasureTextBold("Build this...")
-		DrawTextBold(screen, "Build this...", f.X+midX-bw/2, f.Y+y, text)
+		build := i18n.Label(i18n.BuildThis)
+		bw, _ := MeasureTextBold(build)
+		DrawTextBold(screen, build, f.X+midX-bw/2, f.Y+y, text)
 	}
 	if st.Cost != 0 {
 		label, amount := "Cost: ", L.Currency48(st.Cost)
@@ -265,7 +267,7 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 	for _, l := range []struct {
 		x, w int
 		s    string
-	}{{3, 33, "Copy"}, {36, 37, "Paste"}} {
+	}{{3, 33, i18n.Label(i18n.ConstructionCopy)}, {36, 37, i18n.Label(i18n.ConstructionPaste)}} {
 		tw, _ := MeasureTextBold(l.s)
 		DrawTextBold(screen, l.s, f.X+l.x+(l.w-1)/2-tw/2, f.Y+248+6, text)
 	}
