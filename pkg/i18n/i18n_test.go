@@ -91,6 +91,7 @@ func TestMonth(t *testing.T) {
 
 // The packs in data/language are listed, sorted by native name, English among them.
 func TestAvailable(t *testing.T) {
+	t.Chdir("../..") // data/language is at the repository's root
 	ls := Available()
 	if len(ls) == 0 {
 		t.Skip("no language packs here")
@@ -120,5 +121,27 @@ func TestToLoco(t *testing.T) {
 	}
 	if LocoChar('ą') != 221 {
 		t.Errorf("ą → %d", LocoChar('ą'))
+	}
+}
+
+// Str / Label by OpenLoco string id: German from de-DE, English from en-GB
+// for an id the active pack lacks, the style codes off for labels.
+func TestStrByStringID(t *testing.T) {
+	t.Chdir("../..") // the packs are found from the repository's root (data/language)
+	if err := Load("de-DE"); err != nil {
+		t.Skip(err)
+	}
+	defer Load("en-GB")
+	if got := Label(OptionsLanguage); got != "Sprache:" {
+		t.Errorf("Label(OptionsLanguage) = %q, want Sprache:", got)
+	}
+	if got := Str(Heights); got != "{COLOUR WINDOW_2}Höhen:" {
+		t.Errorf("Str(Heights) = %q", got)
+	}
+	if err := Load("en-GB"); err != nil {
+		t.Fatal(err)
+	}
+	if got := Label(DistanceAndSpeed); got != "Distance and Speed:" {
+		t.Errorf("en-GB: %q", got)
 	}
 }
