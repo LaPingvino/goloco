@@ -27,6 +27,10 @@ type LevelCrossingObject struct {
 	ClosingFrames uint8
 	ClosedFrames  uint8
 	DesignedYear  uint16 // 0x0C (LevelCrossingObject::designedYear)
+	// CostFactor (0x02) and CostIndex (0x06): what a crossing adds to a road's
+	// or track's cost (createRoad, createTrack).
+	CostFactor int16
+	CostIndex  uint8
 
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
 	ImageOffset uint32
@@ -55,6 +59,8 @@ func ParseLevelCrossingObjectWithG1(header *ObjectHeader, data []byte, g1 G1Load
 	obj := &LevelCrossingObject{
 		Header:        header,
 		AnimSpeed:     data[0x07],
+		CostFactor:    int16(uint16(data[0x02]) | uint16(data[0x03])<<8),
+		CostIndex:     data[0x06],
 		ClosingFrames: data[0x08],
 		ClosedFrames:  data[0x09],
 		DesignedYear:  binary.LittleEndian.Uint16(data[0x0C:]),

@@ -57,3 +57,134 @@ func (m *Map) createRoadCost(c *Cmd, a roadPlacementArgs) (validMods uint8, cost
 	}
 	return validMods, cost, true
 }
+
+// roadPiecePlan is one piece tile createRoadCheck cleared: what the apply
+// step (0x00476408 on) places there.
+type roadPiecePlan struct {
+	X, Y, Z            int32
+	Index              uint8
+	BaseZ, ClearZ      uint8
+	Quarter            uint8 // the rotated subTileClearance
+	HasBridge          bool  // flags_1136073 bit 1 for this tile
+	HasLevelCrossing   bool
+	LevelCrossingObjID uint8
+}
+
+// createRoadResult is what createRoadCheck found: the cost, each piece's
+// plan, the road station met (if any), and the junction bits (roadIdUnk).
+type createRoadResult struct {
+	Cost       int32
+	ValidMods  uint8
+	Pieces     []roadPiecePlan
+	HasStation bool
+	StationID  uint16
+	RoadIDUnk  [16]uint8
+	State      roadCmdState
+}
+
+// createRoadCheck is createRoad's checks (CreateRoad.cpp 594–803): the cost
+// and, piece by piece, the height (not below 16, clearZ not above 236), water
+// and the bridge a raised piece needs (one asked for, high enough, suitable
+// for the piece), the clearance with the road clear function (level
+// crossings, road stations, junctions; their costs), and the position rules
+// (not partly above / below ground, not under water or too close to its
+// surface). It changes nothing unless a.Flags applies (the clear functions
+// remove trees / buildings then). The pieces' insertion is the apply step.
+// PARTIAL: company observation / emotion events; the error texts.
+func (m *Map) createRoadCheck(c *Cmd, a roadPlacementArgs, flags uint8) (createRoadResult, bool) {
+	var r createRoadResult
+	st := &r.State
+	st.Bridge, st.AltRoadObject = 0xFF, 0xFF
+	validMods, cost, ok := m.createRoadCost(c, a)
+	if !ok {
+		return r, false
+	}
+	r.ValidMods, r.Cost = validMods, cost
+	r.StationID = 0xFFFF
+	r.RoadIDUnk[a.RoadID] |= 1 << a.Rotation
+	pieces := RoadPieces[a.RoadID]
+	removed := RemovedBuildings{}
+	for _, piece := range pieces {
+		ox, oy := rotOffset(piece.X, piece.Y, a.Rotation)
+		x, y, z := a.X+int32(ox), a.Y+int32(oy), a.Z+int32(piece.Z)
+		quarter := rotateQuarterTile(piece.SubTileClearance, a.Rotation)
+		unk := rotl4bit(piece.Flags&0xF, a.Rotation)
+		if z < 16 { // error_too_low
+			return r, false
+		}
+		baseZ := uint8(z / 4)
+		clearZ := int(baseZ) + (int(piece.ClearZ)+32)/4
+		st.Flags73 &^= 1 << 1
+		if m.validCoords(x, y) {
+			t := m.TileAt(int(x/tileSize), int(y/tileSize))
+			if t.WaterLevel != 0 {
+				st.Flags73 |= 1 << 7
+			}
+			if isBridgeRequired(baseZ, t, piece.Flags&(1<<4) != 0, unk) {
+				st.Flags73 |= 1<<1 | 1<<0
+				heightDiff := (int(baseZ) - int(t.BaseZ)) / microToSmallZStep
+				if a.Bridge == 0xFF { // bridge_needed
+					return r, false
+				}
+				b := c.bridge(a.Bridge)
+				if b == nil || heightDiff > int(b.MaxHeight) { // too far above ground for this bridge
+					return r, false
+				}
+				st.MaxBridgeDiff = max(st.MaxBridgeDiff, uint8(heightDiff))
+				if b.DisabledTrackCfg&RoadMiscFlags[a.RoadID] != 0 { // unsuitable for this configuration
+					return r, false
+				}
+				clearZ += int(b.ClearHeight) / 4
+			}
+		}
+		if clearZ > 236 { // error_too_high
+			return r, false
+		}
+		plan := roadPiecePlan{X: x, Y: y, Z: z, Index: piece.Index, BaseZ: baseZ, ClearZ: uint8(clearZ), Quarter: quarter, LevelCrossingObjID: 0xFF}
+		args := roadClearArgs{X: x, Y: y, Z: z, Rotation: a.Rotation, RoadID: a.RoadID, BridgeID: a.Bridge, RoadObjectID: a.RoadObjectID,
+			Index: piece.Index, IsLastIndex: int(piece.Index) == len(pieces)-1, Flags: flags, UnkFlags: a.UnkFlags}
+		clear := func(t *Tile, k int) ClearResult {
+			res := m.roadClearFunction(c, st, t, k, &r.Cost, removed, args)
+			plan.HasLevelCrossing = plan.HasLevelCrossing || res.HasLevelCrossing
+			r.HasStation = r.HasStation || res.HasStation
+			if res.LevelCrossingObjID != 0xFF {
+				plan.LevelCrossingObjID = res.LevelCrossingObjID
+			}
+			if res.StationID != 0xFFFF {
+				r.StationID = res.StationID
+			}
+			for i := range r.RoadIDUnk {
+				r.RoadIDUnk[i] |= res.RoadIDUnk[i]
+			}
+			return res.Res
+		}
+		ok, pos := m.ApplyClearAtStandardHeight(x, y, baseZ, uint8(clearZ), quarter&0xF, quarter>>4, clear)
+		if !ok {
+			return r, false
+		}
+		if plan.LevelCrossingObjID == 0xFF {
+			plan.LevelCrossingObjID = m.DefaultLevelCrossingType
+		}
+		if plan.HasLevelCrossing && c.Objects != nil && int(plan.LevelCrossingObjID) < len(c.Objects.LevelCrossingObjects) {
+			if lc := c.Objects.LevelCrossingObjects[plan.LevelCrossingObjID]; lc != nil {
+				r.Cost += m.InflationAdjustedCost(lc.CostFactor, lc.CostIndex, 10)
+			}
+		}
+		ground := pos & (PosAboveGround | PosUnderground)
+		if st.PosFlags != 0 && st.PosFlags&ground == 0 { // partly above, partly below ground
+			return r, false
+		}
+		st.PosFlags = ground
+		if pos&(PosPartiallyUnderwater|PosUnderwater) != 0 { // under water / too close to its surface
+			return r, false
+		}
+		plan.HasBridge = st.Flags73&(1<<1) != 0
+		r.Pieces = append(r.Pieces, plan)
+	}
+	return r, true
+}
+
+// validCoords is World::validCoords: inside the map.
+func (m *Map) validCoords(x, y int32) bool {
+	return x >= 0 && y >= 0 && x < int32(m.Width*tileSize) && y < int32(m.Height*tileSize)
+}
