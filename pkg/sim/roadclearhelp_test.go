@@ -167,3 +167,49 @@ func TestCreateRoadCheck(t *testing.T) {
 		t.Error("below 16: too low")
 	}
 }
+
+// createRoad's apply step: the road element is placed (its heights, owner,
+// last flag, its ref's quarters), a wall on the tile removed, snow cleared;
+// the same road again is refused (the new element collides).
+func TestCreateRoadApply(t *testing.T) {
+	hdr := &objects.ObjectHeader{}
+	copy(hdr.Name[:], "ROADTOWN")
+	road := &objects.RoadObject{Header: hdr, BuildCostFactor: 100}
+	c := &Cmd{Company: CompanyNeutral, Objects: &objects.ObjectManager{RoadObjects: []*objects.RoadObject{road}}}
+	m := &Map{Width: 8, Height: 8, Tiles: make([][]Tile, 8)}
+	for y := range m.Tiles {
+		m.Tiles[y] = make([]Tile, 8)
+		for x := range m.Tiles[y] {
+			m.Tiles[y][x].BaseZ = 4
+			m.Tiles[y][x].Order = []scenario.ElemRef{{Kind: scenario.KindSurface}}
+		}
+	}
+	tile := m.TileAt(3, 3)
+	tile.Slope = 2 << 5 // snow
+	tile.Walls = []scenario.WallElement{{BaseZ: 4, ClearZ: 8}}
+	tile.insertRef(scenario.KindWall, 0, 4)
+	a := roadPlacementArgs{X: 3 * 32, Y: 3 * 32, Z: 16, RoadID: 0, RoadObjectID: 0, Bridge: 0xFF}
+	r, ok := m.createRoadCheck(c, a, CmdApply)
+	if !ok || !m.createRoadApply(c, a, CmdApply, &r) {
+		t.Fatal("placing a road on flat ground failed")
+	}
+	if len(tile.Roads) != 1 || len(tile.Walls) != 0 || tile.Slope&0xE0 != 0 {
+		t.Fatalf("after: %d roads, %d walls, slope %#x", len(tile.Roads), len(tile.Walls), tile.Slope)
+	}
+	el := tile.Roads[0]
+	if el.BaseZ != 4 || el.ClearZ != 12 || el.Owner != CompanyNeutral || !el.IsLast || el.HasBridge {
+		t.Errorf("element %+v", el)
+	}
+	var ref scenario.ElemRef
+	for _, x := range tile.Order {
+		if x.Kind == scenario.KindRoad {
+			ref = x
+		}
+	}
+	if ref.Flags&0xF != rotateQuarterTile(RoadPieces[0][0].SubTileClearance, 0)&0xF || ref.Flags&0xF == 0 {
+		t.Errorf("the road's quarters %#x", ref.Flags)
+	}
+	if _, ok := m.createRoadCheck(c, a, 0); ok {
+		t.Error("the same road again must collide")
+	}
+}

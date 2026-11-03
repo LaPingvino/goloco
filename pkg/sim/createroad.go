@@ -1,5 +1,7 @@
 package sim
 
+import "github.com/LaPingvino/goloco/pkg/scenario"
+
 // createRoad (GameCommands/Road/CreateRoad.cpp 594–1105), item 5.9f3 — the
 // game command towns grow their roads with. Ported in parts; this is its
 // start: the arguments, the road extras that fit the piece, and the cost.
@@ -187,4 +189,117 @@ func (m *Map) createRoadCheck(c *Cmd, a roadPlacementArgs, flags uint8) (createR
 // validCoords is World::validCoords: inside the map.
 func (m *Map) validCoords(x, y int32) bool {
 	return x >= 0 && y >= 0 && x < int32(m.Width*tileSize) && y < int32(m.Height*tileSize)
+}
+
+// createRoadApply is createRoad's apply step (CreateRoad.cpp 776–865), on
+// the plan createRoadCheck made with the same flags: per piece the walls on
+// the tile below the road removed, the surface's industry and growth / snow
+// cleared at the road's height, and the road element inserted — its heights,
+// rotation, objects, owner, extras, bridge, level crossing, station flag,
+// last-piece, ghost and AI flags.
+// PARTIAL: the player company's emotion event; Scenario options'
+// madeAnyChanges (not kept); viewport invalidation (the renderer redraws).
+func (m *Map) createRoadApply(c *Cmd, a roadPlacementArgs, flags uint8, r *createRoadResult) bool {
+	if flags&CmdApply == 0 {
+		return true
+	}
+	ghostOrAI := flags&(CmdGhost|CmdAiAllocated) != 0
+	for _, p := range r.Pieces {
+		t := m.TileAt(int(p.X/tileSize), int(p.Y/tileSize))
+		if t == nil {
+			return false
+		}
+		if !ghostOrAI {
+			t.removeAllWallsBelow(p.BaseZ)
+			if z := int(t.BaseZ) * smallZStep; z <= int(p.Z) && int(p.Z)-z < 12*smallZStep {
+				m.removeSurfaceIndustry(p.X, p.Y, t, c)
+				t.setTerrainStyleAsCleared()
+			}
+		}
+		el := scenario.RoadElement{
+			BaseZ: p.BaseZ, ClearZ: p.ClearZ, Rotation: a.Rotation, RoadObjectID: a.RoadObjectID,
+			SequenceIndex: p.Index, RoadID: a.RoadID, Owner: c.Company,
+			Mods:              r.ValidMods & 3,
+			BridgeID:          a.Bridge & 7, // setBridgeObjectId keeps 3 bits
+			HasBridge:         p.HasBridge,
+			HasStationElement: r.HasStation,
+			IsLast:            int(p.Index) == len(RoadPieces[a.RoadID])-1,
+			Ghost:             flags&CmdGhost != 0,
+			AiAllocated:       flags&CmdAiAllocated != 0,
+		}
+		if m.RoadAnyTypeCompatible&(1<<a.RoadObjectID) != 0 && c.Company != CompanyNeutral {
+			el.Mods |= 1 // setUnk7_40: mods bit 0
+		}
+		if p.HasLevelCrossing && flags&CmdAiAllocated == 0 {
+			el.HasLevelCrossing, el.LevelCrossingObjectID = true, p.LevelCrossingObjID
+		}
+		t.insertRoadElement(el, p.Quarter&0xF)
+	}
+	return true
+}
+
+// insertRoadElement is TileManager::insertElementRoad: the road goes after
+// every element at or below its height, but before a road station at its own
+// height; its ref carries the flags byte (quarters, ghost, AI, flag_6) that
+// the clearance checks read.
+func (t *Tile) insertRoadElement(el scenario.RoadElement, quarters uint8) {
+	t.Roads = append(t.Roads, el)
+	at := len(t.Order)
+	for i, r := range t.Order {
+		bz := t.baseZOf(r)
+		if el.BaseZ < bz || (bz == el.BaseZ && r.Kind == scenario.KindStation && t.Stations[r.Index].StationType == 1) {
+			at = i
+			break
+		}
+	}
+	f := quarters & 0xF
+	if el.Ghost {
+		f |= elemFlagGhost
+	}
+	if el.AiAllocated {
+		f |= elemFlagAiAllocated
+	}
+	if el.IsLast {
+		f |= 1 << 6
+	}
+	t.Order = append(t.Order, scenario.ElemRef{})
+	copy(t.Order[at+1:], t.Order[at:])
+	t.Order[at] = scenario.ElemRef{Kind: scenario.KindRoad, Index: uint16(len(t.Roads) - 1), Flags: f}
+}
+
+// removeAllWallsBelow is TileManager::removeAllWallsOnTileBelow: every wall
+// except those wholly above baseZ + 12 (and reaching above baseZ) is removed.
+func (t *Tile) removeAllWallsBelow(baseZ uint8) {
+	for i := len(t.Walls) - 1; i >= 0; i-- {
+		w := t.Walls[i]
+		if baseZ < w.ClearZ && int(baseZ)+12 <= int(w.BaseZ) {
+			continue
+		}
+		t.Walls = append(t.Walls[:i], t.Walls[i+1:]...)
+		t.removeRef(scenario.KindWall, i)
+	}
+}
+
+// removeSurfaceIndustry is SurfaceElement::removeIndustry: an industrial
+// surface becomes plain again (growth and variation 0) and the closest town
+// loses 30 rating points' worth (updateTownInfo(pos, 0, 0, -30, 0)).
+func (m *Map) removeSurfaceIndustry(x, y int32, t *Tile, c *Cmd) {
+	if !t.IsIndustrial {
+		return
+	}
+	t.IsIndustrial, t.GrowthStage, t.Variation = false, 0, 0
+	m.updateTownInfo(x, y, 0, 0, -30, 0, c)
+}
+
+// setTerrainStyleAsCleared is TileManager's: a non-industrial surface's growth
+// stage and snow coverage (slope bits 5–7) back to 0.
+func (t *Tile) setTerrainStyleAsCleared() {
+	if t.IsIndustrial {
+		return
+	}
+	if t.GrowthStage > 0 {
+		t.GrowthStage = 0
+		t.Slope &^= 0xE0
+	}
+	t.Slope &^= 0xE0
 }
