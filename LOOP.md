@@ -44,10 +44,19 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 
 ## Queue (top = next)
 
-> NEXT (Joop 2026-11-02, "we got out of sync"): item 0 (responsiveness) comes first. 5.9f3 (town growth /
-> createRoad) is PAUSED where it stands (clear function done; clearRoad and createRoad's body next) until item 0
-> is done or Joop says otherwise — "continue the one in progress" does not apply to a paused item.
-0. [ ] **Responsiveness first** (Joop 2026-11-02: 'the system is a bit slow, so we might want to start optimizing
+> NEXT (Joop 2026-11-04: the test page is "responsive" — item 0 done; "language switch fails on web"): item 0L
+> (UI texts by OpenLoco string id, so a language switch shows), then 5.9f3 resumes (town growth / createRoad: clear
+> function done; clearRoad and createRoad's body next). Joop 2026-11-04 on open questions overnight: decide, build,
+> log the choice, let him correct the done work — don't sit waiting.
+0L. [ ] **Language switch shows** (Joop 2026-11-04: "language switch fails on web"). Found: the pack loads (on the
+   web too — GOLOCO_LANG=de-DE through the manifest env logs "Language: de-DE (Deutsch)"), but only 6 places drew
+   through i18n.T; every other UI text was literal English, so a switch changed almost nothing. Port: OpenLoco's
+   StringIds (cmd/genstringids → pkg/i18n/stringids.go, all 2131) and StringManager::getString (i18n.Str: the pack,
+   else en-GB; i18n.Label without the leading style codes); then each window's literals → their upstream StringIds,
+   window by window. (a) DONE 2026-11-04: Options Regional labels. (b) the Options window: title, tab tooltips, the
+   other tabs, dropdown values, checkboxes. (c) the title screen ("Exit Game" …), toolbar tooltips, the other
+   windows. (d) the choice kept: Config::write (desktop: the config file; web: localStorage through the shim).
+0. [x] (DONE 2026-11-04: Joop "responsive") **Responsiveness first** (Joop 2026-11-02: 'the system is a bit slow, so we might want to start optimizing
    etc, at least strongly prioritizing UI actions so menus feel smooth'). Before 5.9f3 resumes: (a) measure — per-frame
    time split (sim tick, scene draw, UI draw, sprite prewarm) on the wasm page (headless chromium + console timings)
    and natively under Xvfb; (b) input never waits: handle mouse / keys and draw windows / dropdowns every frame, and
@@ -857,3 +866,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-03 tick 315 (item 5d) — the web page's music as Opus: cmd/webpack converts each track with ffmpeg (libopus 96 kb/s, Ogg) at pack time (falls back to gzipped WAV without ffmpeg) and clears lazy/ first; the fs shim fetches non-.gz lazy files as they are; the browser player (browser_js.go) tells Ogg by 'OggS' and plays it natively (no gopus needed: the browser decodes Opus itself). Desktop unchanged (the original WAVs). lazy/ 398 MB → 65 MB (30 tracks). Headless check: the page decodes a track (187.6 s = the WAV's 3:07, canPlayType 'probably'), and the game played the title music from a 1.7 MB Opus file. The private test page is rebuilt with it.
 - 2026-11-03 tick 316 (item 0's leftovers; item 0 itself waits on Joop, 5.9f3 paused) — two of tick 303's PARTIALs ported: paintVoid (PaintTile.cpp: ImageIds::blank_tile 448 at z 16 for locations outside World::drawableCoords — the map's outer ring and beyond — with its two screen-y culls; paintTileElements2 paints nothing there) and Viewport::paint's clear to PaletteIndex::brown2 (0xD8) per column (the underground view's black0 doesn't exist in the port). render8: mid-map (bridge view) byte-identical; at the map edge the void now shows the blank tile (dark) where black was. Left PARTIAL: paintTileElementsSetup's vertical cull (only speed). A reference screenshot of the map edge from OpenLoco would confirm the void's look (added to the bridges question).
 - 2026-11-03 tick 317 (item 0 leftovers, the last) — paintTileElementsSetup's vertical cull ported: sim.Tile.MaxHeight (PaintSession::setMaxHeight: the highest clearZ, water, industrial surface + 24; × kSmallZStep + 32) and the cull in scene.paintTile (rotation 0: the tile corner's screen y + 52 above the target, or minus the max height below it → the tile skipped). Bridge view byte-identical; title view one core 65–67 → 58–62 ms. No PARTIAL left in the column port.
+- 2026-11-04 (item 0L, a) — Joop: the test page is responsive (item 0 done; 5.9f3 unpaused, after 0L); 'language switch fails on web'. Found: the pack loads on the web too (manifest env GOLOCO_LANG=de-DE → 'Language: de-DE (Deutsch)'), but only 6 UI places used i18n — the rest literal English, so a switch showed almost nothing. Ported OpenLoco's StringIds (cmd/genstringids from Localisation/StringIds.h → pkg/i18n/stringids.go, 2131 ids) and getString (i18n.Str: the pack, else en-GB; i18n.Label: the leading {COLOUR …}/{SMALLFONT}… off); the Options Regional labels now by StringIds (OptionsLanguage, DistanceAndSpeed, Heights, CurrentGameCurrency, NewGameCurrency). TestStrByStringID (de-DE 'Sprache:', en-GB fallback); TestAvailable no longer skips (it ran in pkg/i18n, the packs are at the root). Visual: desktop --shots with GOLOCO_LANG=de-DE GOLOCO_DIAG_OPTIONS=regional — 'Sprache:', 'Entfernung und Geschwindigkeit:', 'Höhen:', 'Aktuelle Währung:', 'Bevorzugte Währung:'. Test gate green.

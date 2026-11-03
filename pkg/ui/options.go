@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -140,10 +141,12 @@ var (
 	optFrameStyles = []string{"Gradient (default)", "Solid colour", "Translucent colour"}
 )
 
+// optRegionalRows are the Regional tab's labelled rows (Options.cpp Regional
+// widgets): their y and their StringIds label (drawn in the active language).
 var optRegionalRows = [5]struct {
 	y     int
-	label string
-}{{49, "Language:"}, {69, "Distance and Speed:"}, {84, "Heights:"}, {104, "Current currency:"}, {119, "Preferred currency:"}}
+	label int
+}{{49, i18n.OptionsLanguage}, {69, i18n.DistanceAndSpeed}, {84, i18n.Heights}, {104, i18n.CurrentGameCurrency}, {119, i18n.NewGameCurrency}}
 
 // optDropdown draws dropdownWidgets: the ComboBox (inset, fillDarker) and the
 // 11×10 Button at (x + w - 12, y + 1).
@@ -662,7 +665,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		arrow := string(rune(170)) // LocoChar::down, StringIds::dropdown "{COLOUR BLACK}▼"
 		aw, _ := MeasureTextBold(arrow)
 		for i, r := range optRegionalRows {
-			DrawTextBold(screen, r.label, w.X+10, w.Y+r.y, text) // Label, left, {COLOUR WINDOW_2}
+			DrawTextBold(screen, i18n.Label(r.label), w.X+10, w.Y+r.y, text) // Label, left, {COLOUR WINDOW_2}
 			v := values[i]
 			for len(v) > 0 {
 				if tw, _ := MeasureTextBold(v); tw <= 173-2 {
