@@ -32,6 +32,7 @@ type Renderer struct {
 	// std::execution::par): clones with their own session and scratch.
 	workers   []*Renderer
 	cols      [][2]int // RenderColumns' column list, kept
+	edges     []int    // RenderPart's column edges, kept
 	partPix   []byte   // ToRGBAColumns' buffer, kept
 	shadowMap []uint8
 
@@ -263,7 +264,20 @@ func (r *Renderer) RenderPart(m *sim.Map, v View, k, n int) (*gfx8.RenderTarget,
 		r.rt = gfx8.NewRenderTarget(v.W, v.H)
 		k, n = 0, 1 // no earlier frame: all of it
 	}
-	x0, x1 := k*v.W/n, (k+1)*v.W/n
+	// Parts are whole columns (a part split mid-column would paint both
+	// columns it touches): the column edges in screen x, shared out.
+	edges := r.edges[:0]
+	edges = append(edges, 0)
+	lw := v.W << v.Zoom
+	for colX := (v.X &^ 31) + 32; colX < v.X+lw; colX += 32 {
+		edges = append(edges, (colX-v.X)>>v.Zoom)
+	}
+	edges = append(edges, v.W)
+	r.edges = edges
+	cols := len(edges) - 1
+	n = min(n, cols)
+	k = min(k, n-1)
+	x0, x1 := edges[k*cols/n], edges[(k+1)*cols/n]
 	r.RenderColumns(m, v, r.rt, x0, x1)
 	return r.rt, x0, x1
 }
