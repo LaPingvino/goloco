@@ -855,21 +855,21 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Load/Save":
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTop.cpp:117-154
 		items := []ui.DropdownItem{
-			{Text: "Load Game", Action: func() { g.openLoadGameWindow() }},
-			{Text: "Save Game", Action: func() { g.openSaveWindow() }},
+			{Text: i18n.Label(i18n.MenuLoadGame), Action: func() { g.openLoadGameWindow() }},
+			{Text: i18n.Label(i18n.MenuSaveGame), Action: func() { g.openSaveWindow() }},
 			{Separator: true},
-			{Text: "Screenshot", Action: func() {
+			{Text: i18n.Label(i18n.MenuScreenshot), Action: func() {
 				g.diagPending = true
 				g.diagQuit = false
 				g.diagTileX = -1
 				g.diagTileY = -1
 			}},
 			{Separator: true},
-			{Text: "About", Action: func() { log.Println("[Game] About selected") }},
-			{Text: "Options", Action: func() { g.openOptionsWindow() }},
+			{Text: i18n.Label(i18n.MenuAbout), Action: func() { log.Println("[Game] About selected") }},
+			{Text: i18n.Label(i18n.Options), Action: func() { g.openOptionsWindow() }},
 			{Separator: true},
-			{Text: "Quit to Menu", Action: func() { g.quitToMenu() }},
-			{Text: "Quit to Desktop", Action: func() { os.Exit(0) }},
+			{Text: i18n.Label(i18n.MenuQuitToMenu), Action: func() { g.quitToMenu() }},
+			{Text: i18n.Label(i18n.MenuExitOpenloco), Action: func() { os.Exit(0) }},
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
 		return
@@ -889,8 +889,8 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Zoom":
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTopCommon.cpp:95-132
 		items := []ui.DropdownItem{
-			{Text: "Zoom In", Action: func() { g.w.ZoomIn() }},
-			{Text: "Zoom Out", Action: func() { g.w.ZoomOut() }},
+			{Text: i18n.Label(i18n.MenuZoomIn), Action: func() { g.w.ZoomIn() }},
+			{Text: i18n.Label(i18n.MenuZoomOut), Action: func() { g.w.ZoomOut() }},
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
 		return
@@ -898,15 +898,15 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Rotate":
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTopCommon.cpp:135-143
 		items := []ui.DropdownItem{
-			{Text: "Rotate Clockwise", Action: func() { log.Println("[Game] Rotate CW") }},
-			{Text: "Rotate Counter-CW", Action: func() { log.Println("[Game] Rotate CCW") }},
+			{Text: i18n.Label(i18n.MenuRotateClockwise), Action: func() { log.Println("[Game] Rotate CW") }},
+			{Text: i18n.Label(i18n.MenuRotateAntiClockwise), Action: func() { log.Println("[Game] Rotate CCW") }},
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
 		return
 
 	case "View":
 		items := []ui.DropdownItem{
-			{Text: "Underground View", Action: func() { log.Println("[Game] Underground view") }},
+			{Text: i18n.Label(i18n.MenuUndergroundView), Action: func() { log.Println("[Game] Underground view") }},
 			{Text: "See Through Tracks", Action: func() { log.Println("[Game] See through tracks") }},
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
