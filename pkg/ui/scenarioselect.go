@@ -1,8 +1,10 @@
 package ui
 
 import (
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"image/color"
+	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/scenario"
@@ -33,7 +35,6 @@ var (
 	ssPanel   = [4]int{0, 48, 610, 364}
 	ssTabs    = [5][4]int{{3, 15, 91, 34}, {94, 15, 91, 34}, {185, 15, 91, 34}, {276, 15, 91, 34}, {367, 15, 91, 34}}
 	ssList    = [4]int{3, 52, 431, 356}
-	ssGroups  = [5]string{"Beginner", "Easy", "Medium", "Challenging", "Expert"}
 )
 
 // ScenarioSelectWindow is the window state.
@@ -184,15 +185,15 @@ func (w *ScenarioSelectWindow) Draw(screen *ebiten.Image) {
 			}
 		}
 	})
-	DrawWindowCaption(screen, w.X+ssCaption[0], w.Y+ssCaption[1], ssCaption[2], "Select Scenario for New Game")
+	DrawWindowCaption(screen, w.X+ssCaption[0], w.Y+ssCaption[1], ssCaption[2], i18n.Label(i18n.SelectScenarioForNewGame))
 	for i, t := range ssTabs {
 		off := 0
 		if i == w.Tab {
 			off = 1
 		}
 		cx, cy := w.X+t[0]+t[2]/2, w.Y+t[1]+t[3]/2-3-off
-		tw, _ := MeasureTextBold(ssGroups[i])
-		DrawTextBold(screen, ssGroups[i], cx-tw/2, cy, win2) // wcolour2_stringid
+		tw, _ := MeasureTextBold(ssGroups()[i])
+		DrawTextBold(screen, ssGroups()[i], cx-tw/2, cy, win2) // wcolour2_stringid
 	}
 	// List rows (content target): the name centred at x = 210, black
 	// (selected: window colour 2).
@@ -223,7 +224,7 @@ func (w *ScenarioSelectWindow) Draw(screen *ebiten.Image) {
 	DrawTextBold(screen, m.Name, bx+col/2-tw/2, by, win2)
 	if !m.HasPreview {
 		y := by + 14 + 1 + 1 + 59
-		for k, ln := range wrapTooltip("Randomly Generated Landscape", 128) {
+		for k, ln := range wrapTooltip(i18n.Label(i18n.RandomlyGeneratedLandscape), 128) {
 			lw, _ := MeasureTextBold(ln)
 			DrawTextBold(screen, ln, bx+20+1+1+64-lw/2, y+k*10, black)
 		}
@@ -234,7 +235,7 @@ func (w *ScenarioSelectWindow) Draw(screen *ebiten.Image) {
 		y += 10
 	}
 	y += 5
-	DrawTextBold(screen, "Challenge:", bx, y, win2)
+	DrawTextBold(screen, i18n.Label(i18n.ChallengeLabel), bx, y, win2)
 	y += 10
 	if m.HasObjective {
 		for _, ln := range wrapTooltip("  "+m.Objective.DescribeWithCargo(m.ObjectiveCargoName), 170) {
@@ -243,13 +244,49 @@ func (w *ScenarioSelectWindow) Draw(screen *ebiten.Image) {
 		}
 	}
 	y += 5
-	drawLabelValue(screen, bx, y, "Start date: ", itoa3(int(m.StartYear)), win2, black)
-	y += 10
-	comp := "None"
+	// ScenarioSelect.cpp: challenge_start_date, challenge_competing_companies_*.
+	y += 10 * drawFormatted(screen, bx, y, strings.Replace(i18n.Str(i18n.ChallengeStartDate), "{UINT16 RAW}", itoa3(int(m.StartYear)), 1), win2, black)
+	comp := i18n.Str(i18n.ChallengeCompetingCompaniesNone)
 	if m.MaxCompetitors > 0 {
-		comp = "Up to " + itoa3(int(m.MaxCompetitors))
+		comp = strings.Replace(i18n.Str(i18n.ChallengeCompetingCompaniesUpTo), "{INT16}", itoa3(int(m.MaxCompetitors)), 1)
 	}
-	drawLabelValue(screen, bx, y, "Competing companies: ", comp, win2, black)
+	drawFormatted(screen, bx, y, comp, win2, black)
+}
+
+// drawFormatted draws a pack string's text with its {COLOUR WINDOW_2} /
+// {COLOUR BLACK} changes (the label and value colours) and {NEWLINE}s; other
+// codes are dropped. It returns the lines drawn.
+func drawFormatted(screen *ebiten.Image, x, y int, s string, win2, black color.Color) int {
+	lines, cx, col := 1, x, win2
+	for len(s) > 0 {
+		if s[0] == '{' {
+			end := strings.IndexByte(s, '}')
+			if end < 0 {
+				break
+			}
+			switch code := s[1:end]; {
+			case code == "COLOUR BLACK":
+				col = black
+			case strings.HasPrefix(code, "COLOUR"):
+				col = win2
+			case code == "NEWLINE":
+				lines++
+				cx, y = x, y+10
+			}
+			s = s[end+1:]
+			continue
+		}
+		next := strings.IndexByte(s, '{')
+		if next < 0 {
+			next = len(s)
+		}
+		part := s[:next]
+		DrawTextBold(screen, part, cx, y, col)
+		w, _ := MeasureTextBold(part)
+		cx += w
+		s = s[next:]
+	}
+	return lines
 }
 
 func drawLabelValue(screen *ebiten.Image, x, y int, label, value string, lc, vc color.Color) {
@@ -302,4 +339,10 @@ func (w *ScenarioSelectWindow) Drag(py int, held bool) {
 		w.Scroll = L.VScrollDrag(ssList[3], len(w.byCat[w.Tab])*ssRowHeight, w.Scroll, dy)
 		w.dragY = py
 	}
+}
+
+// ssGroups are the tabs' group names (scenario_group_*), read when drawn.
+func ssGroups() [5]string {
+	return [5]string{i18n.Label(i18n.ScenarioGroupBeginner), i18n.Label(i18n.ScenarioGroupEasy), i18n.Label(i18n.ScenarioGroupMedium),
+		i18n.Label(i18n.ScenarioGroupChallenging), i18n.Label(i18n.ScenarioGroupExpert)}
 }
