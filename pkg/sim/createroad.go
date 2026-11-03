@@ -243,11 +243,17 @@ func (m *Map) createRoadApply(c *Cmd, a roadPlacementArgs, flags uint8, r *creat
 // height; its ref carries the flags byte (quarters, ghost, AI, flag_6) that
 // the clearance checks read.
 func (t *Tile) insertRoadElement(el scenario.RoadElement, quarters uint8) {
+	t.insertRoadElementAt(el, quarters, true)
+}
+
+// insertRoadElementAt: beforeRoadStation false is the plain insertElement
+// (after everything at or below its height).
+func (t *Tile) insertRoadElementAt(el scenario.RoadElement, quarters uint8, beforeRoadStation bool) {
 	t.Roads = append(t.Roads, el)
 	at := len(t.Order)
 	for i, r := range t.Order {
 		bz := t.baseZOf(r)
-		if el.BaseZ < bz || (bz == el.BaseZ && r.Kind == scenario.KindStation && t.Stations[r.Index].StationType == 1) {
+		if el.BaseZ < bz || (beforeRoadStation && bz == el.BaseZ && r.Kind == scenario.KindStation && t.Stations[r.Index].StationType == 1) {
 			at = i
 			break
 		}
@@ -302,4 +308,113 @@ func (t *Tile) setTerrainStyleAsCleared() {
 		t.Slope &^= 0xE0
 	}
 	t.Slope &^= 0xE0
+}
+
+// roadObjFlagUnk02 is RoadObjectFlags::unk_02: the road fills in junctions
+// (createRoad's 0x47656B).
+const roadObjFlagUnk02 = 1 << 2
+
+// createRoad is the game command (CreateRoad.cpp 594–1105): the checks
+// (createRoadCheck), the pieces placed (createRoadApply), the junction pieces
+// filled in (createRoadJunctions), then a bridge's and a tunnel's cost. The
+// cost, and false where upstream returns kFailure.
+// PARTIAL: a road station met is not recalculated (recalculateStationModes /
+// Center, updateLabel — not yet ported); the placement sound.
+func (m *Map) createRoad(c *Cmd, a roadPlacementArgs, flags uint8) (int32, bool) {
+	r, ok := m.createRoadCheck(c, a, flags)
+	if !ok || !m.createRoadApply(c, a, flags, &r) {
+		return 0, false
+	}
+	road := c.roadObject(a.RoadObjectID)
+	st := &r.State
+	if flags&CmdApply != 0 && flags&(CmdGhost|CmdAiAllocated) == 0 && r.RoadIDUnk[0]&(1<<7) != 0 && road.Flags&roadObjFlagUnk02 != 0 {
+		m.createRoadJunctions(c, a, flags, &r)
+	}
+	if st.Flags73&(1<<0) != 0 && st.Flags73&(1<<6) == 0 {
+		if b := c.bridge(a.Bridge); b != nil {
+			height := int32(st.MaxBridgeDiff) * int32(b.HeightCostFactor)
+			cost := m.InflationAdjustedCost(int16(int32(b.BaseCostFactor)+height), b.CostIndex, 10) * int32(RoadCostFactor[a.RoadID]) / 256
+			if st.Flags73&(1<<7) != 0 {
+				cost *= 2
+			}
+			r.Cost += cost
+		}
+	}
+	if st.PosFlags&PosUnderground != 0 && st.Flags73&(1<<6) == 0 {
+		// upstream prices the tunnel with getTrackMiscData(roadId): kept
+		r.Cost += m.InflationAdjustedCost(road.TunnelCostFactor, 2, 8) * int32(TrackCostFactor[a.RoadID]) / 256
+	}
+	return r.Cost, true
+}
+
+// createRoadJunctions is createRoad's 0x47656B: with the straight piece's
+// junction bit set (roadIdUnk[0] bit 7) and a road that fills junctions,
+// for each rotation the missing curve / straight pieces (road ids 1, 2, 0)
+// that the met junction needs are placed at the command's position, as
+// upstream decides from the gathered bits (roadIdUnk).
+func (m *Map) createRoadJunctions(c *Cmd, a roadPlacementArgs, flags uint8, r *createRoadResult) {
+	u := &r.RoadIDUnk
+	t := m.TileAt(int(a.X/tileSize), int(a.Y/tileSize))
+	if t == nil {
+		return
+	}
+	place := func(rotation, roadID uint8) {
+		if z := int(t.BaseZ) * smallZStep; z <= int(a.Z) && int(a.Z)-z < 12*smallZStep {
+			m.removeSurfaceIndustry(a.X, a.Y, t, c)
+			t.setTerrainStyleAsCleared()
+		}
+		bz := uint8(a.Z / smallZStep)
+		el := scenario.RoadElement{BaseZ: bz, ClearZ: bz + 8, Rotation: rotation & 3, RoadObjectID: a.RoadObjectID, RoadID: roadID,
+			Owner: c.Company, Mods: r.ValidMods & 3, BridgeID: a.Bridge & 7, HasBridge: r.State.Flags73&(1<<1) != 0, IsLast: true,
+			Ghost: flags&CmdGhost != 0, AiAllocated: flags&CmdAiAllocated != 0}
+		t.insertRoadElementAt(el, 0xF, false)
+	}
+	for i := uint8(0); i < 4; i++ {
+		f0, f1, f2, f3 := uint8(1)<<i, uint8(1)<<((i+1)&3), uint8(1)<<((i+2)&3), uint8(1)<<((i+3)&3)
+		has := func(id int, f uint8) bool { return u[id]&f != 0 }
+		left := has(0, f0) && (has(0, f3) || has(0, f1) || has(1, f1) || has(2, f2)) ||
+			has(0, f2) && has(0, f3) ||
+			has(0, f3) && (has(2, f0) || has(1, f3)) ||
+			has(2, f0) && (has(1, f1) || has(2, f2)) ||
+			has(1, f3) && (has(1, f1) || has(2, f2)) ||
+			has(0, f1) && has(2, f0)
+		if left && !has(2, f1) {
+			p := !has(1, f0)
+			u[1] |= f0
+			if p {
+				place(i, 1)
+			}
+		}
+		right := has(0, f2) && (has(2, f2) || has(1, f1)) ||
+			has(1, f0) && (has(1, f2) || has(2, f3)) ||
+			has(2, f1) && (has(1, f2) || has(2, f3)) ||
+			has(0, f1) && (has(0, f2) || has(1, f3))
+		if right && !has(1, f0) {
+			p := !has(2, f1)
+			u[2] |= f1
+			if p {
+				place(i+1, 2)
+			}
+		}
+		straight1 := has(1, f0) && (has(1, f1) || has(2, f2)) ||
+			has(2, f0) && (has(1, f1) || has(2, f2)) ||
+			has(1, f3) && (has(1, f1) || has(2, f2)) ||
+			has(1, f0) && (has(1, f2) || has(2, f3)) ||
+			has(2, f1) && (has(1, f2) || has(2, f3)) ||
+			has(2, f1) && has(1, f1)
+		if straight1 && !has(0, f2) {
+			p := !has(0, f0)
+			u[0] |= f0
+			if p {
+				place(i, 0)
+			}
+		}
+		if has(2, f1) && has(2, f2) && !has(0, f2) {
+			p := !has(0, f0)
+			u[0] |= f0
+			if p {
+				place(i, 0)
+			}
+		}
+	}
 }

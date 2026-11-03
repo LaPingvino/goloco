@@ -1,6 +1,9 @@
 package sim
 
 import (
+	"fmt"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -211,5 +214,37 @@ func TestCreateRoadApply(t *testing.T) {
 	}
 	if _, ok := m.createRoadCheck(c, a, 0); ok {
 		t.Error("the same road again must collide")
+	}
+}
+
+// createRoad's junction pass against upstream: every combination of the
+// straight / left / right junction bits (roadIdUnk[0..2], 4 rotations each),
+// the pieces placed (rotation:roadId, in order) and the bits after, as
+// upstream's own loop (CreateRoad.cpp 0x47656B, built by itself with the
+// placement recorded) gives them — testdata/roadjunctions.txt.
+func TestCreateRoadJunctionsUpstream(t *testing.T) {
+	data, err := os.ReadFile("testdata/roadjunctions.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Split(strings.TrimSpace(string(data)), "\n")
+	c := &Cmd{Company: CompanyNeutral}
+	for in := 0; in < 4096; in++ {
+		m := &Map{Width: 4, Height: 4, Tiles: make([][]Tile, 4)}
+		for y := range m.Tiles {
+			m.Tiles[y] = make([]Tile, 4)
+		}
+		r := &createRoadResult{}
+		r.RoadIDUnk[0], r.RoadIDUnk[1], r.RoadIDUnk[2] = uint8(in&0xF)|0x80, uint8(in>>4&0xF), uint8(in>>8&0xF)
+		m.createRoadJunctions(c, roadPlacementArgs{X: 32, Y: 32, Z: 64, Bridge: 0xFF}, CmdApply, r)
+		var b strings.Builder
+		fmt.Fprintf(&b, "%d", in)
+		for _, e := range m.TileAt(1, 1).Roads {
+			fmt.Fprintf(&b, " %d:%d", e.Rotation, e.RoadID)
+		}
+		fmt.Fprintf(&b, " | %d %d %d", r.RoadIDUnk[0], r.RoadIDUnk[1], r.RoadIDUnk[2])
+		if b.String() != want[in] {
+			t.Fatalf("got  %s\nwant %s", b.String(), want[in])
+		}
 	}
 }

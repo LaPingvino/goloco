@@ -37,6 +37,10 @@ type BridgeObject struct {
 	// DisabledTrackCfg (0x14) is the CommonTraitFlags the bridge cannot carry.
 	DisabledTrackCfg uint16
 	CostIndex        uint8
+	// BaseCostFactor (0x0E) and HeightCostFactor (0x10) price a bridge
+	// (createRoad / createTrack: base + height × the height above ground).
+	BaseCostFactor   int16
+	HeightCostFactor int16
 	DesignedYear     uint16
 
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
@@ -90,6 +94,8 @@ func ParseBridgeObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*B
 		MaxHeight:        data[BridgeMaxHeightOffset],
 		DisabledTrackCfg: binary.LittleEndian.Uint16(data[0x14:]),
 		CostIndex:        data[0x0D],
+		BaseCostFactor:   int16(uint16(data[0x0E]) | uint16(data[0x0F])<<8),
+		HeightCostFactor: int16(uint16(data[0x10]) | uint16(data[0x11])<<8),
 		DesignedYear:     binary.LittleEndian.Uint16(data[BridgeDesignedYearOffset:]),
 	}
 	trackNumCompatible := data[BridgeTrackNumCompatibleOffset]
