@@ -53,3 +53,53 @@ func TestClearRoadHelpers(t *testing.T) {
 		t.Error("aiUnkCheck")
 	}
 }
+
+// clearRoad: a junction where the town road may have one, "already built
+// here" for the same piece, an overlay of a compatible road type, and the
+// refusals — another height, a signal, a road without the junction trait.
+func TestClearRoad(t *testing.T) {
+	hdr := func(name string) *objects.ObjectHeader {
+		h := &objects.ObjectHeader{}
+		copy(h.Name[:], name)
+		return h
+	}
+	town := &objects.RoadObject{Header: hdr("ROADTOWN"), RoadPieces: roadTraitJunction}
+	tram := &objects.RoadObject{Header: hdr("TRAMWAY"), CompatibleNames: []string{"ROADTOWN"}}
+	dirt := &objects.RoadObject{Header: hdr("DIRT")}
+	om := &objects.ObjectManager{RoadObjects: []*objects.RoadObject{town, tram, dirt}}
+	c := &Cmd{Company: CompanyNeutral, Objects: om}
+	m := &Map{Width: 4, Height: 4, Tiles: make([][]Tile, 4)}
+	for y := range m.Tiles {
+		m.Tiles[y] = make([]Tile, 4)
+	}
+	road := func(obj, rot uint8) *scenario.RoadElement {
+		return &scenario.RoadElement{RoadObjectID: obj, RoadID: 0, Rotation: rot, BaseZ: 8, Owner: CompanyNeutral}
+	}
+	args := func(obj, rot uint8, z int32) roadClearArgs {
+		return roadClearArgs{X: 64, Y: 64, Z: z, RoadObjectID: obj, RoadID: 0, Rotation: rot, IsLastIndex: true}
+	}
+	run := func(e *scenario.RoadElement, a roadClearArgs) (roadClearResult, roadCmdState) {
+		var st roadCmdState
+		return m.clearRoad(c, &st, e, a), st
+	}
+	if r, _ := run(road(0, 0), args(0, 1, 32)); r.Res != ClearNoCollision || r.RoadIDUnk[0]&(1|1<<7) != 1|1<<7 {
+		t.Errorf("town road crossing town road: %+v", r)
+	}
+	if r, _ := run(road(0, 0), args(0, 0, 32)); r.Res != ClearCollisionErrorSet {
+		t.Errorf("the same piece again: %v, want already built here", r.Res)
+	}
+	if r, st := run(road(0, 0), args(1, 0, 32)); r.Res != ClearNoCollision || st.Flags73&(1<<5) == 0 {
+		t.Errorf("tram over the town road: %v, flags %#x", r.Res, st.Flags73)
+	}
+	if r, _ := run(road(0, 0), args(0, 1, 40)); r.Res != ClearCollisionErrorSet {
+		t.Errorf("another height: %v", r.Res)
+	}
+	sig := road(0, 0)
+	sig.HasSignalElement = true
+	if r, _ := run(sig, args(0, 1, 32)); r.Res != ClearCollisionErrorSet {
+		t.Errorf("a signal: %v", r.Res)
+	}
+	if r, _ := run(road(2, 0), args(2, 1, 32)); r.Res != ClearCollisionErrorSet {
+		t.Errorf("dirt crossing dirt (no junction trait): %v", r.Res)
+	}
+}
