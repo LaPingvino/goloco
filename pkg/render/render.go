@@ -52,12 +52,45 @@ func newSpriteAtlas() *SpriteAtlas {
 // pack copies img into the atlas and returns the sub-image.
 // Returns nil when the atlas is full; callers must fall back to the raw image.
 func (sa *SpriteAtlas) pack(key int, img *ebiten.Image) *ebiten.Image {
-	if sa.full {
+	rect, ok := sa.place(key, img.Bounds().Dx(), img.Bounds().Dy())
+	if !ok {
 		return nil
 	}
-	iw, ih := img.Bounds().Dx(), img.Bounds().Dy()
-	if iw <= 0 || ih <= 0 {
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(float64(rect.Min.X), float64(rect.Min.Y))
+	sa.backing.DrawImage(img, op)
+	return sa.backing.SubImage(rect).(*ebiten.Image)
+}
+
+// packPixels packs decoded pixels by writing them straight into the atlas
+// (WritePixels on its region): no texture of their own — a texture created
+// per sprite was most of a frame's GPU time while sprites prewarm (LOOP
+// item 0, tick 312).
+func (sa *SpriteAtlas) packPixels(key int, rgba *image.RGBA) *ebiten.Image {
+	b := rgba.Bounds()
+	rect, ok := sa.place(key, b.Dx(), b.Dy())
+	if !ok {
 		return nil
+	}
+	pix := rgba.Pix
+	if rgba.Stride != 4*b.Dx() || b.Min != (image.Point{}) { // a sub-image: packed rows needed
+		pix = make([]byte, 4*b.Dx()*b.Dy())
+		for y := 0; y < b.Dy(); y++ {
+			copy(pix[y*4*b.Dx():(y+1)*4*b.Dx()], rgba.Pix[rgba.PixOffset(b.Min.X, b.Min.Y+y):])
+		}
+	}
+	sub := sa.backing.SubImage(rect).(*ebiten.Image)
+	sub.WritePixels(pix)
+	return sub
+}
+
+// place finds the next free rectangle for an iw×ih image (shelf packing).
+func (sa *SpriteAtlas) place(key, iw, ih int) (image.Rectangle, bool) {
+	if sa.full {
+		return image.Rectangle{}, false
+	}
+	if iw <= 0 || ih <= 0 {
+		return image.Rectangle{}, false
 	}
 	if sa.packX+iw > spriteAtlasW {
 		sa.packX = 0
@@ -67,18 +100,15 @@ func (sa *SpriteAtlas) pack(key int, img *ebiten.Image) *ebiten.Image {
 	if sa.packY+ih > spriteAtlasH {
 		sa.full = true
 		log.Printf("[Atlas] Sprite atlas full after %d sprites", len(sa.regions))
-		return nil
+		return image.Rectangle{}, false
 	}
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(float64(sa.packX), float64(sa.packY))
-	sa.backing.DrawImage(img, op)
 	rect := image.Rect(sa.packX, sa.packY, sa.packX+iw, sa.packY+ih)
 	sa.regions[key] = rect
 	if ih > sa.rowH {
 		sa.rowH = ih
 	}
 	sa.packX += iw + spriteAtlasP
-	return sa.backing.SubImage(rect).(*ebiten.Image)
+	return rect, true
 }
 
 // get returns the sub-image for key, or nil if not yet packed.
@@ -191,13 +221,12 @@ func (r *Renderer) GetSprite(index int) *ebiten.Image {
 		return nil
 	}
 
-	tmp := ebiten.NewImageFromImage(rgba)
-
-	// Pack into atlas; if atlas is full fall back to individual sprite cache
-	if sub := atlas.pack(index, tmp); sub != nil {
-		tmp.Deallocate() // copied into the atlas; the upload is not kept
+	// Pack into the atlas (its pixels written in place); if the atlas is
+	// full, a texture of its own in the fallback cache.
+	if sub := atlas.packPixels(index, rgba); sub != nil {
 		return sub
 	}
+	tmp := ebiten.NewImageFromImage(rgba)
 	r.spriteCache[index] = tmp
 	return tmp
 }

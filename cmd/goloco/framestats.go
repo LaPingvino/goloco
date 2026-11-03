@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"runtime"
 
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"os"
@@ -105,19 +106,52 @@ func itoa(i int) string {
 // startCPUProfile writes a CPU profile to GOLOCO_CPUPROFILE until the returned
 // stop runs (the game's end).
 func startCPUProfile() func() {
+	memStop := startMemProfile()
 	path := os.Getenv("GOLOCO_CPUPROFILE")
 	if path == "" {
-		return func() {}
+		return memStop
 	}
 	f, err := os.Create(path)
 	if err != nil {
 		log.Printf("[Profile] %v", err)
 		return func() {}
 	}
+	// GOLOCO_CPUPROFILE_AFTER=20s starts it later (loading left out).
+	if d, err := time.ParseDuration(os.Getenv("GOLOCO_CPUPROFILE_AFTER")); err == nil && d > 0 {
+		go func() {
+			time.Sleep(d)
+			if err := pprof.StartCPUProfile(f); err != nil {
+				log.Printf("[Profile] %v", err)
+			}
+			log.Printf("[Profile] started after %v", d)
+		}()
+		return func() { pprof.StopCPUProfile(); f.Close(); memStop() }
+	}
 	if err := pprof.StartCPUProfile(f); err != nil {
 		log.Printf("[Profile] %v", err)
 		f.Close()
 		return func() {}
 	}
-	return func() { pprof.StopCPUProfile(); f.Close() }
+	return func() { pprof.StopCPUProfile(); f.Close(); memStop() }
+}
+
+// startMemProfile: GOLOCO_MEMPROFILE=file records every allocation (rate 1;
+// slow) and writes the profile at exit — to find who makes GPU images each
+// frame (their call stacks are in it; the CPU profile only sees the queue).
+func startMemProfile() func() {
+	path := os.Getenv("GOLOCO_MEMPROFILE")
+	if path == "" {
+		return func() {}
+	}
+	runtime.MemProfileRate = 1
+	return func() {
+		f, err := os.Create(path)
+		if err != nil {
+			log.Printf("[Profile] %v", err)
+			return
+		}
+		runtime.GC() // the profile is as of the last collection
+		pprof.Lookup("allocs").WriteTo(f, 0)
+		f.Close()
+	}
 }
