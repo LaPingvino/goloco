@@ -1083,6 +1083,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	tw := time.Now()
 	g.w.Draw(screen)
 	fstats.addWorld(time.Since(tw))
+	fstats.parts = g.w.SceneParts
 
 	// Diagnostic crop: save a small PNG centred on the requested tile.
 	if g.diagPending {
