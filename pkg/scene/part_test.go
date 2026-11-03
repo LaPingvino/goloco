@@ -49,3 +49,21 @@ func BenchmarkRenderColumn(b *testing.B) {
 		r.ToRGBAColumns(rt, x0, x1)
 	}
 }
+
+// In play: every part plus the vehicles' columns, over n frames, makes the
+// whole frame; and each frame repaints every column a vehicle is in.
+func TestRenderPlayWhole(t *testing.T) {
+	r, m, v := titleView(t)
+	want := append([]uint8(nil), r.Render(m, v).Bits...)
+	clear(r.rt.Bits)
+	const n = 5
+	moving := 0
+	for k := range n {
+		_, ranges := r.RenderPlay(m, v, k, n)
+		moving += len(ranges) - 1
+	}
+	if !bytes.Equal(want, r.rt.Bits) {
+		t.Error("the parts differ from the whole frame")
+	}
+	t.Logf("%d extra ranges for vehicles over %d frames", moving, n)
+}

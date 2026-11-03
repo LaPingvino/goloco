@@ -32,6 +32,8 @@ type Renderer struct {
 	// std::execution::par): clones with their own session and scratch.
 	workers   []*Renderer
 	cols      [][2]int // RenderColumns' column list, kept
+	need      []bool   // RenderPlay's columns with vehicles, kept
+	ranges    [][2]int // RenderPlay's repainted ranges, kept
 	edges     []int    // RenderPart's column edges, kept
 	partPix   []byte   // ToRGBAColumns' buffer, kept
 	shadowMap []uint8
@@ -280,6 +282,52 @@ func (r *Renderer) RenderPart(m *sim.Map, v View, k, n int) (*gfx8.RenderTarget,
 	x0, x1 := edges[k*cols/n], edges[(k+1)*cols/n]
 	r.RenderColumns(m, v, r.rt, x0, x1)
 	return r.rt, x0, x1
+}
+
+// RenderPlay is RenderPart for play (LOOP item 0): part k of n, plus every
+// column a vehicle overlaps, so moving trains are never torn between columns
+// painted at different times — as upstream invalidates what moves each tick.
+// It returns the frame and the screen x ranges repainted.
+func (r *Renderer) RenderPlay(m *sim.Map, v View, k, n int) (*gfx8.RenderTarget, [][2]int) {
+	rt, p0, p1 := r.RenderPart(m, v, k, n)
+	if p0 == 0 && p1 == v.W {
+		r.ranges = append(r.ranges[:0], [2]int{0, v.W})
+		return rt, r.ranges
+	}
+	edges := r.edges
+	need := r.need[:0]
+	for range len(edges) - 1 {
+		need = append(need, false)
+	}
+	left, right := v.X, v.X+v.W<<v.Zoom
+	for i := range m.Entities {
+		e := &m.Entities[i]
+		if int(e.SpriteRight) <= left || int(e.SpriteLeft) > right || e.SpriteLeft >= e.SpriteRight {
+			continue
+		}
+		a, b := (max(int(e.SpriteLeft), left)-v.X)>>v.Zoom, (min(int(e.SpriteRight), right)-v.X)>>v.Zoom
+		for c := 0; c < len(need); c++ {
+			if edges[c+1] > a && edges[c] <= b && !(edges[c] >= p0 && edges[c+1] <= p1) {
+				need[c] = true
+			}
+		}
+	}
+	r.need = need
+	ranges := append(r.ranges[:0], [2]int{p0, p1})
+	for c := 0; c < len(need); c++ {
+		if !need[c] {
+			continue
+		}
+		end := c
+		for end+1 < len(need) && need[end+1] {
+			end++
+		}
+		r.RenderColumns(m, v, rt, edges[c], edges[end+1])
+		ranges = append(ranges, [2]int{edges[c], edges[end+1]})
+		c = end
+	}
+	r.ranges = ranges
+	return rt, ranges
 }
 
 // RenderColumns paints the screen columns [sx0, sx1) of the view into dst
