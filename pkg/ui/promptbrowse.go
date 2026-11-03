@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"image"
@@ -157,7 +158,7 @@ func (w *PromptBrowseWindow) save(path string) {
 	}
 	if _, err := os.Stat(path); err == nil && w.Confirm != nil {
 		name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-		w.Confirm(w.Title, "Replace existing file: “"+name+"”?", "Replace", func() { w.OnSave(path) })
+		w.Confirm(w.Title, "Replace existing file: “"+name+"”?", i18n.Label(i18n.ReplaceExistingFileButton), func() { w.OnSave(path) })
 		return
 	}
 	w.OnSave(path)
@@ -307,7 +308,7 @@ func (w *PromptBrowseWindow) Draw(screen *ebiten.Image) {
 	})
 	if w.Save {
 		b, o := pbTextBox, pbOK
-		DrawTextBold(screen, "File name:", w.X+3, w.Y+b[1]+2, win2) // {COLOUR WINDOW_2}
+		DrawTextBold(screen, i18n.Label(i18n.WindowBrowseFilename), w.X+3, w.Y+b[1]+2, win2) // {COLOUR WINDOW_2}
 		// drawTextInput, clipped to the box's inside: text at (1, 1) of the clip.
 		tx, ty := w.X+b[0]+1, w.Y+b[1]+1+1
 		text := string(w.Input)
@@ -324,8 +325,8 @@ func (w *PromptBrowseWindow) Draw(screen *ebiten.Image) {
 				c.Fill(win2) // drawRect(x, y, 1, 9, getShade(secondary, 9))
 			}
 		}
-		lw, _ := MeasureTextBold("OK")
-		DrawTextBold(screen, "OK", w.X+o[0]+(o[2]-1)/2-lw/2, w.Y+o[1], win2) // Button label, centred
+		lw, _ := MeasureTextBold(i18n.Label(i18n.LabelButtonOk))
+		DrawTextBold(screen, i18n.Label(i18n.LabelButtonOk), w.X+o[0]+(o[2]-1)/2-lw/2, w.Y+o[1], win2) // Button label, centred
 	}
 	DrawWindowCaption(screen, w.X+pbCaption[0], w.Y+pbCaption[1], pbCaption[2], w.Title)
 	drawLabelValue(screen, w.X+3, w.Y+pbParent[1]+6, "Folder: ", w.Dir, win2, black)
@@ -461,7 +462,7 @@ func (w *PromptBrowseWindow) HandleRightClick(px, py int) {
 		return // no prompt to ask with: never delete unasked
 	}
 	name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-	w.Confirm(w.Title, "Delete file: “"+name+"”?", "Delete", remove)
+	w.Confirm(w.Title, "Delete file: “"+name+"”?", i18n.Label(i18n.DeleteFileButton), remove)
 }
 
 // ChangeDir lists another folder (as a click on a folder row).
