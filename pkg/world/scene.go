@@ -3,6 +3,7 @@ package world
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/ui"
+	"image"
 	"log"
 	"os"
 	"time"
@@ -44,18 +45,24 @@ func (w *World) drawScene(screen *ebiten.Image) {
 	// a whole world render; a moved camera, zoom or size repaints all of it.
 	view := scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: uint32(w.animTick)}
 	var rt *gfx8.RenderTarget
+	var x0, x1 int
 	same := view.X == w.lastView.X && view.Y == w.lastView.Y && view.W == w.lastView.W && view.H == w.lastView.H && view.Zoom == w.lastView.Zoom
-	if w.SceneEvery > 1 && same {
-		w.sceneSkip = (w.sceneSkip + 1) % w.SceneEvery
-		rt = w.scene.RenderPart(&w.Map, view, w.sceneSkip, w.SceneEvery)
-	} else {
-		rt = w.scene.RenderPart(&w.Map, view, 0, 1)
-	}
-	w.lastView = view
 	if w.sceneImg == nil || w.sceneImg.Bounds().Dx() != sw || w.sceneImg.Bounds().Dy() != sh {
 		w.sceneImg = ebiten.NewImage(sw, sh)
+		same = false // a new image: all of it
 	}
-	w.sceneImg.WritePixels(w.scene.ToRGBA(rt).Pix)
+	if w.SceneEvery > 1 && same {
+		w.sceneSkip = (w.sceneSkip + 1) % w.SceneEvery
+		rt, x0, x1 = w.scene.RenderPart(&w.Map, view, w.sceneSkip, w.SceneEvery)
+	} else {
+		rt, x0, x1 = w.scene.RenderPart(&w.Map, view, 0, 1)
+	}
+	w.lastView = view
+	if x0 == 0 && x1 == sw {
+		w.sceneImg.WritePixels(w.scene.ToRGBA(rt).Pix)
+	} else { // only the repainted columns converted and uploaded
+		w.sceneImg.SubImage(image.Rect(x0, 0, x1, sh)).(*ebiten.Image).WritePixels(w.scene.ToRGBAColumns(rt, x0, x1))
+	}
 	screen.DrawImage(w.sceneImg, nil)
 	if rt.Width == sw && rt.Height == sh { // the palette indices under the UI, for draw8 (no GPU readback)
 		w.lastBits = rt.Bits

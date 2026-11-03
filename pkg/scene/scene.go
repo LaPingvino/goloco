@@ -32,6 +32,7 @@ type Renderer struct {
 	// std::execution::par): clones with their own session and scratch.
 	workers   []*Renderer
 	cols      [][2]int // RenderColumns' column list, kept
+	partPix   []byte   // ToRGBAColumns' buffer, kept
 	shadowMap []uint8
 
 	// Reused across frames (Render/ToRGBA allocate nothing in steady state).
@@ -256,13 +257,15 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 // to (k+1)·W/n) into the frame kept from earlier calls with the same view
 // size, and returns that frame: n calls with k = 0…n−1 make a whole frame,
 // a frame's work spread over n frames (LOOP item 0).
-func (r *Renderer) RenderPart(m *sim.Map, v View, k, n int) *gfx8.RenderTarget {
+// It also returns the screen x range it repainted.
+func (r *Renderer) RenderPart(m *sim.Map, v View, k, n int) (*gfx8.RenderTarget, int, int) {
 	if r.rt == nil || r.rt.Width != v.W || r.rt.Height != v.H {
 		r.rt = gfx8.NewRenderTarget(v.W, v.H)
 		k, n = 0, 1 // no earlier frame: all of it
 	}
-	r.RenderColumns(m, v, r.rt, k*v.W/n, (k+1)*v.W/n)
-	return r.rt
+	x0, x1 := k*v.W/n, (k+1)*v.W/n
+	r.RenderColumns(m, v, r.rt, x0, x1)
+	return r.rt, x0, x1
 }
 
 // RenderColumns paints the screen columns [sx0, sx1) of the view into dst
@@ -356,6 +359,30 @@ func (r *Renderer) renderRect(m *sim.Map, v View) *gfx8.RenderTarget {
 	rt := r.colRT
 	s.Draw(rt)
 	return rt
+}
+
+// ToRGBAColumns converts only screen columns [x0, x1) of rt into a packed
+// RGBA buffer (x1−x0 wide, for WritePixels on that part of the image).
+func (r *Renderer) ToRGBAColumns(rt *gfx8.RenderTarget, x0, x1 int) []byte {
+	w := x1 - x0
+	if n := w * rt.Height * 4; cap(r.partPix) < n {
+		r.partPix = make([]byte, n)
+	} else {
+		r.partPix = r.partPix[:n]
+	}
+	pix := r.partPix
+	for y := 0; y < rt.Height; y++ {
+		row := rt.Bits[y*rt.Width+x0 : y*rt.Width+x1]
+		o := y * w * 4
+		for i, p := range row {
+			c := r.G1.Palette[p]
+			if p == 0 {
+				c = color.RGBA{}
+			}
+			pix[o+i*4], pix[o+i*4+1], pix[o+i*4+2], pix[o+i*4+3] = c.R, c.G, c.B, 255
+		}
+	}
+	return pix
 }
 
 // ToRGBA converts an 8-bit target through the palette (index 0 → opaque black).
