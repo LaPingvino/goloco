@@ -28,9 +28,12 @@ type Renderer struct {
 	shadowMap []uint8
 
 	// Reused across frames (Render/ToRGBA allocate nothing in steady state).
-	sess *paint.Session
-	rt   *gfx8.RenderTarget
-	rgba *image.RGBA
+	sess  *paint.Session
+	rt    *gfx8.RenderTarget
+	colRT *gfx8.RenderTarget // one column's target (RenderColumns)
+	// spriteFor is r.Sprite as a func value, kept for the paint sessions.
+	spriteFor func(int) *gfx8.Sprite
+	rgba      *image.RGBA
 
 	colourMaps map[int][]uint8 // GetPaletteMap(colour), which copies, cached
 	// Per-frame scratch kept for a frame without allocations: vehicle
@@ -209,6 +212,40 @@ func tileWindow(m *sim.Map, v View) (x0, y0, x1, y1 int) {
 
 // Render draws the view of m into a new 8-bit target.
 func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
+	// PARTIAL: one paint session over the whole view. Upstream (Viewport::
+	// paint) paints in columns — RenderColumns — but with its own tile walk
+	// per column (PaintSession::generateTilesAndEntities, not yet ported):
+	// with our rectangle tile walk a column visits far too many tiles (4.6×
+	// slower, title view). Switch to RenderColumns once that walk is ported.
+	return r.renderRect(m, v)
+}
+
+// RenderColumns paints the screen columns [sx0, sx1) of the view into dst
+// (v.W×v.H) the way Viewport::paint does: in columns 32 viewport pixels wide
+// (one tile; 32>>zoom screen pixels), aligned to 32 in viewport coordinates,
+// each its own paint session (generate, arrange, draw) on a target cleared
+// first. A column paints the same whichever other columns are painted, so
+// the game can spread a frame's columns over several frames (LOOP item 0).
+// Upstream paints the columns in parallel; here one after another.
+func (r *Renderer) RenderColumns(m *sim.Map, v View, dst *gfx8.RenderTarget, sx0, sx1 int) {
+	lw := v.W << v.Zoom
+	for colX := v.X &^ 31; colX < v.X+lw; colX += 32 {
+		a, b := (max(colX, v.X)-v.X)>>v.Zoom, (min(colX+32, v.X+lw)-v.X)>>v.Zoom
+		if b <= a || b <= sx0 || a >= sx1 {
+			continue
+		}
+		cv := v
+		cv.X, cv.W = v.X+a<<v.Zoom, b-a
+		crt := r.renderRect(m, cv)
+		for y := 0; y < v.H; y++ {
+			copy(dst.Bits[y*dst.Width+a:y*dst.Width+b], crt.Bits[y*crt.Width:(y+1)*crt.Width])
+		}
+	}
+}
+
+// renderRect paints one rectangle of the viewport in one paint session (one
+// of Viewport::paint's columns).
+func (r *Renderer) renderRect(m *sim.Map, v View) *gfx8.RenderTarget {
 	lw, lh := v.W<<v.Zoom, v.H<<v.Zoom // the render target in viewport units (rt.width/height)
 	if r.sess == nil {
 		r.sess = paint.NewSession(0, v.X, v.Y, lw, lh)
@@ -216,7 +253,10 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 		r.sess.Reset(0, v.X, v.Y, lw, lh)
 	}
 	s := r.sess
-	s.Zoom, s.SpriteFor = v.Zoom, r.Sprite
+	if r.spriteFor == nil {
+		r.spriteFor = r.Sprite // a method value allocates: taken once, not per column
+	}
+	s.Zoom, s.SpriteFor = v.Zoom, r.spriteFor
 	x0, y0, x1, y1 := tileWindow(m, View{X: v.X, Y: v.Y, W: lw, H: lh})
 	if !v.Tiles.Empty() {
 		x0, y0, x1, y1 = max(v.Tiles.Min.X, 0), max(v.Tiles.Min.Y, 0), min(v.Tiles.Max.X, m.Width-1), min(v.Tiles.Max.Y, m.Height-1)
@@ -266,12 +306,12 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 		}
 	}
 	s.Arrange()
-	if r.rt == nil || r.rt.Width != v.W || r.rt.Height != v.H {
-		r.rt = gfx8.NewRenderTarget(v.W, v.H)
+	if r.colRT == nil || r.colRT.Width != v.W || r.colRT.Height != v.H {
+		r.colRT = gfx8.NewRenderTarget(v.W, v.H)
 	} else {
-		clear(r.rt.Bits)
+		clear(r.colRT.Bits) // DEVIATION: upstream clears to PaletteIndex::brown2 (black0 underground); 0 here
 	}
-	rt := r.rt
+	rt := r.colRT
 	s.Draw(rt)
 	return rt
 }
