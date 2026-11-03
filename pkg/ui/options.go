@@ -54,14 +54,13 @@ const (
 	OptTabMisc
 )
 
-// optTabSize is each tab namespace's kWindowSize; optTabCaption its caption
+// optTabSize is each tab namespace's kWindowSize; optTabCaption() its caption
 // (en-GB).
 var (
-	optTabSize    = [7][2]int{{400, 151}, {400, 218}, {optW, optH}, {366, 167}, {366, 114}, {420, 187}, {420, 266}}
-	optTabCaption = [7]string{"Options - Display", "Options - Rendering", "Options - Audio", "Options - Regional",
-		"Options - Controls", "Options - Company", "Options - Miscellaneous"}
+	optTabSize = [7][2]int{{400, 151}, {400, 218}, {optW, optH}, {366, 167}, {366, 114}, {420, 187}, {420, 266}}
+
 	// Controls tab checkboxes (Controls::_widgets) and the Customize Keys button.
-	optControlLabels = [3]string{"Scroll View when Pointer at Screen Edge", "Zoom to cursor position", "Invert right mouse dragging"}
+
 )
 
 // OptionsWindow is the window state.
@@ -127,16 +126,16 @@ type OptionsWindow struct {
 
 // Regional tab rows (Regional::_widgets): label at x 10, dropdown at x 183,
 // both 173×12.
-// optScreenModes are options_mode_windowed / _fullscreen / _fullscreen_window.
-var optScreenModes = []string{"Windowed", "Fullscreen", "Fullscreen (borderless window)"}
+// optScreenModes() are options_mode_windowed / _fullscreen / _fullscreen_window.
+func optScreenModes() []string {
+	return []string{i18n.Label(i18n.OptionsModeWindowed), i18n.Label(i18n.OptionsModeFullscreen), i18n.Label(i18n.OptionsModeFullscreenWindow)}
+}
 
 // optFrameLimits are frameRateLimitInternal / Vsync / Unrestricted.
 var optFrameLimits = []string{"Internal speed (default)", "Vertical sync", "Unrestricted"}
 
-// optScales are full_scale … eighth_scale; optMarkers white / translucent.
+// optScales() are full_scale … eighth_scale; optMarkers() white / translucent.
 var (
-	optScales  = []string{"Full-scale", "Half-scale", "Quarter-scale", "Eighth-scale"}
-	optMarkers = []string{"White", "Translucent"}
 	// optFrameStyles are windowFrameStyleGradient / Solid / Translucent.
 	optFrameStyles = []string{"Gradient (default)", "Solid colour", "Translucent colour"}
 )
@@ -216,7 +215,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			y     int
 			items []string
 			v     *int
-		}{{63, optScales, &w.VehiclesMinScale}, {79, optScales, &w.StationNamesMinScale}, {95, optMarkers, &w.ConstructionMarker},
+		}{{63, optScales(), &w.VehiclesMinScale}, {79, optScales(), &w.StationNamesMinScale}, {95, optMarkers(), &w.ConstructionMarker},
 			{194, optFrameStyles, &FrameStyle}} { // windowFrameStyleMouseDown too
 			if w.in([4]int{235, c.y, 154, 12}, px, py) && w.OpenDropdown != nil {
 				v := c.v
@@ -239,8 +238,8 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		// screenModeMouseDown: the three modes (dropdown_stringid), the current
 		// one selected; screenModeDropdown sets it when it changes.
 		if w.in([4]int{235, 63, 154, 12}, px, py) && w.OpenDropdown != nil {
-			items := make([]DropdownItem, len(optScreenModes))
-			for i, m := range optScreenModes {
+			items := make([]DropdownItem, len(optScreenModes()))
+			for i, m := range optScreenModes() {
 				items[i] = DropdownItem{Text: m, Selected: i == w.ScreenMode, MoveX10: true}
 			}
 			d := NewDropdownShow(w.X+235, w.Y+63, 154-1-4, 11, w.Colour, items, 1<<20, 1<<20)
@@ -298,7 +297,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		// width() − 4, Imperial / Metric, the current one ticked.
 		if r := optRegionalRows[1]; w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil {
 			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour,
-				[]DropdownItem{{Text: "Imperial", Selected: !L.Metric, MoveX10: true}, {Text: "Metric", Selected: L.Metric, MoveX10: true}}, 1<<20, 1<<20)
+				[]DropdownItem{{Text: i18n.Label(i18n.Imperial), Selected: !L.Metric, MoveX10: true}, {Text: i18n.Label(i18n.Metric), Selected: L.Metric, MoveX10: true}}, 1<<20, 1<<20)
 			d.OnSelect = func(i int) { L.Metric = i == 1 } // distanceSpeedDropdown (PARTIAL: Config::write)
 			w.OpenDropdown(d)
 		}
@@ -369,7 +368,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		// heightsLabelsMouseDown: Units / Real Values, the current one selected.
 		if r := optRegionalRows[2]; w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil {
 			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour,
-				[]DropdownItem{{Text: "Units", Selected: L.HeightUnits, MoveX10: true}, {Text: "Real Values", Selected: !L.HeightUnits, MoveX10: true}}, 1<<20, 1<<20)
+				[]DropdownItem{{Text: i18n.Label(i18n.HeightUnits), Selected: L.HeightUnits, MoveX10: true}, {Text: i18n.Label(i18n.HeightRealValues), Selected: !L.HeightUnits, MoveX10: true}}, 1<<20, 1<<20)
 			d.OnSelect = func(i int) { L.HeightUnits = i == 0 } // heightsLabelsDropdown (PARTIAL: Config::write)
 			w.OpenDropdown(d)
 		}
@@ -434,9 +433,9 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			return
 		}
 		if w.Tab == OptTabMisc {
-			groupBox(rt, 4, 49, 412, 62, sec, "Gameplay tweaks")
-			groupBox(rt, 4, 115, 412, 77, sec, "Vehicle/track behaviour")
-			groupBox(rt, 4, 196, 412, 65, sec, "Autosave preferences")
+			groupBox(rt, 4, 49, 412, 62, sec, i18n.Label(i18n.GameplayTweaks))
+			groupBox(rt, 4, 115, 412, 77, sec, i18n.Label(i18n.VehicleTrackBehaviour))
+			groupBox(rt, 4, 196, 412, 65, sec, i18n.Label(i18n.AutosavePreferences))
 			for _, y := range []int{64, 79, 94, 130, 145, 160, 175} {
 				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 			}
@@ -447,8 +446,8 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			return
 		}
 		if w.Tab == OptTabRendering {
-			groupBox(rt, 4, 49, 392, 128, sec, "Map rendering")
-			groupBox(rt, 4, 180, 392, 32, sec, "User interface")
+			groupBox(rt, 4, 49, 392, 128, sec, i18n.Label(i18n.FrameMapRendering))
+			groupBox(rt, 4, 180, 392, 32, sec, i18n.Label(i18n.UserInterfaceGroup))
 			for _, y := range []int{63, 79, 95, 194} {
 				optDropdown(rt, 235, y, 154, sec)
 			}
@@ -458,12 +457,12 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			return
 		}
 		if w.Tab == OptTabCompany {
-			groupBox(rt, 4, 50, 412, 80, sec, "Preferred owner")
+			groupBox(rt, 4, 50, 412, 80, sec, i18n.Label(i18n.PreferredOwnerName))
 			groupBox(rt, 4, 135, 412, 47, sec, "Preferred company")
 			for _, y := range []int{64, 97, 149} { // Checkboxes
 				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 			}
-			for _, y := range []int{79, 112, 164} { // "Change..." Buttons (265, y, 75×12)
+			for _, y := range []int{79, 112, 164} { // i18n.Label(i18n.Change) Buttons (265, y, 75×12)
 				gfx8.FillRectInset(rt, 265, y, 265+75-1, y+12-1, gfx8.InsetColour{Map: sec}, 0)
 			}
 			// The face preview (ImageButton 345,59 66×66) has no image while
@@ -471,7 +470,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			return
 		}
 		if w.Tab == OptTabDisplay {
-			groupBox(rt, 4, 49, 392, 97, sec, "Hardware")
+			groupBox(rt, 4, 49, 392, 97, sec, i18n.Label(i18n.FrameHardware))
 			for _, y := range []int{63, 79, 111} {
 				optDropdown(rt, 235, y, 154, sec)
 			}
@@ -496,8 +495,8 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		if w.Tab != OptTabAudio {
 			return
 		}
-		groupBox(rt, 4, optSoundOff, optW-8, optSoundH, sec, "Sound")
-		groupBox(rt, 4, optVolOff, optW-8, optVolH, sec, "Volume")
+		groupBox(rt, 4, optSoundOff, optW-8, optSoundH, sec, i18n.Label(i18n.FrameSound))
+		groupBox(rt, 4, optVolOff, optW-8, optVolH, sec, i18n.Label(i18n.FrameVolume))
 		// Device row (dropdown widget: inset field + button)
 		gfx8.FillRectInset(rt, 10, optSoundOff+14, 10+346-1, optSoundOff+14+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 		// Checkbox box
@@ -516,9 +515,9 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			}
 		}
 	})
-	DrawWindowCaption(screen, w.X+1, w.Y+1, ww-2, optTabCaption[w.Tab])
+	DrawWindowCaption(screen, w.X+1, w.Y+1, ww-2, optTabCaption()[w.Tab])
 	if w.Tab == OptTabControls {
-		for i, l := range optControlLabels {
+		for i, l := range optControlLabels() {
 			y := 49 + 15*i
 			if w.Controls[i] {
 				DrawTextBold(screen, string(rune(0xAC)), w.X+10, w.Y+y, text)
@@ -526,7 +525,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			DrawTextBold(screen, l, w.X+10+10+4, w.Y+y, text)
 		}
 		// Label::draw centred: x + (w - 1) / 2, y + max(0, (12 - 10) / 2 - 1).
-		const label = "Customize Keys..."
+		label := i18n.Label(i18n.CustomiseKeys)
 		lw, _ := MeasureTextBold(label)
 		DrawTextBold(screen, label, w.X+26+(160-1)/2-lw/2, w.Y+94, text)
 		return
@@ -537,22 +536,22 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 	}
 	if w.Tab == OptTabMisc {
 		// Config defaults: every tweak off, autosave every month, 12 autosaves.
-		// "Export plug-in objects with saved games" is hidden: it shows only when
+		// i18n.Label(i18n.ExportPluginObjects) is hidden: it shows only when
 		// the object index holds custom objects.
-		DrawTextBold(screen, "Gameplay tweaks", w.X+4+5, w.Y+49, text)
-		DrawTextBold(screen, "Vehicle/track behaviour", w.X+4+5, w.Y+115, text)
-		DrawTextBold(screen, "Autosave preferences", w.X+4+5, w.Y+196, text)
+		DrawTextBold(screen, i18n.Label(i18n.GameplayTweaks), w.X+4+5, w.Y+49, text)
+		DrawTextBold(screen, i18n.Label(i18n.VehicleTrackBehaviour), w.X+4+5, w.Y+115, text)
+		DrawTextBold(screen, i18n.Label(i18n.AutosavePreferences), w.X+4+5, w.Y+196, text)
 		for _, c := range []struct {
 			y     int
 			label string
-		}{{64, "Enable cheats/debugging toolbar menu"}, {79, "Disable AI companies"}, {94, "Disable town expansion"},
-			{130, "Disable vehicle breakdowns"}, {145, "Disable vehicle load penalty"},
-			{160, "Disable station size limitations"}, {175, "Trains reverse at signals"}} {
+		}{{64, i18n.Label(i18n.OptionCheatMenuEnable)}, {79, i18n.Label(i18n.DisableAICompanies)}, {94, i18n.Label(i18n.DisableTownExpansion)},
+			{130, i18n.Label(i18n.DisableVehicleBreakdowns)}, {145, i18n.Label(i18n.DisableVehicleLoadingPenalty)},
+			{160, i18n.Label(i18n.DisableStationSizeLimitLabel)}, {175, i18n.Label(i18n.TrainsReverseAtSignals)}} {
 			DrawTextBold(screen, c.label, w.X+10+10+4, w.Y+c.y, text)
 		}
-		DrawTextBold(screen, "Autosave frequency:", w.X+10, w.Y+211, text)
-		DrawTextBold(screen, "Autosave amount:", w.X+10, w.Y+226, text)
-		DrawTextBold(screen, "Every month", w.X+250+1, w.Y+211+1, black) // drawDropdownContent
+		DrawTextBold(screen, i18n.Label(i18n.AutosaveFrequency), w.X+10, w.Y+211, text)
+		DrawTextBold(screen, i18n.Label(i18n.AutosaveAmount), w.X+10, w.Y+226, text)
+		DrawTextBold(screen, i18n.Label(i18n.AutosaveEveryMonth), w.X+250+1, w.Y+211+1, black) // drawDropdownContent
 		DrawTextBold(screen, "12", w.X+250+1, w.Y+226+1, black)
 		arrow := string(rune(170))
 		aw, _ := MeasureTextBold(arrow)
@@ -567,15 +566,15 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		// Config defaults: vehicles/station names min. scale 2 (Quarter-scale),
 		// construction marker 0 (White), landscape smoothing and cash popups on,
 		// gridlines and AI ghosts off, window frame style background (Gradient).
-		DrawTextBold(screen, "Map rendering", w.X+4+5, w.Y+49, text)
-		DrawTextBold(screen, "User interface", w.X+4+5, w.Y+180, text)
+		DrawTextBold(screen, i18n.Label(i18n.FrameMapRendering), w.X+4+5, w.Y+49, text)
+		DrawTextBold(screen, i18n.Label(i18n.UserInterfaceGroup), w.X+4+5, w.Y+180, text)
 		arrow := string(rune(170))
 		aw, _ := MeasureTextBold(arrow)
 		for _, r := range []struct {
 			ly, y        int
 			label, value string
-		}{{63, 63, "Vehicles min. display scale:", optScales[w.VehiclesMinScale]}, {79, 79, "Station names min. display scale:", optScales[w.StationNamesMinScale]},
-			{95, 95, "Construction Marker:", optMarkers[w.ConstructionMarker]}, {195, 194, "Window frame style:", optFrameStyles[FrameStyle]}} {
+		}{{63, 63, i18n.Label(i18n.VehiclesMinScale), optScales()[w.VehiclesMinScale]}, {79, 79, i18n.Label(i18n.StationNamesMinScale), optScales()[w.StationNamesMinScale]},
+			{95, 95, i18n.Label(i18n.ConstructionMarker), optMarkers()[w.ConstructionMarker]}, {195, 194, "Window frame style:", optFrameStyles[FrameStyle]}} {
 			DrawTextBold(screen, r.label, w.X+10, w.Y+r.ly, text)
 			DrawTextBold(screen, r.value, w.X+235+1, w.Y+r.y+1, black)
 			DrawTextBold(screen, arrow, w.X+235+154-12+(11-1)/2-aw/2, w.Y+r.y+1, black)
@@ -585,8 +584,8 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			y     int
 			label string
 			on    bool
-		}{{110, "Landscape Smoothing", true}, {126, "Gridlines on Landscape", false},
-			{142, "Show cash popups", true}, {158, "Show planned AI track/road as ghosts", false}} {
+		}{{110, i18n.Label(i18n.LandscapeSmoothing), true}, {126, i18n.Label(i18n.GridlinesOnLandscape), false},
+			{142, i18n.Label(i18n.CashPopupRendering), true}, {158, i18n.Label(i18n.ShowCompanyAiPlanning), false}} {
 			if c.on {
 				DrawTextBold(screen, tick, w.X+10, w.Y+c.y, text)
 			}
@@ -597,18 +596,18 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 	if w.Tab == OptTabCompany {
 		// Config defaults: every "use preferred …" off, so the Change... buttons are
 		// disabled (inset labels), the face label is empty and the names are "".
-		DrawTextBold(screen, "Preferred owner", w.X+4+5, w.Y+50, text)
+		DrawTextBold(screen, i18n.Label(i18n.PreferredOwnerName), w.X+4+5, w.Y+50, text)
 		DrawTextBold(screen, "Preferred company", w.X+4+5, w.Y+135, text)
 		for _, c := range []struct {
 			y     int
 			label string
-		}{{64, "Use preferred company face when starting a new game"}, {97, "Use preferred owner name when starting a new game"},
-			{149, "Use preferred company name when starting a new game"}} {
+		}{{64, i18n.Label(i18n.UsePreferredCompanyFace)}, {97, i18n.Label(i18n.UsePreferredOwnerName)},
+			{149, i18n.Label(i18n.UsePreferredCompanyName)}} {
 			DrawTextBold(screen, c.label, w.X+10+10+4, w.Y+c.y, text)
 		}
-		cw, _ := MeasureTextBold("Change...")
+		cw, _ := MeasureTextBold(i18n.Label(i18n.Change))
 		for _, y := range []int{79, 112, 164} {
-			inset("Change...", w.X+265+(75-1)/2-cw/2, w.Y+y)
+			inset(i18n.Label(i18n.Change), w.X+265+(75-1)/2-cw/2, w.Y+y)
 		}
 		DrawTextBold(screen, "Preferred owner name: ", w.X+24, w.Y+112, text)
 		DrawTextBold(screen, "Preferred company name: ", w.X+24, w.Y+164, text)
@@ -618,15 +617,15 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		// prepareDraw's values, at Config's defaults: window mode, fullscreen
 		// resolution 1920×1080 (disabled outside fullscreen), scale 1.00 (its "-"
 		// disabled at ScaleFactor::min), the internal frame rate, no fps counter.
-		DrawTextBold(screen, "Hardware", w.X+4+5, w.Y+49, text)
+		DrawTextBold(screen, i18n.Label(i18n.FrameHardware), w.X+4+5, w.Y+49, text)
 		arrow := string(rune(170))
 		aw, _ := MeasureTextBold(arrow)
 		rows := []struct {
 			y            int
 			label, value string
 			disabled     bool
-		}{{63, "Screen mode:", optScreenModes[w.ScreenMode], false}, {79, "Display Resolution:", resolutionText(w.Resolution), w.ScreenMode != 1},
-			{95, "Window scale factor:", "1.00", false}, {111, "Frame rate limit:", optFrameLimits[w.FrameLimit], false}}
+		}{{63, i18n.Label(i18n.OptionsScreenMode), optScreenModes()[w.ScreenMode], false}, {79, i18n.Label(i18n.DisplayResolution), resolutionText(w.Resolution), w.ScreenMode != 1},
+			{95, i18n.Label(i18n.WindowScaleFactor), "1.00", false}, {111, "Frame rate limit:", optFrameLimits[w.FrameLimit], false}}
 		for _, r := range rows {
 			DrawTextBold(screen, r.label, w.X+10, w.Y+r.y, text)
 			if r.disabled {
@@ -643,19 +642,19 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		pw, _ := MeasureTextBold("+")
 		inset("-", w.X+235+154-26+(13-1)/2-mw/2, w.Y+96) // disabled at the minimum scale
 		DrawTextBold(screen, "+", w.X+235+154-13+(12-1)/2-pw/2, w.Y+96, black)
-		DrawTextBold(screen, "Display fps counter", w.X+10+10+4, w.Y+127, text)
+		DrawTextBold(screen, i18n.Label(i18n.OptionShowFpsCounter), w.X+10+10+4, w.Y+127, text)
 		return
 	}
 	if w.Tab == OptTabRegional {
 		// prepareDraw's values: Config defaults (language en-GB "English (UK)",
 		// measurementFormat imperial, showHeightAsUnits false) and the currencies.
-		measure := "Imperial"
+		measure := i18n.Label(i18n.Imperial)
 		if L.Metric {
-			measure = "Metric"
+			measure = i18n.Label(i18n.Metric)
 		}
-		heights := "Real Values"
+		heights := i18n.Label(i18n.HeightRealValues)
 		if L.HeightUnits {
-			heights = "Units"
+			heights = i18n.Label(i18n.HeightUnits)
 		}
 		lang := "English (UK)"
 		if w.Language >= 0 && w.Language < len(w.Languages) {
@@ -683,7 +682,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			bx := 183 + 173 - 12
 			DrawTextBold(screen, arrow, w.X+bx+(11-1)/2-aw/2, w.Y+r.y+1, black)
 		}
-		for i, l := range [2]string{"Use preferred currency when starting new game", "Use preferred currency always"} {
+		for i, l := range [2]string{i18n.Label(i18n.UsePreferredCurrencyNewGame), i18n.Label(i18n.UsePreferredCurrencyAlways)} {
 			y := 134 + 14*i
 			if w.PreferredCurrency[i] { // activatedWidgets: the checkbox's tick
 				DrawTextBold(screen, string(rune(0xAC)), w.X+10, w.Y+y, text)
@@ -696,15 +695,15 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		return
 	}
 	// GroupBox labels: drawn at (x+5, y) in the opaque window colour.
-	DrawTextBold(screen, "Sound", w.X+4+5, w.Y+optSoundOff, text)
-	DrawTextBold(screen, "Volume", w.X+4+5, w.Y+optVolOff, text)
+	DrawTextBold(screen, i18n.Label(i18n.FrameSound), w.X+4+5, w.Y+optSoundOff, text)
+	DrawTextBold(screen, i18n.Label(i18n.FrameVolume), w.X+4+5, w.Y+optVolOff, text)
 	DrawTextBold(screen, "Default", w.X+10+2, w.Y+optSoundOff+14+1, black)
 	cy := optSoundOff + 14 + 18
 	if w.TitleMusic {
 		DrawTextBold(screen, string(rune(0xAC)), w.X+10, w.Y+cy, text)
 	}
-	DrawTextBold(screen, "Play title screen music", w.X+10+10+4, w.Y+cy, text)
-	labels := [6]string{"Master:", "Music:", "Effects:", "Vehicles:", "Interface:", "Ambient:"}
+	DrawTextBold(screen, i18n.Label(i18n.PlayTitleMusic), w.X+10+10+4, w.Y+cy, text)
+	labels := [6]string{i18n.Label(i18n.MasterVolume), i18n.Label(i18n.MusicChannelVolume), i18n.Label(i18n.EffectsVolume), i18n.Label(i18n.VehiclesVolume), i18n.Label(i18n.UiVolume), i18n.Label(i18n.AmbientVolume)}
 	for i, l := range labels {
 		lx, _, y := optSliderRow(i)
 		DrawTextBold(screen, l, w.X+lx, w.Y+y+3, text)
@@ -737,3 +736,19 @@ func (w *OptionsWindow) currencyDisabled() bool { return w.PreferredCurrency[1] 
 
 // resolutionText is display_resolution_dropdown_format "{UINT16} x {UINT16}".
 func resolutionText(r [2]int) string { return strconv.Itoa(r[0]) + " x " + strconv.Itoa(r[1]) }
+
+// The lists drawn in the active language (Options.cpp's StringIds), read when
+// drawn so a language switch shows at once.
+func optScales() []string {
+	return []string{i18n.Label(i18n.FullScale), i18n.Label(i18n.HalfScale), i18n.Label(i18n.QuarterScale), i18n.Label(i18n.EighthScale)}
+}
+
+func optMarkers() []string { return []string{i18n.Label(i18n.White), i18n.Label(i18n.Translucent)} }
+
+func optTabCaption() [7]string {
+	return [7]string{i18n.Label(i18n.OptionsTitleDisplay), i18n.Label(i18n.TitleOptionsRendering), i18n.Label(i18n.OptionsTitleAudio), i18n.Label(i18n.OptionsTitleRegional), i18n.Label(i18n.OptionsTitleControls), i18n.Label(i18n.OptionsTitleCompany), i18n.Label(i18n.OptionsTitleMiscellaneous)}
+}
+
+func optControlLabels() [3]string {
+	return [3]string{i18n.Label(i18n.ScrollScreenEdge), i18n.Label(i18n.ZoomToCursor), i18n.Label(i18n.InvertRightMouseDragging)}
+}
