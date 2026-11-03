@@ -162,7 +162,10 @@ func main() {
 	if *music {
 		// Music tracks (Data/*.dat of 3 MB and more): one .gz each, fetched by the
 		// page only when the game opens them, so starting the game stays light.
+		must(os.RemoveAll(filepath.Join(*out, "lazy"))) // tracks of an earlier build (WAV or Opus) go
 		must(os.MkdirAll(filepath.Join(*out, "lazy"), 0o755))
+		var opusBytes int
+		var opusErr error
 		ents, err := os.ReadDir(filepath.Join(*data, "Data"))
 		must(err)
 		for _, e := range ents {
@@ -171,13 +174,30 @@ func main() {
 			if e.IsDir() || info.Size() < 3<<20 {
 				continue
 			}
-			b, err := os.ReadFile(filepath.Join(*data, "Data", e.Name()))
+			src := filepath.Join(*data, "Data", e.Name())
+			// Opus (LOOP item 5d): a track is ~6.5× smaller (2.4 MB for 3 min
+			// at 96 kb/s instead of a 16 MB WAV), the browser plays it natively;
+			// the game's path stays, the player tells by the "OggS" start. No
+			// ffmpeg: the WAV, gzipped, as before.
+			if b, err := toOpus(src); err == nil {
+				url := "lazy/" + e.Name() + ".opus"
+				must(os.WriteFile(filepath.Join(*out, url), b, 0o644))
+				man.Lazy = append(man.Lazy, lazy{"/w/locomotion/Data/" + e.Name(), url, len(b)})
+				opusBytes += len(b)
+				continue
+			} else if opusErr == nil {
+				opusErr = err
+			}
+			b, err := os.ReadFile(src)
 			must(err)
 			url := "lazy/" + e.Name() + ".gz"
 			must(os.WriteFile(filepath.Join(*out, url), gzipBytes(b), 0o644))
 			man.Lazy = append(man.Lazy, lazy{"/w/locomotion/Data/" + e.Name(), url, len(b)})
 		}
-		log.Printf("music: %d tracks, fetched on first use", len(man.Lazy))
+		if opusErr != nil {
+			log.Printf("music: kept as WAV (%v)", opusErr)
+		}
+		log.Printf("music: %d tracks, fetched on first use (%.1f MB as Opus)", len(man.Lazy), float64(opusBytes)/(1<<20))
 	}
 	mj, err := json.Marshal(man)
 	must(err)
@@ -232,4 +252,15 @@ func must(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// toOpus converts a music track (WAV) to Ogg Opus at 96 kb/s with ffmpeg.
+func toOpus(path string) ([]byte, error) {
+	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error", "-i", path, "-c:a", "libopus", "-b:a", "96k", "-f", "ogg", "-")
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("ffmpeg: %v %s", err, strings.TrimSpace(errb.String()))
+	}
+	return out.Bytes(), nil
 }
