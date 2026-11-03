@@ -1,8 +1,10 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"os"
+	"strings"
 )
 
 // listwindows.go — the right-toolbar list windows: the ported VehicleList,
@@ -104,7 +106,7 @@ func (g *Game) openStationsWindow() {
 	}
 	w := ui.NewStationList(g.sw, rows, tc, wc)
 	if cname != "" {
-		w.Caption = cname + " - All Stations" // stringid_all_stations
+		w.Caption = strings.Replace(i18n.Label(i18n.StringidAllStations), "{STRINGID}", cname, 1) // "{STRINGID} - All Stations"
 	}
 	w.OnClose = func() { g.townList = nil }
 	g.townList = w
