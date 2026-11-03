@@ -8,7 +8,10 @@ package scene
 import (
 	"image"
 	"image/color"
+	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"github.com/LaPingvino/goloco/pkg/gfx8"
@@ -21,10 +24,14 @@ import (
 // Renderer holds the graphics and objects a scene is drawn with, and a cache of
 // decoded sprites.
 type Renderer struct {
-	G1        *assets.G1File
-	Objects   *objects.ObjectManager
-	sprites   map[int]*gfx8.Sprite
-	water     paint.WaterImages
+	G1      *assets.G1File
+	Objects *objects.ObjectManager
+	sprites *spriteCache // shared by the column workers
+	water   paint.WaterImages
+	// workers paint columns in parallel (Viewport::paint's
+	// std::execution::par): clones with their own session and scratch.
+	workers   []*Renderer
+	cols      [][2]int // RenderColumns' column list, kept
 	shadowMap []uint8
 
 	// Reused across frames (Render/ToRGBA allocate nothing in steady state).
@@ -152,7 +159,7 @@ func (r *Renderer) animOf(key any, pa []objects.BuildingPartAnimation) anim {
 // New prepares a renderer. The object manager must already be reordered to the
 // scenario's slots and have its cliff edges resolved.
 func New(g1 *assets.G1File, om *objects.ObjectManager) *Renderer {
-	r := &Renderer{G1: g1, Objects: om, sprites: map[int]*gfx8.Sprite{}}
+	r := &Renderer{G1: g1, Objects: om, sprites: &spriteCache{m: map[int]*gfx8.Sprite{}}}
 	if wo := om.WaterObj; wo != nil {
 		r.water.Base = int(wo.ImageOffset)
 		r.water.PalMap, _ = g1.GetPaletteMapAt(r.water.Base + 41)
@@ -161,24 +168,48 @@ func New(g1 *assets.G1File, om *objects.ObjectManager) *Renderer {
 	return r
 }
 
+// spriteCache is the decoded sprites, shared by the column workers.
+type spriteCache struct {
+	mu sync.RWMutex
+	m  map[int]*gfx8.Sprite
+}
+
 // Sprite decodes (and caches) a g1 sprite; nil if it can't.
 func (r *Renderer) Sprite(i int) *gfx8.Sprite {
-	if sp, ok := r.sprites[i]; ok {
+	c := r.sprites
+	c.mu.RLock()
+	sp, ok := c.m[i]
+	c.mu.RUnlock()
+	if ok {
 		return sp
 	}
-	var sp *gfx8.Sprite
 	if i >= 0 && i < len(r.G1.Elements) {
 		sp, _ = gfx8.Decode(&r.G1.Elements[i])
 		if sp != nil {
 			sp.Index = i // for the zoom-sprite recursion
 		}
 	}
-	r.sprites[i] = sp
+	c.mu.Lock()
+	c.m[i] = sp
+	c.mu.Unlock()
 	return sp
 }
 
 // SpriteCount is the number of sprites decoded so far.
-func (r *Renderer) SpriteCount() int { return len(r.sprites) }
+func (r *Renderer) SpriteCount() int {
+	r.sprites.mu.RLock()
+	defer r.sprites.mu.RUnlock()
+	return len(r.sprites.m)
+}
+
+// worker is the i-th column worker: a clone sharing the sprites and the
+// read-only data, with its own session and scratch.
+func (r *Renderer) worker(i int) *Renderer {
+	for len(r.workers) <= i {
+		r.workers = append(r.workers, &Renderer{G1: r.G1, Objects: r.Objects, sprites: r.sprites, water: r.water, shadowMap: r.shadowMap})
+	}
+	return r.workers[i]
+}
 
 // View is the part of the viewport to draw (viewport coordinates, rotation 0).
 type View struct {
@@ -227,21 +258,50 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 // each its own paint session (generate, arrange, draw) on a target cleared
 // first. A column paints the same whichever other columns are painted, so
 // the game can spread a frame's columns over several frames (LOOP item 0).
-// Upstream paints the columns in parallel; here one after another.
+// The columns are painted in parallel, as upstream does, one worker a core.
 func (r *Renderer) RenderColumns(m *sim.Map, v View, dst *gfx8.RenderTarget, sx0, sx1 int) {
 	lw := v.W << v.Zoom
+	cols := r.cols[:0]
 	for colX := v.X &^ 31; colX < v.X+lw; colX += 32 {
 		a, b := (max(colX, v.X)-v.X)>>v.Zoom, (min(colX+32, v.X+lw)-v.X)>>v.Zoom
 		if b <= a || b <= sx0 || a >= sx1 {
 			continue
 		}
+		cols = append(cols, [2]int{a, b})
+	}
+	r.cols = cols
+	paintCol := func(w *Renderer, c [2]int) {
 		cv := v
-		cv.X, cv.W = v.X+a<<v.Zoom, b-a
-		crt := r.renderRect(m, cv)
+		cv.X, cv.W = v.X+c[0]<<v.Zoom, c[1]-c[0]
+		crt := w.renderRect(m, cv)
 		for y := 0; y < v.H; y++ {
-			copy(dst.Bits[y*dst.Width+a:y*dst.Width+b], crt.Bits[y*crt.Width:(y+1)*crt.Width])
+			copy(dst.Bits[y*dst.Width+c[0]:y*dst.Width+c[1]], crt.Bits[y*crt.Width:(y+1)*crt.Width])
 		}
 	}
+	n := min(runtime.GOMAXPROCS(0), len(cols))
+	if n <= 1 { // one core (the browser): no goroutines
+		for _, c := range cols {
+			paintCol(r.worker(0), c)
+		}
+		return
+	}
+	var next atomic.Int32
+	var wg sync.WaitGroup
+	for i := range n {
+		w := r.worker(i)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				k := int(next.Add(1)) - 1
+				if k >= len(cols) {
+					return
+				}
+				paintCol(w, cols[k])
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 // renderRect paints one rectangle of the viewport in one paint session (one
