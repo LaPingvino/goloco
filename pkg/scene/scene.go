@@ -416,7 +416,11 @@ func (r *Renderer) renderRect(m *sim.Map, v View) *gfx8.RenderTarget {
 		r.colRT = gfx8.NewRenderTarget(v.W, v.H)
 	} else {
 		r.colRT.Width, r.colRT.Height, r.colRT.Bits = v.W, v.H, r.colRT.Bits[:v.W*v.H]
-		clear(r.colRT.Bits) // DEVIATION: upstream clears to PaletteIndex::brown2 (black0 underground); 0 here
+	}
+	// Viewport::paint clears each column to PaletteIndex::brown2 (black0 in
+	// the underground view, which the port doesn't have).
+	for i := range r.colRT.Bits {
+		r.colRT.Bits[i] = brown2
 	}
 	rt := r.colRT
 	s.Draw(rt)
@@ -1040,6 +1044,9 @@ func (r *Renderer) generate(s *paint.Session, m *sim.Map, v View, lw, lh int, en
 	}
 }
 
+// brown2 is PaletteIndex::brown2 (Colour.h), the viewport's clear colour.
+const brown2 = 0xD8
+
 // floor2 is Numerics::floor2: x rounded down to a multiple of n (a power of 2).
 func floor2(x, n int) int { return x &^ (n - 1) }
 
@@ -1050,6 +1057,15 @@ func floor2(x, n int) int { return x &^ (n - 1) }
 // against the target, with the tile's max height) and paintVoid for tiles
 // outside the drawable coordinates are not ported: such tiles paint as before.
 func (r *Renderer) paintTile(s *paint.Session, m *sim.Map, x, y int, tall bool, ticks uint32) {
+	// World::drawableCoords: outside it, paintTileElements paints the void
+	// and paintTileElements2 nothing.
+	drawable := func(c, n int) bool { return c*32 >= 32 && c*32 < n*32-32-1 }
+	if !drawable(x, m.Width) || !drawable(y, m.Height) {
+		if !tall {
+			r.paintVoid(s, x, y)
+		}
+		return
+	}
 	t := m.TileAt(x, y)
 	if t == nil {
 		return
@@ -1088,6 +1104,25 @@ func (r *Renderer) paintTile(s *paint.Session, m *sim.Map, x, y int, tall bool, 
 			s.FlushPendingSegments()
 		}
 	}
+}
+
+// paintVoid is PaintTile.cpp's paintVoid (rotation 0): ImageIds::blank_tile
+// at z 16 for a location outside the drawable map, when its screen position
+// can reach the target.
+func (r *Renderer) paintVoid(s *paint.Session, x, y int) {
+	const blankTile = 448
+	px, py := x*32, y*32
+	vy := (px+py)>>1 - 16 // gameToScreen(loc, 16), rotation 0
+	_, rtY, _, rtH := s.RTRect()
+	if vy+32 <= rtY || vy-20 >= rtH+rtY {
+		return
+	}
+	sp := r.spriteFor(blankTile)
+	if sp == nil {
+		return
+	}
+	s.SetSpritePosition(px, py)
+	s.AddAsParent(paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, paint.Pos3{Z: 16}, paint.Pos3{Z: 16}, paint.Pos3{X: 32, Y: 32, Z: -1})
 }
 
 // tallElement: what paintTileElements2 paints.
