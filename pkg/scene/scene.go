@@ -212,12 +212,13 @@ func tileWindow(m *sim.Map, v View) (x0, y0, x1, y1 int) {
 
 // Render draws the view of m into a new 8-bit target.
 func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
-	// PARTIAL: one paint session over the whole view. Upstream (Viewport::
-	// paint) paints in columns — RenderColumns — but with its own tile walk
-	// per column (PaintSession::generateTilesAndEntities, not yet ported):
-	// with our rectangle tile walk a column visits far too many tiles (4.6×
-	// slower, title view). Switch to RenderColumns once that walk is ported.
-	return r.renderRect(m, v)
+	// Viewport::paint: in columns, each its own session with upstream's tile
+	// walk (generate).
+	if r.rt == nil || r.rt.Width != v.W || r.rt.Height != v.H {
+		r.rt = gfx8.NewRenderTarget(v.W, v.H)
+	}
+	r.RenderColumns(m, v, r.rt, 0, v.W)
+	return r.rt
 }
 
 // RenderColumns paints the screen columns [sx0, sx1) of the view into dst
@@ -257,58 +258,26 @@ func (r *Renderer) renderRect(m *sim.Map, v View) *gfx8.RenderTarget {
 		r.spriteFor = r.Sprite // a method value allocates: taken once, not per column
 	}
 	s.Zoom, s.SpriteFor = v.Zoom, r.spriteFor
-	x0, y0, x1, y1 := tileWindow(m, View{X: v.X, Y: v.Y, W: lw, H: lh})
+	var x0, y0, x1, y1 int
 	if !v.Tiles.Empty() {
 		x0, y0, x1, y1 = max(v.Tiles.Min.X, 0), max(v.Tiles.Min.Y, 0), min(v.Tiles.Max.X, m.Width-1), min(v.Tiles.Max.Y, m.Height-1)
 	}
-	sprite := r.Sprite
 	ents := r.entitiesByTile(m, v, lw, lh)
-	for y := y0; y <= y1; y++ {
-		for x := x0; x <= x1; x++ {
-			t := m.TileAt(x, y)
-			if t == nil {
-				continue
-			}
-			s.SetSpritePosition(x*32, y*32)
-			s.ResetTunnels() // paintTileElementsSetup
-			s.SetGeneralSupportHeight(0xFFFF, 0)
-			s.SetSegmentsSupportHeight(paint.SegmentsAll, 0xFFFF, 0)
-			// paintTileElements: the tile's elements in stored order, each followed by
-			// paintTileElementsEndLoop. Signals and stations read entry.prev().
-			for i, ref := range t.Order {
-				var prev *scenario.ElemRef
-				if i > 0 {
-					prev = &t.Order[i-1]
-				}
-				r.paintElement(s, m, t, ref, prev, x, y, v.Ticks)
-				// paintTileElementsEndLoop: at the last element or a change of baseZ.
-				if i == len(t.Order)-1 || tileElemZ(t, t.Order[i+1]) != tileElemZ(t, ref) {
-					s.FinalisePaintRoad(sprite)
-					s.PaintSupports(r.bridgeHasRoof, sprite)
-					s.FinaliseTrackRoadOrdering()
-					s.FinaliseTrackRoadAdditionsOrdering()
-					s.SetOccupiedAdditionSupportSegments(0)
-					if b, ok := s.TakeBridge(); ok {
-						if r.paintBridge(s, b, x, y) {
-							s.SetSegmentsSupportHeight(paint.SegmentsAll, 0xFFFF, 0)
-						}
-						if s.GeneralSupportHeight().Height >= b.Height {
-							s.SetGeneralSupportHeight(b.Height, 0x20)
-						}
-					}
-					s.FlushPendingSegments()
-				}
-			}
-			// paintEntities(loc): the tile's vehicle entities after its elements.
-			for _, e := range ents[[2]int{x, y}] {
-				r.paintVehicleEntity(s, m, e)
+	if v.Tiles.Empty() {
+		r.generate(s, m, v, lw, lh, ents)
+	} else { // a tile window asked for (diagnostics): every tile in it, row by row
+		for y := y0; y <= y1; y++ {
+			for x := x0; x <= x1; x++ {
+				r.paintTile(s, m, x, y, false, v.Ticks)
+				r.paintTileEntities(s, m, x, y, ents, false)
 			}
 		}
 	}
 	s.Arrange()
-	if r.colRT == nil || r.colRT.Width != v.W || r.colRT.Height != v.H {
+	if r.colRT == nil || cap(r.colRT.Bits) < v.W*v.H { // columns differ in width (the first is trimmed): one buffer, resliced
 		r.colRT = gfx8.NewRenderTarget(v.W, v.H)
 	} else {
+		r.colRT.Width, r.colRT.Height, r.colRT.Bits = v.W, v.H, r.colRT.Bits[:v.W*v.H]
 		clear(r.colRT.Bits) // DEVIATION: upstream clears to PaletteIndex::brown2 (black0 underground); 0 here
 	}
 	rt := r.colRT
@@ -880,4 +849,110 @@ func (r *Renderer) scaffold(segType, colour uint8) *paint.Scaffold {
 	sc := &paint.Scaffold{Image: int(so.Image), Type: int(segType), SegmentHeight: int(so.SegmentHeights[segType]), Colour: r.colourMap(int(colour))}
 	r.scaffolds[k] = sc
 	return sc
+}
+
+// generate is PaintSession::generate → generateTilesAndEntities with
+// generateParameters<0> (rotation 0): from the tile at the target's top-left,
+// down one "vertical quadrant" (+32, +32) at a time, (height + 1040) >> 5
+// times, painting at each step the tile, then four neighbours in upstream's
+// order — (−32, +32) only its tall things (paintTileElements2), (0, +32)
+// fully, (+32, 0) tall things, (+32, −32) and (−32, +64) only flying or
+// floating vehicles (paintEntities2) — each tile's entities after it.
+func (r *Renderer) generate(s *paint.Session, m *sim.Map, v View, lw, lh int, ents map[[2]int][]*scenario.VehicleEntity) {
+	n := (lh + 1040) >> 5
+	vx, vy := floor2(v.X, 32), floor2(v.Y-16, 32)
+	mx, my := floor2(vy-(vx>>1), 32), floor2(vy+(vx>>1), 32) // viewportCoordToMapCoord, rotation 0
+	for ; n > 0; n-- {
+		tx, ty := mx>>5, my>>5
+		r.paintTile(s, m, tx, ty, false, v.Ticks)
+		r.paintTileEntities(s, m, tx, ty, ents, false)
+		r.paintTile(s, m, tx-1, ty+1, true, v.Ticks)
+		r.paintTileEntities(s, m, tx-1, ty+1, ents, false)
+		r.paintTile(s, m, tx, ty+1, false, v.Ticks)
+		r.paintTileEntities(s, m, tx, ty+1, ents, false)
+		r.paintTile(s, m, tx+1, ty, true, v.Ticks)
+		r.paintTileEntities(s, m, tx+1, ty, ents, false)
+		r.paintTileEntities(s, m, tx+1, ty-1, ents, true)
+		r.paintTileEntities(s, m, tx-1, ty+2, ents, true)
+		mx, my = mx+32, my+32
+	}
+}
+
+// floor2 is Numerics::floor2: x rounded down to a multiple of n (a power of 2).
+func floor2(x, n int) int { return x &^ (n - 1) }
+
+// paintTile is paintTileElements (tall = false) or paintTileElements2 (tall:
+// only buildings, trees, industries, and airport / dock stations — the things
+// that reach into the neighbouring column).
+// PARTIAL: paintTileElementsSetup's vertical cull (the tile's screen y
+// against the target, with the tile's max height) and paintVoid for tiles
+// outside the drawable coordinates are not ported: such tiles paint as before.
+func (r *Renderer) paintTile(s *paint.Session, m *sim.Map, x, y int, tall bool, ticks uint32) {
+	t := m.TileAt(x, y)
+	if t == nil {
+		return
+	}
+	sprite := r.spriteFor
+	s.SetSpritePosition(x*32, y*32)
+	s.ResetTunnels() // paintTileElementsSetup
+	s.SetGeneralSupportHeight(0xFFFF, 0)
+	s.SetSegmentsSupportHeight(paint.SegmentsAll, 0xFFFF, 0)
+	// paintTileElements: the tile's elements in stored order, each followed by
+	// paintTileElementsEndLoop. Signals and stations read entry.prev().
+	for i, ref := range t.Order {
+		if tall && !tallElement(t, ref) {
+			continue // paintTileElements2: 'continue' also skips the end loop
+		}
+		var prev *scenario.ElemRef
+		if i > 0 {
+			prev = &t.Order[i-1]
+		}
+		r.paintElement(s, m, t, ref, prev, x, y, ticks)
+		// paintTileElementsEndLoop: at the last element or a change of baseZ.
+		if i == len(t.Order)-1 || tileElemZ(t, t.Order[i+1]) != tileElemZ(t, ref) {
+			s.FinalisePaintRoad(sprite)
+			s.PaintSupports(r.bridgeHasRoof, sprite)
+			s.FinaliseTrackRoadOrdering()
+			s.FinaliseTrackRoadAdditionsOrdering()
+			s.SetOccupiedAdditionSupportSegments(0)
+			if b, ok := s.TakeBridge(); ok {
+				if r.paintBridge(s, b, x, y) {
+					s.SetSegmentsSupportHeight(paint.SegmentsAll, 0xFFFF, 0)
+				}
+				if s.GeneralSupportHeight().Height >= b.Height {
+					s.SetGeneralSupportHeight(b.Height, 0x20)
+				}
+			}
+			s.FlushPendingSegments()
+		}
+	}
+}
+
+// tallElement: what paintTileElements2 paints.
+func tallElement(t *sim.Tile, ref scenario.ElemRef) bool {
+	switch ref.Kind {
+	case scenario.KindBuilding, scenario.KindTree, scenario.KindIndustry:
+		return true
+	case scenario.KindStation:
+		st := t.Stations[ref.Index].StationType
+		return st == 2 || st == 3 // airport, docks
+	}
+	return false
+}
+
+// paintTileEntities is paintEntities (all) or paintEntities2 (only flying or
+// floating vehicles: air and water) for a tile.
+func (r *Renderer) paintTileEntities(s *paint.Session, m *sim.Map, x, y int, ents map[[2]int][]*scenario.VehicleEntity, flyingOnly bool) {
+	for _, e := range ents[[2]int{x, y}] {
+		if flyingOnly && !r.flyingOrFloating(m, e) {
+			continue
+		}
+		r.paintVehicleEntity(s, m, e)
+	}
+}
+
+// flyingOrFloating is isEntityFlyingOrFloating: a vehicle whose transport
+// mode (vhCommonMode) is air or water.
+func (r *Renderer) flyingOrFloating(m *sim.Map, e *scenario.VehicleEntity) bool {
+	return e.Mode == 2 || e.Mode == 3
 }
