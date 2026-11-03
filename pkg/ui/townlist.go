@@ -2,10 +2,12 @@ package ui
 
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 	"image/color"
 	"sort"
+	"strings"
 )
 
 // TownList — a port of Ui/Windows/TownList.cpp, the town list tab: 600×197 at
@@ -115,12 +117,12 @@ func NewTownList(sw int, towns []TownRow, titleColour, colour uint8) *TownListWi
 	for i, t := range towns {
 		rows[i] = []string{t.Name, t.Type, itoa3(t.Population), itoa3(t.Stations)}
 	}
-	status := itoa3(len(rows)) + " towns"
+	status := countLabel(len(rows), i18n.StatusTownsSingular, i18n.StatusTownsPlural) // TownList.cpp: status_towns_*
 	if len(rows) == 1 {
 		status = "1 town"
 	}
-	w := (&TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: "Towns", Tabs: 4,
-		Columns: []TableColumn{{4, 200, "Name", 0, 198}, {204, 80, "Type", 200, 78}, {284, 70, "Population", 280, 68}, {354, 70, "Stations", 350, 68}},
+	w := (&TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: i18n.Label(i18n.TitleTowns), Tabs: 4,
+		Columns: []TableColumn{{4, 200, i18n.Label(i18n.TableHeaderName), 0, 198}, {204, 80, i18n.Label(i18n.TableHeaderTownType), 200, 78}, {284, 70, i18n.Label(i18n.TableHeaderPopulation), 280, 68}, {354, 70, i18n.Label(i18n.TableHeaderStations), 350, 68}},
 		Rows:    rows, Status: status, Hover: -1}).setTableGeometry()
 	// sortTownList (run every update): a stable sort by the header clicked,
 	// name by default.
@@ -169,12 +171,12 @@ func NewStationList(sw int, stations []StationRow, titleColour, colour uint8) *T
 	for i, s := range stations {
 		rows[i] = []string{s.Name, s.Status, itoa3(s.Waiting) + " units", s.Accepts}
 	}
-	status := itoa3(len(rows)) + " stations"
+	status := countLabel(len(rows), i18n.StatusNumStationsSingular, i18n.StatusNumStationsPlural) // StationList.cpp: status_num_stations_*
 	if len(rows) == 1 {
 		status = "1 station"
 	}
-	w := (&TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: "All Stations", Tabs: 5, ColourCaption: true,
-		Columns: []TableColumn{{4, 200, "Name", 0, 198}, {204, 200, "Status", 200, 198}, {404, 90, "Total waiting", 400, 88}, {494, 120, "Accepts", 490, 118}},
+	w := (&TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: i18n.Label(i18n.AllStations), Tabs: 5, ColourCaption: true,
+		Columns: []TableColumn{{4, 200, i18n.Label(i18n.TableHeaderName), 0, 198}, {204, 200, i18n.Label(i18n.TableHeaderStatus), 200, 198}, {404, 90, i18n.Label(i18n.TableHeaderTotalWaiting), 400, 88}, {494, 120, i18n.Label(i18n.TableHeaderAccepts), 490, 118}},
 		Rows:    rows, Status: status, Hover: -1}).setTableGeometry()
 	// sortStationList: a stable sort by the header clicked, name by default.
 	w.Sort = func(mode int) {
@@ -442,7 +444,12 @@ func vehicleOrder(mode int, a, b VehicleRow) bool {
 	return false
 }
 
-var vehicleListCaptions = [6]string{"Trains", "Buses", "Trucks", "Trams", "Aircraft", "Ships"}
+// vehicleListCaptions() are the vehicle list's captions per type (the active
+// language's, read when used).
+func vehicleListCaptions() [6]string {
+	return [6]string{i18n.Label(i18n.TooltipTrains), i18n.Label(i18n.TooltipBuses), i18n.Label(i18n.TooltipTrucks),
+		i18n.Label(i18n.TooltipTrams), i18n.Label(i18n.TooltipAircraft), i18n.Label(i18n.TooltipShips)}
+}
 
 // vehicleListRowHeights is VehicleList.cpp row_heights per tab.
 var vehicleListRowHeights = [6]int{28, 28, 28, 28, 48, 36}
@@ -480,8 +487,8 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 		rows[i] = cells(v)
 	}
 	status := vehicleListFooter(tab, len(rows))
-	w := &TownListWindow{X: sw - 550, Y: 30, TitleColour: titleColour, Colour: colour, Caption: vehicleListCaptions[tab], Tabs: 6,
-		Columns: []TableColumn{{4, 310, "Name", 4 + 1 - 4, 310 - 2}, {314, 100, "Monthly Profit", 314 + 1 - 4, 100 - 2}, {414, 65, "Age", 414 + 1 - 4, 65 - 2}, {479, 67, "Reliability", 479 + 1 - 4, 67 - 2}},
+	w := &TownListWindow{X: sw - 550, Y: 30, TitleColour: titleColour, Colour: colour, Caption: vehicleListCaptions()[tab], Tabs: 6,
+		Columns: []TableColumn{{4, 310, i18n.Label(i18n.TableHeaderName), 4 + 1 - 4, 310 - 2}, {314, 100, i18n.Label(i18n.TableHeaderMonthlyProfit), 314 + 1 - 4, 100 - 2}, {414, 65, i18n.Label(i18n.TableHeaderAge), 414 + 1 - 4, 65 - 2}, {479, 67, i18n.Label(i18n.TableHeaderReliability), 479 + 1 - 4, 67 - 2}},
 		Rows:    rows, Status: status, Hover: -1, CurrentTab: tab,
 		W: 550, H: 213, RowHeight: vehicleListRowHeights[tab], StatusY: 213 - 13, TextDY: 2, List: [4]int{3, 56, 544, 138},
 		Outline: true, HoverSolid: true, ColourCaption: true}
@@ -531,4 +538,14 @@ func (w *TownListWindow) Drag(py int, held bool) {
 		w.Scroll = L.VScrollDrag(w.List[3], len(w.Rows)*w.RowHeight, w.Scroll, dy)
 		w.dragY = py
 	}
+}
+
+// countLabel is a "{INT16} towns"-style status: the singular id for 1, else
+// the plural, with the count put in.
+func countLabel(n, singular, plural int) string {
+	id := plural
+	if n == 1 {
+		id = singular
+	}
+	return strings.Replace(i18n.Label(id), "{INT16}", itoa3(n), 1)
 }
