@@ -5,6 +5,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"image"
 	"log"
+	"math"
 	"os"
 	"time"
 
@@ -26,6 +27,9 @@ func (w *World) sceneEnabled() bool {
 }
 
 // drawScene renders the visible map through pkg/scene and draws it on screen.
+// sceneBudgetMS is the world's share of a frame while a window is open.
+const sceneBudgetMS = 8.0
+
 func (w *World) drawScene(screen *ebiten.Image) {
 	if w.scene == nil {
 		w.scene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
@@ -51,12 +55,28 @@ func (w *World) drawScene(screen *ebiten.Image) {
 		w.sceneImg = ebiten.NewImage(sw, sh)
 		same = false // a new image: all of it
 	}
+	parts := 1
 	if w.SceneEvery > 1 && same {
-		w.sceneSkip = (w.sceneSkip + 1) % w.SceneEvery
-		rt, x0, x1 = w.scene.RenderPart(&w.Map, view, w.sceneSkip, w.SceneEvery)
+		// Adaptive (tick 309): as many parts as keep the world within the
+		// budget, judged by what a whole frame costs (an average); at least
+		// SceneEvery, at most a column a part.
+		parts = max(w.SceneEvery, int(math.Ceil(w.frameCost/sceneBudgetMS)))
+		parts = min(parts, max(sw/32, 1))
+		w.sceneSkip = (w.sceneSkip + 1) % parts
 	} else {
-		rt, x0, x1 = w.scene.RenderPart(&w.Map, view, 0, 1)
+		w.sceneSkip = 0
 	}
+	t1 := time.Now()
+	rt, x0, x1 = w.scene.RenderPart(&w.Map, view, w.sceneSkip, parts)
+	if x1 > x0 { // the whole frame's cost, from this part's
+		whole := float64(time.Since(t1).Microseconds()) / 1000 * float64(sw) / float64(x1-x0)
+		if w.frameCost == 0 {
+			w.frameCost = whole
+		} else {
+			w.frameCost += (whole - w.frameCost) / 8
+		}
+	}
+	w.SceneParts = parts
 	w.lastView = view
 	if x0 == 0 && x1 == sw {
 		w.sceneImg.WritePixels(w.scene.ToRGBA(rt).Pix)
