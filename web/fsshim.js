@@ -79,8 +79,11 @@
 		const { url } = lazy.get(path);
 		const resp = await fetch(url, { cache: "no-cache" }); // revalidate: a rebuilt page must not run stale files
 		if (!resp.ok) throw new Error(url + ": HTTP " + resp.status);
-		const s = resp.body.pipeThrough(new DecompressionStream("gzip"));
-		files.set(path, new Uint8Array(await new Response(s).arrayBuffer()));
+		// .gz: a gzipped file; anything else (the Opus music) as it is.
+		const s = url.endsWith(".gz") ? resp.body.pipeThrough(new DecompressionStream("gzip")) : resp.body;
+		const data = new Uint8Array(await new Response(s).arrayBuffer());
+		files.set(path, data);
+		lazy.get(path) && (lazy.get(path).size = data.length);
 		lazy.delete(path);
 		console.log("fetched " + path);
 	};

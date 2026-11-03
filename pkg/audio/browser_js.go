@@ -25,7 +25,11 @@ func (h *htmlAudio) play(path string, loop bool, volume float64) error {
 	}
 	arr := js.Global().Get("Uint8Array").New(len(b))
 	js.CopyBytesToJS(arr, b)
-	blob := js.Global().Get("Blob").New([]any{arr}, map[string]any{"type": "audio/wav"})
+	typ := "audio/wav"
+	if len(b) > 4 && string(b[:4]) == "OggS" { // the web page's Opus music (cmd/webpack)
+		typ = "audio/ogg; codecs=opus"
+	}
+	blob := js.Global().Get("Blob").New([]any{arr}, map[string]any{"type": typ})
 	h.url = js.Global().Get("URL").Call("createObjectURL", blob)
 	h.el = js.Global().Get("Audio").New(h.url)
 	h.el.Set("loop", loop)
