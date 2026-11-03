@@ -131,6 +131,7 @@ type Game struct {
 
 	// --shots mode: periodic full-frame captures (shot_NN.png), then quit.
 	shotsEvery time.Duration // wall-clock interval between captures
+	titleTip   string        // the hovered title button's tooltip (drawn last)
 	shotsLeft  int
 	shotsLast  time.Time
 	shotsN     int
@@ -1126,6 +1127,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		if g.prompt != nil { // a confirmation, on top of everything
 			g.prompt.Draw(screen)
 		}
+		// A title button's tooltip (ToolTip.cpp), when no window is over it.
+		// PARTIAL: shown at once, as goloco's other tooltips (upstream waits).
+		if g.titleTip != "" && g.options == nil && g.browse == nil && g.scenarioSelect == nil && g.prompt == nil &&
+			(g.dropdown == nil || !g.dropdown.Visible) {
+			var c uint8
+			if g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+				c = g.r.ObjMgr.InterfaceSkin.TooltipColour
+			}
+			ui.DrawTooltip(screen, g.titleTip, g.mouseX, g.mouseY, c)
+		}
 		g.drawInlineDiag(screen)
 		g.maybeSaveShot(screen)
 		return
@@ -1644,7 +1655,7 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 	if optHovered {
 		fillRect(screen, float64(optX), 0, float64(titleOptionsW), float64(titleOptionsH), color.RGBA{0, 0, 0, 90})
 	}
-	optLabel := i18n.T("menu.options")
+	optLabel := i18n.Label(i18n.Options) // TitleOptions.cpp: StringIds::options
 	optLabelW, _ := ui.MeasureText(optLabel)
 	drawOutlinedText(screen, optLabel, optX+(titleOptionsW-optLabelW)/2, (titleOptionsH-10)/2, color.White)
 
@@ -1662,23 +1673,27 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 		frameCount int // number of animation frames in the sequence
 	}
 	btns := [titleBtnCount]btnDef{
-		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteSparkle, i18n.T("menu.new_game"), 32},
-		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteSave, i18n.T("menu.load_game"), 32},
-		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteLessonL, i18n.T("menu.tutorial"), 32},
+		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteSparkle, i18n.Label(i18n.TitleMenuNewGame), 32},
+		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteSave, i18n.Label(i18n.TitleMenuLoadGame), 32},
+		{spriteGlobeSpinBase, spriteGlobeSpinBase, spriteLessonL, i18n.Label(i18n.TitleMenuShowTutorial), 32},
 		// globe_construct has 25 frames (0–24 = sprites 3584–3608); clamping to 25
 		// prevents overshooting into unrelated sprites (e.g. the Sawyer logo).
-		{spriteGlobeConstBase, spriteGlobeConstIdle, -1, i18n.T("menu.scenario_editor"), 25},
+		{spriteGlobeConstBase, spriteGlobeConstIdle, -1, i18n.Label(i18n.TitleMenuScenarioEditor), 25},
 	}
 
 	menuX := (g.sw - titleMenuW) / 2
 	menuY := g.sh - titleMenuH - titleMenuMargin
 
+	tip := ""
 	for i, btn := range btns {
 		bx := menuX + i*titleBtnSize
 		by := menuY
 
 		hovered := g.mouseX >= bx && g.mouseX < bx+titleBtnSize &&
 			g.mouseY >= by && g.mouseY < by+titleBtnSize
+		if hovered {
+			tip = btn.label // the button's tooltip (TitleMenu.cpp's title_menu_* StringIds)
+		}
 
 		globeID := btn.idleGlobe
 		if hovered {
@@ -1712,6 +1727,7 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 			ui.DrawText(screen, btn.label, labelX, labelY, color.White)
 		}
 	}
+	g.titleTip = tip
 
 	// --- Exit button: bottom-right (sw-40, sh-28), 40×28 ---
 	// OpenLoco: TitleExit.cpp at (Ui::width()-40, Ui::height()-28)
@@ -1723,9 +1739,15 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 	if exitHovered {
 		fillRect(screen, float64(exitX), float64(exitY), float64(titleExitW), float64(titleExitH), color.RGBA{0, 0, 0, 90})
 	}
-	exitLabel := i18n.T("menu.exit_game")
-	exitLabelW, _ := ui.MeasureText(exitLabel)
-	drawOutlinedText(screen, exitLabel, exitX+(titleExitW-exitLabelW)/2, exitY+(titleExitH-10)/2, color.White)
+	// TitleExit.cpp: title_exit_game, centred and wrapped — its {NEWLINE}
+	// splits it ("Exit / Game", "Spiel / beenden").
+	exitLines := strings.Split(i18n.Label(i18n.TitleExitGame), "{NEWLINE}")
+	ey := exitY + (titleExitH-10*len(exitLines))/2
+	for _, l := range exitLines {
+		lw, _ := ui.MeasureText(l)
+		drawOutlinedText(screen, l, exitX+(titleExitW-lw)/2, ey, color.White)
+		ey += 10
+	}
 
 	// --- Version text: bottom-left ---
 	// TitleVersion.cpp: the version and the platform, white with the outline
