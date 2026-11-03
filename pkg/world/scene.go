@@ -1,6 +1,7 @@
 package world
 
 import (
+	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"log"
 	"os"
@@ -38,19 +39,19 @@ func (w *World) drawScene(screen *ebiten.Image) {
 		}
 	}()
 	// Responsiveness first (LOOP item 0, Joop: "give up internal speed for
-	// responsiveness"): while a window or menu is open the world is re-rendered
-	// only every SceneEvery-th frame, the last picture reused in between, so the
-	// UI runs at the full frame rate.
-	w.sceneSkip++
-	if w.SceneEvery > 1 && w.sceneImg != nil && w.sceneImg.Bounds().Dx() == sw && w.sceneImg.Bounds().Dy() == sh &&
-		w.sceneSkip%w.SceneEvery != 0 {
-		screen.DrawImage(w.sceneImg, nil)
-		if w.lastBits != nil {
-			ui.BeginFrame8(w.lastBits, sw, sh) // the picture reused: its indices too
-		}
-		return
+	// responsiveness"): while a window or menu is open the world's columns
+	// are repainted a part a frame (SceneEvery parts), so no frame waits for
+	// a whole world render; a moved camera, zoom or size repaints all of it.
+	view := scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: uint32(w.animTick)}
+	var rt *gfx8.RenderTarget
+	same := view.X == w.lastView.X && view.Y == w.lastView.Y && view.W == w.lastView.W && view.H == w.lastView.H && view.Zoom == w.lastView.Zoom
+	if w.SceneEvery > 1 && same {
+		w.sceneSkip = (w.sceneSkip + 1) % w.SceneEvery
+		rt = w.scene.RenderPart(&w.Map, view, w.sceneSkip, w.SceneEvery)
+	} else {
+		rt = w.scene.RenderPart(&w.Map, view, 0, 1)
 	}
-	rt := w.scene.Render(&w.Map, scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: uint32(w.animTick)})
+	w.lastView = view
 	if w.sceneImg == nil || w.sceneImg.Bounds().Dx() != sw || w.sceneImg.Bounds().Dy() != sh {
 		w.sceneImg = ebiten.NewImage(sw, sh)
 	}
