@@ -252,6 +252,19 @@ func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
 	return r.rt
 }
 
+// RenderPart repaints part k of n of the view's columns (screen x from k·W/n
+// to (k+1)·W/n) into the frame kept from earlier calls with the same view
+// size, and returns that frame: n calls with k = 0…n−1 make a whole frame,
+// a frame's work spread over n frames (LOOP item 0).
+func (r *Renderer) RenderPart(m *sim.Map, v View, k, n int) *gfx8.RenderTarget {
+	if r.rt == nil || r.rt.Width != v.W || r.rt.Height != v.H {
+		r.rt = gfx8.NewRenderTarget(v.W, v.H)
+		k, n = 0, 1 // no earlier frame: all of it
+	}
+	r.RenderColumns(m, v, r.rt, k*v.W/n, (k+1)*v.W/n)
+	return r.rt
+}
+
 // RenderColumns paints the screen columns [sx0, sx1) of the view into dst
 // (v.W×v.H) the way Viewport::paint does: in columns 32 viewport pixels wide
 // (one tile; 32>>zoom screen pixels), aligned to 32 in viewport coordinates,

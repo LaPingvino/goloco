@@ -48,7 +48,8 @@ type World struct {
 	// SceneEvery: render the world every n-th frame (≤ 1: every frame); the
 	// game raises it while its UI is open (drawScene).
 	SceneEvery int
-	lastBits   []uint8 // the last world frame's palette indices (draw8's screen copy)
+	lastView   scene.View // the view last painted (RenderPart keeps its frame)
+	lastBits   []uint8    // the last world frame's palette indices (draw8's screen copy)
 	sceneSkip  int
 	// stationList caches StationList between ticks; stationsGen counts the
 	// stations placed through the world (the cache's key with the tick).
