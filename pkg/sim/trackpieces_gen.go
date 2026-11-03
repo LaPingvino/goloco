@@ -85,6 +85,9 @@ var ReverseRotation = [16]uint8{2, 3, 0, 1, 10, 11, 8, 9, 6, 7, 4, 5, 14, 15, 12
 // TrackCurveSpeedFraction is getTrackMiscData(id).curveSpeedFraction.
 var TrackCurveSpeedFraction = [44]uint16{65535, 65535, 3277, 3277, 6554, 6554, 9830, 9830, 16384, 16384, 16384, 16384, 9830, 9830, 65535, 65535, 65535, 65535, 6554, 6554, 6554, 6554, 6554, 6554, 6554, 6554, 65535, 65535, 3277, 3277, 3277, 3277, 3277, 3277, 65535, 65535, 65535, 65535, 3277, 3277, 3277, 3277, 3277, 3277}
 
+// TrackCostFactor is getTrackMiscData(id).costFactor.
+var TrackCostFactor = [44]uint16{256, 362, 201, 201, 603, 603, 1005, 1005, 703, 703, 703, 703, 896, 896, 544, 544, 312, 312, 848, 848, 848, 848, 1055, 1055, 1055, 1055, 256, 256, 100, 301, 301, 100, 294, 294, 312, 312, 312, 312, 276, 276, 276, 276, 603, 603}
+
 // RoadCurveSpeedFraction is getRoadMiscData(id).curveSpeedFraction.
 var RoadCurveSpeedFraction = [10]uint16{65535, 3277, 3277, 6554, 6554, 65535, 65535, 65535, 65535, 3277}
 

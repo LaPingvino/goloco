@@ -34,9 +34,11 @@ type RoadObject struct {
 	BridgeNames []string
 	// BuildCostFactor and CostIndex price a piece (CreateRoad).
 	BuildCostFactor int16
-	CostIndex       uint8
-	NumBridges      uint8 // Number of supported bridges (max 7)
-	NumStations     uint8 // Number of supported stations (max 7)
+	// TunnelCostFactor (0x08) prices a piece built underground.
+	TunnelCostFactor int16
+	CostIndex        uint8
+	NumBridges       uint8 // Number of supported bridges (max 7)
+	NumStations      uint8 // Number of supported stations (max 7)
 	// RoadPieces (0x02) is the RoadTraitFlags set: small / very small curves,
 	// slope, steep slope, turnaround, junction.
 	RoadPieces uint16
@@ -104,11 +106,12 @@ func ParseRoadObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Roa
 		RoadPieces:    uint16(data[0x02]) | uint16(data[0x03])<<8,
 		DisplayOffset: data[0x29],
 		// buildCostFactor 0x04, costIndex 0x0A (offsets from the compiler)
-		BuildCostFactor: int16(uint16(data[0x04]) | uint16(data[0x05])<<8),
-		CostIndex:       data[0x0A],
-		Flags:           uint16(data[0x12]) | uint16(data[0x13])<<8,
-		TargetTownSize:  data[0x2E],
-		MaxSpeed:        int16(uint16(data[0x0C]) | uint16(data[0x0D])<<8),
+		BuildCostFactor:  int16(uint16(data[0x04]) | uint16(data[0x05])<<8),
+		CostIndex:        data[0x0A],
+		TunnelCostFactor: int16(uint16(data[0x08]) | uint16(data[0x09])<<8),
+		Flags:            uint16(data[0x12]) | uint16(data[0x13])<<8,
+		TargetTownSize:   data[0x2E],
+		MaxSpeed:         int16(uint16(data[0x0C]) | uint16(data[0x0D])<<8),
 	}
 
 	offset := fixedSize
