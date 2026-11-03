@@ -178,7 +178,11 @@ func NewGame() *Game {
 	// Load the UI language pack (GOLOCO_LANG, default en-GB) before any object
 	// string tables are parsed — Load also sets objects.SelectedLocoLanguage
 	// from the pack header so DAT strings match. A missing pack is non-fatal.
-	if err := i18n.Load(os.Getenv("GOLOCO_LANG")); err != nil {
+	lang := os.Getenv("GOLOCO_LANG")
+	if lang == "" {
+		lang = configValue("language") // the language chosen in Options last time (Config.cpp)
+	}
+	if err := i18n.Load(lang); err != nil {
 		log.Printf("[Game] i18n: %v (using English)", err)
 	} else {
 		log.Printf("[Game] Language: %s (%s)", i18n.Locale(), i18n.NativeName())
@@ -2037,9 +2041,13 @@ func (g *Game) openOptionsWindow() {
 				w.Language = i
 			}
 		}
-		w.OnLanguage = func(i int) { // languageDropdown (PARTIAL: Config::write; goloco's own texts stay English)
+		w.OnLanguage = func(i int) { // languageDropdown: the pack, then Config::write
 			if err := i18n.Load(langs[i].Locale); err != nil {
 				log.Printf("[Options] language: %v", err)
+				return
+			}
+			if err := setConfigValue("language", langs[i].Locale); err != nil {
+				log.Printf("[Options] saving the language: %v", err)
 			}
 		}
 		w.OnPreferredCurrency = func(dat string) { // preferredCurrencyDropdown

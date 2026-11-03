@@ -59,6 +59,31 @@
 		files.set(path, data);
 	};
 
+	// The game's config (HOME=/w: os.UserConfigDir is /w/.config) is kept in
+	// the browser's localStorage, so a setting chosen in the game (the
+	// language …) survives a reload. Each file is one key, base64.
+	const KEEP = "/w/.config/", KEEP_KEY = "goloco-fs:";
+	const keep = (path) => {
+		if (!path.startsWith(KEEP) || !files.has(path)) return;
+		try {
+			let bin = "";
+			for (const b of files.get(path)) bin += String.fromCharCode(b);
+			localStorage.setItem(KEEP_KEY + path, btoa(bin));
+		} catch (e) { /* no storage: the setting lasts until the page closes */ }
+	};
+	const restoreKept = () => {
+		try {
+			for (let i = 0; i < localStorage.length; i++) {
+				const k = localStorage.key(i);
+				if (!k || !k.startsWith(KEEP_KEY)) continue;
+				const bin = atob(localStorage.getItem(k));
+				const data = new Uint8Array(bin.length);
+				for (let j = 0; j < bin.length; j++) data[j] = bin.charCodeAt(j);
+				addFile(k.slice(KEEP_KEY.length), data);
+			}
+		} catch (e) { /* no storage */ }
+	};
+
 	const err = (code, path) => {
 		if (code === "ENOENT" && path) misses.add(path);
 		const e = new Error(code + (path ? ": " + path : ""));
@@ -121,6 +146,7 @@
 		data.set(buf.subarray(offset, offset + length), at);
 		files.set(f.path, data);
 		if (position == null) f.pos = end;
+		f.dirty = true;
 		return length;
 	};
 
@@ -166,7 +192,11 @@
 			if (position == null) f.pos += n;
 			cb(null, n);
 		},
-		close(fd, cb) { fds.delete(fd); cb(null); },
+		close(fd, cb) {
+			const f = fds.get(fd);
+			if (f && f.dirty) keep(f.path);
+			fds.delete(fd); cb(null);
+		},
 		fstat(fd, cb) {
 			const f = fds.get(fd);
 			if (!f) { cb(err("EBADF")); return; }
@@ -195,7 +225,7 @@
 			const data = files.get(from);
 			if (!data) { cb(err("ENOENT", from)); return; }
 			files.delete(from); dirs.get(parent(from)).delete(base(from));
-			addFile(to, data); cb(null);
+			addFile(to, data); keep(to); cb(null);
 		},
 		rmdir(path, cb) { cb(err("ENOSYS")); },
 		fsync(fd, cb) { cb(null); },
@@ -216,4 +246,5 @@
 	};
 	globalThis.path = { resolve(...segs) { return norm(segs.join("/")); } };
 	globalThis.GolocoFS = { addFile, addLazy, misses, files, dirs, onLog: null };
+	restoreKept();
 })();
