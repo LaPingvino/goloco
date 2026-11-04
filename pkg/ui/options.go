@@ -71,8 +71,12 @@ type OptionsWindow struct {
 	TitleMusic   bool
 	MusicVolume  float64 // 0..1
 	OnTitleMusic func(bool)
-	OnMusicVol   func(float64)
-	OnClose      func()
+	// ShowFPS is Config::showFPS (the Display tab's show_fps checkbox);
+	// OnShowFPS toggles it (Config::write).
+	ShowFPS    bool
+	OnShowFPS  func(bool)
+	OnMusicVol func(float64)
+	OnClose    func()
 
 	// Tab is the current tab (Common::tab); the window takes that tab's size.
 	Tab int
@@ -235,6 +239,13 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		return
 	}
 	if w.Tab == OptTabDisplay {
+		if w.in([4]int{10, 127, 380, 12}, px, py) { // Widx::show_fps: cfg.showFPS ^= 1, Config::write
+			w.ShowFPS = !w.ShowFPS
+			if w.OnShowFPS != nil {
+				w.OnShowFPS(w.ShowFPS)
+			}
+			return
+		}
 		// screenModeMouseDown: the three modes (dropdown_stringid), the current
 		// one selected; screenModeDropdown sets it when it changes.
 		if w.in([4]int{235, 63, 154, 12}, px, py) && w.OpenDropdown != nil {
@@ -642,6 +653,9 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		pw, _ := MeasureTextBold("+")
 		inset("-", w.X+235+154-26+(13-1)/2-mw/2, w.Y+96) // disabled at the minimum scale
 		DrawTextBold(screen, "+", w.X+235+154-13+(12-1)/2-pw/2, w.Y+96, black)
+		if w.ShowFPS { // activatedWidgets: the checkbox's tick
+			DrawTextBold(screen, string(rune(0xAC)), w.X+10, w.Y+127, text)
+		}
 		DrawTextBold(screen, i18n.Label(i18n.OptionShowFpsCounter), w.X+10+10+4, w.Y+127, text)
 		return
 	}
