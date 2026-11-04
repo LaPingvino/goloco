@@ -68,7 +68,7 @@ func (m *Map) placeRoadBridge(c *Cmd, town int, x, y, z int32, rotation, roadObj
 	tw.Prng = [2]uint32{p.Srand0(), p.Srand1()}
 	bx, by = x, y
 	for range length {
-		m.createRoad(c, args(bridge, bx, by), CmdApply)
+		doCommand(CmdApply, func(f uint8) (int32, bool) { return m.createRoad(c, args(bridge, bx, by), f) })
 		bx, by = bx+int32(off[0]), by+int32(off[1])
 	}
 	return true
@@ -146,7 +146,8 @@ func (m *Map) appendToRoadEnd(c *Cmd, town int, x, y, z int32, rotation, roadObj
 		return
 	}
 	place := func(roadID uint8) {
-		m.createRoad(c, roadPlacementArgs{X: x, Y: y, Z: z, Rotation: rotation, RoadID: roadID, Bridge: 0xFF, RoadObjectID: roadObjectID}, CmdApply)
+		a := roadPlacementArgs{X: x, Y: y, Z: z, Rotation: rotation, RoadID: roadID, Bridge: 0xFF, RoadObjectID: roadObjectID}
+		doCommand(CmdApply, func(f uint8) (int32, bool) { return m.createRoad(c, a, f) })
 	}
 	double := t.Slope&slopeDoubleHeight != 0
 	corners := rotr4bit(t.Slope&0xF, rotation)
@@ -218,12 +219,12 @@ func (m *Map) appendToRoadEnd(c *Cmd, town int, x, y, z int32, rotation, roadObj
 // (terraform.go).
 func (m *Map) raiseLandAt(c *Cmd, x, y int32) {
 	tx, ty := int(x/tileSize), int(y/tileSize)
-	m.raiseLand(c, tx, ty, tx, ty, mapSelectionFull, CmdApply)
+	doCommand(CmdApply, func(f uint8) (int32, bool) { return m.raiseLand(c, tx, ty, tx, ty, mapSelectionFull, f) })
 }
 
 func (m *Map) lowerLandAt(c *Cmd, x, y int32) {
 	tx, ty := int(x/tileSize), int(y/tileSize)
-	m.lowerLand(c, tx, ty, tx, ty, mapSelectionFull, CmdApply)
+	doCommand(CmdApply, func(f uint8) (int32, bool) { return m.lowerLand(c, tx, ty, tx, ty, mapSelectionFull, f) })
 }
 
 // roadInformation is Town.cpp's RoadInformation (0x0047AC3E's result).
@@ -319,7 +320,8 @@ func (m *Map) buildInitialRoad(c *Cmd, town int) {
 		p := core.NewPrngSeed(tw.Prng[0], tw.Prng[1])
 		rot := uint8(p.RandNextBound(3))
 		tw.Prng = [2]uint32{p.Srand0(), p.Srand1()}
-		_, built := m.createRoad(c, roadPlacementArgs{X: x, Y: y, Z: h, Rotation: rot, RoadID: 0, Bridge: 0xFF, RoadObjectID: roadObj}, CmdApply)
+		a := roadPlacementArgs{X: x, Y: y, Z: h, Rotation: rot, RoadID: 0, Bridge: 0xFF, RoadObjectID: roadObj}
+		_, built := doCommand(CmdApply, func(f uint8) (int32, bool) { return m.createRoad(c, a, f) })
 		return !built
 	})
 }
@@ -384,5 +386,40 @@ func (m *Map) GrowTown(om *objects.ObjectManager, town int, growFlags uint8) {
 		x, y, z = end.X, end.Y, end.Z
 		onBridge = conn&TaDHasBridge != 0
 		tad = conn & TaDBasicMask
+	}
+}
+
+// buildSpeedToGrowthPerTick is Town::update's kBuildSpeedToGrowthPerTick.
+var buildSpeedToGrowthPerTick = [12]uint8{0, 1, 3, 5, 7, 9, 12, 16, 22, 0, 0, 0}
+
+// UpdateTowns is TownManager::update (0x00496B6D), from the game tick after
+// dateTick as upstream's tickLogic: every 8 scenario ticks the town
+// (ticks / 8) % 0x7F, when it exists, runs Town::update (updateTown).
+// PARTIAL: Config townGrowthDisabled (no such option in goloco yet: growth
+// always on); the editor never ticks here.
+func (m *Map) UpdateTowns(om *objects.ObjectManager) {
+	if om == nil || m.ScenarioTicks%8 != 0 {
+		return
+	}
+	id := int(m.ScenarioTicks / 8 % 0x7F)
+	if id >= len(m.Towns) || m.Towns[id].Name == 0xFFFF {
+		return
+	}
+	m.updateTown(om, id)
+}
+
+// updateTown is Town::update (0x0049742F): the size recalculated, then the
+// town grows by its build speed — none or the slowest (and then 7 in 8 by
+// gPrng1): one grow that only builds a first road and updates roads; faster:
+// that many full grows (roads extended and branched, buildings built).
+func (m *Map) updateTown(om *objects.ObjectManager, id int) {
+	m.RecalculateTownSize(id)
+	growth := buildSpeedToGrowthPerTick[m.Towns[id].BuildSpeed%12]
+	if growth == 0 || growth == 1 && m.Rng1.RandNext()&7 != 0 {
+		m.GrowTown(om, id, TownGrowBuildInitialRoad|TownGrowRoadUpdate|TownGrowNeutralRoadTakeover)
+		return
+	}
+	for range growth {
+		m.GrowTown(om, id, TownGrowBuildInitialRoad|TownGrowRoadUpdate|TownGrowNeutralRoadTakeover|TownGrowAllowRoadExpansion|TownGrowAllowRoadBranching|TownGrowConstructBuildings)
 	}
 }

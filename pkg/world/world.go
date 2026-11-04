@@ -62,6 +62,7 @@ type World struct {
 	stationTileList [][2]int
 	stationTilesKey stationListKey
 	vehicleTickMs   float64 // elapsed time not yet spent on vehicle ticks (TickSavedVehicles)
+	diagTicksDone   bool    // GOLOCO_DIAG_TICKS has run (TickSavedVehicles)
 	sim.State               // simulation state: map, construction head, undo history (pkg/sim)
 	renderer        *render.Renderer
 	trains          []*DemoTrain // demo trains (title screen / scenarios without saved entities)
@@ -688,6 +689,15 @@ func (w *World) FinishMapSave() error {
 func (w *World) CenterOn(kind string) bool {
 	if kind == "" {
 		return false
+	}
+
+	// "tile:X,Y": that tile (diagnostics).
+	var tx, ty int
+	if n, _ := fmt.Sscanf(kind, "tile:%d,%d", &tx, &ty); n == 2 {
+		w.LastCenterTileX, w.LastCenterTileY = tx, ty
+		w.SetCamera(float64(tx), float64(ty))
+		w.externalCamera = false
+		return true
 	}
 
 	// "travelling": the first rail vehicle whose head is travelling (diagnostics

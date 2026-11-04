@@ -59,6 +59,7 @@ func (m *Map) store(i int, c *MotionComponent) {
 func (m *Map) UpdateVehicles(om *objects.ObjectManager) {
 	m.ScenarioTicks++ // ScenarioManager: one scenario tick per game tick
 	m.dateTick(om)    // tickLogic: dateTick before the managers' updates
+	m.UpdateTowns(om) // TownManager::update (towngrowroad.go)
 	trains, err := m.Trains()
 	if err != nil {
 		return
