@@ -42,6 +42,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
     <div class="bar" aria-hidden="true"><div id="fill"></div></div>
     <div id="status" role="status">Loading the data pack…</div>
     <label class="opt"><input type="checkbox" id="oldrender"> Use the old renderer (the ported CPU renderer is now the default; it draws zoom 0, the old one still takes over when zoomed out)</label>
+    <label class="opt"><input type="checkbox" id="showlog"> Show goloco's log in the corner while playing (always shown when something goes wrong)</label>
     <button id="start" type="button" disabled>Start</button>
     <p class="note">Music is fetched when the game first plays a track. Saves and screenshots live in memory and are gone on reload. Goloco's log and any files it could not find are in the drawer below.</p>
   </div>
@@ -62,6 +63,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
     const log = $("log"); log.appendChild(el);
     while (log.childNodes.length > 2000) log.removeChild(log.firstChild);
     log.scrollTop = log.scrollHeight;
+    if (/^(panic|fatal error)/.test(t)) $("logbox").hidden = false; // something went wrong: the log shows, asked for or not
   };
   GolocoFS.onLog = (lines) => lines.split("\n").forEach((l) => logLine(l));
   let shown = 0;
@@ -87,6 +89,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
   };
 
   try { $("oldrender").checked = localStorage.getItem("goloco-oldrender") === "1"; } catch (e) {}
+  try { $("showlog").checked = localStorage.getItem("goloco-showlog") === "1"; } catch (e) {}
   let wasm, man;
   (async () => {
     // cache: "no-cache" — the browser revalidates each file (a 304 when unchanged), so a rebuild is never shadowed by a cached old build.
@@ -115,12 +118,15 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
       go.env = Object.assign({ HOME: "/w" }, man.env || {});
       if ($("oldrender").checked) go.env.GOLOCO_SCENE = "0";
       try { localStorage.setItem("goloco-oldrender", $("oldrender").checked ? "1" : ""); } catch (e) {}
+      try { localStorage.setItem("goloco-showlog", $("showlog").checked ? "1" : ""); } catch (e) {}
+      if (!$("showlog").checked) $("logbox").hidden = true; // the log drawer only when asked for (Joop 2026-11-04)
       const { instance } = await WebAssembly.instantiate(wasm, go.importObject);
       $("loader").hidden = true;
       document.body.style.padding = "0";
-      go.run(instance).then(() => { $("loader").hidden = false; status("The game exited. Reload to start again."); });
+      go.run(instance).then(() => { $("loader").hidden = false; $("logbox").hidden = false; status("The game exited. Reload to start again."); });
     } catch (e) {
       $("loader").hidden = false;
+      $("logbox").hidden = false;
       status("Could not start: " + e.message, true);
       logLine(String(e.stack || e), "miss");
     }

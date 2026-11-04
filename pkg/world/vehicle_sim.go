@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 )
 
 // vehicle_sim.go — the game's vehicle tick: the ported sim (pkg/sim,
@@ -19,10 +20,40 @@ func (w *World) TickVehicles() {
 	w.TickSavedVehicles()
 }
 
-// TickSavedVehicles runs the ported vehicle tick (sim.Map.UpdateVehicles) on
-// the scenario's own vehicles at upstream's rate: one game tick per 31 ms of
-// elapsed time, 1–3 per frame (OpenLoco.cpp: numUpdates = clamp(elapsed /
-// 31, 1, 3)); goloco's update runs at Ebitengine's 60 per second.
+// GameTicks is how many game ticks this frame runs, as OpenLoco.cpp paces
+// them: update() / fixedUpdate() call tick() at most 40 times a second
+// (Engine::UpdateRateHz: a 25 ms accumulator, capped at MaxTimeDeltaMs 500),
+// one call per frame; tick() runs numUpdates = the time since the last tick()
+// (at most 500 ms) / 31 ms, clamped to 1–3 — 1 when the mouse moved
+// (Input::hasPendingMouseInputUpdate). Everything the game ticks — tiles,
+// waves, the date, towns, vehicles, the title sequence — steps that many
+// times. Before, one Ebitengine update was one game tick: 60 a second on the
+// desktop, and on the web page, which draws a few frames a second, the whole
+// game crawled.
+func (w *World) GameTicks(mouseMoved bool) int {
+	now := time.Now()
+	if w.lastUpdate.IsZero() {
+		w.lastUpdate, w.lastTickTime = now, now
+		return 1
+	}
+	w.tickAccumulator = min(w.tickAccumulator+now.Sub(w.lastUpdate), 500*time.Millisecond)
+	w.lastUpdate = now
+	if w.tickAccumulator < 25*time.Millisecond { // fixedUpdate: not yet
+		return 0
+	}
+	w.tickAccumulator -= 25 * time.Millisecond
+	since := min(now.Sub(w.lastTickTime), 500*time.Millisecond) // tick(): _time_since_last_tick
+	w.lastTickTime = now
+	n := min(max(int(since/(31*time.Millisecond)), 1), 3)
+	if mouseMoved {
+		n = 1
+	}
+	return n
+}
+
+// TickSavedVehicles is one game tick of the ported sim (sim.Map.UpdateVehicles:
+// the date, towns, vehicles) on the scenario's own state; GameTicks says how
+// many a frame.
 func (w *World) TickSavedVehicles() {
 	if w.renderer == nil || w.renderer.ObjMgr == nil {
 		return
@@ -62,14 +93,5 @@ func (w *World) TickSavedVehicles() {
 		}
 		log.Printf("[World] GOLOCO_DIAG_TICKS: %d ticks, road pieces %d → %d, towns %d; new road at %v", n, r0, roads(), len(w.Map.Towns), news)
 	}
-	w.vehicleTickMs += 1000.0 / 60
-	n := 0
-	for w.vehicleTickMs >= 31 && n < 3 {
-		w.vehicleTickMs -= 31
-		w.Map.UpdateVehicles(w.renderer.ObjMgr)
-		n++
-	}
-	if n == 3 {
-		w.vehicleTickMs = 0
-	}
+	w.Map.UpdateVehicles(w.renderer.ObjMgr)
 }

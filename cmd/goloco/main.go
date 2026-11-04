@@ -46,35 +46,36 @@ const (
 )
 
 type Game struct {
-	diagConsDone        bool
-	noEdgeScrolling     bool // Options > Controls: edge scrolling off (Config::edgeScrolling)
-	w                   *world.World
-	titleWorld          *world.World // preserved title-screen world; restored on Quit to Menu
-	r                   *render.Renderer
-	toolbar             *ui.Toolbar
-	windowMgr           *ui.SimpleWindowManager
-	objMgr              *objects.ObjectManager
-	audioMgr            *audio.Manager
-	scenarioSelect      *ui.ScenarioSelectWindow // the New Game window when open
-	diagNewGameDone     bool
-	browse              *ui.PromptBrowseWindow // the Load window when open
-	options             *ui.OptionsWindow      // the Options window when open
-	townList            *ui.TownListWindow     // the town list when open
-	diagTownsDone       bool
-	diagOptionsDone     bool
-	diagBrowseDone      bool
-	titleSeq            *title.Sequence
-	inGame              bool // a scenario / save is loaded into gameplay
-	dropdown            *ui.DropdownMenu
-	mouseX              int
-	mouseY              int
-	dataDir             string
-	inTitleScreen       bool
-	soundEnabled        bool   // whether sound effects are on
-	musicEnabled        bool   // whether music is on
-	currentScenarioPath string // path of the currently loaded scenario/save
-	saveMsg             string // transient "Game Saved!" status overlay
-	saveMsgFrames       int    // frames remaining to show saveMsg
+	diagConsDone                   bool
+	noEdgeScrolling                bool // Options > Controls: edge scrolling off (Config::edgeScrolling)
+	w                              *world.World
+	titleWorld                     *world.World // preserved title-screen world; restored on Quit to Menu
+	r                              *render.Renderer
+	toolbar                        *ui.Toolbar
+	windowMgr                      *ui.SimpleWindowManager
+	objMgr                         *objects.ObjectManager
+	audioMgr                       *audio.Manager
+	scenarioSelect                 *ui.ScenarioSelectWindow // the New Game window when open
+	diagNewGameDone                bool
+	browse                         *ui.PromptBrowseWindow // the Load window when open
+	options                        *ui.OptionsWindow      // the Options window when open
+	townList                       *ui.TownListWindow     // the town list when open
+	diagTownsDone                  bool
+	diagOptionsDone                bool
+	diagBrowseDone                 bool
+	titleSeq                       *title.Sequence
+	inGame                         bool // a scenario / save is loaded into gameplay
+	dropdown                       *ui.DropdownMenu
+	mouseX                         int
+	lastTickMouseX, lastTickMouseY int // the cursor at the last GameTicks (mouseMoved)
+	mouseY                         int
+	dataDir                        string
+	inTitleScreen                  bool
+	soundEnabled                   bool   // whether sound effects are on
+	musicEnabled                   bool   // whether music is on
+	currentScenarioPath            string // path of the currently loaded scenario/save
+	saveMsg                        string // transient "Game Saved!" status overlay
+	saveMsgFrames                  int    // frames remaining to show saveMsg
 
 	// Current logical screen dimensions (updated by Layout each frame)
 	sw, sh int
@@ -445,11 +446,15 @@ func (g *Game) Update() error {
 		// w.Update() must be called here too — it increments animTick which
 		// drives water wave animation and demo train movement.
 		g.titleFrame++
-		g.w.Update()
 		g.w.Map.TitleMode = true
-		g.w.TickSavedVehicles() // the title is a running game upstream: its vehicles move
+		for range g.w.GameTicks(g.mouseMoved()) { // tickLogic(numUpdates): the title is a running game upstream
+			g.w.Update()
+			g.w.TickSavedVehicles()
+			if g.titleSeq != nil {
+				g.titleSeq.Update()
+			}
+		}
 		if g.titleSeq != nil {
-			g.titleSeq.Update()
 			cx, cy := g.titleSeq.GetCameraPosition()
 			g.w.SetCamera(cx, cy)
 		}
@@ -682,8 +687,8 @@ func (g *Game) Update() error {
 		g.diagTileY = -1
 	}
 	// Update world (skipped when paused; repeated per speed multiplier)
-	if !g.isPaused {
-		for i := 0; i < g.speedMult; i++ {
+	if n := g.w.GameTicks(g.mouseMoved()); !g.isPaused { // tickLogic(numUpdates × the speed)
+		for i := 0; i < n*g.speedMult; i++ {
 			g.w.Update()
 			g.w.TickVehicles() // gameplay: the ported vehicle tick
 			if g.inGame {
@@ -2680,4 +2685,12 @@ func (g *Game) playerPanelCompany(st *ui.PlayerPanelState) {
 func (g *Game) uiOpen() bool {
 	return g.prompt != nil || g.options != nil || g.townList != nil || g.browse != nil || g.scenarioSelect != nil ||
 		(g.dropdown != nil && g.dropdown.Visible) || (g.windowMgr != nil && len(g.windowMgr.Windows) > 0)
+}
+
+// mouseMoved is Input::hasPendingMouseInputUpdate for GameTicks: the cursor
+// moved since the last frame.
+func (g *Game) mouseMoved() bool {
+	moved := g.mouseX != g.lastTickMouseX || g.mouseY != g.lastTickMouseY
+	g.lastTickMouseX, g.lastTickMouseY = g.mouseX, g.mouseY
+	return moved
 }
