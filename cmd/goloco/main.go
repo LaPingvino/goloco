@@ -1045,6 +1045,9 @@ func (g *Game) prewarmTick() {
 var processStart = time.Now()
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	if g.shotsEvery > 0 && g.shotsLeft > 0 && time.Since(g.shotsLast) >= g.shotsEvery && os.Getenv("GOLOCO_SHOT_PAINTDUMP") != "" {
+		paint.Dump = &[]string{} // diagnostic: this frame's paint structs, saved with the shot
+	}
 	defer g.maybeSaveShot(screen) // captures (--shots) of the finished frame: after the FPS counter
 	defer g.drawFPS(screen)       // SoftwareDrawingEngine: the FPS counter over everything, last
 	// ── Loading screen ──────────────────────────────────────────────────────
@@ -1518,6 +1521,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	g.shotsLast = time.Now()
 	g.shotsN++
 	name := debugPath(fmt.Sprintf("shot_%02d.png", g.shotsN))
+	if paint.Dump != nil { // GOLOCO_SHOT_PAINTDUMP: rtX order type image x y w h minX minY minZ maxX maxY maxZ quadrant
+		os.WriteFile(strings.TrimSuffix(name, ".png")+".paint.txt", []byte(strings.Join(*paint.Dump, "\n")+"\n"), 0o644)
+		paint.Dump = nil
+	}
 	if f, err := os.Create(name); err == nil {
 		if err := png.Encode(f, screen.SubImage(screen.Bounds())); err != nil {
 			log.Printf("[Shots] encode %s: %v", name, err)

@@ -58,6 +58,7 @@ func slopeFlagsToIndex(f uint8) int {
 // PaintWall paints one wall element at the current sprite position. colourMap
 // is the remap for the primary colour (used when the object has one).
 func (s *Session) PaintWall(el WallEl, obj WallObj, colourMap []uint8, sprite func(int) *gfx8.Sprite) {
+	s.ItemType = ItemWall // setItemType (PaintWall.cpp:115 (ghosts: noInteraction — no ghosts here); the inner noInteraction resets not yet ported)
 	rot := int((s.Rotation + el.Rotation) & 3)
 	h := int(el.BaseZ) * 4
 	off, bbOff, bbLen := wallOffsets[rot], wallBBOffsets[rot], wallBBLengths[rot]

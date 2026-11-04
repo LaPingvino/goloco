@@ -20,6 +20,7 @@ type TrackEl struct {
 // PaintTrack paints one track element at the current sprite position; image
 // is the track object's image base.
 func (s *Session) PaintTrack(el TrackEl, image int, sprite func(int) *gfx8.Sprite) {
+	s.ItemType = ItemTrack // setItemType (PaintTrack.cpp:270; the inner noInteraction resets not yet ported)
 	tid, seq := int(el.TrackID), int(el.SequenceIndex)
 	if tid >= len(TrackParts) || seq >= len(TrackParts[tid]) {
 		return
@@ -70,6 +71,7 @@ type TrackMod struct {
 // track/road priority 4, the others as a child of the last struct; Style1's
 // supports via setAdditionSupport (drawn by paintSupports). PARTIAL: ghost mods.
 func (s *Session) PaintTrackMods(el TrackEl, mods [4]TrackMod, sprite func(int) *gfx8.Sprite) {
+	s.ItemType = ItemTrackExtra // setItemType (PaintTrack.cpp:306; the inner noInteraction resets not yet ported)
 	if s.Zoom > 0 {
 		return
 	}
