@@ -48,6 +48,10 @@ func (w *World) drawScene(screen *ebiten.Image) {
 	// are repainted a part a frame (SceneEvery parts), so no frame waits for
 	// a whole world render; a moved camera, zoom or size repaints all of it.
 	view := scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: uint32(w.animTick)}
+	if dirtyRegions {
+		w.drawSceneDirty(screen, view)
+		return
+	}
 	var rt *gfx8.RenderTarget
 	same := view.X == w.lastView.X && view.Y == w.lastView.Y && view.W == w.lastView.W && view.H == w.lastView.H && view.Zoom == w.lastView.Zoom
 	if w.sceneImg == nil || w.sceneImg.Bounds().Dx() != sw || w.sceneImg.Bounds().Dy() != sh {
@@ -100,4 +104,33 @@ func (w *World) drawScene(screen *ebiten.Image) {
 		w.lastBits = rt.Bits
 		ui.BeginFrame8(rt.Bits, sw, sh)
 	}
+}
+
+// dirtyRegions (GOLOCO_DIRTY=1, while the port is under way — LOOP's DIRTY
+// REGIONS D2): the world drawn as upstream draws it, into a screen that
+// persists, repainted by renderDirtyRegions: the invalidation grid's rects,
+// each through Viewport::paint(rect) (scene.RenderRect, upstream's column
+// split). Until the invalidations are ported (D3) the whole screen is
+// invalidated every frame.
+var dirtyRegions = os.Getenv("GOLOCO_DIRTY") != ""
+
+func (w *World) drawSceneDirty(screen *ebiten.Image, view scene.View) {
+	sw, sh := view.W, view.H
+	if w.dirtyRT == nil || w.dirtyRT.Width != sw || w.dirtyRT.Height != sh {
+		w.dirtyRT = gfx8.NewRenderTarget(sw, sh)
+		w.dirtyGrid.Reset(sw, sh, gfx8.InvalidationBlockWidth, gfx8.InvalidationBlockHeight)
+	}
+	if w.sceneImg == nil || w.sceneImg.Bounds().Dx() != sw || w.sceneImg.Bounds().Dy() != sh {
+		w.sceneImg = ebiten.NewImage(sw, sh)
+	}
+	w.dirtyGrid.Invalidate(0, 0, sw, sh) // PARTIAL (D3): the entity / tile / view invalidations instead
+	rt := w.dirtyRT
+	w.dirtyGrid.TraverseDirtyCells(func(l, t, r, b int) {
+		w.scene.RenderRect(&w.Map, view, rt, l, t, r, b)
+		w.sceneImg.SubImage(image.Rect(l, t, r, b)).(*ebiten.Image).WritePixels(w.scene.ToRGBARect(rt, l, t, r, b))
+	})
+	w.lastView = view
+	screen.DrawImage(w.sceneImg, nil)
+	w.lastBits = rt.Bits
+	ui.BeginFrame8(rt.Bits, sw, sh)
 }

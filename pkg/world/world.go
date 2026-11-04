@@ -2,6 +2,7 @@ package world
 
 import (
 	"fmt"
+	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"image"
 	"image/color"
@@ -91,20 +92,22 @@ type World struct {
 	viewW, viewH int
 
 	// 2-pass blend rendering (water, glass, etc.)
-	worldBuf     *ebiten.Image      // pass-1 target: all opaque sprites
-	blendBuf     *ebiten.Image      // pass-2 target: blend-mode overlay
-	blendOps     []palblend.Op      // queued during pass 1 (blend.go)
-	blendFrame   []byte             // frame read back for blending (reused)
-	blendOut     []byte             // blended pixels written to blendBuf (reused)
-	palIndex     palblend.Index     // palette colour → index
-	maskCache    map[int]maskEntry  // sprite alpha masks
-	scene        *scene.Renderer    // ported software renderer (scene.go)
-	sceneImg     *ebiten.Image      // its frame, uploaded each draw
-	sceneFrames  int                // frames since the last timing log
-	sceneTime    time.Duration      // render time accumulated over them
-	frameCounter int                // draw-frame counter for UI pulses
-	highlightOps []worldHighlightOp // ripple/wave sprites drawn after blend
-	waterOps     []worldHighlightOp // water surface ops drawn after all terrain (pass 1.5)
+	worldBuf     *ebiten.Image         // pass-1 target: all opaque sprites
+	blendBuf     *ebiten.Image         // pass-2 target: blend-mode overlay
+	blendOps     []palblend.Op         // queued during pass 1 (blend.go)
+	blendFrame   []byte                // frame read back for blending (reused)
+	blendOut     []byte                // blended pixels written to blendBuf (reused)
+	palIndex     palblend.Index        // palette colour → index
+	maskCache    map[int]maskEntry     // sprite alpha masks
+	scene        *scene.Renderer       // ported software renderer (scene.go)
+	sceneImg     *ebiten.Image         // its frame, uploaded each draw
+	dirtyRT      *gfx8.RenderTarget    // GOLOCO_DIRTY: the screen that persists (Viewport's pixels)
+	dirtyGrid    gfx8.InvalidationGrid // GOLOCO_DIRTY: what to repaint
+	sceneFrames  int                   // frames since the last timing log
+	sceneTime    time.Duration         // render time accumulated over them
+	frameCounter int                   // draw-frame counter for UI pulses
+	highlightOps []worldHighlightOp    // ripple/wave sprites drawn after blend
+	waterOps     []worldHighlightOp    // water surface ops drawn after all terrain (pass 1.5)
 
 	// RenderIssues tracks tiles where rendering failed silently during the last Draw().
 	// Accumulated per-frame; exposed via WorstRenderIssue() for --diag targeting.
