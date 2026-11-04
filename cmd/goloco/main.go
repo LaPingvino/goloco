@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -360,6 +361,9 @@ func NewGame() *Game {
 	} else {
 		titleSeq.Start(384, 384)
 		w.SetZoom(0)
+	}
+	if z, err := strconv.Atoi(os.Getenv("GOLOCO_ZOOM")); err == nil { // diagnostic: start at another zoom (0-3)
+		w.SetZoom(z)
 	}
 	// Apply initial camera position from sequence
 	{
@@ -1929,6 +1933,9 @@ func (g *Game) loadScenario(filePath string) error {
 	g.windowMgr.CloseWindow("Load Game")
 	g.windowMgr.CloseWindow("New Game")
 	log.Printf("[Game] Loaded scenario: %s (%dx%d)", filePath, sc.MapWidth, sc.MapHeight)
+	if z, err := strconv.Atoi(os.Getenv("GOLOCO_ZOOM")); err == nil && g.w != nil { // diagnostic: start at another zoom
+		g.w.SetZoom(z)
+	}
 	return nil
 }
 
