@@ -3,6 +3,8 @@ package sim
 import (
 	"testing"
 
+	"github.com/LaPingvino/goloco/pkg/core"
+
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -55,5 +57,55 @@ func TestPlaceRoadBridge(t *testing.T) {
 	flat := townRoadMap(16, 4)
 	if flat.placeRoadBridge(c, 0, 5*32, 3*32, 16, 2, 0) || len(flat.TileAt(5, 3).Roads) != 0 {
 		t.Error("flat ground: no bridge, nothing built")
+	}
+}
+
+// appendToRoadEnd: on flat ground a piece is added (straight or, 1% each, a
+// curve — as the town's prng draws); past the second try with no buildings
+// near, beside a parallel town road, and on water nothing is built; on a slope
+// rising ahead (south-west corners up, rotation 0) the steep-slope-up piece.
+func TestAppendToRoadEnd(t *testing.T) {
+	c := townRoadCmd()
+	fresh := func() *Map { m := townRoadMap(16, 4); m.RoadAnyTypeCompatible = 1; return m }
+
+	m := fresh()
+	p := core.NewPrngSeed(0x1234, 0x5678)
+	want := uint8(0)
+	if v := p.RandNext() & 0xFFFF; v < 0x028F {
+		want = 1
+	} else if v < 0x051E {
+		want = 2
+	}
+	m.appendToRoadEnd(c, 0, 5*32, 5*32, 16, 2, 0, 0, false)
+	if rs := m.TileAt(5, 5).Roads; len(rs) != 1 || rs[0].RoadID != want || rs[0].Rotation != 2 {
+		t.Fatalf("flat: %+v (want road id %d)", rs, want)
+	}
+
+	m = fresh()
+	m.appendToRoadEnd(c, 0, 5*32, 5*32, 16, 2, 0, 2, false)
+	if len(m.TileAt(5, 5).Roads) != 0 {
+		t.Error("third try, no buildings near: nothing built")
+	}
+
+	m = fresh()
+	m.TileAt(5, 6).Roads = []scenario.RoadElement{{BaseZ: 4, ClearZ: 12, Rotation: 2}} // beside, y+32 (kBuggedRotationOffset[2])
+	m.TileAt(5, 6).insertRef(scenario.KindRoad, 0, 4)
+	m.appendToRoadEnd(c, 0, 5*32, 5*32, 16, 2, 0, 0, false)
+	if len(m.TileAt(5, 5).Roads) != 0 {
+		t.Error("beside a parallel town road: nothing built")
+	}
+
+	m = fresh()
+	m.TileAt(5, 5).WaterLevel = 1
+	m.appendToRoadEnd(c, 0, 5*32, 5*32, 16, 2, 0, 0, false)
+	if len(m.TileAt(5, 5).Roads) != 0 {
+		t.Error("water: nothing built")
+	}
+
+	m = fresh()
+	m.TileAt(5, 5).Slope = slopeCornerSouth | slopeCornerWest
+	m.appendToRoadEnd(c, 0, 5*32, 5*32, 16, 0, 0, 0, false)
+	if rs := m.TileAt(5, 5).Roads; len(rs) != 1 || rs[0].RoadID != 7 {
+		t.Errorf("slope rising ahead: %+v (want the steep-slope-up piece, 7)", rs)
 	}
 }
