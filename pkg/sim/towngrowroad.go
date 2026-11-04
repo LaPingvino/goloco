@@ -2,6 +2,7 @@ package sim
 
 import (
 	"github.com/LaPingvino/goloco/pkg/core"
+	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
 
@@ -234,33 +235,6 @@ type roadInformation struct {
 	StreetLightStyle uint8 // RoadElement::streetLightStyle (byte 5 bits 2–3, shared with the level crossing id)
 }
 
-// roadStationAfter is Tile::roadStation(roadId, direction, baseZ): the
-// station element that follows a road with a station element at baseZ, of
-// this piece and rotation (other roads may stand between; a different height
-// or another kind of element breaks the run).
-func (t *Tile) roadStationAfter(roadID, direction, baseZ uint8) *scenario.StationElement {
-	found := false
-	for _, r := range t.Order {
-		if found && r.Kind == scenario.KindStation {
-			return &t.Stations[r.Index]
-		}
-		if r.Kind != scenario.KindRoad {
-			found = false
-			continue
-		}
-		e := t.Roads[r.Index]
-		if e.BaseZ != baseZ {
-			found = false
-			continue
-		}
-		if e.Rotation != direction || e.RoadID != roadID || !e.HasStationElement {
-			continue
-		}
-		found = true
-	}
-	return nil
-}
-
 // getRoadInformation is Town.cpp 0x0047AC3E: for the road piece at (x, y,
 // z) in tad (id << 3 | reversed << 2 | direction) — from its far end when
 // reversed —, the matching town road's (any-road-type-compatible, first
@@ -301,7 +275,7 @@ func (m *Map) getRoadInformation(c *Cmd, x, y, z int32, tad uint16) roadInformat
 			res.HasStreetLight, res.StreetLightStyle = true, e.LevelCrossingObjectID
 		}
 		if e.HasStationElement {
-			if st := t.roadStationAfter(id, dir, uint8(z/smallZStep)); st != nil && c.Objects != nil && int(st.ObjectID) < len(c.Objects.RoadStationObjects) {
+			if st := t.roadStation(id, dir, uint8(z/smallZStep)); st != nil && c.Objects != nil && int(st.ObjectID) < len(c.Objects.RoadStationObjects) {
 				if so := c.Objects.RoadStationObjects[st.ObjectID]; so != nil && so.Flags&(1<<3) != 0 { // RoadStationFlags::roadEnd
 					res.IsStationRoadEnd = true
 				}
@@ -310,4 +284,105 @@ func (m *Map) getRoadInformation(c *Cmd, x, y, z int32, tad uint16) roadInformat
 		return res
 	}
 	return none
+}
+
+// TownGrowFlags (World/Town.h).
+const (
+	TownGrowBuildInitialRoad    = 1 << 0
+	TownGrowRoadUpdate          = 1 << 1
+	TownGrowNeutralRoadTakeover = 1 << 2
+	TownGrowAllowRoadExpansion  = 1 << 3
+	TownGrowAllowRoadBranching  = 1 << 4
+	TownGrowConstructBuildings  = 1 << 5
+	TownGrowBuildImmediately    = 1 << 6
+	TownGrowAlwaysUpdate        = 1 << 7
+)
+
+// buildInitialRoad is Town.cpp 0x00498101: over the square around the town,
+// on the first tile where it works, a straight town road (the ideal type) on
+// top of the surface, in a direction the town's prng draws.
+func (m *Map) buildInitialRoad(c *Cmd, town int) {
+	tw := &m.Towns[town]
+	m.squareSearch(int32(tw.X), int32(tw.Y), func(x, y int32) bool {
+		t := m.TileAt(int(x/tileSize), int(y/tileSize))
+		h := int32(t.BaseZ) * smallZStep
+		if t.Slope&0x1F != 0 {
+			h += 16
+			if t.Slope&slopeDoubleHeight != 0 {
+				h += 16
+			}
+		}
+		roadObj, ok := idealTownRoadID(tw.Size, c.Objects)
+		if !ok {
+			return true
+		}
+		p := core.NewPrngSeed(tw.Prng[0], tw.Prng[1])
+		rot := uint8(p.RandNextBound(3))
+		tw.Prng = [2]uint32{p.Srand0(), p.Srand1()}
+		_, built := m.createRoad(c, roadPlacementArgs{X: x, Y: y, Z: h, Rotation: rot, RoadID: 0, Bridge: 0xFF, RoadObjectID: roadObj}, CmdApply)
+		return !built
+	})
+}
+
+// GrowTown is Town::grow (Town.cpp 0x00498116) as the neutral company: from
+// a random end of one of the town's roads (findRoadExtent), up to 75 steps
+// along the road while the closest town is still this one; at a dead end
+// (not a station's road end) the road is extended (appendToRoadEnd); where
+// it branches, a branch is drawn by the town's prng. No road yet: the first
+// one (buildInitialRoad), when growFlags allow.
+// PARTIAL (each its own port, queue 5.9f3): the takeover of company roads /
+// road type updates / street lights (roadUpdate, neutralRoadTakeover),
+// constructBuilding (constructBuildings), addRoadJunction
+// (allowRoadBranching) — skipped here, so those flags do nothing yet.
+func (m *Map) GrowTown(om *objects.ObjectManager, town int, growFlags uint8) {
+	c := &Cmd{Company: CompanyNeutral, Objects: om}
+	ext, ok := m.findRoadExtent(town, om)
+	if !ok {
+		if growFlags&TownGrowBuildInitialRoad != 0 {
+			m.buildInitialRoad(c, town)
+		}
+		return
+	}
+	tw := &m.Towns[town]
+	p := core.NewPrngSeed(tw.Prng[0], tw.Prng[1])
+	save := func() { tw.Prng = [2]uint32{p.Srand0(), p.Srand1()} }
+	x, y, z, tad := ext.X, ext.Y, ext.Z, ext.TAD
+	if p.RandBool() { // from the piece's other end
+		rc := RoadCoordinates[tad&0x7F]
+		x, y, z = x+int32(rc.DX), y+int32(rc.DY), z+int32(rc.DZ)
+		if rc.RotEnd < 12 {
+			x -= int32(RotationOffset[rc.RotEnd][0])
+			y -= int32(RotationOffset[rc.RotEnd][1])
+		}
+		tad ^= 4
+	}
+	save()
+	ideal, ok := idealTownRoadID(tw.Size, om)
+	if !ok {
+		return
+	}
+	onBridge := ext.IsBridge
+	for i := 0; i < 75; i++ {
+		if closest, _, ok := m.ClosestTownAndDensity(x, y); !ok || closest != town {
+			break
+		}
+		info := m.getRoadInformation(c, x, y, z, tad)
+		end, _ := RoadConnectionEnd(x, y, z, tad)
+		rc := m.RoadConnections(end.X, end.Y, end.Z, end.NextRotation, CompanyNeutral, 0xFF, 0, 0)
+		if len(rc.Connections) == 0 {
+			if growFlags&TownGrowAllowRoadExpansion != 0 && !info.IsStationRoadEnd {
+				m.appendToRoadEnd(c, town, end.X, end.Y, end.Z, end.NextRotation, ideal, i, onBridge)
+			}
+			break
+		}
+		conn := rc.Connections[0]
+		if len(rc.Connections) > 1 { // several branches: one drawn
+			p = core.NewPrngSeed(tw.Prng[0], tw.Prng[1])
+			conn = rc.Connections[int(p.RandNext()&0xFFFF)*len(rc.Connections)/65536]
+			save()
+		}
+		x, y, z = end.X, end.Y, end.Z
+		onBridge = conn&TaDHasBridge != 0
+		tad = conn & TaDBasicMask
+	}
 }
