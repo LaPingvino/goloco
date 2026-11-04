@@ -648,7 +648,7 @@ func (s *Session) Draw(rt *gfx8.RenderTarget) {
 			return
 		}
 		n++
-		log.Printf("[PaintAt %d,%d] #%d %s %v image %d at %d,%d box %v-%v", DiagAt[0], DiagAt[1], n, kind, ps.Type, img.Sprite.Index, x, y, ps.Mins, ps.Maxs)
+		log.Printf("[PaintAt %d,%d] #%d %s %v image %d at %d,%d box %v-%v %+v", DiagAt[0], DiagAt[1], n, kind, ps.Type, img.Sprite.Index, x, y, ps.Mins, ps.Maxs, ps.Item)
 	}
 	attached := func(ps *Struct) {
 		for a := ps.attached; a != nil; a = a.next {

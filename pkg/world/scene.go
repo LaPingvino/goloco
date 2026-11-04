@@ -1,13 +1,16 @@
 package world
 
 import (
+	"fmt"
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"image"
+	"image/png"
 	"log"
 	"math"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/LaPingvino/goloco/pkg/scene"
@@ -48,7 +51,7 @@ func (w *World) drawScene(screen *ebiten.Image) {
 	// responsiveness"): while a window or menu is open the world's columns
 	// are repainted a part a frame (SceneEvery parts), so no frame waits for
 	// a whole world render; a moved camera, zoom or size repaints all of it.
-	view := scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: uint32(w.animTick)}
+	view := scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: w.Map.ScenarioTicks} // ScenarioManager::getScenarioTicks(): what upstream's paint animates by (not the frame count)
 	if dirtyRegions {
 		w.drawSceneDirty(screen, view)
 		return
@@ -150,6 +153,9 @@ func (w *World) drawSceneDirty(screen *ebiten.Image, view scene.View) {
 		w.sceneImg.SubImage(image.Rect(l, t, r, b)).(*ebiten.Image).WritePixels(w.scene.ToRGBARect(rt, l, t, r, b))
 	})
 	w.lastView = view
+	if dirtyCheck > 0 {
+		w.checkDirty(view)
+	}
 	screen.DrawImage(w.sceneImg, nil)
 	w.lastBits = rt.Bits
 	ui.BeginFrame8(rt.Bits, sw, sh)
@@ -190,4 +196,46 @@ func (w *World) invalidateRect(l, t, r, b int, zoom uint8) {
 	l, r = max(l, v.X), min(r, v.X+vw)
 	t, b = max(t, v.Y), min(b, v.Y+vh)
 	w.dirtyGrid.Invalidate((l-v.X)>>v.Zoom, (t-v.Y)>>v.Zoom, (r-v.X)>>v.Zoom, (b-v.Y)>>v.Zoom)
+}
+
+// dirtyCheck (GOLOCO_DIRTY_CHECK=N, diagnostic): every Nth frame the whole
+// view is repainted into a second screen and compared with the dirty-region
+// one; differing pixels are logged and the first frames with any are saved
+// (debug/dirtycheck_NN.png: the difference in red over the full repaint) —
+// what an invalidation upstream does that goloco misses.
+var dirtyCheck = func() int {
+	n, _ := strconv.Atoi(os.Getenv("GOLOCO_DIRTY_CHECK"))
+	return n
+}()
+
+func (w *World) checkDirty(view scene.View) {
+	w.dirtyChecks++
+	if w.dirtyChecks%dirtyCheck != 0 {
+		return
+	}
+	full := gfx8.NewRenderTarget(view.W, view.H)
+	w.scene.RenderRect(&w.Map, view, full, 0, 0, view.W, view.H)
+	diff := 0
+	for i := range full.Bits {
+		if full.Bits[i] != w.dirtyRT.Bits[i] {
+			diff++
+		}
+	}
+	log.Printf("[DirtyCheck] frame %d: %d of %d pixels differ from a full repaint", w.dirtyChecks, diff, len(full.Bits))
+	if diff == 0 || w.dirtySaved >= 3 {
+		return
+	}
+	w.dirtySaved++
+	img := w.scene.ToRGBA(full)
+	out := image.NewRGBA(img.Rect)
+	copy(out.Pix, img.Pix)
+	for i := range full.Bits {
+		if full.Bits[i] != w.dirtyRT.Bits[i] {
+			out.Pix[i*4], out.Pix[i*4+1], out.Pix[i*4+2] = 255, 0, 0
+		}
+	}
+	if f, err := os.Create(fmt.Sprintf("debug/dirtycheck_%02d.png", w.dirtySaved)); err == nil {
+		png.Encode(f, out)
+		f.Close()
+	}
 }

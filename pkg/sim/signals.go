@@ -131,7 +131,7 @@ func (m *Map) SetSignalState(x, y, z int32, tad uint16, trackType uint8, flags u
 					should = foundTrack.SequenceIndex == 0
 				}
 				if should {
-					m.invalidateTile(sx, sy, sz, sz+24, ZoomHalf, 0)
+					m.invalidateTile(sx, sy, sz, sz+24, ZoomHalf, defaultRadius)
 				}
 			}
 		case unk1 == 8:
@@ -149,7 +149,7 @@ func (m *Map) SetSignalState(x, y, z int32, tad uint16, trackType uint8, flags u
 			}
 			if animate {
 				m.CreateAnimation(0, sx, sy, uint8(sz/4)) // (its update, updateSignalAnimation: PARTIAL — animation.go)
-				m.invalidateTile(sx, sy, sz, sz+24, ZoomHalf, 0)
+				m.invalidateTile(sx, sy, sz, sz+24, ZoomHalf, defaultRadius)
 			}
 		}
 	}

@@ -114,7 +114,7 @@ func (m *Map) updateBuildingAnimation1(a scenario.Animation, om *objects.ObjectM
 			}
 		}
 		if el != nil {
-			m.invalidateTile(x, y, int32(el.BaseZ)*4, int32(el.ClearZ)*4, ZoomHalf, 0)
+			m.invalidateTile(x, y, int32(el.BaseZ)*4, int32(el.ClearZ)*4, ZoomHalf, defaultRadius)
 		}
 	}
 	return false
@@ -150,7 +150,7 @@ func (m *Map) updateBuildingAnimation2(a scenario.Animation, om *objects.ObjectM
 		return true
 	}
 	if m.ScenarioTicks&(1<<slowest-1) == 0 {
-		m.invalidateTile(int32(a.X), int32(a.Y), int32(b.BaseZ)*4, int32(b.ClearZ)*4, ZoomQuarter, 0)
+		m.invalidateTile(int32(a.X), int32(a.Y), int32(b.BaseZ)*4, int32(b.ClearZ)*4, ZoomQuarter, defaultRadius)
 	}
 	return false
 }
@@ -195,7 +195,7 @@ func (m *Map) updateIndustryAnimation1(a scenario.Animation, om *objects.ObjectM
 			return true
 		}
 		if m.ScenarioTicks&(1<<speed-1) == 0 {
-			m.invalidateTile(int32(a.X), int32(a.Y), int32(el.BaseZ)*4, int32(el.ClearZ)*4, ZoomQuarter, 0)
+			m.invalidateTile(int32(a.X), int32(a.Y), int32(el.BaseZ)*4, int32(el.ClearZ)*4, ZoomQuarter, defaultRadius)
 		}
 		return false
 	}
@@ -237,7 +237,7 @@ func (m *Map) updateIndustryAnimation2(a scenario.Animation, om *objects.ObjectM
 		return true
 	}
 	inval := func(el *scenario.IndustryElement, x, y int32) {
-		m.invalidateTile(x, y, int32(el.BaseZ)*4, int32(el.ClearZ)*4, ZoomQuarter, 0)
+		m.invalidateTile(x, y, int32(el.BaseZ)*4, int32(el.ClearZ)*4, ZoomQuarter, defaultRadius)
 	}
 	for _, r := range t.Order {
 		if r.Kind != scenario.KindIndustry {
@@ -331,7 +331,7 @@ func (m *Map) updateSignalAnimation(a scenario.Animation, om *objects.ObjectMana
 		}
 	}
 	if inval {
-		m.invalidateTile(int32(a.X), int32(a.Y), int32(a.BaseZ)*4, int32(a.BaseZ)*4+32, ZoomHalf, 0)
+		m.invalidateTile(int32(a.X), int32(a.Y), int32(a.BaseZ)*4, int32(a.BaseZ)*4+32, ZoomHalf, defaultRadius)
 	}
 	return !has
 }
@@ -384,7 +384,7 @@ func (m *Map) updateLevelCrossingAnimation(a scenario.Animation, om *objects.Obj
 		el.AnimFrame = f
 	}
 	if inval {
-		m.invalidateTile(int32(a.X), int32(a.Y), int32(a.BaseZ)*4, int32(a.BaseZ)*4+32, ZoomHalf, 0)
+		m.invalidateTile(int32(a.X), int32(a.Y), int32(a.BaseZ)*4, int32(a.BaseZ)*4+32, ZoomHalf, defaultRadius)
 	}
 	return !has
 }
@@ -426,7 +426,7 @@ func (m *Map) updateStationAnimation(a scenario.Animation, om *objects.ObjectMan
 			return true
 		}
 		if m.ScenarioTicks&(1<<speed-1) == 0 {
-			m.invalidateTile(int32(a.X), int32(a.Y), int32(el.BaseZ)*4, int32(el.ClearZ)*4, ZoomQuarter, 0)
+			m.invalidateTile(int32(a.X), int32(a.Y), int32(el.BaseZ)*4, int32(el.ClearZ)*4, ZoomQuarter, defaultRadius)
 		}
 		return false
 	}

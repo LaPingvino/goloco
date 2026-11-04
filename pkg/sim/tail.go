@@ -40,7 +40,7 @@ func (m *Map) LeaveLevelCrossing(x, y, z int32, tad uint16, unk int) {
 			m.CreateAnimation(1, x, y, uint8(z/4)) // (updateLevelCrossingAnimation: PARTIAL — animation.go)
 		}
 	}
-	m.invalidateTile(x, y, z, z+32, ZoomFull, 0) // the crossing's barriers redrawn
+	m.invalidateTile(x, y, z, z+32, ZoomFull, defaultRadius) // the crossing's barriers redrawn
 }
 
 // UpdateRoadTileOccupancy is VehicleBase::updateRoadTileOccupancy: the lanes

@@ -244,7 +244,7 @@ func (m *Map) removeBuildingElement(c *Cmd, t *Tile, k int, px, py int32) {
 		}
 	}
 	idx := int(r.Index)
-	m.invalidateTile(px, py, int32(t.Buildings[idx].BaseZ)*4, int32(t.Buildings[idx].ClearZ)*4, ZoomEighth, 0)
+	m.invalidateTile(px, py, int32(t.Buildings[idx].BaseZ)*4, int32(t.Buildings[idx].ClearZ)*4, ZoomEighth, defaultRadius)
 	t.Buildings = append(t.Buildings[:idx], t.Buildings[idx+1:]...)
 	t.removeRef(scenario.KindBuilding, idx)
 }

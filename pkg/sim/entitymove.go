@@ -54,6 +54,10 @@ const (
 // zMin and zMax (pos + 16, gameToScreen, grown by radius) into a screen rect.
 type InvalidateTile func(x, y, zMin, zMax int32, zoom uint8, radius int32)
 
+// defaultRadius is ViewportManager::invalidate's default radius (ViewportManager.h:
+// int radius = 32) — what every call that names none gets.
+const defaultRadius = 32
+
 // invalidateTile is ViewportManager::invalidate(pos, zMin, zMax, zoom, radius).
 func (m *Map) invalidateTile(x, y, zMin, zMax int32, zoom uint8, radius int32) {
 	if m.InvalidateTile != nil {
@@ -64,5 +68,5 @@ func (m *Map) invalidateTile(x, y, zMin, zMax int32, zoom uint8, radius int32) {
 // mapInvalidateTileFull is TileManager::mapInvalidateTileFull: the tile from
 // height 0 to 1120 at ZoomLevel::eighth.
 func (m *Map) mapInvalidateTileFull(x, y int32) {
-	m.invalidateTile(x, y, 0, 1120, ZoomEighth, 0)
+	m.invalidateTile(x, y, 0, 1120, ZoomEighth, defaultRadius)
 }
