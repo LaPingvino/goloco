@@ -40,12 +40,16 @@ func (m *Map) UpdateAnimations(om *objects.ObjectManager) {
 // updateAnimation is callUpdateFunction: true = remove it.
 func (m *Map) updateAnimation(a scenario.Animation, om *objects.ObjectManager) bool {
 	switch a.Type {
+	case 3:
+		return m.updateIndustryAnimation1(a, om)
+	case 4:
+		return m.updateIndustryAnimation2(a, om)
 	case 5:
 		return m.updateBuildingAnimation1(a, om)
 	case 6:
 		return m.updateBuildingAnimation2(a, om)
 	}
-	// PARTIAL: 0 signal, 1 level crossing, 3 / 4 industry, 7 airport, 8 dock
+	// PARTIAL: 0 signal, 1 level crossing, 7 airport, 8 dock
 	// (and 2, which upstream keeps without doing anything) are kept unstepped.
 	return false
 }
@@ -141,4 +145,133 @@ func (m *Map) updateBuildingAnimation2(a scenario.Animation, om *objects.ObjectM
 		m.invalidateTile(int32(a.X), int32(a.Y), int32(b.BaseZ)*4, int32(b.ClearZ)*4, ZoomQuarter, 0)
 	}
 	return false
+}
+
+// industryObjectOf is industry->getObject() for an industry element.
+func (m *Map) industryObjectOf(el *scenario.IndustryElement, om *objects.ObjectManager) *objects.IndustryObject {
+	if int(el.IndustryID) >= len(m.IndustryObjectIDs) {
+		return nil
+	}
+	return om.GetIndustryObjectByIndex(int(m.IndustryObjectIDs[el.IndustryID]))
+}
+
+// updateIndustryAnimation1 (IndustryElement.cpp): the first industry element
+// at the animation's base height; with no animated part (numFrames > 1) the
+// animation ends, else the tile is invalidated (quarter zoom) whenever the
+// fastest such part's speed mask comes round.
+func (m *Map) updateIndustryAnimation1(a scenario.Animation, om *objects.ObjectManager) bool {
+	t := m.TileAt(int(a.X)/tileSize, int(a.Y)/tileSize)
+	if t == nil {
+		return true
+	}
+	for _, r := range t.Order {
+		if r.Kind != scenario.KindIndustry {
+			continue
+		}
+		el := &t.Industries[r.Index]
+		if el.BaseZ != a.BaseZ {
+			continue
+		}
+		obj := m.industryObjectOf(el, om)
+		if obj == nil || int(el.BuildingType) >= len(obj.Variations) {
+			return true
+		}
+		has, speed := false, uint8(0xFF)
+		for _, part := range obj.Variations[el.BuildingType] {
+			if int(part) < len(obj.PartAnimations) && obj.PartAnimations[part].NumFrames > 1 {
+				has = true
+				speed = min(speed, obj.PartAnimations[part].AnimationSpeed&^(1<<7))
+			}
+		}
+		if !has {
+			return true
+		}
+		if m.ScenarioTicks&(1<<speed-1) == 0 {
+			m.invalidateTile(int32(a.X), int32(a.Y), int32(el.BaseZ)*4, int32(el.ClearZ)*4, ZoomQuarter, 0)
+		}
+		return false
+	}
+	return true
+}
+
+// industryMultiTile is IndustryElement.cpp's applyToMultiTile: the element and
+// those at the same base height on the other tiles of a 2x2 building.
+func (m *Map) industryMultiTile(el0 *scenario.IndustryElement, x, y int32, large bool, f func(el *scenario.IndustryElement, x, y int32)) {
+	for i, off := range buildingTileOffsets(large) {
+		px, py := x+off[0], y+off[1]
+		el := el0
+		if i != 0 {
+			el = nil
+			if t := m.TileAt(int(px)/tileSize, int(py)/tileSize); t != nil {
+				for _, r := range t.Order {
+					if r.Kind == scenario.KindIndustry && t.Industries[r.Index].BaseZ == el0.BaseZ {
+						el = &t.Industries[r.Index]
+						break
+					}
+				}
+			}
+		}
+		if el != nil {
+			f(el, px, py)
+		}
+	}
+}
+
+// updateIndustryAnimation2 (0x00456EEB): an industry element at the base
+// height with var_6_003F bit 5 (a sequence running); at the first part with
+// no frames of its own, the sequence's length (a power of 2) and the part's
+// speed decide: with bit 4 set, back at step 0 → invalidate and clear bit 5
+// (the animation ends), else invalidate on the speed mask; without bit 4, at
+// step 1 → invalidate and set bit 4.
+func (m *Map) updateIndustryAnimation2(a scenario.Animation, om *objects.ObjectManager) bool {
+	t := m.TileAt(int(a.X)/tileSize, int(a.Y)/tileSize)
+	if t == nil {
+		return true
+	}
+	inval := func(el *scenario.IndustryElement, x, y int32) {
+		m.invalidateTile(x, y, int32(el.BaseZ)*4, int32(el.ClearZ)*4, ZoomQuarter, 0)
+	}
+	for _, r := range t.Order {
+		if r.Kind != scenario.KindIndustry {
+			continue
+		}
+		el := &t.Industries[r.Index]
+		if el.BaseZ != a.BaseZ || el.Var6Low&(1<<5) == 0 {
+			continue
+		}
+		obj := m.industryObjectOf(el, om)
+		if obj == nil || int(el.BuildingType) >= len(obj.Variations) {
+			continue
+		}
+		animLength := uint32(len(obj.AnimationSequences[el.Var6Low&3]))
+		large := obj.BuildingSizeFlags&(1<<el.BuildingType) != 0
+		for _, part := range obj.Variations[el.BuildingType] {
+			if int(part) >= len(obj.PartAnimations) || obj.PartAnimations[part].NumFrames != 0 {
+				continue
+			}
+			speed := obj.PartAnimations[part].AnimationSpeed &^ (1 << 7)
+			mask := animLength - 1
+			if el.Var6Low&(1<<4) != 0 {
+				if mask&(m.ScenarioTicks>>speed) == 0 {
+					m.industryMultiTile(el, int32(a.X), int32(a.Y), large, func(e *scenario.IndustryElement, x, y int32) {
+						inval(e, x, y)
+						e.Var6Low &^= 1 << 5
+					})
+					return true
+				}
+				if m.ScenarioTicks&(1<<speed-1) == 0 {
+					m.industryMultiTile(el, int32(a.X), int32(a.Y), large, inval)
+				}
+				return false
+			}
+			if mask&(m.ScenarioTicks>>speed) == 1 {
+				m.industryMultiTile(el, int32(a.X), int32(a.Y), large, func(e *scenario.IndustryElement, x, y int32) {
+					inval(e, x, y)
+					e.Var6Low |= 1 << 4
+				})
+			}
+			return false
+		}
+	}
+	return true
 }
