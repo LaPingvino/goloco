@@ -246,3 +246,23 @@ func (m *Map) removeBuildingElement(c *Cmd, t *Tile, k int, px, py int32) {
 	t.Buildings = append(t.Buildings[:idx], t.Buildings[idx+1:]...)
 	t.removeRef(scenario.KindBuilding, idx)
 }
+
+// doCommand is GameCommands::doCommand's loc_4313C6 for a command run from
+// the sim (towns, as the neutral company): the command first without apply —
+// a failure ends it there —, then, when applying, again with apply. The
+// query pass is where a command refuses (an indestructible building, a town's
+// permission: the clear functions only skip those checks while applying), so
+// applying without it would build where upstream refuses.
+// PARTIAL: ensureCompanyFunding and the payment (the neutral company pays
+// nothing), the editor's zero cost, the error texts and sounds.
+func doCommand(flags uint8, run func(flags uint8) (int32, bool)) (int32, bool) {
+	cost, ok := run(flags &^ CmdApply)
+	if !ok || flags&CmdApply == 0 {
+		return cost, ok
+	}
+	cost2, ok := run(flags)
+	if !ok {
+		return 0, false
+	}
+	return min(cost, cost2), true
+}
