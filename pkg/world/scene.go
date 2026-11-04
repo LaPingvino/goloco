@@ -3,6 +3,7 @@ package world
 import (
 	"fmt"
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/paint"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"image"
@@ -52,6 +53,10 @@ func (w *World) drawScene(screen *ebiten.Image) {
 	// are repainted a part a frame (SceneEvery parts), so no frame waits for
 	// a whole world render; a moved camera, zoom or size repaints all of it.
 	view := scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: w.Map.ScenarioTicks} // ScenarioManager::getScenarioTicks(): what upstream's paint animates by (not the frame count)
+	if diagScreen != nil {                                                                                     // GOLOCO_DIAG_PAINT_SCREEN: the paint diagnostic's pixel, as a screen pixel at this view's zoom
+		bm := ^0 << view.Zoom
+		paint.DiagAt = &[2]int{view.X&bm + diagScreen[0]<<view.Zoom, view.Y&bm + diagScreen[1]<<view.Zoom}
+	}
 	if dirtyRegions {
 		w.drawSceneDirty(screen, view)
 		return
@@ -253,3 +258,13 @@ func (w *World) checkDirty(view scene.View) {
 		f.Close()
 	}
 }
+
+// diagScreen (GOLOCO_DIAG_PAINT_SCREEN=x,y): GOLOCO_DIAG_PAINT_AT for a screen
+// pixel, whatever the zoom.
+var diagScreen = func() *[2]int {
+	var p [2]int
+	if _, err := fmt.Sscanf(os.Getenv("GOLOCO_DIAG_PAINT_SCREEN"), "%d,%d", &p[0], &p[1]); err != nil {
+		return nil
+	}
+	return &p
+}()
