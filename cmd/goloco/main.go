@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/LaPingvino/goloco/pkg/construct"
+	"github.com/LaPingvino/goloco/pkg/paint"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"image"
 	"image/color"
@@ -178,6 +179,12 @@ func findLocoDataDir() string {
 }
 
 func NewGame() *Game {
+	if v := os.Getenv("GOLOCO_DIAG_PAINT_AT"); v != "" { // diagnostic: the painters of one viewport pixel
+		var at [2]int
+		if _, err := fmt.Sscanf(v, "%d,%d", &at[0], &at[1]); err == nil {
+			paint.DiagAt = &at
+		}
+	}
 	log.Println("[Game] Creating new game...")
 
 	// Load the UI language pack (GOLOCO_LANG, default en-GB) before any object

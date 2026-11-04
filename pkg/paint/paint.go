@@ -6,7 +6,11 @@
 // not ported yet.
 package paint
 
-import "github.com/LaPingvino/goloco/pkg/gfx8"
+import (
+	"log"
+
+	"github.com/LaPingvino/goloco/pkg/gfx8"
+)
 
 // MaxQuadrants is kMaxPaintQuadrants (Paint.h).
 const MaxQuadrants = 1024
@@ -54,6 +58,12 @@ type Attached struct {
 	X, Y int
 	next *Attached
 }
+
+// DiagAt (diagnostic, not upstream; GOLOCO_DIAG_PAINT_AT=vx,vy): a viewport
+// pixel whose painters Draw logs, in drawing order, with their boxes.
+var DiagAt *[2]int
+
+var diagRects int
 
 // Session is a PaintSession for one view.
 type Session struct {
@@ -563,22 +573,45 @@ func (s *Session) Draw(rt *gfx8.RenderTarget) {
 		}
 		gfx8.DrawSpriteNoise(rt, img.Sprite, x-s.rtX, y-s.rtY, img.Op, img.PalMap, img.Noise)
 	}
+	diag := DiagAt != nil && DiagAt[0] >= s.rtX && DiagAt[0] < s.rtX+s.rtW && DiagAt[1] >= s.rtY && DiagAt[1] < s.rtY+s.rtH
+	if DiagAt != nil && diagRects < 64 {
+		diagRects++
+		log.Printf("[PaintAt] session %d,%d %dx%d", s.rtX, s.rtY, s.rtW, s.rtH)
+	}
+	n := 0
+	note := func(kind string, img Image, x, y int, ps *Struct) {
+		if !diag || img.Sprite == nil {
+			return
+		}
+		sx, sy := DiagAt[0]-x-img.Sprite.XOffset, DiagAt[1]-y-img.Sprite.YOffset
+		if sx < 0 || sy < 0 || sx >= img.Sprite.Width || sy >= img.Sprite.Height || img.Sprite.Pix[sy*img.Sprite.Width+sx] == 0 {
+			return
+		}
+		n++
+		log.Printf("[PaintAt %d,%d] #%d %s image %d at %d,%d box %v-%v", DiagAt[0], DiagAt[1], n, kind, img.Sprite.Index, x, y, ps.Mins, ps.Maxs)
+	}
 	attached := func(ps *Struct) {
 		for a := ps.attached; a != nil; a = a.next {
 			x, y := ps.VpX+a.X, ps.VpY+a.Y
 			if s.Zoom != 0 { // drawAttachStruct: floor2(pos, 2) when zoomed out
 				x, y = x&^1, y&^1
 			}
+			note("attached", a.Img, x, y, ps)
 			draw(a.Img, x, y)
 		}
 	}
 	for ps := s.head; ps != nil; ps = ps.next {
+		note("struct", ps.Img, ps.VpX, ps.VpY, ps)
 		draw(ps.Img, ps.VpX, ps.VpY)
 		for c := ps.children; c != nil; c = c.children {
+			note("child", c.Img, c.VpX, c.VpY, c)
 			draw(c.Img, c.VpX, c.VpY)
 			attached(c)
 		}
 		attached(ps)
+	}
+	if diag {
+		log.Printf("[PaintAt %d,%d] %d structs over it (session %d,%d %dx%d)", DiagAt[0], DiagAt[1], n, s.rtX, s.rtY, s.rtW, s.rtH)
 	}
 }
 
