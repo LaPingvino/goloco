@@ -13,6 +13,7 @@ type Map struct {
 	Tiles                                                  [][]Tile        // [y][x]
 	Towns                                                  []scenario.Town // parsed town records
 	Entities                                               []scenario.VehicleEntity
+	EntityLists                                            *EntityLists                // EntityManager's lists (entitylists.go): from the save, else reset
 	VehicleListData                                        []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
 	CompanyFaces                                           []scenario.CompanyFace      // company slot → competitor, emotion, performance
 	Orders                                                 []byte                      // GameState orders[]
@@ -141,6 +142,10 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	}
 	m.Towns = sc.Towns
 	m.Entities = sc.Entities
+	m.EntityLists = resetEntityLists()
+	if el := sc.EntityLists; el != nil {
+		m.EntityLists = &EntityLists{Heads: el.Heads, Counts: el.Counts, Links: el.Links}
+	}
 	m.VehicleListData = sc.VehicleList
 	m.Orders = sc.Orders
 	m.Routings = sc.Routings
