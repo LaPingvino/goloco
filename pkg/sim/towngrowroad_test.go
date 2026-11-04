@@ -146,3 +146,44 @@ func TestGetRoadInformation(t *testing.T) {
 		t.Errorf("road-end station not noticed: %+v (order %+v)", got, tile.Order)
 	}
 }
+
+// GrowTown on an empty flat map: no road yet → the first one (a straight
+// town road near the centre); then each grow from a road end extends it (the
+// first two steps need no buildings) — the town's road network grows. Without
+// allowRoadExpansion nothing is added.
+func TestGrowTown(t *testing.T) {
+	c := townRoadCmd()
+	c.Objects.RoadObjects[0].Flags = roadFlagAnyRoadTypeCompatible
+	m := townRoadMap(32, 4)
+	m.RoadAnyTypeCompatible = 1
+	m.Towns[0].X, m.Towns[0].Y = 16*32, 16*32
+	count := func() int {
+		n := 0
+		for y := range m.Tiles {
+			for x := range m.Tiles[y] {
+				n += len(m.Tiles[y][x].Roads)
+			}
+		}
+		return n
+	}
+	m.GrowTown(c.Objects, 0, 0)
+	if count() != 0 {
+		t.Fatal("no flags: nothing built")
+	}
+	m.GrowTown(c.Objects, 0, TownGrowBuildInitialRoad)
+	if count() != 1 {
+		t.Fatalf("the first road: %d pieces", count())
+	}
+	m.GrowTown(c.Objects, 0, TownGrowBuildInitialRoad)
+	if count() != 1 {
+		t.Fatal("expansion not allowed: no more road")
+	}
+	for i := 0; i < 6; i++ {
+		m.GrowTown(c.Objects, 0, TownGrowAllowRoadExpansion)
+	}
+	if n := count(); n < 4 {
+		t.Errorf("after six grows with expansion: %d pieces", n)
+	} else {
+		t.Logf("after six grows: %d road pieces", n)
+	}
+}

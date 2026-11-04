@@ -156,7 +156,8 @@ type RoadConnections struct {
 
 // roadStation is Tile::roadStation: the station element after a road element
 // with this road id, rotation and height that has a station (road elements
-// at the same height may lie between).
+// at the same height may lie between; any other element, or a road at
+// another height, breaks the run — upstream's trackFound = false).
 func (t *Tile) roadStation(roadID, rotation, baseZ uint8) *scenario.StationElement {
 	found := false
 	for _, r := range t.Order {
@@ -164,6 +165,7 @@ func (t *Tile) roadStation(roadID, rotation, baseZ uint8) *scenario.StationEleme
 			return &t.Stations[r.Index]
 		}
 		if r.Kind != scenario.KindRoad {
+			found = false
 			continue
 		}
 		el := &t.Roads[r.Index]
