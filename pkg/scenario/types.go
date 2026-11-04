@@ -467,6 +467,13 @@ func (s *SignalSide) SetIsOccupied(v bool) {
 func (s *SignalSide) SetUnk4(v uint8)      { s.B4 = s.B4&^0x30 | (v&3)<<4 }
 func (s *SignalSide) SetAllLights(v uint8) { s.B5 = s.B5&0x0F | v<<4 }
 
+// Frame is the side's animation frame (_5 & 0xF), ObjectID its signal object
+// (_4 & 0xF) — the live values (the element's LeftFrame / RightFrame are
+// load-time copies).
+func (s SignalSide) Frame() uint8      { return s.B5 & 0x0F }
+func (s *SignalSide) SetFrame(v uint8) { s.B5 = s.B5&0xF0 | v&0x0F }
+func (s SignalSide) ObjectID() uint8   { return s.B4 & 0x0F }
+
 // IndustryElement represents an industry building tile.
 //
 // OpenLoco reference: src/OpenLoco/src/Map/IndustryElement.h

@@ -40,6 +40,16 @@ func (m *Map) UpdateAnimations(om *objects.ObjectManager) {
 // updateAnimation is callUpdateFunction: true = remove it.
 func (m *Map) updateAnimation(a scenario.Animation, om *objects.ObjectManager) bool {
 	switch a.Type {
+	case 0:
+		return m.updateSignalAnimation(a, om)
+	case 1:
+		return m.updateLevelCrossingAnimation(a, om)
+	case 2:
+		return false // upstream: kept, nothing done
+	case 7:
+		return m.updateStationAnimation(a, om, 2)
+	case 8:
+		return m.updateStationAnimation(a, om, 3)
 	case 3:
 		return m.updateIndustryAnimation1(a, om)
 	case 4:
@@ -49,9 +59,7 @@ func (m *Map) updateAnimation(a scenario.Animation, om *objects.ObjectManager) b
 	case 6:
 		return m.updateBuildingAnimation2(a, om)
 	}
-	// PARTIAL: 0 signal, 1 level crossing, 7 airport, 8 dock
-	// (and 2, which upstream keeps without doing anything) are kept unstepped.
-	return false
+	return false // upstream asserts: no other types
 }
 
 // animationBuilding is the building search of updateBuildingAnimation1 / 2,
@@ -272,6 +280,155 @@ func (m *Map) updateIndustryAnimation2(a scenario.Animation, om *objects.ObjectM
 			}
 			return false
 		}
+	}
+	return true
+}
+
+// updateSignalAnimation (SignalElement.cpp): each signal element at the base
+// height steps both sides' frames toward unk4 × 3 (at most the object's last
+// frame) on the object's speed mask; the tile invalidated when one stepped;
+// done when no side has a frame left to reach.
+func (m *Map) updateSignalAnimation(a scenario.Animation, om *objects.ObjectManager) bool {
+	t := m.TileAt(int(a.X)/tileSize, int(a.Y)/tileSize)
+	if t == nil {
+		return true
+	}
+	has, inval := false, false
+	for _, r := range t.Order {
+		if r.Kind != scenario.KindSignal {
+			continue
+		}
+		el := &t.Signals[r.Index]
+		if el.BaseZ != a.BaseZ {
+			continue
+		}
+		for i := range el.Sides {
+			side := &el.Sides[i]
+			if !side.HasSignal() {
+				continue
+			}
+			obj := om.GetTrainSignalObjectByIndex(int(side.ObjectID()))
+			if obj == nil || obj.NumFrames == 0 {
+				continue
+			}
+			target := min(side.Unk4()*3, obj.NumFrames-1)
+			if side.Frame() == target {
+				continue
+			}
+			has = true
+			if m.ScenarioTicks&uint32(obj.AnimSpeed) != 0 {
+				continue
+			}
+			f := side.Frame() + 1
+			if side.Frame() >= target {
+				f = side.Frame() - 1
+				if obj.Flags&(1<<2) != 0 { // TrainSignalObjectFlags::unk2
+					f = min(f, 1)
+				}
+			}
+			side.SetFrame(f)
+			inval = true
+		}
+	}
+	if inval {
+		m.invalidateTile(int32(a.X), int32(a.Y), int32(a.BaseZ)*4, int32(a.BaseZ)*4+32, ZoomHalf, 0)
+	}
+	return !has
+}
+
+// updateLevelCrossingAnimation (RoadElement.cpp): each road element with a
+// level crossing at the base height, off its object's tick mask (var_0A),
+// steps its frame — closing (unk7_10) up to closedFrames then 15, opening
+// down from 15 through closedFrames to 0 — and invalidates the tile; done when
+// none is still moving (upstream's quirk kept: an open crossing at frame 0
+// doesn't count as animating).
+func (m *Map) updateLevelCrossingAnimation(a scenario.Animation, om *objects.ObjectManager) bool {
+	t := m.TileAt(int(a.X)/tileSize, int(a.Y)/tileSize)
+	if t == nil {
+		return true
+	}
+	has, inval := false, false
+	for _, r := range t.Order {
+		if r.Kind != scenario.KindRoad {
+			continue
+		}
+		el := &t.Roads[r.Index]
+		if el.BaseZ != a.BaseZ || !el.HasLevelCrossing {
+			continue
+		}
+		obj := om.GetLevelCrossingObjectByIndex(int(el.LevelCrossingObjectID))
+		if obj == nil {
+			continue
+		}
+		if m.ScenarioTicks&uint32(obj.Var0A) != 0 {
+			has = true
+			continue
+		}
+		inval = true
+		f := el.AnimFrame
+		if el.Unk7_10 {
+			if f != 15 {
+				f++
+				if f > obj.ClosedFrames {
+					f = 15
+				}
+			}
+			has = true
+		} else if f != 0 {
+			f--
+			if f == 14 {
+				f = obj.ClosedFrames
+			}
+			has = true
+		}
+		el.AnimFrame = f
+	}
+	if inval {
+		m.invalidateTile(int32(a.X), int32(a.Y), int32(a.BaseZ)*4, int32(a.BaseZ)*4+32, ZoomHalf, 0)
+	}
+	return !has
+}
+
+// updateStationAnimation (StationElement.cpp, airports and docks): the first
+// station element of the type at the base height; without a part of > 1
+// frames the animation ends, else the tile invalidated on the fastest such
+// part's speed mask (quarter zoom).
+func (m *Map) updateStationAnimation(a scenario.Animation, om *objects.ObjectManager, stationType uint8) bool {
+	t := m.TileAt(int(a.X)/tileSize, int(a.Y)/tileSize)
+	if t == nil {
+		return true
+	}
+	for _, r := range t.Order {
+		if r.Kind != scenario.KindStation {
+			continue
+		}
+		el := &t.Stations[r.Index]
+		if el.BaseZ != a.BaseZ || el.StationType != stationType {
+			continue
+		}
+		var parts []uint8
+		var anims []objects.BuildingPartAnimation
+		if stationType == 2 {
+			if o := om.GetAirportObjectByIndex(int(el.ObjectID)); o != nil && int(el.BuildingType) < len(o.Variations) {
+				parts, anims = o.Variations[el.BuildingType], o.PartAnimations
+			}
+		} else if o := om.GetDockObjectByIndex(int(el.ObjectID)); o != nil && int(el.BuildingType) < len(o.Variations) {
+			parts, anims = o.Variations[el.BuildingType], o.PartAnimations
+		}
+		has, speed := false, uint8(0xFF)
+		for _, p := range parts {
+			if int(p) < len(anims) && anims[p].NumFrames > 1 {
+				has = true
+				speed = min(speed, anims[p].AnimationSpeed&^(1<<7))
+			}
+		}
+		if !has {
+			return true
+		}
+		if m.ScenarioTicks&(1<<speed-1) == 0 {
+			m.invalidateTile(int32(a.X), int32(a.Y), int32(el.BaseZ)*4, int32(el.ClearZ)*4, ZoomQuarter, 0)
+		}
+		return false
 	}
 	return true
 }
