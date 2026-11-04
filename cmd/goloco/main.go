@@ -67,7 +67,11 @@ type Game struct {
 	inGame                         bool // a scenario / save is loaded into gameplay
 	dropdown                       *ui.DropdownMenu
 	mouseX                         int
-	lastTickMouseX, lastTickMouseY int // the cursor at the last GameTicks (mouseMoved)
+	lastTickMouseX, lastTickMouseY int       // the cursor at the last GameTicks (mouseMoved)
+	rateStart                      time.Time // drawRate's measuring window
+	rateTicks0                     uint32
+	rateFrames                     int
+	rateText                       string
 	mouseY                         int
 	dataDir                        string
 	inTitleScreen                  bool
@@ -1204,7 +1208,32 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	g.drawInlineDiag(screen)
+	g.drawRate(screen)
 	g.maybeSaveShot(screen)
+}
+
+// drawRate (GOLOCO_SHOWRATE=1, the test page's "Show the game's speed"): game
+// ticks and frames per second in the top-left corner, measured over a
+// second — whether the game runs on this machine, and how fast.
+var showRate = os.Getenv("GOLOCO_SHOWRATE") != ""
+
+func (g *Game) drawRate(screen *ebiten.Image) {
+	if !showRate || g.w == nil {
+		return
+	}
+	g.rateFrames++
+	now := time.Now()
+	if g.rateStart.IsZero() {
+		g.rateStart, g.rateTicks0 = now, g.w.Map.ScenarioTicks
+	}
+	if d := now.Sub(g.rateStart); d >= time.Second {
+		g.rateText = fmt.Sprintf("%.0f ticks/s · %.1f fps", float64(g.w.Map.ScenarioTicks-g.rateTicks0)/d.Seconds(), float64(g.rateFrames)/d.Seconds())
+		g.rateStart, g.rateTicks0, g.rateFrames = now, g.w.Map.ScenarioTicks, 0
+	}
+	if g.rateText != "" {
+		wc, oc := ui.TextColours(2)
+		ui.DrawTextOutlined(screen, g.rateText, 8, 34, wc, oc)
+	}
 }
 
 // debugPath prefixes capture filenames with the gitignored debug/ directory
