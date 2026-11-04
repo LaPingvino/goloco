@@ -461,6 +461,27 @@ func (r *Renderer) renderRect(m *sim.Map, v View) *gfx8.RenderTarget {
 
 // ToRGBAColumns converts only screen columns [x0, x1) of rt into a packed
 // RGBA buffer (x1−x0 wide, for WritePixels on that part of the image).
+// ToRGBARect converts the rectangle (x0, y0)-(x1, y1) of rt through the
+// palette (what a dirty rect uploads), into a buffer reused between calls.
+func (r *Renderer) ToRGBARect(rt *gfx8.RenderTarget, x0, y0, x1, y1 int) []byte {
+	w, h := x1-x0, y1-y0
+	if n := w * h * 4; cap(r.partPix) < n {
+		r.partPix = make([]byte, n)
+	} else {
+		r.partPix = r.partPix[:n]
+	}
+	pix := r.partPix
+	for y := range h {
+		row := rt.Bits[(y0+y)*rt.Width+x0 : (y0+y)*rt.Width+x1]
+		o := y * w * 4
+		for i, p := range row {
+			c := r.G1.Palette[p]
+			pix[o+i*4], pix[o+i*4+1], pix[o+i*4+2], pix[o+i*4+3] = c.R, c.G, c.B, 255
+		}
+	}
+	return pix
+}
+
 func (r *Renderer) ToRGBAColumns(rt *gfx8.RenderTarget, x0, x1 int) []byte {
 	w := x1 - x0
 	if n := w * rt.Height * 4; cap(r.partPix) < n {
