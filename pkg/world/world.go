@@ -61,9 +61,11 @@ type World struct {
 	stationsGen     int
 	stationTileList [][2]int
 	stationTilesKey stationListKey
-	vehicleTickMs   float64 // elapsed time not yet spent on vehicle ticks (TickSavedVehicles)
-	diagTicksDone   bool    // GOLOCO_DIAG_TICKS has run (TickSavedVehicles)
-	sim.State               // simulation state: map, construction head, undo history (pkg/sim)
+	lastTickTime    time.Time     // GameTicks: the last tick() (its time since)
+	lastUpdate      time.Time     // GameTicks: the last frame (the 40 Hz accumulator)
+	tickAccumulator time.Duration // GameTicks: fixedUpdate's accumulator
+	diagTicksDone   bool          // GOLOCO_DIAG_TICKS has run (TickSavedVehicles)
+	sim.State                     // simulation state: map, construction head, undo history (pkg/sim)
 	renderer        *render.Renderer
 	trains          []*DemoTrain // demo trains (title screen / scenarios without saved entities)
 	// isometric tile dimensions (standard 2:1 ratio)

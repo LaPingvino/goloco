@@ -59,8 +59,8 @@ func (f *frameStats) addDraw(start time.Time, d time.Duration) {
 	}
 	if time.Since(f.windowStart) >= 2*time.Second {
 		n := max(len(f.draw), 1)
-		log.Printf("[Frames] %d frames | interval %s | update %s | draw %s | world %s (%d parts) | draw8 %.1f calls (%.1f read back), readback %.1f ms, total %.1f ms a frame | check: %d of %d pixels differ",
-			len(f.draw), summary(f.interval), summary(f.upd), summary(f.draw), summary(f.wld), f.parts,
+		log.Printf("[Frames] %d frames, %d updates | interval %s | update %s | draw %s | world %s (%d parts) | draw8 %.1f calls (%.1f read back), readback %.1f ms, total %.1f ms a frame | check: %d of %d pixels differ",
+			len(f.draw), len(f.upd), summary(f.interval), summary(f.upd), summary(f.draw), summary(f.wld), f.parts,
 			float64(f.d8calls)/float64(n), float64(f.d8reads)/float64(n), float64(f.d8read.Microseconds())/1000/float64(n), float64(f.d8total.Microseconds())/1000/float64(n),
 			ui.Draw8Stats.CheckDiff, ui.Draw8Stats.CheckPixels)
 		f.d8calls, f.d8reads, f.d8read, f.d8total = 0, 0, 0, 0
