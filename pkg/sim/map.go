@@ -53,11 +53,12 @@ type Map struct {
 	// CurrencyMultiplicationFactor prices cost indices (Economy).
 	CurrencyMultiplicationFactor [32]uint32
 
-	IndustryObjectIDs []uint8                // industry index → industry object (GameState industries)
-	CompanyColours    []uint8                // owner → main colour (CompanyManager::updateColours); nil if none
-	StationOwners     []uint8                // station id → owner (Station::owner); nil if none
-	UserStrings       []string               // GameState userStrings (StringIds 0x8000+); town names
-	StationNames      []scenario.StationName // station id → name StringId + town
+	IndustryObjectIDs    []uint8                        // industry index → industry object (GameState industries)
+	CompanyColours       []uint8                        // owner → main colour (CompanyManager::updateColours); nil if none
+	CompanyColourSchemes []scenario.CompanyColourScheme // company slot → main / vehicle colours, custom set
+	StationOwners        []uint8                        // station id → owner (Station::owner); nil if none
+	UserStrings          []string                       // GameState userStrings (StringIds 0x8000+); town names
+	StationNames         []scenario.StationName         // station id → name StringId + town
 }
 
 // TileAt returns the tile at (x, y), or nil outside the map.
@@ -180,6 +181,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.CurrencyMultiplicationFactor = sc.CurrencyMultiplicationFactor
 	m.IndustryObjectIDs = sc.IndustryObjectIDs
 	m.CompanyColours = sc.CompanyColours
+	m.CompanyColourSchemes = sc.CompanyColourSchemes
 	m.StationOwners = sc.StationOwners
 	m.UserStrings = sc.UserStrings
 	m.StationNames = sc.StationNames

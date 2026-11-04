@@ -37,6 +37,9 @@ func (m *Map) ensureCompanySlots() {
 	for len(m.CompanyNames) < companyMaxCount {
 		m.CompanyNames = append(m.CompanyNames, 0)
 	}
+	for len(m.CompanyColourSchemes) < companyMaxCount {
+		m.CompanyColourSchemes = append(m.CompanyColourSchemes, scenario.CompanyColourScheme{})
+	}
 	for len(m.CompanyColours) < companyMaxCount {
 		m.CompanyColours = append(m.CompanyColours, 0)
 	}
@@ -206,6 +209,12 @@ func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectM
 		primary := uint8((m.Rng1.RandNext() & 0xFF) * colourMax / 256)
 		if m.competingColourMask(id)&(1<<primary) == 0 {
 			m.CompanyColours[id] = primary
+			scheme := [2]uint8{primary, primaryToSecondary[primary]}
+			cs := &m.CompanyColourSchemes[id]
+			cs.Main, cs.CustomSet = scheme, 0
+			for k := range cs.Vehicle {
+				cs.Vehicle[k] = scheme
+			}
 			break
 		}
 	}
@@ -258,4 +267,17 @@ func (m *Map) StartScenarioGenerating(startYear uint16, gen *TerrainOptions, g1 
 	m.UpdateDefaultLevelCrossingType(om)
 	m.ObjectiveUntilYear = uint16(m.Objective.TimeLimitYears) - 1 + m.CurrentYear
 	m.ObjectiveMonthsInChallenge = 0
+}
+
+// vehicleColourScheme is createCar's colour choice: the company's main
+// colours, or its scheme for the vehicle's colour type when that one is set.
+func (m *Map) vehicleColourScheme(company, colourType uint8) [2]uint8 {
+	if int(company) >= len(m.CompanyColourSchemes) {
+		return [2]uint8{}
+	}
+	cs := &m.CompanyColourSchemes[company]
+	if cs.CustomSet&(1<<colourType) != 0 && colourType >= 1 && int(colourType) <= len(cs.Vehicle) {
+		return cs.Vehicle[colourType-1]
+	}
+	return cs.Main
 }
