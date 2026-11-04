@@ -411,6 +411,9 @@ func NewGame() *Game {
 }
 
 func (g *Game) Update() error {
+	if g.w != nil {
+		g.w.TitleMode = g.inTitleScreen // SceneManager::isTitleMode() for the viewport's names
+	}
 	if fstats.on {
 		t0 := time.Now()
 		defer func() { fstats.addUpdate(time.Since(t0)) }()

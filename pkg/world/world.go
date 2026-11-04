@@ -92,15 +92,18 @@ type World struct {
 	viewW, viewH int
 
 	// 2-pass blend rendering (water, glass, etc.)
-	worldBuf     *ebiten.Image         // pass-1 target: all opaque sprites
-	blendBuf     *ebiten.Image         // pass-2 target: blend-mode overlay
-	blendOps     []palblend.Op         // queued during pass 1 (blend.go)
-	blendFrame   []byte                // frame read back for blending (reused)
-	blendOut     []byte                // blended pixels written to blendBuf (reused)
-	palIndex     palblend.Index        // palette colour → index
-	maskCache    map[int]maskEntry     // sprite alpha masks
-	scene        *scene.Renderer       // ported software renderer (scene.go)
-	sceneImg     *ebiten.Image         // its frame, uploaded each draw
+	worldBuf   *ebiten.Image     // pass-1 target: all opaque sprites
+	blendBuf   *ebiten.Image     // pass-2 target: blend-mode overlay
+	blendOps   []palblend.Op     // queued during pass 1 (blend.go)
+	blendFrame []byte            // frame read back for blending (reused)
+	blendOut   []byte            // blended pixels written to blendBuf (reused)
+	palIndex   palblend.Index    // palette colour → index
+	maskCache  map[int]maskEntry // sprite alpha masks
+	scene      *scene.Renderer   // ported software renderer (scene.go)
+	sceneImg   *ebiten.Image     // its frame, uploaded each draw
+	// TitleMode is SceneManager::isTitleMode(): Viewport::paint draws no
+	// station or town names then.
+	TitleMode    bool
 	dirtyRT      *gfx8.RenderTarget    // GOLOCO_DIRTY: the screen that persists (Viewport's pixels)
 	dirtyGrid    gfx8.InvalidationGrid // GOLOCO_DIRTY: what to repaint
 	sceneFrames  int                   // frames since the last timing log

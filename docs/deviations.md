@@ -42,6 +42,9 @@ internal. Size: S (one tick), M (2–4 ticks), L (a series).
 
 | pkg/world/world.go paintWater + pass-2 blend | FIXED 2026-11-01 (pkg/palblend, zoom 0; zoom > 0 still the old opaque remap). Was: water +35 remapped to an opaque flat colour; blend pass lerps the terrain toward one tint | Blended image without primary = mask: each covered destination pixel is mapped through the palette map (water: image +41) — Graphics/DrawSprite.cpp getDrawBlendOp | H | S |
 
+| pkg/title (the title sequence) | Move + Wait steps only: views 3–10 shown unrotated, no reload at the end | Title.cpp _titleSequence: RotateStep ×4 (viewportRotateRight) and ReloadStep — needs view rotation (LOOP item R) | M | M |
+| pkg/world/overlay.go station plaques | "Station N" as the name, goloco's own plaque | drawStationNames: the station's name, its own label sprites (none in title mode — that part fixed) | M | S |
+
 ## C. Text and UI
 
 | pkg/world/lists.go TownList | FIXED 2026-11-01: town names from the GameState user strings (StringIds 0x8000+). Was: placeholders "Town N" | Town::name is a user StringId (the town name generator allocates user strings) | M | M |
