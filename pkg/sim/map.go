@@ -126,6 +126,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 				GrowthStage:  st.GrowthStage,
 				Variation:    st.Variation,
 				IsIndustrial: st.IsIndustrial,
+				Type6Flag:    st.Type6Flag,
 				Trees:        st.Trees,
 				Buildings:    st.Buildings,
 				Walls:        st.Walls,

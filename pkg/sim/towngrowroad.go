@@ -115,9 +115,6 @@ func (m *Map) parallelTownRoadAt(x, y, z int32, rotation uint8) bool {
 // ground raised or lowered where the road is a little above or below it, or a
 // steep-slope piece where the slope fits; else a straight piece (1% a left
 // curve, 1% a right, by the town's prng) — turned to fit a road already there.
-// PARTIAL: raising / lowering the land (RaiseLand / LowerLand, needing
-// TileManager::adjustSurfaceHeight) is not ported yet — raiseLandAt /
-// lowerLandAt change nothing (queue 5.9f3t).
 func (m *Map) appendToRoadEnd(c *Cmd, town int, x, y, z int32, rotation, roadObjectID uint8, iteration int, onBridge bool) {
 	if !m.validCoords(x, y) {
 		return
@@ -216,9 +213,14 @@ func (m *Map) appendToRoadEnd(c *Cmd, town int, x, y, z int32, rotation, roadObj
 }
 
 // raiseLandAt / lowerLandAt are the RaiseLand / LowerLand game commands on
-// one whole tile (pointA = pointB = centre, MapSelectionType::full), applied.
-// NOT PORTED YET (queue 5.9f3t: TileManager::adjustSurfaceHeight,
-// raise/lowerSurfaceCornerFlags): they change nothing, so a town road that
-// needs the ground moved does not grow there yet.
-func (m *Map) raiseLandAt(c *Cmd, x, y int32) {}
-func (m *Map) lowerLandAt(c *Cmd, x, y int32) {}
+// one whole tile (pointA = pointB = centre, MapSelectionType::full), applied
+// (terraform.go).
+func (m *Map) raiseLandAt(c *Cmd, x, y int32) {
+	tx, ty := int(x/tileSize), int(y/tileSize)
+	m.raiseLand(c, tx, ty, tx, ty, mapSelectionFull, CmdApply)
+}
+
+func (m *Map) lowerLandAt(c *Cmd, x, y int32) {
+	tx, ty := int(x/tileSize), int(y/tileSize)
+	m.lowerLand(c, tx, ty, tx, ty, mapSelectionFull, CmdApply)
+}
