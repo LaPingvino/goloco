@@ -46,7 +46,13 @@ type VehicleObject struct {
 	RackSpeed uint16
 	Weight    uint16
 	Flags     uint16
-	MaxCargo  [2]uint8
+	MaxCargo  [2]uint8 // as in the file's fixed struct; VehicleObject::load rebuilds it from CargoSection — use CargoFor
+
+	// CargoSection is the variable cargo data VehicleObject::load reads: for
+	// each of 2 slots its maxCargo and the cargo categories (with their sprite
+	// offsets) it takes. ObjectManager.CargoFor resolves them against the
+	// loaded cargo objects.
+	CargoSection [2]VehicleCargoSlot
 
 	// Design dates
 	Designed uint16
@@ -54,6 +60,8 @@ type VehicleObject struct {
 
 	// Parsed strings
 	DisplayName string
+
+	imageTableOffset int // where the image table starts (walkVariableSections)
 
 	// ImageOffset is the base index in the dynamic G1 sprite pool for this vehicle's
 	// sprites. All FlatImageID / GentleImageID / SteepImageID values in BodySprites
@@ -66,6 +74,13 @@ type VehicleObject struct {
 }
 
 // VehicleCarComponent describes one car in a vehicle consist
+// VehicleCargoSlot is one slot of a vehicle's cargo section.
+type VehicleCargoSlot struct {
+	MaxCargo      uint8
+	Categories    []uint16 // CargoCategory
+	SpriteOffsets []uint8
+}
+
 type VehicleCarComponent struct {
 	FrontBogiePosition   uint8
 	BackBogiePosition    uint8
@@ -227,6 +242,7 @@ func ParseVehicleObject(header *ObjectHeader, data []byte) (*VehicleObject, erro
 	r.skip(0x114 - r.pos)
 	v.Designed = r.readU16()
 	v.Obsolete = r.readU16()
+	v.imageTableOffset = walkVariableSections(v, data)
 
 	return v, nil
 }
@@ -242,87 +258,7 @@ func ParseVehicleObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 	if g1 == nil {
 		return v, nil
 	}
-
-	// Locate the image table by walking every variable-length section between
-	// the fixed struct and the table, mirroring VehicleObject::load exactly.
-	// OpenLoco reference: src/OpenLoco/src/Objects/VehicleObject.cpp::load
-	const fixedSize = 0x15E
-	const (
-		flagRackRail    = 1 << 6 // VehicleObjectFlags::rackRail
-		flagAnyRoadType = 1 << 9 // VehicleObjectFlags::anyRoadType
-	)
-	offset := fixedSize
-
-	// 1. String table: [langID][str\0]...[0xFF]
-	for offset < len(data) && data[offset] != 0xFF {
-		offset++ // langID byte
-		for offset < len(data) && data[offset] != 0 {
-			offset++
-		}
-		if offset < len(data) {
-			offset++ // null terminator
-		}
-	}
-	if offset < len(data) {
-		offset++ // 0xFF terminator
-	}
-
-	// 2. Track/road type header — only for rail/road vehicles without anyRoadType.
-	if v.Flags&flagAnyRoadType == 0 &&
-		(v.Mode == TransportModeRail || v.Mode == TransportModeRoad) {
-		v.TrackName = headerName(data, offset) // VehicleObject::load resolves it into trackType
-		offset += HeaderSize
-	}
-
-	// 3. Required track-extra headers.
-	for i := range int(v.NumTrackExtras) {
-		v.ExtraNames = append(v.ExtraNames, headerName(data, offset+i*HeaderSize))
-	}
-	offset += int(v.NumTrackExtras) * HeaderSize
-
-	// 4. Cargo section: 2 × [maxCargo u8; if ≠0: (category u16, spriteOffset u8)*
-	//    until category 0xFFFF, then the u16 terminator itself].
-	for i := 0; i < 2 && offset < len(data); i++ {
-		maxCargo := data[offset]
-		offset++
-		if maxCargo == 0 {
-			continue
-		}
-		for offset+2 <= len(data) && binary.LittleEndian.Uint16(data[offset:offset+2]) != 0xFFFF {
-			offset += 3 // cargo category u16 + sprite offset u8
-		}
-		offset += 2 // 0xFFFF terminator
-	}
-
-	// 5. Emitter-animation headers: one per animation slot with type ≠ none.
-	//    animation[2] lives at 0x10D in the fixed struct, 3 bytes each, type at +2.
-	for i := 0; i < 2; i++ {
-		if data[0x10D+i*3+2] != 0 {
-			offset += HeaderSize
-		}
-	}
-
-	// 6. Compatible-vehicle headers.
-	offset += int(v.NumCompatVehicles) * HeaderSize
-
-	// 7. Rack-rail object header.
-	if v.Flags&flagRackRail != 0 {
-		v.RackRailName = headerName(data, offset)
-		offset += HeaderSize
-	}
-
-	// 8. Driving-sound object header (drivingSoundType at 0x119, none = 0).
-	if data[0x119] != 0 {
-		offset += HeaderSize
-	}
-
-	// 9. Start-sound headers (count at 0x15A, low 7 bits, max 3).
-	numStartSounds := int(data[0x15A] & 0x7F)
-	if numStartSounds > 3 {
-		numStartSounds = 3
-	}
-	offset += numStartSounds * HeaderSize
-
+	offset := v.imageTableOffset
 	if offset >= len(data) {
 		return v, nil // no image data section
 	}
@@ -522,3 +458,135 @@ func (v *VehicleObject) HasBogieSprites(idx int) bool {
 
 // Dummy usage to avoid unused import error
 var _ io.Reader = nil
+
+// VehicleCargoInfo is what VehicleObject::load computes from the cargo
+// section: per slot the capacity and the cargo types (bits by cargo object
+// slot) it takes, and how many slots carry something.
+type VehicleCargoInfo struct {
+	MaxCargo                  [2]uint8
+	CompatibleCargoCategories [2]uint32
+	NumSimultaneousCargoTypes uint8
+	CargoTypeSpriteOffsets    [32]uint8
+}
+
+// CargoFor is VehicleObject::load's cargo part (VehicleObject.cpp 378–421)
+// for v against the loaded cargo objects (in their scenario slot order): a
+// slot with capacity takes every cargo whose category it lists; a slot that
+// matches none drops to 0; the slots that carry something come first.
+func (m *ObjectManager) CargoFor(v *VehicleObject) VehicleCargoInfo {
+	var c VehicleCargoInfo
+	for i := range 2 {
+		idx := c.NumSimultaneousCargoTypes
+		c.MaxCargo[idx] = v.CargoSection[i].MaxCargo
+		if c.MaxCargo[idx] == 0 {
+			continue
+		}
+		for k, cat := range v.CargoSection[i].Categories {
+			for ct, co := range m.CargoObjects {
+				if co == nil || co.CargoCategory != cat || ct >= 32 {
+					continue
+				}
+				c.CompatibleCargoCategories[idx] |= 1 << ct
+				c.CargoTypeSpriteOffsets[ct] = v.CargoSection[i].SpriteOffsets[k]
+			}
+		}
+		if c.CompatibleCargoCategories[idx] == 0 {
+			c.MaxCargo[idx] = 0
+		} else {
+			c.NumSimultaneousCargoTypes++
+		}
+	}
+	return c
+}
+
+// walkVariableSections walks every variable-length section between the fixed
+// struct and the image table as VehicleObject::load reads them — the track
+// header, extras, the cargo section, emitter / compatible-vehicle / rack-rail
+// / sound headers — filling the vehicle's names and CargoSection; it returns
+// where the image table starts.
+func walkVariableSections(v *VehicleObject, data []byte) int {
+	// Locate the image table by walking every variable-length section between
+	// the fixed struct and the table, mirroring VehicleObject::load exactly.
+	// OpenLoco reference: src/OpenLoco/src/Objects/VehicleObject.cpp::load
+	const fixedSize = 0x15E
+	const (
+		flagRackRail    = 1 << 6 // VehicleObjectFlags::rackRail
+		flagAnyRoadType = 1 << 9 // VehicleObjectFlags::anyRoadType
+	)
+	offset := fixedSize
+
+	// 1. String table: [langID][str\0]...[0xFF]
+	for offset < len(data) && data[offset] != 0xFF {
+		offset++ // langID byte
+		for offset < len(data) && data[offset] != 0 {
+			offset++
+		}
+		if offset < len(data) {
+			offset++ // null terminator
+		}
+	}
+	if offset < len(data) {
+		offset++ // 0xFF terminator
+	}
+
+	// 2. Track/road type header — only for rail/road vehicles without anyRoadType.
+	if v.Flags&flagAnyRoadType == 0 &&
+		(v.Mode == TransportModeRail || v.Mode == TransportModeRoad) {
+		v.TrackName = headerName(data, offset) // VehicleObject::load resolves it into trackType
+		offset += HeaderSize
+	}
+
+	// 3. Required track-extra headers.
+	for i := range int(v.NumTrackExtras) {
+		v.ExtraNames = append(v.ExtraNames, headerName(data, offset+i*HeaderSize))
+	}
+	offset += int(v.NumTrackExtras) * HeaderSize
+
+	// 4. Cargo section: 2 × [maxCargo u8; if ≠0: (category u16, spriteOffset u8)*
+	//    until category 0xFFFF, then the u16 terminator itself].
+	for i := 0; i < 2 && offset < len(data); i++ {
+		maxCargo := data[offset]
+		offset++
+		v.CargoSection[i].MaxCargo = maxCargo
+		if maxCargo == 0 {
+			continue
+		}
+		for offset+3 <= len(data) && binary.LittleEndian.Uint16(data[offset:offset+2]) != 0xFFFF {
+			v.CargoSection[i].Categories = append(v.CargoSection[i].Categories, binary.LittleEndian.Uint16(data[offset:]))
+			v.CargoSection[i].SpriteOffsets = append(v.CargoSection[i].SpriteOffsets, data[offset+2])
+			offset += 3 // cargo category u16 + sprite offset u8
+		}
+		offset += 2 // 0xFFFF terminator
+	}
+
+	// 5. Emitter-animation headers: one per animation slot with type ≠ none.
+	//    animation[2] lives at 0x10D in the fixed struct, 3 bytes each, type at +2.
+	for i := 0; i < 2; i++ {
+		if data[0x10D+i*3+2] != 0 {
+			offset += HeaderSize
+		}
+	}
+
+	// 6. Compatible-vehicle headers.
+	offset += int(v.NumCompatVehicles) * HeaderSize
+
+	// 7. Rack-rail object header.
+	if v.Flags&flagRackRail != 0 {
+		v.RackRailName = headerName(data, offset)
+		offset += HeaderSize
+	}
+
+	// 8. Driving-sound object header (drivingSoundType at 0x119, none = 0).
+	if data[0x119] != 0 {
+		offset += HeaderSize
+	}
+
+	// 9. Start-sound headers (count at 0x15A, low 7 bits, max 3).
+	numStartSounds := int(data[0x15A] & 0x7F)
+	if numStartSounds > 3 {
+		numStartSounds = 3
+	}
+	offset += numStartSounds * HeaderSize
+
+	return offset
+}
