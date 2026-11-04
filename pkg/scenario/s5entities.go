@@ -231,6 +231,9 @@ type VehicleEntity struct {
 	// read other fields there).
 	Name          uint16
 	OrdinalNumber int16
+	// SpriteWidth (0x14), SpriteHeightNegative (0x09), SpriteHeightPositive
+	// (0x15): the sprite's extent (EntityBase).
+	SpriteWidth, SpriteHeightNegative, SpriteHeightPositive uint8
 	// TileX/TileY are tile-aligned world coords in WorldUnits (same units as PosX/PosY).
 	// TileX = PosX.Tile().World() — i.e., floor(PosX/32)*32.
 	// Use PosX.Tile() / PosY.Tile() for the tile grid index.
@@ -398,6 +401,9 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			HeadVar52:               e[0x52],
 			OrderTableOffset:        binary.LittleEndian.Uint32(e[0x46:]),
 			Name:                    binary.LittleEndian.Uint16(e[0x22:]),
+			SpriteWidth:             e[0x14],
+			SpriteHeightNegative:    e[0x09],
+			SpriteHeightPositive:    e[0x15],
 			OrdinalNumber:           int16(binary.LittleEndian.Uint16(e[0x44:])),
 			CurrentOrder:            binary.LittleEndian.Uint16(e[0x4A:]),
 			SizeOfOrderTable:        binary.LittleEndian.Uint16(e[0x4C:]),
