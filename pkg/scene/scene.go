@@ -500,6 +500,7 @@ func tileElemZ(t *sim.Tile, ref scenario.ElemRef) uint8 {
 
 // paintElement is the switch in paintTileElements.
 func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref scenario.ElemRef, prev *scenario.ElemRef, x, y int, ticks uint32) {
+	s.CurrentItem = nil // setCurrentItem: the element painted now (set below for the kinds diagnosed so far)
 	om, sprite, v := r.Objects, r.Sprite, struct{ Ticks uint32 }{ticks}
 	_ = v
 	switch ref.Kind {
@@ -507,6 +508,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		r.paintSurface(s, m, t, x, y)
 	case scenario.KindTrack:
 		tk := t.Tracks[ref.Index]
+		s.CurrentItem = &t.Tracks[ref.Index] // setCurrentItem(element)
 		if to := om.GetTrackObjectByIndex(int(tk.TrackObjectID)); to != nil {
 			s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ, Remap: r.companyRemap(m, tk.Owner),
 				Tunnel: r.tunnelImage(to.TunnelName), HasBridge: tk.HasBridge, Bridge: tk.BridgeID}, int(to.Image), sprite)
@@ -843,6 +845,7 @@ func (r *Renderer) entitiesByTile(m *sim.Map, v View, lw, lh int) map[[2]int][]*
 // entity's position (setEntityPosition), in their colour schemes.
 func (r *Renderer) paintVehicleEntity(s *paint.Session, m *sim.Map, e *scenario.VehicleEntity) {
 	s.ItemType = paint.ItemEntity // setItemType (PaintEntity.cpp:63)
+	s.CurrentItem = e             // setCurrentItem(entity)
 	const isReversed, isGhost = 1 << 1, 1 << 4
 	if e.Flags38&isGhost != 0 && int(e.Owner) != int(m.ControllingCompany) {
 		return

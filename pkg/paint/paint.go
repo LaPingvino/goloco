@@ -45,6 +45,7 @@ type Image struct {
 // Struct is a PaintStruct.
 type Struct struct {
 	Type       InteractionItem // ps->type: the session's item type when it was made
+	Item       any             // ps->tileElement / entity: the session's current item (setCurrentItem)
 	Img        Image
 	VpX, VpY   int
 	Mins, Maxs Pos3
@@ -121,7 +122,10 @@ func (t InteractionItem) String() string {
 // Session is a PaintSession for one view.
 type Session struct {
 	// ItemType is _itemType (setItemType): copied into each struct made.
-	ItemType           InteractionItem
+	ItemType InteractionItem
+	// CurrentItem is _currentItem (setCurrentItem): the tile element or entity
+	// being painted, copied into each struct (a pointer: no cost per frame).
+	CurrentItem        any
 	arrangeHead        Struct // Arrange's list head
 	Rotation           uint8
 	spriteX, spriteY   int // world position of the tile being painted
@@ -416,7 +420,7 @@ func (s *Session) create(img Image, off, bbOff, bbSize Pos3) *Struct {
 	rs := rotateBoundBoxSize(bbSize, s.Rotation)
 	mins := Pos3{bx + s.spriteX, by + s.spriteY, bbOff.Z}
 	ps := s.newStruct()
-	ps.Type = s.ItemType
+	ps.Type, ps.Item = s.ItemType, s.CurrentItem
 	ps.Img, ps.VpX, ps.VpY, ps.Mins = img, vpX, vpY, mins
 	ps.Maxs = Pos3{mins.X + rs.X, mins.Y + rs.Y, mins.Z + rs.Z}
 	return ps
@@ -664,8 +668,8 @@ func (s *Session) Draw(rt *gfx8.RenderTarget) {
 				order++
 				if c.Img.Sprite != nil {
 					sp := c.Img.Sprite
-					lines = append(lines, fmt.Sprintf("%d %d %v %d %d %d %d %d %d %d %d %d %d %d %d", s.rtX, order, c.Type, sp.Index, c.VpX+sp.XOffset, c.VpY+sp.YOffset, sp.Width, sp.Height,
-						c.Mins.X, c.Mins.Y, c.Mins.Z, c.Maxs.X, c.Maxs.Y, c.Maxs.Z, c.quadrant))
+					lines = append(lines, fmt.Sprintf("%d %d %v %d %d %d %d %d %d %d %d %d %d %d %d | %+v", s.rtX, order, c.Type, sp.Index, c.VpX+sp.XOffset, c.VpY+sp.YOffset, sp.Width, sp.Height,
+						c.Mins.X, c.Mins.Y, c.Mins.Z, c.Maxs.X, c.Maxs.Y, c.Maxs.Z, c.quadrant, c.Item))
 				}
 			}
 		}
