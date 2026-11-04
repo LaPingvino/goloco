@@ -44,6 +44,30 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 
 ## Queue (top = next)
 
+> NOW (Joop 2026-11-04: "we have no working vehicles yet. I think that's a strong next priority. That might get
+> us to an actually playable game"): item **5P** first; 5.9f3's town parts (constructBuilding, addRoadJunction,
+> road takeover) and the open build (item O) after it.
+
+5P. [ ] **Playable vehicles** — the player's side of item 5 (the sim side — movement, orders, pathing, reservations,
+   loading / unloading / payment — is ported). Locomotion has no depots: buy, place on track / road, give orders, start.
+   a. CreateVehicle game command (GameCommands/Vehicles/CreateVehicle.cpp, 773: the head / veh1 / veh2 / tail /
+      cars entities, costs, availability), headless.
+   b. VehiclePlace (306; land: positionVehicleOnTrack is ported) and VehiclePickup (78).
+   c. VehicleChangeRunningMode (243: start / stop / manual).
+   d. Orders: VehicleOrderInsert / Delete / Up / Down / Skip (~350).
+   e. End-to-end headless test: two stations on a line, buy → place → orders → start → ticks: it runs, loads,
+      unloads, the company earns — before any window.
+   f. Build Vehicle window (Ui/Windows/BuildVehicle.cpp, 1995) — the parked July branch is not a port.
+   g. Vehicle window (Ui/Windows/Vehicle.cpp, 5269): first the main tab (place, start / stop) and the route tab
+      (orders); the rest later.
+   Each step: the upstream code, tests, the test page redeployed when something shows.
+O. [ ] **Open build on goloco's GitHub Pages** (Joop 2026-11-04: "the clean version of goloco, probably good to
+   push that one to its Github Pages and see how close we can get") — docs/open-build.md approved. PARKED behind
+   5P. Started: OpenGraphics v0.1.8 objects.zip fetched (sha256 658891d9…5013c7 ✓, 152 files); baseline without
+   Locomotion data: a black title with 'GoLoco' and four empty buttons (no palette, no objects, no map). Next:
+   webpack -open (OpenGraphics + the repo's own files only, refusing originals), a Pages workflow (CI fetches and
+   checks OpenGraphics), the licence / credits; then objects without g1.DAT (the palette first).
+
 > NEXT (Joop 2026-11-04: the test page is "responsive" — item 0 done; "language switch fails on web"): item 0L
 > (UI texts by OpenLoco string id, so a language switch shows — the main windows done 2026-11-04; the rest as
 > windows are touched), then 5.9f3 resumes (town growth / createRoad: clear
@@ -895,3 +919,4 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 - 2026-11-04 (5.9f3 part 14: Town::grow's walk) — GrowTown (Town.cpp 0x00498116, as the neutral company): findRoadExtent, a random end (randBool; the far end by RoadCoordinates / kRotationOffset, reversed), getIdealTownRoadId, ≤ 75 steps while the closest town is this one: getRoadInformation, getRoadConnectionEnd + getRoadConnections (neutral, any road), at a dead end appendToRoadEnd (allowRoadExpansion, not a station road end), several branches → one drawn ((randNext & 0xFFFF) × n / 65536); no road: buildInitialRoad (0x00498101: the square around the town, the first tile where a straight ideal road on the surface works, rotation randNext(3)). TownGrowFlags constants. PARTIAL (own parts next, flags do nothing yet — and so the town prng's draws differ from upstream when they are set): road takeover / type update / street lights, constructBuilding, addRoadJunction; not yet called from the town update. Also: Tile::roadStation (connection.go) now resets on any non-road element as upstream (it kept the run going through them); last tick's duplicate roadStationAfter removed. TestGrowTown (no flags: nothing; the first road; no expansion: no more; six grows with expansion: 6 pieces). Gate green. NEXT: call Town::grow where upstream does (TownManager's update), then constructBuilding.
 - 2026-11-04 (test page) — redeployed (b9c2195, with music): the page had been stale since 2026-11-03 because, after a compaction, I read 'the Caddy script needs sudo' as 'only Joop can deploy'. The sudo script was one-time setup; the deploy is a rebuild into ~/Projects/goloco-web-local. Joop: name it so — scripts/caddy-goloco.sh → scripts/caddy-goloco-first-time-setup.sh (header: NOT the deploy), and scripts/redeploy-test-page.sh is THE deploy (builds HEAD — uncommitted work stashed and put back —, -music, chmod o+rX for Caddy). Ran it: deployed, the live URL answers 401 (basic auth).
 - 2026-11-04 (5.9f3 part 15: towns grow in the game) — TownManager::update (UpdateTowns, from the game tick after dateTick as tickLogic: every 8 ticks town (ticks/8) % 0x7F) → Town::update (updateTown: recalculateSize, kBuildSpeedToGrowthPerTick, the slowest 7 in 8 by gPrng1 only road updates, else that many full grows). FOUND+FIXED: the town's commands applied directly, but upstream runs every game command through doCommand (loc_4313C6) — first without apply (where removeBuilding refuses indestructible buildings / a town's permission: the clear function only sets flag_7, which skips those, while applying), then with it; ported as sim.doCommand and all town-growth commands (road pieces, bridges, the first road, raise / lower land) go through it. PARTIAL: Config townGrowthDisabled (none yet). TestTownsGrowOnTitleMap (local game data, skips without): 32 towns, 20 000 ticks: road pieces 4757 → 4803, every new one neutral and sane, the tiles' refs consistent. Diagnostics: GOLOCO_DIAG_TICKS=N (N game ticks before the first frame; logs the road pieces before / after and where new ones are), GOLOCO_DIAG_CENTER=tile:X,Y. Visual (title, 4000 ticks, tile 224,244 Kansas City): new town roads, ordinary buildings in their way removed (upstream's clearBuildingCollision does that; the church stays) — not compared with an OpenLoco run (would need one). NEXT: constructBuilding (towns put buildings along their roads), then addRoadJunction, road takeover / street lights; 5.9g.
+- 2026-11-04 (priorities) — Joop: vehicles first (5P, scoped from upstream: CreateVehicle, VehiclePlace / Pickup, RunningMode, order commands, an end-to-end headless test, then the Build Vehicle and Vehicle windows); the open build for Pages approved and parked (item O). Checked on the way: assets/extracted/{dirt,grass,water}.png in the public repo are flat-shaded placeholder diamonds (generated, not Locomotion art) — no game data in git (git ls-files: no .dat / .sc5 / .sv5 / sounds).
