@@ -234,6 +234,9 @@ func (m *Map) createRoadApply(c *Cmd, a roadPlacementArgs, flags uint8, r *creat
 			el.HasLevelCrossing, el.LevelCrossingObjectID = true, p.LevelCrossingObjID
 		}
 		t.insertRoadElement(el, p.Quarter&0xF)
+		if flags&CmdAiAllocated == 0 { // shouldInvalidateTile (Config showAiPlanningAsGhosts: default off)
+			m.mapInvalidateTileFull(p.X, p.Y)
+		}
 	}
 	return true
 }

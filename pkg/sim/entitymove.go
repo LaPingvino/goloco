@@ -60,3 +60,9 @@ func (m *Map) invalidateTile(x, y, zMin, zMax int32, zoom uint8, radius int32) {
 		m.InvalidateTile(x, y, zMin, zMax, zoom, radius)
 	}
 }
+
+// mapInvalidateTileFull is TileManager::mapInvalidateTileFull: the tile from
+// height 0 to 1120 at ZoomLevel::eighth.
+func (m *Map) mapInvalidateTileFull(x, y int32) {
+	m.invalidateTile(x, y, 0, 1120, ZoomEighth, 0)
+}

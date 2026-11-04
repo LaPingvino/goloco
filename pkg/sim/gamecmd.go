@@ -76,6 +76,7 @@ func (m *Map) removeTree(c *Cmd, t *Tile, k int, px, py int32, flags uint8, obj 
 		m.updateTownInfo(px, py, 0, 0, rating, 0, c)
 	}
 	idx := int(r.Index)
+	m.invalidateTile(px, py, int32(t.Trees[idx].BaseZ)*4, int32(t.Trees[idx].ClearZ)*4, ZoomEighth, 56) // ViewportManager::invalidate(pos, zMin, zMax, eighth, 56)
 	t.Trees = append(t.Trees[:idx], t.Trees[idx+1:]...)
 	t.removeRef(scenario.KindTree, idx)
 }
@@ -243,6 +244,7 @@ func (m *Map) removeBuildingElement(c *Cmd, t *Tile, k int, px, py int32) {
 		}
 	}
 	idx := int(r.Index)
+	m.invalidateTile(px, py, int32(t.Buildings[idx].BaseZ)*4, int32(t.Buildings[idx].ClearZ)*4, ZoomEighth, 0)
 	t.Buildings = append(t.Buildings[:idx], t.Buildings[idx+1:]...)
 	t.removeRef(scenario.KindBuilding, idx)
 }
