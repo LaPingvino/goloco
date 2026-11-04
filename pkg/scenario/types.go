@@ -129,6 +129,7 @@ type Scenario struct {
 	DefaultLevelCrossingType                                uint8    // currentDefaultLevelCrossingType (0x1AC)
 	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors  uint16   // 0x430 / 0x432
 	Orders                                                  []byte   // GameState orders[] (ParseOrders)
+	OrderTableLength                                        uint32   // GameState orderTableLength (0x1A0): the bytes of orders[] in use
 	Routings                                                []uint16 // GameState routings[] (ParseRoutings), by RoutingHandle
 	// GameState roadObjectIdIsAnyRoadTypeCompatible (0x1A4) and
 	// roadObjectIdIsUsableByAllCompanies (0x1A8): bit per road object id.

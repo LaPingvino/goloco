@@ -226,6 +226,11 @@ type VehicleEntity struct {
 
 	// ---- Common vehicle fields ----
 	HeadID uint16 // vhCommonHead (0x26) — ID of this train's VehicleHead entity
+	// Name (EntityBase 0x22: a StringId, combined with the head's ordinal
+	// number — "Train 3") and OrdinalNumber (VehicleHead 0x44; other types
+	// read other fields there).
+	Name          uint16
+	OrdinalNumber int16
 	// TileX/TileY are tile-aligned world coords in WorldUnits (same units as PosX/PosY).
 	// TileX = PosX.Tile().World() — i.e., floor(PosX/32)*32.
 	// Use PosX.Tile() / PosY.Tile() for the tile grid index.
@@ -392,6 +397,8 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			HeadVar53:               e[0x53],
 			HeadVar52:               e[0x52],
 			OrderTableOffset:        binary.LittleEndian.Uint32(e[0x46:]),
+			Name:                    binary.LittleEndian.Uint16(e[0x22:]),
+			OrdinalNumber:           int16(binary.LittleEndian.Uint16(e[0x44:])),
 			CurrentOrder:            binary.LittleEndian.Uint16(e[0x4A:]),
 			SizeOfOrderTable:        binary.LittleEndian.Uint16(e[0x4C:]),
 			Var48:                   e[0x48],

@@ -1578,6 +1578,7 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 		return
 	}
 	sc.RoadAnyTypeCompatible = binary.LittleEndian.Uint32(gs[0x1A4:])
+	sc.OrderTableLength = binary.LittleEndian.Uint32(gs[0x1A0:]) // GameState orderTableLength
 	sc.Rng = [2]uint32{binary.LittleEndian.Uint32(gs[0:]), binary.LittleEndian.Uint32(gs[4:])}
 	sc.ScenarioTicks = binary.LittleEndian.Uint32(gs[0x146:])
 	sc.UnkRng = [2]uint32{binary.LittleEndian.Uint32(gs[8:]), binary.LittleEndian.Uint32(gs[12:])}
