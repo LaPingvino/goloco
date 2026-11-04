@@ -152,3 +152,50 @@ func TestCompanyColourSchemes(t *testing.T) {
 		t.Errorf("%d of %d bodies' colours are not their company's scheme", bad, checked)
 	}
 }
+
+// createCar against the title map's saved trains: for each saved train's
+// first car, a new train of the same object for the same owner gets the same
+// structure (car components, entity types), per component the same sprite
+// types and sizes, reversed / jacobs flags, cargo and colours.
+func TestCreateCarMatchesSaved(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked := 0
+	for _, tr := range trains[:min(len(trains), 25)] {
+		if len(tr.Cars) == 0 {
+			continue
+		}
+		car := tr.Cars[0]
+		first := m.Entities[car[0].Body]
+		head := m.Entities[tr.Head]
+		h, ok := m.createBaseVehicle(head.Owner, head.Mode, head.VehicleType, head.TrackType)
+		if !ok || !m.createCar(head.Owner, h, first.ObjectID, om) {
+			t.Fatalf("could not build %d", first.ObjectID)
+		}
+		nt, err := m.TrainOf(h)
+		if err != nil || len(nt.Cars) != 1 || len(nt.Cars[0]) != len(car) {
+			t.Fatalf("object %d: new train %+v err %v (saved car has %d components)", first.ObjectID, nt, err, len(car))
+		}
+		const flagsCompared = f38IsReversed | f38JacobsBogieAvailable | f38Unk0
+		for i, sc := range car {
+			nc := nt.Cars[0][i]
+			for _, p := range [][2]int{{sc.Front, nc.Front}, {sc.Back, nc.Back}, {sc.Body, nc.Body}} {
+				a, b := m.Entities[p[0]], m.Entities[p[1]]
+				// The sprite sizes are not compared yet: VehicleObject::load measures
+				// them from the images (getImagesMaxExtent) — 5P.a part 3d.
+				if a.EntityType != b.EntityType || a.ObjectSpriteType != b.ObjectSpriteType ||
+					a.Flags38&flagsCompared != b.Flags38&flagsCompared || a.Cargo.AcceptedTypes != b.Cargo.AcceptedTypes ||
+					a.Cargo.MaxQty != b.Cargo.MaxQty || a.ColourPrimary != b.ColourPrimary || a.ColourSecondary != b.ColourSecondary {
+					t.Errorf("%s component %d type %d:\n saved %+v\n new   %+v", om.Vehicles[first.ObjectID].DisplayName, i, a.EntityType,
+						[]any{a.ObjectSpriteType, a.SpriteWidth, a.SpriteHeightNegative, a.SpriteHeightPositive, a.Flags38 & flagsCompared, a.Cargo.AcceptedTypes, a.Cargo.MaxQty, a.ColourPrimary, a.ColourSecondary},
+						[]any{b.ObjectSpriteType, b.SpriteWidth, b.SpriteHeightNegative, b.SpriteHeightPositive, b.Flags38 & flagsCompared, b.Cargo.AcceptedTypes, b.Cargo.MaxQty, b.ColourPrimary, b.ColourSecondary})
+				}
+			}
+		}
+		checked++
+	}
+	t.Logf("%d trains' first cars rebuilt and compared", checked)
+}
