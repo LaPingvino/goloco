@@ -39,3 +39,24 @@ func (m *Map) invalidateSprite(e *scenario.VehicleEntity) {
 	}
 	m.InvalidateEntity(e.SpriteLeft, e.SpriteTop, e.SpriteRight, e.SpriteBottom)
 }
+
+// Zoom levels (ZoomLevel): ViewportManager::invalidate skips viewports zoomed
+// out further than the level it is given.
+const (
+	ZoomFull uint8 = iota
+	ZoomHalf
+	ZoomQuarter
+	ZoomEighth
+)
+
+// InvalidateTile is called where upstream calls ViewportManager::invalidate(
+// pos, zMin, zMax, zoom, radius): the world turns the tile's column between
+// zMin and zMax (pos + 16, gameToScreen, grown by radius) into a screen rect.
+type InvalidateTile func(x, y, zMin, zMax int32, zoom uint8, radius int32)
+
+// invalidateTile is ViewportManager::invalidate(pos, zMin, zMax, zoom, radius).
+func (m *Map) invalidateTile(x, y, zMin, zMax int32, zoom uint8, radius int32) {
+	if m.InvalidateTile != nil {
+		m.InvalidateTile(x, y, zMin, zMax, zoom, radius)
+	}
+}

@@ -101,7 +101,7 @@ func (m *Map) SetSignalState(x, y, z int32, tad uint16, trackType uint8, flags u
 	x, y, z, flags = signalStart(x, y, z, tad, flags)
 	for _, p := range TrackPieces[tad>>3&0x3F] {
 		sx, sy, sz := pieceTileLoc(x, y, z, tad, p)
-		sig, _ := m.findSignalOnTrack(sx, sy, sz, tad, trackType, p.Index)
+		sig, foundTrack := m.findSignalOnTrack(sx, sy, sz, tad, trackType, p.Index)
 		if sig == nil {
 			return // upstream asserts: a signalled piece has a signal on every tile
 		}
@@ -124,7 +124,16 @@ func (m *Map) SetSignalState(x, y, z int32, tad uint16, trackType uint8, flags u
 					lights |= 1 << 1
 				}
 			}
-			side.SetAllLights(lights)
+			if side.AllLights() != lights {
+				side.SetAllLights(lights)
+				should := foundTrack.IsLast // isFlag6
+				if flags&(1<<31) != 0 {
+					should = foundTrack.SequenceIndex == 0
+				}
+				if should {
+					m.invalidateTile(sx, sy, sz, sz+24, ZoomHalf, 0)
+				}
+			}
 		case unk1 == 8:
 			side.SetIsOccupied(true)
 		case unk1 > 8:
@@ -133,6 +142,15 @@ func (m *Map) SetSignalState(x, y, z int32, tad uint16, trackType uint8, flags u
 			side.SetUnk4(uint8(unk1 & 3))
 			if unk1&3 == 0 {
 				side.SetAllLights(side.AllLights() & 0xC)
+			}
+			animate := foundTrack.SequenceIndex == 0
+			if flags&(1<<31) != 0 {
+				animate = foundTrack.IsLast // isFlag6
+			}
+			if animate {
+				// PARTIAL: AnimationManager::createAnimation(0, signalLoc, z / 4) —
+				// the animation manager is not ported (the signal's frames don't step).
+				m.invalidateTile(sx, sy, sz, sz+24, ZoomHalf, 0)
 			}
 		}
 	}
