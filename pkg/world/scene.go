@@ -208,13 +208,27 @@ var dirtyCheck = func() int {
 	return n
 }()
 
+var dirtyCheckMin = func() int {
+	n, err := strconv.Atoi(os.Getenv("GOLOCO_DIRTY_CHECK_MIN"))
+	if err != nil || n < 1 {
+		return 1
+	}
+	return n
+}()
+
 func (w *World) checkDirty(view scene.View) {
 	w.dirtyChecks++
 	if w.dirtyChecks%dirtyCheck != 0 {
 		return
 	}
+	// the reference is upstream's own full repaint: the whole screen invalidated,
+	// then renderDirtyRegions — the grid's 64-wide rects, not one rect (the
+	// column split decides some pixels: one rect would differ from upstream too)
 	full := gfx8.NewRenderTarget(view.W, view.H)
-	w.scene.RenderRect(&w.Map, view, full, 0, 0, view.W, view.H)
+	var g gfx8.InvalidationGrid
+	g.Reset(view.W, view.H, gfx8.InvalidationBlockWidth, gfx8.InvalidationBlockHeight)
+	g.Invalidate(0, 0, view.W, view.H)
+	g.TraverseDirtyCells(func(l, t, r, b int) { w.scene.RenderRect(&w.Map, view, full, l, t, r, b) })
 	diff := 0
 	for i := range full.Bits {
 		if full.Bits[i] != w.dirtyRT.Bits[i] {
@@ -222,7 +236,7 @@ func (w *World) checkDirty(view scene.View) {
 		}
 	}
 	log.Printf("[DirtyCheck] frame %d: %d of %d pixels differ from a full repaint", w.dirtyChecks, diff, len(full.Bits))
-	if diff == 0 || w.dirtySaved >= 3 {
+	if diff < dirtyCheckMin || w.dirtySaved >= 6 { // GOLOCO_DIRTY_CHECK_MIN: the smallest difference saved (default 1)
 		return
 	}
 	w.dirtySaved++
