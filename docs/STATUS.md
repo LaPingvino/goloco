@@ -23,7 +23,7 @@ from OpenLoco is in docs/deviations.md. Updated when an item moves.
 
 - **5P — playable vehicles** (top priority, Joop 2026-11-04). The vehicle simulation is done; the player's side is
   being built: the purchase command (CreateVehicle — its parts so far match saved trains exactly: entity slots,
-  cars, cargo, colours, sprite sizes), then placing a vehicle, start / stop, giving orders, an end-to-end test,
+  cars, cargo, colours, sprite sizes, the train's automatic layout), then placing a vehicle, start / stop, giving orders, an end-to-end test,
   and the Build Vehicle and Vehicle windows.
 - **Towns** (5.9f3): roads grow; buildings along them, new junctions and road take-over are next.
 - **Language switch** (0L): the remaining windows' texts.

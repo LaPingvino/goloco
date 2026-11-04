@@ -203,3 +203,78 @@ func TestCreateCarMatchesSaved(t *testing.T) {
 	}
 	t.Logf("%d trains' first cars rebuilt and compared", checked)
 }
+
+// autoLayoutTrain: the title map's saved trains were laid out by the game, so
+// laying them out again keeps each one's order, orientation and sprites (a
+// few may differ where the player shunted); and a train built wagon first,
+// locomotive second gets the locomotive moved to the front.
+func TestAutoLayoutTrain(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	snap := func(head uint16) []uint32 {
+		tr, err := m.TrainOf(head)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []uint32
+		for _, car := range tr.Cars {
+			for _, cc := range car {
+				for _, i := range []int{cc.Front, cc.Back, cc.Body} {
+					e := m.Entities[i]
+					out = append(out, uint32(e.ID)<<16|uint32(e.ObjectSpriteType)<<8|uint32(e.Flags38&f38IsReversed))
+				}
+			}
+		}
+		return out
+	}
+	same, changed := 0, 0
+	var loco, wagon *Train
+	for _, tr := range trains {
+		head := m.Entities[tr.Head].ID
+		before := snap(head)
+		m.autoLayoutTrain(head, om)
+		after := snap(head)
+		if len(before) == len(after) && func() bool {
+			for i := range before {
+				if before[i] != after[i] {
+					return false
+				}
+			}
+			return true
+		}() {
+			same++
+		} else {
+			changed++
+			if changed <= 3 {
+				t.Logf("train %d (%d cars) changed: %d → %d components", head, len(tr.Cars), len(before), len(after))
+			}
+		}
+		if loco == nil && len(tr.Cars) >= 2 && m.Entities[tr.Head].Mode == 0 {
+			first, last := om.Vehicles[m.Entities[tr.Cars[0][0].Front].ObjectID], om.Vehicles[m.Entities[tr.Cars[len(tr.Cars)-1][0].Front].ObjectID]
+			if first != nil && last != nil && first.Power != 0 && last.Power == 0 {
+				x := tr
+				loco, wagon = &x, &x
+			}
+		}
+	}
+	t.Logf("%d trains laid out again: %d unchanged, %d changed", len(trains), same, changed)
+	if changed*10 > len(trains) {
+		t.Errorf("too many saved trains change: %d of %d", changed, len(trains))
+	}
+	if loco == nil {
+		t.Skip("no rail train with a locomotive in front and a wagon behind")
+	}
+	head := m.Entities[loco.Head]
+	locoObj, wagonObj := m.Entities[loco.Cars[0][0].Front].ObjectID, m.Entities[wagon.Cars[len(wagon.Cars)-1][0].Front].ObjectID
+	h, _ := m.createBaseVehicle(head.Owner, head.Mode, head.VehicleType, head.TrackType)
+	m.createCar(head.Owner, h, wagonObj, om)
+	m.createCar(head.Owner, h, locoObj, om)
+	m.autoLayoutTrain(h, om)
+	nt, _ := m.TrainOf(h)
+	if got := m.Entities[nt.Cars[0][0].Front].ObjectID; got != locoObj {
+		t.Errorf("first car after the layout: object %d, want the locomotive %d", got, locoObj)
+	}
+}
