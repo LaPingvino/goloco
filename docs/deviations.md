@@ -79,3 +79,15 @@ audio (pkg/audio/audio.go:158–174), music while the data lacks it.
 4. B track pieces 8–25; C font metrics (g1font fudge, len×7) — small, very visible.
 5. A economy (payment, running costs, company value), station cargo.
 6. The rest of B, then E.
+
+## Z. Intended improvements — upstream bugs goloco fixes on purpose
+
+Joop (2026-11-04): "even the original game had display bugs because it was a little bit rushed and
+underappreciated. The Go version exists to make fixing things easier." So: port faithfully first; where
+OpenLoco (and Locomotion) are themselves wrong — checked against the current OpenLoco source, not only the
+older release binary — goloco may fix it knowingly. Each fix is listed here, so no drift is ever accidental.
+
+| Where | Upstream (and the bug) | goloco | Why |
+|---|---|---|---|
+| (none yet) | | | |
+
