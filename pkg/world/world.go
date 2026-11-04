@@ -103,17 +103,18 @@ type World struct {
 	sceneImg   *ebiten.Image     // its frame, uploaded each draw
 	// TitleMode is SceneManager::isTitleMode(): Viewport::paint draws no
 	// station or town names then.
-	TitleMode    bool
-	dirtyRT      *gfx8.RenderTarget                                     // GOLOCO_DIRTY: the screen that persists (Viewport's pixels)
-	dirtyGrid    gfx8.InvalidationGrid                                  // GOLOCO_DIRTY: what to repaint
-	dirtyView    scene.View                                             // GOLOCO_DIRTY: the view last drawn (invalidations map onto it)
-	invalEntity  func(left, top, right, bottom int16)                   // w.invalidateEntity, made once
-	invalTile    func(x, y, zMin, zMax int32, zoom uint8, radius int32) // w.invalidateTile, made once
-	sceneFrames  int                                                    // frames since the last timing log
-	sceneTime    time.Duration                                          // render time accumulated over them
-	frameCounter int                                                    // draw-frame counter for UI pulses
-	highlightOps []worldHighlightOp                                     // ripple/wave sprites drawn after blend
-	waterOps     []worldHighlightOp                                     // water surface ops drawn after all terrain (pass 1.5)
+	TitleMode               bool
+	dirtyRT                 *gfx8.RenderTarget                                     // GOLOCO_DIRTY: the screen that persists (Viewport's pixels)
+	dirtyGrid               gfx8.InvalidationGrid                                  // GOLOCO_DIRTY: what to repaint
+	dirtyView               scene.View                                             // GOLOCO_DIRTY: the view last drawn (invalidations map onto it)
+	dirtyChecks, dirtySaved int                                                    // GOLOCO_DIRTY_CHECK
+	invalEntity             func(left, top, right, bottom int16)                   // w.invalidateEntity, made once
+	invalTile               func(x, y, zMin, zMax int32, zoom uint8, radius int32) // w.invalidateTile, made once
+	sceneFrames             int                                                    // frames since the last timing log
+	sceneTime               time.Duration                                          // render time accumulated over them
+	frameCounter            int                                                    // draw-frame counter for UI pulses
+	highlightOps            []worldHighlightOp                                     // ripple/wave sprites drawn after blend
+	waterOps                []worldHighlightOp                                     // water surface ops drawn after all terrain (pass 1.5)
 
 	// RenderIssues tracks tiles where rendering failed silently during the last Draw().
 	// Accumulated per-frame; exposed via WorstRenderIssue() for --diag targeting.

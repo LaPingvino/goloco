@@ -602,6 +602,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		r.paintStation(s, m, t, t.Stations[ref.Index], prev, x, y, ticks)
 	case scenario.KindBuilding:
 		b := t.Buildings[ref.Index]
+		s.CurrentItem = &t.Buildings[ref.Index] // setCurrentItem(element)
 		bo := om.GetBuildingObjectByIndex(int(b.ObjectID))
 		if bo == nil || int(b.Variation) >= len(bo.VariationParts) {
 			return

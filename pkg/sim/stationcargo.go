@@ -55,7 +55,7 @@ func (m *Map) UpdateCargoDistribution(id int, om *objects.ObjectManager) {
 		for k := 0; k < int(st.TileSize) && k < len(st.Tiles); k++ {
 			tl := st.Tiles[k]
 			z := int32(tl[2]) &^ 3 // World::heightFloor
-			m.invalidateTile(int32(tl[0]), int32(tl[1]), z, z+32, ZoomFull, 0)
+			m.invalidateTile(int32(tl[0]), int32(tl[1]), z, z+32, ZoomFull, defaultRadius)
 		}
 	}
 }
