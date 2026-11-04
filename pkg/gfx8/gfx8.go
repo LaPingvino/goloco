@@ -57,6 +57,11 @@ type Sprite struct {
 	// Index is the g1 image index, set by a sprite cache that knows it
 	// (DrawSpriteAtZoom recurses through Index − ZoomOffset); 0 = unknown.
 	Index int
+
+	// spans: per row, the runs of non-transparent pixels (start, end) — what
+	// upstream's RLE drawing walks; made by Decode, so a transparent copy
+	// moves whole runs. nil (sprites made elsewhere) = test every pixel.
+	spans [][][2]int32
 	// Runs are the RLE rows as stored: per row, [x0, n] pairs (drawRLESprite
 	// walks these; the pixels themselves are in Pix).
 	Runs [][][2]int
@@ -77,6 +82,7 @@ func Decode(e *assets.G1Element) (*Sprite, error) {
 			return nil, errors.New("gfx8: raw data too short")
 		}
 		copy(s.Pix, e.Data[:w*h])
+		s.spans = rowSpans(s)
 		return s, nil
 	}
 	s.HasTransparency = true
@@ -107,6 +113,7 @@ func Decode(e *assets.G1Element) (*Sprite, error) {
 			}
 		}
 	}
+	s.spans = rowSpans(s)
 	return s, nil
 }
 
@@ -196,6 +203,18 @@ func DrawSpriteNoise(rt *RenderTarget, s *Sprite, x, y int, op BlendOp, palMap [
 	}
 	// Fast path for the commonest op, a transparent copy: blitPixel with
 	// OpTransparent alone writes src wherever src != 0.
+	if op == OpTransparent && len(s.spans) == s.Height {
+		for sy := syMin; sy < syMax; sy++ {
+			base, src := (y0+sy)*rt.Width+x0, s.Pix[sy*s.Width:]
+			for _, r := range s.spans[sy] {
+				a, b := max(int(r[0]), sxMin), min(int(r[1]), sxMax)
+				if a < b {
+					copy(rt.Bits[base+a:base+b], src[a:b])
+				}
+			}
+		}
+		return
+	}
 	if op == OpTransparent {
 		for sy := syMin; sy < syMax; sy++ {
 			src := s.Pix[sy*s.Width+sxMin : sy*s.Width+sxMax]
@@ -315,4 +334,27 @@ func drawRowsFast(rt *RenderTarget, s *Sprite, x0, y0, sxMin, sxMax, syMin, syMa
 		return false
 	}
 	return true
+}
+
+// rowSpans finds each row's runs of non-transparent pixels.
+func rowSpans(s *Sprite) [][][2]int32 {
+	out := make([][][2]int32, s.Height)
+	for y := range s.Height {
+		row := s.Pix[y*s.Width : (y+1)*s.Width]
+		var spans [][2]int32
+		for x := 0; x < len(row); {
+			for x < len(row) && row[x] == Transparent {
+				x++
+			}
+			a := x
+			for x < len(row) && row[x] != Transparent {
+				x++
+			}
+			if a < x {
+				spans = append(spans, [2]int32{int32(a), int32(x)})
+			}
+		}
+		out[y] = spans
+	}
+	return out
 }
