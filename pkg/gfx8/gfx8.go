@@ -208,6 +208,11 @@ func DrawSpriteNoise(rt *RenderTarget, s *Sprite, x, y int, op BlendOp, palMap [
 		}
 		return
 	}
+	// The other common ops without noise, each blitPixel's case as its own
+	// loop (no call per pixel); anything else goes through blitPixel below.
+	if fast := drawRowsFast(rt, s, x0, y0, sxMin, sxMax, syMin, syMax, op, palMap); fast {
+		return
+	}
 	for sy := syMin; sy < syMax; sy++ {
 		row := (y0 + sy) * rt.Width
 		for sx := sxMin; sx < sxMax; sx++ {
@@ -231,23 +236,83 @@ func DrawSpriteNoise(rt *RenderTarget, s *Sprite, x, y int, op BlendOp, palMap [
 // only raw (non-RLE) images here; the mask is assumed to share the layout.
 func DrawSpriteMasked(rt *RenderTarget, img, mask *Sprite, x, y int) {
 	x0, y0 := x+img.XOffset, y+img.YOffset
-	for sy := 0; sy < img.Height; sy++ {
-		ty := y0 + sy
-		if ty < 0 || ty >= rt.Height {
+	// Clipped once per sprite and row (the same pixels as testing each one).
+	sxMin, sxMax := max(0, -x0), min(img.Width, rt.Width-x0)
+	syMin, syMax := max(0, -y0), min(img.Height, rt.Height-y0)
+	if sxMin >= sxMax || syMin >= syMax {
+		return
+	}
+	for sy := syMin; sy < syMax; sy++ {
+		lo, hi := sy*img.Width+sxMin, min(sy*img.Width+sxMax, len(mask.Pix))
+		if lo >= hi {
 			continue
 		}
-		for sx := 0; sx < img.Width; sx++ {
-			tx := x0 + sx
-			if tx < 0 || tx >= rt.Width {
-				continue
-			}
-			i := sy*img.Width + sx
-			if i >= len(mask.Pix) {
-				continue
-			}
-			if v := mask.Pix[i] & img.Pix[i]; v != 0 {
-				rt.Bits[ty*rt.Width+tx] = v
+		m, src := mask.Pix[lo:hi], img.Pix[lo:hi]
+		dst := rt.Bits[(y0+sy)*rt.Width+x0+sxMin:]
+		dst = dst[:len(m)]
+		for i := range m {
+			if v := m[i] & src[i]; v != 0 {
+				dst[i] = v
 			}
 		}
 	}
+}
+
+// drawRowsFast draws the clipped rows for the ops that need no noise byte and
+// always have OpTransparent (the remap, the translucent blend, both) or are a
+// plain copy, exactly as blitPixel would; false = not one of those.
+func drawRowsFast(rt *RenderTarget, s *Sprite, x0, y0, sxMin, sxMax, syMin, syMax int, op BlendOp, palMap []uint8) bool {
+	switch op {
+	case OpNone:
+		for sy := syMin; sy < syMax; sy++ {
+			copy(rt.Bits[(y0+sy)*rt.Width+x0+sxMin:], s.Pix[sy*s.Width+sxMin:sy*s.Width+sxMax])
+		}
+	case OpTransparent | OpSrc:
+		pm := palMap[:256]
+		for sy := syMin; sy < syMax; sy++ {
+			src := s.Pix[sy*s.Width+sxMin : sy*s.Width+sxMax]
+			dst := rt.Bits[(y0+sy)*rt.Width+x0+sxMin:]
+			dst = dst[:len(src)]
+			for i, p := range src {
+				if p != Transparent {
+					if px := pm[p]; px != Transparent {
+						dst[i] = px
+					}
+				}
+			}
+		}
+	case OpTransparent | OpDst:
+		pm := palMap[:256]
+		for sy := syMin; sy < syMax; sy++ {
+			src := s.Pix[sy*s.Width+sxMin : sy*s.Width+sxMax]
+			dst := rt.Bits[(y0+sy)*rt.Width+x0+sxMin:]
+			dst = dst[:len(src)]
+			for i, p := range src {
+				if p != Transparent {
+					if px := pm[dst[i]]; px != Transparent {
+						dst[i] = px
+					}
+				}
+			}
+		}
+	case OpTransparent | OpSrc | OpDst:
+		n := len(palMap)
+		for sy := syMin; sy < syMax; sy++ {
+			src := s.Pix[sy*s.Width+sxMin : sy*s.Width+sxMax]
+			dst := rt.Bits[(y0+sy)*rt.Width+x0+sxMin:]
+			dst = dst[:len(src)]
+			for i, p := range src {
+				if p != Transparent {
+					if k := (int(p)-1)*256 + int(dst[i]); k < n {
+						if px := palMap[k]; px != Transparent {
+							dst[i] = px
+						}
+					}
+				}
+			}
+		}
+	default:
+		return false
+	}
+	return true
 }
