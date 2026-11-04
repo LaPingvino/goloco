@@ -158,6 +158,8 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
     window.golocoTakeFiles = takeFiles; // (also what a test hands its files to)
     $("drop").hidden = false;
     document.querySelector("h1").textContent = "GoLoco"; document.title = "GoLoco";
+    const foot = [...document.querySelectorAll("p.note")].find((x) => x.textContent.startsWith("Music is fetched"));
+    if (foot) foot.textContent = "Saves and screenshots live in memory and are gone on reload. Goloco's log and any files it could not find are in the drawer below. goloco is a work in progress: much of the game is still being ported.";
     document.querySelector(".lede").textContent = "A Go port of OpenLoco — Chris Sawyer's Locomotion — in your browser. It needs your own copy of the game: drop its folder below (Steam, GOG or the CD). Without it, goloco shows what it can.";
     for (const [p, data] of await dbAll()) GolocoFS.addFile(p, data);
     checklist();
