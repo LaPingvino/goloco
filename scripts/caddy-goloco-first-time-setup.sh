@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# caddy-goloco.sh — serve the goloco wasm test build at https://kiefte.eu/goloco/
-# behind HTTP basic auth (the build holds the Locomotion game data, which may not
-# be public).
+# caddy-goloco-first-time-setup.sh — ONE-TIME SETUP (done 2026-11-03): make Caddy
+# serve the goloco wasm test build at https://kiefte.eu/goloco/ behind HTTP basic
+# auth (the build holds the Locomotion game data, which may not be public).
 #
-#   go run ./cmd/webpack -local -out ~/Projects/goloco-web-local   # (re)build
-#   sudo bash scripts/caddy-goloco.sh [build dir] [user]            # once, or to change the password
+# NOT the deploy. Redeploying is only a rebuild into the served folder, no sudo:
+#   bash scripts/redeploy-test-page.sh
+# Run this one again only to change the password or the served folder:
+#   sudo bash scripts/caddy-goloco-first-time-setup.sh [build dir] [user]
 #
 # Inserts (or replaces) a marked block in the kiefte.eu site of /etc/caddy/Caddyfile,
 # keeps a Caddyfile.bak.<epoch> backup, validates, and reloads Caddy. If validation
@@ -32,7 +34,7 @@ backup="$CADDYFILE.bak.$(date +%s)"
 cp -p "$CADDYFILE" "$backup"
 
 block=$(cat <<EOF
-        # goloco-test BEGIN (managed by goloco/scripts/caddy-goloco.sh)
+        # goloco-test BEGIN (managed by goloco/scripts/caddy-goloco-first-time-setup.sh)
         redir /goloco /goloco/
         handle_path /goloco/* {
                 basic_auth {
