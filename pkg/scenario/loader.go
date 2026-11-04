@@ -432,6 +432,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					GrowthStage:  growthStage,
 					Variation:    variation,
 					IsIndustrial: typeByte&0x80 != 0,
+					Type6Flag:    typeByte&0x40 != 0,
 					Slope:        slopeByte,
 					Trees:        existing.Trees,
 					Buildings:    existing.Buildings,

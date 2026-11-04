@@ -223,6 +223,7 @@ type Tile struct {
 	GrowthStage  uint8 // byte 6 bits [7:5] — growth/season stage (0-7); used in sprite variation formula
 	Variation    uint8 // byte 7 — alternate terrain style; non-zero in snowy/special scenarios
 	IsIndustrial bool  // type byte bit 7 — surface belongs to an industry (farm fields etc.)
+	Type6Flag    bool  // type byte bit 6 (hasType6Flag) — water a ship route needs
 	Slope        uint8 // slope byte from surface element byte 4
 	Ownership    uint8
 	BuildingID   uint16

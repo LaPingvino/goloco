@@ -18,6 +18,7 @@ type Tile struct {
 	GrowthStage  uint8 // terrain growth/season stage 0-7 (byte 6 bits [7:5]); selects sprite set
 	Variation    uint8 // per-tile flat-grass variation (byte 7); 0 = plain flat image
 	IsIndustrial bool  // surface owned by an industry; TerrainIndex is not a land slot
+	Type6Flag    bool  // SurfaceElement::hasType6Flag: water a ship route needs (adjustSurfaceHeight keeps it)
 	WaveFlag     bool  // a wave is running on this tile (OpenLoco SurfaceElement flag 6; see wave.go)
 	Trees        []scenario.TreeElement
 	Buildings    []scenario.BuildingElement
