@@ -1410,6 +1410,9 @@ type StationName struct {
 	Var3B1       uint8  // var_3B1 (0x3B1)
 	Var3B0       uint8  // var_3B0 (0x3B0)
 	TileSize     uint16 // stationTileSize (0x1CE)
+	// Tiles is stationTiles (0x1D0): the first TileSize are the station's
+	// tiles (z also holds the rotation: heightFloor it).
+	Tiles [80][3]int16
 }
 
 // StationCargo is S5 StationCargoStats (13 bytes).
@@ -1442,6 +1445,11 @@ func parseStationNames(gs []byte) []StationName {
 			X: int16(binary.LittleEndian.Uint16(rec[0x02:])), Y: int16(binary.LittleEndian.Uint16(rec[0x04:])), Z: int16(binary.LittleEndian.Uint16(rec[0x06:])),
 			VisitedTypes: rec[0x3B2], Flags: binary.LittleEndian.Uint16(rec[0x2A:]), Var3B1: rec[0x3B1], Var3B0: rec[0x3B0],
 			TileSize: binary.LittleEndian.Uint16(rec[0x1CE:])}
+		for k := range out[i].Tiles {
+			for c := range 3 {
+				out[i].Tiles[k][c] = int16(binary.LittleEndian.Uint16(rec[0x1D0+6*k+2*c:]))
+			}
+		}
 		// cargoStats: 32 × 13 bytes at 0x2E (quantity @0, flags @4; from the compiler).
 		for c := range out[i].Cargo {
 			e := rec[0x2E+c*13:]

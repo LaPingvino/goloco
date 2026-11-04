@@ -136,6 +136,7 @@ func (m *Map) adjustSurfaceHeight(c *Cmd, px, py int32, targetBaseZ int, slopeFl
 	if int(t.WaterLevel)*microToSmallZStep <= targetBaseZ {
 		t.WaterLevel = 0
 	}
+	m.mapInvalidateTileFull(px, py)
 	return cost, true
 }
 

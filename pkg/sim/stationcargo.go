@@ -25,13 +25,14 @@ func (m *Map) StationCargoDensities(id int) [32]uint8 {
 }
 
 // UpdateCargoDistribution is Station::updateCargoDistribution: per cargo,
-// ceil(quantity / tiles / 2^stationCargoDensity), at most 15. (Its viewport
-// invalidation is upstream's redraw only.)
+// ceil(quantity / tiles / 2^stationCargoDensity), at most 15; when any
+// changed, each station tile is invalidated (heightFloor(z) to + 32, full).
 func (m *Map) UpdateCargoDistribution(id int, om *objects.ObjectManager) {
 	if id < 0 || id >= len(m.StationNames) {
 		return
 	}
 	st := &m.StationNames[id]
+	changed := false
 	for i := range st.Cargo {
 		c := &st.Cargo[i]
 		d := 0
@@ -45,7 +46,17 @@ func (m *Map) UpdateCargoDistribution(id int, om *objects.ObjectManager) {
 			d >>= shift
 			d = min(d, maxStationCargoDensity)
 		}
-		c.DensityPerTile = uint8(d)
+		if c.DensityPerTile != uint8(d) {
+			c.DensityPerTile = uint8(d)
+			changed = true
+		}
+	}
+	if changed {
+		for k := 0; k < int(st.TileSize) && k < len(st.Tiles); k++ {
+			tl := st.Tiles[k]
+			z := int32(tl[2]) &^ 3 // World::heightFloor
+			m.invalidateTile(int32(tl[0]), int32(tl[1]), z, z+32, ZoomFull, 0)
+		}
 	}
 }
 
