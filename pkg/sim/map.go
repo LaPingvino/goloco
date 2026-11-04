@@ -17,6 +17,7 @@ type Map struct {
 	VehicleListData                                        []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
 	CompanyFaces                                           []scenario.CompanyFace      // company slot → competitor, emotion, performance
 	Orders                                                 []byte                      // GameState orders[]
+	OrderTableLength                                       uint32                      // GameState orderTableLength: the bytes of Orders in use
 	Routings                                               []uint16                    // GameState routings[], by RoutingHandle (routing.go)
 	RoadAnyTypeCompatible                                  uint32                      // GameState roadObjectIdIsAnyRoadTypeCompatible
 	RoadUsableByAll                                        uint32                      // GameState roadObjectIdIsUsableByAllCompanies
@@ -148,6 +149,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	}
 	m.VehicleListData = sc.VehicleList
 	m.Orders = sc.Orders
+	m.OrderTableLength = sc.OrderTableLength
 	m.Routings = sc.Routings
 	m.RoadAnyTypeCompatible, m.RoadUsableByAll = sc.RoadAnyTypeCompatible, sc.RoadUsableByAll
 	m.Rng1 = *core.NewPrngSeed(sc.Rng[0], sc.Rng[1])
