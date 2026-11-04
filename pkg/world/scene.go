@@ -2,6 +2,7 @@ package world
 
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"image"
 	"log"
@@ -129,6 +130,10 @@ func (w *World) drawSceneDirty(screen *ebiten.Image, view scene.View) {
 		w.invalEntity = w.invalidateEntity // a method value allocates: made once
 	}
 	w.Map.InvalidateEntity = w.invalEntity // EntityBase::invalidateSprite → this screen (the Map is replaced on load)
+	if w.invalTile == nil {
+		w.invalTile = w.invalidateTile
+	}
+	w.Map.InvalidateTile = w.invalTile // ViewportManager::invalidate(pos, …)
 	moved := view.X != w.dirtyView.X || view.Y != w.dirtyView.Y || view.W != w.dirtyView.W || view.H != w.dirtyView.H || view.Zoom != w.dirtyView.Zoom
 	if fresh || moved { // (Ticks — the animation clock — changes every frame: not a new view)
 		// PARTIAL (D4): upstream's Viewport::move shifts the pixels already drawn
@@ -156,12 +161,29 @@ func (w *World) drawSceneDirty(screen *ebiten.Image, view scene.View) {
 // (getIntersection), made relative to the view, shifted by the zoom, and
 // invalidated on the screen (the main viewport sits at 0, 0).
 func (w *World) invalidateEntity(left, top, right, bottom int16) {
+	w.invalidateRect(int(left), int(top), int(right), int(bottom), min(2, sim.ZoomEighth)) // min(vehiclesMinScale (default 2), eighth)
+}
+
+// invalidateTile is ViewportManager::invalidate(pos, zMin, zMax, zoom,
+// radius): from gameToScreen(pos + 16, zMax) less radius to gameToScreen(pos +
+// 16, zMin) plus radius (rotation 0 — PARTIAL until LOOP item R).
+func (w *World) invalidateTile(x, y, zMin, zMax int32, zoom uint8, radius int32) {
+	cx, cy := x+16, y+16
+	ax, ay := cy-cx, ((cy+cx)>>1)-zMax
+	dx, dy := cy-cx, ((cy+cx)>>1)-zMin
+	w.invalidateRect(int(ax-radius), int(ay-radius), int(dx+radius), int(dy+radius), zoom)
+}
+
+// invalidateRect is ViewportManager's static invalidate(rect, zoom) for the
+// main viewport: skipped when it is zoomed out further than zoom; the rect ∩
+// the view (getIntersection), made relative to the view, shifted by the zoom,
+// invalidated on the screen (the main viewport sits at 0, 0).
+func (w *World) invalidateRect(l, t, r, b int, zoom uint8) {
 	v := w.dirtyView
-	if v.W == 0 || w.zoom > min(2, 3) { // vehiclesMinScale (Config default 2), ZoomLevel::eighth
+	if v.W == 0 || v.Zoom > int(zoom) {
 		return
 	}
 	vw, vh := v.W<<v.Zoom, v.H<<v.Zoom
-	l, t, r, b := int(left), int(top), int(right), int(bottom)
 	if r <= v.X || b <= v.Y || l >= v.X+vw || t >= v.Y+vh { // !viewport.intersects(rect)
 		return
 	}

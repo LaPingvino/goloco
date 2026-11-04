@@ -10,7 +10,9 @@ import (
 // Entities/EntityManager — state only, no drawing).
 type Map struct {
 	// InvalidateEntity: see entitymove.go (EntityBase::invalidateSprite).
-	InvalidateEntity                                       InvalidateEntity
+	InvalidateEntity InvalidateEntity
+	// InvalidateTile: ViewportManager::invalidate(pos, …) (entitymove.go).
+	InvalidateTile                                         InvalidateTile
 	Width, Height                                          int
 	Tiles                                                  [][]Tile        // [y][x]
 	Towns                                                  []scenario.Town // parsed town records
