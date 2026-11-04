@@ -9,6 +9,8 @@ import (
 // in the scenario (OpenLoco: Map/TileManager for tiles, Towns/TownManager,
 // Entities/EntityManager — state only, no drawing).
 type Map struct {
+	// Animations is the AnimationManager list (animation.go).
+	Animations []scenario.Animation
 	// InvalidateEntity: see entitymove.go (EntityBase::invalidateSprite).
 	InvalidateEntity InvalidateEntity
 	// InvalidateTile: ViewportManager::invalidate(pos, …) (entitymove.go).
@@ -168,6 +170,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.ControllingCompany = sc.ControllingCompany
 	m.TrafficHandedness = sc.TrafficHandedness
 	m.UnlockedVehicles = sc.UnlockedVehicles
+	m.Animations = append([]scenario.Animation(nil), sc.Animations...)
 	m.CurrentYear = sc.CurrentYear
 	m.CurrentMonth = sc.CurrentMonth
 	m.CurrentDayOfMonth = sc.CurrentDayOfMonth

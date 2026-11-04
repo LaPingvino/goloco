@@ -148,8 +148,7 @@ func (m *Map) SetSignalState(x, y, z int32, tad uint16, trackType uint8, flags u
 				animate = foundTrack.IsLast // isFlag6
 			}
 			if animate {
-				// PARTIAL: AnimationManager::createAnimation(0, signalLoc, z / 4) —
-				// the animation manager is not ported (the signal's frames don't step).
+				m.CreateAnimation(0, sx, sy, uint8(sz/4)) // (its update, updateSignalAnimation: PARTIAL — animation.go)
 				m.invalidateTile(sx, sy, sz, sz+24, ZoomHalf, 0)
 			}
 		}

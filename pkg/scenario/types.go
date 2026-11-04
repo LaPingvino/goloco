@@ -6,7 +6,17 @@ import (
 )
 
 // Scenario represents a loaded scenario or saved game
+// Animation is World::Animation (6 bytes): a map animation's base height,
+// type and tile position (world units).
+type Animation struct {
+	BaseZ, Type uint8
+	X, Y        int16
+}
+
 type Scenario struct {
+	// Animations is the map's animation list (GameState animations, the first
+	// numMapAnimations).
+	Animations []Animation
 	// Header information
 	Header   assets.S5Header
 	FilePath string
