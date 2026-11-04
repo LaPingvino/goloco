@@ -9,6 +9,8 @@ import (
 // in the scenario (OpenLoco: Map/TileManager for tiles, Towns/TownManager,
 // Entities/EntityManager — state only, no drawing).
 type Map struct {
+	// InvalidateEntity: see entitymove.go (EntityBase::invalidateSprite).
+	InvalidateEntity                                       InvalidateEntity
 	Width, Height                                          int
 	Tiles                                                  [][]Tile        // [y][x]
 	Towns                                                  []scenario.Town // parsed town records

@@ -1,7 +1,6 @@
 package sim
 
 import (
-	"github.com/LaPingvino/goloco/pkg/coords"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -139,5 +138,5 @@ func (m *Map) PositionVehicleOnTrack(tr Train, isPlaceDown bool, om *objects.Obj
 }
 
 func (m *Map) setPos(e *scenario.VehicleEntity, x, y, z int32) {
-	e.PosX, e.PosY, e.PosZ = coords.WorldUnits(x), coords.WorldUnits(y), int16(z)
+	m.moveTo(e, x, y, z) // placement: EntityBase::moveTo
 }

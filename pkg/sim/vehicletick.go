@@ -46,7 +46,9 @@ func (m *Map) store(i int, c *MotionComponent) {
 	e.SubPosition = c.SubPosition
 	e.TileX, e.TileY, e.TileBaseZ = coords.WorldUnits(c.TileX), coords.WorldUnits(c.TileY), c.TileBaseZ
 	e.RemainingDistance = c.RemainingDistance
-	e.PosX, e.PosY, e.PosZ = coords.WorldUnits(c.X), coords.WorldUnits(c.Y), int16(c.Z)
+	if int32(e.PosX) != c.X || int32(e.PosY) != c.Y || int32(e.PosZ) != c.Z { // updateTrackMotion: moveTo when it moved
+		m.moveTo(e, c.X, c.Y, c.Z)
+	}
 	e.SpriteYaw, e.SpritePitch = c.SpriteYaw, c.SpritePitch
 	e.RoutingHandle = uint16(c.RoutingHandle)
 	e.TrackType = c.TrackType
@@ -157,7 +159,7 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 			if moved { // VehicleBody::update: sub_4AC255 when a bogie moved
 				f, b, body := &m.Entities[cc.Front], &m.Entities[cc.Back], &m.Entities[cc.Body]
 				p := PlaceBody(int32(f.PosX), int32(f.PosY), int32(f.PosZ), int32(b.PosX), int32(b.PosY), int32(b.PosZ), body.ObjectSpriteType, vehicleObject(om, body.ObjectID))
-				body.PosX, body.PosY, body.PosZ = coords.WorldUnits(p.X), coords.WorldUnits(p.Y), int16(p.Z)
+				m.moveTo(body, p.X, p.Y, p.Z) // sub_4AC255: body->moveTo
 				if p.Turned {
 					body.SpritePitch, body.SpriteYaw = p.Pitch, p.Yaw
 				}
