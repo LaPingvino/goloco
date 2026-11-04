@@ -2,6 +2,8 @@ package title
 
 import (
 	"github.com/LaPingvino/goloco/pkg/audio"
+	"os"
+	"strconv"
 )
 
 // State represents the current state of the title sequence
@@ -17,6 +19,7 @@ const (
 
 // Sequence manages the title screen state and camera animation
 type Sequence struct {
+	hold        bool // GOLOCO_TITLE_VIEW: stay on one view
 	state       State
 	tickCounter uint32
 	audioMgr    *audio.Manager
@@ -75,9 +78,15 @@ func (s *Sequence) Start(mapWidth, mapHeight int) {
 	s.mapHeight = mapHeight
 	s.waypointIdx = 0
 	s.waypointTick = 0
+	// Diagnostic (not upstream): GOLOCO_TITLE_VIEW=N starts at the Nth view
+	// (1-based) and holds it, to compare one view with OpenLoco over time.
+	if n, err := strconv.Atoi(os.Getenv("GOLOCO_TITLE_VIEW")); err == nil && n >= 1 && n <= len(s.waypoints) {
+		s.waypointIdx = n - 1
+		s.hold = true
+	}
 	if len(s.waypoints) > 0 {
-		s.cameraX = float64(s.waypoints[0].TileX)
-		s.cameraY = float64(s.waypoints[0].TileY)
+		s.cameraX = float64(s.waypoints[s.waypointIdx].TileX)
+		s.cameraY = float64(s.waypoints[s.waypointIdx].TileY)
 	} else {
 		s.cameraX = float64(mapWidth) / 2
 		s.cameraY = float64(mapHeight) / 2
@@ -97,7 +106,7 @@ func (s *Sequence) Update() {
 	s.waypointTick++
 
 	wp := &s.waypoints[s.waypointIdx]
-	if s.waypointTick >= wp.Wait {
+	if s.waypointTick >= wp.Wait && !s.hold {
 		s.waypointIdx = (s.waypointIdx + 1) % len(s.waypoints)
 		s.waypointTick = 0
 		next := &s.waypoints[s.waypointIdx]
