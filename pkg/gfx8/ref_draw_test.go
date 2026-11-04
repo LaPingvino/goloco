@@ -86,6 +86,9 @@ func TestFastDrawMatchesReference(t *testing.T) {
 				s.Pix[i] = uint8(rng.IntN(256))
 			}
 		}
+		if rng.IntN(2) == 0 {
+			s.spans = rowSpans(s) // as Decode makes them
+		}
 		return s
 	}
 	ops := []BlendOp{OpNone, OpTransparent, OpTransparent | OpSrc, OpTransparent | OpDst, OpTransparent | OpSrc | OpDst, OpSrc, OpDst}
@@ -118,6 +121,9 @@ func TestFastDrawMatchesReference(t *testing.T) {
 					if s.Pix[i] == 0 {
 						s.Pix[i] = 1
 					}
+				}
+				if s.spans != nil {
+					s.spans = rowSpans(s)
 				}
 			}
 			var noise *Sprite

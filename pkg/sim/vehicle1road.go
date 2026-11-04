@@ -47,7 +47,7 @@ type Veh1 struct {
 // broken down — that is faster than us (var_3C) or no slower (maxSpeed)
 // means we may be overtaken; otherwise we may overtake it.
 func (m *Map) RoadOvertakeAvailability(v *Veh1, x, y, z int32, tad uint16) int {
-	trains, idx := m.trainsByHead()
+	var idx map[uint16]int // built only when a tail matches (upstream: Vehicle train(tail->head))
 	result := NoOvertakeAvailable
 	for dy := int32(-1); dy <= 1; dy++ {
 		for dx := int32(-1); dx <= 1; dx++ {
@@ -59,8 +59,15 @@ func (m *Map) RoadOvertakeAvailability(v *Veh1, x, y, z int32, tad uint16) int {
 				if int32(e.TileBaseZ)*4 != z || int32(e.TileX) != x || int32(e.TileY) != y || e.TrackAndDirection&TaDBasicMask != tad&TaDBasicMask {
 					continue
 				}
-				tr, ok := trains[idx[e.HeadID]]
-				if !ok {
+				if idx == nil {
+					idx = m.entityIndex()
+				}
+				hi, ok := idx[e.HeadID]
+				if !ok || m.Entities[hi].EntityType != scenario.VehicleTypeHead {
+					continue
+				}
+				tr, err := m.trainOf(e.HeadID, idx)
+				if err != nil {
 					continue
 				}
 				o1, o2 := &m.Entities[tr.Veh1], &m.Entities[tr.Veh2]
@@ -75,20 +82,6 @@ func (m *Map) RoadOvertakeAvailability(v *Veh1, x, y, z int32, tad uint16) int {
 		}
 	}
 	return result
-}
-
-// trainsByHead maps head entity indices to their trains.
-func (m *Map) trainsByHead() (map[int]Train, map[uint16]int) {
-	idx := m.entityIndex()
-	out := map[int]Train{}
-	for i := range m.Entities {
-		if m.Entities[i].EntityType == scenario.VehicleTypeHead {
-			if t, err := m.trainOf(m.Entities[i].ID, idx); err == nil {
-				out[i] = t
-			}
-		}
-	}
-	return out, idx
 }
 
 // veh1NewRoadPiece is veh1UpdateRoadMotionNewRoadPiece: onto the next
