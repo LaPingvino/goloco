@@ -208,10 +208,6 @@ func (m *Map) sub4BA873(b *scenario.VehicleEntity) {
 	b.TimeoutToBreakdown = uint16(max(4, f))
 }
 
-// PARTIAL (5P.a part 3d): the bogie / body sprite sizes copied from the
-// object are 0 — VehicleObject::load measures them from the images
-// (Gfx::getImagesMaxExtent), goloco's object loader does not yet.
-//
 // createFirstBogie is 0x4AE8F1: the car component's front bogie — its
 // reliability (less in the first years after the design year; vanilla's bug
 // of always two eighths kept), the breakdown timeout, the refund cost (7/8 of

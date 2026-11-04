@@ -274,6 +274,8 @@ func ParseVehicleObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 	// (GetBodySpriteID / bogie lookups add it back).
 	// OpenLoco reference: VehicleObject::load after loadImageTable.
 	imgOff := uint32(0)
+	var bodyEnds [4]uint32
+	var bogieEnds [2]uint32
 	for i := range v.BodySprites {
 		bs := &v.BodySprites[i]
 		if bs.Flags&BodyFlagHasSprites == 0 {
@@ -304,6 +306,7 @@ func ParseVehicleObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 				imgOff += uint32(bs.NumSlopedRotationFrames) * nfpr * 2 / sym // up/down deg25
 			}
 		}
+		bodyEnds[i] = imgOff
 	}
 	for i := range v.BogieSprites {
 		bg := &v.BogieSprites[i]
@@ -325,6 +328,23 @@ func ParseVehicleObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 			if bg.Flags&BogieFlagHasSteepSprites != 0 {
 				bg.SteepImageIDs = imgOff
 				imgOff += uint32(bg.NumFramesPerRotation) * 32 * 2 / sym // up/down deg25
+			}
+		}
+		bogieEnds[i] = imgOff
+	}
+	// VehicleObject::load measures each sprite from its images (Gfx::getImagesMaxExtent):
+	// the sprite's first image up to where the next one starts.
+	if mx, ok := g1.(extentMeasurer); ok {
+		for i := range v.BodySprites {
+			bs := &v.BodySprites[i]
+			if bs.Flags&BodyFlagHasSprites != 0 {
+				bs.Width, bs.HeightNegative, bs.HeightPositive = mx.ImagesMaxExtent(v.ImageOffset+bs.FlatImageID, int(bodyEnds[i]-bs.FlatImageID))
+			}
+		}
+		for i := range v.BogieSprites {
+			bg := &v.BogieSprites[i]
+			if bg.Flags&BogieFlagHasSprites != 0 {
+				bg.Width, bg.HeightNegative, bg.HeightPositive = mx.ImagesMaxExtent(v.ImageOffset+bg.FlatImageIDs, int(bogieEnds[i]-bg.FlatImageIDs))
 			}
 		}
 	}
@@ -589,4 +609,9 @@ func walkVariableSections(v *VehicleObject, data []byte) int {
 	offset += numStartSounds * HeaderSize
 
 	return offset
+}
+
+// extentMeasurer is the G1 file's Gfx::getImagesMaxExtent (assets.G1File).
+type extentMeasurer interface {
+	ImagesMaxExtent(base uint32, n int) (width, heightNegative, heightPositive uint8)
 }
