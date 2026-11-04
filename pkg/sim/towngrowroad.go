@@ -224,3 +224,90 @@ func (m *Map) lowerLandAt(c *Cmd, x, y int32) {
 	tx, ty := int(x/tileSize), int(y/tileSize)
 	m.lowerLand(c, tx, ty, tx, ty, mapSelectionFull, CmdApply)
 }
+
+// roadInformation is Town.cpp's RoadInformation (0x0047AC3E's result).
+type roadInformation struct {
+	Owner            uint8 // CompanyId::null (0xFF) when no matching road was found
+	RoadObjectID     uint8
+	IsStationRoadEnd bool
+	HasStreetLight   bool  // streetLightStyle has a value (no level crossing)
+	StreetLightStyle uint8 // RoadElement::streetLightStyle (byte 5 bits 2–3, shared with the level crossing id)
+}
+
+// roadStationAfter is Tile::roadStation(roadId, direction, baseZ): the
+// station element that follows a road with a station element at baseZ, of
+// this piece and rotation (other roads may stand between; a different height
+// or another kind of element breaks the run).
+func (t *Tile) roadStationAfter(roadID, direction, baseZ uint8) *scenario.StationElement {
+	found := false
+	for _, r := range t.Order {
+		if found && r.Kind == scenario.KindStation {
+			return &t.Stations[r.Index]
+		}
+		if r.Kind != scenario.KindRoad {
+			found = false
+			continue
+		}
+		e := t.Roads[r.Index]
+		if e.BaseZ != baseZ {
+			found = false
+			continue
+		}
+		if e.Rotation != direction || e.RoadID != roadID || !e.HasStationElement {
+			continue
+		}
+		found = true
+	}
+	return nil
+}
+
+// getRoadInformation is Town.cpp 0x0047AC3E: for the road piece at (x, y,
+// z) in tad (id << 3 | reversed << 2 | direction) — from its far end when
+// reversed —, the matching town road's (any-road-type-compatible, first
+// sequence, same piece / rotation / height) owner, road object, street light
+// style (when it has no level crossing) and whether a road station there is a
+// road end (RoadStationFlags::roadEnd). Owner 0xFF when there is none.
+func (m *Map) getRoadInformation(c *Cmd, x, y, z int32, tad uint16) roadInformation {
+	if tad&4 != 0 { // reversed: from the piece's other end
+		rc := RoadCoordinates[tad&0x7F]
+		x, y, z = x+int32(rc.DX), y+int32(rc.DY), z+int32(rc.DZ)
+		if rc.RotEnd < 12 {
+			x -= int32(RotationOffset[rc.RotEnd][0])
+			y -= int32(RotationOffset[rc.RotEnd][1])
+		}
+	}
+	dir, id := uint8(tad&3), uint8(tad>>3&0xF)
+	p0 := RoadPieces[id][0]
+	ox, oy := rotOffset(p0.X, p0.Y, dir)
+	x, y, z = x+int32(ox), y+int32(oy), z+int32(p0.Z)
+	none := roadInformation{Owner: 0xFF}
+	if !m.validCoords(x, y) {
+		return none
+	}
+	t := m.TileAt(int(x/tileSize), int(y/tileSize))
+	for _, r := range t.Order {
+		if r.Kind != scenario.KindRoad {
+			continue
+		}
+		e := t.Roads[r.Index]
+		if int32(e.BaseZ)*smallZStep != z || e.Rotation != dir || e.SequenceIndex != 0 || e.RoadID != id {
+			continue
+		}
+		if ro := c.roadObject(e.RoadObjectID); ro == nil || ro.Flags&roadFlagAnyRoadTypeCompatible == 0 {
+			continue
+		}
+		res := roadInformation{Owner: e.Owner, RoadObjectID: e.RoadObjectID}
+		if !e.HasLevelCrossing {
+			res.HasStreetLight, res.StreetLightStyle = true, e.LevelCrossingObjectID
+		}
+		if e.HasStationElement {
+			if st := t.roadStationAfter(id, dir, uint8(z/smallZStep)); st != nil && c.Objects != nil && int(st.ObjectID) < len(c.Objects.RoadStationObjects) {
+				if so := c.Objects.RoadStationObjects[st.ObjectID]; so != nil && so.Flags&(1<<3) != 0 { // RoadStationFlags::roadEnd
+					res.IsStationRoadEnd = true
+				}
+			}
+		}
+		return res
+	}
+	return none
+}

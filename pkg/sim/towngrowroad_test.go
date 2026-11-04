@@ -109,3 +109,40 @@ func TestAppendToRoadEnd(t *testing.T) {
 		t.Errorf("slope rising ahead: %+v (want the steep-slope-up piece, 7)", rs)
 	}
 }
+
+// getRoadInformation: a town road found from its start and (reversed) from
+// its far end — owner, road object, street light style; a road-end station
+// noticed; no road: owner 0xFF.
+func TestGetRoadInformation(t *testing.T) {
+	c := townRoadCmd()
+	c.Objects.RoadObjects[0].Flags = roadFlagAnyRoadTypeCompatible
+	c.Objects.RoadStationObjects = []*objects.RoadStationObject{{Flags: 1 << 3}}
+	m := townRoadMap(16, 4)
+	tile := m.TileAt(5, 5)
+	tile.Roads = []scenario.RoadElement{{BaseZ: 4, ClearZ: 12, Rotation: 2, RoadID: 0, Owner: CompanyNeutral, LevelCrossingObjectID: 2}}
+	tile.insertRef(scenario.KindRoad, 0, 4)
+	x, y, z := int32(5*32), int32(5*32), int32(16)
+	tad := uint16(0<<3 | 2)
+	info := m.getRoadInformation(c, x, y, z, tad)
+	if info.Owner != CompanyNeutral || info.RoadObjectID != 0 || !info.HasStreetLight || info.StreetLightStyle != 2 || info.IsStationRoadEnd {
+		t.Errorf("from the start: %+v", info)
+	}
+	rc := RoadCoordinates[tad|4]
+	rx, ry, rz := x-int32(rc.DX), y-int32(rc.DY), z-int32(rc.DZ)
+	if rc.RotEnd < 12 {
+		rx += int32(RotationOffset[rc.RotEnd][0])
+		ry += int32(RotationOffset[rc.RotEnd][1])
+	}
+	if got := m.getRoadInformation(c, rx, ry, rz, tad|4); got.Owner != CompanyNeutral {
+		t.Errorf("reversed, from the far end: %+v", got)
+	}
+	if got := m.getRoadInformation(c, 6*32, 6*32, 16, tad); got.Owner != 0xFF {
+		t.Errorf("no road: %+v", got)
+	}
+	tile.Roads[0].HasStationElement = true
+	tile.Stations = []scenario.StationElement{{StationType: 1, ObjectID: 0, BaseZ: 4, ClearZ: 12}}
+	tile.insertRef(scenario.KindStation, 0, 4)
+	if got := m.getRoadInformation(c, x, y, z, tad); !got.IsStationRoadEnd {
+		t.Errorf("road-end station not noticed: %+v (order %+v)", got, tile.Order)
+	}
+}
