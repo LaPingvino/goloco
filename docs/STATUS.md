@@ -25,6 +25,8 @@ from OpenLoco is in docs/deviations.md. Updated when an item moves.
   being built: the purchase command (CreateVehicle — its parts so far match saved trains exactly: entity slots,
   cars, cargo, colours, sprite sizes, the train's automatic layout), then placing a vehicle, start / stop, giving orders, an end-to-end test,
   and the Build Vehicle and Vehicle windows.
+- **Speed in the browser** (Joop measured 4–4.5 fps): the sprite loops made ~1.8× faster (pixel-identical);
+  next OpenLoco's own trick — redraw only what changed — and the time spent outside drawing.
 - **Towns** (5.9f3): roads grow; buildings along them, new junctions and road take-over are next.
 - **Language switch** (0L): the remaining windows' texts.
 

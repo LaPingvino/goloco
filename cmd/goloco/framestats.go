@@ -124,6 +124,7 @@ func startCPUProfile() func() {
 				log.Printf("[Profile] %v", err)
 			}
 			log.Printf("[Profile] started after %v", d)
+			stopAfter(f)
 		}()
 		return func() { pprof.StopCPUProfile(); f.Close(); memStop() }
 	}
@@ -154,4 +155,17 @@ func startMemProfile() func() {
 		pprof.Lookup("allocs").WriteTo(f, 0)
 		f.Close()
 	}
+}
+
+// stopAfter: GOLOCO_CPUPROFILE_FOR=20s stops the CPU profile and writes it
+// after that long (a run ended by a timeout never reaches the game's end).
+func stopAfter(f *os.File) {
+	d, err := time.ParseDuration(os.Getenv("GOLOCO_CPUPROFILE_FOR"))
+	if err != nil || d <= 0 {
+		return
+	}
+	time.Sleep(d)
+	pprof.StopCPUProfile()
+	f.Close()
+	log.Printf("[Profile] written after %v", d)
 }
