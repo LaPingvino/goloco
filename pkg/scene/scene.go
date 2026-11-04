@@ -382,6 +382,38 @@ func (r *Renderer) RenderColumns(m *sim.Map, v View, dst *gfx8.RenderTarget, sx0
 	wg.Wait()
 }
 
+// RenderRect is Viewport::paint(rect) for one dirty rectangle: the screen
+// rectangle (x0, y0)-(x1, y1) of view v (zoom-0 view units = view.X + x <<
+// zoom), split as upstream splits it — from the rect's own left edge to the
+// next multiple of 32 view units, then 32-wide columns, the last clipped to the
+// rect — each column its own paint session, drawn into dst at the same place.
+func (r *Renderer) RenderRect(m *sim.Map, v View, dst *gfx8.RenderTarget, x0, y0, x1, y1 int) {
+	bitmask := ^0 << v.Zoom
+	rx, ry := (v.X+x0<<v.Zoom)&bitmask, (v.Y+y0<<v.Zoom)&bitmask // zoomViewRt.x / y
+	rw, rh := ((x1-x0)<<v.Zoom)&bitmask, ((y1-y0)<<v.Zoom)&bitmask
+	if rw <= 0 || rh <= 0 {
+		return
+	}
+	right := rx + rw
+	for colX := rx &^ 31; colX < right; colX += 32 {
+		cx, cr := max(colX, rx), min(colX+32, right) // the column's rt: from colX (or the rect's left) to colX + 32 (or its right)
+		cv := v
+		cv.X, cv.Y, cv.W, cv.H = cx, ry, (cr-cx)>>v.Zoom, rh>>v.Zoom
+		if cv.W <= 0 {
+			continue
+		}
+		crt := r.worker(0).renderRect(m, cv)
+		sx := (cx - v.X&bitmask) >> v.Zoom // the column's place on the screen (unkX: against viewX & bitmask)
+		sy := (ry - v.Y&bitmask) >> v.Zoom
+		for y := 0; y < cv.H && sy+y < dst.Height; y++ {
+			if sy+y < 0 {
+				continue
+			}
+			copy(dst.Bits[(sy+y)*dst.Width+sx:(sy+y)*dst.Width+sx+cv.W], crt.Bits[y*crt.Width:y*crt.Width+cv.W])
+		}
+	}
+}
+
 // renderRect paints one rectangle of the viewport in one paint session (one
 // of Viewport::paint's columns).
 func (r *Renderer) renderRect(m *sim.Map, v View) *gfx8.RenderTarget {
