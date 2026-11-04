@@ -22,15 +22,7 @@ func loadDataMap(t *testing.T, file string) (*Map, *objects.ObjectManager) {
 	for _, po := range sc.PackedObjectsRaw {
 		_, _ = om.LoadObjectFromHeaderAndData(po.HeaderBytes, po.Data)
 	}
-	om.ReorderLandObjects(sc.LandObjectOrder)
-	om.ReorderTreeObjects(sc.TreeObjectOrder)
-	om.ReorderBuildingObjects(sc.BuildingObjectOrder)
-	om.ReorderRoadObjects(sc.RoadObjectOrder)
-	om.ReorderWallObjects(sc.WallObjectOrder)
-	om.ReorderTrackObjects(sc.TrackObjectOrder)
-	om.ReorderBridgeObjects(sc.BridgeObjectOrder)
-	om.ReorderRoadStationObjects(sc.RoadStationObjectOrder)
-	om.ReorderLevelCrossingObjects(sc.LevelCrossingObjectOrder)
+	ReorderObjectsForScenario(om, sc)
 	var m Map
 	m.LoadScenario(sc)
 	return &m, om
@@ -96,4 +88,36 @@ func TestTownsGrowOnTitleMap(t *testing.T) {
 			}
 		}
 	}
+}
+
+// CargoFor (VehicleObject::load's cargo) against the title map's saved
+// vehicles: each first body's primary cargo — capacity and accepted types —
+// as the object gives it (refits keep both).
+func TestVehicleCargoFromObjects(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	checked, bad := 0, 0
+	for _, e := range m.Entities {
+		if e.EntityType != scenario.VehicleTypeBodyStart || e.BodyIndex != 0 || int(e.ObjectID) >= len(om.Vehicles) || om.Vehicles[e.ObjectID] == nil {
+			continue
+		}
+		c := om.CargoFor(om.Vehicles[e.ObjectID])
+		checked++
+		if c.NumSimultaneousCargoTypes == 0 {
+			if e.Cargo.AcceptedTypes != 0 {
+				bad++
+				t.Errorf("%s: no cargo by the object, saved accepts %#x", om.Vehicles[e.ObjectID].DisplayName, e.Cargo.AcceptedTypes)
+			}
+			continue
+		}
+		if e.Cargo.AcceptedTypes != c.CompatibleCargoCategories[0] || e.Cargo.MaxQty != c.MaxCargo[0] {
+			bad++
+			if bad < 6 {
+				t.Errorf("%s: saved accepts %#x max %d, object %#x max %d", om.Vehicles[e.ObjectID].DisplayName, e.Cargo.AcceptedTypes, e.Cargo.MaxQty, c.CompatibleCargoCategories[0], c.MaxCargo[0])
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no vehicle bodies checked")
+	}
+	t.Logf("%d first bodies checked, %d differ", checked, bad)
 }
