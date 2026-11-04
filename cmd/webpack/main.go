@@ -45,6 +45,7 @@ type manifest struct {
 	Args   []string `json:"args"`
 	Wasm   string   `json:"wasm"` // file holding the game code
 	Lazy   []lazy   `json:"lazy"` // files fetched on first open (music)
+	Open   bool     `json:"open"` // the open build: no game data; the page asks for the player's own
 }
 
 // lazy is a file the page does not download up front: the fs shim fetches
@@ -69,9 +70,13 @@ func main() {
 	chunkRaw := flag.Int("chunk", 18<<20, "raw bytes per chunk before gzip")
 	args := flag.String("args", "", "space-separated command-line arguments passed to goloco")
 	local := flag.Bool("local", false, "write plain .gz files for a local server (the artifact host needs base64 text)")
+	open := flag.Bool("open", false, "the open build (GitHub Pages): goloco's own files only, no Locomotion data — the page takes the player's own folder")
 	flag.Parse()
 	if *out == "" {
 		log.Fatal("webpack: -out is required")
+	}
+	if *open && *music {
+		log.Fatal("webpack: -open never includes game data (the music is the player's own)")
 	}
 	if *music && !*local {
 		log.Fatal("webpack: -music needs -local (the artifact host's 64 MB limit can't hold the music)")
@@ -90,6 +95,9 @@ func main() {
 	mounts := []mount{
 		{"data", "/w/goloco/data", nil},
 		{"assets", "/w/goloco/assets", nil},
+	}
+	if !*open { // the player's data (never in the open build)
+		mounts = append(mounts, []mount{
 		{filepath.Join(*data, "Data"), "/w/locomotion/Data", func(rel string, size int64) bool {
 			return size < 3<<20
 		}},
@@ -97,6 +105,7 @@ func main() {
 		{filepath.Join(*data, "Scenarios"), "/w/locomotion/Scenarios", func(rel string, size int64) bool {
 			return len(wanted) == 0 || wanted[strings.ToLower(filepath.Base(rel))]
 		}},
+		}...)
 	}
 
 	type file struct{ host, virt string }
@@ -124,6 +133,7 @@ func main() {
 	sort.Slice(list, func(i, j int) bool { return list[i].virt < list[j].virt })
 
 	var man manifest
+	man.Open = *open
 	if *args != "" {
 		man.Args = strings.Fields(*args)
 	}

@@ -1,0 +1,46 @@
+# The open build on GitHub Pages (Joop 2026-11-04: goloco's own page, without
+# game data — the player drops their own Locomotion folder in; it stays in
+# their browser). No Locomotion file is ever part of this build: webpack -open
+# packs goloco's own data/ and assets/ only.
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: The open web build
+        run: go run ./cmd/webpack -open -local -out "$RUNNER_TEMP/site"
+      - name: No game data in it
+        run: |
+          python3 -c "import json,sys; m=json.load(open('$RUNNER_TEMP/site/manifest.json')); bad=[f['p'] for f in m['files'] if f['p'].startswith('/w/locomotion')]; sys.exit('game data in the open build: %s' % bad[:5] if bad or not m.get('open') else 0)"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

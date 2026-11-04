@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>GoLoco Test Build</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
@@ -16,6 +17,11 @@ body { background: var(--ground); color: var(--text); font: 15px/1.5 var(--body)
 .card { width: min(34rem, 100%); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 24px; display: grid; gap: 16px; }
 h1 { font: 600 1.6rem/1.2 var(--display); letter-spacing: .02em; margin: 0; text-wrap: balance; }
 .lede { color: var(--muted); margin: 0; max-width: 60ch; }
+#dropzone { border: 2px dashed var(--line); border-radius: 6px; padding: 20px; text-align: center; }
+#dropzone.over { border-color: var(--signal); }
+#checklist { margin: 0; padding-left: 1.2em; }
+#checklist .ok { color: var(--ok); } #checklist .no { color: var(--muted); }
+button.link { background: none; border: 0; color: var(--signal); padding: 0; cursor: pointer; font: inherit; text-decoration: underline; }
 .bar { height: 8px; background: var(--ground); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
 .bar > div { height: 100%; width: 0; background: repeating-linear-gradient(90deg, var(--signal) 0 14px, #b88a24 14px 18px); transition: width .2s; }
 #status { font: 13px/1.4 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.4em; }
@@ -41,6 +47,12 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
     <p class="lede">The current goloco build, compiled to WebAssembly, running on the original Locomotion data from an in-memory filesystem. Private test page.</p>
     <div class="bar" aria-hidden="true"><div id="fill"></div></div>
     <div id="status" role="status">Loading the data pack…</div>
+    <section id="drop" hidden>
+      <div id="dropzone" tabindex="0">Drop your <b>Locomotion</b> folder here<br><span class="note">or</span> <button type="button" id="pickdir">choose the folder…</button></div>
+      <input type="file" id="dirinput" webkitdirectory multiple hidden>
+      <ul id="checklist"></ul>
+      <p class="note">The files stay in this browser (kept for your next visit) — nothing is uploaded. goloco plays as much as the files allow. <button type="button" id="forget" class="link">Forget my data</button></p>
+    </section>
     <label class="opt"><input type="checkbox" id="oldrender"> Use the old renderer (the ported CPU renderer is now the default; it draws zoom 0, the old one still takes over when zoomed out)</label>
     <label class="opt"><input type="checkbox" id="showrate"> Show FPS (OpenLoco's frames-per-second counter, top centre — also in Options → Display)</label>
     <label class="opt"><input type="checkbox" id="showlog"> Show goloco's log in the corner while playing (always shown when something goes wrong)</label>
@@ -93,6 +105,75 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
   try { $("showlog").checked = localStorage.getItem("goloco-showlog") === "1"; } catch (e) {}
   try { $("showrate").checked = localStorage.getItem("goloco-showrate") === "1"; } catch (e) {}
   let wasm, man;
+  // --- the open build (GitHub Pages): no game data shipped; the player's own Locomotion folder,
+  // kept in this browser (IndexedDB), mapped into /w/locomotion; the game plays what the files allow ---
+  const dbOpen = () => new Promise((ok, no) => { const r = indexedDB.open("goloco-data", 1); r.onupgradeneeded = () => r.result.createObjectStore("files"); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
+  async function dbAll() { const db = await dbOpen(); return new Promise((ok) => { const out = [], c = db.transaction("files").objectStore("files").openCursor(); c.onsuccess = () => { const cur = c.result; if (!cur) return ok(out); out.push([cur.key, cur.value]); cur.continue(); }; c.onerror = () => ok(out); }); }
+  async function dbPut(entries) { const db = await dbOpen(); return new Promise((ok) => { const tx = db.transaction("files", "readwrite"); for (const [k, v] of entries) tx.objectStore("files").put(v, k); tx.oncomplete = ok; tx.onerror = ok; }); }
+  async function dbClear() { const db = await dbOpen(); return new Promise((ok) => { const tx = db.transaction("files", "readwrite"); tx.objectStore("files").clear(); tx.oncomplete = ok; }); }
+  const TOP = { data: "Data", objdata: "ObjData", scenarios: "Scenarios" };
+  function gamePath(rel) { // ".../Locomotion/Data/g1.DAT" → "/w/locomotion/Data/g1.DAT" (null: not game data)
+    const parts = rel.split("/").filter(Boolean);
+    const i = parts.findIndex((p) => TOP[p.toLowerCase()]);
+    return i < 0 || i === parts.length - 1 ? null : "/w/locomotion/" + TOP[parts[i].toLowerCase()] + "/" + parts.slice(i + 1).join("/");
+  }
+  function checklist() {
+    const have = [...GolocoFS.files.keys()].filter((p) => p.startsWith("/w/locomotion/")).map((p) => p.toLowerCase());
+    const n = (pre) => have.filter((p) => p.startsWith(pre)).length;
+    const rows = [
+      [have.includes("/w/locomotion/data/g1.dat"), "g1.DAT — the graphics and the interface"],
+      [n("/w/locomotion/objdata/") > 0, n("/w/locomotion/objdata/") + " objects (ObjData) — what the worlds are made of"],
+      [have.includes("/w/locomotion/data/title.dat"), "title.dat — the title screen's world"],
+      [n("/w/locomotion/scenarios/") > 0, n("/w/locomotion/scenarios/") + " scenarios — new games"],
+      [have.some((p) => /\/data\/css\d\.dat$/.test(p)), "music and sounds (Data/css*.dat …)"],
+    ];
+    $("checklist").textContent = "";
+    for (const [ok, text] of rows) $("checklist").append(Object.assign(document.createElement("li"), { className: ok ? "ok" : "no", textContent: (ok ? "✓ " : "· ") + text }));
+    return rows[0][0];
+  }
+  async function takeFiles(list) { // [{rel, file}] → the filesystem and the browser's store
+    const keep = [];
+    let count = 0;
+    for (const { rel, file } of list) {
+      const p = gamePath(rel);
+      if (!p) continue;
+      const data = new Uint8Array(await file.arrayBuffer());
+      GolocoFS.addFile(p, data); keep.push([p, data]); count++;
+      if (count % 25 === 0) status("Reading your files… " + count);
+    }
+    await dbPut(keep);
+    status(count ? count + " Locomotion files ready" : "No Data / ObjData / Scenarios folders in what was dropped — drop the Locomotion folder itself", !count);
+    checklist();
+  }
+  async function walkEntry(entry, prefix, out) { // a dropped folder, read through the entry API
+    if (entry.isFile) { out.push({ rel: prefix + entry.name, file: await new Promise((ok, no) => entry.file(ok, no)) }); return; }
+    const reader = entry.createReader();
+    for (;;) {
+      const batch = await new Promise((ok, no) => reader.readEntries(ok, no));
+      if (!batch.length) return;
+      for (const e of batch) await walkEntry(e, prefix + entry.name + "/", out);
+    }
+  }
+  async function openSetup() {
+    window.golocoTakeFiles = takeFiles; // (also what a test hands its files to)
+    $("drop").hidden = false;
+    document.querySelector("h1").textContent = "GoLoco"; document.title = "GoLoco";
+    document.querySelector(".lede").textContent = "A Go port of OpenLoco — Chris Sawyer's Locomotion — in your browser. It needs your own copy of the game: drop its folder below (Steam, GOG or the CD). Without it, goloco shows what it can.";
+    for (const [p, data] of await dbAll()) GolocoFS.addFile(p, data);
+    checklist();
+    const dz = $("dropzone");
+    dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("over"); });
+    dz.addEventListener("dragleave", () => dz.classList.remove("over"));
+    dz.addEventListener("drop", async (e) => {
+      e.preventDefault(); dz.classList.remove("over");
+      const out = [];
+      for (const it of [...e.dataTransfer.items]) { const en = it.webkitGetAsEntry && it.webkitGetAsEntry(); if (en) await walkEntry(en, "", out); }
+      await takeFiles(out);
+    });
+    $("pickdir").onclick = () => $("dirinput").click();
+    $("dirinput").onchange = () => takeFiles([...$("dirinput").files].map((f) => ({ rel: f.webkitRelativePath || f.name, file: f })));
+    $("forget").onclick = async () => { await dbClear(); location.reload(); };
+  }
   (async () => {
     // cache: "no-cache" — the browser revalidates each file (a 304 when unchanged), so a rebuild is never shadowed by a cached old build.
     man = await (await fetch("manifest.json", { cache: "no-cache" })).json();
@@ -104,6 +185,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
       fill((c + 1) / steps);
     }
     for (const l of man.lazy || []) GolocoFS.addLazy(l.p, l.u, l.n);
+    if (man.open) await openSetup();
     status("Loading the game…");
     wasm = await gunzip(await fetch(man.wasm || "goloco.wasm.b64.txt", { cache: "no-cache" }));
     fill(1);
