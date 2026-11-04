@@ -51,6 +51,7 @@ type Renderer struct {
 	// entities by tile (slices truncated, keys kept), two-colour palette maps
 	// (GetPaletteMap2 allocates), and the palette lookup handed to the painters.
 	entsByTile map[[2]int][]*scenario.VehicleEntity
+	entKeys    [][2]int // the tiles entitiesByTile filled last (reset next call)
 	// station cargo inputs, kept (stationCargo)
 	cargoPlatforms map[int]*paint.CargoPlatform
 	cargoSlots     map[string]int               // cargoSlot cache (GetName allocates)
@@ -871,9 +872,10 @@ func (r *Renderer) entitiesByTile(m *sim.Map, v View, lw, lh int) map[[2]int][]*
 		r.entsByTile = map[[2]int][]*scenario.VehicleEntity{}
 	}
 	out := r.entsByTile
-	for k, l := range out {
-		out[k] = l[:0]
+	for _, k := range r.entKeys { // only the tiles the last call filled (sweeping every key ever made grew without end)
+		out[k] = out[k][:0]
 	}
+	r.entKeys = r.entKeys[:0]
 	left, top := v.X, v.Y
 	right, bottom := left+lw, top+lh
 	for i := range m.Entities {
@@ -888,6 +890,9 @@ func (r *Renderer) entitiesByTile(m *sim.Map, v View, lw, lh int) map[[2]int][]*
 			continue
 		}
 		k := [2]int{int(e.PosX) / 32, int(e.PosY) / 32}
+		if len(out[k]) == 0 {
+			r.entKeys = append(r.entKeys, k)
+		}
 		out[k] = append(out[k], e)
 	}
 	return out
