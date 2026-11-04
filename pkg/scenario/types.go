@@ -81,6 +81,9 @@ type Scenario struct {
 	AirportObjectOrder []string
 	// CompanyColours is owner → main colour (neutral 15 = grey); nil without a GameState.
 	CompanyColours []uint8
+	// CompanyColourSchemes is every company slot's full colour scheme (main,
+	// per vehicle colour type, custom set); nil without a GameState.
+	CompanyColourSchemes []CompanyColourScheme
 	// StationOwners is station id → owner (GameState stations); nil without a GameState.
 	StationOwners []uint8
 	// UserStrings is the GameState user string table (StringIds 0x8000+).

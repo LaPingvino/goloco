@@ -121,3 +121,34 @@ func TestVehicleCargoFromObjects(t *testing.T) {
 	}
 	t.Logf("%d first bodies checked, %d differ", checked, bad)
 }
+
+// Company colour schemes against the title map's saved vehicles: each car
+// body's colours are its owner's scheme for the object's colour type
+// (vehicleColourScheme, as createCar picks them), and the main primary is the
+// one CompanyColours already had.
+func TestCompanyColourSchemes(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	for o, cs := range m.CompanyColourSchemes {
+		if o < len(m.CompanyColours) && !m.CompanyEmpty(o) && cs.Main[0] != m.CompanyColours[o] {
+			t.Errorf("company %d: main %v, colours %d", o, cs.Main, m.CompanyColours[o])
+		}
+	}
+	checked, bad := 0, 0
+	for _, e := range m.Entities {
+		if e.EntityType != scenario.VehicleTypeBodyStart || int(e.ObjectID) >= len(om.Vehicles) || om.Vehicles[e.ObjectID] == nil {
+			continue
+		}
+		want := m.vehicleColourScheme(e.Owner, om.Vehicles[e.ObjectID].ColourType)
+		checked++
+		if [2]uint8{e.ColourPrimary, e.ColourSecondary} != want {
+			bad++
+			if bad < 5 {
+				t.Logf("%s (owner %d): colours %d/%d, scheme %v", om.Vehicles[e.ObjectID].DisplayName, e.Owner, e.ColourPrimary, e.ColourSecondary, want)
+			}
+		}
+	}
+	t.Logf("%d bodies checked, %d differ", checked, bad)
+	if checked == 0 || bad*10 > checked { // repaints are allowed, not a pattern
+		t.Errorf("%d of %d bodies' colours are not their company's scheme", bad, checked)
+	}
+}

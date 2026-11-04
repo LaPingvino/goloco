@@ -298,6 +298,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.CompanyColours = parseCompanyColours(gameState)
 		sc.CompanyNames = parseCompanyNames(gameState)
 		sc.CompanyFaces = parseCompanyFaces(gameState)
+		sc.CompanyColourSchemes = parseCompanyColourSchemes(gameState)
 		sc.UnlockedVehicles = parseUnlockedVehicles(gameState)
 		sc.StationOwners = parseStationOwners(gameState)
 		sc.UserStrings = parseUserStrings(gameState)
@@ -1612,4 +1613,35 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 	if len(gs) > 0x196 { // general.trafficHandedness (from the compiler)
 		sc.TrafficHandedness = gs[0x196]
 	}
+}
+
+// CompanyColourScheme is a company's colours (S5::Company): mainColours
+// (0x1A: primary, secondary), vehicleColours (0x1C: a scheme per vehicle
+// colour type 1–10) and customVehicleColoursSet (0x30: which types use theirs).
+type CompanyColourScheme struct {
+	Main      [2]uint8
+	Vehicle   [10][2]uint8
+	CustomSet uint32
+}
+
+// parseCompanyColourSchemes reads every company slot's colour scheme.
+func parseCompanyColourSchemes(gs []byte) []CompanyColourScheme {
+	size := companyRecordSize
+	if len(gs) == GameStateSizeType2 {
+		size = companyRecordSizeType2
+	}
+	if len(gs) < companiesGameStateOffset+companyMaxCount*size {
+		return nil
+	}
+	out := make([]CompanyColourScheme, companyMaxCount)
+	for i := range out {
+		o := companiesGameStateOffset + i*size
+		c := &out[i]
+		c.Main = [2]uint8{gs[o+0x1A], gs[o+0x1B]}
+		for k := range c.Vehicle {
+			c.Vehicle[k] = [2]uint8{gs[o+0x1C+2*k], gs[o+0x1C+2*k+1]}
+		}
+		c.CustomSet = binary.LittleEndian.Uint32(gs[o+0x30:])
+	}
+	return out
 }
