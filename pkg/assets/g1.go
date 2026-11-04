@@ -740,3 +740,95 @@ func (g1 *G1File) ElementRaw(i int) (w, h int, data []byte, ok bool) {
 	e := &g1.Elements[i]
 	return int(e.Width), int(e.Height), e.Data, true
 }
+
+// ImagesMaxExtent is Gfx::getImagesMaxExtent (Gfx.cpp 391): the images
+// base … base+n-1 drawn at (0, 0) on top of each other into a 200×200 bitmap
+// centred on the origin (palette index 0 is empty; a later image paints over
+// an earlier one: RLE images their runs, plain ones every pixel — skipping 0
+// when they have transparency), then the half width (the outermost painted
+// column from the centre, + 1) and the heights above / below the origin.
+// VehicleObject::load measures each body / bogie sprite this way.
+func (g1 *G1File) ImagesMaxExtent(base uint32, n int) (width, heightNegative, heightPositive uint8) {
+	var bitmap [200][200]uint8
+	put := func(x, y int, v uint8) {
+		x, y = x+100, y+100
+		if x >= 0 && x < 200 && y >= 0 && y < 200 {
+			bitmap[y][x] = v
+		}
+	}
+	for i := range n {
+		idx := int(base) + i
+		if idx < 0 || idx >= len(g1.Elements) {
+			continue
+		}
+		e := &g1.Elements[idx]
+		w, h, data := int(e.Width), int(e.Height), e.Data
+		if e.Flags&G1FlagIsRLECompressed != 0 {
+			if len(data) < h*2 {
+				continue
+			}
+			for y := range h {
+				p := int(binary.LittleEndian.Uint16(data[y*2:]))
+				for p+2 <= len(data) {
+					size, first := int(data[p]), int(data[p+1])
+					p += 2
+					last := size&0x80 != 0
+					size &= 0x7F
+					if p+size > len(data) {
+						break
+					}
+					for k := range size {
+						put(int(e.XOffset)+first+k, int(e.YOffset)+y, data[p+k])
+					}
+					p += size
+					if last {
+						break
+					}
+				}
+			}
+			continue
+		}
+		for y := range h {
+			for x := range w {
+				if y*w+x >= len(data) {
+					break
+				}
+				v := data[y*w+x]
+				if v == 0 && e.Flags&G1FlagHasTransparency != 0 {
+					continue
+				}
+				put(int(e.XOffset)+x, int(e.YOffset)+y, v)
+			}
+		}
+	}
+	sw := -1
+	for i := 99; i != 0 && sw == -1; i-- {
+		for j := range 200 {
+			if bitmap[j][100-i] != 0 || bitmap[j][100+i] != 0 {
+				sw = i
+				break
+			}
+		}
+	}
+	// upstream checks the left column for all rows before the right one; either
+	// hit gives i, so one pass is the same
+	neg := -1
+	for i := 99; i != 0 && neg == -1; i-- {
+		for j := range 200 {
+			if bitmap[100-i][j] != 0 {
+				neg = i
+				break
+			}
+		}
+	}
+	pos := -1
+	for i := 99; i != 0 && pos == -1; i-- {
+		for j := range 200 {
+			if bitmap[100+i][j] != 0 {
+				pos = i
+				break
+			}
+		}
+	}
+	return uint8(sw + 1), uint8(neg + 1), uint8(pos + 1)
+}

@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"github.com/LaPingvino/goloco/pkg/assets"
 	"testing"
 
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -16,6 +17,10 @@ func loadDataMap(t *testing.T, file string) (*Map, *objects.ObjectManager) {
 		t.Skip("game data not present")
 	}
 	om := objects.NewObjectManager("../../../locomotion/ObjData")
+	if g1, err := assets.LoadG1("../../../locomotion/Data/g1.DAT"); err == nil { // sprites as the game loads them
+		om.SetBaseSpriteIndex(uint32(g1.GetSpriteCount()))
+		om.G1File = g1
+	}
 	if err := om.LoadAllObjects(); err != nil {
 		t.Skip("objects not present")
 	}
@@ -184,9 +189,8 @@ func TestCreateCarMatchesSaved(t *testing.T) {
 			nc := nt.Cars[0][i]
 			for _, p := range [][2]int{{sc.Front, nc.Front}, {sc.Back, nc.Back}, {sc.Body, nc.Body}} {
 				a, b := m.Entities[p[0]], m.Entities[p[1]]
-				// The sprite sizes are not compared yet: VehicleObject::load measures
-				// them from the images (getImagesMaxExtent) — 5P.a part 3d.
-				if a.EntityType != b.EntityType || a.ObjectSpriteType != b.ObjectSpriteType ||
+				if a.EntityType != b.EntityType || a.ObjectSpriteType != b.ObjectSpriteType || a.SpriteWidth != b.SpriteWidth ||
+					a.SpriteHeightNegative != b.SpriteHeightNegative || a.SpriteHeightPositive != b.SpriteHeightPositive ||
 					a.Flags38&flagsCompared != b.Flags38&flagsCompared || a.Cargo.AcceptedTypes != b.Cargo.AcceptedTypes ||
 					a.Cargo.MaxQty != b.Cargo.MaxQty || a.ColourPrimary != b.ColourPrimary || a.ColourSecondary != b.ColourSecondary {
 					t.Errorf("%s component %d type %d:\n saved %+v\n new   %+v", om.Vehicles[first.ObjectID].DisplayName, i, a.EntityType,
