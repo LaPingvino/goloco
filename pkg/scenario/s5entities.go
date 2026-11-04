@@ -460,3 +460,43 @@ type VehicleCargo struct {
 	NumDays       uint8
 	Qty           uint8
 }
+
+// EntityLink is an entity slot's place in EntityManager's linked lists
+// (S5Entity.h EntityBase: baseType 0x00, nextEntityId 0x04, llPreviousId 0x06,
+// linkedListOffset 0x08 — the list index × 2): which list (free, vehicles, misc …)
+// and its neighbours there. Their order decides which slot a new entity gets.
+type EntityLink struct {
+	BaseType   uint8
+	ListOffset uint8
+	Next, Prev uint16
+}
+
+// EntityLists is GameState's entityListHeads / entityListCounts (0x26 / 0x34)
+// and every slot's EntityLink — only in a saved game's full GameState (nil
+// otherwise: a .SC5 starts from EntityManager::reset).
+type EntityLists struct {
+	Heads, Counts [NumEntityLists]uint16
+	Links         []EntityLink
+}
+
+// ParseEntityLists reads the entity lists from a saved game's GameState.
+func ParseEntityLists(gameState []byte) *EntityLists {
+	tableOffset := EntityTableOffset
+	if len(gameState) == GameStateSizeType2 {
+		tableOffset = EntityTableOffsetType2
+	}
+	if len(gameState) < tableOffset+MaxEntities*EntitySize {
+		return nil
+	}
+	u16 := func(b []byte, o int) uint16 { return uint16(b[o]) | uint16(b[o+1])<<8 }
+	l := &EntityLists{Links: make([]EntityLink, MaxEntities)}
+	for i := range NumEntityLists {
+		l.Heads[i] = u16(gameState, GeneralEntityListHeadsOffset+2*i)
+		l.Counts[i] = u16(gameState, GeneralEntityListCountsOffset+2*i)
+	}
+	for i := range MaxEntities {
+		e := gameState[tableOffset+i*EntitySize:]
+		l.Links[i] = EntityLink{BaseType: e[ebBaseType], ListOffset: e[ebLinkedListOffset], Next: u16(e, ebNextEntityId), Prev: u16(e, ebLLPreviousId)}
+	}
+	return l
+}

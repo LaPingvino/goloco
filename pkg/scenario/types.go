@@ -140,6 +140,7 @@ type Scenario struct {
 	Industries            []Industry       // non-empty industry slots (parseIndustries)
 	RoadUsableByAll       uint32
 	Entities              []VehicleEntity
+	EntityLists           *EntityLists       // EntityManager's lists (saved games; nil for a .SC5)
 	VehicleList           []VehicleListEntry // heads with veh1/veh2 list data (VehicleList.cpp)
 	CurrentDay            uint32             // GameState general.currentDay
 	CompanyNames          []uint16           // company slot → name StringId

@@ -284,6 +284,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		// returns nil if the chunk is smaller than EntityTableOffset + table size.
 		// OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h  GameState::entities
 		sc.Entities = ParseVehicleEntities(gameState)
+		sc.EntityLists = ParseEntityLists(gameState)
 		sc.VehicleList = ParseVehicleListEntries(gameState)
 		sc.Orders = ParseOrders(gameState)
 		sc.Routings = ParseRoutings(gameState)
