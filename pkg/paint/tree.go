@@ -32,6 +32,7 @@ var (
 // PaintTree paints one tree at the current sprite position. shadowMap is the
 // unk32 translucency map (ImageIds::paletteMapUnk32 = 2208).
 func (s *Session) PaintTree(el TreeEl, obj TreeObj, sprite func(int) *gfx8.Sprite, shadowMap []uint8) {
+	s.ItemType = ItemTree // setItemType (PaintTree.cpp:28; the inner noInteraction resets not yet ported)
 	if obj.NumRotations == 0 {
 		return
 	}

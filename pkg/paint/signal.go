@@ -79,6 +79,7 @@ func b2i(b bool) int {
 // (upstream: the element before it). trackSeq/trackIsLast are that track's
 // sequence index and flag_6.
 func (s *Session) PaintSignal(rotation uint8, baseZ uint8, trackID, trackSeq int, trackIsLast bool, left, right SignalSide, objOf func(int) (SignalObj, bool), sprite func(int) *gfx8.Sprite) {
+	s.ItemType = ItemSignal // setItemType (PaintSignal.cpp:149; the inner noInteraction resets not yet ported)
 	if trackID >= len(TrackSignalHeightOffset) {
 		return
 	}

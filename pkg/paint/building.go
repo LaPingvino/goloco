@@ -104,6 +104,7 @@ var (
 // colourMap is the remap for the element's colour (ImageId(0, colour)); tileX,
 // tileY is its tile (for position-modified animations); ticks the scenario ticks.
 func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint8, tileX, tileY int, ticks uint32, sprite func(int) *gfx8.Sprite) {
+	s.ItemType = ItemBuilding // setItemType (PaintBuilding.cpp:168; the inner noInteraction resets not yet ported)
 	rotation := (s.Rotation + el.Rotation) & 3
 	baseHeight := int(el.BaseZ) * 4
 	bbz := min(int(el.ClearZ)*4-baseHeight, 128) - 2

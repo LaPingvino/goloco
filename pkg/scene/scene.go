@@ -619,6 +619,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 // paintSurface is PaintSurface.cpp paintSurface for one tile (surface, industry
 // field, snow, cliff edges, water).
 func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y int) {
+	s.ItemType = paint.ItemSurface // setItemType (PaintSurface.cpp:1421)
 	om, sprite := r.Objects, r.Sprite
 	// Session state paintSurface sets (bridge shadows and supports): surface
 	// height/slope, setWaterHeight2, and at the end setGeneralSupportHeight.
@@ -841,6 +842,7 @@ func (r *Renderer) entitiesByTile(m *sim.Map, v View, lw, lh int) map[[2]int][]*
 // another company is not drawn; bogies and bodies by their painters at the
 // entity's position (setEntityPosition), in their colour schemes.
 func (r *Renderer) paintVehicleEntity(s *paint.Session, m *sim.Map, e *scenario.VehicleEntity) {
+	s.ItemType = paint.ItemEntity // setItemType (PaintEntity.cpp:63)
 	const isReversed, isGhost = 1 << 1, 1 << 4
 	if e.Flags38&isGhost != 0 && int(e.Owner) != int(m.ControllingCompany) {
 		return
@@ -1054,6 +1056,7 @@ func floor2(x, n int) int { return x &^ (n - 1) }
 // only buildings, trees, industries, and airport / dock stations — the things
 // that reach into the neighbouring column).
 func (r *Renderer) paintTile(s *paint.Session, m *sim.Map, x, y int, tall bool, ticks uint32) {
+	s.ItemType = paint.ItemNoInteraction // PaintTile.cpp:61 (setItemType before the tile's own painting)
 	// World::drawableCoords: outside it, paintTileElements paints the void
 	// and paintTileElements2 nothing.
 	drawable := func(c, n int) bool { return c*32 >= 32 && c*32 < n*32-32-1 }

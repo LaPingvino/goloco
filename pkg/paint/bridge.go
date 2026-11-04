@@ -25,6 +25,7 @@ type BridgeObj struct {
 // PaintBridge is paintBridge: draws the session's bridge entry b. It reports
 // whether anything was painted (upstream's return value).
 func (s *Session) PaintBridge(b BridgeEntry, obj BridgeObj, sprite func(int) *gfx8.Sprite) bool {
+	s.ItemType = ItemBridge // setItemType (PaintBridge.cpp:1191; the inner noInteraction resets not yet ported)
 	if b.Height == -1 {
 		return false
 	}

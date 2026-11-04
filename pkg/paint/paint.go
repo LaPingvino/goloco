@@ -7,7 +7,9 @@
 package paint
 
 import (
+	"fmt"
 	"log"
+	"sync"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 )
@@ -42,6 +44,7 @@ type Image struct {
 
 // Struct is a PaintStruct.
 type Struct struct {
+	Type       InteractionItem // ps->type: the session's item type when it was made
 	Img        Image
 	VpX, VpY   int
 	Mins, Maxs Pos3
@@ -65,8 +68,60 @@ var DiagAt *[2]int
 
 var diagRects int
 
+// Dump (diagnostic, not upstream): while non-nil, Draw adds a line per struct
+// it draws — the session, the type, the image, its position and box — for the
+// frame a --shots capture saves (written next to the PNG).
+var (
+	Dump   *[]string
+	dumpMu sync.Mutex
+)
+
+// InteractionItem is Ui::ViewportInteraction::InteractionItem: what a paint
+// struct belongs to (setItemType before painting; viewport interaction and
+// the paint diagnostic read it).
+type InteractionItem uint8
+
+const (
+	ItemNoInteraction InteractionItem = iota
+	ItemSurface
+	ItemIndustryTree
+	ItemEntity
+	ItemTrack
+	ItemTrackExtra
+	ItemSignal
+	ItemTrainStation
+	ItemRoadStation
+	ItemAirport
+	ItemDock
+	ItemWater
+	ItemTree
+	ItemWall
+	ItemTownLabel
+	ItemStationLabel
+	ItemRoad
+	ItemRoadExtra
+	ItemBridge
+	ItemBuilding
+	ItemIndustry
+	ItemHeadquarterBuilding
+	ItemBuildingInfo
+)
+
+var itemNames = [...]string{"noInteraction", "surface", "industryTree", "entity", "track", "trackExtra", "signal", "trainStation",
+	"roadStation", "airport", "dock", "water", "tree", "wall", "townLabel", "stationLabel", "road", "roadExtra", "bridge",
+	"building", "industry", "headquarterBuilding", "buildingInfo"}
+
+func (t InteractionItem) String() string {
+	if int(t) < len(itemNames) {
+		return itemNames[t]
+	}
+	return "item?"
+}
+
 // Session is a PaintSession for one view.
 type Session struct {
+	// ItemType is _itemType (setItemType): copied into each struct made.
+	ItemType           InteractionItem
 	arrangeHead        Struct // Arrange's list head
 	Rotation           uint8
 	spriteX, spriteY   int // world position of the tile being painted
@@ -361,6 +416,7 @@ func (s *Session) create(img Image, off, bbOff, bbSize Pos3) *Struct {
 	rs := rotateBoundBoxSize(bbSize, s.Rotation)
 	mins := Pos3{bx + s.spriteX, by + s.spriteY, bbOff.Z}
 	ps := s.newStruct()
+	ps.Type = s.ItemType
 	ps.Img, ps.VpX, ps.VpY, ps.Mins = img, vpX, vpY, mins
 	ps.Maxs = Pos3{mins.X + rs.X, mins.Y + rs.Y, mins.Z + rs.Z}
 	return ps
@@ -588,7 +644,7 @@ func (s *Session) Draw(rt *gfx8.RenderTarget) {
 			return
 		}
 		n++
-		log.Printf("[PaintAt %d,%d] #%d %s image %d at %d,%d box %v-%v", DiagAt[0], DiagAt[1], n, kind, img.Sprite.Index, x, y, ps.Mins, ps.Maxs)
+		log.Printf("[PaintAt %d,%d] #%d %s %v image %d at %d,%d box %v-%v", DiagAt[0], DiagAt[1], n, kind, ps.Type, img.Sprite.Index, x, y, ps.Mins, ps.Maxs)
 	}
 	attached := func(ps *Struct) {
 		for a := ps.attached; a != nil; a = a.next {
@@ -599,6 +655,23 @@ func (s *Session) Draw(rt *gfx8.RenderTarget) {
 			note("attached", a.Img, x, y, ps)
 			draw(a.Img, x, y)
 		}
+	}
+	if Dump != nil {
+		var lines []string
+		order := 0
+		for ps := s.head; ps != nil; ps = ps.next {
+			for c := ps; c != nil; c = c.children {
+				order++
+				if c.Img.Sprite != nil {
+					sp := c.Img.Sprite
+					lines = append(lines, fmt.Sprintf("%d %d %v %d %d %d %d %d %d %d %d %d %d %d %d", s.rtX, order, c.Type, sp.Index, c.VpX+sp.XOffset, c.VpY+sp.YOffset, sp.Width, sp.Height,
+						c.Mins.X, c.Mins.Y, c.Mins.Z, c.Maxs.X, c.Maxs.Y, c.Maxs.Z, c.quadrant))
+				}
+			}
+		}
+		dumpMu.Lock()
+		*Dump = append(*Dump, lines...)
+		dumpMu.Unlock()
 	}
 	for ps := s.head; ps != nil; ps = ps.next {
 		note("struct", ps.Img, ps.VpX, ps.VpY, ps)
