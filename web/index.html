@@ -42,7 +42,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
     <div class="bar" aria-hidden="true"><div id="fill"></div></div>
     <div id="status" role="status">Loading the data pack…</div>
     <label class="opt"><input type="checkbox" id="oldrender"> Use the old renderer (the ported CPU renderer is now the default; it draws zoom 0, the old one still takes over when zoomed out)</label>
-    <label class="opt"><input type="checkbox" id="showrate"> Show the game's speed (ticks and frames per second, top left) — 40 ticks a second is OpenLoco's own speed</label>
+    <label class="opt"><input type="checkbox" id="showrate"> Show FPS (OpenLoco's frames-per-second counter, top centre — also in Options → Display)</label>
     <label class="opt"><input type="checkbox" id="showlog"> Show goloco's log in the corner while playing (always shown when something goes wrong)</label>
     <button id="start" type="button" disabled>Start</button>
     <p class="note">Music is fetched when the game first plays a track. Saves and screenshots live in memory and are gone on reload. Goloco's log and any files it could not find are in the drawer below.</p>
@@ -119,7 +119,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
       go.argv = ["goloco"].concat(man.args || []);
       go.env = Object.assign({ HOME: "/w" }, man.env || {});
       if ($("oldrender").checked) go.env.GOLOCO_SCENE = "0";
-      if ($("showrate").checked) go.env.GOLOCO_SHOWRATE = "1";
+      if ($("showrate").checked) go.env.GOLOCO_SHOWFPS = "1";
       try { localStorage.setItem("goloco-showrate", $("showrate").checked ? "1" : ""); } catch (e) {}
       try { localStorage.setItem("goloco-oldrender", $("oldrender").checked ? "1" : ""); } catch (e) {}
       try { localStorage.setItem("goloco-showlog", $("showlog").checked ? "1" : ""); } catch (e) {}

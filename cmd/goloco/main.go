@@ -68,10 +68,10 @@ type Game struct {
 	dropdown                       *ui.DropdownMenu
 	mouseX                         int
 	lastTickMouseX, lastTickMouseY int       // the cursor at the last GameTicks (mouseMoved)
-	rateStart                      time.Time // drawRate's measuring window
-	rateTicks0                     uint32
-	rateFrames                     int
-	rateText                       string
+	showFPS                        bool      // Config::showFPS (drawFPS)
+	fpsRef                         time.Time // FPSCounter's _referenceTime
+	fpsFrames                      int
+	fpsCurrent                     float64
 	mouseY                         int
 	dataDir                        string
 	inTitleScreen                  bool
@@ -373,6 +373,7 @@ func NewGame() *Game {
 
 	log.Println("[Game] Game initialization complete")
 	return &Game{
+		showFPS:       configValue("showFPS") == "true" || os.Getenv("GOLOCO_SHOWFPS") != "", // Config::showFPS (Config.cpp: default false)
 		w:             w,
 		consSignal:    -1,
 		consOneShot:   -1,
@@ -1037,13 +1038,14 @@ func (g *Game) prewarmTick() {
 var processStart = time.Now()
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	defer g.maybeSaveShot(screen) // captures (--shots) of the finished frame: after the FPS counter
+	defer g.drawFPS(screen)       // SoftwareDrawingEngine: the FPS counter over everything, last
 	// ── Loading screen ──────────────────────────────────────────────────────
 	// When loadingSpriteIDs is set, show OpenLoco-style progress window and
 	// pack sprites into the atlas N per frame. Normal draw is skipped.
 	if g.loadingSpriteIDs != nil {
 		g.drawLoadingScreen(screen)
 		g.doLoadingStep()
-		g.maybeSaveShot(screen)
 		return
 	}
 	if !g.firstFrameLogged {
@@ -1151,7 +1153,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			ui.DrawTooltip(screen, g.titleTip, g.mouseX, g.mouseY, c)
 		}
 		g.drawInlineDiag(screen)
-		g.maybeSaveShot(screen)
 		return
 	}
 
@@ -1208,32 +1209,33 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	g.drawInlineDiag(screen)
-	g.drawRate(screen)
-	g.maybeSaveShot(screen)
 }
 
-// drawRate (GOLOCO_SHOWRATE=1, the test page's "Show the game's speed"): game
-// ticks and frames per second in the top-left corner, measured over a
-// second — whether the game runs on this machine, and how fast.
-var showRate = os.Getenv("GOLOCO_SHOWRATE") != ""
-
-func (g *Game) drawRate(screen *ebiten.Image) {
-	if !showRate || g.w == nil {
+// drawFPS is Gfx::drawFPS (Graphics/FPSCounter.cpp), drawn when
+// Config::showFPS is on (Options → Display, or the test page's "Show FPS"):
+// the frames per second measured over a second, "%.0f" (below 10: "%.1f"),
+// medium bold, white outlined, centred at the top.
+func (g *Game) drawFPS(screen *ebiten.Image) {
+	if !g.showFPS {
 		return
 	}
-	g.rateFrames++
+	g.fpsFrames++
 	now := time.Now()
-	if g.rateStart.IsZero() {
-		g.rateStart, g.rateTicks0 = now, g.w.Map.ScenarioTicks
+	if g.fpsRef.IsZero() {
+		g.fpsRef = now
 	}
-	if d := now.Sub(g.rateStart); d >= time.Second {
-		g.rateText = fmt.Sprintf("%.0f ticks/s · %.1f fps", float64(g.w.Map.ScenarioTicks-g.rateTicks0)/d.Seconds(), float64(g.rateFrames)/d.Seconds())
-		g.rateStart, g.rateTicks0, g.rateFrames = now, g.w.Map.ScenarioTicks, 0
+	if el := now.Sub(g.fpsRef).Seconds(); el > 1.0 {
+		g.fpsCurrent = float64(g.fpsFrames) / el
+		g.fpsFrames, g.fpsRef = 0, now
 	}
-	if g.rateText != "" {
-		wc, oc := ui.TextColours(2)
-		ui.DrawTextOutlined(screen, g.rateText, 8, 34, wc, oc)
+	format := "%.0f"
+	if g.fpsCurrent < 10 {
+		format = "%.1f"
 	}
+	str := fmt.Sprintf(format, g.fpsCurrent)
+	w, _ := ui.MeasureTextBold(str)
+	wc, oc := ui.TextColours(2)
+	ui.DrawTextOutlined(screen, str, g.sw/2-w/2, 2, wc, oc)
 }
 
 // debugPath prefixes capture filenames with the gitignored debug/ directory
@@ -2110,6 +2112,15 @@ func (g *Game) openOptionsWindow() {
 		if i == 0 {
 			g.noEdgeScrolling = !v
 		}
+	}
+	w.ShowFPS = g.showFPS
+	w.OnShowFPS = func(on bool) {
+		g.showFPS = on
+		v := "false"
+		if on {
+			v = "true"
+		}
+		setConfigValue("showFPS", v)
 	}
 	w.OnTitleMusic = func(on bool) {
 		g.musicEnabled = on
