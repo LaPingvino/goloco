@@ -41,8 +41,9 @@ from OpenLoco is in docs/deviations.md. Updated when an item moves.
 
 ## Later
 
-- **The open build on GitHub Pages** (O): goloco without any Locomotion data, on OpenGraphics (MIT) — approved,
-  parked behind vehicles. Today without the original data it shows only an empty title.
+- **The open build on GitHub Pages** (O): live at lapingvino.github.io/goloco — no game data in it; players drop
+  their own Locomotion folder in (kept in their browser) and goloco plays what the files allow. Later: OpenGraphics
+  (MIT) for players without the game.
 - **The deviations list** (6), worst first.
 
 ## Waiting on Joop

@@ -35,7 +35,23 @@
 			if (s === "" || s === ".") continue;
 			if (s === "..") parts.pop(); else parts.push(s);
 		}
-		return "/" + parts.join("/");
+		return ci("/" + parts.join("/"));
+	};
+	// Locomotion's own files are found whatever their case (G1.DAT, g1.dat …),
+	// as OpenLoco finds them: an exact path wins, else each part matched in its
+	// folder without case. Only under /w/locomotion (the player's data).
+	const ci = (p) => {
+		if (!p.startsWith("/w/locomotion/") || files.has(p) || dirs.has(p) || lazy.has(p)) return p;
+		let cur = "";
+		for (const s of p.slice(1).split("/")) {
+			const d = dirs.get(cur || "/");
+			if (d && !d.has(s)) {
+				const low = s.toLowerCase();
+				for (const e of d) if (e.toLowerCase() === low) { cur += "/" + e; break; }
+				if (!cur.endsWith("/" + s) && !cur.toLowerCase().endsWith("/" + low)) return p;
+			} else cur += "/" + s;
+		}
+		return cur || p;
 	};
 	const parent = (p) => p.slice(0, p.lastIndexOf("/")) || "/";
 	const base = (p) => p.slice(p.lastIndexOf("/") + 1);
