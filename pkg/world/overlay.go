@@ -82,8 +82,14 @@ func (w *World) drawOverlay(screen *ebiten.Image) {
 	sh := screen.Bounds().Dy()
 
 	// Station name plaques: orange box, 1px dark border, white 10px text,
-	// centred above the station's origin tile.
+	// centred above the station's origin tile. PARTIAL: "Station N" stands in
+	// for the station's own name (drawStationNames). None in title mode, nor
+	// town names (Viewport::paint: if (!SceneManager::isTitleMode())).
+	names := !w.TitleMode
 	for i, st := range w.stationTiles() {
+		if !names {
+			break
+		}
 		sx, sy := w.TileToScreenPx(st[0], st[1])
 		if sx < -200 || sx > sw+200 || sy < -100 || sy > sh+100 {
 			continue // cull off-screen
@@ -95,6 +101,9 @@ func (w *World) drawOverlay(screen *ebiten.Image) {
 
 	// Town name labels: white text with a 1px dark outline, no box.
 	for _, t := range w.TownList() {
+		if !names {
+			break
+		}
 		sx, sy := w.TileToScreenPx(t.TileX, t.TileY)
 		if sx < -200 || sx > sw+200 || sy < -100 || sy > sh+100 {
 			continue
