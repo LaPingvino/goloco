@@ -36,8 +36,9 @@ func (m *Map) LeaveLevelCrossing(x, y, z int32, tad uint16, unk int) {
 			continue
 		}
 		el.Unk7_10 = unk == LevelCrossingEnter
-		// PARTIAL: entering also starts the crossing's animation
-		// (AnimationManager::createAnimation(1, …)): the manager is not ported.
+		if unk == LevelCrossingEnter {
+			m.CreateAnimation(1, x, y, uint8(z/4)) // (updateLevelCrossingAnimation: PARTIAL — animation.go)
+		}
 	}
 	m.invalidateTile(x, y, z, z+32, ZoomFull, 0) // the crossing's barriers redrawn
 }

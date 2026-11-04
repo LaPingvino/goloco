@@ -59,9 +59,10 @@ func (m *Map) store(i int, c *MotionComponent) {
 
 // UpdateVehicles runs one vehicle tick for every land vehicle.
 func (m *Map) UpdateVehicles(om *objects.ObjectManager) {
-	m.ScenarioTicks++ // ScenarioManager: one scenario tick per game tick
-	m.dateTick(om)    // tickLogic: dateTick before the managers' updates
-	m.UpdateTowns(om) // TownManager::update (towngrowroad.go)
+	m.ScenarioTicks++            // ScenarioManager: one scenario tick per game tick
+	m.dateTick(om)               // tickLogic: dateTick before the managers' updates
+	m.UpdateTowns(om)            // TownManager::update (towngrowroad.go)
+	defer m.UpdateAnimations(om) // AnimationManager::update: after the vehicles (tickLogic's order)
 	trains, err := m.Trains()
 	if err != nil {
 		return

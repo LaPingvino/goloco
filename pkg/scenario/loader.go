@@ -249,6 +249,10 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		generalStateFlags = readGeneralStateFlags(generalState)
 		parseObjective(generalState)
 		parseGeneralState(sc, generalState)
+		animCount := 0 // numMapAnimations (GeneralState 0x154)
+		if len(generalState) >= 0x156 {
+			animCount = int(binary.LittleEndian.Uint16(generalState[0x154:]))
+		}
 
 		// Towns.  The chunk begins with kMaxTowns (80) Town records, followed by
 		// the Industries and Stations arrays (the writer bundles all three under
@@ -269,6 +273,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 			return sc, fmt.Errorf("failed to read Animations chunk: %w", err)
 		}
 		log.Println("[Scenario] Read Animations,", len(animations), "bytes")
+		sc.Animations = parseAnimations(animations, animCount)
 	} else {
 		gameState, err := reader.ReadChunk()
 		if err != nil {
@@ -278,6 +283,13 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		generalStateFlags = readGeneralStateFlags(gameState)
 		parseObjective(gameState)
 		parseGeneralState(sc, gameState)
+		off := 0x4268C4 // GameState::animations (type 2: 0x424CA4)
+		if len(gameState) == GameStateSizeType2 {
+			off = 0x424CA4
+		}
+		if len(gameState) > 0x156 && len(gameState) >= off {
+			sc.Animations = parseAnimations(gameState[off:], int(binary.LittleEndian.Uint16(gameState[0x154:])))
+		}
 
 		// Parse vehicle entities from the entity table embedded in the GameState.
 		// This is only present in .SV5 saved-game files; ParseVehicleEntities
@@ -1650,6 +1662,18 @@ func parseCompanyColourSchemes(gs []byte) []CompanyColourScheme {
 			c.Vehicle[k] = [2]uint8{gs[o+0x1C+2*k], gs[o+0x1C+2*k+1]}
 		}
 		c.CustomSet = binary.LittleEndian.Uint32(gs[o+0x30:])
+	}
+	return out
+}
+
+// parseAnimations reads n World::Animation records (6 bytes: baseZ, type,
+// x, y) from data.
+func parseAnimations(data []byte, n int) []Animation {
+	n = min(n, len(data)/6)
+	out := make([]Animation, n)
+	for i := range out {
+		r := data[6*i:]
+		out[i] = Animation{BaseZ: r[0], Type: r[1], X: int16(binary.LittleEndian.Uint16(r[2:])), Y: int16(binary.LittleEndian.Uint16(r[4:]))}
 	}
 	return out
 }
