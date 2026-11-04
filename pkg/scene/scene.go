@@ -595,8 +595,8 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		}
 		tk := t.Tracks[prev.Index]
 		s.PaintSignal(sg.Rotation, sg.BaseZ, int(tk.TrackID), int(tk.SequenceIndex), tk.IsLast,
-			paint.SignalSide{Has: sg.HasLeftSignal, Object: int(sg.SignalObjectID), Frame: sg.LeftFrame},
-			paint.SignalSide{Has: sg.HasRightSignal, Object: int(sg.RightSignalObjectID), Frame: sg.RightFrame},
+			paint.SignalSide{Has: sg.HasLeftSignal, Object: int(sg.SignalObjectID), Frame: sg.Sides[0].Frame()}, // the live frame (updateSignalAnimation steps it)
+			paint.SignalSide{Has: sg.HasRightSignal, Object: int(sg.RightSignalObjectID), Frame: sg.Sides[1].Frame()},
 			r.signalObj, sprite)
 	case scenario.KindStation:
 		r.paintStation(s, m, t, t.Stations[ref.Index], prev, x, y, ticks)

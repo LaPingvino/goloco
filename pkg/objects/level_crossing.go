@@ -26,6 +26,7 @@ type LevelCrossingObject struct {
 	AnimSpeed     uint8
 	ClosingFrames uint8
 	ClosedFrames  uint8
+	Var0A         uint8  // 0x0A: updateLevelCrossingAnimation's tick mask
 	DesignedYear  uint16 // 0x0C (LevelCrossingObject::designedYear)
 	// CostFactor (0x02) and CostIndex (0x06): what a crossing adds to a road's
 	// or track's cost (createRoad, createTrack).
@@ -63,6 +64,7 @@ func ParseLevelCrossingObjectWithG1(header *ObjectHeader, data []byte, g1 G1Load
 		CostIndex:     data[0x06],
 		ClosingFrames: data[0x08],
 		ClosedFrames:  data[0x09],
+		Var0A:         data[0x0A],
 		DesignedYear:  binary.LittleEndian.Uint16(data[0x0C:]),
 	}
 
