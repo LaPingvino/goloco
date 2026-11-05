@@ -1,7 +1,6 @@
 package i18n
 
 import (
-	"os"
 	"strings"
 	"sync"
 )
@@ -16,11 +15,9 @@ var (
 func loadBase() {
 	baseOnce.Do(func() {
 		base = map[int]string{}
-		if p := findPack("en-GB"); p != "" {
-			if f, err := os.Open(p); err == nil {
-				base, _ = parse(f)
-				f.Close()
-			}
+		if f, err := openPack("en-GB"); err == nil {
+			base, _ = parse(f)
+			f.Close()
 		}
 	})
 }
