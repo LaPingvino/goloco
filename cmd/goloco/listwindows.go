@@ -266,12 +266,16 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		min = ui.VehicleDetailsMinSizePaint
 	}
 	ww, wh = max(ww, min[0]), max(wh, min[1])
+	if tab == 4 {
+		wh = max(wh, ui.VehicleRouteMinHeight) // Route::kMinWindowSize
+	}
 	g.vehicleWin = &ui.VehicleWindow{X: (g.sw - ww) / 2, Y: (g.sh - wh) / 2, W: ww, H: wh, TitleColour: tc, Colour: wc,
 		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
 		State:   ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
 		OnClose: func() { g.vehicleWin, g.pickupOn = nil, false }, OnPickup: func() { g.onPickup(headID) },
 		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h),
-		Tab: tab, Main: ui.VehicleMainState{Own: own, Manual: h.VehicleFlags&sim.VehicleFlagManualControl != 0},
+		Route: g.routeLines(&h),
+		Tab:   tab, Main: ui.VehicleMainState{Own: own, Manual: h.VehicleFlags&sim.VehicleFlagManualControl != 0},
 		StopStartImage: stopStartImage(h.VehicleFlags),
 		OnTab:          func(t int) { g.openVehicleWindow(headID, t) },
 		View:           func(w, h int) *gfx8.RenderTarget { return g.w.VehicleView(headID, w, h) },
@@ -519,4 +523,33 @@ func (g *Game) centreViewportOpen(headID uint16) {
 		g.w.FocusOnVehicle(headID)
 	}
 	g.dropdown = d
+}
+
+// routeLines is Route::drawScroll's rows: "no route defined" for an empty
+// table, each order as orderString formats it (the station's name; the
+// cargo's for unload / wait), the current one marked, then the end of the
+// list. PARTIAL: the cargo sprite after unload / wait.
+func (g *Game) routeLines(h *scenario.VehicleEntity) []ui.RouteLine {
+	m := &g.w.Map
+	var lines []ui.RouteLine
+	if h.SizeOfOrderTable == 1 {
+		lines = append(lines, ui.RouteLine{Text: i18n.Label(i18n.NoRouteDefined)})
+	}
+	format := [6]int{i18n.OrdersEnd, i18n.OrdersStopAt, i18n.OrdersRouteThrough, i18n.OrdersRouteThoughtWaypoint, i18n.OrdersUnloadAll, i18n.OrdersWaitForFullLoadOf}
+	for _, o := range m.OrderTable(h.OrderTableOffset) {
+		t := o.Type()
+		arg := ""
+		switch t {
+		case sim.OrderStopAt, sim.OrderRouteThrough:
+			arg = m.StationName(o.Station())
+		case sim.OrderUnloadAll, sim.OrderWaitFor:
+			if c := int(o.Cargo()); g.r != nil && g.r.ObjMgr != nil && c < len(g.r.ObjMgr.CargoObjects) && g.r.ObjMgr.CargoObjects[c] != nil {
+				arg = g.r.ObjMgr.CargoObjects[c].Name
+			}
+		}
+		text := strings.Replace(i18n.Label(format[t]), "{STRINGID}", arg, 1)
+		text = strings.TrimSpace(strings.Replace(text, "{SPRITE}", "", 1))
+		lines = append(lines, ui.RouteLine{Text: text, Current: int(h.OrderTableOffset)+int(h.CurrentOrder) == o.Offset})
+	}
+	return append(lines, ui.RouteLine{Text: i18n.Label(i18n.OrdersEnd)})
 }
