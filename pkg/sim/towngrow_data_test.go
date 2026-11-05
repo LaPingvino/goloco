@@ -969,3 +969,63 @@ func TestPlayableVehicleEndToEnd(t *testing.T) {
 		t.Errorf("the bought train did not run its route: moved %.0f px, called at %v", moved, called)
 	}
 }
+
+// TestBuildableVehicles (5P.f's list): the trains tab on a saved train's track
+// type lists only unlocked rail vehicles of that track, powered first, each
+// group by design year; the saved locomotive is in it; cargoless filters; a
+// target vehicle limits the list to what couples to it.
+func TestBuildableVehicles(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	var tr Train
+	for _, x := range trains {
+		if m.Entities[x.Head].Mode == 0 {
+			tr = x
+			break
+		}
+	}
+	h := m.Entities[tr.Head]
+	loco := m.Entities[tr.Cars[0][0].Body].ObjectID
+	m.UnlockedVehicles[h.Owner][loco/32] |= 1 << (loco % 32)
+	o := DefaultBuildVehicleOptions(h.Owner)
+	list := m.BuildableVehicles(om, 0, h.TrackType, o)
+	t.Logf("company %d, track type %d: %d vehicles", h.Owner, h.TrackType, len(list))
+	if len(list) == 0 {
+		t.Fatal("empty")
+	}
+	seenLoco, unpoweredSeen := false, false
+	for i, id := range list {
+		v := om.Vehicles[id]
+		if v.Type != 0 || v.Mode != objects.TransportModeRail || om.TrackTypeFor(v) != h.TrackType || !m.isVehicleIndexUnlocked(h.Owner, id) {
+			t.Errorf("%s doesn't belong on the list", v.DisplayName)
+		}
+		if v.Power == 0 {
+			unpoweredSeen = true
+		} else if unpoweredSeen {
+			t.Errorf("%s (powered) after an unpowered one", v.DisplayName)
+		}
+		if i > 0 {
+			p := om.Vehicles[list[i-1]]
+			if (p.Power > 0) == (v.Power > 0) && p.Designed > v.Designed {
+				t.Errorf("%s (%d) after %s (%d)", v.DisplayName, v.Designed, p.DisplayName, p.Designed)
+			}
+		}
+		seenLoco = seenLoco || id == loco
+	}
+	if !seenLoco {
+		t.Errorf("the saved locomotive %s is not offered", om.Vehicles[loco].DisplayName)
+	}
+	o.CargoFilter = 0xFE
+	for _, id := range m.BuildableVehicles(om, 0, h.TrackType, o) {
+		if c := om.CargoFor(om.Vehicles[id]); c.CompatibleCargoCategories != [2]uint32{} {
+			t.Errorf("cargoless filter: %s carries", om.Vehicles[id].DisplayName)
+		}
+	}
+	o = DefaultBuildVehicleOptions(h.Owner)
+	o.TargetHead = h.ID
+	for _, id := range m.BuildableVehicles(om, 0, h.TrackType, o) {
+		if !m.isVehicleTypeCompatible(tr, id, om) {
+			t.Errorf("target: %s doesn't couple", om.Vehicles[id].DisplayName)
+		}
+	}
+}
