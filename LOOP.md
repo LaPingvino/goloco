@@ -91,6 +91,15 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       probably canBeModified / moving; the test filters with canBeModified). NEXT: in the diag, lift a train
       that canBeModified (stop it first if that is the rule), or log PlaceDownVehicle's result, then see the
       bought train placed in the shot.
+      PLACED 2026-11-05 19:03: the diag lifts the first rail train that VehiclePickup accepts (train 93,
+      company 8), plays as its owner (funded: the title companies are nearly broke), buys a train, presses
+      the pickup button and clicks the screen: 18 refusals on other companies' track, then placed at screen
+      752,88 — the tool off and the window showing it placed (pickupToolPlacementCommandCallback's effect). So
+      the whole UI path works: button → tool → cursor → InteractionAt → RailPlacementAtCursor → VehiclePlace.
+      The refusals before were trains in the way / other owners, as upstream. NOT YET SEEN in a shot: on the
+      title screen the camera sequence pans away and windows are not drawn — needs a gameplay save with the
+      player's own track. NEXT: the ghost (pickupToolUpdate), start / stop on the main tab; that shot when a
+      save with player track exists.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a): upstream's VehicleManager::VehicleList walks the vehicle-head linked list (newest first);
    goloco's Trains() walks entities in slot order — the vehicles' update order may differ from upstream's. Now
@@ -1093,4 +1102,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-05 (5P.g part 1 — overnight) — the Vehicle window's pickup button and placing tool for rail (button image + pressed look, onPickup, the tool's click through World.RailPlacementAt → VehiclePlace, shift-start, Escape); a diag mode `place`; clickables: Vehicle.cpp pickup partial. Tests and vet green; NOT seen running — every windowed xvfb run now exits 1 silently (also the previous commit's build): logged under Blocked. Also: the Go build cache trimmed (4.2 → 1.3 GB) after another quota hit.
 - 2026-11-05 (5P.g check + Blocked — overnight) — the "silent" windowed exit was log.Fatal on ebiten's audio error (no sound device on the VPS; GOLOCO_MUTE=1 for headless runs) — Blocked resolved, item AU added. Then the pickup tool seen: on the title map it turns on, finds track under the cursor (after the diag centres on a train), and VehiclePlace refuses each placement — probably ownership (AI companies' track), to prove with a save where the player owns track. Diag `place` now centres on a train first.
 - 2026-11-05 (5P.g check, part 2 — overnight) — narrowed the refused placements: the diag plays as the line's owner and logs the first placement vs the tile's track — all of validateTrackPlacement's fields match, so the refusal is later (PlaceDownVehicle: trains in the way, most likely). Lifting the centred train first was refused too (to find: canBeModified / moving). Diag-only code, labelled; tests green.
+- 2026-11-05 (5P.g check, part 3 — overnight) — the pickup tool placed a bought train through the real UI path (diag: lift a liftable train, play as and fund its owner, buy, pickup button, click): placed at screen 752,88 after 18 correct refusals, tool off, window updated. The title screen's shot can't show it (camera sequence, no windows) — a gameplay save with player track is still wanted for the picture.
 
