@@ -54,6 +54,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
       <p class="note">The files stay in this browser (kept for your next visit) — nothing is uploaded. goloco plays as much as the files allow. <button type="button" id="forget" class="link">Forget my data</button></p>
     </section>
     <label class="opt"><input type="checkbox" id="oldrender"> Use the old renderer (the ported CPU renderer is now the default; it draws zoom 0, the old one still takes over when zoomed out)</label>
+    <label class="opt">Window scale <select id="scale"><option value="">1.00</option><option>1.25</option><option>1.50</option><option>2.00</option><option>3.00</option></select> (OpenLoco's Options → Display → Window scale factor: the game drawn smaller and scaled up — far fewer pixels to paint, much faster in the browser)</label>
     <label class="opt"><input type="checkbox" id="showrate"> Show FPS (OpenLoco's frames-per-second counter, top centre — also in Options → Display)</label>
     <label class="opt"><input type="checkbox" id="showlog"> Show goloco's log in the corner while playing (always shown when something goes wrong)</label>
     <button id="start" type="button" disabled>Start</button>
@@ -104,6 +105,7 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
   try { $("oldrender").checked = localStorage.getItem("goloco-oldrender") === "1"; } catch (e) {}
   try { $("showlog").checked = localStorage.getItem("goloco-showlog") === "1"; } catch (e) {}
   try { $("showrate").checked = localStorage.getItem("goloco-showrate") === "1"; } catch (e) {}
+  try { $("scale").value = localStorage.getItem("goloco-scale") || ""; } catch (e) {}
   let wasm, man;
   // --- the open build (GitHub Pages): no game data shipped; the player's own Locomotion folder,
   // kept in this browser (IndexedDB), mapped into /w/locomotion; the game plays what the files allow ---
@@ -204,10 +206,12 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); ou
       go.env = Object.assign({ HOME: "/w" }, man.env || {});
       if ($("oldrender").checked) go.env.GOLOCO_SCENE = "0";
       if ($("showrate").checked) go.env.GOLOCO_SHOWFPS = "1";
+      if ($("scale").value) go.env.GOLOCO_SCALE = $("scale").value;
       for (const kv of new URLSearchParams(location.search).getAll("env")) { // testing: ?env=GOLOCO_FRAMESTATS=1
         const i = kv.indexOf("="); if (i > 0) go.env[kv.slice(0, i)] = kv.slice(i + 1);
       }
       try { localStorage.setItem("goloco-showrate", $("showrate").checked ? "1" : ""); } catch (e) {}
+      try { localStorage.setItem("goloco-scale", $("scale").value); } catch (e) {}
       try { localStorage.setItem("goloco-oldrender", $("oldrender").checked ? "1" : ""); } catch (e) {}
       try { localStorage.setItem("goloco-showlog", $("showlog").checked ? "1" : ""); } catch (e) {}
       if (!$("showlog").checked) $("logbox").hidden = true; // the log drawer only when asked for (Joop 2026-11-04)

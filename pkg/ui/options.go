@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -73,8 +74,12 @@ type OptionsWindow struct {
 	OnTitleMusic func(bool)
 	// ShowFPS is Config::showFPS (the Display tab's show_fps checkbox);
 	// OnShowFPS toggles it (Config::write).
-	ShowFPS    bool
-	OnShowFPS  func(bool)
+	ShowFPS   bool
+	OnShowFPS func(bool)
+	// Scale is Config::scaleFactor (ScaleFactorMin … ScaleFactorMax); OnScale
+	// is told the new one (displayScaleMouseDown → setWindowScaling).
+	Scale      float64
+	OnScale    func(float64)
 	OnMusicVol func(float64)
 	OnClose    func()
 
@@ -239,6 +244,21 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		return
 	}
 	if w.Tab == OptTabDisplay {
+		// displayScaleMouseDown(∓ScaleFactor::step): Ui::adjustWindowScale.
+		for _, b := range []struct {
+			x, w int
+			by   float64
+		}{{235 + 154 - 26, 13, -ScaleFactorStep}, {235 + 154 - 13, 12, ScaleFactorStep}} {
+			if w.in([4]int{b.x, 95, b.w, 12}, px, py) {
+				if s := min(max(w.scale()+b.by, ScaleFactorMin), ScaleFactorMax); s != w.scale() {
+					w.Scale = s
+					if w.OnScale != nil {
+						w.OnScale(s)
+					}
+				}
+				return
+			}
+		}
 		if w.in([4]int{10, 127, 380, 12}, px, py) { // Widx::show_fps: cfg.showFPS ^= 1, Config::write
 			w.ShowFPS = !w.ShowFPS
 			if w.OnShowFPS != nil {
@@ -636,7 +656,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			label, value string
 			disabled     bool
 		}{{63, i18n.Label(i18n.OptionsScreenMode), optScreenModes()[w.ScreenMode], false}, {79, i18n.Label(i18n.DisplayResolution), resolutionText(w.Resolution), w.ScreenMode != 1},
-			{95, i18n.Label(i18n.WindowScaleFactor), "1.00", false}, {111, "Frame rate limit:", optFrameLimits[w.FrameLimit], false}}
+			{95, i18n.Label(i18n.WindowScaleFactor), fmt.Sprintf("%.2f", w.scale()), false}, {111, "Frame rate limit:", optFrameLimits[w.FrameLimit], false}}
 		for _, r := range rows {
 			DrawTextBold(screen, r.label, w.X+10, w.Y+r.y, text)
 			if r.disabled {
@@ -651,8 +671,17 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		}
 		mw, _ := MeasureTextBold("-")
 		pw, _ := MeasureTextBold("+")
-		inset("-", w.X+235+154-26+(13-1)/2-mw/2, w.Y+96) // disabled at the minimum scale
-		DrawTextBold(screen, "+", w.X+235+154-13+(12-1)/2-pw/2, w.Y+96, black)
+		// display_scale_down / _up: disabled at ScaleFactor::min / max (prepareDraw).
+		if w.scale() <= ScaleFactorMin {
+			inset("-", w.X+235+154-26+(13-1)/2-mw/2, w.Y+96)
+		} else {
+			DrawTextBold(screen, "-", w.X+235+154-26+(13-1)/2-mw/2, w.Y+96, black)
+		}
+		if w.scale() >= ScaleFactorMax {
+			inset("+", w.X+235+154-13+(12-1)/2-pw/2, w.Y+96)
+		} else {
+			DrawTextBold(screen, "+", w.X+235+154-13+(12-1)/2-pw/2, w.Y+96, black)
+		}
 		if w.ShowFPS { // activatedWidgets: the checkbox's tick
 			DrawTextBold(screen, string(rune(0xAC)), w.X+10, w.Y+127, text)
 		}
@@ -765,4 +794,19 @@ func optTabCaption() [7]string {
 
 func optControlLabels() [3]string {
 	return [3]string{i18n.Label(i18n.ScrollScreenEdge), i18n.Label(i18n.ZoomToCursor), i18n.Label(i18n.InvertRightMouseDragging)}
+}
+
+// Ui::ScaleFactor (Ui.h): the window scale's range and step.
+const (
+	ScaleFactorMin  = 1.0
+	ScaleFactorMax  = 4.0
+	ScaleFactorStep = 0.25
+)
+
+// scale is Scale, 1 when unset.
+func (w *OptionsWindow) scale() float64 {
+	if w.Scale < ScaleFactorMin {
+		return ScaleFactorMin
+	}
+	return w.Scale
 }
