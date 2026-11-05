@@ -77,13 +77,20 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       the placing tool); the tool's click (pickupToolDownLand for rail: World.RailPlacementAt = the track under the
       cursor by InteractionAt + RailPlacementAtCursor, VehiclePlace, shift starts it, the tool cancelled);
       Escape aborts. PARTIAL: the ghost while hovering, road / air / water, hover and disabled looks.
-      NOT YET SEEN RUNNING: the shot check is blocked (see Blocked). NEXT: see it work (diag
-      GOLOCO_DIAG_BUILDVEHICLE=place on a save WITH track — olauto.SV5 has none; dump.SV5's map has 2514), then
-      the ghost (pickupToolUpdate), then start / stop on the main tab.
+      SEEN 2026-11-05 (GOLOCO_MUTE=1 GOLOCO_DIAG_BUILDVEHICLE=place, title map): the button turns the tool on;
+      the scan, centred on a train (CenterOn), finds track under the cursor 48 times (and surface, trees,
+      stations … elsewhere: the hit-test works); VehiclePlace refuses every one — expected if the title map's
+      track is the AI companies' (validateTrackPlacement, as upstream), not yet proven. NEXT: a save where the
+      player owns track (build some in goloco and save, or a scenario autosave after building) and see a train
+      placed; then the ghost (pickupToolUpdate), then start / stop on the main tab.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a): upstream's VehicleManager::VehicleList walks the vehicle-head linked list (newest first);
    goloco's Trains() walks entities in slot order — the vehicles' update order may differ from upstream's. Now
    that the lists are kept (entitylists.go), compare and follow the list if it does.
+AU. [ ] **No sound device must not end the game** (found 2026-11-05): with no audio device, ebiten's audio
+   error comes back from RunGame and goloco log.Fatal's — OpenLoco plays on silently. Make audio optional: check
+   the device before starting music (or skip the audio context when it fails), keep playing without sound; the
+   test page and headless runs then need no GOLOCO_MUTE.
 CP. [ ] **Cargo production** (found 2026-11-05 by 5P.e): nothing produces cargo yet — DeliverCargoToStation has no
    callers. Port what fills stations: BuildingElement's production (passengers / mail from town buildings to the
    stations in reach) and the industries' (Industry::update / production, deliverCargoToNearbyStations, the monthly
@@ -608,10 +615,10 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   goloco-only UI art with TTF fonts in the public build?
 
 ## Blocked
-- 2026-11-05 ~18:35: goloco's window runs under xvfb-run exit 1 right after "Loaded scenario", silently (no Go
-  error, no panic), with no shot — the previous commit's binary too, so not this tick's code; GOLOCO_DIRTY=0,
-  GOLOCO_GPUPAL=0, GALLIUM_DRIVER=llvmpipe change nothing; Xvfb itself starts. The one system change since the
-  last good run: vulkan-swrast installed 17:26. The xvfb test gate still passes. To find next goloco tick.
+- (resolved 2026-11-05 ~18:45) the silent exit 1: not silent — the "audio: audio error: oto: ALSA error …" line
+  IS log.Fatal's output: this VPS has no sound device, ebiten's RunGame returns the audio error, goloco quits.
+  Headless runs need GOLOCO_MUTE=1. (Earlier "ALSA errors are only warnings" holds on Joop's machine, which has
+  sound.) The real fix is item AU below.
 
 - (RESOLVED 2026-11-01: CI green — workflow pushed over SSH, source checks fixed) GitHub CI (.github/workflows/ci.yml) had failed on every push (60/60): the runner lacks the
   X11/GL/ALSA headers Ebitengine builds against, and pkg/ui + pkg/world tests need a display. Fixed workflow
@@ -1076,4 +1083,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-05 (completion measure, part 1 — overnight) — scripts/clickables.py: OpenLoco's clickables per window (429 over 41 windows) against goloco's ports; --missing lists them. Its goloco side (widget names found in the mapped files) undercounts badly (7%; BuildVehicle 0 / 15 though close + tabs work) — recorded as such, not as the real figure. NEXT: `// clickable:` markers in the ports and the script counting those.
 - 2026-11-05 (completion measure, part 2 — overnight) — the goloco side by explicit markers (two tiers: works as upstream / partial), counted by the script; the label pattern fixed for camelCase widget names (Vehicle.cpp: 26, not 4) — 517 clickables over 47 windows. First markers from code read or written tonight: Build Vehicle (close, the six type tabs; not the track tabs), Vehicle (close), the top toolbar (Build Vehicles and Zoom as upstream; Load/Save, Audio, Railroad, Road, Vehicles, Stations, Towns partial; Rotate / View only log, Terraform / Port / Cheats nothing). 4 of 47 windows annotated. Also: the shared /tmp quota hit again (a link failed) — old comparison builds removed from the scratchpad.
 - 2026-11-05 (5P.g part 1 — overnight) — the Vehicle window's pickup button and placing tool for rail (button image + pressed look, onPickup, the tool's click through World.RailPlacementAt → VehiclePlace, shift-start, Escape); a diag mode `place`; clickables: Vehicle.cpp pickup partial. Tests and vet green; NOT seen running — every windowed xvfb run now exits 1 silently (also the previous commit's build): logged under Blocked. Also: the Go build cache trimmed (4.2 → 1.3 GB) after another quota hit.
+- 2026-11-05 (5P.g check + Blocked — overnight) — the "silent" windowed exit was log.Fatal on ebiten's audio error (no sound device on the VPS; GOLOCO_MUTE=1 for headless runs) — Blocked resolved, item AU added. Then the pickup tool seen: on the title map it turns on, finds track under the cursor (after the diag centres on a train), and VehiclePlace refuses each placement — probably ownership (AI companies' track), to prove with a save where the player owns track. Diag `place` now centres on a train first.
 
