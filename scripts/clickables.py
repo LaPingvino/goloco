@@ -3,15 +3,12 @@
 
 For every window in OpenLoco (src/OpenLoco/src/Ui/Windows/**.cpp) it lists the
 widgets the window's event handlers act on — each `case …widx::name:` label —
-and counts one as present in goloco when that widget's name appears in the
-goloco file(s) the window is ported in (goloco's ports cite upstream's widget
-names: "Widx::show_fps", "display_scale_down_btn" …). A window with no goloco
-file counts as none present.
+against goloco's markers (below).
 
-It is a measure, not a proof: a name can be mentioned without being handled,
-and a handled widget whose port doesn't name it is missed. Use it for the
-trend and the per-window to-do lists; check a window by hand before calling
-it done.
+goloco's side is counted from explicit markers in the ports —
+"clickable(Window.cpp): name …" where a widget works as upstream's does,
+"clickable-partial(Window.cpp): …" where it does something but not yet what
+upstream does. A window without markers is "not annotated yet", not zero.
 
     python3 scripts/clickables.py [OPENLOCO_SRC] [--missing]
 """
@@ -44,7 +41,10 @@ PORTED = {
                      "pkg/ui/constructionstation.go", "pkg/ui/constructiontab.go", "cmd/goloco/construction.go"],
 }
 
-LABEL = re.compile(r"case\s+(?:[A-Za-z_]+::)*[wW]idx::([a-z_0-9]+)\s*:")
+LABEL = re.compile(r"case\s+(?:[A-Za-z_]+::)*[wW]idx::([A-Za-z_0-9]+)\s*:")
+# goloco's markers: "clickable(Window.cpp): name name …" where the widget works as upstream's does,
+# "clickable-partial(Window.cpp): …" where it does something but not yet what upstream does.
+MARKER = re.compile(r"clickable(-partial)?\(([A-Za-z0-9_./]+)\):\s*([A-Za-z0-9_ ]+)")
 
 
 def upstream_windows(root):
@@ -62,27 +62,41 @@ def upstream_windows(root):
     return out
 
 
+def goloco_markers(root):
+    """{window: (set full, set partial)} from the markers in goloco's Go files."""
+    out = {}
+    for d in ("pkg", "cmd"):
+        for dirpath, _, files in os.walk(os.path.join(root, d)):
+            for f in files:
+                if not f.endswith(".go"):
+                    continue
+                for m in MARKER.finditer(open(os.path.join(dirpath, f), encoding="utf-8").read()):
+                    full, partial = out.setdefault(m.group(2), (set(), set()))
+                    (partial if m.group(1) else full).update(m.group(3).split())
+    return out
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     root = args[0] if args else UPSTREAM
     show_missing = "--missing" in sys.argv
-    total = have = 0
+    marks = goloco_markers(GOLOCO)
+    total = have = part = 0
     rows = []
     for win, labels in upstream_windows(root).items():
-        text = ""
-        for f in PORTED.get(win, []):
-            p = os.path.join(GOLOCO, f)
-            if os.path.exists(p):
-                text += open(p, encoding="utf-8").read()
-        present = {l for l in labels if text and re.search(r"\b" + re.escape(l) + r"\b", text)}
+        full, partial = marks.get(win, (set(), set()))
+        full, partial = full & labels, (partial & labels) - full
         total += len(labels)
-        have += len(present)
-        rows.append((win, len(present), len(labels), sorted(labels - present)))
-    rows.sort(key=lambda r: (r[1] / r[2], -r[2]))
-    print(f"{'window':28} {'goloco':>6} / {'OpenLoco':<8}")
-    for win, n, m, missing in rows:
-        print(f"{win:28} {n:6} / {m:<8}" + ("  missing: " + ", ".join(missing) if show_missing and missing else ""))
-    print(f"\n{'all windows':28} {have:6} / {total:<8} ({100 * have / total:.0f}%)")
+        have += len(full)
+        part += len(partial)
+        rows.append((win, len(full), len(partial), len(labels), win in marks, sorted(labels - full - partial)))
+    rows.sort(key=lambda r: (-r[4], (r[1] + r[2]) / r[3], -r[3]))
+    print(f"{'window':28} {'works':>5} {'part':>4} / {'OpenLoco':<8}")
+    for win, n, p, m, annotated, missing in rows:
+        note = "" if annotated else "  (not annotated yet)"
+        print(f"{win:28} {n:5} {p:4} / {m:<8}{note}" + ("  missing: " + ", ".join(missing) if show_missing and annotated and missing else ""))
+    print(f"\n{'all windows':28} {have:5} {part:4} / {total:<8} ({100 * have / total:.0f}% working as upstream, {100 * part / total:.0f}% partly)")
+    print(f"annotated: {sum(1 for r in rows if r[4])} of {len(rows)} windows")
 
 
 if __name__ == "__main__":

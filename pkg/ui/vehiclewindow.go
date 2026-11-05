@@ -213,6 +213,8 @@ func (w *VehicleWindow) Contains(x, y int) bool {
 }
 
 // HandleClick: the close button (onMouseUp close). PARTIAL: everything else.
+//
+// clickable(Vehicle.cpp): closeButton
 func (w *VehicleWindow) HandleClick(x, y int) {
 	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
 	if c := lw[vwClose]; x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B && w.OnClose != nil {

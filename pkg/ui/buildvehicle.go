@@ -255,6 +255,8 @@ func (w *BuildVehicleWindow) Contains(x, y int) bool {
 // close → WindowManager::close; a type tab → switchTab (here: OnTab, which
 // opens the window afresh on that tab). PARTIAL: the track tabs, the list
 // (buying), the search box and the dropdowns.
+//
+// clickable(BuildVehicle.cpp): close_button tab_build_new_trains tab_build_new_buses tab_build_new_trucks tab_build_new_trams tab_build_new_aircraft tab_build_new_ships
 func (w *BuildVehicleWindow) HandleClick(x, y int) {
 	lw := BuildVehicleLayout(w.W, w.H, w.Disabled, w.NumTrackTabs)
 	in := func(b BVWidget) bool {
