@@ -3,6 +3,7 @@ package sim
 import (
 	"fmt"
 	"github.com/LaPingvino/goloco/pkg/assets"
+	"math"
 	"testing"
 
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -866,5 +867,105 @@ func TestVehicleOrderMoves(t *testing.T) {
 		if fmt.Sprint(list(oid)) != was {
 			t.Errorf("vehicle %d's orders changed", oid)
 		}
+	}
+}
+
+// TestPlayableVehicleEndToEnd (5P.e): the player's side, all through the game
+// commands: a stopped saved train on the title map is lifted off its line; a
+// new train with the same cars is bought (createVehicle, then a car at a time),
+// put where it stood (vehiclePlace), given its stops (vehicleOrderInsert) and
+// started (vehicleChangeRunningMode); then the game runs: it leaves, travels
+// and calls at both stations.
+// PARTIAL: "and earns" — nothing produces cargo yet (buildings' and
+// industries' production into stations, DeliverCargoToStation's callers, are
+// not ported: LOOP item CP), so the saved train's wait-for-full-load order is
+// left out and the stations stay empty.
+func TestPlayableVehicleEndToEnd(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	var old Train
+	found := false
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.Mode != 0 || h.TileX == -1 || !m.canBeModified(tr) {
+			continue
+		}
+		stops := 0
+		for _, o := range m.OrderRing(h.OrderTableOffset, 0) {
+			if o.Type() == OrderStopAt {
+				stops++
+			}
+		}
+		if stops >= 2 {
+			old, found = tr, true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("no stopped rail train with two stops")
+	}
+	oh := m.Entities[old.Head]
+	v2 := m.Entities[old.Veh2]
+	c := &Cmd{Company: oh.Owner, Objects: om, Players: func(uint8) bool { return true }}
+	var orders [][]byte
+	for _, o := range m.OrderRing(oh.OrderTableOffset, 0) {
+		if o.Type() == OrderStopAt { // its stops (no wait for a full load: nothing produces cargo yet)
+			orders = append(orders, append([]byte(nil), m.Orders[o.Offset:o.Offset+orderSizes[o.Type()]]...))
+		}
+	}
+	var cars []uint16
+	for _, car := range old.Cars {
+		cars = append(cars, m.Entities[car[0].Body].ObjectID)
+	}
+	place := VehiclePlacement{X: int32(v2.TileX), Y: int32(v2.TileY), Z: int32(v2.TileBaseZ) * 4, TrackAndDirection: v2.TrackAndDirection, TrackProgress: v2.SubPosition}
+	if _, ok := m.VehiclePickup(c, CmdApply, oh.ID); !ok {
+		t.Fatal("lifting the old train refused")
+	}
+	var h uint16
+	if _, ok := m.CreateVehicle(c, CmdApply, cars[0], true, &h); !ok {
+		t.Fatal("buying refused")
+	}
+	for _, car := range cars[1:] {
+		if _, ok := m.AddCarToVehicle(c, CmdApply, car, h, true); !ok {
+			t.Fatalf("adding car %d refused", car)
+		}
+	}
+	place.Head = h
+	if _, ok := m.VehiclePlace(c, CmdApply, place); !ok {
+		t.Fatal("placing refused")
+	}
+	for _, raw := range orders {
+		if _, ok := m.VehicleOrderInsert(c, CmdApply, h, m.entity(h).SizeOfOrderTable-1, raw); !ok {
+			t.Fatalf("order %x refused", raw)
+		}
+	}
+	if _, ok := m.VehicleChangeRunningMode(c, CmdApply, h, RunningModeStart); !ok {
+		t.Fatal("starting refused")
+	}
+	tr, _ := m.TrainOf(h)
+	t.Logf("vehicle %d: %d cars of %v, %d orders, on %d,%d", h, len(tr.Cars), cars, len(orders), place.X, place.Y)
+	startX, startY := m.entity(h).PosX, m.entity(h).PosY
+	moved := 0.0
+	called := map[uint16]bool{}
+	for tick := 0; tick < 60000 && len(called) < 2; tick++ {
+		m.UpdateVehicles(om)
+		tr, err := m.TrainOf(h)
+		if err != nil {
+			t.Fatal(err)
+		}
+		hd := m.Entities[tr.Head]
+		if d := math.Hypot(float64(hd.PosX-startX), float64(hd.PosY-startY)); d > moved {
+			moved = d
+		}
+		if (hd.Status == StatusLoading || hd.Status == StatusUnloading) && hd.StationID != 0xFFFF {
+			if !called[hd.StationID] {
+				t.Logf("tick %d: at station %d (status %d)", tick, hd.StationID, hd.Status)
+			}
+			called[hd.StationID] = true
+		}
+	}
+	t.Logf("moved up to %.0f px; called at %v", moved, called)
+	if moved < 100 || len(called) < 2 {
+		t.Errorf("the bought train did not run its route: moved %.0f px, called at %v", moved, called)
 	}
 }
