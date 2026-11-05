@@ -101,6 +101,7 @@ type World struct {
 	maskCache  map[int]maskEntry // sprite alpha masks
 	scene      *scene.Renderer   // ported software renderer (scene.go)
 	sceneImg   *ebiten.Image     // its frame, uploaded each draw
+	gpal       *gpuPal           // the frame's indices and palette, for the GPU palette path
 	// TitleMode is SceneManager::isTitleMode(): Viewport::paint draws no
 	// station or town names then.
 	TitleMode               bool
