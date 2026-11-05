@@ -24,7 +24,8 @@ from OpenLoco is in docs/deviations.md. Updated when an item moves.
 - **5P — playable vehicles** (top priority, Joop 2026-11-04). The vehicle simulation is done; the player's side is
   being built: the purchase command (CreateVehicle — buying a new vehicle works headless, and its parts match saved
   trains exactly: entity slots, track type, cars, cargo, colours, sprite sizes, the train's automatic layout, the
-  company's vehicle counts; adding cars to a vehicle is next), then placing a vehicle, start / stop, giving orders, an end-to-end test,
+  company's vehicle counts), placing (and lifting) it, start / stop, orders — all headless and tested; a bought
+  train placed on a title-map line runs between its stations. Next: the Build Vehicle and Vehicle windows. then placing a vehicle, start / stop, giving orders, an end-to-end test,
   and the Build Vehicle and Vehicle windows.
 - **Speed in the browser** (Joop measured 4–4.5 fps): the sprite loops made ~1.8× faster (pixel-identical);
   next OpenLoco's own trick — redraw only what changed — and the time spent outside drawing.
@@ -33,6 +34,8 @@ from OpenLoco is in docs/deviations.md. Updated when an item moves.
 
 ## Missing, known
 
+- **Cargo production** (CP): town buildings and industries don't produce cargo into stations yet, so vehicles run
+  their routes but carry and earn nothing. Right after the vehicle windows.
 - **Water and lights don't animate** (W: OpenLoco's palette cycling is not ported).
 - **Station building** in game is goloco's own simple version (no station record / catchment yet).
 - **Industries and misc buildings** on a new map (5.9f4–f5).
