@@ -5,6 +5,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/sim"
+	"github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -128,6 +129,7 @@ func BuildVehicleLayout(width, height int, disabledTabs uint8, numTrackTabs int)
 
 // BVRow is one vehicle of the list.
 type BVRow struct {
+	ID      uint16 // the vehicle object's id (rowInfo)
 	Vehicle *objects.VehicleObject
 	Name    string
 	Locked  bool // !isVehicleIndexUnlocked && !Config::buildLockedVehicles
@@ -150,8 +152,9 @@ type BuildVehicleWindow struct {
 	Scroll              int
 	Primary, Secondary  uint8 // the controlling company's colours for the vehicles
 	Message             string
-	OnClose             func()    // the close button
-	OnTab               func(int) // a vehicle-type tab
+	OnClose             func()          // the close button
+	OnTab               func(int)       // a vehicle-type tab
+	OnBuy               func(id uint16) // a row clicked (onScrollMouseDown): buy that vehicle
 }
 
 // Draw is draw + drawScroll(vehicle_selection).
@@ -267,6 +270,16 @@ func (w *BuildVehicleWindow) HandleClick(x, y int) {
 		if in(lw[bvTabTrains+i]) && i != w.Tab && w.OnTab != nil {
 			w.OnTab(i)
 			return
+		}
+	}
+	// onScrollMouseDown: the row under the pointer in the list's scroll view
+	// (y / rowHeight over the scrolled content). PARTIAL: the clickDown sound.
+	list := lw[bvList]
+	cx, cy := w.X+list.L+uilayout.ScrollbarMargin, w.Y+list.T+uilayout.ScrollbarMargin
+	cw, ch := list.R-list.L+1-2*uilayout.ScrollbarMargin, list.B-list.T+1-2*uilayout.ScrollbarMargin
+	if x >= cx && x < cx+cw && y >= cy && y < cy+ch && w.OnBuy != nil {
+		if row := (y - cy + w.Scroll) / sim.BuildVehicleRowHeight[w.Tab]; row >= 0 && row < len(w.Rows) {
+			w.OnBuy(w.Rows[row].ID)
 		}
 	}
 }

@@ -1067,3 +1067,41 @@ func TestBuildVehicleTabs(t *testing.T) {
 		}
 	}
 }
+
+// TestBuyVehiclePays: createVehicle through DoCommandFor — the cost comes off
+// the company's cash and is booked under VehiclePurchases; a player company
+// without the cash is refused (ensureCompanyFunding) and nothing is made.
+func TestBuyVehiclePays(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	head := m.Entities[trains[0].Head]
+	company, objID := head.Owner, m.Entities[trains[0].Cars[0][0].Body].ObjectID
+	c := &Cmd{Company: company, Objects: om}
+	co := &m.Companies[company]
+	co.Cash = 10_000_000
+	cash, booked := co.Cash, co.Expenditures[0][ExpenditureVehiclePurchases]
+	buy := func() (int32, bool) {
+		var h uint16
+		return m.DoCommandFor(c, CmdApply, ExpenditureVehiclePurchases, func(f uint8) (int32, bool) {
+			return m.CreateVehicle(c, f, objID, true, &h)
+		})
+	}
+	cost, ok := buy()
+	if !ok || cost <= 0 {
+		t.Fatalf("buying refused (%d)", cost)
+	}
+	if co.Cash != cash-int64(cost) || co.Expenditures[0][ExpenditureVehiclePurchases] != booked-cost {
+		t.Errorf("cash %d (was %d), booked %d (was %d), cost %d", co.Cash, cash, co.Expenditures[0][ExpenditureVehiclePurchases], booked, cost)
+	}
+	if !m.IsPlayerCompany(int(company)) {
+		m.PlayerCompanies[0] = company // as the player's
+	}
+	co.Cash = int64(cost) - 1
+	n, _ := m.Trains()
+	if _, ok := buy(); ok {
+		t.Error("bought without the cash")
+	}
+	if after, _ := m.Trains(); len(after) != len(n) || co.Cash != int64(cost)-1 {
+		t.Errorf("refused purchase changed things: %d trains (was %d), cash %d", len(after), len(n), co.Cash)
+	}
+}
