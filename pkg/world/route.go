@@ -94,3 +94,7 @@ func (w *World) RouteStopAt(sx, sy int) (station int, ok bool) {
 	}
 	return id, true
 }
+
+// SceneReady reports whether the main view has been painted by the scene
+// renderer (hit-testing needs it).
+func (w *World) SceneReady() bool { return w.scene != nil }
