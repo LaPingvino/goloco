@@ -598,6 +598,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		}
 	case scenario.KindRoad:
 		rd := t.Roads[ref.Index]
+		s.CurrentItem = &t.Roads[ref.Index] // setCurrentItem(element)
 		if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
 			var light uint8 // streetLightStyle shares the level crossing id's bits; only without crossing, signal or station
 			if !rd.HasLevelCrossing && !rd.HasSignalElement && !rd.HasStationElement {
@@ -620,6 +621,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			paint.SignalSide{Has: sg.HasRightSignal, Object: int(sg.RightSignalObjectID), Frame: sg.Sides[1].Frame()},
 			r.signalObj, sprite)
 	case scenario.KindStation:
+		s.CurrentItem = &t.Stations[ref.Index] // setCurrentItem(element)
 		r.paintStation(s, m, t, t.Stations[ref.Index], prev, x, y, ticks)
 	case scenario.KindBuilding:
 		b := t.Buildings[ref.Index]
