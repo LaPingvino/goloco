@@ -150,6 +150,8 @@ type BuildVehicleWindow struct {
 	Scroll              int
 	Primary, Secondary  uint8 // the controlling company's colours for the vehicles
 	Message             string
+	OnClose             func()    // the close button
+	OnTab               func(int) // a vehicle-type tab
 }
 
 // Draw is draw + drawScroll(vehicle_selection).
@@ -239,4 +241,32 @@ func (w *BuildVehicleWindow) Draw(screen *ebiten.Image) {
 		msg = i18n.Label(i18n.SelectNewVehicle)
 	}
 	DrawTextBold(screen, msg, w.X+2, w.Y+w.H-13, black)
+}
+
+// Contains reports whether the point is on the window.
+func (w *BuildVehicleWindow) Contains(x, y int) bool {
+	return x >= w.X && x < w.X+w.W && y >= w.Y && y < w.Y+w.H
+}
+
+// HandleClick is onMouseUp's close and vehicle-type tabs (BuildVehicle.cpp):
+// close → WindowManager::close; a type tab → switchTab (here: OnTab, which
+// opens the window afresh on that tab). PARTIAL: the track tabs, the list
+// (buying), the search box and the dropdowns.
+func (w *BuildVehicleWindow) HandleClick(x, y int) {
+	lw := BuildVehicleLayout(w.W, w.H, w.Disabled, w.NumTrackTabs)
+	in := func(b BVWidget) bool {
+		return !b.Hidden && x >= w.X+b.L && x <= w.X+b.R && y >= w.Y+b.T && y <= w.Y+b.B
+	}
+	if in(lw[bvClose]) {
+		if w.OnClose != nil {
+			w.OnClose()
+		}
+		return
+	}
+	for i := 0; i < 6; i++ {
+		if in(lw[bvTabTrains+i]) && i != w.Tab && w.OnTab != nil {
+			w.OnTab(i)
+			return
+		}
+	}
 }
