@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"fmt"
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"testing"
 
@@ -716,4 +717,84 @@ func (m *Map) mustTrain(t *testing.T, h uint16) Train {
 		t.Fatal(err)
 	}
 	return tr
+}
+
+// TestVehicleOrders: orders inserted into a saved train — every OTHER train's
+// orders read the same after (their tables moved as upstream reoffsets them);
+// a repeated stop at the same station becomes route-through; delete and skip;
+// a station of another company refused.
+func TestVehicleOrders(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	ringOf := func(id uint16) string {
+		h := m.entity(id)
+		out := ""
+		for _, o := range m.OrderRing(h.OrderTableOffset, 0) {
+			n := orderSizes[o.Type()]
+			out += fmt.Sprintf("%x ", m.Orders[o.Offset:o.Offset+n])
+		}
+		return out
+	}
+	before := map[uint16]string{}
+	for _, tr := range trains {
+		before[m.Entities[tr.Head].ID] = ringOf(m.Entities[tr.Head].ID)
+	}
+	h := m.Entities[trains[0].Head]
+	c := &Cmd{Company: h.Owner, Objects: om}
+	own, other := -1, -1
+	for i, st := range m.StationNames {
+		if st.Name == 0 {
+			continue
+		}
+		if st.Owner == h.Owner && own < 0 {
+			own = i
+		} else if st.Owner != h.Owner && st.Owner < 16 && other < 0 {
+			other = i
+		}
+	}
+	if own < 0 {
+		t.Fatal("no station of the company")
+	}
+	n := len(m.OrderRing(h.OrderTableOffset, 0))
+	t.Logf("vehicle %d: %d orders; own station %d, another company's %d", h.ID, n, own, other)
+	if _, ok := m.VehicleOrderInsert(c, CmdApply, h.ID, 0, OrderStopAtRaw(own)); !ok {
+		t.Fatal("insert refused")
+	}
+	ring := m.OrderRing(m.entity(h.ID).OrderTableOffset, 0)
+	if len(ring) != n+1 || ring[0].Type() != OrderStopAt || ring[0].Station() != own {
+		t.Fatalf("after insert: %d orders, first %d at %d", len(ring), ring[0].Type(), ring[0].Station())
+	}
+	for _, tr := range trains[1:] {
+		id := m.Entities[tr.Head].ID
+		if ringOf(id) != before[id] {
+			t.Errorf("vehicle %d's orders changed: %q → %q", id, before[id], ringOf(id))
+		}
+	}
+	// the same stop again right after it: that order becomes route-through
+	m.VehicleOrderInsert(c, CmdApply, h.ID, 2, OrderStopAtRaw(own))
+	ring = m.OrderRing(m.entity(h.ID).OrderTableOffset, 0)
+	if len(ring) != n+1 || ring[0].Type() != OrderRouteThrough {
+		t.Errorf("repeated stop: %d orders, first type %d (want %d, route-through)", len(ring), ring[0].Type(), OrderRouteThrough)
+	}
+	m.VehicleOrderDelete(c, CmdApply, h.ID, 0)
+	if ringOf(h.ID) != before[h.ID] {
+		t.Errorf("after delete: %q, want %q", ringOf(h.ID), before[h.ID])
+	}
+	for _, tr := range trains[1:] {
+		if id := m.Entities[tr.Head].ID; ringOf(id) != before[id] {
+			t.Errorf("vehicle %d's orders changed after the delete", id)
+		}
+	}
+	if n >= 2 {
+		cur := m.entity(h.ID).CurrentOrder
+		m.VehicleOrderSkip(c, CmdApply, h.ID)
+		if m.entity(h.ID).CurrentOrder == cur {
+			t.Error("skip: the current order stayed")
+		}
+	}
+	if other >= 0 {
+		if _, ok := m.VehicleOrderInsert(c, CmdApply, h.ID, 0, OrderStopAtRaw(other)); ok {
+			t.Error("a stop at another company's station inserted")
+		}
+	}
 }
