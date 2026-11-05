@@ -70,3 +70,19 @@ func (m *Map) invalidateTile(x, y, zMin, zMax int32, zoom uint8, radius int32) {
 func (m *Map) mapInvalidateTileFull(x, y int32) {
 	m.invalidateTile(x, y, 0, 1120, ZoomEighth, defaultRadius)
 }
+
+// invalidateTrain is invalidateSprite on every part of a train: the head,
+// Vehicle1, Vehicle2, the tail and each car's bogies and body (Vehicle2::update
+// when the brake lights change).
+func (m *Map) invalidateTrain(tr Train) {
+	for _, i := range []int{tr.Head, tr.Veh1, tr.Veh2, tr.Tail} {
+		m.invalidateSprite(&m.Entities[i])
+	}
+	for _, car := range tr.Cars {
+		for _, cc := range car {
+			m.invalidateSprite(&m.Entities[cc.Front])
+			m.invalidateSprite(&m.Entities[cc.Back])
+			m.invalidateSprite(&m.Entities[cc.Body])
+		}
+	}
+}

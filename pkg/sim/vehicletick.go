@@ -129,10 +129,16 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 	}
 	c2 := m.component(tr.Veh2)
 	c2.Var4F = uint8(v2.Var4F)
+	brakeWas := v2.BrakeLightTimeout
 	ok := m.Vehicle2Move(&c2, &sp, &d, head.VehicleFlags&VehicleFlagManualControl != 0, RoutingHandle(v1.RoutingHandle),
 		head.HeadVar53, &head.Var3C, &v1.Var3C, &v2.BrakeLightTimeout)
 	m.store(tr.Veh2, &c2)
 	v2.CurrentSpeed, v2.MotorState = sp.CurrentSpeed, sp.MotorState
+	if (brakeWas == 0) != (v2.BrakeLightTimeout == 0) {
+		// Vehicle2::update: the brake lights going on or off change how
+		// every part is drawn — the whole train is invalidated.
+		m.invalidateTrain(tr)
+	}
 	if !ok {
 		return
 	}
@@ -151,7 +157,11 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 				}
 				ok := m.BogieUpdate(&c, &roll, d.D1, d.D2, head.HeadVar53)
 				m.store(i, &c)
+				animWas := e.Animation
 				e.Var44, e.Animation = roll.Var44, roll.AnimationIndex
+				if e.Animation != animWas { // VehicleBogie::updateRoll: a new wheel frame
+					m.invalidateSprite(e)
+				}
 				if !ok {
 					return
 				}
@@ -159,11 +169,13 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 			}
 			if moved { // VehicleBody::update: sub_4AC255 when a bogie moved
 				f, b, body := &m.Entities[cc.Front], &m.Entities[cc.Back], &m.Entities[cc.Body]
+				m.invalidateSprite(body) // VehicleBody::update: before and after sub_4AC255 (a turn alone moves nothing)
 				p := PlaceBody(int32(f.PosX), int32(f.PosY), int32(f.PosZ), int32(b.PosX), int32(b.PosY), int32(b.PosZ), body.ObjectSpriteType, vehicleObject(om, body.ObjectID))
 				m.moveTo(body, p.X, p.Y, p.Z) // sub_4AC255: body->moveTo
 				if p.Turned {
 					body.SpritePitch, body.SpriteYaw = p.Pitch, p.Yaw
 				}
+				m.invalidateSprite(body)
 			}
 		}
 	}
