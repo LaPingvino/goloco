@@ -104,6 +104,18 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
    CHECK (found 5P.a): upstream's VehicleManager::VehicleList walks the vehicle-head linked list (newest first);
    goloco's Trains() walks entities in slot order — the vehicles' update order may differ from upstream's. Now
    that the lists are kept (entitylists.go), compare and follow the list if it does.
+RR. [ ] **Retire the old renderer** (Joop 2026-11-05: "I think we can probably fully retire the old renderer? Or
+   … things in there we can use?"). The scene draws every zoom and the vehicles; GOLOCO_SCENE=0 / the page's
+   checkbox is the only way the old one runs. Nothing in it is more faithful than the port; what still leans on
+   its code, each to be replaced by upstream's way first, then world.go's old passes, track_sprites.go,
+   road_sprites.go and the checkbox go:
+   a. the construction ghost (DrawConstructionGhost over the scene with kTrackParts / kRoadPartsStyle0) →
+      upstream's ghost track / road elements painted by the scene (as the vehicle ghost now is);
+   b. demo trains on maps without vehicles — invented, upstream has none → remove;
+   c. ScreenToTile's height-iterating guess → InteractionAt (getMapCoordinatesFromPos), already ported;
+   d. the overlay (station / town labels, money floats) → upstream's paths (Main.cpp's station / town names in
+      the viewport paint, MoneyEffect as an entity).
+   The page text and scene.go's comment corrected 2026-11-05 (they still said zoom 0 only).
 AU. [ ] **No sound device must not end the game** (found 2026-11-05): with no audio device, ebiten's audio
    error comes back from RunGame and goloco log.Fatal's — OpenLoco plays on silently. Make audio optional: check
    the device before starting music (or skip the audio context when it fails), keep playing without sound; the
@@ -1104,4 +1116,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-05 (5P.g check, part 2 — overnight) — narrowed the refused placements: the diag plays as the line's owner and logs the first placement vs the tile's track — all of validateTrackPlacement's fields match, so the refusal is later (PlaceDownVehicle: trains in the way, most likely). Lifting the centred train first was refused too (to find: canBeModified / moving). Diag-only code, labelled; tests green.
 - 2026-11-05 (5P.g check, part 3 — overnight) — the pickup tool placed a bought train through the real UI path (diag: lift a liftable train, play as and fund its owner, buy, pickup button, click): placed at screen 752,88 after 18 correct refusals, tool off, window updated. The title screen's shot can't show it (camera sequence, no windows) — a gameplay save with player track is still wanted for the picture.
 - 2026-11-05 (5P.g: the ghost — overnight) — pickupToolUpdate for rail: every frame while the tool is on and the cursor is not over a window or bar, the placement under the cursor; unchanged → nothing; else the old ghost lifted (removeLandGhost: VehiclePickup apply|noErrorWindow|ghost) and the train placed as a ghost (VehiclePlace apply|ghost|noErrorWindow). pickupToolDownLand converts a ghost standing on the clicked placement (ConvertGhost) instead of placing anew; Escape (pickupToolAbort) removes it. sim.Map.VehicleIsGhost. Diag: hover then click at screen 752,88 — a ghost before, the real train after, tool off. NEXT: start / stop on the main tab; road vehicles' placement.
+- 2026-11-05 (Joop's question, mid-tick) — the loading page's renderer line was out of date (said the port draws zoom 0 only; it draws every zoom and the vehicles) — corrected, and scene.go's comment; item RR written: retire the old renderer after replacing its four remaining uses (construction ghost, demo trains, ScreenToTile, label overlay) with upstream's ways.
 
