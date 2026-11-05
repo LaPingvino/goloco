@@ -46,6 +46,7 @@ type Image struct {
 type Struct struct {
 	Type       InteractionItem // ps->type: the session's item type when it was made
 	Item       any             // ps->tileElement / entity: the session's current item (setCurrentItem)
+	MapX, MapY int             // ps->map: the session's sprite position (the tile's world x / y) when made
 	Img        Image
 	VpX, VpY   int
 	Mins, Maxs Pos3
@@ -421,6 +422,7 @@ func (s *Session) create(img Image, off, bbOff, bbSize Pos3) *Struct {
 	mins := Pos3{bx + s.spriteX, by + s.spriteY, bbOff.Z}
 	ps := s.newStruct()
 	ps.Type, ps.Item = s.ItemType, s.CurrentItem
+	ps.MapX, ps.MapY = s.spriteX, s.spriteY
 	ps.Img, ps.VpX, ps.VpY, ps.Mins = img, vpX, vpY, mins
 	ps.Maxs = Pos3{mins.X + rs.X, mins.Y + rs.Y, mins.Z + rs.Z}
 	return ps
@@ -614,25 +616,7 @@ func (s *Session) Order() []*Struct {
 // Draw is drawStructs: each struct, its child chain (with their attachments),
 // then its own attachments. rt's (0,0) is viewport (s.rtX, s.rtY).
 func (s *Session) Draw(rt *gfx8.RenderTarget) {
-	draw := func(img Image, x, y int) {
-		if img.Mask != nil {
-			if s.Zoom > 0 { // drawImageMaskedZoom<zoom>
-				zt := *rt
-				zt.OriginX, zt.OriginY = s.rtX, s.rtY
-				gfx8.DrawSpriteMaskedZoom(&zt, img.Sprite, img.Mask, s.SpriteFor, x, y, s.Zoom)
-				return
-			}
-			gfx8.DrawSpriteMasked(rt, img.Sprite, img.Mask, x-s.rtX, y-s.rtY)
-			return
-		}
-		if s.Zoom > 0 { // drawImagePaletteSet at the target's zoom: rt.x/y = the session's
-			zt := *rt
-			zt.OriginX, zt.OriginY = s.rtX, s.rtY
-			gfx8.DrawSpriteAtZoom(&zt, img.Sprite, s.SpriteFor, x, y, s.Zoom, img.Op, img.PalMap, img.Noise)
-			return
-		}
-		gfx8.DrawSpriteNoise(rt, img.Sprite, x-s.rtX, y-s.rtY, img.Op, img.PalMap, img.Noise)
-	}
+	draw := func(img Image, x, y int) { s.drawImage(rt, img, x, y) }
 	diag := DiagAt != nil && DiagAt[0] >= s.rtX && DiagAt[0] < s.rtX+s.rtW && DiagAt[1] >= s.rtY && DiagAt[1] < s.rtY+s.rtH
 	if DiagAt != nil && diagRects < 64 {
 		diagRects++
@@ -768,4 +752,75 @@ func (s *Session) finaliseOrdering(lists []*Struct) {
 	}
 	route.Mins, route.Maxs = mins, maxs
 	s.addToQuadrant(route)
+}
+
+// drawImage draws one struct's image at viewport (x, y) into rt (whose (0, 0)
+// is the session's rt origin), at the session's zoom.
+func (s *Session) drawImage(rt *gfx8.RenderTarget, img Image, x, y int) {
+	if img.Sprite == nil {
+		return
+	}
+	if img.Mask != nil {
+		if s.Zoom > 0 { // drawImageMaskedZoom<zoom>
+			zt := *rt
+			zt.OriginX, zt.OriginY = s.rtX, s.rtY
+			gfx8.DrawSpriteMaskedZoom(&zt, img.Sprite, img.Mask, s.SpriteFor, x, y, s.Zoom)
+			return
+		}
+		gfx8.DrawSpriteMasked(rt, img.Sprite, img.Mask, x-s.rtX, y-s.rtY)
+		return
+	}
+	if s.Zoom > 0 { // drawImagePaletteSet at the target's zoom: rt.x/y = the session's
+		zt := *rt
+		zt.OriginX, zt.OriginY = s.rtX, s.rtY
+		gfx8.DrawSpriteAtZoom(&zt, img.Sprite, s.SpriteFor, x, y, s.Zoom, img.Op, img.PalMap, img.Noise)
+		return
+	}
+	gfx8.DrawSpriteNoise(rt, img.Sprite, x-s.rtX, y-s.rtY, img.Op, img.PalMap, img.Noise)
+}
+
+// hits is isSpriteInteractedWith for the session's (one-pixel) target: the
+// image, drawn as Draw would, leaves a non-transparent pixel there (the
+// palette-mapped index is not 0).
+func (s *Session) hits(img Image, x, y int) bool {
+	if img.Sprite == nil {
+		return false
+	}
+	rt := gfx8.NewRenderTarget(1, 1)
+	s.drawImage(rt, img, x, y)
+	return rt.Bits[0] != 0
+}
+
+// Interaction is PaintSession::getNormalInteractionInfo after Arrange: in
+// drawing order, the last struct (or child) whose image covers the target's
+// pixel and whose type accept takes — an attachment counting for its parent;
+// noInteraction and bridge never count (isPSSpriteTypeInFilter). nil: none.
+func (s *Session) Interaction(accept func(InteractionItem) bool) *Struct {
+	ok := func(t InteractionItem) bool { return t != ItemNoInteraction && t != ItemBridge && accept(t) }
+	attachedHit := func(ps *Struct) bool {
+		for a := ps.attached; a != nil; a = a.next {
+			if s.hits(a.Img, ps.VpX+a.X, ps.VpY+a.Y) && ok(ps.Type) {
+				return true
+			}
+		}
+		return false
+	}
+	var info *Struct
+	for ps := s.head; ps != nil; ps = ps.next {
+		if s.hits(ps.Img, ps.VpX, ps.VpY) && ok(ps.Type) {
+			info = ps
+		}
+		for c := ps.children; c != nil; c = c.children {
+			if s.hits(c.Img, c.VpX, c.VpY) && ok(c.Type) {
+				info = c
+			}
+			if attachedHit(c) {
+				info = c
+			}
+		}
+		if attachedHit(ps) {
+			info = ps
+		}
+	}
+	return info
 }
