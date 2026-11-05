@@ -83,6 +83,14 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       track is the AI companies' (validateTrackPlacement, as upstream), not yet proven. NEXT: a save where the
       player owns track (build some in goloco and save, or a scenario autosave after building) and see a train
       placed; then the ghost (pickupToolUpdate), then start / stop on the main tab.
+      LATER 2026-11-05: ownership is NOT it — the diag now plays as the line's owner (company 1) and logs the
+      first placement against the tile: track id 0 rot 0 z 128 obj 0 owner 1 mods 0, the train trackType 0, mods
+      0 — every validateTrackPlacement field matches. Left: "in the way" (PlaceDownVehicle refuses where trains
+      stand — the scan starts at a train); TestRailPlacementAtCursor already shows the cursor → place round trip
+      works on freed track. The diag's attempt to lift the centred train first was refused (VehiclePickup false —
+      probably canBeModified / moving; the test filters with canBeModified). NEXT: in the diag, lift a train
+      that canBeModified (stop it first if that is the rule), or log PlaceDownVehicle's result, then see the
+      bought train placed in the shot.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a): upstream's VehicleManager::VehicleList walks the vehicle-head linked list (newest first);
    goloco's Trains() walks entities in slot order — the vehicles' update order may differ from upstream's. Now
@@ -1084,4 +1092,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-05 (completion measure, part 2 — overnight) — the goloco side by explicit markers (two tiers: works as upstream / partial), counted by the script; the label pattern fixed for camelCase widget names (Vehicle.cpp: 26, not 4) — 517 clickables over 47 windows. First markers from code read or written tonight: Build Vehicle (close, the six type tabs; not the track tabs), Vehicle (close), the top toolbar (Build Vehicles and Zoom as upstream; Load/Save, Audio, Railroad, Road, Vehicles, Stations, Towns partial; Rotate / View only log, Terraform / Port / Cheats nothing). 4 of 47 windows annotated. Also: the shared /tmp quota hit again (a link failed) — old comparison builds removed from the scratchpad.
 - 2026-11-05 (5P.g part 1 — overnight) — the Vehicle window's pickup button and placing tool for rail (button image + pressed look, onPickup, the tool's click through World.RailPlacementAt → VehiclePlace, shift-start, Escape); a diag mode `place`; clickables: Vehicle.cpp pickup partial. Tests and vet green; NOT seen running — every windowed xvfb run now exits 1 silently (also the previous commit's build): logged under Blocked. Also: the Go build cache trimmed (4.2 → 1.3 GB) after another quota hit.
 - 2026-11-05 (5P.g check + Blocked — overnight) — the "silent" windowed exit was log.Fatal on ebiten's audio error (no sound device on the VPS; GOLOCO_MUTE=1 for headless runs) — Blocked resolved, item AU added. Then the pickup tool seen: on the title map it turns on, finds track under the cursor (after the diag centres on a train), and VehiclePlace refuses each placement — probably ownership (AI companies' track), to prove with a save where the player owns track. Diag `place` now centres on a train first.
+- 2026-11-05 (5P.g check, part 2 — overnight) — narrowed the refused placements: the diag plays as the line's owner and logs the first placement vs the tile's track — all of validateTrackPlacement's fields match, so the refusal is later (PlaceDownVehicle: trains in the way, most likely). Lifting the centred train first was refused too (to find: canBeModified / moving). Diag-only code, labelled; tests green.
 

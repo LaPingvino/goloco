@@ -106,6 +106,7 @@ type Game struct {
 	buildMode    int    // buildModeNone / buildModeTrack / buildModeRoad
 	pickupOn     bool   // the Vehicle window's pickup (placing) tool is active
 	pickupHead   uint16 // the vehicle head it places
+	diagLogged   bool   // GOLOCO_DIAG_BUILDVEHICLE=place: the first placement logged
 	objective    scenario.Objective
 	hasObjective bool
 	gameWon      bool
@@ -1375,6 +1376,20 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 				}
 			}
 		} else if v == "buy" || v == "place" { // trains, then a click on the first row
+			if v == "place" { // DIAGNOSTIC ONLY: play as the company owning the first placed train, so its track is ours
+				for i := range g.w.Map.Entities {
+					if e := &g.w.Map.Entities[i]; scenario.IsVehicleBody(e.EntityType) && e.PosX.Tile() > 0 && e.PosY.Tile() > 0 {
+						log.Printf("[Diag] controlling company %d → %d (the first placed train's owner)", g.w.Map.ControllingCompany, e.Owner)
+						g.w.Map.ControllingCompany = e.Owner
+						g.w.CenterOn("train") // on this train, before it is lifted
+						if tr, err := g.w.Map.TrainOf(e.HeadID); err == nil { // its track freed for ours
+							_, ok := g.w.Map.VehiclePickup(&sim.Cmd{Company: e.Owner, Objects: g.r.ObjMgr}, sim.CmdApply, g.w.Map.Entities[tr.Head].ID)
+							log.Printf("[Diag] lifted that train: %v", ok)
+						}
+						break
+					}
+				}
+			}
 			g.openBuildVehicle(0)
 			if w := g.buildVehicle; w != nil {
 				w.HandleClick(w.X+3+1+5, w.Y+102+1+5)
@@ -1384,12 +1399,24 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 				if x, y, ok := g.vehicleWin.PickupButton(); ok {
 					g.vehicleWin.HandleClick(x, y)
 				}
-				log.Printf("[Diag] pickup tool on: %v; centred on a train: %v", g.pickupOn, g.w.CenterOn("train"))
+				log.Printf("[Diag] pickup tool on: %v", g.pickupOn)
 				placed := false
 				for sy := 40; sy < g.sh-40 && !placed && g.pickupOn; sy += 16 {
 					for sx := 16; sx < g.sw-16 && !placed; sx += 16 {
 						if g.vehicleWin.Contains(sx, sy) {
 							continue
+						}
+						if p, ok := g.w.RailPlacementAt(g.pickupHead, sx, sy); ok && !g.diagLogged {
+							g.diagLogged = true
+							m := &g.w.Map
+							tr, _ := m.TrainOf(g.pickupHead)
+							h := m.Entities[tr.Head]
+							log.Printf("[Diag] first placement %+v; the train: trackType %d, needs mods %#x", p, h.TrackType, h.HeadVar53)
+							if t := m.TileAt(int(p.X)>>5, int(p.Y)>>5); t != nil {
+								for _, el := range t.Tracks {
+									log.Printf("[Diag]   tile track: id %d rot %d z %d obj %d owner %d mods %#x ai %v ghost %v", el.TrackID, el.Rotation, int(el.BaseZ)*4, el.TrackObjectID, el.Owner, el.Mods, el.AiAllocated, el.Ghost)
+								}
+							}
 						}
 						if placed = g.pickupToolDown(sx, sy); placed {
 							log.Printf("[Diag] placed at screen %d,%d; tool on: %v, window placed: %v", sx, sy, g.pickupOn, g.vehicleWin.State.Placed)
