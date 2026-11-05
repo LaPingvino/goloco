@@ -6,6 +6,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 // The Vehicle window (Ui/Windows/Vehicle.cpp), item 5P.g: its common widgets
@@ -293,6 +294,9 @@ type VehicleWindow struct {
 	OnStopStart         func(x, y, w, h int) // Main: stopStartOpen at the button's screen rectangle
 	OnTab               func(tab int)        // switchTab
 	Route               []RouteLine          // Route: the order list's rows, the last the end of the list
+	RouteSel            int                  // Route: orderTableIndex, the selected row (-1: none)
+	OnRouteSelect       func(row int)        // Route: a row clicked
+	OnRoute             func(action string)  // Route: "delete", "up", "down", "skip"
 	// View is Main's viewport, 8-bit, of the given size (nil: none — the
 	// vehicle not placed).
 	View         func(w, h int) *gfx8.RenderTarget
@@ -504,9 +508,15 @@ func (w *VehicleWindow) drawRoute(screen *ebiten.Image) {
 	}
 	cx, cy := w.X+list.L+1, w.Y+list.T+1
 	clip := screen.SubImage(image.Rect(cx, cy, w.X+list.R, w.Y+list.B)).(*ebiten.Image)
+	white := pal[gfx8.Shade(mustMap(colourWhite), 9)] // white_stringid's colour, as the prompt window has it
 	for row, l := range w.Route {
 		y := cy + row*10
-		DrawTextBold(clip, l.Text, cx+8, y-1, black)
+		colour := black
+		if row == w.RouteSel { // the selected row: a black bar, white text (black_stringid → white_stringid)
+			vector.FillRect(clip, float32(cx), float32(y), float32(list.R-list.L-1), 10, black, false)
+			colour = white
+		}
+		DrawTextBold(clip, l.Text, cx+8, y-1, colour)
 		if l.Current {
 			DrawTextBold(clip, "▶", cx+1, y-1, black)
 		}
@@ -547,14 +557,16 @@ func (w *VehicleWindow) Contains(x, y int) bool {
 // HandleClick is Details::onMouseUp: the close button, the pickup button
 // (unless hidden or disabled). PARTIAL: the other tabs and buttons.
 //
-// clickable(Vehicle.cpp): closeButton tabMain tabDetails tabRoute stopStart centreViewport
+// clickable(Vehicle.cpp): closeButton tabMain tabDetails tabRoute stopStart centreViewport orderDelete orderUp orderDown orderSkip
 // clickable-partial(Vehicle.cpp): pickup
 func (w *VehicleWindow) HandleClick(x, y int) {
 	in := func(c BVWidget) bool {
 		return !c.Hidden && x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B
 	}
-	if w.Tab == 4 { // Route::onMouseUp. PARTIAL: the list and the order buttons
+	if w.Tab == 4 { // Route::onMouseUp and onScrollMouseDown. PARTIAL: local / express, reverse, the tool
 		lw := VehicleRouteLayout(w.W, w.H, w.State.HiddenTabs)
+		list := lw[vrRouteList]
+		action := map[int]string{vrDelete: "delete", vrUp: "up", vrDown: "down", vrSkip: "skip"}
 		switch {
 		case in(lw[vwClose]) && w.OnClose != nil:
 			w.OnClose()
@@ -562,6 +574,17 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			w.OnTab(0)
 		case in(lw[vwTabDetails]) && w.OnTab != nil:
 			w.OnTab(1)
+		case in(list) && w.OnRouteSelect != nil: // a row (lineHeight 10) — the end of the list too
+			if row := (y - (w.Y + list.T + 1)) / 10; row >= 0 && row < len(w.Route) {
+				w.OnRouteSelect(row)
+			}
+		default:
+			for i, a := range action {
+				if in(lw[i]) && w.OnRoute != nil {
+					w.OnRoute(a)
+					return
+				}
+			}
 		}
 		return
 	}

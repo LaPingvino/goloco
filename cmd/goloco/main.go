@@ -106,6 +106,8 @@ type Game struct {
 	buildMode  int    // buildModeNone / buildModeTrack / buildModeRoad
 	pickupOn   bool   // the Vehicle window's pickup (placing) tool is active
 	pickupHead uint16 // the vehicle head it places
+	routeSel   int    // the Vehicle window's Route selection (orderTableIndex; -1: none)
+	routeHead  uint16 // whose Route that selection is
 	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,
 	// _ghostTrackProgress; ghostProgress -1: none).
 	ghostPlace    sim.VehiclePlacement
@@ -1395,6 +1397,14 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					g.openVehicleWindow(h.ID, 4)
 					for _, l := range g.vehicleWin.Route {
 						log.Printf("[Diag] route of %d: %q current %v", h.ID, l.Text, l.Current)
+					}
+					if g.vehicleWin.OnRouteSelect != nil { // select the first order, move it down
+						g.vehicleWin.OnRouteSelect(0)
+						g.vehicleWin.OnRoute("down")
+						for _, l := range g.vehicleWin.Route {
+							log.Printf("[Diag] after down: %q", l.Text)
+						}
+						log.Printf("[Diag] selection now row %d", g.routeSel)
 					}
 					break
 				}
