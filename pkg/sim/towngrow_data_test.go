@@ -368,3 +368,63 @@ func TestCreateVehicleCommand(t *testing.T) {
 		t.Error("the routing slot was not freed")
 	}
 }
+
+// TestAddCarToVehicle: canVehiclesCouple holds between the cars of every saved
+// train; a car added to a newly bought vehicle (two cars, still one vehicle,
+// the cost); refused for another company, another kind of vehicle, and (for
+// now, 5P.b) a vehicle on the track.
+func TestAddCarToVehicle(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	pairs := 0
+	for _, tr := range trains {
+		for i := range tr.Cars {
+			for j := range tr.Cars {
+				if i == j {
+					continue // a car isn't coupled to itself
+				}
+				a, b := m.Entities[tr.Cars[i][0].Body].ObjectID, m.Entities[tr.Cars[j][0].Front].ObjectID
+				if !canVehiclesCouple(a, b, om) {
+					t.Errorf("saved train %d: cars %s and %s can't couple", m.Entities[tr.Head].ID, om.Vehicles[a].DisplayName, om.Vehicles[b].DisplayName)
+				}
+				pairs++
+			}
+		}
+	}
+	t.Logf("%d saved car pairs couple", pairs)
+	saved := trains[0]
+	company := m.Entities[saved.Head].Owner
+	objID := m.Entities[saved.Cars[len(saved.Cars)-1][0].Body].ObjectID // a wagon, often
+	c := &Cmd{Company: company, Objects: om}
+	var h uint16
+	if _, ok := m.CreateVehicle(c, CmdApply, objID, true, &h); !ok {
+		t.Fatal("buying refused")
+	}
+	counts := m.Companies[company].TransportTypeCount
+	cost, ok := m.AddCarToVehicle(c, CmdApply, objID, h, true)
+	obj := om.Vehicles[objID]
+	if !ok || cost != m.InflationAdjustedCost(obj.CostFactor, obj.CostIndex, 6) {
+		t.Fatalf("adding a car: ok %v cost %d", ok, cost)
+	}
+	if tr, _ := m.TrainOf(h); len(tr.Cars) != 2 {
+		t.Errorf("%d cars, want 2", len(tr.Cars))
+	}
+	if m.Companies[company].TransportTypeCount != counts {
+		t.Error("adding a car changed the vehicle counts")
+	}
+	other := &Cmd{Company: company ^ 1, Objects: om}
+	if _, ok := m.AddCarToVehicle(other, CmdApply, objID, h, true); ok {
+		t.Error("another company added a car")
+	}
+	for id, v := range om.Vehicles {
+		if v != nil && v.Type != obj.Type {
+			if _, ok := m.AddCarToVehicle(c, 0, uint16(id), h, true); ok {
+				t.Errorf("%s (type %d) fits a type %d vehicle", v.DisplayName, v.Type, obj.Type)
+			}
+			break
+		}
+	}
+	if _, ok := m.AddCarToVehicle(c, CmdApply, objID, m.Entities[saved.Head].ID, true); ok && m.Entities[saved.Head].TileX != -1 {
+		t.Error("a car added to a vehicle on the track (lifting it is 5P.b)")
+	}
+}
