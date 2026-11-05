@@ -1381,7 +1381,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					if e := &g.w.Map.Entities[i]; scenario.IsVehicleBody(e.EntityType) && e.PosX.Tile() > 0 && e.PosY.Tile() > 0 {
 						log.Printf("[Diag] controlling company %d → %d (the first placed train's owner)", g.w.Map.ControllingCompany, e.Owner)
 						g.w.Map.ControllingCompany = e.Owner
-						g.w.CenterOn("train") // on this train, before it is lifted
+						g.w.CenterOn("train")                                 // on this train, before it is lifted
 						if tr, err := g.w.Map.TrainOf(e.HeadID); err == nil { // its track freed for ours
 							_, ok := g.w.Map.VehiclePickup(&sim.Cmd{Company: e.Owner, Objects: g.r.ObjMgr}, sim.CmdApply, g.w.Map.Entities[tr.Head].ID)
 							log.Printf("[Diag] lifted that train: %v", ok)
