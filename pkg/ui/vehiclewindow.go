@@ -1,5 +1,12 @@
 package ui
 
+import (
+	"image"
+
+	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/hajimehoshi/ebiten/v2"
+)
+
 // The Vehicle window (Ui/Windows/Vehicle.cpp), item 5P.g: its common widgets
 // (makeCommonWidgets) and the Details tab's (Details::widgets, prepareDraw).
 // Drawing and input follow.
@@ -113,4 +120,102 @@ func VehicleDetailsLayout(width, height int, s VehicleDetailsState) (w [vdWidget
 		w[vdPaintBrush].T = height - vehicleDetailsTextHeight - 24
 	}
 	return w, s.NoCars
+}
+
+// vehicleRowHeights is Main::open's rowHeights by vehicle type (all 22).
+var vehicleRowHeights = [6]int{22, 22, 22, 22, 22, 22}
+
+// VehicleWindow is the Vehicle window on its Details tab (5P.g): the
+// caption (the vehicle's name), the tabs, the car list (drawScroll) and the
+// right bar. PARTIAL: the other tabs (Main, Cargo, Finances, Route), the
+// tab icons, the right bar's images (build-new, pickup, rubbish bin, paint
+// brush), the three text lines (power / weight, speed / reliability,
+// length), hover and drag, the scroll bar's input, createWindow's placement.
+type VehicleWindow struct {
+	X, Y, W, H          int
+	TitleColour, Colour uint8
+	Title               string
+	VehicleType         int
+	State               VehicleDetailsState
+	Cars                []TrainCarDraw
+	Names               []string // each car's vehicle object name
+	Scroll              int
+	OnClose             func()
+}
+
+// Draw is Details::draw and drawScroll.
+func (w *VehicleWindow) Draw(screen *ebiten.Image) {
+	if globalG1Font == nil {
+		return
+	}
+	g1 := globalG1Font.g1
+	pal := g1.GetPalette()
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+	rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	list := lw[vdCarList]
+	var nameX []int
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		p := lw[vwPanel]
+		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, lw[vwClose].L, lw[vwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		for i := vwTabMain; i <= vwTabRoute; i++ {
+			if t := lw[i]; !t.Hidden {
+				drawTab(rt, t.L, t.T, i == vwTabDetails, sec, tabNoIcon, nil)
+			}
+		}
+		cx, cy, cw, ch, _ := drawVScrollView(rt, list.L, list.T, list.R-list.L+1, list.B-list.T+1, gfx8.InsetColour{Map: sec}, len(w.Cars)*rowH, w.Scroll)
+		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 4)) // clearSingle(getShade(secondary, 4))
+		if cw <= 0 || ch <= 0 {
+			return
+		}
+		sub := gfx8.NewRenderTarget(cw, ch)
+		for yy := range ch {
+			copy(sub.Bits[yy*cw:(yy+1)*cw], rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw])
+		}
+		for i, c := range w.Cars { // each car: its bogies, then its bodies; the name after it
+			y := i*rowH - w.Scroll + (rowH-22)/2
+			if c.Object == nil {
+				nameX = append(nameX, 0)
+				continue
+			}
+			drawCarInline(sub, c, 0, y, false)
+			nameX = append(nameX, drawCarInline(sub, c, 0, y, true)+2)
+		}
+		for yy := range ch {
+			copy(rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw], sub.Bits[yy*cw:(yy+1)*cw])
+		}
+	})
+	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))
+	black := pal[paletteBlack0]
+	cx, cy := w.X+list.L+1, w.Y+list.T+1
+	// The names clipped to the scroll view's content, as its drawing context.
+	clip := screen.SubImage(image.Rect(cx, cy, w.X+list.R, w.Y+list.B)).(*ebiten.Image)
+	for i, n := range w.Names {
+		y := i*rowH - w.Scroll + rowH/2 - 6
+		if i >= len(nameX) {
+			continue
+		}
+		DrawTextBold(clip, n, cx+nameX[i], cy+y, black)
+	}
+}
+
+// Contains reports whether the point is on the window.
+func (w *VehicleWindow) Contains(x, y int) bool {
+	return x >= w.X && x < w.X+w.W && y >= w.Y && y < w.Y+w.H
+}
+
+// HandleClick: the close button (onMouseUp close). PARTIAL: everything else.
+func (w *VehicleWindow) HandleClick(x, y int) {
+	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+	if c := lw[vwClose]; x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B && w.OnClose != nil {
+		w.OnClose()
+	}
 }
