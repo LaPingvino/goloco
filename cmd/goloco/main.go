@@ -74,6 +74,7 @@ type Game struct {
 	mouseX                         int
 	lastTickMouseX, lastTickMouseY int       // the cursor at the last GameTicks (mouseMoved)
 	showFPS                        bool      // Config::showFPS (drawFPS)
+	scale                          float64   // Config::scaleFactor: the game drawn at window ÷ scale, scaled up
 	fpsRef                         time.Time // FPSCounter's _referenceTime
 	fpsFrames                      int
 	fpsCurrent                     float64
@@ -395,6 +396,7 @@ func NewGame() *Game {
 	log.Println("[Game] Game initialization complete")
 	return &Game{
 		showFPS:       configValue("showFPS") == "true" || os.Getenv("GOLOCO_SHOWFPS") != "", // Config::showFPS (Config.cpp: default false)
+		scale:         loadScale(),
 		w:             w,
 		consSignal:    -1,
 		consOneShot:   -1,
@@ -2175,6 +2177,11 @@ func (g *Game) openOptionsWindow() {
 			g.noEdgeScrolling = !v
 		}
 	}
+	w.Scale = g.scale
+	w.OnScale = func(s float64) { // setWindowScaling: Config::write, then the resize (Layout)
+		g.scale = s
+		setConfigValue("scaleFactor", strconv.FormatFloat(s, 'f', 2, 64))
+	}
 	w.ShowFPS = g.showFPS
 	w.OnShowFPS = func(on bool) {
 		g.showFPS = on
@@ -2239,6 +2246,13 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	}
 	if outsideHeight < 1 {
 		outsideHeight = defaultHeight
+	}
+	// Config::scaleFactor (SoftwareDrawingEngine::resize): the screen is the
+	// window divided by the scale; Ebitengine scales it up to the window (sharp
+	// at whole scales, smoothed between — upstream's nearest-then-linear) and
+	// reports the mouse in the game's pixels (getCursorPosScaled).
+	if s := g.scale; s > 1 {
+		outsideWidth, outsideHeight = int(float64(outsideWidth)/s), int(float64(outsideHeight)/s)
 	}
 	g.sw = outsideWidth
 	g.sh = outsideHeight
@@ -2795,4 +2809,18 @@ func (g *Game) mouseMoved() bool {
 	moved := g.mouseX != g.lastTickMouseX || g.mouseY != g.lastTickMouseY
 	g.lastTickMouseX, g.lastTickMouseY = g.mouseX, g.mouseY
 	return moved
+}
+
+// loadScale is Config::scaleFactor (default 1.0; GOLOCO_SCALE overrides it,
+// for the test page), clamped to ScaleFactor's range.
+func loadScale() float64 {
+	v := configValue("scaleFactor")
+	if e := os.Getenv("GOLOCO_SCALE"); e != "" {
+		v = e
+	}
+	s, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		return 1
+	}
+	return min(max(s, ui.ScaleFactorMin), ui.ScaleFactorMax)
 }
