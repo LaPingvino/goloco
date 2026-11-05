@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
 
@@ -177,4 +178,153 @@ func (m *Map) removeEntity(id uint16) {
 		}
 	}
 	m.EntityLists.freeEntity(id)
+}
+
+const (
+	statusBrokenDown       uint8 = 7       // VehicleHead Status::brokenDown
+	kMaxRoadVehicleLength        = 176     // Vehicle.h
+	vehObjFlagCannotCouple       = 1 << 11 // VehicleObjectFlags::cannotCoupleToSelf
+	kMaxBodySprites              = 4       // VehicleObject::kMaxBodySprites
+)
+
+// AddCarToVehicle is the createVehicle game command with a head
+// (addCarToVehicle 0x004AE5FF): the car's inflation-adjusted cost (divisor 6)
+// and true, or false when refused — locked (unless lockedOK), another
+// company's vehicle (checkCompanyCompatibility), the vehicle can't be modified
+// (crashed, stuck, broken down, moving), the car doesn't fit (type, track,
+// coupling, a road vehicle's length), or too few free entities.
+// PARTIAL: a vehicle that is placed (tileX != -1) is refused: lifting it off
+// the track and putting it back (liftUpVehicle / placeDownVehicle, item
+// 5P.b) are not ported yet; and as CreateVehicle's note.
+func (m *Map) AddCarToVehicle(c *Cmd, flags uint8, objID, headID uint16, lockedOK bool) (int32, bool) {
+	if !lockedOK && !m.isVehicleIndexUnlocked(c.Company, objID) {
+		return 0, false // vehicle_is_locked
+	}
+	om := c.Objects
+	if int(objID) >= len(om.Vehicles) || om.Vehicles[objID] == nil {
+		return 0, false
+	}
+	h := m.entity(headID)
+	if h == nil || h.EntityType != scenario.VehicleTypeHead {
+		return 0, false
+	}
+	if h.Owner != c.Company { // checkCompanyCompatibility
+		return 0, false
+	}
+	tr, err := m.TrainOf(headID)
+	if err != nil || !m.canBeModified(tr) || !m.isVehicleTypeCompatible(tr, objID, om) {
+		return 0, false
+	}
+	if m.EntityLists.numFreeEntities() <= maxNumVehicleComponentsInCar {
+		return 0, false // too_many_objects_in_game
+	}
+	if flags&CmdApply != 0 {
+		if h.TileX != -1 {
+			return 0, false // PARTIAL: liftUpVehicle / placeDownVehicle (5P.b)
+		}
+		if !m.createCar(c.Company, headID, objID, om) {
+			return 0, false // nothing lifted, nothing to put back
+		}
+		m.autoLayoutTrain(headID, om) // updateWholeVehicle
+		m.RecalculateTransportCounts(c.Company)
+	}
+	obj := om.Vehicles[objID]
+	return m.InflationAdjustedCost(obj.CostFactor, obj.CostIndex, 6), true
+}
+
+// canBeModified is VehicleHead::canBeModified (VehicleHead.cpp 0x004B6D1F).
+func (m *Map) canBeModified(tr Train) bool {
+	h := &m.Entities[tr.Head]
+	switch h.Status {
+	case StatusCrashed, StatusStuck, statusBrokenDown:
+		return false
+	}
+	v2 := &m.Entities[tr.Veh2]
+	if h.VehicleType == uint8(objects.VehicleTypeAircraft) || h.VehicleType == uint8(objects.VehicleTypeShip) {
+		if v2.Var73&1 != 0 { // isBrokenDown
+			return false
+		}
+		if h.TileX == -1 {
+			return true
+		}
+		if h.Status != StatusLoading && h.Status != StatusStopped {
+			return false // vehicle_must_be_stopped
+		}
+		return v2.CurrentSpeed == 0
+	}
+	if h.TileX == -1 || v2.CurrentSpeed == 0 {
+		return true
+	}
+	return m.Entities[tr.Veh1].Var3C <= 0x3689
+}
+
+// canVehiclesCouple is VehicleHead.cpp's canVehiclesCouple.
+func canVehiclesCouple(newID, srcID uint16, om *objects.ObjectManager) bool {
+	n, s := om.Vehicles[newID], om.Vehicles[srcID]
+	if n == nil || s == nil {
+		return false
+	}
+	if n.Flags&vehObjFlagCannotCouple != 0 && s.Flags&vehObjFlagCannotCouple != 0 {
+		return false
+	}
+	if newID == srcID {
+		return true
+	}
+	nc, sc := om.CompatibleVehiclesFor(n), om.CompatibleVehiclesFor(s)
+	for i := 0; i < int(n.NumCompatVehicles) && i < len(nc); i++ {
+		if nc[i] == srcID {
+			return true
+		}
+	}
+	for i := 0; i < int(s.NumCompatVehicles) && i < len(sc); i++ {
+		if sc[i] == newID {
+			return true
+		}
+	}
+	return n.NumCompatVehicles == 0 && s.NumCompatVehicles == 0
+}
+
+// isVehicleTypeCompatible is VehicleHead::isVehicleTypeCompatible (0x004B8FA2).
+func (m *Map) isVehicleTypeCompatible(tr Train, objID uint16, om *objects.ObjectManager) bool {
+	h := &m.Entities[tr.Head]
+	obj := om.Vehicles[objID]
+	if obj.Mode == objects.TransportModeAir || obj.Mode == objects.TransportModeWater {
+		if len(tr.Cars) != 0 {
+			return false
+		}
+	} else if om.TrackTypeFor(obj) != h.TrackType {
+		return false
+	}
+	if uint8(obj.Mode) != h.Mode || uint8(obj.Type) != h.VehicleType {
+		return false
+	}
+	for _, car := range tr.Cars {
+		if !canVehiclesCouple(objID, m.Entities[car[0].Front].ObjectID, om) {
+			return false
+		}
+	}
+	if obj.Mode != objects.TransportModeRoad || h.TrackType != 0xFF {
+		return true
+	}
+	total := 0 // getVehicleTotalLength
+	for _, car := range tr.Cars {
+		total += vehicleLength(om.Vehicles[m.Entities[car[0].Body].ObjectID])
+	}
+	return total+vehicleLength(obj) <= kMaxRoadVehicleLength // vehicle_too_long
+}
+
+// vehicleLength is VehicleObject::getLength.
+func vehicleLength(v *objects.VehicleObject) int {
+	if v == nil {
+		return 0
+	}
+	n := 0
+	for i := 0; i < int(v.NumCarComponents) && i < len(v.CarComponents); i++ {
+		b := v.CarComponents[i].BodySpriteIdx
+		if b == 0xFF {
+			continue
+		}
+		n += int(v.BodySprites[b&(kMaxBodySprites-1)].HalfLength) * 2
+	}
+	return n
 }

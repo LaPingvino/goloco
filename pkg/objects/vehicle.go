@@ -14,6 +14,7 @@ type VehicleObject struct {
 	// RequiredTrackExtras below are the raw bytes of the file's fixed struct.
 	TrackName    string
 	ExtraNames   []string
+	CompatNames  []string // the compatible vehicles' object names (headers)
 	RackRailName string
 	Header       ObjectHeader
 
@@ -588,7 +589,12 @@ func walkVariableSections(v *VehicleObject, data []byte) int {
 		}
 	}
 
-	// 6. Compatible-vehicle headers.
+	// 6. Compatible-vehicle headers (VehicleObject::load resolves them into
+	// compatibleVehicles: CompatibleVehiclesFor).
+	v.CompatNames = v.CompatNames[:0]
+	for i := 0; i < int(v.NumCompatVehicles); i++ {
+		v.CompatNames = append(v.CompatNames, headerName(data, offset+i*HeaderSize))
+	}
 	offset += int(v.NumCompatVehicles) * HeaderSize
 
 	// 7. Rack-rail object header.
@@ -641,3 +647,25 @@ func (m *ObjectManager) TrackTypeFor(v *VehicleObject) uint8 {
 }
 
 const flagAnyRoadTypeVehicle = 1 << 9 // VehicleObjectFlags::anyRoadType
+
+// CompatibleVehiclesFor is VehicleObject::load's compatibleVehicles: each
+// compatible vehicle's header found among the loaded vehicles
+// (findObjectHandleFuzzy — the exact header; goloco matches the name, as
+// TrackTypeFor) and its slot written in turn from the front; entries past the
+// found ones keep the file's values, and numCompatibleVehicles is unchanged.
+func (m *ObjectManager) CompatibleVehiclesFor(v *VehicleObject) [8]uint16 {
+	out := v.CompatibleVehicles
+	k := 0
+	for _, name := range v.CompatNames {
+		for i, o := range m.Vehicles {
+			if o != nil && strings.EqualFold(o.Header.GetName(), name) {
+				if k < len(out) {
+					out[k] = uint16(i)
+					k++
+				}
+				break
+			}
+		}
+	}
+	return out
+}
