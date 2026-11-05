@@ -418,6 +418,39 @@ func (r *Renderer) RenderRect(m *sim.Map, v View, dst *gfx8.RenderTarget, x0, y0
 // renderRect paints one rectangle of the viewport in one paint session (one
 // of Viewport::paint's columns).
 func (r *Renderer) renderRect(m *sim.Map, v View) *gfx8.RenderTarget {
+	s := r.paintRect(m, v)
+	if r.colRT == nil || cap(r.colRT.Bits) < v.W*v.H { // columns differ in width (the first is trimmed): one buffer, resliced
+		r.colRT = gfx8.NewRenderTarget(v.W, v.H)
+	} else {
+		r.colRT.Width, r.colRT.Height, r.colRT.Bits = v.W, v.H, r.colRT.Bits[:v.W*v.H]
+	}
+	// Viewport::paint clears each column to PaletteIndex::brown2 (black0 in
+	// the underground view, which the port doesn't have).
+	for i := range r.colRT.Bits {
+		r.colRT.Bits[i] = brown2
+	}
+	rt := r.colRT
+	s.Draw(rt)
+	return rt
+}
+
+// InteractionAt is ViewportInteraction::getMapCoordinatesFromPos for the
+// main view: the paint session of the one pixel under screen (sx, sy)
+// (rt.x / y = the viewport position masked to the zoom, 1×1), generated and
+// arranged, then getNormalInteractionInfo with accept as the filter. nil: no
+// item there. PARTIAL: the station / town label passes after it.
+func (r *Renderer) InteractionAt(m *sim.Map, v View, sx, sy int, accept func(paint.InteractionItem) bool) *paint.Struct {
+	mask := ^0 << v.Zoom // (0xFFFF << zoom) on upstream's int16 coordinates: the sign kept
+	pv := v
+	pv.X, pv.Y = (v.X+sx<<v.Zoom)&mask, (v.Y+sy<<v.Zoom)&mask
+	pv.W, pv.H = 1, 1
+	s := r.worker(0).paintRect(m, pv)
+	return s.Interaction(accept)
+}
+
+// paintRect is a paint session for one rectangle of the viewport, generated
+// and arranged (renderRect draws it; InteractionAt hit-tests it).
+func (r *Renderer) paintRect(m *sim.Map, v View) *paint.Session {
 	lw, lh := v.W<<v.Zoom, v.H<<v.Zoom // the render target in viewport units (rt.width/height)
 	if r.sess == nil {
 		r.sess = paint.NewSession(0, v.X, v.Y, lw, lh)
@@ -445,19 +478,7 @@ func (r *Renderer) renderRect(m *sim.Map, v View) *gfx8.RenderTarget {
 		}
 	}
 	s.Arrange()
-	if r.colRT == nil || cap(r.colRT.Bits) < v.W*v.H { // columns differ in width (the first is trimmed): one buffer, resliced
-		r.colRT = gfx8.NewRenderTarget(v.W, v.H)
-	} else {
-		r.colRT.Width, r.colRT.Height, r.colRT.Bits = v.W, v.H, r.colRT.Bits[:v.W*v.H]
-	}
-	// Viewport::paint clears each column to PaletteIndex::brown2 (black0 in
-	// the underground view, which the port doesn't have).
-	for i := range r.colRT.Bits {
-		r.colRT.Bits[i] = brown2
-	}
-	rt := r.colRT
-	s.Draw(rt)
-	return rt
+	return s
 }
 
 // ToRGBAColumns converts only screen columns [x0, x1) of rt into a packed
