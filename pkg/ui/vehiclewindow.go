@@ -227,6 +227,9 @@ type VehicleWindow struct {
 	StopStartImage      int                  // Main: the red / green / yellow flag
 	OnStopStart         func(x, y, w, h int) // Main: stopStartOpen at the button's screen rectangle
 	OnTab               func(tab int)        // switchTab
+	// ViewImage is Main's viewport picture of the given size (nil: none — the
+	// vehicle not placed).
+	ViewImage func(w, h int) *ebiten.Image
 }
 
 // Draw draws the current tab: Main (drawMain) or Details (Details::draw and
@@ -349,6 +352,26 @@ func (w *VehicleWindow) drawMain(screen *ebiten.Image) {
 			}
 		}
 	})
+	// The viewport (Viewport widget: the picture inside its 1-px border),
+	// then the centre-view button drawn over it again.
+	if v := lw[vmViewport]; w.ViewImage != nil {
+		if img := w.ViewImage(v.R-v.L-1, v.B-v.T-1); img != nil {
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Translate(float64(w.X+v.L+1), float64(w.Y+v.T+1))
+			screen.DrawImage(img, op)
+			MarkForeign(image.Rect(w.X+v.L+1, w.Y+v.T+1, w.X+v.R, w.Y+v.B))
+			if c := lw[vmCentreViewport]; !c.Hidden {
+				g1 := globalG1Font.g1
+				if prim, err := g1.GetPaletteMap(int(w.TitleColour)); err == nil {
+					draw8(screen, w.X+c.L, w.Y+c.T, c.R-c.L+1, c.B-c.T+1, func(rt *gfx8.RenderTarget) {
+						if sp, err := gfx8.Decode(&g1.Elements[imgCentreView]); err == nil {
+							gfx8.DrawSpriteNoise(rt, sp, 0, 0, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+						}
+					})
+				}
+			}
+		}
+	}
 	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))
 }
 

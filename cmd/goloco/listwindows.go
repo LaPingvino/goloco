@@ -273,6 +273,7 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		Tab: tab, Main: ui.VehicleMainState{Own: own, Manual: h.VehicleFlags&sim.VehicleFlagManualControl != 0},
 		StopStartImage: stopStartImage(h.VehicleFlags),
 		OnTab:          func(t int) { g.openVehicleWindow(headID, t) },
+		ViewImage:      func(w, h int) *ebiten.Image { return g.w.VehicleViewImage(headID, w, h) },
 		OnStopStart:    func(x, y, w, hh int) { g.stopStartOpen(headID, x, y, w, hh) }}
 }
 

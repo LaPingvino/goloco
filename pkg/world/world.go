@@ -100,8 +100,11 @@ type World struct {
 	palIndex   palblend.Index    // palette colour → index
 	maskCache  map[int]maskEntry // sprite alpha masks
 	scene      *scene.Renderer   // ported software renderer (scene.go)
-	sceneImg   *ebiten.Image     // its frame, uploaded each draw
-	gpal       *gpuPal           // the frame's indices and palette, for the GPU palette path
+	// The Vehicle window's viewport: its own renderer and image.
+	vehicleScene   *scene.Renderer
+	vehicleViewImg *ebiten.Image
+	sceneImg       *ebiten.Image // its frame, uploaded each draw
+	gpal           *gpuPal       // the frame's indices and palette, for the GPU palette path
 	// TitleMode is SceneManager::isTitleMode(): Viewport::paint draws no
 	// station or town names then.
 	TitleMode               bool
