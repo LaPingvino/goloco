@@ -4,6 +4,7 @@ import (
 	"image"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -31,6 +32,70 @@ const (
 	vdCarList
 	vdWidgets
 )
+
+// Route::widx (after the common widgets).
+const (
+	vrTool = vwTabRoute + 1 + iota
+	vrLocalMode
+	vrExpressMode
+	vrRouteList
+	vrForceUnload
+	vrWait
+	vrSkip
+	vrDelete
+	vrUp
+	vrDown
+	vrReverse
+	vrWidgets
+)
+
+// Route's right-bar images (ImageIds).
+const (
+	imgRedArrowUp       = 2338
+	imgRedArrowDown     = 2339
+	imgRouteDelete      = 2375
+	imgRouteSkip        = 2376
+	imgRouteWait        = 2377
+	imgRouteForceUnload = 2378
+)
+
+// VehicleRouteMinHeight is Route::kMinWindowSize's height.
+const VehicleRouteMinHeight = 202
+
+// VehicleRouteLayout is Route::widgets after its prepareDraw for a window
+// of width × height: the list growing with the window, the right bar at its
+// edge. PARTIAL: another company's vehicle (its buttons hidden).
+func VehicleRouteLayout(width, height int, hiddenTabs uint8) (w [vrWidgets]BVWidget) {
+	vehicleCommonWidgets(w[:])
+	w[vrLocalMode] = bvW(3, 44, 118, 12)
+	w[vrExpressMode] = bvW(121, 44, 119, 12)
+	w[vrRouteList] = bvW(3, 58, 237, 120)
+	w[vrForceUnload] = bvW(240, 44, 24, 24)
+	w[vrWait] = bvW(240, 68, 24, 24)
+	w[vrSkip] = bvW(240, 92, 24, 24)
+	w[vrDelete] = bvW(240, 116, 24, 24)
+	w[vrUp] = bvW(240, 140, 24, 12)
+	w[vrDown] = bvW(240, 152, 24, 12)
+	w[vrReverse] = bvW(240, 164, 24, 24)
+	w[vrTool].Hidden = true
+	w[vwFrame].R, w[vwFrame].B = width-1, height-1
+	w[vwPanel].R, w[vwPanel].B = width-1, height-1
+	w[vwCaption].R = width - 2
+	w[vwClose].L, w[vwClose].R = width-15, width-3
+	w[vrRouteList].R, w[vrRouteList].B = width-26, height-14
+	for _, i := range []int{vrForceUnload, vrWait, vrSkip, vrDelete, vrUp, vrDown, vrReverse} {
+		w[i].L, w[i].R = width-25, width-2
+	}
+	leftAlignTabs(w[:], hiddenTabs)
+	return w
+}
+
+// RouteLine is one row of the Route list: its text (the order as
+// orderString formats it), whether it is the current order (the ▶ marker).
+type RouteLine struct {
+	Text    string
+	Current bool
+}
 
 // Main::widx (after the common widgets).
 const (
@@ -227,6 +292,7 @@ type VehicleWindow struct {
 	StopStartImage      int                  // Main: the red / green / yellow flag
 	OnStopStart         func(x, y, w, h int) // Main: stopStartOpen at the button's screen rectangle
 	OnTab               func(tab int)        // switchTab
+	Route               []RouteLine          // Route: the order list's rows, the last the end of the list
 	// View is Main's viewport, 8-bit, of the given size (nil: none — the
 	// vehicle not placed).
 	View         func(w, h int) *gfx8.RenderTarget
@@ -242,6 +308,10 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 	}
 	if w.Tab == 0 {
 		w.drawMain(screen)
+		return
+	}
+	if w.Tab == 4 {
+		w.drawRoute(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -383,6 +453,66 @@ func (w *VehicleWindow) drawMain(screen *ebiten.Image) {
 	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))
 }
 
+// drawRoute is Route::draw and drawScroll: the frame, the tabs (Route
+// active), the local / express buttons, the order list — each order on its
+// row of 10, the current one marked ▶ — and the right bar's images. PARTIAL:
+// selection and hover, the scroll bar, the order-number circles while the
+// tool is on, the cargo sprites in unload / wait orders, local / express
+// pressed states.
+func (w *VehicleWindow) drawRoute(screen *ebiten.Image) {
+	g1 := globalG1Font.g1
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	lw := VehicleRouteLayout(w.W, w.H, w.State.HiddenTabs)
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	list := lw[vrRouteList]
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		p := lw[vwPanel]
+		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, lw[vwClose].L, lw[vwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		for i := vwTabMain; i <= vwTabRoute; i++ {
+			if t := lw[i]; !t.Hidden {
+				drawTab(rt, t.L, t.T, i == vwTabRoute, sec, tabNoIcon, nil)
+			}
+		}
+		for _, b := range []int{vrLocalMode, vrExpressMode} {
+			gfx8.FillRectInset(rt, lw[b].L, lw[b].T, lw[b].R, lw[b].B, gfx8.InsetColour{Map: sec}, 0)
+		}
+		gfx8.FillRectInset(rt, list.L, list.T, list.R, list.B, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillNone)
+		gfx8.FillRect(rt, list.L+1, list.T+1, list.R-1, list.B-1, gfx8.Shade(sec, 4)) // clearSingle(getShade(secondary, 4))
+		for _, b := range []struct{ i, img int }{{vrForceUnload, imgRouteForceUnload}, {vrWait, imgRouteWait}, {vrSkip, imgRouteSkip},
+			{vrDelete, imgRouteDelete}, {vrUp, imgRedArrowUp}, {vrDown, imgRedArrowDown}, {vrReverse, imgTurnaround}} {
+			if sp, err := gfx8.Decode(&g1.Elements[b.img]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, lw[b.i].L, lw[b.i].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			}
+		}
+	})
+	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))
+	pal := g1.GetPalette()
+	black := pal[paletteBlack0]
+	for _, b := range []struct {
+		i    int
+		text string
+	}{{vrLocalMode, i18n.Label(i18n.LocalModeButton)}, {vrExpressMode, i18n.Label(i18n.ExpressModeButton)}} {
+		tw, _ := MeasureTextBold(b.text)
+		DrawTextBold(screen, b.text, w.X+(lw[b.i].L+lw[b.i].R-tw)/2, w.Y+lw[b.i].T, black)
+	}
+	cx, cy := w.X+list.L+1, w.Y+list.T+1
+	clip := screen.SubImage(image.Rect(cx, cy, w.X+list.R, w.Y+list.B)).(*ebiten.Image)
+	for row, l := range w.Route {
+		y := cy + row*10
+		DrawTextBold(clip, l.Text, cx+8, y-1, black)
+		if l.Current {
+			DrawTextBold(clip, "▶", cx+1, y-1, black)
+		}
+	}
+}
+
 // PickupButton is the pickup button's centre on screen; ok is false when it
 // is hidden.
 func (w *VehicleWindow) PickupButton() (x, y int, ok bool) {
@@ -417,11 +547,23 @@ func (w *VehicleWindow) Contains(x, y int) bool {
 // HandleClick is Details::onMouseUp: the close button, the pickup button
 // (unless hidden or disabled). PARTIAL: the other tabs and buttons.
 //
-// clickable(Vehicle.cpp): closeButton tabMain tabDetails stopStart centreViewport
+// clickable(Vehicle.cpp): closeButton tabMain tabDetails tabRoute stopStart centreViewport
 // clickable-partial(Vehicle.cpp): pickup
 func (w *VehicleWindow) HandleClick(x, y int) {
 	in := func(c BVWidget) bool {
 		return !c.Hidden && x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B
+	}
+	if w.Tab == 4 { // Route::onMouseUp. PARTIAL: the list and the order buttons
+		lw := VehicleRouteLayout(w.W, w.H, w.State.HiddenTabs)
+		switch {
+		case in(lw[vwClose]) && w.OnClose != nil:
+			w.OnClose()
+		case in(lw[vwTabMain]) && w.OnTab != nil:
+			w.OnTab(0)
+		case in(lw[vwTabDetails]) && w.OnTab != nil:
+			w.OnTab(1)
+		}
+		return
 	}
 	if w.Tab == 0 { // Main::onMouseUp / onMouseDown
 		lw := VehicleMainLayout(w.W, w.H, w.Main)
@@ -430,6 +572,8 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			w.OnClose()
 		case in(lw[vwTabDetails]) && w.OnTab != nil:
 			w.OnTab(1)
+		case in(lw[vwTabRoute]) && w.OnTab != nil:
+			w.OnTab(4)
 		case in(lw[vmStopStart]) && w.OnStopStart != nil:
 			b := lw[vmStopStart]
 			w.OnStopStart(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
@@ -446,6 +590,8 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 		w.OnClose()
 	case in(lw[vwTabMain]) && w.OnTab != nil:
 		w.OnTab(0)
+	case in(lw[vwTabRoute]) && w.OnTab != nil:
+		w.OnTab(4)
 	case in(lw[vdPickup]) && !pickupDisabled && w.OnPickup != nil:
 		w.OnPickup()
 	}

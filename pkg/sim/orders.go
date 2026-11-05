@@ -112,3 +112,20 @@ func (m *Map) AdvanceToNextRoutableOrder(orderTableOffset uint32, currentOrder *
 		}
 	}
 }
+
+// OrderTable is getOrderTable(head): the vehicle's orders from its table's
+// start (orderTableOffset) up to, not including, the End order. An invalid
+// order type ends the walk.
+func (m *Map) OrderTable(begin uint32) []Order {
+	var out []Order
+	for cur := int(begin); cur < len(m.Orders); {
+		o := Order{m, cur}
+		t := o.Type()
+		if t == OrderEnd || int(t) >= len(orderSizes) {
+			break
+		}
+		out = append(out, o)
+		cur += orderSizes[t]
+	}
+	return out
+}

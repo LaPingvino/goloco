@@ -1387,6 +1387,18 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					g.handleToolbarButton(i)
 				}
 			}
+		} else if v == "route" { // the Route tab of the first train with orders
+			m := &g.w.Map
+			trains, _ := m.Trains()
+			for _, tr := range trains {
+				if h := m.Entities[tr.Head]; h.TileX != -1 && h.SizeOfOrderTable > 1 {
+					g.openVehicleWindow(h.ID, 4)
+					for _, l := range g.vehicleWin.Route {
+						log.Printf("[Diag] route of %d: %q current %v", h.ID, l.Text, l.Current)
+					}
+					break
+				}
+			}
 		} else if v == "main" { // buy a train, then the Vehicle window's Main tab (clicked)
 			g.openBuildVehicle(0)
 			if w := g.buildVehicle; w != nil {
