@@ -253,7 +253,7 @@ func (w *World) checkDirty(view scene.View) {
 			diff++
 		}
 	}
-	log.Printf("[DirtyCheck] frame %d: %d of %d pixels differ from a full repaint", w.dirtyChecks, diff, len(full.Bits))
+	log.Printf("[DirtyCheck] frame %d: %d of %d pixels differ from a full repaint (view %d,%d zoom %d — GOLOCO_DIAG_PAINT_AT takes view + screen pixel)", w.dirtyChecks, diff, len(full.Bits), view.X, view.Y, view.Zoom)
 	if diff < dirtyCheckMin || w.dirtySaved >= 6 { // GOLOCO_DIRTY_CHECK_MIN: the smallest difference saved (default 1)
 		return
 	}
