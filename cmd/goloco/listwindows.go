@@ -229,6 +229,9 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 	if g.w == nil {
 		return
 	}
+	if g.vehicleWin == nil || g.routeHead != headID { // a new window: no order selected (orderTableIndex -1)
+		g.routeSel, g.routeHead = -1, headID
+	}
 	m := &g.w.Map
 	tr, err := m.TrainOf(headID)
 	if err != nil {
@@ -274,8 +277,10 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		State:   ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
 		OnClose: func() { g.vehicleWin, g.pickupOn = nil, false }, OnPickup: func() { g.onPickup(headID) },
 		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h),
-		Route: g.routeLines(&h),
-		Tab:   tab, Main: ui.VehicleMainState{Own: own, Manual: h.VehicleFlags&sim.VehicleFlagManualControl != 0},
+		Route: g.routeLines(&h), RouteSel: g.routeSel,
+		OnRouteSelect: func(row int) { g.routeSel = row; g.openVehicleWindow(headID, 4) },
+		OnRoute:       func(a string) { g.routeAction(headID, a) },
+		Tab:           tab, Main: ui.VehicleMainState{Own: own, Manual: h.VehicleFlags&sim.VehicleFlagManualControl != 0},
 		StopStartImage: stopStartImage(h.VehicleFlags),
 		OnTab:          func(t int) { g.openVehicleWindow(headID, t) },
 		View:           func(w, h int) *gfx8.RenderTarget { return g.w.VehicleView(headID, w, h) },
@@ -552,4 +557,49 @@ func (g *Game) routeLines(h *scenario.VehicleEntity) []ui.RouteLine {
 		lines = append(lines, ui.RouteLine{Text: text, Current: int(h.OrderTableOffset)+int(h.CurrentOrder) == o.Offset})
 	}
 	return append(lines, ui.RouteLine{Text: i18n.Label(i18n.OrdersEnd)})
+}
+
+// routeAction is Route::onMouseUp's order buttons: delete (the selected order,
+// or the last), up / down (the selected one, the selection following it),
+// skip (the current order). PARTIAL: local / express, reverse.
+func (g *Game) routeAction(headID uint16, action string) {
+	m := &g.w.Map
+	tr, err := m.TrainOf(headID)
+	if err != nil {
+		return
+	}
+	h := m.Entities[tr.Head]
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	orders := m.OrderTable(h.OrderTableOffset)
+	rel := func(o sim.Order) uint16 { return uint16(o.Offset - int(h.OrderTableOffset)) }
+	sel := g.routeSel
+	switch action {
+	case "delete": // onOrderDelete
+		if h.SizeOfOrderTable <= 1 || len(orders) == 0 {
+			return
+		}
+		target := orders[len(orders)-1]
+		if sel >= 0 && sel < len(orders) {
+			target = orders[sel]
+		}
+		m.VehicleOrderDelete(c, sim.CmdApply, headID, rel(target))
+		if g.routeSel >= len(m.OrderTable(m.Entities[tr.Head].OrderTableOffset)) {
+			g.routeSel = -1 // no order selected any more
+		}
+	case "up", "down": // onOrderMove
+		if h.SizeOfOrderTable <= 1 || sel < 0 || sel >= len(orders) {
+			return
+		}
+		if action == "up" {
+			if _, ok := m.VehicleOrderUp(c, sim.CmdApply, headID, rel(orders[sel])); ok && g.routeSel > 0 {
+				g.routeSel--
+			}
+		} else if _, ok := m.VehicleOrderDown(c, sim.CmdApply, headID, rel(orders[sel])); ok && sel+1 < len(orders) {
+			g.routeSel++
+		}
+	case "skip":
+		m.VehicleOrderSkip(c, sim.CmdApply, headID)
+	}
+	g.openVehicleWindow(headID, 4)
 }
