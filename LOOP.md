@@ -565,6 +565,13 @@ O. [ ] **Open build on goloco's GitHub Pages** (Joop 2026-11-04: "the clean vers
 
 - [x] (DONE 2026-11-04) 5.9f3t (found 2026-11-04) — RaiseLand / LowerLand game commands (GameCommands/Terraform/RaiseLand.cpp 95, LowerLand.cpp 99) with TileManager::adjustSurfaceHeight (TileManager.cpp 1499, ~175 lines) and SurfaceData's raise/lowerSurfaceCornerFlags. appendToRoadEnd calls them (one whole tile) through raiseLandAt / lowerLandAt, which change nothing until then (noted there).
 
+## Completion measure: OpenLoco's clickables (Joop 2026-11-05: "a lot of OpenLoco clickables don't exist in
+Goloco yet, probably a good proxy for completion as well")
+To build: an inventory of every window's interactive widgets in OpenLoco (Ui/Windows/*.cpp: the widget lists
+and what onMouseUp / onMouseDown / onDropdown / tool handlers do with each) against what goloco's windows
+handle — a count per window and overall, kept in docs/STATUS.md and refreshed as windows are ported; the
+missing ones become the window items' to-do lists. A script (scripts/clickables) so the count isn't by hand.
+
 ## Questions for Joop
 - (2026-11-03) Item 0: the test page (kiefte.eu/goloco/, rebuilt 2026-11-03) — does it feel responsive now? A yes ends item 0 and 5.9f3 resumes.
 - (answered 2026-11-01, Joop: 'the top bar mouseover text menus are misaligned', 'text doesn't fit boxes') UI: which menus look most misaligned?
