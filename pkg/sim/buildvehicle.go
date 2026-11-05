@@ -172,3 +172,72 @@ func (m *Map) BuildableVehicles(om *objects.ObjectManager, vehicleType, trackTyp
 	}
 	return out
 }
+
+// BuildVehicleRowHeight is kScrollRowHeight: the list's row height per
+// vehicle-type tab (trains, buses, trucks, trams 22; aircraft 42; ships 30).
+var BuildVehicleRowHeight = [6]int{22, 22, 22, 22, 42, 30}
+
+// BuildVehicleDisabledTabs is setDisabledTransportTabs: a bit per vehicle-type
+// tab the company can't buy (Company availableVehicles inverted).
+func (m *Map) BuildVehicleDisabledTabs(company uint8) uint8 {
+	var avail uint16
+	if int(company) < len(m.Companies) {
+		avail = m.Companies[company].AvailableVehicles
+	}
+	return uint8(avail^0x3F) & 0x3F
+}
+
+// BuildVehicleTrackTabs is setTrackTypeTabs (0x4C2D8A): the track-type tabs
+// for a vehicle type — the rail track types of its buildable vehicles in id
+// order, then (only when every rail type got a tab) the road types with bit 7
+// (an any-road-type vehicle counts as lastTrackTypeOption), at most eight; a
+// single 0xFF tab when a vehicle is neither rail nor road (aircraft, ships).
+func (m *Map) BuildVehicleTrackTabs(om *objects.ObjectManager, vehicleType uint8, o BuildVehicleOptions) []uint8 {
+	o.TargetHead = entityIDNull // generateBuildableVehiclesArray(type, 0xFF, nullptr)
+	var rail, road uint32
+	for _, id := range m.BuildableVehicles(om, vehicleType, 0xFF, o) {
+		v := om.Vehicles[id]
+		switch v.Mode {
+		case objects.TransportModeRail:
+			rail |= 1 << om.TrackTypeFor(v)
+		case objects.TransportModeRoad:
+			tt := om.TrackTypeFor(v)
+			if tt == 0xFF {
+				tt = m.LastTrackTypeOption
+			}
+			road |= 1 << tt
+		default:
+			return []uint8{0xFF}
+		}
+	}
+	var tabs []uint8
+	tt := -1
+	for tt = bitScanForward(rail); tt != -1 && len(tabs) < 8; tt = bitScanForward(rail) {
+		rail &^= 1 << tt
+		tabs = append(tabs, uint8(tt))
+	}
+	if tt == -1 && len(tabs) < 8 {
+		for t := bitScanForward(road); t != -1 && len(tabs) < 8; t = bitScanForward(road) {
+			road &^= 1 << t
+			tabs = append(tabs, uint8(t)|1<<7)
+		}
+	}
+	return tabs
+}
+
+// BuildVehicleTrackTab is resetTrackTypeTabSelection (0x4C1CBE): the tab of
+// the toolbar's last railroad or road choice, else the first (aircraft and
+// ships: the first).
+// PARTIAL: setTopToolbarLastTrack (the toolbar's choice follows the tab) is
+// the toolbar's, not ported here.
+func (m *Map) BuildVehicleTrackTab(vehicleType uint8, tabs []uint8) int {
+	if vehicleType == uint8(objects.VehicleTypeAircraft) || vehicleType == uint8(objects.VehicleTypeShip) {
+		return 0
+	}
+	for i, t := range tabs {
+		if m.LastRailroadOption == t || m.LastRoadOption == t {
+			return i
+		}
+	}
+	return 0
+}

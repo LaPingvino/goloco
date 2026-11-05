@@ -167,6 +167,9 @@ type Scenario struct {
 	CompetitorObjectOrder []string // competitor slot → DAT name
 	ControllingCompany    uint8    // playerCompanies[0] (getControllingId)
 	TrafficHandedness     uint8    // GameState trafficHandedness: 0 left-hand traffic, 1 right-hand
+	// The toolbar's last track / road choices (GameState lastRailroadOption,
+	// lastRoadOption, lastTrackTypeOption).
+	LastRailroadOption, LastRoadOption, LastTrackTypeOption uint8
 
 	// Towns holds the non-empty town records parsed from the scenario Towns
 	// chunk (or the towns array embedded in a saved-game GameState chunk).
