@@ -227,9 +227,11 @@ type VehicleWindow struct {
 	StopStartImage      int                  // Main: the red / green / yellow flag
 	OnStopStart         func(x, y, w, h int) // Main: stopStartOpen at the button's screen rectangle
 	OnTab               func(tab int)        // switchTab
-	// ViewImage is Main's viewport picture of the given size (nil: none — the
+	// View is Main's viewport, 8-bit, of the given size (nil: none — the
 	// vehicle not placed).
-	ViewImage func(w, h int) *ebiten.Image
+	View         func(w, h int) *gfx8.RenderTarget
+	OnCentreView func() // Main: centreViewport — the main view moved to the vehicle
+	viewImg      *ebiten.Image
 }
 
 // Draw draws the current tab: Main (drawMain) or Details (Details::draw and
@@ -353,23 +355,29 @@ func (w *VehicleWindow) drawMain(screen *ebiten.Image) {
 		}
 	})
 	// The viewport (Viewport widget: the picture inside its 1-px border),
-	// then the centre-view button drawn over it again.
-	if v := lw[vmViewport]; w.ViewImage != nil {
-		if img := w.ViewImage(v.R-v.L-1, v.B-v.T-1); img != nil {
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(w.X+v.L+1), float64(w.Y+v.T+1))
-			screen.DrawImage(img, op)
-			MarkForeign(image.Rect(w.X+v.L+1, w.Y+v.T+1, w.X+v.R, w.Y+v.B))
+	// with the centre-view button painted into it, as upstream's frame has
+	// both, then put on screen once.
+	if v := lw[vmViewport]; w.View != nil {
+		if rt := w.View(v.R-v.L-1, v.B-v.T-1); rt != nil {
 			if c := lw[vmCentreViewport]; !c.Hidden {
-				g1 := globalG1Font.g1
-				if prim, err := g1.GetPaletteMap(int(w.TitleColour)); err == nil {
-					draw8(screen, w.X+c.L, w.Y+c.T, c.R-c.L+1, c.B-c.T+1, func(rt *gfx8.RenderTarget) {
-						if sp, err := gfx8.Decode(&g1.Elements[imgCentreView]); err == nil {
-							gfx8.DrawSpriteNoise(rt, sp, 0, 0, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
-						}
-					})
+				if sp, err := gfx8.Decode(&g1.Elements[imgCentreView]); err == nil {
+					gfx8.DrawSpriteNoise(rt, sp, c.L-(v.L+1), c.T-(v.T+1), gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 				}
 			}
+			pal := g1.GetPalette()
+			pix := make([]byte, rt.Width*rt.Height*4)
+			for k, ix := range rt.Bits[:rt.Width*rt.Height] {
+				c := pal[ix]
+				pix[k*4], pix[k*4+1], pix[k*4+2], pix[k*4+3] = c.R, c.G, c.B, 255
+			}
+			if w.viewImg == nil || w.viewImg.Bounds().Dx() != rt.Width || w.viewImg.Bounds().Dy() != rt.Height {
+				w.viewImg = ebiten.NewImage(rt.Width, rt.Height)
+			}
+			w.viewImg.WritePixels(pix)
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Translate(float64(w.X+v.L+1), float64(w.Y+v.T+1))
+			screen.DrawImage(w.viewImg, op)
+			MarkForeign(image.Rect(w.X+v.L+1, w.Y+v.T+1, w.X+v.R, w.Y+v.B))
 		}
 	}
 	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))
@@ -388,6 +396,13 @@ func (w *VehicleWindow) PickupButton() (x, y int, ok bool) {
 	return w.X + (b.L+b.R)/2, w.Y + (b.T+b.B)/2, !b.Hidden
 }
 
+// CentreViewButton is the centre-view button's bottom-left corner on screen
+// (where its dropdown opens), on the Main tab.
+func (w *VehicleWindow) CentreViewButton() (x, y int, ok bool) {
+	b := VehicleMainLayout(w.W, w.H, w.Main)[vmCentreViewport]
+	return w.X + b.L, w.Y + b.B + 1, w.Tab == 0 && !b.Hidden
+}
+
 // StopStartButton is the stop / start button's centre on the Main tab.
 func (w *VehicleWindow) StopStartButton() (x, y int, ok bool) {
 	b := VehicleMainLayout(w.W, w.H, w.Main)[vmStopStart]
@@ -402,7 +417,7 @@ func (w *VehicleWindow) Contains(x, y int) bool {
 // HandleClick is Details::onMouseUp: the close button, the pickup button
 // (unless hidden or disabled). PARTIAL: the other tabs and buttons.
 //
-// clickable(Vehicle.cpp): closeButton tabMain tabDetails stopStart
+// clickable(Vehicle.cpp): closeButton tabMain tabDetails stopStart centreViewport
 // clickable-partial(Vehicle.cpp): pickup
 func (w *VehicleWindow) HandleClick(x, y int) {
 	in := func(c BVWidget) bool {
@@ -420,6 +435,8 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			w.OnStopStart(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
 		case in(lw[vmPickup]) && w.OnPickup != nil:
 			w.OnPickup()
+		case in(lw[vmCentreViewport]) && w.OnCentreView != nil:
+			w.OnCentreView()
 		}
 		return
 	}

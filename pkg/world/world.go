@@ -101,10 +101,12 @@ type World struct {
 	maskCache  map[int]maskEntry // sprite alpha masks
 	scene      *scene.Renderer   // ported software renderer (scene.go)
 	// The Vehicle window's viewport: its own renderer and image.
-	vehicleScene   *scene.Renderer
-	vehicleViewImg *ebiten.Image
-	sceneImg       *ebiten.Image // its frame, uploaded each draw
-	gpal           *gpuPal       // the frame's indices and palette, for the GPU palette path
+	vehicleScene *scene.Renderer
+	// The main view's focus on a train (FocusOnVehicle).
+	followHead uint16
+	following  bool
+	sceneImg   *ebiten.Image // its frame, uploaded each draw
+	gpal       *gpuPal       // the frame's indices and palette, for the GPU palette path
 	// TitleMode is SceneManager::isTitleMode(): Viewport::paint draws no
 	// station or town names then.
 	TitleMode               bool
@@ -909,6 +911,7 @@ func abs(x int) int {
 // PanCamera moves the camera by (dx, dy) pixels in world-space.
 // Called each frame when WASD/arrow keys are held.
 func (w *World) PanCamera(dx, dy float64) {
+	w.following = false      // moving the view ends a focus (viewportUnfocusFromEntity)
 	w.externalCamera = false // user is now driving the camera
 	w.camX += dx
 	w.camY += dy
@@ -2544,6 +2547,7 @@ func (w *World) Draw(screen *ebiten.Image) {
 	sh := screen.Bounds().Dy()
 	scale := 1.0 / float64(int(1)<<w.zoom) // zoom 0→1.0, 1→0.5, 2→0.25, 3→0.125
 
+	w.followVehicle()
 	// The ported software renderer (scene.go): the default; GOLOCO_SCENE=0 selects the old one.
 	if w.sceneEnabled() {
 		w.drawScene(screen) // saved vehicles are painted in the scene (paintEntities)
