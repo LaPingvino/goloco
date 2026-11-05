@@ -20,3 +20,16 @@ itself ignores the wheel.
 
 The binary is the 26.08 release, older than the source we port: where it and
 goloco differ, the source decides (LOOP.md).
+
+## The same view in both: OpenLoco's own autosave
+
+OpenLoco can't read every .SV5 (DEBUG_AUTO_DUMP.SV5 is "Unsupported S5
+format"), and a new game's camera is hard to match by hand. What works: start a
+scenario in OpenLoco, zoom with the wheel at the viewport's centre (512, 384),
+and wait for the monthly autosave (scratch config: save/autosave/*.SV5, about a
+minute of game time). Then `openloco … that.SV5` and goloco's `goloco that.SV5`
+(GOLOCO_ZOOM=N for the zoom; goloco doesn't take the saved zoom) show the same
+world from nearly the same place, and `match.py goloco.png openloco.png
+diff.png` finds the exact offset and diffs the overlap. 2026-11-05: zoom 1 and 2
+matched pixel for pixel apart from the town labels and things that change with
+time (trees, fields, the fountain).
