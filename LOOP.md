@@ -8,6 +8,7 @@ Each overnight tick ends by writing work/nowork to .idle-loop-status. Each tick:
 verify it, commit, update this file (queue + one tick-log line), stop. Don't start two items.
 
 ## Non-negotiables
+- **Ship to production at once** (Joop 2026-11-05: "Feel free to put everything in production immediately: nobody can play this yet anyway"). Finished work goes live straight away: no opt-in env flags or staging for features that work (make them the default, keep the env only as an off switch), wire new windows into the real UI, redeploy the test page after every visible change. Game data still never goes public.
 - **Upstream is the truth.** `~/Projects/OpenLoco` (src/OpenLoco/src/…). Every correction cites the
   upstream file/function it mirrors. Where goloco's code or comments disagree with upstream, upstream
   wins — unless the code deliberately keeps a vanilla quirk (0x004XXXXX address comments).
