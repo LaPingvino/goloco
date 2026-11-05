@@ -1419,9 +1419,11 @@ type StationName struct {
 	// VisitedTypes is var_3B2: a bit per VehicleType that has called here.
 	VisitedTypes uint8
 	Flags        uint16 // Station flags (0x2A)
-	Var3B1       uint8  // var_3B1 (0x3B1)
-	Var3B0       uint8  // var_3B0 (0x3B0)
-	TileSize     uint16 // stationTileSize (0x1CE)
+	Owner        uint8  // owner (0x28): the company
+
+	Var3B1   uint8  // var_3B1 (0x3B1)
+	Var3B0   uint8  // var_3B0 (0x3B0)
+	TileSize uint16 // stationTileSize (0x1CE)
 	// Tiles is stationTiles (0x1D0): the first TileSize are the station's
 	// tiles (z also holds the rotation: heightFloor it).
 	Tiles [80][3]int16
@@ -1455,7 +1457,7 @@ func parseStationNames(gs []byte) []StationName {
 		rec := gs[off+i*stationRecordSize:]
 		out[i] = StationName{Name: binary.LittleEndian.Uint16(rec[0x00:]), Town: binary.LittleEndian.Uint16(rec[0x2C:]),
 			X: int16(binary.LittleEndian.Uint16(rec[0x02:])), Y: int16(binary.LittleEndian.Uint16(rec[0x04:])), Z: int16(binary.LittleEndian.Uint16(rec[0x06:])),
-			VisitedTypes: rec[0x3B2], Flags: binary.LittleEndian.Uint16(rec[0x2A:]), Var3B1: rec[0x3B1], Var3B0: rec[0x3B0],
+			VisitedTypes: rec[0x3B2], Flags: binary.LittleEndian.Uint16(rec[0x2A:]), Owner: rec[0x28], Var3B1: rec[0x3B1], Var3B0: rec[0x3B0],
 			TileSize: binary.LittleEndian.Uint16(rec[0x1CE:])}
 		for k := range out[i].Tiles {
 			for c := range 3 {
