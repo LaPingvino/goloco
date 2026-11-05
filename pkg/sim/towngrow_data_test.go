@@ -798,3 +798,73 @@ func TestVehicleOrders(t *testing.T) {
 		}
 	}
 }
+
+// TestVehicleOrderMoves: a saved vehicle with 3+ orders: up swaps an order with
+// the one before, down puts it back, reverse turns the list round and back —
+// the current order always still the same order, the other vehicles' orders
+// untouched.
+func TestVehicleOrderMoves(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	list := func(id uint16) []string {
+		h := m.entity(id)
+		var out []string
+		for _, o := range m.OrderRing(h.OrderTableOffset, 0) {
+			out = append(out, fmt.Sprintf("%x", m.Orders[o.Offset:o.Offset+orderSizes[o.Type()]]))
+		}
+		return out
+	}
+	current := func(id uint16) string {
+		h := m.entity(id)
+		o := Order{m, int(h.OrderTableOffset) + int(h.CurrentOrder)}
+		return fmt.Sprintf("%x", m.Orders[o.Offset:o.Offset+orderSizes[o.Type()]])
+	}
+	var id uint16
+	found := false
+	for _, tr := range trains {
+		if h := m.Entities[tr.Head]; len(list(h.ID)) >= 3 {
+			id, found = h.ID, true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("no vehicle with 3 orders")
+	}
+	others := map[uint16]string{}
+	for _, tr := range trains {
+		if oid := m.Entities[tr.Head].ID; oid != id {
+			others[oid] = fmt.Sprint(list(oid))
+		}
+	}
+	c := &Cmd{Company: m.entity(id).Owner, Objects: om}
+	orig, cur := list(id), current(id)
+	t.Logf("vehicle %d: %v, current %s", id, orig, cur)
+	second := m.OrderRing(m.entity(id).OrderTableOffset, 0)[1].Offset - int(m.entity(id).OrderTableOffset)
+	m.VehicleOrderUp(c, CmdApply, id, uint16(second))
+	if l := list(id); l[0] != orig[1] || l[1] != orig[0] || current(id) != cur {
+		t.Errorf("up: %v, current %s (was %v, %s)", l, current(id), orig, cur)
+	}
+	m.VehicleOrderDown(c, CmdApply, id, 0)
+	if fmt.Sprint(list(id)) != fmt.Sprint(orig) || current(id) != cur {
+		t.Errorf("down back: %v, current %s", list(id), current(id))
+	}
+	m.VehicleOrderReverse(c, CmdApply, id)
+	l := list(id)
+	for i := range orig {
+		if l[i] != orig[len(orig)-1-i] {
+			t.Fatalf("reverse: %v of %v", l, orig)
+		}
+	}
+	if current(id) != cur {
+		t.Errorf("reverse: current %s, was %s", current(id), cur)
+	}
+	m.VehicleOrderReverse(c, CmdApply, id)
+	if fmt.Sprint(list(id)) != fmt.Sprint(orig) || current(id) != cur {
+		t.Errorf("reversed twice: %v current %s", list(id), current(id))
+	}
+	for oid, was := range others {
+		if fmt.Sprint(list(oid)) != was {
+			t.Errorf("vehicle %d's orders changed", oid)
+		}
+	}
+}
