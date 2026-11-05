@@ -128,13 +128,12 @@ func (w *World) drawScene(screen *ebiten.Image) {
 	}
 }
 
-// dirtyRegions (GOLOCO_DIRTY=1, while the port is under way — LOOP's DIRTY
-// REGIONS D2): the world drawn as upstream draws it, into a screen that
-// persists, repainted by renderDirtyRegions: the invalidation grid's rects,
-// each through Viewport::paint(rect) (scene.RenderRect, upstream's column
-// split). Until the invalidations are ported (D3) the whole screen is
-// invalidated every frame.
-var dirtyRegions = os.Getenv("GOLOCO_DIRTY") != ""
+// dirtyRegions (on by default since 2026-11-05; GOLOCO_DIRTY=0 turns it off):
+// the world drawn as upstream draws it, into a screen that persists,
+// repainted by renderDirtyRegions: the invalidation grid's rects, each
+// through Viewport::paint(rect) (scene.RenderRect, upstream's column split).
+// GOLOCO_DIRTY_CHECK=N compares with a full repaint every Nth frame.
+var dirtyRegions = os.Getenv("GOLOCO_DIRTY") != "0"
 
 func (w *World) drawSceneDirty(screen *ebiten.Image, view scene.View) {
 	sw, sh := view.W, view.H
@@ -161,20 +160,48 @@ func (w *World) drawSceneDirty(screen *ebiten.Image, view scene.View) {
 		// and invalidates only the uncovered strip; a new view repaints it all.
 		w.dirtyGrid.Invalidate(0, 0, sw, sh)
 	}
-	// PARTIAL (D3): the tile invalidations (town growth, construction, signals,
-	// level crossings, animations — ViewportManager::invalidate(pos, …)) are not
-	// ported yet, so GOLOCO_DIRTY stays off by default.
+	// The invalidations (D3) are ported wherever goloco has the code that
+	// changes the map: entities moving or changing their picture (moveTo,
+	// invalidateSprite: body turns, wheel frames, brake lights), signals, level
+	// crossings, roads, trees, buildings removed, terraforming, station cargo,
+	// animations. PARTIAL: code goloco doesn't have yet brings its own
+	// invalidations with it when ported (BuildingElement::update's construction
+	// stages, a vehicle's body animation and cargo frames). Differences the
+	// GOLOCO_DIRTY_CHECK still reports come from the column-split sort, as in
+	// upstream (LOOP 2026-11-05).
 	w.dirtyView = view
 	rt := w.dirtyRT
+	// The colours on the GPU (FPS (3)) when the screen has room for the
+	// palette row; else the CPU conversion of each dirty rect.
+	var gp *gpuPal
+	if gpuPaletteOn && gpuPaletteFits(sw) && w.scene.G1 != nil {
+		gp = w.gpuPalFor(sw, sh)
+	}
+	if gp != nil {
+		if !gp.palSet {
+			gp.setPalette(&w.scene.G1.Palette)
+		}
+		if gp.fresh { // a new packed image: every pixel uploaded once
+			w.dirtyGrid.Invalidate(0, 0, sw, sh)
+		}
+	}
 	w.dirtyGrid.TraverseDirtyCells(func(l, t, r, b int) {
 		w.scene.RenderRect(&w.Map, view, rt, l, t, r, b)
-		w.sceneImg.SubImage(image.Rect(l, t, r, b)).(*ebiten.Image).WritePixels(w.scene.ToRGBARect(rt, l, t, r, b))
+		if gp != nil {
+			gp.uploadRect(rt, l, t, r, b)
+		} else {
+			w.sceneImg.SubImage(image.Rect(l, t, r, b)).(*ebiten.Image).WritePixels(w.scene.ToRGBARect(rt, l, t, r, b))
+		}
 	})
 	w.lastView = view
 	if dirtyCheck > 0 {
 		w.checkDirty(view)
 	}
-	screen.DrawImage(w.sceneImg, nil)
+	if gp != nil {
+		gp.draw(screen)
+	} else {
+		screen.DrawImage(w.sceneImg, nil)
+	}
 	w.lastBits = rt.Bits
 	ui.BeginFrame8(rt.Bits, sw, sh)
 }
