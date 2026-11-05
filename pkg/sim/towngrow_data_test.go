@@ -1138,6 +1138,10 @@ func TestLiveVehicleList(t *testing.T) {
 	for _, r := range rows {
 		if r.HeadID == h {
 			found = r.DayCreated == m.CurrentDay && r.AgeYears == 0
+			tr, _ := m.TrainOf(h)
+			if want := int(m.Entities[tr.Cars[0][0].Front].Reliability / 256); r.Reliability != want || want == 0 {
+				t.Errorf("the bought train's reliability %d%%, want %d%% (recalculateTrainMinReliability)", r.Reliability, want)
+			}
 		}
 	}
 	if !found {

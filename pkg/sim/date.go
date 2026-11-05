@@ -191,20 +191,26 @@ func (m *Map) vehiclesUpdateDaily(om *objects.ObjectManager) {
 			}
 			front.Reliability = max(front.Reliability-loss, 100)
 		}
-		// recalculateTrainMinReliability
-		minRel := uint16(0xFFFF)
-		for _, car := range tr.Cars {
-			r := m.Entities[car[0].Front].Reliability
-			if r == 0 {
-				r = 0xFFFF
-			}
-			minRel = min(minRel, r)
+		m.recalculateTrainMinReliability(tr)
+	}
+}
+
+// recalculateTrainMinReliability (VehicleHead.cpp): Vehicle2's reliability is
+// the least reliable car's front bogie reliability / 256 (a car at 0 counts
+// as the best); 0 for a train without cars.
+func (m *Map) recalculateTrainMinReliability(tr Train) {
+	minRel := uint16(0xFFFF)
+	for _, car := range tr.Cars {
+		r := m.Entities[car[0].Front].Reliability
+		if r == 0 {
+			r = 0xFFFF
 		}
-		if minRel == 0xFFFF {
-			m.Entities[tr.Veh2].Veh2Reliability = 0
-		} else {
-			m.Entities[tr.Veh2].Veh2Reliability = uint8(minRel / 256)
-		}
+		minRel = min(minRel, r)
+	}
+	if minRel == 0xFFFF {
+		m.Entities[tr.Veh2].Veh2Reliability = 0
+	} else {
+		m.Entities[tr.Veh2].Veh2Reliability = uint8(minRel / 256)
 	}
 }
 
