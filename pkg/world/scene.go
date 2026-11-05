@@ -101,14 +101,27 @@ func (w *World) drawScene(screen *ebiten.Image) {
 	}
 	w.SceneParts = parts
 	w.lastView = view
-	for _, r := range ranges {
-		if r[0] == 0 && r[1] == sw {
-			w.sceneImg.WritePixels(w.scene.ToRGBA(rt).Pix)
-		} else { // only the repainted columns converted and uploaded
-			w.sceneImg.SubImage(image.Rect(r[0], 0, r[1], sh)).(*ebiten.Image).WritePixels(w.scene.ToRGBAColumns(rt, r[0], r[1]))
+	if gpuPaletteOn && rt.Width == sw && rt.Height == sh && gpuPaletteFits(sw) && w.scene.G1 != nil {
+		if g := w.gpuPalFor(sw, sh); g != nil {
+			if !g.palSet {
+				g.setPalette(&w.scene.G1.Palette)
+			}
+			for _, r := range ranges {
+				g.upload(rt, r[0], r[1])
+			}
+			g.draw(screen)
 		}
 	}
-	screen.DrawImage(w.sceneImg, nil)
+	if !gpuPaletteOn || w.gpal == nil || rt.Width != sw || rt.Height != sh || !gpuPaletteFits(sw) {
+		for _, r := range ranges {
+			if r[0] == 0 && r[1] == sw {
+				w.sceneImg.WritePixels(w.scene.ToRGBA(rt).Pix)
+			} else { // only the repainted columns converted and uploaded
+				w.sceneImg.SubImage(image.Rect(r[0], 0, r[1], sh)).(*ebiten.Image).WritePixels(w.scene.ToRGBAColumns(rt, r[0], r[1]))
+			}
+		}
+		screen.DrawImage(w.sceneImg, nil)
+	}
 	if rt.Width == sw && rt.Height == sh { // the palette indices under the UI, for draw8 (no GPU readback)
 		w.lastBits = rt.Bits
 		ui.BeginFrame8(rt.Bits, sw, sh)
