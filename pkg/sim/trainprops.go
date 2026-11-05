@@ -9,8 +9,8 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 //
 // Vehicle1 dayCreated is the earliest powered car's creation day, else the
 // earliest car's, else today.
-// PARTIAL: the driving-sound object
-// swap, calculateRefundCost and recalculateTrainMinReliability are not
+// Last, recalculateTrainMinReliability. PARTIAL: the driving-sound object
+// swap and calculateRefundCost are not
 // ported (none of them moves a vehicle).
 
 func (m *Map) setTrainModFlags(tr Train, modNames []string, om *objects.ObjectManager) {
@@ -117,6 +117,7 @@ func (m *Map) UpdateTrainProperties(tr Train, om *objects.ObjectManager) {
 	v2.MaxSpeed = maxSpeed
 	v2.RackRailMaxSpeed = rackSpeed
 	v2.Var4F = -1
+	m.recalculateTrainMinReliability(tr)
 }
 
 // VehicleCargoRef is the part of a VehicleCargo the weight sums read.
