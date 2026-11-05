@@ -14,48 +14,49 @@ type Map struct {
 	// InvalidateEntity: see entitymove.go (EntityBase::invalidateSprite).
 	InvalidateEntity InvalidateEntity
 	// InvalidateTile: ViewportManager::invalidate(pos, …) (entitymove.go).
-	InvalidateTile                                         InvalidateTile
-	Width, Height                                          int
-	Tiles                                                  [][]Tile        // [y][x]
-	Towns                                                  []scenario.Town // parsed town records
-	Entities                                               []scenario.VehicleEntity
-	EntityLists                                            *EntityLists                // EntityManager's lists (entitylists.go): from the save, else reset
-	VehicleListData                                        []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
-	CompanyFaces                                           []scenario.CompanyFace      // company slot → competitor, emotion, performance
-	Orders                                                 []byte                      // GameState orders[]
-	OrderTableLength                                       uint32                      // GameState orderTableLength: the bytes of Orders in use
-	Routings                                               []uint16                    // GameState routings[], by RoutingHandle (routing.go)
-	RoadAnyTypeCompatible                                  uint32                      // GameState roadObjectIdIsAnyRoadTypeCompatible
-	RoadUsableByAll                                        uint32                      // GameState roadObjectIdIsUsableByAllCompanies
-	Rng1                                                   core.Prng                   // GameState rng (gPrng1), from the save
-	TitleMode                                              bool                        // SceneManager::isTitleMode (pending breakdowns don\'t happen)
-	ScenarioTicks                                          uint32                      // GameState scenarioTicks: +1 per game tick (UpdateVehicles)
-	Companies                                              []scenario.CompanyEconomy   // the save\'s companies (economy)
-	Industries                                             []scenario.Industry         // the save\'s industries (deliveries)
-	vehicleMangled113623B                                  uint8                       // VehicleHead.cpp module static _vehicleMangled_113623B (sub_4ACEF1)
-	CurrentDay                                             uint32                      // GameState general.currentDay
-	CompanyNames                                           []uint16                    // company slot → name StringId
-	ControllingCompany                                     uint8                       // playerCompanies[0] (getControllingId)
-	TrafficHandedness                                      uint8                       // GameState trafficHandedness
-	UnlockedVehicles                                       [][7]uint32                 // per company: Company::unlockedVehicles
-	CurrentYear                                            uint16                      // GameState general.currentYear
-	CurrentMonth                                           uint8                       // GameState general.currentMonth
-	CurrentDayOfMonth                                      uint8                       // GameState general.currentDayOfMonth
-	DayCounter                                             uint16                      // GameState general.dayCounter
-	PlayerCompanies                                        [2]uint8                    // GameState playerCompanies
-	LoanInterestRate                                       uint8                       // GameState loanInterestRate
-	MaxLoanSize                                            uint16                      // GameState maxLoanSize
-	StartingLoanSize                                       uint16                      // GameState startingLoanSize
-	SeaLevel, LastLandOption                               uint8                       // GameState seaLevel, lastLandOption
-	CurrentSnowLine, CurrentSeason                         uint8                       // GameState currentSnowLine, currentSeason
-	EntriesEnd                                             int                         // TileManager entriesEnd as the generator's inserts move it (numFreeElements = kMaxElements − EntriesEnd)
-	PreferredAI                                            [3]uint8                    // GameState preferredAI intelligence / aggressiveness / competitiveness
-	DefaultLevelCrossingType                               uint8                       // GameState currentDefaultLevelCrossingType
-	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors uint16
-	Objective                                              scenario.Objective // the scenario objective
-	ObjectiveUntilYear                                     uint16             // scenarioObjectiveProgress.timeLimitUntilYear
-	ObjectiveMonthsInChallenge                             uint16             // scenarioObjectiveProgress.monthsInChallenge
-	ObjectiveCompletedInMonths                             uint16             // scenarioObjectiveProgress.completedChallengeInMonths
+	InvalidateTile                                          InvalidateTile
+	Width, Height                                           int
+	Tiles                                                   [][]Tile        // [y][x]
+	Towns                                                   []scenario.Town // parsed town records
+	Entities                                                []scenario.VehicleEntity
+	EntityLists                                             *EntityLists                // EntityManager's lists (entitylists.go): from the save, else reset
+	VehicleListData                                         []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
+	CompanyFaces                                            []scenario.CompanyFace      // company slot → competitor, emotion, performance
+	Orders                                                  []byte                      // GameState orders[]
+	OrderTableLength                                        uint32                      // GameState orderTableLength: the bytes of Orders in use
+	Routings                                                []uint16                    // GameState routings[], by RoutingHandle (routing.go)
+	RoadAnyTypeCompatible                                   uint32                      // GameState roadObjectIdIsAnyRoadTypeCompatible
+	RoadUsableByAll                                         uint32                      // GameState roadObjectIdIsUsableByAllCompanies
+	Rng1                                                    core.Prng                   // GameState rng (gPrng1), from the save
+	TitleMode                                               bool                        // SceneManager::isTitleMode (pending breakdowns don\'t happen)
+	ScenarioTicks                                           uint32                      // GameState scenarioTicks: +1 per game tick (UpdateVehicles)
+	Companies                                               []scenario.CompanyEconomy   // the save\'s companies (economy)
+	Industries                                              []scenario.Industry         // the save\'s industries (deliveries)
+	vehicleMangled113623B                                   uint8                       // VehicleHead.cpp module static _vehicleMangled_113623B (sub_4ACEF1)
+	CurrentDay                                              uint32                      // GameState general.currentDay
+	CompanyNames                                            []uint16                    // company slot → name StringId
+	ControllingCompany                                      uint8                       // playerCompanies[0] (getControllingId)
+	TrafficHandedness                                       uint8                       // GameState trafficHandedness
+	LastRailroadOption, LastRoadOption, LastTrackTypeOption uint8                       // GameState: the toolbar's last track / road
+	UnlockedVehicles                                        [][7]uint32                 // per company: Company::unlockedVehicles
+	CurrentYear                                             uint16                      // GameState general.currentYear
+	CurrentMonth                                            uint8                       // GameState general.currentMonth
+	CurrentDayOfMonth                                       uint8                       // GameState general.currentDayOfMonth
+	DayCounter                                              uint16                      // GameState general.dayCounter
+	PlayerCompanies                                         [2]uint8                    // GameState playerCompanies
+	LoanInterestRate                                        uint8                       // GameState loanInterestRate
+	MaxLoanSize                                             uint16                      // GameState maxLoanSize
+	StartingLoanSize                                        uint16                      // GameState startingLoanSize
+	SeaLevel, LastLandOption                                uint8                       // GameState seaLevel, lastLandOption
+	CurrentSnowLine, CurrentSeason                          uint8                       // GameState currentSnowLine, currentSeason
+	EntriesEnd                                              int                         // TileManager entriesEnd as the generator's inserts move it (numFreeElements = kMaxElements − EntriesEnd)
+	PreferredAI                                             [3]uint8                    // GameState preferredAI intelligence / aggressiveness / competitiveness
+	DefaultLevelCrossingType                                uint8                       // GameState currentDefaultLevelCrossingType
+	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors  uint16
+	Objective                                               scenario.Objective // the scenario objective
+	ObjectiveUntilYear                                      uint16             // scenarioObjectiveProgress.timeLimitUntilYear
+	ObjectiveMonthsInChallenge                              uint16             // scenarioObjectiveProgress.monthsInChallenge
+	ObjectiveCompletedInMonths                              uint16             // scenarioObjectiveProgress.completedChallengeInMonths
 	// CurrencyMultiplicationFactor prices cost indices (Economy).
 	CurrencyMultiplicationFactor [32]uint32
 
@@ -169,6 +170,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.CompanyFaces = sc.CompanyFaces
 	m.ControllingCompany = sc.ControllingCompany
 	m.TrafficHandedness = sc.TrafficHandedness
+	m.LastRailroadOption, m.LastRoadOption, m.LastTrackTypeOption = sc.LastRailroadOption, sc.LastRoadOption, sc.LastTrackTypeOption
 	m.UnlockedVehicles = sc.UnlockedVehicles
 	m.Animations = append([]scenario.Animation(nil), sc.Animations...)
 	m.CurrentYear = sc.CurrentYear

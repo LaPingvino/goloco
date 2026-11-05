@@ -1029,3 +1029,41 @@ func TestBuildableVehicles(t *testing.T) {
 		}
 	}
 }
+
+// TestBuildVehicleTabs: setDisabledTransportTabs — a company's own vehicles'
+// types are never disabled; setTrackTypeTabs — the trains tab offers the
+// track its train uses, each track tab lists vehicles, road tabs carry bit 7;
+// the track tab chosen at opening is the toolbar's last choice when offered.
+func TestBuildVehicleTabs(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if d := m.BuildVehicleDisabledTabs(h.Owner); d&(1<<h.VehicleType) != 0 {
+			t.Errorf("company %d runs a type-%d vehicle but that tab is disabled (%#x)", h.Owner, h.VehicleType, d)
+		}
+	}
+	h := m.Entities[trains[0].Head]
+	o := DefaultBuildVehicleOptions(h.Owner)
+	for vt := uint8(0); vt < 6; vt++ {
+		tabs := m.BuildVehicleTrackTabs(om, vt, o)
+		t.Logf("type %d: tabs %v, chosen %d (last rail %d, road %d)", vt, tabs, m.BuildVehicleTrackTab(vt, tabs), m.LastRailroadOption, m.LastRoadOption)
+		for _, tt := range tabs {
+			if len(m.BuildableVehicles(om, vt, tt, o)) == 0 {
+				t.Errorf("type %d: tab %#x lists nothing", vt, tt)
+			}
+			if (vt == 1 || vt == 2) && tt&(1<<7) == 0 {
+				t.Errorf("type %d (road): tab %#x without the road bit", vt, tt)
+			}
+		}
+		if vt == h.VehicleType {
+			found := false
+			for _, tt := range tabs {
+				found = found || tt == h.TrackType
+			}
+			if !found {
+				t.Errorf("the trains tab doesn't offer track type %d", h.TrackType)
+			}
+		}
+	}
+}

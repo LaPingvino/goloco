@@ -1497,6 +1497,7 @@ func parseIndustryObjectIDs(gs []byte) []uint8 {
 type CompanyEconomy struct {
 	Cash                     int64         // 0x08 currency48_t
 	CurrentLoan              int32         // 0x0E
+	AvailableVehicles        uint16        // 0x50: a bit per VehicleType the company can buy
 	Expenditures             [16][17]int32 // 0x58 [month][ExpenditureType]
 	Var4A0                   uint32        // 0x4A0 cargo types delivered (bits)
 	TransportTypeCount       [6]uint16     // 0x8BA4 vehicles by VehicleType (recalculateTransportCounts)
@@ -1532,6 +1533,7 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 		raw := uint64(binary.LittleEndian.Uint32(r[0x08:])) | uint64(binary.LittleEndian.Uint16(r[0x0C:]))<<32
 		c.Cash = int64(raw<<16) >> 16 // sign-extend the 48 bits
 		c.CurrentLoan = int32(binary.LittleEndian.Uint32(r[0x0E:]))
+		c.AvailableVehicles = binary.LittleEndian.Uint16(r[0x50:])
 		for k := range c.TransportTypeCount {
 			c.TransportTypeCount[k] = binary.LittleEndian.Uint16(r[0x8BA4+2*k:])
 		}
@@ -1638,6 +1640,9 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 	sc.ForbiddenVehiclesCompetitors = binary.LittleEndian.Uint16(gs[0x432:])
 	if len(gs) > 0x196 { // general.trafficHandedness (from the compiler)
 		sc.TrafficHandedness = gs[0x196]
+	}
+	if len(gs) > 0x1AD { // S5GameState lastRailroadOption 0x192, lastRoadOption 0x193, lastTrackTypeOption 0x1AD
+		sc.LastRailroadOption, sc.LastRoadOption, sc.LastTrackTypeOption = gs[0x192], gs[0x193], gs[0x1AD]
 	}
 }
 
