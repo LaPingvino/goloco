@@ -52,6 +52,7 @@ var gpuPaletteShader *ebiten.Shader
 // gpuPal is the packed frame and its palette for one screen size.
 type gpuPal struct {
 	img    *ebiten.Image
+	fresh  bool // just made: nothing uploaded yet
 	w, h   int
 	qw     int
 	palSet bool
@@ -77,7 +78,7 @@ func (w *World) gpuPalFor(sw, sh int) *gpuPal {
 		if g != nil {
 			g.img.Deallocate()
 		}
-		g = &gpuPal{img: ebiten.NewImageWithOptions(image.Rect(0, 0, sw, sh), &ebiten.NewImageOptions{Unmanaged: true}), w: sw, h: sh, qw: (sw + 3) / 4}
+		g = &gpuPal{img: ebiten.NewImageWithOptions(image.Rect(0, 0, sw, sh), &ebiten.NewImageOptions{Unmanaged: true}), w: sw, h: sh, qw: (sw + 3) / 4, fresh: true}
 		w.gpal = g
 	}
 	return g
@@ -125,3 +126,28 @@ func (g *gpuPal) draw(screen *ebiten.Image) {
 }
 
 func rect(x0, y0, x1, y1 int) image.Rectangle { return image.Rect(x0, y0, x1, y1) }
+
+// uploadRect writes the indices of the screen rectangle (l, t)-(r, b)
+// (columns widened to whole texels) — a dirty rect's repaint.
+func (g *gpuPal) uploadRect(rt *gfx8.RenderTarget, l, t, r, b int) {
+	a, e := l/4, (r+3)/4
+	row := (e - a) * 4
+	n := row * (b - t)
+	if n <= 0 {
+		return
+	}
+	if cap(g.buf) < n {
+		g.buf = make([]byte, n)
+	}
+	buf := g.buf[:n]
+	lo, hi := a*4, min(e*4, rt.Width)
+	for y := t; y < b; y++ {
+		dst := buf[(y-t)*row : (y-t+1)*row]
+		copy(dst, rt.Bits[y*rt.Width+lo:y*rt.Width+hi])
+		for i := hi - lo; i < row; i++ {
+			dst[i] = 0
+		}
+	}
+	g.img.SubImage(rect(a, t, e, b)).(*ebiten.Image).WritePixels(buf)
+	g.fresh = false
+}
