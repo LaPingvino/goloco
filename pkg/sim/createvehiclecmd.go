@@ -192,10 +192,12 @@ const (
 // and true, or false when refused — locked (unless lockedOK), another
 // company's vehicle (checkCompanyCompatibility), the vehicle can't be modified
 // (crashed, stuck, broken down, moving), the car doesn't fit (type, track,
-// coupling, a road vehicle's length), or too few free entities.
-// PARTIAL: a vehicle that is placed (tileX != -1) is refused: lifting it off
-// the track and putting it back (liftUpVehicle / placeDownVehicle, item
-// 5P.b) are not ported yet; and as CreateVehicle's note.
+// coupling, a road vehicle's length), or too few free entities. A vehicle on
+// the track is lifted off, the car added, and put down again where its head
+// was (TrainPlacementData — for a road vehicle its head leads the route, so
+// that is ahead of it, as upstream); if the car can't be made it is put back
+// only when it still has cars, as upstream.
+// PARTIAL: as CreateVehicle's note.
 func (m *Map) AddCarToVehicle(c *Cmd, flags uint8, objID, headID uint16, lockedOK bool) (int32, bool) {
 	if !lockedOK && !m.isVehicleIndexUnlocked(c.Company, objID) {
 		return 0, false // vehicle_is_locked
@@ -219,14 +221,25 @@ func (m *Map) AddCarToVehicle(c *Cmd, flags uint8, objID, headID uint16, lockedO
 		return 0, false // too_many_objects_in_game
 	}
 	if flags&CmdApply != 0 {
-		if h.TileX != -1 {
-			return 0, false // PARTIAL: liftUpVehicle / placeDownVehicle (5P.b)
+		placed := h.TileX != -1
+		px, py, pz, ptad, psub := int32(h.TileX), int32(h.TileY), h.TileBaseZ, h.TrackAndDirection, h.SubPosition
+		if placed {
+			m.LiftUpVehicle(headID, om)
 		}
 		if !m.createCar(c.Company, headID, objID, om) {
-			return 0, false // nothing lifted, nothing to put back
+			if placed {
+				if bk, err := m.TrainOf(headID); err == nil && len(bk.Cars) != 0 {
+					m.PlaceDownVehicle(headID, px, py, pz, ptad, psub, om)
+				}
+			}
+			return 0, false
 		}
-		m.autoLayoutTrain(headID, om) // updateWholeVehicle
+		// updateWholeVehicle 0x004AE6DE
+		m.autoLayoutTrain(headID, om)
 		m.RecalculateTransportCounts(c.Company)
+		if placed {
+			m.PlaceDownVehicle(headID, px, py, pz, ptad, psub, om)
+		}
 	}
 	obj := om.Vehicles[objID]
 	return m.InflationAdjustedCost(obj.CostFactor, obj.CostIndex, 6), true

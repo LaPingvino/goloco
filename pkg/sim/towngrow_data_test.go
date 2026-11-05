@@ -424,8 +424,24 @@ func TestAddCarToVehicle(t *testing.T) {
 			break
 		}
 	}
-	if _, ok := m.AddCarToVehicle(c, CmdApply, objID, m.Entities[saved.Head].ID, true); ok && m.Entities[saved.Head].TileX != -1 {
-		t.Error("a car added to a vehicle on the track (lifting it is 5P.b)")
+	// a vehicle on the track: lifted, the car added, put back (a stopped rail one)
+	for _, tr := range trains {
+		hh := m.Entities[tr.Head]
+		if hh.TileX == -1 || hh.Mode != 0 || !m.canBeModified(tr) {
+			continue
+		}
+		car := m.Entities[tr.Cars[len(tr.Cars)-1][0].Body].ObjectID
+		cc := &Cmd{Company: hh.Owner, Objects: om}
+		m.UnlockedVehicles[hh.Owner][car/32] |= 1 << (car % 32)
+		n := len(tr.Cars)
+		if _, ok := m.AddCarToVehicle(cc, CmdApply, car, hh.ID, false); !ok {
+			t.Fatalf("vehicle %d: adding a car on the track refused", hh.ID)
+		}
+		nt, _ := m.TrainOf(hh.ID)
+		if len(nt.Cars) != n+1 || m.Entities[nt.Head].TileX == -1 || m.Entities[nt.Head].Status != StatusStopped {
+			t.Errorf("vehicle %d: %d cars (was %d), tileX %d status %d", hh.ID, len(nt.Cars), n, m.Entities[nt.Head].TileX, m.Entities[nt.Head].Status)
+		}
+		break
 	}
 }
 
@@ -579,5 +595,59 @@ func TestPlaceDownRoundTrip(t *testing.T) {
 	t.Logf("%d placed back (twice; %d the second time exactly as the first), %d in the way", placed, repeat, inTheWay)
 	if placed < 10 {
 		t.Fatalf("only %d placed", placed)
+	}
+}
+
+// TestVehiclePlaceCommand: the vehiclePlace command on the stopped saved
+// vehicles, picked up first: put back on veh2's piece (validate*Placement
+// finds the piece, the owner, the extras); refused for another company, the
+// piece turned a quarter, an empty spot, a vehicle already placed; a ghost
+// placement flagged, then made real (convertGhost).
+func TestVehiclePlaceCommand(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	placed := 0
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.TileX == -1 || h.Mode == 2 || h.Mode == 3 || !m.canBeModified(tr) {
+			continue
+		}
+		v2 := m.Entities[tr.Veh2]
+		own := &Cmd{Company: h.Owner, Objects: om}
+		a := VehiclePlacement{X: int32(v2.TileX), Y: int32(v2.TileY), Z: int32(v2.TileBaseZ) * 4, TrackAndDirection: v2.TrackAndDirection, TrackProgress: v2.SubPosition, Head: h.ID}
+		if _, ok := m.VehiclePlace(own, CmdApply, a); ok {
+			t.Errorf("vehicle %d: placed while on the track", h.ID)
+		}
+		m.VehiclePickup(own, CmdApply, h.ID)
+		if _, ok := m.VehiclePlace(&Cmd{Company: h.Owner ^ 1, Objects: om}, CmdApply, a); ok {
+			t.Errorf("vehicle %d: placed by another company", h.ID)
+		}
+		turned := a
+		turned.TrackAndDirection = a.TrackAndDirection&^3 | (a.TrackAndDirection+1)&3
+		if _, ok := m.VehiclePlace(own, CmdApply, turned); ok {
+			t.Errorf("vehicle %d: placed on the piece turned a quarter", h.ID)
+		}
+		empty := a
+		empty.X, empty.Y = 32, 32
+		if _, ok := m.VehiclePlace(own, CmdApply, empty); ok {
+			t.Errorf("vehicle %d: placed on the map's edge", h.ID)
+		}
+		if _, ok := m.VehiclePlace(own, CmdApply|CmdGhost, a); !ok {
+			t.Errorf("vehicle %d (mode %d, tad %#x): placing it back refused", h.ID, h.Mode, a.TrackAndDirection)
+			continue
+		}
+		nt, _ := m.TrainOf(h.ID)
+		nh := m.Entities[nt.Head]
+		if nh.TileX == -1 || nh.Flags38&flags38IsGhost == 0 || nh.VehicleFlags&VehicleFlagCommandStop == 0 || nh.ManualPower != -40 {
+			t.Errorf("vehicle %d after placing: tileX %d flags38 %#x flags %#x manual %d", h.ID, nh.TileX, nh.Flags38, nh.VehicleFlags, nh.ManualPower)
+		}
+		if _, ok := m.VehiclePlace(own, CmdApply, VehiclePlacement{Head: h.ID, ConvertGhost: true}); !ok || m.Entities[nt.Head].Flags38&flags38IsGhost != 0 {
+			t.Errorf("vehicle %d: convertGhost", h.ID)
+		}
+		placed++
+	}
+	t.Logf("%d vehicles placed by the command", placed)
+	if placed < 10 {
+		t.Fatalf("only %d", placed)
 	}
 }
