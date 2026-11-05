@@ -1376,18 +1376,23 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 				}
 			}
 		} else if v == "buy" || v == "place" { // trains, then a click on the first row
-			if v == "place" { // DIAGNOSTIC ONLY: play as the company owning the first placed train, so its track is ours
-				for i := range g.w.Map.Entities {
-					if e := &g.w.Map.Entities[i]; scenario.IsVehicleBody(e.EntityType) && e.PosX.Tile() > 0 && e.PosY.Tile() > 0 {
-						log.Printf("[Diag] controlling company %d → %d (the first placed train's owner)", g.w.Map.ControllingCompany, e.Owner)
-						g.w.Map.ControllingCompany = e.Owner
-						g.w.CenterOn("train")                                 // on this train, before it is lifted
-						if tr, err := g.w.Map.TrainOf(e.HeadID); err == nil { // its track freed for ours
-							_, ok := g.w.Map.VehiclePickup(&sim.Cmd{Company: e.Owner, Objects: g.r.ObjMgr}, sim.CmdApply, g.w.Map.Entities[tr.Head].ID)
-							log.Printf("[Diag] lifted that train: %v", ok)
-						}
-						break
+			if v == "place" { // DIAGNOSTIC ONLY: lift a rail train that may be lifted, play as its owner, look at its freed track
+				m := &g.w.Map
+				trains, _ := m.Trains()
+				for _, tr := range trains {
+					h := m.Entities[tr.Head]
+					v2 := m.Entities[tr.Veh2]
+					if h.TileX == -1 || h.Mode != 0 || int(h.Owner) >= len(m.Companies) {
+						continue
 					}
+					if _, ok := m.VehiclePickup(&sim.Cmd{Company: h.Owner, Objects: g.r.ObjMgr}, sim.CmdApply, h.ID); !ok {
+						continue
+					}
+					log.Printf("[Diag] lifted train %d of company %d at tile %d,%d; controlling company %d → %d", h.ID, h.Owner, v2.TileX/32, v2.TileY/32, m.ControllingCompany, h.Owner)
+					m.ControllingCompany = h.Owner
+					m.Companies[h.Owner].Cash += 10_000_000 // diagnostic: the title map's companies are nearly broke
+					g.w.CenterOn(fmt.Sprintf("tile:%d,%d", v2.TileX/32, v2.TileY/32))
+					break
 				}
 			}
 			g.openBuildVehicle(0)
