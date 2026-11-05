@@ -428,3 +428,61 @@ func TestAddCarToVehicle(t *testing.T) {
 		t.Error("a car added to a vehicle on the track (lifting it is 5P.b)")
 	}
 }
+
+// TestVehiclePickup: saved trains on the track lifted off (VehiclePickup):
+// every component off the map, stopped (commandStop, status 0, no station),
+// empty; the routings beyond the vehicle released; another company refused.
+func TestVehiclePickup(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	picked := 0
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.TileX == -1 || h.Mode == 2 || h.Mode == 3 { // land vehicles on the map
+			continue
+		}
+		if !m.canBeModified(tr) { // moving, broken down, stuck …: refused (as checked here)
+			if _, ok := m.VehiclePickup(&Cmd{Company: h.Owner, Objects: om}, CmdApply, h.ID); ok {
+				t.Errorf("vehicle %d picked up though it can't be modified", h.ID)
+			}
+			continue
+		}
+		if _, ok := m.VehiclePickup(&Cmd{Company: h.Owner ^ 1, Objects: om}, CmdApply, h.ID); ok {
+			t.Fatalf("vehicle %d picked up by another company", h.ID)
+		}
+		if _, ok := m.VehiclePickup(&Cmd{Company: h.Owner, Objects: om}, CmdApply, h.ID); !ok {
+			t.Fatalf("vehicle %d: pickup refused", h.ID)
+		}
+		nt, err := m.TrainOf(h.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m.eachComponent(nt, func(i int) {
+			if e := m.Entities[i]; e.TileX != -1 || e.Flags38&flags38Unk2 != 0 {
+				t.Errorf("vehicle %d component %d: tileX %d flags38 %#x", h.ID, e.ID, e.TileX, e.Flags38)
+			}
+		})
+		nh := m.Entities[nt.Head]
+		if nh.VehicleFlags&VehicleFlagCommandStop == 0 || nh.Status != 0 || nh.StationID != 0xFFFF {
+			t.Errorf("vehicle %d: flags %#x status %d station %d", h.ID, nh.VehicleFlags, nh.Status, nh.StationID)
+		}
+		for _, car := range nt.Cars {
+			for _, cc := range car {
+				if m.Entities[cc.Body].Cargo.Qty != 0 || m.Entities[cc.Front].Cargo.Qty != 0 {
+					t.Errorf("vehicle %d: cargo left", h.ID)
+				}
+			}
+		}
+		for _, rh := range m.RoutingRing(RoutingHandle(m.Entities[nt.Veh2].RoutingHandle), false)[1:] {
+			if r := m.Routing(rh); r != RoutingAllocatedButFree && r != RoutingNull {
+				t.Errorf("vehicle %d: a routing beyond veh2 still held (%#x)", h.ID, r)
+				break
+			}
+		}
+		picked++
+	}
+	t.Logf("%d vehicles picked up", picked)
+	if picked == 0 {
+		t.Fatal("no vehicle to pick up")
+	}
+}
