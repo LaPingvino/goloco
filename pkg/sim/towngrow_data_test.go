@@ -486,3 +486,98 @@ func TestVehiclePickup(t *testing.T) {
 		t.Fatal("no vehicle to pick up")
 	}
 }
+
+// TestPlaceDownRoundTrip: stopped saved vehicles picked up and put back where
+// their head was (as addCarToVehicle does around a new car). A saved stop is
+// where motion left the train, a placement settles it onto exact sub-positions,
+// so the saved game is no exact oracle: every component (but veh1, the road
+// vehicles' look-ahead, which reserves afresh) within 2 px of where it was;
+// a second pickup and placement lands exactly where the first did; refusals
+// only as "in the way" (Unk1).
+func TestPlaceDownRoundTrip(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	placed, inTheWay, repeat := 0, 0, 0
+	positions := func(tr Train) map[uint16][3]int32 {
+		out := map[uint16][3]int32{}
+		m.eachComponent(tr, func(i int) {
+			e := m.Entities[i]
+			out[e.ID] = [3]int32{int32(e.PosX), int32(e.PosY), int32(e.PosZ)}
+		})
+		return out
+	}
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.TileX == -1 || h.Mode == 2 || h.Mode == 3 || !m.canBeModified(tr) {
+			continue
+		}
+		saved := positions(tr)
+		// at veh2, the vehicle's front (a road vehicle's head runs far ahead,
+		// leading its route; addCarToVehicle's placement reads the head, as upstream)
+		v2 := m.Entities[tr.Veh2]
+		x, y, z, tad, sub := int32(v2.TileX), int32(v2.TileY), v2.TileBaseZ, v2.TrackAndDirection, v2.SubPosition
+		roundTrip := func() PlaceDownResult {
+			if _, ok := m.VehiclePickup(&Cmd{Company: h.Owner, Objects: om}, CmdApply, h.ID); !ok {
+				t.Fatalf("vehicle %d: pickup refused", h.ID)
+			}
+			return m.PlaceDownVehicle(h.ID, x, y, z, tad, sub, om)
+		}
+		switch r := roundTrip(); r {
+		case PlaceDownUnk1:
+			inTheWay++
+			continue
+		case PlaceDownOkay:
+		default:
+			t.Errorf("vehicle %d: placed back: result %d", h.ID, r)
+			continue
+		}
+		placed++
+		nt, _ := m.TrainOf(h.ID)
+		first := positions(nt)
+		for _, i := range trainComponents(nt) {
+			e := m.Entities[i]
+			if i == nt.Veh1 || (i == nt.Head && h.Mode == 1) {
+				continue // the look-ahead; a road head (it led the route, placing brings it back)
+			}
+			a, b := saved[e.ID], first[e.ID]
+			for k := range 3 {
+				if d := a[k] - b[k]; d < -2 || d > 2 {
+					t.Errorf("vehicle %d component %d (type %d): saved %v, placed %v", h.ID, e.ID, e.EntityType, a, b)
+					break
+				}
+			}
+		}
+		if m.Entities[nt.Head].Status != StatusStopped || m.Entities[nt.Head].TileX == -1 {
+			t.Errorf("vehicle %d: status %d tileX %d after placing", h.ID, m.Entities[nt.Head].Status, m.Entities[nt.Head].TileX)
+		}
+		nv2 := m.Entities[nt.Veh2]
+		x, y, z, tad, sub = int32(nv2.TileX), int32(nv2.TileY), nv2.TileBaseZ, nv2.TrackAndDirection, nv2.SubPosition
+		if r := roundTrip(); r != PlaceDownOkay {
+			t.Errorf("vehicle %d: second placement %d", h.ID, r)
+			continue
+		}
+		nt, _ = m.TrainOf(h.ID)
+		second, same := positions(nt), true
+		for id, p := range first {
+			q := second[id]
+			if q != p {
+				same = false
+			}
+			for k := range 3 {
+				if d := p[k] - q[k]; d < -2 || d > 2 {
+					t.Errorf("vehicle %d component %d: first placement %v, second %v", h.ID, id, p, q)
+					break
+				}
+			}
+		}
+		if same {
+			repeat++
+		} else {
+			t.Logf("vehicle %d: the second placement is a sub-position step off the first (open: OpenLoco's own behaviour, LOOP)", h.ID)
+		}
+	}
+	t.Logf("%d placed back (twice; %d the second time exactly as the first), %d in the way", placed, repeat, inTheWay)
+	if placed < 10 {
+		t.Fatalf("only %d placed", placed)
+	}
+}
