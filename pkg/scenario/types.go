@@ -170,6 +170,7 @@ type Scenario struct {
 	// The toolbar's last track / road choices (GameState lastRailroadOption,
 	// lastRoadOption, lastTrackTypeOption).
 	LastRailroadOption, LastRoadOption, LastTrackTypeOption uint8
+	LastBuildVehiclesOption                                 uint8 // a VehicleType (0x414)
 
 	// Towns holds the non-empty town records parsed from the scenario Towns
 	// chunk (or the towns array embedded in a saved-game GameState chunk).

@@ -566,6 +566,8 @@ func (g *Game) Update() error {
 				// Click outside dropdown - close it
 				g.dropdown = nil
 			}
+		} else if g.buildVehicle != nil && g.buildVehicle.Contains(g.mouseX, g.mouseY) {
+			g.buildVehicle.HandleClick(g.mouseX, g.mouseY)
 		} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
 			g.townList.HandleClick(g.mouseX, g.mouseY)
 		} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
@@ -967,7 +969,7 @@ func (g *Game) handleToolbarButton(idx int) {
 		log.Println("[Game] Port/Airport construction menu (not yet implemented)")
 		return
 	case "Build Vehicles":
-		log.Println("[Game] Build vehicles menu (not yet implemented)")
+		g.buildVehiclesMenu(btn)
 		return
 	case "Vehicles":
 		g.openVehiclesWindow()
@@ -1332,8 +1334,16 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	}
 	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
-		tab, _ := strconv.Atoi(v)
-		g.openBuildVehicle(tab)
+		if v == "menu" { // the toolbar's Build Vehicles menu instead
+			for i := range g.toolbar.Buttons {
+				if g.toolbar.Buttons[i].Tooltip == "Build Vehicles" {
+					g.handleToolbarButton(i)
+				}
+			}
+		} else {
+			tab, _ := strconv.Atoi(v)
+			g.openBuildVehicle(tab)
+		}
 	}
 	if os.Getenv("GOLOCO_DIAG_VEHLIST") != "" && !g.vehDiagDone && g.w != nil { // the vehicle list (trains of their first owner)
 		g.vehDiagDone = true

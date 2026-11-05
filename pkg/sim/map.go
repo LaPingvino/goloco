@@ -38,6 +38,7 @@ type Map struct {
 	ControllingCompany                                      uint8                       // playerCompanies[0] (getControllingId)
 	TrafficHandedness                                       uint8                       // GameState trafficHandedness
 	LastRailroadOption, LastRoadOption, LastTrackTypeOption uint8                       // GameState: the toolbar's last track / road
+	LastBuildVehiclesOption                                 uint8                       // GameState: the Build Vehicles menu's last type (VehicleType)
 	UnlockedVehicles                                        [][7]uint32                 // per company: Company::unlockedVehicles
 	CurrentYear                                             uint16                      // GameState general.currentYear
 	CurrentMonth                                            uint8                       // GameState general.currentMonth
@@ -171,6 +172,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.ControllingCompany = sc.ControllingCompany
 	m.TrafficHandedness = sc.TrafficHandedness
 	m.LastRailroadOption, m.LastRoadOption, m.LastTrackTypeOption = sc.LastRailroadOption, sc.LastRoadOption, sc.LastTrackTypeOption
+	m.LastBuildVehiclesOption = sc.LastBuildVehiclesOption
 	m.UnlockedVehicles = sc.UnlockedVehicles
 	m.Animations = append([]scenario.Animation(nil), sc.Animations...)
 	m.CurrentYear = sc.CurrentYear

@@ -163,3 +163,8 @@ func ParseInterfaceSkinObject(header *ObjectHeader, data []byte) (*InterfaceSkin
 
 	return obj, nil
 }
+
+// The Build Vehicles menu's images (InterfaceSkin::ImageIds::build_vehicle_*_frame_0),
+// by VehicleType (train, bus, truck, tram, aircraft, ship): ToolbarTop.cpp
+// kVehicleTypeInterfaceParameters' buildImage.
+var ISBuildVehicleFrame0 = [6]int{251, 283, 315, 299, 267, 331}

@@ -56,6 +56,10 @@ type DropdownItem struct {
 	// "{NEWLINE 1 2}{SPRITE}{NEWLINE 26 8}{STRINGID}": Sprite (the owner's
 	// face, recoloured to SpriteColour) at the item's (1, 2), Text at (26, 8).
 	CompanySelect bool
+	// MenuSprite is menu_sprite_stringid's layout "{SPRITE}{NEWLINE 31 8}
+	// {STRINGID}": Sprite (recoloured to SpriteColour) at the item's pen
+	// origin, then " " + Text at (31, 8).
+	MenuSprite bool
 }
 
 // Dropdown geometry (Dropdown.cpp common::showText): items 10 px high
@@ -187,12 +191,18 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 					sx, sy := 2, 1+i*ih+1
 					if it.CompanySelect {
 						sx, sy = 2+1, 1+i*ih+2
+					} else if it.MenuSprite {
+						sx, sy = 2, 1+i*ih
 					}
 					gfx8.DrawSpriteNoise(rt, sp, sx, sy, gfx8.OpFor(sp, m != nil, false), m, nil)
 				}
 			}
 			if it.CompanySelect {
 				labels = append(labels, label{it.Text, 2 + 26, 1 + i*ih + 8, c, inset})
+				continue
+			}
+			if it.MenuSprite {
+				labels = append(labels, label{" " + it.Text, 2 + 31, 1 + i*ih + 8, c, inset})
 				continue
 			}
 			if it.TrailSprite > 0 && it.Text != "" {
@@ -377,6 +387,14 @@ func itemTextWidth(it DropdownItem) int {
 			sw = int(g1.Elements[it.Sprite].Width)
 		}
 		return max(1+sw, 26+tw)
+	}
+	if it.MenuSprite {
+		sw := 0
+		if g1 := globalG1Font.g1; it.Sprite > 0 && it.Sprite < len(g1.Elements) {
+			sw = int(g1.Elements[it.Sprite].Width)
+		}
+		sp, _ := MeasureTextBold(" " + it.Text)
+		return max(sw, 31+sp)
 	}
 	if it.MoveX10 {
 		tw += 10
