@@ -889,6 +889,12 @@ func (g *Game) toolbarDropdown(btn *ui.ToolbarButton, items []ui.DropdownItem) *
 //	3: Zoom, 4: Rotate, 5: View
 //	6: Terraform, 7: Railroad, 8: Road, 9: Port/Airport, 10: Build Vehicles
 //	11: Vehicles, 12: Stations, 13: Towns
+//
+// clickable(ToolbarTop.cpp): build_vehicles_menu
+// clickable(ToolbarTopCommon.cpp): zoom_menu
+// clickable-partial(ToolbarTop.cpp): loadsave_menu audio_menu vehicles_menu stations_menu towns_menu
+// clickable-partial(ToolbarTopCommon.cpp): railroad_menu road_menu
+// (not yet: rotate_menu and view_menu only log; terraform_menu, port_menu, cheats_menu nothing)
 func (g *Game) handleToolbarButton(idx int) {
 	btn := &g.toolbar.Buttons[idx]
 	tooltip := btn.Tooltip
