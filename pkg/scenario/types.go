@@ -171,6 +171,7 @@ type Scenario struct {
 	// lastRoadOption, lastTrackTypeOption).
 	LastRailroadOption, LastRoadOption, LastTrackTypeOption uint8
 	LastBuildVehiclesOption                                 uint8 // a VehicleType (0x414)
+	PickupDirection                                         uint8 // GameState 0x198: placing vehicles facing the other way
 
 	// Towns holds the non-empty town records parsed from the scenario Towns
 	// chunk (or the towns array embedded in a saved-game GameState chunk).
