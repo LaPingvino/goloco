@@ -62,6 +62,8 @@ type Game struct {
 	browse                         *ui.PromptBrowseWindow // the Load window when open
 	options                        *ui.OptionsWindow      // the Options window when open
 	townList                       *ui.TownListWindow     // the town list when open
+	buildVehicle                   *ui.BuildVehicleWindow // the Build Vehicle window when open (5P.f)
+	buildVehDiagDone               bool
 	diagTownsDone                  bool
 	diagOptionsDone                bool
 	diagBrowseDone                 bool
@@ -1187,6 +1189,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.options != nil {
 		g.options.Draw(screen)
 	}
+	if g.buildVehicle != nil {
+		g.buildVehicle.Draw(screen)
+	}
 	if g.townList != nil {
 		g.townList.Draw(screen)
 	}
@@ -1324,6 +1329,11 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			}
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+	}
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil { // the Build Vehicle window on tab N
+		g.buildVehDiagDone = true
+		tab, _ := strconv.Atoi(v)
+		g.openBuildVehicle(tab)
 	}
 	if os.Getenv("GOLOCO_DIAG_VEHLIST") != "" && !g.vehDiagDone && g.w != nil { // the vehicle list (trains of their first owner)
 		g.vehDiagDone = true

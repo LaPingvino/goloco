@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"os"
 	"strings"
@@ -144,4 +145,37 @@ func (g *Game) companyFace(company int) (int, uint8) {
 		colour = g.w.CompanyColours[company]
 	}
 	return int(g.objMgr.CompetitorObjects[f.Competitor].Images[f.Emotion]), colour
+}
+
+// openBuildVehicle is BuildVehicle::open(tab, isTabId = true) for the
+// controlling company (5P.f): the opening track tab, the list, at the screen's
+// middle (PARTIAL: createWindow's free-spot placement).
+func (g *Game) openBuildVehicle(tab int) {
+	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
+		return
+	}
+	m, om := &g.w.Map, g.r.ObjMgr
+	company, _ := g.w.ControllingCompany()
+	o := sim.DefaultBuildVehicleOptions(uint8(company))
+	tabs := m.BuildVehicleTrackTabs(om, uint8(tab), o)
+	trackTab := m.BuildVehicleTrackTab(uint8(tab), tabs)
+	var rows []ui.BVRow
+	if len(tabs) > 0 {
+		for _, id := range m.BuildableVehicles(om, uint8(tab), tabs[trackTab], o) {
+			v := om.Vehicles[id]
+			rows = append(rows, ui.BVRow{Vehicle: v, Name: v.DisplayName})
+		}
+	}
+	var tc, wc uint8 = 0, 1
+	if om.InterfaceSkin != nil {
+		tc, wc = om.InterfaceSkin.WindowTitlebarColour, om.InterfaceSkin.WindowPlayerColor
+	}
+	var p, s uint8
+	if company >= 0 && company < len(m.CompanyColourSchemes) {
+		p, s = m.CompanyColourSchemes[company].Main[0], m.CompanyColourSchemes[company].Main[1]
+	}
+	sw, sh := g.sw, g.sh
+	g.buildVehicle = &ui.BuildVehicleWindow{X: (sw - 500) / 2, Y: (sh - 400) / 2, W: 500, H: 400, TitleColour: tc, Colour: wc,
+		Tab: tab, TrackTab: trackTab, Disabled: m.BuildVehicleDisabledTabs(uint8(company)), NumTrackTabs: len(tabs),
+		Rows: rows, Hover: -1, Primary: p, Secondary: s}
 }
