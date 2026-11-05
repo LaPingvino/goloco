@@ -651,3 +651,69 @@ func TestVehiclePlaceCommand(t *testing.T) {
 		t.Fatalf("only %d", placed)
 	}
 }
+
+// TestVehicleChangeRunningMode: every saved running vehicle passes
+// canVehicleBeStarted (it was started once); stop / start, local / express and
+// manual driving on one; a vehicle of wagons only refused.
+func TestVehicleChangeRunningMode(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	running := 0
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.VehicleFlags&VehicleFlagCommandStop != 0 || h.Status == StatusCrashed || h.Status == StatusStuck {
+			continue
+		}
+		if !m.canVehicleBeStarted(tr, om) {
+			t.Errorf("saved running vehicle %d (%s): can't be started", h.ID, om.Vehicles[m.Entities[tr.Cars[0][0].Front].ObjectID].DisplayName)
+		}
+		running++
+	}
+	t.Logf("%d running vehicles startable", running)
+	tr := trains[0]
+	id := m.Entities[tr.Head].ID
+	c := &Cmd{Company: m.Entities[tr.Head].Owner, Objects: om}
+	flags := func() uint16 { return m.Entities[tr.Head].VehicleFlags }
+	m.VehicleChangeRunningMode(c, CmdApply, id, RunningModeStop)
+	if flags()&VehicleFlagCommandStop == 0 {
+		t.Error("stop: not stopped")
+	}
+	if _, ok := m.VehicleChangeRunningMode(c, CmdApply, id, RunningModeStart); !ok || flags()&VehicleFlagCommandStop != 0 {
+		t.Errorf("start: ok %v flags %#x", ok, flags())
+	}
+	x := m.Entities[tr.Veh1].Var48 & flags48ExpressMode
+	m.VehicleChangeRunningMode(c, CmdApply, id, RunningModeToggleLocalExpress)
+	if m.Entities[tr.Veh1].Var48&flags48ExpressMode == x {
+		t.Error("local / express not toggled")
+	}
+	m.VehicleChangeRunningMode(c, CmdApply, id, RunningModeDriveManually)
+	if flags()&VehicleFlagManualControl == 0 || flags()&VehicleFlagCommandStop != 0 || m.Entities[tr.Head].ManualPower != -40 {
+		t.Errorf("manual on: flags %#x power %d", flags(), m.Entities[tr.Head].ManualPower)
+	}
+	m.VehicleChangeRunningMode(c, CmdApply, id, RunningModeDriveManually)
+	if flags()&VehicleFlagManualControl != 0 || flags()&VehicleFlagCommandStop == 0 {
+		t.Errorf("manual off: flags %#x", flags())
+	}
+	// wagons only: no power
+	for oid, v := range om.Vehicles {
+		if v == nil || v.Power != 0 || v.Mode != 0 || v.Type != 0 {
+			continue
+		}
+		var h uint16
+		if _, ok := m.CreateVehicle(c, CmdApply, uint16(oid), true, &h); !ok {
+			continue
+		}
+		if _, ok := m.VehicleChangeRunningMode(c, CmdApply, h, RunningModeStart); ok && m.Entities[m.mustTrain(t, h).Head].VehicleFlags&VehicleFlagCommandStop == 0 {
+			t.Errorf("a %s alone started", v.DisplayName)
+		}
+		break
+	}
+}
+
+func (m *Map) mustTrain(t *testing.T, h uint16) Train {
+	tr, err := m.TrainOf(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tr
+}

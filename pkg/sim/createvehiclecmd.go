@@ -181,10 +181,9 @@ func (m *Map) removeEntity(id uint16) {
 }
 
 const (
-	statusBrokenDown       uint8 = 7       // VehicleHead Status::brokenDown
-	kMaxRoadVehicleLength        = 176     // Vehicle.h
-	vehObjFlagCannotCouple       = 1 << 11 // VehicleObjectFlags::cannotCoupleToSelf
-	kMaxBodySprites              = 4       // VehicleObject::kMaxBodySprites
+	kMaxRoadVehicleLength  = 176     // Vehicle.h
+	vehObjFlagCannotCouple = 1 << 11 // VehicleObjectFlags::cannotCoupleToSelf
+	kMaxBodySprites        = 4       // VehicleObject::kMaxBodySprites
 )
 
 // AddCarToVehicle is the createVehicle game command with a head
@@ -249,7 +248,7 @@ func (m *Map) AddCarToVehicle(c *Cmd, flags uint8, objID, headID uint16, lockedO
 func (m *Map) canBeModified(tr Train) bool {
 	h := &m.Entities[tr.Head]
 	switch h.Status {
-	case StatusCrashed, StatusStuck, statusBrokenDown:
+	case StatusCrashed, StatusStuck, StatusBrokenDown:
 		return false
 	}
 	v2 := &m.Entities[tr.Veh2]
