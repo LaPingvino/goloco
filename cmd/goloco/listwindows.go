@@ -190,7 +190,7 @@ func (g *Game) openBuildVehicle(tab int) {
 // upstream does (an enum value, not the item's place — kept). Choosing one is
 // buildVehiclesMenuDropdown: lastBuildVehiclesOption = the type, then
 // BuildVehicle::openByType. PARTIAL: the button face doesn't yet show the last
-// type's image (kBuildVehicleImages), and the items' build images (item SK).
+// type's image (kBuildVehicleImages).
 func (g *Game) buildVehiclesMenu(btn *ui.ToolbarButton) {
 	if g.w == nil || g.r == nil || g.r.ObjMgr == nil || g.r.ObjMgr.InterfaceSkin == nil {
 		return
@@ -212,12 +212,7 @@ func (g *Game) buildVehiclesMenu(btn *ui.ToolbarButton) {
 			continue
 		}
 		t := vt
-		// WARNING (item SK): the build image (skin + ISBuildVehicleFrame0[vt]) is
-		// left out until InterfaceSkin.ImageOffset matches the G1 element list
-		// after a save loads its objects — on olauto.SV5 skin+20…49 are a
-		// vehicle's rotation frames, not the skin's images. Restore Sprite then.
-		_ = skin + objects.ISBuildVehicleFrame0[vt]
-		items = append(items, ui.DropdownItem{MenuSprite: true, SpriteColour: colour,
+		items = append(items, ui.DropdownItem{MenuSprite: true, Sprite: skin + objects.ISBuildVehicleFrame0[vt], SpriteColour: colour,
 			Text: i18n.Label(i18n.BuildTrains + t), Action: func() {
 				m.LastBuildVehiclesOption = uint8(t)
 				g.openBuildVehicle(t)

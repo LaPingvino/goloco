@@ -211,9 +211,22 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		if err != nil {
 			return fmt.Errorf("parsing interface skin: %w", err)
 		}
-		// Assign sprite indices
+		// The skin's image table joins the global image list like every other
+		// object's (ObjectManager::load → loadImageTable: interface->img is its
+		// first index there). Before 2026-11-05 (item SK) it only advanced
+		// NextSpriteIndex, a counter of its own, so G1.Elements[img + n] were
+		// another object's images (a vehicle's rotation frames on a save).
 		skin.ImageOffset = m.NextSpriteIndex
-		loaded.ImageOffset = m.NextSpriteIndex
+		if g1Loader, ok := m.G1File.(G1Loader); ok {
+			if off := 24 + skinStringTableLen(decompressed); off < len(decompressed) {
+				res, err := g1Loader.LoadImageTable(decompressed[off:])
+				if err != nil {
+					return fmt.Errorf("loading interface skin image table: %w", err)
+				}
+				skin.ImageOffset = res.ImageOffset
+			}
+		}
+		loaded.ImageOffset = skin.ImageOffset
 		loaded.ImageCount = uint32(len(skin.Sprites))
 		m.NextSpriteIndex += uint32(len(skin.Sprites))
 
@@ -221,7 +234,7 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		// Store the first (typically only) InterfaceSkin as the active one
 		if m.InterfaceSkin == nil {
 			m.InterfaceSkin = skin
-			m.InterfaceSkin.Img = m.NextSpriteIndex - uint32(len(skin.Sprites))
+			m.InterfaceSkin.Img = skin.ImageOffset
 		}
 
 	case ObjectTypeVehicle:
@@ -1571,4 +1584,14 @@ func (m *ObjectManager) ReorderCompetitorObjects(order []string) {
 type ScaffoldingObject struct {
 	Image          uint32
 	SegmentHeights [3]uint16
+}
+
+// skinStringTableLen is the length of an interface skin's string table (after
+// its 24-byte fixed part), where its image table starts.
+func skinStringTableLen(data []byte) int {
+	if len(data) <= 24 {
+		return 0
+	}
+	n, _ := parseStringTable(data[24:])
+	return n
 }
