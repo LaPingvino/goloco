@@ -107,6 +107,7 @@ type Game struct {
 	pickupOn   bool   // the Vehicle window's pickup (placing) tool is active
 	pickupHead uint16 // the vehicle head it places
 	routeSel   int    // the Vehicle window's Route selection (orderTableIndex; -1: none)
+	routeTool  bool   // the Route tab's tool (adding stops by clicking the map) is active
 	routeHead  uint16 // whose Route that selection is
 	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,
 	// _ghostTrackProgress; ghostProgress -1: none).
@@ -538,6 +539,10 @@ func (g *Game) Update() error {
 
 	// --- Gameplay mode ONLY below this point ---
 
+	// Escape cancels the Route tab's tool (toolCancel).
+	if g.routeTool && !g.pickupOn && g.inKeyJustPressed(ebiten.KeyEscape) {
+		g.routeTool = false
+	}
 	// Escape cancels the pickup tool (pickupToolAbort: no ghost to remove yet).
 	if g.pickupOn && g.inKeyJustPressed(ebiten.KeyEscape) {
 		head := g.pickupHead
@@ -634,6 +639,8 @@ func (g *Game) Update() error {
 				g.handleToolbarButton(btnIdx)
 			} else if g.pickupOn && !g.inTitleScreen {
 				g.pickupToolDown(g.mouseX, g.mouseY) // the Vehicle window's placing tool
+			} else if g.routeTool && g.vehicleWin != nil && !g.inTitleScreen {
+				g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
 			} else if g.buildMode != buildModeNone && g.hoverTileX >= 0 {
 				// Track/road mode: clicking the map sets the construction head.
 				g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
@@ -1387,6 +1394,31 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			for i := range g.toolbar.Buttons {
 				if g.toolbar.Buttons[i].Tooltip == "Build Vehicles" {
 					g.handleToolbarButton(i)
+				}
+			}
+		} else if v == "routeadd" { // the Route tool: click the first station found on screen
+			m := &g.w.Map
+			trains, _ := m.Trains()
+			for _, tr := range trains {
+				if h := m.Entities[tr.Head]; h.TileX != -1 && h.SizeOfOrderTable > 1 {
+					m.ControllingCompany = h.Owner // the diag plays as the train's company (the title map's are AI)
+					g.openVehicleWindow(h.ID, 4)
+					log.Printf("[Diag] route tool on: %v (company %d)", g.routeTool, h.Owner)
+					g.w.CentreOnVehicle(h.ID) // its stations in view
+					done := false
+					for sy := 40; sy < g.sh-40 && !done; sy += 8 {
+						for sx := 0; sx < g.sw && !done; sx += 8 {
+							if st, ok := g.w.RouteStopAt(sx, sy); ok {
+								log.Printf("[Diag] station %d under %d,%d — clicking", st, sx, sy)
+								g.routeToolDown(sx, sy)
+								done = true
+							}
+						}
+					}
+					for _, l := range g.vehicleWin.Route {
+						log.Printf("[Diag] route after the click: %q", l.Text)
+					}
+					break
 				}
 			}
 		} else if v == "route" { // the Route tab of the first train with orders

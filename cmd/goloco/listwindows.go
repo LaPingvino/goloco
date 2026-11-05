@@ -240,6 +240,9 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 	h := m.Entities[tr.Head]
 	company, _ := g.w.ControllingCompany()
 	own := int(h.Owner) == company
+	// Route's onUpdate: its tool is set while the tab shows the company's own
+	// vehicle (and no other tool — the pickup — holds the cursor).
+	g.routeTool = tab == 4 && own && !g.pickupOn
 	title := ""
 	for _, r := range m.VehicleListRows() {
 		if r.HeadID == headID {
@@ -275,7 +278,7 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 	g.vehicleWin = &ui.VehicleWindow{X: (g.sw - ww) / 2, Y: (g.sh - wh) / 2, W: ww, H: wh, TitleColour: tc, Colour: wc,
 		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
 		State:   ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
-		OnClose: func() { g.vehicleWin, g.pickupOn = nil, false }, OnPickup: func() { g.onPickup(headID) },
+		OnClose: func() { g.vehicleWin, g.pickupOn, g.routeTool = nil, false, false }, OnPickup: func() { g.onPickup(headID) },
 		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h),
 		Route: g.routeLines(&h), RouteSel: g.routeSel,
 		OnRouteSelect: func(row int) { g.routeSel = row; g.openVehicleWindow(headID, 4) },
@@ -602,4 +605,35 @@ func (g *Game) routeAction(headID uint16, action string) {
 		m.VehicleOrderSkip(c, sim.CmdApply, headID)
 	}
 	g.openVehicleWindow(headID, 4)
+}
+
+// routeToolDown is Route::onToolDown for stops: the station under the cursor
+// (World.RouteStopAt) added through addNewOrder — inserted before the selected
+// order, else before the table's end; the selection moves down with the order
+// it was on. PARTIAL: waypoints (route through) and the waypoint sound.
+func (g *Game) routeToolDown(sx, sy int) {
+	station, ok := g.w.RouteStopAt(sx, sy)
+	if !ok {
+		return
+	}
+	m := &g.w.Map
+	tr, err := m.TrainOf(g.routeHead)
+	if err != nil {
+		return
+	}
+	h := m.Entities[tr.Head]
+	offset := uint16(h.SizeOfOrderTable - 1) // addNewOrder: before the End order
+	if orders := m.OrderTable(h.OrderTableOffset); g.routeSel >= 0 && g.routeSel < len(orders) {
+		offset = uint16(orders[g.routeSel].Offset - int(h.OrderTableOffset))
+	}
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	before := h.SizeOfOrderTable
+	if _, ok := m.VehicleOrderInsert(c, sim.CmdApply, g.routeHead, offset, sim.OrderStopAtRaw(station)); !ok {
+		return
+	}
+	if m.Entities[tr.Head].SizeOfOrderTable != before && g.routeSel != -1 {
+		g.routeSel++
+	}
+	g.openVehicleWindow(g.routeHead, 4)
 }
