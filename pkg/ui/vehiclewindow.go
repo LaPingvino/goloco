@@ -141,6 +141,9 @@ type VehicleWindow struct {
 	Names               []string // each car's vehicle object name
 	Scroll              int
 	OnClose             func()
+	OnPickup            func() // Common::onPickup: lift the vehicle, or take the placing tool
+	PickupActive        bool   // the placing tool is this window's (the button shown pressed)
+	PickupImage         int    // getPickupImageIdandTooltip's image (0: none)
 }
 
 // Draw is Details::draw and drawScroll.
@@ -169,6 +172,18 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 		for i := vwTabMain; i <= vwTabRoute; i++ {
 			if t := lw[i]; !t.Hidden {
 				drawTab(rt, t.L, t.T, i == vwTabDetails, sec, tabNoIcon, nil)
+			}
+		}
+		// The pickup button (ImageButton::draw): inset while its tool is
+		// active, then its image. PARTIAL: hover, the disabled (solid) look,
+		// Gfx::recolour's exact colouring (the company colour here), the
+		// other right-bar buttons.
+		if b := lw[vdPickup]; !b.Hidden && w.PickupImage > 0 && w.PickupImage < len(g1.Elements) {
+			if w.PickupActive {
+				gfx8.FillRectInset(rt, b.L, b.T, b.R, b.B, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
+			}
+			if sp, err := gfx8.Decode(&g1.Elements[w.PickupImage]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 			}
 		}
 		cx, cy, cw, ch, _ := drawVScrollView(rt, list.L, list.T, list.R-list.L+1, list.B-list.T+1, gfx8.InsetColour{Map: sec}, len(w.Cars)*rowH, w.Scroll)
@@ -207,17 +222,33 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 	}
 }
 
+// PickupButton is the pickup button's centre on screen; ok is false when it
+// is hidden.
+func (w *VehicleWindow) PickupButton() (x, y int, ok bool) {
+	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+	b := lw[vdPickup]
+	return w.X + (b.L+b.R)/2, w.Y + (b.T+b.B)/2, !b.Hidden
+}
+
 // Contains reports whether the point is on the window.
 func (w *VehicleWindow) Contains(x, y int) bool {
 	return x >= w.X && x < w.X+w.W && y >= w.Y && y < w.Y+w.H
 }
 
-// HandleClick: the close button (onMouseUp close). PARTIAL: everything else.
+// HandleClick is Details::onMouseUp: the close button, the pickup button
+// (unless hidden or disabled). PARTIAL: the other tabs and buttons.
 //
 // clickable(Vehicle.cpp): closeButton
+// clickable-partial(Vehicle.cpp): pickup
 func (w *VehicleWindow) HandleClick(x, y int) {
-	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
-	if c := lw[vwClose]; x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B && w.OnClose != nil {
+	lw, pickupDisabled := VehicleDetailsLayout(w.W, w.H, w.State)
+	in := func(c BVWidget) bool {
+		return !c.Hidden && x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B
+	}
+	switch {
+	case in(lw[vwClose]) && w.OnClose != nil:
 		w.OnClose()
+	case in(lw[vdPickup]) && !pickupDisabled && w.OnPickup != nil:
+		w.OnPickup()
 	}
 }

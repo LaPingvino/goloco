@@ -3,8 +3,10 @@ package main
 import (
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
+	"github.com/hajimehoshi/ebiten/v2"
 	"log"
 	"os"
 	"strings"
@@ -261,7 +263,79 @@ func (g *Game) openVehicleDetails(headID uint16) {
 	g.vehicleWin = &ui.VehicleWindow{X: (g.sw - ww) / 2, Y: (g.sh - wh) / 2, W: ww, H: wh, TitleColour: tc, Colour: wc,
 		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
 		State:   ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
-		OnClose: func() { g.vehicleWin = nil }}
+		OnClose: func() { g.vehicleWin, g.pickupOn = nil, false }, OnPickup: func() { g.onPickup(headID) },
+		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h)}
+}
+
+// pickupImage is getPickupImageIdandTooltip's image for rail: the track
+// object's image + kUiPickupFromTrack (16) when placed, kUiPlaceOnTrack (17)
+// when not. PARTIAL: road, air and water (0: no image).
+func (g *Game) pickupImage(h *scenario.VehicleEntity) int {
+	if h.Mode != 0 || g.r == nil || g.r.ObjMgr == nil {
+		return 0
+	}
+	t := g.r.ObjMgr.GetTrackObjectByIndex(int(h.TrackType))
+	if t == nil {
+		return 0
+	}
+	if h.TileX != -1 {
+		return int(t.Image) + 16
+	}
+	return int(t.Image) + 17
+}
+
+// onPickup is Common::onPickup for rail: a vehicle not on the map takes the
+// placing tool (toolSet; the tool is goloco's pickupHead); a placed one is
+// lifted (VehiclePickup) and the window reopened (callOnMouseUp tabDetails).
+// PARTIAL: the main view's unfocus, the error title, road / air / water.
+func (g *Game) onPickup(headID uint16) {
+	if g.w == nil || g.r == nil {
+		return
+	}
+	m := &g.w.Map
+	tr, err := m.TrainOf(headID)
+	if err != nil {
+		return
+	}
+	h := m.Entities[tr.Head]
+	if h.TileX == -1 {
+		g.pickupOn, g.pickupHead = true, headID
+		g.openVehicleDetails(headID)
+		return
+	}
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	if _, ok := m.VehiclePickup(c, sim.CmdApply, headID); !ok {
+		log.Printf("[Game] can't remove vehicle %d", headID)
+		return
+	}
+	g.openVehicleDetails(headID)
+}
+
+// pickupToolDown is pickupToolDownLand for rail: the placement under the
+// cursor, VehiclePlace, then pickupToolPlacementCommandCallback — shift starts
+// the vehicle, the tool is cancelled, the window shown again. false: no track
+// there (the tool stays). PARTIAL: the ghost (pickupToolUpdate), the error
+// window.
+func (g *Game) pickupToolDown(sx, sy int) bool {
+	head := g.pickupHead
+	p, ok := g.w.RailPlacementAt(head, sx, sy)
+	if !ok {
+		return false
+	}
+	m := &g.w.Map
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	if _, ok := m.VehiclePlace(c, sim.CmdApply, p); !ok {
+		log.Printf("[Game] can't place vehicle %d here", head)
+		return false
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyShift) {
+		m.VehicleChangeRunningMode(c, sim.CmdApply, head, sim.RunningModeStart)
+	}
+	g.pickupOn = false
+	g.openVehicleDetails(head)
+	return true
 }
 
 // buildVehiclesMenu is ToolbarTop.cpp buildVehiclesMenuMouseDown (0x0043AD1F):
