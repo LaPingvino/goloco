@@ -1148,3 +1148,69 @@ func TestLiveVehicleList(t *testing.T) {
 		t.Error("the bought vehicle's row is missing or not created today")
 	}
 }
+
+// TestRailPlacementAtCursor: for each rail vehicle on the title map, the
+// cursor put on the screen point of each sub-position of the piece its
+// Vehicle2 stands on (gameToScreen at rotation 0) gives that sub-position —
+// or, when it faces the other way for the view, the same point counted from
+// the piece's far end with the direction reversed; and the vehicle, picked
+// up, can be placed back where the cursor points (VehiclePlace, query).
+func TestRailPlacementAtCursor(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	toScreen := func(x, y, z int32) (int, int) { return int(y - x), int((y+x)>>1 - z) }
+	trains, _ := m.Trains()
+	checked, placeable, tried := 0, 0, 0
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.TileX == -1 || h.Mode != 0 || !m.canBeModified(tr) {
+			continue
+		}
+		v2 := m.Entities[tr.Veh2]
+		tad := v2.TrackAndDirection &^ (1 << 2)
+		tile := m.TileAt(int(v2.TileX)/32, int(v2.TileY)/32)
+		var te *scenario.TrackElement
+		for i := range tile.Tracks {
+			e := &tile.Tracks[i]
+			if e.TrackID == uint8(tad>>3&0x3F) && e.Rotation == uint8(tad&3) && e.SequenceIndex == 0 {
+				te = e
+			}
+		}
+		if te == nil || v2.TrackAndDirection&(1<<2) != 0 {
+			continue // the start tile holds sequence 0 only for an unreversed vehicle
+		}
+		moves := TrackSubPosition(tad)
+		for k := range moves {
+			cx, cy := toScreen(int32(v2.TileX)+int32(moves[k].X), int32(v2.TileY)+int32(moves[k].Y), int32(v2.TileBaseZ)*4+int32(moves[k].Z))
+			p, ok := m.RailPlacementAtCursor(h.ID, int32(v2.TileX), int32(v2.TileY), te, 0, cx, cy, toScreen)
+			if !ok {
+				t.Fatalf("vehicle %d: no placement", h.ID)
+			}
+			switch p.TrackAndDirection {
+			case tad:
+				if int(p.TrackProgress) != k || p.X != int32(v2.TileX) || p.Y != int32(v2.TileY) {
+					t.Errorf("vehicle %d sub %d: progress %d at %d,%d", h.ID, k, p.TrackProgress, p.X, p.Y)
+				}
+			case tad ^ 4:
+				if want := min(len(moves)-k, len(moves)-1); int(p.TrackProgress) != want {
+					t.Errorf("vehicle %d sub %d reversed: progress %d, want %d", h.ID, k, p.TrackProgress, want)
+				}
+			default:
+				t.Errorf("vehicle %d: tad %#x from %#x", h.ID, p.TrackAndDirection, tad)
+			}
+			checked++
+		}
+		own := &Cmd{Company: h.Owner, Objects: om}
+		m.VehiclePickup(own, CmdApply, h.ID)
+		k := len(moves) / 2
+		cx, cy := toScreen(int32(v2.TileX)+int32(moves[k].X), int32(v2.TileY)+int32(moves[k].Y), int32(v2.TileBaseZ)*4+int32(moves[k].Z))
+		p, _ := m.RailPlacementAtCursor(h.ID, int32(v2.TileX), int32(v2.TileY), te, 0, cx, cy, toScreen)
+		tried++
+		if _, ok := m.VehiclePlace(own, 0, p); ok {
+			placeable++
+		}
+	}
+	t.Logf("%d sub-positions checked; %d of %d picked-up vehicles placeable where the cursor points", checked, placeable, tried)
+	if checked == 0 || tried == 0 || placeable == 0 {
+		t.Fatal("nothing checked")
+	}
+}

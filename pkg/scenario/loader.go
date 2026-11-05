@@ -1644,6 +1644,7 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 	if len(gs) > 0x1AD { // S5GameState lastRailroadOption 0x192, lastRoadOption 0x193, lastTrackTypeOption 0x1AD
 		sc.LastRailroadOption, sc.LastRoadOption, sc.LastTrackTypeOption = gs[0x192], gs[0x193], gs[0x1AD]
 		sc.LastBuildVehiclesOption = gs[0x414] // GameState::lastBuildVehiclesOption
+		sc.PickupDirection = gs[0x198]         // GameState::pickupDirection
 	}
 }
 
