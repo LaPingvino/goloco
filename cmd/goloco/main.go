@@ -165,13 +165,20 @@ type Game struct {
 }
 
 func findLocoDataDir() string {
-	candidates := []string{
+	home := os.Getenv("HOME")
+	var candidates []string
+	if d := os.Getenv("GOLOCO_DATA"); d != "" { // the Locomotion folder (or its Data) named explicitly
+		candidates = append(candidates, filepath.Join(d, "Data"), d)
+	}
+	candidates = append(candidates,
 		"../locomotion/Data",
 		"locomotion/Data",
+		filepath.Join(home, "Locomotion/Data"), // an unpacked copy in the home folder
+		filepath.Join(home, "locomotion/Data"),
 		filepath.Join(os.Getenv("HOME"), ".local/share/Steam/steamapps/common/Locomotion/Data"),
 		filepath.Join(os.Getenv("HOME"), ".steam/steam/steamapps/common/Locomotion/Data"),
 		"/usr/share/games/locomotion/Data",
-	}
+	)
 
 	for _, dir := range candidates {
 		g1Path := filepath.Join(dir, "g1.DAT")
