@@ -5,6 +5,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
+	"log"
 	"os"
 	"strings"
 )
@@ -164,7 +165,7 @@ func (g *Game) openBuildVehicle(tab int) {
 	if len(tabs) > 0 {
 		for _, id := range m.BuildableVehicles(om, uint8(tab), tabs[trackTab], o) {
 			v := om.Vehicles[id]
-			rows = append(rows, ui.BVRow{Vehicle: v, Name: v.DisplayName})
+			rows = append(rows, ui.BVRow{ID: id, Vehicle: v, Name: v.DisplayName})
 		}
 	}
 	var tc, wc uint8 = 0, 1
@@ -179,7 +180,35 @@ func (g *Game) openBuildVehicle(tab int) {
 	g.buildVehicle = &ui.BuildVehicleWindow{X: (sw - 500) / 2, Y: (sh - 400) / 2, W: 500, H: 400, TitleColour: tc, Colour: wc,
 		Tab: tab, TrackTab: trackTab, Disabled: m.BuildVehicleDisabledTabs(uint8(company)), NumTrackTabs: len(tabs),
 		Rows: rows, Hover: -1, Primary: p, Secondary: s,
-		OnClose: func() { g.buildVehicle = nil }, OnTab: g.openBuildVehicle}
+		OnClose: func() { g.buildVehicle = nil }, OnTab: g.openBuildVehicle,
+		OnBuy: func(id uint16) { g.buyVehicle(tab, id) }}
+}
+
+// buyVehicle is onScrollMouseDown's purchase: the createVehicle command (no
+// target vehicle) for the controlling company through doCommand (cash checked,
+// paid under VehiclePurchases), then the window refreshed (sub_4B92A5: here
+// opened afresh on its tab). PARTIAL: Vehicle::Details::open on the new
+// vehicle (the Vehicle window, 5P.g — until then the bought vehicle waits
+// unplaced, as upstream's does until placed, and shows in the vehicle list),
+// the error window ("Can't build …" with the reason), Config::buildLockedVehicles
+// (false).
+func (g *Game) buyVehicle(tab int, id uint16) {
+	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
+		return
+	}
+	m := &g.w.Map
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	var head uint16
+	cost, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureVehiclePurchases, func(flags uint8) (int32, bool) {
+		return m.CreateVehicle(c, flags, id, false, &head)
+	})
+	if !ok {
+		log.Printf("[Game] can't build vehicle %d", id)
+		return
+	}
+	log.Printf("[Game] bought vehicle %d (head %d) for %d", id, head, cost)
+	g.openBuildVehicle(tab)
 }
 
 // buildVehiclesMenu is ToolbarTop.cpp buildVehiclesMenuMouseDown (0x0043AD1F):

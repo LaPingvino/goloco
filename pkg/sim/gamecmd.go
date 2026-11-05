@@ -268,3 +268,43 @@ func doCommand(flags uint8, run func(flags uint8) (int32, bool)) (int32, bool) {
 	}
 	return min(cost, cost2), true
 }
+
+// ExpenditureVehiclePurchases is ExpenditureType::VehiclePurchases (the
+// createVehicle command's setExpenditureType).
+const ExpenditureVehiclePurchases = 13
+
+// DoCommandFor is GameCommands::doCommand's loc_4313C6 for a command a
+// company runs at the top level (nest level 1), with the payment: the query
+// pass (free in the editor), ensureCompanyFunding unless AllowNegativeCashFlow
+// or NoPayment (a refusal ends it), then the applying pass, the lower of the
+// two costs, applyPaymentToCompany under the expenditure type. PARTIAL: the
+// error window texts / sounds and the flying cost text (spendMoneyEffect).
+func (m *Map) DoCommandFor(c *Cmd, flags uint8, expenditure uint8, run func(flags uint8) (int32, bool)) (int32, bool) {
+	cost, ok := run(flags &^ CmdApply)
+	if !ok {
+		return 0, false
+	}
+	if c.Editor {
+		cost = 0
+	}
+	if flags&(CmdAllowNegativeCashFlow|CmdNoPayment) == 0 && cost != 0 && !c.Editor {
+		if !m.ensureCompanyFunding(int(c.Company), cost) {
+			return 0, false
+		}
+	}
+	if flags&CmdApply == 0 {
+		return cost, true
+	}
+	cost2, ok := run(flags)
+	if !ok {
+		return 0, false
+	}
+	if c.Editor {
+		cost = 0
+	}
+	cost = min(cost, cost2)
+	if flags&CmdNoPayment == 0 {
+		m.ApplyPaymentToCompany(c.Company, cost, expenditure)
+	}
+	return cost, true
+}

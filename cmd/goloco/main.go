@@ -1340,6 +1340,11 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					g.handleToolbarButton(i)
 				}
 			}
+		} else if v == "buy" { // trains, then a click on the first row
+			g.openBuildVehicle(0)
+			if w := g.buildVehicle; w != nil {
+				w.HandleClick(w.X+3+1+5, w.Y+102+1+5)
+			}
 		} else {
 			tab, _ := strconv.Atoi(v)
 			g.openBuildVehicle(tab)
