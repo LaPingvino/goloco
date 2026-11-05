@@ -69,10 +69,10 @@ func (m *Map) allocateOrders(head *scenario.VehicleEntity) {
 // 0x004AE34B, createVehicle1 0x004AE40E, createVehicle2 0x004AE4A0,
 // createVehicleTail 0x004AE54E): the head's id; false when there aren't
 // enough free entities, no room for orders, or no routing handle.
-// PARTIAL: aiIsBelowVehicleLimit for an AI company (companies' transport type
-// counts are not kept yet — a player is always below it, as upstream);
-// head->updateTrainProperties runs when the cars are added (5P.a part 3); the
-// sound and AI fields goloco does not keep.
+// (aiIsBelowVehicleLimit is the command's check before it: CreateVehicle's
+// isEmptyVehicleSlotAvailable, as upstream.)
+// PARTIAL: head->updateTrainProperties runs when the cars are added (5P.a
+// part 3); the sound and AI fields goloco does not keep.
 func (m *Map) createBaseVehicle(company, mode, vehicleType, trackType uint8) (uint16, bool) {
 	if m.EntityLists.numFreeEntities() <= numVehicleComponentsBase { // checkNumFreeEntities
 		return 0, false

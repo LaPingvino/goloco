@@ -1497,6 +1497,7 @@ type CompanyEconomy struct {
 	CurrentLoan              int32         // 0x0E
 	Expenditures             [16][17]int32 // 0x58 [month][ExpenditureType]
 	Var4A0                   uint32        // 0x4A0 cargo types delivered (bits)
+	TransportTypeCount       [6]uint16     // 0x8BA4 vehicles by VehicleType (recalculateTransportCounts)
 	Var49C                   uint32        // 0x49C cargo types loaded (bits)
 	CargoUnitsTotalDelivered uint32        // 0x85F8
 	CargoDelivered           [32]uint32    // 0x8BCE
@@ -1529,6 +1530,9 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 		raw := uint64(binary.LittleEndian.Uint32(r[0x08:])) | uint64(binary.LittleEndian.Uint16(r[0x0C:]))<<32
 		c.Cash = int64(raw<<16) >> 16 // sign-extend the 48 bits
 		c.CurrentLoan = int32(binary.LittleEndian.Uint32(r[0x0E:]))
+		for k := range c.TransportTypeCount {
+			c.TransportTypeCount[k] = binary.LittleEndian.Uint16(r[0x8BA4+2*k:])
+		}
 		for mo := range c.Expenditures {
 			for t := range c.Expenditures[mo] {
 				c.Expenditures[mo][t] = int32(binary.LittleEndian.Uint32(r[0x58+4*(mo*17+t):]))
