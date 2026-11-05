@@ -25,8 +25,11 @@
 package i18n
 
 import (
+	"io/fs"
+
 	"bufio"
 	"fmt"
+	"github.com/LaPingvino/goloco"
 	"io"
 	"os"
 	"path/filepath"
@@ -153,13 +156,9 @@ func Load(locale string) error {
 	if locale == "" {
 		locale = "en-GB"
 	}
-	path := findPack(locale)
-	if path == "" {
-		return fmt.Errorf("i18n: no language pack found for %q", locale)
-	}
-	f, err := os.Open(path)
+	f, err := openPack(locale)
 	if err != nil {
-		return err
+		return fmt.Errorf("i18n: no language pack found for %q", locale)
 	}
 	defer f.Close()
 
@@ -173,19 +172,26 @@ func Load(locale string) error {
 	return nil
 }
 
-// findPack returns the first existing pack path for locale, or "".
-func findPack(locale string) string {
-	name := locale + ".yml"
-	candidates := []string{
-		filepath.Join("data", "language", name),
-		filepath.Join(os.Getenv("HOME"), "OpenLoco", "data", "language", name),
+// packDirs are where language packs are looked for, in order: ./data/language
+// (a source checkout, packs being edited), ~/OpenLoco/data/language, then the
+// packs built into the binary — so text never goes missing when goloco is
+// started from another folder (it did: every label empty).
+func packDirs() []fs.FS {
+	dirs := []fs.FS{os.DirFS(filepath.Join("data", "language")), os.DirFS(filepath.Join(os.Getenv("HOME"), "OpenLoco", "data", "language"))}
+	if sub, err := fs.Sub(goloco.LanguageFS, "data/language"); err == nil {
+		dirs = append(dirs, sub)
 	}
-	for _, p := range candidates {
-		if _, err := os.Stat(p); err == nil {
-			return p
+	return dirs
+}
+
+// openPack opens the first pack for locale found in packDirs.
+func openPack(locale string) (fs.File, error) {
+	for _, d := range packDirs() {
+		if f, err := d.Open(locale + ".yml"); err == nil {
+			return f, nil
 		}
 	}
-	return ""
+	return nil, fs.ErrNotExist
 }
 
 type header struct {
@@ -294,8 +300,8 @@ type Language struct{ Locale, NativeName string }
 // native name converted to Locomotion's characters (ToLoco: Č → C, CJK → ?),
 // sorted by that converted name.
 func Available() []Language {
-	for _, dir := range []string{filepath.Join("data", "language"), filepath.Join(os.Getenv("HOME"), "OpenLoco", "data", "language")} {
-		ents, err := os.ReadDir(dir)
+	for _, dir := range packDirs() {
+		ents, err := fs.ReadDir(dir, ".")
 		if err != nil {
 			continue
 		}
@@ -304,7 +310,7 @@ func Available() []Language {
 			if e.IsDir() || filepath.Ext(e.Name()) != ".yml" {
 				continue
 			}
-			f, err := os.Open(filepath.Join(dir, e.Name()))
+			f, err := dir.Open(e.Name())
 			if err != nil {
 				continue
 			}
