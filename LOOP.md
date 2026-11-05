@@ -72,6 +72,14 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
    f. Build Vehicle window (Ui/Windows/BuildVehicle.cpp, 1995) — the parked July branch is not a port.
    g. Vehicle window (Ui/Windows/Vehicle.cpp, 5269): first the main tab (place, start / stop) and the route tab
       (orders); the rest later.
+      STARTED 2026-11-05: the Details tab's pickup button — its image (the track object's +16 placed / +17 not),
+      inset while the tool is on; Common::onPickup (a placed train lifted by VehiclePickup; an unplaced one takes
+      the placing tool); the tool's click (pickupToolDownLand for rail: World.RailPlacementAt = the track under the
+      cursor by InteractionAt + RailPlacementAtCursor, VehiclePlace, shift starts it, the tool cancelled);
+      Escape aborts. PARTIAL: the ghost while hovering, road / air / water, hover and disabled looks.
+      NOT YET SEEN RUNNING: the shot check is blocked (see Blocked). NEXT: see it work (diag
+      GOLOCO_DIAG_BUILDVEHICLE=place on a save WITH track — olauto.SV5 has none; dump.SV5's map has 2514), then
+      the ghost (pickupToolUpdate), then start / stop on the main tab.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a): upstream's VehicleManager::VehicleList walks the vehicle-head linked list (newest first);
    goloco's Trains() walks entities in slot order — the vehicles' update order may differ from upstream's. Now
@@ -600,6 +608,10 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   goloco-only UI art with TTF fonts in the public build?
 
 ## Blocked
+- 2026-11-05 ~18:35: goloco's window runs under xvfb-run exit 1 right after "Loaded scenario", silently (no Go
+  error, no panic), with no shot — the previous commit's binary too, so not this tick's code; GOLOCO_DIRTY=0,
+  GOLOCO_GPUPAL=0, GALLIUM_DRIVER=llvmpipe change nothing; Xvfb itself starts. The one system change since the
+  last good run: vulkan-swrast installed 17:26. The xvfb test gate still passes. To find next goloco tick.
 
 - (RESOLVED 2026-11-01: CI green — workflow pushed over SSH, source checks fixed) GitHub CI (.github/workflows/ci.yml) had failed on every push (60/60): the runner lacks the
   X11/GL/ALSA headers Ebitengine builds against, and pkg/ui + pkg/world tests need a display. Fixed workflow
@@ -1063,4 +1075,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-05 (FPS (2) DONE: dirty regions are the default — overnight) — GOLOCO_DIRTY on unless =0; the world now repaints only the invalidation grid's rects (upstream's renderDirtyRegions), and the GPU palette serves that path too (uploadRect: each dirty rect's indices, columns widened to whole texels; a new packed image uploads everything once). The old warning note ("the tile invalidations … are not ported yet, so GOLOCO_DIRTY stays off by default") rewritten to the status it warned about, now true: invalidations ported wherever goloco has the code that changes the map (listed), PARTIAL for code still to port (construction stages, body animation / cargo frames), and the remaining GOLOCO_DIRTY_CHECK differences are the column-split sort as in upstream. Checked: olauto.SV5 with the new defaults vs the old full repaint on the CPU — 362 px differ, all at the fountain, the date and a moving vehicle (as last time); the shot looked at. Test page redeployed. NEXT (FPS): Joop's numbers; then upstream's Viewport::move (D4: shift the drawn pixels when the view scrolls instead of repainting all).
 - 2026-11-05 (completion measure, part 1 — overnight) — scripts/clickables.py: OpenLoco's clickables per window (429 over 41 windows) against goloco's ports; --missing lists them. Its goloco side (widget names found in the mapped files) undercounts badly (7%; BuildVehicle 0 / 15 though close + tabs work) — recorded as such, not as the real figure. NEXT: `// clickable:` markers in the ports and the script counting those.
 - 2026-11-05 (completion measure, part 2 — overnight) — the goloco side by explicit markers (two tiers: works as upstream / partial), counted by the script; the label pattern fixed for camelCase widget names (Vehicle.cpp: 26, not 4) — 517 clickables over 47 windows. First markers from code read or written tonight: Build Vehicle (close, the six type tabs; not the track tabs), Vehicle (close), the top toolbar (Build Vehicles and Zoom as upstream; Load/Save, Audio, Railroad, Road, Vehicles, Stations, Towns partial; Rotate / View only log, Terraform / Port / Cheats nothing). 4 of 47 windows annotated. Also: the shared /tmp quota hit again (a link failed) — old comparison builds removed from the scratchpad.
+- 2026-11-05 (5P.g part 1 — overnight) — the Vehicle window's pickup button and placing tool for rail (button image + pressed look, onPickup, the tool's click through World.RailPlacementAt → VehiclePlace, shift-start, Escape); a diag mode `place`; clickables: Vehicle.cpp pickup partial. Tests and vet green; NOT seen running — every windowed xvfb run now exits 1 silently (also the previous commit's build): logged under Blocked. Also: the Go build cache trimmed (4.2 → 1.3 GB) after another quota hit.
 

@@ -103,7 +103,9 @@ type Game struct {
 	speedMult int // 1, 2, 4, or 8
 
 	// Build mode (track/road placement)
-	buildMode    int // buildModeNone / buildModeTrack / buildModeRoad
+	buildMode    int    // buildModeNone / buildModeTrack / buildModeRoad
+	pickupOn     bool   // the Vehicle window's pickup (placing) tool is active
+	pickupHead   uint16 // the vehicle head it places
 	objective    scenario.Objective
 	hasObjective bool
 	gameWon      bool
@@ -529,6 +531,15 @@ func (g *Game) Update() error {
 
 	// --- Gameplay mode ONLY below this point ---
 
+	// Escape cancels the pickup tool (pickupToolAbort: no ghost to remove yet).
+	if g.pickupOn && g.inKeyJustPressed(ebiten.KeyEscape) {
+		head := g.pickupHead
+		g.pickupOn = false
+		if g.vehicleWin != nil {
+			g.openVehicleDetails(head)
+		}
+	}
+
 	// Build mode: update hover tile every frame
 	if g.buildMode != buildModeNone {
 		g.hoverTileX, g.hoverTileY = g.w.ScreenToTile(g.mouseX, g.mouseY)
@@ -606,6 +617,8 @@ func (g *Game) Update() error {
 			} else if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
 				g.toolbar.Buttons[btnIdx].Pressed = true
 				g.handleToolbarButton(btnIdx)
+			} else if g.pickupOn && !g.inTitleScreen {
+				g.pickupToolDown(g.mouseX, g.mouseY) // the Vehicle window's placing tool
 			} else if g.buildMode != buildModeNone && g.hoverTileX >= 0 {
 				// Track/road mode: clicking the map sets the construction head.
 				g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
@@ -1361,10 +1374,28 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					g.handleToolbarButton(i)
 				}
 			}
-		} else if v == "buy" { // trains, then a click on the first row
+		} else if v == "buy" || v == "place" { // trains, then a click on the first row
 			g.openBuildVehicle(0)
 			if w := g.buildVehicle; w != nil {
 				w.HandleClick(w.X+3+1+5, w.Y+102+1+5)
+			}
+			if v == "place" && g.vehicleWin != nil { // then the pickup button, and the first track under a 16-px grid
+				g.buildVehicle = nil
+				if x, y, ok := g.vehicleWin.PickupButton(); ok {
+					g.vehicleWin.HandleClick(x, y)
+				}
+				log.Printf("[Diag] pickup tool on: %v", g.pickupOn)
+				placed := false
+				for sy := 40; sy < g.sh-40 && !placed && g.pickupOn; sy += 16 {
+					for sx := 16; sx < g.sw-16 && !placed; sx += 16 {
+						if g.vehicleWin.Contains(sx, sy) {
+							continue
+						}
+						if placed = g.pickupToolDown(sx, sy); placed {
+							log.Printf("[Diag] placed at screen %d,%d; tool on: %v, window placed: %v", sx, sy, g.pickupOn, g.vehicleWin.State.Placed)
+						}
+					}
+				}
 			}
 		} else {
 			tab, _ := strconv.Atoi(v)
