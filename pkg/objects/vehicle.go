@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // VehicleObject represents a vehicle from a DAT file
@@ -615,3 +616,28 @@ func walkVariableSections(v *VehicleObject, data []byte) int {
 type extentMeasurer interface {
 	ImagesMaxExtent(base uint32, n int) (width, heightNegative, heightPositive uint8)
 }
+
+// TrackTypeFor is VehicleObject::load's trackType: 0xFF for a vehicle on any
+// road type or not on rails / road, else the slot of its track (rail) or road
+// object, found by the header it names (the file's own byte is overwritten).
+func (m *ObjectManager) TrackTypeFor(v *VehicleObject) uint8 {
+	if v.Flags&flagAnyRoadTypeVehicle != 0 || (v.Mode != TransportModeRail && v.Mode != TransportModeRoad) || v.TrackName == "" {
+		return 0xFF
+	}
+	if v.Mode == TransportModeRail {
+		for i, t := range m.TrackObjects {
+			if t != nil && t.Header != nil && strings.EqualFold(t.Header.GetName(), v.TrackName) {
+				return uint8(i)
+			}
+		}
+		return 0xFF
+	}
+	for i, r := range m.RoadObjects {
+		if r != nil && r.Header != nil && strings.EqualFold(r.Header.GetName(), v.TrackName) {
+			return uint8(i)
+		}
+	}
+	return 0xFF
+}
+
+const flagAnyRoadTypeVehicle = 1 << 9 // VehicleObjectFlags::anyRoadType

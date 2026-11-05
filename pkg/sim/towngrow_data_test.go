@@ -278,3 +278,93 @@ func TestAutoLayoutTrain(t *testing.T) {
 		t.Errorf("first car after the layout: object %d, want the locomotive %d", got, locoObj)
 	}
 }
+
+// TestTrackTypeForSaved: VehicleObject::load's trackType (ObjectManager.
+// TrackTypeFor) against every saved train — the head's track type is its first
+// car's object's, as createVehicle passes it to createBaseVehicle.
+func TestTrackTypeForSaved(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, err := m.Trains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	checked, bad := 0, 0
+	for _, tr := range trains {
+		if len(tr.Cars) == 0 {
+			continue
+		}
+		head := m.Entities[tr.Head]
+		obj := om.Vehicles[m.Entities[tr.Cars[0][0].Body].ObjectID]
+		if got := om.TrackTypeFor(obj); got != head.TrackType {
+			bad++
+			if bad <= 5 {
+				t.Errorf("%s (mode %d, track %q): TrackTypeFor %d, the saved head has %d", obj.DisplayName, obj.Mode, obj.TrackName, got, head.TrackType)
+			}
+		}
+		checked++
+	}
+	t.Logf("%d trains checked, %d differ", checked, bad)
+}
+
+// TestCreateVehicleCommand: recalculateTransportCounts against the saved
+// counts; then buying a vehicle (createVehicle, no head): one more of its type,
+// one train with one car, the inflation-adjusted cost; locked refused; and
+// createNewVehicle's cleanup giving back every slot, order byte and routing.
+func TestCreateVehicleCommand(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	for id := range m.Companies {
+		saved := m.Companies[id].TransportTypeCount
+		m.RecalculateTransportCounts(uint8(id))
+		if m.Companies[id].TransportTypeCount != saved {
+			t.Errorf("company %d: counts %v, saved %v", id, m.Companies[id].TransportTypeCount, saved)
+		}
+	}
+	trains, _ := m.Trains()
+	head := m.Entities[trains[0].Head]
+	company, objID := head.Owner, m.Entities[trains[0].Cars[0][0].Body].ObjectID
+	c := &Cmd{Company: company, Objects: om}
+	obj := om.Vehicles[objID]
+	before := m.Companies[company].TransportTypeCount[obj.Type]
+	n := len(trains)
+	var h uint16
+	cost, ok := m.CreateVehicle(c, CmdApply, objID, true, &h)
+	if !ok || h == entityIDNull {
+		t.Fatalf("buying %s refused", obj.DisplayName)
+	}
+	if want := m.InflationAdjustedCost(obj.CostFactor, obj.CostIndex, 6); cost != want || cost <= 0 {
+		t.Errorf("cost %d, want %d", cost, want)
+	}
+	if got := m.Companies[company].TransportTypeCount[obj.Type]; got != before+1 {
+		t.Errorf("count of type %d: %d, want %d", obj.Type, got, before+1)
+	}
+	tr, err := m.TrainOf(h)
+	if err != nil || len(tr.Cars) != 1 {
+		t.Errorf("the new train: %+v %v", tr, err)
+	}
+	if after, _ := m.Trains(); len(after) != n+1 {
+		t.Errorf("%d trains, want %d", len(after), n+1)
+	}
+	if nh := m.entity(h); nh.TrackType != om.TrackTypeFor(obj) || nh.TileX != -1 {
+		t.Errorf("head track type %d tileX %d", nh.TrackType, nh.TileX)
+	}
+	// locked: refused (unless lockedOK)
+	m.UnlockedVehicles[company][objID/32] &^= 1 << (objID % 32)
+	if _, ok := m.CreateVehicle(c, CmdApply, objID, false, nil); ok {
+		t.Error("a locked vehicle was bought")
+	}
+	// the cleanup
+	free, orders, ents := m.EntityLists.numFreeEntities(), m.OrderTableLength, len(m.Entities)
+	b, ok := m.createBaseVehicle(company, uint8(obj.Mode), uint8(obj.Type), 0)
+	if !ok {
+		t.Fatal("createBaseVehicle")
+	}
+	routing := m.entity(b).RoutingHandle
+	m.deleteBaseVehicle(b)
+	if m.EntityLists.numFreeEntities() != free || m.OrderTableLength != orders || len(m.Entities) != ents {
+		t.Errorf("after the cleanup: free %d (was %d), orders %d (was %d), entities %d (was %d)",
+			m.EntityLists.numFreeEntities(), free, m.OrderTableLength, orders, len(m.Entities), ents)
+	}
+	if m.vehicleRoutings(routing / 64)[0] != RoutingNull {
+		t.Error("the routing slot was not freed")
+	}
+}
