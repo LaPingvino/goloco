@@ -6,6 +6,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/scenario"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
+	"github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 	"log"
 	"os"
@@ -299,7 +300,7 @@ func (g *Game) onPickup(headID uint16) {
 	}
 	h := m.Entities[tr.Head]
 	if h.TileX == -1 {
-		g.pickupOn, g.pickupHead = true, headID
+		g.pickupOn, g.pickupHead, g.ghostProgress = true, headID, -1 // toolSet; _ghostTrackProgress = -1
 		g.openVehicleDetails(headID)
 		return
 	}
@@ -326,6 +327,13 @@ func (g *Game) pickupToolDown(sx, sy int) bool {
 	m := &g.w.Map
 	company, _ := g.w.ControllingCompany()
 	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	if g.ghostProgress != -1 && g.ghostPlace.TrackAndDirection == p.TrackAndDirection && g.ghostPlace.X == p.X &&
+		g.ghostPlace.Y == p.Y && g.ghostPlace.Z == p.Z && int(g.ghostPlace.TrackProgress) == int(p.TrackProgress) && m.VehicleIsGhost(head) {
+		p.ConvertGhost = true // the ghost where it stands becomes the vehicle
+	} else {
+		g.removeLandGhost()
+	}
+	g.ghostProgress = -1
 	if _, ok := m.VehiclePlace(c, sim.CmdApply, p); !ok {
 		log.Printf("[Game] can't place vehicle %d here", head)
 		return false
@@ -386,4 +394,47 @@ func (g *Game) buildVehiclesMenu(btn *ui.ToolbarButton) {
 		d.Highlighted = h
 	}
 	g.dropdown = d
+}
+
+// pickupToolUpdate is pickupToolUpdateLand for rail: the placement under the
+// cursor; unchanged since the last ghost, nothing; else the old ghost lifted
+// and the train placed there as a ghost (apply | ghost | noErrorWindow).
+func (g *Game) pickupToolUpdate(sx, sy int) {
+	p, ok := g.w.RailPlacementAt(g.pickupHead, sx, sy)
+	if !ok {
+		g.removeLandGhost()
+		return
+	}
+	if g.ghostProgress != -1 && g.ghostPlace.TrackAndDirection == p.TrackAndDirection && g.ghostPlace.X == p.X &&
+		g.ghostPlace.Y == p.Y && g.ghostPlace.Z == p.Z && g.ghostProgress == int(p.TrackProgress) {
+		return
+	}
+	g.removeLandGhost()
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	if _, ok := g.w.Map.VehiclePlace(c, sim.CmdApply|sim.CmdGhost|sim.CmdNoErrorWindow, p); ok {
+		g.ghostPlace, g.ghostProgress = p, int(p.TrackProgress)
+	}
+}
+
+// removeLandGhost is Vehicle.cpp's: a ghost-placed vehicle lifted again
+// (VehiclePickup, apply | noErrorWindow | ghost); _ghostTrackProgress = -1.
+func (g *Game) removeLandGhost() {
+	if g.w != nil && g.r != nil && g.w.Map.VehicleIsGhost(g.pickupHead) {
+		company, _ := g.w.ControllingCompany()
+		c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+		g.w.Map.VehiclePickup(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdGhost, g.pickupHead)
+	}
+	g.ghostProgress = -1
+}
+
+// overWindow reports whether a screen point is on one of goloco's windows or
+// bars, where the tool does not act (the viewport is under none of them).
+func (g *Game) overWindow(x, y int) bool {
+	return g.vehicleWin != nil && g.vehicleWin.Contains(x, y) ||
+		g.buildVehicle != nil && g.buildVehicle.Contains(x, y) ||
+		g.townList != nil && g.townList.Contains(x, y) ||
+		g.options != nil && g.options.Contains(x, y) ||
+		g.toolbar.HandleClick(x, y) >= 0 ||
+		uilayout.InTimePanel(x, y, g.sw, g.sh) || uilayout.InPlayerPanel(x, y, g.sw, g.sh)
 }

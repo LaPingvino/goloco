@@ -150,3 +150,10 @@ func (m *Map) validateRoadPlacement(c *Cmd, x, y, z int32, tad uint16, tr Train)
 	}
 	return false
 }
+
+// VehicleIsGhost reports whether a vehicle is placed as a ghost (the pickup
+// tool's preview): head->tileX != -1 && head->has38Flags(isGhost).
+func (m *Map) VehicleIsGhost(headID uint16) bool {
+	h := m.entity(headID)
+	return h != nil && h.TileX != -1 && h.Flags38&flags38IsGhost != 0
+}

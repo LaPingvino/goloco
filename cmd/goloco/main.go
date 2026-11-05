@@ -103,14 +103,18 @@ type Game struct {
 	speedMult int // 1, 2, 4, or 8
 
 	// Build mode (track/road placement)
-	buildMode    int    // buildModeNone / buildModeTrack / buildModeRoad
-	pickupOn     bool   // the Vehicle window's pickup (placing) tool is active
-	pickupHead   uint16 // the vehicle head it places
-	diagLogged   bool   // GOLOCO_DIAG_BUILDVEHICLE=place: the first placement logged
-	objective    scenario.Objective
-	hasObjective bool
-	gameWon      bool
-	progress     *progressFile
+	buildMode  int    // buildModeNone / buildModeTrack / buildModeRoad
+	pickupOn   bool   // the Vehicle window's pickup (placing) tool is active
+	pickupHead uint16 // the vehicle head it places
+	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,
+	// _ghostTrackProgress; ghostProgress -1: none).
+	ghostPlace    sim.VehiclePlacement
+	ghostProgress int
+	diagLogged    bool // GOLOCO_DIAG_BUILDVEHICLE=place: the first placement logged
+	objective     scenario.Objective
+	hasObjective  bool
+	gameWon       bool
+	progress      *progressFile
 
 	consCurve         int    // construction curve selection: -4 (left large) … 0 … +4
 	consTab           int    // construction window tab: 0 construction, 2 signal (1 station places directly)
@@ -535,6 +539,7 @@ func (g *Game) Update() error {
 	// Escape cancels the pickup tool (pickupToolAbort: no ghost to remove yet).
 	if g.pickupOn && g.inKeyJustPressed(ebiten.KeyEscape) {
 		head := g.pickupHead
+		g.removeLandGhost() // pickupToolAbort
 		g.pickupOn = false
 		if g.vehicleWin != nil {
 			g.openVehicleDetails(head)
@@ -576,6 +581,13 @@ func (g *Game) Update() error {
 	}
 	if g.browse != nil { // the load/save list's thumb too
 		g.browse.Drag(g.mouseY, ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft))
+	}
+	if g.pickupOn && !g.inTitleScreen { // pickupToolUpdate: the ghost under the cursor
+		if g.overWindow(g.mouseX, g.mouseY) {
+			g.removeLandGhost()
+		} else {
+			g.pickupToolUpdate(g.mouseX, g.mouseY)
+		}
 	}
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
@@ -1423,8 +1435,11 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 								}
 							}
 						}
+						g.pickupToolUpdate(sx, sy) // the hover first: a ghost where the click will place
+						ghost := g.w.Map.VehicleIsGhost(g.pickupHead)
 						if placed = g.pickupToolDown(sx, sy); placed {
-							log.Printf("[Diag] placed at screen %d,%d; tool on: %v, window placed: %v", sx, sy, g.pickupOn, g.vehicleWin.State.Placed)
+							log.Printf("[Diag] placed at screen %d,%d (a ghost there before the click: %v; still a ghost: %v); tool on: %v, window placed: %v",
+								sx, sy, ghost, g.w.Map.VehicleIsGhost(g.pickupHead), g.pickupOn, g.vehicleWin.State.Placed)
 						}
 					}
 				}
