@@ -1460,6 +1460,17 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 								tr, _ := g.w.Map.TrainOf(g.pickupHead)
 								log.Printf("[Diag] Main tab %v; stop / start: flag %d → %d, commandStop now %v", g.vehicleWin.Tab == 0, flag, g.vehicleWin.StopStartImage,
 									g.w.Map.Entities[tr.Head].VehicleFlags&sim.VehicleFlagCommandStop != 0)
+								if x, y, ok := g.vehicleWin.CentreViewButton(); ok { // then centre view → focus
+									bx, by := g.w.ScreenToTile(g.sw/2, g.sh/2)
+									g.vehicleWin.HandleClick(x+12, y-12)
+									if g.dropdown != nil && g.dropdown.OnSelect != nil {
+										g.dropdown.OnSelect(1)
+										g.dropdown = nil
+									}
+									ax, ay := g.w.ScreenToTile(g.sw/2, g.sh/2)
+									v2 := g.w.Map.Entities[tr.Veh2]
+									log.Printf("[Diag] focus on the train: screen centre tile %d,%d → %d,%d (the train's veh2 at tile %d,%d)", bx, by, ax, ay, v2.TileX/32, v2.TileY/32)
+								}
 							}
 						}
 					}

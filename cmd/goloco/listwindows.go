@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
@@ -273,7 +274,8 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		Tab: tab, Main: ui.VehicleMainState{Own: own, Manual: h.VehicleFlags&sim.VehicleFlagManualControl != 0},
 		StopStartImage: stopStartImage(h.VehicleFlags),
 		OnTab:          func(t int) { g.openVehicleWindow(headID, t) },
-		ViewImage:      func(w, h int) *ebiten.Image { return g.w.VehicleViewImage(headID, w, h) },
+		View:           func(w, h int) *gfx8.RenderTarget { return g.w.VehicleView(headID, w, h) },
+		OnCentreView:   func() { g.centreViewportOpen(headID) },
 		OnStopStart:    func(x, y, w, hh int) { g.stopStartOpen(headID, x, y, w, hh) }}
 }
 
@@ -497,4 +499,24 @@ func (g *Game) overWindow(x, y int) bool {
 		g.options != nil && g.options.Contains(x, y) ||
 		g.toolbar.HandleClick(x, y) >= 0 ||
 		uilayout.InTimePanel(x, y, g.sw, g.sh) || uilayout.InPlayerPanel(x, y, g.sw, g.sh)
+}
+
+// centreViewportOpen is Main's onCentreViewportControl: a text dropdown at the
+// button — move the main view to show the vehicle, or focus it on the vehicle
+// (following it) — and onCentreViewportDropdown.
+func (g *Game) centreViewportOpen(headID uint16) {
+	if g.vehicleWin == nil {
+		return
+	}
+	x, y, _ := g.vehicleWin.CentreViewButton()
+	d := ui.NewDropdownMenu(x, y, []ui.DropdownItem{{Text: i18n.Label(i18n.DropdownViewportMove)}, {Text: i18n.Label(i18n.DropdownViewportFocus)}})
+	d.Colour = g.vehicleWin.Colour
+	d.OnSelect = func(item int) {
+		if item <= 0 {
+			g.w.CentreOnVehicle(headID) // viewportCentreMain, without locking
+			return
+		}
+		g.w.FocusOnVehicle(headID)
+	}
+	g.dropdown = d
 }
