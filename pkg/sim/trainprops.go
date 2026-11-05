@@ -7,7 +7,9 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // var_49), fasterAroundCurves, each car's weight with its cargo, the train's
 // power, weight, maximum and rack-rail speeds, and accepted cargo types.
 //
-// PARTIAL: the creation day (Vehicle1 dayCreated), the driving-sound object
+// Vehicle1 dayCreated is the earliest powered car's creation day, else the
+// earliest car's, else today.
+// PARTIAL: the driving-sound object
 // swap, calculateRefundCost and recalculateTrainMinReliability are not
 // ported (none of them moves a vehicle).
 
@@ -65,6 +67,7 @@ func (m *Map) UpdateTrainProperties(tr Train, om *objects.ObjectManager) {
 		}
 	}
 	var power, weight, accepted uint32
+	earliestPowered, earliest := uint32(0xFFFFFFFF), uint32(0xFFFFFFFF)
 	maxSpeed, rackSpeed := speed16Max, speed16Max
 	cargoWeight := func(c *VehicleCargoRef) uint16 {
 		if c.Type == 0xFF || int(c.Type) >= len(om.CargoObjects) || om.CargoObjects[c.Type] == nil {
@@ -79,6 +82,10 @@ func (m *Map) UpdateTrainProperties(tr Train, om *objects.ObjectManager) {
 			continue
 		}
 		power += uint32(veh.Power)
+		if veh.Power != 0 {
+			earliestPowered = min(earliestPowered, front.CreationDay)
+		}
+		earliest = min(earliest, front.CreationDay)
 		w := veh.Weight
 		for _, c := range []*VehicleCargoRef{{front.Cargo.Type, front.Cargo.Qty}, {back.Cargo.Type, back.Cargo.Qty}, {body.Cargo.Type, body.Cargo.Qty}} {
 			w += cargoWeight(c)
@@ -96,6 +103,14 @@ func (m *Map) UpdateTrainProperties(tr Train, om *objects.ObjectManager) {
 		}
 	}
 	head.TrainAcceptedCargoTypes = accepted
+	day := earliestPowered
+	if day == 0xFFFFFFFF {
+		day = earliest
+		if day == 0xFFFFFFFF {
+			day = m.CurrentDay
+		}
+	}
+	m.Entities[tr.Veh1].DayCreated = day
 	v2 := &m.Entities[tr.Veh2]
 	v2.TotalPower = uint16(min(power, 0xFFFF))
 	v2.TotalWeight = uint16(min(weight, 0xFFFF))
