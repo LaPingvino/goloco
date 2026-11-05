@@ -220,7 +220,11 @@ func (g *Game) buyVehicle(tab int, id uint16) {
 // company's own vehicle, onResize), the window's colours the owner's, its
 // caption the vehicle's name. PARTIAL: createWindow's placement (centred
 // here), bringing an already open window to the front.
-func (g *Game) openVehicleDetails(headID uint16) {
+func (g *Game) openVehicleDetails(headID uint16) { g.openVehicleWindow(headID, 1) }
+
+// openVehicleWindow opens (or refreshes) the Vehicle window on a tab: 0 Main,
+// 1 Details.
+func (g *Game) openVehicleWindow(headID uint16, tab int) {
 	if g.w == nil {
 		return
 	}
@@ -265,7 +269,62 @@ func (g *Game) openVehicleDetails(headID uint16) {
 		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
 		State:   ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
 		OnClose: func() { g.vehicleWin, g.pickupOn = nil, false }, OnPickup: func() { g.onPickup(headID) },
-		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h)}
+		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h),
+		Tab: tab, Main: ui.VehicleMainState{Own: own, Manual: h.VehicleFlags&sim.VehicleFlagManualControl != 0},
+		StopStartImage: stopStartImage(h.VehicleFlags),
+		OnTab:          func(t int) { g.openVehicleWindow(headID, t) },
+		OnStopStart:    func(x, y, w, hh int) { g.stopStartOpen(headID, x, y, w, hh) }}
+}
+
+// stopStartImage is Main::prepareDraw's: yellow in manual control, red when
+// told to stop, else green.
+func stopStartImage(flags uint16) int {
+	switch {
+	case flags&sim.VehicleFlagManualControl != 0:
+		return ui.ImgYellowFlag
+	case flags&sim.VehicleFlagCommandStop != 0:
+		return ui.ImgRedFlag
+	}
+	return ui.ImgGreenFlag
+}
+
+// stopStartOpen is Main's stopStartOpen: a text dropdown at the button with
+// Stop and Start (Manual only with the driver cheat, not ported), the current
+// mode marked, the other highlighted; onStopStartDropdown runs
+// VehicleChangeRunningMode and the window shows the new flag.
+func (g *Game) stopStartOpen(headID uint16, x, y, w, h int) {
+	m := &g.w.Map
+	tr, err := m.TrainOf(headID)
+	if err != nil {
+		return
+	}
+	head := m.Entities[tr.Head]
+	selected := 0 // Stop
+	if head.VehicleFlags&sim.VehicleFlagCommandStop == 0 {
+		selected = 1 // Start
+	}
+	items := []ui.DropdownItem{{Text: i18n.Label(i18n.Stop)}, {Text: i18n.Label(i18n.Start)}}
+	items[selected].Selected = true
+	d := ui.NewDropdownMenu(x, y+h, items) // Dropdown::showText below the button
+	if g.vehicleWin != nil {
+		d.Colour = g.vehicleWin.Colour
+	}
+	d.Highlighted = 1 - selected // stop → start highlighted, start → stop
+	d.OnSelect = func(item int) {
+		mode := sim.RunningModeStop
+		if item == 1 {
+			mode = sim.RunningModeStart
+		}
+		company, _ := g.w.ControllingCompany()
+		c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+		if _, ok := m.VehicleChangeRunningMode(c, sim.CmdApply, headID, mode); !ok {
+			log.Printf("[Game] can't %s vehicle %d", []string{"stop", "start"}[item], headID)
+		}
+		if g.vehicleWin != nil {
+			g.openVehicleWindow(headID, g.vehicleWin.Tab)
+		}
+	}
+	g.dropdown = d
 }
 
 // pickupImage is getPickupImageIdandTooltip's image for rail: the track
@@ -342,7 +401,7 @@ func (g *Game) pickupToolDown(sx, sy int) bool {
 		m.VehicleChangeRunningMode(c, sim.CmdApply, head, sim.RunningModeStart)
 	}
 	g.pickupOn = false
-	g.openVehicleDetails(head)
+	g.openVehicleWindow(head, 0) // callOnMouseUp(tabMain)
 	return true
 }
 
