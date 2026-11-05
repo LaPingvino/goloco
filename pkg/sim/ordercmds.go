@@ -154,3 +154,115 @@ func (m *Map) VehicleOrderSkip(c *Cmd, flags uint8, headID uint16) (int32, bool)
 func OrderStopAtRaw(station int) []byte {
 	return []byte{OrderStopAt | uint8(station>>2)&0xC0, uint8(station)}
 }
+
+// swapAdjacentOrders is OrderManager::swapAdjacentOrders: b (right after a)
+// written over a's place, then a; the length to offset by (b's).
+func (m *Map) swapAdjacentOrders(a, b Order) int {
+	la, lb := orderSizes[a.Type()], orderSizes[b.Type()]
+	ra := append([]byte(nil), m.Orders[a.Offset:a.Offset+la]...)
+	rb := append([]byte(nil), m.Orders[b.Offset:b.Offset+lb]...)
+	copy(m.Orders[a.Offset:], rb)
+	copy(m.Orders[a.Offset+lb:], ra)
+	return lb
+}
+
+// VehicleOrderUp is the vehicleOrderUp command: the
+// order at orderOffset swapped with the one before it; the current order
+// follows its order.
+func (m *Map) VehicleOrderUp(c *Cmd, flags uint8, headID, orderOffset uint16) (int32, bool) {
+	h := m.entity(headID)
+	if h == nil || h.EntityType != 0 {
+		return 0, false
+	}
+	if flags&CmdApply == 0 {
+		return 0, true
+	}
+	if orderOffset > h.SizeOfOrderTable {
+		return 0, false
+	}
+	if orderOffset == 0 {
+		return 0, true
+	}
+	ring := m.OrderRing(h.OrderTableOffset, 0)
+	base := int(h.OrderTableOffset)
+	k := -1
+	for i, o := range ring {
+		if o.Offset-base == int(orderOffset) {
+			k = i
+		}
+	}
+	if k <= 0 {
+		return 0, true
+	}
+	prev, cur := ring[k-1], ring[k]
+	prevActive := int(h.CurrentOrder) == prev.Offset-base
+	curActive := int(h.CurrentOrder) == cur.Offset-base
+	oldDiff := cur.Offset - prev.Offset
+	newDiff := m.swapAdjacentOrders(prev, cur)
+	if prevActive {
+		h.CurrentOrder += uint16(newDiff)
+	} else if curActive {
+		h.CurrentOrder -= uint16(oldDiff)
+	}
+	return 0, true
+}
+
+// VehicleOrderDown is the vehicleOrderDown command: the order at orderOffset
+// swapped with the next one (not past the end of the table).
+func (m *Map) VehicleOrderDown(c *Cmd, flags uint8, headID, orderOffset uint16) (int32, bool) {
+	h := m.entity(headID)
+	if h == nil || h.EntityType != 0 {
+		return 0, false
+	}
+	if flags&CmdApply == 0 {
+		return 0, true
+	}
+	if orderOffset > h.SizeOfOrderTable {
+		return 0, false
+	}
+	ring := m.OrderRing(h.OrderTableOffset, orderOffset)
+	if len(ring) < 2 || ring[1].Offset < ring[0].Offset {
+		return 0, true // looped around
+	}
+	base := int(h.OrderTableOffset)
+	cur, next := ring[0], ring[1]
+	curActive := int(h.CurrentOrder) == cur.Offset-base
+	nextActive := int(h.CurrentOrder) == next.Offset-base
+	oldDiff := next.Offset - cur.Offset
+	newDiff := m.swapAdjacentOrders(cur, next)
+	if curActive {
+		h.CurrentOrder += uint16(newDiff)
+	} else if nextActive {
+		h.CurrentOrder -= uint16(oldDiff)
+	}
+	return 0, true
+}
+
+// VehicleOrderReverse is the vehicleOrderReverse command: the vehicle's
+// orders in the opposite order (reverseVehicleOrderTable), the current order
+// following its order.
+func (m *Map) VehicleOrderReverse(c *Cmd, flags uint8, headID uint16) (int32, bool) {
+	h := m.entity(headID)
+	if h == nil || h.EntityType != 0 {
+		return 0, false
+	}
+	if flags&CmdApply == 0 {
+		return 0, true
+	}
+	ring := m.OrderRing(h.OrderTableOffset, 0)
+	if len(ring) == 0 {
+		return 0, true
+	}
+	var raws [][]byte
+	for _, o := range ring {
+		raws = append(raws, append([]byte(nil), m.Orders[o.Offset:o.Offset+orderSizes[o.Type()]]...))
+	}
+	ooiType := Order{m, int(h.OrderTableOffset) + int(h.CurrentOrder)}.Type()
+	first := ring[0].Offset
+	dest := first
+	for i := len(raws) - 1; i >= 0; i-- {
+		dest += copy(m.Orders[dest:], raws[i])
+	}
+	h.CurrentOrder = uint16(dest - int(h.CurrentOrder) - orderSizes[ooiType] - first)
+	return 0, true
+}
