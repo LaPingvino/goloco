@@ -32,6 +32,92 @@ const (
 	vdWidgets
 )
 
+// Main::widx (after the common widgets).
+const (
+	vmViewport = vwTabRoute + 1 + iota
+	vmStatus
+	vmSpeedControl
+	vmStopStart
+	vmPickup
+	vmPassSignal
+	vmChangeDirection
+	vmCentreViewport
+	vmWidgets
+)
+
+// Main's right-bar images (ImageIds).
+const (
+	ImgRedFlag    = 2369
+	ImgGreenFlag  = 2370
+	ImgYellowFlag = 2371
+	imgTurnaround = 2359 // construction_right_turnaround (change direction)
+	imgCentreView = 2364
+	imgPassSignal = 2374
+)
+
+// VehicleMainState is what Main::prepareDraw reads from the vehicle.
+type VehicleMainState struct {
+	Own        bool // CompanyManager::isPlayerCompany(head->owner)
+	Manual     bool // VehicleFlags::manualControl
+	HiddenTabs uint8
+}
+
+// VehicleMainLayout is Main::widgets after Main::prepareDraw for a window of
+// width × height: the viewport and status line growing with the window, the
+// right bar (stop / start, pickup, pass signal, change direction) at its
+// right edge, the speed slider only in manual control, another company's
+// vehicle without buttons, the centre-view button in the viewport's corner.
+func VehicleMainLayout(width, height int, s VehicleMainState) (w [vmWidgets]BVWidget) {
+	vehicleCommonWidgets(w[:])
+	w[vmViewport] = bvW(3, 44, 237, 120)
+	w[vmStatus] = bvW(3, 155, 237, 21)
+	w[vmSpeedControl] = bvW(240, 46, 24, 115)
+	w[vmStopStart] = bvW(240, 44, 24, 24)
+	w[vmPickup] = bvW(240, 68, 24, 24)
+	w[vmPassSignal] = bvW(240, 92, 24, 24)
+	w[vmChangeDirection] = bvW(240, 116, 24, 24)
+	w[vmSpeedControl].Hidden = true
+	w[vwFrame].R, w[vwFrame].B = width-1, height-1
+	w[vwPanel].R, w[vwPanel].B = width-1, height-1
+	w[vwCaption].R = width - 2
+	w[vwClose].L, w[vwClose].R = width-15, width-3
+	viewportRight := width - 26
+	if s.Manual && s.Own {
+		viewportRight -= 27
+		w[vmSpeedControl].Hidden = false
+	}
+	w[vmViewport].R = viewportRight
+	w[vmViewport].B = height - 1 - 13
+	w[vmStatus].T, w[vmStatus].B, w[vmStatus].R = height-1-13+2, height-1-13+2+9, width-14
+	for _, i := range []int{vmStopStart, vmPickup, vmPassSignal, vmChangeDirection} {
+		w[i].L, w[i].R = width-2-23, width-2
+	}
+	w[vmSpeedControl].L, w[vmSpeedControl].R = width-2-23-26, width-2-23-26+23
+	if !s.Own {
+		for _, i := range []int{vmStopStart, vmPickup, vmPassSignal, vmChangeDirection} {
+			w[i].Hidden = true
+		}
+		w[vmViewport].R += 22
+	}
+	v := w[vmViewport]
+	w[vmCentreViewport] = BVWidget{v.R - 1 - 23, v.B - 1 - 23, v.R - 1, v.B - 1, false}
+	leftAlignTabs(w[:], s.HiddenTabs)
+	return w
+}
+
+// leftAlignTabs is Widget::leftAlignTabs over the five tabs.
+func leftAlignTabs(w []BVWidget, hidden uint8) {
+	x := w[vwTabMain].L
+	for i := vwTabMain; i <= vwTabRoute; i++ {
+		if hidden&(1<<(i-vwTabMain)) != 0 {
+			w[i].Hidden = true
+			continue
+		}
+		w[i].L, w[i].R = x, x+30
+		x += 31
+	}
+}
+
 // Vehicle window sizes (Main::kWindowSize, Details' min / max).
 var (
 	VehicleWindowSize          = [2]int{265, 177}
@@ -45,7 +131,7 @@ var (
 const vehicleDetailsTextHeight = 2 + 12*3
 
 // vehicleCommonWidgets is makeCommonWidgets(265, 177, …).
-func vehicleCommonWidgets(w *[vdWidgets]BVWidget) {
+func vehicleCommonWidgets(w []BVWidget) {
 	w[vwFrame] = bvW(0, 0, 265, 177)
 	w[vwCaption] = bvW(1, 1, 263, 13)
 	w[vwClose] = bvW(250, 2, 13, 13)
@@ -72,7 +158,7 @@ type VehicleDetailsState struct {
 // paint tool; another company's vehicle has no buttons and a list to the
 // right edge. The second value is disabledWidgets' pickup bit.
 func VehicleDetailsLayout(width, height int, s VehicleDetailsState) (w [vdWidgets]BVWidget, pickupDisabled bool) {
-	vehicleCommonWidgets(&w)
+	vehicleCommonWidgets(w[:])
 	w[vdBuildNew] = bvW(240, 44, 24, 24)
 	w[vdPickup] = bvW(240, 68, 24, 24)
 	w[vdRemove] = bvW(240, 96, 24, 24)
@@ -85,15 +171,7 @@ func VehicleDetailsLayout(width, height int, s VehicleDetailsState) (w [vdWidget
 	w[vwPanel].R, w[vwPanel].B = width-1, height-1
 	w[vwCaption].R = width - 2
 	w[vwClose].L, w[vwClose].R = width-15, width-3
-	x := w[vwTabMain].L // Widget::leftAlignTabs
-	for i := vwTabMain; i <= vwTabRoute; i++ {
-		if s.HiddenTabs&(1<<(i-vwTabMain)) != 0 {
-			w[i].Hidden = true
-			continue
-		}
-		w[i].L, w[i].R = x, x+30
-		x += 31
-	}
+	leftAlignTabs(w[:], s.HiddenTabs)
 	w[vdCarList].R = width - 26
 	w[vdCarList].B = height - vehicleDetailsTextHeight
 	for _, i := range []int{vdBuildNew, vdPickup, vdRemove, vdPaintBrush} { // alignToRightBar
@@ -144,11 +222,21 @@ type VehicleWindow struct {
 	OnPickup            func() // Common::onPickup: lift the vehicle, or take the placing tool
 	PickupActive        bool   // the placing tool is this window's (the button shown pressed)
 	PickupImage         int    // getPickupImageIdandTooltip's image (0: none)
+	Tab                 int    // 0 Main, 1 Details (the other tabs are not ported yet)
+	Main                VehicleMainState
+	StopStartImage      int                  // Main: the red / green / yellow flag
+	OnStopStart         func(x, y, w, h int) // Main: stopStartOpen at the button's screen rectangle
+	OnTab               func(tab int)        // switchTab
 }
 
-// Draw is Details::draw and drawScroll.
+// Draw draws the current tab: Main (drawMain) or Details (Details::draw and
+// drawScroll).
 func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 	if globalG1Font == nil {
+		return
+	}
+	if w.Tab == 0 {
+		w.drawMain(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -222,12 +310,65 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 	}
 }
 
+// drawMain is Main::draw: the frame, the tabs (Main active), the viewport's
+// place, the right-bar image buttons. PARTIAL: the viewport itself (an inset
+// panel for now), the status line, the speed slider, hover.
+func (w *VehicleWindow) drawMain(screen *ebiten.Image) {
+	g1 := globalG1Font.g1
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	lw := VehicleMainLayout(w.W, w.H, w.Main)
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		p := lw[vwPanel]
+		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, lw[vwClose].L, lw[vwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		for i := vwTabMain; i <= vwTabRoute; i++ {
+			if t := lw[i]; !t.Hidden {
+				drawTab(rt, t.L, t.T, i == vwTabMain, sec, tabNoIcon, nil)
+			}
+		}
+		v := lw[vmViewport]
+		gfx8.FillRectInset(rt, v.L, v.T, v.R, v.B, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+		for _, b := range []struct {
+			i, img int
+		}{{vmStopStart, w.StopStartImage}, {vmPickup, w.PickupImage}, {vmPassSignal, imgPassSignal}, {vmChangeDirection, imgTurnaround}, {vmCentreViewport, imgCentreView}} {
+			if lw[b.i].Hidden || b.img <= 0 || b.img >= len(g1.Elements) {
+				continue
+			}
+			if b.i == vmPickup && w.PickupActive {
+				gfx8.FillRectInset(rt, lw[b.i].L, lw[b.i].T, lw[b.i].R, lw[b.i].B, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
+			}
+			if sp, err := gfx8.Decode(&g1.Elements[b.img]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, lw[b.i].L, lw[b.i].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			}
+		}
+	})
+	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))
+}
+
 // PickupButton is the pickup button's centre on screen; ok is false when it
 // is hidden.
 func (w *VehicleWindow) PickupButton() (x, y int, ok bool) {
-	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
-	b := lw[vdPickup]
+	var b BVWidget
+	if w.Tab == 0 {
+		b = VehicleMainLayout(w.W, w.H, w.Main)[vmPickup]
+	} else {
+		lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+		b = lw[vdPickup]
+	}
 	return w.X + (b.L+b.R)/2, w.Y + (b.T+b.B)/2, !b.Hidden
+}
+
+// StopStartButton is the stop / start button's centre on the Main tab.
+func (w *VehicleWindow) StopStartButton() (x, y int, ok bool) {
+	b := VehicleMainLayout(w.W, w.H, w.Main)[vmStopStart]
+	return w.X + (b.L+b.R)/2, w.Y + (b.T+b.B)/2, w.Tab == 0 && !b.Hidden
 }
 
 // Contains reports whether the point is on the window.
@@ -238,16 +379,33 @@ func (w *VehicleWindow) Contains(x, y int) bool {
 // HandleClick is Details::onMouseUp: the close button, the pickup button
 // (unless hidden or disabled). PARTIAL: the other tabs and buttons.
 //
-// clickable(Vehicle.cpp): closeButton
+// clickable(Vehicle.cpp): closeButton tabMain tabDetails stopStart
 // clickable-partial(Vehicle.cpp): pickup
 func (w *VehicleWindow) HandleClick(x, y int) {
-	lw, pickupDisabled := VehicleDetailsLayout(w.W, w.H, w.State)
 	in := func(c BVWidget) bool {
 		return !c.Hidden && x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B
 	}
+	if w.Tab == 0 { // Main::onMouseUp / onMouseDown
+		lw := VehicleMainLayout(w.W, w.H, w.Main)
+		switch {
+		case in(lw[vwClose]) && w.OnClose != nil:
+			w.OnClose()
+		case in(lw[vwTabDetails]) && w.OnTab != nil:
+			w.OnTab(1)
+		case in(lw[vmStopStart]) && w.OnStopStart != nil:
+			b := lw[vmStopStart]
+			w.OnStopStart(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
+		case in(lw[vmPickup]) && w.OnPickup != nil:
+			w.OnPickup()
+		}
+		return
+	}
+	lw, pickupDisabled := VehicleDetailsLayout(w.W, w.H, w.State)
 	switch {
 	case in(lw[vwClose]) && w.OnClose != nil:
 		w.OnClose()
+	case in(lw[vwTabMain]) && w.OnTab != nil:
+		w.OnTab(0)
 	case in(lw[vdPickup]) && !pickupDisabled && w.OnPickup != nil:
 		w.OnPickup()
 	}

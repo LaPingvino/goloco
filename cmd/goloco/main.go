@@ -1387,6 +1387,16 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					g.handleToolbarButton(i)
 				}
 			}
+		} else if v == "main" { // buy a train, then the Vehicle window's Main tab (clicked)
+			g.openBuildVehicle(0)
+			if w := g.buildVehicle; w != nil {
+				w.HandleClick(w.X+3+1+5, w.Y+102+1+5)
+			}
+			g.buildVehicle = nil
+			if vw := g.vehicleWin; vw != nil {
+				vw.HandleClick(vw.X+3+15, vw.Y+15+13) // the Main tab
+				log.Printf("[Diag] vehicle window tab %d, flag image %d", g.vehicleWin.Tab, g.vehicleWin.StopStartImage)
+			}
 		} else if v == "buy" || v == "place" { // trains, then a click on the first row
 			if v == "place" { // DIAGNOSTIC ONLY: lift a rail train that may be lifted, play as its owner, look at its freed track
 				m := &g.w.Map
@@ -1440,6 +1450,17 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 						if placed = g.pickupToolDown(sx, sy); placed {
 							log.Printf("[Diag] placed at screen %d,%d (a ghost there before the click: %v; still a ghost: %v); tool on: %v, window placed: %v",
 								sx, sy, ghost, g.w.Map.VehicleIsGhost(g.pickupHead), g.pickupOn, g.vehicleWin.State.Placed)
+							if x, y, ok := g.vehicleWin.StopStartButton(); ok { // then Main's stop / start → Start
+								flag := g.vehicleWin.StopStartImage
+								g.vehicleWin.HandleClick(x, y)
+								if g.dropdown != nil && g.dropdown.OnSelect != nil {
+									g.dropdown.OnSelect(1)
+									g.dropdown = nil
+								}
+								tr, _ := g.w.Map.TrainOf(g.pickupHead)
+								log.Printf("[Diag] Main tab %v; stop / start: flag %d → %d, commandStop now %v", g.vehicleWin.Tab == 0, flag, g.vehicleWin.StopStartImage,
+									g.w.Map.Entities[tr.Head].VehicleFlags&sim.VehicleFlagCommandStop != 0)
+							}
 						}
 					}
 				}
