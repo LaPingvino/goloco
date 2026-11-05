@@ -1105,3 +1105,42 @@ func TestBuyVehiclePays(t *testing.T) {
 		t.Errorf("refused purchase changed things: %d trains (was %d), cash %d", len(after), len(n), co.Cash)
 	}
 }
+
+// TestLiveVehicleList: read from the entities right after loading, the list
+// equals the save's own snapshot field for field (dayCreated included); a
+// bought vehicle then shows up as one more row, created today.
+func TestLiveVehicleList(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	live := m.LiveVehicleList()
+	if len(live) != len(m.VehicleListData) {
+		t.Fatalf("%d live rows, the save has %d", len(live), len(m.VehicleListData))
+	}
+	byHead := map[uint16]int{}
+	for i, v := range m.VehicleListData {
+		byHead[v.HeadID] = i
+	}
+	for _, v := range live {
+		if s := m.VehicleListData[byHead[v.HeadID]]; v != s {
+			t.Errorf("head %d: live %+v\nsave %+v", v.HeadID, v, s)
+		}
+	}
+	trains, _ := m.Trains()
+	company, objID := m.Entities[trains[0].Head].Owner, m.Entities[trains[0].Cars[0][0].Body].ObjectID
+	var h uint16
+	if _, ok := m.CreateVehicle(&Cmd{Company: company, Objects: om}, CmdApply, objID, true, &h); !ok {
+		t.Fatal("buying refused")
+	}
+	rows := m.VehicleListRows()
+	if len(rows) != len(live)+1 {
+		t.Fatalf("%d rows after buying, want %d", len(rows), len(live)+1)
+	}
+	found := false
+	for _, r := range rows {
+		if r.HeadID == h {
+			found = r.DayCreated == m.CurrentDay && r.AgeYears == 0
+		}
+	}
+	if !found {
+		t.Error("the bought vehicle's row is missing or not created today")
+	}
+}

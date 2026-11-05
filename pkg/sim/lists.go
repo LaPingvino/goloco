@@ -3,6 +3,7 @@ package sim
 import (
 	"fmt"
 	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
 	"strconv"
 	"strings"
 )
@@ -210,7 +211,7 @@ type VehicleListRow struct {
 // years ((currentDay - dayCreated) / 365) and reliability.
 func (w *Map) VehicleListRows() []VehicleListRow {
 	var out []VehicleListRow
-	for _, v := range w.VehicleListData {
+	for _, v := range w.LiveVehicleList() {
 		name := fmt.Sprintf("Vehicle %d", v.Ordinal)
 		if v.Name >= 0x8000 && int(v.Name-0x8000) < len(w.UserStrings) {
 			name = w.UserStrings[v.Name-0x8000]
@@ -240,4 +241,37 @@ func (w *Map) CompanyName(id int) string {
 		}
 	}
 	return ""
+}
+
+// LiveVehicleList is the vehicle list's data read from the entities now
+// (VehicleList.cpp walks EntityManager::VehicleList each time): every head
+// with its Vehicle1 (dayCreated) and Vehicle2 (profits, reliability, broken
+// down, speed). Before 2026-11-05 the list showed the save's snapshot
+// (VehicleListData), so a bought vehicle never appeared and statuses froze.
+func (w *Map) LiveVehicleList() []scenario.VehicleListEntry {
+	idx := w.entityIndex()
+	var out []scenario.VehicleListEntry
+	for i := range w.Entities {
+		h := &w.Entities[i]
+		if h.EntityType != scenario.VehicleTypeHead {
+			continue
+		}
+		tr, err := w.trainOf(h.ID, idx)
+		if err != nil {
+			continue
+		}
+		v1, v2 := &w.Entities[tr.Veh1], &w.Entities[tr.Veh2]
+		var sum int32
+		for _, p := range v2.Profit {
+			sum += p
+		}
+		out = append(out, scenario.VehicleListEntry{
+			HeadID: h.ID, Owner: h.Owner, VehicleType: h.VehicleType, Name: h.Name, Ordinal: h.OrdinalNumber, Status: h.Status,
+			DayCreated: v1.DayCreated, RecentProfit: sum, Reliability: v2.Veh2Reliability,
+			TileX: int16(h.TileX), VehicleFlags: h.VehicleFlags, OrderTableOffset: h.OrderTableOffset, CurrentOrder: h.CurrentOrder,
+			SizeOfOrderTable: h.SizeOfOrderTable, StationID: h.StationID, ManualPower: h.ManualPower,
+			BrokenDown: v2.Var73&1 != 0, CurrentSpeed: v2.CurrentSpeed,
+		})
+	}
+	return out
 }

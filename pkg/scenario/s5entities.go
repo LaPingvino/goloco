@@ -272,6 +272,7 @@ type VehicleEntity struct {
 	CreationDay        uint32 // VehicleBogie creationDay (0x56; the same bytes are Vehicle2 currentSpeed)
 	Reliability        uint16 // VehicleBogie 0x66 (front bogies)
 	TimeAtSignal       uint16 // Vehicle1 timeAtSignal (0x46)
+	DayCreated         uint32 // Vehicle1 dayCreated (0x4A)
 	TimeoutToBreakdown uint16 // VehicleBogie 0x68 (front bogies, days)
 	BreakdownTimeout   uint8  // VehicleBogie / VehicleBody 0x6A
 	CurrentSpeed       int32  // Vehicle2 currentSpeed (0x56): Speed32, mph << 16
@@ -424,6 +425,7 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			CreationDay: binary.LittleEndian.Uint32(e[0x56:]),
 			Reliability: binary.LittleEndian.Uint16(e[0x66:]), TimeoutToBreakdown: binary.LittleEndian.Uint16(e[0x68:]), BreakdownTimeout: e[0x6A],
 			TimeAtSignal:     binary.LittleEndian.Uint16(e[0x46:]),
+			DayCreated:       binary.LittleEndian.Uint32(e[0x4A:]),
 			CurrentSpeed:     int32(binary.LittleEndian.Uint32(e[0x56:])),
 			Var44:            binary.LittleEndian.Uint16(e[0x44:]),
 			WheelSlipping:    e[0x5E],
