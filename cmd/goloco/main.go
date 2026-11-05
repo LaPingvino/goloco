@@ -108,6 +108,7 @@ type Game struct {
 	pickupHead uint16 // the vehicle head it places
 	routeSel   int    // the Vehicle window's Route selection (orderTableIndex; -1: none)
 	routeTool  bool   // the Route tab's tool (adding stops by clicking the map) is active
+	drawn      int    // frames drawn so far (diagnostics that need a painted view wait for some)
 	routeHead  uint16 // whose Route that selection is
 	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,
 	// _ghostTrackProgress; ghostProgress -1: none).
@@ -1109,6 +1110,7 @@ func (g *Game) prewarmTick() {
 var processStart = time.Now()
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	g.drawn++
 	if g.shotsEvery > 0 && g.shotsLeft > 0 && time.Since(g.shotsLast) >= g.shotsEvery && os.Getenv("GOLOCO_SHOT_PAINTDUMP") != "" {
 		paint.Dump = &[]string{} // diagnostic: this frame's paint structs, saved with the shot
 	}
@@ -1388,7 +1390,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && (v != "routeadd" || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
 		if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
