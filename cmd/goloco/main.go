@@ -1384,7 +1384,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 				if x, y, ok := g.vehicleWin.PickupButton(); ok {
 					g.vehicleWin.HandleClick(x, y)
 				}
-				log.Printf("[Diag] pickup tool on: %v", g.pickupOn)
+				log.Printf("[Diag] pickup tool on: %v; centred on a train: %v", g.pickupOn, g.w.CenterOn("train"))
 				placed := false
 				for sy := 40; sy < g.sh-40 && !placed && g.pickupOn; sy += 16 {
 					for sx := 16; sx < g.sw-16 && !placed; sx += 16 {
