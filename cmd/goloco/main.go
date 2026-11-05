@@ -63,6 +63,7 @@ type Game struct {
 	options                        *ui.OptionsWindow      // the Options window when open
 	townList                       *ui.TownListWindow     // the town list when open
 	buildVehicle                   *ui.BuildVehicleWindow // the Build Vehicle window when open (5P.f)
+	vehicleWin                     *ui.VehicleWindow      // the Vehicle window when open (5P.g)
 	buildVehDiagDone               bool
 	diagTownsDone                  bool
 	diagOptionsDone                bool
@@ -566,6 +567,8 @@ func (g *Game) Update() error {
 				// Click outside dropdown - close it
 				g.dropdown = nil
 			}
+		} else if g.vehicleWin != nil && g.vehicleWin.Contains(g.mouseX, g.mouseY) {
+			g.vehicleWin.HandleClick(g.mouseX, g.mouseY)
 		} else if g.buildVehicle != nil && g.buildVehicle.Contains(g.mouseX, g.mouseY) {
 			g.buildVehicle.HandleClick(g.mouseX, g.mouseY)
 		} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
@@ -1193,6 +1196,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.buildVehicle != nil {
 		g.buildVehicle.Draw(screen)
+	}
+	if g.vehicleWin != nil { // opened after the Build window: on top (PARTIAL: the window stack's real order)
+		g.vehicleWin.Draw(screen)
 	}
 	if g.townList != nil {
 		g.townList.Draw(screen)

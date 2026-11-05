@@ -208,7 +208,60 @@ func (g *Game) buyVehicle(tab int, id uint16) {
 		return
 	}
 	log.Printf("[Game] bought vehicle %d (head %d) for %d", id, head, cost)
+	g.openVehicleDetails(head)
 	g.openBuildVehicle(tab)
+}
+
+// openVehicleDetails is Vehicle::Details::open (Main::open, then the Details
+// tab): 265×177 grown to Details' minimum (192×182 for the controlling
+// company's own vehicle, onResize), the window's colours the owner's, its
+// caption the vehicle's name. PARTIAL: createWindow's placement (centred
+// here), bringing an already open window to the front.
+func (g *Game) openVehicleDetails(headID uint16) {
+	if g.w == nil {
+		return
+	}
+	m := &g.w.Map
+	tr, err := m.TrainOf(headID)
+	if err != nil {
+		return
+	}
+	h := m.Entities[tr.Head]
+	company, _ := g.w.ControllingCompany()
+	own := int(h.Owner) == company
+	title := ""
+	for _, r := range m.VehicleListRows() {
+		if r.HeadID == headID {
+			title = r.Name
+		}
+	}
+	var cars []ui.TrainCarDraw
+	var names []string
+	for _, c := range g.w.TrainCars(headID) {
+		cars = append(cars, ui.TrainCarDraw(c))
+		n := ""
+		if c.Object != nil {
+			n = c.Object.DisplayName
+		}
+		names = append(names, n)
+	}
+	var tc, wc uint8 = 0, 1
+	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowPlayerColor
+	}
+	if int(h.Owner) < len(g.w.CompanyColours) {
+		tc = g.w.CompanyColours[h.Owner]
+	}
+	ww, wh := ui.VehicleWindowSize[0], ui.VehicleWindowSize[1]
+	min := ui.VehicleDetailsMinSize
+	if own {
+		min = ui.VehicleDetailsMinSizePaint
+	}
+	ww, wh = max(ww, min[0]), max(wh, min[1])
+	g.vehicleWin = &ui.VehicleWindow{X: (g.sw - ww) / 2, Y: (g.sh - wh) / 2, W: ww, H: wh, TitleColour: tc, Colour: wc,
+		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
+		State:   ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
+		OnClose: func() { g.vehicleWin = nil }}
 }
 
 // buildVehiclesMenu is ToolbarTop.cpp buildVehiclesMenuMouseDown (0x0043AD1F):
