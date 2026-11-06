@@ -371,4 +371,3 @@ func dropSkipped(s string) string {
 		return r
 	}, s)
 }
-
