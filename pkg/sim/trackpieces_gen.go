@@ -91,6 +91,9 @@ var TrackCostFactor = [44]uint16{256, 362, 201, 201, 603, 603, 1005, 1005, 703, 
 // RoadCurveSpeedFraction is getRoadMiscData(id).curveSpeedFraction.
 var RoadCurveSpeedFraction = [10]uint16{65535, 3277, 3277, 6554, 6554, 65535, 65535, 65535, 65535, 3277}
 
+// TrackCompatibleFlags is getTrackMiscData(id).compatibleFlags (TrackTraitFlags).
+var TrackCompatibleFlags = [44]uint16{0, 1, 16, 16, 8, 8, 4, 4, 2, 2, 2, 2, 512, 512, 32, 32, 64, 64, 296, 296, 296, 296, 328, 328, 328, 328, 128, 128, 144, 144, 144, 144, 128, 128, 192, 192, 192, 192, 128, 128, 128, 128, 128, 128}
+
 // TrackUnkWeighting is getTrackMiscData(id).unkWeighting (pathing weight).
 var TrackUnkWeighting = [44]uint32{32, 45, 25, 25, 75, 75, 126, 126, 88, 88, 88, 88, 106, 106, 66, 66, 36, 36, 77, 77, 77, 77, 82, 82, 82, 82, 32, 32, 13, 38, 38, 13, 36, 36, 36, 36, 36, 36, 34, 34, 34, 34, 26, 26}
 
