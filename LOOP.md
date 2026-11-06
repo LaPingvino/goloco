@@ -250,7 +250,7 @@ CP. [x] (DONE 2026-11-06: towns and industries produce, stations fill, a bought 
    production changes). Without it a player's vehicle runs its route but carries nothing and earns nothing; with it
    5P.e's test gets its last line (the company earns). After the vehicle windows (5P.f/g) — DECIDED: the windows
    first, so Joop can see and drive what works; CP right after.
-CR. [ ] (STARTED 2026-11-06: IndustryRemoval done; new industries: the choice, the location search and the allocation, placeIndustryBuilding and new industries DONE — chosen, placed, built with fields and fences, founded monthly) **Industries' remaining parts** (left by CP): the IndustryRemoval game command (a closed-down industry
+CR. [x] (DONE 2026-11-06: IndustryRemoval; new industries — the choice, the location search and the allocation, placeIndustryBuilding, chosen, placed, built with fields and fences, founded monthly; the farm tiles (industryfarm.go: the tile loop, isFarmTileProducing, calculateFarmProduction, a small farm growing a field); IndustryElement::update's construction and animation (industryprod.go). Checked 2026-11-06: two stale PARTIAL notes said the farm tiles and the createIndustry command were missing — both are ported; the notes corrected. LEFT, as their own PARTIALs: the news messages (no MessageManager), the industry name's numbering, checkFreeElementsAndReorganise.) **Industries' remaining parts** (left by CP): the IndustryRemoval game command (a closed-down industry
    with no production left stays on the map, frozen, until it is ported), IndustryManager's
    tryCreateNewIndustriesMonthly (new industries), the farm tiles (Industry::update's tile loop,
    calculateFarmProduction, expandGrounds), IndustryElement::update's construction and animation parts; the news
@@ -1419,4 +1419,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — (Fractal: green) O: colour remap tables for the open build — 16 of 32 colours made exactly from OpenLoco's own names (checked locally, nothing copied); the rest left unmapped for now.
 - 2026-11-06 — O: the live Pages site checked (open build, 118 OpenGraphics objects + palette, no Locomotion files); the 16 unmapped colours put to Joop as a question (a fitted rule would be the original data in another form).
 - 2026-11-06 — O: the open build's UI images inventoried (~120 icons, mostly g1 2300–2399; fonts covered by the TTF; the rest from objects); added to the question for Joop (draw vs OpenTTD's GPL icons).
+- 2026-11-06 — (Fractal: green) CR checked off: farm tiles, construction / animation and new industries are all ported; two stale PARTIAL notes (farm tiles, createIndustry) corrected to what the code does; messages / name numbering stay as their own PARTIALs.
 
