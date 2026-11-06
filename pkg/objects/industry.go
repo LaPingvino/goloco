@@ -3,6 +3,7 @@ package objects
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
 )
 
 // IndustryObject — a port of OpenLoco Objects/IndustryObject.h/.cpp: the fields
@@ -162,3 +163,30 @@ func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 	}
 	return o, nil
 }
+
+// IndustryCargoIDs are the industry object's producedCargoType and
+// requiredCargoType: the cargo names resolved to the scenario's cargo slots
+// (0xFF for none or not loaded, as load leaves them).
+func (m *ObjectManager) IndustryCargoIDs(o *IndustryObject) (produced [2]uint8, required [3]uint8) {
+	slot := func(name string) uint8 {
+		if name == "" {
+			return 0xFF
+		}
+		for i, c := range m.CargoObjects {
+			if c != nil && c.Header != nil && strings.EqualFold(strings.TrimRight(string(c.Header.Name[:]), " \x00"), name) {
+				return uint8(i)
+			}
+		}
+		return 0xFF
+	}
+	for i, n := range o.ProducedCargoNames {
+		produced[i] = slot(n)
+	}
+	for i, n := range o.RequiredCargoNames {
+		required[i] = slot(n)
+	}
+	return
+}
+
+// IndustryFlagRequiresAllCargo is IndustryObjectFlags::requiresAllCargo.
+const IndustryFlagRequiresAllCargo = 1 << 17

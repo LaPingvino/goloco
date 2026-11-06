@@ -72,6 +72,7 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 		return
 	}
 	m.vehiclesUpdateDaily(om)
+	m.industriesUpdateDaily(om) // IndustryManager::updateDaily (industryprod.go)
 	yesterday, today := CalcDate(m.CurrentDay-1), CalcDate(m.CurrentDay)
 	m.CurrentYear, m.CurrentMonth, m.CurrentDayOfMonth = uint16(today.Year), uint8(today.Month), uint8(today.Day)
 	if today.Month != yesterday.Month { // end of every month

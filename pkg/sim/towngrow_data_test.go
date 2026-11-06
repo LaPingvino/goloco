@@ -1642,3 +1642,39 @@ func TestBuildingsProduce(t *testing.T) {
 		t.Errorf("nothing reached a station: delivered %v, waiting %d → %d", delivered, w0, waiting())
 	}
 }
+
+// TestIndustriesProduce: 60 days of the title map's industries
+// (Industry::updateDaily) — their monthly produced totals grow, and those
+// with stations for their cargo deliver some of it.
+func TestIndustriesProduce(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	before := make([][2]uint16, len(m.Industries))
+	delivered0 := make([][2]uint16, len(m.Industries))
+	withStations := 0
+	for i, ind := range m.Industries {
+		before[i], delivered0[i] = ind.ProducedMonthlyTotal, ind.DeliveredMonthlyTotal
+		for _, s := range ind.ProducedStations[0] {
+			if s != stationIDNull {
+				withStations++
+				break
+			}
+		}
+	}
+	for day := 0; day < 60; day++ {
+		m.industriesUpdateDaily(om)
+	}
+	produced, delivered := 0, 0
+	for i, ind := range m.Industries {
+		for k := 0; k < 2; k++ {
+			produced += int(ind.ProducedMonthlyTotal[k]) - int(before[i][k])
+			delivered += int(ind.DeliveredMonthlyTotal[k]) - int(delivered0[i][k])
+		}
+	}
+	t.Logf("%d industries (%d with a station for their first cargo): produced %d, delivered %d in 60 days", len(m.Industries), withStations, produced, delivered)
+	if produced <= 0 {
+		t.Fatal("the industries produced nothing")
+	}
+	if withStations > 0 && delivered <= 0 {
+		t.Error("industries with stations delivered nothing")
+	}
+}
