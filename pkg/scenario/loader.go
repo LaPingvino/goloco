@@ -1603,6 +1603,17 @@ func parseIndustries(gs []byte) []Industry {
 				ind.ProducedRatings[k][j] = r[0x171+4*k+j]
 			}
 		}
+		ind.Prng = [2]uint32{binary.LittleEndian.Uint32(r[0x08:]), binary.LittleEndian.Uint32(r[0x0C:])}
+		for k := range 3 {
+			ind.ReceivedPrevMonth[k] = u16(0x193 + 2*k)
+		}
+		for k := range 2 {
+			ind.ProducedPrevMonth[k] = u16(0x189 + 2*k)
+			ind.DeliveredPrevMonth[k] = u16(0x1A3 + 2*k)
+			ind.PercentTransported[k] = r[0x1A7+k]
+			ind.HistorySize[k] = r[0x1A9+k]
+			copy(ind.History[k][:], r[0x1AB+0xF0*k:])
+		}
 		for k := range ind.StationsInRange {
 			ind.StationsInRange[k] = binary.LittleEndian.Uint32(r[0xE1+4*k:])
 		}
@@ -1636,6 +1647,7 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 	sc.CurrentMonth = gs[0x1C]                            // general.currentMonth
 	sc.CurrentDayOfMonth = gs[0x1D]                       // general.currentDayOfMonth
 	sc.GameStateFlags = binary.LittleEndian.Uint32(gs[0x10:])
+	sc.IndustryManagerFlags = gs[0x42F]
 	if len(gs) > GeneralCurrentYearOffset+1 { // general.currentYear (from the compiler: 0x1A)
 		sc.CurrentYear = binary.LittleEndian.Uint16(gs[GeneralCurrentYearOffset:])
 	}

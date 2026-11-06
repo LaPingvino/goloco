@@ -1716,3 +1716,58 @@ func TestIndustryStationsRefresh(t *testing.T) {
 		t.Errorf("only %d of %d lists match the save", same, len(s.Industries))
 	}
 }
+
+// TestIndustriesMonthly: the save's own months agree with
+// Industry::updateMonthly (each industry's last history entry is its
+// previous month's production ÷ 50, the percentage transported its
+// delivered share) — so the fields are read right; then a month end moves
+// the totals to the previous month's, appends to the history, and works
+// the percentage out the same way.
+func TestIndustriesMonthly(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	pct := func(prod, del uint16) uint8 {
+		tr := uint32(min(prod, del))
+		if prod != 0 {
+			tr = tr * 100 / uint32(prod)
+		}
+		return uint8(tr)
+	}
+	checked := 0
+	for _, ind := range m.Industries {
+		for k := 0; k < 2; k++ {
+			if ind.HistorySize[k] == 0 {
+				continue
+			}
+			checked++
+			if got, want := ind.History[k][ind.HistorySize[k]-1], uint8(min(uint32(ind.ProducedPrevMonth[k]), 12750)/50); got != want {
+				t.Errorf("industry %d cargo %d: saved history ends %d, previous month %d ÷ 50 = %d", ind.ID, k, got, ind.ProducedPrevMonth[k], want)
+			}
+			if got, want := ind.PercentTransported[k], pct(ind.ProducedPrevMonth[k], ind.DeliveredPrevMonth[k]); got != want {
+				t.Errorf("industry %d cargo %d: saved %d%% transported, its totals give %d%%", ind.ID, k, got, want)
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no industry has a history")
+	}
+	before := append([]scenario.Industry(nil), m.Industries...)
+	m.industriesUpdateMonthly(om)
+	for i, ind := range m.Industries {
+		b := before[i]
+		if b.Flags&industryFlagIsGhost != 0 || b.Flags&industryFlagClosingDown != 0 && b.DailyProduction == [2]uint16{} {
+			continue
+		}
+		for k := 0; k < 2; k++ {
+			if ind.ProducedPrevMonth[k] != b.ProducedMonthlyTotal[k] || ind.ProducedMonthlyTotal[k] != 0 || ind.DeliveredPrevMonth[k] != b.DeliveredMonthlyTotal[k] {
+				t.Errorf("industry %d cargo %d: the month's totals not rolled over", ind.ID, k)
+			}
+			if want := min(b.HistorySize[k]+1, 240); ind.HistorySize[k] != want {
+				t.Errorf("industry %d cargo %d: history size %d, want %d", ind.ID, k, ind.HistorySize[k], want)
+			}
+			if ind.PercentTransported[k] != pct(ind.ProducedPrevMonth[k], ind.DeliveredPrevMonth[k]) {
+				t.Errorf("industry %d cargo %d: percentage %d", ind.ID, k, ind.PercentTransported[k])
+			}
+		}
+	}
+	t.Logf("%d histories agree with the save's previous month; a month end rolled %d industries over", checked, len(m.Industries))
+}

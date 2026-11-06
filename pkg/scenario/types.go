@@ -132,6 +132,7 @@ type Scenario struct {
 	CurrentMonth                                            uint8    // general.currentMonth (0x1C)
 	CurrentDayOfMonth                                       uint8    // general.currentDayOfMonth (0x1D)
 	GameStateFlags                                          uint32   // GameState flags (0x10): tileManagerLoaded 1, unk2 2
+	IndustryManagerFlags                                    uint8    // GameState industryFlags (0x42F): disallowIndustriesCloseDown 1
 	DayCounter                                              uint16   // general.dayCounter (0x18)
 	PlayerCompanies                                         [2]uint8 // playerCompanies (0x24)
 	LoanInterestRate                                        uint8    // loanInterestRate (0x1AE)
@@ -247,6 +248,17 @@ type Industry struct {
 	// ProducedRatings (0x171).
 	StationsInRange [1024 / 32]uint32
 	ProducedRatings [2][4]uint8
+	// The monthly update's (Industry::updateMonthly): its own prng (0x08),
+	// the previous month's produced / received / delivered totals (0x189,
+	// 0x193, 0x1A3), the percentage transported (0x1A7), and the produced
+	// cargo's 20-year monthly histories (sizes 0x1A9, 0x1AB, 0x29B).
+	Prng               [2]uint32
+	ProducedPrevMonth  [2]uint16
+	ReceivedPrevMonth  [3]uint16
+	DeliveredPrevMonth [2]uint16
+	PercentTransported [2]uint8
+	HistorySize        [2]uint8
+	History            [2][20 * 12]uint8
 }
 
 // GetTile returns tile at the given coordinates
