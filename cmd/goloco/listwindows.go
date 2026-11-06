@@ -286,7 +286,7 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		State:   ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
 		OnClose: func() { g.vehicleWin, g.pickupOn, g.routeTool = nil, false, false }, OnPickup: func() { g.onPickup(headID) },
 		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h),
-		Route: g.routeLines(&h), RouteSel: g.routeSel, Finances: g.vehicleFinances(tr), Cargo: g.vehicleCargo(tr, cars),
+		Route: g.routeLines(&h), RouteSel: g.routeSel, Hover: -1, Finances: g.vehicleFinances(tr), Cargo: g.vehicleCargo(tr, cars),
 		OnRouteSelect: func(row int) { g.routeSel = row; g.openVehicleWindow(headID, 4) },
 		OnRoute:       func(a string) { g.routeAction(headID, a); g.openVehicleWindow(headID, 4) },
 		Express:       m.Entities[tr.Veh1].Var48&sim.Flags48ExpressMode != 0,

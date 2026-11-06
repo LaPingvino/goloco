@@ -311,9 +311,12 @@ type VehicleWindow struct {
 	// Dragging while a car (DragCar, its row) follows the mouse (DragX, DragY);
 	// dropped on the bin OnDropSell(row), on the list OnDropMove(row, dest row;
 	// −1: below the last car — before the tail).
-	Dragging      bool
-	DragCar       int
-	DragX, DragY  int
+	Dragging     bool
+	DragCar      int
+	DragX, DragY int
+	// Hover is rowHover in the Details / Cargo list: the car row under the
+	// mouse (−1 none; while dragging len(Cars) is the tail, below the last).
+	Hover         int
 	OnDropSell    func(row int)
 	OnDropMove    func(row, dest int)
 	dragImg       *ebiten.Image
@@ -401,6 +404,7 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 		for yy := range ch {
 			copy(sub.Bits[yy*cw:(yy+1)*cw], rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw])
 		}
+		w.drawRowHover(sub, rowH, cw, true)
 		for i, c := range w.Cars { // each car: its bogies, then its bodies; the name after it
 			y := i*rowH - w.Scroll + (rowH-22)/2
 			if c.Object == nil {
@@ -422,6 +426,10 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 	for i, n := range w.Names {
 		y := i*rowH - w.Scroll + rowH/2 - 6
 		if i >= len(nameX) {
+			continue
+		}
+		if i == w.Hover && !w.Dragging { // carStr = wcolour2_stringid
+			DrawTextBold(clip, n, cx+nameX[i], cy+y, pal[gfx8.Shade(mustMap(int(w.Colour)), 9)])
 			continue
 		}
 		DrawTextBold(clip, n, cx+nameX[i], cy+y, black)
@@ -789,4 +797,54 @@ func (w *VehicleWindow) DrawDrag(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(w.DragX-width/2), float64(w.DragY-30))
 	screen.DrawImage(w.dragImg, op)
+}
+
+// drawRowHover is drawScroll's highlight of rowHover: the row in translucent
+// ExtColour::unk30 — or, while a car is dragged (Details), a two-pixel line
+// at the row's top, the tail's below the last row.
+func (w *VehicleWindow) drawRowHover(sub *gfx8.RenderTarget, rowH, width int, details bool) {
+	if w.Hover < 0 {
+		return
+	}
+	m30, err := globalG1Font.g1.GetPaletteMap(0x30)
+	if err != nil {
+		return
+	}
+	top := w.Hover*rowH - w.Scroll
+	if details && w.Dragging {
+		gfx8.FillRectTranslucent(sub, 0, max(top-1, 0), width-1, top, m30)
+		return
+	}
+	if w.Hover < len(w.Cars) {
+		gfx8.FillRectTranslucent(sub, 0, max(top, 0), width-1, min(top+rowH-1, sub.Height-1), m30)
+	}
+}
+
+// MouseOver is the car lists' scrollMouseOver (and, while dragging,
+// scrollDrag): rowHover from the mouse — getCarFromScrollView at the
+// cursor, or at the row's middle while dragging (none then: the tail).
+func (w *VehicleWindow) MouseOver(x, y int) {
+	w.Hover = -1
+	var list BVWidget
+	switch w.Tab {
+	case 1:
+		lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+		list = lw[vdCarList]
+	case 2:
+		list = VehicleCargoLayout(w.W, w.H, w.State.HiddenTabs, w.Cargo.CanRefit)[vcCargoList]
+	default:
+		return
+	}
+	if x < w.X+list.L || x > w.X+list.R || y < w.Y+list.T || y > w.Y+list.B {
+		return
+	}
+	rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
+	sy := y - (w.Y + list.T + 1) + w.Scroll
+	if w.Dragging {
+		if w.Hover = w.carRowAt(rowH/2+sy, rowH); w.Hover < 0 {
+			w.Hover = len(w.Cars)
+		}
+		return
+	}
+	w.Hover = w.carRowAt(sy, rowH)
 }

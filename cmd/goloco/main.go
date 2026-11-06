@@ -651,6 +651,9 @@ func (g *Game) Update() error {
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 	}
+	if g.vehicleWin != nil && os.Getenv("GOLOCO_DIAG_DRAG_HOLD") == "" {
+		g.vehicleWin.MouseOver(g.mouseX, g.mouseY)
+	}
 	if g.vehicleWin != nil && g.vehicleWin.Dragging && os.Getenv("GOLOCO_DIAG_DRAG_HOLD") == "" { // DragVehiclePart: follows the mouse, dropped on release (the diag's hold: neither)
 		g.vehicleWin.DragTo(g.mouseX, g.mouseY)
 		if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
@@ -1483,6 +1486,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 				listY := w.Y + 44 + 1 // the car list's inside (Details carList top 44)
 				w.HandleClick(w.X+60, listY+(len(tr.Cars)-1)*22+11)
 				w.DragTo(w.X+80, listY+22+11)
+				w.MouseOver(w.X+80, listY+22+11) // scrollDrag: the drop line
 				log.Printf("[Diag] drag: vehicle %d, dragging %v car %d", h.ID, w.Dragging, w.DragCar)
 				if os.Getenv("GOLOCO_DIAG_DRAG_DROP") != "" {
 					w.DragEnd(w.X+80, listY+22+11)
@@ -1580,6 +1584,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 				if h.VehicleType == 0 && m.Entities[tr.Veh1].LastIncome.Day != -1 && (v == "finances" || loaded && len(tr.Cars) > 2) {
 					g.inTitleScreen = false
 					g.openVehicleWindow(h.ID, map[string]int{"finances": 3, "cargo": 2}[v])
+					g.vehicleWin.MouseOver(g.vehicleWin.X+60, g.vehicleWin.Y+44+1+22+11) // the second row hovered
 					log.Printf("[Diag] %s: vehicle %d", v, h.ID)
 					break
 				}
