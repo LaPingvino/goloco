@@ -1150,8 +1150,10 @@ func (g *Game) portMenu(btn *ui.ToolbarButton) {
 // 1 << 30: dock). PARTIAL: the construction windows themselves.
 func (g *Game) openPortConstruction(option int) {
 	m := &g.w.Map
-	if option == 0 {
-		log.Printf("[Game] airport construction (object %d) — window not yet ported", m.LastAirport)
+	if option == 0 { // createAirportConstructionWindow: lastSelectedStationType = lastAirport; rotation 0
+		g.removeStationGhost()
+		g.buildMode, g.consTab, g.consStation, g.airportRotation = buildModeAirport, 1, int(m.LastAirport), 0
+		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 		return
 	}
 	// createDockConstructionWindow: lastSelectedStationType = lastShipPort,
