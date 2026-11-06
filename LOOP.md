@@ -85,9 +85,10 @@ ST. [ ] **Building stations** (found 2026-11-06 wiring Station::updateLabel: gol
    company 6 at 146,154, cost 1 795 as the dry run said; seen with GOLOCO_DIAG_BUILDVEHICLE=buildstation:
    the platform and its plaque). PARTIAL: the AI's no-track query, invalidations. RemoveTrainStation DONE
    2026-11-06 (sim/removetrainstation.go; TestRemoveTrainStation: built and removed, 1 795 refunded, the tile
-   back as it was, the station left with no tiles, another company refused). OPEN: Station::update's
-   emptied-station deallocation (noTilesTimeout) — goloco doesn't keep that field; check what its station
-   update does. NEXT: the construction window's station tab (the player's way to call these). (Station::update's
+   back as it was, the station left with no tiles, another company refused). Emptied-station
+   deallocation DONE 2026-11-06 (StationManager::updateDaily → sim stationsUpdateDaily, first in the daily tick as
+   upstream; noTilesTimeout 0x29 parsed; TestRemoveTrainStation: the removed station goes on day 10. PARTIAL: the
+   towns' ratingAdjusted + Station::updateCargo, the day-5 emotion, the UI hook). NEXT: the construction window's station tab (the player's way to call these). (Station::update's
    monthly acceptance check can use CalcAcceptedCargo too — check what goloco does there now.)
 TL. [x] (DONE 2026-11-06: station names too — Station.cpp drawStationName: the saved labelFrame, the curved
    ends and middle in two translucent passes (unk34, the owner's colour), the name with its town and the
@@ -1370,4 +1371,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (ST: RemoveTrainStation) — (the other three wait on Joop → here.) Ported the removal: per tile of the piece the station element after the track taken out (new Tile.removeStationElement), the track's clear height lowered by the station's height (upstream's full height, though creation adds height / 4 — kept as written), the sell cost per piece; then, unless it was a ghost, the tile out of the station with cargo, modes, centre, label and canopies recalculated. Test: build then remove on the title map's first free straight piece refunds the 1 795, restores the tile, empties the station; another company is refused. All green; nothing drawn.
+- 2026-11-06 — ST: StationManager::updateDaily's emptied-station deallocation (noTilesTimeout from the save, 10 days, then deallocateStation); TestRemoveTrainStation extended; go test ./... green under xvfb.
 
