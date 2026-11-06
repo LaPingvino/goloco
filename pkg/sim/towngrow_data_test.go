@@ -1387,3 +1387,65 @@ func TestVehicleWaterPickupPlace(t *testing.T) {
 	}
 	t.Logf("ship object %d of company %d: placed at the dock at tile %d,%d and lifted", shipObj, company, dx/32, dy/32)
 }
+
+// TestWaterPathStep: on the title map's water, a boat stepping by
+// waterPathStep (each step the centre of a neighbouring tile of the same
+// water level) from a water tile towards another one 6 tiles off on the same
+// water reaches it, never leaving that water; the first tiles found by a
+// breadth-first walk over equal water levels.
+func TestWaterPathStep(t *testing.T) {
+	m, _ := loadDataMap(t, "title.dat")
+	var sx, sy, gx, gy = -1, -1, -1, -1
+	var level uint8
+	for y := 2; y < m.Height-2 && sx < 0; y++ {
+		for x := 2; x < m.Width-2 && sx < 0; x++ {
+			l := m.TileAt(x, y).WaterLevel
+			if l == 0 {
+				continue
+			}
+			// a tile of the same water 6 steps away (breadth-first over 4-neighbours)
+			type p struct{ x, y, d int }
+			seen := map[[2]int]bool{{x, y}: true}
+			q := []p{{x, y, 0}}
+			for len(q) > 0 && gx < 0 {
+				c := q[0]
+				q = q[1:]
+				if c.d == 6 {
+					gx, gy = c.x, c.y
+					break
+				}
+				for i := 0; i < 4; i++ {
+					nx, ny := c.x+int(RotationOffset[i][0])/32, c.y+int(RotationOffset[i][1])/32
+					if nt := m.TileAt(nx, ny); nt != nil && nt.WaterLevel == l && !seen[[2]int{nx, ny}] {
+						seen[[2]int{nx, ny}] = true
+						q = append(q, p{nx, ny, c.d + 1})
+					}
+				}
+			}
+			if gx >= 0 {
+				sx, sy, level = x, y, l
+			}
+		}
+	}
+	if sx < 0 {
+		t.Skip("no water body 6 tiles across on the title map")
+	}
+	px, py, pz := int32(sx)*32+16, int32(sy)*32+16, int32(level)*16
+	var yaw uint8
+	for step := 0; step < 20; step++ {
+		if int(px)>>5 == gx && int(py)>>5 == gy {
+			t.Logf("from tile %d,%d to %d,%d (water level %d) in %d steps", sx, sy, gx, gy, level, step)
+			return
+		}
+		r := m.waterPathStep(px, py, pz, yaw, gx, gy, nil)
+		ntx, nty := int(r.HeadX)>>5, int(r.HeadY)>>5
+		if d := abs32(int32(ntx-int(px)>>5)) + abs32(int32(nty-int(py)>>5)); d != 1 {
+			t.Fatalf("step %d: from tile %d,%d to %d,%d — not a neighbour", step, int(px)>>5, int(py)>>5, ntx, nty)
+		}
+		if m.TileAt(ntx, nty).WaterLevel != level {
+			t.Fatalf("step %d: onto tile %d,%d of water level %d", step, ntx, nty, m.TileAt(ntx, nty).WaterLevel)
+		}
+		px, py = r.HeadX, r.HeadY
+	}
+	t.Fatalf("not at tile %d,%d after 20 steps (at %d,%d)", gx, gy, int(px)>>5, int(py)>>5)
+}
