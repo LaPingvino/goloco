@@ -1419,7 +1419,18 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	}
 	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
-		if v == "menu" { // the toolbar's Build Vehicles menu instead
+		if v == "finances" { // DIAGNOSTIC ONLY: the first saved train with a last income, its Finances tab
+			m := &g.w.Map
+			trains, _ := m.Trains()
+			for _, tr := range trains {
+				if h := m.Entities[tr.Head]; h.VehicleType == 0 && m.Entities[tr.Veh1].LastIncome.Day != -1 {
+					g.inTitleScreen = false
+					g.openVehicleWindow(h.ID, 3)
+					log.Printf("[Diag] finances: vehicle %d", h.ID)
+					break
+				}
+			}
+		} else if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
 				if g.toolbar.Buttons[i].Tooltip == "Build Vehicles" {
 					g.handleToolbarButton(i)

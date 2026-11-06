@@ -262,6 +262,12 @@ func (m *Map) vehiclesUpdateMonthly(om *objects.ObjectManager) {
 	}
 }
 
+// RunningCost is VehicleHead::calculateRunningCost, for the vehicle window's
+// Finances tab.
+func (m *Map) RunningCost(tr Train, om *objects.ObjectManager) int32 {
+	return m.calculateRunningCost(tr, om)
+}
+
 // calculateRunningCost: each car's object running cost, inflation adjusted.
 func (m *Map) calculateRunningCost(tr Train, om *objects.ObjectManager) int32 {
 	var total int32

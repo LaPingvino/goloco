@@ -275,12 +275,15 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 	if tab == 4 {
 		wh = max(wh, ui.VehicleRouteMinHeight) // Route::kMinWindowSize
 	}
+	if tab == 3 {
+		ww, wh = ui.VehicleFinancesSize[0], ui.VehicleFinancesSize[1] // Finances: min = max size
+	}
 	g.vehicleWin = &ui.VehicleWindow{X: (g.sw - ww) / 2, Y: (g.sh - wh) / 2, W: ww, H: wh, TitleColour: tc, Colour: wc,
 		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
 		State:   ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
 		OnClose: func() { g.vehicleWin, g.pickupOn, g.routeTool = nil, false, false }, OnPickup: func() { g.onPickup(headID) },
 		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h),
-		Route: g.routeLines(&h), RouteSel: g.routeSel,
+		Route: g.routeLines(&h), RouteSel: g.routeSel, Finances: g.vehicleFinances(tr),
 		OnRouteSelect: func(row int) { g.routeSel = row; g.openVehicleWindow(headID, 4) },
 		OnRoute:       func(a string) { g.routeAction(headID, a); g.openVehicleWindow(headID, 4) },
 		Express:       m.Entities[tr.Veh1].Var48&sim.Flags48ExpressMode != 0,
@@ -812,4 +815,49 @@ func (g *Game) pickupToolDownAir(sx, sy int) bool {
 	g.pickupOn = false
 	g.openVehicleWindow(head, 0)
 	return true
+}
+
+// vehicleFinances is what Finances::draw formats: Vehicle1's lastIncome (its
+// day, then each cargo's unit name with the quantity, the distance in tiles,
+// the age in days and the profit), the head's last average speed, the
+// running cost, veh2's totalRecentProfit / 4, the head's totalRefundCost.
+func (g *Game) vehicleFinances(tr sim.Train) ui.VehicleFinances {
+	m := &g.w.Map
+	head, v1 := m.Entities[tr.Head], m.Entities[tr.Veh1]
+	var f ui.VehicleFinances
+	li := v1.LastIncome
+	if li.Day != -1 {
+		y, mo, d := uilayout.CalcDate(uint32(li.Day))
+		f.IncomeHeader = ui.FillArgs(i18n.Str(i18n.LastIncomeOnDate), uilayout.DateDMY(d, i18n.Month(mo+1), y))
+		for i := 0; i < 4; i++ {
+			c := li.CargoTypes[i]
+			if c == 0xFF {
+				continue
+			}
+			unit := ""
+			if om := g.r.ObjMgr; om != nil && int(c) < len(om.CargoObjects) && om.CargoObjects[c] != nil {
+				unit = ui.ObjectString(om.CargoObjects[c].UnitNamePlural)
+				if li.CargoQtys[i] == 1 {
+					unit = ui.ObjectString(om.CargoObjects[c].UnitNameSingular)
+				}
+			}
+			f.Income = append(f.Income, ui.FillArgs(i18n.Str(i18n.TransportedBlocksInDays), unit, ui.Comma16(int(li.CargoQtys[i])),
+				ui.Comma16(int(li.CargoDistances[i])), ui.Comma16(int(li.CargoAges[i])), uilayout.Currency48(int64(li.CargoProfits[i]))))
+		}
+	} else {
+		f.IncomeHeader = i18n.Str(i18n.LastIncomeNa)
+	}
+	if head.LastAverageSpeed != 0 {
+		f.AverageSpeed = ui.FillArgs(i18n.Str(i18n.LastJourneyAverageSpeed), uilayout.Velocity(int(head.LastAverageSpeed)))
+	}
+	f.RunningCost = ui.FillArgs(i18n.Str(i18n.VehicleMonthlyRunningCost), uilayout.Currency48(int64(m.RunningCost(tr, g.r.ObjMgr))))
+	var profit int64
+	for _, r := range m.VehicleListRows() {
+		if int(r.HeadID) == int(head.ID) {
+			profit = r.Profit // totalRecentProfit / 4
+		}
+	}
+	f.Profit = ui.FillArgs(i18n.Str(i18n.VehicleMonthlyProfit), uilayout.Currency48(profit))
+	f.SaleValue = ui.FillArgs(i18n.Str(i18n.SaleValueOfVehicle), uilayout.Currency48(int64(head.TotalRefundCost)))
+	return f
 }
