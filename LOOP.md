@@ -238,9 +238,12 @@ ME. [ ] **MoneyEffect** (found 2026-11-06 by RR.d): upstream's money popups are 
    entity, its two creators, and the string plot list.
    STARTED 2026-11-06: sim/moneyeffect.go — createEntityMoney (nullMoney → misc, base type effect), CreateMoneyEffect
    (none on the title), SpendMoneyEffect (+10 z; PARTIAL: the null-location viewport centre), updateMoneyEffect for
-   both subtypes with the wiggle tables (upstream's redGreen z doubling kept), freed into nullMoney; test. NEXT: the
-   callers (GameCommands' payment, VehicleHead's cargo profit), the per-tick update with the viewport rotation, the
-   string plot list painting (paintWindowCurrencyEntity, company colour, kWiggleYOffsets).
+   both subtypes with the wiggle tables (upstream's redGreen z doubling kept), freed into nullMoney; test. Callers DONE 2026-11-06:
+   unload's cargo profit (the first car's body + 28) and DoCommandFor's payment for the controlling company (Cmd.Pos
+   + 24 — commands don't set Pos yet: PARTIAL, as upstream's null location); EffectsManager::update after the
+   stations, walking the misc list (rotation 0 — PARTIAL); TestPlayableVehicleEndToEnd now also sees the popup.
+   NEXT: the painting (paintWindowCurrencyEntity through the string plot list, company colour, kWiggleYOffsets), and
+   commands setting Cmd.Pos.
    The page text and scene.go's comment corrected 2026-11-05 (they still said zoom 0 only).
 AU. [x] (DONE 2026-11-06) **No sound device must not end the game** (found 2026-11-05): with no audio device, ebiten's audio
    error comes back from RunGame and goloco log.Fatal's — OpenLoco plays on silently. Make audio optional: check
@@ -1437,4 +1440,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — RR.c: the cursor's tile in build mode from upstream's getSurfaceOrWaterLocFromUi (SurfaceOrWaterAt); ScreenToTile's guess removed; tests green.
 - 2026-11-06 — RR.d: the dead invented money floats removed (nothing spawned them); station / town names were already upstream's; upstream's MoneyEffect logged as item ME. Tests green.
 - 2026-11-06 — (Fractal: green) ME: MoneyEffect's entity and its update ported (sim/moneyeffect.go) with a lifetime test; callers and painting next.
+- 2026-11-06 — ME: money effects created by the cargo payment and by paid game commands, updated each tick after the stations; the end-to-end train test sees its popup; painting next.
 

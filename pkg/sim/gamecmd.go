@@ -32,6 +32,10 @@ type Cmd struct {
 	Editor, Sandbox bool
 	// Players reports CompanyManager::isPlayerCompany.
 	Players func(company uint8) bool
+	// Pos is GameCommands::setPosition's — where a command's money effect
+	// shows; nil: Location::null (spendMoneyEffect's viewport-centre case,
+	// PARTIAL in the sim). Commands set it as upstream's do.
+	Pos *[3]int32
 }
 
 func (c *Cmd) isPlayer(company uint8) bool { return c.Players != nil && c.Players(company) }
@@ -281,8 +285,10 @@ const ExpenditureVehicleDisposals = 14
 // company runs at the top level (nest level 1), with the payment: the query
 // pass (free in the editor), ensureCompanyFunding unless AllowNegativeCashFlow
 // or NoPayment (a refusal ends it), then the applying pass, the lower of the
-// two costs, applyPaymentToCompany under the expenditure type. PARTIAL: the
-// error window texts / sounds and the flying cost text (spendMoneyEffect).
+// two costs, applyPaymentToCompany under the expenditure type and, for the
+// controlling company, the flying cost text (spendMoneyEffect at the
+// command's position + 24 up; Cmd.Pos). PARTIAL: the error window texts /
+// sounds.
 func (m *Map) DoCommandFor(c *Cmd, flags uint8, expenditure uint8, run func(flags uint8) (int32, bool)) (int32, bool) {
 	cost, ok := run(flags &^ CmdApply)
 	if !ok {
@@ -309,6 +315,9 @@ func (m *Map) DoCommandFor(c *Cmd, flags uint8, expenditure uint8, run func(flag
 	cost = min(cost, cost2)
 	if flags&CmdNoPayment == 0 {
 		m.ApplyPaymentToCompany(c.Company, cost, expenditure)
+		if cost != 0 && c.Company == m.ControllingCompany && c.Pos != nil { // the flying cost text
+			m.SpendMoneyEffect(c.Pos[0], c.Pos[1], c.Pos[2]+24, c.Company, cost)
+		}
 	}
 	return cost, true
 }
