@@ -235,6 +235,21 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 	w.ResetWaves()
 }
 
+// LoadGenerated takes a generated map (the open build's title, item O) as
+// LoadFromScenario takes a loaded one: the camera centred, the waves reset.
+func (w *World) LoadGenerated(m *sim.Map) {
+	if m == nil {
+		return
+	}
+	w.Map = *m
+	cx, cy := w.tileToScreen(w.Width/2, w.Height/2)
+	w.camX = cx - 400
+	w.camY = cy - 300
+	w.trains = nil
+	w.ResetWaves()
+	log.Printf("[World] LoadGenerated: %dx%d tiles", w.Width, w.Height)
+}
+
 // tileOnScreen reports whether a tile's centre falls inside the last drawn
 // screen — upstream only starts a wave where a viewport shows it
 // (WaveManager::createWave: findWindowShowing).

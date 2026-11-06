@@ -411,6 +411,10 @@ func NewGame() *Game {
 		} else {
 			log.Printf("[Game] Could not load title scenario: %v", err)
 		}
+	} else if r.G1 != nil && objMgr != nil { // the open build: no title.dat — a landscape with the editor's defaults
+		m := sim.NewGeneratedMap(0x4C4F434F, 0x474F4C4F, 1900, sim.EditorDefaultTerrainOptions(objMgr), r.G1, objMgr)
+		w.LoadGenerated(m)
+		log.Printf("[Game] open build: generated title landscape %dx%d", m.Width, m.Height)
 	}
 	titleSpriteIDs := w.CollectSpriteIDs()
 	log.Printf("[Game] Collected %d sprite IDs for preload", len(titleSpriteIDs))
