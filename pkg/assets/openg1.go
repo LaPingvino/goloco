@@ -51,6 +51,11 @@ func NewOpenG1(palettePath string) (*G1File, error) {
 		g1.Palette[i] = color.RGBA{c[0], c[1], c[2], 255}
 	}
 	g1.Palette[0] = color.RGBA{}
+	for c := 0; c < 32 && c < len(PaletteToG1); c++ { // the colour remap tables (openremap.go)
+		if m, ok := OpenRemap(c); ok && int(PaletteToG1[c]) < len(g1.Elements) {
+			g1.Elements[PaletteToG1[c]] = G1Element{Width: 256, Height: 1, Data: m}
+		}
+	}
 	g1.totalSprites = G1ExpectedCountDisc
 	return g1, nil
 }

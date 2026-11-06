@@ -57,3 +57,35 @@ func TestOpenG1WithOpenGraphics(t *testing.T) {
 	}
 	t.Logf("%d objects, %d images in the pool (%d object images)", n, g1.GetTotalSprites(), int(g1.GetTotalSprites())-G1ExpectedCountDisc)
 }
+
+// The open pool's colour maps: the 16 colours with an exact rule have one
+// (identity but the 12 remap slots, onto their swatch), the rest none.
+func TestOpenG1Remaps(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "pal")
+	var b strings.Builder
+	b.WriteString("JASC-PAL\n0100\n256\n")
+	for i := 0; i < 256; i++ {
+		b.WriteString("1 2 3\n")
+	}
+	os.WriteFile(p, []byte(b.String()), 0o644)
+	g1, err := NewOpenG1(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for c := 0; c < 32; c++ {
+		m, err := g1.GetPaletteMap(c)
+		if _, ok := OpenRemap(c); ok != (err == nil) {
+			t.Errorf("colour %d: rule %v, map error %v", c, ok, err)
+		}
+		if err == nil {
+			n++
+			if m[100] != 100 || m[7] == 7 {
+				t.Errorf("colour %d: map %v…", c, m[:12])
+			}
+		}
+	}
+	if n != 16 {
+		t.Errorf("%d colours mapped, want 16", n)
+	}
+}
