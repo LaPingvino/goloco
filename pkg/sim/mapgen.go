@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"github.com/LaPingvino/goloco/pkg/core"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -225,4 +226,45 @@ func surfaceLandHeight(slopeByte uint8, xl, yl int16) int16 {
 		return half(xl - yl)
 	}
 	return 0
+}
+
+// EditorDefaultTerrainOptions is EditorController::init's landscape options
+// (minLandHeight 2, mountains, hill density 50, sea level 4, the forest and
+// tree counts, the river options) with resetLandDistributionPatterns: each
+// land object's own pattern, everywhere (0) for an empty slot.
+func EditorDefaultTerrainOptions(om *objects.ObjectManager) TerrainOptions {
+	o := TerrainOptions{MinLandHeight: 2, TopographyStyle: 2 /* TopographyStyle::mountains */, HillDensity: 50, SeaLevel: 4,
+		NumRiverbeds: 0, MinRiverWidth: 10, MaxRiverWidth: 20, RiverbankWidth: 5, RiverMeanderRate: 10,
+		NumberOfForests: 100, MinForestRadius: 4, MaxForestRadius: 40, MinForestDensity: 1, MaxForestDensity: 7,
+		NumberRandomTrees: 1000, MinAltitudeForTrees: 0, MaxAltitudeForTrees: 25}
+	if om != nil {
+		for i := range o.LandDistributionPatterns {
+			if l := om.GetLandObjectByIndex(i); l != nil {
+				o.LandDistributionPatterns[i] = l.DistributionPattern
+			}
+		}
+	}
+	return o
+}
+
+// NewGeneratedMap is a map of the vanilla size (kMapColumns × kMapRows,
+// 384 × 384) with the landscape generated (GenerateLandscape) on an rng
+// seeded with seed0 / seed1 — the open build's stand-in for title.dat.
+func NewGeneratedMap(seed0, seed1 uint32, startYear uint16, o TerrainOptions, g1 G1Raw, om *objects.ObjectManager) *Map {
+	m := &Map{Width: 384, Height: 384}
+	m.Rng1 = *core.NewPrngSeed(seed0, seed1)
+	if om != nil && om.HillShapes == nil { // no scenario chose one: the object selection's (the only one loaded, upstream)
+		for _, h := range om.HillShapesObjects {
+			if h != nil {
+				om.HillShapes = h
+				break
+			}
+		}
+	}
+	m.Tiles = make([][]Tile, m.Height)
+	for y := range m.Tiles {
+		m.Tiles[y] = make([]Tile, m.Width)
+	}
+	m.GenerateLandscape(startYear, o, g1, om)
+	return m
 }
