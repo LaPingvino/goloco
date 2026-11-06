@@ -1,6 +1,7 @@
 package world
 
 import (
+	"github.com/LaPingvino/goloco/pkg/sim"
 	"image"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
@@ -33,6 +34,7 @@ func (w *World) drawOverlay(screen *ebiten.Image) {
 		}
 		w.drawTownNames(screen, sw, sh)
 	}
+	w.drawMoneyEffects(screen)
 
 }
 
@@ -140,3 +142,57 @@ func (w *World) drawStationNames(screen *ebiten.Image, sw, sh int) {
 
 // paletteBlack0 is PaletteIndex::black0.
 const paletteBlack0 = 10
+
+// kWiggleYOffsets is PaintEffectEntity.cpp's (440 entries): the same 20-step
+// wave repeated, each glyph of a money popup offset by it.
+var kWiggleYOffsets = func() [440]int8 {
+	wave := [20]int8{0, 1, 2, 2, 3, 3, 3, 3, 2, 2, 1, 0, -1, -2, -2, -3, -3, -2, -2, -1}
+	var o [440]int8
+	for i := range o {
+		o[i] = wave[i%20]
+	}
+	return o
+}()
+
+// drawMoneyEffects is paintWindowCurrencyEntity through the string plot list
+// (PaintSession::addToStringPlotList / drawStringStructs): each money effect,
+// up to zoom 1 (Config cashPopupRendering, on by default), "+ amount" /
+// "- amount" (format_currency_income / expense_in_company_colour) in the
+// company's colour (WINDOW_1: shade 7, outlined), centred on its position
+// (offsetX: minus half the medium bold width), each glyph raised by
+// kWiggleYOffsets from the effect's wiggle; medium bold at zoom 0, small at 1.
+// PARTIAL: the redGreen subtype (made by nothing in OpenLoco) is not painted;
+// drawn after the town names rather than interleaved with the scene's paint.
+func (w *World) drawMoneyEffects(screen *ebiten.Image) {
+	if len(w.Map.MoneyEffects) == 0 || w.zoom > 1 || w.Map.EntityLists == nil {
+		return
+	}
+	z := w.zoom
+	font := ui.G1FontMediumBold
+	if z == 1 {
+		font = ui.G1FontSmall
+	}
+	l := w.Map.EntityLists
+	for id := l.Heads[sim.EntityListMisc]; id != 0xFFFF; id = l.Links[id].Next {
+		e := w.Map.MoneyEffects[id]
+		if e == nil || e.SubType != 2 {
+			continue
+		}
+		amount := int64(e.Amount)
+		text := "+ " + ui.FormatCurrency(amount)
+		if amount < 0 {
+			text = "- " + ui.FormatCurrency(-amount)
+		}
+		offsetX := -ui.MeasureTextFont(text, ui.G1FontMediumBold) / 2
+		vx, vy := int(e.Y-e.X), int((e.X+e.Y)>>1-e.Z) // gameToScreen, rotation 0
+		sx := (vx+offsetX)>>z - int(w.camX)>>z
+		sy := vy>>z - int(w.camY)>>z
+		colour := 0
+		if int(e.Company) < len(w.CompanyColours) {
+			colour = int(w.CompanyColours[e.Company])
+		}
+		body, outline := ui.WindowColour1Text(colour)
+		tw := ui.DrawTextYOffsets(screen, text, font, sx, sy, kWiggleYOffsets[e.Wiggle:], body, outline)
+		ui.MarkForeign(image.Rect(sx-1, sy-5, sx+tw+1, sy+16)) // draw8's screen copy
+	}
+}

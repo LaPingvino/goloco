@@ -150,6 +150,7 @@ type Game struct {
 	stationGhostCost       int32                      // cState.stationCost
 	roadStationGhost       *sim.RoadStationPlacement  // the road stop ghost (stationGhostType bit 7)
 	dockGhost              *sim.PortPlacement         // the dock ghost (stationGhostType bit 14)
+	diagMoney              bool                       // DIAGNOSTIC ONLY: keep a money popup alive (moneyeffect)
 	airportGhost           *sim.AirportPlacement      // the airport ghost (stationGhostType bit 15)
 	airportRotation        uint8                      // cState.constructionRotation in the airport window
 	lastPortOption         int                        // ToolbarTop's _lastPortOption: 0 airport, 1 dock
@@ -639,6 +640,17 @@ func (g *Game) Update() error {
 		g.pickupOn = false
 		if g.vehicleWin != nil {
 			g.openVehicleDetails(head)
+		}
+	}
+
+	if g.diagMoney && len(g.w.Map.MoneyEffects) == 0 { // DIAGNOSTIC ONLY (moneyeffect)
+		g.w.Map.TitleMode = false
+		if px, py, ok := g.w.SurfaceOrWaterAt(g.sw/2, g.sh/2); ok {
+			t := g.w.Map.TileAt(int(px)>>5, int(py)>>5)
+			g.w.Map.SpendMoneyEffect(px, py, int32(t.BaseZ)*4+28, g.w.Map.PlayerCompanies[0], -26447)
+			if g.titleFrame%300 == 0 {
+				log.Printf("[Diag] moneyeffect: at %d,%d: %d effects, lists %v", px, py, len(g.w.Map.MoneyEffects), g.w.Map.EntityLists != nil)
+			}
 		}
 	}
 
@@ -1869,6 +1881,10 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					break
 				}
 			}
+		} else if v == "moneyeffect" { // DIAGNOSTIC ONLY: money popups at the screen's centre, one made whenever none is alive (they live 160 ticks)
+			g.inTitleScreen = false
+			g.w.Map.TitleMode = false
+			g.diagMoney = true
 		} else if v == "airportghost" { // DIAGNOSTIC ONLY: the airport window's tool over the first spot an airport takes (dry run), as the player; the ghost held, rotated once
 			m := &g.w.Map
 			m.ControllingCompany = m.PlayerCompanies[0]

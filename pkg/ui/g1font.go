@@ -288,3 +288,44 @@ func DrawTextFont(screen *ebiten.Image, str string, font, x, y int, clr color.Co
 	}
 	return globalG1Font.drawString(screen, str, font, x, y, 1.0, clr)
 }
+
+// WindowColour1Text is the {COLOUR WINDOW_1} text colours for a colour:
+// getShade(colour, 7), outlined in black0.
+func WindowColour1Text(colour int) (body, outline color.Color) {
+	if globalG1Font == nil {
+		return color.White, color.Black
+	}
+	pal := globalG1Font.g1.GetPalette()
+	m, err := globalG1Font.g1.GetPaletteMap(colour)
+	if err != nil {
+		return color.White, pal[paletteBlack0]
+	}
+	return pal[gfx8.Shade(m, 7)], pal[paletteBlack0]
+}
+
+// DrawTextYOffsets is TextRenderer::drawStringYOffsets with the outline: each
+// glyph at its own y, y + yOffsets[i] (a glyph past the offsets: none); the
+// width.
+func DrawTextYOffsets(screen *ebiten.Image, str string, font, x, y int, yOffsets []int8, clr, outline color.Color) int {
+	if globalG1Font == nil {
+		return 0
+	}
+	cx, i := x, 0
+	for _, r := range str {
+		dy := 0
+		if i < len(yOffsets) {
+			dy = int(yOffsets[i])
+		}
+		cx += DrawTextOutlinedFont(screen, string(r), font, cx, y+dy, clr, outline)
+		i++
+	}
+	return cx - x
+}
+
+// MeasureTextFont is getStringWidth in a G1 font.
+func MeasureTextFont(str string, font int) int {
+	if globalG1Font == nil {
+		return 0
+	}
+	return globalG1Font.drawString(nil, str, font, 0, 0, 1.0, nil)
+}
