@@ -241,25 +241,132 @@ func (m *Map) DeallocateStation(id int) {
 	st.Name = stationNameNull
 }
 
-// stationsUpdateDaily is StationManager::updateDaily (0x0048B244): a station
-// with no tiles counts the days; after 10 it is deallocated (a player
-// company's owner is disgusted on the 5th). PARTIAL: the towns'
-// ratingAdjusted flags and Station::updateCargo with its rating bonus; the
-// emotion event (goloco keeps no company emotions yet); the construction
-// window's sub_49E1F1 and the invalidation (UI).
-func (m *Map) stationsUpdateDaily() {
+// stationsUpdateDaily is StationManager::updateDaily (0x0048B244): every
+// town's ratingAdjusted cleared; a station with no tiles counts the days and
+// after 10 is deallocated; each station's cargo updated, and the first of a
+// town's stations with a good cargo rating that day raises its owner's rating
+// in the town by 1. PARTIAL: the day-5 disgusted emotion (goloco keeps no
+// company emotions yet); the construction window's sub_49E1F1 and the
+// invalidations (UI).
+func (m *Map) stationsUpdateDaily(om *objects.ObjectManager) {
+	for i := range m.Towns {
+		m.Towns[i].Flags &^= townFlagRatingAdjusted
+	}
 	for id := range m.StationNames {
 		st := &m.StationNames[id]
 		if st.Name == stationNameNull {
 			continue
 		}
-		if st.TileSize != 0 {
+		if st.TileSize == 0 {
+			st.NoTilesTimeout++
+			if st.NoTilesTimeout >= 10 {
+				m.DeallocateStation(id)
+				continue // upstream goes on with the slot it just emptied; its updateCargo then sees no cargo
+			}
+		} else {
 			st.NoTilesTimeout = 0
-			continue
 		}
-		st.NoTilesTimeout++
-		if st.NoTilesTimeout >= 10 {
-			m.DeallocateStation(id)
+		if m.updateStationCargo(id, om) {
+			for t := range m.Towns {
+				if m.Towns[t].ID == st.Town && m.Towns[t].Flags&townFlagRatingAdjusted == 0 {
+					m.Towns[t].Flags |= townFlagRatingAdjusted
+					m.adjustCompanyRating(t, st.Owner, 1)
+				}
+			}
 		}
 	}
+}
+
+const townFlagRatingAdjusted = 1 << 1 // TownFlags::ratingAdjusted
+
+const (
+	stationCargoOriginNull = 0xFFFF // StationId::null: an unused cargo slot
+)
+
+// updateStationCargo is Station::updateCargo (0x00492683): var_3B0 / var_3B1
+// count up; per cargo the en-route age and age, the rating stepped (±2 a day)
+// toward calculateCargoRating, cargo lost while the rating is poor (gPrng1, in
+// upstream's order); then updateCargoDistribution. Reports whether a cargo's
+// rating is good (≥ 100, 50 %).
+func (m *Map) updateStationCargo(id int, om *objects.ObjectManager) bool {
+	st := &m.StationNames[id]
+	good := false
+	st.Var3B0 = uint8(min(int(st.Var3B0)+1, 255))
+	st.Var3B1 = uint8(min(int(st.Var3B1)+1, 255))
+	for i := range st.Cargo {
+		c := &st.Cargo[i]
+		if c.Origin == stationCargoOriginNull {
+			continue
+		}
+		if c.Quantity != 0 && int(c.Origin) != id {
+			c.EnrouteAge = uint8(min(int(c.EnrouteAge)+1, 255))
+		} else {
+			c.EnrouteAge = 0 // OpenLoco's change: the cargo transfer bug
+		}
+		c.Age = uint8(min(int(c.Age)+1, 255))
+		target := m.calculateCargoRating(st, c)
+		c.Rating = uint8(int(c.Rating) + min(max(target-int(c.Rating), -2), 2))
+		if c.Rating <= 50 {
+			if c.Quantity >= 400 {
+				c.Quantity -= uint16(m.Rng1.RandNextRange(1, 32))
+			} else if c.Quantity >= 200 {
+				c.Quantity -= uint16(m.Rng1.RandNextRange(1, 8))
+			}
+		}
+		if c.Rating >= 100 {
+			good = true
+		}
+		if c.Rating <= 100 && c.Quantity != 0 {
+			if int32(c.Rating) <= m.Rng1.RandNextRange(0, 127) {
+				c.Quantity = uint16(max(0, int(c.Quantity)-int(m.Rng1.RandNextRange(1, 4))))
+			}
+		}
+	}
+	m.UpdateCargoDistribution(id, om)
+	return good
+}
+
+// calculateCargoRating is Station::calculateCargoRating (0x004927F6): fresh
+// cargo, little waiting, a fast and new vehicle rate well; an AI company's
+// station without flag 7 / 8 starts from 120. 0…200.
+func (m *Map) calculateCargoRating(st *scenario.StationName, c *scenario.StationCargo) int {
+	r := 0
+	switch {
+	case c.Age <= 7:
+		r += 165
+	case c.Age <= 15:
+		r += 130
+	case c.Age <= 30:
+		r += 85
+	case c.Age <= 45:
+		r += 40
+	}
+	r -= 130
+	switch {
+	case c.Quantity <= 100:
+		r += 130
+	case c.Quantity <= 200:
+		r += 110
+	case c.Quantity <= 300:
+		r += 90
+	case c.Quantity <= 500:
+		r += 60
+	case c.Quantity <= 1000:
+		r += 30
+	}
+	if st.Flags&(stationFlag7|stationFlag8) == 0 && !m.IsPlayerCompany(int(st.Owner)) {
+		r = 120
+	}
+	if speed := min(int(c.VehicleSpeed), 250); speed > 35 { // Speed16 raw is mph
+		r += (speed - 35) / 4
+	}
+	switch {
+	case c.VehicleAge < 1:
+		r += 33
+	case c.VehicleAge < 2:
+		r += 20
+	case c.VehicleAge < 4:
+		r += 10
+	}
+	return min(max(r, 0), 200)
 }

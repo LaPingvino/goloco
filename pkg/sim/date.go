@@ -71,7 +71,7 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 	if !m.updateDayCounter() {
 		return
 	}
-	m.stationsUpdateDaily() // StationManager::updateDaily (stationmanager.go)
+	m.stationsUpdateDaily(om) // StationManager::updateDaily (stationmanager.go)
 	m.vehiclesUpdateDaily(om)
 	m.industriesUpdateDaily(om) // IndustryManager::updateDaily (industryprod.go)
 	yesterday, today := CalcDate(m.CurrentDay-1), CalcDate(m.CurrentDay)
