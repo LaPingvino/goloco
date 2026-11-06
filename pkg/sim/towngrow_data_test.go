@@ -1794,3 +1794,49 @@ func TestIndustriesMonthly(t *testing.T) {
 	}
 	t.Logf("%d histories agree with the save's previous month; a month end rolled %d industries over", checked, len(m.Industries))
 }
+
+// TestAirportMovementGraph (AW.b's data): every loaded airport's movement
+// nodes and edges as upstream's AirportObject::load reads them — the edges
+// join nodes that exist, their clear-masks name only edges that exist, and
+// each airport has terminals and a takeoff end (a runway's or a
+// heliport's), a runway its touchdown.
+func TestAirportMovementGraph(t *testing.T) {
+	_, om := loadDataMap(t, "title.dat")
+	n := 0
+	for _, a := range om.AirportObjects {
+		if a == nil {
+			continue
+		}
+		n++
+		nodes, edges := len(a.MovementNodes), len(a.MovementEdges)
+		if nodes == 0 || edges == 0 || edges > 32 {
+			t.Errorf("%s: %d nodes, %d edges", a.Name, nodes, edges)
+			continue
+		}
+		var flags uint16
+		for _, nd := range a.MovementNodes {
+			flags |= nd.Flags
+		}
+		for i, e := range a.MovementEdges {
+			if int(e.CurNode) >= nodes || int(e.NextNode) >= nodes {
+				t.Errorf("%s edge %d: %d → %d of %d nodes", a.Name, i, e.CurNode, e.NextNode, nodes)
+			}
+			if mask := uint32(1)<<edges - 1; edges < 32 && (e.MustBeClear|e.AtLeastOneClear)&^mask != 0 {
+				t.Errorf("%s edge %d: masks %x / %x name edges past %d", a.Name, i, e.MustBeClear, e.AtLeastOneClear, edges)
+			}
+		}
+		if flags&objects.AirportNodeTerminal == 0 {
+			t.Errorf("%s: no terminal", a.Name)
+		}
+		if flags&objects.AirportNodeTakeoffBegin != 0 && flags&objects.AirportNodeTouchdown == 0 { // a runway (planes take off along it) has a touchdown; a heliport neither
+			t.Errorf("%s: a runway but no touchdown", a.Name)
+		}
+		if flags&(objects.AirportNodeTakeoffEnd|objects.AirportNodeHeliTakeoffEnd) == 0 {
+			t.Errorf("%s: no takeoff end", a.Name)
+		}
+		t.Logf("%s: %d nodes, %d edges, %d buildings, node flags %03x", a.Name, nodes, edges, len(a.Buildings), flags)
+	}
+	if n == 0 {
+		t.Skip("no airport objects loaded on the title map")
+	}
+}

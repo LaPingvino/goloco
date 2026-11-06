@@ -6,9 +6,9 @@ import (
 )
 
 // AirportObject — a port of OpenLoco Objects/AirportObject.cpp load(), as far
-// as painting needs it (building parts, heights, animations, images). The
-// movement nodes and edges are skipped, not parsed (aircraft aren't ported).
-// Layout constants come from the compiler (layout_gen.go).
+// as painting and the aircraft need it (building parts, heights, animations,
+// the buildings' positions, the movement nodes and edges planes follow,
+// images). Layout constants come from the compiler (layout_gen.go).
 type AirportObject struct {
 	Header         *ObjectHeader
 	Name           string
@@ -21,6 +21,46 @@ type AirportObject struct {
 	Variations     [][]uint8 // buildingVariationParts, per building type
 	Image          uint32    // image table offset
 	BuildingImage  uint32    // image + 1 (+ numTiles*4 shadow images when hasShadows)
+	Buildings      []AirportBuilding
+	MovementNodes  []AirportMovementNode
+	MovementEdges  []AirportMovementEdge
+}
+
+// AirportBuilding is AirportBuilding: a building of the airport (its type
+// index), its rotation and tile offset.
+type AirportBuilding struct {
+	Index, Rotation uint8
+	X, Y            int8
+}
+
+// AirportMovementNode is AirportObject::MovementNode: a point a plane moves
+// through (relative to the airport, in world units), with its
+// AirportMovementNodeFlags.
+type AirportMovementNode struct {
+	X, Y, Z int16
+	Flags   uint16
+}
+
+// AirportMovementNodeFlags.
+const (
+	AirportNodeTerminal         = 1 << 0
+	AirportNodeTakeoffEnd       = 1 << 1
+	AirportNodeFlag2            = 1 << 2
+	AirportNodeTaxiing          = 1 << 3
+	AirportNodeInFlight         = 1 << 4
+	AirportNodeHeliTakeoffBegin = 1 << 5
+	AirportNodeTakeoffBegin     = 1 << 6
+	AirportNodeHeliTakeoffEnd   = 1 << 7
+	AirportNodeTouchdown        = 1 << 8
+)
+
+// AirportMovementEdge is AirportObject::MovementEdge: from curNode to
+// nextNode, usable when every edge of MustBeClear and at least one of
+// AtLeastOneClear (when any) are clear; Var00 / Var03 as stored.
+type AirportMovementEdge struct {
+	Var00, CurNode, NextNode, Var03 uint8
+	MustBeClear                     uint32
+	AtLeastOneClear                 uint32
 }
 
 func (o *AirportObject) HasShadows() bool { return o.Flags&AirportFlagHasShadows != 0 }
@@ -73,12 +113,25 @@ func ParseAirportObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 		off++
 	}
 	for off < len(data) && data[off] != 0xFF { // buildingPositions
+		if err := need(AirportBuildingSize); err != nil {
+			return nil, err
+		}
+		o.Buildings = append(o.Buildings, AirportBuilding{Index: data[off], Rotation: data[off+1], X: int8(data[off+2]), Y: int8(data[off+3])})
 		off += AirportBuildingSize
 	}
 	off++
-	off += numNodes*AirportMovementNodeSize + numEdges*AirportMovementEdgeSize
-	if off > len(data) {
+	if err := need(numNodes*AirportMovementNodeSize + numEdges*AirportMovementEdgeSize); err != nil {
 		return nil, fmt.Errorf("airport %q: movement data past the end", name)
+	}
+	le16 := func(o int) int16 { return int16(binary.LittleEndian.Uint16(data[o:])) }
+	for range numNodes {
+		o.MovementNodes = append(o.MovementNodes, AirportMovementNode{X: le16(off), Y: le16(off + 2), Z: le16(off + 4), Flags: uint16(le16(off + 6))})
+		off += AirportMovementNodeSize
+	}
+	for range numEdges {
+		o.MovementEdges = append(o.MovementEdges, AirportMovementEdge{Var00: data[off], CurNode: data[off+1], NextNode: data[off+2], Var03: data[off+3],
+			MustBeClear: binary.LittleEndian.Uint32(data[off+4:]), AtLeastOneClear: binary.LittleEndian.Uint32(data[off+8:])})
+		off += AirportMovementEdgeSize
 	}
 	if g1 != nil {
 		res, err := g1.LoadImageTable(data[off:])
