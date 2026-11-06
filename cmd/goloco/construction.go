@@ -471,9 +471,8 @@ func (g *Game) stationCmd() (*sim.Cmd, sim.G1Raw) {
 // stationToolUpdate is StationTab's onToolUpdateTrainStation (0x0049E421 side):
 // off track, the ghost goes (onToolUpdateFail); on the same piece it stays;
 // else the old ghost goes and a new one is placed (apply | noErrorWindow |
-// noPayment | ghost), its cost kept. PARTIAL: the catchment display and the
-// ghost's accepted / produced cargo (calcAcceptedCargoTrainStationGhost), the
-// cost line in the tab.
+// noPayment | ghost), its cost kept; the catchment shown on the map and the
+// ghost's accepted / produced cargo (calcAcceptedCargoTrainStationGhost).
 func (g *Game) stationToolUpdate(sx, sy int) {
 	a, ok := g.stationArgsAt(sx, sy)
 	if !ok {
@@ -497,12 +496,14 @@ func (g *Game) stationToolUpdate(sx, sy int) {
 			x, y = a.X, a.Y
 		}
 		g.stationGhostAccepted, g.stationGhostProduced = m.CalcAcceptedCargoTrainStationGhost(g.stationGhostStation, x, y, 0xFFFFFFFF, g.r.ObjMgr)
+		g.w.SetCatchmentDisplay(m.GhostCatchmentDisplay(g.stationGhostStation, x, y, g.r.ObjMgr)) // catchmentArea + setCatchmentDisplay / sub_491BF5 (flag_0)
 	}
 }
 
 // removeStationGhost is removeConstructionGhosts' station part: the ghost
 // removed as it was placed.
 func (g *Game) removeStationGhost() {
+	g.w.SetCatchmentDisplay(nil) // sub_491BC6 + resetMapSelectionFlag(catchmentArea)
 	gh := g.stationGhost
 	if gh == nil {
 		return
