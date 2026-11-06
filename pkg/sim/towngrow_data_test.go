@@ -995,6 +995,21 @@ func TestPlayableVehicleEndToEnd(t *testing.T) {
 	if earned <= 0 {
 		t.Error("the bought train earned nothing")
 	}
+	// The Finances tab's "last income": the paid run recorded on Vehicle1
+	// (updateLastIncomeStats), today, its profits adding up to what was earned.
+	li := m.Entities[tr.Veh1].LastIncome
+	var sum int64
+	lines := 0
+	for i := 0; i < 4; i++ {
+		if li.CargoTypes[i] != 0xFF {
+			sum += int64(li.CargoProfits[i])
+			lines++
+			t.Logf("last income: cargo %d × %d over %d tiles in %d days = %d", li.CargoTypes[i], li.CargoQtys[i], li.CargoDistances[i], li.CargoAges[i], li.CargoProfits[i])
+		}
+	}
+	if earned > 0 && (lines == 0 || li.Day <= 0 || li.Day > int32(m.CurrentDay) || sum != earned) {
+		t.Errorf("last income: day %d (today %d), %d lines summing to %d, earned %d", li.Day, m.CurrentDay, lines, sum, earned)
+	}
 }
 
 // TestBuildableVehicles (5P.f's list): the trains tab on a saved train's track
@@ -2789,4 +2804,33 @@ func firstRailTrain(t *testing.T, m *Map, trains []Train, minCars int) Train {
 	}
 	t.Skipf("no rail train of %d cars", minCars)
 	return Train{}
+}
+
+// The saved Vehicle1s' lastIncome (0x53) reads as upstream's IncomeStats:
+// days not after today, cargo lines of loaded cargo, and some vehicle with one.
+func TestSavedLastIncome(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	withIncome := 0
+	for _, tr := range trains {
+		li := m.Entities[tr.Veh1].LastIncome
+		if li.Day == -1 {
+			continue
+		}
+		if li.Day > int32(m.CurrentDay) || li.Day < 0 {
+			t.Errorf("vehicle %d: last income on day %d, today %d", m.Entities[tr.Head].ID, li.Day, m.CurrentDay)
+		}
+		for i := 0; i < 4; i++ {
+			if c := li.CargoTypes[i]; c != 0xFF {
+				if int(c) >= len(om.CargoObjects) || om.CargoObjects[c] == nil {
+					t.Errorf("vehicle %d: last income of cargo %d, not loaded", m.Entities[tr.Head].ID, c)
+				}
+				withIncome++
+			}
+		}
+	}
+	t.Logf("%d income lines over %d vehicles", withIncome, len(trains))
+	if withIncome == 0 {
+		t.Error("no saved vehicle has a last income")
+	}
 }

@@ -242,22 +242,23 @@ type VehicleEntity struct {
 	TileBaseZ uint8             // vhCommonTileBaseZ (0x34) — height in SmallZ units
 	NextCarID uint16            // vhCommonNextCarId (0x3A) — next entity in car chain (0xFFFF = end)
 	// VehicleBase motion state (updateTrackMotion / updateRoadMotion).
-	RemainingDistance       int32  // vhCommonRemainingDist (0x28)
-	TrackAndDirection       uint16 // vhCommonTrackAndDir (0x2C)
-	SubPosition             uint16 // vhCommonSubPosition (0x2E)
-	TrackType               uint8  // vhCommonTrackType (0x35) — track/road object id
-	RoutingHandle           uint16 // vhCommonRoutingHandle (0x36): vehicleRef·64 | index
-	Mode                    uint8  // vhCommonMode (0x42) — TransportMode (0 rail, 1 road, 2 air, 3 water)
-	HeadVar53               uint8  // VehicleHead var_53 (0x53): the train's required track mods
-	HeadVar52               uint8  // var_52 (0x52): VehicleHead (1 = placement mode: no lookahead) / Vehicle1 (one-way signal countdown)
-	OrderTableOffset        uint32 // VehicleHead orderTableOffset (0x46): its orders in GameState orders[]
-	CurrentOrder            uint16 // VehicleHead currentOrder (0x4A): offset from orderTableOffset
-	SizeOfOrderTable        uint16 // VehicleHead sizeOfOrderTable (0x4C)
-	Var48                   uint8  // Vehicle1 var_48 (0x48): Flags48 (passSignal 1, expressMode 2)
-	Var49                   uint8  // Vehicle1 var_49 (0x49): the train's query mods
-	Var5C                   uint8  // VehicleHead var_5C (0x5C): pass-signal countdown
-	StationID               uint16 // VehicleHead stationId (0x54); the same bytes are Vehicle2's maxSpeed
-	TrainAcceptedCargoTypes uint32 // VehicleHead trainAcceptedCargoTypes (0x4E): cargo slots its cars carry
+	RemainingDistance       int32       // vhCommonRemainingDist (0x28)
+	TrackAndDirection       uint16      // vhCommonTrackAndDir (0x2C)
+	SubPosition             uint16      // vhCommonSubPosition (0x2E)
+	TrackType               uint8       // vhCommonTrackType (0x35) — track/road object id
+	RoutingHandle           uint16      // vhCommonRoutingHandle (0x36): vehicleRef·64 | index
+	Mode                    uint8       // vhCommonMode (0x42) — TransportMode (0 rail, 1 road, 2 air, 3 water)
+	HeadVar53               uint8       // VehicleHead var_53 (0x53): the train's required track mods
+	HeadVar52               uint8       // var_52 (0x52): VehicleHead (1 = placement mode: no lookahead) / Vehicle1 (one-way signal countdown)
+	OrderTableOffset        uint32      // VehicleHead orderTableOffset (0x46): its orders in GameState orders[]
+	CurrentOrder            uint16      // VehicleHead currentOrder (0x4A): offset from orderTableOffset
+	SizeOfOrderTable        uint16      // VehicleHead sizeOfOrderTable (0x4C)
+	Var48                   uint8       // Vehicle1 var_48 (0x48): Flags48 (passSignal 1, expressMode 2)
+	LastIncome              IncomeStats // Vehicle1 lastIncome (0x53): the vehicle window's Finances tab
+	Var49                   uint8       // Vehicle1 var_49 (0x49): the train's query mods
+	Var5C                   uint8       // VehicleHead var_5C (0x5C): pass-signal countdown
+	StationID               uint16      // VehicleHead stationId (0x54); the same bytes are Vehicle2's maxSpeed
+	TrainAcceptedCargoTypes uint32      // VehicleHead trainAcceptedCargoTypes (0x4E): cargo slots its cars carry
 	// Arrival / journey state (offsets from the compiler).
 	BreakdownFlags       uint8  // 0x5F (head and components): awaitingCargoTransfer 1, journeyStarted 8
 	CargoTransferTimeout uint16 // VehicleHead 0x56 (the same bytes are Vehicle2's currentSpeed)
@@ -412,6 +413,7 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			CurrentOrder:            binary.LittleEndian.Uint16(e[0x4A:]),
 			SizeOfOrderTable:        binary.LittleEndian.Uint16(e[0x4C:]),
 			Var48:                   e[0x48],
+			LastIncome:              parseIncomeStats(e[0x53:]),
 			Var49:                   e[0x49],
 			Var5C:                   e[0x5C],
 			StationID:               binary.LittleEndian.Uint16(e[0x54:]),
@@ -518,4 +520,27 @@ func ParseEntityLists(gameState []byte) *EntityLists {
 		l.Links[i] = EntityLink{BaseType: e[ebBaseType], ListOffset: e[ebLinkedListOffset], Next: u16(e, ebNextEntityId), Prev: u16(e, ebLLPreviousId)}
 	}
 	return l
+}
+
+// IncomeStats is Vehicle1's lastIncome (S5Entity.h, 0x2C bytes at 0x53): the
+// day of the last delivery run and up to four cargo lines (type 0xFF: none).
+type IncomeStats struct {
+	Day            int32
+	CargoTypes     [4]uint8
+	CargoQtys      [4]uint16
+	CargoDistances [4]uint16
+	CargoAges      [4]uint8
+	CargoProfits   [4]int32
+}
+
+func parseIncomeStats(b []byte) IncomeStats {
+	s := IncomeStats{Day: int32(binary.LittleEndian.Uint32(b))}
+	for i := 0; i < 4; i++ {
+		s.CargoTypes[i] = b[0x04+i]
+		s.CargoQtys[i] = binary.LittleEndian.Uint16(b[0x08+2*i:])
+		s.CargoDistances[i] = binary.LittleEndian.Uint16(b[0x10+2*i:])
+		s.CargoAges[i] = b[0x18+i]
+		s.CargoProfits[i] = int32(binary.LittleEndian.Uint32(b[0x1C+4*i:]))
+	}
+	return s
 }
