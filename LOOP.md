@@ -68,7 +68,10 @@ PL. [ ] **Playable and fun, by the clickables list** (ranked 2026-11-06 from scr
       missing), ScenarioSelect 6/6, TimePanel 4/6 (date_btn, map_chat_menu missing), TitleMenu 2/6 (tutorial, editor,
       multiplayer, chat missing), ToolbarTop port_menu (+ railroad_menu partial: opens construction, not the track
       menu), Vehicle.cpp tabCargo / tabFinances. The measure: 4% → 14% working as upstream (70 / 517).
-   1. A scripted playthrough through the UI only (a diag, clicks not sim calls): New Game → a scenario → build track
+   1. STARTED 2026-11-06 with GOLOCO_SCRIPT (cmd/goloco/script.go — clicks through the real input path) in
+      scripts/playthrough/: (a) the title's New Game opens the scenario list ✓, (b) Sandbox Settler starts — $10,000,
+      13 Jan 1900, the toolbar and panels ✓. NEXT (c): find two towns (the Towns list from the toolbar → a town's
+      window → centre view), then (d) build track between them … A scripted playthrough through the UI only (a diag, clicks not sim calls): New Game → a scenario → build track
       between two towns → two stations → Build Vehicles → place → route → start → run → earn. Every place it gets
       stuck goes to the top of this list, ahead of 2–8.
    2. Vehicle window orders that make routes worth building: orderWait (wait for full load), orderForceUnload,
@@ -1473,4 +1476,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — ME: the money popups' painter written but not yet seen on screen (diag silent) — parked at Joop's word to re-prioritise by the clickables list for playability.
 - 2026-11-06 — PL (Joop: playable and fun, by the clickables list): ranked plan written as the new top item — make the measure true (annotate the loop's windows), a UI-only playthrough to find where a player gets stuck, then orders, the station window, feedback (money popups, news, finances), vehicle list, track-type tabs, terraform / map.
 - 2026-11-06 — PL.0: the core-loop windows annotated for scripts/clickables.py (construction, title, scenario select, time panel, toolbar, vehicle tabs): 4% → 14% working as upstream; the playthrough (PL.1) next.
+- 2026-11-06 — (Fractal: green) PL.1: the UI-only playthrough started as input scripts (scripts/playthrough/): New Game → Sandbox Settler starts a game (shots checked); next: find two towns, build track.
 

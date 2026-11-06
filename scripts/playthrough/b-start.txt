@@ -1,0 +1,12 @@
+# PL.1 playthrough, stage B: New Game, then Sandbox Settler (Beginner) — a row
+# selects on the first click, starts on the second; the game is shown.
+wait 20
+click 289 538
+wait 3
+click 307 177
+wait 1
+shot /tmp/goloco-playthrough/pt-b1-selected.png
+click 307 177
+wait 25
+shot /tmp/goloco-playthrough/pt-b2-game.png
+quit
