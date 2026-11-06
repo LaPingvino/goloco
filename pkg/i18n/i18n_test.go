@@ -145,3 +145,15 @@ func TestStrByStringID(t *testing.T) {
 		t.Errorf("en-GB: %q", got)
 	}
 }
+
+// The station label icons: the emoji above U+FFFF reach their Loco codes and
+// the variation selector is dropped (label_icons_rail_road = 🛤🛣️).
+func TestTransportIcons(t *testing.T) {
+	if got := []rune(Str(LabelIconsRailRoad)); len(got) != 2 || LocoChar(got[0]) != 177 || LocoChar(got[1]) != 182 {
+		t.Errorf("label_icons_rail_road %q → %v", string(got), got)
+	}
+	if LocoChar(0x1F30A) != 184 {
+		t.Error("water")
+	}
+}
+

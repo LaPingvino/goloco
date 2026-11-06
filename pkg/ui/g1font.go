@@ -279,3 +279,13 @@ func LoadCurrency(objectIcon uint32) {
 		delete(f.outlines, dst)
 	}
 }
+
+// DrawTextFont draws str in a G1 font (G1FontMediumNormal, …Bold, …Small)
+// in one colour; the width.
+func DrawTextFont(screen *ebiten.Image, str string, font, x, y int, clr color.Color) int {
+	if globalG1Font == nil {
+		return 0
+	}
+	return globalG1Font.drawString(screen, str, font, x, y, 1.0, clr)
+}
+
