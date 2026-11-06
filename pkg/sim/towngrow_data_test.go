@@ -2562,3 +2562,79 @@ func TestCreateWallAndClaim(t *testing.T) {
 		}
 	}
 }
+
+// TestIndustryGroundsAndMonthlyStartUp (CR part 2g): a farm built by the
+// createIndustry command claims fields around its buildings and fences
+// them; with every Sawmill of the title map removed (under its cap now),
+// the month's tryCreateNewIndustriesMonthly founds a new one, under
+// construction.
+func TestIndustryGroundsAndMonthlyStartUp(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	c := &Cmd{Company: CompanyNeutral, Objects: om}
+	farm, saw := -1, -1
+	for k := 0; k < 16; k++ {
+		o := om.GetIndustryObjectByIndex(k)
+		if o == nil {
+			continue
+		}
+		if farm < 0 && o.FarmTileGrowthStageNoProduction != 0xFF && o.BuildingWall != 0xFF {
+			farm = k
+		}
+		if strings.Contains(o.Name, "Sawmill") {
+			saw = k
+		}
+	}
+	if farm < 0 || saw < 0 {
+		t.Skip("no farm with fences, or no sawmill")
+	}
+	var id uint8
+	built := false
+	for try := 0; try < 40 && !built; try++ {
+		x, y, ok := m.findRandomNewIndustryLocation(uint8(farm), om)
+		if !ok {
+			continue
+		}
+		_, id, built = m.CreateIndustry(c, CmdApply, IndustryPlacement{Type: uint8(farm), X: x, Y: y, Srand1: uint32(try)})
+	}
+	if !built {
+		t.Fatal("no farm built")
+	}
+	fields, walls := 0, 0
+	for ty := 0; ty < m.Height; ty++ {
+		for tx := 0; tx < m.Width; tx++ {
+			tl := m.TileAt(tx, ty)
+			if tl.IsIndustrial && tl.Variation == id {
+				fields++
+				walls += len(tl.Walls)
+			}
+		}
+	}
+	ind := m.industryByID(id)
+	t.Logf("%s: industry %d, %d buildings, %d fields, %d walls on them", om.GetIndustryObjectByIndex(farm).Name, id, len(ind.Tiles), fields, walls)
+	if fields < 9 || walls == 0 {
+		t.Errorf("the farm's grounds: %d fields, %d walls", fields, walls)
+	}
+	var sawmills []uint8
+	for _, in := range m.Industries {
+		if int(in.ObjectID) == saw {
+			sawmills = append(sawmills, in.ID)
+		}
+	}
+	for _, sid := range sawmills {
+		m.RemoveIndustry(c, CmdApply, sid)
+	}
+	m.tryCreateNewIndustriesMonthly(om)
+	n := 0
+	for _, in := range m.Industries {
+		if int(in.ObjectID) == saw {
+			n++
+			if in.UnderConstruction != 0 {
+				t.Errorf("the new sawmill isn't under construction (%d)", in.UnderConstruction)
+			}
+		}
+	}
+	t.Logf("%d sawmills removed; the month founded %d", len(sawmills), n)
+	if n == 0 {
+		t.Error("no new sawmill founded under the cap")
+	}
+}

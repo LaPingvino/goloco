@@ -205,12 +205,13 @@ const (
 	industryManagerDisallowCloseDown = 1 << 0 // IndustryManager::Flags::disallowIndustriesCloseDown
 )
 
-// industriesUpdateMonthly is IndustryManager::updateMonthly. PARTIAL:
-// tryCreateNewIndustriesMonthly (new industries) not ported.
+// industriesUpdateMonthly is IndustryManager::updateMonthly: new industries
+// first (tryCreateNewIndustriesMonthly), then each industry's month.
 func (m *Map) industriesUpdateMonthly(om *objects.ObjectManager) {
 	if om == nil {
 		return
 	}
+	m.tryCreateNewIndustriesMonthly(om)
 	ids := make([]uint8, len(m.Industries)) // upstream's fixed slots: an industry removed this month leaves the others in place
 	for i := range m.Industries {
 		ids[i] = m.Industries[i].ID
