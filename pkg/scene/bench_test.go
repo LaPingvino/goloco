@@ -243,3 +243,38 @@ func TestBuildingsUnderConstruction(t *testing.T) {
 		t.Error("an unconstructed building draws like a finished one")
 	}
 }
+
+// Waves are drawn on a water tile with a running wave (flag 6) at zoom 0:
+// the view over the title map's lake changes when its middle tile gets a
+// wave, and again when the wave's frame moves on (PaintSurface's +60 + frame).
+func TestWavesDrawn(t *testing.T) {
+	r, m, _ := titleView(t)
+	tx, ty := 86, 8
+	tl := m.TileAt(tx, ty)
+	if tl == nil || tl.WaterLevel == 0 {
+		t.Skip("no water at the lake tile")
+	}
+	cx, cy := paint.GameToScreen(paint.Pos3{X: tx*32 + 16, Y: ty*32 + 16, Z: int(tl.WaterLevel) * 16}, 0)
+	v := View{X: cx - 64, Y: cy - 48, W: 128, H: 96}
+	none := append([]uint8(nil), r.Render(m, v).Bits...)
+	frame := uint8(3)
+	r.WaveFrame = func(int, int) uint8 { return frame }
+	tl.WaveFlag = true
+	defer func() { tl.WaveFlag = false; r.WaveFrame = nil }()
+	with := append([]uint8(nil), r.Render(m, v).Bits...)
+	frame = 9
+	later := r.Render(m, v).Bits
+	diff := func(a, b []uint8) int {
+		n := 0
+		for i := range a {
+			if a[i] != b[i] {
+				n++
+			}
+		}
+		return n
+	}
+	t.Logf("a wave changes %d pixels; frame 3 → 9 changes %d", diff(none, with), diff(with, later))
+	if diff(none, with) == 0 || diff(with, later) == 0 {
+		t.Error("the wave isn't drawn, or doesn't animate")
+	}
+}

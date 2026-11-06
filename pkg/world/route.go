@@ -43,7 +43,8 @@ type RouteHit struct {
 // label hit; the waypoint sound.
 func (w *World) RouteAt(sx, sy int, mode uint8) (RouteHit, bool) {
 	if w.scene == nil && w.renderer != nil && w.renderer.G1 != nil && w.renderer.ObjMgr != nil {
-		w.scene = scene.New(w.renderer.G1, w.renderer.ObjMgr) // as drawScene's first frame makes it
+		w.scene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
+		w.scene.WaveFrame = func(tx, ty int) uint8 { return uint8(w.Waves[sim.WaveIndex(tx, ty)].Frame) } // as drawScene's first frame makes it
 	}
 	if w.scene == nil {
 		return RouteHit{}, false

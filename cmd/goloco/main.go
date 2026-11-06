@@ -1417,7 +1417,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
 		if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
@@ -1451,6 +1451,27 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					break
 				}
 			}
+		} else if v == "waves" { // DIAGNOSTIC ONLY: the view on the map's most open water (the tile with the most water within 6 tiles), for waves
+			g.inTitleScreen = false
+			m := &g.w.Map
+			best, bx, by := -1, 0, 0
+			for y := 6; y < m.Height-6; y += 2 {
+				for x := 6; x < m.Width-6; x += 2 {
+					n := 0
+					for dy := -6; dy <= 6; dy += 2 {
+						for dx := -6; dx <= 6; dx += 2 {
+							if m.TileAt(x+dx, y+dy).WaterLevel != 0 {
+								n++
+							}
+						}
+					}
+					if n > best {
+						best, bx, by = n, x, y
+					}
+				}
+			}
+			g.w.CenterOn(fmt.Sprintf("tile:%d,%d", bx, by))
+			log.Printf("[Diag] waves: view on tile (%d, %d), %d of 49 sampled tiles water", bx, by, best)
 		} else if v == "newindustry" || v == "newindustrybuild" { // DIAGNOSTIC ONLY: a farm-type industry by the createIndustry command at a searched place (built at once, or — newindustrybuild — under construction), the view on it
 			g.inTitleScreen = false
 			m := &g.w.Map
