@@ -134,6 +134,19 @@ func (m *Map) CalcAcceptedCargoTrainStationGhost(id int, x, y int32, filter uint
 	return accepted, s.Produced
 }
 
+// GhostCatchmentDisplay is the Station tab's display (flag_0): the ghost's
+// station's catchment (setCatchmentDisplay; id -1: none) and the 9×9 round
+// the ghost's tile (sub_491BF5) — a byte per tile, bit 1 set inside.
+func (m *Map) GhostCatchmentDisplay(id int, x, y int32, om *objects.ObjectManager) []uint8 {
+	cm := make([]uint8, m.Width*m.Height)
+	if id >= 0 && id < len(m.StationNames) {
+		cm = m.catchment(&m.StationNames[id], om)
+	}
+	tx, ty := int(x)>>5, int(y)>>5
+	m.setCatchmentRegion(cm, tx-catchmentSize, ty-catchmentSize, tx+catchmentSize, ty+catchmentSize)
+	return cm
+}
+
 // doCalcAcceptedCargo is Station.cpp's: the station's tiles set the filter
 // (none, or no station: everything), then the buildings and industries in
 // the catchment score and produce.

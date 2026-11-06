@@ -310,3 +310,34 @@ var diagScreen = func() *[2]int {
 	}
 	return &p
 }()
+
+// SetCatchmentDisplay sets (nil: clears) the map selection's catchment area —
+// a byte per tile, bit 1 inside — invalidating its tiles in full
+// (sub_491BC6: mapInvalidateTileFull = invalidate(pos, 0, 1120, eighth)).
+func (w *World) SetCatchmentDisplay(cm []uint8) {
+	inval := func(c []uint8) {
+		for i, v := range c {
+			if v&(1<<1) != 0 {
+				w.invalidateTile(int32(i%w.Map.Width)*32, int32(i/w.Map.Width)*32, 0, 1120, 3, 32)
+			}
+		}
+	}
+	if w.catchment == nil && cm == nil {
+		return
+	}
+	inval(w.catchment)
+	w.catchment = cm
+	if w.scene == nil {
+		return
+	}
+	inval(cm)
+	if cm == nil {
+		w.scene.Catchment = nil
+		return
+	}
+	mw := w.Map.Width
+	w.scene.Catchment = func(tx, ty int) bool {
+		i := ty*mw + tx
+		return tx >= 0 && tx < mw && i >= 0 && i < len(cm) && cm[i]&(1<<1) != 0
+	}
+}

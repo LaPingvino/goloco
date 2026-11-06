@@ -32,15 +32,19 @@ type Renderer struct {
 	// (WaveManager::getWave(getWaveIndex(tile)).frame); nil: no waves drawn.
 	// Set by the world, which holds the wave table (sim.State).
 	WaveFrame func(tileX, tileY int) uint8
+	// Catchment is the map selection's catchment area (MapSelectionFlags::
+	// catchmentArea with isWithinCatchmentDisplay); nil: not shown.
+	Catchment func(tileX, tileY int) bool
 	// workers paint columns in parallel (Viewport::paint's
 	// std::execution::par): clones with their own session and scratch.
-	workers   []*Renderer
-	cols      [][2]int // RenderColumns' column list, kept
-	need      []bool   // RenderPlay's columns with vehicles, kept
-	ranges    [][2]int // RenderPlay's repainted ranges, kept
-	edges     []int    // RenderPart's column edges, kept
-	partPix   []byte   // ToRGBAColumns' buffer, kept
-	shadowMap []uint8
+	workers      []*Renderer
+	cols         [][2]int // RenderColumns' column list, kept
+	need         []bool   // RenderPlay's columns with vehicles, kept
+	ranges       [][2]int // RenderPlay's repainted ranges, kept
+	edges        []int    // RenderPart's column edges, kept
+	partPix      []byte   // ToRGBAColumns' buffer, kept
+	shadowMap    []uint8
+	catchmentMap []uint8 // Colour::darkBlue's palette map (the catchment's primary colour)
 
 	// Reused across frames (Render/ToRGBA allocate nothing in steady state).
 	sess  *paint.Session
@@ -172,6 +176,7 @@ func New(g1 *assets.G1File, om *objects.ObjectManager) *Renderer {
 	if wo := om.WaterObj; wo != nil {
 		r.water.Base = int(wo.ImageOffset)
 		r.water.PalMap, _ = g1.GetPaletteMapAt(r.water.Base + 41)
+		r.catchmentMap, _ = g1.GetPaletteMap(6) // Colour::darkBlue
 	}
 	r.shadowMap, _ = g1.GetPaletteMapAt(2208) // ImageIds::paletteMapUnk32 (tree shadows)
 	return r
@@ -215,9 +220,10 @@ func (r *Renderer) SpriteCount() int {
 // read-only data, with its own session and scratch.
 func (r *Renderer) worker(i int) *Renderer {
 	for len(r.workers) <= i {
-		r.workers = append(r.workers, &Renderer{G1: r.G1, Objects: r.Objects, sprites: r.sprites, water: r.water, shadowMap: r.shadowMap})
+		r.workers = append(r.workers, &Renderer{G1: r.G1, Objects: r.Objects, sprites: r.sprites, water: r.water, shadowMap: r.shadowMap, catchmentMap: r.catchmentMap})
 	}
 	r.workers[i].WaveFrame = r.WaveFrame // set after the workers may exist: passed on each time
+	r.workers[i].Catchment = r.Catchment
 	return r.workers[i]
 }
 
@@ -236,6 +242,9 @@ type View struct {
 	// maxY inclusive); empty = every tile that can reach the view.
 	Tiles image.Rectangle
 }
+
+// constructionCatchmentSlope0 is ImageIds::constructionCatchmentSlope0 (+ display slope).
+const constructionCatchmentSlope0 = 341
 
 var slopeToDisplay = [32]int{0, 2, 1, 3, 8, 10, 9, 11, 4, 6, 5, 7, 12, 14, 13, 15, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 16, 0, 18, 15, 0}
 
@@ -795,6 +804,25 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 			snowImage = int(om.SnowObj.ImageOffset) + paint.SnowSurfaceFullZoom // SnowObject::image
 		}
 		s.PaintSurfaceSmoothing(desc(t), nbd, r.smoothLand, snowImage, sprite)
+	}
+	// The catchment area (PaintSurface.cpp): constructionCatchmentSlope by the
+	// water surface's display slope (getWaterSurface), dark blue, as a parent
+	// at its height, bbox (32,32,1). PARTIAL: upstream draws it after the
+	// selection boxes, which goloco paints elsewhere.
+	if r.Catchment != nil && r.Catchment(x, y) {
+		h, slope := z, t.Slope
+		if wh := int(t.WaterLevel) * 16; wh > h {
+			h += 16 // kMicroZStep
+			if wh != h || t.Slope&0x10 == 0 {
+				slope, h = 0, wh
+			} else {
+				sl := (t.Slope & 0xF) ^ 0xF // rotl4bit(…, 2)
+				slope = (sl<<2 | sl>>2) & 0xF
+			}
+		}
+		if cs := sprite(constructionCatchmentSlope0 + slopeToDisplay[slope&0x1F]); cs != nil && r.catchmentMap != nil {
+			s.AddAsParent(paint.Image{Sprite: cs, Op: gfx8.OpFor(cs, true, false), PalMap: r.catchmentMap}, paint.Pos3{Z: h}, paint.Pos3{Z: h}, paint.Pos3{X: 32, Y: 32, Z: 1})
+		}
 	}
 
 	var nbs [4]*paint.Surface
