@@ -2027,3 +2027,76 @@ func TestAircraftFlies(t *testing.T) {
 		t.Error("never landed at its next airport")
 	}
 }
+
+// TestAircraftPickupPlace (AW.b part 4, 5P.g's air placement): the title
+// map's aircraft, loading at its terminal, is lifted off its airport (its
+// edge freed, off the map)
+// and put back on a terminal node of airport 82 by the game commands — the
+// first edge into that node taken and occupied, stopped, facing out —;
+// started, it calls, taxis out and takes off.
+func TestAircraftPickupPlace(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	var id uint16
+	for _, x := range trains {
+		if h := m.Entities[x.Head]; h.Mode == 2 && h.StationID != stationIDNull && h.AirportMovementEdge != airportEdgeNull {
+			id = h.ID
+			break
+		}
+	}
+	if id == 0 {
+		t.Skip("no aircraft at an airport")
+	}
+	for tick := 0; tick < 2000; tick++ { // only stopped or loading aircraft at rest can be lifted (canBeModified)
+		tr0, _ := m.TrainOf(id)
+		if m.entity(id).Status == headStatusLoading && m.Entities[tr0.Veh2].CurrentSpeed == 0 {
+			break
+		}
+		m.UpdateVehicles(om)
+	}
+	h := m.entity(id)
+	sid, edge := h.StationID, h.AirportMovementEdge
+	c := &Cmd{Company: h.Owner, Objects: om, Players: func(uint8) bool { return true }}
+	if _, ok := m.VehiclePickupAir(c, CmdApply, id); !ok {
+		tr0, _ := m.TrainOf(id)
+		t.Fatalf("pickup refused: status %d speed %d type %d var73 %d", h.Status, m.Entities[tr0.Veh2].CurrentSpeed, h.VehicleType, m.Entities[tr0.Veh2].Var73)
+	}
+	if h := m.entity(id); h.TileX != -1 || h.StationID != stationIDNull || m.StationNames[sid].AirportOccupiedEdges&(1<<edge) != 0 {
+		t.Fatalf("after pickup: tileX %d station %d occupied %032b", h.TileX, h.StationID, m.StationNames[sid].AirportOccupiedEdges)
+	}
+	el, _, _ := m.airportStationElement(sid)
+	ap := om.AirportObjects[el.ObjectID]
+	node := -1
+	for i, n := range ap.MovementNodes {
+		if n.Flags&objects.AirportNodeTerminal != 0 {
+			node = i
+			break
+		}
+	}
+	args := VehicleAirPlacement{StationID: sid, AirportNode: uint8(node), Head: id}
+	if _, ok := m.VehiclePlaceAir(c, 0, args); !ok {
+		t.Fatal("placing (query) refused")
+	}
+	if _, ok := m.VehiclePlaceAir(c, CmdApply, args); !ok {
+		t.Fatal("placing refused")
+	}
+	h = m.entity(id)
+	tr, _ := m.TrainOf(id)
+	nx, ny, nz, _ := m.AirportMovementNodeLoc(om, sid, uint8(node))
+	if h.Status != StatusStopped || h.StationID != sid || int32(h.PosX) != nx || int32(h.PosY) != ny || int32(h.PosZ) != nz ||
+		m.StationNames[sid].AirportOccupiedEdges&(1<<h.AirportMovementEdge) == 0 || ap.MovementEdges[h.AirportMovementEdge].NextNode != uint8(node) {
+		t.Fatalf("placed: status %d station %d at (%d,%d,%d) want (%d,%d,%d), edge %d", h.Status, h.StationID, h.PosX, h.PosY, h.PosZ, nx, ny, nz, h.AirportMovementEdge)
+	}
+	t.Logf("placed at terminal node %d by edge %d, body yaw %d", node, h.AirportMovementEdge, m.Entities[tr.Cars[0][0].Body].SpriteYaw)
+	if _, ok := m.VehicleChangeRunningMode(c, CmdApply, id, RunningModeStart); !ok {
+		t.Fatal("starting refused")
+	}
+	took := false
+	for tick := 0; tick < 5000 && !took; tick++ {
+		m.UpdateVehicles(om)
+		took = m.entity(id).Status == headStatusTakingOff
+	}
+	if !took {
+		t.Errorf("never took off: status %d, edge %d", m.entity(id).Status, m.entity(id).AirportMovementEdge)
+	}
+}
