@@ -61,7 +61,13 @@ ST. [ ] **Building stations** (found 2026-11-06 wiring Station::updateLabel: gol
    station tab. STARTED 2026-11-06: allocation, deallocation and naming DONE (sim/stationmanager.go;
    TestAllocateNewStation: new stations in Kansas City named Transfer, Halt, Airport — the names its stations
    don't use, in upstream's order). PARTIAL: deallocateStation's orders / cargo stats / vehicles / messages
-   clean-up. NEXT: addTileToStation, recalculateStationCenter / Modes.
+   clean-up. The catchment and accepted cargo DONE 2026-11-06 (sim/stationaccept.go: getStationElement,
+   setCatchmentDisplay — 4 tiles round each tile, an airport's extents (AirportObject min / max now parsed), a
+   dock's 2×2 —, doCalcAcceptedCargo / calcAcceptedCargo with CargoSearchState; BuildingObject's consumed
+   cargoes and producedCargoQty / consumedCargoQty parsed; TestCalcAcceptedCargoReproducesSave: all 82 live
+   stations' accepted cargo and industries match the save). NEXT: addTileToStation /
+   removeTileFromStation, recalculateStationCenter / Modes, then CreateTrainStation. (Station::update's
+   monthly acceptance check can use CalcAcceptedCargo too — check what goloco does there now.)
 TL. [x] (DONE 2026-11-06: station names too — Station.cpp drawStationName: the saved labelFrame, the curved
    ends and middle in two translucent passes (unk34, the owner's colour), the name with its town and the
    transport icons (label_icons_*: the emoji above U+FFFF now map to Loco 177 / 182 / 184, U+FE0F dropped as
@@ -1315,4 +1321,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (ST opened: station allocation and names) — (the other three wait on Joop → here.) New item ST: goloco can't build stations. First chunk ported StationManager's allocateNewStation (first empty slot, closest town, fresh cargo stats, flag_5), deallocateStation (partial) and generateNewStationName (airport / heliport / docks, oilfield / mines, lakeside, forest / woods, heights / valley, plain, central, N/S/E/W, transfer … views, 1st … 20th). The first test run printed "Station 65": toTownName had the offset wrong (it is kTownNamesStart + the id; fromTownName − station_town gives the key). TestAllocateNewStation: Kansas City's new stations are Transfer, Halt, Airport. All green; nothing drawn.
+
+
+- 2026-11-06 (ST: accepted cargo) — (the other three wait on Joop → here.) addTileToStation needs Station::calcAcceptedCargo, which goloco lacked: ported the catchment (setCatchmentDisplay's cargo map, setStationCatchmentRegion, the airport extents — AirportObject minX..maxY now parsed) and doCalcAcceptedCargo (industries' required cargo at 8 points, town buildings' produced / consumed quantities — BuildingObject now parses its consumed cargoes and both quantity pairs —, a large building counted once, accepted at 8). TestCalcAcceptedCargoReproducesSave: 82 of 82 live title stations accept exactly what the save says, with the same industry per cargo. All green; nothing drawn.
 
