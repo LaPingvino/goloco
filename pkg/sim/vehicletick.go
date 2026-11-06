@@ -75,9 +75,11 @@ func (m *Map) UpdateVehicles(om *objects.ObjectManager) {
 		switch h.Mode {
 		case 0, 1:
 			m.updateTrain(tr, om)
+		case 2: // air (airmotion.go)
+			m.updateAircraft(tr, om)
 		case 3: // water (watermotion.go)
 			m.updateBoat(tr, om)
-		} // air: AW.b
+		}
 	}
 }
 
