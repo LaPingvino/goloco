@@ -2465,6 +2465,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 			ui.DrawConstructionTab(screen, f, ui.ConstructionTabState{Traits: g.r.ObjMgr.TrackObjects[0].TrackPieces,
 				Piece: "straight", Gradient: "level"})
 		}
+		f.DrawCaption(screen)
 	}
 	if os.Getenv("GOLOCO_DIAG_PROGRESS") != "" {
 		// Diagnostic: the ProgressBar window at 3/4 in both styles, for headless shots.

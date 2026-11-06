@@ -163,6 +163,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		}
 		win.Height = f.Height()
 		f.Draw(screen)
+		defer f.DrawCaption(screen) // after the tab (its draw8 rewrites the window's pixels)
 		switch g.consTab {
 		case 1:
 			ui.DrawStationTab(screen, f, g.stationTabState(f.CompanyColour))

@@ -85,6 +85,13 @@ func (w *ConstructionFrame) Draw(screen *ebiten.Image) {
 			}
 		}
 	})
+}
+
+// DrawCaption draws the title. It goes after the tab's content: the tabs'
+// draw8 covers the whole window and writes back the 8-bit screen copy, which
+// holds the caption's fill but not its text (drawn on the screen directly) —
+// drawn before, the title was wiped whenever the copy was usable.
+func (w *ConstructionFrame) DrawCaption(screen *ebiten.Image) {
 	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, ConstructionW-2, w.Title, int(w.CompanyColour))
 }
 
