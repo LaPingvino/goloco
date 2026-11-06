@@ -72,9 +72,11 @@ ST. [ ] **Building stations** (found 2026-11-06 wiring Station::updateLabel: gol
    in leaves them as saved). PARTIAL: addTileToStation's rivals' emotion. CreateTrainStation's lookups
    DONE 2026-11-06 (sim/trainstation.go: FindNearbyStation, findNearbyEmptyStation, exceedsStationSize,
    findNearbyStationOnTrack, validateNearbyStation, getElTrack; TestFindNearbyStationOwnTiles 275 / 275,
-   TestValidateNearbyStationOnOwnTrack 218 / 218). PARTIAL: the AI variant (getTrackConnectionsAi). NEXT:
-   createTrainStation itself (0x0048BB20: the per-tile loop — clearance, the station element on the track,
-   costs, ghost / AI flags — then allocate / addTile / recalc). (Station::update's
+   TestValidateNearbyStationOnOwnTrack 218 / 218). PARTIAL: the AI variant (getTrackConnectionsAi). Its data DONE
+   2026-11-06: TrackCompatibleFlags (getTrackMiscData compatibleFlags, added to tools/gen-paintdata and
+   regenerated — nothing else changed), TrainStationObject height / trackPieces / build & sell cost factors /
+   costIndex, TrackObject stationTrackPieces. NEXT: sub_48D794 (each train-station tile's covered state and
+   building type — the canopy pieces), then createTrainStation's body (0x0048BB20). (Station::update's
    monthly acceptance check can use CalcAcceptedCargo too — check what goloco does there now.)
 TL. [x] (DONE 2026-11-06: station names too — Station.cpp drawStationName: the saved labelFrame, the curved
    ends and middle in two translucent passes (unk34, the owner's colour), the name with its town and the
@@ -1338,4 +1340,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (ST: CreateTrainStation's lookups) — (the other three wait on Joop → here.) Ported the station-joining logic: StationManager's findNearbyStation (2-tile search, height-weighted distance, attached within 64) and findNearbyEmptyStation (reusing a removed station's name), exceedsStationSize (8 tiles), and CreateTrainStation.cpp's findNearbyStationOnTrack (the connection at the piece's end and reversed start), validateNearbyStation and getElTrack. Tests: all 275 title station tiles find their own station attached; all 218 straight station pieces validate into theirs. All green; nothing drawn. NEXT: createTrainStation's body.
+
+
+- 2026-11-06 (ST: CreateTrainStation's data) — (the other three wait on Joop → here.) Read the whole createTrainStation (0x0048BB20); its missing data added first: getTrackMiscData's compatibleFlags through the generator (tools/gen-paintdata/gen_trackpieces.cpp → TrackCompatibleFlags; the regenerated file differs only by it), TrainStationObject's height, trackPieces, buildCostFactor, sellCostFactor and costIndex, TrackObject's stationTrackPieces. Probed on the data: stations fit straight pieces only (trackPieces 0), cost 7 / −7 at index 1. All green; nothing drawn.
 

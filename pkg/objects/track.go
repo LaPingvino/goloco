@@ -24,6 +24,9 @@ type TrackObject struct {
 	// has (diagonal, large/normal/small/very small curves, slopes, steep
 	// slopes, one-sided, sloped curves, s-bends, junctions).
 	TrackPieces uint16
+	// StationTrackPieces (0x04) is stationTrackPieces: the pieces a station
+	// may be built on.
+	StationTrackPieces uint16
 	// ModNames, SignalNames, StationNames are the DAT names of the track
 	// extras, signals and stations TrackObject::load resolves into mods[],
 	// the signals bitset and stations[].
@@ -97,15 +100,16 @@ func ParseTrackObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tr
 	numStations := data[0x2C]
 
 	track := &TrackObject{
-		Header:        header,
-		NumMods:       numMods,
-		NumSignals:    numSignals,
-		NumBridges:    numBridges,
-		NumStations:   numStations,
-		TrackPieces:   uint16(data[0x02]) | uint16(data[0x03])<<8,
-		Flags:         uint16(data[0x22]) | uint16(data[0x23])<<8,
-		CurveSpeed:    int16(uint16(data[0x1C]) | uint16(data[0x1D])<<8),
-		DisplayOffset: data[0x34],
+		Header:             header,
+		NumMods:            numMods,
+		NumSignals:         numSignals,
+		NumBridges:         numBridges,
+		NumStations:        numStations,
+		TrackPieces:        uint16(data[0x02]) | uint16(data[0x03])<<8,
+		StationTrackPieces: uint16(data[0x04]) | uint16(data[0x05])<<8,
+		Flags:              uint16(data[0x22]) | uint16(data[0x23])<<8,
+		CurveSpeed:         int16(uint16(data[0x1C]) | uint16(data[0x1D])<<8),
+		DisplayOffset:      data[0x34],
 		// buildCostFactor 0x14, costIndex 0x1A (offsets from the compiler)
 		BuildCostFactor: int16(uint16(data[0x14]) | uint16(data[0x15])<<8),
 		CostIndex:       data[0x1A],

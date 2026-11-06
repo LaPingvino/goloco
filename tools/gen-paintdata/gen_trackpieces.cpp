@@ -48,6 +48,8 @@ int main()
     for (int i = 0; i < 44; i++) std::printf("%u, ", getTrackMiscData(i).costFactor);
     std::printf("}\n\n// RoadCurveSpeedFraction is getRoadMiscData(id).curveSpeedFraction.\nvar RoadCurveSpeedFraction = [10]uint16{");
     for (int i = 0; i < 10; i++) std::printf("%u, ", getRoadMiscData(i).curveSpeedFraction);
+    std::printf("}\n\n// TrackCompatibleFlags is getTrackMiscData(id).compatibleFlags (TrackTraitFlags).\nvar TrackCompatibleFlags = [44]uint16{");
+    for (int i = 0; i < 44; i++) std::printf("%u, ", static_cast<unsigned>(getTrackMiscData(i).compatibleFlags));
     std::printf("}\n\n// TrackUnkWeighting is getTrackMiscData(id).unkWeighting (pathing weight).\nvar TrackUnkWeighting = [44]uint32{");
     for (int i = 0; i < 44; i++) std::printf("%u, ", getTrackMiscData(i).unkWeighting);
     std::printf("}\n\n// RoadUnkWeighting is getRoadMiscData(id).unkWeighting.\nvar RoadUnkWeighting = [10]uint32{");

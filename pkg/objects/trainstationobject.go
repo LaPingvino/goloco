@@ -26,6 +26,13 @@ type TrainStationObject struct {
 	Name                       string
 	PaintStyle                 uint8
 	Flags                      uint8 // TrainStationFlags: bit0=recolourable, bit1=noCanopy
+	// Height (0x03, bigZ), TrackPieces (0x04: the TrackTraitFlags it fits),
+	// BuildCostFactor / SellCostFactor (0x06 / 0x08) and CostIndex (0x0A):
+	// what CreateTrainStation checks and prices.
+	Height                          uint8
+	TrackPieces                     uint16
+	BuildCostFactor, SellCostFactor int16
+	CostIndex                       uint8
 
 	// CargoOffsets is getCargoOffsets [rotation][nibble]: the cargo positions
 	// on a platform (two per entry), from the cargoOffsetBytes blobs.
@@ -80,9 +87,14 @@ func ParseTrainStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loade
 	}
 
 	obj := &TrainStationObject{
-		Header:     header,
-		PaintStyle: data[0x02],
-		Flags:      data[TrainStationFlagsOffset], // TrainStationFlags (uint8 — only lower byte used; offset from the compiler)
+		Header:          header,
+		PaintStyle:      data[0x02],
+		Flags:           data[TrainStationFlagsOffset], // TrainStationFlags (uint8 — only lower byte used; offset from the compiler)
+		Height:          data[0x03],
+		TrackPieces:     uint16(data[0x04]) | uint16(data[0x05])<<8,
+		BuildCostFactor: int16(uint16(data[0x06]) | uint16(data[0x07])<<8),
+		SellCostFactor:  int16(uint16(data[0x08]) | uint16(data[0x09])<<8),
+		CostIndex:       data[0x0A],
 	}
 	numCompatible := data[0x22]
 	obj.DesignedYear = uint16(data[0x2A]) | uint16(data[0x2B])<<8
