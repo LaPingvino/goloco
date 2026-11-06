@@ -391,11 +391,11 @@ func (g *Game) onPickup(headID uint16) {
 // pickupToolDown is pickupToolDownLand for rail: the placement under the
 // cursor, VehiclePlace, then pickupToolPlacementCommandCallback — shift starts
 // the vehicle, the tool is cancelled, the window shown again. false: no track
-// there (the tool stays). PARTIAL: the ghost (pickupToolUpdate), the error
-// window.
+// there (the tool stays); rail or road by the vehicle's mode (World.PlacementAt).
+// PARTIAL: air and water, the error window.
 func (g *Game) pickupToolDown(sx, sy int) bool {
 	head := g.pickupHead
-	p, ok := g.w.RailPlacementAt(head, sx, sy)
+	p, ok := g.w.PlacementAt(head, sx, sy)
 	if !ok {
 		return false
 	}
@@ -471,11 +471,11 @@ func (g *Game) buildVehiclesMenu(btn *ui.ToolbarButton) {
 	g.dropdown = d
 }
 
-// pickupToolUpdate is pickupToolUpdateLand for rail: the placement under the
+// pickupToolUpdate is pickupToolUpdateLand for rail and road: the placement under the
 // cursor; unchanged since the last ghost, nothing; else the old ghost lifted
 // and the train placed there as a ghost (apply | ghost | noErrorWindow).
 func (g *Game) pickupToolUpdate(sx, sy int) {
-	p, ok := g.w.RailPlacementAt(g.pickupHead, sx, sy)
+	p, ok := g.w.PlacementAt(g.pickupHead, sx, sy)
 	if !ok {
 		g.removeLandGhost()
 		return
