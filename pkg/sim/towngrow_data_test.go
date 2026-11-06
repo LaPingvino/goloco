@@ -1214,3 +1214,70 @@ func TestRailPlacementAtCursor(t *testing.T) {
 		t.Fatal("nothing checked")
 	}
 }
+
+// TestRoadPlacementAtCursor: TestRailPlacementAtCursor for road vehicles —
+// the cursor on each getRoadPlacementSubPositon point of the road piece a
+// vehicle's Vehicle2 stands on gives that point (or the same point from the
+// far end, reversed), and a picked-up vehicle can be placed back there.
+func TestRoadPlacementAtCursor(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	toScreen := func(x, y, z int32) (int, int) { return int(y - x), int((y+x)>>1 - z) }
+	trains, _ := m.Trains()
+	checked, placeable, tried := 0, 0, 0
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.TileX == -1 || h.Mode != 1 || !m.canBeModified(tr) {
+			continue
+		}
+		v2 := m.Entities[tr.Veh2]
+		if v2.TrackAndDirection&(1<<2) != 0 {
+			continue // the start tile holds sequence 0 only for an unreversed vehicle
+		}
+		tad := v2.TrackAndDirection & 0x7F // the road piece and direction, without the lane bits
+		tile := m.TileAt(int(v2.TileX)/32, int(v2.TileY)/32)
+		var re *scenario.RoadElement
+		for i := range tile.Roads {
+			e := &tile.Roads[i]
+			if e.RoadID == uint8(tad>>3&0xF) && e.Rotation == uint8(tad&3) && e.SequenceIndex == 0 {
+				re = e
+			}
+		}
+		if re == nil {
+			continue
+		}
+		moves := RoadPlacementSubPosition(tad)
+		for k := range moves {
+			cx, cy := toScreen(int32(v2.TileX)+int32(moves[k].X), int32(v2.TileY)+int32(moves[k].Y), int32(re.BaseZ)*4+int32(moves[k].Z))
+			p, ok := m.RoadPlacementAtCursor(h.ID, int32(v2.TileX), int32(v2.TileY), re, 0, cx, cy, toScreen)
+			if !ok {
+				t.Fatalf("vehicle %d: no placement", h.ID)
+			}
+			switch p.TrackAndDirection {
+			case tad:
+				if int(p.TrackProgress) != k || p.X != int32(v2.TileX) || p.Y != int32(v2.TileY) {
+					t.Errorf("vehicle %d sub %d: progress %d at %d,%d", h.ID, k, p.TrackProgress, p.X, p.Y)
+				}
+			case tad ^ 4:
+				if want := min(len(moves)-k, len(moves)-1); int(p.TrackProgress) != want {
+					t.Errorf("vehicle %d sub %d reversed: progress %d, want %d", h.ID, k, p.TrackProgress, want)
+				}
+			default:
+				t.Errorf("vehicle %d: tad %#x from %#x", h.ID, p.TrackAndDirection, tad)
+			}
+			checked++
+		}
+		own := &Cmd{Company: h.Owner, Objects: om}
+		m.VehiclePickup(own, CmdApply, h.ID)
+		k := len(moves) / 2
+		cx, cy := toScreen(int32(v2.TileX)+int32(moves[k].X), int32(v2.TileY)+int32(moves[k].Y), int32(re.BaseZ)*4+int32(moves[k].Z))
+		p, _ := m.RoadPlacementAtCursor(h.ID, int32(v2.TileX), int32(v2.TileY), re, 0, cx, cy, toScreen)
+		tried++
+		if _, ok := m.VehiclePlace(own, 0, p); ok {
+			placeable++
+		}
+	}
+	t.Logf("%d sub-positions checked; %d of %d picked-up road vehicles placeable where the cursor points", checked, placeable, tried)
+	if checked == 0 || tried == 0 || placeable == 0 {
+		t.Fatal("nothing checked")
+	}
+}

@@ -53,3 +53,54 @@ func (m *Map) RailPlacementAtCursor(head uint16, tx, ty int32, te *scenario.Trac
 	}
 	return p, true
 }
+
+// RoadPlacementAtCursor is RailPlacementAtCursor's road twin — getRoadAtCursor
+// (with getRoadProgressAtCursor) and getVehicleRoadPlacementArgsFromCursor
+// (Vehicle.cpp 0x00478415 / 0x00479707): the piece's first tile from
+// RoadPieces, the nearest of its getRoadPlacementSubPositon positions, and
+// from the other end (getUnkRoad, the direction bit flipped) when it faces
+// the wrong way for the view.
+func (m *Map) RoadPlacementAtCursor(head uint16, tx, ty int32, re *scenario.RoadElement, viewRotation uint8, cx, cy int, toScreen func(x, y, z int32) (int, int)) (VehiclePlacement, bool) {
+	id := int(re.RoadID)
+	if id >= len(RoadPieces) || int(re.SequenceIndex) >= len(RoadPieces[id]) {
+		return VehiclePlacement{}, false
+	}
+	rd := RoadPieces[id][re.SequenceIndex]
+	ox, oy := rotOffset(rd.X, rd.Y, re.Rotation) // Math::Vector::rotate
+	fx, fy, fz := tx-int32(ox), ty-int32(oy), int32(re.BaseZ)*4-int32(rd.Z)
+	tad := uint16(re.Rotation) | uint16(re.RoadID)<<3
+	moves := RoadPlacementSubPosition(tad)
+	if len(moves) == 0 {
+		return VehiclePlacement{}, false
+	}
+	best, progress := int(^uint(0)>>1), 0
+	for i, mi := range moves { // getRoadProgressAtCursor
+		sx, sy := toScreen(fx+int32(mi.X), fy+int32(mi.Y), fz+int32(mi.Z))
+		d := absInt(sx-cx) + absInt(sy-cy)
+		if d < best {
+			best, progress = d, i
+		}
+	}
+	p := VehiclePlacement{X: fx, Y: fy, Z: fz, TrackAndDirection: tad, TrackProgress: uint16(progress), Head: head}
+	yaw := moves[progress].Yaw + viewRotation<<4 - 0x37
+	if m.PickupDirection != 0 {
+		yaw -= 0x20
+	}
+	if yaw&0x3F <= 0x20 {
+		if int(tad) >= len(RoadCoordinates) {
+			return VehiclePlacement{}, false
+		}
+		c := RoadCoordinates[tad] // getUnkRoad
+		p.X, p.Y, p.Z = p.X+int32(c.DX), p.Y+int32(c.DY), p.Z+int32(c.DZ)
+		if c.RotEnd < 12 {
+			p.X -= int32(RotationOffset[c.RotEnd][0])
+			p.Y -= int32(RotationOffset[c.RotEnd][1])
+		}
+		p.TrackProgress = uint16(max(len(moves)-progress, 0))
+		if int(p.TrackProgress) >= len(moves) {
+			p.TrackProgress = uint16(len(moves) - 1)
+		}
+		p.TrackAndDirection ^= 1 << 2
+	}
+	return p, true
+}
