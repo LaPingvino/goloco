@@ -96,6 +96,7 @@ const (
 const (
 	EntityBaseTypeVehicle = uint8(0x00) // vehicle (all 6 subtypes)
 	EntityBaseTypeFree    = uint8(0xFF) // free / unoccupied slot
+	EntityBaseTypeEffect  = uint8(0x01) // effect (money, exhaust, …)
 )
 
 // Vehicle entity sub-type values — EntityBase byte 0x01.
