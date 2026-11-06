@@ -33,6 +33,10 @@ type TrainStationObject struct {
 	TrackPieces                     uint16
 	BuildCostFactor, SellCostFactor int16
 	CostIndex                       uint8
+	// Var0B (0x0B): 0 — tiles never get the covered middle piece; 1 — only
+	// covered ones decide; else a tile joined to the station both ways gets
+	// sequence index 1 (sub_48D794).
+	Var0B uint8
 
 	// CargoOffsets is getCargoOffsets [rotation][nibble]: the cargo positions
 	// on a platform (two per entry), from the cargoOffsetBytes blobs.
@@ -95,6 +99,7 @@ func ParseTrainStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loade
 		BuildCostFactor: int16(uint16(data[0x06]) | uint16(data[0x07])<<8),
 		SellCostFactor:  int16(uint16(data[0x08]) | uint16(data[0x09])<<8),
 		CostIndex:       data[0x0A],
+		Var0B:           data[0x0B],
 	}
 	numCompatible := data[0x22]
 	obj.DesignedYear = uint16(data[0x2A]) | uint16(data[0x2B])<<8
