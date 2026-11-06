@@ -1,0 +1,13 @@
+# PL.1 playthrough, stage C: in Weatherworld, the toolbar's Towns button
+# (x 769–799) opens the towns list.
+wait 20
+click 289 538
+wait 3
+click 307 201
+wait 1
+click 307 201
+wait 20
+click 784 14
+wait 2
+shot /tmp/goloco-playthrough/pt-c1-towns.png
+quit

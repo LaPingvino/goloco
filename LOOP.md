@@ -69,9 +69,13 @@ PL. [ ] **Playable and fun, by the clickables list** (ranked 2026-11-06 from scr
       multiplayer, chat missing), ToolbarTop port_menu (+ railroad_menu partial: opens construction, not the track
       menu), Vehicle.cpp tabCargo / tabFinances. The measure: 4% → 14% working as upstream (70 / 517).
    1. STARTED 2026-11-06 with GOLOCO_SCRIPT (cmd/goloco/script.go — clicks through the real input path) in
-      scripts/playthrough/: (a) the title's New Game opens the scenario list ✓, (b) Sandbox Settler starts — $10,000,
-      13 Jan 1900, the toolbar and panels ✓. NEXT (c): find two towns (the Towns list from the toolbar → a town's
-      window → centre view), then (d) build track between them … A scripted playthrough through the UI only (a diag, clicks not sim calls): New Game → a scenario → build track
+      scripts/playthrough/: (a) the title's New Game opens the scenario list ✓, (b) a scenario starts ✓ — the script now takes
+      Weatherworld (Sandbox Settler has no towns at all: 41 of the 45 scenarios have towns, checked); (c) the toolbar's
+      Towns opens the towns list — 50 towns ✓. FOUND by (c): (1) STUCK — no way to go to a town: the town window (0/8)
+      and the map window (0/7) aren't ported, so a player finds towns only by scrolling → the town window's centre-view
+      (and the map) move up to PL step 1a; (2) town names show as "Town 1", "Town 10"… (the stations' names resolve) —
+      feel, not play; (3) the Towns window's tab icons are blank; (4) the toolbar's tooltip is drawn mid-screen. NEXT:
+      1a the town window (TownWindow.cpp: centre view first), then (d) build track between two towns … A scripted playthrough through the UI only (a diag, clicks not sim calls): New Game → a scenario → build track
       between two towns → two stations → Build Vehicles → place → route → start → run → earn. Every place it gets
       stuck goes to the top of this list, ahead of 2–8.
    2. Vehicle window orders that make routes worth building: orderWait (wait for full load), orderForceUnload,
@@ -1477,4 +1481,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — PL (Joop: playable and fun, by the clickables list): ranked plan written as the new top item — make the measure true (annotate the loop's windows), a UI-only playthrough to find where a player gets stuck, then orders, the station window, feedback (money popups, news, finances), vehicle list, track-type tabs, terraform / map.
 - 2026-11-06 — PL.0: the core-loop windows annotated for scripts/clickables.py (construction, title, scenario select, time panel, toolbar, vehicle tabs): 4% → 14% working as upstream; the playthrough (PL.1) next.
 - 2026-11-06 — (Fractal: green) PL.1: the UI-only playthrough started as input scripts (scripts/playthrough/): New Game → Sandbox Settler starts a game (shots checked); next: find two towns, build track.
+- 2026-11-06 — PL.1 stage c: the Towns list works (Weatherworld, 50 towns); found: no way to go to a town (town / map windows unported — now PL.1a), towns named "Town N", blank tab icons, a misplaced tooltip. (Sandbox Settler simply has no towns — my first "blocker" was the scenario choice.)
 
