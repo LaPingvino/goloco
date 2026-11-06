@@ -111,9 +111,12 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       tabs' icons (blank on every tab). Cargo tab DONE 2026-11-06 (ui/vehiclecargo.go: Cargo's layout — list to
       26 / 27 from the edges, 22 wider without refit —, each car drawn to end at x 24 with "{unit} from {station}"
       lines or "Empty", Total and Capacity by cargo type (cargoLUTToString); seen with
-      GOLOCO_DIAG_BUILDVEHICLE=cargo). PARTIAL: the refit dropdown (the button shows per canRefit, does
-      nothing), the hovered row, the bottom lines' clipping. All five tabs now draw. NEXT in 5P: the refit
-      dropdown (Cargo::onRefitButton + the VehicleRefit command), then 5P's remaining PARTIALs.
+      GOLOCO_DIAG_BUILDVEHICLE=cargo). PARTIAL: the hovered row, the bottom lines' clipping. All five tabs
+      now draw. Refit DONE 2026-11-06: the VehicleRefit command (sim/refit.go; TestVehicleRefit) and
+      Cargo::onRefitButton / onDropdown (every refit-flag cargo with getNumUnitsForCargo's capacity, the current
+      one selected; the OK/Cancel warning first when the train holds cargo; seen with
+      GOLOCO_DIAG_BUILDVEHICLE=refit). NEXT in 5P: its remaining PARTIALs (renaming by the caption, the tabs'
+      icons, hover looks).
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a) — DONE 2026-11-06: it did differ (title save: 98 trains, the list against slot order at 55
    places). Trains() now walks the vehicle-head list from its head along next, as VehicleList does (slot order
@@ -1215,4 +1218,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (5P.g: the Cargo tab) — (the other three wait on Joop → here.) The vehicle window's Cargo tab, ported from Cargo::prepareDraw / draw / drawScroll and VehicleHead's generateCargoTotalString / CapacityString: per car (front bogie's secondary, body's primary cargo) "N Passengers from Cleveland" or "Empty", totals and capacities joined by type; the refit button per canRefit (player's, refittable flag 1<<14). Seen on Train 1: locomotive without a line, coaches "Empty" / "3 Passengers from Cleveland", Total 3 / Capacity 192 Passengers. All five tabs now reachable from each other. All green; test page redeployed.
+
+
+- 2026-11-06 (5P.g: refit) — (the other three wait on Joop → here.) Refitting ported: VehicleRefit (the first body takes the cargo, empty, capacity by unit size, accepting its category; updateTrainProperties; not another company's) and the Cargo tab's refit button → dropdown → (confirmation if loaded) → command. TestVehicleRefit: a bought SNDA1 refitted to Food holds 64 and accepts Food; another company refused. Seen: the button on the right bar and the dropdown "64 tonnes of Food / 64 crates of Goods / 64 bags of Mail / » 160 Passengers". (The first shot had no button — right: the title's companies are AI, canRefit wants a player's; the diag now plays as one.) All green; test page redeployed.
 

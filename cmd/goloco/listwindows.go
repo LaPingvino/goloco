@@ -295,7 +295,8 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		OnTab:          func(t int) { g.openVehicleWindow(headID, t) },
 		View:           func(w, h int) *gfx8.RenderTarget { return g.w.VehicleView(headID, w, h) },
 		OnCentreView:   func() { g.centreViewportOpen(headID) },
-		OnStopStart:    func(x, y, w, hh int) { g.stopStartOpen(headID, x, y, w, hh) }}
+		OnStopStart:    func(x, y, w, hh int) { g.stopStartOpen(headID, x, y, w, hh) },
+		OnRefit:        func(x, y, w, hh int) { g.refitOpen(headID, x, y, w, hh) }}
 }
 
 // stopStartImage is Main::prepareDraw's: yellow in manual control, red when
@@ -935,4 +936,69 @@ func (g *Game) vehicleCargo(tr sim.Train, cars []ui.TrainCarDraw) ui.VehicleCarg
 		}
 	}
 	return out
+}
+
+// refitOpen is Cargo::onRefitButton: a dropdown below the button of every
+// cargo with the refit flag — its plural unit name with the capacity the car
+// would have (getNumUnitsForCargo), the current one selected, the first
+// highlighted; onDropdown asks first when the train holds cargo
+// (confirmComponentChange, the keep-cargo cheat not consulted), then
+// VehicleRefit.
+func (g *Game) refitOpen(headID uint16, x, y, w, h int) {
+	m := &g.w.Map
+	om := g.r.ObjMgr
+	tr, err := m.TrainOf(headID)
+	if err != nil || len(tr.Cars) == 0 || om == nil {
+		return
+	}
+	obj := om.Vehicles[m.Entities[tr.Cars[0][0].Front].ObjectID]
+	if obj == nil {
+		return
+	}
+	cargo := om.CargoFor(obj)
+	primary := uint8(0xFF)
+	for i := 0; i < 32; i++ {
+		if uint32(cargo.CompatibleCargoCategories[0])&(1<<i) != 0 {
+			primary = uint8(i)
+			break
+		}
+	}
+	current := m.Entities[tr.Cars[0][0].Body].Cargo.Type
+	var items []ui.DropdownItem
+	var ids []uint8
+	for id, co := range om.CargoObjects {
+		if co == nil || co.Flags&(1<<1) == 0 { // CargoObjectFlags::refit
+			continue
+		}
+		n := sim.NumUnitsForCargo(om, uint32(cargo.MaxCargo[0]), primary, uint8(id))
+		items = append(items, ui.DropdownItem{Text: ui.FillArgs(ui.ObjectString(co.UnitNamePlural), ui.Comma16(int(n))), Selected: uint8(id) == current, MoveX10: true})
+		ids = append(ids, uint8(id))
+	}
+	if len(items) == 0 {
+		return
+	}
+	d := ui.NewDropdownMenu(x, y+h, items)
+	if g.vehicleWin != nil {
+		d.Colour = g.vehicleWin.Colour
+	}
+	d.Highlighted = 0
+	d.OnSelect = func(item int) {
+		apply := func() {
+			company, _ := g.w.ControllingCompany()
+			c := &sim.Cmd{Company: uint8(company), Objects: om}
+			if _, ok := m.VehicleRefit(c, sim.CmdApply, headID, ids[item]); !ok {
+				log.Printf("[Game] %s", i18n.Str(i18n.CantRefitVehicle))
+			}
+			if g.vehicleWin != nil {
+				g.openVehicleWindow(headID, 2)
+			}
+		}
+		if t, err := m.TrainOf(headID); err == nil && m.HasAnyCargo(t) {
+			g.prompt = ui.NewPromptOkCancel(i18n.Str(i18n.ConfirmVehicleComponentRefitCargoWarningTitle),
+				i18n.Str(i18n.ConfirmVehicleComponentRefitCargoWarningMessage), i18n.Str(i18n.ConfirmVehicleComponentRefitCargoWarningConfirm), g.sw, g.sh, apply)
+			return
+		}
+		apply()
+	}
+	g.dropdown = d
 }

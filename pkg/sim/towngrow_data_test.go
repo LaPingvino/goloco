@@ -2834,3 +2834,45 @@ func TestSavedLastIncome(t *testing.T) {
 		t.Error("no saved vehicle has a last income")
 	}
 }
+
+// VehicleRefit: a bought refittable vehicle refitted to another refittable
+// cargo — its first body carries that cargo, empty, the capacity rescaled by
+// unit size, accepting that cargo's category; another company can't.
+func TestVehicleRefit(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	saved := firstRailTrain(t, m, func() []Train { tr, _ := m.Trains(); return tr }(), 1)
+	company := m.Entities[saved.Head].Owner
+	c := &Cmd{Company: company, Objects: om}
+	for id, v := range om.Vehicles {
+		if v == nil || v.Flags&vehicleFlagRefittable == 0 {
+			continue
+		}
+		var h uint16
+		if _, ok := m.CreateVehicle(c, CmdApply, uint16(id), true, &h); !ok {
+			continue
+		}
+		tr, _ := m.TrainOf(h)
+		body := &m.Entities[tr.Cars[0][0].Body]
+		cargo := om.CargoFor(v)
+		primary := bitScanForward32(uint32(cargo.CompatibleCargoCategories[0]))
+		for nc, co := range om.CargoObjects {
+			if co == nil || co.Flags&(1<<1) == 0 || uint8(nc) == body.Cargo.Type { // CargoObjectFlags::refit
+				continue
+			}
+			if _, ok := m.VehicleRefit(&Cmd{Company: company ^ 1, Objects: om}, CmdApply, h, uint8(nc)); ok {
+				t.Error("another company refitted the vehicle")
+			}
+			if _, ok := m.VehicleRefit(c, CmdApply, h, uint8(nc)); !ok {
+				t.Fatalf("%s: refit to %s refused", v.DisplayName, co.Name)
+			}
+			body = &m.Entities[tr.Cars[0][0].Body]
+			want := uint32(om.CargoObjects[primary].UnitSize) * uint32(cargo.MaxCargo[0]) / uint32(co.UnitSize)
+			if body.Cargo.Type != uint8(nc) || body.Cargo.Qty != 0 || uint32(body.Cargo.MaxQty) != min(want, 0xFF) || body.Cargo.AcceptedTypes&(1<<nc) == 0 {
+				t.Errorf("%s refitted to %s: %+v (want max %d)", v.DisplayName, co.Name, body.Cargo, want)
+			}
+			t.Logf("%s refitted to %s: max %d, accepts %#x", v.DisplayName, co.Name, body.Cargo.MaxQty, body.Cargo.AcceptedTypes)
+			return
+		}
+	}
+	t.Skip("no refittable vehicle and cargo")
+}

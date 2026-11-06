@@ -303,6 +303,7 @@ type VehicleWindow struct {
 	Main                VehicleMainState
 	StopStartImage      int                  // Main: the red / green / yellow flag
 	OnStopStart         func(x, y, w, h int) // Main: stopStartOpen at the button's screen rectangle
+	OnRefit             func(x, y, w, h int) // Cargo: onRefitButton at the button's screen rectangle
 	OnTab               func(tab int)        // switchTab
 	Route               []RouteLine          // Route: the order list's rows, the last the end of the list
 	Finances            VehicleFinances      // Finances: its lines, formatted
@@ -652,13 +653,17 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 		}
 		return
 	}
-	if w.Tab == 2 { // Cargo::onMouseUp. PARTIAL: the refit dropdown, renaming by the caption
+	if w.Tab == 2 { // Cargo::onMouseUp / onMouseDown (refit). PARTIAL: renaming by the caption
 		lw := VehicleCargoLayout(w.W, w.H, w.State.HiddenTabs, w.Cargo.CanRefit)
 		for i, tab := range map[int]int{vwTabMain: 0, vwTabDetails: 1, vwTabFinances: 3, vwTabRoute: 4} {
 			if in(lw[i]) && w.OnTab != nil {
 				w.OnTab(tab)
 				return
 			}
+		}
+		if b := lw[vcRefit]; in(b) && w.OnRefit != nil {
+			w.OnRefit(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
+			return
 		}
 		if in(lw[vwClose]) && w.OnClose != nil {
 			w.OnClose()
