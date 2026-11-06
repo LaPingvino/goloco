@@ -56,6 +56,31 @@ SK. [x] **Interface skin images after a save loads.** DONE 2026-11-05: the skin'
 > And the UI icons (~120, docs/open-build.md 'UI images'): draw them, or take OpenTTD's (GPL — that part of the
 > build becomes GPL)?
 
+> NOW (Joop 2026-11-06 late: "we still don't have anything remotely playable, although it looks much, much better and
+> nicer by now. Use the clickables list to sort on what's most necessary to make it playable and fun"): item **PL**
+> first, in its order; other items wait unless PL needs them.
+
+PL. [ ] **Playable and fun, by the clickables list** (ranked 2026-11-06 from scripts/clickables.py --missing, read against
+   the game loop: start → build a line → buy and route a train → run time → see it earn → keep going). The measure
+   itself was misleading: only 4 of 47 windows carry markers, and some marks are stale (the toolbar's port / railroad
+   menus work but count as missing), so step 0 makes it true.
+   0. Annotate the loop's windows so --missing tells the truth: Construction (40), TitleMenu (6), ScenarioSelect (6),
+      TimePanel (6), ToolbarTop (port / railroad menus work now), Vehicle.cpp (its Cargo / Finances tabs are done).
+   1. A scripted playthrough through the UI only (a diag, clicks not sim calls): New Game → a scenario → build track
+      between two towns → two stations → Build Vehicles → place → route → start → run → earn. Every place it gets
+      stuck goes to the top of this list, ahead of 2–8.
+   2. Vehicle window orders that make routes worth building: orderWait (wait for full load), orderForceUnload,
+      orderReverse, passSignal; refit (choose cargo); speedControl / changeDirection (manual driving); remove (sell).
+   3. StationWindow (13): cargo waiting, ratings, which cargo goes where — the feedback that tells a player what to
+      build next.
+   4. Feedback that it's working: the money popups (item ME: drawn but not yet seen), News / MessageWindow (first
+      train at a station, cargo now accepted — needs a MessageManager), the CompanyWindow's Finances tab (of its 49).
+   5. VehicleList (11): find and manage trains once there are several.
+   6. BuildVehicle's track-type tabs (8): vehicles for each track / road type.
+   7. TerraForm (15) and MapWindow (7): shaping land for a route, finding your way on a big map.
+   8. Not for playability (later): Options' remaining tabs, LandscapeGeneration, ScenarioOptions, ObjectSelection,
+      Cheats, TileInspector, MusicJukebox, keyboard shortcuts.
+
 > OVERVIEW: docs/STATUS.md (Joop 2026-11-04: "Do we have an up-to-date Goloco todolist/progress overview?") —
 > plain words, one page; update it whenever an item moves (done / started / found).
 
@@ -1444,4 +1469,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — (Fractal: green) ME: MoneyEffect's entity and its update ported (sim/moneyeffect.go) with a lifetime test; callers and painting next.
 - 2026-11-06 — ME: money effects created by the cargo payment and by paid game commands, updated each tick after the stations; the end-to-end train test sees its popup; painting next.
 - 2026-11-06 — ME: the money popups' painter written but not yet seen on screen (diag silent) — parked at Joop's word to re-prioritise by the clickables list for playability.
+- 2026-11-06 — PL (Joop: playable and fun, by the clickables list): ranked plan written as the new top item — make the measure true (annotate the loop's windows), a UI-only playthrough to find where a player gets stuck, then orders, the station window, feedback (money popups, news, finances), vehicle list, track-type tabs, terraform / map.
 
