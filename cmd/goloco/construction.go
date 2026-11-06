@@ -40,7 +40,7 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 	f := &ui.ConstructionFrame{X: x, Y: y, Title: g.consObjName(), FrameNo: g.titleFrame, Tab: g.consTab}
 	switch g.consTab {
 	case 1:
-		f.H = ui.StationTabH
+		f.H = ui.StationTabHeight(g.stationTabState(0))
 	case 2:
 		f.H = ui.SignalTabH
 	case 3:
@@ -311,6 +311,23 @@ func (g *Game) stationTabState(company uint8) ui.StationTabState {
 	slot := pickSlot(list, g.consStation)
 	if g.stationGhost != nil && !road {
 		st.Cost = int64(g.stationGhostCost) // cState.stationCost while a ghost stands
+		st.Ghost = true
+		st.GhostName = i18n.Label(i18n.NewStation)
+		if id := g.stationGhostStation; id >= 0 && id < len(g.w.Map.StationNames) {
+			st.GhostName = g.w.Map.StationName(id)
+		}
+		lines := func(bits uint32) []ui.CargoLine {
+			var out []ui.CargoLine
+			for i := 0; i < 32; i++ {
+				if bits&(1<<i) == 0 || i >= len(om.CargoObjects) || om.CargoObjects[i] == nil {
+					continue
+				}
+				c := om.CargoObjects[i]
+				out = append(out, ui.CargoLine{Name: c.Name, Image: int(c.ImageOffset)})
+			}
+			return out
+		}
+		st.Accepted, st.Produced = lines(g.stationGhostAccepted), lines(g.stationGhostProduced)
 	}
 	if road {
 		if s := om.GetRoadStationObjectByIndex(slot); s != nil {
@@ -473,6 +490,13 @@ func (g *Game) stationToolUpdate(sx, sy int) {
 	g.stationGhostCost = cost
 	if ok {
 		g.stationGhost = &a
+		m := &g.w.Map // constructingStationId and the ghost's catchment cargo
+		g.stationGhostStation = m.LastAdjoiningStation
+		x, y := m.LastAdjoiningStationX, m.LastAdjoiningStationY
+		if x == -1 {
+			x, y = a.X, a.Y
+		}
+		g.stationGhostAccepted, g.stationGhostProduced = m.CalcAcceptedCargoTrainStationGhost(g.stationGhostStation, x, y, 0xFFFFFFFF, g.r.ObjMgr)
 	}
 }
 
