@@ -1,10 +1,6 @@
 package sim
 
-import (
-	"sort"
-
-	"github.com/LaPingvino/goloco/pkg/scenario"
-)
+import "github.com/LaPingvino/goloco/pkg/scenario"
 
 // Money effects (item ME): upstream's money popups are entities
 // (Effects/MoneyEffect.cpp): made by spendMoneyEffect when a company is paid
@@ -139,20 +135,20 @@ func (m *Map) freeMoneyEffect(id uint16) {
 	}
 }
 
-// UpdateMoneyEffects runs every money effect's update (EntityManager's misc
-// entities), in id order.
+// UpdateMoneyEffects is EffectsManager::update (0x004402F4) for the money
+// effects: the misc list walked from its head, each entity's next taken as it
+// is reached (ListIterator), so an effect freed by its update doesn't end the
+// walk. rotation is the main viewport's.
 func (m *Map) UpdateMoneyEffects(rotation int) {
-	if len(m.MoneyEffects) == 0 {
+	if len(m.MoneyEffects) == 0 || m.EntityLists == nil {
 		return
 	}
-	ids := make([]int, 0, len(m.MoneyEffects))
-	for id := range m.MoneyEffects {
-		ids = append(ids, int(id))
-	}
-	sort.Ints(ids)
-	for _, id := range ids {
-		if e := m.MoneyEffects[uint16(id)]; e != nil {
-			m.updateMoneyEffect(uint16(id), e, rotation)
+	l := m.EntityLists
+	for id := l.Heads[EntityListMisc]; id != entityIDNull; {
+		next := l.Links[id].Next
+		if e := m.MoneyEffects[id]; e != nil {
+			m.updateMoneyEffect(id, e, rotation)
 		}
+		id = next
 	}
 }

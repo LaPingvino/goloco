@@ -960,6 +960,7 @@ func TestPlayableVehicleEndToEnd(t *testing.T) {
 	}
 	waiting0 := waiting()
 	var earned int64
+	sawMoneyEffect := false // the payment's money popup (spendMoneyEffect, item ME)
 	prevRev := m.Entities[tr.Veh2].CurMonthRevenue
 	for tick := 0; tick < 200000 && (len(called) < 2 || earned == 0); tick++ {
 		m.UpdateVehicles(om)
@@ -977,6 +978,7 @@ func TestPlayableVehicleEndToEnd(t *testing.T) {
 			}
 			prevRev = rev
 		}
+		sawMoneyEffect = sawMoneyEffect || len(m.MoneyEffects) > 0
 		hd := m.Entities[tr.Head]
 		if d := math.Hypot(float64(hd.PosX-startX), float64(hd.PosY-startY)); d > moved {
 			moved = d
@@ -994,6 +996,8 @@ func TestPlayableVehicleEndToEnd(t *testing.T) {
 	}
 	if earned <= 0 {
 		t.Error("the bought train earned nothing")
+	} else if !sawMoneyEffect {
+		t.Error("the train was paid but no money effect appeared")
 	}
 	// The Finances tab's "last income": the paid run recorded on Vehicle1
 	// (updateLastIncomeStats), today, its profits adding up to what was earned.

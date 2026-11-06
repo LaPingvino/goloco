@@ -215,6 +215,10 @@ func (m *Map) UpdateUnloadCargo(tr Train, om *objects.ObjectManager) {
 		m.Entities[tr.Veh2].CurMonthRevenue += profit
 		m.Entities[tr.Veh1].Var48 |= 1 << 2 // Flags48::flag2
 		m.ApplyPaymentToCompany(head.Owner, -profit, head.VehicleType*2)
+		if len(tr.Cars) > 0 && len(tr.Cars[0]) > 0 { // the first car's body + 28 up (spendMoneyEffect; PARTIAL: the income sound)
+			b := &m.Entities[tr.Cars[0][0].Body]
+			m.SpendMoneyEffect(int32(b.PosX), int32(b.PosY), int32(b.PosZ)+28, head.Owner, -profit)
+		}
 	}
 	m.BeginLoading(tr)
 }
