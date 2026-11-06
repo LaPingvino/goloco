@@ -95,10 +95,12 @@ func bodyBounds(b BodyEl, v *objects.VehicleObject, sp *objects.VehicleBodySprit
 // PaintBody is paintBody (0x004B0CFC): the body image for its yaw (turned by
 // the view rotation; reversed bodies flip yaw and pitch) and pitch with the
 // animation and cargo frames, at (0, 0, z) through addToPlotList4FD200, in
-// the body's colour scheme (ghost and VehicleFlags::unk_5 PARTIAL: drawn
-// plainly); the braking frame attached while the brake lights are on.
-// palMap returns the colour scheme's palette map.
-func (s *Session) PaintBody(b BodyEl, v *objects.VehicleObject, sprite func(int) *gfx8.Sprite, palMap func(primary, secondary uint8) []uint8) {
+// the body's colour scheme — a ghost in the ghost colour (ghostPal:
+// Gfx::applyGhostToImage, ExtColour::unk2C with the default construction
+// marker; PARTIAL: the translucent marker setting, VehicleFlags::unk_5) —;
+// the braking frame attached while the brake lights are on. palMap returns
+// the colour scheme's palette map.
+func (s *Session) PaintBody(b BodyEl, v *objects.VehicleObject, sprite func(int) *gfx8.Sprite, palMap func(primary, secondary uint8) []uint8, ghostPal []uint8) {
 	if v == nil || b.ObjectSpriteType == objects.SpriteIndexNull || int(b.ObjectSpriteType) >= len(v.BodySprites) {
 		return
 	}
@@ -119,6 +121,9 @@ func (s *Session) PaintBody(b BodyEl, v *objects.VehicleObject, sprite func(int)
 		return
 	}
 	pm := palMap(b.Colour[0], b.Colour[1])
+	if b.Ghost {
+		pm = ghostPal
+	}
 	ps := s.Add4FD200(Image{Sprite: spr, Op: gfx8.OpFor(spr, pm != nil, false), PalMap: pm}, Pos3{0, 0, b.Z}, bbOff, bbSize)
 	if ps != nil && sp.Flags&objects.BodyFlagHasBrakingLights != 0 && b.BrakeLights && !b.Ghost && !b.VehicleUnk5 {
 		if br := sprite(int(v.ImageOffset + sp.BrakingImageIndex(pitch, yaw))); br != nil {
@@ -239,8 +244,10 @@ func bogieImage(b BogieEl, sp *objects.VehicleBogieSprite, rotation uint8) (imag
 // (0, 0, z) as a parent with its bounding box, in the bogie's colour scheme;
 // a flat aircraft bogie is the plane's shadow — translucent (ExtColour::unk32,
 // shadowPal), through addToPlotList4FD200, box (8, 8, z + 6) 48×48×2, and
-// none for a ghost. PARTIAL: ghost and VehicleFlags::unk_5 drawn plainly.
-func (s *Session) PaintBogie(b BogieEl, v *objects.VehicleObject, sprite func(int) *gfx8.Sprite, palMap func(primary, secondary uint8) []uint8, shadowPal []uint8) {
+// none for a ghost; a ghost bogie in the ghost colour (ghostPal, as
+// PaintBody) and not interactive (setItemType noInteraction). PARTIAL:
+// VehicleFlags::unk_5.
+func (s *Session) PaintBogie(b BogieEl, v *objects.VehicleObject, sprite func(int) *gfx8.Sprite, palMap func(primary, secondary uint8) []uint8, shadowPal, ghostPal []uint8) {
 	if v == nil || b.ObjectSpriteType == objects.SpriteIndexNull || int(b.ObjectSpriteType) >= len(v.BogieSprites) {
 		return
 	}
@@ -255,5 +262,9 @@ func (s *Session) PaintBogie(b BogieEl, v *objects.VehicleObject, sprite func(in
 		return
 	}
 	pm := palMap(b.Colour[0], b.Colour[1])
+	if b.Ghost {
+		s.ItemType = ItemNoInteraction
+		pm = ghostPal
+	}
 	s.AddAsParent(Image{Sprite: spr, Op: gfx8.OpFor(spr, pm != nil, false), PalMap: pm}, Pos3{0, 0, b.Z}, bbOff, bbSize)
 }
