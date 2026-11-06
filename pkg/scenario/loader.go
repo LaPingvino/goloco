@@ -1588,6 +1588,18 @@ func parseIndustries(gs []byte) []Industry {
 			ind.ReceivedMonthlyTotal[k] = binary.LittleEndian.Uint16(r[0x18D+2*k:])
 			ind.ReceivedDailyTotal[k] = binary.LittleEndian.Uint16(r[0x199+2*k:])
 		}
+		u16 := func(o int) uint16 { return binary.LittleEndian.Uint16(r[o:]) }
+		ind.Flags, ind.UnderConstruction, ind.ProductionRate = u16(0x06), r[0x11], r[0xDF]
+		for k := range 2 {
+			for j := range 4 {
+				ind.ProducedStations[k][j] = u16(0x161 + 8*k + 2*j)
+			}
+			ind.DailyProductionTarget[k] = u16(0x179 + 2*k)
+			ind.DailyProduction[k] = u16(0x17D + 2*k)
+			ind.OutputBuffer[k] = u16(0x181 + 2*k)
+			ind.ProducedMonthlyTotal[k] = u16(0x185 + 2*k)
+			ind.DeliveredMonthlyTotal[k] = u16(0x19F + 2*k)
+		}
 		out = append(out, ind)
 	}
 	return out

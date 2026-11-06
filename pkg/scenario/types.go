@@ -227,6 +227,20 @@ type Industry struct {
 	ReceivedMonthlyTotal [3]uint16 // 0x18D receivedCargoQuantityMonthlyTotal
 	ReceivedDailyTotal   [3]uint16 // 0x199 receivedCargoQuantityDailyTotal
 	HistoryMinProduction uint32    // 0x38B history_min_production[0] (cargo types that celebrated)
+	// Production (CP): flags (0x06: isGhost 1), under_construction (0x11:
+	// 0xFF finished), productionRate (0xDF, of 256), the stations its two
+	// cargoes go to (0x161), dailyProductionTarget (0x179), dailyProduction
+	// (0x17D), outputBuffer (0x181), the monthly produced and delivered
+	// totals (0x185, 0x19F).
+	Flags                 uint16
+	UnderConstruction     uint8
+	ProductionRate        uint8
+	ProducedStations      [2][4]uint16
+	DailyProductionTarget [2]uint16
+	DailyProduction       [2]uint16
+	OutputBuffer          [2]uint16
+	ProducedMonthlyTotal  [2]uint16
+	DeliveredMonthlyTotal [2]uint16
 }
 
 // GetTile returns tile at the given coordinates
