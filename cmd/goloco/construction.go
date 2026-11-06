@@ -429,26 +429,75 @@ func (g *Game) openBridgeDropdown(wx, wy int, colour, company uint8) {
 	g.dropdown = d
 }
 
+// stationArgsAt is getTrainStationPlacementArgsFromCursor with the selected
+// station type; ok false off track.
+func (g *Game) stationArgsAt(sx, sy int) (sim.TrainStationPlacement, bool) {
+	if g.r == nil || g.r.ObjMgr == nil {
+		return sim.TrainStationPlacement{}, false
+	}
+	list := g.r.ObjMgr.AvailableCompatibleStations(g.buildObjID, false, int(g.w.CurrentYear))
+	if len(list) == 0 {
+		return sim.TrainStationPlacement{}, false
+	}
+	return g.w.TrainStationPlacementAt(sx, sy, uint8(pickSlot(list, g.consStation)))
+}
+
+func (g *Game) stationCmd() (*sim.Cmd, sim.G1Raw) {
+	company, _ := g.w.ControllingCompany()
+	g1, _ := g.r.ObjMgr.G1File.(sim.G1Raw)
+	return &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}, g1
+}
+
+// stationToolUpdate is StationTab's onToolUpdateTrainStation (0x0049E421 side):
+// off track, the ghost goes (onToolUpdateFail); on the same piece it stays;
+// else the old ghost goes and a new one is placed (apply | noErrorWindow |
+// noPayment | ghost), its cost kept. PARTIAL: the catchment display and the
+// ghost's accepted / produced cargo (calcAcceptedCargoTrainStationGhost), the
+// cost line in the tab.
+func (g *Game) stationToolUpdate(sx, sy int) {
+	a, ok := g.stationArgsAt(sx, sy)
+	if !ok {
+		g.removeStationGhost()
+		return
+	}
+	if gh := g.stationGhost; gh != nil && gh.X == a.X && gh.Y == a.Y && gh.Z == a.Z && gh.Rotation == a.Rotation &&
+		gh.TrackID == a.TrackID && gh.Index == a.Index && gh.TrackObjectID == a.TrackObjectID {
+		return
+	}
+	g.removeStationGhost()
+	c, g1 := g.stationCmd()
+	cost, ok := g.w.Map.CreateTrainStation(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdNoPayment|sim.CmdGhost, a, g1)
+	g.stationGhostCost = cost
+	if ok {
+		g.stationGhost = &a
+	}
+}
+
+// removeStationGhost is removeConstructionGhosts' station part: the ghost
+// removed as it was placed.
+func (g *Game) removeStationGhost() {
+	gh := g.stationGhost
+	if gh == nil {
+		return
+	}
+	g.stationGhost = nil
+	c, g1 := g.stationCmd()
+	g.w.Map.RemoveTrainStation(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdNoPayment|sim.CmdGhost,
+		sim.TrainStationRemoval{X: gh.X, Y: gh.Y, Z: gh.Z, Rotation: gh.Rotation, TrackID: gh.TrackID, Index: gh.Index, TrackObjectID: gh.TrackObjectID}, g1)
+}
+
 // stationToolUp is StationTab's onToolUpTrainStation (0x004A5390): the
 // placement from the track under the cursor (getTrainStationPlacementArgsFromCursor),
 // refused on another track type (wrong_type_of_track_road), then
-// CreateTrainStation with apply. PARTIAL: the error window and its title
-// (cant_build_pop3_string with the station's name), the construct sound,
-// removeConstructionGhosts (goloco places no station ghosts yet).
+// CreateTrainStation with apply, after removeConstructionGhosts. PARTIAL: the
+// error window and its title (cant_build_pop3_string with the station's
+// name), the construct sound.
 func (g *Game) stationToolUp(sx, sy int) {
-	if g.r == nil || g.r.ObjMgr == nil {
-		return
-	}
-	om := g.r.ObjMgr
-	list := om.AvailableCompatibleStations(g.buildObjID, false, int(g.w.CurrentYear))
-	if len(list) == 0 {
-		return
-	}
-	a, ok := g.w.TrainStationPlacementAt(sx, sy, uint8(pickSlot(list, g.consStation)))
+	g.removeStationGhost()
+	a, ok := g.stationArgsAt(sx, sy)
 	if !ok || int(a.TrackObjectID) != g.buildObjID {
 		return
 	}
-	company, _ := g.w.ControllingCompany()
-	g1, _ := om.G1File.(sim.G1Raw)
-	g.w.Map.CreateTrainStation(&sim.Cmd{Company: uint8(company), Objects: om}, sim.CmdApply, a, g1)
+	c, g1 := g.stationCmd()
+	g.w.Map.CreateTrainStation(c, sim.CmdApply, a, g1)
 }
