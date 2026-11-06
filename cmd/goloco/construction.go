@@ -309,7 +309,7 @@ func (g *Game) stationTabState(company uint8) ui.StationTabState {
 		return st
 	}
 	slot := pickSlot(list, g.consStation)
-	if g.stationGhost != nil && !road {
+	if (g.stationGhost != nil && !road) || (g.roadStationGhost != nil && road) {
 		st.Cost = int64(g.stationGhostCost) // cState.stationCost while a ghost stands
 		st.Ghost = true
 		st.GhostName = i18n.Label(i18n.NewStation)
@@ -474,6 +474,10 @@ func (g *Game) stationCmd() (*sim.Cmd, sim.G1Raw) {
 // noPayment | ghost), its cost kept; the catchment shown on the map and the
 // ghost's accepted / produced cargo (calcAcceptedCargoTrainStationGhost).
 func (g *Game) stationToolUpdate(sx, sy int) {
+	if g.consIsRoad() {
+		g.roadStationToolUpdate(sx, sy)
+		return
+	}
 	a, ok := g.stationArgsAt(sx, sy)
 	if !ok {
 		g.removeStationGhost()
@@ -503,7 +507,13 @@ func (g *Game) stationToolUpdate(sx, sy int) {
 // removeStationGhost is removeConstructionGhosts' station part: the ghost
 // removed as it was placed.
 func (g *Game) removeStationGhost() {
-	g.w.SetCatchmentDisplay(nil) // sub_491BC6 + resetMapSelectionFlag(catchmentArea)
+	g.w.SetCatchmentDisplay(nil)             // sub_491BC6 + resetMapSelectionFlag(catchmentArea)
+	if rg := g.roadStationGhost; rg != nil { // stationGhostType & (1 << 7): RoadStationRemovalArgs
+		g.roadStationGhost = nil
+		c, g1 := g.stationCmd()
+		g.w.Map.RemoveRoadStation(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdNoPayment|sim.CmdGhost,
+			sim.RoadStationRemoval{X: rg.X, Y: rg.Y, Z: rg.Z, Rotation: rg.Rotation, RoadID: rg.RoadID, Index: rg.Index, RoadObjectID: rg.RoadObjectID}, g1)
+	}
 	gh := g.stationGhost
 	if gh == nil {
 		return
@@ -522,6 +532,10 @@ func (g *Game) removeStationGhost() {
 // name. PARTIAL: the command's own error text (goloco's commands don't set
 // one yet, so only the title shows), the construct sound.
 func (g *Game) stationToolUp(sx, sy int) {
+	if g.consIsRoad() {
+		g.roadStationToolUp(sx, sy)
+		return
+	}
 	g.removeStationGhost()
 	a, ok := g.stationArgsAt(sx, sy)
 	if !ok {
@@ -548,4 +562,72 @@ func (g *Game) stationToolUp(sx, sy int) {
 func (g *Game) openError(title, message string) {
 	mx, my := ebiten.CursorPosition()
 	g.errorWin = ui.OpenError(title, message, mx, my, g.sw, g.sh)
+}
+
+// roadStationArgsAt is getRoadStationPlacementArgsFromCursor with the
+// selected stop type.
+func (g *Game) roadStationArgsAt(sx, sy int) (sim.RoadStationPlacement, int, bool) {
+	if g.r == nil || g.r.ObjMgr == nil {
+		return sim.RoadStationPlacement{}, -1, false
+	}
+	list := g.r.ObjMgr.AvailableCompatibleStations(g.buildObjID, true, int(g.w.CurrentYear))
+	if len(list) == 0 {
+		return sim.RoadStationPlacement{}, -1, false
+	}
+	typ := pickSlot(list, g.consStation)
+	a, ok := g.w.RoadStationPlacementAt(sx, sy, uint8(typ))
+	return a, typ, ok
+}
+
+// roadStationToolUpdate is StationTab's onToolUpdateRoadStation: as the train
+// one, with the road stop ghost; the catchment's cargo filtered by the stop
+// (a passenger stop: its cargo only; a freight bay: all but that).
+func (g *Game) roadStationToolUpdate(sx, sy int) {
+	a, typ, ok := g.roadStationArgsAt(sx, sy)
+	if !ok {
+		g.removeStationGhost()
+		return
+	}
+	if gh := g.roadStationGhost; gh != nil && gh.X == a.X && gh.Y == a.Y && gh.Z == a.Z && gh.Rotation == a.Rotation &&
+		gh.RoadID == a.RoadID && gh.Index == a.Index && gh.RoadObjectID == a.RoadObjectID {
+		return
+	}
+	g.removeStationGhost()
+	c, g1 := g.stationCmd()
+	cost, ok := g.w.Map.CreateRoadStation(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdNoPayment|sim.CmdGhost, a, g1)
+	g.stationGhostCost = cost
+	if !ok {
+		return
+	}
+	g.roadStationGhost = &a
+	m := &g.w.Map
+	g.stationGhostStation = m.LastAdjoiningStation
+	x, y := m.LastAdjoiningStationX, m.LastAdjoiningStationY
+	if x == -1 {
+		x, y = a.X, a.Y
+	}
+	g.w.SetCatchmentDisplay(m.GhostCatchmentDisplay(g.stationGhostStation, x, y, g.r.ObjMgr))
+	g.stationGhostAccepted, g.stationGhostProduced = m.CalcAcceptedCargoTrainStationGhost(g.stationGhostStation, x, y, sim.RoadStationCargoFilter(g.r.ObjMgr, typ), g.r.ObjMgr)
+}
+
+// roadStationToolUp is StationTab's onToolUpRoadStation (0x004A548F): after
+// removeConstructionGhosts, CreateRoadStation with apply on the road under
+// the cursor; a failure opens the error window titled cant_build_pop3_string
+// with the stop's name. PARTIAL: the construct sound, the command's own
+// error text.
+func (g *Game) roadStationToolUp(sx, sy int) {
+	g.removeStationGhost()
+	a, typ, ok := g.roadStationArgsAt(sx, sy)
+	if !ok {
+		return
+	}
+	om := g.r.ObjMgr
+	title := ""
+	if typ >= 0 && typ < len(om.RoadStationObjects) && om.RoadStationObjects[typ] != nil {
+		title = ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop3String), om.RoadStationObjects[typ].Name)
+	}
+	c, g1 := g.stationCmd()
+	if _, ok := g.w.Map.CreateRoadStation(c, sim.CmdApply, a, g1); !ok {
+		g.openError(title, "")
+	}
 }

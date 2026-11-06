@@ -3,6 +3,8 @@ package sim
 import (
 	"strings"
 
+	"github.com/LaPingvino/goloco/pkg/objects"
+
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
 
@@ -291,4 +293,22 @@ func (m *Map) CreateRoadStation(c *Cmd, flags uint8, a RoadStationPlacement, g1 
 		}
 	}
 	return total, true
+}
+
+// RoadStationCargoFilter is onToolUpdateRoadStation's filter: a passenger stop
+// counts only its cargo, a freight bay every cargo but that one, else all.
+func RoadStationCargoFilter(om *objects.ObjectManager, typ int) uint32 {
+	if om == nil || typ < 0 || typ >= len(om.RoadStationObjects) || om.RoadStationObjects[typ] == nil {
+		return ^uint32(0)
+	}
+	ro := om.RoadStationObjects[typ]
+	cargo := uint(cargoSlotByName(om, ro.CargoName)) & 31
+	filter := ^uint32(0)
+	if ro.Flags&roadStationFlagPassenger != 0 {
+		filter = 1 << cargo
+	}
+	if ro.Flags&roadStationFlagFreight != 0 {
+		filter = ^uint32(0) &^ (1 << cargo)
+	}
+	return filter
 }
