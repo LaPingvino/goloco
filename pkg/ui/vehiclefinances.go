@@ -130,11 +130,7 @@ func (w *VehicleWindow) drawFinances(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[vwClose].L, lw[vwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := vwTabMain; i <= vwTabRoute; i++ {
-			if t := lw[i]; !t.Hidden {
-				drawTab(rt, t.L, t.T, i == vwTabFinances, sec, tabNoIcon, nil)
-			}
-		}
+		w.drawVehicleTabs(rt, lw[:], vwTabFinances, sec, prim)
 	})
 	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))
 	pal := g1.GetPalette()

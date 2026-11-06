@@ -107,16 +107,16 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       end-to-end run's 27 525 recorded as its one income line). Finances tab DONE 2026-11-06 (ui/vehiclefinances.go:
       layout = the common widgets at 400×202, draw as Finances::draw — last income date and cargo lines, average
       speed when non-zero, running cost, monthly profit, sale value; reachable from every tab; seen with
-      GOLOCO_DIAG_BUILDVEHICLE=finances). PARTIAL: the cargo line's wrapping, renaming by the caption, the
-      tabs' icons (blank on every tab). Cargo tab DONE 2026-11-06 (ui/vehiclecargo.go: Cargo's layout — list to
+      GOLOCO_DIAG_BUILDVEHICLE=finances). PARTIAL: the cargo line's wrapping, renaming by the caption. Cargo tab DONE 2026-11-06 (ui/vehiclecargo.go: Cargo's layout — list to
       26 / 27 from the edges, 22 wider without refit —, each car drawn to end at x 24 with "{unit} from {station}"
       lines or "Empty", Total and Capacity by cargo type (cargoLUTToString); seen with
       GOLOCO_DIAG_BUILDVEHICLE=cargo). PARTIAL: the hovered row, the bottom lines' clipping. All five tabs
       now draw. Refit DONE 2026-11-06: the VehicleRefit command (sim/refit.go; TestVehicleRefit) and
       Cargo::onRefitButton / onDropdown (every refit-flag cargo with getNumUnitsForCargo's capacity, the current
       one selected; the OK/Cancel warning first when the train holds cargo; seen with
-      GOLOCO_DIAG_BUILDVEHICLE=refit). NEXT in 5P: its remaining PARTIALs (renaming by the caption, the tabs'
-      icons, hover looks).
+      GOLOCO_DIAG_BUILDVEHICLE=refit). Tab icons DONE 2026-11-06 (ui/vehicletabs.go: Common::drawTabs — the
+      skin's images, main by vehicle type in the company colour, the current tab's animated by frameNo, which
+      now counts Updates: Game.windowFrame). NEXT in 5P: renaming by the caption (TextInput), hover looks.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a) — DONE 2026-11-06: it did differ (title save: 98 trains, the list against slot order at 55
    places). Trains() now walks the vehicle-head list from its head along next, as VehicleList does (slot order
@@ -1221,4 +1221,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (5P.g: refit) — (the other three wait on Joop → here.) Refitting ported: VehicleRefit (the first body takes the cargo, empty, capacity by unit size, accepting its category; updateTrainProperties; not another company's) and the Cargo tab's refit button → dropdown → (confirmation if loaded) → command. TestVehicleRefit: a bought SNDA1 refitted to Food holds 64 and accepts Food; another company refused. Seen: the button on the right bar and the dropdown "64 tonnes of Food / 64 crates of Goods / 64 bags of Mail / » 160 Passengers". (The first shot had no button — right: the title's companies are AI, canRefit wants a player's; the diag now plays as one.) All green; test page redeployed.
+
+
+- 2026-11-06 (5P.g: the vehicle window's tab icons) — (the other three wait on Joop → here.) Common::drawTabs ported: the interface skin's tab images (train / bus / truck / tram / aircraft / ship by type, recoloured to the company; wrench, cargo delivered, finances, routes), the current tab's frame from the window's frameNo — a new Game.windowFrame counting Updates, as onUpdate's frameNo += 1. One helper replaces the five tab loops. Seen on the Cargo tab: all five icons, the inactive ones under the translucent overlay. All green; test page redeployed.
 
