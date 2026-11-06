@@ -190,6 +190,27 @@ func TestCreatePort(t *testing.T) {
 					t.Errorf("station %d %q: registered %v owner %d", id, m.StationName(id), reg, st.Owner)
 				}
 				t.Logf("dock at %d,%d rotation %d: %q, cost %d", x, y, rot, m.StationName(id), cost)
+				// and removed again: the four elements go, the station is left
+				// without tiles, the removal refunds; a second removal finds nothing
+				refund, ok := m.RemovePort(c, CmdApply, PortRemoval{X: a.X, Y: a.Y, Z: a.Z}, g1)
+				if !ok || refund >= 0 {
+					t.Fatalf("removing: ok %v refund %d", ok, refund)
+				}
+				for _, d := range [][2]int{{0, 0}, {1, 0}, {0, 1}, {1, 1}} {
+					tt := m.TileAt(x+d[0], y+d[1])
+					for _, r := range tt.Order {
+						if r.Kind == scenario.KindStation && tt.Stations[r.Index].StationType == 3 {
+							t.Errorf("a docks element left on %d,%d", x+d[0], y+d[1])
+						}
+					}
+				}
+				if n := m.StationNames[id].TileSize; n != 0 {
+					t.Errorf("station %d still has %d tiles", id, n)
+				}
+				if _, ok := m.RemovePort(c, CmdApply, PortRemoval{X: a.X, Y: a.Y, Z: a.Z}, g1); ok {
+					t.Error("a second removal succeeded")
+				}
+				t.Logf("removed: refund %d", refund)
 				if !refusedOnWater {
 					t.Log("(no open water tested before the dock)")
 				}
