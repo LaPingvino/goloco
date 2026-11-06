@@ -36,7 +36,8 @@ type tile = sim.Tile
 
 // World holds a tile grid for an isometric game world
 type World struct {
-	catchment []uint8 // SetCatchmentDisplay's map (nil: none)
+	townScene *scene.Renderer // the Town window's viewport (townview.go)
+	catchment []uint8         // SetCatchmentDisplay's map (nil: none)
 	// SceneEvery: render the world every n-th frame (≤ 1: every frame); the
 	// game raises it while its UI is open (drawScene).
 	SceneEvery int

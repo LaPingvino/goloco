@@ -25,6 +25,7 @@ const (
 
 // TownRow is one town.
 type TownRow struct {
+	ID                   int // the town's index (Town::id)
 	Name, Type           string
 	Size                 int // Town::size (orderByType)
 	Population, Stations int
@@ -49,13 +50,17 @@ type TownListWindow struct {
 	Tabs        int
 	Columns     []TableColumn
 	Rows        [][]string
-	Status      string
-	Hover       int
-	Scroll      int
-	dragging    bool // the scrollbar's thumb is being dragged
-	dragY       int
-	content     [4]int
-	OnClose     func()
+	// RowIDs are the rows' object ids in their current order; OnRow is a
+	// row clicked (onScrollMouseDown: Town::open for the town list).
+	RowIDs   []int
+	OnRow    func(id int)
+	Status   string
+	Hover    int
+	Scroll   int
+	dragging bool // the scrollbar's thumb is being dragged
+	dragY    int
+	content  [4]int
+	OnClose  func()
 
 	// Geometry: window size, row height, the scroll view rect, the status
 	// label's y and the text's y offset in a row (VehicleList: +2).
@@ -129,8 +134,10 @@ func NewTownList(sw int, towns []TownRow, titleColour, colour uint8) *TownListWi
 	w.Sort = func(mode int) {
 		order := append([]TownRow(nil), towns...)
 		sort.SliceStable(order, func(i, j int) bool { return townOrder(mode, order[i], order[j]) })
+		w.RowIDs = w.RowIDs[:0]
 		for i, t := range order {
 			w.Rows[i] = []string{t.Name, t.Type, itoa3(t.Population), itoa3(t.Stations)}
+			w.RowIDs = append(w.RowIDs, t.ID)
 		}
 	}
 	w.Sort(0)
@@ -265,6 +272,9 @@ func (w *TownListWindow) HandleClick(px, py int) {
 	if w.in(w.List, px, py) {
 		if i := (py - (w.Y + w.List[1] + 1) + w.Scroll) / w.RowHeight; i >= 0 && i < len(w.Rows) {
 			w.Hover = i
+			if w.OnRow != nil && i < len(w.RowIDs) {
+				w.OnRow(w.RowIDs[i])
+			}
 		}
 	}
 }

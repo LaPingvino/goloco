@@ -1,0 +1,18 @@
+# PL.1 playthrough, stage D: Weatherworld → Towns list → a town (its window and
+# viewport) → centre view moves the main view to it.
+wait 20
+click 289 538
+wait 3
+click 307 201
+wait 1
+click 307 201
+wait 20
+click 784 14
+wait 2
+click 220 91
+wait 2
+shot /tmp/goloco-playthrough/pt-d1-townwindow.png
+click 495 354
+wait 2
+shot /tmp/goloco-playthrough/pt-d2-centred.png
+quit

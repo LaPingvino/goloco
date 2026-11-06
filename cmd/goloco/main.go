@@ -150,6 +150,7 @@ type Game struct {
 	stationGhostCost       int32                      // cState.stationCost
 	roadStationGhost       *sim.RoadStationPlacement  // the road stop ghost (stationGhostType bit 7)
 	dockGhost              *sim.PortPlacement         // the dock ghost (stationGhostType bit 14)
+	townWin                *ui.TownWindow             // the Town window (TownWindow.cpp)
 	diagMoney              bool                       // DIAGNOSTIC ONLY: keep a money popup alive (moneyeffect)
 	airportGhost           *sim.AirportPlacement      // the airport ghost (stationGhostType bit 15)
 	airportRotation        uint8                      // cState.constructionRotation in the airport window
@@ -732,6 +733,8 @@ func (g *Game) Update() error {
 			g.vehicleWin.HandleClick(g.mouseX, g.mouseY)
 		} else if g.buildVehicle != nil && g.buildVehicle.Contains(g.mouseX, g.mouseY) {
 			g.buildVehicle.HandleClick(g.mouseX, g.mouseY)
+		} else if g.townWin != nil && g.townWin.Contains(g.mouseX, g.mouseY) {
+			g.townWin.HandleClick(g.mouseX, g.mouseY)
 		} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
 			g.townList.HandleClick(g.mouseX, g.mouseY)
 		} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
@@ -1384,6 +1387,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.townList != nil {
 		g.townList.Draw(screen)
+	}
+	if g.townWin != nil {
+		g.townWin.Draw(screen)
 	}
 
 	// Draw dropdown menu on top of everything else
