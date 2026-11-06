@@ -125,3 +125,13 @@ without g1.DAT. 3. Finish the generator (5.9f3–f5). 4. `-open` start + pack + 
    borrowed sprites make that part of the build GPL — keep their source and licence with them.
 4. Only then a public link — under a separate route without basic auth, built only from MIT/open sources,
    with the OpenGraphics licence and credits on the page.
+
+## The palette (2026-11-06)
+
+OpenGraphics ships its palette, MIT: `palettes/locopal.{act,aco,jasc.pal,ms.pal,png}`. Compared index by index
+with the palette goloco reads from the original g1.DAT (locally; nothing of the original is kept): **identical over
+10–244** — the range sprites are drawn in — except 155–165, within 6 RGB steps (the animated water colours); the
+20 that differ are the reserved ends, 1–9 and 245–255, which g1 leaves black. So the open build takes
+`locopal.jasc.pal` as its palette: the Pages workflow fetches it pinned to OpenGraphics commit d19bf5c6 and
+checks its sha256 (cf558101…3bfd23); webpack packs it at /w/opengraphics/locopal.jasc.pal. Next: the game
+reads it when there is no g1.DAT (an empty sprite pool with this palette), then the colour remap tables (§2).

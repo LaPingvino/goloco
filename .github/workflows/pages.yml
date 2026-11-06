@@ -31,13 +31,17 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/objects.zip" https://github.com/OpenLoco/OpenGraphics/releases/download/v0.1.8/objects.zip
           echo "658891d94a46040b7bf71dfd7f01bbc1dda6470712cb3dc07482931feb5013c7  $RUNNER_TEMP/objects.zip" | sha256sum -c -
           unzip -q "$RUNNER_TEMP/objects.zip" -d "$RUNNER_TEMP/opengraphics"
+          # the palette the objects are drawn in (OpenGraphics' palettes/, MIT),
+          # pinned to a commit: index-compatible with Locomotion's over 10–244
+          curl -fsSL -o "$RUNNER_TEMP/opengraphics/locopal.jasc.pal" https://raw.githubusercontent.com/OpenLoco/OpenGraphics/d19bf5c6c1048fe0099199b713ea07600ab2e518/palettes/locopal.jasc.pal
+          echo "cf5581016453d8d90d3cd9667488d042972bef4dd3370f10ac6460f86b3bfd23  $RUNNER_TEMP/opengraphics/locopal.jasc.pal" | sha256sum -c -
       - name: goloco's loader reads every OpenGraphics object
         run: GOLOCO_OPENGRAPHICS="$RUNNER_TEMP/opengraphics" go test -count=1 -run TestOpenGraphicsObjectsParse -v ./pkg/objects
       - name: The open web build
         run: go run ./cmd/webpack -open -local -opengraphics "$RUNNER_TEMP/opengraphics" -out "$RUNNER_TEMP/site"
       - name: No game data in it
         run: |
-          python3 -c "import json,sys,os; m=json.load(open('$RUNNER_TEMP/site/manifest.json')); bad=[f['p'] for f in m['files'] if f['p'].startswith('/w/locomotion') or (f['p'].startswith('/w/opengraphics/') and not os.path.basename(f['p']).startswith('OG_'))]; og=[f for f in m['files'] if f['p'].startswith('/w/opengraphics/')]; print(len(og), 'OpenGraphics objects'); sys.exit('game data in the open build: %s' % bad[:5] if bad or not m.get('open') or not og else 0)"
+          python3 -c "import json,sys,os; m=json.load(open('$RUNNER_TEMP/site/manifest.json')); bad=[f['p'] for f in m['files'] if f['p'].startswith('/w/locomotion') or (f['p'].startswith('/w/opengraphics/') and not os.path.basename(f['p']).startswith('OG_') and f['p'] != '/w/opengraphics/locopal.jasc.pal')]; og=[f for f in m['files'] if f['p'].startswith('/w/opengraphics/')]; print(len(og), 'OpenGraphics objects'); sys.exit('game data in the open build: %s' % bad[:5] if bad or not m.get('open') or not og else 0)"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ${{ runner.temp }}/site
