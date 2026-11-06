@@ -549,3 +549,6 @@ func countLabel(n, singular, plural int) string {
 	}
 	return strings.Replace(i18n.Label(id), "{INT16}", itoa3(n), 1)
 }
+
+// FormatCurrency is {CURRENCY32} (formatCurrency) for other packages.
+func FormatCurrency(v int64) string { return currency32(v) }
