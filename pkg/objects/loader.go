@@ -428,6 +428,7 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 			sc := &ScaffoldingObject{}
 			for i := range 3 {
 				sc.SegmentHeights[i] = binary.LittleEndian.Uint16(decompressed[0x06+2*i:])
+				sc.RoofHeights[i] = binary.LittleEndian.Uint16(decompressed[0x0C+2*i:])
 			}
 			off, _ := walkStringTableLang(decompressed, 0x12)
 			if l, ok := m.G1File.(G1Loader); ok && off < len(decompressed) {
@@ -1584,6 +1585,7 @@ func (m *ObjectManager) ReorderCompetitorObjects(order []string) {
 type ScaffoldingObject struct {
 	Image          uint32
 	SegmentHeights [3]uint16
+	RoofHeights    [3]uint16 // 0x0C
 }
 
 // skinStringTableLen is the length of an interface skin's string table (after

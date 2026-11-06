@@ -2334,3 +2334,95 @@ func TestAllocateNewIndustry(t *testing.T) {
 		t.Error("a 129th industry allocated")
 	}
 }
+
+// TestPlaceIndustryBuilding (CR part 2c): the industry objects' new fields
+// read sensibly (buildings, colours, counts, production ranges); on the
+// title map a new industry's first building is placed by
+// placeIndustryBuilding — the query changes nothing, the apply puts its
+// elements on every tile of its footprint at one level (the ground there
+// flattened, the trees gone), the tile in the industry's list —; a land
+// industry is refused on water.
+func TestPlaceIndustryBuilding(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	for i := 0; i < 16; i++ {
+		obj := om.GetIndustryObjectByIndex(i)
+		if obj == nil {
+			continue
+		}
+		if len(obj.Buildings) != int(obj.MaxNumBuildings) || obj.MinNumBuildings > obj.MaxNumBuildings || obj.MinNumBuildings == 0 ||
+			obj.InitialProductionRate[0][0] > obj.InitialProductionRate[0][1] {
+			t.Errorf("%s: buildings %v (%d–%d), production %v", obj.Name, obj.Buildings, obj.MinNumBuildings, obj.MaxNumBuildings, obj.InitialProductionRate)
+		}
+		for _, b := range obj.Buildings {
+			if int(b) >= len(obj.Variations) {
+				t.Errorf("%s: building type %d of %d", obj.Name, b, len(obj.Variations))
+			}
+		}
+	}
+	c := &Cmd{Company: CompanyNeutral, Objects: om}
+	var id uint8
+	var x, y int32
+	var obj *objects.IndustryObject
+	for k := 0; k < 16 && obj == nil; k++ {
+		o := om.GetIndustryObjectByIndex(k)
+		if o == nil || o.Flags&industryBuiltOnWater != 0 {
+			continue
+		}
+		for try := 0; try < 10; try++ {
+			px, py, ok := m.findRandomNewIndustryLocation(uint8(k), om)
+			if !ok {
+				continue
+			}
+			if got, _, ok := m.industryAllocateChecked(uint8(k), px, py, [2]uint32{3, 4}, om); ok {
+				id, x, y, obj = got, px, py, o
+				break
+			}
+		}
+	}
+	if obj == nil {
+		t.Fatal("no industry allocated")
+	}
+	b := obj.Buildings[0]
+	large := obj.BuildingSizeFlags&(1<<b) != 0
+	tl := m.TileAt(int(x)>>5, int(y)>>5)
+	nIndBefore := len(tl.Industries)
+	if _, ok := m.placeIndustryBuilding(c, id, x, y, 0, b, 3, true, 0); !ok {
+		t.Skipf("%s's first building can't stand at (%d, %d) (the query)", obj.Name, x>>5, y>>5)
+	}
+	if len(tl.Industries) != nIndBefore {
+		t.Fatal("the query placed something")
+	}
+	m.industryByID(id).Tiles = nil // the query adds the tile, as upstream (createIndustry takes it back)
+	cost, ok := m.placeIndustryBuilding(c, id, x, y, 0, b, 3, true, CmdApply)
+	if !ok {
+		t.Fatal("placing refused after the query allowed it")
+	}
+	ind := m.industryByID(id)
+	if len(ind.Tiles) != 1 {
+		t.Fatalf("industry tiles %v", ind.Tiles)
+	}
+	z := uint8((ind.Tiles[0][2] & 0x7FFF) / 4)
+	for seq, off := range buildingTileOffsets(large) {
+		ft := m.TileAt(int(x+off[0])>>5, int(y+off[1])>>5)
+		found := false
+		for _, e := range ft.Industries {
+			if e.IndustryID == id && e.BaseZ == z && e.SequenceIndex == uint8(seq) && e.BuildingType == b && e.Colour == 3 && e.IsConstructed {
+				found = true
+			}
+		}
+		if !found || ft.BaseZ != z || ft.Slope&0x1F != 0 || len(ft.Trees) != 0 {
+			t.Errorf("tile %d of the building: element %v, ground %d (want %d), slope %x, %d trees", seq, found, ft.BaseZ, z, ft.Slope, len(ft.Trees))
+		}
+	}
+	t.Logf("%s: building type %d (2×2 %v) at tile (%d, %d), height %d, cost %d", obj.Name, b, large, x>>5, y>>5, z, cost)
+	for ty := 0; ty < m.Height; ty++ { // a land industry on water
+		for tx := 0; tx < m.Width; tx++ {
+			if w := m.TileAt(tx, ty); w.WaterLevel != 0 {
+				if _, ok := m.placeIndustryBuilding(c, id, int32(tx)*32, int32(ty)*32, 0, b, 3, true, 0); ok {
+					t.Error("a land industry's building allowed on water")
+				}
+				return
+			}
+		}
+	}
+}

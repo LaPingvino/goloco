@@ -13,20 +13,31 @@ type IndustryObject struct {
 	Header *ObjectHeader
 	Name   string
 
-	NumBuildingParts       uint8  // 0x1E
-	NumBuildingVariations  uint8  // 0x1F
-	MaxNumBuildings        uint8  // 0xBD
-	BuildingSizeFlags      uint32 // 0xC6: bit n set = building type n is 2×2
-	ScaffoldingSegmentType uint8  // 0xD4
-	ScaffoldingColour      uint8  // 0xD5
-	Flags                  uint32 // 0xE4 (IndustryObjectFlags)
-	ObsoleteYear           uint16 // 0xCC
-	DesignedYear           uint16 // 0xCA
-	TotalOfTypeInScenario  uint8  // 0xCE: 1–32
-	CostIndex              uint8  // 0xCF
-	ClearCostFactor        int16  // 0xD2
-	MonthlyClosureChance   uint8  // 0xF3: out of 65535
-	FarmTileNumImageAngles uint8  // 0xE9
+	NumBuildingParts                uint8        // 0x1E
+	NumBuildingVariations           uint8        // 0x1F
+	MaxNumBuildings                 uint8        // 0xBD
+	MinNumBuildings                 uint8        // 0xBC
+	AvailableColours                uint32       // 0xC2: a bit per colour
+	CostFactor                      int16        // 0xD0
+	InitialProductionRate           [2][2]uint16 // 0xD6: min, max per produced cargo
+	FarmTileGrowthStageNoProduction uint8        // 0xEA (0xFF: no farm tiles)
+	FarmNumFields                   uint8        // 0xEB
+	FarmTileNumGrowthStages         uint8        // 0xEC
+	WallTypes                       [4]uint8     // 0xED
+	BuildingWall                    uint8        // 0xF1 (0xFF none)
+	BuildingWallEntrance            uint8        // 0xF2
+	Buildings                       []uint8      // the building types, in placement order (getBuildings)
+	BuildingSizeFlags               uint32       // 0xC6: bit n set = building type n is 2×2
+	ScaffoldingSegmentType          uint8        // 0xD4
+	ScaffoldingColour               uint8        // 0xD5
+	Flags                           uint32       // 0xE4 (IndustryObjectFlags)
+	ObsoleteYear                    uint16       // 0xCC
+	DesignedYear                    uint16       // 0xCA
+	TotalOfTypeInScenario           uint8        // 0xCE: 1–32
+	CostIndex                       uint8        // 0xCF
+	ClearCostFactor                 int16        // 0xD2
+	MonthlyClosureChance            uint8        // 0xF3: out of 65535
+	FarmTileNumImageAngles          uint8        // 0xE9
 
 	PartHeights        []uint8
 	PartAnimations     []BuildingPartAnimation
@@ -63,21 +74,31 @@ func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 		return nil, fmt.Errorf("industry object too small: %d bytes", len(data))
 	}
 	o := &IndustryObject{
-		Header:                 header,
-		NumBuildingParts:       data[0x1E],
-		NumBuildingVariations:  data[0x1F],
-		MaxNumBuildings:        data[0xBD],
-		BuildingSizeFlags:      binary.LittleEndian.Uint32(data[0xC6:]),
-		ScaffoldingSegmentType: data[0xD4],
-		ScaffoldingColour:      data[0xD5],
-		Flags:                  binary.LittleEndian.Uint32(data[0xE4:]),
-		ObsoleteYear:           binary.LittleEndian.Uint16(data[0xCC:]),
-		DesignedYear:           binary.LittleEndian.Uint16(data[0xCA:]),
-		TotalOfTypeInScenario:  data[0xCE],
-		CostIndex:              data[0xCF],
-		ClearCostFactor:        int16(binary.LittleEndian.Uint16(data[0xD2:])),
-		MonthlyClosureChance:   data[0xF3],
-		FarmTileNumImageAngles: data[0xE9],
+		Header:                          header,
+		NumBuildingParts:                data[0x1E],
+		NumBuildingVariations:           data[0x1F],
+		MaxNumBuildings:                 data[0xBD],
+		MinNumBuildings:                 data[0xBC],
+		AvailableColours:                binary.LittleEndian.Uint32(data[0xC2:]),
+		CostFactor:                      int16(binary.LittleEndian.Uint16(data[0xD0:])),
+		InitialProductionRate:           [2][2]uint16{{binary.LittleEndian.Uint16(data[0xD6:]), binary.LittleEndian.Uint16(data[0xD8:])}, {binary.LittleEndian.Uint16(data[0xDA:]), binary.LittleEndian.Uint16(data[0xDC:])}},
+		FarmTileGrowthStageNoProduction: data[0xEA],
+		FarmNumFields:                   data[0xEB],
+		FarmTileNumGrowthStages:         data[0xEC],
+		WallTypes:                       [4]uint8{data[0xED], data[0xEE], data[0xEF], data[0xF0]},
+		BuildingWall:                    data[0xF1],
+		BuildingWallEntrance:            data[0xF2],
+		BuildingSizeFlags:               binary.LittleEndian.Uint32(data[0xC6:]),
+		ScaffoldingSegmentType:          data[0xD4],
+		ScaffoldingColour:               data[0xD5],
+		Flags:                           binary.LittleEndian.Uint32(data[0xE4:]),
+		ObsoleteYear:                    binary.LittleEndian.Uint16(data[0xCC:]),
+		DesignedYear:                    binary.LittleEndian.Uint16(data[0xCA:]),
+		TotalOfTypeInScenario:           data[0xCE],
+		CostIndex:                       data[0xCF],
+		ClearCostFactor:                 int16(binary.LittleEndian.Uint16(data[0xD2:])),
+		MonthlyClosureChance:            data[0xF3],
+		FarmTileNumImageAngles:          data[0xE9],
 	}
 	p := industryObjectSize
 	need := func(n int) error {
@@ -141,7 +162,8 @@ func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 		}
 		o.Variations = append(o.Variations, parts)
 	}
-	p += int(o.MaxNumBuildings) // buildings
+	o.Buildings = append([]uint8(nil), data[p:p+int(o.MaxNumBuildings)]...) // buildings (getBuildings)
+	p += int(o.MaxNumBuildings)
 	// produced (2) and required (3) cargo headers (load resolves them into
 	// producedCargoType / requiredCargoType; 0xFF: none).
 	for i := range o.ProducedCargoNames {
