@@ -2227,3 +2227,50 @@ func TestNewIndustryChoice(t *testing.T) {
 		t.Logf("%-22s designed %d–%d, total %2d → cap %2d, has %2d; may start this year (%d): %v", obj.Name, obj.DesignedYear, obj.ObsoleteYear, obj.TotalOfTypeInScenario, capN, have, m.CurrentYear, m.canIndustryObjBeCreated(obj, om))
 	}
 }
+
+// TestFindRandomNewIndustryLocation (CR part 2b): for every loaded industry
+// type, the search on the title map either finds a place that keeps all the
+// type's rules (480 from any industry, its clusters, ground, water, towns,
+// trees …) or none in its 250 tries; the same gPrng1 state finds the same
+// place.
+func TestFindRandomNewIndustryLocation(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	found := 0
+	for i := 0; i < 16; i++ {
+		obj := om.GetIndustryObjectByIndex(i)
+		if obj == nil {
+			continue
+		}
+		start := m.Rng1
+		x, y, ok := m.findRandomNewIndustryLocation(uint8(i), om)
+		after := m.Rng1
+		m.Rng1 = start
+		x2, y2, ok2 := m.findRandomNewIndustryLocation(uint8(i), om)
+		if x != x2 || y != y2 || ok != ok2 || m.Rng1 != after {
+			t.Errorf("%s: not deterministic", obj.Name)
+		}
+		if !ok {
+			t.Logf("%-22s flags %08x: no place in 250 tries", obj.Name, obj.Flags)
+			continue
+		}
+		found++
+		f := obj.Flags
+		tl := m.TileAt(int(x)>>5, int(y)>>5)
+		bad := m.isTooCloseToNearbyIndustries(x, y) ||
+			f&industryBuiltInClusters != 0 && m.isOutwithCluster(x, y, uint8(i)) ||
+			f&industryBuiltOnFlatGround != 0 && m.mountainHeight(x, y) > industryFlatGroundMountainMax ||
+			f&industryBuiltNearWater != 0 && m.countSurroundingWaterTiles(int(x)>>5, int(y)>>5) < industryTilesToBeNearWaterMin ||
+			f&industryBuiltAwayFromWater != 0 && m.countSurroundingWaterTiles(int(x)>>5, int(y)>>5) > industryTilesToBeAwayWaterMax ||
+			f&industryBuiltNearTrees != 0 && m.countSurroundingTrees(x, y) < industryNumTreesToBeNearTreesMin ||
+			f&industryBuiltRequiresOpenSpace != 0 && m.countSurroundingTrees(x, y) > industryNumTreesToBeOpenSpaceMax ||
+			f&industryBuiltOnHighGround != 0 && tl.BaseZ < industryHighGroundMin ||
+			f&industryBuiltOnLowGround != 0 && tl.BaseZ > industryLowGroundMax
+		if bad {
+			t.Errorf("%s: place (%d, %d) breaks one of its rules", obj.Name, x, y)
+		}
+		t.Logf("%-22s flags %08x: tile (%d, %d), height %d, mountain %d, water %d, trees %d", obj.Name, f, x>>5, y>>5, tl.BaseZ, m.mountainHeight(x, y), m.countSurroundingWaterTiles(int(x)>>5, int(y)>>5), m.countSurroundingTrees(x, y))
+	}
+	if found == 0 {
+		t.Error("no type found a place")
+	}
+}
