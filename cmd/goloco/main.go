@@ -339,6 +339,25 @@ func NewGame() *Game {
 			// Connect object manager to renderer for sprite access
 			r.ObjMgr = objMgr
 		}
+	} else if og := openGraphicsDir(); og != "" {
+		// The open build (item O): no Locomotion folder — OpenGraphics (MIT):
+		// its palette and an empty base pool (assets.NewOpenG1), its objects.
+		// The bitmap fonts are g1.DAT's, so the TTF fallback stays.
+		log.Printf("[Game] No Locomotion data; the open build from %s", og)
+		if g1, err := assets.NewOpenG1(filepath.Join(og, "locopal.jasc.pal")); err != nil {
+			log.Printf("[Game] open build: %v", err)
+		} else {
+			r.G1 = g1
+			graphics.SetGlobalPalette(r.G1)
+			objMgr = objects.NewObjectManager(filepath.Join(og, "ObjData"))
+			objMgr.SetBaseSpriteIndex(uint32(g1.GetSpriteCount()))
+			objMgr.G1File = g1
+			if err := objMgr.LoadAllObjects(); err != nil {
+				log.Printf("[Game] open build: objects: %v", err)
+			}
+			log.Printf("[Game] open build: %d vehicles, %d land objects, %d images", len(objMgr.Vehicles), len(objMgr.LandObjects), g1.GetTotalSprites())
+			r.ObjMgr = objMgr
+		}
 	} else {
 		log.Printf("Locomotion data directory not found")
 	}
@@ -3838,4 +3857,22 @@ func abs(v int) int {
 		return -v
 	}
 	return v
+}
+
+// openGraphicsDir is the open build's OpenGraphics folder — GOLOCO_OPENGRAPHICS,
+// else the web pack's /w/opengraphics — when it holds the palette and ObjData;
+// "" otherwise.
+func openGraphicsDir() string {
+	for _, d := range []string{os.Getenv("GOLOCO_OPENGRAPHICS"), "/w/opengraphics"} {
+		if d == "" {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(d, "locopal.jasc.pal")); err != nil {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(d, "ObjData")); err == nil {
+			return d
+		}
+	}
+	return ""
 }
