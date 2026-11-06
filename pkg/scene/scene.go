@@ -28,6 +28,10 @@ type Renderer struct {
 	Objects *objects.ObjectManager
 	sprites *spriteCache // shared by the column workers
 	water   paint.WaterImages
+	// WaveFrame is the running wave's frame on a water tile with flag 6
+	// (WaveManager::getWave(getWaveIndex(tile)).frame); nil: no waves drawn.
+	// Set by the world, which holds the wave table (sim.State).
+	WaveFrame func(tileX, tileY int) uint8
 	// workers paint columns in parallel (Viewport::paint's
 	// std::execution::par): clones with their own session and scratch.
 	workers   []*Renderer
@@ -213,6 +217,7 @@ func (r *Renderer) worker(i int) *Renderer {
 	for len(r.workers) <= i {
 		r.workers = append(r.workers, &Renderer{G1: r.G1, Objects: r.Objects, sprites: r.sprites, water: r.water, shadowMap: r.shadowMap})
 	}
+	r.workers[i].WaveFrame = r.WaveFrame // set after the workers may exist: passed on each time
 	return r.workers[i]
 }
 
@@ -805,7 +810,11 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 		s.PaintCliffEdges(paint.Surface{BaseZ: t.BaseZ, Slope: t.Slope}, nbs, int(land.CliffEdgeImage), sprite)
 	}
 	if t.WaterLevel != 0 && r.water.PalMap != nil {
-		s.PaintWater(self, nbs, r.water, objects.KSlopeToWaterShape[:], int(land.CliffEdgeImage), sprite)
+		wave := -1
+		if t.WaveFlag && r.WaveFrame != nil {
+			wave = int(r.WaveFrame(x, y))
+		}
+		s.PaintWater(self, nbs, r.water, objects.KSlopeToWaterShape[:], int(land.CliffEdgeImage), wave, sprite)
 	}
 
 }

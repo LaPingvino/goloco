@@ -158,8 +158,9 @@ func (s *Session) PaintCliffEdges(self Surface, neighbours [4]*Surface, cliffBas
 	}
 }
 
-// Water — PaintSurface.cpp paintSurface water block (~1736-1775). PARTIAL: no
-// waves (WaveManager frames are drawn by the live game, not this still frame).
+// Water — PaintSurface.cpp paintSurface water block (~1736-1775), the waves
+// included: wave (≥ 0) is the running wave's frame on a flag-6 tile, drawn at
+// zoom 0 as image + 60 + frame attached to the water.
 
 // WaterImages are the water object's image base and its palette map (+41,
 // WaterObject::kColourPalette; ExtColour::water).
@@ -172,7 +173,7 @@ type WaterImages struct {
 // image +35+shape as a destination mask through the water palette map, +30+shape
 // attached on top, then the water cliff edges (edges 2,3,0,1). slopeToWaterShape
 // is kSlopeToWaterShape.
-func (s *Session) PaintWater(self Surface, neighbours [4]*Surface, w WaterImages, slopeToWaterShape []uint8, cliffBase int, sprite func(int) *gfx8.Sprite) {
+func (s *Session) PaintWater(self Surface, neighbours [4]*Surface, w WaterImages, slopeToWaterShape []uint8, cliffBase int, wave int, sprite func(int) *gfx8.Sprite) {
 	if self.Water == 0 {
 		return
 	}
@@ -188,6 +189,11 @@ func (s *Session) PaintWater(self Surface, neighbours [4]*Surface, w WaterImages
 		s.AddAsParent(Image{Sprite: blend, Op: gfx8.OpTransparent | gfx8.OpDst, PalMap: w.PalMap}, off, off, Pos3{32, 32, -1})
 		if top := sprite(w.Base + shape + 30); top != nil {
 			s.AttachToPrevious(Image{Sprite: top, Op: gfx8.OpFor(top, false, false)}, 0, 0)
+		}
+		if wave >= 0 && s.Zoom == 0 { // Draw waves
+			if ws := sprite(w.Base + wave + 60); ws != nil {
+				s.AttachToPrevious(Image{Sprite: ws, Op: gfx8.OpFor(ws, false, false)}, 0, 0)
+			}
 		}
 	}
 	if cliffBase <= 0 {

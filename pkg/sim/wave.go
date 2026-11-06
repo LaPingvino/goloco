@@ -64,6 +64,8 @@ func (s *State) createWave(t *Tile, tileX, tileY int, visible func(tileX, tileY 
 	}
 	w.X, w.Y, w.Frame = tileX*TileSize, tileY*TileSize, 0
 	t.WaveFlag = true
+	wh := int32(t.WaterLevel) * 16 // surface.waterHeight()
+	s.invalidateTile(int32(w.X), int32(w.Y), wh, wh, ZoomFull, defaultRadius)
 }
 
 // UpdateWaves advances every wave one frame every 4 scenario ticks and frees
@@ -83,6 +85,8 @@ func (s *State) UpdateWaves(scenarioTicks uint32) {
 			w.X = locationNull
 			continue
 		}
+		wh := int32(t.WaterLevel) * 16 // the wave's tile repainted each update (ViewportManager::invalidate)
+		s.invalidateTile(int32(w.X), int32(w.Y), wh, wh, ZoomFull, defaultRadius)
 		if t.WaterLevel != 0 {
 			w.Frame++
 			if w.Frame < 16 {
