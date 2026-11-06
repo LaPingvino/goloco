@@ -67,6 +67,7 @@ type Game struct {
 	diagMouse                      *[2]int                   // DIAGNOSTIC ONLY: the mouse held at a point (the roadghost diag's hover)
 	ghostWater                     sim.VehicleWaterPlacement // _ghostVehiclePos for a boat ghost (ghostProgress 0)
 	diagShip                       uint16                    // DIAGNOSTIC ONLY: the shipsail diag's ship, logged as it goes
+	diagFollow                     bool                      // DIAGNOSTIC ONLY: keep the view on diagShip (planefly)
 	diagShipFrames                 int
 	buildVehDiagDone               bool
 	diagTownsDone                  bool
@@ -450,6 +451,9 @@ func (g *Game) Update() error {
 	if g.diagShip != 0 && g.w != nil {
 		if tr, err := g.w.Map.TrainOf(g.diagShip); err == nil {
 			g.diagShipFrames++
+			if g.diagFollow && g.diagShipFrames%15 == 0 {
+				g.w.CentreOnVehicle(g.diagShip)
+			}
 			if g.diagShipFrames%120 == 0 {
 				h, v2 := g.w.Map.Entities[tr.Head], g.w.Map.Entities[tr.Veh2]
 				log.Printf("[Diag] shipsail frame %d: ship at %d,%d yaw %d, %.0f mph, status %d, station %d", g.diagShipFrames, v2.PosX, v2.PosY, v2.SpriteYaw, float64(v2.CurrentSpeed)/65536, h.Status, h.StationID)
@@ -1411,7 +1415,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
 		if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
@@ -1442,6 +1446,18 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					for _, l := range g.vehicleWin.Route {
 						log.Printf("[Diag] route after the click: %q", l.Text)
 					}
+					break
+				}
+			}
+		} else if v == "planefly" { // DIAGNOSTIC ONLY: follow the title map's aircraft at an airport (its status logged)
+			g.inTitleScreen = false
+			m := &g.w.Map
+			trains, _ := m.Trains()
+			for _, tr := range trains {
+				if h := m.Entities[tr.Head]; h.Mode == 2 && h.TileX != -1 && h.StationID != 0xFFFF {
+					g.diagShip, g.diagFollow = h.ID, true
+					g.w.CentreOnVehicle(h.ID)
+					log.Printf("[Diag] planefly: aircraft %d at station %d", h.ID, h.StationID)
 					break
 				}
 			}

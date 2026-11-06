@@ -1976,3 +1976,54 @@ func TestAirportEdgeWalk(t *testing.T) {
 	}
 	t.Fatalf("no take-off in 64 edges: %v", path)
 }
+
+// TestAircraftFlies (AW.b): the title map runs; its taxiing aircraft (at
+// Large Airport 82) reaches the terminal and calls there, taxis out, takes
+// off and climbs to the flying height, flies to its next airport and lands
+// there — each status change logged.
+func TestAircraftFlies(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	var id uint16
+	found := false
+	for _, x := range trains {
+		if h := m.Entities[x.Head]; h.Mode == 2 && h.StationID != stationIDNull && h.AirportMovementEdge != airportEdgeNull {
+			id, found = h.ID, true
+			break
+		}
+	}
+	if !found {
+		t.Skip("no aircraft at an airport")
+	}
+	first := m.entity(id).StationID
+	seen := map[uint8]bool{}
+	lastStatus := uint8(0xFF)
+	maxZ := int16(0)
+	landedElsewhere := false
+	for tick := 0; tick < 40000 && !landedElsewhere; tick++ {
+		m.UpdateVehicles(om)
+		h := m.entity(id)
+		tr, _ := m.TrainOf(id)
+		maxZ = max(maxZ, h.PosZ)
+		if h.Status != lastStatus {
+			t.Logf("tick %d: status %d, station %d, edge %d, at (%d, %d, %d), speed %d mph", tick, h.Status, h.StationID, h.AirportMovementEdge, h.PosX, h.PosY, h.PosZ, m.Entities[tr.Veh2].CurrentSpeed>>16)
+			lastStatus = h.Status
+		}
+		seen[h.Status] = true
+		if h.StationID != first && h.StationID != stationIDNull && (h.Status == headStatusUnloading || h.Status == headStatusLoading) {
+			landedElsewhere = true
+		}
+	}
+	t.Logf("highest %d; statuses %v", maxZ, seen)
+	for _, s := range []uint8{headStatusUnloading, headStatusTakingOff, headStatusTravelling, headStatusLanding} {
+		if !seen[s] {
+			t.Errorf("never status %d", s)
+		}
+	}
+	if maxZ < 200 {
+		t.Errorf("never climbed: highest %d", maxZ)
+	}
+	if !landedElsewhere {
+		t.Error("never landed at its next airport")
+	}
+}
