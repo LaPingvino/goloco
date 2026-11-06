@@ -133,7 +133,11 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       the window closed; TestVehicleSellPays (also: a moving train is refused, canBeModified); seen with
       GOLOCO_DIAG_BUILDVEHICLE=sell (+ GOLOCO_DIAG_SELL_OK=1). PARTIAL: dragging a car onto the bin (sells one
       car, with the cargo warning — DragVehiclePart not ported), the other right-bar buttons' images (build new,
-      paint brush). NEXT in 5P: dragging cars (DragVehiclePart: reorder / sell one car), then hover looks.
+      paint brush). VehicleRearrange DONE 2026-11-06
+      (sim/vehiclerearrange.go: a car before a car's front bogie or a tail, within a vehicle or into another
+      — the cargo emptied then —, both lifted, laid out, put back; TestVehicleRearrange). NEXT in 5P: the
+      drag itself (Details' scrollDrag / scrollDragEnd + DragVehiclePart window: onto a car → VehicleRearrange,
+      onto the bin → VehicleSell of that car with the cargo warning), then hover looks.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a) — DONE 2026-11-06: it did differ (title save: 98 trains, the list against slot order at 55
    places). Trains() now walks the vehicle-head list from its head along next, as VehicleList does (slot order
@@ -1253,4 +1257,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (5P.g: selling from the window) — (the other three wait on Joop → here.) The Details tab's remove button: the rubbish bin (2363) drawn on the right bar, a click runs VehicleSell for the head through DoCommandFor (VehicleDisposals = 14), and the window closes as deleteTrain closes it. TestVehicleSellPays: cash up by the refund, booked as upstream (expenditures −= payment), a moving train refused. Seen: the bin under the pickup button; pressed, the bought Century is sold for 111 335 (cash −3 420 → 107 915), the window gone. All green; test page redeployed.
+
+
+- 2026-11-06 (5P: VehicleRearrange) — (the other three wait on Joop → here.) VehicleRearrange.cpp ported on goloco's existing insertCarBefore: test pass (companies, canBeModified both, same track type, isVehicleTypeCompatible), apply (cargo emptied when moving to another vehicle — the keep-cargo cheat isn't kept, off by default —, both vehicles lifted by mode, the car inserted, both auto-laid-out and updated, put back). TestVehicleRearrange: a stopped saved train's last car to second place ([1091 728 1079 298] → [1091 298 728 1079]); a bought vehicle's second car to another's tail, its cargo emptied; another company refused. All green; nothing drawn yet.
 
