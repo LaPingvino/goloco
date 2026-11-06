@@ -301,6 +301,8 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		g.vehicleWin.OnRename = func() { g.renameVehicle(headID, tc, wc) }
 	}
 	g.vehicleWin.OnSell = func() { g.sellVehicle(headID) }
+	g.vehicleWin.OnDropSell = func(row int) { g.dropCar(headID, row, -2) }
+	g.vehicleWin.OnDropMove = func(row, dest int) { g.dropCar(headID, row, dest) }
 }
 
 // stopStartImage is Main::prepareDraw's: yellow in manual control, red when
@@ -1054,4 +1056,48 @@ func (g *Game) sellVehicle(headID uint16) {
 	}
 	log.Printf("[Game] sold vehicle %d for %d", headID, -cost)
 	g.vehicleWin, g.pickupOn, g.routeTool = nil, false, false
+}
+
+// dropCar is Details::scrollDragEnd for this vehicle's car at row: dest −2
+// the remove button (VehicleSell of that car, VehicleDisposals), else the row
+// it goes before (−1: the tail) — VehicleRearrange; each asked first when the
+// train holds cargo (confirmComponentChange; the keep-cargo cheat is not
+// kept, so it never skips the question).
+func (g *Game) dropCar(headID uint16, row, dest int) {
+	m := &g.w.Map
+	tr, err := m.TrainOf(headID)
+	if err != nil || row < 0 || row >= len(tr.Cars) {
+		return
+	}
+	src := m.Entities[tr.Cars[row][0].Front].ID
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	var run func()
+	var title, msg, ok int
+	if dest == -2 {
+		title, msg, ok = i18n.ConfirmVehicleComponentSellCargoWarningTitle, i18n.ConfirmVehicleComponentSellCargoWarningMessage, i18n.ConfirmVehicleComponentSellCargoWarningConfirm
+		run = func() {
+			if _, done := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureVehicleDisposals, func(f uint8) (int32, bool) { return m.VehicleSell(c, f, src) }); !done {
+				log.Printf("[Game] can't sell car %d", src)
+			}
+			g.openVehicleWindow(headID, 1)
+		}
+	} else {
+		dst := m.Entities[tr.Tail].ID
+		if dest >= 0 && dest < len(tr.Cars) {
+			dst = m.Entities[tr.Cars[dest][0].Front].ID
+		}
+		title, msg, ok = i18n.ConfirmVehicleComponentMoveCargoWarningTitle, i18n.ConfirmVehicleComponentMoveCargoWarningMessage, i18n.ConfirmVehicleComponentMoveCargoWarningConfirm
+		run = func() {
+			if _, done := m.DoCommandFor(c, sim.CmdApply, 1, func(f uint8) (int32, bool) { return m.VehicleRearrange(c, f, src, dst) }); !done { // TrainRunningCosts
+				log.Printf("[Game] can't move car %d", src)
+			}
+			g.openVehicleWindow(headID, 1)
+		}
+	}
+	if m.HasAnyCargo(tr) {
+		g.prompt = ui.NewPromptOkCancel(i18n.Str(title), i18n.Str(msg), i18n.Str(ok), g.sw, g.sh, run)
+		return
+	}
+	run()
 }

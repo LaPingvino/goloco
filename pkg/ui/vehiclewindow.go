@@ -307,16 +307,26 @@ type VehicleWindow struct {
 	OnRefit             func(x, y, w, h int) // Cargo: onRefitButton at the button's screen rectangle
 	OnRename            func()               // every tab's caption: renameVehicle (nil: disabled — another company's)
 	OnSell              func()               // Details: the remove button (sell the whole vehicle)
-	OnTab               func(tab int)        // switchTab
-	Route               []RouteLine          // Route: the order list's rows, the last the end of the list
-	Finances            VehicleFinances      // Finances: its lines, formatted
-	Cargo               VehicleCargo         // Cargo: its lines, formatted
-	SkinImage           int                  // the interface skin's image base (tab icons; 0: none)
-	FrameNo             int                  // the window's frameNo (counts updates: the current tab's icon animates)
-	RouteSel            int                  // Route: orderTableIndex, the selected row (-1: none)
-	OnRouteSelect       func(row int)        // Route: a row clicked
-	OnRoute             func(action string)  // Route: "delete", "up", "down", "skip", "reverse", "local", "express"
-	Express             bool                 // Route: veh1 Flags48::expressMode (express pressed, else local)
+	// Details' car drag (onScrollMouseDown → DragVehiclePart, scrollDragEnd):
+	// Dragging while a car (DragCar, its row) follows the mouse (DragX, DragY);
+	// dropped on the bin OnDropSell(row), on the list OnDropMove(row, dest row;
+	// −1: below the last car — before the tail).
+	Dragging      bool
+	DragCar       int
+	DragX, DragY  int
+	OnDropSell    func(row int)
+	OnDropMove    func(row, dest int)
+	dragImg       *ebiten.Image
+	OnTab         func(tab int)       // switchTab
+	Route         []RouteLine         // Route: the order list's rows, the last the end of the list
+	Finances      VehicleFinances     // Finances: its lines, formatted
+	Cargo         VehicleCargo        // Cargo: its lines, formatted
+	SkinImage     int                 // the interface skin's image base (tab icons; 0: none)
+	FrameNo       int                 // the window's frameNo (counts updates: the current tab's icon animates)
+	RouteSel      int                 // Route: orderTableIndex, the selected row (-1: none)
+	OnRouteSelect func(row int)       // Route: a row clicked
+	OnRoute       func(action string) // Route: "delete", "up", "down", "skip", "reverse", "local", "express"
+	Express       bool                // Route: veh1 Flags48::expressMode (express pressed, else local)
 	// View is Main's viewport, 8-bit, of the given size (nil: none — the
 	// vehicle not placed).
 	View         func(w, h int) *gfx8.RenderTarget
@@ -703,7 +713,80 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 		w.OnTab(2)
 	case in(lw[vdPickup]) && !pickupDisabled && w.OnPickup != nil:
 		w.OnPickup()
-	case in(lw[vdRemove]) && w.OnSell != nil: // Details::onMouseUp remove: VehicleSell(head). PARTIAL: dragging a car onto it
+	case in(lw[vdRemove]) && w.OnSell != nil: // Details::onMouseUp remove: VehicleSell(head)
 		w.OnSell()
+	case in(lw[vdCarList]) && w.State.Own && w.OnDropMove != nil: // onScrollMouseDown: the car under it starts a drag
+		list := lw[vdCarList]
+		rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
+		if row := w.carRowAt(y-(w.Y+list.T+1)+w.Scroll, rowH); row >= 0 {
+			w.Dragging, w.DragCar, w.DragX, w.DragY = true, row, x, y
+		}
 	}
+}
+
+// carRowAt is getCarFromScrollView: the first car whose rows reach y (scroll
+// coordinates); −1 below the last.
+func (w *VehicleWindow) carRowAt(y, rowH int) int {
+	for i := range w.Cars {
+		if y -= rowH; y <= 0 {
+			return i
+		}
+	}
+	return -1
+}
+
+// DragTo follows the mouse while a car is dragged.
+func (w *VehicleWindow) DragTo(x, y int) { w.DragX, w.DragY = x, y }
+
+// DragEnd is DragVehiclePart's onMove → Details::scrollDragEnd at (x, y):
+// on the remove button the car is sold, on the car list it moves before the
+// car at the middle of the row under the cursor (getCarFromScrollViewPos:
+// none — the tail).
+func (w *VehicleWindow) DragEnd(x, y int) {
+	if !w.Dragging {
+		return
+	}
+	w.Dragging = false
+	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+	in := func(c BVWidget) bool {
+		return !c.Hidden && x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B
+	}
+	rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
+	switch list := lw[vdCarList]; {
+	case in(lw[vdRemove]) && w.OnDropSell != nil:
+		w.OnDropSell(w.DragCar)
+	case in(list) && w.OnDropMove != nil:
+		w.OnDropMove(w.DragCar, w.carRowAt(rowH/2+y-(w.Y+list.T+1)+w.Scroll, rowH))
+	}
+}
+
+// DrawDrag is DragVehiclePart::draw: the dragged car, bogies then bodies, in
+// a car-wide window 30 above the cursor and centred on it (open's position).
+func (w *VehicleWindow) DrawDrag(screen *ebiten.Image) {
+	if !w.Dragging || w.DragCar < 0 || w.DragCar >= len(w.Cars) || w.Cars[w.DragCar].Object == nil || globalG1Font == nil {
+		return
+	}
+	c := w.Cars[w.DragCar]
+	width := max(carInlineWidth(c), 1)
+	// WindowFlags::transparent: only the car's own pixels (index 0 is
+	// nothing) — not draw8, which repaints its whole box from the 8-bit copy
+	// of the screen (the window's text isn't in it).
+	rt := gfx8.NewRenderTarget(width, 60)
+	drawCarInline(rt, c, 0, 0, false)
+	drawCarInline(rt, c, 0, 0, true)
+	pal := globalG1Font.g1.GetPalette()
+	pix := make([]byte, 4*width*60)
+	for i, v := range rt.Bits {
+		if v != 0 {
+			p := pal[v]
+			pix[4*i], pix[4*i+1], pix[4*i+2], pix[4*i+3] = p.R, p.G, p.B, 0xFF
+		}
+	}
+	if w.dragImg == nil || w.dragImg.Bounds().Dx() != width {
+		w.dragImg = ebiten.NewImage(width, 60)
+	}
+	w.dragImg.WritePixels(pix)
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(float64(w.DragX-width/2), float64(w.DragY-30))
+	screen.DrawImage(w.dragImg, op)
 }
