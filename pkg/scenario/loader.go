@@ -1611,6 +1611,10 @@ func parseIndustries(gs []byte) []Industry {
 				ind.ProducedRatings[k][j] = r[0x171+4*k+j]
 			}
 		}
+		ind.X, ind.Y = int16(u16(0x02)), int16(u16(0x04))
+		for k := 0; k < int(r[0x14]) && k < 32; k++ {
+			ind.Tiles = append(ind.Tiles, [3]int16{int16(u16(0x15 + 6*k)), int16(u16(0x17 + 6*k)), int16(u16(0x19 + 6*k))})
+		}
 		ind.Prng = [2]uint32{binary.LittleEndian.Uint32(r[0x08:]), binary.LittleEndian.Uint32(r[0x0C:])}
 		for k := range 3 {
 			ind.ReceivedPrevMonth[k] = u16(0x193 + 2*k)

@@ -1745,7 +1745,8 @@ func TestIndustryStationsRefresh(t *testing.T) {
 // previous month's production ÷ 50, the percentage transported its
 // delivered share) — so the fields are read right; then a month end moves
 // the totals to the previous month's, appends to the history, and works
-// the percentage out the same way.
+// the percentage out the same way, and removes the ones closed down with
+// nothing left to make.
 func TestIndustriesMonthly(t *testing.T) {
 	m, om := loadDataMap(t, "title.dat")
 	pct := func(prod, del uint16) uint8 {
@@ -1773,10 +1774,21 @@ func TestIndustriesMonthly(t *testing.T) {
 	if checked == 0 {
 		t.Fatal("no industry has a history")
 	}
-	before := append([]scenario.Industry(nil), m.Industries...)
+	before := map[uint8]scenario.Industry{}
+	removable := 0
+	for _, ind := range m.Industries {
+		before[ind.ID] = ind
+		if ind.Flags&industryFlagClosingDown != 0 && ind.DailyProduction == [2]uint16{} {
+			removable++
+		}
+	}
+	n0 := len(m.Industries)
 	m.industriesUpdateMonthly(om)
-	for i, ind := range m.Industries {
-		b := before[i]
+	if len(m.Industries) != n0-removable {
+		t.Errorf("%d industries after the month, want %d (%d closed down with nothing to make: removed)", len(m.Industries), n0-removable, removable)
+	}
+	for _, ind := range m.Industries {
+		b := before[ind.ID]
 		if b.Flags&industryFlagIsGhost != 0 || b.Flags&industryFlagClosingDown != 0 && b.DailyProduction == [2]uint16{} {
 			continue
 		}
@@ -1792,7 +1804,7 @@ func TestIndustriesMonthly(t *testing.T) {
 			}
 		}
 	}
-	t.Logf("%d histories agree with the save's previous month; a month end rolled %d industries over", checked, len(m.Industries))
+	t.Logf("%d histories agree with the save's previous month; a month end rolled %d industries over, removed %d closed down", checked, len(m.Industries), removable)
 }
 
 // TestAirportMovementGraph (AW.b's data): every loaded airport's movement
@@ -2098,5 +2110,74 @@ func TestAircraftPickupPlace(t *testing.T) {
 	}
 	if !took {
 		t.Errorf("never took off: status %d, edge %d", m.entity(id).Status, m.entity(id).AirportMovementEdge)
+	}
+}
+
+// TestRemoveIndustry (CR): the save's industry tiles (0x15, numTiles 0x14)
+// each hold that industry's element at their height — the offsets are
+// right —; removeIndustry takes one away (its buildings' elements on all
+// their tiles, its fields back to plain ground, gone from the list), and
+// the month's update removes an industry that has closed down with nothing
+// left to make.
+func TestRemoveIndustry(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	count := func(id uint8) (els, fields int) {
+		for ty := 0; ty < m.Height; ty++ {
+			for tx := 0; tx < m.Width; tx++ {
+				tl := m.TileAt(tx, ty)
+				for _, e := range tl.Industries {
+					if e.IndustryID == id {
+						els++
+					}
+				}
+				if tl.IsIndustrial && tl.Variation == id {
+					fields++
+				}
+			}
+		}
+		return
+	}
+	for _, ind := range m.Industries {
+		for _, p := range ind.Tiles {
+			tl := m.TileAt(int(p[0])>>5, int(p[1])>>5)
+			found := false
+			for _, e := range tl.Industries {
+				if e.IndustryID == ind.ID && int32(e.BaseZ)*4 == int32(p[2]&0x7FFF) {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("industry %d: no element of it at its tile %v", ind.ID, p)
+			}
+		}
+	}
+	victim := -1
+	for i, ind := range m.Industries {
+		if _, f := count(ind.ID); f > 0 && victim < 0 {
+			victim = i
+		}
+	}
+	if victim < 0 {
+		victim = 0
+	}
+	id := m.Industries[victim].ID
+	els, fields := count(id)
+	n := len(m.Industries)
+	cost, ok := m.RemoveIndustry(&Cmd{Company: CompanyNeutral, Objects: om}, CmdApply, id)
+	if !ok {
+		t.Fatal("refused")
+	}
+	e2, f2 := count(id)
+	t.Logf("industry %d: %d elements, %d fields → %d, %d; cost %d", id, els, fields, e2, f2, cost)
+	if e2 != 0 || f2 != 0 || len(m.Industries) != n-1 || m.industryByID(id) != nil {
+		t.Errorf("after removal: %d elements, %d fields, %d industries (was %d)", e2, f2, len(m.Industries), n)
+	}
+	other := &m.Industries[0]
+	other.Flags |= industryFlagClosingDown
+	other.DailyProduction = [2]uint16{}
+	oid := other.ID
+	m.industriesUpdateMonthly(om)
+	if m.industryByID(oid) != nil {
+		t.Error("a closed-down industry with no production survived its month")
 	}
 }
