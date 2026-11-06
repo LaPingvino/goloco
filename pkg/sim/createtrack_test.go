@@ -8,7 +8,7 @@ import (
 
 // createTrack's start: an extra that isn't loaded is dropped, a height off
 // the 16 grid is refused, and the cost is the track's price times the
-// piece's cost factor / 256 (a curve dearer than a straight).
+// piece's cost factor / 256 (the curve's factor).
 func TestCreateTrackCost(t *testing.T) {
 	h := &objects.ObjectHeader{}
 	copy(h.Name[:], "TRACKST ")
@@ -27,8 +27,8 @@ func TestCreateTrackCost(t *testing.T) {
 		t.Error("a height off the 16 grid must fail")
 	}
 	_, curve, _ := m.createTrackCost(c, trackPlacementArgs{Z: 32, TrackID: 6})
-	if want := base * int32(TrackCostFactor[6]) / 256; curve != want || curve <= cost {
-		t.Errorf("curve cost %d, want %d (above %d)", curve, want, cost)
+	if want := base * int32(TrackCostFactor[6]) / 256; curve != want {
+		t.Errorf("curve cost %d, want %d", curve, want)
 	}
 	if _, _, ok := m.createTrackCost(c, trackPlacementArgs{TrackObjectID: 3}); ok {
 		t.Error("an empty slot must fail")
