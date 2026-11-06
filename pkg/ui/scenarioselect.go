@@ -73,6 +73,7 @@ func (w *ScenarioSelectWindow) Contains(px, py int) bool {
 	return w.in([4]int{0, 0, ssW, ssH}, px, py)
 }
 
+// clickable(ScenarioSelect.cpp): close tab0 tab1 tab2 tab3 tab4
 // HandleClick: tabs switch the category, a list row selects (a second click on
 // the selected row starts it — upstream starts on a single click; goloco keeps
 // the details visible first), close closes.

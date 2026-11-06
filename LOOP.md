@@ -64,8 +64,10 @@ PL. [ ] **Playable and fun, by the clickables list** (ranked 2026-11-06 from scr
    the game loop: start → build a line → buy and route a train → run time → see it earn → keep going). The measure
    itself was misleading: only 4 of 47 windows carry markers, and some marks are stale (the toolbar's port / railroad
    menus work but count as missing), so step 0 makes it true.
-   0. Annotate the loop's windows so --missing tells the truth: Construction (40), TitleMenu (6), ScenarioSelect (6),
-      TimePanel (6), ToolbarTop (port / railroad menus work now), Vehicle.cpp (its Cargo / Finances tabs are done).
+   0. DONE 2026-11-06: the loop's windows annotated — Construction 36/40 (+ remove partial; copy, paste, track_dropdown
+      missing), ScenarioSelect 6/6, TimePanel 4/6 (date_btn, map_chat_menu missing), TitleMenu 2/6 (tutorial, editor,
+      multiplayer, chat missing), ToolbarTop port_menu (+ railroad_menu partial: opens construction, not the track
+      menu), Vehicle.cpp tabCargo / tabFinances. The measure: 4% → 14% working as upstream (70 / 517).
    1. A scripted playthrough through the UI only (a diag, clicks not sim calls): New Game → a scenario → build track
       between two towns → two stations → Build Vehicles → place → route → start → run → earn. Every place it gets
       stuck goes to the top of this list, ahead of 2–8.
@@ -1470,4 +1472,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — ME: money effects created by the cargo payment and by paid game commands, updated each tick after the stations; the end-to-end train test sees its popup; painting next.
 - 2026-11-06 — ME: the money popups' painter written but not yet seen on screen (diag silent) — parked at Joop's word to re-prioritise by the clickables list for playability.
 - 2026-11-06 — PL (Joop: playable and fun, by the clickables list): ranked plan written as the new top item — make the measure true (annotate the loop's windows), a UI-only playthrough to find where a player gets stuck, then orders, the station window, feedback (money popups, news, finances), vehicle list, track-type tabs, terraform / map.
+- 2026-11-06 — PL.0: the core-loop windows annotated for scripts/clickables.py (construction, title, scenario select, time panel, toolbar, vehicle tabs): 4% → 14% working as upstream; the playthrough (PL.1) next.
 

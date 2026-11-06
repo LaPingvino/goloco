@@ -608,7 +608,7 @@ func (w *VehicleWindow) Contains(x, y int) bool {
 // HandleClick is Details::onMouseUp: the close button, the pickup button
 // (unless hidden or disabled). PARTIAL: the other tabs and buttons.
 //
-// clickable(Vehicle.cpp): closeButton tabMain tabDetails tabRoute stopStart centreViewport orderDelete orderUp orderDown orderSkip
+// clickable(Vehicle.cpp): closeButton tabMain tabDetails tabRoute tabCargo tabFinances stopStart centreViewport orderDelete orderUp orderDown orderSkip
 // clickable-partial(Vehicle.cpp): pickup
 func (w *VehicleWindow) HandleClick(x, y int) {
 	// The caption (1, 1)–(width − 2, 13) left of the close button, on every

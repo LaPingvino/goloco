@@ -743,6 +743,7 @@ func (g *Game) Update() error {
 		} else if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
 			if sp := uilayout.TimePanelSpeedAt(g.mouseX, g.mouseY, g.sw, g.sh); sp >= 0 && !g.inTitleScreen {
 				// TimePanel speed buttons: pause toggles; the others set the speed.
+				// clickable(TimePanel.cpp): pause_btn normal_speed_btn fast_forward_btn extra_fast_forward_btn
 				switch sp {
 				case 0:
 					g.isPaused = !g.isPaused
@@ -938,6 +939,7 @@ func (g *Game) handleTitleMenuClick(mx, my int) {
 	}
 	btnIdx := relX / titleBtnSize
 
+	// clickable(TitleMenu.cpp): scenario_list_btn load_game_btn
 	switch btnIdx {
 	case 0: // New Game — open scenario browser (SC5 only)
 		g.openNewGameWindow()
@@ -1048,7 +1050,8 @@ func (g *Game) toolbarDropdown(btn *ui.ToolbarButton, items []ui.DropdownItem) *
 //	6: Terraform, 7: Railroad, 8: Road, 9: Port/Airport, 10: Build Vehicles
 //	11: Vehicles, 12: Stations, 13: Towns
 //
-// clickable(ToolbarTop.cpp): build_vehicles_menu
+// clickable(ToolbarTop.cpp): build_vehicles_menu port_menu
+// clickable-partial(ToolbarTop.cpp): railroad_menu
 // clickable(ToolbarTopCommon.cpp): zoom_menu
 // clickable-partial(ToolbarTop.cpp): loadsave_menu audio_menu vehicles_menu stations_menu towns_menu
 // clickable-partial(ToolbarTopCommon.cpp): railroad_menu road_menu
