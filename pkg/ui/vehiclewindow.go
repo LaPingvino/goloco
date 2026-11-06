@@ -34,6 +34,9 @@ const (
 	vdWidgets
 )
 
+// VrExpressMode is the express button's index in VehicleRouteLayout (for diags).
+const VrExpressMode = vrExpressMode
+
 // Route::widx (after the common widgets).
 const (
 	vrTool = vwTabRoute + 1 + iota
@@ -65,8 +68,9 @@ const VehicleRouteMinHeight = 202
 
 // VehicleRouteLayout is Route::widgets after its prepareDraw for a window
 // of width × height: the list growing with the window, the right bar at its
-// edge. PARTIAL: another company's vehicle (its buttons hidden).
-func VehicleRouteLayout(width, height int, hiddenTabs uint8) (w [vrWidgets]BVWidget) {
+// edge; another company's vehicle (other) has no order buttons and a list 22
+// wider; local / express share the list's width.
+func VehicleRouteLayout(width, height int, hiddenTabs uint8, other bool) (w [vrWidgets]BVWidget) {
 	vehicleCommonWidgets(w[:])
 	w[vrLocalMode] = bvW(3, 44, 118, 12)
 	w[vrExpressMode] = bvW(121, 44, 119, 12)
@@ -86,7 +90,14 @@ func VehicleRouteLayout(width, height int, hiddenTabs uint8) (w [vrWidgets]BVWid
 	w[vrRouteList].R, w[vrRouteList].B = width-26, height-14
 	for _, i := range []int{vrForceUnload, vrWait, vrSkip, vrDelete, vrUp, vrDown, vrReverse} {
 		w[i].L, w[i].R = width-25, width-2
+		w[i].Hidden = other // isControllingCompany (named the other way round upstream)
 	}
+	if other {
+		w[vrRouteList].R += 22
+	}
+	w[vrExpressMode].R = w[vrRouteList].R
+	w[vrExpressMode].L = (w[vrExpressMode].R-3)/2 + 3
+	w[vrLocalMode].R = w[vrExpressMode].L - 1
 	leftAlignTabs(w[:], hiddenTabs)
 	return w
 }
@@ -296,7 +307,8 @@ type VehicleWindow struct {
 	Route               []RouteLine          // Route: the order list's rows, the last the end of the list
 	RouteSel            int                  // Route: orderTableIndex, the selected row (-1: none)
 	OnRouteSelect       func(row int)        // Route: a row clicked
-	OnRoute             func(action string)  // Route: "delete", "up", "down", "skip"
+	OnRoute             func(action string)  // Route: "delete", "up", "down", "skip", "local", "express"
+	Express             bool                 // Route: veh1 Flags48::expressMode (express pressed, else local)
 	// View is Main's viewport, 8-bit, of the given size (nil: none — the
 	// vehicle not placed).
 	View         func(w, h int) *gfx8.RenderTarget
@@ -461,8 +473,7 @@ func (w *VehicleWindow) drawMain(screen *ebiten.Image) {
 // active), the local / express buttons, the order list — each order on its
 // row of 10, the current one marked ▶ — and the right bar's images. PARTIAL:
 // selection and hover, the scroll bar, the order-number circles while the
-// tool is on, the cargo sprites in unload / wait orders, local / express
-// pressed states.
+// tool is on, the cargo sprites in unload / wait orders.
 func (w *VehicleWindow) drawRoute(screen *ebiten.Image) {
 	g1 := globalG1Font.g1
 	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
@@ -470,7 +481,7 @@ func (w *VehicleWindow) drawRoute(screen *ebiten.Image) {
 	if err != nil {
 		return
 	}
-	lw := VehicleRouteLayout(w.W, w.H, w.State.HiddenTabs)
+	lw := VehicleRouteLayout(w.W, w.H, w.State.HiddenTabs, !w.Main.Own)
 	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
 	list := lw[vrRouteList]
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
@@ -484,13 +495,20 @@ func (w *VehicleWindow) drawRoute(screen *ebiten.Image) {
 				drawTab(rt, t.L, t.T, i == vwTabRoute, sec, tabNoIcon, nil)
 			}
 		}
-		for _, b := range []int{vrLocalMode, vrExpressMode} {
-			gfx8.FillRectInset(rt, lw[b].L, lw[b].T, lw[b].R, lw[b].B, gfx8.InsetColour{Map: sec}, 0)
+		for _, b := range []int{vrLocalMode, vrExpressMode} { // Button::draw: activated → borderInset
+			flags := 0
+			if (b == vrExpressMode) == w.Express {
+				flags = gfx8.InsetBorderInset
+			}
+			gfx8.FillRectInset(rt, lw[b].L, lw[b].T, lw[b].R, lw[b].B, gfx8.InsetColour{Map: sec}, flags)
 		}
 		gfx8.FillRectInset(rt, list.L, list.T, list.R, list.B, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillNone)
 		gfx8.FillRect(rt, list.L+1, list.T+1, list.R-1, list.B-1, gfx8.Shade(sec, 4)) // clearSingle(getShade(secondary, 4))
 		for _, b := range []struct{ i, img int }{{vrForceUnload, imgRouteForceUnload}, {vrWait, imgRouteWait}, {vrSkip, imgRouteSkip},
 			{vrDelete, imgRouteDelete}, {vrUp, imgRedArrowUp}, {vrDown, imgRedArrowDown}, {vrReverse, imgTurnaround}} {
+			if lw[b.i].Hidden {
+				continue
+			}
 			if sp, err := gfx8.Decode(&g1.Elements[b.img]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, lw[b.i].L, lw[b.i].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 			}
@@ -504,7 +522,13 @@ func (w *VehicleWindow) drawRoute(screen *ebiten.Image) {
 		text string
 	}{{vrLocalMode, i18n.Label(i18n.LocalModeButton)}, {vrExpressMode, i18n.Label(i18n.ExpressModeButton)}} {
 		tw, _ := MeasureTextBold(b.text)
-		DrawTextBold(screen, b.text, w.X+(lw[b.i].L+lw[b.i].R-tw)/2, w.Y+lw[b.i].T, black)
+		x, y := w.X+(lw[b.i].L+lw[b.i].R-tw)/2, w.Y+lw[b.i].T
+		if !w.Main.Own { // disabled (another company's): the label in colour.inset()
+			DrawTextBold(screen, b.text, x+1, y+1, pal[gfx8.Shade(sec, 4)])
+			DrawTextBold(screen, b.text, x, y, pal[gfx8.Shade(sec, 6)])
+			continue
+		}
+		DrawTextBold(screen, b.text, x, y, black)
 	}
 	cx, cy := w.X+list.L+1, w.Y+list.T+1
 	clip := screen.SubImage(image.Rect(cx, cy, w.X+list.R, w.Y+list.B)).(*ebiten.Image)
@@ -563,10 +587,13 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 	in := func(c BVWidget) bool {
 		return !c.Hidden && x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B
 	}
-	if w.Tab == 4 { // Route::onMouseUp and onScrollMouseDown. PARTIAL: local / express, reverse, the tool
-		lw := VehicleRouteLayout(w.W, w.H, w.State.HiddenTabs)
+	if w.Tab == 4 { // Route::onMouseUp and onScrollMouseDown. PARTIAL: reverse, the tool
+		lw := VehicleRouteLayout(w.W, w.H, w.State.HiddenTabs, !w.Main.Own)
 		list := lw[vrRouteList]
 		action := map[int]string{vrDelete: "delete", vrUp: "up", vrDown: "down", vrSkip: "skip"}
+		if w.Main.Own { // disabled for another company's vehicle
+			action[vrLocalMode], action[vrExpressMode] = "local", "express"
+		}
 		switch {
 		case in(lw[vwClose]) && w.OnClose != nil:
 			w.OnClose()
