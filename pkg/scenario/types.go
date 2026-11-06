@@ -189,12 +189,12 @@ type Scenario struct {
 //
 // OpenLoco reference: include/OpenLoco/S5/S5Town.h struct Town (0x270 bytes)
 type Town struct {
-	Name         uint16 // 0x00 StringId (0xFFFF = empty slot)
-	X            int16  // 0x02 world-units X of the town centre (1 tile = 32)
-	Y            int16  // 0x04 world-units Y
+	Name uint16 // 0x00 StringId (0xFFFF = empty slot)
+	X    int16  // 0x02 world-units X of the town centre (1 tile = 32)
+	Y    int16  // 0x04 world-units Y
 	// LabelFrame (0x08) is the name label's box per zoom level, in that
 	// zoom's viewport pixels: Left, Right, Top, Bottom (LabelFrame.h).
-	LabelFrame LabelFrame
+	LabelFrame   LabelFrame
 	Population   uint32 // 0x30
 	NumBuildings int16  // 0x38
 	Size         uint8  // 0x5A TownSize: 0 hamlet .. 4 metropolis
@@ -743,4 +743,3 @@ func ParseLabelFrame(b []byte) LabelFrame {
 func (f LabelFrame) Contains(l, t, r, b int, zoom int) bool {
 	return !(t > int(f.Bottom[zoom]) || b < int(f.Top[zoom]) || l > int(f.Right[zoom]) || r < int(f.Left[zoom]))
 }
-
