@@ -655,7 +655,7 @@ func (g *Game) Update() error {
 	// Build mode: update hover tile every frame (track and road; the dock
 	// window has no construction head)
 	if g.buildMode == buildModeTrack || g.buildMode == buildModeRoad {
-		g.hoverTileX, g.hoverTileY = g.w.ScreenToTile(g.mouseX, g.mouseY)
+		g.hoverTileX, g.hoverTileY = g.tileUnderCursor(g.mouseX, g.mouseY)
 		// Keyboard shortcuts for build mode
 		if g.inKeyJustPressed(ebiten.KeyR) {
 			// Both track and road drive the shared construction head.
@@ -2374,13 +2374,13 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 								log.Printf("[Diag] Main tab %v; stop / start: flag %d → %d, commandStop now %v", g.vehicleWin.Tab == 0, flag, g.vehicleWin.StopStartImage,
 									g.w.Map.Entities[tr.Head].VehicleFlags&sim.VehicleFlagCommandStop != 0)
 								if x, y, ok := g.vehicleWin.CentreViewButton(); ok { // then centre view → focus
-									bx, by := g.w.ScreenToTile(g.sw/2, g.sh/2)
+									bx, by := g.tileUnderCursor(g.sw/2, g.sh/2)
 									g.vehicleWin.HandleClick(x+12, y-12)
 									if g.dropdown != nil && g.dropdown.OnSelect != nil {
 										g.dropdown.OnSelect(1)
 										g.dropdown = nil
 									}
-									ax, ay := g.w.ScreenToTile(g.sw/2, g.sh/2)
+									ax, ay := g.tileUnderCursor(g.sw/2, g.sh/2)
 									v2 := g.w.Map.Entities[tr.Veh2]
 									log.Printf("[Diag] focus on the train: screen centre tile %d,%d → %d,%d (the train's veh2 at tile %d,%d)", bx, by, ax, ay, v2.TileX/32, v2.TileY/32)
 								}
@@ -3879,4 +3879,15 @@ func openGraphicsDir() string {
 		}
 	}
 	return ""
+}
+
+// tileUnderCursor is ConstructionTab's getSurfaceOrWaterLocFromUi (the
+// surface or water the viewport draws at the screen point) as a tile, -1, -1
+// for none.
+func (g *Game) tileUnderCursor(sx, sy int) (int, int) {
+	px, py, ok := g.w.SurfaceOrWaterAt(sx, sy)
+	if !ok {
+		return -1, -1
+	}
+	return int(px) >> 5, int(py) >> 5
 }

@@ -845,7 +845,7 @@ func warnOncef(format string, args ...any) {
 func (w *World) getTile(x, y int) *tile { return w.TileAt(x, y) }
 
 // TileToScreenPx returns the screen pixel (sx, sy) for the centre of tile (tileX, tileY)
-// given the current camera and zoom. Inverse of ScreenToTile.
+// given the current camera and zoom.
 func (w *World) TileToScreenPx(tileX, tileY int) (int, int) {
 	scale := 1.0 / float64(int(1)<<w.zoom)
 	vpX, vpY := w.tileToScreen(tileX, tileY)
@@ -855,45 +855,6 @@ func (w *World) TileToScreenPx(tileX, tileY int) (int, int) {
 	sx := int((vpX - w.camX) * scale)
 	sy := int((vpY - w.camY) * scale)
 	return sx, sy
-}
-
-// ScreenToTile converts a screen pixel (sx, sy) to tile coordinates.
-// Returns (-1, -1) if the position maps outside the map bounds.
-// Terrain height is compensated for by iterative refinement (see below).
-//
-// Inverse of tileToScreen:
-//
-//	vpX = (tileY - tileX) * 32  →  tileY - tileX = vpX/32
-//	vpY = (tileY + tileX) * 16  →  tileY + tileX = vpY/16
-//	tileY = (vpX/32 + vpY/16) / 2
-//	tileX = (vpY/16 - vpX/32) / 2
-func (w *World) ScreenToTile(sx, sy int) (int, int) {
-	scale := 1.0 / float64(int(1)<<w.zoom)
-	// un-zoom and un-camera to get world-space viewport coords
-	vpX := float64(sx)/scale + w.camX
-	vpY := float64(sy)/scale + w.camY
-	// Draw() shifts each tile up by baseZ*4 px, so picking must shift the
-	// cursor down by the height of the tile actually under it. That tile is
-	// only known once picked — iterate a few times to converge on hills.
-	tileX, tileY := -1, -1
-	adjY := vpY
-	for i := 0; i < 4; i++ {
-		tx := int(math.Floor((adjY/16.0 - vpX/32.0) / 2.0))
-		ty := int(math.Floor((vpX/32.0 + adjY/16.0) / 2.0))
-		if tx == tileX && ty == tileY {
-			break
-		}
-		tileX, tileY = tx, ty
-		t := w.getTile(tx, ty)
-		if t == nil {
-			break
-		}
-		adjY = vpY + float64(t.BaseZ)*4.0
-	}
-	if tileX < 0 || tileX >= w.Width || tileY < 0 || tileY >= w.Height {
-		return -1, -1
-	}
-	return tileX, tileY
 }
 
 // ── Surface edge smoothing ────────────────────────────────────────────────────
