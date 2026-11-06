@@ -71,9 +71,13 @@ func main() {
 	args := flag.String("args", "", "space-separated command-line arguments passed to goloco")
 	local := flag.Bool("local", false, "write plain .gz files for a local server (the artifact host needs base64 text)")
 	open := flag.Bool("open", false, "the open build (GitHub Pages): goloco's own files only, no Locomotion data — the page takes the player's own folder")
+	og := flag.String("opengraphics", "", "with -open: the unzipped OpenGraphics objects.zip (MIT; OG_*.dat only), packed flat at /w/opengraphics/ObjData — the fallback when the player brings no folder")
 	flag.Parse()
 	if *out == "" {
 		log.Fatal("webpack: -out is required")
+	}
+	if *og != "" && !*open {
+		log.Fatal("webpack: -opengraphics is for the open build (-open)")
 	}
 	if *open && *music {
 		log.Fatal("webpack: -open never includes game data (the music is the player's own)")
@@ -98,18 +102,34 @@ func main() {
 	}
 	if !*open { // the player's data (never in the open build)
 		mounts = append(mounts, []mount{
-		{filepath.Join(*data, "Data"), "/w/locomotion/Data", func(rel string, size int64) bool {
-			return size < 3<<20
-		}},
-		{filepath.Join(*data, "ObjData"), "/w/locomotion/ObjData", nil},
-		{filepath.Join(*data, "Scenarios"), "/w/locomotion/Scenarios", func(rel string, size int64) bool {
-			return len(wanted) == 0 || wanted[strings.ToLower(filepath.Base(rel))]
-		}},
+			{filepath.Join(*data, "Data"), "/w/locomotion/Data", func(rel string, size int64) bool {
+				return size < 3<<20
+			}},
+			{filepath.Join(*data, "ObjData"), "/w/locomotion/ObjData", nil},
+			{filepath.Join(*data, "Scenarios"), "/w/locomotion/Scenarios", func(rel string, size int64) bool {
+				return len(wanted) == 0 || wanted[strings.ToLower(filepath.Base(rel))]
+			}},
 		}...)
 	}
 
 	type file struct{ host, virt string }
 	var list []file
+	if *og != "" { // OpenGraphics, flattened (the object loader reads one folder); nothing but OG_*.dat
+		err := filepath.WalkDir(*og, func(p string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			name := filepath.Base(p)
+			if !strings.HasPrefix(name, "OG_") || !strings.EqualFold(filepath.Ext(name), ".dat") {
+				log.Fatalf("webpack: %s in the OpenGraphics folder is not an OG_*.dat object — refusing (no original data in the open build)", p)
+			}
+			list = append(list, file{p, "/w/opengraphics/ObjData/" + name})
+			return nil
+		})
+		if err != nil {
+			log.Fatalf("webpack: %s: %v", *og, err)
+		}
+	}
 	for _, m := range mounts {
 		err := filepath.WalkDir(m.host, func(p string, d fs.DirEntry, err error) error {
 			if err != nil || d.IsDir() {
