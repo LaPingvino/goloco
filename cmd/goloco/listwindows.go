@@ -610,18 +610,23 @@ func (g *Game) routeAction(headID uint16, action string) {
 // routeToolDown is Route::onToolDown for stops: the station under the cursor
 // (World.RouteStopAt) added through addNewOrder — inserted before the selected
 // order, else before the table's end; the selection moves down with the order
-// it was on. PARTIAL: waypoints (route through) and the waypoint sound.
+// it was on; plain track or road gives a route-through waypoint instead.
+// PARTIAL: the waypoint sound; water waypoints.
 func (g *Game) routeToolDown(sx, sy int) {
-	station, ok := g.w.RouteStopAt(sx, sy)
-	if !ok {
-		return
-	}
 	m := &g.w.Map
 	tr, err := m.TrainOf(g.routeHead)
 	if err != nil {
 		return
 	}
 	h := m.Entities[tr.Head]
+	hit, ok := g.w.RouteAt(sx, sy, h.Mode)
+	if !ok {
+		return
+	}
+	order := sim.OrderStopAtRaw(hit.Station)
+	if hit.Waypoint != nil {
+		order = hit.Waypoint // route through (0x004B5160 / 0x004B5223)
+	}
 	offset := uint16(h.SizeOfOrderTable - 1) // addNewOrder: before the End order
 	if orders := m.OrderTable(h.OrderTableOffset); g.routeSel >= 0 && g.routeSel < len(orders) {
 		offset = uint16(orders[g.routeSel].Offset - int(h.OrderTableOffset))
@@ -629,7 +634,7 @@ func (g *Game) routeToolDown(sx, sy int) {
 	company, _ := g.w.ControllingCompany()
 	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
 	before := h.SizeOfOrderTable
-	if _, ok := m.VehicleOrderInsert(c, sim.CmdApply, g.routeHead, offset, sim.OrderStopAtRaw(station)); !ok {
+	if _, ok := m.VehicleOrderInsert(c, sim.CmdApply, g.routeHead, offset, order); !ok {
 		return
 	}
 	if m.Entities[tr.Head].SizeOfOrderTable != before && g.routeSel != -1 {

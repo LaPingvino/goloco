@@ -155,6 +155,20 @@ func OrderStopAtRaw(station int) []byte {
 	return []byte{OrderStopAt | uint8(station>>2)&0xC0, uint8(station)}
 }
 
+// OrderRouteWaypointRaw is OrderRouteWaypoint(pos, baseZ, direction, trackId)
+// (Orders.cpp setWaypoint / setDirection / setTrackId): a tile position (9
+// bits each), the height in units of 8, the direction and the track / road id.
+func OrderRouteWaypointRaw(tileX, tileY int, baseZ, direction, trackID uint8) []byte {
+	return []byte{
+		OrderRouteWaypoint | uint8((tileX&0x100)>>1),
+		uint8(tileX),
+		baseZ | uint8((tileY&0x100)>>1),
+		uint8(tileY),
+		direction&7 | (trackID&0x1F)<<3,
+		trackID >> 5 & 1,
+	}
+}
+
 // swapAdjacentOrders is OrderManager::swapAdjacentOrders: b (right after a)
 // written over a's place, then a; the length to offset by (b's).
 func (m *Map) swapAdjacentOrders(a, b Order) int {
