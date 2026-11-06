@@ -21,9 +21,12 @@ type AirportObject struct {
 	Variations     [][]uint8 // buildingVariationParts, per building type
 	Image          uint32    // image table offset
 	BuildingImage  uint32    // image + 1 (+ numTiles*4 shadow images when hasShadows)
-	Buildings      []AirportBuilding
-	MovementNodes  []AirportMovementNode
-	MovementEdges  []AirportMovementEdge
+	// PlacementClearEdges is var_B6: the movement edges that must all be
+	// clear for an aircraft to be placed at the airport.
+	PlacementClearEdges uint32
+	Buildings           []AirportBuilding
+	MovementNodes       []AirportMovementNode
+	MovementEdges       []AirportMovementEdge
 }
 
 // AirportBuilding is AirportBuilding: a building of the airport (its type
@@ -71,11 +74,12 @@ func ParseAirportObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 		return nil, fmt.Errorf("airport object too small: %d bytes", len(data))
 	}
 	o := &AirportObject{
-		Header:        header,
-		Flags:         binary.LittleEndian.Uint16(data[AirportFlagsOffset:]),
-		NumSpriteSets: data[AirportNumSpriteSetsOffset],
-		NumTiles:      data[AirportNumTilesOffset],
-		LargeTiles:    binary.LittleEndian.Uint32(data[AirportLargeTilesOffset:]),
+		Header:              header,
+		Flags:               binary.LittleEndian.Uint16(data[AirportFlagsOffset:]),
+		NumSpriteSets:       data[AirportNumSpriteSetsOffset],
+		NumTiles:            data[AirportNumTilesOffset],
+		LargeTiles:          binary.LittleEndian.Uint32(data[AirportLargeTilesOffset:]),
+		PlacementClearEdges: binary.LittleEndian.Uint32(data[0xB6:]), // var_B6
 	}
 	numNodes, numEdges := int(data[AirportNumMovementNodesOffset]), int(data[AirportNumMovementEdgesOffset])
 	off := AirportObjectSize
