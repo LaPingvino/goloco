@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -16,6 +17,7 @@ type StationTabState struct {
 	Image        int    // its image (+0 preview, +1 preview windows)
 	Recolourable bool   // TrainStationFlags/RoadStationFlags::recolourable
 	Company      uint8  // the player company's primary colour
+	Cost         int64  // cState.stationCost: the ghost's cost (0: none, or it failed)
 }
 
 // DrawStationTab is Station::draw (0x0049DE40) without a ghost: the station
@@ -23,7 +25,9 @@ type StationTabState struct {
 // recoloured to the company colour, then its windows drawn translucent in
 // getTranslucent(company) (ExtColour 0x2E when not recolourable); and the
 // separator at the image's bottom + 16.
-// PARTIAL: airports and docks; the cost line; with a ghost placed, the
+// The cost line: build_cost centred at x + 69, the image's bottom + 4, when
+// the ghost has a cost.
+// PARTIAL: airports and docks; with a ghost placed, the
 // station name and the catchment's accepted/produced cargo (and the window
 // growing for them); the dropdown list; placing (the tool).
 func DrawStationTab(screen *ebiten.Image, f *ConstructionFrame, st StationTabState) {
@@ -59,6 +63,15 @@ func DrawStationTab(screen *ebiten.Image, f *ConstructionFrame, st StationTabSta
 		gfx8.FillRectInset(rt, 3, y, 3+(ConstructionW-4)-1, y, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillNone)
 	})
 	DrawTextBold(screen, st.Name, f.X+3+1, f.Y+45+1, black)
+	if st.Cost != 0 { // "{COLOUR WINDOW_2}Cost: {COLOUR BLACK}{CURRENCY32}", drawStringCentred
+		text := pal[gfx8.Shade(sec, 9)]
+		label, amount := "Cost: ", L.Currency48(st.Cost)
+		lw, _ := MeasureTextBold(label)
+		aw, _ := MeasureTextBold(amount)
+		x := f.X + 69 - (lw+aw)/2
+		DrawTextBold(screen, label, x, f.Y+imgB+4, text)
+		DrawTextBold(screen, amount, x+lw, f.Y+imgB+4, black)
+	}
 	arrow := string(rune(170))
 	aw, _ := MeasureTextBold(arrow)
 	DrawTextBold(screen, arrow, f.X+3+132-12+(11-1)/2-aw/2, f.Y+45+1, black)

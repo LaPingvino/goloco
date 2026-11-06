@@ -309,6 +309,9 @@ func (g *Game) stationTabState(company uint8) ui.StationTabState {
 		return st
 	}
 	slot := pickSlot(list, g.consStation)
+	if g.stationGhost != nil && !road {
+		st.Cost = int64(g.stationGhostCost) // cState.stationCost while a ghost stands
+	}
 	if road {
 		if s := om.GetRoadStationObjectByIndex(slot); s != nil {
 			st.Name, st.Image, st.Recolourable = s.Name, int(s.ImageOffset), s.Flags&1 != 0
