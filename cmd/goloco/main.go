@@ -146,6 +146,7 @@ type Game struct {
 	consStation            int                        // station tab: lastSelectedStationType (slot; -1 = the first available)
 	stationGhost           *sim.TrainStationPlacement // the station tab's ghost (cState.stationGhost*), nil none
 	stationGhostCost       int32                      // cState.stationCost
+	errorWin               *ui.ErrorWindow            // WindowType::error (one at a time)
 	stationGhostStation    int                        // cState.constructingStationId (-1 new)
 	stationGhostAccepted   uint32                     // constructingStationAcceptedCargoTypes
 	stationGhostProduced   uint32                     // constructingStationProducedCargoTypes
@@ -1349,6 +1350,13 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.prompt != nil { // a confirmation, on top of everything
 		g.prompt.Draw(screen)
 	}
+	if g.errorWin != nil { // Error.cpp: stickToFront
+		if g.errorWin.Expired() {
+			g.errorWin = nil
+		} else {
+			g.errorWin.Draw(screen)
+		}
+	}
 
 	statusY := g.sh - 20
 	// Bottom bar: the ported PlayerInfoPanel (left) and TimePanel (right).
@@ -1566,6 +1574,9 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 							} else {
 								g.stationToolUp(sx, sy+16)
 								log.Printf("[Diag] stationtool: clicked %d,%d (tile %d,%d company %d): station now %v", sx, sy+16, x, y, tr.Owner, m.TileAt(x, y).Tracks[r.Index].HasStation)
+								g.openError(ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop3String), "City Station"), i18n.Label(i18n.WrongTypeOfTrackRoad)) // the window, held for the shot
+								g.errorWin.Hold = true
+								log.Printf("[Diag] stationtool: error window %q", g.errorWin.Lines)
 							}
 							done = true
 							break

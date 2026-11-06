@@ -516,15 +516,35 @@ func (g *Game) removeStationGhost() {
 // stationToolUp is StationTab's onToolUpTrainStation (0x004A5390): the
 // placement from the track under the cursor (getTrainStationPlacementArgsFromCursor),
 // refused on another track type (wrong_type_of_track_road), then
-// CreateTrainStation with apply, after removeConstructionGhosts. PARTIAL: the
-// error window and its title (cant_build_pop3_string with the station's
-// name), the construct sound.
+// CreateTrainStation with apply, after removeConstructionGhosts; a failure
+// opens the error window titled cant_build_pop3_string with the station's
+// name. PARTIAL: the command's own error text (goloco's commands don't set
+// one yet, so only the title shows), the construct sound.
 func (g *Game) stationToolUp(sx, sy int) {
 	g.removeStationGhost()
 	a, ok := g.stationArgsAt(sx, sy)
-	if !ok || int(a.TrackObjectID) != g.buildObjID {
+	if !ok {
+		return
+	}
+	title := ""
+	om := g.r.ObjMgr
+	if list := om.AvailableCompatibleStations(g.buildObjID, false, int(g.w.CurrentYear)); len(list) > 0 {
+		if id := pickSlot(list, g.consStation); id >= 0 && id < len(om.TrainStationObjects) && om.TrainStationObjects[id] != nil {
+			title = ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop3String), om.TrainStationObjects[id].Name)
+		}
+	}
+	if int(a.TrackObjectID) != g.buildObjID {
+		g.openError("", i18n.Label(i18n.WrongTypeOfTrackRoad))
 		return
 	}
 	c, g1 := g.stationCmd()
-	g.w.Map.CreateTrainStation(c, sim.CmdApply, a, g1)
+	if _, ok := g.w.Map.CreateTrainStation(c, sim.CmdApply, a, g1); !ok {
+		g.openError(title, "")
+	}
+}
+
+// openError is Error::open at the mouse.
+func (g *Game) openError(title, message string) {
+	mx, my := ebiten.CursorPosition()
+	g.errorWin = ui.OpenError(title, message, mx, my, g.sw, g.sh)
 }
