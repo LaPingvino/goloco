@@ -195,7 +195,10 @@ func TestCreateCarMatchesSaved(t *testing.T) {
 				if a.EntityType != b.EntityType || a.ObjectSpriteType != b.ObjectSpriteType || a.SpriteWidth != b.SpriteWidth ||
 					a.SpriteHeightNegative != b.SpriteHeightNegative || a.SpriteHeightPositive != b.SpriteHeightPositive ||
 					a.Flags38&flagsCompared != b.Flags38&flagsCompared || a.Cargo.AcceptedTypes != b.Cargo.AcceptedTypes ||
-					a.Cargo.MaxQty != b.Cargo.MaxQty || a.ColourPrimary != b.ColourPrimary || a.ColourSecondary != b.ColourSecondary {
+					// maxQty only where cargo is carried: createBogie leaves a bogie's secondaryCargo.maxQty
+					// unset and OpenLoco's createEntity zeroes the slot, but the vanilla save keeps a
+					// reused slot's old value (a Hopper Truck's front bogie: 60 with no accepted types)
+					a.Cargo.AcceptedTypes != 0 && a.Cargo.MaxQty != b.Cargo.MaxQty || a.ColourPrimary != b.ColourPrimary || a.ColourSecondary != b.ColourSecondary {
 					t.Errorf("%s component %d type %d:\n saved %+v\n new   %+v", om.Vehicles[first.ObjectID].DisplayName, i, a.EntityType,
 						[]any{a.ObjectSpriteType, a.SpriteWidth, a.SpriteHeightNegative, a.SpriteHeightPositive, a.Flags38 & flagsCompared, a.Cargo.AcceptedTypes, a.Cargo.MaxQty, a.ColourPrimary, a.ColourSecondary},
 						[]any{b.ObjectSpriteType, b.SpriteWidth, b.SpriteHeightNegative, b.SpriteHeightPositive, b.Flags38 & flagsCompared, b.Cargo.AcceptedTypes, b.Cargo.MaxQty, b.ColourPrimary, b.ColourSecondary})
@@ -395,7 +398,7 @@ func TestAddCarToVehicle(t *testing.T) {
 		}
 	}
 	t.Logf("%d saved car pairs couple", pairs)
-	saved := trains[0]
+	saved := firstRailTrain(t, m, trains, 2) // a train with wagons (road vehicles take no trailers by default)
 	company := m.Entities[saved.Head].Owner
 	objID := m.Entities[saved.Cars[len(saved.Cars)-1][0].Body].ObjectID // a wagon, often
 	c := &Cmd{Company: company, Objects: om}
@@ -1067,7 +1070,7 @@ func TestBuildVehicleTabs(t *testing.T) {
 			t.Errorf("company %d runs a type-%d vehicle but that tab is disabled (%#x)", h.Owner, h.VehicleType, d)
 		}
 	}
-	h := m.Entities[trains[0].Head]
+	h := m.Entities[firstRailTrain(t, m, trains, 1).Head] // the trains tab and its track
 	o := DefaultBuildVehicleOptions(h.Owner)
 	for vt := uint8(0); vt < 6; vt++ {
 		tabs := m.BuildVehicleTrackTabs(om, vt, o)
@@ -2773,4 +2776,17 @@ func TestIndustryConstruction(t *testing.T) {
 	if unk == 0 {
 		t.Error("no unk38 entries read")
 	}
+}
+
+// firstRailTrain is the first rail train (vehicle type 0) of at least minCars
+// cars in Trains' order — VehicleList's, newest first, where a truck may lead.
+func firstRailTrain(t *testing.T, m *Map, trains []Train, minCars int) Train {
+	t.Helper()
+	for _, tr := range trains {
+		if m.Entities[tr.Head].VehicleType == 0 && len(tr.Cars) >= minCars {
+			return tr
+		}
+	}
+	t.Skipf("no rail train of %d cars", minCars)
+	return Train{}
 }
