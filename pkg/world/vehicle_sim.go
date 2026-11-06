@@ -13,9 +13,8 @@ import (
 // board→travel→deliver loop are retired (item 5); new vehicles come with the
 // Build Vehicle window (item 5b).
 
-// TickVehicles is the gameplay tick: money floats, then the vehicles.
+// TickVehicles is the gameplay tick: the vehicles.
 func (w *World) TickVehicles() {
-	w.tickMoneyFloats()
 	w.Map.TitleMode = false
 	w.TickSavedVehicles()
 }

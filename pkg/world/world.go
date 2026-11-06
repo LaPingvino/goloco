@@ -121,9 +121,6 @@ type World struct {
 
 	// placedStations counts PlaceStationOnTile calls (station.go).
 	placedStations int
-
-	// moneyFloats are rising "+£N" income indicators (see overlay.go).
-	moneyFloats []moneyFloat
 }
 
 // mapSaveState holds in-progress full-map PNG render state.
