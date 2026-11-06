@@ -1458,9 +1458,62 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves" && v != "playable") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
-		if v == "drag" { // DIAGNOSTIC ONLY: a stopped saved train's last car dragged over its second row (GOLOCO_DIAG_DRAG_DROP: dropped there)
+		if v == "playable" { // DIAGNOSTIC ONLY: 5P end to end through the game's commands, as the player — a stopped rail train with two stops lifted, a copy bought (same cars), placed where it stood, its orders given, started; the view follows it, its window on Main
+			m := &g.w.Map
+			om := g.r.ObjMgr
+			trains, _ := m.Trains()
+			for _, tr := range trains {
+				oh := m.Entities[tr.Head]
+				if oh.Mode != 0 || oh.TileX == -1 || len(tr.Cars) == 0 {
+					continue
+				}
+				var orders [][]byte
+				stops := 0
+				for _, o := range m.OrderRing(oh.OrderTableOffset, 0) {
+					if o.Type() == sim.OrderStopAt {
+						stops++
+					}
+					orders = append(orders, append([]byte(nil), m.Orders[o.Offset:o.Offset+sim.OrderSize(int(o.Type()))]...))
+				}
+				c := &sim.Cmd{Company: oh.Owner, Objects: om}
+				if stops < 2 {
+					continue
+				}
+				v2 := m.Entities[tr.Veh2] // where it stands, before it is lifted
+				place := sim.VehiclePlacement{X: int32(v2.TileX), Y: int32(v2.TileY), Z: int32(v2.TileBaseZ) * 4, TrackAndDirection: v2.TrackAndDirection, TrackProgress: v2.SubPosition}
+				if _, ok := m.VehiclePickup(c, sim.CmdApply, oh.ID); !ok {
+					continue // moving: can't be modified
+				}
+				m.ControllingCompany, m.PlayerCompanies[0] = oh.Owner, oh.Owner
+				m.Companies[oh.Owner].Cash += 5_000_000 // funded: the title's companies are nearly broke
+				var cars []uint16
+				for _, car := range tr.Cars {
+					cars = append(cars, m.Entities[car[0].Body].ObjectID)
+				}
+				var h uint16
+				_, okBuy := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureVehiclePurchases, func(f uint8) (int32, bool) { return m.CreateVehicle(c, f, cars[0], true, &h) })
+				for _, car := range cars[1:] {
+					m.AddCarToVehicle(c, sim.CmdApply, car, h, true)
+				}
+				place.Head = h
+				_, okPlace := m.VehiclePlace(c, sim.CmdApply, place)
+				for _, raw := range orders {
+					m.VehicleOrderInsert(c, sim.CmdApply, h, m.Entities[func() int { t, _ := m.TrainOf(h); return t.Head }()].SizeOfOrderTable-1, raw)
+				}
+				_, okStart := m.VehicleChangeRunningMode(c, sim.CmdApply, h, sim.RunningModeStart)
+				g.inTitleScreen = false
+				g.diagShip, g.diagFollow = h, true
+				g.w.CentreOnVehicle(h)
+				log.Printf("[Diag] playable: replaced train %d by bought %d (%d cars, %d orders): bought %v placed %v started %v", oh.ID, h, len(cars), len(orders), okBuy, okPlace, okStart)
+				g.openVehicleWindow(h, 0)
+				if g.vehicleWin != nil {
+					g.vehicleWin.X, g.vehicleWin.Y = 8, 40
+				}
+				break
+			}
+		} else if v == "drag" { // DIAGNOSTIC ONLY: a stopped saved train's last car dragged over its second row (GOLOCO_DIAG_DRAG_DROP: dropped there)
 			m := &g.w.Map
 			trains, _ := m.Trains()
 			for _, tr := range trains {

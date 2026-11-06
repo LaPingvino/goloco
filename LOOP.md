@@ -146,8 +146,11 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       its text in wcolour2; while dragging the drop line, the tail's below the last car — drawRowHover /
       MouseOver). PARTIAL: the car tooltip (buffer_337: the vehicle's stats), the dragged car greyed in the
       list (disableColour), the hovered buttons' look. 5P.g is otherwise complete: the vehicle window has all
-      five tabs and their actions. NEXT: 5P's other open items (the shot with a player-built line when a
-      save with player track exists), then TL.
+      five tabs and their actions. SEEN END TO END 2026-11-06 (GOLOCO_DIAG_BUILDVEHICLE=playable: as the
+      player, a stopped two-stop rail train lifted, a copy bought — DoCommandFor, the company charged —, its
+      cars added, placed where it stood, its orders given, started; the bought "Train 2" stands loading at
+      Station 17 in the shot, its window's Main tab showing it). Left in 5P: a line the player builds
+      (construction, then the same steps) — when that matters to Joop; the PARTIALs above. NEXT: TL.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a) — DONE 2026-11-06: it did differ (title save: 98 trains, the list against slot order at 55
    places). Trains() now walks the vehicle-head list from its head along next, as VehicleList does (slot order
@@ -1276,4 +1279,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (5P.g: row hover) — (the other three wait on Joop → here.) rowHover for the Details and Cargo car lists, from the mouse each update (scrollMouseOver; while dragging scrollDrag's row middle, the tail below the last car): the row shaded with ExtColour unk30 and its text in the window colour, or, during a drag, the two-pixel drop line Details draws. A new window starts with none. Seen: Cargo's second row highlighted ("3 Passengers from Cleveland"), the drag's drop line above the target row. All green; test page redeployed.
+
+
+- 2026-11-06 (5P: the playable shot) — (the other three wait on Joop → here.) The shot 5P waited for, without a player save: a "playable" diag runs TestPlayableVehicleEndToEnd's steps through the game's commands as the player company (buying through DoCommandFor, the company funded first — the title's are nearly broke). Two diag bugs on the way (veh2's place read after the lift; the window used before checking the buy). Seen: the bought Train 2 placed and loading (status 6) at Station 17, its window's Main tab with its viewport. sim.OrderSize exported for it. All green; no game change, no redeploy. NEXT: TL.
 

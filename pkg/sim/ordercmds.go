@@ -280,3 +280,6 @@ func (m *Map) VehicleOrderReverse(c *Cmd, flags uint8, headID uint16) (int32, bo
 	h.CurrentOrder = uint16(dest - int(h.CurrentOrder) - orderSizes[ooiType] - first)
 	return 0, true
 }
+
+// OrderSize is kOrderSizes for an order type: its bytes in the table.
+func OrderSize(t int) int { return orderSizes[t&7] }
