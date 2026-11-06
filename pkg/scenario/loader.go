@@ -1614,6 +1614,8 @@ func parseIndustries(gs []byte) []Industry {
 		}
 		ind.X, ind.Y = int16(u16(0x02)), int16(u16(0x04))
 		ind.Name, ind.FoundingYear, ind.Owner = u16(0x00), u16(0x12), r[0xE0]
+		ind.TileLoop = [2]int16{int16(u16(0xD7)), int16(u16(0xD9))}
+		ind.NumFarmTiles, ind.NumIdleFarmTiles = int16(u16(0xDB)), int16(u16(0xDD))
 		for k := 0; k < int(r[0x14]) && k < 32; k++ {
 			ind.Tiles = append(ind.Tiles, [3]int16{int16(u16(0x15 + 6*k)), int16(u16(0x17 + 6*k)), int16(u16(0x19 + 6*k))})
 		}

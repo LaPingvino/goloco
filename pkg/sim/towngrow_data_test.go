@@ -2638,3 +2638,77 @@ func TestIndustryGroundsAndMonthlyStartUp(t *testing.T) {
 		t.Error("no new sawmill founded under the cap")
 	}
 }
+
+// TestFarmProduction (CR part 3): the save holds each industry's farm counts
+// halfway through its tile loop's round. For every industry whose loop has
+// already passed all its fields this round, a fresh count of them
+// (isFarmTileProducing over the whole map) gives back exactly the saved
+// fields and idle fields; then a round run from the saved place ends in
+// calculateFarmProduction, whose rate follows from those counts. (The saved
+// rates themselves are the previous round's: the save is in November, snow
+// and trees on the fields have changed since.)
+func TestFarmProduction(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	checked := 0
+	for i := range m.Industries {
+		ind := &m.Industries[i]
+		obj := om.GetIndustryObjectByIndex(int(ind.ObjectID))
+		if obj == nil || ind.UnderConstruction != 0xFF {
+			continue
+		}
+		loopAt := int(ind.TileLoop[1])/32*384 + int(ind.TileLoop[0])/32
+		last := -1
+		for ty := 0; ty < m.Height; ty++ {
+			for tx := 0; tx < m.Width; tx++ {
+				if tl := m.TileAt(tx, ty); tl.IsIndustrial && tl.Variation == ind.ID {
+					last = ty*384 + tx
+				}
+			}
+		}
+		if last < 0 || last >= loopAt {
+			continue
+		}
+		fresh := *ind
+		fresh.NumFarmTiles, fresh.NumIdleFarmTiles = 0, 0
+		for ty := 0; ty < m.Height; ty++ {
+			for tx := 0; tx < m.Width; tx++ {
+				m.isFarmTileProducing(&fresh, obj, [2]int16{int16(tx * 32), int16(ty * 32)})
+			}
+		}
+		checked++
+		snowy := int16(0) // the original game counted snowy fields idle even where the object ignores snow (OpenLoco honours it)
+		if obj.Flags&industryFarmIgnoresSnow != 0 {
+			for ty := 0; ty < m.Height; ty++ {
+				for tx := 0; tx < m.Width; tx++ {
+					if tl := m.TileAt(tx, ty); tl.IsIndustrial && tl.Variation == ind.ID && tl.Slope>>5 != 0 && len(tl.Trees) == 0 &&
+						(tl.GrowthStage == 0 || tl.GrowthStage != obj.FarmTileGrowthStageNoProduction) {
+						snowy++
+					}
+				}
+			}
+		}
+		if fresh.NumFarmTiles != ind.NumFarmTiles || fresh.NumIdleFarmTiles+snowy != ind.NumIdleFarmTiles {
+			t.Errorf("%s %d: counted %d fields / %d idle, saved %d / %d", obj.Name, ind.ID, fresh.NumFarmTiles, fresh.NumIdleFarmTiles, ind.NumFarmTiles, ind.NumIdleFarmTiles)
+		}
+		n, idle := ind.NumFarmTiles, ind.NumIdleFarmTiles
+		for step := 0; step < 384*384/100+2; step++ { // the rest of the round: no more fields, then the rate
+			m.industryUpdate(ind, om)
+			if ind.NumFarmTiles == 0 {
+				break
+			}
+		}
+		adj := max(0, idle-n/16)
+		size := min((n-adj)/25, 255)
+		want := uint8(255)
+		if size < int16(obj.FarmNumFields) {
+			want = uint8(int32(size) * 256 / int32(obj.FarmNumFields))
+		}
+		if ind.ProductionRate != want {
+			t.Errorf("%s %d: rate %d from %d / %d, want %d", obj.Name, ind.ID, ind.ProductionRate, n, idle, want)
+		}
+	}
+	t.Logf("%d industries past all their fields: counts as saved, rate from them", checked)
+	if checked == 0 {
+		t.Fatal("none to check")
+	}
+}

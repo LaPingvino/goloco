@@ -228,6 +228,9 @@ type Industry struct {
 	Name                 uint16    // 0x00: its name (StringId; 0xFFFF a free slot)
 	FoundingYear         uint16    // 0x12
 	Owner                uint8     // 0xE0: the company that founded it (flag_04), else neutral
+	TileLoop             [2]int16  // 0xD7: the farm tile loop's position (world units)
+	NumFarmTiles         int16     // 0xDB
+	NumIdleFarmTiles     int16     // 0xDD
 	Town                 uint16    // 0xD5
 	ReceivedMonthlyTotal [3]uint16 // 0x18D receivedCargoQuantityMonthlyTotal
 	ReceivedDailyTotal   [3]uint16 // 0x199 receivedCargoQuantityDailyTotal

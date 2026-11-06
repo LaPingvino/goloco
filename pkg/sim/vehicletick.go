@@ -62,6 +62,7 @@ func (m *Map) UpdateVehicles(om *objects.ObjectManager) {
 	m.ScenarioTicks++            // ScenarioManager: one scenario tick per game tick
 	m.dateTick(om)               // tickLogic: dateTick before the managers' updates
 	m.UpdateTowns(om)            // TownManager::update (towngrowroad.go)
+	m.industriesUpdate(om)       // IndustryManager::update: the farm tiles (industryfarm.go)
 	defer m.UpdateAnimations(om) // AnimationManager::update: after the vehicles (tickLogic's order)
 	trains, err := m.Trains()
 	if err != nil {
