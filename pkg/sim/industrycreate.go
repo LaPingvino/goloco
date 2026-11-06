@@ -9,9 +9,9 @@ import (
 // Creating an industry (item CR part 2c): GameCommands/Industries/
 // CreateIndustry.cpp's getProduced/RequiredCargoBitSet, sub_454C91
 // (0x00454C91), getRandomAvailableColour and placeIndustryBuilding, and
-// IndustryManager::allocateNewIndustry. PARTIAL: the createIndustry command
-// itself (its building loop, the claimed fields and walls, expandGrounds) —
-// next; checkFreeElementsAndReorganise (goloco's tiles have no element limit); the name:
+// IndustryManager::allocateNewIndustry; the createIndustry command itself
+// (CreateIndustry below: its building loop, the claimed fields and walls,
+// expandGrounds). PARTIAL: checkFreeElementsAndReorganise (goloco's tiles have no element limit); the name:
 // upstream takes the object's var_02 (a StringId given at load) and, when
 // another industry of the town has it, a numbered user string — goloco has
 // neither string ids nor user strings, so Name only marks the slot used.

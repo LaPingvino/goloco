@@ -13,7 +13,7 @@ import (
 // daily production moving one step towards its target × productionRate /
 // 256, and at 8 or more in the output buffer up to 255 sent to the stations
 // its produced cargo goes to (producedCargoStatsStation).
-// PARTIAL: Industry::update's farm tiles; see industryUpdateMonthly.
+// Industry::update's farm tiles are in industryfarm.go (item CR part 3).
 
 const industryFlagIsGhost = 1 << 0 // IndustryFlags::isGhost
 
