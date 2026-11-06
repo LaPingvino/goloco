@@ -94,6 +94,28 @@ func TestCreateAirport(t *testing.T) {
 				t.Errorf("town airports %d, want %d", m.Towns[town].NumberOfAirports, n0+1)
 			}
 			t.Logf("airport %q (object %d) at %d,%d: %q, cost %d", om.AirportObjects[typ].Name, typ, x, y, m.StationName(id), cost)
+			// removed again (its centre clicked):
+			// every element goes, flag_6 is cleared, the town counts one less
+			refund, ok := m.RemoveAirport(c, CmdApply, AirportRemoval{X: a.X, Y: a.Y, Z: a.Z}, g1)
+			if !ok || refund >= 0 {
+				t.Fatalf("removing: ok %v refund %d", ok, refund)
+			}
+			for yy := y - 4; yy <= y+4; yy++ {
+				for xx := x - 4; xx <= x+4; xx++ {
+					for _, se := range m.TileAt(xx, yy).Stations {
+						if se.StationType == 2 && int(se.StationID) == id && !se.Ghost {
+							t.Errorf("an airport element left on %d,%d", xx, yy)
+						}
+					}
+				}
+			}
+			if st.Flags&stationFlagHasAirport != 0 || st.TileSize != 0 {
+				t.Errorf("station %d after removal: flags %#x tiles %d", id, st.Flags, st.TileSize)
+			}
+			if m.Towns[town].NumberOfAirports != n0 {
+				t.Errorf("town airports %d after removal, want %d", m.Towns[town].NumberOfAirports, n0)
+			}
+			t.Logf("removed: refund %d", refund)
 			return
 		}
 	}

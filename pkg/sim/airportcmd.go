@@ -290,3 +290,132 @@ func (m *Map) CreateAirport(c *Cmd, flags uint8, a AirportPlacement, g1 G1Raw) (
 	}
 	return total, true
 }
+
+// AirportRemoval is AirportRemovalArgs: a tile of the airport and its height.
+type AirportRemoval struct {
+	X, Y, Z int32
+}
+
+// removeAirportTileElement is RemoveAirport.cpp's (0x004938D9): applied, the
+// airport element at that height on each tile of the building's footprint
+// goes (none: refused). PARTIAL: the surfaces' AI flag.
+func (m *Map) removeAirportTileElement(x, y, z int32, a *objects.AirportObject, buildingIndex uint8, flags uint8) bool {
+	for _, off := range buildingTileOffsets(a.LargeTiles&(1<<buildingIndex) != 0) {
+		if flags&CmdApply == 0 {
+			continue
+		}
+		t, k := m.stationElAt(x+off[0], y+off[1], z)
+		if k < 0 {
+			return false
+		}
+		t.removeStationElement(k)
+	}
+	return true
+}
+
+// isAirportInUseByVehicle is RemoveAirport.cpp's (0x00493519): a placed
+// aircraft whose station is this one.
+func (m *Map) isAirportInUseByVehicle(stationID int) bool {
+	trains, _ := m.Trains()
+	for _, tr := range trains {
+		h := &m.Entities[tr.Head]
+		if h.Mode == 2 && h.TileX != -1 && int(h.StationID) == stationID {
+			return true // currently_in_use_by_at_least_one_vehicle
+		}
+	}
+	return false
+}
+
+// removeAirportAt is loc_49372F: refused while an aircraft uses it; the
+// cost the airport's sell cost (base 6, a refund); applied (not AI / ghost)
+// the nearest town counts one airport less; each building's elements go;
+// unless a ghost, the tile leaves the station (cargo recalculated), flag_6
+// is cleared, modes, centre and label.
+func (m *Map) removeAirportAt(c *Cmd, stationID int, el scenario.StationElement, x, y, z int32, flags uint8, g1 G1Raw) (int32, bool) {
+	om := c.Objects
+	if stationID >= 0 && m.isAirportInUseByVehicle(stationID) {
+		return 0, false
+	}
+	if om == nil || int(el.ObjectID) >= len(om.AirportObjects) || om.AirportObjects[el.ObjectID] == nil {
+		return 0, false
+	}
+	a := om.AirportObjects[el.ObjectID]
+	total := m.InflationAdjustedCost(a.SellCostFactor, a.CostIndex, 6)
+	if town, _, ok := m.ClosestTownAndDensity(x, y); ok && flags&CmdApply != 0 && flags&(CmdAiAllocated|CmdGhost) == 0 && town >= 0 && town < len(m.Towns) {
+		m.Towns[town].NumberOfAirports--
+	}
+	largeOffsets := [4][2]int32{{0, 0}, {0, -32}, {-32, -32}, {-32, 0}} // kLargeTileOffsets
+	for _, b := range a.Buildings {
+		ox, oy := rotOffset(int16(b.X), int16(b.Y), el.Rotation)
+		bx, by := int32(ox)*32, int32(oy)*32
+		if a.LargeTiles&(1<<b.Index) != 0 {
+			bx += largeOffsets[el.Rotation][0]
+			by += largeOffsets[el.Rotation][1]
+		}
+		if !m.removeAirportTileElement(x+bx, y+by, z, a, b.Index, flags) {
+			return 0, false
+		}
+	}
+	if flags&CmdGhost == 0 && flags&CmdApply != 0 && stationID >= 0 && stationID < len(m.StationNames) {
+		m.RemoveTileFromStationAndRecalcCargo(stationID, x, y, z, el.Rotation, om)
+		m.StationNames[stationID].Flags &^= stationFlagHasAirport
+		m.RecalculateStationModes(stationID, om)
+		m.RecalculateStationCenter(stationID, g1)
+		if g1 != nil {
+			m.UpdateStationLabel(stationID, g1)
+		}
+	}
+	return total, true
+}
+
+// RemoveAirport is the removeAirport game command (RemoveAirport.cpp
+// 0x00493559): a ghost is removed at once from the element at a.X, a.Y; else
+// the station's airport tile at that height whose (rotated) extents hold the
+// clicked tile is found among its tiles, and removed (loc_49372F).
+func (m *Map) RemoveAirport(c *Cmd, flags uint8, a AirportRemoval, g1 G1Raw) (int32, bool) {
+	t, k := m.stationElAt(a.X, a.Y, a.Z)
+	if k < 0 {
+		return 0, false
+	}
+	el := t.Stations[t.Order[k].Index]
+	if flags&CmdGhost != 0 {
+		return m.removeAirportAt(c, -1, el, a.X, a.Y, a.Z, flags, g1)
+	}
+	id := int(el.StationID)
+	if id >= len(m.StationNames) {
+		return 0, false
+	}
+	st := &m.StationNames[id]
+	om := c.Objects
+	for i := 0; i < int(st.TileSize) && i < len(st.Tiles); i++ {
+		p := st.Tiles[i]
+		rot := uint8(p[2] & 3)
+		tx, ty, tz := int32(p[0]), int32(p[1]), int32(p[2])&^3
+		if tz != a.Z {
+			continue
+		}
+		tt, kk := m.stationElAt(tx, ty, tz)
+		if kk < 0 {
+			return 0, false
+		}
+		se := tt.Stations[tt.Order[kk].Index]
+		if se.StationType != 2 || om == nil || int(se.ObjectID) >= len(om.AirportObjects) || om.AirportObjects[se.ObjectID] == nil {
+			continue
+		}
+		ap := om.AirportObjects[se.ObjectID]
+		x0, y0 := rotOffset(int16(ap.MinX)*32, int16(ap.MinY)*32, rot)
+		x1, y1 := rotOffset(int16(ap.MaxX)*32, int16(ap.MaxY)*32, rot)
+		minX, minY, maxX, maxY := tx+int32(x0), ty+int32(y0), tx+int32(x1), ty+int32(y1)
+		if minX > maxX {
+			minX, maxX = maxX, minX
+		}
+		if minY > maxY {
+			minY, maxY = maxY, minY
+		}
+		if a.X < minX || a.Y < minY || a.X > maxX || a.Y > maxY {
+			continue // a neighbouring airport's tile
+		}
+		return m.removeAirportAt(c, id, se, tx, ty, tz, flags, g1)
+	}
+	return 0, false
+}
