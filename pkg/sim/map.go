@@ -44,6 +44,7 @@ type Map struct {
 	CurrentYear                                             uint16                      // GameState general.currentYear
 	CurrentMonth                                            uint8                       // GameState general.currentMonth
 	CurrentDayOfMonth                                       uint8                       // GameState general.currentDayOfMonth
+	GameStateFlags                                          uint32                      // GameState flags: tileManagerLoaded 1, unk2 2
 	DayCounter                                              uint16                      // GameState general.dayCounter
 	PlayerCompanies                                         [2]uint8                    // GameState playerCompanies
 	LoanInterestRate                                        uint8                       // GameState loanInterestRate
@@ -180,6 +181,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.CurrentYear = sc.CurrentYear
 	m.CurrentMonth = sc.CurrentMonth
 	m.CurrentDayOfMonth = sc.CurrentDayOfMonth
+	m.GameStateFlags = sc.GameStateFlags
 	m.DayCounter = sc.DayCounter
 	m.PlayerCompanies, m.LoanInterestRate, m.MaxLoanSize = sc.PlayerCompanies, sc.LoanInterestRate, sc.MaxLoanSize
 	m.DefaultLevelCrossingType = sc.DefaultLevelCrossingType

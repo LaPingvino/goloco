@@ -538,7 +538,11 @@ func (w *World) Update() {
 	w.animTick++
 	// One game tick of the tile loop and the waves, in upstream's order
 	// (OpenLoco.cpp tick: TileManager::update, then WaveManager::update).
-	w.UpdateTiles(w.tileOnScreen)
+	var om *objects.ObjectManager
+	if w.renderer != nil {
+		om = w.renderer.ObjMgr
+	}
+	w.UpdateTiles(w.tileOnScreen, om)
 	w.UpdateWaves(uint32(w.animTick))
 	// Advance demo trains at ~2 tiles/second (60fps → 1/30 per frame).
 	const speed = 1.0 / 30.0

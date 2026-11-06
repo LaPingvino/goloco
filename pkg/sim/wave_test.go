@@ -59,7 +59,7 @@ func TestTileLoopStartMovesThroughBlock(t *testing.T) {
 	seen := map[[2]int]bool{}
 	for i := 0; i < 256; i++ {
 		seen[[2]int{s.tileUpdateX, s.tileUpdateY}] = true
-		s.UpdateTiles(nil)
+		s.UpdateTiles(nil, nil)
 	}
 	if len(seen) != 256 {
 		t.Fatalf("start offset visited %d of 256 positions in a 16×16 block", len(seen))

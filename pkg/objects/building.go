@@ -3,6 +3,7 @@ package objects
 import (
 	"encoding/binary"
 	"fmt"
+	"strings"
 )
 
 // BuildingObjectFlags define special behavior for building types.
@@ -35,16 +36,20 @@ type BuildingObject struct {
 	VariationParts [32][]uint8 // variationPartsOffset decoded
 	PartHeights    []uint8     // height per part
 
-	PartAnimations          []BuildingPartAnimation // per part (BuildingCommon.h)
-	NumElevatorSequences    uint8                   // 0xAD
-	ProducedQuantity        [2]uint8                // 0xA0 (passengers: the building\'s population)
-	TownAmenityCategory     uint8                   // 0xAC (0xFF none)
-	ClearCostIndex          uint8                   // 0x99
-	ClearCostFactor         int16                   // 0x9A
-	DemolishRatingReduction int16                   // 0xAA
-	ElevatorSequences       [][]uint8               // heights; size is a power of 2
-	ScaffoldingSegmentType  uint8                   // 0x9C (0xFF = none)
-	ScaffoldingColour       uint8                   // 0x9D
+	PartAnimations       []BuildingPartAnimation // per part (BuildingCommon.h)
+	NumElevatorSequences uint8                   // 0xAD
+	ProducedQuantity     [2]uint8                // 0xA0 (passengers: the building\'s population)
+	// ProducedCargoNames are the two produced cargoes' object names (after
+	// the variation parts; "" for none — a 0xFF first byte); ProducedCargoIDs
+	// resolves them to the scenario's cargo slots (load's findObjectHandle).
+	ProducedCargoNames      [2]string
+	TownAmenityCategory     uint8     // 0xAC (0xFF none)
+	ClearCostIndex          uint8     // 0x99
+	ClearCostFactor         int16     // 0x9A
+	DemolishRatingReduction int16     // 0xAA
+	ElevatorSequences       [][]uint8 // heights; size is a power of 2
+	ScaffoldingSegmentType  uint8     // 0x9C (0xFF = none)
+	ScaffoldingColour       uint8     // 0x9D
 
 	// Calculated from image table during load
 	ImageOffset uint32 // Base sprite index in global G1 pool
@@ -120,7 +125,13 @@ func ParseBuildingObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 		bldg.VariationParts[v] = parts
 	}
 
-	// Skip cargo headers (2 produced + 2 required = 4 * 16 bytes)
+	// Cargo headers: 2 produced + 2 required, 16 bytes each (also for none:
+	// a 0xFF first byte — load always skips sizeof(ObjectHeader)).
+	for i := 0; i < 2 && offset+HeaderSize <= len(data); i++ {
+		if data[offset+i*HeaderSize] != 0xFF {
+			bldg.ProducedCargoNames[i] = strings.TrimRight(string(data[offset+i*HeaderSize+4:offset+i*HeaderSize+12]), " \x00")
+		}
+	}
 	offset += 4 * 16
 
 	// Elevator sequences: uint16 size, then size height bytes each
@@ -169,4 +180,22 @@ func (b *BuildingObject) GetBuildingParts(variation uint8) []uint8 {
 type BuildingPartAnimation struct {
 	NumFrames      uint8 // power of 2 (0 = no part animation)
 	AnimationSpeed uint8 // bit 7: position-modified
+}
+
+// ProducedCargoIDs is the building's producedCargoType: its produced cargoes'
+// scenario cargo slots, 0xFF for none (or not loaded, as upstream leaves it).
+func (m *ObjectManager) ProducedCargoIDs(b *BuildingObject) [2]uint8 {
+	ids := [2]uint8{0xFF, 0xFF}
+	for i, name := range b.ProducedCargoNames {
+		if name == "" {
+			continue
+		}
+		for slot, c := range m.CargoObjects {
+			if c != nil && c.Header != nil && strings.EqualFold(strings.TrimRight(string(c.Header.Name[:]), " \x00"), name) {
+				ids[i] = uint8(slot)
+				break
+			}
+		}
+	}
+	return ids
 }
