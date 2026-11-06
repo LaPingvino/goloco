@@ -1450,7 +1450,32 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	}
 	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
-		if v == "rename" { // DIAGNOSTIC ONLY: as a saved train's company, its window's caption clicked, " Express" typed
+		if v == "sell" { // DIAGNOSTIC ONLY: as a saved train's company, a vehicle bought, its Details tab; GOLOCO_DIAG_SELL_OK: the bin pressed
+			m := &g.w.Map
+			trains, _ := m.Trains()
+			for _, tr := range trains {
+				h := m.Entities[tr.Head]
+				if h.VehicleType != 0 || len(tr.Cars) == 0 {
+					continue
+				}
+				m.ControllingCompany = h.Owner
+				c := &sim.Cmd{Company: h.Owner, Objects: g.r.ObjMgr}
+				var nh uint16
+				if _, ok := m.CreateVehicle(c, sim.CmdApply, m.Entities[tr.Cars[0][0].Body].ObjectID, true, &nh); !ok {
+					continue
+				}
+				g.inTitleScreen = false
+				g.openVehicleWindow(nh, 1)
+				cash := m.Companies[h.Owner].Cash
+				if os.Getenv("GOLOCO_DIAG_SELL_OK") != "" {
+					g.vehicleWin.HandleClick(g.vehicleWin.X+g.vehicleWin.W-14, g.vehicleWin.Y+108) // the bin (right bar, 96–119)
+					log.Printf("[Diag] sell: vehicle %d gone %v, window closed %v, cash %d → %d", nh, m.Entities != nil && func() bool { _, err := m.TrainOf(nh); return err != nil }(), g.vehicleWin == nil, cash, m.Companies[h.Owner].Cash)
+				} else {
+					log.Printf("[Diag] sell: vehicle %d, Details open", nh)
+				}
+				break
+			}
+		} else if v == "rename" { // DIAGNOSTIC ONLY: as a saved train's company, its window's caption clicked, " Express" typed
 			m := &g.w.Map
 			trains, _ := m.Trains()
 			for _, tr := range trains {

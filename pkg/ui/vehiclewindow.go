@@ -55,6 +55,7 @@ const (
 
 // Route's right-bar images (ImageIds).
 const (
+	imgRubbishBin       = 2363 // ImageIds::rubbish_bin (Details' remove)
 	imgRedArrowUp       = 2338
 	imgRedArrowDown     = 2339
 	imgRouteDelete      = 2375
@@ -305,6 +306,7 @@ type VehicleWindow struct {
 	OnStopStart         func(x, y, w, h int) // Main: stopStartOpen at the button's screen rectangle
 	OnRefit             func(x, y, w, h int) // Cargo: onRefitButton at the button's screen rectangle
 	OnRename            func()               // every tab's caption: renameVehicle (nil: disabled — another company's)
+	OnSell              func()               // Details: the remove button (sell the whole vehicle)
 	OnTab               func(tab int)        // switchTab
 	Route               []RouteLine          // Route: the order list's rows, the last the end of the list
 	Finances            VehicleFinances      // Finances: its lines, formatted
@@ -372,6 +374,11 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 				gfx8.FillRectInset(rt, b.L, b.T, b.R, b.B, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
 			}
 			if sp, err := gfx8.Decode(&g1.Elements[w.PickupImage]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			}
+		}
+		if b := lw[vdRemove]; !b.Hidden { // ImageButton rubbish_bin (tooltip_sell_or_drag_vehicle)
+			if sp, err := gfx8.Decode(&g1.Elements[imgRubbishBin]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 			}
 		}
@@ -696,5 +703,7 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 		w.OnTab(2)
 	case in(lw[vdPickup]) && !pickupDisabled && w.OnPickup != nil:
 		w.OnPickup()
+	case in(lw[vdRemove]) && w.OnSell != nil: // Details::onMouseUp remove: VehicleSell(head). PARTIAL: dragging a car onto it
+		w.OnSell()
 	}
 }
