@@ -68,10 +68,16 @@ func (m *Map) UpdateVehicles(om *objects.ObjectManager) {
 		return
 	}
 	for _, tr := range trains {
-		if m.Entities[tr.Head].Mode > 1 || m.Entities[tr.Head].TileX == -1 {
+		h := &m.Entities[tr.Head]
+		if h.TileX == -1 {
 			continue
 		}
-		m.updateTrain(tr, om)
+		switch h.Mode {
+		case 0, 1:
+			m.updateTrain(tr, om)
+		case 3: // water (watermotion.go)
+			m.updateBoat(tr, om)
+		} // air: AW.b
 	}
 }
 

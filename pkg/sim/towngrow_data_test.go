@@ -1449,3 +1449,98 @@ func TestWaterPathStep(t *testing.T) {
 	}
 	t.Fatalf("not at tile %d,%d after 20 steps (at %d,%d)", gx, gy, int(px)>>5, int(py)>>5)
 }
+
+// TestBoatSailsDockToDock: two docks on the title map's lake (station
+// elements added for two of a company's stations, each listed in its
+// station's tiles), a ship placed at the first (VehiclePlaceWater) with the
+// order "stop at" the second, started: within the ticks it sails there over
+// water, takes the second dock (flag_6), frees the first, and begins
+// unloading — the vehicle tick now runs water vehicles.
+func TestBoatSailsDockToDock(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	var shipObj uint16 = 0xFFFF
+	for i, v := range om.Vehicles {
+		if v != nil && v.Mode == objects.TransportModeWater {
+			shipObj = uint16(i)
+			break
+		}
+	}
+	if shipObj == 0xFFFF || len(om.DockObjects) == 0 || om.DockObjects[0] == nil {
+		t.Skip("no ship or dock objects")
+	}
+	dockObj := om.DockObjects[0]
+	var company uint8 = 0xFF
+	var stations []uint16
+	for i, st := range m.StationNames {
+		if st.Name != 0 && st.Owner < 16 && (company == 0xFF || st.Owner == company) && int(st.TileSize) < len(st.Tiles) {
+			company = st.Owner
+			stations = append(stations, uint16(i))
+			if len(stations) == 2 {
+				break
+			}
+		}
+	}
+	if len(stations) < 2 {
+		t.Skip("no company with two stations")
+	}
+	ox, oy := rotOffset(dockObj.BoatPosition[0], dockObj.BoatPosition[1], 0)
+	// dock tiles: shore tiles whose boat position lies on the water level 4 lake of TestWaterPathStep, some tiles apart
+	var docks [][3]int32
+	for y := 1; y < 20 && len(docks) < 2; y++ {
+		for x := 66; x < 90 && len(docks) < 2; x++ {
+			t := m.TileAt(x, y)
+			bx, by := int32(x)*32+int32(ox)+32, int32(y)*32+int32(oy)+32
+			bt := m.TileAt(int(bx>>5), int(by>>5))
+			if t == nil || bt == nil || t.WaterLevel != 0 || bt.WaterLevel != 4 || len(t.Stations) > 0 {
+				continue
+			}
+			if len(docks) == 1 && abs32(int32(x)*32-docks[0][0])+abs32(int32(y)*32-docks[0][1]) < 5*32 {
+				continue
+			}
+			docks = append(docks, [3]int32{int32(x) * 32, int32(y) * 32, int32(bt.WaterLevel) * 16}) // a dock stands at the water's height
+		}
+	}
+	if len(docks) < 2 {
+		t.Skip("no two shore tiles on the lake")
+	}
+	for i, d := range docks {
+		tl := m.TileAt(int(d[0]>>5), int(d[1]>>5))
+		tl.Stations = append(tl.Stations, scenario.StationElement{StationType: 3, StationID: stations[i], Owner: company, BaseZ: uint8(d[2] / 4)})
+		st := &m.StationNames[stations[i]]
+		st.Tiles[st.TileSize] = [3]int16{int16(d[0]), int16(d[1]), int16(d[2])}
+		st.TileSize++
+	}
+	own := &Cmd{Company: company, Objects: om}
+	var head uint16
+	if _, ok := m.CreateVehicle(own, CmdApply, shipObj, true, &head); !ok {
+		t.Fatal("buying the ship refused")
+	}
+	if _, ok := m.VehiclePlaceWater(own, CmdApply, VehicleWaterPlacement{X: docks[0][0], Y: docks[0][1], Z: docks[0][2], Head: head}); !ok {
+		t.Fatal("placing the ship refused")
+	}
+	if _, ok := m.VehicleOrderInsert(own, CmdApply, head, 0, OrderStopAtRaw(int(stations[1]))); !ok {
+		t.Fatal("the order refused")
+	}
+	if _, ok := m.VehicleChangeRunningMode(own, CmdApply, head, RunningModeStart); !ok {
+		t.Fatal("starting refused")
+	}
+	tr, _ := m.TrainOf(head)
+	startX, startY := m.Entities[tr.Veh2].PosX, m.Entities[tr.Veh2].PosY
+	for tick := 0; tick < 6000; tick++ {
+		m.UpdateVehicles(om)
+		h := m.Entities[tr.Head]
+		if h.StationID == stations[1] && (h.Status == headStatusUnloading || h.Status == headStatusLoading) {
+			v2 := m.Entities[tr.Veh2]
+			if !m.dockAt(docks[1][0], docks[1][1], docks[1][2]).Flag6 || m.dockAt(docks[0][0], docks[0][1], docks[0][2]).Flag6 {
+				t.Errorf("docks' flag_6: first %v, second %v", m.dockAt(docks[0][0], docks[0][1], docks[0][2]).Flag6, m.dockAt(docks[1][0], docks[1][1], docks[1][2]).Flag6)
+			}
+			t.Logf("tick %d: at the second dock (station %d), from %d,%d to %d,%d; status %d", tick, stations[1], startX, startY, v2.PosX, v2.PosY, h.Status)
+			return
+		}
+		if v2 := m.Entities[tr.Veh2]; tick%500 == 0 {
+			t.Logf("tick %d: at %d,%d yaw %d speed %.1f mph, status %d, station %d; head target %d,%d", tick, v2.PosX, v2.PosY, v2.SpriteYaw, float64(v2.CurrentSpeed)/65536, h.Status, h.StationID, h.PosX, h.PosY)
+		}
+	}
+	v2 := m.Entities[tr.Veh2]
+	t.Fatalf("not at the second dock after 6000 ticks: at %d,%d (from %d,%d), status %d, station %d", v2.PosX, v2.PosY, startX, startY, m.Entities[tr.Head].Status, m.Entities[tr.Head].StationID)
+}
