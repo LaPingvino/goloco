@@ -1544,3 +1544,54 @@ func TestBoatSailsDockToDock(t *testing.T) {
 	v2 := m.Entities[tr.Veh2]
 	t.Fatalf("not at the second dock after 6000 ticks: at %d,%d (from %d,%d), status %d, station %d", v2.PosX, v2.PosY, startX, startY, m.Entities[tr.Head].Status, m.Entities[tr.Head].StationID)
 }
+
+// TestDeliverCargoToNearbyStations: on the title map, cargo handed in at a
+// station's own tile reaches the stations around it that take it from
+// producers — each its rating-squared share, capped at rating / 256 of the
+// quantity, one more over 66 — the waiting quantity growing by it; a cargo no
+// station takes, nowhere.
+func TestDeliverCargoToNearbyStations(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	for y := 0; y < m.Height; y++ {
+		for x := 0; x < m.Width; x++ {
+			for _, el := range m.TileAt(x, y).Stations {
+				if int(el.StationID) >= len(m.StationNames) || el.Ghost || el.AiAllocated {
+					continue
+				}
+				for cargo := range m.StationNames[el.StationID].Cargo {
+					cs := m.StationNames[el.StationID].Cargo[cargo]
+					if cs.Flags&stationCargoAcceptedFromProducer == 0 || cs.Rating == 0 {
+						continue
+					}
+					px, py := int32(x)*32, int32(y)*32
+					found := m.findStationsForCargoType(uint8(cargo), px, py, 1, 1)
+					before := map[uint16]uint16{}
+					total := 0
+					for _, f := range found {
+						before[f.id] = m.StationNames[f.id].Cargo[cargo].Quantity
+						total += int(f.rating) * int(f.rating)
+					}
+					got := m.DeliverCargoToNearbyStations(uint8(cargo), 100, px, py, 1, 1, om)
+					sum := 0
+					for _, f := range found {
+						r := int(f.rating)
+						want := min(r*r*100/total, r*100/256)
+						if r > 66 {
+							want++
+						}
+						sum += want
+						if q := m.StationNames[f.id].Cargo[cargo].Quantity; int(q)-int(before[f.id]) != want {
+							t.Errorf("station %d (rating %d): %d → %d, want +%d", f.id, r, before[f.id], q, want)
+						}
+					}
+					if int(got) != min(sum, 100) {
+						t.Errorf("delivered %d, want %d", got, min(sum, 100))
+					}
+					t.Logf("cargo %d at tile %d,%d: %d stations took %d of 100", cargo, x, y, len(found), got)
+					return
+				}
+			}
+		}
+	}
+	t.Skip("no station taking cargo from producers on the title map")
+}
