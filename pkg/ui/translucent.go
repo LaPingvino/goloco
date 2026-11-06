@@ -319,3 +319,9 @@ func (s *screen8Copy) store(r image.Rectangle, rt *gfx8.RenderTarget, ox, oy int
 		copy(s.bits[(r.Min.Y+j)*s.w+r.Min.X:(r.Min.Y+j)*s.w+r.Max.X], rt.Bits[(oy+j)*rt.Width+ox:])
 	}
 }
+
+// DrawRect8 is draw8 for other packages: draw paints the 8-bit pixels of the
+// screen rectangle (x, y, w, h), starting from what is under it.
+func DrawRect8(screen *ebiten.Image, x, y, w, h int, draw func(rt *gfx8.RenderTarget)) {
+	draw8(screen, x, y, w, h, draw)
+}

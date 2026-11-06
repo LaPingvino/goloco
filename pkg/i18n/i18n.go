@@ -238,7 +238,7 @@ func parse(r io.Reader) (map[int]string, header) {
 			if err != nil {
 				continue
 			}
-			res[id] = unquote(val)
+			res[id] = dropSkipped(unquote(val))
 		}
 	}
 	return res, hdr
@@ -338,6 +338,9 @@ func LocoChar(r rune) int {
 	if l, ok := unicodeToLoco[r]; ok {
 		return int(l)
 	}
+	if l, ok := unicodeToLocoAstral[r]; ok {
+		return int(l)
+	}
 	if r < 32 || r > 255 {
 		return '?'
 	}
@@ -352,3 +355,20 @@ func ToLoco(s string) string {
 	}
 	return string(out)
 }
+
+// unicodeToLocoAstral is convertUnicodeToLoco above U+FFFF, which the
+// generated table (U+0080..U+FFFF) doesn't reach: the transport-mode emoji
+// (Conversion.h UnicodeChar water / road / railway → LocoChar 184 / 182 / 177).
+var unicodeToLocoAstral = map[rune]uint8{0x1F30A: 184, 0x1F6E3: 182, 0x1F6E4: 177}
+
+// dropSkipped is LanguageFiles.cpp readString's skip: the superscript minus
+// (U+207B) and the variation selector (U+FE0F, as after 🛣) are left out.
+func dropSkipped(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r == 0x207B || r == 0xFE0F {
+			return -1
+		}
+		return r
+	}, s)
+}
+

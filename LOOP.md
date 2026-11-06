@@ -54,7 +54,12 @@ SK. [x] **Interface skin images after a save loads.** DONE 2026-11-05: the skin'
 > us to an actually playable game"): item **5P** first; 5.9f3's town parts (constructBuilding, addRoadJunction,
 > road takeover) and the open build (item O) after it.
 
-TL. [ ] (STARTED 2026-11-06: town names DONE — the saved labelFrame per zoom, kZoomToTownFonts, white outlined,
+TL. [x] (DONE 2026-11-06: station names too — Station.cpp drawStationName: the saved labelFrame, the curved
+   ends and middle in two translucent passes (unk34, the owner's colour), the name with its town and the
+   transport icons (label_icons_*: the emoji above U+FFFF now map to Loco 177 / 182 / 184, U+FE0F dropped as
+   LanguageFiles does), medium bold / small by zoom, up to stationNamesMinScale, none on the title; goloco's
+   own "Station N" plaques gone. PARTIAL: the hovered station's look, Station / Town::updateLabel.)
+   (town names DONE — the saved labelFrame per zoom, kZoomToTownFonts, white outlined,
    at every zoom, not in title mode (world/overlay.go drawTownNames); seen with GOLOCO_DIAG_BUILDVEHICLE=towns
    (+ GOLOCO_DIAG_ZOOM=2: "Kansas City" in medium normal). PARTIAL: Town::updateLabel (a grown or renamed
    town keeps its saved frame). NEXT: station names — drawStationName with the station's labelFrame, its own
@@ -1290,4 +1295,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (TL: town names) — (the other three wait on Joop → here; 5P's window work done.) Town labels ported: S5 Town's labelFrame (0x08: left / right / top / bottom per zoom) parsed (scenario.LabelFrame with Contains), drawn as Viewport::drawTownNames + Town::drawLabel — in the unzoomed target (camera >> zoom), the frame's left + 1 / top + 1, medium bold at zoom 0–1 and medium normal at 2–3 (ui.DrawTextOutlinedFont), white outlined, every zoom, none on the title. Replaces goloco's own centred tile labels (which vanished above zoom 1). Seen at zoom 0 and 2 over Kansas City. All green; test page redeployed.
+
+
+- 2026-11-06 (TL: station names — TL done) — (the other three wait on Joop → here.) Station plaques ported: S5 Station labelFrame parsed, drawStationNames / drawStationName (flag_5 skipped; curved_border images and a translucent middle, each drawn with ExtColour unk34 then getTranslucent(owner colour, 1); "{name} {icons}" in black, medium bold at zoom 0–1, small at 2–3; stationNamesMinScale 2), before the town names as Viewport::paint orders them. The first shot showed the icons as "???": goloco's Unicode→Loco table stopped at U+FFFF — the three transport emoji added, and the variation selector / superscript minus dropped when packs load (TestTransportIcons). Seen at zoom 0 ("Kansas City Central" + rail / road icons in the company's orange) and zoom 2 (blue plaques). All green; test page redeployed.
 

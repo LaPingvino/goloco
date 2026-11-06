@@ -1421,8 +1421,9 @@ type StationName struct {
 	X, Y, Z    int16 // Station x, y, z (0x02, 0x04, 0x06): its position (world units)
 	// VisitedTypes is var_3B2: a bit per VehicleType that has called here.
 	VisitedTypes uint8
-	Flags        uint16 // Station flags (0x2A)
-	Owner        uint8  // owner (0x28): the company
+	Flags        uint16     // Station flags (0x2A)
+	Owner        uint8      // owner (0x28): the company
+	LabelFrame   LabelFrame // labelFrame (0x08): the name plaque's box per zoom
 
 	Var3B1 uint8 // var_3B1 (0x3B1)
 	// The airport (aircraft, AW.b): airportRotation (0x3B3), airportStartPos
@@ -1467,7 +1468,8 @@ func parseStationNames(gs []byte) []StationName {
 		out[i] = StationName{Name: binary.LittleEndian.Uint16(rec[0x00:]), Town: binary.LittleEndian.Uint16(rec[0x2C:]),
 			X: int16(binary.LittleEndian.Uint16(rec[0x02:])), Y: int16(binary.LittleEndian.Uint16(rec[0x04:])), Z: int16(binary.LittleEndian.Uint16(rec[0x06:])),
 			VisitedTypes: rec[0x3B2], Flags: binary.LittleEndian.Uint16(rec[0x2A:]), Owner: rec[0x28], Var3B1: rec[0x3B1], Var3B0: rec[0x3B0],
-			TileSize: binary.LittleEndian.Uint16(rec[0x1CE:]), AirportRotation: rec[0x3B3],
+			LabelFrame: ParseLabelFrame(rec[0x08:]),
+			TileSize:   binary.LittleEndian.Uint16(rec[0x1CE:]), AirportRotation: rec[0x3B3],
 			AirportStartPos:      [3]int16{int16(binary.LittleEndian.Uint16(rec[0x3B4:])), int16(binary.LittleEndian.Uint16(rec[0x3B6:])), int16(binary.LittleEndian.Uint16(rec[0x3B8:]))},
 			AirportOccupiedEdges: binary.LittleEndian.Uint32(rec[0x3BA:])}
 		for k := range out[i].Tiles {
