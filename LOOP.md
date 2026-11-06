@@ -75,8 +75,10 @@ ST. [ ] **Building stations** (found 2026-11-06 wiring Station::updateLabel: gol
    TestValidateNearbyStationOnOwnTrack 218 / 218). PARTIAL: the AI variant (getTrackConnectionsAi). Its data DONE
    2026-11-06: TrackCompatibleFlags (getTrackMiscData compatibleFlags, added to tools/gen-paintdata and
    regenerated — nothing else changed), TrainStationObject height / trackPieces / build & sell cost factors /
-   costIndex, TrackObject stationTrackPieces. NEXT: sub_48D794 (each train-station tile's covered state and
-   building type — the canopy pieces), then createTrainStation's body (0x0048BB20). (Station::update's
+   costIndex, TrackObject stationTrackPieces. sub_48D794 DONE 2026-11-06 (sim/stationcanopy.go:
+   UpdateStationCanopies with forEachStationElement / isStationTrackConnected; TrainStationObject var_0B;
+   TestStationCanopiesReproduceSave: all 218 non-reserved train-station elements of the title save get their
+   saved sequence index back, 162 of them middle pieces). NEXT: createTrainStation's body (0x0048BB20). (Station::update's
    monthly acceptance check can use CalcAcceptedCargo too — check what goloco does there now.)
 TL. [x] (DONE 2026-11-06: station names too — Station.cpp drawStationName: the saved labelFrame, the curved
    ends and middle in two translucent passes (unk34, the owner's colour), the name with its town and the
@@ -1343,4 +1345,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (ST: CreateTrainStation's data) — (the other three wait on Joop → here.) Read the whole createTrainStation (0x0048BB20); its missing data added first: getTrackMiscData's compatibleFlags through the generator (tools/gen-paintdata/gen_trackpieces.cpp → TrackCompatibleFlags; the regenerated file differs only by it), TrainStationObject's height, trackPieces, buildCostFactor, sellCostFactor and costIndex, TrackObject's stationTrackPieces. Probed on the data: stations fit straight pieces only (trackPieces 0), cost 7 / −7 at index 1. All green; nothing drawn.
+
+
+- 2026-11-06 (ST: sub_48D794) — (the other three wait on Joop → here.) Ported the pass that sets each train-station tile's sequence index (0, or 1 for the middle platform piece): covered when under ground, on a roofed bridge, or with something above starting under its clear height (including upstream's do-while that skips the tile's last element); uncovered pieces whose track runs on into the same station both ways get 1 when the station object's var_0B ≥ 2 (now parsed). Test: 218 / 218 saved elements reproduced; the first run's 40 misses were AI reservations (flag_5 stations), which the pass doesn't touch upstream either. All green; nothing drawn.
 
