@@ -158,3 +158,143 @@ func (m *Map) airplaneGetNewStatus(tr Train, om *objects.ObjectManager) (uint8, 
 	}
 	return headStatusTaxiing2, 20
 }
+
+const (
+	airportEdgeNoValid = 0xFE // kAirportMovementNoValidEdge
+
+	vehicleFlagAircraftIsHelicopter = 1 << 13 // VehicleObjectFlags::aircraftIsHelicopter
+
+	airportFlagAcceptsLightPlanes = 1 << 2 // AirportObjectFlags
+	airportFlagAcceptsHeavyPlanes = 1 << 3
+	airportFlagAcceptsHelicopter  = 1 << 4
+)
+
+// aircraftObject is the aircraft's vehicle object (its first car's).
+func (m *Map) aircraftObject(tr Train, om *objects.ObjectManager) *objects.VehicleObject {
+	if om == nil || len(tr.Cars) == 0 || len(tr.Cars[0]) == 0 {
+		return nil
+	}
+	id := int(m.Entities[tr.Cars[0][0].Body].ObjectID)
+	if id >= len(om.Vehicles) {
+		return nil
+	}
+	return om.Vehicles[id]
+}
+
+// compatibleAirportType is VehicleBogie::getCompatibleAirportType: the
+// airport flags that take it — helicopters a helicopter pad, planes under
+// 50 t light or heavy runways, the rest heavy ones.
+func compatibleAirportType(v *objects.VehicleObject) uint16 {
+	switch {
+	case v.Flags&vehicleFlagAircraftIsHelicopter != 0:
+		return airportFlagAcceptsHelicopter
+	case v.Weight < 50:
+		return airportFlagAcceptsHeavyPlanes | airportFlagAcceptsLightPlanes
+	}
+	return airportFlagAcceptsHeavyPlanes
+}
+
+// edgeFree is the occupancy test both searches share: none of the edges
+// that must be clear is occupied, and — when any are named — not all of
+// those of which one must be clear.
+func edgeFree(e objects.AirportMovementEdge, occupied uint32) bool {
+	if occupied&e.MustBeClear != 0 {
+		return false
+	}
+	return e.AtLeastOneClear == 0 || occupied&e.AtLeastOneClear != e.AtLeastOneClear
+}
+
+// airportGetNextMovementEdge is VehicleHead::airportGetNextMovementEdge
+// (0x00427214): arriving (no edge yet), the first free edge from an entry
+// node (flag2); on an edge, airportEdgeNull when a take-off has reached the
+// runway's end (it flies), else the first free edge on from the node it
+// leads to — helicopters never onto a runway's take-off, planes never onto
+// a helipad's; airportEdgeNoValid when none is free.
+func (m *Map) airportGetNextMovementEdge(tr Train, curEdge uint8, om *objects.ObjectManager) uint8 {
+	head := &m.Entities[tr.Head]
+	el, _, ok := m.airportStationElement(head.StationID)
+	if !ok || om == nil || int(el.ObjectID) >= len(om.AirportObjects) || om.AirportObjects[el.ObjectID] == nil {
+		return airportEdgeNull // upstream asserts
+	}
+	a := om.AirportObjects[el.ObjectID]
+	occupied := m.StationNames[head.StationID].AirportOccupiedEdges
+	if curEdge == airportEdgeNull {
+		for i, e := range a.MovementEdges {
+			if a.MovementNodes[e.CurNode].Flags&objects.AirportNodeFlag2 != 0 && edgeFree(e, occupied) {
+				return uint8(i)
+			}
+		}
+		return airportEdgeNoValid
+	}
+	target := a.MovementEdges[curEdge].NextNode
+	if head.Status == headStatusTakingOff && a.MovementNodes[target].Flags&objects.AirportNodeTakeoffEnd != 0 {
+		return airportEdgeNull
+	}
+	avoid := uint16(objects.AirportNodeHeliTakeoffBegin) // a plane: no helipad take-offs
+	if v := m.aircraftObject(tr, om); v != nil && v.Flags&vehicleFlagAircraftIsHelicopter != 0 {
+		avoid = objects.AirportNodeTakeoffBegin // a helicopter: no runway take-offs
+	}
+	for i, e := range a.MovementEdges {
+		if e.CurNode != target || a.MovementNodes[e.NextNode].Flags&avoid != 0 {
+			continue
+		}
+		if edgeFree(e, occupied) {
+			return uint8(i)
+		}
+	}
+	return airportEdgeNoValid
+}
+
+// beginNewJourney is VehicleHead::beginNewJourney: the journey's start time
+// and place (Vehicle2's) for updateLastJourneyAverageSpeed.
+func (m *Map) beginNewJourney(tr Train) {
+	head, v2 := &m.Entities[tr.Head], &m.Entities[tr.Veh2]
+	head.JourneyStartTicks = m.ScenarioTicks
+	head.JourneyStartX, head.JourneyStartY = int16(v2.PosX), int16(v2.PosY)
+	head.BreakdownFlags |= BreakdownJourneyStarted
+}
+
+// airplaneTakeEdge is sub_4A9348's state change (its every path then calls
+// airplaneApproachTarget, which the caller does): the edge it was on freed;
+// a new edge taken and marked occupied — or, leaving the airport
+// (airportEdgeNull), a journey begun and, when its next stop is an airport
+// that takes it (any one for an AI's aircraft), that station its target.
+// PARTIAL: the player's "unable to land at airport" message (no
+// MessageManager).
+func (m *Map) airplaneTakeEdge(tr Train, newEdge uint8, om *objects.ObjectManager) {
+	head := &m.Entities[tr.Head]
+	if head.StationID != stationIDNull && head.AirportMovementEdge != airportEdgeNull && int(head.StationID) < len(m.StationNames) {
+		m.StationNames[head.StationID].AirportOccupiedEdges &^= 1 << head.AirportMovementEdge
+	}
+	if newEdge != airportEdgeNull {
+		head.AirportMovementEdge = newEdge
+		if head.StationID != stationIDNull && int(head.StationID) < len(m.StationNames) {
+			m.StationNames[head.StationID].AirportOccupiedEdges |= 1 << newEdge
+		}
+		return
+	}
+	m.beginNewJourney(tr)
+	head.AirportMovementEdge = airportEdgeNull
+	if head.SizeOfOrderTable == 1 {
+		return
+	}
+	orders := m.OrderRing(head.OrderTableOffset, head.CurrentOrder)
+	if len(orders) == 0 || orders[0].Type() != OrderStopAt {
+		return
+	}
+	sid := uint16(orders[0].Station())
+	if int(sid) >= len(m.StationNames) || m.StationNames[sid].Flags&stationFlagAirport == 0 {
+		return
+	}
+	if !m.IsPlayerCompany(int(head.Owner)) {
+		head.StationID = sid
+		return
+	}
+	el, _, ok := m.airportStationElement(sid)
+	if !ok || om == nil || int(el.ObjectID) >= len(om.AirportObjects) || om.AirportObjects[el.ObjectID] == nil {
+		return // upstream asserts
+	}
+	if v := m.aircraftObject(tr, om); v != nil && om.AirportObjects[el.ObjectID].Flags&compatibleAirportType(v) != 0 {
+		head.StationID = sid
+	} // else: unableToLandAtAirport (see PARTIAL)
+}
