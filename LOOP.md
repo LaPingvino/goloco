@@ -1493,4 +1493,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — PL.1 stage c: the Towns list works (Weatherworld, 50 towns); found: no way to go to a town (town / map windows unported — now PL.1a), towns named "Town N", blank tab icons, a misplaced tooltip. (Sandbox Settler simply has no towns — my first "blocker" was the scenario choice.)
 - 2026-11-06 — PL.1a: the Town window (Town tab: viewport, status, centre view) opened from the Towns list — a player can now go to a town; playthrough stage d passes; tests green; test page redeployed.
 - 2026-11-06 — PL.1 stage e: track building gets stuck — the build is the PlaceTrackAtHead shortcut (no cost, nothing drawn); logged as the next PL step (port CreateTrack).
+- 2026-11-06 — PL.1 e: createTrack ported, part 1 (pkg/sim/createtrack.go: args, valid extras, height rule, cost; TestCreateTrackCost). Next: the per-piece checks, the apply step, then the window builds through it. (Joop: prio WE — switched.)
 
