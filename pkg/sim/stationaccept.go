@@ -160,6 +160,31 @@ func (m *Map) ghostCatchment(id int, x, y int32, extra int, om *objects.ObjectMa
 	return cm
 }
 
+// GhostAirportCatchmentDisplay is the airport ghost's display: the station's
+// catchment plus sub_491C6F's region — the airport's extents ± catchmentSize.
+func (m *Map) GhostAirportCatchmentDisplay(id int, a *objects.AirportObject, x, y int32, rotation uint8, om *objects.ObjectManager) []uint8 {
+	cm := make([]uint8, m.Width*m.Height)
+	if id >= 0 && id < len(m.StationNames) {
+		cm = m.catchment(&m.StationNames[id], om)
+	}
+	x0, y0, x1, y1 := airportExtents(a, int(x)>>5, int(y)>>5, rotation)
+	m.setCatchmentRegion(cm, x0-catchmentSize, y0-catchmentSize, x1+catchmentSize, y1+catchmentSize)
+	return cm
+}
+
+// CalcAcceptedCargoAirportGhost is calcAcceptedCargoAirportGhost
+// (Station.cpp 0x00491F43) over GhostAirportCatchmentDisplay.
+func (m *Map) CalcAcceptedCargoAirportGhost(id int, a *objects.AirportObject, x, y int32, rotation uint8, filter uint32, om *objects.ObjectManager) (accepted, produced uint32) {
+	s := newCargoSearchState()
+	s.Filter = filter
+	var st *scenario.StationName
+	if id >= 0 && id < len(m.StationNames) {
+		st = &m.StationNames[id]
+	}
+	accepted, s = m.doCalcAcceptedCargo(st, m.GhostAirportCatchmentDisplay(id, a, x, y, rotation, om), om, s)
+	return accepted, s.Produced
+}
+
 // CalcAcceptedCargoDockGhost is calcAcceptedCargoDockGhost (Station.cpp):
 // the dock ghost's accepted and produced cargo over GhostDockCatchmentDisplay.
 func (m *Map) CalcAcceptedCargoDockGhost(id int, x, y int32, filter uint32, om *objects.ObjectManager) (accepted, produced uint32) {

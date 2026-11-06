@@ -42,10 +42,11 @@ const (
 )
 
 const (
-	buildModeNone  = 0
-	buildModeTrack = 1
-	buildModeRoad  = 2
-	buildModeDock  = 3 // Construction::openWithFlags(1 << 30): the dock window (Station tab only)
+	buildModeNone    = 0
+	buildModeTrack   = 1
+	buildModeRoad    = 2
+	buildModeDock    = 3 // Construction::openWithFlags(1 << 30): the dock window (Station tab only)
+	buildModeAirport = 4 // openWithFlags(1 << 31): the airport window (Station tab only, rotate button)
 )
 
 type Game struct {
@@ -149,6 +150,8 @@ type Game struct {
 	stationGhostCost       int32                      // cState.stationCost
 	roadStationGhost       *sim.RoadStationPlacement  // the road stop ghost (stationGhostType bit 7)
 	dockGhost              *sim.PortPlacement         // the dock ghost (stationGhostType bit 14)
+	airportGhost           *sim.AirportPlacement      // the airport ghost (stationGhostType bit 15)
+	airportRotation        uint8                      // cState.constructionRotation in the airport window
 	lastPortOption         int                        // ToolbarTop's _lastPortOption: 0 airport, 1 dock
 	errorWin               *ui.ErrorWindow            // WindowType::error (one at a time)
 	stationGhostStation    int                        // cState.constructingStationId (-1 new)
@@ -620,9 +623,9 @@ func (g *Game) Update() error {
 	// and goes once the tab or the mode does.
 	if g.diagHoldGhost {
 		// DIAGNOSTIC ONLY: the ghost stays for the screenshot
-	} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad || g.buildMode == buildModeDock) && g.consTab == 1 && !g.inTitleScreen {
+	} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad || g.buildMode == buildModeDock || g.buildMode == buildModeAirport) && g.consTab == 1 && !g.inTitleScreen {
 		g.stationToolUpdate(g.mouseX, g.mouseY)
-	} else if g.stationGhost != nil || g.roadStationGhost != nil || g.dockGhost != nil {
+	} else if g.stationGhost != nil || g.roadStationGhost != nil || g.dockGhost != nil || g.airportGhost != nil {
 		g.removeStationGhost()
 	}
 
@@ -724,7 +727,7 @@ func (g *Game) Update() error {
 				g.pickupToolDown(g.mouseX, g.mouseY) // the Vehicle window's placing tool
 			} else if g.routeTool && g.vehicleWin != nil && !g.inTitleScreen {
 				g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
-			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad || g.buildMode == buildModeDock) && g.consTab == 1 && !g.inTitleScreen {
+			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad || g.buildMode == buildModeDock || g.buildMode == buildModeAirport) && g.consTab == 1 && !g.inTitleScreen {
 				g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked, or a dock
 			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad) && g.hoverTileX >= 0 {
 				// Track/road mode: clicking the map sets the construction head.
@@ -1841,6 +1844,31 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					g.vehicleWin.MouseOver(g.vehicleWin.X+60, g.vehicleWin.Y+44+1+22+11) // the second row hovered
 					log.Printf("[Diag] %s: vehicle %d", v, h.ID)
 					break
+				}
+			}
+		} else if v == "airportghost" { // DIAGNOSTIC ONLY: the airport window's tool over the first spot an airport takes (dry run), as the player; the ghost held, rotated once
+			m := &g.w.Map
+			m.ControllingCompany = m.PlayerCompanies[0]
+			g.inTitleScreen = false
+			g.openPortConstruction(0)
+			g.airportRotation = 1
+			c, g1 := g.stationCmd()
+			done := false
+			for y := 10; y < m.Height-10 && !done; y += 3 {
+				for x := 10; x < m.Width-10 && !done; x += 3 {
+					a, ok := m.AirportPlacementAt(int32(x)*32, int32(y)*32, uint8(g.consStation), g.airportRotation, g.r.ObjMgr)
+					if !ok || m.TileAt(x, y).WaterLevel != 0 {
+						continue
+					}
+					if _, ok := m.CreateAirport(c, 0, a, g1); !ok {
+						continue
+					}
+					g.w.CenterOn(fmt.Sprintf("tile:%d,%d", x, y))
+					sx, sy := g.w.TileToScreenPx(x, y)
+					g.stationToolUpdate(sx, sy+16)
+					log.Printf("[Diag] airportghost: tile %d,%d rotation %d: ghost %v cost %d accepts %#x produces %#x", x, y, a.Rotation, g.airportGhost != nil, g.stationGhostCost, g.stationGhostAccepted, g.stationGhostProduced)
+					g.diagHoldGhost = true
+					done = true
 				}
 			}
 		} else if v == "dockghost" || v == "docktool" { // DIAGNOSTIC ONLY: the dock window's tool over the first shore spot a dock takes (dry run), as a station owner — hover (ghost held) or click

@@ -19,6 +19,7 @@ type StationTabState struct {
 	Image        int    // its image (+0 preview, +1 preview windows)
 	Recolourable bool   // TrainStationFlags/RoadStationFlags::recolourable
 	NoOverlay    bool   // docks / airports: the image alone (no preview-windows image)
+	Rotatable    bool   // airports: the rotate button (ImageButton 112,104 24×24, rotate_object)
 	Company      uint8  // the player company's primary colour
 	Cost         int64  // cState.stationCost: the ghost's cost (0: none, or it failed)
 	// While a ghost stands: its station's name (or "New station") and the
@@ -79,6 +80,11 @@ func DrawStationTab(screen *ebiten.Image, f *ConstructionFrame, st StationTabSta
 			}
 			if sp, err := gfx8.Decode(&g1.Elements[st.Image+1]); err == nil && winMap != nil && !st.NoOverlay {
 				gfx8.DrawSpriteNoise(rt, sp, imgL, imgT, gfx8.OpTransparent|gfx8.OpDst, winMap, nil)
+			}
+		}
+		if st.Rotatable { // widx::rotate, shown for airports (prepareDraw)
+			if sp, err := gfx8.Decode(&g1.Elements[imgRotateObject]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, 112, 104, gfx8.OpFor(sp, true, false), sec, nil)
 			}
 		}
 		// drawRectInset(x + 3, image.bottom + 16, width − 4, 1, borderInset)

@@ -419,3 +419,28 @@ func (m *Map) RemoveAirport(c *Cmd, flags uint8, a AirportRemoval, g1 G1Raw) (in
 	}
 	return 0, false
 }
+
+// AirportPlacementAt is StationTab's getAirportPlacementArgs: the airport of
+// typ at rotation centred on the tile at x, y, at the highest ground (or
+// water) height over its extents (off the map: skipped).
+func (m *Map) AirportPlacementAt(x, y int32, typ, rotation uint8, om *objects.ObjectManager) (AirportPlacement, bool) {
+	if om == nil || int(typ) >= len(om.AirportObjects) || om.AirportObjects[typ] == nil {
+		return AirportPlacement{}, false
+	}
+	x0, y0, x1, y1 := airportExtents(om.AirportObjects[typ], int(x)>>5, int(y)>>5, rotation)
+	maxBaseZ := 0
+	for ty := y0; ty <= y1; ty++ {
+		for tx := x0; tx <= x1; tx++ {
+			if tx < 0 || ty < 0 || tx >= m.Width || ty >= m.Height {
+				continue
+			}
+			t := m.TileAt(tx, ty)
+			baseZ := int(t.BaseZ)
+			if t.WaterLevel != 0 {
+				baseZ = int(t.WaterLevel) * 4 // kMicroToSmallZStep
+			}
+			maxBaseZ = max(maxBaseZ, baseZ)
+		}
+	}
+	return AirportPlacement{X: int32(x) &^ 31, Y: int32(y) &^ 31, Z: int32(maxBaseZ) * 4, Rotation: rotation, Type: typ}, true
+}

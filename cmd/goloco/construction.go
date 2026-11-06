@@ -85,6 +85,14 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 			f.Disabled[3] = om.AvailableCompatibleMods(g.buildObjID, unlocked) == none
 		}
 	}
+	if g.buildMode == buildModeAirport { // drawAirportTabs; caption title_airport
+		g.consTab, f.Tab = 1, 1
+		f.Title = i18n.Label(i18n.TitleAirport)
+		f.Disabled = [4]bool{true, false, true, true}
+		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+			f.StationTabIcon = int(g.r.ObjMgr.InterfaceSkin.ImageOffset) + objects.ISToolbarMenuAirport
+		}
+	}
 	if g.buildMode == buildModeDock { // drawDockTabs; StationTab::prepareDraw's caption title_ship_port
 		g.consTab, f.Tab = 1, 1
 		f.Title = i18n.Label(i18n.TitleShipPort)
@@ -202,6 +210,11 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 			}
 			return
 		}
+		if g.consTab == 1 && g.buildMode == buildModeAirport && rx >= 112 && rx < 112+24 && ry >= 104 && ry < 104+24 {
+			g.airportRotation = (g.airportRotation + 1) & 3 // widx::rotate: constructionRotation++, stationCost = failure
+			g.stationGhostCost = 0
+			return
+		}
 		if g.consTab == 1 && rx >= 3 && rx < 3+132 && ry >= 45 && ry < 45+12 {
 			g.openConsDropdown(win.X, win.Y, f.SkinColour, true)
 			return
@@ -313,6 +326,18 @@ func (g *Game) stationTabState(company uint8) ui.StationTabState {
 		return st
 	}
 	om := g.r.ObjMgr
+	if g.buildMode == buildModeAirport { // the airport's name and image, the rotate button
+		if g.airportGhost != nil {
+			g.ghostTabInfo(&st)
+		}
+		st.Rotatable = true
+		if list := om.AvailableAirports(int(g.w.CurrentYear)); len(list) > 0 {
+			if a := om.AirportObjects[pickSlot(list, g.consStation)]; a != nil {
+				st.Name, st.Image, st.Recolourable, st.NoOverlay = a.Name, int(a.Image), true, true
+			}
+		}
+		return st
+	}
 	if g.buildMode == buildModeDock { // the dock's name and image (DockObject image, no windows overlay)
 		if g.dockGhost != nil {
 			g.ghostTabInfo(&st)
@@ -367,7 +392,15 @@ func (g *Game) openConsDropdown(wx, wy int, colour uint8, station bool) {
 	var list []int
 	name := func(int) string { return "" }
 	sel := &g.consSignal
-	if station && g.buildMode == buildModeDock { // AddStationsToDropdown<DockObject>
+	if station && g.buildMode == buildModeAirport { // AddStationsToDropdown<AirportObject>
+		list, sel = om.AvailableAirports(year), &g.consStation
+		name = func(s int) string {
+			if s < len(om.AirportObjects) && om.AirportObjects[s] != nil {
+				return om.AirportObjects[s].Name
+			}
+			return ""
+		}
+	} else if station && g.buildMode == buildModeDock { // AddStationsToDropdown<DockObject>
 		list, sel = om.AvailableDocks(year), &g.consStation
 		name = func(s int) string {
 			if s < len(om.DockObjects) && om.DockObjects[s] != nil {
@@ -486,6 +519,10 @@ func (g *Game) stationCmd() (*sim.Cmd, sim.G1Raw) {
 // noPayment | ghost), its cost kept; the catchment shown on the map and the
 // ghost's accepted / produced cargo (calcAcceptedCargoTrainStationGhost).
 func (g *Game) stationToolUpdate(sx, sy int) {
+	if g.buildMode == buildModeAirport {
+		g.airportToolUpdate(sx, sy)
+		return
+	}
 	if g.buildMode == buildModeDock {
 		g.dockToolUpdate(sx, sy)
 		return
@@ -548,6 +585,10 @@ func (g *Game) removeStationGhost() {
 // name. PARTIAL: the command's own error text (goloco's commands don't set
 // one yet, so only the title shows), the construct sound.
 func (g *Game) stationToolUp(sx, sy int) {
+	if g.buildMode == buildModeAirport {
+		g.airportToolUp(sx, sy)
+		return
+	}
 	if g.buildMode == buildModeDock {
 		g.dockToolUp(sx, sy)
 		return
@@ -744,6 +785,77 @@ func (g *Game) dockToolUp(sx, sy int) {
 	}
 	c, g1 := g.stationCmd()
 	if _, ok := g.w.Map.CreatePort(c, sim.CmdApply, a, g1); !ok {
+		g.openError(title, "")
+	}
+}
+
+// airportArgsAt is getAirportPlacementArgsFromCursor: the surface or water
+// under the cursor, the selected airport at the window's rotation.
+func (g *Game) airportArgsAt(sx, sy int) (sim.AirportPlacement, int, bool) {
+	if g.r == nil || g.r.ObjMgr == nil {
+		return sim.AirportPlacement{}, -1, false
+	}
+	list := g.r.ObjMgr.AvailableAirports(int(g.w.CurrentYear))
+	if len(list) == 0 {
+		return sim.AirportPlacement{}, -1, false
+	}
+	px, py, ok := g.w.SurfaceOrWaterAt(sx, sy)
+	if !ok {
+		return sim.AirportPlacement{}, -1, false
+	}
+	typ := pickSlot(list, g.consStation)
+	a, ok := g.w.Map.AirportPlacementAt(px, py, uint8(typ), g.airportRotation, g.r.ObjMgr)
+	return a, typ, ok
+}
+
+// airportToolUpdate is StationTab's onToolUpdateAirport: the ghost airport
+// follows the cursor, its cost, the catchment (sub_491C6F) and its cargo
+// (calcAcceptedCargoAirportGhost). PARTIAL: the construction arrow and the
+// selected tiles of its extents.
+func (g *Game) airportToolUpdate(sx, sy int) {
+	a, typ, ok := g.airportArgsAt(sx, sy)
+	if !ok {
+		g.removeStationGhost()
+		return
+	}
+	if gh := g.airportGhost; gh != nil && *gh == a {
+		return
+	}
+	g.removeStationGhost()
+	c, g1 := g.stationCmd()
+	cost, ok := g.w.Map.CreateAirport(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdNoPayment|sim.CmdGhost, a, g1)
+	g.stationGhostCost = cost
+	if !ok {
+		return
+	}
+	g.airportGhost = &a
+	m := &g.w.Map
+	g.stationGhostStation = m.LastAdjoiningStation
+	x, y := m.LastAdjoiningStationX, m.LastAdjoiningStationY
+	if x == -1 {
+		x, y = a.X, a.Y
+	}
+	ap := g.r.ObjMgr.AirportObjects[typ]
+	g.w.SetCatchmentDisplay(m.GhostAirportCatchmentDisplay(g.stationGhostStation, ap, x, y, a.Rotation, g.r.ObjMgr))
+	g.stationGhostAccepted, g.stationGhostProduced = m.CalcAcceptedCargoAirportGhost(g.stationGhostStation, ap, x, y, a.Rotation, 0xFFFFFFFF, g.r.ObjMgr)
+}
+
+// airportToolUp is StationTab's onToolUpAirport (0x004A5550): after
+// removeConstructionGhosts, createAirport with apply; a failure opens the
+// error window titled cant_build_pop3_string with the airport's name.
+func (g *Game) airportToolUp(sx, sy int) {
+	g.removeStationGhost()
+	a, typ, ok := g.airportArgsAt(sx, sy)
+	if !ok {
+		return
+	}
+	om := g.r.ObjMgr
+	title := ""
+	if typ >= 0 && typ < len(om.AirportObjects) && om.AirportObjects[typ] != nil {
+		title = ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop3String), om.AirportObjects[typ].Name)
+	}
+	c, g1 := g.stationCmd()
+	if _, ok := g.w.Map.CreateAirport(c, sim.CmdApply, a, g1); !ok {
 		g.openError(title, "")
 	}
 }
