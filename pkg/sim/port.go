@@ -360,3 +360,74 @@ func (m *Map) RemovePort(c *Cmd, flags uint8, a PortRemoval, g1 G1Raw) (int32, b
 	}
 	return total, true
 }
+
+// dockSearchArea is getDockPlacementArgs' searchArea: per side of the 2×2,
+// the two tiles beyond it.
+var dockSearchArea = [4][2][2]int{{{-1, 0}, {-1, 1}}, {{0, 2}, {1, 2}}, {{2, 0}, {2, 1}}, {{0, -1}, {1, -1}}}
+
+// DockPlacementAt is StationTab's getDockPlacementArgs for the tile at x, y
+// (the surface or water under the cursor): the water round the 2×2 counted per
+// side — a tile whose water sits one step above a double-height slope's base
+// is skipped, though its height still counts — and a water industry's side
+// noted; none: no placement. The dock at the water's height, facing the
+// industry, else the first side with two water tiles, else with one, else 0.
+// (The counts go to the opposite side, (side + 2) & 3, as upstream.)
+func (m *Map) DockPlacementAt(x, y int32, typ uint8, om *objects.ObjectManager) (PortPlacement, bool) {
+	var water [4]int
+	industrySide := -1
+	waterHeight := 0
+	tx, ty := int(x)>>5, int(y)>>5
+	for side := 0; side < 4; side++ {
+		for _, o := range dockSearchArea[side] {
+			px, py := tx+o[0], ty+o[1]
+			if px < 0 || py < 0 || px >= m.Width || py >= m.Height {
+				continue
+			}
+			t := m.TileAt(px, py)
+			surfaceFound := false
+			for _, r := range t.Order {
+				if surfaceFound && r.Kind == scenario.KindIndustry && int(r.Index) < len(t.Industries) && r.Flags&elemFlagGhost == 0 {
+					if ind := m.industryByID(t.Industries[r.Index].IndustryID); ind != nil && om != nil {
+						if obj := om.GetIndustryObjectByIndex(int(ind.ObjectID)); obj != nil && obj.Flags&industryBuiltOnWater != 0 {
+							industrySide = side
+						}
+					}
+				}
+				if r.Kind != scenario.KindSurface {
+					continue
+				}
+				surfaceFound = true
+				if t.WaterLevel == 0 {
+					continue
+				}
+				waterHeight = int(t.WaterLevel) * 4                     // kMicroToSmallZStep
+				if waterHeight-4 == int(t.BaseZ) && t.Slope&0x10 != 0 { // isSlopeDoubleHeight
+					continue
+				}
+				water[(side+2)&3]++
+			}
+		}
+	}
+	if waterHeight == 0 {
+		return PortPlacement{}, false
+	}
+	a := PortPlacement{X: int32(tx) * 32, Y: int32(ty) * 32, Z: int32(waterHeight) * 4, Type: typ}
+	switch {
+	case industrySide >= 0:
+		a.Rotation = uint8(industrySide)
+	default:
+		for _, need := range []int{2, 1} {
+			found := false
+			for side, n := range water {
+				if n >= need {
+					a.Rotation, found = uint8(side), true
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+	}
+	return a, true
+}

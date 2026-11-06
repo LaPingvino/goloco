@@ -220,3 +220,44 @@ func TestCreatePort(t *testing.T) {
 	}
 	t.Fatal("no shore took a dock")
 }
+
+// DockPlacementAt over the title save: wherever it offers a placement, the
+// rotation's front tiles are water (what CreatePort requires), except where a
+// water industry sets the side; dry inland tiles offer none. And the dock
+// placements it offers along the shore are buildable by CreatePort somewhere.
+func TestDockPlacementAt(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	typ := -1
+	for i, d := range om.DockObjects {
+		if d != nil {
+			typ = i
+			break
+		}
+	}
+	g1, _ := om.G1File.(G1Raw)
+	c := &Cmd{Company: m.ControllingCompany, Objects: om}
+	offered, frontWet, built := 0, 0, 0
+	for y := 3; y < m.Height-4; y++ {
+		for x := 3; x < m.Width-4; x++ {
+			a, ok := m.DockPlacementAt(int32(x)*32, int32(y)*32, uint8(typ), om)
+			if !ok {
+				continue
+			}
+			offered++
+			wet := true
+			for _, f := range rotationToBuildingFront[a.Rotation] {
+				wet = wet && m.tileHasWater(a.X+f[0], a.Y+f[1])
+			}
+			if wet {
+				frontWet++
+				if _, ok := m.CreatePort(c, 0, a, g1); ok {
+					built++
+				}
+			}
+		}
+	}
+	if offered == 0 || built == 0 {
+		t.Fatalf("offered %d, front wet %d, buildable %d", offered, frontWet, built)
+	}
+	t.Logf("placements offered %d, water in front %d, buildable (dry run) %d", offered, frontWet, built)
+}

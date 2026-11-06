@@ -138,13 +138,39 @@ func (m *Map) CalcAcceptedCargoTrainStationGhost(id int, x, y int32, filter uint
 // station's catchment (setCatchmentDisplay; id -1: none) and the 9×9 round
 // the ghost's tile (sub_491BF5) — a byte per tile, bit 1 set inside.
 func (m *Map) GhostCatchmentDisplay(id int, x, y int32, om *objects.ObjectManager) []uint8 {
+	return m.ghostCatchment(id, x, y, 0, om)
+}
+
+// GhostDockCatchmentDisplay is the dock ghost's: as GhostCatchmentDisplay
+// with sub_491D20's region — the 2×2 and 4 tiles round it.
+func (m *Map) GhostDockCatchmentDisplay(id int, x, y int32, om *objects.ObjectManager) []uint8 {
+	return m.ghostCatchment(id, x, y, 1, om)
+}
+
+// ghostCatchment is setCatchmentDisplay(station) plus the ghost's region:
+// sub_491BF5 (extra 0: the tile ± catchmentSize) or sub_491D20 (extra 1: a
+// 2×2 ± catchmentSize).
+func (m *Map) ghostCatchment(id int, x, y int32, extra int, om *objects.ObjectManager) []uint8 {
 	cm := make([]uint8, m.Width*m.Height)
 	if id >= 0 && id < len(m.StationNames) {
 		cm = m.catchment(&m.StationNames[id], om)
 	}
 	tx, ty := int(x)>>5, int(y)>>5
-	m.setCatchmentRegion(cm, tx-catchmentSize, ty-catchmentSize, tx+catchmentSize, ty+catchmentSize)
+	m.setCatchmentRegion(cm, tx-catchmentSize, ty-catchmentSize, tx+extra+catchmentSize, ty+extra+catchmentSize)
 	return cm
+}
+
+// CalcAcceptedCargoDockGhost is calcAcceptedCargoDockGhost (Station.cpp):
+// the dock ghost's accepted and produced cargo over GhostDockCatchmentDisplay.
+func (m *Map) CalcAcceptedCargoDockGhost(id int, x, y int32, filter uint32, om *objects.ObjectManager) (accepted, produced uint32) {
+	s := newCargoSearchState()
+	s.Filter = filter
+	var st *scenario.StationName
+	if id >= 0 && id < len(m.StationNames) {
+		st = &m.StationNames[id]
+	}
+	accepted, s = m.doCalcAcceptedCargo(st, m.ghostCatchment(id, x, y, 1, om), om, s)
+	return accepted, s.Produced
 }
 
 // doCalcAcceptedCargo is Station.cpp's: the station's tiles set the filter
