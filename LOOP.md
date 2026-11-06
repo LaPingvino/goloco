@@ -116,7 +116,11 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       one selected; the OK/Cancel warning first when the train holds cargo; seen with
       GOLOCO_DIAG_BUILDVEHICLE=refit). Tab icons DONE 2026-11-06 (ui/vehicletabs.go: Common::drawTabs — the
       skin's images, main by vehicle type in the company colour, the current tab's animated by frameNo, which
-      now counts Updates: Game.windowFrame). NEXT in 5P: renaming by the caption (TextInput), hover looks.
+      now counts Updates: Game.windowFrame). Renaming: the VehicleRename command DONE 2026-11-06 (sim/vehiclerename.go:
+      the window's three 12-byte calls composed — same name nothing, empty → train_number …, else a unique user
+      string; TestVehicleRename). NEXT: the TextInputWindow (Ui/Windows/TextInputWindow.cpp, 329 lines — goloco
+      has none; also what towns / stations / companies rename through), then the caption click opening it
+      (renameVehicle: title_name_vehicle, prompt_enter_new_vehicle_name), then hover looks.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a) — DONE 2026-11-06: it did differ (title save: 98 trains, the list against slot order at 55
    places). Trains() now walks the vehicle-head list from its head along next, as VehicleList does (slot order
@@ -1224,4 +1228,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (5P.g: the vehicle window's tab icons) — (the other three wait on Joop → here.) Common::drawTabs ported: the interface skin's tab images (train / bus / truck / tram / aircraft / ship by type, recoloured to the company; wrench, cargo delivered, finances, routes), the current tab's frame from the window's frameNo — a new Game.windowFrame counting Updates, as onUpdate's frameNo += 1. One helper replaces the five tab loops. Seen on the Cargo tab: all five icons, the inactive ones under the translucent overlay. All green; test page redeployed.
+
+
+- 2026-11-06 (5P.g: VehicleRename) — (the other three wait on Joop → here.) RenameVehicle.cpp ported as one call with the whole name (upstream's three 12-byte calls only ferry the text): unchanged name → nothing, empty → the type's numbered name, else userStringAllocate(unique) — refused when taken —, dry run frees it again, the old user string emptied (new emptyUserString); VehicleName factored out of VehicleListRows. TestVehicleRename: "Night Express" set, refused for a second vehicle, cleared back to "Train 1" with the user string freed. The window side needs a TextInputWindow goloco doesn't have — the next chunk. All green; nothing drawn changed.
 
