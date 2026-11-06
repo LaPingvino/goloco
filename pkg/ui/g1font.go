@@ -207,6 +207,12 @@ func (f *g1Font) outline(font, chr int) *ebiten.Image {
 // (AdvancedColour::outline): the glyphs' outline pixels in outlineClr (upstream
 // black0), then the body in clr. Returns the width.
 func DrawTextOutlined(screen *ebiten.Image, str string, x, y int, clr, outlineClr color.Color) int {
+	return DrawTextOutlinedFont(screen, str, G1FontMediumBold, x, y, clr, outlineClr)
+}
+
+// DrawTextOutlinedFont is DrawTextOutlined in a font (G1FontMediumNormal /
+// G1FontMediumBold).
+func DrawTextOutlinedFont(screen *ebiten.Image, str string, font, x, y int, clr, outlineClr color.Color) int {
 	f := globalG1Font
 	if f == nil {
 		return 0
@@ -214,12 +220,12 @@ func DrawTextOutlined(screen *ebiten.Image, str string, x, y int, clr, outlineCl
 	penX := 0
 	for _, r := range str {
 		chr := i18n.LocoChar(r)
-		idx := g1FontBase + G1FontMediumBold*224 + (chr - 32)
+		idx := g1FontBase + font*224 + (chr - 32)
 		e := &f.g1.Elements[idx]
 		for _, plane := range [2]struct {
 			img *ebiten.Image
 			c   color.Color
-		}{{f.outline(G1FontMediumBold, chr), outlineClr}, {f.glyph(G1FontMediumBold, chr), clr}} {
+		}{{f.outline(font, chr), outlineClr}, {f.glyph(font, chr), clr}} {
 			if plane.img == nil {
 				continue
 			}
@@ -228,7 +234,7 @@ func DrawTextOutlined(screen *ebiten.Image, str string, x, y int, clr, outlineCl
 			op.ColorScale.ScaleWithColor(plane.c)
 			screen.DrawImage(plane.img, op)
 		}
-		penX += int(f.widths[G1FontMediumBold][chr-32])
+		penX += int(f.widths[font][chr-32])
 	}
 	return penX
 }

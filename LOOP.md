@@ -54,7 +54,12 @@ SK. [x] **Interface skin images after a save loads.** DONE 2026-11-05: the skin'
 > us to an actually playable game"): item **5P** first; 5.9f3's town parts (constructBuilding, addRoadJunction,
 > road takeover) and the open build (item O) after it.
 
-TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco side by side): goloco's labels are its
+TL. [ ] (STARTED 2026-11-06: town names DONE — the saved labelFrame per zoom, kZoomToTownFonts, white outlined,
+   at every zoom, not in title mode (world/overlay.go drawTownNames); seen with GOLOCO_DIAG_BUILDVEHICLE=towns
+   (+ GOLOCO_DIAG_ZOOM=2: "Kansas City" in medium normal). PARTIAL: Town::updateLabel (a grown or renamed
+   town keeps its saved frame). NEXT: station names — drawStationName with the station's labelFrame, its own
+   name and plaque, the hovered look, stationNamesMinScale.)
+   **Town and station labels, ported** (found 2026-11-05 by the OpenLoco side by side): goloco's labels are its
    own (pkg/world/overlay.go: its UI font, placed by tile, no zoom handling) — at zoom 1 OpenLoco's town label is a
    bigger font than goloco's, at zoom 2 OpenLoco still labels towns and goloco shows none. Port Viewport.cpp
    drawTownNames / drawStationNames (the unzoomed render target) with Town::drawLabel / Station's: the saved
@@ -1282,4 +1287,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (5P: the playable shot) — (the other three wait on Joop → here.) The shot 5P waited for, without a player save: a "playable" diag runs TestPlayableVehicleEndToEnd's steps through the game's commands as the player company (buying through DoCommandFor, the company funded first — the title's are nearly broke). Two diag bugs on the way (veh2's place read after the lift; the window used before checking the buy). Seen: the bought Train 2 placed and loading (status 6) at Station 17, its window's Main tab with its viewport. sim.OrderSize exported for it. All green; no game change, no redeploy. NEXT: TL.
+
+
+- 2026-11-06 (TL: town names) — (the other three wait on Joop → here; 5P's window work done.) Town labels ported: S5 Town's labelFrame (0x08: left / right / top / bottom per zoom) parsed (scenario.LabelFrame with Contains), drawn as Viewport::drawTownNames + Town::drawLabel — in the unzoomed target (camera >> zoom), the frame's left + 1 / top + 1, medium bold at zoom 0–1 and medium normal at 2–3 (ui.DrawTextOutlinedFont), white outlined, every zoom, none on the title. Replaces goloco's own centred tile labels (which vanished above zoom 1). Seen at zoom 0 and 2 over Kansas City. All green; test page redeployed.
 

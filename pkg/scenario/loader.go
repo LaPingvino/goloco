@@ -1129,6 +1129,7 @@ func parseTowns(buf []byte) []Town {
 			NumBuildings: int16(binary.LittleEndian.Uint16(rec[townNumBuildingsOffset:])),
 			NumStations:  int16(binary.LittleEndian.Uint16(rec[townNumStationsOffset:])),
 			ID:           uint16(i),
+			LabelFrame:   ParseLabelFrame(rec[0x08:]),
 			Var1A8:       binary.LittleEndian.Uint32(rec[0x1A8:]),
 			Size:         rec[townSizeOffset],
 		})
