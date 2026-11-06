@@ -20,11 +20,14 @@ type AirportObject struct {
 	// its centre, unrotated (getAirportExtents).
 	MinX, MinY, MaxX, MaxY     int8
 	DesignedYear, ObsoleteYear uint16 // 0xA8 / 0xAA
-	PartHeights                []uint8
-	PartAnimations             []BuildingPartAnimation
-	Variations                 [][]uint8 // buildingVariationParts, per building type
-	Image                      uint32    // image table offset
-	BuildingImage              uint32    // image + 1 (+ numTiles*4 shadow images when hasShadows)
+	// BuildCostFactor / SellCostFactor (0x02 / 0x04), CostIndex (0x06).
+	BuildCostFactor, SellCostFactor int16
+	CostIndex                       uint8
+	PartHeights                     []uint8
+	PartAnimations                  []BuildingPartAnimation
+	Variations                      [][]uint8 // buildingVariationParts, per building type
+	Image                           uint32    // image table offset
+	BuildingImage                   uint32    // image + 1 (+ numTiles*4 shadow images when hasShadows)
 	// PlacementClearEdges is var_B6: the movement edges that must all be
 	// clear for an aircraft to be placed at the airport.
 	PlacementClearEdges uint32
@@ -85,6 +88,8 @@ func ParseAirportObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 		LargeTiles:    binary.LittleEndian.Uint32(data[AirportLargeTilesOffset:]),
 		MinX:          int8(data[0xA4]), MinY: int8(data[0xA5]), MaxX: int8(data[0xA6]), MaxY: int8(data[0xA7]),
 		DesignedYear: uint16(data[0xA8]) | uint16(data[0xA9])<<8, ObsoleteYear: uint16(data[0xAA]) | uint16(data[0xAB])<<8,
+		BuildCostFactor: int16(uint16(data[0x02]) | uint16(data[0x03])<<8), SellCostFactor: int16(uint16(data[0x04]) | uint16(data[0x05])<<8),
+		CostIndex:           data[0x06],
 		PlacementClearEdges: binary.LittleEndian.Uint32(data[0xB6:]), // var_B6
 	}
 	numNodes, numEdges := int(data[AirportNumMovementNodesOffset]), int(data[AirportNumMovementEdgesOffset])

@@ -39,3 +39,63 @@ func TestFindNearbyStationAirportSkipsAirports(t *testing.T) {
 	}
 	t.Logf("%d airports checked", n)
 }
+
+// An airport built by the player on the title save: the dry run changes
+// nothing and costs what applying does; applied, every building tile has an
+// airport element of the new station, which gets flag_6 and the start /
+// rotation, and the nearest town counts one airport more.
+func TestCreateAirport(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	g1, _ := om.G1File.(G1Raw)
+	typ, best := -1, 1<<30
+	for i, a := range om.AirportObjects { // the smallest airport, likeliest to fit
+		if a != nil && len(a.Buildings) > 0 && int(a.MaxX-a.MinX)*int(a.MaxY-a.MinY) < best {
+			typ, best = i, int(a.MaxX-a.MinX)*int(a.MaxY-a.MinY)
+		}
+	}
+	if typ < 0 {
+		t.Skip("no airport object")
+	}
+	c := &Cmd{Company: m.PlayerCompanies[0], Objects: om}
+	for y := 8; y < m.Height-8; y += 2 {
+		for x := 8; x < m.Width-8; x += 2 {
+			tl := m.TileAt(x, y)
+			if tl.WaterLevel != 0 {
+				continue
+			}
+			a := AirportPlacement{X: int32(x) * 32, Y: int32(y) * 32, Z: int32(tl.BaseZ) * 4, Type: uint8(typ)}
+			town, _, _ := m.ClosestTownAndDensity(a.X, a.Y)
+			n0 := m.Towns[town].NumberOfAirports
+			dry, ok := m.CreateAirport(c, 0, a, g1)
+			if !ok {
+				continue
+			}
+			if m.Towns[town].NumberOfAirports != n0 {
+				t.Fatal("the dry run counted an airport")
+			}
+			cost, ok := m.CreateAirport(c, CmdApply, a, g1)
+			if !ok || cost != dry || cost <= 0 {
+				t.Fatalf("applying at %d,%d: ok %v cost %d (dry %d)", x, y, ok, cost, dry)
+			}
+			id := -1
+			for _, st := range m.TileAt(x, y).Stations {
+				if st.StationType == 2 && !st.Ghost {
+					id = int(st.StationID)
+				}
+			}
+			if id < 0 {
+				t.Fatalf("no airport element on the centre tile %d,%d", x, y)
+			}
+			st := &m.StationNames[id]
+			if st.Flags&stationFlagHasAirport == 0 || st.AirportStartPos[0] != int16(a.X) || st.AirportStartPos[1] != int16(a.Y) || st.Owner != c.Company {
+				t.Errorf("station %d %q: flags %#x start %v owner %d", id, m.StationName(id), st.Flags, st.AirportStartPos, st.Owner)
+			}
+			if m.Towns[town].NumberOfAirports != n0+1 {
+				t.Errorf("town airports %d, want %d", m.Towns[town].NumberOfAirports, n0+1)
+			}
+			t.Logf("airport %q (object %d) at %d,%d: %q, cost %d", om.AirportObjects[typ].Name, typ, x, y, m.StationName(id), cost)
+			return
+		}
+	}
+	t.Fatal("no spot took an airport")
+}
