@@ -135,9 +135,14 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       car, with the cargo warning — DragVehiclePart not ported), the other right-bar buttons' images (build new,
       paint brush). VehicleRearrange DONE 2026-11-06
       (sim/vehiclerearrange.go: a car before a car's front bogie or a tail, within a vehicle or into another
-      — the cargo emptied then —, both lifted, laid out, put back; TestVehicleRearrange). NEXT in 5P: the
-      drag itself (Details' scrollDrag / scrollDragEnd + DragVehiclePart window: onto a car → VehicleRearrange,
-      onto the bin → VehicleSell of that car with the cargo warning), then hover looks.
+      — the cargo emptied then —, both lifted, laid out, put back; TestVehicleRearrange). Dragging cars DONE
+      2026-11-06 (onScrollMouseDown on the own vehicle's car list starts it, DragVehiclePart draws the car
+      30 px above the cursor with only its own pixels, release: on the bin VehicleSell of that car, on the list
+      VehicleRearrange before the car at the row's middle — below the last, the tail —, the cargo warnings
+      first when loaded; seen with GOLOCO_DIAG_BUILDVEHICLE=drag (+ _DRAG_HOLD to see it held, _DRAG_DROP:
+      [1091 728 1079 298] → [1091 298 728 1079] after the move warning). PARTIAL: dragging between two
+      vehicles' windows (goloco has one vehicle window), scrollDrag's bin highlight and list nudging, the drag
+      hand cursor. NEXT in 5P: hover looks.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a) — DONE 2026-11-06: it did differ (title save: 98 trains, the list against slot order at 55
    places). Trains() now walks the vehicle-head list from its head along next, as VehicleList does (slot order
@@ -1260,4 +1265,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (5P: VehicleRearrange) — (the other three wait on Joop → here.) VehicleRearrange.cpp ported on goloco's existing insertCarBefore: test pass (companies, canBeModified both, same track type, isVehicleTypeCompatible), apply (cargo emptied when moving to another vehicle — the keep-cargo cheat isn't kept, off by default —, both vehicles lifted by mode, the car inserted, both auto-laid-out and updated, put back). TestVehicleRearrange: a stopped saved train's last car to second place ([1091 728 1079 298] → [1091 298 728 1079]); a bought vehicle's second car to another's tail, its cargo emptied; another company refused. All green; nothing drawn yet.
+
+
+- 2026-11-06 (5P.g: dragging cars) — (the other three wait on Joop → here.) The Details tab's car drag: a press on a car row (the controlling company's vehicle) starts it, the car follows the cursor (DragVehiclePart's placement; drawn with index 0 transparent — the first shot showed draw8 wiping the names under its box, as it repaints from the 8-bit screen copy that lacks text), the release sells that car on the bin or moves it on the list (getCarFromScrollViewPos's row middle; none → the tail), with upstream's cargo warnings when the train holds cargo. Seen held over the list with the names intact; dropped: the last carriage moved to second after "Confirm move component". All green; test page redeployed.
 

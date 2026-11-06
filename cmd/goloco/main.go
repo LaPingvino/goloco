@@ -651,6 +651,12 @@ func (g *Game) Update() error {
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 	}
+	if g.vehicleWin != nil && g.vehicleWin.Dragging && os.Getenv("GOLOCO_DIAG_DRAG_HOLD") == "" { // DragVehiclePart: follows the mouse, dropped on release (the diag's hold: neither)
+		g.vehicleWin.DragTo(g.mouseX, g.mouseY)
+		if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+			g.vehicleWin.DragEnd(g.mouseX, g.mouseY)
+		}
+	}
 	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 		// Check dropdown first (it's on top: a window's dropdown lies over the
 		// window that opened it)
@@ -1306,6 +1312,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			g.vehicleWin.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
 		}
 		g.vehicleWin.Draw(screen)
+		g.vehicleWin.DrawDrag(screen) // DragVehiclePart: stickToFront
 	}
 	if g.townList != nil {
 		g.townList.Draw(screen)
@@ -1450,7 +1457,44 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	}
 	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
-		if v == "sell" { // DIAGNOSTIC ONLY: as a saved train's company, a vehicle bought, its Details tab; GOLOCO_DIAG_SELL_OK: the bin pressed
+		if v == "drag" { // DIAGNOSTIC ONLY: a stopped saved train's last car dragged over its second row (GOLOCO_DIAG_DRAG_DROP: dropped there)
+			m := &g.w.Map
+			trains, _ := m.Trains()
+			for _, tr := range trains {
+				h := m.Entities[tr.Head]
+				if h.VehicleType != 0 || len(tr.Cars) < 3 {
+					continue
+				}
+				m.ControllingCompany = h.Owner
+				m.Entities[tr.Veh2].CurrentSpeed = 0
+				m.Entities[tr.Head].VehicleFlags |= sim.VehicleFlagCommandStop
+				g.inTitleScreen = false
+				g.openVehicleWindow(h.ID, 1)
+				w := g.vehicleWin
+				order := func() []uint16 {
+					t, _ := m.TrainOf(h.ID)
+					var ids []uint16
+					for _, car := range t.Cars {
+						ids = append(ids, m.Entities[car[0].Front].ID)
+					}
+					return ids
+				}
+				before := order()
+				listY := w.Y + 44 + 1 // the car list's inside (Details carList top 44)
+				w.HandleClick(w.X+60, listY+(len(tr.Cars)-1)*22+11)
+				w.DragTo(w.X+80, listY+22+11)
+				log.Printf("[Diag] drag: vehicle %d, dragging %v car %d", h.ID, w.Dragging, w.DragCar)
+				if os.Getenv("GOLOCO_DIAG_DRAG_DROP") != "" {
+					w.DragEnd(w.X+80, listY+22+11)
+					if g.prompt != nil && g.prompt.OnOK != nil { // the cargo question: OK
+						g.prompt.OnOK()
+						g.prompt = nil
+					}
+					log.Printf("[Diag] drag: %v → %v", before, order())
+				}
+				break
+			}
+		} else if v == "sell" { // DIAGNOSTIC ONLY: as a saved train's company, a vehicle bought, its Details tab; GOLOCO_DIAG_SELL_OK: the bin pressed
 			m := &g.w.Map
 			trains, _ := m.Trains()
 			for _, tr := range trains {
