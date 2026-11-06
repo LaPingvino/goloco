@@ -154,3 +154,87 @@ func abs32(v int32) int32 {
 	}
 	return v
 }
+
+// stationFlag5 / stationFlagAirport are StationFlags::flag_5 / flag_6.
+const (
+	stationFlag5       = 1 << 5
+	stationFlagAirport = 1 << 6
+)
+
+// AirPlacementAt is getVehicleAirPlacementArgsFromCursor (main view,
+// rotation 0): the airport under the cursor — or, over the ground or water,
+// an airport station whose start is within 5 tiles of it (upstream's loop
+// kept: the last station element it looked at stands) —, then of its
+// terminal nodes (last first) the one nearest the cursor on screen by
+// Manhattan distance.
+func (w *World) AirPlacementAt(head uint16, sx, sy int) (sim.VehicleAirPlacement, bool) {
+	if w.scene == nil || w.renderer == nil || w.renderer.ObjMgr == nil {
+		return sim.VehicleAirPlacement{}, false
+	}
+	om := w.renderer.ObjMgr
+	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	var el *scenario.StationElement
+	if ps := w.scene.InteractionAt(&w.Map, v, sx, sy, func(it paint.InteractionItem) bool { return it == paint.ItemAirport }); ps != nil {
+		el, _ = ps.Item.(*scenario.StationElement)
+	} else {
+		ps := w.scene.InteractionAt(&w.Map, v, sx, sy, func(it paint.InteractionItem) bool {
+			return it == paint.ItemSurface || it == paint.ItemWater
+		})
+		if ps == nil {
+			return sim.VehicleAirPlacement{}, false
+		}
+		found := false
+		for id := range w.Map.StationNames {
+			st := &w.Map.StationNames[id]
+			if st.Flags&stationFlagAirport == 0 || st.Flags&stationFlag5 != 0 {
+				continue
+			}
+			if abs32(int32(ps.MapX)-int32(st.AirportStartPos[0])) > 5*32 || abs32(int32(ps.MapY)-int32(st.AirportStartPos[1])) > 5*32 {
+				continue
+			}
+			t := w.Map.TileAt(int(st.AirportStartPos[0])>>5, int(st.AirportStartPos[1])>>5)
+			if t == nil {
+				continue
+			}
+			for _, r := range t.Order { // el.as<StationElement>(): nil for the other kinds
+				el = nil
+				if r.Kind != scenario.KindStation || int(r.Index) >= len(t.Stations) {
+					continue
+				}
+				el = &t.Stations[r.Index]
+				if el.AiAllocated || el.Ghost || el.StationType != 2 {
+					continue
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			return sim.VehicleAirPlacement{}, false
+		}
+	}
+	if el == nil || el.AiAllocated || el.Ghost || int(el.ObjectID) >= len(om.AirportObjects) || om.AirportObjects[el.ObjectID] == nil {
+		return sim.VehicleAirPlacement{}, false
+	}
+	out := sim.VehicleAirPlacement{StationID: el.StationID, Head: head}
+	nodes := om.AirportObjects[el.ObjectID].MovementNodes
+	best := int32(1<<31 - 1)
+	for n := len(nodes) - 1; n >= 0; n-- {
+		if nodes[n].Flags&objects.AirportNodeTerminal == 0 {
+			continue
+		}
+		x, y, z, ok := w.Map.AirportMovementNodeLoc(om, out.StationID, uint8(n))
+		if !ok {
+			continue
+		}
+		gx, gy := paint.GameToScreen(paint.Pos3{X: int(x), Y: int(y), Z: int(z)}, 0)
+		ux, uy := (gx-v.X)>>v.Zoom, (gy-v.Y)>>v.Zoom // viewportToScreen
+		if d := abs32(int32(ux-sx)) + abs32(int32(uy-sy)); d < best {
+			best, out.AirportNode = d, uint8(n)
+		}
+	}
+	if best == 1<<31-1 {
+		return sim.VehicleAirPlacement{}, false
+	}
+	return out, true
+}
