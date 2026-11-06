@@ -431,3 +431,41 @@ func (m *Map) DockPlacementAt(x, y int32, typ uint8, om *objects.ObjectManager) 
 	}
 	return a, true
 }
+
+// UpdateAvailableAirportAndDockOptions is Construction's (Common.cpp): an
+// obsolete last airport forgotten; with none, the first available airport —
+// kept only when the player has an air vehicle unlocked; the same for docks
+// and water vehicles (as upstream, the dock isn't checked for obsolescence).
+func (m *Map) UpdateAvailableAirportAndDockOptions(om *objects.ObjectManager) {
+	if om == nil {
+		return
+	}
+	year := int(m.CurrentYear)
+	if a := int(m.LastAirport); m.LastAirport != 0xFF && a < len(om.AirportObjects) && om.AirportObjects[a] != nil && year > int(om.AirportObjects[a].ObsoleteYear) {
+		m.LastAirport = 0xFF
+	}
+	unlocked := func(mode objects.TransportMode) bool {
+		for i, v := range om.Vehicles {
+			if v != nil && v.Mode == mode && m.isVehicleIndexUnlocked(m.ControllingCompany, uint16(i)) {
+				return true
+			}
+		}
+		return false
+	}
+	if m.LastAirport == 0xFF {
+		if list := om.AvailableAirports(year); len(list) > 0 {
+			m.LastAirport = uint8(list[0])
+			if !unlocked(objects.TransportModeAir) {
+				m.LastAirport = 0xFF
+			}
+		}
+	}
+	if m.LastShipPort == 0xFF {
+		if list := om.AvailableDocks(year); len(list) > 0 {
+			m.LastShipPort = uint8(list[0])
+			if !unlocked(objects.TransportModeWater) {
+				m.LastShipPort = 0xFF
+			}
+		}
+	}
+}

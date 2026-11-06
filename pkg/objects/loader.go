@@ -1597,3 +1597,26 @@ func skinStringTableLen(data []byte) int {
 	n, _ := parseStringTable(data[24:])
 	return n
 }
+
+// AvailableDocks is ObjectUtils getAvailableDocks: the dock slots designed by
+// and not obsolete after year.
+func (m *ObjectManager) AvailableDocks(year int) []int {
+	var out []int
+	for i, d := range m.DockObjects {
+		if d != nil && year >= int(d.DesignedYear) && year <= int(d.ObsoleteYear) {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// AvailableAirports is ObjectUtils getAvailableAirports: as AvailableDocks.
+func (m *ObjectManager) AvailableAirports(year int) []int {
+	var out []int
+	for i, a := range m.AirportObjects {
+		if a != nil && year >= int(a.DesignedYear) && year <= int(a.ObsoleteYear) {
+			out = append(out, i)
+		}
+	}
+	return out
+}

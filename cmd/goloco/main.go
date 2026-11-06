@@ -147,6 +147,7 @@ type Game struct {
 	stationGhost           *sim.TrainStationPlacement // the station tab's ghost (cState.stationGhost*), nil none
 	stationGhostCost       int32                      // cState.stationCost
 	roadStationGhost       *sim.RoadStationPlacement  // the road stop ghost (stationGhostType bit 7)
+	lastPortOption         int                        // ToolbarTop's _lastPortOption: 0 airport, 1 dock
 	errorWin               *ui.ErrorWindow            // WindowType::error (one at a time)
 	stationGhostStation    int                        // cState.constructingStationId (-1 new)
 	stationGhostAccepted   uint32                     // constructingStationAcceptedCargoTypes
@@ -1100,7 +1101,7 @@ func (g *Game) handleToolbarButton(idx int) {
 		g.consSlope = 0
 		win = g.newPortedConstructionWindow()
 	case "Port/Airport":
-		log.Println("[Game] Port/Airport construction menu (not yet implemented)")
+		g.portMenu(btn)
 		return
 	case "Build Vehicles":
 		g.buildVehiclesMenu(btn)
@@ -1839,6 +1840,14 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					break
 				}
 			}
+		} else if v == "portmenu" { // DIAGNOSTIC ONLY: the toolbar's Port/Airport menu
+			g.inTitleScreen = false
+			for i := range g.toolbar.Buttons {
+				if g.toolbar.Buttons[i].Tooltip == "Port/Airport" {
+					g.handleToolbarButton(i)
+				}
+			}
+			log.Printf("[Diag] portmenu: lastAirport %d lastShipPort %d, menu open %v", g.w.Map.LastAirport, g.w.Map.LastShipPort, g.dropdown != nil)
 		} else if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
 				if g.toolbar.Buttons[i].Tooltip == "Build Vehicles" {

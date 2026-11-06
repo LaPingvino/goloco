@@ -168,3 +168,10 @@ func ParseInterfaceSkinObject(header *ObjectHeader, data []byte) (*InterfaceSkin
 // by VehicleType (train, bus, truck, tram, aircraft, ship): ToolbarTop.cpp
 // kVehicleTypeInterfaceParameters' buildImage.
 var ISBuildVehicleFrame0 = [6]int{251, 283, 315, 299, 267, 331}
+
+// ISToolbarMenuAirport / ISToolbarMenuShipPort are InterfaceSkin::ImageIds
+// toolbar_menu_airport (46) and toolbar_menu_ship_port (47).
+const (
+	ISToolbarMenuAirport  = 46
+	ISToolbarMenuShipPort = 47
+)
