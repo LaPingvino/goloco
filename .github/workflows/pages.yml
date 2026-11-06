@@ -31,6 +31,8 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/objects.zip" https://github.com/OpenLoco/OpenGraphics/releases/download/v0.1.8/objects.zip
           echo "658891d94a46040b7bf71dfd7f01bbc1dda6470712cb3dc07482931feb5013c7  $RUNNER_TEMP/objects.zip" | sha256sum -c -
           unzip -q "$RUNNER_TEMP/objects.zip" -d "$RUNNER_TEMP/opengraphics"
+      - name: goloco's loader reads every OpenGraphics object
+        run: GOLOCO_OPENGRAPHICS="$RUNNER_TEMP/opengraphics" go test -count=1 -run TestOpenGraphicsObjectsParse -v ./pkg/objects
       - name: The open web build
         run: go run ./cmd/webpack -open -local -opengraphics "$RUNNER_TEMP/opengraphics" -out "$RUNNER_TEMP/site"
       - name: No game data in it
