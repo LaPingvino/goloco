@@ -265,12 +265,14 @@ func NewGeneratedMap(seed0, seed1 uint32, startYear uint16, o TerrainOptions, g1
 	for y := range m.Tiles {
 		m.Tiles[y] = make([]Tile, m.Width)
 	}
-	m.GenerateLandscape(startYear, o, g1, om)
 	if om != nil && om.Climate == nil {
 		// OpenGraphics v0.1.8 has no climate object (its Climate/ folder is
 		// empty): upstream can't run without one; the open build has no snow
-		// line rather than one at 0 (every tile "above" it).
+		// line rather than one at 0 (every tile "above" it). Set before the
+		// generation (the terrain takes its snow from it; InitialiseSnowLine
+		// leaves it alone without a climate).
 		m.CurrentSnowLine = 0xFF
 	}
+	m.GenerateLandscape(startYear, o, g1, om)
 	return m
 }
