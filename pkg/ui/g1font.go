@@ -288,4 +288,3 @@ func DrawTextFont(screen *ebiten.Image, str string, font, x, y int, clr color.Co
 	}
 	return globalG1Font.drawString(screen, str, font, x, y, 1.0, clr)
 }
-
