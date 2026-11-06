@@ -43,3 +43,34 @@ func TestTrackClearTrack(t *testing.T) {
 		t.Errorf("a junction through a signal: %v", r)
 	}
 }
+
+// clearRoad: a level crossing only for straight track over straight road at
+// right angles and the same height, of compatible objects; marked on apply.
+func TestTrackClearRoad(t *testing.T) {
+	hdr := func(name string) *objects.ObjectHeader { h := &objects.ObjectHeader{}; copy(h.Name[:], name); return h }
+	track := &objects.TrackObject{Header: hdr("TRACKST "), CompatibleNames: []string{"ROADTOWN"}}
+	road := &objects.RoadObject{Header: hdr("ROADTOWN")}
+	c := &Cmd{Company: 0, Objects: &objects.ObjectManager{TrackObjects: []*objects.TrackObject{track}, RoadObjects: []*objects.RoadObject{road}}}
+	m := &Map{DefaultLevelCrossingType: 1}
+	rd := scenario.RoadElement{RoadID: 0, Rotation: 1, BaseZ: 8}
+	a := trackClearArgs{Z: 32, TrackID: 0, Rotation: 0, BridgeID: 0xFF, Flags: CmdApply}
+	var lc bool
+	st := &trackCmdState{}
+	if r := m.trackClearRoad(c, st, &rd, a, &lc); r != ClearNoCollision || !lc || !rd.HasLevelCrossing || rd.LevelCrossingObjectID != 1 {
+		t.Errorf("a level crossing: %v %v %+v", r, lc, rd)
+	}
+	along := scenario.RoadElement{RoadID: 0, Rotation: 0, BaseZ: 8}
+	if r := m.trackClearRoad(c, &trackCmdState{}, &along, a, &lc); r != ClearCollisionErrorSet {
+		t.Errorf("track along the road: %v", r)
+	}
+	ghost := scenario.RoadElement{RoadID: 0, Rotation: 1, BaseZ: 8}
+	a.Flags = CmdApply | CmdGhost
+	m.trackClearRoad(c, &trackCmdState{}, &ghost, a, &lc)
+	if ghost.HasLevelCrossing {
+		t.Error("a ghost marked the road")
+	}
+	track.CompatibleNames = nil
+	if r := m.trackClearRoad(c, &trackCmdState{}, &scenario.RoadElement{Rotation: 1, BaseZ: 8}, a, &lc); r != ClearCollisionErrorSet {
+		t.Errorf("incompatible objects: %v", r)
+	}
+}

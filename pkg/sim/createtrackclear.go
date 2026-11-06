@@ -5,9 +5,9 @@ import "github.com/LaPingvino/goloco/pkg/scenario"
 // createTrack's clear function (GameCommands/Track/CreateTrack.cpp 50–320),
 // PL.1 (e), createTrack part 2. This is its start: the state and arguments,
 // and clearTrack (0x0049C4FF) — new track meeting track already there.
-// PARTIAL: clearRoad (0x0049C401, track crossing road), clearFunction
-// (0x0049C275, the dispatch with buildings and trees), and createTrack's
-// per-piece checks and apply step that use them.
+// Also clearRoad (0x0049C401, track crossing road) and clearFunction
+// (0x0049C275, the dispatch over a tile's elements).
+// PARTIAL: createTrack's per-piece checks and apply step that use them.
 
 // commonTraitOneSided is CommonTraitFlags::oneSided (TrackEnum.h; slope and
 // steepSlope are in roadclearhelp.go).
@@ -112,4 +112,73 @@ func (m *Map) trackClearTrack(c *Cmd, st *trackCmdState, e *scenario.TrackElemen
 	}
 	st.Flags73 |= 1 << 3
 	return ClearNoCollision
+}
+
+// trackClearRoad is clearRoad: track may cross road only as a level crossing —
+// straight track over straight road at right angles, at the road's height,
+// compatible objects, no signal or station, a matching junction-capable
+// bridge — marked on the road (with the default crossing type) when applied.
+func (m *Map) trackClearRoad(c *Cmd, st *trackCmdState, e *scenario.RoadElement, a trackClearArgs, hasLevelCrossing *bool) ClearResult {
+	if e.HasBridge {
+		st.Bridge = e.BridgeID
+		if b := c.bridge(e.BridgeID); b != nil && b.DisabledTrackCfg&commonTraitJunction != 0 {
+			return ClearCollisionErrorSet // bridge_not_suitable_for_junction
+		}
+	}
+	om := c.Objects
+	var roadTracks, trackRoads uint16
+	if road := c.roadObject(e.RoadObjectID); road != nil && om != nil {
+		roadTracks, _ = om.CompatibleSets(road.CompatibleNames)
+	}
+	if track := c.trackObject(a.TrackObjectID); track != nil && om != nil {
+		_, trackRoads = om.CompatibleSets(track.CompatibleNames)
+	}
+	if roadTracks&(1<<a.TrackObjectID) == 0 && trackRoads&(1<<e.RoadObjectID) == 0 {
+		return ClearCollisionErrorSet // unable_to_cross_or_create_junction_with
+	}
+	if e.HasSignalElement || e.HasStationElement {
+		return ClearCollisionErrorSet
+	}
+	if e.HasBridge && e.BridgeID != a.BridgeID { // bridge_types_must_match
+		return ClearCollisionErrorSet
+	}
+	if e.RoadID != 0 || a.TrackID != 0 || (e.Rotation-a.Rotation)&1 == 0 || int32(e.BaseZ)*4 != a.Z {
+		return ClearCollisionErrorSet // level_crossing_only_possible_with_straight_road_and_track_at_same_level
+	}
+	*hasLevelCrossing = true
+	st.Flags73 |= 1 << 2
+	if a.Flags&(CmdAiAllocated|CmdGhost) == 0 && a.Flags&CmdApply != 0 {
+		e.HasLevelCrossing = true
+		e.LevelCrossingObjectID = m.DefaultLevelCrossingType
+		e.Unk7_10 = false
+		e.AnimFrame = 0 // setUnk6l(0)
+	}
+	return ClearNoCollision
+}
+
+// trackClearFunction is clearFunction: by the element in the way — track
+// (clearTrack), a train station (no collision), a signal (none), a building
+// or tree (cleared as the flags allow, the cost added), road (clearRoad);
+// everything else collides.
+func (m *Map) trackClearFunction(c *Cmd, st *trackCmdState, t *Tile, k int, cost *int32, hasLevelCrossing *bool, removed RemovedBuildings, a trackClearArgs) ClearResult {
+	r := t.Order[k]
+	switch r.Kind {
+	case scenario.KindTrack:
+		return m.trackClearTrack(c, st, &t.Tracks[r.Index], a)
+	case scenario.KindStation:
+		if t.Stations[r.Index].StationType == 0 { // trainStation
+			return ClearNoCollision
+		}
+		return ClearCollision
+	case scenario.KindSignal:
+		return ClearNoCollision
+	case scenario.KindBuilding:
+		st.Flags73 |= 1 << 4
+		return m.clearBuildingCollision(c, t, k, a.X, a.Y, removed, a.Flags, cost)
+	case scenario.KindTree:
+		return m.clearTreeCollision(c, t, k, a.X, a.Y, a.Flags, cost)
+	case scenario.KindRoad:
+		return m.trackClearRoad(c, st, &t.Roads[r.Index], a, hasLevelCrossing)
+	}
+	return ClearCollision
 }
