@@ -241,6 +241,12 @@ type Industry struct {
 	OutputBuffer          [2]uint16
 	ProducedMonthlyTotal  [2]uint16
 	DeliveredMonthlyTotal [2]uint16
+	// StationsInRange (0xE1, a bit per station) is set by the tile loop's
+	// industry elements and read (then cleared) each round by
+	// updateProducedCargoStats into ProducedStations and their
+	// ProducedRatings (0x171).
+	StationsInRange [1024 / 32]uint32
+	ProducedRatings [2][4]uint8
 }
 
 // GetTile returns tile at the given coordinates
