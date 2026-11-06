@@ -258,7 +258,7 @@ W2. [x] (DONE 2026-11-06: waves are drawn now — they never were in the live re
 O. [ ] **Open build on goloco's GitHub Pages** (Joop 2026-11-04: "the clean version of goloco, probably good to
    push that one to its Github Pages and see how close we can get") — docs/open-build.md approved. Joop
    2026-11-06: "for the open version, push it as fallback to the Github Pages" — the Pages build (players drop in
-   their own game folder) falls back to the open build (OpenGraphics + goloco's own files) when they haven't. PARKED behind
+   their own game folder) falls back to the open build (OpenGraphics + goloco's own files) when they haven't. UN-PARKED 2026-11-06 (5P done). OpenGraphics packed DONE 2026-11-06: webpack -opengraphics <dir> (with -open only) packs the unzipped objects.zip flat at /w/opengraphics/ObjData, refusing anything but OG_*.dat; pages.yml fetches v0.1.8 objects.zip, checks the full sha256 (658891d94a46040b7bf71dfd7f01bbc1dda6470712cb3dc07482931feb5013c7, OpenLoco's CMakeLists), unzips it, and its check step now also requires OG objects and only OG_ names there (local run: 118 objects, 0 Locomotion files; a G1.DAT planted in the folder was refused). NEXT: the game side — with no player folder, load the objects from /w/opengraphics/ObjData (the palette / g1 gap of docs/open-build.md §2 remains: palette first); the credits / MIT notice for OpenGraphics in the page. Was: 
    5P. Started: OpenGraphics v0.1.8 objects.zip fetched (sha256 658891d9…5013c7 ✓, 152 files); baseline without
    Locomotion data: a black title with 'GoLoco' and four empty buttons (no palette, no objects, no map). Next:
    webpack -open (OpenGraphics + the repo's own files only, refusing originals), a Pages workflow (CI fetches and
@@ -1398,4 +1398,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — (Fractal: AppImage run building) ST airports: CreateAirport ported with a title-save test ("Regina Heliport", 45,149); RemoveAirport next.
 - 2026-11-06 — (Fractal: AppImage run building) ST airports: RemoveAirport ported; the airport test builds and removes (refund 32,836); the airport window and tool next.
 - 2026-11-06 — ST airports: the airport window (rotate button) and tool — players can build airports; all four station kinds buildable; tests green; test page redeployed.
+- 2026-11-06 — O (un-parked: 5P done): OpenGraphics packed into the open Pages build (fetched and sha256-checked in CI, OG_*.dat only, 118 objects); the game-side fallback next.
 
