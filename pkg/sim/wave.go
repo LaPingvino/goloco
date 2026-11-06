@@ -101,9 +101,10 @@ func (s *State) UpdateWaves(scenarioTicks uint32) {
 // Each visited tile's elements are updated in their stored order (ghosts
 // skipped), stopping at one that changed the tile: the surface (PARTIAL: of
 // SurfaceElement::update only the water branch — a wave on a water tile that
-// has none; snow, the type-6 counter and growth not yet) and buildings
-// (BuildingElement::update, buildingupdate.go). PARTIAL: trees, roads and
-// industry elements.
+// has none; snow, the type-6 counter and growth not yet), buildings
+// (BuildingElement::update, buildingupdate.go) and industry elements (their
+// stations in range, industryprod.go). PARTIAL: trees, roads, and the
+// industry elements' construction and animation.
 func (s *State) UpdateTiles(visible func(tileX, tileY int) bool, om *objects.ObjectManager) {
 	for ty := s.tileUpdateY; ty < s.Height; ty += 16 {
 		for tx := s.tileUpdateX; tx < s.Width; tx += 16 {
@@ -125,12 +126,19 @@ func (s *State) UpdateTiles(visible func(tileX, tileY int) bool, om *objects.Obj
 					if int(r.Index) < len(t.Buildings) && !s.updateBuilding(&t.Buildings[r.Index], false, int32(tx)*32, int32(ty)*32, om) {
 						break elements // the tile's elements changed
 					}
+				case scenario.KindIndustry:
+					if int(r.Index) < len(t.Industries) {
+						s.industryElementStations(&t.Industries[r.Index], int32(tx)*32, int32(ty)*32, om)
+					}
 				}
 			}
 		}
 	}
 	shift := uint8(s.tileUpdateY<<4 + s.tileUpdateX + 9)
 	s.tileUpdateX, s.tileUpdateY = int(shift&0xF), int(shift>>4)
+	if shift == 0 { // a whole round: IndustryManager::updateProducedCargoStats
+		s.industriesUpdateProducedCargoStats(om)
+	}
 }
 
 // NewWaveRng returns the generator the wave code draws from (OpenLoco gPrng2 =

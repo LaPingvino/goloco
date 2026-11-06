@@ -1678,3 +1678,41 @@ func TestIndustriesProduce(t *testing.T) {
 		t.Error("industries with stations delivered nothing")
 	}
 }
+
+// TestIndustryStationsRefresh: one whole tile-loop round (256 passes) on the
+// title map rebuilds every industry's producedCargoStatsStation from the
+// stations around its buildings — and gives back the lists the game saved.
+func TestIndustryStationsRefresh(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	saved := make([][2][4]uint16, len(m.Industries))
+	for i, ind := range m.Industries {
+		saved[i] = ind.ProducedStations
+	}
+	s := &State{Map: *m}
+	s.tileUpdateX, s.tileUpdateY = 0, 0
+	for i := range s.Industries { // a fresh round: no stations carried over, the lists wiped
+		s.Industries[i].StationsInRange = [32]uint32{}
+		s.Industries[i].ProducedStations = [2][4]uint16{}
+	}
+	for pass := 0; pass < 256; pass++ {
+		s.UpdateTiles(func(int, int) bool { return false }, om)
+	}
+	same, with := 0, 0
+	for i, ind := range s.Industries {
+		if ind.ProducedStations[0][0] != stationIDNull {
+			with++
+		}
+		if ind.ProducedStations == saved[i] {
+			same++
+		} else if same+with < 200 {
+			t.Logf("industry %d: saved %v, rebuilt %v", ind.ID, saved[i], ind.ProducedStations)
+		}
+	}
+	t.Logf("%d of %d industries' station lists as saved (%d with a station)", same, len(s.Industries), with)
+	if with == 0 {
+		t.Fatal("no industry found a station")
+	}
+	if same*10 < len(s.Industries)*9 {
+		t.Errorf("only %d of %d lists match the save", same, len(s.Industries))
+	}
+}
