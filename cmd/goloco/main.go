@@ -66,6 +66,8 @@ type Game struct {
 	vehicleWin                     *ui.VehicleWindow         // the Vehicle window when open (5P.g)
 	diagMouse                      *[2]int                   // DIAGNOSTIC ONLY: the mouse held at a point (the roadghost diag's hover)
 	ghostWater                     sim.VehicleWaterPlacement // _ghostVehiclePos for a boat ghost (ghostProgress 0)
+	ghostAirStation                uint16                    // _ghostAirportStationId (0xFFFF none)
+	ghostAirNode                   uint8                     // _ghostAirportNode
 	diagShip                       uint16                    // DIAGNOSTIC ONLY: the shipsail diag's ship, logged as it goes
 	diagFollow                     bool                      // DIAGNOSTIC ONLY: keep the view on diagShip (planefly)
 	diagShipFrames                 int
@@ -1415,7 +1417,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
 		if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
@@ -1447,6 +1449,60 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 						log.Printf("[Diag] route after the click: %q", l.Text)
 					}
 					break
+				}
+			}
+		} else if v == "planeghost" { // DIAGNOSTIC ONLY: buy an aircraft for an airport's owner, its pickup tool on, hover over the airport until a ghost stands at a terminal
+			m := &g.w.Map
+			om := g.r.ObjMgr
+			var sid uint16 = 0xFFFF
+			for i, st := range m.StationNames {
+				if st.Name != 0 && st.Flags&(1<<6) != 0 && st.Owner < 16 {
+					sid = uint16(i)
+					break
+				}
+			}
+			var planeObj uint16 = 0xFFFF
+			for i, v := range om.Vehicles {
+				if v != nil && v.Mode == objects.TransportModeAir {
+					planeObj = uint16(i)
+					break
+				}
+			}
+			if sid == 0xFFFF || planeObj == 0xFFFF {
+				log.Printf("[Diag] planeghost: no airport or aircraft object")
+			} else {
+				st := m.StationNames[sid]
+				m.ControllingCompany = st.Owner
+				g.inTitleScreen = false
+				g.w.CenterOn(fmt.Sprintf("tile:%d,%d", int(st.AirportStartPos[0])/32+2, int(st.AirportStartPos[1])/32+2))
+				var head uint16
+				if _, ok := m.CreateVehicle(&sim.Cmd{Company: st.Owner, Objects: om}, sim.CmdApply, planeObj, true, &head); !ok {
+					log.Printf("[Diag] planeghost: buying aircraft %d refused", planeObj)
+				} else {
+					g.openVehicleWindow(head, 1)
+					if x, y, ok := g.vehicleWin.PickupButton(); ok {
+						g.vehicleWin.HandleClick(x, y)
+					}
+					if g.vehicleWin != nil {
+						g.vehicleWin.X, g.vehicleWin.Y = 4, 40
+					}
+					for r := 0; r < 200 && !m.VehicleIsGhost(head); r += 4 {
+						for _, o := range [][2]int{{r, r / 2}, {-r, r / 2}, {r, -r / 2}, {-r, -r / 2}, {0, r}, {0, -r}} {
+							hx, hy := g.sw/2+o[0], g.sh/2+o[1]
+							if g.overWindow(hx, hy) {
+								continue
+							}
+							g.pickupToolUpdate(hx, hy)
+							if m.VehicleIsGhost(head) {
+								g.diagMouse = &[2]int{hx, hy}
+								break
+							}
+						}
+					}
+					trh, _ := m.TrainOf(head)
+					h := m.Entities[trh.Head]
+					log.Printf("[Diag] planeghost: station %d, aircraft %d (object %d); pickup tool %v; a ghost now %v at %d,%d,%d edge %d; mouse %v",
+						sid, head, planeObj, g.pickupOn, m.VehicleIsGhost(head), h.PosX, h.PosY, h.PosZ, h.AirportMovementEdge, g.diagMouse)
 				}
 			}
 		} else if v == "planefly" { // DIAGNOSTIC ONLY: follow the title map's aircraft at an airport (its status logged)

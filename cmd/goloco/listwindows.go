@@ -376,6 +376,7 @@ func (g *Game) onPickup(headID uint16) {
 	h := m.Entities[tr.Head]
 	if h.TileX == -1 {
 		g.pickupOn, g.pickupHead, g.ghostProgress = true, headID, -1 // toolSet; _ghostTrackProgress = -1
+		g.ghostAirStation = 0xFFFF                                   // _ghostAirportStationId = null
 		g.openVehicleDetails(headID)
 		return
 	}
@@ -395,7 +396,10 @@ func (g *Game) onPickup(headID uint16) {
 // PARTIAL: air and water, the error window.
 func (g *Game) pickupToolDown(sx, sy int) bool {
 	head := g.pickupHead
-	if g.pickupMode() == 3 {
+	switch g.pickupMode() {
+	case 2:
+		return g.pickupToolDownAir(sx, sy)
+	case 3:
 		return g.pickupToolDownWater(sx, sy)
 	}
 	p, ok := g.w.PlacementAt(head, sx, sy)
@@ -478,7 +482,11 @@ func (g *Game) buildVehiclesMenu(btn *ui.ToolbarButton) {
 // cursor; unchanged since the last ghost, nothing; else the old ghost lifted
 // and the train placed there as a ghost (apply | ghost | noErrorWindow).
 func (g *Game) pickupToolUpdate(sx, sy int) {
-	if g.pickupMode() == 3 {
+	switch g.pickupMode() {
+	case 2:
+		g.pickupToolUpdateAir(sx, sy)
+		return
+	case 3:
 		g.pickupToolUpdateWater(sx, sy)
 		return
 	}
@@ -732,6 +740,69 @@ func (g *Game) pickupToolDownWater(sx, sy int) bool {
 	company, _ := g.w.ControllingCompany()
 	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
 	if _, ok := m.VehiclePlaceWater(c, sim.CmdApply, p); !ok {
+		log.Printf("[Game] can't place vehicle %d here", head)
+		return false
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyShift) {
+		m.VehicleChangeRunningMode(c, sim.CmdApply, head, sim.RunningModeStart)
+	}
+	g.pickupOn = false
+	g.openVehicleWindow(head, 0)
+	return true
+}
+
+// pickupToolUpdateAir is Vehicle.cpp's: the airport terminal nearest the
+// cursor (World.AirPlacementAt); the same as the ghost's, nothing; else the
+// old ghost lifted and the aircraft placed there as a ghost
+// (_ghostAirportStationId / _ghostAirportNode).
+func (g *Game) pickupToolUpdateAir(sx, sy int) {
+	p, ok := g.w.AirPlacementAt(g.pickupHead, sx, sy)
+	if !ok {
+		g.removeAirplaneGhost()
+		return
+	}
+	if g.ghostAirStation != 0xFFFF && g.ghostAirStation == p.StationID && g.ghostAirNode == p.AirportNode {
+		return
+	}
+	g.removeAirplaneGhost()
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	if _, ok := g.w.Map.VehiclePlaceAir(c, sim.CmdApply|sim.CmdGhost|sim.CmdNoErrorWindow, p); ok {
+		g.ghostAirStation, g.ghostAirNode = p.StationID, p.AirportNode
+	}
+}
+
+// removeAirplaneGhost is Vehicle.cpp's: a ghost aircraft lifted
+// (VehiclePickupAir, apply | noErrorWindow | ghost); no ghost airport.
+func (g *Game) removeAirplaneGhost() {
+	if g.w != nil && g.r != nil && g.w.Map.VehicleIsGhost(g.pickupHead) {
+		company, _ := g.w.ControllingCompany()
+		c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+		g.w.Map.VehiclePickupAir(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdGhost, g.pickupHead)
+	}
+	g.ghostAirStation = 0xFFFF
+}
+
+// pickupToolDownAir is Vehicle.cpp's (0x004B2E18): the terminal nearest the
+// cursor; the ghost standing there becomes the aircraft (convertGhost), else
+// the ghost goes and it is placed; then as
+// pickupToolPlacementCommandCallback. PARTIAL: pickupToolError's window.
+func (g *Game) pickupToolDownAir(sx, sy int) bool {
+	head := g.pickupHead
+	p, ok := g.w.AirPlacementAt(head, sx, sy)
+	if !ok {
+		return false
+	}
+	m := &g.w.Map
+	if g.ghostAirStation == p.StationID && g.ghostAirNode == p.AirportNode && m.VehicleIsGhost(head) {
+		p.ConvertGhost = true
+	}
+	if !p.ConvertGhost {
+		g.removeAirplaneGhost()
+	}
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	if _, ok := m.VehiclePlaceAir(c, sim.CmdApply, p); !ok {
 		log.Printf("[Game] can't place vehicle %d here", head)
 		return false
 	}
