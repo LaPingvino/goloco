@@ -1285,3 +1285,105 @@ func TestRoadPlacementAtCursor(t *testing.T) {
 		t.Fatal("nothing checked")
 	}
 }
+
+// TestVehicleWaterPickupPlace: the title map has no docks and no boats, so
+// the test makes both — a dock element for a company's station on a tile
+// whose boat position (the dock object's, rotated, + 32, 32) is on water,
+// and a ship bought for that company (CreateVehicle). VehiclePlaceWater puts
+// it there as a ghost (the ghost flag) and VehiclePickupWater lifts it (the
+// dock free again); then for real: at the boat position, on water, facing
+// out of the dock, stopped, the station its, the dock occupied; placing it
+// twice is refused; lifted again, every component is off the map; a dock
+// whose boat position is on land refuses it (noWater).
+func TestVehicleWaterPickupPlace(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	var shipObj uint16 = 0xFFFF
+	for i, v := range om.Vehicles {
+		if v != nil && v.Mode == objects.TransportModeWater {
+			shipObj = uint16(i)
+			break
+		}
+	}
+	if shipObj == 0xFFFF || len(om.DockObjects) == 0 || om.DockObjects[0] == nil {
+		t.Skip("no ship or dock objects")
+	}
+	dockObj := om.DockObjects[0]
+	var company uint8 = 0xFF
+	var stationID uint16
+	for i, st := range m.StationNames {
+		if st.Name != 0 && st.Owner < 16 {
+			company, stationID = st.Owner, uint16(i)
+			break
+		}
+	}
+	if company == 0xFF {
+		t.Skip("no company station")
+	}
+	addDock := func(wantWater bool) (int32, int32, int32, bool) {
+		for ty := 2; ty < m.Height-4; ty++ {
+			for tx := 2; tx < m.Width-4; tx++ {
+				x, y := int32(tx)*32, int32(ty)*32
+				ox, oy := rotOffset(dockObj.BoatPosition[0], dockObj.BoatPosition[1], 0)
+				if _, water := m.GetHeight(x+int32(ox)+32, y+int32(oy)+32); (water != 0) != wantWater || len(m.TileAt(tx, ty).Stations) > 0 {
+					continue
+				}
+				z := int32(m.TileAt(tx, ty).BaseZ) * 4 // the element's base height (whole small-z steps)
+				m.TileAt(tx, ty).Stations = append(m.TileAt(tx, ty).Stations, scenario.StationElement{StationType: 3, StationID: stationID, Owner: company, BaseZ: uint8(z / 4)})
+				return x, y, z, true
+			}
+		}
+		return 0, 0, 0, false
+	}
+	dx, dy, dz, ok := addDock(true)
+	if !ok {
+		t.Skip("no tile with water at a dock's boat position")
+	}
+	own := &Cmd{Company: company, Objects: om}
+	var head uint16
+	if _, ok := m.CreateVehicle(own, CmdApply, shipObj, true, &head); !ok {
+		t.Fatalf("buying ship %d for company %d refused", shipObj, company)
+	}
+	tr, _ := m.TrainOf(head)
+	p := VehicleWaterPlacement{X: dx, Y: dy, Z: dz, Head: head}
+	if _, ok := m.VehiclePlaceWater(own, CmdApply|CmdGhost, p); !ok {
+		t.Fatal("ghost placement refused")
+	}
+	if m.Entities[tr.Head].Flags38&flags38IsGhost == 0 {
+		t.Error("the ghost isn't marked")
+	}
+	m.VehiclePickupWater(own, CmdApply|CmdGhost, head)
+	if m.dockAt(dx, dy, dz).Flag6 {
+		t.Error("lifting the ghost left the dock occupied")
+	}
+	if _, ok := m.VehiclePlaceWater(own, CmdApply, p); !ok {
+		t.Fatal("placement refused where its ghost stood")
+	}
+	el := m.dockAt(dx, dy, dz)
+	hd, v2 := m.Entities[tr.Head], m.Entities[tr.Veh2]
+	if !el.Flag6 || hd.TileX == -1 || hd.Status != StatusStopped || hd.StationID != stationID || hd.VehicleFlags&VehicleFlagCommandStop == 0 {
+		t.Errorf("placed: dock %v, tile %d, status %d, station %d", el.Flag6, hd.TileX, hd.Status, hd.StationID)
+	}
+	ox, oy := rotOffset(dockObj.BoatPosition[0], dockObj.BoatPosition[1], 0)
+	if int32(v2.PosX) != dx+int32(ox)+32 || int32(v2.PosY) != dy+int32(oy)+32 {
+		t.Errorf("veh2 at %d,%d, want the boat position %d,%d", v2.PosX, v2.PosY, dx+int32(ox)+32, dy+int32(oy)+32)
+	}
+	if body := m.Entities[tr.Cars[0][0].Body]; body.SpriteYaw != 16 { // ((rotation 0 + 1) & 3) * 16
+		t.Errorf("body yaw %d, want 16", body.SpriteYaw)
+	}
+	if _, ok := m.VehiclePlaceWater(own, CmdApply, p); ok {
+		t.Error("placed twice")
+	}
+	m.VehiclePickupWater(own, CmdApply, head)
+	tr, _ = m.TrainOf(head)
+	m.eachComponent(tr, func(i int) {
+		if m.Entities[i].TileX != -1 || m.Entities[i].PosX != -32768 {
+			t.Errorf("component %d still on the map after the pickup", i)
+		}
+	})
+	if lx, ly, lz, ok := addDock(false); ok {
+		if _, ok := m.VehiclePlaceWater(own, CmdApply, VehicleWaterPlacement{X: lx, Y: ly, Z: lz, Head: head}); ok {
+			t.Error("placed at a dock whose boat position is on land")
+		}
+	}
+	t.Logf("ship object %d of company %d: placed at the dock at tile %d,%d and lifted", shipObj, company, dx/32, dy/32)
+}
