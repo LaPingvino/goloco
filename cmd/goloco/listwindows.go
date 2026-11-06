@@ -125,7 +125,7 @@ func (g *Game) openTownsWindow() {
 	infos := g.w.TownList()
 	rows := make([]ui.TownRow, len(infos))
 	for i, t := range infos {
-		rows[i] = ui.TownRow{Name: t.Name, Type: t.Size, Size: t.SizeIndex, Population: int(t.Population), Stations: t.NumStations}
+		rows[i] = ui.TownRow{ID: i, Name: t.Name, Type: t.Size, Size: t.SizeIndex, Population: int(t.Population), Stations: t.NumStations}
 	}
 	var tc, wc uint8 = 0, 1
 	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
@@ -133,6 +133,9 @@ func (g *Game) openTownsWindow() {
 	}
 	w := ui.NewTownList(g.sw, rows, tc, wc)
 	w.OnClose = func() { g.townList = nil }
+	w.OnRow = func(id int) { // onScrollMouseDown: Town::open
+		g.openTownWindow(id)
+	}
 	g.townList = w
 }
 
@@ -1162,4 +1165,23 @@ func (g *Game) openPortConstruction(option int) {
 	g.removeStationGhost()
 	g.buildMode, g.consTab, g.consStation = buildModeDock, 1, int(m.LastShipPort)
 	g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+}
+
+// openTownWindow is Town::open: the Town window on its Town tab, its
+// viewport on the town; the centre-view button moves the main view there.
+func (g *Game) openTownWindow(id int) {
+	infos := g.w.TownList()
+	if id < 0 || id >= len(infos) {
+		return
+	}
+	t := infos[id]
+	var tc, wc uint8 = 0, 1
+	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowColour
+	}
+	w := ui.NewTownWindow(g.sw, g.sh, t.Name, t.Size, int(t.Population), tc, wc)
+	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.TownView(id, vw, vh) }
+	w.OnCentreView = func() { g.w.CentreOnTown(id) }
+	w.OnClose = func() { g.townWin = nil }
+	g.townWin = w
 }

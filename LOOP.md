@@ -74,8 +74,12 @@ PL. [ ] **Playable and fun, by the clickables list** (ranked 2026-11-06 from scr
       Towns opens the towns list — 50 towns ✓. FOUND by (c): (1) STUCK — no way to go to a town: the town window (0/8)
       and the map window (0/7) aren't ported, so a player finds towns only by scrolling → the town window's centre-view
       (and the map) move up to PL step 1a; (2) town names show as "Town 1", "Town 10"… (the stations' names resolve) —
-      feel, not play; (3) the Towns window's tab icons are blank; (4) the toolbar's tooltip is drawn mid-screen. NEXT:
-      1a the town window (TownWindow.cpp: centre view first), then (d) build track between two towns … A scripted playthrough through the UI only (a diag, clicks not sim calls): New Game → a scenario → build track
+      feel, not play; (3) the Towns window's tab icons are blank; (4) the toolbar's tooltip is drawn mid-screen. 1a DONE 2026-11-06: the
+      Town window's Town tab (pkg/ui/townwindow.go: frame, caption, tabs, the viewport on the town at zoom quarter —
+      World.TownView —, "<size> population N", close, centre_on_viewport → World.CentreOnTown), opened by a Towns-list
+      row (onScrollMouseDown: Town::open; the list keeps its rows' town ids); stage d: Town 1's window, centre view
+      moves the main view to its houses ✓ (the centre-view icon isn't visible in the viewport corner — to check).
+      NEXT (e): build track between two towns … A scripted playthrough through the UI only (a diag, clicks not sim calls): New Game → a scenario → build track
       between two towns → two stations → Build Vehicles → place → route → start → run → earn. Every place it gets
       stuck goes to the top of this list, ahead of 2–8.
    2. Vehicle window orders that make routes worth building: orderWait (wait for full load), orderForceUnload,
@@ -1482,4 +1486,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — PL.0: the core-loop windows annotated for scripts/clickables.py (construction, title, scenario select, time panel, toolbar, vehicle tabs): 4% → 14% working as upstream; the playthrough (PL.1) next.
 - 2026-11-06 — (Fractal: green) PL.1: the UI-only playthrough started as input scripts (scripts/playthrough/): New Game → Sandbox Settler starts a game (shots checked); next: find two towns, build track.
 - 2026-11-06 — PL.1 stage c: the Towns list works (Weatherworld, 50 towns); found: no way to go to a town (town / map windows unported — now PL.1a), towns named "Town N", blank tab icons, a misplaced tooltip. (Sandbox Settler simply has no towns — my first "blocker" was the scenario choice.)
+- 2026-11-06 — PL.1a: the Town window (Town tab: viewport, status, centre view) opened from the Towns list — a player can now go to a town; playthrough stage d passes; tests green; test page redeployed.
 
