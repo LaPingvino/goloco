@@ -78,7 +78,13 @@ ST. [ ] **Building stations** (found 2026-11-06 wiring Station::updateLabel: gol
    costIndex, TrackObject stationTrackPieces. sub_48D794 DONE 2026-11-06 (sim/stationcanopy.go:
    UpdateStationCanopies with forEachStationElement / isStationTrackConnected; TrainStationObject var_0B;
    TestStationCanopiesReproduceSave: all 218 non-reserved train-station elements of the title save get their
-   saved sequence index back, 162 of them middle pieces). NEXT: createTrainStation's body (0x0048BB20). (Station::update's
+   saved sequence index back, 162 of them middle pieces). CreateTrainStation DONE 2026-11-06
+   (sim/createtrainstation.go: the suitability check, company, signals / level crossings / junctions, the two
+   clearances, costs (replacing another type: its sell cost too), the station element after the track, then
+   addTileToStation / modes / centre / label / canopies; TestCreateTrainStation — built "Minneapolis West" for
+   company 6 at 146,154, cost 1 795 as the dry run said; seen with GOLOCO_DIAG_BUILDVEHICLE=buildstation:
+   the platform and its plaque). PARTIAL: the AI's no-track query, invalidations. NEXT: RemoveTrainStation,
+   then the construction window's station tab (the player's way to call it). (Station::update's
    monthly acceptance check can use CalcAcceptedCargo too — check what goloco does there now.)
 TL. [x] (DONE 2026-11-06: station names too — Station.cpp drawStationName: the saved labelFrame, the curved
    ends and middle in two translucent passes (unk34, the owner's colour), the name with its town and the
@@ -1348,4 +1354,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (ST: sub_48D794) — (the other three wait on Joop → here.) Ported the pass that sets each train-station tile's sequence index (0, or 1 for the middle platform piece): covered when under ground, on a roofed bridge, or with something above starting under its clear height (including upstream's do-while that skips the tile's last element); uncovered pieces whose track runs on into the same station both ways get 1 when the station object's var_0B ≥ 2 (now parsed). Test: 218 / 218 saved elements reproduced; the first run's 40 misses were AI reservations (flag_5 stations), which the pass doesn't touch upstream either. All green; nothing drawn.
+
+
+- 2026-11-06 (ST: CreateTrainStation) — (the other three wait on Joop → here.) The command itself, on everything ported this session: piece suitability (stationTrackPieces & trackPieces & compatibleFlags), the nearby-station validation / allocation (dry run: allocate and free again), per tile the junction test, clearance (AI reservations, then the surface), the station element inserted right after its track (insertElementAfterNoReorg) or an old one re-typed, clear heights raised, then the station's tile, modes, centre, label and canopies. Test: on the title map's first free straight piece, company 6 builds "Minneapolis West" for 1 795 (the dry run's figure); the diag shows the platform and its red plaque. All green; no player UI yet, no redeploy.
 
