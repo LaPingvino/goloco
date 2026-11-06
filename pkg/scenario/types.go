@@ -173,6 +173,7 @@ type Scenario struct {
 	// The toolbar's last track / road choices (GameState lastRailroadOption,
 	// lastRoadOption, lastTrackTypeOption).
 	LastRailroadOption, LastRoadOption, LastTrackTypeOption uint8
+	LastAirport, LastShipPort                               uint8 // GameState 0x194 / 0x195: the Port menu's objects (0xFF none)
 	LastBuildVehiclesOption                                 uint8 // a VehicleType (0x414)
 	PickupDirection                                         uint8 // GameState 0x198: placing vehicles facing the other way
 

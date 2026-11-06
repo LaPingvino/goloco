@@ -261,3 +261,21 @@ func TestDockPlacementAt(t *testing.T) {
 	}
 	t.Logf("placements offered %d, water in front %d, buildable (dry run) %d", offered, frontWet, built)
 }
+
+// The title save's state names an airport and a dock for the Port menu;
+// forgotten (0xFF), UpdateAvailableAirportAndDockOptions picks the first
+// available ones again when the player has air / water vehicles unlocked.
+func TestUpdateAvailableAirportAndDockOptions(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	before := [2]uint8{m.LastAirport, m.LastShipPort}
+	m.LastAirport, m.LastShipPort = 0xFF, 0xFF
+	m.UpdateAvailableAirportAndDockOptions(om)
+	t.Logf("saved %v, after an update from none: airport %d dock %d (available airports %v docks %v)", before,
+		m.LastAirport, m.LastShipPort, om.AvailableAirports(int(m.CurrentYear)), om.AvailableDocks(int(m.CurrentYear)))
+	if before[1] != 0xFF && m.LastShipPort == 0xFF {
+		t.Error("the save had a dock option, the update found none")
+	}
+	if before[0] != 0xFF && m.LastAirport == 0xFF {
+		t.Error("the save had an airport option, the update found none")
+	}
+}

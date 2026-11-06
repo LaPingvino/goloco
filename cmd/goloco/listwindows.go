@@ -1101,3 +1101,58 @@ func (g *Game) dropCar(headID uint16, row, dest int) {
 	}
 	run()
 }
+
+// portMenu is ToolbarTop's portMenuMouseDown (0x0043A9C0): the airport item
+// when the game state has a last airport, the ship port item when it has a
+// dock (toolbar_menu_airport / _ship_port images, menu_airport / _ship_port),
+// highlighted at the last option; none, no menu. Choosing one is
+// portMenuDropdown: the option remembered, Construction::openWithFlags.
+// PARTIAL: the airport and dock construction windows (logged for now).
+func (g *Game) portMenu(btn *ui.ToolbarButton) {
+	if g.w == nil || g.r == nil || g.r.ObjMgr == nil || g.r.ObjMgr.InterfaceSkin == nil {
+		return
+	}
+	m := &g.w.Map
+	m.UpdateAvailableAirportAndDockOptions(g.r.ObjMgr) // upstream runs it on load / company changes; the state it leaves is what the menu reads
+	skin := int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
+	var items []ui.DropdownItem
+	var options []int
+	add := func(option, img, label int) {
+		items = append(items, ui.DropdownItem{MenuSprite: true, Sprite: skin + img, Text: i18n.Label(label), Action: func() {
+			g.lastPortOption = option
+			g.openPortConstruction(option)
+		}})
+		options = append(options, option)
+	}
+	if m.LastAirport != 0xFF {
+		add(0, objects.ISToolbarMenuAirport, i18n.MenuAirport)
+	}
+	if m.LastShipPort != 0xFF {
+		add(1, objects.ISToolbarMenuShipPort, i18n.MenuShipPort)
+	}
+	if len(items) == 0 {
+		return
+	}
+	d := ui.NewDropdownShowText(btn.X, btn.Y, btn.Width, btn.Height, ui.DropdownColour, items, 25, g.sw, g.sh)
+	if sk := g.r.ObjMgr.InterfaceSkin; btn.ColorGroup >= 0 && btn.ColorGroup < 4 {
+		cols := [4]uint8{sk.TopToolbarPrimaryColour, sk.TopToolbarSecondaryColour, sk.TopToolbarTertiaryColour, sk.TopToolbarQuaternaryColour}
+		d.SetToolbarColour(cols[btn.ColorGroup])
+	}
+	if g.lastPortOption != options[0] && len(items) > 1 { // the second item when the last option isn't the first
+		d.Highlighted = 1
+	} else {
+		d.Highlighted = 0
+	}
+	g.dropdown = d
+}
+
+// openPortConstruction is Construction::openWithFlags(1 << 31: airport,
+// 1 << 30: dock). PARTIAL: the construction windows themselves.
+func (g *Game) openPortConstruction(option int) {
+	m := &g.w.Map
+	if option == 0 {
+		log.Printf("[Game] airport construction (object %d) — window not yet ported", m.LastAirport)
+	} else {
+		log.Printf("[Game] dock construction (object %d) — window not yet ported", m.LastShipPort)
+	}
+}
