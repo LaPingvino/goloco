@@ -922,6 +922,10 @@ func (r *Renderer) entitiesByTile(m *sim.Map, v View, lw, lh int) map[[2]int][]*
 	return out
 }
 
+// extColourGhost is ExtColour::unk2C, Gfx::applyGhostToImage's colour with
+// the default construction marker (Config constructionMarker 0).
+const extColourGhost = 0x2C
+
 // paintVehicleEntity is PaintVehicle.cpp paintVehicleEntity: a ghost of
 // another company is not drawn; bogies and bodies by their painters at the
 // entity's position (setEntityPosition), in their colour schemes.
@@ -943,13 +947,13 @@ func (r *Renderer) paintVehicleEntity(s *paint.Session, m *sim.Map, e *scenario.
 	if e.EntityType == scenario.VehicleTypeBogie {
 		s.PaintBogie(paint.BogieEl{ObjectSpriteType: e.ObjectSpriteType, SpriteYaw: e.SpriteYaw, SpritePitch: e.SpritePitch,
 			Reversed: e.Flags38&isReversed != 0, AnimationIndex: e.Animation, Z: int(e.PosZ), Air: v.Mode == objects.TransportModeAir,
-			Colour: col, Ghost: e.Flags38&isGhost != 0}, v, r.Sprite, pal, r.colourMap(0x32))
+			Colour: col, Ghost: e.Flags38&isGhost != 0}, v, r.Sprite, pal, r.colourMap(0x32), r.colourMap(extColourGhost))
 		return
 	}
 	s.PaintBody(paint.BodyEl{ObjectSpriteType: e.ObjectSpriteType, SpriteYaw: e.SpriteYaw, SpritePitch: e.SpritePitch,
 		Reversed: e.Flags38&isReversed != 0, AnimationFrame: e.Animation, CargoFrame: e.CargoFrame, BodyIndex: e.BodyIndex,
 		Z: int(e.PosZ), AirOrWater: v.Mode == objects.TransportModeAir || v.Mode == objects.TransportModeWater,
-		Colour: col, BrakeLights: r.brakeLights(m, e.HeadID), Ghost: e.Flags38&isGhost != 0}, v, r.Sprite, pal)
+		Colour: col, BrakeLights: r.brakeLights(m, e.HeadID), Ghost: e.Flags38&isGhost != 0}, v, r.Sprite, pal, r.colourMap(extColourGhost))
 }
 
 // brakeLights is the train's veh2 brakeLightTimeout != 0 (head → veh1 → veh2).
