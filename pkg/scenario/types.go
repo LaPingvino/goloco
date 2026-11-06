@@ -225,6 +225,8 @@ type Town struct {
 type Industry struct {
 	ID                   uint8
 	ObjectID             uint8     // 0x10
+	Name                 uint16    // 0x00: its name (StringId; 0xFFFF a free slot)
+	FoundingYear         uint16    // 0x12
 	Town                 uint16    // 0xD5
 	ReceivedMonthlyTotal [3]uint16 // 0x18D receivedCargoQuantityMonthlyTotal
 	ReceivedDailyTotal   [3]uint16 // 0x199 receivedCargoQuantityDailyTotal
