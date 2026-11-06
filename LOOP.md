@@ -54,6 +54,14 @@ SK. [x] **Interface skin images after a save loads.** DONE 2026-11-05: the skin'
 > us to an actually playable game"): item **5P** first; 5.9f3's town parts (constructBuilding, addRoadJunction,
 > road takeover) and the open build (item O) after it.
 
+ST. [ ] **Building stations** (found 2026-11-06 wiring Station::updateLabel: goloco has no station commands — a
+   player can't build one). Port the station side of construction: StationManager (allocateNewStation,
+   deallocateStation, generateNewStationName, addTileToStation, recalculateStationCenter / Modes), then
+   CreateTrainStation.cpp (551) / RemoveTrainStation, CreateRoadStation, then the construction window's
+   station tab. STARTED 2026-11-06: allocation, deallocation and naming DONE (sim/stationmanager.go;
+   TestAllocateNewStation: new stations in Kansas City named Transfer, Halt, Airport — the names its stations
+   don't use, in upstream's order). PARTIAL: deallocateStation's orders / cargo stats / vehicles / messages
+   clean-up. NEXT: addTileToStation, recalculateStationCenter / Modes.
 TL. [x] (DONE 2026-11-06: station names too — Station.cpp drawStationName: the saved labelFrame, the curved
    ends and middle in two translucent passes (unk34, the owner's colour), the name with its town and the
    transport icons (label_icons_*: the emoji above U+FFFF now map to Loco 177 / 182 / 184, U+FE0F dropped as
@@ -1304,4 +1312,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (TL: updateLabel) — (the other three wait on Joop → here.) Ported Town::updateLabel and Station::updateLabel (font widths per zoom, the border, the projection at rotation 0, the shifts), with stringWidth generalising the medium-bold width to any font. TestLabelFramesReproduceSave recomputes every saved frame in the title save and matches all 32 towns and 82 live stations exactly. The test also showed empty station slots are name == 0xFFFF (Station::empty), not 0 — the overlay's skip fixed too (it would have drawn empty slots at the map origin's frame). generateTownName now calls UpdateTownLabel, so a new game's towns are labelled. All green; test page redeployed.
+
+
+- 2026-11-06 (ST opened: station allocation and names) — (the other three wait on Joop → here.) New item ST: goloco can't build stations. First chunk ported StationManager's allocateNewStation (first empty slot, closest town, fresh cargo stats, flag_5), deallocateStation (partial) and generateNewStationName (airport / heliport / docks, oilfield / mines, lakeside, forest / woods, heights / valley, plain, central, N/S/E/W, transfer … views, 1st … 20th). The first test run printed "Station 65": toTownName had the offset wrong (it is kTownNamesStart + the id; fromTownName − station_town gives the key). TestAllocateNewStation: Kansas City's new stations are Transfer, Halt, Airport. All green; nothing drawn.
 
