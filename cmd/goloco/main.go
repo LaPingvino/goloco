@@ -1419,14 +1419,19 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	}
 	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
-		if v == "finances" { // DIAGNOSTIC ONLY: the first saved train with a last income, its Finances tab
+		if v == "finances" || v == "cargo" { // DIAGNOSTIC ONLY: the first saved train with a last income (cargo: holding cargo), that tab
 			m := &g.w.Map
 			trains, _ := m.Trains()
 			for _, tr := range trains {
-				if h := m.Entities[tr.Head]; h.VehicleType == 0 && m.Entities[tr.Veh1].LastIncome.Day != -1 {
+				h := m.Entities[tr.Head]
+				loaded := false
+				for _, car := range tr.Cars {
+					loaded = loaded || m.Entities[car[0].Body].Cargo.Qty != 0
+				}
+				if h.VehicleType == 0 && m.Entities[tr.Veh1].LastIncome.Day != -1 && (v == "finances" || loaded && len(tr.Cars) > 2) {
 					g.inTitleScreen = false
-					g.openVehicleWindow(h.ID, 3)
-					log.Printf("[Diag] finances: vehicle %d", h.ID)
+					g.openVehicleWindow(h.ID, map[string]int{"finances": 3, "cargo": 2}[v])
+					log.Printf("[Diag] %s: vehicle %d", v, h.ID)
 					break
 				}
 			}

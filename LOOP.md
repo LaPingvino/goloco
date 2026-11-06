@@ -108,7 +108,12 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       layout = the common widgets at 400×202, draw as Finances::draw — last income date and cargo lines, average
       speed when non-zero, running cost, monthly profit, sale value; reachable from every tab; seen with
       GOLOCO_DIAG_BUILDVEHICLE=finances). PARTIAL: the cargo line's wrapping, renaming by the caption, the
-      tabs' icons (blank on every tab). NEXT: the Cargo tab (Cargo::draw, 2).
+      tabs' icons (blank on every tab). Cargo tab DONE 2026-11-06 (ui/vehiclecargo.go: Cargo's layout — list to
+      26 / 27 from the edges, 22 wider without refit —, each car drawn to end at x 24 with "{unit} from {station}"
+      lines or "Empty", Total and Capacity by cargo type (cargoLUTToString); seen with
+      GOLOCO_DIAG_BUILDVEHICLE=cargo). PARTIAL: the refit dropdown (the button shows per canRefit, does
+      nothing), the hovered row, the bottom lines' clipping. All five tabs now draw. NEXT in 5P: the refit
+      dropdown (Cargo::onRefitButton + the VehicleRefit command), then 5P's remaining PARTIALs.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a) — DONE 2026-11-06: it did differ (title save: 98 trains, the list against slot order at 55
    places). Trains() now walks the vehicle-head list from its head along next, as VehicleList does (slot order
@@ -1207,4 +1212,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (5P.g: the Finances tab) — (the other three wait on Joop → here.) The vehicle window's Finances tab, ported: the game's own strings (last_income_on_date / _na, transported_blocks_in_days, last_journey_average_speed, vehicle_monthly_running_cost / _profit, sale_value_of_vehicle) filled by a new ui.FillArgs (arguments in order, a {STRINGID} taking its string whole as FormatArguments do); a cargo's unit name comes from the object with raw argument bytes (123 = int32_grouped: "{ tonnes of Coal") — ui.ObjectString names them first (the first shot showed the line garbled without it). Seen: Train 1 "Last income on: 12th December 1972 / 16 Passengers transported 17 blocks in 5 days = $2,408", running cost, profit, sale value. TestFillArgs; all green; test page redeployed. NEXT: the Cargo tab.
+
+
+- 2026-11-06 (5P.g: the Cargo tab) — (the other three wait on Joop → here.) The vehicle window's Cargo tab, ported from Cargo::prepareDraw / draw / drawScroll and VehicleHead's generateCargoTotalString / CapacityString: per car (front bogie's secondary, body's primary cargo) "N Passengers from Cleveland" or "Empty", totals and capacities joined by type; the refit button per canRefit (player's, refittable flag 1<<14). Seen on Train 1: locomotive without a line, coaches "Empty" / "3 Passengers from Cleveland", Total 3 / Capacity 192 Passengers. All five tabs now reachable from each other. All green; test page redeployed.
 
