@@ -304,6 +304,7 @@ type VehicleWindow struct {
 	StopStartImage      int                  // Main: the red / green / yellow flag
 	OnStopStart         func(x, y, w, h int) // Main: stopStartOpen at the button's screen rectangle
 	OnRefit             func(x, y, w, h int) // Cargo: onRefitButton at the button's screen rectangle
+	OnRename            func()               // every tab's caption: renameVehicle (nil: disabled — another company's)
 	OnTab               func(tab int)        // switchTab
 	Route               []RouteLine          // Route: the order list's rows, the last the end of the list
 	Finances            VehicleFinances      // Finances: its lines, formatted
@@ -585,6 +586,14 @@ func (w *VehicleWindow) Contains(x, y int) bool {
 // clickable(Vehicle.cpp): closeButton tabMain tabDetails tabRoute stopStart centreViewport orderDelete orderUp orderDown orderSkip
 // clickable-partial(Vehicle.cpp): pickup
 func (w *VehicleWindow) HandleClick(x, y int) {
+	// The caption (1, 1)–(width − 2, 13) left of the close button, on every
+	// tab: renameVehicle (setCaptionEnableState: the controlling company's only).
+	if x >= w.X+1 && x <= w.X+w.W-16 && y >= w.Y+1 && y <= w.Y+13 {
+		if w.OnRename != nil {
+			w.OnRename()
+		}
+		return
+	}
 	in := func(c BVWidget) bool {
 		return !c.Hidden && x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B
 	}

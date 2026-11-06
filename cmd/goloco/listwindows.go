@@ -297,6 +297,9 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		OnCentreView:   func() { g.centreViewportOpen(headID) },
 		OnStopStart:    func(x, y, w, hh int) { g.stopStartOpen(headID, x, y, w, hh) },
 		OnRefit:        func(x, y, w, hh int) { g.refitOpen(headID, x, y, w, hh) }}
+	if own {
+		g.vehicleWin.OnRename = func() { g.renameVehicle(headID, tc, wc) }
+	}
 }
 
 // stopStartImage is Main::prepareDraw's: yellow in manual control, red when
@@ -1001,4 +1004,35 @@ func (g *Game) refitOpen(headID uint16, x, y, w, h int) {
 		apply()
 	}
 	g.dropdown = d
+}
+
+// renameVehicle is Common::renameVehicle: the text input titled "Name
+// {type}", "Type new name for this {type}:", on the current name (inputSize
+// kUserStringSize − 1); textInput: VehicleRename with the text (an empty
+// one changes nothing — upstream returns before the command).
+func (g *Game) renameVehicle(headID uint16, titleColour, colour uint8) {
+	m := &g.w.Map
+	tr, err := m.TrainOf(headID)
+	if err != nil {
+		return
+	}
+	h := m.Entities[tr.Head]
+	typ := i18n.Str([]int{i18n.Train, i18n.Bus, i18n.Truck, i18n.Tram, i18n.Aircraft, i18n.Ship}[min(int(h.VehicleType), 5)])
+	tab := 0
+	if g.vehicleWin != nil {
+		tab = g.vehicleWin.Tab
+	}
+	g.textInput = ui.OpenTextInput(ui.FillArgs(i18n.Str(i18n.TitleNameVehicle), typ), ui.FillArgs(i18n.Str(i18n.PromptEnterNewVehicleName), typ),
+		m.VehicleName(h.Name, int(h.OrdinalNumber)), 31, g.sw, g.sh, titleColour, colour, true, func(text string) {
+			if text == "" {
+				return
+			}
+			company, _ := g.w.ControllingCompany()
+			if _, ok := m.VehicleRename(&sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}, sim.CmdApply, headID, text); !ok {
+				log.Printf("[Game] %s", i18n.Str(i18n.CantRenameThisVehicle))
+			}
+			if g.vehicleWin != nil {
+				g.openVehicleWindow(headID, tab)
+			}
+		})
 }
