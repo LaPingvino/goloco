@@ -206,3 +206,41 @@ func (w *World) TrainStationPlacementAt(sx, sy int, stationType uint8) (sim.Trai
 	return sim.TrainStationPlacement{X: int32(ps.MapX / 32 * 32), Y: int32(ps.MapY / 32 * 32), Z: int32(tk.BaseZ) * 4,
 		Rotation: tk.Rotation, TrackID: tk.TrackID, Index: tk.SequenceIndex, TrackObjectID: tk.TrackObjectID, Type: stationType}, true
 }
+
+// RoadStationPlacementAt is StationTab's getRoadStationPlacementArgsFromCursor:
+// the road or road stop under the screen point (getMapCoordinatesFromPos with
+// roadAndTram | station), as a placement of stationType — over a stop, the
+// tile's first road element ("deliberately always passing road").
+func (w *World) RoadStationPlacementAt(sx, sy int, stationType uint8) (sim.RoadStationPlacement, bool) {
+	if w.scene == nil && w.renderer != nil && w.renderer.G1 != nil && w.renderer.ObjMgr != nil {
+		w.scene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
+		w.scene.WaveFrame = func(tx, ty int) uint8 { return uint8(w.Waves[sim.WaveIndex(tx, ty)].Frame) }
+	}
+	if w.scene == nil {
+		return sim.RoadStationPlacement{}, false
+	}
+	m := &w.Map
+	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	ps := w.scene.InteractionAt(m, v, sx, sy, func(it paint.InteractionItem) bool {
+		return it == paint.ItemRoad || it == paint.ItemRoadStation
+	})
+	if ps == nil {
+		return sim.RoadStationPlacement{}, false
+	}
+	rd, _ := ps.Item.(*scenario.RoadElement)
+	if rd == nil { // getRoadStationPlacementArgs(pos, nullptr): the tile's first road
+		if t := m.TileAt(ps.MapX/32, ps.MapY/32); t != nil {
+			for _, r := range t.Order {
+				if r.Kind == scenario.KindRoad && int(r.Index) < len(t.Roads) {
+					rd = &t.Roads[r.Index]
+					break
+				}
+			}
+		}
+	}
+	if rd == nil {
+		return sim.RoadStationPlacement{}, false
+	}
+	return sim.RoadStationPlacement{X: int32(ps.MapX / 32 * 32), Y: int32(ps.MapY / 32 * 32), Z: int32(rd.BaseZ) * 4,
+		Rotation: rd.Rotation, RoadID: rd.RoadID, Index: rd.SequenceIndex, RoadObjectID: rd.RoadObjectID, Type: stationType}, true
+}

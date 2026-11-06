@@ -146,6 +146,7 @@ type Game struct {
 	consStation            int                        // station tab: lastSelectedStationType (slot; -1 = the first available)
 	stationGhost           *sim.TrainStationPlacement // the station tab's ghost (cState.stationGhost*), nil none
 	stationGhostCost       int32                      // cState.stationCost
+	roadStationGhost       *sim.RoadStationPlacement  // the road stop ghost (stationGhostType bit 7)
 	errorWin               *ui.ErrorWindow            // WindowType::error (one at a time)
 	stationGhostStation    int                        // cState.constructingStationId (-1 new)
 	stationGhostAccepted   uint32                     // constructingStationAcceptedCargoTypes
@@ -616,9 +617,9 @@ func (g *Game) Update() error {
 	// and goes once the tab or the mode does.
 	if g.diagHoldGhost {
 		// DIAGNOSTIC ONLY: the ghost stays for the screenshot
-	} else if g.buildMode == buildModeTrack && g.consTab == 1 && !g.inTitleScreen {
+	} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad) && g.consTab == 1 && !g.inTitleScreen {
 		g.stationToolUpdate(g.mouseX, g.mouseY)
-	} else if g.stationGhost != nil {
+	} else if g.stationGhost != nil || g.roadStationGhost != nil {
 		g.removeStationGhost()
 	}
 
@@ -719,8 +720,8 @@ func (g *Game) Update() error {
 				g.pickupToolDown(g.mouseX, g.mouseY) // the Vehicle window's placing tool
 			} else if g.routeTool && g.vehicleWin != nil && !g.inTitleScreen {
 				g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
-			} else if g.buildMode == buildModeTrack && g.consTab == 1 && !g.inTitleScreen {
-				g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a train station on the track clicked
+			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad) && g.consTab == 1 && !g.inTitleScreen {
+				g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked
 			} else if g.buildMode != buildModeNone && g.hoverTileX >= 0 {
 				// Track/road mode: clicking the map sets the construction head.
 				g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
@@ -1518,6 +1519,63 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 						g.inTitleScreen = false
 						g.w.CenterOn(fmt.Sprintf("tile:%d,%d", x, y))
 						log.Printf("[Diag] buildstation: at %d,%d company %d: ok %v cost %d", x, y, tr.Owner, ok, cost)
+						done = true
+						break
+					}
+				}
+			}
+		} else if v == "roadstationtool" || v == "roadstationghost" { // DIAGNOSTIC ONLY: the Station tab's road tool over the first free straight road near a town, through picking (ghost: hover, leave, back, held for the shot; tool: clicked)
+			m := &g.w.Map
+			done := false
+			for y := 4; y < m.Height-4 && !done; y++ {
+				for x := 4; x < m.Width-4 && !done; x++ {
+					near := false
+					for _, t := range m.Towns {
+						if dx, dy := int(t.X)/32-x, int(t.Y)/32-y; dx*dx+dy*dy <= 64 {
+							near = true
+						}
+					}
+					if !near {
+						continue
+					}
+					tl := m.TileAt(x, y)
+					for _, r := range tl.Order {
+						if r.Kind != scenario.KindRoad {
+							continue
+						}
+						rd := tl.Roads[r.Index]
+						if rd.RoadID != 0 || rd.HasStationElement || rd.HasSignalElement || rd.HasLevelCrossing || rd.Ghost || rd.HasBridge {
+							continue
+						}
+						g.inTitleScreen = false
+						g.buildMode, g.consTab, g.buildObjID = buildModeRoad, 1, int(rd.RoadObjectID)
+						g.w.CenterOn(fmt.Sprintf("tile:%d,%d", x, y))
+						sx, sy := g.w.TileToScreenPx(x, y)
+						ghost := func() bool {
+							for _, st := range m.TileAt(x, y).Stations {
+								if st.Ghost && st.StationType == 1 {
+									return true
+								}
+							}
+							return false
+						}
+						if v == "roadstationghost" {
+							g.stationToolUpdate(sx, sy+16)
+							on := ghost()
+							g.stationToolUpdate(5, 5)
+							off := ghost()
+							g.stationToolUpdate(sx, sy+16)
+							log.Printf("[Diag] roadstationghost: tile %d,%d: ghost on hover %v, after leaving %v, back %v, cost %d, accepts %#x produces %#x", x, y, on, off, ghost(), g.stationGhostCost, g.stationGhostAccepted, g.stationGhostProduced)
+							g.diagHoldGhost = true
+							g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+						} else {
+							g.stationToolUp(sx, sy+16)
+							has := false
+							for _, st := range m.TileAt(x, y).Stations {
+								has = has || (!st.Ghost && st.StationType == 1)
+							}
+							log.Printf("[Diag] roadstationtool: clicked tile %d,%d: stop now %v, error window %v", x, y, has, g.errorWin != nil)
+						}
 						done = true
 						break
 					}
