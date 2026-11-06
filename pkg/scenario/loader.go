@@ -442,6 +442,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					Surface:      surface,
 					Height:       baseZ,
 					Water:        waterLevel,
+					UpdateTimer:  elem[5] >> 5, // getUpdateTimer: an industrial field's
 					TerrainIndex: terrainRaw,
 					GrowthStage:  growthStage,
 					Variation:    variation,

@@ -138,6 +138,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 				BaseZ:        st.Height,
 				Slope:        st.Slope,
 				WaterLevel:   st.Water,
+				UpdateTimer:  st.UpdateTimer,
 				GrowthStage:  st.GrowthStage,
 				Variation:    st.Variation,
 				IsIndustrial: st.IsIndustrial,

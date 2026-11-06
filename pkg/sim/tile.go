@@ -15,6 +15,7 @@ type Tile struct {
 	BaseZ        uint8 // height in SmallZ units (OpenLoco: 1 unit = 4px)
 	Slope        uint8 // slope corners and flags from byte 4 of surface element
 	WaterLevel   uint8 // water level from surface element byte 5 bits [4:0]; 0 = no water
+	UpdateTimer  uint8 // byte 5 bits [7:5]: an industrial field's update timer (getUpdateTimer)
 	GrowthStage  uint8 // terrain growth/season stage 0-7 (byte 6 bits [7:5]); selects sprite set
 	Variation    uint8 // per-tile flat-grass variation (byte 7); 0 = plain flat image
 	IsIndustrial bool  // surface owned by an industry; TerrainIndex is not a land slot
