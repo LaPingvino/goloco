@@ -282,4 +282,3 @@ func (w *Map) VehicleName(id uint16, ordinal int) string {
 	}
 	return fmt.Sprintf("Vehicle %d", ordinal)
 }
-
