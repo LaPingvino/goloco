@@ -1874,3 +1874,41 @@ func TestAirportEdgeTargets(t *testing.T) {
 		t.Skip("no airports on the title map")
 	}
 }
+
+// TestAirplaneGetNewStatus (AW.b): every aircraft of the title map in the
+// air or on an airport's edges has the status airplaneGetNewStatus gives
+// for its edge — the one the game itself set on its last tick (the
+// stopped / loading / unloading ones keep theirs) — and its approach
+// parameters point at an airport or a station; the target speed is the one
+// saved in Vehicle1.
+func TestAirplaneGetNewStatus(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	checked, same := 0, 0
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.Mode != 2 || h.TileX == -1 {
+			continue
+		}
+		switch h.Status {
+		case headStatusStopped, headStatusLoading, headStatusUnloading:
+			continue
+		}
+		checked++
+		st, speed := m.airplaneGetNewStatus(tr, om)
+		a := m.airplaneApproachParams(tr, om)
+		if v1 := m.Entities[tr.Veh1].TargetSpeed; speed != v1 {
+			t.Errorf("aircraft %d: target speed %d, Vehicle1's saved %d", h.ID, speed, v1)
+		}
+		if st == h.Status {
+			same++
+		} else {
+			t.Errorf("aircraft %d (station %d, edge %d): status %d, saved %d", h.ID, h.StationID, h.AirportMovementEdge, st, h.Status)
+		}
+		t.Logf("aircraft %d: station %d edge %d status %d target speed %d; heading yaw %d to z %d, %d away", h.ID, h.StationID, h.AirportMovementEdge, st, speed, a.targetYaw, a.targetZ, a.manhattan)
+	}
+	if checked == 0 {
+		t.Skip("no aircraft on the move on the title map")
+	}
+	t.Logf("%d of %d aircraft: the saved status", same, checked)
+}
