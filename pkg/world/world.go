@@ -3,7 +3,6 @@ package world
 import (
 	"fmt"
 	"github.com/LaPingvino/goloco/pkg/gfx8"
-	"github.com/LaPingvino/goloco/pkg/ui"
 	"image"
 	"image/color"
 	"image/png"
@@ -35,15 +34,6 @@ var slopeToDisplaySlope = [32]uint8{
 // tile is the per-tile map state, kept in pkg/sim (no rendering dependencies).
 type tile = sim.Tile
 
-// DemoTrain is a simple animated train entity for the title sequence and early gameplay.
-// It follows the tile grid, moving one tile at a time in direction (dx,dy).
-type DemoTrain struct {
-	tileX, tileY int     // current tile (leading car position)
-	dx, dy       int     // movement direction in tile space (one axis only)
-	progress     float64 // 0.0 = at tile centre, 1.0 = at next tile
-	vehicleIdx   int     // index into renderer.ObjMgr.Vehicles
-}
-
 // World holds a tile grid for an isometric game world
 type World struct {
 	catchment []uint8 // SetCatchmentDisplay's map (nil: none)
@@ -69,7 +59,6 @@ type World struct {
 	diagTicksDone   bool          // GOLOCO_DIAG_TICKS has run (TickSavedVehicles)
 	sim.State                     // simulation state: map, construction head, undo history (pkg/sim)
 	renderer        *render.Renderer
-	trains          []*DemoTrain // demo trains (title screen / scenarios without saved entities)
 	// isometric tile dimensions (standard 2:1 ratio)
 	tileW int // tile width in pixels (64)
 	tileH int // tile height in pixels (32)
@@ -222,16 +211,6 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 	w.camX = cx - 400
 	w.camY = cy - 300
 
-	// Towns and saved vehicle entities were filled by Map.LoadScenario. When
-	// entities are present they are rendered by paintVehicleEntities; otherwise
-	// fall back to demo trains.
-	if len(w.Entities) == 0 {
-		// No real entities (scenario file or empty save) — spawn scripted demo trains
-		// so the title screen and freshly-loaded scenarios show some movement.
-		w.spawnDemoTrains()
-	} else {
-		w.trains = nil
-	}
 	w.ResetWaves()
 }
 
@@ -245,7 +224,6 @@ func (w *World) LoadGenerated(m *sim.Map) {
 	cx, cy := w.tileToScreen(w.Width/2, w.Height/2)
 	w.camX = cx - 400
 	w.camY = cy - 300
-	w.trains = nil
 	w.ResetWaves()
 	log.Printf("[World] LoadGenerated: %dx%d tiles", w.Width, w.Height)
 }
@@ -259,63 +237,6 @@ func (w *World) tileOnScreen(tileX, tileY int) bool {
 	}
 	sx, sy := w.TileToScreenPx(tileX, tileY)
 	return sx >= 0 && sy >= 0 && sx < w.viewW && sy < w.viewH
-}
-
-// spawnDemoTrains places a handful of trains on track tiles found in the map.
-func (w *World) spawnDemoTrains() {
-	w.trains = nil
-	if w.renderer == nil || w.renderer.ObjMgr == nil || len(w.renderer.ObjMgr.Vehicles) == 0 {
-		return
-	}
-
-	// Find tiles with at least one track element. Spread spawns evenly.
-	type trackPos struct{ x, y int }
-	var trackTiles []trackPos
-	step := 1
-	if w.Width*w.Height > 1000 {
-		step = 8 // sample every 8th tile on large maps
-	}
-	for y := 0; y < w.Height; y += step {
-		for x := 0; x < w.Width; x += step {
-			if len(w.Tiles[y][x].Tracks) > 0 {
-				trackTiles = append(trackTiles, trackPos{x, y})
-			}
-		}
-	}
-	if len(trackTiles) == 0 {
-		return
-	}
-
-	// Spawn up to 5 trains, evenly spaced in the found list.
-	maxTrains := 5
-	if len(trackTiles) < maxTrains {
-		maxTrains = len(trackTiles)
-	}
-	for i := 0; i < maxTrains; i++ {
-		idx := i * len(trackTiles) / maxTrains
-		tp := trackTiles[idx]
-
-		// Prefer a direction that has a neighbouring track tile; fall back to +Y.
-		dx, dy := 0, 1
-		for _, cand := range [][2]int{{0, 1}, {1, 0}, {0, -1}, {-1, 0}} {
-			nx, ny := tp.x+cand[0], tp.y+cand[1]
-			if nx >= 0 && nx < w.Width && ny >= 0 && ny < w.Height &&
-				len(w.Tiles[ny][nx].Tracks) > 0 {
-				dx, dy = cand[0], cand[1]
-				break
-			}
-		}
-
-		vIdx := i % len(w.renderer.ObjMgr.Vehicles)
-		w.trains = append(w.trains, &DemoTrain{
-			tileX:      tp.x,
-			tileY:      tp.y,
-			dx:         dx,
-			dy:         dy,
-			progress:   float64(i) / float64(maxTrains), // stagger start positions
-			vehicleIdx: vIdx,
-		})
-	}
 }
 
 // SetCamera overrides the camera position directly (used by the title
@@ -560,26 +481,6 @@ func (w *World) Update() {
 	}
 	w.UpdateTiles(w.tileOnScreen, om)
 	w.UpdateWaves(uint32(w.animTick))
-	// Advance demo trains at ~2 tiles/second (60fps → 1/30 per frame).
-	const speed = 1.0 / 30.0
-	for _, tr := range w.trains {
-		tr.progress += speed
-		if tr.progress >= 1.0 {
-			tr.progress -= 1.0
-			// Move to the next tile
-			nx := tr.tileX + tr.dx
-			ny := tr.tileY + tr.dy
-			// Bounce if out-of-bounds or no track at destination
-			if nx < 0 || nx >= w.Width || ny < 0 || ny >= w.Height ||
-				len(w.Tiles[ny][nx].Tracks) == 0 {
-				tr.dx = -tr.dx
-				tr.dy = -tr.dy
-			} else {
-				tr.tileX = nx
-				tr.tileY = ny
-			}
-		}
-	}
 }
 
 // mapSaveChunkSize is the pixel size of each rendering tile during full-map save.
@@ -774,14 +675,6 @@ func (w *World) CenterOn(kind string) bool {
 			log.Printf("[World] CenterOn(%q): entity at (%d,%d)", kind, tx, ty)
 			w.LastCenterTileX, w.LastCenterTileY = tx.Int(), ty.Int()
 			w.SetCamera(float64(tx), float64(ty))
-			w.externalCamera = false
-			return true
-		}
-		if len(w.trains) > 0 {
-			tr := w.trains[0]
-			log.Printf("[World] CenterOn(%q): demo train at (%d,%d)", kind, tr.tileX, tr.tileY)
-			w.LastCenterTileX, w.LastCenterTileY = tr.tileX, tr.tileY
-			w.SetCamera(float64(tr.tileX), float64(tr.tileY))
 			w.externalCamera = false
 			return true
 		}
@@ -2571,12 +2464,6 @@ func (w *World) Draw(screen *ebiten.Image) {
 	// The ported software renderer (scene.go): the default; GOLOCO_SCENE=0 selects the old one.
 	if w.sceneEnabled() {
 		w.drawScene(screen) // saved vehicles are painted in the scene (paintEntities)
-		if len(w.Entities) == 0 {
-			w.paintDemoTrains(screen, scale)
-			if len(w.trains) > 0 {
-				ui.MarkForeign(screen.Bounds()) // drawn over the 8-bit world
-			}
-		}
 		w.drawOverlay(screen)
 		return
 	}
@@ -2776,98 +2663,11 @@ func (w *World) Draw(screen *ebiten.Image) {
 	}
 
 	// ── Vehicle rendering — post-tile pass (depth approximation) ──
-	// Use real parsed entities when available (loaded .SV5), otherwise demo trains.
-	if len(w.Entities) > 0 {
-		w.paintVehicleEntities(screen, scale)
-	} else {
-		w.paintDemoTrains(screen, scale)
-	}
+	// The saved vehicle entities (upstream has no demo trains: RR.b).
+	w.paintVehicleEntities(screen, scale)
 
 	// ── Overlay pass: station/town name labels + income money floats ──
 	w.drawOverlay(screen)
-}
-
-// paintDemoTrains renders all active demo trains after the tile loop.
-// OpenLoco reference: src/OpenLoco/src/Paint/PaintVehicle.cpp
-func (w *World) paintDemoTrains(screen *ebiten.Image, scale float64) {
-	if w.renderer == nil || w.renderer.ObjMgr == nil {
-		return
-	}
-	vehicles := w.renderer.ObjMgr.Vehicles
-	if len(vehicles) == 0 {
-		return
-	}
-
-	for _, tr := range w.trains {
-		if tr.tileX < 0 || tr.tileX >= w.Width || tr.tileY < 0 || tr.tileY >= w.Height {
-			continue
-		}
-
-		// Fractional world position (smooth between tiles)
-		fracX := float64(tr.tileX) + float64(tr.dx)*tr.progress
-		fracY := float64(tr.tileY) + float64(tr.dy)*tr.progress
-		vpX := (fracY - fracX) * 32.0
-		vpY := (fracY + fracX) * 16.0
-
-		// Height: interpolate between current and next tile
-		baseZ := float64(w.Tiles[tr.tileY][tr.tileX].BaseZ)
-		nx := tr.tileX + tr.dx
-		ny := tr.tileY + tr.dy
-		if nx >= 0 && nx < w.Width && ny >= 0 && ny < w.Height {
-			nextZ := float64(w.Tiles[ny][nx].BaseZ)
-			baseZ = baseZ*(1.0-tr.progress) + nextZ*tr.progress
-		}
-		vpY -= baseZ * 4.0
-
-		drawX := math.Round((vpX-w.camX)*scale) - 16 // centre horizontally
-		drawY := math.Round((vpY-w.camY)*scale) - 16 // centre vertically
-
-		// Direction → sprite rotation (32-direction wheel; 0=SE, 8=SW, 16=NW, 24=NE)
-		dir32 := 0
-		switch {
-		case tr.dy > 0 && tr.dx == 0:
-			dir32 = 0
-		case tr.dx > 0 && tr.dy == 0:
-			dir32 = 8
-		case tr.dy < 0 && tr.dx == 0:
-			dir32 = 16
-		case tr.dx < 0 && tr.dy == 0:
-			dir32 = 24
-		}
-
-		v := vehicles[tr.vehicleIdx%len(vehicles)]
-		if v.ImageOffset == 0 {
-			continue // sprites not loaded
-		}
-
-		// Use the body sprite for car component 0
-		bodyIdx := int(v.CarComponents[0].BodySpriteIdx)
-		spriteID, ok := v.GetBodySpriteID(bodyIdx, uint8(dir32*2), objects.PitchFlat) // 32 directions → 0-63 yaw
-		if !ok {
-			continue
-		}
-
-		// Apply company-colour palette remap (default ColourBlue=7).
-		// OpenLoco reference: PaintVehicle.cpp — ImageId::withPrimary(companyColour)
-		const defaultCompanyColour = 7
-		img := w.renderer.GetSpriteColoured(int(spriteID), defaultCompanyColour)
-		if img == nil {
-			img = w.renderer.GetSprite(int(spriteID))
-		}
-		if img == nil {
-			continue
-		}
-		_, _, xOff, yOff, hasInfo := w.renderer.GetSpriteInfo(int(spriteID))
-		if hasInfo {
-			drawX += float64(xOff) * scale
-			drawY += float64(yOff) * scale
-		}
-
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Scale(scale, scale)
-		op.GeoM.Translate(drawX, drawY)
-		screen.DrawImage(img, op)
-	}
 }
 
 // paintVehicleEntities renders VehicleBody entities parsed from an .SV5 save file.

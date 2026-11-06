@@ -224,7 +224,8 @@ RR. [ ] **Retire the old renderer** (Joop 2026-11-05: "I think we can probably f
    road_sprites.go and the checkbox go:
    a. the construction ghost (DrawConstructionGhost over the scene with kTrackParts / kRoadPartsStyle0) →
       upstream's ghost track / road elements painted by the scene (as the vehicle ghost now is);
-   b. demo trains on maps without vehicles — invented, upstream has none → remove;
+   b. DONE 2026-11-06: demo trains removed (the type, spawning, the per-frame update, CenterOn's fallback, both
+      paint calls) — upstream has none; the title shows its saved vehicles as before;
    c. ScreenToTile's height-iterating guess → InteractionAt (getMapCoordinatesFromPos), already ported;
    d. the overlay (station / town labels, money floats) → upstream's paths (Main.cpp's station / town names in
       the viewport paint, MoneyEffect as an entity).
@@ -1420,4 +1421,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — O: the live Pages site checked (open build, 118 OpenGraphics objects + palette, no Locomotion files); the 16 unmapped colours put to Joop as a question (a fitted rule would be the original data in another form).
 - 2026-11-06 — O: the open build's UI images inventoried (~120 icons, mostly g1 2300–2399; fonts covered by the TTF; the rest from objects); added to the question for Joop (draw vs OpenTTD's GPL icons).
 - 2026-11-06 — (Fractal: green) CR checked off: farm tiles, construction / animation and new industries are all ported; two stale PARTIAL notes (farm tiles, createIndustry) corrected to what the code does; messages / name numbering stay as their own PARTIALs.
+- 2026-11-06 — RR.b: the invented demo trains removed from the world (upstream has none); title unchanged in the shot; tests green; test page redeployed.
 
