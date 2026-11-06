@@ -96,6 +96,34 @@ func (m *Map) trainOf(headID uint16, idx map[uint16]int) (Train, error) {
 func (m *Map) Trains() ([]Train, error) {
 	idx := m.entityIndex()
 	var out []Train
+	// VehicleList (VehicleManager.cpp): the vehicle-head list from its head
+	// along next — newest first, the order upstream updates them in. Without
+	// the lists (or a list that misses a head), slot order.
+	if l := m.EntityLists; l != nil {
+		n := 0
+		for i := range m.Entities {
+			if m.Entities[i].EntityType == scenario.VehicleTypeHead {
+				n++
+			}
+		}
+		seen := 0
+		for id := l.Heads[EntityListVehicleHead]; id != entityIDNull && int(id) < len(l.Links) && seen <= n; id = l.Links[id].Next {
+			i, ok := idx[id]
+			if !ok || m.Entities[i].EntityType != scenario.VehicleTypeHead {
+				break
+			}
+			t, err := m.trainOf(id, idx)
+			if err != nil {
+				return out, err
+			}
+			out = append(out, t)
+			seen++
+		}
+		if seen == n {
+			return out, nil
+		}
+		out = out[:0]
+	}
 	for i := range m.Entities {
 		if m.Entities[i].EntityType != scenario.VehicleTypeHead {
 			continue
