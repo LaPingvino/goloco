@@ -69,8 +69,12 @@ ST. [ ] **Building stations** (found 2026-11-06 wiring Station::updateLabel: gol
    2026-11-06 (sim/stationtiles.go: AddTileToStation, RemoveTileFromStation[AndRecalcCargo],
    RecalculateStationCenter (+ its label), RecalculateStationModes; TestStationTilesReproduceSave: 82 / 82
    live stations' modes, acceptedFromProducer, centres and labels recomputed equal, and a tile out and back
-   in leaves them as saved). PARTIAL: addTileToStation's rivals' emotion. NEXT: CreateTrainStation.cpp
-   (findNearbyStationOnTrack, validateNearbyStation, getElTrack, the clearance, the element, then this). (Station::update's
+   in leaves them as saved). PARTIAL: addTileToStation's rivals' emotion. CreateTrainStation's lookups
+   DONE 2026-11-06 (sim/trainstation.go: FindNearbyStation, findNearbyEmptyStation, exceedsStationSize,
+   findNearbyStationOnTrack, validateNearbyStation, getElTrack; TestFindNearbyStationOwnTiles 275 / 275,
+   TestValidateNearbyStationOnOwnTrack 218 / 218). PARTIAL: the AI variant (getTrackConnectionsAi). NEXT:
+   createTrainStation itself (0x0048BB20: the per-tile loop — clearance, the station element on the track,
+   costs, ghost / AI flags — then allocate / addTile / recalc). (Station::update's
    monthly acceptance check can use CalcAcceptedCargo too — check what goloco does there now.)
 TL. [x] (DONE 2026-11-06: station names too — Station.cpp drawStationName: the saved labelFrame, the curved
    ends and middle in two translucent passes (unk34, the owner's colour), the name with its town and the
@@ -1331,4 +1335,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (ST: station tiles) — (the other three wait on Joop → here.) Ported addTileToStation, removeTileFromStation (with upstream's not-found mitigation) and …AndRecalcCargo, recalculateStationCenter (calls the ported updateLabel) and recalculateStationModes (train station: the track before it, road-like track → road; road station: the roads below, rail-like road → rail, and its object's passenger / freight cargo; airport; docks). TestStationTilesReproduceSave: all 82 live title stations reproduce their modes, producer acceptance, centre and label, and survive a tile round trip unchanged. All green; nothing drawn. NEXT: CreateTrainStation.
+
+
+- 2026-11-06 (ST: CreateTrainStation's lookups) — (the other three wait on Joop → here.) Ported the station-joining logic: StationManager's findNearbyStation (2-tile search, height-weighted distance, attached within 64) and findNearbyEmptyStation (reusing a removed station's name), exceedsStationSize (8 tiles), and CreateTrainStation.cpp's findNearbyStationOnTrack (the connection at the piece's end and reversed start), validateNearbyStation and getElTrack. Tests: all 275 title station tiles find their own station attached; all 218 straight station pieces validate into theirs. All green; nothing drawn. NEXT: createTrainStation's body.
 
