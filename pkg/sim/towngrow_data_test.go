@@ -2426,3 +2426,75 @@ func TestPlaceIndustryBuilding(t *testing.T) {
 		}
 	}
 }
+
+// TestCreateIndustry (CR part 2e): the createIndustry command at a searched
+// place on the title map — the query leaves the industries as they were; the
+// apply builds between the object's min and max buildings, each element on
+// the map, the industry under construction, its production targets in the
+// object's range, its centre on a tile corner; the same seed builds the same.
+func TestCreateIndustry(t *testing.T) {
+	m0, om := loadDataMap(t, "title.dat")
+	c := &Cmd{Company: CompanyNeutral, Objects: om}
+	run := func(m *Map) (int32, uint8, bool, IndustryPlacement) {
+		for k := 0; k < 16; k++ {
+			if om.GetIndustryObjectByIndex(k) == nil || om.GetIndustryObjectByIndex(k).Flags&industryBuiltOnWater != 0 {
+				continue
+			}
+			for try := 0; try < 10; try++ {
+				x, y, ok := m.findRandomNewIndustryLocation(uint8(k), om)
+				if !ok {
+					continue
+				}
+				a := IndustryPlacement{Type: uint8(k), X: x, Y: y, Srand1: 0x1234}
+				n := len(m.Industries)
+				if _, _, ok := m.CreateIndustry(c, 0, a); !ok {
+					continue
+				}
+				if len(m.Industries) != n {
+					t.Fatal("the query left an industry behind")
+				}
+				cost, id, ok := m.CreateIndustry(c, CmdApply, a)
+				if ok {
+					return cost, id, true, a
+				}
+			}
+		}
+		return 0, 0, false, IndustryPlacement{}
+	}
+	snap := func() *Map { m, _ := loadDataMap(t, "title.dat"); return m }
+	m := m0
+	cost, id, ok, a := run(m)
+	if !ok {
+		t.Fatal("no industry could be created")
+	}
+	ind := m.industryByID(id)
+	obj := om.GetIndustryObjectByIndex(int(a.Type))
+	if n := len(ind.Tiles); n < int(obj.MinNumBuildings) || n > int(obj.MaxNumBuildings) {
+		t.Errorf("%d buildings, want %d–%d", n, obj.MinNumBuildings, obj.MaxNumBuildings)
+	}
+	for _, tl := range ind.Tiles {
+		found := false
+		for _, e := range m.TileAt(int(tl[0])>>5, int(tl[1])>>5).Industries {
+			if e.IndustryID == id && e.SequenceIndex == 0 {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("no element of the industry at its tile %v", tl)
+		}
+	}
+	for i := 0; i < 2; i++ {
+		lo, hi := obj.InitialProductionRate[i][0], obj.InitialProductionRate[i][1]
+		if tg := ind.DailyProductionTarget[i]; tg < lo || tg > hi {
+			t.Errorf("production target %d: %d outside %d–%d", i, tg, lo, hi)
+		}
+	}
+	if ind.UnderConstruction != 0 || ind.X%32 != 0 || ind.Y%32 != 0 {
+		t.Errorf("under construction %d, centre (%d, %d)", ind.UnderConstruction, ind.X, ind.Y)
+	}
+	t.Logf("%s: industry %d, %d buildings, centre tile (%d, %d), targets %v, cost %d", obj.Name, id, len(ind.Tiles), ind.X/32, ind.Y/32, ind.DailyProductionTarget, cost)
+	m2 := snap()
+	if _, id2, ok2, _ := run(m2); !ok2 || id2 != id || fmt.Sprint(m2.industryByID(id2).Tiles) != fmt.Sprint(ind.Tiles) {
+		t.Error("the same seed built differently")
+	}
+}

@@ -282,3 +282,150 @@ func (m *Map) placeIndustryBuilding(c *Cmd, id uint8, x, y int32, direction, bui
 	}
 	return cost, true
 }
+
+// IndustryPlacement is IndustryPlacementArgs: the industry object, where,
+// whether it is built at once, and the command's seed (srand1; upstream
+// takes srand0 as the command's number — a vanilla bug it keeps).
+type IndustryPlacement struct {
+	Type             uint8
+	X, Y             int32
+	BuildImmediately bool
+	Srand0, Srand1   uint32
+}
+
+const (
+	gameCommandCreateIndustry = 47      // GameCommand::createIndustry
+	industryFlag04            = 1 << 3  // IndustryFlags::flag_04: founded by a company
+	industryNotRotatable      = 1 << 15 // IndustryObjectFlags::notRotatable
+)
+
+// placementAttempts is kPlacementAttemptDistanceRangeAndMin: as a building's
+// tries go on, the tiles searched around the last building widen.
+var placementAttempts = [25][2]int32{{1, 0}, {3, -1}, {3, -1}, {3, -1}, {3, -1}, {3, -1}, {3, -1}, {3, -1},
+	{5, -2}, {5, -2}, {5, -2}, {5, -2}, {5, -2}, {5, -2}, {5, -2}, {5, -2}, {5, -2}, {5, -2}, {5, -2}, {5, -2},
+	{5, -2}, {5, -2}, {5, -2}, {5, -2}, {5, -2}}
+
+// CreateIndustry is the createIndustry game command (0x0045436B): an
+// industry allocated (sub_454C91), built at once or under construction, a
+// ghost when asked, a company's when one founds it; its colour; its two
+// production targets from the object's initial ranges (the second from the
+// first's low byte, as upstream); between min and max of its buildings, each
+// tried up to 25 times at a random tile — widening around the last one
+// placed — not overlapping a placed one, a random direction (unless not
+// rotatable), a query then the placement; its centre the average of its
+// tiles; the cost. The industry is freed again when a building can't be
+// placed, or on a query. PARTIAL: the claimed fields and perimeter walls and
+// expandGrounds (the farm industries' grounds) — next; the newIndustry
+// message (no MessageManager).
+func (m *Map) CreateIndustry(c *Cmd, flags uint8, a IndustryPlacement) (int32, uint8, bool) {
+	prng := [2]uint32{gameCommandCreateIndustry, a.Srand1}
+	id, _, ok := m.industryAllocateChecked(a.Type, a.X, a.Y, prng, c.Objects)
+	if !ok {
+		return 0, 0, false
+	}
+	free := func() { // the slot freed (its name null)
+		for i := range m.Industries {
+			if m.Industries[i].ID == id {
+				m.Industries = append(m.Industries[:i], m.Industries[i+1:]...)
+				return
+			}
+		}
+	}
+	ind := m.industryByID(id)
+	obj := c.Objects.GetIndustryObjectByIndex(int(a.Type))
+	if a.BuildImmediately {
+		ind.UnderConstruction = 0xFF
+	}
+	if flags&CmdGhost != 0 {
+		ind.Flags |= industryFlagIsGhost
+	}
+	if c.Company != CompanyNeutral {
+		ind.Flags |= industryFlag04
+		ind.Owner = c.Company
+	}
+	p := core.NewPrngSeed(ind.Prng[0], ind.Prng[1])
+	sync := func() { ind.Prng = [2]uint32{p.Srand0(), p.Srand1()} }
+	colour := randomAvailableColour(p, obj)
+	lastX, lastY := int32(ind.X), int32(ind.Y)
+	randVal := p.RandNext() & 0xFF
+	rate := randVal
+	for i := 0; i < 2; i++ {
+		ind.DailyProduction[i] = 0
+		lo, hi := uint32(obj.InitialProductionRate[i][0]), uint32(obj.InitialProductionRate[i][1])
+		ind.DailyProductionTarget[i] = uint16((hi-lo)*rate/256 + lo)
+		rate = uint32(ind.DailyProductionTarget[i] & 0xFF)
+	}
+	var total int32
+	n := (uint32(obj.MaxNumBuildings)-uint32(obj.MinNumBuildings)+1)*randVal/256 + uint32(obj.MinNumBuildings)
+	for i := uint32(0); i < n && int(i) < len(obj.Buildings); i++ {
+		b := obj.Buildings[i]
+		large := obj.BuildingSizeFlags&(1<<b) != 0
+		placed := false
+		for j := 0; j < 25 && !placed; j++ {
+			r := p.RandNext()
+			sync()
+			dir := uint8(r & 3)
+			if obj.Flags&industryNotRotatable != 0 {
+				dir = 0
+			}
+			rng, minD := placementAttempts[j][0], placementAttempts[j][1]
+			x := lastX + (rng*int32((r>>18)&0xFF)/256+minD)*32
+			y := lastY + (rng*int32((r>>2)&0xFF)/256+minD)*32
+			maxX, maxY := x, y
+			if large {
+				maxX, maxY = x+32, y+32
+			}
+			overlap := false
+			for _, tl := range ind.Tiles {
+				tx, ty := int32(tl[0]), int32(tl[1])
+				tmx, tmy := tx, ty
+				if tl[2]&(-1<<15) != 0 {
+					tmx, tmy = tx+32, ty+32
+				}
+				if x > tmx || y > tmy || maxX < tx || maxY < ty {
+					continue
+				}
+				overlap = true
+				break
+			}
+			if overlap {
+				continue
+			}
+			if flags&CmdApply != 0 { // the query first
+				if _, ok := m.placeIndustryBuilding(c, id, x, y, dir, b, colour, a.BuildImmediately, flags&^CmdApply); !ok {
+					continue
+				}
+				ind = m.industryByID(id)
+				ind.Tiles = ind.Tiles[:len(ind.Tiles)-1] // numTiles-- (the query added it)
+			}
+			cost, ok := m.placeIndustryBuilding(c, id, x, y, dir, b, colour, a.BuildImmediately, flags)
+			ind = m.industryByID(id)
+			if !ok {
+				continue
+			}
+			total += cost
+			lastX, lastY, placed = x, y, true
+		}
+		if !placed {
+			free()
+			return 0, 0, false
+		}
+	}
+	sync()
+	if len(ind.Tiles) != 0 {
+		var sx, sy int32
+		for _, tl := range ind.Tiles {
+			sx, sy = sx+int32(tl[0]), sy+int32(tl[1])
+			if tl[2]&(-1<<15) != 0 {
+				sx, sy = sx+16, sy+16
+			}
+		}
+		k := int32(len(ind.Tiles))
+		ind.X, ind.Y = int16(int32(-32)&(sx/k+16)), int16(int32(-32)&(sy/k+16))
+	}
+	if flags&CmdApply == 0 {
+		free()
+	}
+	total += m.InflationAdjustedCost(obj.CostFactor, obj.CostIndex, 3)
+	return total, id, true
+}
