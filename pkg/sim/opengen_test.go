@@ -13,8 +13,8 @@ import (
 // (GOLOCO_OPENGRAPHICS: a folder with locopal.jasc.pal and ObjData/ holding
 // the OG objects, loaded into assets.NewOpenG1's pool;
 // skipped without), the editor's default options generate a 384 × 384
-// landscape with land and water. (Trees: 0 so far — an open finding, logged
-// in the LOOP; asserted once found.)
+// landscape with land and water. No trees: OpenGraphics v0.1.8 has no tree
+// object (nor a climate — its Tree/ and Climate/ folders are empty).
 func TestNewGeneratedMapOpenGraphics(t *testing.T) {
 	dir := os.Getenv("GOLOCO_OPENGRAPHICS")
 	if dir == "" {
@@ -47,5 +47,8 @@ func TestNewGeneratedMapOpenGraphics(t *testing.T) {
 	if land == 0 || water == 0 {
 		t.Fatalf("land %d water %d trees %d, highest baseZ %d", land, water, trees, maxZ)
 	}
-	t.Logf("land %d, water %d, trees %d, highest baseZ %d", land, water, trees, maxZ)
+	t.Logf("land %d, water %d, trees %d, highest baseZ %d; tree objects %d", land, water, trees, maxZ, len(om.TreeObjects))
+	if len(om.TreeObjects) == 0 && trees != 0 {
+		t.Errorf("%d trees without a tree object", trees)
+	}
 }

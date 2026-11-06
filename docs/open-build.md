@@ -23,9 +23,9 @@ reads them in principle.
 | track, track extra, train station, train signal, level crossing | 1 / 1 / 1 / 1 / 1 | 2 / 3 / 5 / 10 / 4 | one of each — enough to play |
 | building | 1 | 76 | **towns would be one building repeated** |
 | industry | 1 | 22 | **one industry: no supply chains** |
-| tree | 1 | 39 | thin landscape |
+| tree | **0** | 39 | **no trees** — v0.1.8's Tree/ folder is empty (corrected 2026-11-06; this table said 1) |
 | airport, dock | 1 / 1 | 4 / 1 | usable |
-| climate, region, currency, town names, steam, competitor, scenario text | 1 each | 6 / 3 / 12 / 6 / 5 / 38 / 45 | minimal set |
+| climate, region, currency, town names, steam, competitor, scenario text | 1 each (climate **0**: its folder is empty, corrected 2026-11-06) | 6 / 3 / 12 / 6 / 5 / 38 / 45 | minimal set |
 | sound | 1 | 42 | **almost no sound effects** |
 
 ## Inventory: what a fully free build needs (2026-11-02)
@@ -135,3 +135,10 @@ with the palette goloco reads from the original g1.DAT (locally; nothing of the 
 `locopal.jasc.pal` as its palette: the Pages workflow fetches it pinned to OpenGraphics commit d19bf5c6 and
 checks its sha256 (cf558101…3bfd23); webpack packs it at /w/opengraphics/locopal.jasc.pal. Next: the game
 reads it when there is no g1.DAT (an empty sprite pool with this palette), then the colour remap tables (§2).
+
+## Generated title map, and what OpenGraphics lacks (2026-11-06)
+
+sim.NewGeneratedMap with the editor's defaults (EditorController::init) makes the open build's landscape:
+hills and water from OpenGraphics' hill shapes. Two objects are missing from v0.1.8 — **tree** and **climate**
+(their folders are empty): so no trees, and no snow line (goloco sets it out of reach rather than at 0, a
+stand-in for the missing climate). Both are object-drawing work, best contributed to OpenGraphics.
