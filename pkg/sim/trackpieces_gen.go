@@ -122,3 +122,11 @@ var RoadReverseRoadID = [10]uint8{0, 2, 1, 4, 3, 6, 5, 8, 7, 9}
 var RoadReverseRotation = [10]uint8{2, 1, 3, 1, 3, 2, 2, 2, 2, 0}
 
 var RoadCompatibleFlags = [10]uint16{0x0, 0x2, 0x2, 0x1, 0x1, 0x4, 0x4, 0x8, 0x8, 0x20}
+
+// TrackMiscFlags (CommonTraitFlags), TrackReverseTrackID and TrackReverseRotation
+// are getTrackMiscData(id)'s flags, reverseTrackId and reverseRotation (createTrack's clearTrack).
+var TrackMiscFlags = [44]uint16{0x0, 0x8, 0x10, 0x10, 0x20, 0x20, 0x40, 0x40, 0x80, 0x80, 0x80, 0x80, 0x100, 0x100, 0x1, 0x1, 0x2, 0x2, 0x25, 0x25, 0x25, 0x25, 0x26, 0x26, 0x26, 0x26, 0x200, 0x200, 0x210, 0x210, 0x210, 0x210, 0x300, 0x300, 0x202, 0x202, 0x202, 0x202, 0x300, 0x300, 0x300, 0x300, 0x210, 0x210}
+
+var TrackReverseTrackID = [44]uint8{0, 1, 3, 2, 5, 4, 7, 6, 11, 10, 9, 8, 12, 13, 15, 14, 17, 16, 21, 20, 19, 18, 25, 24, 23, 22, 27, 26, 31, 30, 29, 28, 32, 33, 37, 36, 35, 34, 41, 40, 39, 38, 43, 42}
+
+var TrackReverseRotation = [44]uint8{2, 2, 1, 3, 1, 3, 1, 3, 1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 1, 3, 1, 3, 1, 3, 1, 3, 2, 2, 1, 1, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0}

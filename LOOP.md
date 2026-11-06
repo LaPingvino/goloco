@@ -1494,4 +1494,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — PL.1a: the Town window (Town tab: viewport, status, centre view) opened from the Towns list — a player can now go to a town; playthrough stage d passes; tests green; test page redeployed.
 - 2026-11-06 — PL.1 stage e: track building gets stuck — the build is the PlaceTrackAtHead shortcut (no cost, nothing drawn); logged as the next PL step (port CreateTrack).
 - 2026-11-06 — PL.1 e: createTrack ported, part 1 (pkg/sim/createtrack.go: args, valid extras, height rule, cost; TestCreateTrackCost). Next: the per-piece checks, the apply step, then the window builds through it. (Joop: prio WE — switched.)
+- 2026-11-06 — PL.1 e, createTrack part 2 started: TrackMiscFlags / TrackReverseTrackID / TrackReverseRotation generated from TrackData.cpp (gen_trackpieces.cpp) for clearTrack. NEXT: port clearTrack (CreateTrack.cpp 68–198), clearRoad, clearFunction. (Paused for WE: Joop's calls in DMs.)
 

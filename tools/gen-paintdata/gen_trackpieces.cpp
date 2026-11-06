@@ -70,5 +70,11 @@ int main()
     for (int i = 0; i < 10; i++) std::printf("%u, ", getRoadMiscData(i).reverseRotation);
     std::printf("}\n\nvar RoadCompatibleFlags = [10]uint16{");
     for (int i = 0; i < 10; i++) std::printf("0x%X, ", (unsigned)getRoadMiscData(i).compatibleFlags);
+    std::printf("}\n\n// TrackMiscFlags (CommonTraitFlags), TrackReverseTrackID and TrackReverseRotation\n// are getTrackMiscData(id)'s flags, reverseTrackId and reverseRotation (createTrack's clearTrack).\nvar TrackMiscFlags = [44]uint16{");
+    for (int i = 0; i < 44; i++) std::printf("0x%X, ", (unsigned)getTrackMiscData(i).flags);
+    std::printf("}\n\nvar TrackReverseTrackID = [44]uint8{");
+    for (int i = 0; i < 44; i++) std::printf("%u, ", getTrackMiscData(i).reverseTrackId);
+    std::printf("}\n\nvar TrackReverseRotation = [44]uint8{");
+    for (int i = 0; i < 44; i++) std::printf("%u, ", getTrackMiscData(i).reverseRotation);
     std::printf("}\n");
 }
