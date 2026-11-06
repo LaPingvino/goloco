@@ -79,7 +79,12 @@ PL. [ ] **Playable and fun, by the clickables list** (ranked 2026-11-06 from scr
       World.TownView —, "<size> population N", close, centre_on_viewport → World.CentreOnTown), opened by a Towns-list
       row (onScrollMouseDown: Town::open; the list keeps its rows' town ids); stage d: Town 1's window, centre view
       moves the main view to its houses ✓ (the centre-view icon isn't visible in the viewport corner — to check).
-      NEXT (e): build track between two towns … A scripted playthrough through the UI only (a diag, clicks not sim calls): New Game → a scenario → build track
+      (e) STUCK 2026-11-06: the Railway Track window opens (toolbar), a start tile picks the ghost, "Build this…
+      £185" advances the head — but the build is the old shortcut sim.PlaceTrackAtHead (main.go:3674): no cost
+      charged (£84,300 unchanged), no CreateTrack command (no clearance / company / money checks), and the placed
+      track isn't drawn (tiles [37..35,253] logged, nothing on screen). NEXT, ahead of 2–8: port
+      TrackConstruction's CreateTrack (GameCommands/Track/CreateTrack.cpp) as a GameCommand through DoCommandFor and
+      build through it; then find why the elements don't draw. A scripted playthrough through the UI only (a diag, clicks not sim calls): New Game → a scenario → build track
       between two towns → two stations → Build Vehicles → place → route → start → run → earn. Every place it gets
       stuck goes to the top of this list, ahead of 2–8.
    2. Vehicle window orders that make routes worth building: orderWait (wait for full load), orderForceUnload,
@@ -1487,4 +1492,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — (Fractal: green) PL.1: the UI-only playthrough started as input scripts (scripts/playthrough/): New Game → Sandbox Settler starts a game (shots checked); next: find two towns, build track.
 - 2026-11-06 — PL.1 stage c: the Towns list works (Weatherworld, 50 towns); found: no way to go to a town (town / map windows unported — now PL.1a), towns named "Town N", blank tab icons, a misplaced tooltip. (Sandbox Settler simply has no towns — my first "blocker" was the scenario choice.)
 - 2026-11-06 — PL.1a: the Town window (Town tab: viewport, status, centre view) opened from the Towns list — a player can now go to a town; playthrough stage d passes; tests green; test page redeployed.
+- 2026-11-06 — PL.1 stage e: track building gets stuck — the build is the PlaceTrackAtHead shortcut (no cost, nothing drawn); logged as the next PL step (port CreateTrack).
 
