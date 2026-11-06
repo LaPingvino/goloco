@@ -214,7 +214,7 @@ func (m *Map) AllocateNewStation(x, y, z int32, owner, mode uint8, om *objects.O
 		st.X, st.Y, st.Z = int16(x), int16(y), int16(z)
 		st.LabelFrame = scenario.LabelFrame{}
 		st.Flags = stationFlag5
-		st.TileSize = 0
+		st.TileSize, st.NoTilesTimeout = 0, 0
 		st.Var3B0, st.Var3B1, st.VisitedTypes = 0, 0, 0
 		st.AirportRotation, st.AirportStartPos, st.AirportOccupiedEdges = 0, [3]int16{}, 0
 		return id, true
@@ -239,4 +239,27 @@ func (m *Map) DeallocateStation(id int) {
 	}
 	m.emptyUserString(st.Name)
 	st.Name = stationNameNull
+}
+
+// stationsUpdateDaily is StationManager::updateDaily (0x0048B244): a station
+// with no tiles counts the days; after 10 it is deallocated (a player
+// company's owner is disgusted on the 5th). PARTIAL: the towns'
+// ratingAdjusted flags and Station::updateCargo with its rating bonus; the
+// emotion event (goloco keeps no company emotions yet); the construction
+// window's sub_49E1F1 and the invalidation (UI).
+func (m *Map) stationsUpdateDaily() {
+	for id := range m.StationNames {
+		st := &m.StationNames[id]
+		if st.Name == stationNameNull {
+			continue
+		}
+		if st.TileSize != 0 {
+			st.NoTilesTimeout = 0
+			continue
+		}
+		st.NoTilesTimeout++
+		if st.NoTilesTimeout >= 10 {
+			m.DeallocateStation(id)
+		}
+	}
 }

@@ -1434,6 +1434,7 @@ type StationName struct {
 	AirportOccupiedEdges uint32
 	Var3B0               uint8  // var_3B0 (0x3B0)
 	TileSize             uint16 // stationTileSize (0x1CE)
+	NoTilesTimeout       uint8  // noTilesTimeout (0x29): days the station has had no tiles
 	// Tiles is stationTiles (0x1D0): the first TileSize are the station's
 	// tiles (z also holds the rotation: heightFloor it).
 	Tiles [80][3]int16
@@ -1469,7 +1470,7 @@ func parseStationNames(gs []byte) []StationName {
 			X: int16(binary.LittleEndian.Uint16(rec[0x02:])), Y: int16(binary.LittleEndian.Uint16(rec[0x04:])), Z: int16(binary.LittleEndian.Uint16(rec[0x06:])),
 			VisitedTypes: rec[0x3B2], Flags: binary.LittleEndian.Uint16(rec[0x2A:]), Owner: rec[0x28], Var3B1: rec[0x3B1], Var3B0: rec[0x3B0],
 			LabelFrame: ParseLabelFrame(rec[0x08:]),
-			TileSize:   binary.LittleEndian.Uint16(rec[0x1CE:]), AirportRotation: rec[0x3B3],
+			TileSize:   binary.LittleEndian.Uint16(rec[0x1CE:]), NoTilesTimeout: rec[0x29], AirportRotation: rec[0x3B3],
 			AirportStartPos:      [3]int16{int16(binary.LittleEndian.Uint16(rec[0x3B4:])), int16(binary.LittleEndian.Uint16(rec[0x3B6:])), int16(binary.LittleEndian.Uint16(rec[0x3B8:]))},
 			AirportOccupiedEdges: binary.LittleEndian.Uint32(rec[0x3BA:])}
 		for k := range out[i].Tiles {
