@@ -292,3 +292,71 @@ func (m *Map) CreatePort(c *Cmd, flags uint8, a PortPlacement, g1 G1Raw) (int32,
 	}
 	return total, true
 }
+
+// PortRemoval is PortRemovalArgs: the dock's tile and height.
+type PortRemoval struct {
+	X, Y, Z int32
+}
+
+// stationElAt is RemovePort.cpp's getStationEl: the tile's first station
+// element at that height (its order position, -1 none).
+func (m *Map) stationElAt(x, y, z int32) (*Tile, int) {
+	t := m.TileAt(int(x)>>5, int(y)>>5)
+	if t == nil {
+		return nil, -1
+	}
+	for k, r := range t.Order {
+		if r.Kind == scenario.KindStation && int(r.Index) < len(t.Stations) && int32(t.Stations[r.Index].BaseZ)*4 == z {
+			return t, k
+		}
+	}
+	return t, -1
+}
+
+// RemovePort is the removePort game command (RemovePort.cpp 0x00494570): the
+// dock at a.X, a.Y taken off — refused without a station element there, or
+// while a boat lies at it (flag_6: currently_in_use_by_at_least_one_vehicle).
+// As upstream, nobody's ownership is checked. The cost: the dock's sell cost
+// (base 7; negative, a refund). removePortTileElements (0x00494706): each of
+// the 2×2 needs its station element at that height (else refused); applied,
+// it goes. Then, unless a ghost: the tile out of the station with its cargo
+// recalculated, the modes, centre and label. PARTIAL: the surfaces' AI
+// allocation flag reset (goloco's tiles don't keep it), the invalidations.
+func (m *Map) RemovePort(c *Cmd, flags uint8, a PortRemoval, g1 G1Raw) (int32, bool) {
+	om := c.Objects
+	t, k := m.stationElAt(a.X, a.Y, a.Z)
+	if k < 0 {
+		return 0, false
+	}
+	el := t.Stations[t.Order[k].Index]
+	stationID := -1
+	if flags&CmdGhost == 0 {
+		stationID = int(el.StationID)
+	}
+	if el.Flag6 {
+		return 0, false // currently_in_use_by_at_least_one_vehicle
+	}
+	if om == nil || int(el.ObjectID) >= len(om.DockObjects) || om.DockObjects[el.ObjectID] == nil {
+		return 0, false
+	}
+	dock := om.DockObjects[el.ObjectID]
+	total := m.InflationAdjustedCost(dock.SellCostFactor, dock.CostIndex, 7)
+	for _, off := range buildingTileOffsets(true) { // removePortTileElements
+		tt, kk := m.stationElAt(a.X+off[0], a.Y+off[1], a.Z)
+		if kk < 0 {
+			return 0, false
+		}
+		if flags&CmdApply != 0 {
+			tt.removeStationElement(kk)
+		}
+	}
+	if flags&CmdGhost == 0 && flags&CmdApply != 0 && stationID >= 0 && stationID < len(m.StationNames) {
+		m.RemoveTileFromStationAndRecalcCargo(stationID, a.X, a.Y, a.Z, el.Rotation, om)
+		m.RecalculateStationModes(stationID, om)
+		m.RecalculateStationCenter(stationID, g1)
+		if g1 != nil {
+			m.UpdateStationLabel(stationID, g1)
+		}
+	}
+	return total, true
+}
