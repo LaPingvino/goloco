@@ -874,14 +874,14 @@ func TestVehicleOrderMoves(t *testing.T) {
 // commands: a stopped saved train on the title map is lifted off its line; a
 // new train with the same cars is bought (createVehicle, then a car at a time),
 // put where it stood (vehiclePlace), given its stops (vehicleOrderInsert) and
-// started (vehicleChangeRunningMode); then the game runs: it leaves, travels
-// and calls at both stations.
-// PARTIAL: "and earns" — nothing produces cargo yet (buildings' and
-// industries' production into stations, DeliverCargoToStation's callers, are
-// not ported: LOOP item CP), so the saved train's wait-for-full-load order is
-// left out and the stations stay empty.
+// started (vehicleChangeRunningMode); then the game runs — the vehicles, the
+// date (industries produce daily), the tile loop (town buildings produce) —:
+// it leaves, travels, calls at both stations, and earns: cargo the town and
+// the industries made is delivered and paid to its company.
 func TestPlayableVehicleEndToEnd(t *testing.T) {
-	m, om := loadDataMap(t, "title.dat")
+	m0, om := loadDataMap(t, "title.dat")
+	s := &State{Map: *m0}
+	m := &s.Map
 	trains, _ := m.Trains()
 	var old Train
 	found := false
@@ -908,10 +908,8 @@ func TestPlayableVehicleEndToEnd(t *testing.T) {
 	v2 := m.Entities[old.Veh2]
 	c := &Cmd{Company: oh.Owner, Objects: om, Players: func(uint8) bool { return true }}
 	var orders [][]byte
-	for _, o := range m.OrderRing(oh.OrderTableOffset, 0) {
-		if o.Type() == OrderStopAt { // its stops (no wait for a full load: nothing produces cargo yet)
-			orders = append(orders, append([]byte(nil), m.Orders[o.Offset:o.Offset+orderSizes[o.Type()]]...))
-		}
+	for _, o := range m.OrderRing(oh.OrderTableOffset, 0) { // all of them, the waits for a full load too
+		orders = append(orders, append([]byte(nil), m.Orders[o.Offset:o.Offset+orderSizes[o.Type()]]...))
 	}
 	var cars []uint16
 	for _, car := range old.Cars {
@@ -947,11 +945,33 @@ func TestPlayableVehicleEndToEnd(t *testing.T) {
 	startX, startY := m.entity(h).PosX, m.entity(h).PosY
 	moved := 0.0
 	called := map[uint16]bool{}
-	for tick := 0; tick < 60000 && len(called) < 2; tick++ {
+	cash0 := m.Companies[c.Company].Cash
+	waiting := func() (n int) {
+		for id := range m.StationNames {
+			for _, cg := range m.StationNames[id].Cargo {
+				n += int(cg.Quantity)
+			}
+		}
+		return
+	}
+	waiting0 := waiting()
+	var earned int64
+	prevRev := m.Entities[tr.Veh2].CurMonthRevenue
+	for tick := 0; tick < 200000 && (len(called) < 2 || earned == 0); tick++ {
 		m.UpdateVehicles(om)
+		s.UpdateTiles(func(int, int) bool { return false }, om)
 		tr, err := m.TrainOf(h)
 		if err != nil {
 			t.Fatal(err)
+		}
+		if rev := m.Entities[tr.Veh2].CurMonthRevenue; rev != prevRev {
+			if rev > prevRev {
+				if earned == 0 {
+					t.Logf("tick %d: first payment %d", tick, rev-prevRev)
+				}
+				earned += int64(rev - prevRev)
+			}
+			prevRev = rev
 		}
 		hd := m.Entities[tr.Head]
 		if d := math.Hypot(float64(hd.PosX-startX), float64(hd.PosY-startY)); d > moved {
@@ -964,9 +984,12 @@ func TestPlayableVehicleEndToEnd(t *testing.T) {
 			called[hd.StationID] = true
 		}
 	}
-	t.Logf("moved up to %.0f px; called at %v", moved, called)
+	t.Logf("moved up to %.0f px; called at %v; earned %d (company cash %d → %d); cargo waiting at stations %d → %d", moved, called, earned, cash0, m.Companies[c.Company].Cash, waiting0, waiting())
 	if moved < 100 || len(called) < 2 {
 		t.Errorf("the bought train did not run its route: moved %.0f px, called at %v", moved, called)
+	}
+	if earned <= 0 {
+		t.Error("the bought train earned nothing")
 	}
 }
 
