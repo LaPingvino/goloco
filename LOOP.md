@@ -118,9 +118,14 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       skin's images, main by vehicle type in the company colour, the current tab's animated by frameNo, which
       now counts Updates: Game.windowFrame). Renaming: the VehicleRename command DONE 2026-11-06 (sim/vehiclerename.go:
       the window's three 12-byte calls composed — same name nothing, empty → train_number …, else a unique user
-      string; TestVehicleRename). NEXT: the TextInputWindow (Ui/Windows/TextInputWindow.cpp, 329 lines — goloco
-      has none; also what towns / stations / companies rename through), then the caption click opening it
-      (renameVehicle: title_name_vehicle, prompt_enter_new_vehicle_name), then hover looks.
+      string; TestVehicleRename). TextInputWindow + InputSession DONE 2026-11-06 (ui/textinput.go:
+      TextInput.cpp's editing — insert, backspace, delete, home / end, left / right, the limit, sanitizeInput,
+      the offsets — and the 330×90 window; TestInputSession), the caption click on every tab opening it for
+      the controlling company's vehicle (setCaptionEnableState), OK → VehicleRename; seen with
+      GOLOCO_DIAG_BUILDVEHICLE=rename (+ GOLOCO_DIAG_RENAME_OK=1: "Train 1 Express"). PARTIAL: the text input
+      takes all input while open (upstream's isn't modal: the game runs on), the cursor keys' repeat timing is
+      goloco's own. Towns / stations / companies can rename through it now (their commands not yet). NEXT in
+      5P: hover looks.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a) — DONE 2026-11-06: it did differ (title save: 98 trains, the list against slot order at 55
    places). Trains() now walks the vehicle-head list from its head along next, as VehicleList does (slot order
@@ -1231,4 +1236,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (5P.g: VehicleRename) — (the other three wait on Joop → here.) RenameVehicle.cpp ported as one call with the whole name (upstream's three 12-byte calls only ferry the text): unchanged name → nothing, empty → the type's numbered name, else userStringAllocate(unique) — refused when taken —, dry run frees it again, the old user string emptied (new emptyUserString); VehicleName factored out of VehicleListRows. TestVehicleRename: "Night Express" set, refused for a second vehicle, cleared back to "Train 1" with the user string freed. The window side needs a TextInputWindow goloco doesn't have — the next chunk. All green; nothing drawn changed.
+
+
+- 2026-11-06 (5P.g: renaming from the window) — (the other three wait on Joop → here.) Ported Ui/TextInput.cpp's InputSession and Windows/TextInputWindow.cpp (goloco had neither; the save browser only appends), wired as goloco's modal windows are (PARTIAL: upstream's isn't modal). The vehicle window's caption, on every tab and for the controlling company's vehicle only, opens it: "Name train" / "Type new name for this train:" on the current name, n/31, OK → VehicleRename, the window reopened with the new name. Seen: the window over Finances with "Train 1 Express" 15/31; with Enter the train is renamed and the caption reads it. TestInputSession; all green; test page redeployed.
 

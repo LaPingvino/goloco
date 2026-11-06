@@ -137,16 +137,17 @@ type Game struct {
 	vehDiagDone            bool   // GOLOCO_DIAG_VEHLIST opened
 	fsResolution           [2]int // Config display.fullscreenResolution
 	preferredCurrencyFlags [2]bool
-	frameLimit             int                // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
-	prompt                 *ui.PromptOkCancel // an open confirmation (modal: it takes all input)
-	consBridge             int                // lastSelectedBridge (slot; -1 = the first available)
-	consOneShot            int                // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
-	consSignal             int                // signal tab: lastSelectedSignal (slot; -1 = the first available)
-	consStation            int                // station tab: lastSelectedStationType (slot; -1 = the first available)
-	consMods               uint8              // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
-	consSlope              int                // construction slope selection: -2 (steep down) … 0 … +2
-	buildObjID             int                // index into TrackObjects / RoadObjects
-	hoverTileX             int                // tile under cursor in build mode (-1 if invalid)
+	frameLimit             int                 // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
+	prompt                 *ui.PromptOkCancel  // an open confirmation (modal: it takes all input)
+	textInput              *ui.TextInputWindow // an open text input (renaming); PARTIAL: takes all input, upstream's is not modal
+	consBridge             int                 // lastSelectedBridge (slot; -1 = the first available)
+	consOneShot            int                 // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
+	consSignal             int                 // signal tab: lastSelectedSignal (slot; -1 = the first available)
+	consStation            int                 // station tab: lastSelectedStationType (slot; -1 = the first available)
+	consMods               uint8               // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
+	consSlope              int                 // construction slope selection: -2 (steep down) … 0 … +2
+	buildObjID             int                 // index into TrackObjects / RoadObjects
+	hoverTileX             int                 // tile under cursor in build mode (-1 if invalid)
 	hoverTileY             int
 
 	// Diagnostic crop: when set, save a 480×360 PNG centred on diagTileX/Y after the next Draw.
@@ -470,6 +471,27 @@ func (g *Game) Update() error {
 	if fstats.on {
 		t0 := time.Now()
 		defer func() { fstats.addUpdate(time.Since(t0)) }()
+	}
+	if g.textInput != nil { // TextInputWindow: keyUp (typed characters, editing keys, Enter / Escape), onMouseUp, onUpdate
+		t := g.textInput
+		t.Update()
+		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
+			mx, my := ebiten.CursorPosition()
+			t.HandleClick(mx, my)
+		}
+		var keys []int
+		for k, code := range map[ebiten.Key]int{ebiten.KeyBackspace: ui.KeyBackspace, ebiten.KeyDelete: ui.KeyDelete, ebiten.KeyHome: ui.KeyHome,
+			ebiten.KeyEnd: ui.KeyEnd, ebiten.KeyArrowLeft: ui.KeyLeft, ebiten.KeyArrowRight: ui.KeyRight} {
+			if inpututil.IsKeyJustPressed(k) || inpututil.KeyPressDuration(k) > 30 && inpututil.KeyPressDuration(k)%3 == 0 { // key repeat
+				keys = append(keys, code)
+			}
+		}
+		t.Keys(ebiten.AppendInputChars(nil), keys, inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter),
+			inpututil.IsKeyJustPressed(ebiten.KeyEscape))
+		if t.Closed && g.textInput == t {
+			g.textInput = nil
+		}
+		return nil
 	}
 	if g.prompt != nil { // the modal confirmation takes all input (setCurrentModalType)
 		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
@@ -1293,6 +1315,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.dropdown != nil && g.dropdown.Visible {
 		g.dropdown.Draw(screen)
 	}
+	if g.textInput != nil { // stickToFront
+		g.textInput.Draw(screen)
+	}
 	if g.prompt != nil { // a confirmation, on top of everything
 		g.prompt.Draw(screen)
 	}
@@ -1425,7 +1450,29 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	}
 	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
-		if v == "refit" { // DIAGNOSTIC ONLY: as a saved train's company, a refittable vehicle bought, its Cargo tab, the refit dropdown
+		if v == "rename" { // DIAGNOSTIC ONLY: as a saved train's company, its window's caption clicked, " Express" typed
+			m := &g.w.Map
+			trains, _ := m.Trains()
+			for _, tr := range trains {
+				if h := m.Entities[tr.Head]; h.VehicleType == 0 {
+					m.ControllingCompany = h.Owner
+					g.inTitleScreen = false
+					g.openVehicleWindow(h.ID, 3)
+					g.vehicleWin.HandleClick(g.vehicleWin.X+40, g.vehicleWin.Y+6)
+					if g.textInput != nil {
+						g.textInput.Keys([]rune(" Express"), nil, false, false)
+					}
+					log.Printf("[Diag] rename: vehicle %d, text input open %v", h.ID, g.textInput != nil)
+					if os.Getenv("GOLOCO_DIAG_RENAME_OK") != "" && g.textInput != nil { // Enter: OK
+						g.textInput.Keys(nil, nil, true, false)
+						g.textInput = nil
+						nh := m.Entities[tr.Head]
+						log.Printf("[Diag] rename: now %q, window %q", m.VehicleName(nh.Name, int(nh.OrdinalNumber)), g.vehicleWin.Title)
+					}
+					break
+				}
+			}
+		} else if v == "refit" { // DIAGNOSTIC ONLY: as a saved train's company, a refittable vehicle bought, its Cargo tab, the refit dropdown
 			m := &g.w.Map
 			trains, _ := m.Trains()
 			for _, tr := range trains {
