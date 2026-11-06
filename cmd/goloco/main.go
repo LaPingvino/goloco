@@ -1458,9 +1458,46 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves" && v != "playable" && v != "towns") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves" && v != "playable" && v != "towns" && v != "buildstation") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
-		if v == "towns" { // DIAGNOSTIC ONLY: the view on the biggest town (GOLOCO_DIAG_ZOOM: at that zoom), for the town labels
+		if v == "buildstation" { // DIAGNOSTIC ONLY: CreateTrainStation on the first free straight track piece that takes one, the view on it
+			m := &g.w.Map
+			om := g.r.ObjMgr
+			g1, _ := om.G1File.(sim.G1Raw)
+			typ := uint8(0)
+			for i, s := range om.TrainStationObjects {
+				if s != nil {
+					typ = uint8(i)
+					break
+				}
+			}
+			done := false
+			for y := 4; y < m.Height-4 && !done; y++ {
+				for x := 4; x < m.Width-4 && !done; x++ {
+					tl := m.TileAt(x, y)
+					for _, r := range tl.Order {
+						if r.Kind != scenario.KindTrack {
+							continue
+						}
+						tr := tl.Tracks[r.Index]
+						if tr.TrackID != 0 || tr.HasStation || tr.HasSignal || tr.HasLevelCrossing || tr.Ghost || tr.AiAllocated || tr.HasBridge {
+							continue
+						}
+						c := &sim.Cmd{Company: tr.Owner, Objects: om}
+						a := sim.TrainStationPlacement{X: int32(x) * 32, Y: int32(y) * 32, Z: int32(tr.BaseZ) * 4, Rotation: tr.Rotation, TrackObjectID: tr.TrackObjectID, Type: typ}
+						if _, ok := m.CreateTrainStation(c, 0, a, g1); !ok {
+							continue
+						}
+						cost, ok := m.CreateTrainStation(c, sim.CmdApply, a, g1)
+						g.inTitleScreen = false
+						g.w.CenterOn(fmt.Sprintf("tile:%d,%d", x, y))
+						log.Printf("[Diag] buildstation: at %d,%d company %d: ok %v cost %d", x, y, tr.Owner, ok, cost)
+						done = true
+						break
+					}
+				}
+			}
+		} else if v == "towns" { // DIAGNOSTIC ONLY: the view on the biggest town (GOLOCO_DIAG_ZOOM: at that zoom), for the town labels
 			g.inTitleScreen = false
 			m := &g.w.Map
 			best := 0
