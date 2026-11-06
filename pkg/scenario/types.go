@@ -431,6 +431,7 @@ type StationElement struct {
 	ClearZ        uint8  // byte 3
 	Ghost         bool   // byte 1 bit 4: ElementFlags::ghost
 	AiAllocated   bool   // byte 1 bit 5: ElementFlags::aiAllocated
+	Flag6         bool   // byte 1 bit 6: ElementFlags::flag_6 (a dock: a boat is placed at it)
 }
 
 // SignalElement represents a railway signal on a tile.

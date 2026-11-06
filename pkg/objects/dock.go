@@ -16,6 +16,9 @@ type DockObject struct {
 	Variations     [][]uint8 // numBuildingVariations is 0 or 1
 	Image          uint32
 	BuildingImage  uint32 // image + 1 (+ variations*4 shadow images when hasShadows)
+	// BoatPosition is where a boat lies at the dock (0x24), relative to
+	// the dock's centre tile, before the element's rotation.
+	BoatPosition [2]int16
 }
 
 // ParseDockObjectWithG1 parses a dock object (g1 may be nil: no images).
@@ -23,7 +26,8 @@ func ParseDockObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Doc
 	if len(data) < DockObjectSize {
 		return nil, fmt.Errorf("dock object too small: %d bytes", len(data))
 	}
-	o := &DockObject{Header: header, Flags: binary.LittleEndian.Uint16(data[DockFlagsOffset:])}
+	o := &DockObject{Header: header, Flags: binary.LittleEndian.Uint16(data[DockFlagsOffset:]),
+		BoatPosition: [2]int16{int16(binary.LittleEndian.Uint16(data[0x24:])), int16(binary.LittleEndian.Uint16(data[0x26:]))}}
 	parts, vars := int(data[DockNumBuildingPartsOffset]), int(data[DockNumBuildingVariationsOffset])
 	off := DockObjectSize
 	n, name := parseStringTable(data[off:])
