@@ -65,8 +65,12 @@ ST. [ ] **Building stations** (found 2026-11-06 wiring Station::updateLabel: gol
    setCatchmentDisplay — 4 tiles round each tile, an airport's extents (AirportObject min / max now parsed), a
    dock's 2×2 —, doCalcAcceptedCargo / calcAcceptedCargo with CargoSearchState; BuildingObject's consumed
    cargoes and producedCargoQty / consumedCargoQty parsed; TestCalcAcceptedCargoReproducesSave: all 82 live
-   stations' accepted cargo and industries match the save). NEXT: addTileToStation /
-   removeTileFromStation, recalculateStationCenter / Modes, then CreateTrainStation. (Station::update's
+   stations' accepted cargo and industries match the save). The station's tiles DONE
+   2026-11-06 (sim/stationtiles.go: AddTileToStation, RemoveTileFromStation[AndRecalcCargo],
+   RecalculateStationCenter (+ its label), RecalculateStationModes; TestStationTilesReproduceSave: 82 / 82
+   live stations' modes, acceptedFromProducer, centres and labels recomputed equal, and a tile out and back
+   in leaves them as saved). PARTIAL: addTileToStation's rivals' emotion. NEXT: CreateTrainStation.cpp
+   (findNearbyStationOnTrack, validateNearbyStation, getElTrack, the clearance, the element, then this). (Station::update's
    monthly acceptance check can use CalcAcceptedCargo too — check what goloco does there now.)
 TL. [x] (DONE 2026-11-06: station names too — Station.cpp drawStationName: the saved labelFrame, the curved
    ends and middle in two translucent passes (unk34, the owner's colour), the name with its town and the
@@ -1324,4 +1328,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (ST: accepted cargo) — (the other three wait on Joop → here.) addTileToStation needs Station::calcAcceptedCargo, which goloco lacked: ported the catchment (setCatchmentDisplay's cargo map, setStationCatchmentRegion, the airport extents — AirportObject minX..maxY now parsed) and doCalcAcceptedCargo (industries' required cargo at 8 points, town buildings' produced / consumed quantities — BuildingObject now parses its consumed cargoes and both quantity pairs —, a large building counted once, accepted at 8). TestCalcAcceptedCargoReproducesSave: 82 of 82 live title stations accept exactly what the save says, with the same industry per cargo. All green; nothing drawn.
+
+
+- 2026-11-06 (ST: station tiles) — (the other three wait on Joop → here.) Ported addTileToStation, removeTileFromStation (with upstream's not-found mitigation) and …AndRecalcCargo, recalculateStationCenter (calls the ported updateLabel) and recalculateStationModes (train station: the track before it, road-like track → road; road station: the roads below, rail-like road → rail, and its object's passenger / freight cargo; airport; docks). TestStationTilesReproduceSave: all 82 live title stations reproduce their modes, producer acceptance, centre and label, and survive a tile round trip unchanged. All green; nothing drawn. NEXT: CreateTrainStation.
 
