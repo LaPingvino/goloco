@@ -59,12 +59,13 @@ type Game struct {
 	audioMgr                       *audio.Manager
 	scenarioSelect                 *ui.ScenarioSelectWindow // the New Game window when open
 	diagNewGameDone                bool
-	browse                         *ui.PromptBrowseWindow // the Load window when open
-	options                        *ui.OptionsWindow      // the Options window when open
-	townList                       *ui.TownListWindow     // the town list when open
-	buildVehicle                   *ui.BuildVehicleWindow // the Build Vehicle window when open (5P.f)
-	vehicleWin                     *ui.VehicleWindow      // the Vehicle window when open (5P.g)
-	diagMouse                      *[2]int                // DIAGNOSTIC ONLY: the mouse held at a point (the roadghost diag's hover)
+	browse                         *ui.PromptBrowseWindow    // the Load window when open
+	options                        *ui.OptionsWindow         // the Options window when open
+	townList                       *ui.TownListWindow        // the town list when open
+	buildVehicle                   *ui.BuildVehicleWindow    // the Build Vehicle window when open (5P.f)
+	vehicleWin                     *ui.VehicleWindow         // the Vehicle window when open (5P.g)
+	diagMouse                      *[2]int                   // DIAGNOSTIC ONLY: the mouse held at a point (the roadghost diag's hover)
+	ghostWater                     sim.VehicleWaterPlacement // _ghostVehiclePos for a boat ghost (ghostProgress 0)
 	buildVehDiagDone               bool
 	diagTownsDone                  bool
 	diagOptionsDone                bool
@@ -1399,7 +1400,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
 		if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
@@ -1431,6 +1432,80 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 						log.Printf("[Diag] route after the click: %q", l.Text)
 					}
 					break
+				}
+			}
+		} else if v == "shipghost" { // DIAGNOSTIC ONLY: the title map has no docks or boats — add a dock on water near the view's centre, buy a ship, hover over it
+			m := &g.w.Map
+			om := g.r.ObjMgr
+			var shipObj uint16 = 0xFFFF
+			for i, v := range om.Vehicles {
+				if v != nil && v.Mode == objects.TransportModeWater {
+					shipObj = uint16(i)
+					break
+				}
+			}
+			var company uint8 = 0xFF
+			var stationID uint16
+			for i, st := range m.StationNames {
+				if st.Name != 0 && st.Owner < 16 {
+					company, stationID = st.Owner, uint16(i)
+					break
+				}
+			}
+			if shipObj == 0xFFFF || company == 0xFF || len(om.DockObjects) == 0 || om.DockObjects[0] == nil {
+				log.Printf("[Diag] shipghost: no ship object, company station or dock object")
+			} else {
+				m.ControllingCompany = company
+				g.inTitleScreen = false
+				d := om.DockObjects[0]
+				ox, oy := sim.RotateOffset(d.BoatPosition[0], d.BoatPosition[1], 0)
+				var tx, ty int = -1, -1 // a tile whose dock boat position lies on water
+				for y := 4; y < m.Height-4 && tx < 0; y++ {
+					for x := 4; x < m.Width-4; x++ {
+						t := m.TileAt(x, y)
+						if _, water := m.GetHeight(int32(x)*32+int32(ox)+32, int32(y)*32+int32(oy)+32); water != 0 && t != nil && len(t.Stations) == 0 {
+							if _, here := m.GetHeight(int32(x)*32, int32(y)*32); here == 0 { // the dock itself on the shore
+								tx, ty = x, y
+								break
+							}
+						}
+					}
+				}
+				if tx < 0 {
+					log.Printf("[Diag] shipghost: no shore tile with water at the boat position")
+				} else {
+					t := m.TileAt(tx, ty)
+					t.Stations = append(t.Stations, scenario.StationElement{StationType: 3, StationID: stationID, Owner: company, BaseZ: t.BaseZ})
+					g.w.CenterOn(fmt.Sprintf("tile:%d,%d", tx, ty))
+					var head uint16
+					if _, ok := m.CreateVehicle(&sim.Cmd{Company: company, Objects: om}, sim.CmdApply, shipObj, true, &head); !ok {
+						log.Printf("[Diag] shipghost: buying ship %d refused", shipObj)
+					} else {
+						g.openVehicleWindow(head, 1)
+						if x, y, ok := g.vehicleWin.PickupButton(); ok {
+							g.vehicleWin.HandleClick(x, y)
+						}
+						if g.vehicleWin != nil { // out of the way of the dock at the centre (the click re-opened it centred)
+							g.vehicleWin.X, g.vehicleWin.Y = 4, 40
+						}
+						for r := 0; r < 120 && !m.VehicleIsGhost(head); r += 4 {
+							for _, o := range [][2]int{{r, r / 2}, {-r, r / 2}, {r, -r / 2}, {-r, -r / 2}, {0, r}, {0, -r}} {
+								hx, hy := g.sw/2+o[0], g.sh/2+o[1]
+								if g.overWindow(hx, hy) {
+									continue
+								}
+								g.pickupToolUpdate(hx, hy)
+								if m.VehicleIsGhost(head) {
+									g.diagMouse = &[2]int{hx, hy}
+									break
+								}
+							}
+						}
+						tr, _ := m.TrainOf(head)
+						v2 := m.Entities[tr.Veh2]
+						log.Printf("[Diag] shipghost: dock added at tile %d,%d (station %d, company %d), ship %d bought; pickup tool %v; a ghost now %v at %d,%d,%d; mouse %v",
+							tx, ty, stationID, company, head, g.pickupOn, m.VehicleIsGhost(head), v2.PosX, v2.PosY, v2.PosZ, g.diagMouse)
+					}
 				}
 			}
 		} else if v == "roadghost" { // DIAGNOSTIC ONLY: lift a road vehicle, its pickup tool on, hover until a placement — the ghost left standing for the shot

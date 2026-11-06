@@ -159,3 +159,7 @@ func (m *Map) VehiclePickupWater(c *Cmd, flags uint8, headID uint16) (int32, boo
 	}
 	return 0, true
 }
+
+// RotateOffset is Math::Vector::rotate of an object's offset by an element's
+// rotation (for the UI's placement searches).
+func RotateOffset(x, y int16, rotation uint8) (int16, int16) { return rotOffset(x, y, rotation) }

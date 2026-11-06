@@ -395,6 +395,9 @@ func (g *Game) onPickup(headID uint16) {
 // PARTIAL: air and water, the error window.
 func (g *Game) pickupToolDown(sx, sy int) bool {
 	head := g.pickupHead
+	if g.pickupMode() == 3 {
+		return g.pickupToolDownWater(sx, sy)
+	}
 	p, ok := g.w.PlacementAt(head, sx, sy)
 	if !ok {
 		return false
@@ -475,6 +478,10 @@ func (g *Game) buildVehiclesMenu(btn *ui.ToolbarButton) {
 // cursor; unchanged since the last ghost, nothing; else the old ghost lifted
 // and the train placed there as a ghost (apply | ghost | noErrorWindow).
 func (g *Game) pickupToolUpdate(sx, sy int) {
+	if g.pickupMode() == 3 {
+		g.pickupToolUpdateWater(sx, sy)
+		return
+	}
 	p, ok := g.w.PlacementAt(g.pickupHead, sx, sy)
 	if !ok {
 		g.removeLandGhost()
@@ -495,6 +502,10 @@ func (g *Game) pickupToolUpdate(sx, sy int) {
 // removeLandGhost is Vehicle.cpp's: a ghost-placed vehicle lifted again
 // (VehiclePickup, apply | noErrorWindow | ghost); _ghostTrackProgress = -1.
 func (g *Game) removeLandGhost() {
+	if g.pickupMode() == 3 {
+		g.removeBoatGhost()
+		return
+	}
 	if g.w != nil && g.r != nil && g.w.Map.VehicleIsGhost(g.pickupHead) {
 		company, _ := g.w.ControllingCompany()
 		c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
@@ -654,4 +665,80 @@ func (g *Game) routeToolDown(sx, sy int) {
 		g.routeSel++
 	}
 	g.openVehicleWindow(g.routeHead, 4)
+}
+
+// pickupMode is the picked-up vehicle's TransportMode (0xFF: none).
+func (g *Game) pickupMode() uint8 {
+	if g.w == nil {
+		return 0xFF
+	}
+	tr, err := g.w.Map.TrainOf(g.pickupHead)
+	if err != nil {
+		return 0xFF
+	}
+	return g.w.Map.Entities[tr.Head].Mode
+}
+
+// pickupToolUpdateWater is Vehicle.cpp's (0x004B2B9E): the dock nearest the
+// cursor (World.WaterPlacementAt); the same as the last ghost, nothing; else
+// the old ghost lifted and the boat placed there as a ghost
+// (_ghostTrackProgress 0 marks a boat ghost).
+func (g *Game) pickupToolUpdateWater(sx, sy int) {
+	p, ok := g.w.WaterPlacementAt(g.pickupHead, sx, sy)
+	if !ok {
+		g.removeBoatGhost()
+		return
+	}
+	if g.ghostProgress == 0 && g.ghostWater.X == p.X && g.ghostWater.Y == p.Y && g.ghostWater.Z == p.Z {
+		return
+	}
+	g.ghostWater = p
+	g.removeBoatGhost()
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	if _, ok := g.w.Map.VehiclePlaceWater(c, sim.CmdApply|sim.CmdGhost|sim.CmdNoErrorWindow, p); ok {
+		g.ghostProgress = 0
+	}
+}
+
+// removeBoatGhost is Vehicle.cpp's: a ghost boat lifted
+// (VehiclePickupWater, apply | noErrorWindow | ghost); _ghostTrackProgress = -1.
+func (g *Game) removeBoatGhost() {
+	if g.w != nil && g.r != nil && g.w.Map.VehicleIsGhost(g.pickupHead) {
+		company, _ := g.w.ControllingCompany()
+		c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+		g.w.Map.VehiclePickupWater(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdGhost, g.pickupHead)
+	}
+	g.ghostProgress = -1
+}
+
+// pickupToolDownWater is Vehicle.cpp's: the dock nearest the cursor; the
+// ghost standing there becomes the boat (convertGhost), else the ghost goes
+// and the boat is placed; then as pickupToolPlacementCommandCallback.
+// PARTIAL: pickupToolError's window.
+func (g *Game) pickupToolDownWater(sx, sy int) bool {
+	head := g.pickupHead
+	p, ok := g.w.WaterPlacementAt(head, sx, sy)
+	if !ok {
+		return false
+	}
+	m := &g.w.Map
+	if g.ghostProgress == 0 && g.ghostWater.X == p.X && g.ghostWater.Y == p.Y && g.ghostWater.Z == p.Z && m.VehicleIsGhost(head) {
+		p.ConvertGhost = true
+	} else {
+		g.removeBoatGhost()
+	}
+	g.ghostProgress = -1
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	if _, ok := m.VehiclePlaceWater(c, sim.CmdApply, p); !ok {
+		log.Printf("[Game] can't place vehicle %d here", head)
+		return false
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyShift) {
+		m.VehicleChangeRunningMode(c, sim.CmdApply, head, sim.RunningModeStart)
+	}
+	g.pickupOn = false
+	g.openVehicleWindow(head, 0)
+	return true
 }
