@@ -1458,9 +1458,24 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves" && v != "playable") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves" && v != "playable" && v != "towns") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
-		if v == "playable" { // DIAGNOSTIC ONLY: 5P end to end through the game's commands, as the player — a stopped rail train with two stops lifted, a copy bought (same cars), placed where it stood, its orders given, started; the view follows it, its window on Main
+		if v == "towns" { // DIAGNOSTIC ONLY: the view on the biggest town (GOLOCO_DIAG_ZOOM: at that zoom), for the town labels
+			g.inTitleScreen = false
+			m := &g.w.Map
+			best := 0
+			for i, t := range m.Towns {
+				if t.Population > m.Towns[best].Population {
+					best = i
+				}
+			}
+			if z, err := strconv.Atoi(os.Getenv("GOLOCO_DIAG_ZOOM")); err == nil {
+				g.w.SetZoom(z)
+			}
+			t := m.Towns[best]
+			g.w.CenterOn(fmt.Sprintf("tile:%d,%d", int(t.X)/32, int(t.Y)/32))
+			log.Printf("[Diag] towns: %s, frame %+v", m.TownName(t.Name, best), t.LabelFrame)
+		} else if v == "playable" { // DIAGNOSTIC ONLY: 5P end to end through the game's commands, as the player — a stopped rail train with two stops lifted, a copy bought (same cars), placed where it stood, its orders given, started; the view follows it, its window on Main
 			m := &g.w.Map
 			om := g.r.ObjMgr
 			trains, _ := m.Trains()

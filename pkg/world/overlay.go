@@ -75,11 +75,14 @@ func (w *World) tickMoneyFloats() {
 // drawOverlay renders station plaques, town labels and money floats over the
 // composited world. Gated to zoom 0-1 (labels are illegible when zoomed out).
 func (w *World) drawOverlay(screen *ebiten.Image) {
+	sw := screen.Bounds().Dx()
+	sh := screen.Bounds().Dy()
+	if !w.TitleMode {
+		w.drawTownNames(screen, sw, sh)
+	}
 	if w.zoom > 1 {
 		return
 	}
-	sw := screen.Bounds().Dx()
-	sh := screen.Bounds().Dy()
 
 	// Station name plaques: orange box, 1px dark border, white 10px text,
 	// centred above the station's origin tile. PARTIAL: "Station N" stands in
@@ -97,20 +100,6 @@ func (w *World) drawOverlay(screen *ebiten.Image) {
 		name := fmt.Sprintf("Station %d", i+1)
 		drawStationPlaque(screen, name, sx, sy)
 		ui.MarkForeign(image.Rect(sx-80, sy-30, sx+80, sy)) // the plaque (draw8's screen copy)
-	}
-
-	// Town name labels: white text with a 1px dark outline, no box.
-	for _, t := range w.TownList() {
-		if !names {
-			break
-		}
-		sx, sy := w.TileToScreenPx(t.TileX, t.TileY)
-		if sx < -200 || sx > sw+200 || sy < -100 || sy > sh+100 {
-			continue
-		}
-		lw, _ := ui.MeasureText(t.Name)
-		drawOutlinedLabel(screen, t.Name, sx-lw/2, sy-6, color.RGBA{255, 255, 255, 255})
-		ui.MarkForeign(image.Rect(sx-lw/2-2, sy-20, sx+lw/2+2, sy+12))
 	}
 
 	// Money floats: green "+£N" rising and fading near end of life.
@@ -186,3 +175,33 @@ func scaleColorPremul(c color.RGBA, f float64) color.RGBA {
 		A: uint8(float64(c.A) * f),
 	}
 }
+
+// kZoomToTownFonts (Town.cpp): medium bold at zoom 0 and 1, medium normal at
+// 2 and 3.
+var kZoomToTownFonts = [4]int{ui.G1FontMediumBold, ui.G1FontMediumBold, ui.G1FontMediumNormal, ui.G1FontMediumNormal}
+
+// drawTownNames is Viewport.cpp drawTownNames with Town::drawLabel: in the
+// unzoomed render target (the view's position >> zoom), every town whose
+// saved labelFrame at this zoom overlaps the screen gets its name at the
+// frame's left + 1, top + 1, in that zoom's font, white with the outline.
+// PARTIAL: the frames are the save's — a town that grows or is renamed keeps
+// its old frame until Town::updateLabel is ported.
+func (w *World) drawTownNames(screen *ebiten.Image, sw, sh int) {
+	z := max(0, min(3, w.zoom))
+	ox, oy := int(w.camX)>>z, int(w.camY)>>z
+	white, black := ui.TextColours(colourWhite)
+	for i := range w.Map.Towns {
+		t := &w.Map.Towns[i]
+		f := t.LabelFrame
+		if !f.Contains(ox, oy, ox+sw-1, oy+sh-1, z) {
+			continue
+		}
+		x, y := int(f.Left[z])+1-ox, int(f.Top[z])+1-oy
+		name := w.Map.TownName(t.Name, i)
+		tw := ui.DrawTextOutlinedFont(screen, name, kZoomToTownFonts[z], x, y, white, black)
+		ui.MarkForeign(image.Rect(x-1, y-1, x+tw+1, y+12)) // draw8's screen copy
+	}
+}
+
+// colourWhite is Colour::white (ui's too).
+const colourWhite = 2

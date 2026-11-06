@@ -192,6 +192,9 @@ type Town struct {
 	Name         uint16 // 0x00 StringId (0xFFFF = empty slot)
 	X            int16  // 0x02 world-units X of the town centre (1 tile = 32)
 	Y            int16  // 0x04 world-units Y
+	// LabelFrame (0x08) is the name label's box per zoom level, in that
+	// zoom's viewport pixels: Left, Right, Top, Bottom (LabelFrame.h).
+	LabelFrame LabelFrame
 	Population   uint32 // 0x30
 	NumBuildings int16  // 0x38
 	Size         uint8  // 0x5A TownSize: 0 hamlet .. 4 metropolis
@@ -716,3 +719,28 @@ const (
 	KindRoad     = 7
 	KindIndustry = 8
 )
+
+// LabelFrame is LabelFrame.h: a label's box at each of the four zoom levels
+// (left[4], right[4], top[4], bottom[4], int16).
+type LabelFrame struct {
+	Left, Right, Top, Bottom [4]int16
+}
+
+// ParseLabelFrame reads a LabelFrame (32 bytes).
+func ParseLabelFrame(b []byte) LabelFrame {
+	var f LabelFrame
+	for z := 0; z < 4; z++ {
+		f.Left[z] = int16(uint16(b[2*z]) | uint16(b[2*z+1])<<8)
+		f.Right[z] = int16(uint16(b[8+2*z]) | uint16(b[8+2*z+1])<<8)
+		f.Top[z] = int16(uint16(b[16+2*z]) | uint16(b[16+2*z+1])<<8)
+		f.Bottom[z] = int16(uint16(b[24+2*z]) | uint16(b[24+2*z+1])<<8)
+	}
+	return f
+}
+
+// Contains is LabelFrame::contains: the frame at zoom overlaps the rectangle
+// (l, t)–(r, b) (inclusive, that zoom's viewport pixels).
+func (f LabelFrame) Contains(l, t, r, b int, zoom int) bool {
+	return !(t > int(f.Bottom[zoom]) || b < int(f.Top[zoom]) || l > int(f.Right[zoom]) || r < int(f.Left[zoom]))
+}
+
