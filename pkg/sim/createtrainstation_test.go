@@ -115,7 +115,7 @@ func TestRemoveTrainStation(t *testing.T) {
 				t.Logf("built and removed %q at %d,%d, refund %d", m.StationName(id), x, y, -cost)
 				// StationManager::updateDaily: nine days kept, the tenth deallocates it
 				for day := 1; day <= 10; day++ {
-					m.stationsUpdateDaily()
+					m.stationsUpdateDaily(om)
 					if gone := m.StationNames[id].Name == stationNameNull; gone != (day == 10) {
 						t.Fatalf("day %d: deallocated %v (timeout %d)", day, gone, m.StationNames[id].NoTilesTimeout)
 					}
