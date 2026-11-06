@@ -1840,3 +1840,37 @@ func TestAirportMovementGraph(t *testing.T) {
 		t.Skip("no airport objects loaded on the title map")
 	}
 }
+
+// TestAirportEdgeTargets (AW.b): every airport station on the title map —
+// its airportStartPos holds an airport station element — and every edge of
+// its airport's graph gives a target: taxiing nodes on the ground within
+// the airport's few tiles of its start, the others at the flight heights.
+func TestAirportEdgeTargets(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	airports := 0
+	for id := range m.StationNames {
+		el, pos, ok := m.airportStationElement(uint16(id))
+		if !ok || el.StationType != 2 || m.StationNames[id].Name == 0 {
+			continue
+		}
+		airports++
+		a := om.AirportObjects[el.ObjectID]
+		for e := range a.MovementEdges {
+			flags, x, y, z, ok := m.AirportGetMovementEdgeTarget(om, uint16(id), uint8(e))
+			if !ok {
+				t.Fatalf("station %d edge %d: no target", id, e)
+			}
+			if flags&objects.AirportNodeTaxiing != 0 {
+				if dx, dy := x-int32(pos[0]), y-int32(pos[1]); dx < -6*32 || dx > 8*32 || dy < -6*32 || dy > 8*32 || z < int32(pos[2]) || z > int32(pos[2])+64 {
+					t.Errorf("station %d edge %d: taxiing target (%d, %d, %d) far from the airport at %v", id, e, x, y, z, pos)
+				}
+			} else if z != int32(pos[2])+255 && z != 960 {
+				t.Errorf("station %d edge %d: airborne target height %d", id, e, z)
+			}
+		}
+		t.Logf("station %d: %s, rotation %d, start %v, %d edges, occupied %032b", id, a.Name, el.Rotation, pos, len(a.MovementEdges), m.StationNames[id].AirportOccupiedEdges)
+	}
+	if airports == 0 {
+		t.Skip("no airports on the title map")
+	}
+}
