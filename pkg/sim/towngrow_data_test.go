@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -2179,5 +2180,50 @@ func TestRemoveIndustry(t *testing.T) {
 	m.industriesUpdateMonthly(om)
 	if m.industryByID(oid) != nil {
 		t.Error("a closed-down industry with no production survived its month")
+	}
+}
+
+// TestNewIndustryChoice (CR part 2): on the title map the towns' most
+// common cargo is passengers; every industry's own place is too close to an
+// industry and inside its type's cluster; each loaded type's cap is
+// ((factor + 1) × total / 3) less a quarter (the random part is 0 — integer
+// arithmetic, as upstream), drawing gPrng1 once; which types may start up
+// this year is logged.
+func TestNewIndustryChoice(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	mc := mostCommonBuildingCargoType(om)
+	name := ""
+	if c := om.CargoObjects[mc]; c != nil && c.Header != nil {
+		name = strings.TrimSpace(string(c.Header.Name[:]))
+	}
+	if !strings.HasPrefix(strings.ToUpper(name), "PASS") {
+		t.Errorf("most common building cargo %d %q, want passengers", mc, name)
+	}
+	for _, ind := range m.Industries {
+		if !m.isTooCloseToNearbyIndustries(int32(ind.X), int32(ind.Y)) || m.isOutwithCluster(int32(ind.X), int32(ind.Y), ind.ObjectID) {
+			t.Errorf("industry %d at its own place: not too close, or outwith its cluster", ind.ID)
+		}
+	}
+	for i := 0; i < 16; i++ {
+		obj := om.GetIndustryObjectByIndex(i)
+		if obj == nil {
+			continue
+		}
+		before := m.Rng1
+		capN := m.capOfTypeOfIndustry(obj, m.NumberOfIndustries)
+		want := (int32(m.NumberOfIndustries) + 1) * int32(obj.TotalOfTypeInScenario) / 3
+		want -= want / 4
+		check := before
+		check.RandNext()
+		if capN != want || m.Rng1 != check {
+			t.Errorf("%s: cap %d want %d, or not one draw", obj.Name, capN, want)
+		}
+		have := 0
+		for _, ind := range m.Industries {
+			if int(ind.ObjectID) == i {
+				have++
+			}
+		}
+		t.Logf("%-22s designed %d–%d, total %2d → cap %2d, has %2d; may start this year (%d): %v", obj.Name, obj.DesignedYear, obj.ObsoleteYear, obj.TotalOfTypeInScenario, capN, have, m.CurrentYear, m.canIndustryObjBeCreated(obj, om))
 	}
 }

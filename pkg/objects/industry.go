@@ -21,6 +21,8 @@ type IndustryObject struct {
 	ScaffoldingColour      uint8  // 0xD5
 	Flags                  uint32 // 0xE4 (IndustryObjectFlags)
 	ObsoleteYear           uint16 // 0xCC
+	DesignedYear           uint16 // 0xCA
+	TotalOfTypeInScenario  uint8  // 0xCE: 1–32
 	CostIndex              uint8  // 0xCF
 	ClearCostFactor        int16  // 0xD2
 	MonthlyClosureChance   uint8  // 0xF3: out of 65535
@@ -70,6 +72,8 @@ func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 		ScaffoldingColour:      data[0xD5],
 		Flags:                  binary.LittleEndian.Uint32(data[0xE4:]),
 		ObsoleteYear:           binary.LittleEndian.Uint16(data[0xCC:]),
+		DesignedYear:           binary.LittleEndian.Uint16(data[0xCA:]),
+		TotalOfTypeInScenario:  data[0xCE],
 		CostIndex:              data[0xCF],
 		ClearCostFactor:        int16(binary.LittleEndian.Uint16(data[0xD2:])),
 		MonthlyClosureChance:   data[0xF3],

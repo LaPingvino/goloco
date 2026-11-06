@@ -133,6 +133,7 @@ type Scenario struct {
 	CurrentDayOfMonth                                       uint8    // general.currentDayOfMonth (0x1D)
 	GameStateFlags                                          uint32   // GameState flags (0x10): tileManagerLoaded 1, unk2 2
 	IndustryManagerFlags                                    uint8    // GameState industryFlags (0x42F): disallowIndustriesCloseDown 1
+	NumberOfIndustries                                      uint8    // GameState numberOfIndustries (0x415): 0 low, 1 medium, 2 high
 	DayCounter                                              uint16   // general.dayCounter (0x18)
 	PlayerCompanies                                         [2]uint8 // playerCompanies (0x24)
 	LoanInterestRate                                        uint8    // loanInterestRate (0x1AE)
