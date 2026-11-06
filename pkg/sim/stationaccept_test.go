@@ -35,3 +35,53 @@ func TestCalcAcceptedCargoReproducesSave(t *testing.T) {
 	}
 	t.Logf("%d stations match, %d differ", same, diff)
 }
+
+// StationManager::update over a whole 1024-tick cycle on the title save leaves
+// every station's acceptance as CalcAcceptedCargo gives it (each in-use
+// station is visited once), and a station whose flag was cleared gets it back.
+func TestStationsUpdateCycle(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	var target = -1
+	for id := range m.StationNames {
+		st := &m.StationNames[id]
+		if st.Name == stationNameNull {
+			continue
+		}
+		for c := range st.Cargo {
+			if st.Cargo[c].Flags&cargoStatAccepted != 0 && target < 0 {
+				target = id
+				st.Cargo[c].Flags &^= cargoStatAccepted // forget one: the update must restore it
+			}
+		}
+	}
+	if target < 0 {
+		t.Skip("no station accepts anything")
+	}
+	changed := 0
+	for i := 0; i < 1024; i++ {
+		m.ScenarioTicks++
+		if b, a := m.stationsUpdate(om); b != a {
+			changed++
+		}
+	}
+	for id := range m.StationNames {
+		st := &m.StationNames[id]
+		if st.Name == stationNameNull {
+			continue
+		}
+		want, _ := m.CalcAcceptedCargo(id, om)
+		var got uint32
+		for c := range st.Cargo {
+			if st.Cargo[c].Flags&cargoStatAccepted != 0 {
+				got |= 1 << c
+			}
+		}
+		if got != want {
+			t.Errorf("station %d %q: accepted %#x, CalcAcceptedCargo %#x", id, m.StationName(id), got, want)
+		}
+	}
+	if changed < 1 {
+		t.Errorf("station %d's cleared flag wasn't restored", target)
+	}
+	t.Logf("%d station(s) changed acceptance in one cycle", changed)
+}
