@@ -2274,3 +2274,63 @@ func TestFindRandomNewIndustryLocation(t *testing.T) {
 		t.Error("no type found a place")
 	}
 }
+
+// TestAllocateNewIndustry (CR part 2c): sub_454C91 refuses a place too close
+// to an industry (an existing one's own place); at a place the search finds
+// far enough off, allocateNewIndustry takes the lowest free slot — a new,
+// empty industry kept in slot order —; with every slot taken it refuses.
+func TestAllocateNewIndustry(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	first := m.Industries[0]
+	if _, reason, ok := m.industryAllocateChecked(first.ObjectID, int32(first.X), int32(first.Y), [2]uint32{1, 2}, om); ok || reason != "too_close_to_another_industry" {
+		t.Fatalf("at industry %d's own place: ok %v, %q", first.ID, ok, reason)
+	}
+	free := -1
+	used := map[uint8]bool{}
+	for _, ind := range m.Industries {
+		used[ind.ID] = true
+	}
+	for id := 0; id < maxIndustries && free < 0; id++ {
+		if !used[uint8(id)] {
+			free = id
+		}
+	}
+	var id uint8
+	placed := false
+	for tries := 0; tries < 20 && !placed; tries++ {
+		for k := 0; k < 16 && !placed; k++ {
+			if om.GetIndustryObjectByIndex(k) == nil {
+				continue
+			}
+			x, y, ok := m.findRandomNewIndustryLocation(uint8(k), om)
+			if !ok {
+				continue
+			}
+			if got, _, ok := m.industryAllocateChecked(uint8(k), x, y, [2]uint32{7, 9}, om); ok {
+				id, placed = got, true
+				ind := m.industryByID(id)
+				if int(id) != free || ind.ObjectID != uint8(k) || int32(ind.X) != x || ind.ProductionRate != 25 || ind.UnderConstruction != 0 ||
+					ind.FoundingYear != m.CurrentYear || ind.HistorySize != [2]uint8{1, 1} || ind.ProducedStations[0][0] != stationIDNull || ind.Prng != [2]uint32{7, 9} {
+					t.Errorf("new industry %+v (want slot %d)", *ind, free)
+				}
+				t.Logf("industry %d (%s) allocated at tile (%d, %d), town %d", id, om.GetIndustryObjectByIndex(k).Name, x>>5, y>>5, ind.Town)
+			}
+		}
+	}
+	if !placed {
+		t.Fatal("no place far enough from the others in 20 rounds")
+	}
+	for i := 1; i < len(m.Industries); i++ {
+		if m.Industries[i-1].ID >= m.Industries[i].ID {
+			t.Fatal("industries not in slot order")
+		}
+	}
+	for len(m.Industries) < maxIndustries {
+		if _, ok := m.allocateNewIndustry(0, 0, 0, [2]uint32{}, 0); !ok {
+			t.Fatal("refused while slots were free")
+		}
+	}
+	if _, ok := m.allocateNewIndustry(0, 0, 0, [2]uint32{}, 0); ok {
+		t.Error("a 129th industry allocated")
+	}
+}
