@@ -313,10 +313,10 @@ var placementAttempts = [25][2]int32{{1, 0}, {3, -1}, {3, -1}, {3, -1}, {3, -1},
 // tried up to 25 times at a random tile — widening around the last one
 // placed — not overlapping a placed one, a random direction (unless not
 // rotatable), a query then the placement; its centre the average of its
-// tiles; the cost. The industry is freed again when a building can't be
-// placed, or on a query. PARTIAL: the claimed fields and perimeter walls and
-// expandGrounds (the farm industries' grounds) — next; the newIndustry
-// message (no MessageManager).
+// tiles; its grounds (industryGrounds: the claimed fields, perimeter walls,
+// expandGrounds); the cost. The industry is freed again when a building can't
+// be placed, or on a query. PARTIAL: the newIndustry message (no
+// MessageManager).
 func (m *Map) CreateIndustry(c *Cmd, flags uint8, a IndustryPlacement) (int32, uint8, bool) {
 	prng := [2]uint32{gameCommandCreateIndustry, a.Srand1}
 	id, _, ok := m.industryAllocateChecked(a.Type, a.X, a.Y, prng, c.Objects)
@@ -423,9 +423,221 @@ func (m *Map) CreateIndustry(c *Cmd, flags uint8, a IndustryPlacement) (int32, u
 		k := int32(len(ind.Tiles))
 		ind.X, ind.Y = int16(int32(-32)&(sx/k+16)), int16(int32(-32)&(sy/k+16))
 	}
+	if flags&CmdApply != 0 && flags&CmdGhost == 0 && len(ind.Tiles) != 0 {
+		m.industryGrounds(c, ind, obj, p)
+	}
 	if flags&CmdApply == 0 {
 		free()
 	}
 	total += m.InflationAdjustedCost(obj.CostFactor, obj.CostIndex, 3)
 	return total, id, true
+}
+
+const (
+	industryFarmTilesDesync          = 1 << 23 // IndustryObjectFlags::farmTilesGrowthStageDesynchronized
+	industryFarmTilesPartialCoverage = 1 << 27 // farmTilesPartialCoverage
+)
+
+// industryWall places one fence piece (the createWall command, apply).
+func (m *Map) industryWall(c *Cmd, tx, ty int, rotation, wallType uint8) {
+	m.CreateWall(c, CmdApply, WallPlacement{X: int32(tx) * 32, Y: int32(ty) * 32, Rotation: rotation, Type: wallType})
+}
+
+// expandGrounds is Industry::expandGrounds (0x00454A43): when at least 20 of
+// the 5×5 tiles around pos can be claimed, all of them become the industry's
+// fields (the growth stage and timer per tile from a copy of its prng for a
+// desynchronised farm; 7 in 8 skipped for partial coverage — upstream's
+// copy too, its vanilla mistake kept) and the 5×5's edges get walls (an
+// entrance where the mask says, from the prng's state without a draw).
+func (m *Map) expandGrounds(c *Cmd, ind *scenario.Industry, x, y int32, wallType, wallEntrance, growth, timer uint8) {
+	obj := c.Objects.GetIndustryObjectByIndex(int(ind.ObjectID))
+	if obj == nil {
+		return
+	}
+	cx, cy := int(x)>>5, int(y)>>5
+	x0, y0, x1, y1 := max(cx-2, 0), max(cy-2, 0), min(cx+2, m.Width-1), min(cy+2, m.Height-1) // getClampedRange
+	n := 0
+	for ty := y0; ty <= y1; ty++ {
+		for tx := x0; tx <= x1; tx++ {
+			if m.isSurfaceClaimed(tx, ty) {
+				n++
+			}
+		}
+	}
+	if n < 20 {
+		return
+	}
+	var desync, partial *core.Prng
+	if obj.Flags&industryFarmTilesDesync != 0 {
+		desync = core.NewPrngSeed(ind.Prng[0], ind.Prng[1])
+	}
+	if obj.Flags&industryFarmTilesPartialCoverage != 0 {
+		partial = core.NewPrngSeed(ind.Prng[0], ind.Prng[1])
+	}
+	var mask uint32
+	if wallType != 0xFF && wallEntrance != 0xFF {
+		mask = 1 << (ind.Prng[0] & 0xF)
+		mask |= 1 << ((ind.Prng[0] >> 4) & 0x1F)
+	}
+	i := uint32(0)
+	wall := func(tx, ty int, rot uint8) {
+		t := wallType
+		if mask&(1<<i) != 0 {
+			t = wallEntrance
+		}
+		i++
+		m.industryWall(c, tx, ty, rot, t)
+	}
+	for ty := y0; ty <= y1; ty++ {
+		for tx := x0; tx <= x1; tx++ {
+			if desync != nil {
+				r := desync.RandNext()
+				growth, timer = uint8((r&0xFF)*uint32(obj.FarmTileNumGrowthStages)/256), uint8((r>>8)&7)
+			}
+			if partial == nil || partial.RandNext()&7 == 0 {
+				m.claimSurfaceForIndustry(tx, ty, ind.ID, growth, timer)
+			}
+			if wallType == 0xFF {
+				continue
+			}
+			if tx == cx-2 {
+				wall(tx, ty, 0)
+			}
+			if tx == cx+2 {
+				wall(tx, ty, 2)
+			}
+			if ty == cy-2 {
+				wall(tx, ty, 3)
+			}
+			if ty == cy+2 {
+				wall(tx, ty, 1)
+			}
+		}
+	}
+}
+
+// industryGrounds is createIndustry's 0x00454745 (apply, not a ghost): the
+// tiles around each building claimed as fields with a perimeter fence
+// (entrances where the prng's state says), then the farm's grounds expanded
+// a random number of times.
+func (m *Map) industryGrounds(c *Cmd, ind *scenario.Industry, obj *objects.IndustryObject, p *core.Prng) {
+	if obj.FarmTileGrowthStageNoProduction != 0xFF {
+		var mask uint32
+		if obj.BuildingWallEntrance != 0xFF {
+			r := p.Srand0()
+			mask |= 1 << (r & 0xF)
+			mask |= 1 << ((r >> 4) & 0xF)
+		}
+		wall := func(tx, ty int, rot uint8) {
+			t := obj.BuildingWall
+			if mask&1 != 0 {
+				t = obj.BuildingWallEntrance
+			}
+			mask = mask>>1 | mask<<31 // std::rotr(mask, 1)
+			m.industryWall(c, tx, ty, rot, t)
+		}
+		for _, tl := range ind.Tiles {
+			x0, y0 := int(tl[0])>>5-1, int(tl[1])>>5-1
+			x1, y1 := x0+2, y0+2
+			if tl[2]&(-1<<15) != 0 {
+				x1, y1 = x0+3, y0+3
+			}
+			for ty := y0; ty <= y1; ty++ { // TilePosRangeView: x inner
+				for tx := x0; tx <= x1; tx++ {
+					m.claimSurfaceForIndustry(tx, ty, ind.ID, obj.FarmTileGrowthStageNoProduction, 0)
+					if obj.BuildingWall == 0xFF {
+						continue
+					}
+					if tx == x0 {
+						wall(tx, ty, 0)
+					}
+					if tx == x1 {
+						wall(tx, ty, 2)
+					}
+					if ty == y0 {
+						wall(tx, ty, 3)
+					}
+					if ty == y1 {
+						wall(tx, ty, 1)
+					}
+				}
+			}
+		}
+	}
+	if obj.FarmTileNumGrowthStages != 0 {
+		n := (int(obj.FarmNumFields)*int(p.RandNextBound(0xFF))/256 + 1) * 4
+		for i := 0; i < n; i++ {
+			r := p.RandNext()
+			ind.Prng = [2]uint32{p.Srand0(), p.Srand1()}
+			growth := uint8((r & 0xFF) * uint32(obj.FarmTileNumGrowthStages) / 256)
+			timer := uint8((r >> 8) & 7)
+			ox, oy := int32((r>>11)&0x1F)-15, int32((r>>16)&0x1F)-15
+			second := (r>>21)&1 != 0 && obj.WallTypes[2] != 0xFF
+			wt, we := obj.WallTypes[0], obj.WallTypes[1]
+			if second {
+				wt, we = obj.WallTypes[2], obj.WallTypes[3]
+			}
+			m.expandGrounds(c, ind, int32(ind.X)+ox*32, int32(ind.Y)+oy*32, wt, we, growth, timer)
+		}
+	}
+	ind.Prng = [2]uint32{p.Srand0(), p.Srand1()}
+}
+
+// createNewIndustry is IndustryManager::createNewIndustry (0x0045979C): up
+// to numAttempts random places (findRandomNewIndustryLocation), each tried
+// with the createIndustry command, its seeds from gPrng1 as vanilla does
+// (srand0's difference over one draw, then srand1), until one is built.
+func (m *Map) createNewIndustry(objID uint8, buildImmediately bool, numAttempts int, om *objects.ObjectManager) bool {
+	for a := 0; a < numAttempts; a++ {
+		x, y, ok := m.findRandomNewIndustryLocation(objID, om)
+		if !ok {
+			continue
+		}
+		before := m.Rng1.Srand0()
+		m.Rng1.RandNext()
+		args := IndustryPlacement{Type: objID, X: x, Y: y, BuildImmediately: buildImmediately, Srand0: m.Rng1.Srand0() - before, Srand1: m.Rng1.Srand1()}
+		if _, _, ok := m.CreateIndustry(&Cmd{Company: CompanyNeutral, Objects: om}, CmdApply, args); ok {
+			return true
+		}
+	}
+	return false
+}
+
+// tryCreateNewIndustriesMonthly is IndustryManager's (0x00459659): unless the
+// scenario disallows start-ups, each industry type that may start now and is
+// under its cap gets 25 attempts at a new industry.
+func (m *Map) tryCreateNewIndustriesMonthly(om *objects.ObjectManager) {
+	if m.IndustryManagerFlags&industryManagerDisallowStartUp != 0 {
+		return
+	}
+	for id := 0; id < 16; id++ {
+		obj := om.GetIndustryObjectByIndex(id)
+		if obj == nil || !m.canIndustryObjBeCreated(obj, om) || m.hasReachedCapOfTypeOfIndustry(uint8(id), om) {
+			continue
+		}
+		m.createNewIndustry(uint8(id), false, 25, om)
+	}
+}
+
+// DiagNewFarmIndustry (DIAGNOSTIC ONLY: the newindustry diag) builds an
+// industry with fields and fences, at once, at a searched place: its id and
+// centre.
+func (m *Map) DiagNewFarmIndustry(om *objects.ObjectManager) (uint8, int32, int32, bool) {
+	for k := 0; k < 16; k++ {
+		o := om.GetIndustryObjectByIndex(k)
+		if o == nil || o.FarmTileGrowthStageNoProduction == 0xFF || o.BuildingWall == 0xFF {
+			continue
+		}
+		for try := 0; try < 40; try++ {
+			x, y, ok := m.findRandomNewIndustryLocation(uint8(k), om)
+			if !ok {
+				continue
+			}
+			if _, id, ok := m.CreateIndustry(&Cmd{Company: CompanyNeutral, Objects: om}, CmdApply, IndustryPlacement{Type: uint8(k), X: x, Y: y, BuildImmediately: true, Srand1: uint32(try)}); ok {
+				ind := m.industryByID(id)
+				return id, int32(ind.X), int32(ind.Y), true
+			}
+		}
+	}
+	return 0, 0, 0, false
 }

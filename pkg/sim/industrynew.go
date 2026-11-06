@@ -10,9 +10,7 @@ import (
 // getMostCommonBuildingCargoType, canCargoTypeBeProducedInWorld,
 // canIndustryObjBeCreated, capOfTypeOfIndustry / hasReachedCapOfTypeOfIndustry,
 // isTooCloseToNearbyIndustries, isOutwithCluster, industryNearPosition.
-// PARTIAL: findRandomNewIndustryLocation, createNewIndustry and the
-// createIndustry game command, so tryCreateNewIndustriesMonthly is not run
-// yet (its gPrng1 draws would come without the creation's).
+// The creation itself: industrycreate.go.
 
 const (
 	industryManagerDisallowStartUp = 1 << 1 // IndustryManager::Flags::disallowIndustriesStartUp
