@@ -306,6 +306,7 @@ type VehicleWindow struct {
 	OnTab               func(tab int)        // switchTab
 	Route               []RouteLine          // Route: the order list's rows, the last the end of the list
 	Finances            VehicleFinances      // Finances: its lines, formatted
+	Cargo               VehicleCargo         // Cargo: its lines, formatted
 	RouteSel            int                  // Route: orderTableIndex, the selected row (-1: none)
 	OnRouteSelect       func(row int)        // Route: a row clicked
 	OnRoute             func(action string)  // Route: "delete", "up", "down", "skip", "reverse", "local", "express"
@@ -333,6 +334,10 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 	}
 	if w.Tab == 3 {
 		w.drawFinances(screen)
+		return
+	}
+	if w.Tab == 2 {
+		w.drawCargo(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -608,6 +613,8 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			w.OnTab(1)
 		case in(lw[vwTabFinances]) && w.OnTab != nil:
 			w.OnTab(3)
+		case in(lw[vwTabCargo]) && w.OnTab != nil:
+			w.OnTab(2)
 		case in(list) && w.OnRouteSelect != nil: // a row (lineHeight 10) — the end of the list too
 			if row := (y - (w.Y + list.T + 1)) / 10; row >= 0 && row < len(w.Route) {
 				w.OnRouteSelect(row)
@@ -633,6 +640,8 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			w.OnTab(4)
 		case in(lw[vwTabFinances]) && w.OnTab != nil:
 			w.OnTab(3)
+		case in(lw[vwTabCargo]) && w.OnTab != nil:
+			w.OnTab(2)
 		case in(lw[vmStopStart]) && w.OnStopStart != nil:
 			b := lw[vmStopStart]
 			w.OnStopStart(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
@@ -643,9 +652,22 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 		}
 		return
 	}
+	if w.Tab == 2 { // Cargo::onMouseUp. PARTIAL: the refit dropdown, renaming by the caption
+		lw := VehicleCargoLayout(w.W, w.H, w.State.HiddenTabs, w.Cargo.CanRefit)
+		for i, tab := range map[int]int{vwTabMain: 0, vwTabDetails: 1, vwTabFinances: 3, vwTabRoute: 4} {
+			if in(lw[i]) && w.OnTab != nil {
+				w.OnTab(tab)
+				return
+			}
+		}
+		if in(lw[vwClose]) && w.OnClose != nil {
+			w.OnClose()
+		}
+		return
+	}
 	if w.Tab == 3 { // Finances::onMouseUp. PARTIAL: renaming by the caption
 		lw := VehicleFinancesLayout(w.W, w.H, w.State.HiddenTabs)
-		for i, tab := range map[int]int{vwTabMain: 0, vwTabDetails: 1, vwTabRoute: 4} {
+		for i, tab := range map[int]int{vwTabMain: 0, vwTabDetails: 1, vwTabCargo: 2, vwTabRoute: 4} {
 			if in(lw[i]) && w.OnTab != nil {
 				w.OnTab(tab)
 				return
@@ -666,6 +688,8 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 		w.OnTab(4)
 	case in(lw[vwTabFinances]) && w.OnTab != nil:
 		w.OnTab(3)
+	case in(lw[vwTabCargo]) && w.OnTab != nil:
+		w.OnTab(2)
 	case in(lw[vdPickup]) && !pickupDisabled && w.OnPickup != nil:
 		w.OnPickup()
 	}

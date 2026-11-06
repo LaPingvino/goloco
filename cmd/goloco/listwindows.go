@@ -278,12 +278,15 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 	if tab == 3 {
 		ww, wh = ui.VehicleFinancesSize[0], ui.VehicleFinancesSize[1] // Finances: min = max size
 	}
+	if tab == 2 {
+		ww, wh = max(ui.VehicleWindowSize[0], ui.VehicleCargoMinSize[0]), max(ui.VehicleWindowSize[1], ui.VehicleCargoMinSize[1])
+	}
 	g.vehicleWin = &ui.VehicleWindow{X: (g.sw - ww) / 2, Y: (g.sh - wh) / 2, W: ww, H: wh, TitleColour: tc, Colour: wc,
 		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
 		State:   ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
 		OnClose: func() { g.vehicleWin, g.pickupOn, g.routeTool = nil, false, false }, OnPickup: func() { g.onPickup(headID) },
 		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h),
-		Route: g.routeLines(&h), RouteSel: g.routeSel, Finances: g.vehicleFinances(tr),
+		Route: g.routeLines(&h), RouteSel: g.routeSel, Finances: g.vehicleFinances(tr), Cargo: g.vehicleCargo(tr, cars),
 		OnRouteSelect: func(row int) { g.routeSel = row; g.openVehicleWindow(headID, 4) },
 		OnRoute:       func(a string) { g.routeAction(headID, a); g.openVehicleWindow(headID, 4) },
 		Express:       m.Entities[tr.Veh1].Var48&sim.Flags48ExpressMode != 0,
@@ -860,4 +863,76 @@ func (g *Game) vehicleFinances(tr sim.Train) ui.VehicleFinances {
 	f.Profit = ui.FillArgs(i18n.Str(i18n.VehicleMonthlyProfit), uilayout.Currency48(profit))
 	f.SaleValue = ui.FillArgs(i18n.Str(i18n.SaleValueOfVehicle), uilayout.Currency48(int64(head.TotalRefundCost)))
 	return f
+}
+
+// vehicleCargo is what Cargo::draw formats: per car (its first component's
+// front bogie and body) the body's primary and the bogie's secondary cargo,
+// each with a quantity "{unit} from {station}", or "Empty" when it carries
+// something but holds none; the totals and capacities by cargo type
+// (generateCargoTotalString / CapacityString: cargoLUTToString, "Empty" when
+// none); refit for the player's own refittable vehicle (canRefit).
+func (g *Game) vehicleCargo(tr sim.Train, cars []ui.TrainCarDraw) ui.VehicleCargo {
+	m := &g.w.Map
+	om := g.r.ObjMgr
+	unit := func(c uint8, n uint32) string {
+		if om == nil || int(c) >= len(om.CargoObjects) || om.CargoObjects[c] == nil {
+			return ""
+		}
+		if n == 1 {
+			return ui.ObjectString(om.CargoObjects[c].UnitNameSingular)
+		}
+		return ui.ObjectString(om.CargoObjects[c].UnitNamePlural)
+	}
+	var out ui.VehicleCargo
+	var totals, caps [32]uint32
+	for i, car := range tr.Cars {
+		front, body := m.Entities[car[0].Front], m.Entities[car[0].Body]
+		row := ui.VehicleCargoRow{}
+		if i < len(cars) {
+			row.Car = cars[i]
+		}
+		for _, cg := range []scenario.VehicleCargo{front.Cargo, body.Cargo} {
+			if cg.Type != 0xFF && int(cg.Type) < len(totals) {
+				totals[cg.Type] += uint32(cg.Qty)
+				caps[cg.Type] += uint32(cg.MaxQty)
+			}
+		}
+		if body.Cargo.Type != 0xFF {
+			if front.Cargo.Qty != 0 || body.Cargo.Qty != 0 {
+				for _, cg := range []scenario.VehicleCargo{body.Cargo, front.Cargo} { // drawCargoText: primary, then secondary
+					if cg.Qty == 0 {
+						continue
+					}
+					row.Lines = append(row.Lines, ui.FillArgs(i18n.Str(i18n.CargoFrom), unit(cg.Type, uint32(cg.Qty)), ui.Comma16(int(cg.Qty)), m.StationName(int(cg.TownFrom))))
+				}
+			} else {
+				row.Lines = []string{i18n.Str(i18n.CargoEmpty)}
+			}
+		}
+		out.Rows = append(out.Rows, row)
+	}
+	lut := func(t *[32]uint32) string { // cargoLUTToString
+		s := ""
+		for c, n := range t {
+			if n == 0 {
+				continue
+			}
+			if s != "" {
+				s += ", "
+			}
+			s += ui.FillArgs(unit(uint8(c), n), ui.Comma16(int(n)))
+		}
+		if s == "" {
+			s = i18n.Str(i18n.CargoEmpty2)
+		}
+		return s
+	}
+	out.Total = ui.FillArgs(i18n.Str(i18n.TotalStringid), lut(&totals))
+	out.Capacity = ui.FillArgs(i18n.Str(i18n.VehicleCapacityStringid), lut(&caps))
+	if h := m.Entities[tr.Head]; m.IsPlayerCompany(int(h.Owner)) && len(tr.Cars) > 0 && om != nil {
+		if id := m.Entities[tr.Cars[0][0].Front].ObjectID; int(id) < len(om.Vehicles) && om.Vehicles[id] != nil {
+			out.CanRefit = om.Vehicles[id].Flags&(1<<14) != 0 // VehicleObjectFlags::refittable
+		}
+	}
+	return out
 }
