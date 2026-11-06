@@ -248,6 +248,10 @@ type Industry struct {
 	// ProducedRatings (0x171).
 	StationsInRange [1024 / 32]uint32
 	ProducedRatings [2][4]uint8
+	// X, Y (0x02, 0x04): its position; Tiles (0x15, numTiles 0x14): its
+	// buildings' tiles (z bit 15: a 2×2 building).
+	X, Y  int16
+	Tiles [][3]int16
 	// The monthly update's (Industry::updateMonthly): its own prng (0x08),
 	// the previous month's produced / received / delivered totals (0x189,
 	// 0x193, 0x1A3), the percentage transported (0x1A7), and the produced

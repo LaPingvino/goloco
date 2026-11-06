@@ -211,8 +211,14 @@ func (m *Map) industriesUpdateMonthly(om *objects.ObjectManager) {
 	if om == nil {
 		return
 	}
+	ids := make([]uint8, len(m.Industries)) // upstream's fixed slots: an industry removed this month leaves the others in place
 	for i := range m.Industries {
-		m.industryUpdateMonthly(&m.Industries[i], om)
+		ids[i] = m.Industries[i].ID
+	}
+	for _, id := range ids {
+		if ind := m.industryByID(id); ind != nil {
+			m.industryUpdateMonthly(ind, om)
+		}
 	}
 }
 
@@ -222,17 +228,17 @@ func (m *Map) industriesUpdateMonthly(om *objects.ObjectManager) {
 // (obsolete, or the object's monthly closure chance — the industry's own
 // prng); the month's produced share kept in the 20-year histories (÷ 50,
 // at most 255); the monthly totals moved to the previous month's and the
-// percentage transported worked out. PARTIAL: an industry closing down
-// with no production left is removed by the IndustryRemoval game command
-// (not ported: it stays, closing, its statistics frozen as upstream's would
-// be gone); the news messages (MessageManager::post: production up / down,
-// closing down) — goloco has no messages yet.
+// percentage transported worked out; an industry closing down with no
+// production left removed (RemoveIndustry). PARTIAL: the news messages
+// (MessageManager::post: production up / down, closing down) — goloco has
+// no messages yet.
 func (m *Map) industryUpdateMonthly(ind *scenario.Industry, om *objects.ObjectManager) {
 	if ind.Flags&industryFlagIsGhost != 0 {
 		return
 	}
 	if ind.Flags&industryFlagClosingDown != 0 && ind.DailyProduction[0] == 0 && ind.DailyProduction[1] == 0 {
-		return // GameCommands::IndustryRemoval: see PARTIAL
+		m.RemoveIndustry(&Cmd{Company: CompanyNeutral, Objects: om}, CmdApply, ind.ID) // IndustryRemovalArgs (industryremove.go)
+		return
 	}
 	obj := om.GetIndustryObjectByIndex(int(ind.ObjectID))
 	if obj == nil {
