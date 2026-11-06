@@ -2498,3 +2498,67 @@ func TestCreateIndustry(t *testing.T) {
 		t.Error("the same seed built differently")
 	}
 }
+
+// TestCreateWallAndClaim (CR part 2f): a wall on a flat, dry, empty tile of
+// the title map — the query places nothing, the apply puts it at the ground's
+// height on its edge; a second on the same edge is refused, another edge is
+// fine —; claimSurfaceForIndustry makes a free tile an industry's field and
+// refuses water.
+func TestCreateWallAndClaim(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	c := &Cmd{Company: CompanyNeutral, Objects: om}
+	wt := -1
+	for i, w := range om.WallObjects {
+		if w != nil && w.Flags&objects.WallFlagOnlyOnLevelLand == 0 {
+			wt = i
+			break
+		}
+	}
+	if wt < 0 {
+		t.Skip("no wall object")
+	}
+	tx, ty := -1, -1
+	for y := 10; y < m.Height-10 && tx < 0; y++ {
+		for x := 10; x < m.Width-10; x++ {
+			tl := m.TileAt(x, y)
+			if tl.Slope&0x1F == 0 && tl.WaterLevel == 0 && len(tl.Order) == 1 {
+				tx, ty = x, y
+				break
+			}
+		}
+	}
+	if tx < 0 {
+		t.Fatal("no empty flat tile")
+	}
+	tl := m.TileAt(tx, ty)
+	a := WallPlacement{X: int32(tx) * 32, Y: int32(ty) * 32, Rotation: 0, Type: uint8(wt)}
+	if _, ok := m.CreateWall(c, 0, a); !ok || len(tl.Walls) != 0 {
+		t.Fatalf("query: ok %v, %d walls", ok, len(tl.Walls))
+	}
+	if _, ok := m.CreateWall(c, CmdApply, a); !ok || len(tl.Walls) != 1 || tl.Walls[0].BaseZ != tl.BaseZ || tl.Walls[0].Rotation != 0 {
+		t.Fatalf("apply: ok %v, walls %+v (ground %d)", ok, tl.Walls, tl.BaseZ)
+	}
+	if _, ok := m.CreateWall(c, 0, a); ok {
+		t.Error("a second wall on the same edge allowed")
+	}
+	a.Rotation = 2
+	if _, ok := m.CreateWall(c, 0, a); !ok {
+		t.Error("a wall on the other edge refused")
+	}
+	if !m.claimSurfaceForIndustry(tx, ty, 5, 3, 2) || !tl.IsIndustrial || tl.Variation != 5 || tl.GrowthStage != 3 || tl.UpdateTimer != 2 {
+		t.Errorf("claim: industrial %v id %d growth %d timer %d", tl.IsIndustrial, tl.Variation, tl.GrowthStage, tl.UpdateTimer)
+	}
+	if len(tl.Walls) != 0 {
+		t.Errorf("the claimed field kept %d walls above it", len(tl.Walls))
+	}
+	for y := 0; y < m.Height; y++ {
+		for x := 0; x < m.Width; x++ {
+			if m.TileAt(x, y).WaterLevel != 0 {
+				if m.claimSurfaceForIndustry(x, y, 5, 0, 0) {
+					t.Error("water claimed")
+				}
+				return
+			}
+		}
+	}
+}

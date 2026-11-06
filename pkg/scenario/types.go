@@ -280,6 +280,7 @@ type Tile struct {
 	Surface      SurfaceType
 	Height       uint8
 	Water        uint8
+	UpdateTimer  uint8 // byte 5 bits [7:5]: an industrial field's update timer
 	TerrainIndex uint8 // byte 6 bits [4:0] — LandObject slot (0-31)
 	GrowthStage  uint8 // byte 6 bits [7:5] — growth/season stage (0-7); used in sprite variation formula
 	Variation    uint8 // byte 7 — alternate terrain style; non-zero in snowy/special scenarios
