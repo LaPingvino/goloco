@@ -110,6 +110,7 @@ func (w *VehicleWindow) drawCargo(screen *ebiten.Image) {
 		for yy := range ch {
 			copy(sub.Bits[yy*cw:(yy+1)*cw], rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw])
 		}
+		w.drawRowHover(sub, rowH, cw, false)
 		for i, r := range c.Rows {
 			if r.Car.Object == nil {
 				continue
@@ -132,8 +133,12 @@ func (w *VehicleWindow) drawCargo(screen *ebiten.Image) {
 		if len(r.Lines) == 1 {
 			y += 5 // one cargo (or Empty): centred
 		}
+		col := black
+		if i == w.Hover { // strFormat = wcolour2_stringid
+			col = win2
+		}
 		for _, l := range r.Lines {
-			drawFormatted(clip, sx+cargoX, y, l, black, black)
+			drawFormatted(clip, sx+cargoX, y, l, col, col)
 			y += 10
 		}
 	}
