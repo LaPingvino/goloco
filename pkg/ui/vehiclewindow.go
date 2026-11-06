@@ -307,7 +307,7 @@ type VehicleWindow struct {
 	Route               []RouteLine          // Route: the order list's rows, the last the end of the list
 	RouteSel            int                  // Route: orderTableIndex, the selected row (-1: none)
 	OnRouteSelect       func(row int)        // Route: a row clicked
-	OnRoute             func(action string)  // Route: "delete", "up", "down", "skip", "local", "express"
+	OnRoute             func(action string)  // Route: "delete", "up", "down", "skip", "reverse", "local", "express"
 	Express             bool                 // Route: veh1 Flags48::expressMode (express pressed, else local)
 	// View is Main's viewport, 8-bit, of the given size (nil: none — the
 	// vehicle not placed).
@@ -587,10 +587,10 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 	in := func(c BVWidget) bool {
 		return !c.Hidden && x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B
 	}
-	if w.Tab == 4 { // Route::onMouseUp and onScrollMouseDown. PARTIAL: reverse, the tool
+	if w.Tab == 4 { // Route::onMouseUp and onScrollMouseDown. PARTIAL: the tool button
 		lw := VehicleRouteLayout(w.W, w.H, w.State.HiddenTabs, !w.Main.Own)
 		list := lw[vrRouteList]
-		action := map[int]string{vrDelete: "delete", vrUp: "up", vrDown: "down", vrSkip: "skip"}
+		action := map[int]string{vrDelete: "delete", vrUp: "up", vrDown: "down", vrSkip: "skip", vrReverse: "reverse"}
 		if w.Main.Own { // disabled for another company's vehicle
 			action[vrLocalMode], action[vrExpressMode] = "local", "express"
 		}

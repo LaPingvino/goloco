@@ -566,7 +566,9 @@ func (g *Game) routeLines(h *scenario.VehicleEntity) []ui.RouteLine {
 // routeAction is Route::onMouseUp's order buttons: delete (the selected order,
 // or the last), up / down (the selected one, the selection following it),
 // skip (the current order), local / express (the vehicle's running mode,
-// toggled only when the other one is on). PARTIAL: reverse.
+// toggled only when the other one is on), reverse (the whole table, the
+// current order following its order). PARTIAL: generateNumDisplayFrames after
+// a change (the map's order numbers) — not ported for any of them.
 func (g *Game) routeAction(headID uint16, action string) {
 	m := &g.w.Map
 	tr, err := m.TrainOf(headID)
@@ -612,6 +614,8 @@ func (g *Game) routeAction(headID uint16, action string) {
 		}
 	case "skip":
 		m.VehicleOrderSkip(c, sim.CmdApply, headID)
+	case "reverse": // orderReverseCommand: the selection stays (orderTableIndex untouched)
+		m.VehicleOrderReverse(c, sim.CmdApply, headID)
 	}
 	g.openVehicleWindow(headID, 4)
 }
