@@ -58,7 +58,10 @@ TL. [x] (DONE 2026-11-06: station names too — Station.cpp drawStationName: the
    ends and middle in two translucent passes (unk34, the owner's colour), the name with its town and the
    transport icons (label_icons_*: the emoji above U+FFFF now map to Loco 177 / 182 / 184, U+FE0F dropped as
    LanguageFiles does), medium bold / small by zoom, up to stationNamesMinScale, none on the title; goloco's
-   own "Station N" plaques gone. PARTIAL: the hovered station's look, Station / Town::updateLabel.)
+   own "Station N" plaques gone. PARTIAL: the hovered station's look. Town / Station::updateLabel DONE 2026-11-06 (sim/labels.go,
+   TestLabelFramesReproduceSave: all 32 towns' and 82 live stations' saved frames recomputed exactly); called
+   where a town is named (generateTownName — a new game's towns get labels); the station commands that call
+   it upstream aren't ported yet — they call UpdateStationLabel when they are.)
    (town names DONE — the saved labelFrame per zoom, kZoomToTownFonts, white outlined,
    at every zoom, not in title mode (world/overlay.go drawTownNames); seen with GOLOCO_DIAG_BUILDVEHICLE=towns
    (+ GOLOCO_DIAG_ZOOM=2: "Kansas City" in medium normal). PARTIAL: Town::updateLabel (a grown or renamed
@@ -1298,4 +1301,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (TL: station names — TL done) — (the other three wait on Joop → here.) Station plaques ported: S5 Station labelFrame parsed, drawStationNames / drawStationName (flag_5 skipped; curved_border images and a translucent middle, each drawn with ExtColour unk34 then getTranslucent(owner colour, 1); "{name} {icons}" in black, medium bold at zoom 0–1, small at 2–3; stationNamesMinScale 2), before the town names as Viewport::paint orders them. The first shot showed the icons as "???": goloco's Unicode→Loco table stopped at U+FFFF — the three transport emoji added, and the variation selector / superscript minus dropped when packs load (TestTransportIcons). Seen at zoom 0 ("Kansas City Central" + rail / road icons in the company's orange) and zoom 2 (blue plaques). All green; test page redeployed.
+
+
+- 2026-11-06 (TL: updateLabel) — (the other three wait on Joop → here.) Ported Town::updateLabel and Station::updateLabel (font widths per zoom, the border, the projection at rotation 0, the shifts), with stringWidth generalising the medium-bold width to any font. TestLabelFramesReproduceSave recomputes every saved frame in the title save and matches all 32 towns and 82 live stations exactly. The test also showed empty station slots are name == 0xFFFF (Station::empty), not 0 — the overlay's skip fixed too (it would have drawn empty slots at the map origin's frame). generateTownName now calls UpdateTownLabel, so a new game's towns are labelled. All green; test page redeployed.
 
