@@ -103,7 +103,8 @@ type Game struct {
 	dragLastY     int
 
 	// Title screen globe animation counter (incremented each frame)
-	titleFrame int
+	titleFrame  int
+	windowFrame int // counts Updates: the windows' frameNo (onUpdate's frameNo += 1)
 
 	// Speed controls
 	isPaused  bool
@@ -450,6 +451,7 @@ func NewGame() *Game {
 }
 
 func (g *Game) Update() error {
+	g.windowFrame++
 	if g.diagShip != 0 && g.w != nil {
 		if tr, err := g.w.Map.TrainOf(g.diagShip); err == nil {
 			g.diagShipFrames++
@@ -1277,6 +1279,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.buildVehicle.Draw(screen)
 	}
 	if g.vehicleWin != nil { // opened after the Build window: on top (PARTIAL: the window stack's real order)
+		g.vehicleWin.FrameNo = g.windowFrame
+		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+			g.vehicleWin.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
+		}
 		g.vehicleWin.Draw(screen)
 	}
 	if g.townList != nil {

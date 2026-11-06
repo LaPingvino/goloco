@@ -94,11 +94,7 @@ func (w *VehicleWindow) drawCargo(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[vwClose].L, lw[vwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := vwTabMain; i <= vwTabRoute; i++ {
-			if t := lw[i]; !t.Hidden {
-				drawTab(rt, t.L, t.T, i == vwTabCargo, sec, tabNoIcon, nil)
-			}
-		}
+		w.drawVehicleTabs(rt, lw[:], vwTabCargo, sec, prim)
 		if b := lw[vcRefit]; !b.Hidden {
 			if sp, err := gfx8.Decode(&g1.Elements[imgRefitCargoButton]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)

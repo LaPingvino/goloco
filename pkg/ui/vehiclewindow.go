@@ -308,6 +308,8 @@ type VehicleWindow struct {
 	Route               []RouteLine          // Route: the order list's rows, the last the end of the list
 	Finances            VehicleFinances      // Finances: its lines, formatted
 	Cargo               VehicleCargo         // Cargo: its lines, formatted
+	SkinImage           int                  // the interface skin's image base (tab icons; 0: none)
+	FrameNo             int                  // the window's frameNo (counts updates: the current tab's icon animates)
 	RouteSel            int                  // Route: orderTableIndex, the selected row (-1: none)
 	OnRouteSelect       func(row int)        // Route: a row clicked
 	OnRoute             func(action string)  // Route: "delete", "up", "down", "skip", "reverse", "local", "express"
@@ -359,11 +361,7 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[vwClose].L, lw[vwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := vwTabMain; i <= vwTabRoute; i++ {
-			if t := lw[i]; !t.Hidden {
-				drawTab(rt, t.L, t.T, i == vwTabDetails, sec, tabNoIcon, nil)
-			}
-		}
+		w.drawVehicleTabs(rt, lw[:], vwTabDetails, sec, prim)
 		// The pickup button (ImageButton::draw): inset while its tool is
 		// active, then its image. PARTIAL: hover, the disabled (solid) look,
 		// Gfx::recolour's exact colouring (the company colour here), the
@@ -430,11 +428,7 @@ func (w *VehicleWindow) drawMain(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[vwClose].L, lw[vwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := vwTabMain; i <= vwTabRoute; i++ {
-			if t := lw[i]; !t.Hidden {
-				drawTab(rt, t.L, t.T, i == vwTabMain, sec, tabNoIcon, nil)
-			}
-		}
+		w.drawVehicleTabs(rt, lw[:], vwTabMain, sec, prim)
 		v := lw[vmViewport]
 		gfx8.FillRectInset(rt, v.L, v.T, v.R, v.B, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 		for _, b := range []struct {
@@ -501,11 +495,7 @@ func (w *VehicleWindow) drawRoute(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[vwClose].L, lw[vwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := vwTabMain; i <= vwTabRoute; i++ {
-			if t := lw[i]; !t.Hidden {
-				drawTab(rt, t.L, t.T, i == vwTabRoute, sec, tabNoIcon, nil)
-			}
-		}
+		w.drawVehicleTabs(rt, lw[:], vwTabRoute, sec, prim)
 		for _, b := range []int{vrLocalMode, vrExpressMode} { // Button::draw: activated → borderInset
 			flags := 0
 			if (b == vrExpressMode) == w.Express {
