@@ -232,7 +232,7 @@ func (w *World) drawStationNames(screen *ebiten.Image, sw, sh int) {
 	for id := range w.Map.StationNames {
 		st := &w.Map.StationNames[id]
 		f := st.LabelFrame
-		if st.Name == 0 || st.Flags&(1<<5) != 0 || !f.Contains(ox, oy, ox+sw-1, oy+sh-1, z) {
+		if st.Name == 0xFFFF || st.Flags&(1<<5) != 0 || !f.Contains(ox, oy, ox+sw-1, oy+sh-1, z) {
 			continue
 		}
 		colour := 1 // Colour::grey

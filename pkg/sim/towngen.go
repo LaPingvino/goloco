@@ -220,7 +220,8 @@ func (m *Map) GenerateTownName(i int, g1 G1Raw, om *objects.ObjectManager) bool 
 			continue
 		}
 		tw.Name = id
-		return true // (updateLabel: the Ui's)
+		m.UpdateTownLabel(i, g1) // town->updateLabel()
+		return true
 	}
 	return false
 }

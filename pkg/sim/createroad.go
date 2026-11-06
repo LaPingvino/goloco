@@ -322,7 +322,8 @@ const roadObjFlagUnk02 = 1 << 2
 // filled in (createRoadJunctions), then a bridge's and a tunnel's cost. The
 // cost, and false where upstream returns kFailure.
 // PARTIAL: a road station met is not recalculated (recalculateStationModes /
-// Center, updateLabel — not yet ported); the placement sound.
+// Center — not yet ported — then UpdateStationLabel, which is); the
+// placement sound.
 func (m *Map) createRoad(c *Cmd, a roadPlacementArgs, flags uint8) (int32, bool) {
 	r, ok := m.createRoadCheck(c, a, flags)
 	if !ok || !m.createRoadApply(c, a, flags, &r) {
