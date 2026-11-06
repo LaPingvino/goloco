@@ -619,10 +619,10 @@ func (m *Map) tryCreateNewIndustriesMonthly(om *objects.ObjectManager) {
 	}
 }
 
-// DiagNewFarmIndustry (DIAGNOSTIC ONLY: the newindustry diag) builds an
-// industry with fields and fences, at once, at a searched place: its id and
-// centre.
-func (m *Map) DiagNewFarmIndustry(om *objects.ObjectManager) (uint8, int32, int32, bool) {
+// DiagNewFarmIndustry (DIAGNOSTIC ONLY: the newindustry diags) builds an
+// industry with fields and fences — at once, or under construction — at a
+// searched place: its id and centre.
+func (m *Map) DiagNewFarmIndustry(om *objects.ObjectManager, immediately bool) (uint8, int32, int32, bool) {
 	for k := 0; k < 16; k++ {
 		o := om.GetIndustryObjectByIndex(k)
 		if o == nil || o.FarmTileGrowthStageNoProduction == 0xFF || o.BuildingWall == 0xFF {
@@ -633,7 +633,7 @@ func (m *Map) DiagNewFarmIndustry(om *objects.ObjectManager) (uint8, int32, int3
 			if !ok {
 				continue
 			}
-			if _, id, ok := m.CreateIndustry(&Cmd{Company: CompanyNeutral, Objects: om}, CmdApply, IndustryPlacement{Type: uint8(k), X: x, Y: y, BuildImmediately: true, Srand1: uint32(try)}); ok {
+			if _, id, ok := m.CreateIndustry(&Cmd{Company: CompanyNeutral, Objects: om}, CmdApply, IndustryPlacement{Type: uint8(k), X: x, Y: y, BuildImmediately: immediately, Srand1: uint32(try)}); ok {
 				ind := m.industryByID(id)
 				return id, int32(ind.X), int32(ind.Y), true
 			}

@@ -108,8 +108,7 @@ func (m *Map) industryUpdateDaily(ind *scenario.Industry, om *objects.ObjectMana
 // (Map/IndustryElement.cpp): from a finished industry's building (its first
 // tile, not a ghost), every station element within 4 tiles (5 on the far
 // sides of a 2×2 building), not ghost or AI-allocated, marks its station in
-// the industry's stationsInRange. PARTIAL: the element's construction and
-// animation parts.
+// the industry's stationsInRange (the last part of industryElementUpdate).
 func (m *Map) industryElementStations(el *scenario.IndustryElement, x, y int32, om *objects.ObjectManager) {
 	if el.SequenceIndex != 0 || om == nil {
 		return
@@ -307,4 +306,86 @@ func (m *Map) isMonthlyProductionClosing(ind *scenario.Industry, obj *objects.In
 	defer func() { ind.Prng = [2]uint32{p.Srand0(), p.Srand1()} }()
 	return (m.CurrentYear > obj.ObsoleteYear && p.RandNextBound(0xFFFF) < 102) ||
 		(obj.MonthlyClosureChance != 0 && int32(obj.MonthlyClosureChance) > p.RandNextBound(0xFFFF))
+}
+
+// industryElementUpdate is IndustryElement::update (Map/IndustryElement.cpp)
+// from the tile loop, on a building's first tile (not a ghost): under
+// construction, a section at a time — 8 steps of progress a section; the last
+// section done counts the building in its industry (under_construction to
+// 0xFF when all are) and sets its clear height from its parts —; built, a
+// building with a part that has no frames may, 1 in 8 by the industry's
+// prng, start one of its type's animation sequences (unk38) as an
+// animation; then the stations in range (industryElementStations).
+func (m *Map) industryElementUpdate(el *scenario.IndustryElement, x, y int32, om *objects.ObjectManager) {
+	if el.SequenceIndex != 0 || om == nil {
+		return
+	}
+	ind := m.industryByID(el.IndustryID)
+	if ind == nil {
+		return
+	}
+	obj := om.GetIndustryObjectByIndex(int(ind.ObjectID))
+	if obj == nil {
+		return
+	}
+	large := obj.BuildingSizeFlags&(1<<el.BuildingType) != 0
+	var parts []uint8
+	if int(el.BuildingType) < len(obj.Variations) {
+		parts = obj.Variations[el.BuildingType]
+	}
+	if !el.IsConstructed {
+		built, progress, sections := false, el.SectionProgress, el.Var6Low
+		if el.SectionProgress == 7 {
+			if len(parts) <= int(el.Var6Low)+1 {
+				ind.UnderConstruction++
+				if int(ind.UnderConstruction) >= len(ind.Tiles) {
+					ind.UnderConstruction = 0xFF
+				}
+				h := 0
+				for _, p := range parts {
+					if int(p) < len(obj.PartHeights) {
+						h += int(obj.PartHeights[p])
+					}
+				}
+				clearZ := uint8((h+3)/4) + el.BaseZ
+				m.industryMultiTile(el, x, y, large, func(e *scenario.IndustryElement, _, _ int32) { e.ClearZ = clearZ })
+				built, progress, sections = true, 0, 0
+			} else {
+				progress, sections = 0, sections+1
+			}
+		} else {
+			progress++
+		}
+		m.industryMultiTile(el, x, y, large, func(e *scenario.IndustryElement, _, _ int32) {
+			e.IsConstructed, e.SectionProgress, e.Var6Low = built, progress, sections
+		})
+	}
+	if el.IsConstructed {
+		zeroFrame := false
+		for _, p := range parts {
+			if int(p) < len(obj.PartAnimations) && obj.PartAnimations[p].NumFrames == 0 {
+				zeroFrame = true
+				break
+			}
+		}
+		if zeroFrame && el.Var6Low&(1<<5) == 0 {
+			var anims []uint8
+			for _, u := range obj.Unk38 {
+				if u[0] == el.BuildingType && len(anims) < 8 {
+					anims = append(anims, u[1])
+				}
+			}
+			if len(anims) != 0 {
+				p := core.NewPrngSeed(ind.Prng[0], ind.Prng[1])
+				r := p.RandNext()
+				ind.Prng = [2]uint32{p.Srand0(), p.Srand1()}
+				if r&0x700 == 0 {
+					v := anims[uint32(len(anims))*(r&0xFF)/256] | 1<<5 | el.Var6Low&0xC
+					m.industryMultiTile(el, x, y, large, func(e *scenario.IndustryElement, _, _ int32) { e.Var6Low = v })
+					m.CreateAnimation(4, x, y, el.BaseZ)
+				}
+			}
+		}
+	}
+	m.industryElementStations(el, x, y, om)
 }

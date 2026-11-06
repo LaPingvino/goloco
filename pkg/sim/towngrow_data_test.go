@@ -2712,3 +2712,65 @@ func TestFarmProduction(t *testing.T) {
 		t.Fatal("none to check")
 	}
 }
+
+// TestIndustryConstruction (CR part 4): a new industry founded under
+// construction builds up in the tile loop (IndustryElement::update) — each
+// building a section at a time —, until every building is constructed, its
+// clear height its parts', and the industry is done (under_construction
+// 0xFF); the objects' unk38 lists read where the reader used to skip them.
+func TestIndustryConstruction(t *testing.T) {
+	m0, om := loadDataMap(t, "title.dat")
+	s := &State{Map: *m0}
+	m := &s.Map
+	c := &Cmd{Company: CompanyNeutral, Objects: om}
+	unk := 0
+	for k := 0; k < 16; k++ {
+		if o := om.GetIndustryObjectByIndex(k); o != nil {
+			unk += len(o.Unk38)
+		}
+	}
+	var id uint8
+	ok := false
+	for k := 0; k < 16 && !ok; k++ {
+		o := om.GetIndustryObjectByIndex(k)
+		if o == nil || o.Flags&industryBuiltOnWater != 0 {
+			continue
+		}
+		for try := 0; try < 10 && !ok; try++ {
+			x, y, found := m.findRandomNewIndustryLocation(uint8(k), om)
+			if found {
+				_, id, ok = m.CreateIndustry(c, CmdApply, IndustryPlacement{Type: uint8(k), X: x, Y: y, Srand1: uint32(try + 1)})
+			}
+		}
+	}
+	if !ok {
+		t.Fatal("no industry founded")
+	}
+	ind := m.industryByID(id)
+	if ind.UnderConstruction != 0 {
+		t.Fatalf("founded at %d, want 0 (under construction)", ind.UnderConstruction)
+	}
+	passes := 0
+	for ; passes < 256*80 && m.industryByID(id).UnderConstruction != 0xFF; passes++ {
+		s.UpdateTiles(func(int, int) bool { return false }, om)
+	}
+	ind = m.industryByID(id)
+	if ind.UnderConstruction != 0xFF {
+		t.Fatalf("still under construction (%d) after %d passes", ind.UnderConstruction, passes)
+	}
+	obj := om.GetIndustryObjectByIndex(int(ind.ObjectID))
+	for _, tl := range ind.Tiles {
+		for _, e := range m.TileAt(int(tl[0])>>5, int(tl[1])>>5).Industries {
+			if e.IndustryID != id {
+				continue
+			}
+			if !e.IsConstructed || e.ClearZ <= e.BaseZ {
+				t.Errorf("building at %v: constructed %v, %d–%d", tl, e.IsConstructed, e.BaseZ, e.ClearZ)
+			}
+		}
+	}
+	t.Logf("%s (%d buildings) built in %d tile-loop passes; %d unk38 entries over the industry objects", obj.Name, len(ind.Tiles), passes, unk)
+	if unk == 0 {
+		t.Error("no unk38 entries read")
+	}
+}

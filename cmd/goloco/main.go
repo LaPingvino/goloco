@@ -1417,7 +1417,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
 		if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
@@ -1451,11 +1451,11 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					break
 				}
 			}
-		} else if v == "newindustry" { // DIAGNOSTIC ONLY: a farm-type industry built at once by the createIndustry command at a searched place, the view on it
+		} else if v == "newindustry" || v == "newindustrybuild" { // DIAGNOSTIC ONLY: a farm-type industry by the createIndustry command at a searched place (built at once, or — newindustrybuild — under construction), the view on it
 			g.inTitleScreen = false
 			m := &g.w.Map
 			om := g.r.ObjMgr
-			if id, x, y, ok := m.DiagNewFarmIndustry(om); ok {
+			if id, x, y, ok := m.DiagNewFarmIndustry(om, v == "newindustry"); ok {
 				g.w.CenterOn(fmt.Sprintf("tile:%d,%d", x>>5, y>>5))
 				log.Printf("[Diag] newindustry: industry %d built at tile (%d, %d)", id, x>>5, y>>5)
 			} else {
