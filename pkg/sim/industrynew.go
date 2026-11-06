@@ -2,6 +2,7 @@ package sim
 
 import (
 	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
 )
 
 // New industries (item CR part 2): IndustryManager.cpp's choice of which
@@ -164,4 +165,163 @@ func (m *Map) industryNearPosition(x, y int32, flags uint32, om *objects.ObjectM
 		}
 	}
 	return false
+}
+
+// findRandomNewIndustryLocation's limits (IndustryManager.cpp).
+const (
+	findRandomNewIndustryAttempts    = 250
+	industryHighGroundMin            = 48 // SmallZ
+	industryLowGroundMax             = 56
+	industryFlatGroundMountainMax    = 32
+	industryTilesToBeInDesertMin     = 100
+	industryTilesToBeNearDesertMax   = 70
+	industryTilesToBeNearWaterMin    = 10
+	industryTilesToBeAwayWaterMax    = 0
+	industryDistToBeNearTownMax      = 576
+	industryDistToBeAwayTownMin      = 768
+	industryNumTreesToBeNearTreesMin = 25
+	industryNumTreesToBeOpenSpaceMax = 3
+)
+
+// IndustryObjectFlags for where an industry may be built.
+const (
+	industryBuiltInClusters        = 1 << 0
+	industryBuiltOnHighGround      = 1 << 1
+	industryBuiltOnLowGround       = 1 << 2
+	industryBuiltOnSnow            = 1 << 3
+	industryBuiltBelowSnowLine     = 1 << 4
+	industryBuiltOnFlatGround      = 1 << 5
+	industryBuiltNearWater         = 1 << 6
+	industryBuiltAwayFromWater     = 1 << 7
+	industryBuiltOnWater           = 1 << 8
+	industryBuiltNearTown          = 1 << 9
+	industryBuiltAwayFromTown      = 1 << 10
+	industryBuiltNearTrees         = 1 << 11
+	industryBuiltRequiresOpenSpace = 1 << 12
+	industryBuiltInDesert          = 1 << 24
+	industryBuiltNearDesert        = 1 << 25
+)
+
+// mountainHeight is TileManager::mountainHeight (0x00469A81): over the
+// 11×11 tiles (clamped) around a point, the highest surface (a sloped one
+// 16 higher, a steep one 32) less the lowest.
+func (m *Map) mountainHeight(x, y int32) int32 {
+	tx, ty := int(x)>>5, int(y)>>5
+	lowest, highest := int32(1<<15-1), int32(0)
+	for py := max(ty-5, 0); py <= min(ty+5, m.Height-1); py++ {
+		for px := max(tx-5, 0); px <= min(tx+5, m.Width-1); px++ {
+			t := m.TileAt(px, py)
+			if t == nil {
+				continue
+			}
+			h := int32(t.BaseZ) * 4
+			lowest = min(lowest, h)
+			if t.Slope&0x1F != 0 {
+				h += 16
+				if t.Slope&0x10 != 0 { // isSlopeDoubleHeight
+					h += 16
+				}
+			}
+			highest = max(highest, h)
+		}
+	}
+	return highest - lowest
+}
+
+// countSurroundingTrees is TileManager::countSurroundingTrees (0x004BE048):
+// the trees (not ghosts) on the 11×11 tiles (clamped) around a point.
+func (m *Map) countSurroundingTrees(x, y int32) int {
+	tx, ty := int(x)>>5-5, int(y)>>5-5
+	n := 0
+	for py := max(ty, 0); py <= min(ty+10, m.Height-1); py++ {
+		for px := max(tx, 0); px <= min(tx+10, m.Width-1); px++ {
+			t := m.TileAt(px, py)
+			if t == nil {
+				continue
+			}
+			for _, r := range t.Order {
+				if r.Kind == scenario.KindTree && r.Flags&0x10 == 0 {
+					n++
+				}
+			}
+		}
+	}
+	return n
+}
+
+// findRandomNewIndustryLocation is IndustryManager's (0x004599B3): up to 250
+// random tiles (one gPrng1 draw each: its high half the row, its low half the
+// column) until one is far enough from other industries and meets the
+// object's every "built …" rule (clusters, high / low ground, snow lines,
+// flat ground, desert, water, towns, trees); ok false when none did.
+func (m *Map) findRandomNewIndustryLocation(objID uint8, om *objects.ObjectManager) (x, y int32, ok bool) {
+	obj := om.GetIndustryObjectByIndex(int(objID))
+	if obj == nil {
+		return 0, 0, false
+	}
+	f := obj.Flags
+	for i := 0; i < findRandomNewIndustryAttempts; i++ {
+		r := m.Rng1.RandNext()
+		x, y = int32(((r>>16)*384)>>16)*32, int32(((r&0xFFFF)*384)>>16)*32 // toWorldSpace(TilePos2(… × kMapRows, … × kMapColumns))
+		if m.isTooCloseToNearbyIndustries(x, y) {
+			continue
+		}
+		if f&industryBuiltInClusters != 0 && m.isOutwithCluster(x, y, objID) {
+			continue
+		}
+		t := m.TileAt(int(x)>>5, int(y)>>5)
+		if f&industryBuiltOnHighGround != 0 && (t == nil || t.BaseZ < industryHighGroundMin) {
+			continue
+		}
+		if f&industryBuiltOnLowGround != 0 && (t == nil || t.BaseZ > industryLowGroundMax) {
+			continue
+		}
+		if f&industryBuiltOnSnow != 0 && (t == nil || om.Climate == nil || t.BaseZ < om.Climate.SummerSnowLine) {
+			continue
+		}
+		if f&industryBuiltBelowSnowLine != 0 && (t == nil || om.Climate == nil || t.BaseZ > om.Climate.WinterSnowLine) {
+			continue
+		}
+		if f&industryBuiltOnFlatGround != 0 && m.mountainHeight(x, y) > industryFlatGroundMountainMax {
+			continue
+		}
+		if f&industryBuiltInDesert != 0 && m.countSurroundingDesertTiles(int(x)>>5, int(y)>>5, om) < industryTilesToBeInDesertMin {
+			continue
+		}
+		if f&industryBuiltNearDesert != 0 && m.countSurroundingDesertTiles(int(x)>>5, int(y)>>5, om) >= industryTilesToBeNearDesertMax {
+			continue
+		}
+		if f&industryBuiltNearWater != 0 && m.countSurroundingWaterTiles(int(x)>>5, int(y)>>5) < industryTilesToBeNearWaterMin {
+			continue
+		}
+		if f&industryBuiltAwayFromWater != 0 && m.countSurroundingWaterTiles(int(x)>>5, int(y)>>5) > industryTilesToBeAwayWaterMax {
+			continue
+		}
+		if f&industryBuiltOnWater != 0 && t != nil && t.WaterLevel == 0 {
+			continue
+		}
+		if f&industryBuiltNearTown != 0 {
+			ti, density, found := m.ClosestTownAndDensity(x, y)
+			if !found {
+				continue
+			}
+			if density == 0 && abs32(x-int32(m.Towns[ti].X))+abs32(y-int32(m.Towns[ti].Y)) > industryDistToBeNearTownMax {
+				continue
+			}
+		}
+		if f&industryBuiltAwayFromTown != 0 {
+			ti, _, found := m.ClosestTownAndDensity(x, y)
+			if !found || abs32(x-int32(m.Towns[ti].X))+abs32(y-int32(m.Towns[ti].Y)) < industryDistToBeAwayTownMin {
+				continue
+			}
+		}
+		if f&industryBuiltNearTrees != 0 && m.countSurroundingTrees(x, y) < industryNumTreesToBeNearTreesMin {
+			continue
+		}
+		if f&industryBuiltRequiresOpenSpace != 0 && m.countSurroundingTrees(x, y) > industryNumTreesToBeOpenSpaceMax {
+			continue
+		}
+		return x, y, true
+	}
+	return 0, 0, false
 }

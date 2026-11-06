@@ -1660,7 +1660,7 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 	sc.CurrentDayOfMonth = gs[0x1D]                       // general.currentDayOfMonth
 	sc.GameStateFlags = binary.LittleEndian.Uint32(gs[0x10:])
 	sc.IndustryManagerFlags = gs[0x42F]
-	sc.NumberOfIndustries = gs[0x415] // numberOfIndustries: 0 low, 1 medium, 2 high
+	sc.NumberOfIndustries = gs[0x415]         // numberOfIndustries: 0 low, 1 medium, 2 high
 	if len(gs) > GeneralCurrentYearOffset+1 { // general.currentYear (from the compiler: 0x1A)
 		sc.CurrentYear = binary.LittleEndian.Uint16(gs[GeneralCurrentYearOffset:])
 	}
