@@ -300,6 +300,7 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 	if own {
 		g.vehicleWin.OnRename = func() { g.renameVehicle(headID, tc, wc) }
 	}
+	g.vehicleWin.OnSell = func() { g.sellVehicle(headID) }
 }
 
 // stopStartImage is Main::prepareDraw's: yellow in manual control, red when
@@ -1035,4 +1036,22 @@ func (g *Game) renameVehicle(headID uint16, titleColour, colour uint8) {
 				g.openVehicleWindow(headID, tab)
 			}
 		})
+}
+
+// sellVehicle is Details' remove button: VehicleSell for the head, as a
+// company command (VehicleDisposals); sold, its window closes (deleteTrain's
+// WindowManager::close) and the pickup tool with it.
+func (g *Game) sellVehicle(headID uint16) {
+	m := &g.w.Map
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	cost, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureVehicleDisposals, func(flags uint8) (int32, bool) {
+		return m.VehicleSell(c, flags, headID)
+	})
+	if !ok {
+		log.Printf("[Game] can't sell vehicle %d", headID)
+		return
+	}
+	log.Printf("[Game] sold vehicle %d for %d", headID, -cost)
+	g.vehicleWin, g.pickupOn, g.routeTool = nil, false, false
 }

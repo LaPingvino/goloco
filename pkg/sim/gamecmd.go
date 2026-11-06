@@ -273,6 +273,10 @@ func doCommand(flags uint8, run func(flags uint8) (int32, bool)) (int32, bool) {
 // createVehicle command's setExpenditureType).
 const ExpenditureVehiclePurchases = 13
 
+// ExpenditureVehicleDisposals is ExpenditureType::VehicleDisposals (the
+// sellVehicle command's).
+const ExpenditureVehicleDisposals = 14
+
 // DoCommandFor is GameCommands::doCommand's loc_4313C6 for a command a
 // company runs at the top level (nest level 1), with the payment: the query
 // pass (free in the editor), ensureCompanyFunding unless AllowNegativeCashFlow

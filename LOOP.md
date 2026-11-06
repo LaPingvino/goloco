@@ -128,8 +128,12 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       DONE 2026-11-06 (sim/vehiclesell.go: VehicleSell — a whole vehicle by its head or one car by its front
       bogie, the refund as a negative cost; deleteCar / deleteTrain; a car out of a placed vehicle: lifted,
       laid out, put back; and VehicleChangeRunningMode now sells a player's stuck / crashed vehicle as upstream;
-      TestVehicleSell, TestCrashedVehicleSoldOnStart). NEXT in 5P: the Details tab's remove button (and its
-      cargo warning) → VehicleSell, then hover looks.
+      TestVehicleSell, TestCrashedVehicleSoldOnStart). The Details tab's remove button DONE 2026-11-06: the rubbish
+      bin drawn, a click sells the whole vehicle as a company command (VehicleDisposals: cash up by the refund),
+      the window closed; TestVehicleSellPays (also: a moving train is refused, canBeModified); seen with
+      GOLOCO_DIAG_BUILDVEHICLE=sell (+ GOLOCO_DIAG_SELL_OK=1). PARTIAL: dragging a car onto the bin (sells one
+      car, with the cargo warning — DragVehiclePart not ported), the other right-bar buttons' images (build new,
+      paint brush). NEXT in 5P: dragging cars (DragVehiclePart: reorder / sell one car), then hover looks.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a) — DONE 2026-11-06: it did differ (title save: 98 trains, the list against slot order at 55
    places). Trains() now walks the vehicle-head list from its head along next, as VehicleList does (slot order
@@ -1246,4 +1250,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (5P: selling vehicles) — (the other three wait on Joop → here.) Chose this over hover looks: without it a player can't get rid of a vehicle. Ported VehicleSell.cpp with VehicleManager::deleteCar / deleteTrain (lift off by mode, cars freed and unlinked, routing / orders / base entities freed, transport counts recounted); a sold car leaves the vehicle re-laid-out and put back where it stood. The running-mode command's PARTIAL "stuck / crashed not sold" is closed with it. Tests: a bought 2-car vehicle loses a car (refund 18 855) then goes whole; saved train 739 sold off the map with the rest intact; a crashed player train sold on start. All green; no UI yet (next: the Details remove button).
+
+
+- 2026-11-06 (5P.g: selling from the window) — (the other three wait on Joop → here.) The Details tab's remove button: the rubbish bin (2363) drawn on the right bar, a click runs VehicleSell for the head through DoCommandFor (VehicleDisposals = 14), and the window closes as deleteTrain closes it. TestVehicleSellPays: cash up by the refund, booked as upstream (expenditures −= payment), a moving train refused. Seen: the bin under the pickup button; pressed, the bought Century is sold for 111 335 (cash −3 420 → 107 915), the window gone. All green; test page redeployed.
 

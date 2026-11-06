@@ -73,3 +73,42 @@ func TestCrashedVehicleSoldOnStart(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+// Sold as a company command: the refund comes back as cash, booked under
+// VehicleDisposals (expenditures −= payment: the refund adds); a moving one
+// is refused.
+func TestVehicleSellPays(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	saved := firstRailTrain(t, m, trains, 1)
+	company := m.Entities[saved.Head].Owner
+	c := &Cmd{Company: company, Objects: om}
+	var refund int64
+	for _, car := range saved.Cars {
+		refund += int64(m.Entities[car[0].Front].RefundCost)
+	}
+	m.Entities[saved.Veh2].CurrentSpeed = 0 // canBeModified: a moving train can't be sold
+	co := &m.Companies[company]
+	cash, booked := co.Cash, co.Expenditures[0][ExpenditureVehicleDisposals]
+	for _, tr := range trains { // a running placed train (well past the slow-speed limit) is refused
+		v2, v1 := m.Entities[tr.Veh2], m.Entities[tr.Veh1]
+		if tr.Head != saved.Head && m.Entities[tr.Head].TileX != -1 && v2.CurrentSpeed != 0 && v1.Var3C > 0x3689 {
+			if _, ok := m.VehicleSell(&Cmd{Company: m.Entities[tr.Head].Owner, Objects: om}, 0, m.Entities[tr.Head].ID); ok {
+				t.Error("a moving train may be sold")
+			}
+			break
+		}
+	}
+	cost, ok := m.DoCommandFor(c, CmdApply, ExpenditureVehicleDisposals, func(f uint8) (int32, bool) {
+		return m.VehicleSell(c, f, m.Entities[saved.Head].ID)
+	})
+	if !ok || int64(cost) != -refund {
+		t.Fatalf("cost %d ok %v, refund %d", cost, ok, refund)
+	}
+	if got := int64(co.Cash) - int64(cash); got != refund {
+		t.Errorf("cash rose by %d, refund %d", got, refund)
+	}
+	if got := int64(co.Expenditures[0][ExpenditureVehicleDisposals]) - int64(booked); got != refund { // expenditures -= payment (−refund)
+		t.Errorf("booked %d under disposals, want %d", got, refund)
+	}
+}
