@@ -1912,3 +1912,67 @@ func TestAirplaneGetNewStatus(t *testing.T) {
 	}
 	t.Logf("%d of %d aircraft: the saved status", same, checked)
 }
+
+// TestAirportEdgeWalk (AW.b): the title map's taxiing aircraft, put at the
+// entrance of station 82's airport (its own edge freed), walks the airport
+// by airportGetNextMovementEdge / airplaneTakeEdge — entering by an entry
+// edge, on to a terminal node; then, as it leaves (status taking off once
+// the edges say so), on to the runway's end where it flies off (the edge
+// null). Each edge taken is marked occupied and the one left freed.
+func TestAirportEdgeWalk(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	var tr Train
+	found := false
+	for _, x := range trains {
+		if h := m.Entities[x.Head]; h.Mode == 2 && h.StationID != stationIDNull && h.AirportMovementEdge != airportEdgeNull {
+			tr, found = x, true
+			break
+		}
+	}
+	if !found {
+		t.Skip("no aircraft at an airport")
+	}
+	head := &m.Entities[tr.Head]
+	sid := head.StationID
+	st := &m.StationNames[sid]
+	st.AirportOccupiedEdges &^= 1 << head.AirportMovementEdge
+	head.AirportMovementEdge = airportEdgeNull
+	el, _, _ := m.airportStationElement(sid)
+	a := om.AirportObjects[el.ObjectID]
+	var path []uint8
+	reachedTerminal := false
+	for step := 0; step < 64; step++ {
+		cur := head.AirportMovementEdge
+		if cur != airportEdgeNull {
+			if a.MovementNodes[a.MovementEdges[cur].NextNode].Flags&objects.AirportNodeTerminal != 0 && !reachedTerminal {
+				reachedTerminal = true
+				t.Logf("at a terminal after %v", path)
+				head.Status = headStatusTaxiing2 // loaded and leaving
+			}
+			if s, _ := m.airplaneGetNewStatus(tr, om); reachedTerminal {
+				head.Status = s
+			}
+		}
+		next := m.airportGetNextMovementEdge(tr, cur, om)
+		if next == airportEdgeNoValid {
+			t.Fatalf("stuck after %v (occupied %032b)", path, st.AirportOccupiedEdges)
+		}
+		m.airplaneTakeEdge(tr, next, om)
+		if next == airportEdgeNull {
+			if !reachedTerminal {
+				t.Fatalf("flew off before a terminal: %v", path)
+			}
+			if st.AirportOccupiedEdges&(1<<cur) != 0 {
+				t.Errorf("edge %d still occupied after leaving", cur)
+			}
+			t.Logf("took off after %v", path)
+			return
+		}
+		if st.AirportOccupiedEdges&(1<<next) == 0 || (cur != airportEdgeNull && cur != next && st.AirportOccupiedEdges&(1<<cur) != 0) {
+			t.Errorf("edge %d → %d: occupancy %032b", cur, next, st.AirportOccupiedEdges)
+		}
+		path = append(path, next)
+	}
+	t.Fatalf("no take-off in 64 edges: %v", path)
+}
