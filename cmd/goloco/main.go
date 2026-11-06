@@ -137,17 +137,19 @@ type Game struct {
 	vehDiagDone            bool   // GOLOCO_DIAG_VEHLIST opened
 	fsResolution           [2]int // Config display.fullscreenResolution
 	preferredCurrencyFlags [2]bool
-	frameLimit             int                 // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
-	prompt                 *ui.PromptOkCancel  // an open confirmation (modal: it takes all input)
-	textInput              *ui.TextInputWindow // an open text input (renaming); PARTIAL: takes all input, upstream's is not modal
-	consBridge             int                 // lastSelectedBridge (slot; -1 = the first available)
-	consOneShot            int                 // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
-	consSignal             int                 // signal tab: lastSelectedSignal (slot; -1 = the first available)
-	consStation            int                 // station tab: lastSelectedStationType (slot; -1 = the first available)
-	consMods               uint8               // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
-	consSlope              int                 // construction slope selection: -2 (steep down) … 0 … +2
-	buildObjID             int                 // index into TrackObjects / RoadObjects
-	hoverTileX             int                 // tile under cursor in build mode (-1 if invalid)
+	frameLimit             int                        // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
+	prompt                 *ui.PromptOkCancel         // an open confirmation (modal: it takes all input)
+	textInput              *ui.TextInputWindow        // an open text input (renaming); PARTIAL: takes all input, upstream's is not modal
+	consBridge             int                        // lastSelectedBridge (slot; -1 = the first available)
+	consOneShot            int                        // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
+	consSignal             int                        // signal tab: lastSelectedSignal (slot; -1 = the first available)
+	consStation            int                        // station tab: lastSelectedStationType (slot; -1 = the first available)
+	stationGhost           *sim.TrainStationPlacement // the station tab's ghost (cState.stationGhost*), nil none
+	stationGhostCost       int32                      // cState.stationCost
+	consMods               uint8                      // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
+	consSlope              int                        // construction slope selection: -2 (steep down) … 0 … +2
+	buildObjID             int                        // index into TrackObjects / RoadObjects
+	hoverTileX             int                        // tile under cursor in build mode (-1 if invalid)
 	hoverTileY             int
 
 	// Diagnostic crop: when set, save a 480×360 PNG centred on diagTileX/Y after the next Draw.
@@ -603,6 +605,14 @@ func (g *Game) Update() error {
 		if g.vehicleWin != nil {
 			g.openVehicleDetails(head)
 		}
+	}
+
+	// The station tab's ghost follows the cursor (onToolUpdateTrainStation),
+	// and goes once the tab or the mode does.
+	if g.buildMode == buildModeTrack && g.consTab == 1 && !g.inTitleScreen {
+		g.stationToolUpdate(g.mouseX, g.mouseY)
+	} else if g.stationGhost != nil {
+		g.removeStationGhost()
 	}
 
 	// Build mode: update hover tile every frame
@@ -1460,7 +1470,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves" && v != "playable" && v != "towns" && v != "buildstation" && v != "stationtool") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves" && v != "playable" && v != "towns" && v != "buildstation" && v != "stationtool" && v != "stationghost") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
 		if v == "buildstation" { // DIAGNOSTIC ONLY: CreateTrainStation on the first free straight track piece that takes one, the view on it
 			m := &g.w.Map
@@ -1499,7 +1509,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					}
 				}
 			}
-		} else if v == "stationtool" { // DIAGNOSTIC ONLY: the Station tab's tool clicked on the screen over the first free straight track piece of a company — through picking, as the player would
+		} else if v == "stationtool" || v == "stationghost" { // DIAGNOSTIC ONLY: the Station tab's tool clicked on the screen over the first free straight track piece of a company — through picking, as the player would
 			m := &g.w.Map
 			done := false
 			for y := 4; y < m.Height-4 && !done; y++ {
@@ -1518,8 +1528,28 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 						g.buildMode, g.consTab, g.buildObjID = buildModeTrack, 1, int(tr.TrackObjectID)
 						g.w.CenterOn(fmt.Sprintf("tile:%d,%d", x, y))
 						sx, sy := g.w.TileToScreenPx(x, y)
-						g.stationToolUp(sx, sy+16)
-						log.Printf("[Diag] stationtool: clicked %d,%d (tile %d,%d company %d): station now %v", sx, sy+16, x, y, tr.Owner, m.TileAt(x, y).Tracks[r.Index].HasStation)
+						if v == "stationghost" { // hover: a ghost appears; off the track it goes; back on, it stays for the shot
+							g.stationToolUpdate(sx, sy+16)
+							ghost := func() bool {
+								for _, st := range m.TileAt(x, y).Stations {
+									if st.Ghost {
+										return true
+									}
+								}
+								return false
+							}
+							on := ghost()
+							g.stationToolUpdate(5, 5)
+							off := ghost()
+							g.stationToolUpdate(sx, sy+16)
+							log.Printf("[Diag] stationghost: tile %d,%d: ghost on hover %v, after leaving %v, back %v, cost %d", x, y, on, off, ghost(), g.stationGhostCost)
+							g.consTab = 0 // keep the ghost from being removed by the next frame's update elsewhere
+							g.buildMode = buildModeNone
+							g.stationGhost = nil
+						} else {
+							g.stationToolUp(sx, sy+16)
+							log.Printf("[Diag] stationtool: clicked %d,%d (tile %d,%d company %d): station now %v", sx, sy+16, x, y, tr.Owner, m.TileAt(x, y).Tracks[r.Index].HasStation)
+						}
 						done = true
 						break
 					}
