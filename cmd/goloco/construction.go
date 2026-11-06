@@ -314,6 +314,9 @@ func (g *Game) stationTabState(company uint8) ui.StationTabState {
 	}
 	om := g.r.ObjMgr
 	if g.buildMode == buildModeDock { // the dock's name and image (DockObject image, no windows overlay)
+		if g.dockGhost != nil {
+			g.ghostTabInfo(&st)
+		}
 		if list := om.AvailableDocks(int(g.w.CurrentYear)); len(list) > 0 {
 			if d := om.DockObjects[pickSlot(list, g.consStation)]; d != nil {
 				st.Name, st.Image, st.Recolourable, st.NoOverlay = d.Name, int(d.Image), true, true
@@ -328,24 +331,7 @@ func (g *Game) stationTabState(company uint8) ui.StationTabState {
 	}
 	slot := pickSlot(list, g.consStation)
 	if (g.stationGhost != nil && !road) || (g.roadStationGhost != nil && road) {
-		st.Cost = int64(g.stationGhostCost) // cState.stationCost while a ghost stands
-		st.Ghost = true
-		st.GhostName = i18n.Label(i18n.NewStation)
-		if id := g.stationGhostStation; id >= 0 && id < len(g.w.Map.StationNames) {
-			st.GhostName = g.w.Map.StationName(id)
-		}
-		lines := func(bits uint32) []ui.CargoLine {
-			var out []ui.CargoLine
-			for i := 0; i < 32; i++ {
-				if bits&(1<<i) == 0 || i >= len(om.CargoObjects) || om.CargoObjects[i] == nil {
-					continue
-				}
-				c := om.CargoObjects[i]
-				out = append(out, ui.CargoLine{Name: c.Name, Image: int(c.ImageOffset)})
-			}
-			return out
-		}
-		st.Accepted, st.Produced = lines(g.stationGhostAccepted), lines(g.stationGhostProduced)
+		g.ghostTabInfo(&st)
 	}
 	if road {
 		if s := om.GetRoadStationObjectByIndex(slot); s != nil {
@@ -500,6 +486,10 @@ func (g *Game) stationCmd() (*sim.Cmd, sim.G1Raw) {
 // noPayment | ghost), its cost kept; the catchment shown on the map and the
 // ghost's accepted / produced cargo (calcAcceptedCargoTrainStationGhost).
 func (g *Game) stationToolUpdate(sx, sy int) {
+	if g.buildMode == buildModeDock {
+		g.dockToolUpdate(sx, sy)
+		return
+	}
 	if g.consIsRoad() {
 		g.roadStationToolUpdate(sx, sy)
 		return
@@ -558,6 +548,10 @@ func (g *Game) removeStationGhost() {
 // name. PARTIAL: the command's own error text (goloco's commands don't set
 // one yet, so only the title shows), the construct sound.
 func (g *Game) stationToolUp(sx, sy int) {
+	if g.buildMode == buildModeDock {
+		g.dockToolUp(sx, sy)
+		return
+	}
 	if g.consIsRoad() {
 		g.roadStationToolUp(sx, sy)
 		return
@@ -654,6 +648,102 @@ func (g *Game) roadStationToolUp(sx, sy int) {
 	}
 	c, g1 := g.stationCmd()
 	if _, ok := g.w.Map.CreateRoadStation(c, sim.CmdApply, a, g1); !ok {
+		g.openError(title, "")
+	}
+}
+
+// ghostTabInfo is the Station tab's ghost part: cState.stationCost, the
+// station it joins (or New Station) and the catchment's cargo lists.
+func (g *Game) ghostTabInfo(st *ui.StationTabState) {
+	om := g.r.ObjMgr
+	st.Cost = int64(g.stationGhostCost) // cState.stationCost while a ghost stands
+	st.Ghost = true
+	st.GhostName = i18n.Label(i18n.NewStation)
+	if id := g.stationGhostStation; id >= 0 && id < len(g.w.Map.StationNames) {
+		st.GhostName = g.w.Map.StationName(id)
+	}
+	lines := func(bits uint32) []ui.CargoLine {
+		var out []ui.CargoLine
+		for i := 0; i < 32; i++ {
+			if bits&(1<<i) == 0 || i >= len(om.CargoObjects) || om.CargoObjects[i] == nil {
+				continue
+			}
+			c := om.CargoObjects[i]
+			out = append(out, ui.CargoLine{Name: c.Name, Image: int(c.ImageOffset)})
+		}
+		return out
+	}
+	st.Accepted, st.Produced = lines(g.stationGhostAccepted), lines(g.stationGhostProduced)
+}
+
+// dockArgsAt is getDockPlacementArgsFromCursor: the surface or water under
+// the cursor (getSurfaceOrWaterLocFromUi), the dock placed by
+// getDockPlacementArgs with the selected dock.
+func (g *Game) dockArgsAt(sx, sy int) (sim.PortPlacement, int, bool) {
+	if g.r == nil || g.r.ObjMgr == nil {
+		return sim.PortPlacement{}, -1, false
+	}
+	list := g.r.ObjMgr.AvailableDocks(int(g.w.CurrentYear))
+	if len(list) == 0 {
+		return sim.PortPlacement{}, -1, false
+	}
+	px, py, ok := g.w.SurfaceOrWaterAt(sx, sy)
+	if !ok {
+		return sim.PortPlacement{}, -1, false
+	}
+	typ := pickSlot(list, g.consStation)
+	a, ok := g.w.Map.DockPlacementAt(px, py, uint8(typ), g.r.ObjMgr)
+	return a, typ, ok
+}
+
+// dockToolUpdate is StationTab's onToolUpdateDock: the ghost dock follows
+// the cursor (createPort with apply | noErrorWindow | noPayment | ghost),
+// its cost, the catchment shown (sub_491D20) and its cargo
+// (calcAcceptedCargoDockGhost). PARTIAL: the construction arrow and the
+// selected 2×2 tiles (map selection).
+func (g *Game) dockToolUpdate(sx, sy int) {
+	a, _, ok := g.dockArgsAt(sx, sy)
+	if !ok {
+		g.removeStationGhost()
+		return
+	}
+	if gh := g.dockGhost; gh != nil && gh.X == a.X && gh.Y == a.Y && gh.Z == a.Z && gh.Rotation == a.Rotation && gh.Type == a.Type {
+		return
+	}
+	g.removeStationGhost()
+	c, g1 := g.stationCmd()
+	cost, ok := g.w.Map.CreatePort(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdNoPayment|sim.CmdGhost, a, g1)
+	g.stationGhostCost = cost
+	if !ok {
+		return
+	}
+	g.dockGhost = &a
+	m := &g.w.Map
+	g.stationGhostStation = m.LastAdjoiningStation
+	x, y := m.LastAdjoiningStationX, m.LastAdjoiningStationY
+	if x == -1 {
+		x, y = a.X, a.Y
+	}
+	g.w.SetCatchmentDisplay(m.GhostDockCatchmentDisplay(g.stationGhostStation, x, y, g.r.ObjMgr))
+	g.stationGhostAccepted, g.stationGhostProduced = m.CalcAcceptedCargoDockGhost(g.stationGhostStation, x, y, 0xFFFFFFFF, g.r.ObjMgr)
+}
+
+// dockToolUp is StationTab's onToolUpDock (0x004A55AB): after
+// removeConstructionGhosts, createPort with apply; a failure opens the error
+// window titled cant_build_pop3_string with the dock's name.
+func (g *Game) dockToolUp(sx, sy int) {
+	g.removeStationGhost()
+	a, typ, ok := g.dockArgsAt(sx, sy)
+	if !ok {
+		return
+	}
+	om := g.r.ObjMgr
+	title := ""
+	if typ >= 0 && typ < len(om.DockObjects) && om.DockObjects[typ] != nil {
+		title = ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop3String), om.DockObjects[typ].Name)
+	}
+	c, g1 := g.stationCmd()
+	if _, ok := g.w.Map.CreatePort(c, sim.CmdApply, a, g1); !ok {
 		g.openError(title, "")
 	}
 }

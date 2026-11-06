@@ -148,6 +148,7 @@ type Game struct {
 	stationGhost           *sim.TrainStationPlacement // the station tab's ghost (cState.stationGhost*), nil none
 	stationGhostCost       int32                      // cState.stationCost
 	roadStationGhost       *sim.RoadStationPlacement  // the road stop ghost (stationGhostType bit 7)
+	dockGhost              *sim.PortPlacement         // the dock ghost (stationGhostType bit 14)
 	lastPortOption         int                        // ToolbarTop's _lastPortOption: 0 airport, 1 dock
 	errorWin               *ui.ErrorWindow            // WindowType::error (one at a time)
 	stationGhostStation    int                        // cState.constructingStationId (-1 new)
@@ -619,9 +620,9 @@ func (g *Game) Update() error {
 	// and goes once the tab or the mode does.
 	if g.diagHoldGhost {
 		// DIAGNOSTIC ONLY: the ghost stays for the screenshot
-	} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad) && g.consTab == 1 && !g.inTitleScreen {
+	} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad || g.buildMode == buildModeDock) && g.consTab == 1 && !g.inTitleScreen {
 		g.stationToolUpdate(g.mouseX, g.mouseY)
-	} else if g.stationGhost != nil || g.roadStationGhost != nil {
+	} else if g.stationGhost != nil || g.roadStationGhost != nil || g.dockGhost != nil {
 		g.removeStationGhost()
 	}
 
@@ -723,8 +724,8 @@ func (g *Game) Update() error {
 				g.pickupToolDown(g.mouseX, g.mouseY) // the Vehicle window's placing tool
 			} else if g.routeTool && g.vehicleWin != nil && !g.inTitleScreen {
 				g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
-			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad) && g.consTab == 1 && !g.inTitleScreen {
-				g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked
+			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad || g.buildMode == buildModeDock) && g.consTab == 1 && !g.inTitleScreen {
+				g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked, or a dock
 			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad) && g.hoverTileX >= 0 {
 				// Track/road mode: clicking the map sets the construction head.
 				g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
@@ -1840,6 +1841,46 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					g.vehicleWin.MouseOver(g.vehicleWin.X+60, g.vehicleWin.Y+44+1+22+11) // the second row hovered
 					log.Printf("[Diag] %s: vehicle %d", v, h.ID)
 					break
+				}
+			}
+		} else if v == "dockghost" || v == "docktool" { // DIAGNOSTIC ONLY: the dock window's tool over the first shore spot a dock takes (dry run), as a station owner — hover (ghost held) or click
+			m := &g.w.Map
+			for i := range m.StationNames {
+				if m.StationNames[i].Name != 0xFFFF {
+					m.ControllingCompany = m.StationNames[i].Owner
+					break
+				}
+			}
+			g.inTitleScreen = false
+			g.openPortConstruction(1)
+			c, g1 := g.stationCmd()
+			done := false
+			for y := 3; y < m.Height-4 && !done; y++ {
+				for x := 3; x < m.Width-4 && !done; x++ {
+					a, ok := m.DockPlacementAt(int32(x)*32, int32(y)*32, uint8(g.consStation), g.r.ObjMgr)
+					if !ok || m.TileAt(x, y).WaterLevel != 0 {
+						continue
+					}
+					if _, ok := m.CreatePort(c, 0, a, g1); !ok {
+						continue
+					}
+					g.w.CenterOn(fmt.Sprintf("tile:%d,%d", x, y))
+					sx, sy := g.w.TileToScreenPx(x, y)
+					if v == "dockghost" {
+						g.stationToolUpdate(sx, sy+16)
+						log.Printf("[Diag] dockghost: tile %d,%d rotation %d: ghost %v cost %d accepts %#x produces %#x", x, y, a.Rotation, g.dockGhost != nil, g.stationGhostCost, g.stationGhostAccepted, g.stationGhostProduced)
+						g.diagHoldGhost = true
+					} else {
+						g.stationToolUp(sx, sy+16)
+						docks := 0
+						for _, st := range m.TileAt(x, y).Stations {
+							if st.StationType == 3 && !st.Ghost {
+								docks++
+							}
+						}
+						log.Printf("[Diag] docktool: clicked tile %d,%d: dock elements %d, error window %v", x, y, docks, g.errorWin != nil)
+					}
+					done = true
 				}
 			}
 		} else if v == "portmenu" { // DIAGNOSTIC ONLY: the toolbar's Port/Airport menu
