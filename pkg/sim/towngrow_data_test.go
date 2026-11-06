@@ -1205,8 +1205,10 @@ func TestRailPlacementAtCursor(t *testing.T) {
 		cx, cy := toScreen(int32(v2.TileX)+int32(moves[k].X), int32(v2.TileY)+int32(moves[k].Y), int32(v2.TileBaseZ)*4+int32(moves[k].Z))
 		p, _ := m.RailPlacementAtCursor(h.ID, int32(v2.TileX), int32(v2.TileY), te, 0, cx, cy, toScreen)
 		tried++
-		if _, ok := m.VehiclePlace(own, 0, p); ok {
+		if _, ok := m.VehiclePlace(own, CmdApply, p); ok { // applied: a query returns before any check (as upstream)
 			placeable++
+		} else {
+			t.Logf("vehicle %d: not placeable at %+v", h.ID, p)
 		}
 	}
 	t.Logf("%d sub-positions checked; %d of %d picked-up vehicles placeable where the cursor points", checked, placeable, tried)
@@ -1272,8 +1274,10 @@ func TestRoadPlacementAtCursor(t *testing.T) {
 		cx, cy := toScreen(int32(v2.TileX)+int32(moves[k].X), int32(v2.TileY)+int32(moves[k].Y), int32(re.BaseZ)*4+int32(moves[k].Z))
 		p, _ := m.RoadPlacementAtCursor(h.ID, int32(v2.TileX), int32(v2.TileY), re, 0, cx, cy, toScreen)
 		tried++
-		if _, ok := m.VehiclePlace(own, 0, p); ok {
+		if _, ok := m.VehiclePlace(own, CmdApply, p); ok { // applied: a query returns before any check (as upstream)
 			placeable++
+		} else {
+			t.Logf("vehicle %d: not placeable at %+v", h.ID, p)
 		}
 	}
 	t.Logf("%d sub-positions checked; %d of %d picked-up road vehicles placeable where the cursor points", checked, placeable, tried)

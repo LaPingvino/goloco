@@ -64,6 +64,7 @@ type Game struct {
 	townList                       *ui.TownListWindow     // the town list when open
 	buildVehicle                   *ui.BuildVehicleWindow // the Build Vehicle window when open (5P.f)
 	vehicleWin                     *ui.VehicleWindow      // the Vehicle window when open (5P.g)
+	diagMouse                      *[2]int                // DIAGNOSTIC ONLY: the mouse held at a point (the roadghost diag's hover)
 	buildVehDiagDone               bool
 	diagTownsDone                  bool
 	diagOptionsDone                bool
@@ -478,6 +479,9 @@ func (g *Game) Update() error {
 		}
 	}
 	g.mouseX, g.mouseY = ebiten.CursorPosition()
+	if g.diagMouse != nil {
+		g.mouseX, g.mouseY = g.diagMouse[0], g.diagMouse[1]
+	}
 	if g.script != nil && g.script.hasMouse {
 		g.mouseX, g.mouseY = g.script.mouseX, g.script.mouseY
 	}
@@ -1395,7 +1399,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
 		if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
@@ -1428,6 +1432,44 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					}
 					break
 				}
+			}
+		} else if v == "roadghost" { // DIAGNOSTIC ONLY: lift a road vehicle, its pickup tool on, hover until a placement — the ghost left standing for the shot
+			m := &g.w.Map
+			trains, _ := m.Trains()
+			for _, tr := range trains {
+				h := m.Entities[tr.Head]
+				v2 := m.Entities[tr.Veh2]
+				// a vehicle of the ordinary streets (road object 1, or any road type): trams need their own tracks
+				if h.TileX == -1 || h.Mode != 1 || int(h.Owner) >= len(m.Companies) || (h.TrackType != 1 && h.TrackType != 0xFF) {
+					continue
+				}
+				if _, ok := m.VehiclePickup(&sim.Cmd{Company: h.Owner, Objects: g.r.ObjMgr}, sim.CmdApply, h.ID); !ok {
+					continue
+				}
+				m.ControllingCompany = h.Owner
+				g.inTitleScreen = false // windows draw over the title world
+				g.w.CenterOn(fmt.Sprintf("tile:%d,%d", v2.TileX/32, v2.TileY/32))
+				g.openVehicleWindow(h.ID, 1)
+				g.vehicleWin.X, g.vehicleWin.Y = 8, 40 // out of the way of the road at the centre
+				if x, y, ok := g.vehicleWin.PickupButton(); ok {
+					g.vehicleWin.HandleClick(x, y)
+				}
+				log.Printf("[Diag] road vehicle %d of company %d lifted at tile %d,%d; pickup tool on: %v", h.ID, h.Owner, v2.TileX/32, v2.TileY/32, g.pickupOn)
+				for d := 0; d < 200 && g.pickupOn && !m.VehicleIsGhost(h.ID); d += 4 { // outward from the centre
+					for _, o := range [][2]int{{d, 0}, {-d, 0}, {0, d}, {0, -d}, {d, d}, {-d, -d}} {
+						sx, sy := g.sw/2+o[0], g.sh/2+o[1]
+						if g.overWindow(sx, sy) {
+							continue
+						}
+						if p, ok := g.w.PlacementAt(h.ID, sx, sy); ok {
+							g.pickupToolUpdate(sx, sy)
+							g.diagMouse = &[2]int{sx, sy} // the mouse stays there: the frame's own pickupToolUpdate keeps the ghost
+							log.Printf("[Diag] hover at %d,%d: placement %+v; a ghost now: %v", sx, sy, p, m.VehicleIsGhost(h.ID))
+							break
+						}
+					}
+				}
+				break
 			}
 		} else if v == "express" { // the Route tab of the first placed train, as its owner: a click on Express (then left open)
 			m := &g.w.Map
