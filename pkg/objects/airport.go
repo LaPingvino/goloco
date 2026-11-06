@@ -10,17 +10,20 @@ import (
 // the buildings' positions, the movement nodes and edges planes follow,
 // images). Layout constants come from the compiler (layout_gen.go).
 type AirportObject struct {
-	Header         *ObjectHeader
-	Name           string
-	Flags          uint16
-	NumSpriteSets  uint8
-	NumTiles       uint8
-	LargeTiles     uint32 // bit per building variation: 2×2
-	PartHeights    []uint8
-	PartAnimations []BuildingPartAnimation
-	Variations     [][]uint8 // buildingVariationParts, per building type
-	Image          uint32    // image table offset
-	BuildingImage  uint32    // image + 1 (+ numTiles*4 shadow images when hasShadows)
+	Header        *ObjectHeader
+	Name          string
+	Flags         uint16
+	NumSpriteSets uint8
+	NumTiles      uint8
+	LargeTiles    uint32 // bit per building variation: 2×2
+	// MinX, MinY, MaxX, MaxY (0xA4–0xA7): the airport's tile extents around
+	// its centre, unrotated (getAirportExtents).
+	MinX, MinY, MaxX, MaxY int8
+	PartHeights            []uint8
+	PartAnimations         []BuildingPartAnimation
+	Variations             [][]uint8 // buildingVariationParts, per building type
+	Image                  uint32    // image table offset
+	BuildingImage          uint32    // image + 1 (+ numTiles*4 shadow images when hasShadows)
 	// PlacementClearEdges is var_B6: the movement edges that must all be
 	// clear for an aircraft to be placed at the airport.
 	PlacementClearEdges uint32
@@ -74,11 +77,12 @@ func ParseAirportObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*
 		return nil, fmt.Errorf("airport object too small: %d bytes", len(data))
 	}
 	o := &AirportObject{
-		Header:              header,
-		Flags:               binary.LittleEndian.Uint16(data[AirportFlagsOffset:]),
-		NumSpriteSets:       data[AirportNumSpriteSetsOffset],
-		NumTiles:            data[AirportNumTilesOffset],
-		LargeTiles:          binary.LittleEndian.Uint32(data[AirportLargeTilesOffset:]),
+		Header:        header,
+		Flags:         binary.LittleEndian.Uint16(data[AirportFlagsOffset:]),
+		NumSpriteSets: data[AirportNumSpriteSetsOffset],
+		NumTiles:      data[AirportNumTilesOffset],
+		LargeTiles:    binary.LittleEndian.Uint32(data[AirportLargeTilesOffset:]),
+		MinX:          int8(data[0xA4]), MinY: int8(data[0xA5]), MaxX: int8(data[0xA6]), MaxY: int8(data[0xA7]),
 		PlacementClearEdges: binary.LittleEndian.Uint32(data[0xB6:]), // var_B6
 	}
 	numNodes, numEdges := int(data[AirportNumMovementNodesOffset]), int(data[AirportNumMovementEdgesOffset])
