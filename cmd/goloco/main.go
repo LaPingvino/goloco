@@ -66,6 +66,8 @@ type Game struct {
 	vehicleWin                     *ui.VehicleWindow         // the Vehicle window when open (5P.g)
 	diagMouse                      *[2]int                   // DIAGNOSTIC ONLY: the mouse held at a point (the roadghost diag's hover)
 	ghostWater                     sim.VehicleWaterPlacement // _ghostVehiclePos for a boat ghost (ghostProgress 0)
+	diagShip                       uint16                    // DIAGNOSTIC ONLY: the shipsail diag's ship, logged as it goes
+	diagShipFrames                 int
 	buildVehDiagDone               bool
 	diagTownsDone                  bool
 	diagOptionsDone                bool
@@ -445,6 +447,15 @@ func NewGame() *Game {
 }
 
 func (g *Game) Update() error {
+	if g.diagShip != 0 && g.w != nil {
+		if tr, err := g.w.Map.TrainOf(g.diagShip); err == nil {
+			g.diagShipFrames++
+			if g.diagShipFrames%120 == 0 {
+				h, v2 := g.w.Map.Entities[tr.Head], g.w.Map.Entities[tr.Veh2]
+				log.Printf("[Diag] shipsail frame %d: ship at %d,%d yaw %d, %.0f mph, status %d, station %d", g.diagShipFrames, v2.PosX, v2.PosY, v2.SpriteYaw, float64(v2.CurrentSpeed)/65536, h.Status, h.StationID)
+			}
+		}
+	}
 	if g.w != nil {
 		g.w.TitleMode = g.inTitleScreen // SceneManager::isTitleMode() for the viewport's names
 	}
@@ -1400,7 +1411,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
 		if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
@@ -1432,6 +1443,74 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 						log.Printf("[Diag] route after the click: %q", l.Text)
 					}
 					break
+				}
+			}
+		} else if v == "shipsail" { // DIAGNOSTIC ONLY: two docks (at the water's height, in their stations' tiles) on one lake, a ship placed at the first with "stop at" the second, started — watch it sail
+			m := &g.w.Map
+			om := g.r.ObjMgr
+			var shipObj uint16 = 0xFFFF
+			for i, v := range om.Vehicles {
+				if v != nil && v.Mode == objects.TransportModeWater {
+					shipObj = uint16(i)
+					break
+				}
+			}
+			var company uint8 = 0xFF
+			var stations []uint16
+			for i, st := range m.StationNames {
+				if st.Name != 0 && st.Owner < 16 && (company == 0xFF || st.Owner == company) && int(st.TileSize) < len(st.Tiles) {
+					company = st.Owner
+					stations = append(stations, uint16(i))
+					if len(stations) == 2 {
+						break
+					}
+				}
+			}
+			if shipObj == 0xFFFF || len(stations) < 2 || len(om.DockObjects) == 0 || om.DockObjects[0] == nil {
+				log.Printf("[Diag] shipsail: no ship object, two stations of a company, or dock object")
+			} else {
+				d := om.DockObjects[0]
+				ox, oy := sim.RotateOffset(d.BoatPosition[0], d.BoatPosition[1], 0)
+				var docks [][3]int32
+				var level uint8
+				for y := 4; y < m.Height-4 && len(docks) < 2; y++ {
+					for x := 4; x < m.Width-4 && len(docks) < 2; x++ {
+						t := m.TileAt(x, y)
+						bx, by := int32(x)*32+int32(ox)+32, int32(y)*32+int32(oy)+32
+						bt := m.TileAt(int(bx>>5), int(by>>5))
+						if t == nil || bt == nil || t.WaterLevel != 0 || bt.WaterLevel == 0 || len(t.Stations) > 0 || (level != 0 && bt.WaterLevel != level) {
+							continue
+						}
+						if len(docks) == 1 && (abs(int(int32(x)*32-docks[0][0]))+abs(int(int32(y)*32-docks[0][1])) < 6*32 || abs(int(int32(x)*32-docks[0][0]))+abs(int(int32(y)*32-docks[0][1])) > 14*32) {
+							continue
+						}
+						level = bt.WaterLevel
+						docks = append(docks, [3]int32{int32(x) * 32, int32(y) * 32, int32(bt.WaterLevel) * 16})
+					}
+				}
+				if len(docks) < 2 {
+					log.Printf("[Diag] shipsail: no two shore tiles on one water")
+				} else {
+					for i, dk := range docks {
+						tl := m.TileAt(int(dk[0]>>5), int(dk[1]>>5))
+						tl.Stations = append(tl.Stations, scenario.StationElement{StationType: 3, StationID: stations[i], Owner: company, BaseZ: uint8(dk[2] / 4)})
+						st := &m.StationNames[stations[i]]
+						st.Tiles[st.TileSize] = [3]int16{int16(dk[0]), int16(dk[1]), int16(dk[2])}
+						st.TileSize++
+					}
+					m.ControllingCompany = company
+					g.inTitleScreen = false
+					own := &sim.Cmd{Company: company, Objects: om}
+					var head uint16
+					_, okBuy := m.CreateVehicle(own, sim.CmdApply, shipObj, true, &head)
+					_, okPlace := m.VehiclePlaceWater(own, sim.CmdApply, sim.VehicleWaterPlacement{X: docks[0][0], Y: docks[0][1], Z: docks[0][2], Head: head})
+					_, okOrder := m.VehicleOrderInsert(own, sim.CmdApply, head, 0, sim.OrderStopAtRaw(int(stations[1])))
+					_, okStart := m.VehicleChangeRunningMode(own, sim.CmdApply, head, sim.RunningModeStart)
+					mx, my := (docks[0][0]+docks[1][0])/2, (docks[0][1]+docks[1][1])/2
+					g.w.CenterOn(fmt.Sprintf("tile:%d,%d", mx>>5, my>>5))
+					g.diagShip = head
+					log.Printf("[Diag] shipsail: docks at tiles %d,%d and %d,%d (water level %d, stations %d → %d, company %d); ship %d bought %v, placed %v, ordered %v, started %v",
+						docks[0][0]>>5, docks[0][1]>>5, docks[1][0]>>5, docks[1][1]>>5, level, stations[0], stations[1], company, head, okBuy, okPlace, okOrder, okStart)
 				}
 			}
 		} else if v == "shipghost" { // DIAGNOSTIC ONLY: the title map has no docks or boats — add a dock on water near the view's centre, buy a ship, hover over it
@@ -3135,4 +3214,11 @@ func loadScale() float64 {
 		return 1
 	}
 	return min(max(s, ui.ScaleFactorMin), ui.ScaleFactorMax)
+}
+
+func abs(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
 }
