@@ -45,6 +45,7 @@ const (
 	buildModeNone  = 0
 	buildModeTrack = 1
 	buildModeRoad  = 2
+	buildModeDock  = 3 // Construction::openWithFlags(1 << 30): the dock window (Station tab only)
 )
 
 type Game struct {
@@ -624,8 +625,9 @@ func (g *Game) Update() error {
 		g.removeStationGhost()
 	}
 
-	// Build mode: update hover tile every frame
-	if g.buildMode != buildModeNone {
+	// Build mode: update hover tile every frame (track and road; the dock
+	// window has no construction head)
+	if g.buildMode == buildModeTrack || g.buildMode == buildModeRoad {
 		g.hoverTileX, g.hoverTileY = g.w.ScreenToTile(g.mouseX, g.mouseY)
 		// Keyboard shortcuts for build mode
 		if g.inKeyJustPressed(ebiten.KeyR) {
@@ -723,7 +725,7 @@ func (g *Game) Update() error {
 				g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
 			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad) && g.consTab == 1 && !g.inTitleScreen {
 				g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked
-			} else if g.buildMode != buildModeNone && g.hoverTileX >= 0 {
+			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad) && g.hoverTileX >= 0 {
 				// Track/road mode: clicking the map sets the construction head.
 				g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
 			}
@@ -1848,6 +1850,19 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 				}
 			}
 			log.Printf("[Diag] portmenu: lastAirport %d lastShipPort %d, menu open %v", g.w.Map.LastAirport, g.w.Map.LastShipPort, g.dropdown != nil)
+			if os.Getenv("GOLOCO_DIAG_PORT_DOCK") != "" { // choose Ship Port: the dock window (as a station owner: the title's company 0 is black)
+				g.dropdown = nil
+				for i := range g.w.Map.StationNames {
+					if g.w.Map.StationNames[i].Name != 0xFFFF {
+						g.w.Map.ControllingCompany = g.w.Map.StationNames[i].Owner
+						break
+					}
+				}
+				g.openPortConstruction(1)
+				f, _ := g.constructionFrame(0, 0)
+				c, _ := g.w.ControllingCompany()
+				log.Printf("[Diag] portmenu: dock window, mode %d tab %d station %d, title %q raw %q, company %d colour %d", g.buildMode, g.consTab, g.consStation, f.Title, i18n.Str(i18n.TitleShipPort), c, f.CompanyColour)
+			}
 		} else if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
 				if g.toolbar.Buttons[i].Tooltip == "Build Vehicles" {

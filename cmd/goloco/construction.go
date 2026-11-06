@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/LaPingvino/goloco/pkg/construct"
 	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/objects"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"image"
 
@@ -82,6 +83,14 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 			f.Disabled[3] = om.AvailableCompatibleRoadMods(g.buildObjID, unlocked) == none
 		} else {
 			f.Disabled[3] = om.AvailableCompatibleMods(g.buildObjID, unlocked) == none
+		}
+	}
+	if g.buildMode == buildModeDock { // drawDockTabs; StationTab::prepareDraw's caption title_ship_port
+		g.consTab, f.Tab = 1, 1
+		f.Title = i18n.Label(i18n.TitleShipPort)
+		f.Disabled = [4]bool{true, false, true, true}
+		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+			f.StationTabIcon = int(g.r.ObjMgr.InterfaceSkin.ImageOffset) + objects.ISToolbarMenuShipPort
 		}
 	}
 	st.Rotation = g.w.ConstructionHeadState().Rotation
@@ -303,6 +312,14 @@ func (g *Game) stationTabState(company uint8) ui.StationTabState {
 		return st
 	}
 	om := g.r.ObjMgr
+	if g.buildMode == buildModeDock { // the dock's name and image (DockObject image, no windows overlay)
+		if list := om.AvailableDocks(int(g.w.CurrentYear)); len(list) > 0 {
+			if d := om.DockObjects[pickSlot(list, g.consStation)]; d != nil {
+				st.Name, st.Image, st.Recolourable, st.NoOverlay = d.Name, int(d.Image), true, true
+			}
+		}
+		return st
+	}
 	road := g.consIsRoad()
 	list := om.AvailableCompatibleStations(g.buildObjID, road, int(g.w.CurrentYear))
 	if len(list) == 0 {
@@ -363,7 +380,15 @@ func (g *Game) openConsDropdown(wx, wy int, colour uint8, station bool) {
 	var list []int
 	name := func(int) string { return "" }
 	sel := &g.consSignal
-	if station {
+	if station && g.buildMode == buildModeDock { // AddStationsToDropdown<DockObject>
+		list, sel = om.AvailableDocks(year), &g.consStation
+		name = func(s int) string {
+			if s < len(om.DockObjects) && om.DockObjects[s] != nil {
+				return om.DockObjects[s].Name
+			}
+			return ""
+		}
+	} else if station {
 		road := g.consIsRoad()
 		list, sel = om.AvailableCompatibleStations(g.buildObjID, road, year), &g.consStation
 		name = func(s int) string {

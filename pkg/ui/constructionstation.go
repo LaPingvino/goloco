@@ -18,6 +18,7 @@ type StationTabState struct {
 	Name         string // the station object's name (the dropdown's text)
 	Image        int    // its image (+0 preview, +1 preview windows)
 	Recolourable bool   // TrainStationFlags/RoadStationFlags::recolourable
+	NoOverlay    bool   // docks / airports: the image alone (no preview-windows image)
 	Company      uint8  // the player company's primary colour
 	Cost         int64  // cState.stationCost: the ghost's cost (0: none, or it failed)
 	// While a ghost stands: its station's name (or "New station") and the
@@ -76,7 +77,7 @@ func DrawStationTab(screen *ebiten.Image, f *ConstructionFrame, st StationTabSta
 			if sp, err := gfx8.Decode(&g1.Elements[st.Image]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, imgL, imgT, gfx8.OpFor(sp, prim != nil, false), prim, nil)
 			}
-			if sp, err := gfx8.Decode(&g1.Elements[st.Image+1]); err == nil && winMap != nil {
+			if sp, err := gfx8.Decode(&g1.Elements[st.Image+1]); err == nil && winMap != nil && !st.NoOverlay {
 				gfx8.DrawSpriteNoise(rt, sp, imgL, imgT, gfx8.OpTransparent|gfx8.OpDst, winMap, nil)
 			}
 		}

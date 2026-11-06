@@ -1152,7 +1152,12 @@ func (g *Game) openPortConstruction(option int) {
 	m := &g.w.Map
 	if option == 0 {
 		log.Printf("[Game] airport construction (object %d) — window not yet ported", m.LastAirport)
-	} else {
-		log.Printf("[Game] dock construction (object %d) — window not yet ported", m.LastShipPort)
+		return
 	}
+	// createDockConstructionWindow: lastSelectedStationType = lastShipPort,
+	// the Station tab alone (nonTrackWindow). PARTIAL: the dock tool (hover
+	// ghost, placing) — next.
+	g.removeStationGhost()
+	g.buildMode, g.consTab, g.consStation = buildModeDock, 1, int(m.LastShipPort)
+	g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 }
