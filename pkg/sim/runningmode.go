@@ -4,8 +4,8 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 
 // The vehicleChangeRunningMode game command (VehicleChangeRunningMode.cpp
 // 0x004B694B): start, stop, local / express, manual driving.
-// PARTIAL: a stuck or crashed vehicle is released and stopped as upstream,
-// but not then sold (VehicleSell is not ported — 5P later); the player's
+// A player's stuck or crashed vehicle is released, stopped and sold
+// (VehicleSell) as upstream. PARTIAL: the player's
 // happy emotion when a profitable vehicle starts (company emotions, as
 // elsewhere); the window invalidations and error texts.
 
@@ -42,7 +42,7 @@ func (m *Map) VehicleChangeRunningMode(c *Cmd, flags uint8, headID uint16, mode 
 			head = &m.Entities[tr.Head]
 			head.Status = StatusStopped
 			m.Entities[tr.Veh2].CurrentSpeed = 0
-			// PARTIAL: VehicleSell (sargs.car = head) not ported
+			m.VehicleSell(c, CmdApply, headID) // sargs.car = args.head
 		}
 		return 0, true
 	}

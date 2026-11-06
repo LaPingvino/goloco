@@ -124,8 +124,12 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       the controlling company's vehicle (setCaptionEnableState), OK → VehicleRename; seen with
       GOLOCO_DIAG_BUILDVEHICLE=rename (+ GOLOCO_DIAG_RENAME_OK=1: "Train 1 Express"). PARTIAL: the text input
       takes all input while open (upstream's isn't modal: the game runs on), the cursor keys' repeat timing is
-      goloco's own. Towns / stations / companies can rename through it now (their commands not yet). NEXT in
-      5P: hover looks.
+      goloco's own. Towns / stations / companies can rename through it now (their commands not yet). Selling
+      DONE 2026-11-06 (sim/vehiclesell.go: VehicleSell — a whole vehicle by its head or one car by its front
+      bogie, the refund as a negative cost; deleteCar / deleteTrain; a car out of a placed vehicle: lifted,
+      laid out, put back; and VehicleChangeRunningMode now sells a player's stuck / crashed vehicle as upstream;
+      TestVehicleSell, TestCrashedVehicleSoldOnStart). NEXT in 5P: the Details tab's remove button (and its
+      cargo warning) → VehicleSell, then hover looks.
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a) — DONE 2026-11-06: it did differ (title save: 98 trains, the list against slot order at 55
    places). Trains() now walks the vehicle-head list from its head along next, as VehicleList does (slot order
@@ -1239,4 +1243,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (5P.g: renaming from the window) — (the other three wait on Joop → here.) Ported Ui/TextInput.cpp's InputSession and Windows/TextInputWindow.cpp (goloco had neither; the save browser only appends), wired as goloco's modal windows are (PARTIAL: upstream's isn't modal). The vehicle window's caption, on every tab and for the controlling company's vehicle only, opens it: "Name train" / "Type new name for this train:" on the current name, n/31, OK → VehicleRename, the window reopened with the new name. Seen: the window over Finances with "Train 1 Express" 15/31; with Enter the train is renamed and the caption reads it. TestInputSession; all green; test page redeployed.
+
+
+- 2026-11-06 (5P: selling vehicles) — (the other three wait on Joop → here.) Chose this over hover looks: without it a player can't get rid of a vehicle. Ported VehicleSell.cpp with VehicleManager::deleteCar / deleteTrain (lift off by mode, cars freed and unlinked, routing / orders / base entities freed, transport counts recounted); a sold car leaves the vehicle re-laid-out and put back where it stood. The running-mode command's PARTIAL "stuck / crashed not sold" is closed with it. Tests: a bought 2-car vehicle loses a car (refund 18 855) then goes whole; saved train 739 sold off the map with the rest intact; a crashed player train sold on start. All green; no UI yet (next: the Details remove button).
 
