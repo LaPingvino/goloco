@@ -142,3 +142,16 @@ sim.NewGeneratedMap with the editor's defaults (EditorController::init) makes th
 hills and water from OpenGraphics' hill shapes. Two objects are missing from v0.1.8 — **tree** and **climate**
 (their folders are empty): so no trees, and no snow line (goloco sets it out of reach rather than at 0, a
 stand-in for the missing climate). Both are object-drawing work, best contributed to OpenGraphics.
+
+## Colour remap tables (2026-11-06, research)
+
+What the game's colour maps (g1 images 2170+, read by GetPaletteMap) change — measured locally against the
+original, nothing of it copied: each colour's table is identity except the 12 remap slots (primaryRemap
+7–9 and 246–254), which point into one 12-shade swatch of the palette (Colour.h's PaletteIndex: swatches are
+contiguous, dark 0 to light B). The colours come in pairs on one swatch: the odd one maps the slots straight
+onto the swatch's 12 shades; the even one onto a compressed / clamped run of the same swatch (repeated
+shades, the dark end held). OpenLoco's source has no copy of these tables — they exist only in g1.DAT — so
+the open build has to make them. Proposed (for Joop): odd colours exactly as above (the straight ramp is the
+swatch itself — no judgement involved); even colours as a documented approximation (a compressed ramp by a
+fixed rule), listed in docs/deviations.md as the open build's. Until then the open build draws company
+colours and coloured windows with no remap (the GetPaletteMap error paths).
