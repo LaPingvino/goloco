@@ -1390,7 +1390,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && (v != "routeadd" || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
 		if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
@@ -1398,7 +1398,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					g.handleToolbarButton(i)
 				}
 			}
-		} else if v == "routeadd" { // the Route tool: click the first station found on screen
+		} else if v == "routeadd" || v == "routewaypoint" { // the Route tool: click the first station (or plain track: a waypoint) found on screen
 			m := &g.w.Map
 			trains, _ := m.Trains()
 			for _, tr := range trains {
@@ -1410,8 +1410,9 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					done := false
 					for sy := 40; sy < g.sh-40 && !done; sy += 8 {
 						for sx := 0; sx < g.sw && !done; sx += 8 {
-							if st, ok := g.w.RouteStopAt(sx, sy); ok {
-								log.Printf("[Diag] station %d under %d,%d — clicking", st, sx, sy)
+							hit, ok := g.w.RouteAt(sx, sy, h.Mode)
+							if ok && (hit.Waypoint != nil) == (v == "routewaypoint") {
+								log.Printf("[Diag] %+v under %d,%d — clicking", hit, sx, sy)
 								g.routeToolDown(sx, sy)
 								done = true
 							}
