@@ -2,8 +2,10 @@ package ui
 
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
+	"strings"
 )
 
 // StationTabH is the station tab's window height before a ghost is placed
@@ -18,6 +20,26 @@ type StationTabState struct {
 	Recolourable bool   // TrainStationFlags/RoadStationFlags::recolourable
 	Company      uint8  // the player company's primary colour
 	Cost         int64  // cState.stationCost: the ghost's cost (0: none, or it failed)
+	// While a ghost stands: its station's name (or "New station") and the
+	// cargo its catchment would accept and produce (name, inline sprite).
+	Ghost              bool
+	GhostName          string
+	Accepted, Produced []CargoLine
+}
+
+// CargoLine is one cargo of the catchment lists.
+type CargoLine struct {
+	Name  string
+	Image int // unitInlineSprite (-1 none)
+}
+
+// StationTabHeight is prepareDraw's height: with a ghost, 11 more per cargo
+// line (at least one each, for "nothing").
+func StationTabHeight(st StationTabState) int {
+	if !st.Ghost {
+		return StationTabH
+	}
+	return StationTabH + (max(1, len(st.Accepted))+max(1, len(st.Produced)))*11
 }
 
 // DrawStationTab is Station::draw (0x0049DE40) without a ghost: the station
@@ -63,6 +85,38 @@ func DrawStationTab(screen *ebiten.Image, f *ConstructionFrame, st StationTabSta
 		gfx8.FillRectInset(rt, 3, y, 3+(ConstructionW-4)-1, y, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillNone)
 	})
 	DrawTextBold(screen, st.Name, f.X+3+1, f.Y+45+1, black)
+	if st.Ghost { // the station's name (new_station_buffer) and the catchment lists
+		nw, _ := MeasureTextBold(st.GhostName)
+		DrawTextBold(screen, st.GhostName, f.X+69-nw/2, f.Y+imgB+18, black)
+		y := imgB + 29
+		list := func(title string, lines []CargoLine) {
+			// drawStringLeft: {NEWLINE} starts a line below ("Catchment
+			// Area{NEWLINE}Accepts:"); the list starts 11 below the last
+			parts := strings.Split(title, "{NEWLINE}")
+			for i, p := range parts {
+				DrawTextBold(screen, p, f.X+2, f.Y+y+i*10, black)
+			}
+			y += (len(parts)-1)*10 + 11
+			if len(lines) == 0 {
+				DrawTextBold(screen, i18n.Label(i18n.CatchmentAreaNothing), f.X+14, f.Y+y, black)
+				y += 11
+				return
+			}
+			for _, c := range lines {
+				if c.Image >= 0 && c.Image < len(g1.Elements) {
+					if sp, err := gfx8.Decode(&g1.Elements[c.Image]); err == nil {
+						draw8(screen, f.X+14, f.Y+y, 12, 11, func(rt *gfx8.RenderTarget) {
+							gfx8.DrawSpriteNoise(rt, sp, 0, 0, gfx8.OpFor(sp, false, false), nil, nil)
+						})
+					}
+				}
+				DrawTextBold(screen, c.Name, f.X+14+12, f.Y+y+1, black)
+				y += 11
+			}
+		}
+		list(i18n.Label(i18n.CatchmentAreaAccepts), st.Accepted)
+		list(i18n.Label(i18n.CatchmentAreaProduces), st.Produced)
+	}
 	if st.Cost != 0 { // "{COLOUR WINDOW_2}Cost: {COLOUR BLACK}{CURRENCY32}", drawStringCentred
 		text := pal[gfx8.Shade(sec, 9)]
 		label, amount := "Cost: ", L.Currency48(st.Cost)

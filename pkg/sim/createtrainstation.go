@@ -69,6 +69,13 @@ func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g
 	sx, sy, sz := a.X-int32(ax), a.Y-int32(ay), a.Z-int32(pieces[a.Index].Z)
 	tad := uint16(a.TrackID)<<3 | uint16(a.Rotation)
 
+	m.LastAdjoiningStation, m.LastAdjoiningStationX, m.LastAdjoiningStationY = -1, -1, -1
+	if flags&CmdGhost != 0 && flags&CmdApply != 0 { // the ghost's would-be station (findNearbyStationOnTrack)
+		m.LastAdjoiningStationX, m.LastAdjoiningStationY = sx, sy
+		if id, ok := m.findNearbyStationOnTrack(sx, sy, sz, tad, a.TrackObjectID, c.Company); ok {
+			m.LastAdjoiningStation = id
+		}
+	}
 	stationID := -1
 	registerTile := false
 	if flags&CmdGhost == 0 {

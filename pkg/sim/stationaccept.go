@@ -112,8 +112,33 @@ func (m *Map) catchment(st *scenario.StationName, om *objects.ObjectManager) []u
 func (m *Map) CalcAcceptedCargo(id int, om *objects.ObjectManager) (uint32, CargoSearchState) {
 	s := newCargoSearchState()
 	st := &m.StationNames[id]
-	cm := m.catchment(st, om)
-	for i := 0; i < int(st.TileSize) && i < len(st.Tiles); i++ {
+	return m.doCalcAcceptedCargo(st, m.catchment(st, om), om, s)
+}
+
+// CalcAcceptedCargoTrainStationGhost is calcAcceptedCargoTrainStationGhost
+// (Station.cpp): the catchment of the ghost's station (id -1: none) plus the
+// ghost's own (sub_491BF5: 4 tiles round the tile at x, y), filtered by
+// filter; the accepted and the produced cargo types.
+func (m *Map) CalcAcceptedCargoTrainStationGhost(id int, x, y int32, filter uint32, om *objects.ObjectManager) (accepted, produced uint32) {
+	s := newCargoSearchState()
+	s.Filter = filter
+	var st *scenario.StationName
+	cm := make([]uint8, m.Width*m.Height)
+	if id >= 0 && id < len(m.StationNames) {
+		st = &m.StationNames[id]
+		cm = m.catchment(st, om)
+	}
+	tx, ty := int(x)>>5, int(y)>>5
+	m.setCatchmentRegion(cm, tx-catchmentSize, ty-catchmentSize, tx+catchmentSize, ty+catchmentSize)
+	accepted, s = m.doCalcAcceptedCargo(st, cm, om, s)
+	return accepted, s.Produced
+}
+
+// doCalcAcceptedCargo is Station.cpp's: the station's tiles set the filter
+// (none, or no station: everything), then the buildings and industries in
+// the catchment score and produce.
+func (m *Map) doCalcAcceptedCargo(st *scenario.StationName, cm []uint8, om *objects.ObjectManager, s CargoSearchState) (uint32, CargoSearchState) {
+	for i := 0; st != nil && i < int(st.TileSize) && i < len(st.Tiles); i++ {
 		p := st.Tiles[i]
 		el := m.getStationElement(int32(p[0]), int32(p[1]), int32(p[2]))
 		if el == nil {

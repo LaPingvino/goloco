@@ -146,6 +146,9 @@ type Game struct {
 	consStation            int                        // station tab: lastSelectedStationType (slot; -1 = the first available)
 	stationGhost           *sim.TrainStationPlacement // the station tab's ghost (cState.stationGhost*), nil none
 	stationGhostCost       int32                      // cState.stationCost
+	stationGhostStation    int                        // cState.constructingStationId (-1 new)
+	stationGhostAccepted   uint32                     // constructingStationAcceptedCargoTypes
+	stationGhostProduced   uint32                     // constructingStationProducedCargoTypes
 	diagHoldGhost          bool                       // DIAGNOSTIC ONLY: the stationghost diag keeps its ghost
 	consMods               uint8                      // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
 	consSlope              int                        // construction slope selection: -2 (steep down) … 0 … +2
@@ -1512,48 +1515,61 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					}
 				}
 			}
-		} else if v == "stationtool" || v == "stationghost" { // DIAGNOSTIC ONLY: the Station tab's tool clicked on the screen over the first free straight track piece of a company — through picking, as the player would
+		} else if v == "stationtool" || v == "stationghost" { // DIAGNOSTIC ONLY: the Station tab's tool clicked on the screen over the first free straight track piece of a company — through picking, as the player would (stationghost: near a town first, for the catchment lists)
 			m := &g.w.Map
 			done := false
-			for y := 4; y < m.Height-4 && !done; y++ {
-				for x := 4; x < m.Width-4 && !done; x++ {
-					tl := m.TileAt(x, y)
-					for _, r := range tl.Order {
-						if r.Kind != scenario.KindTrack {
+			nearTown := func(x, y int) bool {
+				for _, t := range m.Towns {
+					if dx, dy := int(t.X)/32-x, int(t.Y)/32-y; dx*dx+dy*dy <= 64 {
+						return true
+					}
+				}
+				return false
+			}
+			for pass := 0; pass < 2 && !done; pass++ {
+				for y := 4; y < m.Height-4 && !done; y++ {
+					for x := 4; x < m.Width-4 && !done; x++ {
+						if pass == 0 && (v != "stationghost" || !nearTown(x, y)) {
 							continue
 						}
-						tr := tl.Tracks[r.Index]
-						if tr.TrackID != 0 || tr.HasStation || tr.HasSignal || tr.HasLevelCrossing || tr.Ghost || tr.AiAllocated || tr.HasBridge {
-							continue
-						}
-						g.inTitleScreen = false
-						m.ControllingCompany = tr.Owner
-						g.buildMode, g.consTab, g.buildObjID = buildModeTrack, 1, int(tr.TrackObjectID)
-						g.w.CenterOn(fmt.Sprintf("tile:%d,%d", x, y))
-						sx, sy := g.w.TileToScreenPx(x, y)
-						if v == "stationghost" { // hover: a ghost appears; off the track it goes; back on, it stays for the shot
-							g.stationToolUpdate(sx, sy+16)
-							ghost := func() bool {
-								for _, st := range m.TileAt(x, y).Stations {
-									if st.Ghost {
-										return true
-									}
-								}
-								return false
+						tl := m.TileAt(x, y)
+						for _, r := range tl.Order {
+							if r.Kind != scenario.KindTrack {
+								continue
 							}
-							on := ghost()
-							g.stationToolUpdate(5, 5)
-							off := ghost()
-							g.stationToolUpdate(sx, sy+16)
-							log.Printf("[Diag] stationghost: tile %d,%d: ghost on hover %v, after leaving %v, back %v, cost %d", x, y, on, off, ghost(), g.stationGhostCost)
-							g.diagHoldGhost = true // the ghost and the tab stay for the shot, its cost in the window
-							g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
-						} else {
-							g.stationToolUp(sx, sy+16)
-							log.Printf("[Diag] stationtool: clicked %d,%d (tile %d,%d company %d): station now %v", sx, sy+16, x, y, tr.Owner, m.TileAt(x, y).Tracks[r.Index].HasStation)
+							tr := tl.Tracks[r.Index]
+							if tr.TrackID != 0 || tr.HasStation || tr.HasSignal || tr.HasLevelCrossing || tr.Ghost || tr.AiAllocated || tr.HasBridge {
+								continue
+							}
+							g.inTitleScreen = false
+							m.ControllingCompany = tr.Owner
+							g.buildMode, g.consTab, g.buildObjID = buildModeTrack, 1, int(tr.TrackObjectID)
+							g.w.CenterOn(fmt.Sprintf("tile:%d,%d", x, y))
+							sx, sy := g.w.TileToScreenPx(x, y)
+							if v == "stationghost" { // hover: a ghost appears; off the track it goes; back on, it stays for the shot
+								g.stationToolUpdate(sx, sy+16)
+								ghost := func() bool {
+									for _, st := range m.TileAt(x, y).Stations {
+										if st.Ghost {
+											return true
+										}
+									}
+									return false
+								}
+								on := ghost()
+								g.stationToolUpdate(5, 5)
+								off := ghost()
+								g.stationToolUpdate(sx, sy+16)
+								log.Printf("[Diag] stationghost: tile %d,%d: ghost on hover %v, after leaving %v, back %v, cost %d", x, y, on, off, ghost(), g.stationGhostCost)
+								g.diagHoldGhost = true // the ghost and the tab stay for the shot, its cost in the window
+								g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+							} else {
+								g.stationToolUp(sx, sy+16)
+								log.Printf("[Diag] stationtool: clicked %d,%d (tile %d,%d company %d): station now %v", sx, sy+16, x, y, tr.Owner, m.TileAt(x, y).Tracks[r.Index].HasStation)
+							}
+							done = true
+							break
 						}
-						done = true
-						break
 					}
 				}
 			}
