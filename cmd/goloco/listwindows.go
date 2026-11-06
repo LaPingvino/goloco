@@ -282,7 +282,8 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h),
 		Route: g.routeLines(&h), RouteSel: g.routeSel,
 		OnRouteSelect: func(row int) { g.routeSel = row; g.openVehicleWindow(headID, 4) },
-		OnRoute:       func(a string) { g.routeAction(headID, a) },
+		OnRoute:       func(a string) { g.routeAction(headID, a); g.openVehicleWindow(headID, 4) },
+		Express:       m.Entities[tr.Veh1].Var48&sim.Flags48ExpressMode != 0,
 		Tab:           tab, Main: ui.VehicleMainState{Own: own, Manual: h.VehicleFlags&sim.VehicleFlagManualControl != 0},
 		StopStartImage: stopStartImage(h.VehicleFlags),
 		OnTab:          func(t int) { g.openVehicleWindow(headID, t) },
@@ -564,7 +565,8 @@ func (g *Game) routeLines(h *scenario.VehicleEntity) []ui.RouteLine {
 
 // routeAction is Route::onMouseUp's order buttons: delete (the selected order,
 // or the last), up / down (the selected one, the selection following it),
-// skip (the current order). PARTIAL: local / express, reverse.
+// skip (the current order), local / express (the vehicle's running mode,
+// toggled only when the other one is on). PARTIAL: reverse.
 func (g *Game) routeAction(headID uint16, action string) {
 	m := &g.w.Map
 	tr, err := m.TrainOf(headID)
@@ -578,6 +580,13 @@ func (g *Game) routeAction(headID uint16, action string) {
 	rel := func(o sim.Order) uint16 { return uint16(o.Offset - int(h.OrderTableOffset)) }
 	sel := g.routeSel
 	switch action {
+	case "local", "express": // widx::localMode / expressMode: the player's own only
+		if company < 0 || h.Owner != uint8(company) {
+			return
+		}
+		if express := m.Entities[tr.Veh1].Var48&sim.Flags48ExpressMode != 0; express != (action == "express") {
+			m.VehicleChangeRunningMode(c, sim.CmdApply, headID, sim.RunningModeToggleLocalExpress)
+		}
 	case "delete": // onOrderDelete
 		if h.SizeOfOrderTable <= 1 || len(orders) == 0 {
 			return

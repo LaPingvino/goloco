@@ -1390,7 +1390,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
 		if v == "menu" { // the toolbar's Build Vehicles menu instead
 			for i := range g.toolbar.Buttons {
@@ -1421,6 +1421,22 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 					for _, l := range g.vehicleWin.Route {
 						log.Printf("[Diag] route after the click: %q", l.Text)
 					}
+					break
+				}
+			}
+		} else if v == "express" { // the Route tab of the first placed train, as its owner: a click on Express (then left open)
+			m := &g.w.Map
+			trains, _ := m.Trains()
+			for _, tr := range trains {
+				if h := m.Entities[tr.Head]; h.TileX != -1 {
+					m.ControllingCompany = h.Owner // DIAGNOSTIC ONLY: play as its owner
+					g.inTitleScreen = false        // DIAGNOSTIC ONLY: draw windows over the title world (it stops cycling maps)
+					g.openVehicleWindow(h.ID, 4)
+					log.Printf("[Diag] train %d express before: %v", h.ID, g.vehicleWin.Express)
+					lw := ui.VehicleRouteLayout(g.vehicleWin.W, g.vehicleWin.H, g.vehicleWin.State.HiddenTabs, false)
+					e := lw[ui.VrExpressMode]
+					g.vehicleWin.HandleClick(g.vehicleWin.X+(e.L+e.R)/2, g.vehicleWin.Y+(e.T+e.B)/2)
+					log.Printf("[Diag] train %d express after the click: %v (veh1 var_48 %#x)", h.ID, g.vehicleWin.Express, m.Entities[tr.Veh1].Var48)
 					break
 				}
 			}

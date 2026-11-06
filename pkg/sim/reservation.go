@@ -176,6 +176,8 @@ type Sub4ACEE7Result struct {
 const (
 	flags48PassSignal  uint8 = 1 << 0
 	flags48ExpressMode uint8 = 1 << 1
+	// Flags48ExpressMode is Flags48::expressMode (veh1 var_48): the vehicle runs express.
+	Flags48ExpressMode = flags48ExpressMode
 )
 
 // Sub4ACEF1 is sub_4ACEF1 (rail): with free room in its reservation the head
