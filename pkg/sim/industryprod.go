@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"github.com/LaPingvino/goloco/pkg/core"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -12,7 +13,7 @@ import (
 // daily production moving one step towards its target × productionRate /
 // 256, and at 8 or more in the output buffer up to 255 sent to the stations
 // its produced cargo goes to (producedCargoStatsStation).
-// PARTIAL: Industry::update's farm tiles, updateMonthly's production changes.
+// PARTIAL: Industry::update's farm tiles; see industryUpdateMonthly.
 
 const industryFlagIsGhost = 1 << 0 // IndustryFlags::isGhost
 
@@ -197,4 +198,106 @@ func (m *Map) industriesUpdateProducedCargoStats(om *objects.ObjectManager) {
 		}
 		ind.StationsInRange = [32]uint32{}
 	}
+}
+
+const (
+	industryFlagClosingDown          = 1 << 2 // IndustryFlags::closingDown
+	industryManagerDisallowCloseDown = 1 << 0 // IndustryManager::Flags::disallowIndustriesCloseDown
+)
+
+// industriesUpdateMonthly is IndustryManager::updateMonthly. PARTIAL:
+// tryCreateNewIndustriesMonthly (new industries) not ported.
+func (m *Map) industriesUpdateMonthly(om *objects.ObjectManager) {
+	if om == nil {
+		return
+	}
+	for i := range m.Industries {
+		m.industryUpdateMonthly(&m.Industries[i], om)
+	}
+}
+
+// industryUpdateMonthly is Industry::updateMonthly (0x00453868): a primary
+// industry's production may double (isMonthlyProductionUp: > 70% taken,
+// 1 in 32) or halve (isMonthlyProductionDown), else it may start closing
+// (obsolete, or the object's monthly closure chance — the industry's own
+// prng); the month's produced share kept in the 20-year histories (÷ 50,
+// at most 255); the monthly totals moved to the previous month's and the
+// percentage transported worked out. PARTIAL: an industry closing down
+// with no production left is removed by the IndustryRemoval game command
+// (not ported: it stays, closing, its statistics frozen as upstream's would
+// be gone); the news messages (MessageManager::post: production up / down,
+// closing down) — goloco has no messages yet.
+func (m *Map) industryUpdateMonthly(ind *scenario.Industry, om *objects.ObjectManager) {
+	if ind.Flags&industryFlagIsGhost != 0 {
+		return
+	}
+	if ind.Flags&industryFlagClosingDown != 0 && ind.DailyProduction[0] == 0 && ind.DailyProduction[1] == 0 {
+		return // GameCommands::IndustryRemoval: see PARTIAL
+	}
+	obj := om.GetIndustryObjectByIndex(int(ind.ObjectID))
+	if obj == nil {
+		return
+	}
+	_, required := om.IndustryCargoIDs(obj)
+	event := false
+	if ind.UnderConstruction == 0xFF && ind.Flags&industryFlagClosingDown == 0 && required[0] == 0xFF {
+		if m.isMonthlyProductionUp(ind, obj) {
+			ind.DailyProductionTarget[0] = min(100, ind.DailyProductionTarget[0]*2)
+			ind.DailyProductionTarget[1] = min(100, ind.DailyProductionTarget[1]*2)
+			event = true
+		} else if m.isMonthlyProductionDown(ind, obj) {
+			ind.DailyProductionTarget[0] /= 2
+			ind.DailyProductionTarget[1] /= 2
+			event = true
+		}
+	}
+	if !event && m.IndustryManagerFlags&industryManagerDisallowCloseDown == 0 && ind.UnderConstruction == 0xFF && ind.Flags&industryFlagClosingDown == 0 {
+		if m.isMonthlyProductionClosing(ind, obj) {
+			ind.Flags |= industryFlagClosingDown
+			ind.DailyProductionTarget = [2]uint16{}
+		}
+	}
+	for k := 0; k < 2; k++ {
+		h := &ind.History[k]
+		if int(ind.HistorySize[k]) == len(h) {
+			copy(h[:], h[1:]) // rotate left by one; the new value goes last
+		} else {
+			ind.HistorySize[k]++
+		}
+		h[ind.HistorySize[k]-1] = uint8(min(uint32(ind.ProducedMonthlyTotal[k]), 12750) / 50)
+	}
+	for k := 0; k < 2; k++ {
+		ind.ProducedPrevMonth[k], ind.ProducedMonthlyTotal[k] = ind.ProducedMonthlyTotal[k], 0
+		ind.DeliveredPrevMonth[k], ind.DeliveredMonthlyTotal[k] = ind.DeliveredMonthlyTotal[k], 0
+		transported := uint32(min(ind.ProducedPrevMonth[k], ind.DeliveredPrevMonth[k]))
+		if ind.ProducedPrevMonth[k] != 0 {
+			transported = transported * 100 / uint32(ind.ProducedPrevMonth[k])
+		}
+		ind.PercentTransported[k] = uint8(transported)
+	}
+	ind.ReceivedPrevMonth, ind.ReceivedMonthlyTotal = ind.ReceivedMonthlyTotal, [3]uint16{}
+}
+
+func (m *Map) isMonthlyProductionUp(ind *scenario.Industry, obj *objects.IndustryObject) bool {
+	if obj.Flags&objects.IndustryFlagCanIncreaseProduction == 0 {
+		return false
+	}
+	return ind.PercentTransported[0] > 70 && m.Rng1.RandNextBound(31) == 0 &&
+		ind.DailyProductionTarget[0] < 100 && ind.DailyProductionTarget[1] < 100
+}
+
+func (m *Map) isMonthlyProductionDown(ind *scenario.Industry, obj *objects.IndustryObject) bool {
+	if obj.Flags&objects.IndustryFlagCanDecreaseProduction == 0 {
+		return false
+	}
+	return (ind.PercentTransported[0] > 50 && ind.DailyProductionTarget[0] > 20 && m.Rng1.RandNextBound(31) == 0) ||
+		(ind.PercentTransported[0] <= 50 && ind.DailyProductionTarget[0] > 10 && m.Rng1.RandNextBound(15) == 0)
+}
+
+// isMonthlyProductionClosing draws from the industry's own prng.
+func (m *Map) isMonthlyProductionClosing(ind *scenario.Industry, obj *objects.IndustryObject) bool {
+	p := core.NewPrngSeed(ind.Prng[0], ind.Prng[1])
+	defer func() { ind.Prng = [2]uint32{p.Srand0(), p.Srand1()} }()
+	return (m.CurrentYear > obj.ObsoleteYear && p.RandNextBound(0xFFFF) < 102) ||
+		(obj.MonthlyClosureChance != 0 && int32(obj.MonthlyClosureChance) > p.RandNextBound(0xFFFF))
 }

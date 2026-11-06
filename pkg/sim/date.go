@@ -77,7 +77,8 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 	m.CurrentYear, m.CurrentMonth, m.CurrentDayOfMonth = uint16(today.Year), uint8(today.Month), uint8(today.Day)
 	if today.Month != yesterday.Month { // end of every month
 		m.ObjectiveMonthsInChallenge++
-		// TownManager / IndustryManager monthly: PARTIAL
+		// TownManager::updateMonthly: PARTIAL
+		m.industriesUpdateMonthly(om) // IndustryManager::updateMonthly (industryprod.go)
 		m.companiesUpdateMonthly1()
 		// CompanyManager::updateMonthlyHeadquarters: PARTIAL
 		m.vehiclesUpdateMonthly(om)

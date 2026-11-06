@@ -20,6 +20,8 @@ type IndustryObject struct {
 	ScaffoldingSegmentType uint8  // 0xD4
 	ScaffoldingColour      uint8  // 0xD5
 	Flags                  uint32 // 0xE4 (IndustryObjectFlags)
+	ObsoleteYear           uint16 // 0xCC
+	MonthlyClosureChance   uint8  // 0xF3: out of 65535
 	FarmTileNumImageAngles uint8  // 0xE9
 
 	PartHeights        []uint8
@@ -65,6 +67,8 @@ func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 		ScaffoldingSegmentType: data[0xD4],
 		ScaffoldingColour:      data[0xD5],
 		Flags:                  binary.LittleEndian.Uint32(data[0xE4:]),
+		ObsoleteYear:           binary.LittleEndian.Uint16(data[0xCC:]),
+		MonthlyClosureChance:   data[0xF3],
 		FarmTileNumImageAngles: data[0xE9],
 	}
 	p := industryObjectSize
@@ -190,3 +194,10 @@ func (m *ObjectManager) IndustryCargoIDs(o *IndustryObject) (produced [2]uint8, 
 
 // IndustryFlagRequiresAllCargo is IndustryObjectFlags::requiresAllCargo.
 const IndustryFlagRequiresAllCargo = 1 << 17
+
+// IndustryFlagCanIncreaseProduction / CanDecreaseProduction are
+// IndustryObjectFlags::canIncreaseProduction / canDecreaseProduction.
+const (
+	IndustryFlagCanIncreaseProduction = 1 << 18
+	IndustryFlagCanDecreaseProduction = 1 << 19
+)
