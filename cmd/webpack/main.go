@@ -71,7 +71,7 @@ func main() {
 	args := flag.String("args", "", "space-separated command-line arguments passed to goloco")
 	local := flag.Bool("local", false, "write plain .gz files for a local server (the artifact host needs base64 text)")
 	open := flag.Bool("open", false, "the open build (GitHub Pages): goloco's own files only, no Locomotion data — the page takes the player's own folder")
-	og := flag.String("opengraphics", "", "with -open: the unzipped OpenGraphics objects.zip (MIT; OG_*.dat only), packed flat at /w/opengraphics/ObjData — the fallback when the player brings no folder")
+	og := flag.String("opengraphics", "", "with -open: the unzipped OpenGraphics objects.zip (MIT; OG_*.dat only, and its locopal.jasc.pal), packed flat at /w/opengraphics/ObjData — the fallback when the player brings no folder")
 	flag.Parse()
 	if *out == "" {
 		log.Fatal("webpack: -out is required")
@@ -120,6 +120,10 @@ func main() {
 				return err
 			}
 			name := filepath.Base(p)
+			if name == "locopal.jasc.pal" { // OpenGraphics' palette (MIT)
+				list = append(list, file{p, "/w/opengraphics/locopal.jasc.pal"})
+				return nil
+			}
 			if !strings.HasPrefix(name, "OG_") || !strings.EqualFold(filepath.Ext(name), ".dat") {
 				log.Fatalf("webpack: %s in the OpenGraphics folder is not an OG_*.dat object — refusing (no original data in the open build)", p)
 			}
