@@ -9,8 +9,8 @@ import (
 // Unloading — VehicleHead.cpp's updateUnloadCargo (0x004B9A3A-side),
 // updateUnloadCargoComponent and getLoadingModifier.
 //
-// PARTIAL: updateLastIncomeStats (Vehicle1 lastIncome, the vehicle window's
-// statistics), the workersCelebrate / citizensCelebrate messages, the AI
+// updateLastIncomeStats (Vehicle1 lastIncome) is here too (incomestats.go).
+// PARTIAL: the workersCelebrate / citizensCelebrate messages, the AI
 // thought revenue (aiThoughts[].var_80), the
 // money effect and income sound are not ported.
 
@@ -108,6 +108,7 @@ func (m *Map) updateUnloadCargoComponent(tr Train, cargo *scenario.VehicleCargo,
 			c.CargoUnitsTotalDistance += uint32(min(uint64(cargo.Qty)*uint64(tiles), 0xFFFFFFFF))
 			pay := m.DeliveredCargoPayment(cargoObj, int32(cargo.Qty), tiles, uint16(cargo.NumDays))
 			c.CargoDelivered[cargo.Type] = boundAdd32(c.CargoDelivered[cargo.Type], uint32(cargo.Qty))
+			m.updateLastIncomeStats(tr, cargo.Type, uint16(cargo.Qty), uint16(tiles), cargo.NumDays, pay)
 			head.Var58 += uint32(pay)
 			c.Var4A0 |= 1 << cargo.Type
 		}
