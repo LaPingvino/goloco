@@ -233,9 +233,14 @@ func NewGame() *Game {
 	r := render.NewRenderer()
 
 	// Initialize audio manager (GOLOCO_MUTE=1 skips it entirely — parallel
-	// headless instances would otherwise fight over the ALSA device).
+	// headless instances would otherwise fight over the ALSA device). With no
+	// sound device the game plays on silently, as OpenLoco does (item AU).
 	var audioMgr *audio.Manager
-	if os.Getenv("GOLOCO_MUTE") != "1" {
+	switch {
+	case os.Getenv("GOLOCO_MUTE") == "1":
+	case !audio.DeviceAvailable():
+		log.Println("[Game] No sound device: playing without sound")
+	default:
 		log.Println("[Game] Creating audio manager...")
 		audioMgr = audio.NewManager()
 	}
@@ -2514,6 +2519,7 @@ func saveDiagCrop(screen *ebiten.Image, g *Game, tileX, tileY int) {
 }
 
 func main() {
+	audio.ProbeChild() // the sound-device probe (item AU): exits when this process is it
 	game := NewGame()
 
 	// Parse CLI args:
