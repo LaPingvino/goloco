@@ -8,7 +8,6 @@ import (
 	"github.com/LaPingvino/goloco/pkg/paint"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 // overlay.go — the label/feedback overlay pass drawn on top of the composited
