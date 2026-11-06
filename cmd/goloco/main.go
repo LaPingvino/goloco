@@ -146,6 +146,7 @@ type Game struct {
 	consStation            int                        // station tab: lastSelectedStationType (slot; -1 = the first available)
 	stationGhost           *sim.TrainStationPlacement // the station tab's ghost (cState.stationGhost*), nil none
 	stationGhostCost       int32                      // cState.stationCost
+	diagHoldGhost          bool                       // DIAGNOSTIC ONLY: the stationghost diag keeps its ghost
 	consMods               uint8                      // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
 	consSlope              int                        // construction slope selection: -2 (steep down) … 0 … +2
 	buildObjID             int                        // index into TrackObjects / RoadObjects
@@ -609,7 +610,9 @@ func (g *Game) Update() error {
 
 	// The station tab's ghost follows the cursor (onToolUpdateTrainStation),
 	// and goes once the tab or the mode does.
-	if g.buildMode == buildModeTrack && g.consTab == 1 && !g.inTitleScreen {
+	if g.diagHoldGhost {
+		// DIAGNOSTIC ONLY: the ghost stays for the screenshot
+	} else if g.buildMode == buildModeTrack && g.consTab == 1 && !g.inTitleScreen {
 		g.stationToolUpdate(g.mouseX, g.mouseY)
 	} else if g.stationGhost != nil {
 		g.removeStationGhost()
@@ -1543,9 +1546,8 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 							off := ghost()
 							g.stationToolUpdate(sx, sy+16)
 							log.Printf("[Diag] stationghost: tile %d,%d: ghost on hover %v, after leaving %v, back %v, cost %d", x, y, on, off, ghost(), g.stationGhostCost)
-							g.consTab = 0 // keep the ghost from being removed by the next frame's update elsewhere
-							g.buildMode = buildModeNone
-							g.stationGhost = nil
+							g.diagHoldGhost = true // the ghost and the tab stay for the shot, its cost in the window
+							g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 						} else {
 							g.stationToolUp(sx, sy+16)
 							log.Printf("[Diag] stationtool: clicked %d,%d (tile %d,%d company %d): station now %v", sx, sy+16, x, y, tr.Owner, m.TileAt(x, y).Tracks[r.Index].HasStation)
