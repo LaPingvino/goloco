@@ -22,6 +22,12 @@ type RoadStationObject struct {
 	Name                       string
 	PaintStyle                 uint8
 	Flags                      uint8 // RoadStationFlags (bit0 recolourable, from the generated layout)
+	// Height (0x03, big Z: /4 for small Z), RoadPieces (0x04, RoadTraitFlags
+	// the stop fits), Build/SellCostFactor (0x06 / 0x08), CostIndex (0x0A).
+	Height                          uint8
+	RoadPieces                      uint16
+	BuildCostFactor, SellCostFactor int16
+	CostIndex                       uint8
 	// CargoName is the cargo ObjectHeader's DAT name (cargoType's object,
 	// passenger/freight stations only); CargoOffsets getCargoOffsets
 	// [rotation][nibble] (as TrainStationObject's).
@@ -76,8 +82,13 @@ func ParseRoadStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader
 	}
 
 	obj := &RoadStationObject{
-		Header:     header,
-		PaintStyle: data[0x02],
+		Header:          header,
+		PaintStyle:      data[0x02],
+		Height:          data[0x03],
+		RoadPieces:      uint16(data[0x04]) | uint16(data[0x05])<<8,
+		BuildCostFactor: int16(uint16(data[0x06]) | uint16(data[0x07])<<8),
+		SellCostFactor:  int16(uint16(data[0x08]) | uint16(data[0x09])<<8),
+		CostIndex:       data[0x0A],
 	}
 	numCompatible := data[0x20]
 	obj.DesignedYear = uint16(data[0x28]) | uint16(data[0x29])<<8
