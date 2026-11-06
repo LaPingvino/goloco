@@ -1419,7 +1419,34 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	}
 	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
-		if v == "finances" || v == "cargo" { // DIAGNOSTIC ONLY: the first saved train with a last income (cargo: holding cargo), that tab
+		if v == "refit" { // DIAGNOSTIC ONLY: as a saved train's company, a refittable vehicle bought, its Cargo tab, the refit dropdown
+			m := &g.w.Map
+			trains, _ := m.Trains()
+			for _, tr := range trains {
+				h := m.Entities[tr.Head]
+				if h.VehicleType != 0 {
+					continue
+				}
+				m.ControllingCompany, m.PlayerCompanies[0] = h.Owner, h.Owner // the diag plays as it (canRefit: a player's)
+				c := &sim.Cmd{Company: h.Owner, Objects: g.r.ObjMgr}
+				for id, ob := range g.r.ObjMgr.Vehicles {
+					var nh uint16
+					if ob == nil || ob.Flags&(1<<14) == 0 {
+						continue
+					}
+					if _, ok := m.CreateVehicle(c, sim.CmdApply, uint16(id), true, &nh); !ok {
+						continue
+					}
+					g.inTitleScreen = false
+					g.openVehicleWindow(nh, 2)
+					x, y := g.vehicleWin.X+g.vehicleWin.W-14, g.vehicleWin.Y+56 // the refit button (right bar, 44–67)
+					g.vehicleWin.HandleClick(x, y)
+					log.Printf("[Diag] refit: vehicle %d (%s), dropdown %v", nh, ob.DisplayName, g.dropdown != nil)
+					break
+				}
+				break
+			}
+		} else if v == "finances" || v == "cargo" { // DIAGNOSTIC ONLY: the first saved train with a last income (cargo: holding cargo), that tab
 			m := &g.w.Map
 			trains, _ := m.Trains()
 			for _, tr := range trains {
