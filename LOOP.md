@@ -104,8 +104,11 @@ TL. [ ] **Town and station labels, ported** (found 2026-11-05 by the OpenLoco si
       (pickupToolUpdate*), start / stop is the main tab's flag dropdown, the Route tab is ported. Left of the
       window's five tabs: Cargo (2) and Finances (3). Finances' data DONE 2026-11-06: Vehicle1 lastIncome read
       from saves and kept by updateLastIncomeStats on delivery (incomestats.go; TestSavedLastIncome, the
-      end-to-end run's 27 525 recorded as its one income line). NEXT: Finances::draw (last income lines,
-      average speed, running cost, monthly profit = veh2 totalRecentProfit / 4, sale value), then Cargo.
+      end-to-end run's 27 525 recorded as its one income line). Finances tab DONE 2026-11-06 (ui/vehiclefinances.go:
+      layout = the common widgets at 400×202, draw as Finances::draw — last income date and cargo lines, average
+      speed when non-zero, running cost, monthly profit, sale value; reachable from every tab; seen with
+      GOLOCO_DIAG_BUILDVEHICLE=finances). PARTIAL: the cargo line's wrapping, renaming by the caption, the
+      tabs' icons (blank on every tab). NEXT: the Cargo tab (Cargo::draw, 2).
    Each step: the upstream code, tests, the test page redeployed when something shows.
    CHECK (found 5P.a) — DONE 2026-11-06: it did differ (title save: 98 trains, the list against slot order at 55
    places). Trains() now walks the vehicle-head list from its head along next, as VehicleList does (slot order
@@ -1201,4 +1204,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (5P.g: last income, the Finances tab's data) — (the other three wait on Joop → here.) 5P.g's notes were stale: the ghost, start / stop and Route are in; Cargo and Finances tabs are not. Finances needs Vehicle1's lastIncome, which wasn't ported: now parsed from saves (IncomeStats at 0x53) and kept on delivery (beginNewIncome / addToStats / updateLastIncomeStats, from the unload's payment), the unload's PARTIAL note trimmed to match. Tests: the title save's 95 income lines are sane; the bought train in TestPlayableVehicleEndToEnd records its run (300 passengers, 55 tiles, 76 days = 27 525, what it earned). All green. Nothing drawn yet, no redeploy; NEXT: Finances::draw.
+
+
+- 2026-11-06 (5P.g: the Finances tab) — (the other three wait on Joop → here.) The vehicle window's Finances tab, ported: the game's own strings (last_income_on_date / _na, transported_blocks_in_days, last_journey_average_speed, vehicle_monthly_running_cost / _profit, sale_value_of_vehicle) filled by a new ui.FillArgs (arguments in order, a {STRINGID} taking its string whole as FormatArguments do); a cargo's unit name comes from the object with raw argument bytes (123 = int32_grouped: "{ tonnes of Coal") — ui.ObjectString names them first (the first shot showed the line garbled without it). Seen: Train 1 "Last income on: 12th December 1972 / 16 Passengers transported 17 blocks in 5 days = $2,408", running cost, profit, sale value. TestFillArgs; all green; test page redeployed. NEXT: the Cargo tab.
 
