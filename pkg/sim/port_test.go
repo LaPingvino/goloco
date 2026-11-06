@@ -121,3 +121,81 @@ func TestFindNearbyStationDocksWindow(t *testing.T) {
 	}
 	t.Logf("water tiles %d, dry %d; tiles next to a water industry %d", wet, dry, ports)
 }
+
+// A dock on the shore of the title save, built by the player: the dry run
+// changes nothing and costs what applying does; applied, its four tiles carry
+// a docks element of the station, which registers the tile. On open water
+// (no water industry in the save) a dock is refused.
+func TestCreatePort(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	g1, _ := om.G1File.(G1Raw)
+	typ := -1
+	for i, d := range om.DockObjects {
+		if d != nil {
+			typ = i
+			break
+		}
+	}
+	if typ < 0 {
+		t.Skip("no dock object")
+	}
+	c := &Cmd{Company: m.ControllingCompany, Objects: om}
+	refusedOnWater := false
+	for y := 2; y < m.Height-3; y++ {
+		for x := 2; x < m.Width-3; x++ {
+			for rot := uint8(0); rot < 4; rot++ {
+				tl := m.TileAt(x, y)
+				a := PortPlacement{X: int32(x) * 32, Y: int32(y) * 32, Z: int32(tl.BaseZ) * 4, Rotation: rot, Type: uint8(typ)}
+				if tl.WaterLevel != 0 {
+					if !refusedOnWater {
+						if _, ok := m.CreatePort(c, 0, a, g1); ok {
+							t.Errorf("a dock on open water at %d,%d was allowed", x, y)
+						}
+						refusedOnWater = true
+					}
+					continue
+				}
+				n := len(tl.Order)
+				dry, ok := m.CreatePort(c, 0, a, g1)
+				if !ok {
+					continue
+				}
+				if len(tl.Order) != n {
+					t.Fatal("the dry run changed the tile")
+				}
+				cost, ok := m.CreatePort(c, CmdApply, a, g1)
+				if !ok || cost != dry || cost <= 0 {
+					t.Fatalf("applying at %d,%d rot %d: ok %v cost %d (dry run %d)", x, y, rot, ok, cost, dry)
+				}
+				id := -1
+				for _, d := range [][2]int{{0, 0}, {1, 0}, {0, 1}, {1, 1}} {
+					tt := m.TileAt(x+d[0], y+d[1])
+					found := false
+					for _, r := range tt.Order {
+						if r.Kind == scenario.KindStation && tt.Stations[r.Index].StationType == 3 {
+							found = true
+							id = int(tt.Stations[r.Index].StationID)
+						}
+					}
+					if !found {
+						t.Errorf("no docks element on %d,%d", x+d[0], y+d[1])
+					}
+				}
+				st := m.StationNames[id]
+				reg := false
+				for i := 0; i < int(st.TileSize); i++ {
+					reg = reg || st.Tiles[i][0] == int16(a.X) && st.Tiles[i][1] == int16(a.Y)
+				}
+				if !reg || st.Owner != c.Company {
+					t.Errorf("station %d %q: registered %v owner %d", id, m.StationName(id), reg, st.Owner)
+				}
+				t.Logf("dock at %d,%d rotation %d: %q, cost %d", x, y, rot, m.StationName(id), cost)
+				if !refusedOnWater {
+					t.Log("(no open water tested before the dock)")
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("no shore took a dock")
+}
