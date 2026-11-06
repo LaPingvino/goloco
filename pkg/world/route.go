@@ -173,3 +173,36 @@ func rotateVec(x, y int, dir uint8) (int, int) {
 // SceneReady reports whether the main view has been painted by the scene
 // renderer (hit-testing needs it).
 func (w *World) SceneReady() bool { return w.scene != nil }
+
+// TrainStationPlacementAt is StationTab's getTrainStationPlacementArgsFromCursor
+// (+ getTrainStationPlacementArgs): the track (or train station) under the
+// cursor; for a station hit, the tile's first track element; the placement
+// at its height, rotation, piece, sequence and track object, for station type.
+func (w *World) TrainStationPlacementAt(sx, sy int, stationType uint8) (sim.TrainStationPlacement, bool) {
+	if w.scene == nil && w.renderer != nil && w.renderer.G1 != nil && w.renderer.ObjMgr != nil {
+		w.scene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
+		w.scene.WaveFrame = func(tx, ty int) uint8 { return uint8(w.Waves[sim.WaveIndex(tx, ty)].Frame) }
+	}
+	if w.scene == nil {
+		return sim.TrainStationPlacement{}, false
+	}
+	m := &w.Map
+	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	ps := w.scene.InteractionAt(m, v, sx, sy, func(it paint.InteractionItem) bool {
+		return it == paint.ItemTrack || it == paint.ItemTrainStation
+	})
+	if ps == nil {
+		return sim.TrainStationPlacement{}, false
+	}
+	tk, _ := ps.Item.(*scenario.TrackElement)
+	if tk == nil { // "Deliberately always passing track and not station element": the tile's first track
+		if t := m.TileAt(ps.MapX/32, ps.MapY/32); t != nil && len(t.Tracks) > 0 {
+			tk = &t.Tracks[0]
+		}
+	}
+	if tk == nil {
+		return sim.TrainStationPlacement{}, false
+	}
+	return sim.TrainStationPlacement{X: int32(ps.MapX / 32 * 32), Y: int32(ps.MapY / 32 * 32), Z: int32(tk.BaseZ) * 4,
+		Rotation: tk.Rotation, TrackID: tk.TrackID, Index: tk.SequenceIndex, TrackObjectID: tk.TrackObjectID, Type: stationType}, true
+}

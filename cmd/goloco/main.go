@@ -702,6 +702,8 @@ func (g *Game) Update() error {
 				g.pickupToolDown(g.mouseX, g.mouseY) // the Vehicle window's placing tool
 			} else if g.routeTool && g.vehicleWin != nil && !g.inTitleScreen {
 				g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
+			} else if g.buildMode == buildModeTrack && g.consTab == 1 && !g.inTitleScreen {
+				g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a train station on the track clicked
 			} else if g.buildMode != buildModeNone && g.hoverTileX >= 0 {
 				// Track/road mode: clicking the map sets the construction head.
 				g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
@@ -1458,7 +1460,7 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves" && v != "playable" && v != "towns" && v != "buildstation") || g.w.SceneReady()) { // the Build Vehicle window on tab N
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && ((v != "routeadd" && v != "routewaypoint" && v != "express" && v != "roadghost" && v != "shipghost" && v != "shipsail" && v != "planefly" && v != "planeghost" && v != "newindustry" && v != "newindustrybuild" && v != "waves" && v != "playable" && v != "towns" && v != "buildstation" && v != "stationtool") || g.w.SceneReady()) { // the Build Vehicle window on tab N
 		g.buildVehDiagDone = true
 		if v == "buildstation" { // DIAGNOSTIC ONLY: CreateTrainStation on the first free straight track piece that takes one, the view on it
 			m := &g.w.Map
@@ -1492,6 +1494,32 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 						g.inTitleScreen = false
 						g.w.CenterOn(fmt.Sprintf("tile:%d,%d", x, y))
 						log.Printf("[Diag] buildstation: at %d,%d company %d: ok %v cost %d", x, y, tr.Owner, ok, cost)
+						done = true
+						break
+					}
+				}
+			}
+		} else if v == "stationtool" { // DIAGNOSTIC ONLY: the Station tab's tool clicked on the screen over the first free straight track piece of a company — through picking, as the player would
+			m := &g.w.Map
+			done := false
+			for y := 4; y < m.Height-4 && !done; y++ {
+				for x := 4; x < m.Width-4 && !done; x++ {
+					tl := m.TileAt(x, y)
+					for _, r := range tl.Order {
+						if r.Kind != scenario.KindTrack {
+							continue
+						}
+						tr := tl.Tracks[r.Index]
+						if tr.TrackID != 0 || tr.HasStation || tr.HasSignal || tr.HasLevelCrossing || tr.Ghost || tr.AiAllocated || tr.HasBridge {
+							continue
+						}
+						g.inTitleScreen = false
+						m.ControllingCompany = tr.Owner
+						g.buildMode, g.consTab, g.buildObjID = buildModeTrack, 1, int(tr.TrackObjectID)
+						g.w.CenterOn(fmt.Sprintf("tile:%d,%d", x, y))
+						sx, sy := g.w.TileToScreenPx(x, y)
+						g.stationToolUp(sx, sy+16)
+						log.Printf("[Diag] stationtool: clicked %d,%d (tile %d,%d company %d): station now %v", sx, sy+16, x, y, tr.Owner, m.TileAt(x, y).Tracks[r.Index].HasStation)
 						done = true
 						break
 					}
