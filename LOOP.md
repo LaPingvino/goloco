@@ -228,8 +228,14 @@ RR. [ ] **Retire the old renderer** (Joop 2026-11-05: "I think we can probably f
       paint calls) — upstream has none; the title shows its saved vehicles as before;
    c. DONE 2026-11-06: ScreenToTile's height-iterating guess removed; the build-mode hover tile (and two diags) take
       getSurfaceOrWaterLocFromUi (World.SurfaceOrWaterAt) — what upstream's ConstructionTab uses;
-   d. the overlay (station / town labels, money floats) → upstream's paths (Main.cpp's station / town names in
-      the viewport paint, MoneyEffect as an entity).
+   d. DONE 2026-11-06 as far as it goes: station / town names already follow upstream (TL: Main.cpp's drawStationNames /
+      drawTownNames); the money floats were dead invented code (nothing spawned them) — removed with their helpers
+      (plaque, outlined label, fills). Upstream's MoneyEffect is its own item: ME below.
+ME. [ ] **MoneyEffect** (found 2026-11-06 by RR.d): upstream's money popups are an entity (Effects/MoneyEffect.cpp
+   132: create on spendMoneyEffect from GameCommands' payment and VehicleHead's cargo profit, update with the wiggle
+   tables, kLifetime / kRedGreenLifetime) painted through the paint session's string plot list
+   (PaintEffectEntity.cpp paintRedGreenCurrencyEntity / paintWindowCurrencyEntity; addToStringPlotList). Port the
+   entity, its two creators, and the string plot list.
    The page text and scene.go's comment corrected 2026-11-05 (they still said zoom 0 only).
 AU. [x] (DONE 2026-11-06) **No sound device must not end the game** (found 2026-11-05): with no audio device, ebiten's audio
    error comes back from RunGame and goloco log.Fatal's — OpenLoco plays on silently. Make audio optional: check
@@ -1424,4 +1430,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — (Fractal: green) CR checked off: farm tiles, construction / animation and new industries are all ported; two stale PARTIAL notes (farm tiles, createIndustry) corrected to what the code does; messages / name numbering stay as their own PARTIALs.
 - 2026-11-06 — RR.b: the invented demo trains removed from the world (upstream has none); title unchanged in the shot; tests green; test page redeployed.
 - 2026-11-06 — RR.c: the cursor's tile in build mode from upstream's getSurfaceOrWaterLocFromUi (SurfaceOrWaterAt); ScreenToTile's guess removed; tests green.
+- 2026-11-06 — RR.d: the dead invented money floats removed (nothing spawned them); station / town names were already upstream's; upstream's MoneyEffect logged as item ME. Tests green.
 
