@@ -254,11 +254,16 @@ W. [x] (RE-SCOPED 2026-11-06: upstream has no palette animation) **Palette anima
 W2. [x] (DONE 2026-11-06: waves are drawn now — they never were in the live renderer) **Waves seen**: a visual
    check over open water (waves form only on water with water all round). A diag centred on a lake, two frames apart.
 O. [ ] **Open build on goloco's GitHub Pages** (Joop 2026-11-04: "the clean version of goloco, probably good to
-   push that one to its Github Pages and see how close we can get") — docs/open-build.md approved. PARKED behind
+   push that one to its Github Pages and see how close we can get") — docs/open-build.md approved. Joop
+   2026-11-06: "for the open version, push it as fallback to the Github Pages" — the Pages build (players drop in
+   their own game folder) falls back to the open build (OpenGraphics + goloco's own files) when they haven't. PARKED behind
    5P. Started: OpenGraphics v0.1.8 objects.zip fetched (sha256 658891d9…5013c7 ✓, 152 files); baseline without
    Locomotion data: a black title with 'GoLoco' and four empty buttons (no palette, no objects, no map). Next:
    webpack -open (OpenGraphics + the repo's own files only, refusing originals), a Pages workflow (CI fetches and
    checks OpenGraphics), the licence / credits; then objects without g1.DAT (the palette first).
+
+> Joop 2026-11-06: "Don't wait on anything for me to try" — never hold an item for his test or screenshot; build,
+> self-check (diags, tests, shots), log, move on; what he could try goes in the tick summary, not in Blocked.
 
 > NEXT (Joop 2026-11-04: the test page is "responsive" — item 0 done; "language switch fails on web"): item 0L
 > (UI texts by OpenLoco string id, so a language switch shows — the main windows done 2026-11-04; the rest as
@@ -755,7 +760,7 @@ markers in the ports (`// clickable: Options.cpp show_fps`), counted by the scri
 annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 ## Questions for Joop
-- (2026-11-03) Item 0: the test page (kiefte.eu/goloco/, rebuilt 2026-11-03) — does it feel responsive now? A yes ends item 0 and 5.9f3 resumes.
+- (ANSWERED 2026-11-04, Joop: "responsive" — item 0 done) (2026-11-03) Item 0: the test page (kiefte.eu/goloco/, rebuilt 2026-11-03) — does it feel responsive now? A yes ends item 0 and 5.9f3 resumes.
 - (answered 2026-11-01, Joop: 'the top bar mouseover text menus are misaligned', 'text doesn't fit boxes') UI: which menus look most misaligned?
 - Bridges (scene mode, title map river crossing near tile 90,99): do they look like the original? A reference screenshot from OpenLoco/Locomotion at the same spot would let me check pixel-exactness. (2026-11-03: likewise a shot of a map edge — the void outside the map — would confirm the ported paintVoid.)
 - (ANSWERED 2026-11-02, Joop: 'The web fix fixed the music stutter in Goloco') Does the music still stutter on the test page (rebuilt tick 75: music now played by the browser's <audio> element) (rebuilt 2026-11-01 tick 63, audio now at the music's native 22050 Hz)?
@@ -763,7 +768,9 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   ('[Scene] CPU renderer: … per frame')? That decides how soon it can become the default.
 - (answered 2026-11-01) g1 gap: Joop allows drawing replacements myself, or borrowing from OpenTTD
   (check licences first: OpenTTD's OpenGFX is GPL-2.0; OpenGraphics is MIT).
-- docs/open-build.md: go for step 1 (an '-open' pack with only OpenGraphics objects and a goloco start path
+- (ANSWERED 2026-11-06, Joop: "for the open version, push it as fallback to the Github Pages" — yes to step 1;
+  the Pages build serves the open version when the player has dropped in no game folder. The g1 choice (a / b)
+  is mine to make when O reaches it, logged, his to correct.) docs/open-build.md: go for step 1 (an '-open' pack with only OpenGraphics objects and a goloco start path
   without g1.DAT)? And for the g1 gap: (a) draw open replacements for the ~85 g1 ids goloco uses, or (b)
   goloco-only UI art with TTF fonts in the public build?
 
