@@ -155,3 +155,23 @@ the open build has to make them. Proposed (for Joop): odd colours exactly as abo
 swatch itself — no judgement involved); even colours as a documented approximation (a compressed ramp by a
 fixed rule), listed in docs/deviations.md as the open build's. Until then the open build draws company
 colours and coloured windows with no remap (the GetPaletteMap error paths).
+
+## UI images — the inventory (2026-11-06)
+
+The g1 images goloco's interface names, from the code (static: every image constant in pkg/ui and
+pkg/sprites/imageids.go; the UI has no raw numeric g1 indexing):
+
+| g1 range | What | Count |
+|---|---|---:|
+| 2300–2399 | the UI icon block: folder / parent folder, close button, frame backgrounds, progress bar, red arrows, construction buttons (turnaround, remove, new position, rotate), rubbish bin, centre view, route flags and buttons, refit, the tabs (display, control, sound, misc, globe) | ~74 named in imageids.go + ~35 in pkg/ui (overlapping) |
+| 2460–2469 | game speed buttons (pause … extra fast), random map, compass | 6 |
+| 3543–3544 | slider track and thumb | 2 |
+| 3625, 3700–3765 | the wide tab; a few late icons | ~7 |
+| (glyph ranges) | the four bitmap fonts, 4 × 224 glyphs — goloco already has the TTF fallback | — |
+
+Not on this list because they come from objects (OpenGraphics has them): the interface skin (window
+colours, toolbar images), the track / road preview images, vehicle, station and building images.
+So the open build's UI needs about **120 small icons drawn** (most 16–24 px, 2300–2399) plus a pixel font
+at Locomotion's sizes — or the TTF it already uses. Next: a runtime check that nothing else is drawn
+(an index-recording hook in a debug run), then draw them — art, Joop's call (§3: draw, or OpenTTD's GPL
+icons with the licence kept).
