@@ -36,7 +36,9 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/opengraphics/locopal.jasc.pal" https://raw.githubusercontent.com/OpenLoco/OpenGraphics/d19bf5c6c1048fe0099199b713ea07600ab2e518/palettes/locopal.jasc.pal
           echo "cf5581016453d8d90d3cd9667488d042972bef4dd3370f10ac6460f86b3bfd23  $RUNNER_TEMP/opengraphics/locopal.jasc.pal" | sha256sum -c -
       - name: goloco's loader reads every OpenGraphics object
-        run: GOLOCO_OPENGRAPHICS="$RUNNER_TEMP/opengraphics" go test -count=1 -run TestOpenGraphicsObjectsParse -v ./pkg/objects
+        run: |
+          GOLOCO_OPENGRAPHICS="$RUNNER_TEMP/opengraphics" go test -count=1 -run TestOpenGraphicsObjectsParse -v ./pkg/objects
+          GOLOCO_OPENGRAPHICS="$RUNNER_TEMP/opengraphics" go test -count=1 -run TestOpenG1WithOpenGraphics -v ./pkg/assets
       - name: The open web build
         run: go run ./cmd/webpack -open -local -opengraphics "$RUNNER_TEMP/opengraphics" -out "$RUNNER_TEMP/site"
       - name: No game data in it
