@@ -7,7 +7,11 @@ package sim
 // marks its tile with WaveFlag (upstream: SurfaceElement flag 6) while it lives;
 // the surface painter draws wave frame +60 only on flagged tiles.
 
-import "github.com/LaPingvino/goloco/pkg/core"
+import (
+	"github.com/LaPingvino/goloco/pkg/core"
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // MaxWaves is the size of the wave table (OpenLoco S5/Limits.h kMaxWaves).
 const MaxWaves = 64
@@ -94,17 +98,35 @@ func (s *State) UpdateWaves(scenarioTicks uint32) {
 // directions from a start offset that moves through a 16×16 block, so each tile
 // is visited once per 256 ticks (OpenLoco TileManager::update, 0x004612EC).
 //
-// PARTIAL PORT: of SurfaceElement::update only the water branch is ported
-// (start a wave on a water tile that has none). Snow coverage, the type-6
-// variation counter, growth and the other element updates are not ported yet.
-func (s *State) UpdateTiles(visible func(tileX, tileY int) bool) {
+// Each visited tile's elements are updated in their stored order (ghosts
+// skipped), stopping at one that changed the tile: the surface (PARTIAL: of
+// SurfaceElement::update only the water branch — a wave on a water tile that
+// has none; snow, the type-6 counter and growth not yet) and buildings
+// (BuildingElement::update, buildingupdate.go). PARTIAL: trees, roads and
+// industry elements.
+func (s *State) UpdateTiles(visible func(tileX, tileY int) bool, om *objects.ObjectManager) {
 	for ty := s.tileUpdateY; ty < s.Height; ty += 16 {
 		for tx := s.tileUpdateX; tx < s.Width; tx += 16 {
 			t := s.TileAt(tx, ty)
-			if t == nil || t.WaterLevel == 0 || t.WaveFlag {
+			if t == nil {
 				continue
 			}
-			s.createWave(t, tx, ty, visible)
+		elements:
+			for _, r := range t.Order {
+				if r.Flags&0x10 != 0 { // ghost
+					continue
+				}
+				switch r.Kind {
+				case scenario.KindSurface:
+					if t.WaterLevel != 0 && !t.WaveFlag {
+						s.createWave(t, tx, ty, visible)
+					}
+				case scenario.KindBuilding:
+					if int(r.Index) < len(t.Buildings) && !s.updateBuilding(&t.Buildings[r.Index], false, int32(tx)*32, int32(ty)*32, om) {
+						break elements // the tile's elements changed
+					}
+				}
+			}
 		}
 	}
 	shift := uint8(s.tileUpdateY<<4 + s.tileUpdateX + 9)

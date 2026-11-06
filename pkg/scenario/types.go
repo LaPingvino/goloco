@@ -131,6 +131,7 @@ type Scenario struct {
 	ObjectiveTimeLimitUntilYear, ObjectiveMonthsInChallenge uint16
 	CurrentMonth                                            uint8    // general.currentMonth (0x1C)
 	CurrentDayOfMonth                                       uint8    // general.currentDayOfMonth (0x1D)
+	GameStateFlags                                          uint32   // GameState flags (0x10): tileManagerLoaded 1, unk2 2
 	DayCounter                                              uint16   // general.dayCounter (0x18)
 	PlayerCompanies                                         [2]uint8 // playerCompanies (0x24)
 	LoanInterestRate                                        uint8    // loanInterestRate (0x1AE)

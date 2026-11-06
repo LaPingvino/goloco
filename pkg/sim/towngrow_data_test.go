@@ -1595,3 +1595,50 @@ func TestDeliverCargoToNearbyStations(t *testing.T) {
 	}
 	t.Skip("no station taking cargo from producers on the title map")
 }
+
+// TestBuildingsProduce: the title map's tile loop run for 20 passes (each
+// tile is visited once per 256 ticks) — the towns' buildings produce
+// (town var_19C's produced counters grow), some of it reaches stations
+// (the delivered counters grow too), and the stations' waiting cargo rises.
+func TestBuildingsProduce(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	s := &State{Map: *m}
+	var produced0, delivered0 [2]int
+	for _, tw := range s.Towns {
+		for i := 0; i < 2; i++ {
+			produced0[i] += int(tw.Var19C[i][0])
+			delivered0[i] += int(tw.Var19C[i][1])
+		}
+	}
+	waiting := func() int {
+		n := 0
+		for _, st := range s.StationNames {
+			for _, c := range st.Cargo {
+				n += int(c.Quantity)
+			}
+		}
+		return n
+	}
+	w0 := waiting()
+	for i := 0; i < 256*20; i++ {
+		s.UpdateTiles(nil, om)
+	}
+	var produced, delivered [2]int
+	for _, tw := range s.Towns {
+		for i := 0; i < 2; i++ {
+			produced[i] += int(tw.Var19C[i][0])
+			delivered[i] += int(tw.Var19C[i][1])
+		}
+	}
+	for i := 0; i < 2; i++ {
+		produced[i] -= produced0[i]
+		delivered[i] -= delivered0[i]
+	}
+	t.Logf("produced %v, delivered %v; waiting at stations %d → %d", produced, delivered, w0, waiting())
+	if produced[0] <= 0 {
+		t.Fatal("the towns' buildings produced no passengers")
+	}
+	if delivered[0] <= 0 || waiting() <= w0 {
+		t.Errorf("nothing reached a station: delivered %v, waiting %d → %d", delivered, w0, waiting())
+	}
+}
