@@ -212,12 +212,7 @@ type VehicleListRow struct {
 func (w *Map) VehicleListRows() []VehicleListRow {
 	var out []VehicleListRow
 	for _, v := range w.LiveVehicleList() {
-		name := fmt.Sprintf("Vehicle %d", v.Ordinal)
-		if v.Name >= 0x8000 && int(v.Name-0x8000) < len(w.UserStrings) {
-			name = w.UserStrings[v.Name-0x8000]
-		} else if t, ok := vehicleNameTemplates[v.Name]; ok {
-			name = strings.Replace(t, "{INT16}", strconv.Itoa(int(v.Ordinal)), 1)
-		}
+		name := w.VehicleName(v.Name, int(v.Ordinal))
 		age := 0
 		if w.CurrentDay >= v.DayCreated {
 			age = int((w.CurrentDay - v.DayCreated) / 365)
@@ -275,3 +270,16 @@ func (w *Map) LiveVehicleList() []scenario.VehicleListEntry {
 	}
 	return out
 }
+
+// VehicleName formats a head's name (formatString(name, ordinalNumber)): a
+// user string, or a type's numbered template ("Train 3").
+func (w *Map) VehicleName(id uint16, ordinal int) string {
+	if id >= 0x8000 && int(id-0x8000) < len(w.UserStrings) {
+		return w.UserStrings[id-0x8000]
+	}
+	if t, ok := vehicleNameTemplates[id]; ok {
+		return strings.Replace(t, "{INT16}", strconv.Itoa(ordinal), 1)
+	}
+	return fmt.Sprintf("Vehicle %d", ordinal)
+}
+
