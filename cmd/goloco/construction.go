@@ -6,6 +6,7 @@ import (
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"image"
 
+	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -426,4 +427,28 @@ func (g *Game) openBridgeDropdown(wx, wy int, colour, company uint8) {
 		}
 	}
 	g.dropdown = d
+}
+
+// stationToolUp is StationTab's onToolUpTrainStation (0x004A5390): the
+// placement from the track under the cursor (getTrainStationPlacementArgsFromCursor),
+// refused on another track type (wrong_type_of_track_road), then
+// CreateTrainStation with apply. PARTIAL: the error window and its title
+// (cant_build_pop3_string with the station's name), the construct sound,
+// removeConstructionGhosts (goloco places no station ghosts yet).
+func (g *Game) stationToolUp(sx, sy int) {
+	if g.r == nil || g.r.ObjMgr == nil {
+		return
+	}
+	om := g.r.ObjMgr
+	list := om.AvailableCompatibleStations(g.buildObjID, false, int(g.w.CurrentYear))
+	if len(list) == 0 {
+		return
+	}
+	a, ok := g.w.TrainStationPlacementAt(sx, sy, uint8(pickSlot(list, g.consStation)))
+	if !ok || int(a.TrackObjectID) != g.buildObjID {
+		return
+	}
+	company, _ := g.w.ControllingCompany()
+	g1, _ := om.G1File.(sim.G1Raw)
+	g.w.Map.CreateTrainStation(&sim.Cmd{Company: uint8(company), Objects: om}, sim.CmdApply, a, g1)
 }
