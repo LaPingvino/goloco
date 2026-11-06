@@ -226,7 +226,8 @@ RR. [ ] **Retire the old renderer** (Joop 2026-11-05: "I think we can probably f
       upstream's ghost track / road elements painted by the scene (as the vehicle ghost now is);
    b. DONE 2026-11-06: demo trains removed (the type, spawning, the per-frame update, CenterOn's fallback, both
       paint calls) — upstream has none; the title shows its saved vehicles as before;
-   c. ScreenToTile's height-iterating guess → InteractionAt (getMapCoordinatesFromPos), already ported;
+   c. DONE 2026-11-06: ScreenToTile's height-iterating guess removed; the build-mode hover tile (and two diags) take
+      getSurfaceOrWaterLocFromUi (World.SurfaceOrWaterAt) — what upstream's ConstructionTab uses;
    d. the overlay (station / town labels, money floats) → upstream's paths (Main.cpp's station / town names in
       the viewport paint, MoneyEffect as an entity).
    The page text and scene.go's comment corrected 2026-11-05 (they still said zoom 0 only).
@@ -1422,4 +1423,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-06 — O: the open build's UI images inventoried (~120 icons, mostly g1 2300–2399; fonts covered by the TTF; the rest from objects); added to the question for Joop (draw vs OpenTTD's GPL icons).
 - 2026-11-06 — (Fractal: green) CR checked off: farm tiles, construction / animation and new industries are all ported; two stale PARTIAL notes (farm tiles, createIndustry) corrected to what the code does; messages / name numbering stay as their own PARTIALs.
 - 2026-11-06 — RR.b: the invented demo trains removed from the world (upstream has none); title unchanged in the shot; tests green; test page redeployed.
+- 2026-11-06 — RR.c: the cursor's tile in build mode from upstream's getSurfaceOrWaterLocFromUi (SurfaceOrWaterAt); ScreenToTile's guess removed; tests green.
 
