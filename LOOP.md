@@ -83,8 +83,11 @@ ST. [ ] **Building stations** (found 2026-11-06 wiring Station::updateLabel: gol
    clearances, costs (replacing another type: its sell cost too), the station element after the track, then
    addTileToStation / modes / centre / label / canopies; TestCreateTrainStation — built "Minneapolis West" for
    company 6 at 146,154, cost 1 795 as the dry run said; seen with GOLOCO_DIAG_BUILDVEHICLE=buildstation:
-   the platform and its plaque). PARTIAL: the AI's no-track query, invalidations. NEXT: RemoveTrainStation,
-   then the construction window's station tab (the player's way to call it). (Station::update's
+   the platform and its plaque). PARTIAL: the AI's no-track query, invalidations. RemoveTrainStation DONE
+   2026-11-06 (sim/removetrainstation.go; TestRemoveTrainStation: built and removed, 1 795 refunded, the tile
+   back as it was, the station left with no tiles, another company refused). OPEN: Station::update's
+   emptied-station deallocation (noTilesTimeout) — goloco doesn't keep that field; check what its station
+   update does. NEXT: the construction window's station tab (the player's way to call these). (Station::update's
    monthly acceptance check can use CalcAcceptedCargo too — check what goloco does there now.)
 TL. [x] (DONE 2026-11-06: station names too — Station.cpp drawStationName: the saved labelFrame, the curved
    ends and middle in two translucent passes (unk34, the owner's colour), the name with its town and the
@@ -1357,4 +1360,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 
 - 2026-11-06 (ST: CreateTrainStation) — (the other three wait on Joop → here.) The command itself, on everything ported this session: piece suitability (stationTrackPieces & trackPieces & compatibleFlags), the nearby-station validation / allocation (dry run: allocate and free again), per tile the junction test, clearance (AI reservations, then the surface), the station element inserted right after its track (insertElementAfterNoReorg) or an old one re-typed, clear heights raised, then the station's tile, modes, centre, label and canopies. Test: on the title map's first free straight piece, company 6 builds "Minneapolis West" for 1 795 (the dry run's figure); the diag shows the platform and its red plaque. All green; no player UI yet, no redeploy.
+
+
+- 2026-11-06 (ST: RemoveTrainStation) — (the other three wait on Joop → here.) Ported the removal: per tile of the piece the station element after the track taken out (new Tile.removeStationElement), the track's clear height lowered by the station's height (upstream's full height, though creation adds height / 4 — kept as written), the sell cost per piece; then, unless it was a ghost, the tile out of the station with cargo, modes, centre, label and canopies recalculated. Test: build then remove on the title map's first free straight piece refunds the 1 795, restores the tile, empties the station; another company is refused. All green; nothing drawn.
 
