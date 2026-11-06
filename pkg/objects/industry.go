@@ -42,6 +42,7 @@ type IndustryObject struct {
 	PartHeights        []uint8
 	PartAnimations     []BuildingPartAnimation
 	AnimationSequences [4][]uint8 // each: size (power of 2), then data
+	Unk38              [][2]uint8 // getUnk38: (building type, animation sequence) pairs
 	Variations         [][]uint8  // building variation → parts
 
 	// Image bases (load(): shadowImageIds = table offset; buildings after the
@@ -137,7 +138,7 @@ func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 		o.AnimationSequences[i] = append([]uint8(nil), data[p+1:p+1+n]...)
 		p += 1 + n
 	}
-	for { // var_38 entries (2 bytes each) until 0xFF
+	for { // var_38 entries (2 bytes each) until 0xFF: getUnk38
 		if err := need(1); err != nil {
 			return nil, err
 		}
@@ -145,6 +146,10 @@ func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 			p++
 			break
 		}
+		if err := need(2); err != nil {
+			return nil, err
+		}
+		o.Unk38 = append(o.Unk38, [2]uint8{data[p], data[p+1]})
 		p += 2
 	}
 	for v := 0; v < int(o.NumBuildingVariations); v++ {
