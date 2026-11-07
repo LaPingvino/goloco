@@ -11,6 +11,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"log"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -1244,6 +1246,62 @@ func (g *Game) buildNewImage(h *scenario.VehicleEntity) int {
 		return 0
 	}
 	return int(g.r.ObjMgr.InterfaceSkin.ImageOffset) + 411 + int(h.VehicleType)
+}
+
+// playerCompanyDropdown is PlayerInfoPanel's playerMouseDown: every company
+// by performanceIndex (highest first), each its position, face, name and
+// performance (dropdown_company_performance), then the companies list item;
+// showBelow (25 high), the player's company highlighted. playerDropdownClick:
+// a company opens its Company window (CompanyWindow::open, the Status tab).
+// PARTIAL: the companies list item (CompanyList isn't ported).
+func (g *Game) playerCompanyDropdown(x, y, w, h int) {
+	m := &g.w.Map
+	type co struct {
+		id   int
+		perf int16
+	}
+	var cs []co
+	for id := range m.CompanyNames {
+		if !m.CompanyEmpty(id) && id < len(m.CompanyFaces) {
+			cs = append(cs, co{id, m.CompanyFaces[id].Performance})
+		}
+	}
+	sort.SliceStable(cs, func(i, j int) bool { return cs[i].perf > cs[j].perf })
+	ctrl, _ := g.w.ControllingCompany()
+	var items []ui.DropdownItem
+	highlight := -1
+	for i, c := range cs {
+		face, col := g.companyFace(c.id)
+		rating := i18n.CorporateRatingPlatelayer + min(9, max(0, int(c.perf)/100))
+		perf := ui.FillArgs("{INT16_1DP}% “{STRINGID}”", strconv.Itoa(int(c.perf)/10)+"."+strconv.Itoa(int(c.perf)%10), i18n.Str(rating))
+		items = append(items, ui.DropdownItem{Text: i18n.Str(i18n.Position1st + min(i, 14)), Sprite: face, SpriteColour: col,
+			Lines: []string{m.CompanyName(c.id), perf}, CompanyPerformance: true})
+		if c.id == ctrl {
+			highlight = i
+		}
+	}
+	listIcon := 2309                                 // ImageIds::company_list_dropdown_icon
+	listText := i18n.Str(i18n.DropdownCompaniesList) // its text after the layout codes
+	if k := strings.LastIndexByte(listText, '}'); k >= 0 {
+		listText = listText[k+1:]
+	}
+	items = append(items, ui.DropdownItem{Text: listText, Sprite: listIcon, CompaniesListItem: true})
+	var colour uint8 = ui.DropdownColour
+	if om := g.r.ObjMgr; om != nil && om.InterfaceSkin != nil {
+		colour = om.InterfaceSkin.PlayerInfoToolbarColour
+	}
+	d := ui.NewDropdownShowText(x, y, w, h, colour, items, 25, g.sw, g.sh)
+	d.SetToolbarColour(colour)
+	d.Highlighted = highlight
+	d.OnSelect = func(i int) {
+		if i >= 0 && i < len(cs) {
+			g.openCompanyFinances(cs[i].id)
+			if g.companyFinances != nil {
+				g.companyFinances.SwitchTab(ui.CompanyTabStatus)
+			}
+		}
+	}
+	g.dropdown = d
 }
 
 // openCompanyFinances is CompanyWindow::openFinances: the Company window on
