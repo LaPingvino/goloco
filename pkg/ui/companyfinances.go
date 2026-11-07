@@ -65,7 +65,7 @@ func CompanyFinancesLayout(w, h int) (lw [cfCount]BVWidget) {
 	lw[cfScroll] = bvW(133, 45, 499, 215)
 	lw[cfCurrentLoan] = bvW(87, 264, 100, 12) // stepperWidgets: the value box, then − and +
 	lw[cfLoanDecrease] = bvW(87+100-26, 264+1, 13, 10)
-	lw[cfLoanIncrease] = bvW(87+100-13, 264+1, 13, 10)
+	lw[cfLoanIncrease] = bvW(87+100-13, 264+1, 12, 10)
 	lw[cfLoanAutopay] = bvW(320, 264, 204, 12)
 	return lw
 }
@@ -95,6 +95,9 @@ type CompanyFinancesWindow struct {
 	Data                CompanyFinances
 	Scroll              int
 	OnClose             func()
+	// OnLoan is the stepper's − (−1) or + (+1): onMouseDown loan_decrease /
+	// loan_increase (a step of £1,000 × the click-repeat step).
+	OnLoan func(dir int)
 }
 
 // Contains reports whether the point is on the window.
@@ -102,11 +105,18 @@ func (w *CompanyFinancesWindow) Contains(x, y int) bool {
 	return x >= w.X && x < w.X+w.W && y >= w.Y && y < w.Y+w.H
 }
 
-// HandleClick handles a press: the close button.
+// HandleClick handles a press: the close button, the loan stepper (the
+// controlling company's own window only).
 func (w *CompanyFinancesWindow) HandleClick(x, y int) {
-	b := CompanyFinancesLayout(w.W, w.H)[cwClose]
-	if x >= w.X+b.L && x <= w.X+b.R && y >= w.Y+b.T && y <= w.Y+b.B && w.OnClose != nil {
+	lw := CompanyFinancesLayout(w.W, w.H)
+	in := func(b BVWidget) bool { return x >= w.X+b.L && x <= w.X+b.R && y >= w.Y+b.T && y <= w.Y+b.B }
+	switch {
+	case in(lw[cwClose]) && w.OnClose != nil:
 		w.OnClose()
+	case w.Data.Own && in(lw[cfLoanDecrease]) && w.OnLoan != nil:
+		w.OnLoan(-1)
+	case w.Data.Own && in(lw[cfLoanIncrease]) && w.OnLoan != nil:
+		w.OnLoan(1)
 	}
 }
 
@@ -174,6 +184,14 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 		for yy := range ch {
 			copy(rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw], sub.Bits[yy*cw:(yy+1)*cw])
 		}
+		if d.Own { // the stepper: TextBox (inset, fillDarker), then its two Buttons
+			b := lw[cfCurrentLoan]
+			gfx8.FillRectInset(rt, b.L, b.T, b.R, b.B, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			for _, i := range []int{cfLoanDecrease, cfLoanIncrease} {
+				b := lw[i]
+				gfx8.FillRectInset(rt, b.L, b.T, b.R, b.B, gfx8.InsetColour{Map: sec}, 0)
+			}
+		}
 	})
 	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, ui18nFill(i18n.TitleCompanyFinances, w.Title), int(w.TitleColour))
 	red, _ := TextColours(27) // Colour::red ({COLOUR RED})
@@ -223,8 +241,17 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 	loanTop := w.Y + lw[cfCurrentLoan].T
 	if d.Own {
 		drawFormattedEx(screen, w.X+7, loanTop, i18n.Str(i18n.CompanyCurrentLoan), win2, black, red)
-		b := lw[cfCurrentLoan] // the stepper's value (company_current_loan_value), its box
-		DrawTextBold(screen, L.Currency48(d.Loan), w.X+b.L+2, w.Y+b.T, black)
+		b := lw[cfCurrentLoan] // the stepper's value (company_current_loan_value: TextBox::drawText at +1, +1; colour FD: the string's own, black)
+		DrawTextBold(screen, L.Currency48(d.Loan), w.X+b.L+1, w.Y+b.T+1, black)
+		for _, s := range []struct {
+			i  int
+			id int
+		}{{cfLoanDecrease, i18n.StepperMinus}, {cfLoanIncrease, i18n.StepperPlus}} { // Button: its text centred
+			bb := lw[s.i]
+			t := stripCodes(i18n.Str(s.id))
+			tw, _ := MeasureTextBold(t)
+			DrawTextBold(screen, t, w.X+(bb.L+bb.R+1)/2-tw/2, w.Y+bb.T, black)
+		}
 		drawFormattedEx(screen, w.X+b.R+3, w.Y+b.T+1, ui18nFill(i18n.InterestPerYear, strconv.Itoa(d.InterestRate)), win2, black, red)
 	}
 	cash := i18n.CashPositive

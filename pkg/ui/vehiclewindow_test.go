@@ -44,7 +44,7 @@ func TestVehicleWindowPositioning(t *testing.T) {
 		t.Fatal("a press on the caption doesn't start moving")
 	}
 	w.PositionMove(170, 125, 600)
-	w.PositionEnd(200, 5, 600) // y clamped to 29
+	w.PositionEnd(200, 5, 600)                                    // y clamped to 29
 	if w.X != 150 || w.Y != 24 || w.Positioning || renamed != 0 { // 100+20, then to y 29 from 125: −96
 		t.Errorf("moved to %d,%d positioning %v renamed %d", w.X, w.Y, w.Positioning, renamed)
 	}

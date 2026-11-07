@@ -1264,7 +1264,30 @@ func (g *Game) openCompanyFinances(company int) {
 	g.companyFinancesID = company
 	g.companyFinances = &ui.CompanyFinancesWindow{X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h, TitleColour: tc, Colour: wc,
 		Title: g.w.Map.CompanyName(company), Data: g.companyFinancesData(company),
-		OnClose: func() { g.companyFinances = nil }}
+		OnClose: func() { g.companyFinances = nil }, OnLoan: func(dir int) { g.changeLoan(company, dir) }}
+}
+
+// changeLoan is Finances' loan_decrease / loan_increase: the loan ∓ £1,000
+// (getClickRepeatStepSize: 1 for a click; PARTIAL: the held button's
+// growing step), as ChangeLoan with apply; a refusal opens the error window
+// (cant_pay_back_loan / cant_borrow_any_more_money and the command's reason).
+func (g *Game) changeLoan(company, dir int) {
+	m := &g.w.Map
+	if company < 0 || company >= len(m.Companies) {
+		return
+	}
+	cur := m.Companies[company].CurrentLoan
+	newLoan, title := cur+1000, i18n.CantBorrowAnyMoreMoney
+	if dir < 0 {
+		if cur == 0 {
+			return
+		}
+		newLoan, title = max(cur-1000, 0), i18n.CantPayBackLoan
+	}
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureLoanInterest, func(f uint8) (int32, bool) { return m.ChangeLoan(c, f, newLoan) }); !ok {
+		g.openError(i18n.Label(title), cmdErrorText(c))
+	}
 }
 
 // companyFinancesData is what Finances::draw reads of a company: its
