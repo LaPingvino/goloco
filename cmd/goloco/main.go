@@ -1448,6 +1448,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.companyList != nil {
 		g.companyList.FrameNo = g.windowFrame
+		g.companyList.CurrentMonths = int(g.w.Map.CurrentYear)*12 + int(g.w.Map.CurrentMonth)
 		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
 			g.companyList.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
 		}
