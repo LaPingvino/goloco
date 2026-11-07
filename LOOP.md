@@ -1552,3 +1552,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-07 — edge scrolling as upstream (the edge pixel only, 12 << zoom): toolbar clicks no longer creep the view; this explained last tick's missed station clicks.
 - 2026-11-07 — the player panel's face: playerMouseDown's company dropdown (position, face, name, performance; the companies list item — CompanyList not ported, PARTIAL); a company opens its Company window on Status.
 - 2026-11-07 — the Company list's first tab (CompanyList: the four sortable columns, faces, the status bar), from the face dropdown's last item; a row opens that company. Strings: {NEWLINE x y} placed and skipped by FillArgs. PARTIAL: its graph tabs and icons, resizing, the hover row.
+- 2026-11-07 — the Company list's tab icons (Common::drawTabs: recoloured graph icons, the currency symbol on values / payment rates).
