@@ -6,7 +6,8 @@
 # and a click on the line's visible end (318,397; the window covers the rest):
 # Train 1 stands on the track, its window on the main tab; the Route tab, a
 # click on Cloudburst North, the window dragged by its title off the line, a
-# click on Cloudburst: two orders. Next: start it.
+# click on Cloudburst: two orders; the Main tab's flag → Start: Train 1 runs
+# to Cloudburst North and back (shots at +10 s and +30 s). Next: income.
 wait 20
 seed 1950
 scenario Weatherworld
@@ -139,4 +140,23 @@ wait 1
 move 700 520
 wait 2
 shot /tmp/goloco-playthrough/pt-h-r2.png
+move 465 140
+wait 1
+click 465 140
+move 700 520
+wait 2
+shot /tmp/goloco-playthrough/pt-h-s1.png
+move 699 168
+wait 1
+click 699 168
+wait 1
+shot /tmp/goloco-playthrough/pt-h-s2.png
+move 715 197
+wait 1
+click 715 197
+move 700 520
+wait 10
+shot /tmp/goloco-playthrough/pt-h-s3.png
+wait 20
+shot /tmp/goloco-playthrough/pt-h-s4.png
 quit
