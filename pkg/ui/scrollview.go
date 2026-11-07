@@ -30,6 +30,18 @@ func fillRectCrossHatch(rt *gfx8.RenderTarget, l, t, r, b int, c uint8) {
 // PARTIAL: pressed states of the buttons/thumb; the arrow glyphs are drawn by
 // the caller (drawVScrollArrows) since text goes through ebiten.
 func drawVScrollView(rt *gfx8.RenderTarget, x, y, w, h int, c gfx8.InsetColour, contentH, offset int) (cx, cy, cw, ch int, bar bool) {
+	return drawVScrollViewPressed(rt, x, y, w, h, c, contentH, offset, "")
+}
+
+// drawVScrollViewPressed is drawVScrollView with a part drawn pressed
+// (vscrollbarUpPressed / DownPressed / ThumbPressed: borderInset).
+func drawVScrollViewPressed(rt *gfx8.RenderTarget, x, y, w, h int, c gfx8.InsetColour, contentH, offset int, pressed string) (cx, cy, cw, ch int, bar bool) {
+	pf := func(part string) int {
+		if part == pressed {
+			return gfx8.InsetBorderInset
+		}
+		return 0
+	}
 	gfx8.FillRectInset(rt, x, y, x+w-1, y+h-1, c, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 	cx, cy, cw, ch = x+L.ScrollbarMargin, y+L.ScrollbarMargin, w-2*L.ScrollbarMargin, h-2*L.ScrollbarMargin
 	if contentH <= h {
@@ -43,10 +55,10 @@ func drawVScrollView(rt *gfx8.RenderTarget, x, y, w, h int, c gfx8.InsetColour, 
 	for _, ln := range [][2]int{{2, int(s3)}, {3, int(s7)}, {7, int(s3)}, {8, int(s7)}} {
 		gfx8.FillRect(rt, sx+ln[0], sy, sx+ln[0], sy+sh-1, uint8(ln[1]))
 	}
-	gfx8.FillRectInset(rt, sx, sy, sx+L.ScrollbarSize-1, sy+L.ScrollbarSize-1, c, 0)
-	gfx8.FillRectInset(rt, sx, sy+sh-L.ScrollbarSize, sx+L.ScrollbarSize-1, sy+sh-1, c, 0)
+	gfx8.FillRectInset(rt, sx, sy, sx+L.ScrollbarSize-1, sy+L.ScrollbarSize-1, c, pf("up"))
+	gfx8.FillRectInset(rt, sx, sy+sh-L.ScrollbarSize, sx+L.ScrollbarSize-1, sy+sh-1, c, pf("down"))
 	top, bot := L.VThumb(h, contentH, offset)
-	gfx8.FillRectInset(rt, sx, y+top, sx+L.ScrollbarSize-1, y+top+(bot-top-L.ScrollbarMargin)-1, c, 0)
+	gfx8.FillRectInset(rt, sx, y+top, sx+L.ScrollbarSize-1, y+top+(bot-top-L.ScrollbarMargin)-1, c, pf("thumb"))
 	return cx, cy, cw - L.ScrollbarSize, ch, true
 }
 

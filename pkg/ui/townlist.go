@@ -52,15 +52,14 @@ type TownListWindow struct {
 	Rows        [][]string
 	// RowIDs are the rows' object ids in their current order; OnRow is a
 	// row clicked (onScrollMouseDown: Town::open for the town list).
-	RowIDs   []int
-	OnRow    func(id int)
-	Status   string
-	Hover    int
-	Scroll   int
-	dragging bool // the scrollbar's thumb is being dragged
-	dragY    int
-	content  [4]int
-	OnClose  func()
+	RowIDs  []int
+	OnRow   func(id int)
+	Status  string
+	Hover   int
+	Scroll  int
+	hold    L.VScrollHold // a press on the scrollbar held (stateScrollLeft)
+	content [4]int
+	OnClose func()
 
 	// Geometry: window size, row height, the scroll view rect, the status
 	// label's y and the text's y offset in a row (VehicleList: +2).
@@ -260,13 +259,7 @@ func (w *TownListWindow) HandleClick(px, py int) {
 	// list (ScrollView's vButton/vTrack), the thumb starts a drag.
 	if l := w.List; w.in(l, px, py) && len(w.Rows)*w.RowHeight > l[3] &&
 		px >= w.X+l[0]+l[2]-L.ScrollbarSize-L.ScrollbarMargin {
-		y := py - (w.Y + l[1])
-		switch part := L.VScrollPart(y, l[3], len(w.Rows)*w.RowHeight, w.Scroll); part {
-		case "thumb":
-			w.dragY, w.dragging = py, true
-		default:
-			w.Scroll = L.VScrollClick(part, l[3], len(w.Rows)*w.RowHeight, w.Scroll)
-		}
+		w.Scroll = w.hold.Begin(py-(w.Y+l[1]), py, l[3], len(w.Rows)*w.RowHeight, w.Scroll)
 		return
 	}
 	if w.in(w.List, px, py) {
@@ -314,7 +307,7 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 			gfx8.FillRectInset(rt, c.HeaderX, 43, c.HeaderX+hw-1, 43+12-1, gfx8.InsetColour{Map: sec}, 0)
 		}
 		l := w.List
-		cx, cy, cw, ch, _ := drawVScrollView(rt, l[0], l[1], l[2], l[3], gfx8.InsetColour{Map: sec}, len(w.Rows)*w.RowHeight, w.Scroll)
+		cx, cy, cw, ch, _ := drawVScrollViewPressed(rt, l[0], l[1], l[2], l[3], gfx8.InsetColour{Map: sec}, len(w.Rows)*w.RowHeight, w.Scroll, w.hold.PressedPart())
 		w.content = [4]int{cx, cy, cw, ch}
 		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 3)) // drawScroll: clearSingle(shade 3)
 		m30, _ := g1.GetPaletteMap(0x30)
@@ -534,20 +527,12 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 // currency32 is {CURRENCY32}: formatCurrency, as uilayout.Currency48.
 func currency32(v int64) string { return L.Currency48(v) }
 
-// Drag follows the mouse while the thumb is held (verticalDragFollow); held
-// false ends the drag.
-func (w *TownListWindow) Drag(py int, held bool) {
-	if !w.dragging {
-		return
-	}
-	if !held {
-		w.dragging = false
-		return
-	}
-	if dy := py - w.dragY; dy != 0 {
-		w.Scroll = L.VScrollDrag(w.List[3], len(w.Rows)*w.RowHeight, w.Scroll, dy)
-		w.dragY = py
-	}
+// Drag is the scrollbar's held press each tick (VScrollHold.Continue): the
+// thumb follows the pointer, a held button repeats while on it.
+func (w *TownListWindow) Drag(px, py int, held bool) {
+	l := w.List
+	onBar := w.in(l, px, py) && px >= w.X+l[0]+l[2]-L.ScrollbarSize-L.ScrollbarMargin
+	w.Scroll = w.hold.Continue(held, onBar, py-(w.Y+l[1]), py, l[3], len(w.Rows)*w.RowHeight, w.Scroll)
 }
 
 // countLabel is a "{INT16} towns"-style status: the singular id for 1, else
