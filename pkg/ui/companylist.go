@@ -17,8 +17,7 @@ import (
 // panel's dropdown's last item (CompanyList::open).
 //
 // PARTIAL: the other tabs (performance, cargo units / distance, values,
-// payment rates, speed records: graphs) and the tab icons, resizing, a row's
-// click (CompanyWindow::open), the hover row.
+// payment rates, speed records: graphs), resizing, the hover row.
 
 // CompanyListSize is CompanyList::kWindowSize.
 var CompanyListSize = [2]int{640, 272}
@@ -45,6 +44,8 @@ type CompanyListWindow struct {
 	Hover               int
 	OnClose             func()
 	OnRow               func(id int)
+	SkinImage           int // the interface skin's image base (the tab icons)
+	FrameNo             int
 }
 
 // companyListHeaders are the four TableHeaders (x, width) and their labels
@@ -128,9 +129,7 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := 0; i < 7; i++ {
-			drawTab(rt, 3+31*i, 15, i == 0, sec, tabNoIcon, nil)
-		}
+		w.drawTabs(rt, sec)
 		for _, h := range companyListHeaders {
 			r := min(h.x+h.w-1, w.W-8)
 			gfx8.FillRectInset(rt, h.x, 43, r, 43+11, gfx8.InsetColour{Map: sec}, 0)
@@ -156,6 +155,11 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 		}
 	})
 	DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, i18n.Str(i18n.TitleCompanyList))
+	for _, t := range []int{4, 5} { // the values and payment rates tabs: the currency symbol, right-aligned at (left + 28, top + 15)
+		sym := L.Currency.Prefix + L.Currency.Suffix
+		sw, _ := MeasureTextBold(sym)
+		DrawTextBold(screen, sym, w.X+3+31*t+28-sw, w.Y+15+14+1, pal[paletteBlack0])
+	}
 	red, _ := TextColours(27)
 	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
 	for i, h := range companyListHeaders {
@@ -190,4 +194,51 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 		status = ui18nFill(i18n.CompanySingular, "1")
 	}
 	drawFormattedEx(screen, w.X+3, w.Y+w.H-13, status, win2, black, red)
+}
+
+// Interface skin image ids of the company list's tabs.
+const (
+	skinTabCompanies              = 174
+	skinTabPerformanceIndexFrame0 = 65
+	skinTabCargoUnitsFrame0       = 73
+	skinTabCargoDistanceFrame0    = 81
+	skinTabProductionFrame0       = 89
+	skinTabCargoPaymentRates      = 202
+	skinTabAwards                 = 45
+)
+
+// drawTabs is Common::drawTabs: the companies tab; performance, cargo units,
+// cargo distance and values (8 frames, /4, on the current tab) recoloured to
+// the secondary colour; payment rates; speed records (tab_awards, recoloured).
+func (w *CompanyListWindow) drawTabs(rt *gfx8.RenderTarget, sec []uint8) {
+	current := 0
+	frame := func(base, tab int) int {
+		if tab == current {
+			return w.SkinImage + base + (w.FrameNo/4)%8
+		}
+		return w.SkinImage + base
+	}
+	icons := []struct {
+		img     int
+		recolor bool
+	}{
+		{w.SkinImage + skinTabCompanies, false},
+		{frame(skinTabPerformanceIndexFrame0, 1), true},
+		{frame(skinTabCargoUnitsFrame0, 2), true},
+		{frame(skinTabCargoDistanceFrame0, 3), true},
+		{frame(skinTabProductionFrame0, 4), true},
+		{w.SkinImage + skinTabCargoPaymentRates, false},
+		{w.SkinImage + skinTabAwards, true},
+	}
+	for i, ic := range icons {
+		img := ic.img
+		if w.SkinImage == 0 {
+			img = tabNoIcon
+		}
+		var m []uint8
+		if ic.recolor {
+			m = sec
+		}
+		drawTab(rt, 3+31*i, 15, i == current, sec, img, m)
+	}
 }
