@@ -616,7 +616,7 @@ func (g *Game) stationToolUp(sx, sy int) {
 		return
 	}
 	c, g1 := g.stationCmd()
-	if _, ok := g.w.Map.CreateTrainStation(c, sim.CmdApply, a, g1); !ok {
+	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreateTrainStation(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
 		g.openError(title, "")
 	}
 }
@@ -690,7 +690,7 @@ func (g *Game) roadStationToolUp(sx, sy int) {
 		title = ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop3String), om.RoadStationObjects[typ].Name)
 	}
 	c, g1 := g.stationCmd()
-	if _, ok := g.w.Map.CreateRoadStation(c, sim.CmdApply, a, g1); !ok {
+	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreateRoadStation(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
 		g.openError(title, "")
 	}
 }
@@ -786,7 +786,7 @@ func (g *Game) dockToolUp(sx, sy int) {
 		title = ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop3String), om.DockObjects[typ].Name)
 	}
 	c, g1 := g.stationCmd()
-	if _, ok := g.w.Map.CreatePort(c, sim.CmdApply, a, g1); !ok {
+	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreatePort(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
 		g.openError(title, "")
 	}
 }
@@ -857,7 +857,7 @@ func (g *Game) airportToolUp(sx, sy int) {
 		title = ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop3String), om.AirportObjects[typ].Name)
 	}
 	c, g1 := g.stationCmd()
-	if _, ok := g.w.Map.CreateAirport(c, sim.CmdApply, a, g1); !ok {
+	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreateAirport(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
 		g.openError(title, "")
 	}
 }

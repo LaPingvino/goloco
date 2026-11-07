@@ -58,6 +58,28 @@ func TestCreateTrainStation(t *testing.T) {
 					t.Errorf("station %d %q: tile registered %v, flags %#x, label %+v", el.StationID, m.StationName(int(el.StationID)), found, st.Flags, st.LabelFrame)
 				}
 				t.Logf("built on %d,%d (company %d): %q, cost %d", x, y, tr.Owner, m.StationName(int(el.StationID)), cost)
+				// The construction tool's way (GameCommands::doCommand): the next
+				// piece along, checked then charged to the company.
+				nx, ny := x, y
+				if tr.Rotation&1 == 0 {
+					nx--
+				} else {
+					ny++
+				}
+				if tn := m.TileAt(nx, ny); tn != nil {
+					for _, r2 := range tn.Order {
+						if r2.Kind == scenario.KindTrack && tn.Tracks[r2.Index].TrackID == 0 && !tn.Tracks[r2.Index].HasStation {
+							t2 := tn.Tracks[r2.Index]
+							b := TrainStationPlacement{X: int32(nx) * 32, Y: int32(ny) * 32, Z: int32(t2.BaseZ) * 4, Rotation: t2.Rotation, TrackObjectID: t2.TrackObjectID, Type: stationType}
+							before := m.Companies[c.Company].Cash
+							got, ok := m.DoCommandFor(c, CmdApply, ExpenditureConstruction, func(f uint8) (int32, bool) { return m.CreateTrainStation(c, f, b, g1) })
+							t.Logf("through DoCommandFor at %d,%d: ok %v cost %d, cash %d → %d", nx, ny, ok, got, before, m.Companies[c.Company].Cash)
+							if !ok || m.Companies[c.Company].Cash >= before {
+								t.Errorf("not charged: %d → %d for %d", before, m.Companies[c.Company].Cash, got)
+							}
+						}
+					}
+				}
 				return
 			}
 		}

@@ -47,6 +47,7 @@ func (t *Tile) insertStationAfter(k int, el scenario.StationElement, quarters ui
 // nearby search, the viewport invalidations and the legacy return state's
 // ghost adjoining-station fields.
 func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g1 G1Raw) (int32, bool) {
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0)): where the money effect shows
 	om := c.Objects
 	if om == nil || int(a.TrackObjectID) >= len(om.TrackObjects) || om.TrackObjects[a.TrackObjectID] == nil ||
 		int(a.Type) >= len(om.TrainStationObjects) || om.TrainStationObjects[a.Type] == nil || int(a.TrackID) >= len(TrackPieces) {

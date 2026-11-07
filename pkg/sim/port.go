@@ -231,6 +231,7 @@ func (m *Map) portBuilding(c *Cmd, stationID int, a PortPlacement, flags uint8, 
 // PARTIAL: the company observation and thinking emotion, the construction
 // sound, the error texts.
 func (m *Map) CreatePort(c *Cmd, flags uint8, a PortPlacement, g1 G1Raw) (int32, bool) {
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0)): where the money effect shows
 	om := c.Objects
 	if om == nil || int(a.Type) >= len(om.DockObjects) || om.DockObjects[a.Type] == nil || a.Rotation > 3 {
 		return 0, false
