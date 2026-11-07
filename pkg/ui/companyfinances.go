@@ -18,10 +18,10 @@ import (
 // from the player panel's company value (PlayerInfoPanel companyValueMouseUp
 // → CompanyWindow::openFinances).
 //
-// PARTIAL: the other tabs (drawn, not yet opened), the
-// company select button's face, the loan stepper's buttons and autopay
-// checkbox (drawn as text only), the horizontal scrollbar (shown upstream
-// once the years overflow 499 px: from the fourth year), renaming.
+// PARTIAL: the other tabs (drawn, not yet opened), the company select
+// button's face, the held stepper's growing step, the horizontal scrollbar
+// (shown upstream once the years overflow 499 px: from the fourth year),
+// renaming.
 
 // CompanyFinancesSize is Finances::kWindowSize.
 var CompanyFinancesSize = [2]int{636, 319}
