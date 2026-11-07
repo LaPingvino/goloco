@@ -150,7 +150,8 @@ type BuildVehicleWindow struct {
 	Rows                []BVRow
 	Hover               int // a row index, or -1
 	Scroll              int
-	Primary, Secondary  uint8 // the controlling company's colours for the vehicles
+	hold                uilayout.VScrollHold // a press on the list\'s scrollbar held (stateScrollLeft)
+	Primary, Secondary  uint8                // the controlling company's colours for the vehicles
 	Message             string
 	OnClose             func()          // the close button
 	OnTab               func(int)       // a vehicle-type tab
@@ -189,7 +190,7 @@ func (w *BuildVehicleWindow) Draw(screen *ebiten.Image) {
 				drawTab(rt, t.L, t.T, i == w.TrackTab, sec, tabNoIcon, nil)
 			}
 		}
-		cx, cy, cw, ch, _ := drawVScrollView(rt, list.L, list.T, list.R-list.L+1, list.B-list.T+1, gfx8.InsetColour{Map: sec}, len(w.Rows)*rowH, w.Scroll)
+		cx, cy, cw, ch, _ := drawVScrollViewPressed(rt, list.L, list.T, list.R-list.L+1, list.B-list.T+1, gfx8.InsetColour{Map: sec}, len(w.Rows)*rowH, w.Scroll, w.hold.PressedPart())
 		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 4)) // clear(getShade(secondary, 4))
 		if cw <= 0 || ch <= 0 {
 			return
@@ -277,6 +278,10 @@ func (w *BuildVehicleWindow) HandleClick(x, y int) {
 	// onScrollMouseDown: the row under the pointer in the list's scroll view
 	// (y / rowHeight over the scrolled content). PARTIAL: the clickDown sound.
 	list := lw[bvList]
+	if w.onBar(x, y) { // scrollLeftBegin on the bar
+		w.Scroll = w.hold.Begin(y-(w.Y+list.T), y, list.B-list.T+1, len(w.Rows)*sim.BuildVehicleRowHeight[w.Tab], w.Scroll)
+		return
+	}
 	cx, cy := w.X+list.L+uilayout.ScrollbarMargin, w.Y+list.T+uilayout.ScrollbarMargin
 	cw, ch := list.R-list.L+1-2*uilayout.ScrollbarMargin, list.B-list.T+1-2*uilayout.ScrollbarMargin
 	if x >= cx && x < cx+cw && y >= cy && y < cy+ch && w.OnBuy != nil {
@@ -284,6 +289,22 @@ func (w *BuildVehicleWindow) HandleClick(x, y int) {
 			w.OnBuy(w.Rows[row].ID)
 		}
 	}
+}
+
+// onBar reports whether a point is on the list's vertical bar (shown when
+// the rows overflow the view).
+func (w *BuildVehicleWindow) onBar(x, y int) bool {
+	list := BuildVehicleLayout(w.W, w.H, w.Disabled, w.NumTrackTabs)[bvList]
+	h := list.B - list.T + 1
+	return !list.Hidden && len(w.Rows)*sim.BuildVehicleRowHeight[w.Tab] > h &&
+		y >= w.Y+list.T && y <= w.Y+list.B && x <= w.X+list.R &&
+		x >= w.X+list.R+1-uilayout.ScrollbarSize-uilayout.ScrollbarMargin
+}
+
+// Drag is the list bar's held press each tick (VScrollHold.Continue).
+func (w *BuildVehicleWindow) Drag(x, y int, held bool) {
+	list := BuildVehicleLayout(w.W, w.H, w.Disabled, w.NumTrackTabs)[bvList]
+	w.Scroll = w.hold.Continue(held, w.onBar(x, y), y-(w.Y+list.T), y, list.B-list.T+1, len(w.Rows)*sim.BuildVehicleRowHeight[w.Tab], w.Scroll)
 }
 
 // HandleWheel is WindowManager::wheelInput → windowScrollWheelInput on the
