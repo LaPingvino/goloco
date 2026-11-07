@@ -156,7 +156,9 @@ gofmt -w "$repo/pkg/objects/layout_gen.go"
 # Colour tables (Graphics/PaletteMap.cpp kDefaultPaletteToG1Offset, Colour.cpp
 # _translucentColourMap / _shadowColourMap): names in order from the source,
 # values from the compiler.
-pal=$(awk '/kDefaultPaletteToG1Offset = \{/,/^    \};/' "$OL/src/OpenLoco/src/Graphics/PaletteMap.cpp" | grep -o 'ImageIds::[A-Za-z0-9_]*')
+# Every entry, the literal 0 too (water: its map comes from the water object) —
+# skipping it shifted every ExtColour from 0x20 up onto its neighbour's map.
+pal=$(awk '/kDefaultPaletteToG1Offset = \{/,/^    \};/' "$OL/src/OpenLoco/src/Graphics/PaletteMap.cpp" | grep -o 'ImageIds::[A-Za-z0-9_]*\|^ *0,' | sed 's/^ *0,$/0/')
 tr=$(awk '/_translucentColourMap = \{/,/^    \};/' "$OL/src/OpenLoco/src/Graphics/Colour.cpp" | grep -o 'ExtColour::[A-Za-z0-9_]*')
 sh=$(awk '/_shadowColourMap = \{/,/^    \};/' "$OL/src/OpenLoco/src/Graphics/Colour.cpp" | grep -o 'ExtColour::[A-Za-z0-9_]*')
 {
