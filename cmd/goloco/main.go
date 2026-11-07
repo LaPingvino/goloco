@@ -3121,6 +3121,9 @@ func (g *Game) routeWheelToWindows() bool {
 			return true
 		}
 	}
+	if g.buildVehicle != nil && g.buildVehicle.HandleWheel(g.mouseX, g.mouseY, dy) {
+		return true
+	}
 	return false
 }
 

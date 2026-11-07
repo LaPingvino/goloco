@@ -1,6 +1,10 @@
 package ui
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/LaPingvino/goloco/pkg/sim"
+)
 
 // TestBuildVehicleLayout: the window at its opening size (500 × 400) with a
 // disabled tab and two track tabs, against prepareDraw's arithmetic.
@@ -32,5 +36,33 @@ func TestBuildVehicleLayout(t *testing.T) {
 	check("ships tab", l[bvTabTrains+5], 127, 15, 157, 41)
 	if !l[bvTabTrains+4].Hidden || l[bvTabTrack0+1].Hidden || !l[bvTabTrack0+2].Hidden {
 		t.Error("hidden tabs wrong")
+	}
+}
+
+// The wheel over the list scrolls it 17 px a notch, within its content; off
+// the list it isn't taken.
+func TestBuildVehicleWheel(t *testing.T) {
+	w := &BuildVehicleWindow{X: 0, Y: 0, W: 500, H: 400}
+	for i := 0; i < 40; i++ {
+		w.Rows = append(w.Rows, BVRow{})
+	}
+	list := BuildVehicleLayout(w.W, w.H, w.Disabled, w.NumTrackTabs)[bvList]
+	mx, my := (list.L+list.R)/2, (list.T+list.B)/2
+	if !w.HandleWheel(mx, my, -1) || w.Scroll != 17 {
+		t.Fatalf("one notch down: %d", w.Scroll)
+	}
+	w.HandleWheel(mx, my, 1)
+	w.HandleWheel(mx, my, 1)
+	if w.Scroll != 0 {
+		t.Errorf("up past the top: %d", w.Scroll)
+	}
+	for i := 0; i < 500; i++ {
+		w.HandleWheel(mx, my, -1)
+	}
+	if want := 40*sim.BuildVehicleRowHeight[0] - (list.B - list.T - 1); w.Scroll != want {
+		t.Errorf("bottom: %d, want %d", w.Scroll, want)
+	}
+	if w.HandleWheel(list.L-5, 2, -1) {
+		t.Error("took the wheel off the list")
 	}
 }
