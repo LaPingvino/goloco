@@ -222,7 +222,7 @@ func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectM
 	c.Expenditures[0] = [17]int32{}
 	c.CurrentLoan = m.startingLoan()
 	c.Cash = int64(c.CurrentLoan)
-	m.UnlockedVehicles[id] = m.DetermineUnlockedVehicles(id, om)
+	m.DetermineAvailableVehicles(id, om)
 	c.CargoUnitsTotalDelivered, c.CargoUnitsTotalDistance = 0, 0
 	c.HistorySize = 1
 	face.Performance = 0
@@ -261,7 +261,7 @@ func (m *Map) StartScenarioGenerating(startYear uint16, gen *TerrainOptions, g1 
 	m.InitialiseDate(startYear)
 	for id := range m.Companies {
 		if !m.CompanyEmpty(id) {
-			m.UnlockedVehicles[id] = m.DetermineUnlockedVehicles(id, om) // CompanyManager::determineAvailableVehicles
+			m.DetermineAvailableVehicles(id, om) // CompanyManager::determineAvailableVehicles
 		}
 	}
 	m.UpdateDefaultLevelCrossingType(om)
