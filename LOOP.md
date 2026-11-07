@@ -1518,3 +1518,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-07 — the clearance's "… in the way" / "Raise or lower land first" reasons ported; the playthrough's spot is a slope.
 - 2026-11-07 — playthrough moved to flat ground (three charged pieces east of Town 1); the station click places nothing yet.
 - 2026-11-07 — first station built in the playthrough: scenarios get StationManager::reset's empty slots; station refusals carry their reasons.
+- 2026-11-07 — scenario towns get their real names (Joop: "might that also be the reason for Town 1, Town 2"): a scenario's third game-state chunk (animations → end) holds the user strings; read at 0x432A44−0x4268C4. Weatherworld's Town 1 is Cloudburst.
