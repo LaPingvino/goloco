@@ -1632,6 +1632,16 @@ func (g *Game) openCompanyList() {
 	w, h := ui.CompanyListSize[0], ui.CompanyListSize[1]
 	cl := &ui.CompanyListWindow{X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h, TitleColour: tc, Colour: wc, Rows: rows, SortMode: 2, Hover: -1,
 		OnClose: func() { g.companyList = nil }, OnRow: g.openCompanyWindow}
+	for i := range cl.Records { // CompanyManager::getRecords()
+		rec := m.CompanyRecords
+		r := ui.SpeedRecord{Speed: int(rec.Speed[i])}
+		if c := int(rec.Company[i]); c != 0xFF && c < len(m.CompanyNames) && !m.CompanyEmpty(c) {
+			y, mo, d := uilayout.CalcDate(rec.Date[i])
+			r.Held, r.Name, r.Date = true, m.CompanyName(c), uilayout.DateDMY(d, i18n.Month(mo+1), y)
+			r.Face, r.FaceColour = g.companyFace(c)
+		}
+		cl.Records[i] = r
+	}
 	if om := g.r.ObjMgr; om != nil { // buildDeliveredCargoPaymentsTable: 100 units, 10 blocks, 2 … 120 days
 		for i, c := range om.CargoObjects {
 			if c == nil || i >= len(ui.CargoLineColour) {

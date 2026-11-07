@@ -53,7 +53,8 @@ type CompanyListWindow struct {
 	OnRow               func(id int)
 	SkinImage           int // the interface skin's image base (the tab icons)
 	FrameNo             int
-	Tab                 int                // 0 the list, 1 performance, 2 cargo units, 3 cargo distance, 4 values, 5 payment rates (PARTIAL: speed records)
+	Tab                 int                // 0 the list, 1 performance, 2 cargo units, 3 cargo distance, 4 values, 5 payment rates, 6 speed records
+	Records             [3]SpeedRecord     // land, air, water
 	Cargos              []CompanyListCargo // the payment rates tab's lines, by cargo slot
 	CurrentMonths       int                // getCurrentYear() × 12 + getCurrentMonth(): the graphs' x range
 }
@@ -62,7 +63,18 @@ type CompanyListWindow struct {
 // tabs' kWindowSizes follow it.
 var CompanyPerformanceSize = [2]int{635, 322}
 
-var companyTabSizes = [][2]int{CompanyListSize, CompanyPerformanceSize, {640, 272}, {660, 272}, {685, 322}, {495, 342}}
+var companyTabSizes = [][2]int{CompanyListSize, CompanyPerformanceSize, {640, 272}, {660, 272}, {685, 322}, {495, 342}, {495, 169}}
+
+// SpeedRecord is one of CompanyManager::getRecords(): the speed (mph, 0
+// none), whether a company holds it, its face, its name and the date
+// (record_date_achieved's {DATE DMY}, formatted).
+type SpeedRecord struct {
+	Speed      int
+	Held       bool
+	Face       int
+	FaceColour uint8
+	Name, Date string
+}
 
 // CompanyListCargo is a loaded cargo object for CargoPaymentRates: its name,
 // its line colour (_cargoLineColour by slot) and its delivered-cargo payment
@@ -154,6 +166,10 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 	}
 	if w.Tab >= 1 && w.Tab <= 5 {
 		w.drawGraphTab(screen)
+		return
+	}
+	if w.Tab == 6 {
+		w.drawSpeedRecords(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -462,5 +478,63 @@ func (w *CompanyListWindow) drawTabCurrency(screen *ebiten.Image, black color.Co
 		sym := stripCodes(i18n.Str(i18n.CurrencySymbol))
 		sw, _ := MeasureTextBold(sym)
 		DrawTextBold(screen, sym, w.X+3+31*t+28-sw, w.Y+15+14+1, black)
+	}
+}
+
+// drawSpeedRecords is CompanySpeedRecords::draw: from y + 47, each record
+// set — land_speed_record / air / water (11), and if a company holds it its
+// face recoloured to its colour at x + 4 (7), "Achieved by … on …" at
+// x + 33 (17) — then 5 apart.
+func (w *CompanyListWindow) drawSpeedRecords(screen *ebiten.Image) {
+	g1 := globalG1Font.g1
+	pal := g1.GetPalette()
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, 0, 41, w.W-1, w.H-1, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		w.drawTabs(rt, sec)
+		y := 47
+		for _, r := range w.Records {
+			if r.Speed == 0 {
+				continue
+			}
+			y += 11
+			if r.Held {
+				if r.Face > 0 && r.Face < len(g1.Elements) {
+					if sp, err := gfx8.Decode(&g1.Elements[r.Face]); err == nil {
+						m, _ := g1.GetPaletteMap(int(r.FaceColour))
+						gfx8.DrawSpriteNoise(rt, sp, 4, y, gfx8.OpFor(sp, m != nil, false), m, nil)
+					}
+				}
+				y += 7 + 17
+			}
+			y += 5
+		}
+	})
+	DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, i18n.Str(i18n.TitleSpeedRecords))
+	black := pal[paletteBlack0]
+	w.drawTabCurrency(screen, black)
+	win2, _ := TextColours(int(w.Colour))
+	red, _ := TextColours(27)
+	y := w.Y + 47
+	for i, r := range w.Records {
+		if r.Speed == 0 {
+			continue
+		}
+		drawFormattedEx(screen, w.X+4, y, ui18nFill(i18n.LandSpeedRecord+i, L.Velocity(r.Speed)), black, win2, red)
+		y += 11
+		if r.Held {
+			y += 7
+			drawFormattedEx(screen, w.X+33, y, ui18nFill(i18n.RecordDateAchieved, r.Name, r.Date), black, win2, red)
+			y += 17
+		}
+		y += 5
 	}
 }
