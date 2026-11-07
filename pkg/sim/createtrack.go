@@ -163,8 +163,12 @@ func (m *Map) createTrackCheck(c *Cmd, a trackPlacementArgs, flags uint8) (creat
 		clear := func(t *Tile, k int) ClearResult {
 			return m.trackClearFunction(c, st, t, k, &r.Cost, &plan.HasLevelCrossing, removed, args)
 		}
+		m.LastCollision = nil
 		ok, pos := m.ApplyClearAtStandardHeight(x, y, baseZ, uint8(clearZ), quarter&0xF, quarter>>4, clear)
 		if !ok {
+			if c.ErrorText == 0 {
+				c.ErrorText, c.ErrorArg = m.collisionMessage(c)
+			}
 			return r, false
 		}
 		if plan.HasLevelCrossing && c.Objects != nil && int(m.DefaultLevelCrossingType) < len(c.Objects.LevelCrossingObjects) {

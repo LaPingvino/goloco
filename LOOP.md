@@ -1501,8 +1501,10 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
       view scrolled by a frame-rate-dependent amount; the seed and the start were already deterministic ([Seed] logs:
       the same rng and company colour in two runs; Weatherworld's landscape is hand-made; GenerateLandscape proven
       deterministic too). Two runs now differ by 28 px (animations). A refused piece now opens upstream's error window ("Can't build Railway Track…" + the command's reason: Cmd.ErrorText
-      set at every createTrack / clearTrack / clearRoad refusal). At the fixed spot the refusal is the tile clearance
-      (no reason yet): port TileClearance's collision texts ("… in the way": the element's name) to find what blocks it. NEXT:
+      set at every createTrack / clearTrack / clearRoad refusal). TileClearance's collision texts ported too
+      (setCollisionErrorMessage: "Raise or lower land first", "<name> in the way", "Object in the way"; Map.LastCollision →
+      collisionMessage): at the fixed spot it says "Raise or lower land first" — a slope; upstream refuses flat track
+      there too. NEXT: the script picks a flat spot, then stations at both ends. NEXT:
       find it (Joop: "look at OpenTTD for how seeds are used" — its generation seed is one value saved with the game,
       every generator drawing from it), then a stable stage f, then Build Vehicles → place → route → start → earn.
 - 2026-11-07 — PL.1 e: createTrackCheck (per-piece checks + bridge / tunnel costs).
@@ -1513,4 +1515,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-07 — landscape generation proven deterministic (test); the run-to-run difference is in the game's start, narrowed for next time.
 - 2026-11-07 — playthrough repeatable (edge scrolling was the cause); a refused track piece shows no error yet (next).
 - 2026-11-07 — refused track pieces open the error window with upstream's reason (Cmd.ErrorText); clearance reasons next.
+- 2026-11-07 — the clearance's "… in the way" / "Raise or lower land first" reasons ported; the playthrough's spot is a slope.
 

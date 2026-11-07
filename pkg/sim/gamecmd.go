@@ -39,6 +39,8 @@ type Cmd struct {
 	// ErrorText is GameCommands::setErrorText's: why a command refused (a
 	// StringId of pkg/i18n; 0 none) — the error window's second line.
 	ErrorText int
+	// ErrorArg is the name ErrorText's {STRINGID} / {STRING} shows.
+	ErrorArg string
 }
 
 func (c *Cmd) isPlayer(company uint8) bool { return c.Players != nil && c.Players(company) }
