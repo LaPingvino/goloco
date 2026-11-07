@@ -109,10 +109,10 @@ func (m *Map) companiesUpdateDaily(om *objects.ObjectManager) {
 		return
 	}
 	m.Companies[id].ChallengeProgress = m.NewChallengeProgress(id, om)
-	if m.CompanyFaces[id].ChallengeFlags&(companyFlagChallengeBeaten|companyFlagChallengeCompleted|companyFlagChallengeFailed) != 0 {
-		return
+	if m.CompanyFaces[id].ChallengeFlags&(companyFlagChallengeBeaten|companyFlagChallengeCompleted|companyFlagChallengeFailed) == 0 {
+		m.evaluateChallengeProgress(id)
 	}
-	m.evaluateChallengeProgress(id)
+	m.updateLoanAutorepay(id) // updateDailyControllingPlayer
 }
 
 // evaluateChallengeProgress: progress 100 completes the challenge, 255 fails

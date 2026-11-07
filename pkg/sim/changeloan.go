@@ -31,3 +31,23 @@ func (m *Map) ChangeLoan(c *Cmd, flags uint8, newLoan int32) (int32, bool) {
 	}
 	return 0, true
 }
+
+// CompanyFlagAutopayLoan is CompanyFlags::autopayLoan (new for OpenLoco):
+// the Finances tab's "pay back the loan automatically" checkbox.
+const CompanyFlagAutopayLoan = 1 << 31
+
+// updateLoanAutorepay is Company::updateLoanAutorepay (the controlling
+// company, daily): with autopay on, the loan paid back as far as the cash
+// goes — ChangeLoan with apply, as that company.
+func (m *Map) updateLoanAutorepay(id int) {
+	if id >= len(m.Companies) || id >= len(m.CompanyFaces) {
+		return
+	}
+	c := &m.Companies[id]
+	if c.CurrentLoan <= 0 || c.Cash <= 0 || m.CompanyFaces[id].ChallengeFlags&CompanyFlagAutopayLoan == 0 {
+		return
+	}
+	newLoan := c.CurrentLoan - int32(max(0, min(int64(c.CurrentLoan), c.Cash)))
+	cmd := &Cmd{Company: uint8(id)}
+	m.DoCommandFor(cmd, CmdApply, ExpenditureLoanInterest, func(f uint8) (int32, bool) { return m.ChangeLoan(cmd, f, newLoan) })
+}

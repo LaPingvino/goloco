@@ -30,3 +30,19 @@ func TestChangeLoan(t *testing.T) {
 		t.Error("a check changed the loan")
 	}
 }
+
+// Autopay: the controlling company's loan paid back daily as far as its cash
+// goes; off, nothing.
+func TestLoanAutorepay(t *testing.T) {
+	m := &Map{Companies: make([]scenario.CompanyEconomy, 1), CompanyFaces: make([]scenario.CompanyFace, 1)}
+	m.Companies[0].Cash, m.Companies[0].CurrentLoan = 7000, 20000
+	m.updateLoanAutorepay(0)
+	if m.Companies[0].CurrentLoan != 20000 {
+		t.Fatal("repaid without autopay")
+	}
+	m.CompanyFaces[0].ChallengeFlags |= CompanyFlagAutopayLoan
+	m.updateLoanAutorepay(0)
+	if c := m.Companies[0]; c.CurrentLoan != 13000 || c.Cash != 0 {
+		t.Errorf("after autopay: loan %d cash %d", c.CurrentLoan, c.Cash)
+	}
+}
