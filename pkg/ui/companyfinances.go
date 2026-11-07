@@ -138,6 +138,11 @@ type CompanyFinancesWindow struct {
 	OnColourMode func(colourType int, on bool)
 	// OnRename is onMouseUp caption: renameCompanyPrompt (any tab).
 	OnRename func()
+	// Positioning: the window follows the pointer (positioningWindow, begun
+	// on the caption; released unmoved, the caption's click: rename).
+	Positioning        bool
+	posLastX, posLastY int
+	posMoved           bool
 	// OnColour is a swatch\'s onMouseDown (colourType 0 main, 1–10 a vehicle
 	// type; primary or secondary) with its screen rect, for showColour.
 	OnColour  func(colourType int, primary bool, x, y, w, h int)
@@ -166,8 +171,8 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 	switch {
 	case in(lw[cwClose]) && w.OnClose != nil:
 		w.OnClose()
-	case in(lw[cwCaption]) && w.OnRename != nil: // PARTIAL: dragging the window by its caption
-		w.OnRename()
+	case in(lw[cwCaption]): // windowPositionBegin; the rename comes on an unmoved release (PositionEnd)
+		w.Positioning, w.posLastX, w.posLastY, w.posMoved = true, x, y, false
 	case in(lw[cwTabColour]) && w.Tab != CompanyTabColourScheme:
 		w.switchTab(CompanyTabColourScheme)
 	case w.Tab == CompanyTabColourScheme && w.Colours.Own && w.OnColour != nil && w.colourSwatchAt(x, y) != nil:
@@ -941,4 +946,26 @@ func (w *CompanyFinancesWindow) colourSwatchAt(x, y int) *colourSwatch {
 		}
 	}
 	return nil
+}
+
+// PositionMove is statePositioningWindow while held: the pointer's y clamped
+// to 29 … screen height − 29, the window moved by its travel.
+func (w *CompanyFinancesWindow) PositionMove(x, y, screenH int) {
+	y = min(max(y, 29), screenH-29)
+	if dx, dy := x-w.posLastX, y-w.posLastY; dx != 0 || dy != 0 {
+		w.X += dx
+		w.Y += dy
+		w.posMoved = true
+	}
+	w.posLastX, w.posLastY = x, y
+}
+
+// PositionEnd is its leftReleased: the last move, then — never moved — the
+// caption's mouse-up (renameCompanyPrompt).
+func (w *CompanyFinancesWindow) PositionEnd(x, y, screenH int) {
+	w.PositionMove(x, y, screenH)
+	w.Positioning = false
+	if !w.posMoved && w.OnRename != nil {
+		w.OnRename()
+	}
 }

@@ -23,7 +23,9 @@ import (
 //
 //	wait <seconds>      pause before the next command (game keeps running)
 //	move <x> <y>        move the cursor
-//	click <x> <y>       move + left press (release follows next frame)
+//	click <x> <y>       move + left press (release follows next frame, with
+//	                    the next command: put a wait after a click whose
+//	                    release must land where it pressed, e.g. a caption)
 //	rightclick <x> <y>  move + right press
 //	press <x> <y>       move + left press, held until release
 //	release <x> <y>     move + left release (after press)

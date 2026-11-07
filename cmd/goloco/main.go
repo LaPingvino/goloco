@@ -722,6 +722,13 @@ func (g *Game) Update() error {
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 	}
+	if g.companyFinances != nil && g.companyFinances.Positioning { // statePositioningWindow
+		if g.inMousePressed(ebiten.MouseButtonLeft) {
+			g.companyFinances.PositionMove(g.mouseX, g.mouseY, g.sh)
+		} else {
+			g.companyFinances.PositionEnd(g.mouseX, g.mouseY, g.sh)
+		}
+	}
 	if g.vehicleWin != nil && g.vehicleWin.Positioning { // statePositioningWindow
 		if g.inMousePressed(ebiten.MouseButtonLeft) {
 			g.vehicleWin.PositionMove(g.mouseX, g.mouseY, g.sh)
