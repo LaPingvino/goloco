@@ -27,6 +27,9 @@ func TestCreateBaseVehicle(t *testing.T) {
 		}
 	}
 	head := m.Entities[0]
+	if d := m.Entities[1].LastIncome.Day; d != -1 { // createVehicle1: lastIncome.day = -1
+		t.Errorf("veh1's last income day %d, want -1 (none yet)", d)
+	}
 	if head.OrdinalNumber != 1 || head.Name != 4 || head.VehicleFlags&VehicleFlagCommandStop == 0 || head.StationID != 0xFFFF {
 		t.Errorf("head %+v", head)
 	}
