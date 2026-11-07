@@ -159,13 +159,20 @@ func (g *Game) companyFace(company int) (int, uint8) {
 // openBuildVehicle is BuildVehicle::open(tab, isTabId = true) for the
 // controlling company (5P.f): the opening track tab, the list, at the screen's
 // middle (PARTIAL: createWindow's free-spot placement).
-func (g *Game) openBuildVehicle(tab int) {
+func (g *Game) openBuildVehicle(tab int) { g.openBuildVehicleFor(tab, sim.EntityIDNull) }
+
+// openBuildVehicleFor is openBuildVehicle with _buildTargetVehicle = target
+// (BuildVehicle::openByVehicleId: the list limited to what fits that
+// vehicle, and a row adds a car to it); EntityIDNull builds new vehicles.
+// PARTIAL: the caption still says "Build …" for a target.
+func (g *Game) openBuildVehicleFor(tab int, target uint16) {
 	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
 		return
 	}
 	m, om := &g.w.Map, g.r.ObjMgr
 	company, _ := g.w.ControllingCompany()
 	o := sim.DefaultBuildVehicleOptions(uint8(company))
+	o.TargetHead = target
 	tabs := m.BuildVehicleTrackTabs(om, uint8(tab), o)
 	trackTab := m.BuildVehicleTrackTab(uint8(tab), tabs)
 	var rows []ui.BVRow
@@ -187,8 +194,33 @@ func (g *Game) openBuildVehicle(tab int) {
 	g.buildVehicle = &ui.BuildVehicleWindow{X: (sw - 500) / 2, Y: (sh - 400) / 2, W: 500, H: 400, TitleColour: tc, Colour: wc,
 		Tab: tab, TrackTab: trackTab, Disabled: m.BuildVehicleDisabledTabs(uint8(company)), NumTrackTabs: len(tabs),
 		Rows: rows, Hover: -1, Primary: p, Secondary: s,
-		OnClose: func() { g.buildVehicle = nil }, OnTab: g.openBuildVehicle,
-		OnBuy: func(id uint16) { g.buyVehicle(tab, id) }}
+		OnClose: func() { g.buildVehicle = nil }, OnTab: func(t int) { g.openBuildVehicleFor(t, target) },
+		OnBuy: func(id uint16) { g.buyVehicle(tab, id, target) }}
+}
+
+// buildNewOpen is Vehicle Details' buildNew dropdown (onMouseDown): Modify
+// vehicle (BuildVehicle::openByVehicleId) and Clone vehicle.
+// PARTIAL: Clone vehicle (cloneVehicle) does nothing yet.
+func (g *Game) buildNewOpen(headID uint16, x, y, w, h int) {
+	m := &g.w.Map
+	tr, err := m.TrainOf(headID)
+	if err != nil {
+		return
+	}
+	vt := int(m.Entities[tr.Head].VehicleType)
+	items := []ui.DropdownItem{{Text: i18n.Label(i18n.DropdownModifyVehicle)}, {Text: i18n.Label(i18n.DropdownCloneVehicle)}}
+	items[0].Selected = true
+	d := ui.NewDropdownMenu(x, y+h, items)
+	if g.vehicleWin != nil {
+		d.Colour = g.vehicleWin.Colour
+	}
+	d.Highlighted = 0
+	d.OnSelect = func(item int) {
+		if item <= 0 {
+			g.openBuildVehicleFor(vt, headID)
+		}
+	}
+	g.dropdown = d
 }
 
 // buyVehicle is onScrollMouseDown's purchase: the createVehicle command (no
@@ -199,7 +231,7 @@ func (g *Game) openBuildVehicle(tab int) {
 // unplaced, as upstream's does until placed, and shows in the vehicle list),
 // the error window ("Can't build …" with the reason), Config::buildLockedVehicles
 // (false).
-func (g *Game) buyVehicle(tab int, id uint16) {
+func (g *Game) buyVehicle(tab int, id, target uint16) {
 	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
 		return
 	}
@@ -208,6 +240,10 @@ func (g *Game) buyVehicle(tab int, id uint16) {
 	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
 	var head uint16
 	cost, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureVehiclePurchases, func(flags uint8) (int32, bool) {
+		if target != sim.EntityIDNull { // gcArgs.vehicleId = _buildTargetVehicle: a car added to it
+			head = target
+			return m.AddCarToVehicle(c, flags, id, target, false)
+		}
 		return m.CreateVehicle(c, flags, id, false, &head)
 	})
 	if !ok {
@@ -215,8 +251,12 @@ func (g *Game) buyVehicle(tab int, id uint16) {
 		return
 	}
 	log.Printf("[Game] bought vehicle %d (head %d) for %d", id, head, cost)
-	g.openVehicleDetails(head)
-	g.openBuildVehicle(tab)
+	if target == sim.EntityIDNull { // only a new vehicle opens its window
+		g.openVehicleDetails(head)
+	} else if g.vehicleWin != nil {
+		g.openVehicleWindow(head, 1) // the target's window shows its new car
+	}
+	g.openBuildVehicleFor(tab, target) // sub_4B92A5: the list again
 }
 
 // openVehicleDetails is Vehicle::Details::open (Main::open, then the Details
@@ -288,8 +328,9 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
 		State:   ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
 		OnClose: func() { g.vehicleWin, g.pickupOn, g.routeTool = nil, false, false }, OnPickup: func() { g.onPickup(headID) },
-		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h),
-		Route: g.routeLines(&h), RouteSel: g.routeSel, Hover: -1, Finances: g.vehicleFinances(tr), Cargo: g.vehicleCargo(tr, cars),
+		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h), BuildNewImage: g.buildNewImage(&h),
+		OnBuildNew: func(x, y, w, hh int) { g.buildNewOpen(headID, x, y, w, hh) },
+		Route:      g.routeLines(&h), RouteSel: g.routeSel, Hover: -1, Finances: g.vehicleFinances(tr), Cargo: g.vehicleCargo(tr, cars),
 		OnRouteSelect: func(row int) { g.routeSel = row; g.openVehicleWindow(headID, 4) },
 		OnRoute:       func(a string) { g.routeAction(headID, a); g.openVehicleWindow(headID, 4) },
 		Express:       m.Entities[tr.Veh1].Var48&sim.Flags48ExpressMode != 0,
@@ -1184,4 +1225,13 @@ func (g *Game) openTownWindow(id int) {
 	w.OnCentreView = func() { g.w.CentreOnTown(id) }
 	w.OnClose = func() { g.townWin = nil }
 	g.townWin = w
+}
+
+// buildNewImage is Details::prepareDraw's buildNew image: the interface
+// skin's build_additional_<vehicle type> (411 + type).
+func (g *Game) buildNewImage(h *scenario.VehicleEntity) int {
+	if g.r == nil || g.r.ObjMgr == nil || g.r.ObjMgr.InterfaceSkin == nil || h.VehicleType > 5 {
+		return 0
+	}
+	return int(g.r.ObjMgr.InterfaceSkin.ImageOffset) + 411 + int(h.VehicleType)
 }

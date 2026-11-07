@@ -20,7 +20,7 @@ const (
 const (
 	maxEntities       = 20000 // Limits::kMaxEntities
 	maxNormalEntities = 19800 // Limits::maxNormalEntities (the rest: money effects)
-	entityIDNull      = 0xFFFF
+	entityIDNull      = EntityIDNull
 )
 
 // EntityLists is the manager's state: the lists' heads and counts and every
@@ -106,3 +106,7 @@ func (l *EntityLists) freeEntity(id uint16) {
 
 // numFreeEntities is getListCount(null) — checkNumFreeEntities' count.
 func (l *EntityLists) numFreeEntities() int { return int(l.Counts[EntityListNull]) }
+
+// EntityIDNull is EntityId::null: no entity (a Build Vehicle window with no
+// target vehicle, …).
+const EntityIDNull = 0xFFFF
