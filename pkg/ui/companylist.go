@@ -32,6 +32,9 @@ type CompanyListRow struct {
 	Performance int16
 	Trend       int // performance_index_increase / _decrease (see below)
 	Value       int64
+	Colour      uint8      // the company's colour (its graph line, shade 6)
+	PerfHist    [120]int16 // performanceIndexHistory
+	HistorySize int
 }
 
 // CompanyListWindow is the window on its CompanyList tab.
@@ -46,7 +49,12 @@ type CompanyListWindow struct {
 	OnRow               func(id int)
 	SkinImage           int // the interface skin's image base (the tab icons)
 	FrameNo             int
+	Tab                 int // 0 the list, 1 performance (PARTIAL: the other graph tabs)
+	CurrentMonths       int // getCurrentYear() × 12 + getCurrentMonth(): the graphs' x range
 }
+
+// CompanyPerformanceSize is CompanyPerformance::kWindowSize.
+var CompanyPerformanceSize = [2]int{635, 322}
 
 // companyListHeaders are the four TableHeaders (x, width) and their labels
 // (the sorted one's "▼" variant: the next string id).
@@ -88,6 +96,15 @@ func (w *CompanyListWindow) HandleClick(x, y int) {
 		}
 		return
 	}
+	for t, size := range [][2]int{CompanyListSize, CompanyPerformanceSize} { // Common::switchTab (the ported tabs)
+		if in(3+31*t, 15, 31, 27) && t != w.Tab {
+			w.Tab, w.W, w.H = t, size[0], size[1]
+			return
+		}
+	}
+	if w.Tab != 0 {
+		return
+	}
 	for i, h := range companyListHeaders {
 		if in(h.x, 43, h.w, 12) {
 			if i != w.SortMode {
@@ -112,6 +129,10 @@ func (w *CompanyListWindow) HandleClick(x, y int) {
 // ("{COMMA16} companies").
 func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 	if globalG1Font == nil {
+		return
+	}
+	if w.Tab == 1 {
+		w.drawPerformance(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -224,7 +245,7 @@ const (
 // cargo distance and values (8 frames, /4, on the current tab) recoloured to
 // the secondary colour; payment rates; speed records (tab_awards, recoloured).
 func (w *CompanyListWindow) drawTabs(rt *gfx8.RenderTarget, sec []uint8) {
-	current := 0
+	current := w.Tab
 	frame := func(base, tab int) int {
 		if tab == current {
 			return w.SkinImage + base + (w.FrameNo/4)%8
@@ -266,5 +287,80 @@ func (w *CompanyListWindow) MouseOver(x, y int) {
 	w.Hover = -1
 	if r := (y - (w.Y + 56 + 1) + w.Scroll) / 25; r >= 0 && r < len(w.Rows) {
 		w.Hover = r
+	}
+}
+
+const (
+	companyListLegendMargin  = 6
+	companyListLegendWidth   = 100
+	companyListWindowPadding = 4
+)
+
+// drawPerformance is CompanyPerformance::draw (0x00436490) and
+// drawGraphAndLegend (0x004365E4): each company's performanceIndexHistory
+// (front to back from its historySize) on the chart — 17 below for the x
+// labels, 40 left for the y labels every 20 px, a tick per month and a label
+// every 12, the x range the current month — then the legend (a 5 × 5 swatch
+// and the name in the small font, 10 apart) at (width − 104, 52).
+// PARTIAL: highlighting a company's line (var_854, hovering the legend).
+func (w *CompanyListWindow) drawPerformance(screen *ebiten.Image) {
+	g1 := globalG1Font.g1
+	pal := g1.GetPalette()
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	maxHist := 1
+	for _, r := range w.Rows {
+		maxHist = max(maxHist, r.HistorySize)
+	}
+	gs := &Chart{Left: 4, Top: 41 + 4, Width: w.W - companyListLegendWidth - companyListLegendMargin - 2*companyListWindowPadding,
+		Height: w.H - 41 - 2*companyListWindowPadding, YOffset: 17, XOffset: 40, YAxisLabelIncrement: 20,
+		DataEnd: maxHist, XAxisLabelIncrement: 12, YAxisStepSize: 100, Flags: ChartDataFrontToBack,
+		XAxisRange: w.CurrentMonths, XAxisStepSize: 1, PointFlags: ChartDrawLines}
+	gs.XAxisTickIncrement = (gs.Width - gs.XOffset) / 120
+	for _, r := range w.Rows { // in company order (the legend's)
+		line := make([]int64, len(r.PerfHist))
+		for i, v := range r.PerfHist {
+			line[i] = int64(v)
+		}
+		cm, _ := g1.GetPaletteMap(int(r.Colour))
+		gs.Lines = append(gs.Lines, line)
+		gs.DataStart = append(gs.DataStart, maxHist-r.HistorySize)
+		gs.LineColour = append(gs.LineColour, gfx8.Shade(cm, 6))
+	}
+	var labels []ChartLabel
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, 0, 41, w.W-1, w.H-1, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		w.drawTabs(rt, sec)
+		labels = gs.Draw(rt, sec)
+		x, y := w.W-companyListLegendWidth-companyListWindowPadding, 52
+		for _, r := range w.Rows {
+			cm, _ := g1.GetPaletteMap(int(r.Colour))
+			gfx8.FillRect(rt, x, y+3, x+4, y+7, gfx8.Shade(cm, 6))
+			y += 10
+		}
+	})
+	DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, i18n.Str(i18n.TitleCompanyPerformance))
+	black := pal[paletteBlack0]
+	for _, l := range labels { // graph_label_format: the small font, black
+		var s string
+		if l.XAxis { // rawdate_short: the month's short name, a space, the year
+			s = i18n.Str(i18n.MonthShortJanuary+int(l.Value%12)) + " " + strconv.Itoa(int(l.Value/12))
+			DrawTextFont(screen, s, G1FontSmall, w.X+l.X-MeasureTextFont(s, G1FontSmall)/2, w.Y+l.Y, black)
+		} else { // percentage_one_decimal_place
+			s = int16OneDecimal(int16(l.Value)) + "%"
+			DrawTextFont(screen, s, G1FontSmall, w.X+l.X-MeasureTextFont(s, G1FontSmall), w.Y+l.Y, black)
+		}
+	}
+	x, y := w.X+w.W-companyListLegendWidth-companyListWindowPadding, w.Y+52
+	for _, r := range w.Rows { // small_black_string, clipped to 94
+		DrawTextFont(screen, r.Name, G1FontSmall, x+6, y, black)
+		y += 10
 	}
 }

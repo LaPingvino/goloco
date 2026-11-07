@@ -1617,7 +1617,11 @@ func (g *Game) openCompanyList() {
 		face, col := g.companyFace(id)
 		f := m.CompanyFaces[id]
 		r := ui.CompanyListRow{ID: id, Name: m.CompanyName(id), Face: face, FaceColour: col, Status: g.companyStatus(id).Status,
-			Performance: f.Performance, Value: m.Companies[id].CompanyValueHistory[0]}
+			Performance: f.Performance, Value: m.Companies[id].CompanyValueHistory[0],
+			PerfHist: m.Companies[id].PerformanceIndexHist, HistorySize: int(m.Companies[id].HistorySize)}
+		if id < len(g.w.CompanyColours) {
+			r.Colour = g.w.CompanyColours[id]
+		}
 		if f.ChallengeFlags&(1<<4) != 0 && f.ChallengeFlags&(1<<5) != 0 { // upstream's test: increased and decreased both
 			r.Trend = 1
 		}
