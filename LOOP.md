@@ -1500,9 +1500,9 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
       clock ^ old state) and "camera X Y"; f-station.txt uses them. REPEATABLE NOW (2026-11-07): the cause was edge scrolling — the script left the mouse on the toolbar (y 14) and the
       view scrolled by a frame-rate-dependent amount; the seed and the start were already deterministic ([Seed] logs:
       the same rng and company colour in two runs; Weatherworld's landscape is hand-made; GenerateLandscape proven
-      deterministic too). Two runs now differ by 28 px (animations). Found next: at the fixed spot "Build this…" builds
-      nothing and no error shows — the Railway Track window never opens upstream's error window on a refused piece
-      (constructTrack: Error::open with the command's reason). NEXT:
+      deterministic too). Two runs now differ by 28 px (animations). A refused piece now opens upstream's error window ("Can't build Railway Track…" + the command's reason: Cmd.ErrorText
+      set at every createTrack / clearTrack / clearRoad refusal). At the fixed spot the refusal is the tile clearance
+      (no reason yet): port TileClearance's collision texts ("… in the way": the element's name) to find what blocks it. NEXT:
       find it (Joop: "look at OpenTTD for how seeds are used" — its generation seed is one value saved with the game,
       every generator drawing from it), then a stable stage f, then Build Vehicles → place → route → start → earn.
 - 2026-11-07 — PL.1 e: createTrackCheck (per-piece checks + bridge / tunnel costs).
@@ -1512,4 +1512,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-07 — playthrough: scenario / seed / camera script commands; seeded runs still differ (to find).
 - 2026-11-07 — landscape generation proven deterministic (test); the run-to-run difference is in the game's start, narrowed for next time.
 - 2026-11-07 — playthrough repeatable (edge scrolling was the cause); a refused track piece shows no error yet (next).
+- 2026-11-07 — refused track pieces open the error window with upstream's reason (Cmd.ErrorText); clearance reasons next.
 

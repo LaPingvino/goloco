@@ -36,6 +36,9 @@ type Cmd struct {
 	// shows; nil: Location::null (spendMoneyEffect's viewport-centre case,
 	// PARTIAL in the sim). Commands set it as upstream's do.
 	Pos *[3]int32
+	// ErrorText is GameCommands::setErrorText's: why a command refused (a
+	// StringId of pkg/i18n; 0 none) — the error window's second line.
+	ErrorText int
 }
 
 func (c *Cmd) isPlayer(company uint8) bool { return c.Players != nil && c.Players(company) }
