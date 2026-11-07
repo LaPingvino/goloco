@@ -724,6 +724,9 @@ func (g *Game) Update() error {
 	}
 	if g.companyList != nil {
 		g.companyList.MouseOver(g.mouseX, g.mouseY)
+		cl := g.companyList // findAt: in the window and no modal over it
+		in := g.mouseX >= cl.X && g.mouseX < cl.X+cl.W && g.mouseY >= cl.Y && g.mouseY < cl.Y+cl.H
+		cl.Update(g.mouseX, g.mouseY, in && g.companyFinances == nil, ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight))
 	}
 	if g.companyFinances != nil && g.companyFinances.Positioning { // statePositioningWindow
 		if g.inMousePressed(ebiten.MouseButtonLeft) {

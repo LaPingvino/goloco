@@ -1647,7 +1647,7 @@ func (g *Game) openCompanyList() {
 			if c == nil || i >= len(ui.CargoLineColour) {
 				continue
 			}
-			lc := ui.CompanyListCargo{Name: c.Name, Colour: ui.CargoLineColour[i]}
+			lc := ui.CompanyListCargo{Slot: i, Name: c.Name, Colour: ui.CargoLineColour[i]}
 			for d := uint16(2); d < 122; d += 2 {
 				lc.Payments[d/2-1] = m.DeliveredCargoPayment(c, 100, 10, d)
 			}
