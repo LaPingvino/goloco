@@ -347,7 +347,13 @@ type VehicleWindow struct {
 	OnPassSignal func()
 	// OnChangeDirection is Main::onChangeDirection.
 	OnChangeDirection func()
-	Express           bool // Route: veh1 Flags48::expressMode (express pressed, else local)
+	// OnSpeed is Main::onSpeedControl: VehicleSpeedControl with the speed
+	// (−40 brake … 40 power) under the pointer; ManualPower is the head's,
+	// for the slider's thumb; speedHeld while the slider is pressed.
+	OnSpeed     func(speed int8)
+	ManualPower int8
+	speedHeld   bool
+	Express     bool // Route: veh1 Flags48::expressMode (express pressed, else local)
 	// View is Main's viewport, 8-bit, of the given size (nil: none — the
 	// vehicle not placed).
 	View         func(w, h int) *gfx8.RenderTarget
@@ -363,6 +369,7 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 	}
 	if w.Tab == 0 {
 		w.drawMain(screen)
+		w.drawSpeedControl(screen)
 		return
 	}
 	if w.Tab == 4 {
@@ -703,6 +710,9 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			w.OnPickup()
 		case in(lw[vmCentreViewport]) && w.OnCentreView != nil:
 			w.OnCentreView()
+		case in(lw[vmSpeedControl]) && w.OnSpeed != nil: // Main::onMouseDown speedControl (holdable)
+			w.speedHeld = true
+			w.speedAt(y)
 		case in(lw[vmPassSignal]) && w.OnPassSignal != nil: // Main::onMouseUp passSignal
 			w.OnPassSignal()
 		case in(lw[vmChangeDirection]) && w.OnChangeDirection != nil: // Main::onMouseUp changeDirection
@@ -951,4 +961,66 @@ func (w *VehicleWindow) ScrollDrag(x, y int, held bool) {
 	}
 	list, content, ok := w.barList()
 	w.Scroll = w.hold.Continue(held && ok, w.carBar(x, y), y-(w.Y+list.T), y, list.B-list.T+1, content, w.Scroll)
+}
+
+// speedAt is onSpeedControl: the pointer's y against the slider's top + 58,
+// clamped to ±40 and negated (up is power).
+func (w *VehicleWindow) speedAt(y int) {
+	lw := VehicleMainLayout(w.W, w.H, w.Main)
+	speed := y - (w.Y + lw[vmSpeedControl].T + 58)
+	speed = -min(max(speed, -40), 40)
+	w.OnSpeed(int8(speed))
+}
+
+// SpeedHeld is the slider's click repeat (holdable; setClickRepeatTicks(31)
+// makes it fire every tick): while pressed over the slider, the speed
+// follows the pointer; the release ends it.
+func (w *VehicleWindow) SpeedHeld(x, y int, down bool) {
+	if !w.speedHeld {
+		return
+	}
+	lw := VehicleMainLayout(w.W, w.H, w.Main)
+	b := lw[vmSpeedControl]
+	if !down || w.Tab != 0 || b.Hidden || w.OnSpeed == nil {
+		w.speedHeld = false
+		return
+	}
+	if x >= w.X+b.L && x <= w.X+b.R && y >= w.Y+b.T && y <= w.Y+b.B {
+		w.speedAt(y)
+	}
+}
+
+const (
+	imgSpeedControlTrack = 3545 // ImageIds::speed_control_track
+	imgSpeedControlThumb = 3546 // ImageIds::speed_control_thumb
+)
+
+// drawSpeedControl is Main::draw's slider: the track at (left, top + 10)
+// and the thumb at (left + 1, top + 57 − manualPower), both recoloured to
+// the secondary colour; "Power" and "Brake" (tiny_power / tiny_brake: the
+// small font) centred at top + 4 and bottom − 10.
+func (w *VehicleWindow) drawSpeedControl(screen *ebiten.Image) {
+	lw := VehicleMainLayout(w.W, w.H, w.Main)
+	b := lw[vmSpeedControl]
+	if b.Hidden || globalG1Font == nil {
+		return
+	}
+	g1 := globalG1Font.g1
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		for _, im := range [][3]int{{imgSpeedControlTrack, b.L, b.T + 10}, {imgSpeedControlThumb, b.L + 1, b.T + 57 - int(w.ManualPower)}} {
+			if sp, err := gfx8.Decode(&g1.Elements[im[0]]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, im[1], im[2], gfx8.OpFor(sp, true, false), sec, nil)
+			}
+		}
+	})
+	black := g1.GetPalette()[paletteBlack0]
+	mid := w.X + (b.L+b.R)/2
+	for _, t := range [][2]int{{i18n.TinyPower, w.Y + b.T + 4}, {i18n.TinyBrake, w.Y + b.B - 10}} {
+		s := stripCodes(i18n.Str(t[0]))
+		DrawTextFont(screen, s, G1FontSmall, mid-MeasureTextFont(s, G1FontSmall)/2, t[1], black)
+	}
 }

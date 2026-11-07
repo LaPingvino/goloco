@@ -377,7 +377,9 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		OnRefit:           func(x, y, w, hh int) { g.refitOpen(headID, x, y, w, hh) },
 		OnOrderDropdown:   func(kind string, x, y, w, hh int) { g.orderDropdown(headID, kind, x, y, w, hh) },
 		OnPassSignal:      func() { g.passSignal(headID) },
-		OnChangeDirection: func() { g.changeDirection(headID) }}
+		OnChangeDirection: func() { g.changeDirection(headID) },
+		OnSpeed:           func(speed int8) { g.speedControl(headID, speed) },
+		ManualPower:       h.ManualPower}
 	if own {
 		g.vehicleWin.OnRename = func() { g.renameVehicle(headID, tc, wc) }
 	}
@@ -402,9 +404,12 @@ func stopStartImage(flags uint16) int {
 }
 
 // stopStartOpen is Main's stopStartOpen: a text dropdown at the button with
-// Stop and Start (Manual only with the driver cheat, not ported), the current
-// mode marked, the other highlighted; onStopStartDropdown runs
-// VehicleChangeRunningMode and the window shows the new flag.
+// Stop and Start, and Manual for a rail vehicle with the driver cheat on
+// (SceneManager::isDriverCheatEnabled — g.driverCheat; the Cheats window that
+// turns it on is not ported), the current mode marked (manual control above
+// the others), Start highlighted after Stop and Stop otherwise;
+// onStopStartDropdown runs VehicleChangeRunningMode and the window shows the
+// new flag.
 func (g *Game) stopStartOpen(headID uint16, x, y, w, h int) {
 	m := &g.w.Map
 	tr, err := m.TrainOf(headID)
@@ -417,21 +422,35 @@ func (g *Game) stopStartOpen(headID uint16, x, y, w, h int) {
 		selected = 1 // Start
 	}
 	items := []ui.DropdownItem{{Text: i18n.Label(i18n.Stop)}, {Text: i18n.Label(i18n.Start)}}
-	items[selected].Selected = true
+	if head.Mode == 0 && g.driverCheat { // TransportMode::rail
+		items = append(items, ui.DropdownItem{Text: i18n.Label(i18n.Manual)})
+	}
+	if head.VehicleFlags&sim.VehicleFlagManualControl != 0 {
+		selected = 2
+	}
+	if selected < len(items) {
+		items[selected].Selected = true
+	}
 	d := ui.NewDropdownMenu(x, y+h, items) // Dropdown::showText below the button
 	if g.vehicleWin != nil {
 		d.Colour = g.vehicleWin.Colour
 	}
-	d.Highlighted = 1 - selected // stop → start highlighted, start → stop
+	d.Highlighted = 0 // stop → start highlighted, start or manual → stop
+	if selected == 0 {
+		d.Highlighted = 1
+	}
 	d.OnSelect = func(item int) {
 		mode := sim.RunningModeStop
-		if item == 1 {
+		switch item {
+		case 1:
 			mode = sim.RunningModeStart
+		case 2:
+			mode = sim.RunningModeDriveManually
 		}
 		company, _ := g.w.ControllingCompany()
 		c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
 		if _, ok := m.VehicleChangeRunningMode(c, sim.CmdApply, headID, mode); !ok {
-			log.Printf("[Game] can't %s vehicle %d", []string{"stop", "start"}[item], headID)
+			log.Printf("[Game] can't %s vehicle %d", []string{"stop", "start", "drive"}[item], headID)
 		}
 		if g.vehicleWin != nil {
 			g.openVehicleWindow(headID, g.vehicleWin.Tab)
@@ -1802,5 +1821,20 @@ func (g *Game) changeDirection(headID uint16) {
 		return m.VehicleReverse(c, f, headID)
 	}); !ok {
 		g.openError(i18n.Label(i18n.CantReverseTrain), cmdErrorText(c))
+	}
+}
+
+// speedControl is Main's onSpeedControl: VehicleSpeedControl for the
+// controlling company (cost 0, TrainRunningCosts), the slider's thumb
+// following the head's new manualPower.
+func (g *Game) speedControl(headID uint16, speed int8) {
+	m := &g.w.Map
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureTrainRunningCosts, func(f uint8) (int32, bool) {
+		return m.VehicleSpeedControl(c, f, headID, speed)
+	})
+	if g.vehicleWin != nil {
+		g.vehicleWin.ManualPower = speed
 	}
 }

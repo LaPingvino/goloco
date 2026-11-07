@@ -117,13 +117,14 @@ type Game struct {
 	speedMult int // 1, 2, 4, or 8
 
 	// Build mode (track/road placement)
-	buildMode  int    // buildModeNone / buildModeTrack / buildModeRoad
-	pickupOn   bool   // the Vehicle window's pickup (placing) tool is active
-	pickupHead uint16 // the vehicle head it places
-	routeSel   int    // the Vehicle window's Route selection (orderTableIndex; -1: none)
-	routeTool  bool   // the Route tab's tool (adding stops by clicking the map) is active
-	drawn      int    // frames drawn so far (diagnostics that need a painted view wait for some)
-	routeHead  uint16 // whose Route that selection is
+	buildMode   int    // buildModeNone / buildModeTrack / buildModeRoad
+	pickupOn    bool   // the Vehicle window's pickup (placing) tool is active
+	pickupHead  uint16 // the vehicle head it places
+	driverCheat bool   // SceneManager driverCheatEnabled (the Cheats window's; off)
+	routeSel    int    // the Vehicle window's Route selection (orderTableIndex; -1: none)
+	routeTool   bool   // the Route tab's tool (adding stops by clicking the map) is active
+	drawn       int    // frames drawn so far (diagnostics that need a painted view wait for some)
+	routeHead   uint16 // whose Route that selection is
 	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,
 	// _ghostTrackProgress; ghostProgress -1: none).
 	ghostPlace    sim.VehiclePlacement
@@ -727,6 +728,7 @@ func (g *Game) Update() error {
 	}
 	if g.vehicleWin != nil {
 		g.vehicleWin.ScrollDrag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
+		g.vehicleWin.SpeedHeld(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
 	}
 	if g.buildVehicle != nil {
 		g.buildVehicle.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
