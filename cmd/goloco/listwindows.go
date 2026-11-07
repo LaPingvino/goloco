@@ -272,6 +272,12 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 	if g.w == nil {
 		return
 	}
+	// The same vehicle's window refreshed or switching tabs keeps its place
+	// (switchTab only resizes it); a new window is placed afresh.
+	var keep *[2]int
+	if g.vehicleWin != nil && g.routeHead == headID {
+		keep = &[2]int{g.vehicleWin.X, g.vehicleWin.Y}
+	}
 	if g.vehicleWin == nil || g.routeHead != headID { // a new window: no order selected (orderTableIndex -1)
 		g.routeSel, g.routeHead = -1, headID
 	}
@@ -343,6 +349,9 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		OnRefit:        func(x, y, w, hh int) { g.refitOpen(headID, x, y, w, hh) }}
 	if own {
 		g.vehicleWin.OnRename = func() { g.renameVehicle(headID, tc, wc) }
+	}
+	if keep != nil {
+		g.vehicleWin.X, g.vehicleWin.Y = keep[0], keep[1]
 	}
 	g.vehicleWin.OnSell = func() { g.sellVehicle(headID) }
 	g.vehicleWin.OnDropSell = func(row int) { g.dropCar(headID, row, -2) }

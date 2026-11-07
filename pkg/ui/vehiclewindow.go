@@ -301,6 +301,11 @@ type VehicleWindow struct {
 	PickupActive        bool   // the placing tool is this window's (the button shown pressed)
 	PickupImage         int    // getPickupImageIdandTooltip's image (0: none)
 	BuildNewImage       int    // Details' buildNew: skin + build_additional_<type> (0: none)
+	// Positioning: the window follows the pointer (MouseInput's
+	// positioningWindow state, begun on the caption).
+	Positioning        bool
+	posLastX, posLastY int
+	posMoved           bool
 	// OnBuildNew is Details::onMouseDown(buildNew): the button's screen rect,
 	// for its dropdown (Modify vehicle / Clone vehicle).
 	OnBuildNew     func(x, y, w, h int)
@@ -621,11 +626,11 @@ func (w *VehicleWindow) Contains(x, y int) bool {
 // clickable-partial(Vehicle.cpp): pickup
 func (w *VehicleWindow) HandleClick(x, y int) {
 	// The caption (1, 1)–(width − 2, 13) left of the close button, on every
-	// tab: renameVehicle (setCaptionEnableState: the controlling company's only).
+	// tab: a press starts moving the window (windowPositionBegin); released
+	// without having moved it, it is the caption's click — renameVehicle
+	// (setCaptionEnableState: the controlling company's only); see PositionEnd.
 	if x >= w.X+1 && x <= w.X+w.W-16 && y >= w.Y+1 && y <= w.Y+13 {
-		if w.OnRename != nil {
-			w.OnRename()
-		}
+		w.Positioning, w.posLastX, w.posLastY, w.posMoved = true, x, y, false
 		return
 	}
 	in := func(c BVWidget) bool {
@@ -859,4 +864,27 @@ func (w *VehicleWindow) MouseOver(x, y int) {
 		return
 	}
 	w.Hover = w.carRowAt(sy, rowH)
+}
+
+// PositionMove is statePositioningWindow while the button is held: the
+// pointer's y clamped to 29 … screen height − 29, the window moved by the
+// pointer's travel since the last frame.
+func (w *VehicleWindow) PositionMove(x, y, screenH int) {
+	y = min(max(y, 29), screenH-29)
+	if dx, dy := x-w.posLastX, y-w.posLastY; dx != 0 || dy != 0 {
+		w.X += dx
+		w.Y += dy
+		w.posMoved = true
+	}
+	w.posLastX, w.posLastY = x, y
+}
+
+// PositionEnd is its leftReleased: the last move, then, if the window never
+// moved, the caption's mouse-up (rename).
+func (w *VehicleWindow) PositionEnd(x, y, screenH int) {
+	w.PositionMove(x, y, screenH)
+	w.Positioning = false
+	if !w.posMoved && w.OnRename != nil {
+		w.OnRename()
+	}
 }

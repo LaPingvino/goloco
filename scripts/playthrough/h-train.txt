@@ -4,7 +4,9 @@
 # add-vehicle button → Modify vehicle → the list scrolled (wheel) → Passenger
 # Carriage joins Train 1 (£4,883); the Build window closed, the pickup button
 # and a click on the line's visible end (318,397; the window covers the rest):
-# Train 1 stands on the track, its window on the main tab. Next: its route.
+# Train 1 stands on the track, its window on the main tab; the Route tab, a
+# click on Cloudburst North, the window dragged by its title off the line, a
+# click on Cloudburst: two orders. Next: start it.
 wait 20
 seed 1950
 scenario Weatherworld
@@ -115,4 +117,26 @@ click 318 397
 move 700 520
 wait 3
 shot /tmp/goloco-playthrough/pt-h-p2.png
+camera 52 250
+wait 2
+move 417 232
+wait 1
+click 417 232
+wait 2
+shot /tmp/goloco-playthrough/pt-h-r1.png
+move 235 395
+wait 1
+click 235 395
+wait 1
+camera 60 248
+wait 2
+drag 380 216 560 120
+wait 1
+move 372 422
+wait 1
+click 372 422
+wait 1
+move 700 520
+wait 2
+shot /tmp/goloco-playthrough/pt-h-r2.png
 quit
