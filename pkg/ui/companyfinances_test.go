@@ -66,3 +66,20 @@ func TestColourDropdown(t *testing.T) {
 		t.Errorf("picked %d", got)
 	}
 }
+
+// The caption moves the window; an unmoved click on it renames.
+func TestCompanyWindowPositioning(t *testing.T) {
+	renamed := 0
+	w := &CompanyFinancesWindow{X: 82, Y: 140, W: 636, H: 319, Tab: CompanyTabFinances, OnRename: func() { renamed++ }}
+	w.HandleClick(300, 146)
+	w.PositionMove(320, 156, 600)
+	w.PositionEnd(330, 160, 600)
+	if w.X != 112 || w.Y != 154 || renamed != 0 {
+		t.Errorf("moved to %d,%d renamed %d", w.X, w.Y, renamed)
+	}
+	w.HandleClick(300, w.Y+6)
+	w.PositionEnd(300, w.Y+6, 600)
+	if renamed != 1 {
+		t.Errorf("unmoved click: renamed %d", renamed)
+	}
+}
