@@ -55,6 +55,8 @@ type CompanyListWindow struct {
 	FrameNo             int
 	Tab                 int                // 0 the list, 1 performance, 2 cargo units, 3 cargo distance, 4 values, 5 payment rates, 6 speed records
 	Records             [3]SpeedRecord     // land, air, water
+	Highlight           uint32             // var_854: the legend item hovered (a bit per company id / cargo slot)
+	HoverTicks          int                // _hoverItemTicks
 	Cargos              []CompanyListCargo // the payment rates tab's lines, by cargo slot
 	CurrentMonths       int                // getCurrentYear() × 12 + getCurrentMonth(): the graphs' x range
 }
@@ -81,6 +83,7 @@ type SpeedRecord struct {
 // table (Economy::getDeliveryCargoPaymentsTable: 100 units, 10 blocks, 2, 4
 // … 120 days).
 type CompanyListCargo struct {
+	Slot     int
 	Name     string
 	Colour   uint8
 	Payments [60]int32
@@ -376,6 +379,7 @@ func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 	type legendItem struct {
 		name   string
 		colour uint8
+		bit    uint32
 	}
 	var legend []legendItem
 	for _, c := range w.Cargos {
@@ -390,13 +394,13 @@ func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 		gs.Lines = append(gs.Lines, line)
 		gs.DataStart = append(gs.DataStart, 0)
 		gs.LineColour = append(gs.LineColour, gfx8.Shade(cm, 6))
-		legend = append(legend, legendItem{c.Name, c.Colour})
+		legend = append(legend, legendItem{c.Name, c.Colour, uint32(1) << c.Slot})
 	}
-	for _, r := range w.Rows { // in company order (the legend's)
+	for _, r := range w.rowsByID() { // CompanyManager::companies(): by id (the legend's order)
 		if w.Tab == 5 {
 			break
 		}
-		legend = append(legend, legendItem{r.Name, r.Colour})
+		legend = append(legend, legendItem{r.Name, r.Colour, uint32(1) << r.ID})
 		line := make([]int64, 120)
 		for i := range line {
 			switch w.Tab {
@@ -424,10 +428,26 @@ func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 		}
 		w.drawTabs(rt, sec)
 		labels = gs.Draw(rt, sec)
+		if w.Highlight != 0 { // the hovered item's line alone, over the rest (black every other 4 ticks)
+			for i, it := range legend {
+				if it.bit&w.Highlight == 0 {
+					continue
+				}
+				gs.LinesToExclude = ^uint32(1 << i)
+				if w.HoverTicks&4 != 0 {
+					gs.LineColour[i] = paletteBlack0
+				}
+				gs.Flags |= ChartHideAxesAndLabels
+				gs.Draw(rt, sec)
+				break
+			}
+		}
 		x, y := w.W-companyListLegendWidth-companyListWindowPadding, 52
-		for _, r := range legend {
-			cm, _ := g1.GetPaletteMap(int(r.colour))
-			gfx8.FillRect(rt, x, y+3, x+4, y+7, gfx8.Shade(cm, 6))
+		for _, r := range legend { // the swatch, blinking while hovered
+			if r.bit&w.Highlight == 0 || w.HoverTicks&4 == 0 {
+				cm, _ := g1.GetPaletteMap(int(r.colour))
+				gfx8.FillRect(rt, x, y+3, x+4, y+7, gfx8.Shade(cm, 6))
+			}
 			y += 10
 		}
 	})
@@ -457,8 +477,13 @@ func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 		}
 	}
 	x, y := w.X+w.W-companyListLegendWidth-companyListWindowPadding, w.Y+52
-	for _, r := range legend { // small_black_string, clipped to 94
-		DrawTextFont(screen, r.name, G1FontSmall, x+6, y, black)
+	white, _ := TextColours(2)
+	for _, r := range legend { // small_black_string (small_white_string hovered), clipped to 94
+		var c color.Color = black
+		if r.bit&w.Highlight != 0 {
+			c = white
+		}
+		DrawTextFont(screen, r.name, G1FontSmall, x+6, y, c)
 		y += 10
 	}
 	if w.Tab == 5 { // the chart's title (100 units, 10 blocks) and "Transit time", centred on the canvas
@@ -537,4 +562,52 @@ func (w *CompanyListWindow) drawSpeedRecords(screen *ebiten.Image) {
 		}
 		y += 5
 	}
+}
+
+// rowsByID is the rows in company id order (CompanyManager::companies()).
+func (w *CompanyListWindow) rowsByID() []CompanyListRow {
+	rows := append([]CompanyListRow(nil), w.Rows...)
+	sort.SliceStable(rows, func(i, j int) bool { return rows[i].ID < rows[j].ID })
+	return rows
+}
+
+// Update is the graph tabs' onUpdate (0x00437570) part: _hoverItemTicks
+// counts and setLegendHover picks the legend item under the pointer (the
+// window in front, within 100 × 150 of the legend's top left — 320 for the
+// cargo legend; each item 10 high, the first taking 0–10), none while the
+// right button is down. The cargo bit is cut to var_854's 16 bits.
+// PARTIAL: "in front" is the caller's say (the window stack's real order).
+func (w *CompanyListWindow) Update(mx, my int, front, rightDown bool) {
+	if w.Tab < 1 || w.Tab > 5 {
+		return
+	}
+	w.HoverTicks++
+	var sel uint32
+	lx, ly := w.X+w.W-companyListWindowPadding-companyListLegendWidth, w.Y+52
+	dx, dy := mx-lx, my-ly
+	limit := 150
+	if w.Tab == 5 {
+		limit = 320
+	}
+	if !rightDown && front && dx <= companyListLegendWidth && dx >= 0 && dy < limit && dy >= 0 {
+		listY := dy
+		if w.Tab == 5 {
+			for _, c := range w.Cargos {
+				listY -= 10
+				if listY <= 0 {
+					sel = uint32(uint16(1 << c.Slot))
+					break
+				}
+			}
+		} else {
+			for _, r := range w.rowsByID() {
+				listY -= 10
+				if listY <= 0 {
+					sel = 1 << r.ID
+					break
+				}
+			}
+		}
+	}
+	w.Highlight = sel
 }
