@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"strconv"
@@ -432,7 +433,7 @@ func stripCodes(s string) string {
 // x + n), {NEWLINE} (the next line, 10 below) and {SPRITE n} (g1 image n
 // inline, the pen past its width). It returns the y after the last line.
 func drawFormattedEx(screen *ebiten.Image, x, y int, s string, win2, black, red color.Color) int {
-	cx, col := x, win2
+	cx, col, y0 := x, win2, y
 	for len(s) > 0 {
 		if s[0] == '{' {
 			end := strings.IndexByte(s, '}')
@@ -452,6 +453,11 @@ func drawFormattedEx(screen *ebiten.Image, x, y int, s string, win2, black, red 
 				}
 			case code == "NEWLINE":
 				cx, y = x, y+10
+			case strings.HasPrefix(code, "NEWLINE "): // {NEWLINE x y}: the pen to (x, y) from the string's origin
+				var nx, ny int
+				if _, err := fmt.Sscanf(strings.TrimPrefix(code, "NEWLINE "), "%d %d", &nx, &ny); err == nil {
+					cx, y = x+nx, y0+ny
+				}
 			case strings.HasPrefix(code, "SPRITE "):
 				if n, err := strconv.Atoi(strings.TrimPrefix(code, "SPRITE ")); err == nil && globalG1Font != nil && n >= 0 && n < len(globalG1Font.g1.Elements) {
 					if sp, err := gfx8.Decode(&globalG1Font.g1.Elements[n]); err == nil {

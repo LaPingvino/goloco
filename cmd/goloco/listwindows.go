@@ -1295,10 +1295,9 @@ func (g *Game) playerCompanyDropdown(x, y, w, h int) {
 	d.Highlighted = highlight
 	d.OnSelect = func(i int) {
 		if i >= 0 && i < len(cs) {
-			g.openCompanyFinances(cs[i].id)
-			if g.companyFinances != nil {
-				g.companyFinances.SwitchTab(ui.CompanyTabStatus)
-			}
+			g.openCompanyWindow(cs[i].id)
+		} else if i == len(cs) {
+			g.openCompanyList() // the companies list item: CompanyList::open
 		}
 	}
 	g.dropdown = d
@@ -1589,4 +1588,44 @@ func (g *Game) renameCompany(company int, titleColour, colour uint8) {
 				g.companyFinances.Title = m.CompanyName(company)
 			}
 		})
+}
+
+// openCompanyWindow is CompanyWindow::open: the Company window on its Status
+// tab.
+func (g *Game) openCompanyWindow(company int) {
+	g.openCompanyFinances(company)
+	if g.companyFinances != nil {
+		g.companyFinances.SwitchTab(ui.CompanyTabStatus)
+	}
+}
+
+// openCompanyList is CompanyList::open: the list on its first tab, 640 × 272
+// (centred: createWindow's placement PARTIAL), the skin's title bar and
+// window colours, sorted by performance (sortMode 2); a row opens that
+// company's window.
+func (g *Game) openCompanyList() {
+	m := &g.w.Map
+	var tc, wc uint8 = 0, 1
+	if om := g.r.ObjMgr; om != nil && om.InterfaceSkin != nil {
+		tc, wc = om.InterfaceSkin.WindowTitlebarColour, om.InterfaceSkin.WindowColour
+	}
+	var rows []ui.CompanyListRow
+	for id := range m.CompanyNames {
+		if m.CompanyEmpty(id) || id >= len(m.CompanyFaces) || id >= len(m.Companies) {
+			continue
+		}
+		face, col := g.companyFace(id)
+		f := m.CompanyFaces[id]
+		r := ui.CompanyListRow{ID: id, Name: m.CompanyName(id), Face: face, FaceColour: col, Status: g.companyStatus(id).Status,
+			Performance: f.Performance, Value: m.Companies[id].CompanyValueHistory[0]}
+		if f.ChallengeFlags&(1<<4) != 0 && f.ChallengeFlags&(1<<5) != 0 { // upstream's test: increased and decreased both
+			r.Trend = 1
+		}
+		rows = append(rows, r)
+	}
+	w, h := ui.CompanyListSize[0], ui.CompanyListSize[1]
+	cl := &ui.CompanyListWindow{X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h, TitleColour: tc, Colour: wc, Rows: rows, SortMode: 2, Hover: -1,
+		OnClose: func() { g.companyList = nil }, OnRow: g.openCompanyWindow}
+	cl.Sort()
+	g.companyList = cl
 }
