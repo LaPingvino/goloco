@@ -19,8 +19,7 @@ import (
 // the accepted cargo's sprites (Cargo::draw).
 // PARTIAL: the Cargo ratings tab and the vehicle tabs (and the tabs'
 // images), renaming by the caption, resizing, the viewport's rotation, the
-// cargo list's scrolling, the catchment button (showStationCatchment), the
-// status bar's tooltip.
+// cargo list's scrolling, the status bar's tooltip.
 const stationWinW, stationWinH = 223, 136 // Station::kWindowSize
 
 type StationWindow struct {
@@ -34,10 +33,15 @@ type StationWindow struct {
 	Ratings             []StationRating
 	Cargo               []StationCargoLine
 	Accepted            []int // the accepted cargo's unitInlineSprite, in cargo order
-	View                func(w, h int) *gfx8.RenderTarget
-	OnCentreView        func()
-	OnClose             func()
-	viewImg             *ebiten.Image
+	// OnCatchment is the Cargo tab's station_catchment (onMouseUp:
+	// showStationCatchment, toggling); Catchment is whether this station's
+	// catchment shows (the button activated).
+	OnCatchment  func()
+	Catchment    bool
+	View         func(w, h int) *gfx8.RenderTarget
+	OnCentreView func()
+	OnClose      func()
+	viewImg      *ebiten.Image
 }
 
 // NewStationWindow places the window centred (createWindow's placement:
@@ -77,6 +81,10 @@ func (w *StationWindow) HandleClick(px, py int) {
 			w.Tab = t
 			return
 		}
+	}
+	if w.Tab == 1 && rx >= stationWinW-25 && rx <= stationWinW-2 && ry >= 44 && ry < 44+24 && w.OnCatchment != nil {
+		w.OnCatchment()
+		return
 	}
 	if w.Tab != 0 {
 		return
@@ -178,6 +186,9 @@ func (w *StationWindow) drawCargo(screen *ebiten.Image) {
 		w.drawStationTabs(rt, sec, 1)
 		gfx8.FillRectInset(rt, l, t, r, b, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 		gfx8.FillRect(rt, l+1, t+1, r-1, b-1, gfx8.Shade(sec, 4))
+		if w.Catchment { // activated: the image button drawn pressed
+			gfx8.FillRectInset(rt, stationWinW-25, 44, stationWinW-2, 44+23, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
+		}
 		if sp, err := gfx8.Decode(&g1.Elements[2379]); err == nil { // show_station_catchment at (width − 25, 44)
 			gfx8.DrawSpriteNoise(rt, sp, stationWinW-25, 44, gfx8.OpFor(sp, true, false), sec, nil)
 		}

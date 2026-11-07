@@ -157,6 +157,7 @@ type Game struct {
 	dockGhost              *sim.PortPlacement         // the dock ghost (stationGhostType bit 14)
 	townWin                *ui.TownWindow             // the Town window (TownWindow.cpp)
 	stationWin             *ui.StationWindow          // the Station window (StationWindow.cpp)
+	catchmentStation       int                        // _lastSelectedStation: whose catchment shows (−1 none)
 	diagMoney              bool                       // DIAGNOSTIC ONLY: keep a money popup alive (moneyeffect)
 	airportGhost           *sim.AirportPlacement      // the airport ghost (stationGhostType bit 15)
 	airportRotation        uint8                      // cState.constructionRotation in the airport window
@@ -465,29 +466,30 @@ func NewGame() *Game {
 
 	log.Println("[Game] Game initialization complete")
 	return &Game{
-		showFPS:       configValue("showFPS") == "true" || os.Getenv("GOLOCO_SHOWFPS") != "", // Config::showFPS (Config.cpp: default false)
-		scale:         loadScale(),
-		w:             w,
-		consSignal:    -1,
-		consOneShot:   -1,
-		consBridge:    -1,
-		consStation:   -1,
-		titleWorld:    w, // keep a reference so Quit to Menu can restore it
-		r:             r,
-		toolbar:       toolbar,
-		windowMgr:     windowMgr,
-		objMgr:        objMgr,
-		audioMgr:      audioMgr,
-		titleSeq:      titleSeq,
-		dataDir:       dataDir,
-		inTitleScreen: true,
-		soundEnabled:  true,
-		musicEnabled:  true,
-		sw:            defaultWidth,
-		sh:            defaultHeight,
-		speedMult:     1,
-		hoverTileX:    -1,
-		hoverTileY:    -1,
+		catchmentStation: -1,
+		showFPS:          configValue("showFPS") == "true" || os.Getenv("GOLOCO_SHOWFPS") != "", // Config::showFPS (Config.cpp: default false)
+		scale:            loadScale(),
+		w:                w,
+		consSignal:       -1,
+		consOneShot:      -1,
+		consBridge:       -1,
+		consStation:      -1,
+		titleWorld:       w, // keep a reference so Quit to Menu can restore it
+		r:                r,
+		toolbar:          toolbar,
+		windowMgr:        windowMgr,
+		objMgr:           objMgr,
+		audioMgr:         audioMgr,
+		titleSeq:         titleSeq,
+		dataDir:          dataDir,
+		inTitleScreen:    true,
+		soundEnabled:     true,
+		musicEnabled:     true,
+		sw:               defaultWidth,
+		sh:               defaultHeight,
+		speedMult:        1,
+		hoverTileX:       -1,
+		hoverTileY:       -1,
 		// Warm the title's sprites in the background (prewarmTick); the title
 		// draws at once and decodes anything it needs first on use, as upstream
 		// draws g1 sprites directly with no preload phase.
@@ -782,16 +784,16 @@ func (g *Game) Update() error {
 			g.companyFinances.HandleClick(g.mouseX, g.mouseY) // drawn on top: clicked first
 		} else if g.companyList != nil && g.companyList.Contains(g.mouseX, g.mouseY) {
 			g.companyList.HandleClick(g.mouseX, g.mouseY)
+		} else if g.townWin != nil && g.townWin.Contains(g.mouseX, g.mouseY) { // the click goes to the window drawn on top (the draw order, reversed)
+			g.townWin.HandleClick(g.mouseX, g.mouseY)
+		} else if g.stationWin != nil && g.stationWin.Contains(g.mouseX, g.mouseY) {
+			g.stationWin.HandleClick(g.mouseX, g.mouseY)
+		} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
+			g.townList.HandleClick(g.mouseX, g.mouseY)
 		} else if g.vehicleWin != nil && g.vehicleWin.Contains(g.mouseX, g.mouseY) {
 			g.vehicleWin.HandleClick(g.mouseX, g.mouseY)
 		} else if g.buildVehicle != nil && g.buildVehicle.Contains(g.mouseX, g.mouseY) {
 			g.buildVehicle.HandleClick(g.mouseX, g.mouseY)
-		} else if g.stationWin != nil && g.stationWin.Contains(g.mouseX, g.mouseY) {
-			g.stationWin.HandleClick(g.mouseX, g.mouseY)
-		} else if g.townWin != nil && g.townWin.Contains(g.mouseX, g.mouseY) {
-			g.townWin.HandleClick(g.mouseX, g.mouseY)
-		} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
-			g.townList.HandleClick(g.mouseX, g.mouseY)
 		} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
 			g.options.HandleClick(g.mouseX, g.mouseY)
 		} else if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {

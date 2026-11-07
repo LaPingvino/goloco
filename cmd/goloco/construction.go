@@ -560,9 +560,14 @@ func (g *Game) stationToolUpdate(sx, sy int) {
 }
 
 // removeStationGhost is removeConstructionGhosts' station part: the ghost
-// removed as it was placed.
+// removed as it was placed. Only with a station ghost showing
+// (GhostVisibilityFlags::station) is the catchment display cleared — so the
+// Station window's own catchment (showStationCatchment) stays.
 func (g *Game) removeStationGhost() {
-	g.w.SetCatchmentDisplay(nil)             // sub_491BC6 + resetMapSelectionFlag(catchmentArea)
+	if g.stationGhost != nil || g.roadStationGhost != nil || g.dockGhost != nil || g.airportGhost != nil {
+		g.w.SetCatchmentDisplay(nil) // sub_491BC6 + resetMapSelectionFlag(catchmentArea)
+		g.catchmentStation = -1      // the catchment shown is the ghost's from here
+	}
 	if rg := g.roadStationGhost; rg != nil { // stationGhostType & (1 << 7): RoadStationRemovalArgs
 		g.roadStationGhost = nil
 		c, g1 := g.stationCmd()
