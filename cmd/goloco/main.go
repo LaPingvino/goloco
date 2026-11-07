@@ -707,7 +707,7 @@ func (g *Game) Update() error {
 	}
 
 	if g.townList != nil { // the list's scrollbar thumb follows the mouse while held
-		g.townList.Drag(g.mouseY, ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft))
+		g.townList.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
 	}
 	if g.browse != nil { // the load/save list's thumb too
 		g.browse.Drag(g.mouseY, ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft))

@@ -140,3 +140,61 @@ func HScrollDrag(w, contentW, offset, dx int) int {
 
 // HScrollLatest is Finances::scrollToLatestData: the last full page.
 func HScrollLatest(w, contentW int) int { return hMaxOffset(w, contentW) }
+
+// VScrollHold is a press on a vertical bar held down (the stateScrollLeft
+// input state): its part (_currentScrollArea), whether that part shows
+// pressed, and the pointer's last y for the thumb.
+type VScrollHold struct {
+	Part    string // "" when nothing is held
+	Pressed bool
+	LastY   int
+}
+
+// Begin is scrollLeftBegin on the bar: the part pressed (y relative to the
+// widget, py the pointer's), and the offset after vButton… / vTrack….
+func (s *VScrollHold) Begin(y, py, h, contentH, offset int) int {
+	part := VScrollPart(y, h, contentH, offset)
+	s.Part, s.LastY = part, py
+	s.Pressed = part == "up" || part == "down"
+	if part == "thumb" {
+		return offset
+	}
+	return VScrollClick(part, h, contentH, offset)
+}
+
+// Continue is stateScrollLeft for a tick: released, the hold ends
+// (clearPressedButtons); the thumb follows the pointer (verticalFollow); a
+// button over its own part (onBar, y relative to the widget) steps again,
+// off it it shows unpressed; the track does nothing more.
+func (s *VScrollHold) Continue(held, onBar bool, y, py, h, contentH, offset int) int {
+	if s.Part == "" {
+		return offset
+	}
+	if !held {
+		s.Part, s.Pressed = "", false
+		return offset
+	}
+	switch s.Part {
+	case "thumb":
+		s.Pressed = true
+		dy := py - s.LastY
+		s.LastY = py
+		if dy != 0 {
+			return VScrollDrag(h, contentH, offset, dy)
+		}
+	case "up", "down":
+		s.Pressed = onBar && VScrollPart(y, h, contentH, offset) == s.Part
+		if s.Pressed {
+			return VScrollClick(s.Part, h, contentH, offset)
+		}
+	}
+	return offset
+}
+
+// PressedPart is the part drawn pressed ("" none).
+func (s *VScrollHold) PressedPart() string {
+	if s.Pressed {
+		return s.Part
+	}
+	return ""
+}

@@ -67,3 +67,33 @@ func TestHScrollInput(t *testing.T) {
 		t.Errorf("thumb: %s", p)
 	}
 }
+
+// A held down button repeats 3 a tick while on it; off it, unpressed and
+// still; the release ends it; a held thumb follows the pointer.
+func TestVScrollHold(t *testing.T) {
+	const h, content = 100, 400
+	var s VScrollHold
+	off := s.Begin(95, 595, h, content, 0)
+	if off != 3 || s.PressedPart() != "down" {
+		t.Fatalf("begin: %d %q", off, s.PressedPart())
+	}
+	off = s.Continue(true, true, 95, 595, h, content, off)
+	off = s.Continue(true, true, 95, 595, h, content, off)
+	if off != 9 {
+		t.Fatalf("held: %d", off)
+	}
+	off = s.Continue(true, false, 95, 595, h, content, off)
+	if off != 9 || s.PressedPart() != "" {
+		t.Fatalf("off the bar: %d %q", off, s.PressedPart())
+	}
+	off = s.Continue(false, true, 95, 595, h, content, off)
+	if s.Part != "" || s.Continue(true, true, 95, 595, h, content, off) != 9 {
+		t.Fatal("not released")
+	}
+	top, _ := VThumb(h, content, 0)
+	off = s.Begin(top+1, 500, h, content, 0)
+	off = s.Continue(true, true, 0, 510, h, content, off)
+	if off != 10*400/80 || s.PressedPart() != "thumb" {
+		t.Fatalf("thumb: %d %q", off, s.PressedPart())
+	}
+}
