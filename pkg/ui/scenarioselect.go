@@ -45,9 +45,8 @@ type ScenarioSelectWindow struct {
 	ObjectiveText func(m *scenario.ScenarioMeta) string
 	X, Y          int
 	Tab           int
-	Scroll        int  // list scroll offset in px
-	dragging      bool // the scrollbar's thumb is being dragged
-	dragY         int
+	Scroll        int           // list scroll offset in px
+	hold          L.VScrollHold // a press on the scrollbar held (stateScrollLeft)
 	Selected      *scenario.ScenarioMeta
 	byCat         [5][]*scenario.ScenarioMeta
 	OnStart       func(*scenario.ScenarioMeta)
@@ -98,12 +97,7 @@ func (w *ScenarioSelectWindow) HandleClick(px, py int) {
 		px >= w.X+ssList[0]+ssList[2]-L.ScrollbarSize-L.ScrollbarMargin {
 		// The scrollbar (ScrollView): buttons and track move the list, the
 		// thumb starts a drag (Drag).
-		switch part := L.VScrollPart(py-(w.Y+ssList[1]), ssList[3], content, w.Scroll); part {
-		case "thumb":
-			w.dragY, w.dragging = py, true
-		default:
-			w.Scroll = L.VScrollClick(part, ssList[3], content, w.Scroll)
-		}
+		w.Scroll = w.hold.Begin(py-(w.Y+ssList[1]), py, ssList[3], content, w.Scroll)
 		return
 	}
 	if w.in(ssList, px, py) { // onScrollMouseDown: the row clicked starts at once (Scenario::loadAndStart)
@@ -164,7 +158,7 @@ func (w *ScenarioSelectWindow) Draw(screen *ebiten.Image) {
 		// The list is a ScrollView: inset frame, scrollbar when needed; its
 		// content (drawScroll) cleared to shade 4, the selected row unk30.
 		l := ssList
-		cx, cy, cw, ch, _ := drawVScrollView(rt, l[0], l[1], l[2], l[3], gfx8.InsetColour{Map: sec}, len(w.byCat[w.Tab])*ssRowHeight, w.Scroll)
+		cx, cy, cw, ch, _ := drawVScrollViewPressed(rt, l[0], l[1], l[2], l[3], gfx8.InsetColour{Map: sec}, len(w.byCat[w.Tab])*ssRowHeight, w.Scroll, w.hold.PressedPart())
 		w.content = [4]int{cx, cy, cw, ch}
 		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 4))
 		m30, _ := g1.GetPaletteMap(0x30)
@@ -341,20 +335,11 @@ func (w *ScenarioSelectWindow) DiagRepeat(n int) {
 	}
 }
 
-// Drag follows the mouse while the thumb is held (verticalDragFollow); held
-// false ends the drag.
-func (w *ScenarioSelectWindow) Drag(py int, held bool) {
-	if !w.dragging {
-		return
-	}
-	if !held {
-		w.dragging = false
-		return
-	}
-	if dy := py - w.dragY; dy != 0 {
-		w.Scroll = L.VScrollDrag(ssList[3], len(w.byCat[w.Tab])*ssRowHeight, w.Scroll, dy)
-		w.dragY = py
-	}
+// Drag is the scrollbar's held press each tick (VScrollHold.Continue): the
+// thumb follows the pointer, a held button repeats while on it.
+func (w *ScenarioSelectWindow) Drag(px, py int, held bool) {
+	onBar := w.in(ssList, px, py) && px >= w.X+ssList[0]+ssList[2]-L.ScrollbarSize-L.ScrollbarMargin
+	w.Scroll = w.hold.Continue(held, onBar, py-(w.Y+ssList[1]), py, ssList[3], len(w.byCat[w.Tab])*ssRowHeight, w.Scroll)
 }
 
 // ssGroups are the tabs' group names (scenario_group_*), read when drawn.
