@@ -108,3 +108,36 @@ func DrawWindowCaptionColour(screen *ebiten.Image, x, y, w int, text string, col
 	px := x + 2 + width/2 - (sw-1)/2
 	DrawTextOutlined(screen, text, px, y+1, pal[gfx8.Shade(wm, 9)], pal[paletteBlack0])
 }
+
+// DrawWindowCaptionStation is Caption::drawSimple with Style::blackText (the
+// Station window's): drawStationNameBackground — curved_border_left_medium
+// 4 px left of the text, curved_border_right_medium after it, a shade-5 fill
+// 11 high between, all in the caption's colour — then the name in black.
+func DrawWindowCaptionStation(screen *ebiten.Image, x, y, w int, text string, colour uint8) {
+	if globalG1Font == nil {
+		return
+	}
+	g1 := globalG1Font.g1
+	width := w - 4 - 14
+	for len(text) > 0 {
+		if tw, _ := MeasureTextBold(text); tw <= width-8 {
+			break
+		}
+		text = text[:len(text)-1]
+	}
+	sw, _ := MeasureTextBold(text)
+	px, py := x+2+width/2-(sw-1)/2, y+1
+	cm, err := g1.GetPaletteMap(int(colour))
+	if err != nil {
+		return
+	}
+	draw8(screen, px-4, py, sw+8+8, 11, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRect(rt, 4, 0, 4+sw-1, 10, gfx8.Shade(cm, 5))
+		for _, im := range [][2]int{{2315, 0}, {2316, 4 + sw}} { // curved_border_left / right_medium
+			if sp, err := gfx8.Decode(&g1.Elements[im[0]]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, im[1], 0, gfx8.OpFor(sp, true, false), cm, nil)
+			}
+		}
+	})
+	DrawWindowCaptionColour(screen, x, y, w, text, 0) // Colour::black
+}

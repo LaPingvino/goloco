@@ -102,7 +102,7 @@ func (g *Game) openStationsWindow() {
 		if s.Owner >= 0 && s.Owner != company {
 			continue
 		}
-		rows = append(rows, ui.StationRow{Name: s.Name, Status: s.Status, Waiting: s.Waiting, Accepts: s.Accepts,
+		rows = append(rows, ui.StationRow{ID: s.ID, Name: s.Name, Status: s.Status, Waiting: s.Waiting, Accepts: s.Accepts,
 			AcceptsKey: g.w.StationAcceptsKey(s.ID)})
 	}
 	var tc, wc uint8 = 0, 1
@@ -119,7 +119,38 @@ func (g *Game) openStationsWindow() {
 		w.Caption = strings.Replace(i18n.Label(i18n.StringidAllStations), "{STRINGID}", cname, 1) // "{STRINGID} - All Stations"
 	}
 	w.OnClose = func() { g.townList = nil }
+	w.OnRow = func(id int) { g.openStationWindow(id) } // onScrollMouseDown: Station::open
 	g.townList = w
+}
+
+// openStationWindow is Station::open: the Station window on its Station
+// tab, its viewport on the station, the status bar its status; the
+// centre-view button moves the main view there. The window takes the owning
+// company's colour.
+func (g *Game) openStationWindow(id int) {
+	var info *sim.StationInfo
+	for _, s := range g.w.StationList() {
+		if s.ID == id {
+			s := s
+			info = &s
+			break
+		}
+	}
+	if info == nil {
+		return
+	}
+	var tc, wc uint8 = 0, 1
+	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowColour
+	}
+	if info.Owner >= 0 && info.Owner < len(g.w.CompanyColours) {
+		tc = g.w.CompanyColours[info.Owner]
+	}
+	w := ui.NewStationWindow(g.sw, g.sh, info.Name, info.Status, tc, wc)
+	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.StationView(id, vw, vh) }
+	w.OnCentreView = func() { g.w.CentreOnStation(id) }
+	w.OnClose = func() { g.stationWin = nil }
+	g.stationWin = w
 }
 
 // openTownsWindow lists the scenario's towns with population and size.
