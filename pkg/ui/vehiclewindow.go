@@ -340,7 +340,10 @@ type VehicleWindow struct {
 	RouteSel      int                 // Route: orderTableIndex, the selected row (-1: none)
 	OnRouteSelect func(row int)       // Route: a row clicked
 	OnRoute       func(action string) // Route: "delete", "up", "down", "skip", "reverse", "local", "express"
-	Express       bool                // Route: veh1 Flags48::expressMode (express pressed, else local)
+	// OnOrderDropdown is Route::onMouseDown orderForceUnload ("unload") /
+	// orderWait ("wait"): createOrderDropdown at the button's screen rect.
+	OnOrderDropdown func(kind string, x, y, w, h int)
+	Express         bool // Route: veh1 Flags48::expressMode (express pressed, else local)
 	// View is Main's viewport, 8-bit, of the given size (nil: none — the
 	// vehicle not placed).
 	View         func(w, h int) *gfx8.RenderTarget
@@ -656,6 +659,12 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			w.OnTab(3)
 		case in(lw[vwTabCargo]) && w.OnTab != nil:
 			w.OnTab(2)
+		case in(lw[vrForceUnload]) && w.OnOrderDropdown != nil:
+			b := lw[vrForceUnload]
+			w.OnOrderDropdown("unload", w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
+		case in(lw[vrWait]) && w.OnOrderDropdown != nil:
+			b := lw[vrWait]
+			w.OnOrderDropdown("wait", w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
 		case in(list) && w.OnRouteSelect != nil: // a row (lineHeight 10) — the end of the list too
 			if row := (y - (w.Y + list.T + 1)) / 10; row >= 0 && row < len(w.Route) {
 				w.OnRouteSelect(row)
