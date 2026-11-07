@@ -34,6 +34,8 @@ type TrackObject struct {
 	// BuildCostFactor and CostIndex price a piece (CreateTrack).
 	BuildCostFactor int16
 	CostIndex       uint8
+	// TunnelCostFactor (0x18) prices a piece built underground (createTrack).
+	TunnelCostFactor int16
 	// BridgeNames are its bridges' DAT names (load resolves them into bridges).
 	BridgeNames []string
 	// DisplayOffset (0x34) lowers this track's vehicles in inline pictures
@@ -111,8 +113,9 @@ func ParseTrackObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tr
 		CurveSpeed:         int16(uint16(data[0x1C]) | uint16(data[0x1D])<<8),
 		DisplayOffset:      data[0x34],
 		// buildCostFactor 0x14, costIndex 0x1A (offsets from the compiler)
-		BuildCostFactor: int16(uint16(data[0x14]) | uint16(data[0x15])<<8),
-		CostIndex:       data[0x1A],
+		BuildCostFactor:  int16(uint16(data[0x14]) | uint16(data[0x15])<<8),
+		CostIndex:        data[0x1A],
+		TunnelCostFactor: int16(uint16(data[0x18]) | uint16(data[0x19])<<8),
 	}
 
 	offset := fixedSize
