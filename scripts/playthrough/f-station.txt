@@ -3,7 +3,8 @@
 # amount that depends on the frame rate) (seed + scenario + camera: every run starts the same — its landscape is
 # generated from the rng; — clicking the list's
 # rows picked different scenarios as it filled in), three straights of track from the Railway
-# Track window (each charged), then a train station on the first piece.
+# Track window (each charged) on flat ground east of Town 1 (480,260 was a slope: "Raise or lower land first"),
+# then a train station on the first piece.
 wait 20
 seed 1950
 scenario Weatherworld
@@ -13,9 +14,9 @@ wait 2
 click 592 14
 move 400 300
 wait 2
-move 480 260
+move 660 470
 wait 1
-click 480 260
+click 660 470
 wait 2
 click 77 235
 wait 1
@@ -26,9 +27,9 @@ wait 2
 shot /tmp/goloco-playthrough/pt-f1-track.png
 click 61 67
 wait 2
-move 480 260
+move 660 470
 wait 1
-click 480 260
+click 660 470
 wait 2
 move 700 500
 wait 2

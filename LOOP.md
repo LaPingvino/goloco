@@ -1504,7 +1504,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
       set at every createTrack / clearTrack / clearRoad refusal). TileClearance's collision texts ported too
       (setCollisionErrorMessage: "Raise or lower land first", "<name> in the way", "Object in the way"; Map.LastCollision →
       collisionMessage): at the fixed spot it says "Raise or lower land first" — a slope; upstream refuses flat track
-      there too. NEXT: the script picks a flat spot, then stations at both ends. NEXT:
+      there too. The script now builds at 660,470 (flat, east of Town 1): three pieces, £84,300 → £83,745. NEXT: the station click there places nothing and shows no error — find why (click on a piece, not the head? station tool errors), then stations at both ends. NEXT:
       find it (Joop: "look at OpenTTD for how seeds are used" — its generation seed is one value saved with the game,
       every generator drawing from it), then a stable stage f, then Build Vehicles → place → route → start → earn.
 - 2026-11-07 — PL.1 e: createTrackCheck (per-piece checks + bridge / tunnel costs).
@@ -1516,4 +1516,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-07 — playthrough repeatable (edge scrolling was the cause); a refused track piece shows no error yet (next).
 - 2026-11-07 — refused track pieces open the error window with upstream's reason (Cmd.ErrorText); clearance reasons next.
 - 2026-11-07 — the clearance's "… in the way" / "Raise or lower land first" reasons ported; the playthrough's spot is a slope.
-
+- 2026-11-07 — playthrough moved to flat ground (three charged pieces east of Town 1); the station click places nothing yet.
