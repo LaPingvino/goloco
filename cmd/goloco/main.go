@@ -67,6 +67,7 @@ type Game struct {
 	buildVehicle                   *ui.BuildVehicleWindow    // the Build Vehicle window when open (5P.f)
 	companyFinances                *ui.CompanyFinancesWindow // the Company window's Finances tab when open (PL.1)
 	companyFinancesID              int
+	colourDropdown                 *ui.ColourDropdown        // Dropdown::showColour when open
 	scenarioDetails                string                    // the started scenario's description (the Challenge tab; PARTIAL: a saved game's)
 	vehicleWin                     *ui.VehicleWindow         // the Vehicle window when open (5P.g)
 	diagMouse                      *[2]int                   // DIAGNOSTIC ONLY: the mouse held at a point (the roadghost diag's hover)
@@ -698,6 +699,8 @@ func (g *Game) Update() error {
 	// Update dropdown hover if visible
 	if g.dropdown != nil && g.dropdown.Visible {
 		g.dropdown.UpdateHover(g.mouseX, g.mouseY)
+	} else if g.colourDropdown != nil && g.colourDropdown.Visible {
+		g.colourDropdown.UpdateHover(g.mouseX, g.mouseY)
 	} else {
 		g.toolbar.UpdateHover(g.mouseX, g.mouseY)
 	}
@@ -742,6 +745,9 @@ func (g *Game) Update() error {
 				// Click outside dropdown - close it
 				g.dropdown = nil
 			}
+		} else if g.colourDropdown != nil && g.colourDropdown.Visible {
+			g.colourDropdown.HandleClick(g.mouseX, g.mouseY) // a colour picked, or closed
+			g.colourDropdown = nil
 		} else if g.companyFinances != nil && g.companyFinances.Contains(g.mouseX, g.mouseY) {
 			g.companyFinances.HandleClick(g.mouseX, g.mouseY) // drawn on top: clicked first
 		} else if g.vehicleWin != nil && g.vehicleWin.Contains(g.mouseX, g.mouseY) {
@@ -1430,6 +1436,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw dropdown menu on top of everything else
 	if g.dropdown != nil && g.dropdown.Visible {
 		g.dropdown.Draw(screen)
+	}
+	if g.colourDropdown != nil && g.colourDropdown.Visible {
+		g.colourDropdown.Draw(screen)
 	}
 	if g.textInput != nil { // stickToFront
 		g.textInput.Draw(screen)
