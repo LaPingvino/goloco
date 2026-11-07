@@ -29,6 +29,7 @@ import (
 //	release <x> <y>     move + left release (after press)
 //	drag <x1> <y1> <x2> <y2>  press, five moves, release (a window by its title)
 //	key <name>          tap a key: R X ESC Q E ENTER SPACE ...
+//	type <text>         type the rest of the line (into a text input)
 //	wheel <dy>          mouse wheel step at current cursor
 //	shot <file.png>     save a full-frame screenshot
 //	quit                exit the game
@@ -49,6 +50,7 @@ type inputScript struct {
 	rightReleaseNext bool
 	rightJustRel     bool
 	wheelDY          float64
+	typed            []rune // "type": characters for this frame
 	keysJust         map[ebiten.Key]bool
 
 	shotRequest string
@@ -104,6 +106,7 @@ func (s *inputScript) step() {
 	s.leftJust = false
 	s.rightJust = false
 	s.wheelDY = 0
+	s.typed = nil
 	// shotRequest is NOT cleared here: multiple Updates can run between two
 	// Draws at low FPS; only scriptShotName (called from Draw) consumes it.
 	for k := range s.keysJust {
@@ -149,6 +152,8 @@ func (s *inputScript) step() {
 		s.mouseX, s.mouseY, s.hasMouse = arg(1), arg(2), true
 		s.rightJust = true
 		s.rightReleaseNext = true
+	case "type":
+		s.typed = []rune(strings.TrimPrefix(strings.TrimSpace(line), fields[0]+" "))
 	case "key":
 		if k, ok := scriptKeyNames[strings.ToUpper(fields[1])]; ok {
 			s.keysJust[k] = true
@@ -226,6 +231,15 @@ func (g *Game) inMouseJustReleased(btn ebiten.MouseButton) bool {
 		}
 	}
 	return inpututil.IsMouseButtonJustReleased(btn)
+}
+
+// inChars is ebiten.AppendInputChars with a script's typed text.
+func (g *Game) inChars() []rune {
+	r := ebiten.AppendInputChars(nil)
+	if g.script != nil {
+		r = append(r, g.script.typed...)
+	}
+	return r
 }
 
 func (g *Game) inKeyJustPressed(k ebiten.Key) bool {
