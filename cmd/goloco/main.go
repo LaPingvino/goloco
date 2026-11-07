@@ -722,6 +722,9 @@ func (g *Game) Update() error {
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 	}
+	if g.companyList != nil {
+		g.companyList.MouseOver(g.mouseX, g.mouseY)
+	}
 	if g.companyFinances != nil && g.companyFinances.Positioning { // statePositioningWindow
 		if g.inMousePressed(ebiten.MouseButtonLeft) {
 			g.companyFinances.PositionMove(g.mouseX, g.mouseY, g.sh)
