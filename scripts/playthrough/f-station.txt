@@ -1,5 +1,6 @@
 # PL.1 playthrough, stage F: Weatherworld started by name and a fixed view by
-# Town 1 (seed + scenario + camera: every run starts the same — its landscape is
+# Town 1, and the mouse never left at a screen edge (it scrolls the view, by an
+# amount that depends on the frame rate) (seed + scenario + camera: every run starts the same — its landscape is
 # generated from the rng; — clicking the list's
 # rows picked different scenarios as it filled in), three straights of track from the Railway
 # Track window (each charged), then a train station on the first piece.
@@ -10,6 +11,7 @@ wait 20
 camera 60 250
 wait 2
 click 592 14
+move 400 300
 wait 2
 move 480 260
 wait 1
