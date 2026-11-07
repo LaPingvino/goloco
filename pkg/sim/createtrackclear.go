@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/scenario"
+import (
+	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // createTrack's clear function (GameCommands/Track/CreateTrack.cpp 50–320),
 // PL.1 (e), createTrack part 2. This is its start: the state and arguments,
@@ -57,6 +60,7 @@ func (m *Map) trackClearTrack(c *Cmd, st *trackCmdState, e *scenario.TrackElemen
 		return ClearNoCollision
 	}
 	if a.UnkFlags&(1<<2) != 0 { // junctions_not_possible
+		c.ErrorText = i18n.JunctionsNotPossible
 		return ClearCollisionErrorSet
 	}
 	if !c.companyCompatible(e.Owner) {
@@ -64,38 +68,51 @@ func (m *Map) trackClearTrack(c *Cmd, st *trackCmdState, e *scenario.TrackElemen
 	}
 	if TrackMiscFlags[e.TrackID]&(commonTraitSlope|commonTraitSteepSlope) != 0 ||
 		TrackMiscFlags[a.TrackID]&(commonTraitSlope|commonTraitSteepSlope) != 0 { // junction_must_be_entirely_level
+		c.ErrorText = i18n.JunctionMustBeEntirelyLevel
 		return ClearCollisionErrorSet
 	}
 	if int32(e.BaseZ)*4 != a.Z { // wrong height for a junction
+		c.ErrorText = i18n.StringIdInTheWayWrongHeightForJunction
 		return ClearCollisionErrorSet
 	}
-	if e.HasSignal || e.HasStation {
+	if e.HasSignal {
+		c.ErrorText = i18n.SignalInTheWay
+		return ClearCollisionErrorSet
+	}
+	if e.HasStation {
+		c.ErrorText = i18n.StationInTheWay
 		return ClearCollisionErrorSet
 	}
 	if (a.Rotation^e.Rotation)&1 == 0 && (TrackMiscFlags[e.TrackID]^TrackMiscFlags[a.TrackID])&commonTraitOneSided != 0 {
-		return ClearCollisionErrorSet // track_combination_not_possible
+		c.ErrorText = i18n.TrackCombinationNotPossible
+		return ClearCollisionErrorSet
 	}
 	if e.HasBridge {
 		if e.BridgeID != a.BridgeID { // bridge_types_must_match
+			c.ErrorText = i18n.BridgeTypesMustMatch
 			return ClearCollisionErrorSet
 		}
 		if b := c.bridge(a.BridgeID); b != nil && b.DisabledTrackCfg&commonTraitJunction != 0 {
-			return ClearCollisionErrorSet // bridge_not_suitable_for_junction
+			c.ErrorText = i18n.BridgeNotSuitableForJunction
+			return ClearCollisionErrorSet
 		}
 	}
 	if e.TrackObjectID == a.TrackObjectID {
 		if e.TrackID == a.TrackID && e.Rotation == a.Rotation && e.SequenceIndex == a.Index {
-			return ClearCollisionErrorSet // already_built_here
+			c.ErrorText = i18n.AlreadyBuiltHere
+			return ClearCollisionErrorSet
 		}
 		if TrackReverseTrackID[e.TrackID] == a.TrackID && (TrackReverseRotation[e.TrackID]+e.Rotation)&3 == a.Rotation &&
 			a.IsLastIndex && e.SequenceIndex == 0 {
-			return ClearCollisionErrorSet // already_built_here (reversed)
+			c.ErrorText = i18n.AlreadyBuiltHere
+			return ClearCollisionErrorSet
 		}
 	}
 	om := c.Objects
 	var targetObj, newObj = c.trackObject(e.TrackObjectID), c.trackObject(a.TrackObjectID)
 	if e.TrackObjectID == a.TrackObjectID {
 		if targetObj == nil || targetObj.TrackPieces&trackTraitJunction == 0 { // junctions_not_possible
+			c.ErrorText = i18n.JunctionsNotPossible
 			return ClearCollisionErrorSet
 		}
 	} else {
@@ -107,7 +124,8 @@ func (m *Map) trackClearTrack(c *Cmd, st *trackCmdState, e *scenario.TrackElemen
 			newTracks, _ = om.CompatibleSets(newObj.CompatibleNames)
 		}
 		if targetTracks&(1<<a.TrackObjectID) == 0 && newTracks&(1<<e.TrackObjectID) == 0 {
-			return ClearCollisionErrorSet // unable_to_cross_or_create_junction_with
+			c.ErrorText = i18n.UnableToCrossOrCreateJunctionWithString
+			return ClearCollisionErrorSet
 		}
 	}
 	st.Flags73 |= 1 << 3
@@ -122,7 +140,8 @@ func (m *Map) trackClearRoad(c *Cmd, st *trackCmdState, e *scenario.RoadElement,
 	if e.HasBridge {
 		st.Bridge = e.BridgeID
 		if b := c.bridge(e.BridgeID); b != nil && b.DisabledTrackCfg&commonTraitJunction != 0 {
-			return ClearCollisionErrorSet // bridge_not_suitable_for_junction
+			c.ErrorText = i18n.BridgeNotSuitableForJunction
+			return ClearCollisionErrorSet
 		}
 	}
 	om := c.Objects
@@ -134,16 +153,24 @@ func (m *Map) trackClearRoad(c *Cmd, st *trackCmdState, e *scenario.RoadElement,
 		_, trackRoads = om.CompatibleSets(track.CompatibleNames)
 	}
 	if roadTracks&(1<<a.TrackObjectID) == 0 && trackRoads&(1<<e.RoadObjectID) == 0 {
-		return ClearCollisionErrorSet // unable_to_cross_or_create_junction_with
+		c.ErrorText = i18n.UnableToCrossOrCreateJunctionWithString
+		return ClearCollisionErrorSet
 	}
-	if e.HasSignalElement || e.HasStationElement {
+	if e.HasSignalElement {
+		c.ErrorText = i18n.SignalInTheWay
+		return ClearCollisionErrorSet
+	}
+	if e.HasStationElement {
+		c.ErrorText = i18n.StationInTheWay
 		return ClearCollisionErrorSet
 	}
 	if e.HasBridge && e.BridgeID != a.BridgeID { // bridge_types_must_match
+		c.ErrorText = i18n.BridgeTypesMustMatch
 		return ClearCollisionErrorSet
 	}
 	if e.RoadID != 0 || a.TrackID != 0 || (e.Rotation-a.Rotation)&1 == 0 || int32(e.BaseZ)*4 != a.Z {
-		return ClearCollisionErrorSet // level_crossing_only_possible_with_straight_road_and_track_at_same_level
+		c.ErrorText = i18n.LevelCrossingOnlyPossibleWithStraightRoadAndTrackAtSameLevel
+		return ClearCollisionErrorSet
 	}
 	*hasLevelCrossing = true
 	st.Flags73 |= 1 << 2

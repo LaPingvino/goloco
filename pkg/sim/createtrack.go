@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -121,6 +122,7 @@ func (m *Map) createTrackCheck(c *Cmd, a trackPlacementArgs, flags uint8) (creat
 		quarter := rotateQuarterTile(piece.SubTileClearance, a.Rotation)
 		unk := rotl4bit(piece.Flags&0xF, a.Rotation)
 		if z < 16 { // error_too_low
+			c.ErrorText = i18n.ErrorTooLow
 			return r, false
 		}
 		baseZ := uint8(z / 4)
@@ -135,20 +137,24 @@ func (m *Map) createTrackCheck(c *Cmd, a trackPlacementArgs, flags uint8) (creat
 				st.Flags73 |= 1<<1 | 1<<0
 				heightDiff := (int(baseZ) - int(t.BaseZ)) / microToSmallZStep
 				if a.Bridge == 0xFF { // bridge_needed
+					c.ErrorText = i18n.BridgeNeeded
 					return r, false
 				}
 				b := c.bridge(a.Bridge)
 				if b == nil || heightDiff > int(b.MaxHeight) { // too_far_above_ground_for_bridge_type
+					c.ErrorText = i18n.TooFarAboveGroundForBridgeType
 					return r, false
 				}
 				st.MaxBridgeDiff = max(st.MaxBridgeDiff, uint8(heightDiff))
 				if b.DisabledTrackCfg&TrackMiscFlags[a.TrackID] != 0 { // bridge_type_unsuitable_for_this_configuration
+					c.ErrorText = i18n.BridgeTypeUnsuitableForThisConfiguration
 					return r, false
 				}
 				clearZ += int(b.ClearHeight) / 4
 			}
 		}
 		if clearZ > 236 { // error_too_high
+			c.ErrorText = i18n.ErrorTooHigh
 			return r, false
 		}
 		plan := trackPiecePlan{X: x, Y: y, Z: z, Index: piece.Index, BaseZ: baseZ, ClearZ: uint8(clearZ), Quarter: quarter}
@@ -168,10 +174,16 @@ func (m *Map) createTrackCheck(c *Cmd, a trackPlacementArgs, flags uint8) (creat
 		}
 		ground := pos & (PosAboveGround | PosUnderground)
 		if st.PosFlags != 0 && st.PosFlags&ground == 0 { // cant_build_partly_above_partly_below_ground
+			c.ErrorText = i18n.CantBuildPartlyAbovePartlyBelowGround
 			return r, false
 		}
 		st.PosFlags = ground
-		if pos&(PosPartiallyUnderwater|PosUnderwater) != 0 { // under water / too close to its surface
+		if pos&PosPartiallyUnderwater != 0 {
+			c.ErrorText = i18n.CantBuildThisUnderwater
+			return r, false
+		}
+		if pos&PosUnderwater != 0 {
+			c.ErrorText = i18n.TooCloseToWaterSurface
 			return r, false
 		}
 		plan.HasBridge = st.Flags73&(1<<1) != 0

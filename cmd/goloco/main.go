@@ -3683,7 +3683,19 @@ func (g *Game) consPlace(id int) {
 		built = g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
 	} else if g.r != nil && g.r.ObjMgr != nil { // the createTrack game command: checked and charged (PL.1 e)
 		c, _ := g.stationCmd()
-		_, built = g.w.BuildTrackAtHead(c, id, uint8(g.buildObjID))
+		if _, built = g.w.BuildTrackAtHead(c, id, uint8(g.buildObjID)); !built {
+			// doCommand's failure: Error::open(cant_build_pop3_string with the
+			// track's name, the command's reason).
+			title := i18n.Label(i18n.CantBuildPop3String)
+			if id := g.buildObjID; id >= 0 && id < len(g.r.ObjMgr.TrackObjects) && g.r.ObjMgr.TrackObjects[id] != nil {
+				title = ui.FormatErrorArgs(title, g.r.ObjMgr.TrackObjects[id].Name)
+			}
+			msg := ""
+			if c.ErrorText != 0 {
+				msg = i18n.Label(c.ErrorText)
+			}
+			g.openError(title, msg)
+		}
 	} else {
 		built = g.w.PlaceTrackAtHead(id, uint8(g.buildObjID))
 	}
