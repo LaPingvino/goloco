@@ -20,8 +20,9 @@ import (
 // → CompanyWindow::openFinances).
 //
 // The scroll view's horizontal bar shows once the years overflow its 499 px
-// (getScrollSize: numExpenditureYears × 128, + 1). PARTIAL: holding its
-// buttons (the scroll click repeat) and their pressed look.
+// (getScrollSize: numExpenditureYears × 128, + 1); a held button steps on
+// each tick while the pointer stays on it (scrollLeftContinue), pressed
+// while it does.
 
 // CompanyFinancesSize is Finances::kWindowSize.
 var CompanyFinancesSize = [2]int{636, 319}
@@ -148,7 +149,8 @@ type CompanyFinancesWindow struct {
 	// type; primary or secondary) with its screen rect, for showColour.
 	OnColour  func(colourType int, primary bool, x, y, w, h int)
 	Scroll    int
-	hDrag     bool // the bar's thumb dragged (horizontalDragFollow), from hDragX
+	hPart     string // _currentScrollArea on the bar ("" none)
+	hPressed  bool   // its button / thumb pressed flag (cleared off the part)
 	hDragX    int
 	SkinImage int // the interface skin's image base (the tab icons)
 	FrameNo   int // the window's frameNo: the current tab's icon animates
@@ -283,27 +285,41 @@ func (w *CompanyFinancesWindow) hBarClick(x, y int) bool {
 	}
 	ww := sc.R - sc.L + 1
 	part := L.HScrollPart(x-(w.X+sc.L), ww, w.financesContentW(), w.Scroll)
-	if part == "thumb" {
-		w.hDrag, w.hDragX = true, x
-		return true
+	w.hPart, w.hDragX = part, x // scrollLeftBegin
+	w.hPressed = part == "left" || part == "right"
+	if part != "thumb" {
+		w.Scroll = L.HScrollClick(part, ww, w.financesContentW(), w.Scroll)
 	}
-	w.Scroll = L.HScrollClick(part, ww, w.financesContentW(), w.Scroll)
 	return true
 }
 
-// UpdateDrag is the thumb's drag: horizontalDragFollow by the pointer's
-// move, until the release.
-func (w *CompanyFinancesWindow) UpdateDrag(x int, down bool) {
-	if !w.hDrag {
+// UpdateDrag is stateScrollLeft each tick: the release clears the pressed
+// buttons; the thumb follows the pointer (horizontalFollow); a button held
+// over its own part steps again, and off it its pressed look clears
+// (clearPressedButtons); the track does nothing more.
+func (w *CompanyFinancesWindow) UpdateDrag(x, y int, down bool) {
+	if w.hPart == "" {
 		return
 	}
-	if !down {
-		w.hDrag = false
+	if !down || w.Tab != CompanyTabFinances {
+		w.hPart, w.hPressed = "", false
 		return
 	}
 	sc := CompanyFinancesLayout(w.W, w.H)[cfScroll]
-	w.Scroll = L.HScrollDrag(sc.R-sc.L+1, w.financesContentW(), w.Scroll, x-w.hDragX)
-	w.hDragX = x
+	ww, cw := sc.R-sc.L+1, w.financesContentW()
+	switch w.hPart {
+	case "thumb":
+		w.hPressed = true
+		w.Scroll = L.HScrollDrag(ww, cw, w.Scroll, x-w.hDragX)
+		w.hDragX = x
+	case "left", "right":
+		on := y >= w.Y+sc.B-L.ScrollbarSize && y <= w.Y+sc.B && x >= w.X+sc.L && x <= w.X+sc.R &&
+			L.HScrollPart(x-(w.X+sc.L), ww, cw, w.Scroll) == w.hPart
+		w.hPressed = on
+		if on {
+			w.Scroll = L.HScrollClick(w.hPart, ww, cw, w.Scroll)
+		}
+	}
 }
 
 // Draw is the current tab's draw.
@@ -1128,9 +1144,15 @@ func (w *CompanyFinancesWindow) drawHBar(rt *gfx8.RenderTarget, sc BVWidget, sec
 	for _, ln := range [][2]int{{2, int(s3)}, {3, int(s7)}, {7, int(s3)}, {8, int(s7)}} {
 		gfx8.FillRect(rt, x, y+ln[0], x+bw-1, y+ln[0], uint8(ln[1]))
 	}
-	gfx8.FillRectInset(rt, x, y, x+L.ScrollbarSize-1, y+L.ScrollbarSize-1, c, 0)
+	pressed := func(part string) int { // hscrollbar…Pressed: borderInset
+		if w.hPressed && w.hPart == part {
+			return gfx8.InsetBorderInset
+		}
+		return 0
+	}
+	gfx8.FillRectInset(rt, x, y, x+L.ScrollbarSize-1, y+L.ScrollbarSize-1, c, pressed("left"))
 	rx := x + bw - L.ScrollbarSize + L.ScrollbarMargin
-	gfx8.FillRectInset(rt, rx, y, rx+L.ScrollbarSize-1, y+L.ScrollbarSize-1, c, 0)
+	gfx8.FillRectInset(rt, rx, y, rx+L.ScrollbarSize-1, y+L.ScrollbarSize-1, c, pressed("right"))
 	l, r := L.HThumb(ww, w.financesContentW(), w.Scroll)
-	gfx8.FillRectInset(rt, x+l, y, x+l+(r-l-L.ScrollbarMargin)-1, y+L.ScrollbarSize-1, c, 0)
+	gfx8.FillRectInset(rt, x+l, y, x+l+(r-l-L.ScrollbarMargin)-1, y+L.ScrollbarSize-1, c, pressed("thumb"))
 }

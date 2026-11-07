@@ -42,7 +42,7 @@ func TestVScrollInput(t *testing.T) {
 	if VScrollClick("trackBottom", h, content, 0) != 98 || VScrollClick("trackBottom", h, content, 300) != 302 { // height() − 2; contentHeight − (height() − 2)
 		t.Errorf("page: %d %d", VScrollClick("trackBottom", h, content, 0), VScrollClick("trackBottom", h, content, 300))
 	}
-	if got := VScrollDrag(h, content, 0, 10); got != 10*400/78 { // height() − 2 − 2 × kThumbSize
+	if got := VScrollDrag(h, content, 0, 10); got != 10*400/80 { // verticalFollow: height() − 2 × kThumbSize
 		t.Errorf("drag: %d", got)
 	}
 }

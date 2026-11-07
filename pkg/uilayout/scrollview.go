@@ -67,12 +67,14 @@ func VScrollClick(part string, h, contentH, offset int) int {
 	return offset
 }
 
-// VScrollDrag is verticalDragFollow: the thumb dragged by dy moves the
-// content by dy × contentHeight / trackHeight (trackHeight = height() − 2 −
-// 2 thumb sizes), clamped.
+// VScrollDrag is verticalFollow (scrollLeftContinue on the thumb): the thumb
+// dragged by dy moves the content by dy × contentHeight / trackHeight
+// (trackHeight = height() − 2 thumb sizes), clamped to contentHeight −
+// (height() − 2). (verticalDragFollow, with 2 less, is the right-button
+// drag scroll.)
 func VScrollDrag(h, contentH, offset, dy int) int {
 	thumb := ScrollbarSize - ScrollbarMargin // kThumbSize
-	track := h - 2 - 2*thumb
+	track := h - 2*thumb
 	if track <= 0 {
 		return offset
 	}
@@ -83,7 +85,9 @@ func VScrollDrag(h, contentH, offset, dy int) int {
 // width (Widget::width()), x relative to its left, content contentW wide.
 
 // HThumb is calculateThumbSizeAndPosition for the horizontal bar.
-func HThumb(widgetW, contentW, offset int) (left, right int) { return VThumb(widgetW, contentW, offset) }
+func HThumb(widgetW, contentW, offset int) (left, right int) {
+	return VThumb(widgetW, contentW, offset)
+}
 
 // HScrollPart is getPart on the horizontal bar: "left", "right",
 // "trackLeft", "thumb" or "trackRight".
@@ -123,10 +127,11 @@ func HScrollClick(part string, w, contentW, offset int) int {
 	return offset
 }
 
-// HScrollDrag is horizontalDragFollow: dx × contentWidth / trackWidth
-// (width() − 2 − 2 thumb sizes), clamped to 0 … contentWidth − (width() − 2).
+// HScrollDrag is horizontalFollow (scrollLeftContinue on the thumb): dx ×
+// contentWidth / trackWidth (width() − 2 thumb sizes), clamped to 0 …
+// contentWidth − (width() − 2).
 func HScrollDrag(w, contentW, offset, dx int) int {
-	track := w - 2 - 2*ThumbSize
+	track := w - 2*ThumbSize
 	if track <= 0 {
 		return offset
 	}

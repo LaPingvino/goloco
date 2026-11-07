@@ -125,3 +125,33 @@ func TestLoanClickRepeat(t *testing.T) {
 		t.Fatalf("repeated after release: %v", steps)
 	}
 }
+
+// The Finances bar: a held right button steps 3 each tick while on it, off
+// it it stops and unpresses, back on it resumes; the release clears it.
+func TestFinancesBarHold(t *testing.T) {
+	w := &CompanyFinancesWindow{X: 82, Y: 140, W: 636, H: 319, Tab: CompanyTabFinances, Data: CompanyFinances{Own: true, NumYears: 6}}
+	sc := CompanyFinancesLayout(w.W, w.H)[cfScroll]
+	rx, ry := w.X+sc.R-5, w.Y+sc.B-5 // the right button
+	w.HandleClick(rx, ry)
+	if w.Scroll != 3 || !w.hPressed {
+		t.Fatalf("press: scroll %d pressed %v", w.Scroll, w.hPressed)
+	}
+	w.UpdateDrag(rx, ry, true)
+	w.UpdateDrag(rx, ry, true)
+	if w.Scroll != 9 {
+		t.Fatalf("held: %d", w.Scroll)
+	}
+	w.UpdateDrag(rx, ry-40, true) // off the bar
+	if w.Scroll != 9 || w.hPressed {
+		t.Fatalf("off the part: %d %v", w.Scroll, w.hPressed)
+	}
+	w.UpdateDrag(rx, ry, true)
+	if w.Scroll != 12 || !w.hPressed {
+		t.Fatalf("back on: %d %v", w.Scroll, w.hPressed)
+	}
+	w.UpdateDrag(rx, ry, false)
+	w.UpdateDrag(rx, ry, true)
+	if w.Scroll != 12 || w.hPart != "" {
+		t.Fatalf("after release: %d %q", w.Scroll, w.hPart)
+	}
+}
