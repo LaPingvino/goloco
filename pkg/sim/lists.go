@@ -2,6 +2,7 @@ package sim
 
 import (
 	"fmt"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 	"strconv"
@@ -281,4 +282,21 @@ func (w *Map) VehicleName(id uint16, ordinal int) string {
 		return strings.Replace(t, "{INT16}", strconv.Itoa(ordinal), 1)
 	}
 	return fmt.Sprintf("Vehicle %d", ordinal)
+}
+
+// stringIDNewOwner is StringIds::new_owner.
+const stringIDNewOwner = 3
+
+// OwnerName is a company's owner's name (Company::ownerName: a user string,
+// or new_owner's "New Owner"); "" if unknown.
+func (w *Map) OwnerName(id int) string {
+	if id < 0 || id >= len(w.CompanyFaces) {
+		return ""
+	}
+	if n := w.CompanyFaces[id].OwnerName; n >= 0x8000 && int(n-0x8000) < len(w.UserStrings) {
+		return w.UserStrings[n-0x8000]
+	} else if n == stringIDNewOwner {
+		return i18n.Str(i18n.NewOwner)
+	}
+	return ""
 }

@@ -1263,6 +1263,7 @@ func (g *Game) openCompanyFinances(company int) {
 	w, h := ui.CompanyFinancesSize[0], ui.CompanyFinancesSize[1]
 	g.companyFinancesID = company
 	g.companyFinances = &ui.CompanyFinancesWindow{X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h, TitleColour: tc, Colour: wc,
+		Tab:   ui.CompanyTabFinances, // openFinances: currentTab = tab_finances
 		Title: g.w.Map.CompanyName(company), Data: g.companyFinancesData(company),
 		OnClose: func() { g.companyFinances = nil }, OnLoan: func(dir int) { g.changeLoan(company, dir) },
 		OnAutopay: func() { // onMouseUp loan_autopay: challengeFlags ^= autopayLoan
@@ -1405,4 +1406,22 @@ func stripCodesKeepText(s string) string {
 		s = s[i+j+1:]
 	}
 	return b.String()
+}
+
+// companyStatus is what Status::draw reads: the owner's face (the bigger
+// image, competitor images[ownerEmotion] + 1), name and status
+// (getOwnerStatus: bankrupt, else — the player's company having no
+// observation — company_status_empty; PARTIAL: an AI's observation lines).
+func (g *Game) companyStatus(company int) ui.CompanyStatus {
+	face, col := g.companyFace(company)
+	if face > 0 {
+		face++
+	}
+	st := ui.CompanyStatus{Face: face, FaceColour: col, OwnerName: g.w.Map.OwnerName(company), Status: i18n.Str(i18n.CompanyStatusEmpty)}
+	if company < len(g.w.Map.CompanyFaces) && g.w.Map.CompanyFaces[company].ChallengeFlags&(1<<9) != 0 {
+		st.Status = i18n.Str(i18n.CompanyStatusBankrupt)
+	}
+	ctrl, _ := g.w.ControllingCompany()
+	st.Own = company == ctrl
+	return st
 }

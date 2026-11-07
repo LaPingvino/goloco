@@ -35,3 +35,16 @@ func TestChallengeObjectiveText(t *testing.T) {
 		t.Errorf("cargo: %q", got)
 	}
 }
+
+// Common::switchTab: a tab click switches and resizes, keeping the place.
+func TestCompanyWindowSwitchTab(t *testing.T) {
+	w := &CompanyFinancesWindow{X: 82, Y: 140, W: 636, H: 319, Tab: CompanyTabFinances, Data: CompanyFinances{Own: true}}
+	w.HandleClick(100, 168) // the status tab (3–33, 15–41)
+	if w.Tab != CompanyTabStatus || w.W != 270 || w.H != 182 || w.X != 82 {
+		t.Errorf("status: tab %d %d×%d at %d", w.Tab, w.W, w.H, w.X)
+	}
+	w.HandleClick(82+3+31*4+5, 168) // cargo delivered
+	if w.Tab != CompanyTabCargoDelivered || w.W != 240 {
+		t.Errorf("cargo: tab %d %d×%d", w.Tab, w.W, w.H)
+	}
+}

@@ -203,6 +203,7 @@ func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectM
 	}
 	face, c := &m.CompanyFaces[id], &m.Companies[id]
 	face.Competitor, face.ChallengeFlags, face.Emotion = competitor, 0, 0
+	face.OwnerName = stringIDNewOwner // company->ownerName = StringIds::new_owner
 	c.Var49C, c.Var4A0 = 0, 0
 	m.CompanyNames[id] = stringIDNewCompany
 	for {
