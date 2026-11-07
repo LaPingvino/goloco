@@ -343,7 +343,9 @@ type VehicleWindow struct {
 	// OnOrderDropdown is Route::onMouseDown orderForceUnload ("unload") /
 	// orderWait ("wait"): createOrderDropdown at the button's screen rect.
 	OnOrderDropdown func(kind string, x, y, w, h int)
-	Express         bool // Route: veh1 Flags48::expressMode (express pressed, else local)
+	// OnPassSignal is Main::onMouseUp passSignal: VehiclePassSignal.
+	OnPassSignal func()
+	Express      bool // Route: veh1 Flags48::expressMode (express pressed, else local)
 	// View is Main's viewport, 8-bit, of the given size (nil: none — the
 	// vehicle not placed).
 	View         func(w, h int) *gfx8.RenderTarget
@@ -699,6 +701,8 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			w.OnPickup()
 		case in(lw[vmCentreViewport]) && w.OnCentreView != nil:
 			w.OnCentreView()
+		case in(lw[vmPassSignal]) && w.OnPassSignal != nil: // Main::onMouseUp passSignal
+			w.OnPassSignal()
 		}
 		return
 	}
