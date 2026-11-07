@@ -701,6 +701,10 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 				return
 			}
 		}
+		if w.carBar(x, y) {
+			w.barBegin(y)
+			return
+		}
 		if b := lw[vcRefit]; in(b) && w.OnRefit != nil {
 			w.OnRefit(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
 			return
@@ -743,8 +747,7 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 	case in(lw[vdRemove]) && w.OnSell != nil: // Details::onMouseUp remove: VehicleSell(head)
 		w.OnSell()
 	case w.carBar(x, y): // scrollLeftBegin on the car list's bar
-		list := lw[vdCarList]
-		w.Scroll = w.hold.Begin(y-(w.Y+list.T), y, list.B-list.T+1, len(w.Cars)*vehicleRowHeights[max(0, min(5, w.VehicleType))], w.Scroll)
+		w.barBegin(y)
 	case in(lw[vdCarList]) && w.State.Own && w.OnDropMove != nil: // onScrollMouseDown: the car under it starts a drag
 		list := lw[vdCarList]
 		rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
@@ -894,27 +897,41 @@ func (w *VehicleWindow) PositionEnd(x, y, screenH int) {
 	}
 }
 
-// carBar reports whether a point is on the Details car list's vertical bar
-// (shown when the cars overflow the view).
-func (w *VehicleWindow) carBar(x, y int) bool {
-	if w.Tab != 1 {
-		return false
-	}
-	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
-	list := lw[vdCarList]
+// barList is the current tab's scrolled list and its content height:
+// Details' cars, Cargo's rows (ok false on the other tabs).
+func (w *VehicleWindow) barList() (list BVWidget, content int, ok bool) {
 	rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
-	return !list.Hidden && len(w.Cars)*rowH > list.B-list.T+1 &&
+	switch w.Tab {
+	case 1:
+		lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+		return lw[vdCarList], len(w.Cars) * rowH, true
+	case 2:
+		lw := VehicleCargoLayout(w.W, w.H, w.State.HiddenTabs, w.Cargo.CanRefit)
+		return lw[vcCargoList], len(w.Cargo.Rows) * rowH, true
+	}
+	return BVWidget{}, 0, false
+}
+
+// carBar reports whether a point is on the current list's vertical bar
+// (shown when the rows overflow the view).
+func (w *VehicleWindow) carBar(x, y int) bool {
+	list, content, ok := w.barList()
+	return ok && !list.Hidden && content > list.B-list.T+1 &&
 		y >= w.Y+list.T && y <= w.Y+list.B && x <= w.X+list.R &&
 		x >= w.X+list.R+1-L.ScrollbarSize-L.ScrollbarMargin
 }
 
-// ScrollDrag is the car list bar's held press each tick (VScrollHold.Continue).
+// barBegin is scrollLeftBegin on the current list's bar.
+func (w *VehicleWindow) barBegin(y int) {
+	list, content, _ := w.barList()
+	w.Scroll = w.hold.Begin(y-(w.Y+list.T), y, list.B-list.T+1, content, w.Scroll)
+}
+
+// ScrollDrag is the list bar's held press each tick (VScrollHold.Continue).
 func (w *VehicleWindow) ScrollDrag(x, y int, held bool) {
 	if w.hold.Part == "" {
 		return
 	}
-	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
-	list := lw[vdCarList]
-	rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
-	w.Scroll = w.hold.Continue(held && w.Tab == 1, w.carBar(x, y), y-(w.Y+list.T), y, list.B-list.T+1, len(w.Cars)*rowH, w.Scroll)
+	list, content, ok := w.barList()
+	w.Scroll = w.hold.Continue(held && ok, w.carBar(x, y), y-(w.Y+list.T), y, list.B-list.T+1, content, w.Scroll)
 }

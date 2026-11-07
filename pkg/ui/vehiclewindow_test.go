@@ -77,3 +77,28 @@ func TestVehicleCarListBar(t *testing.T) {
 		t.Fatalf("hold / release: %d", w.Scroll)
 	}
 }
+
+// Cargo's list bar: a press on its down arrow scrolls; held, it repeats.
+func TestVehicleCargoListBar(t *testing.T) {
+	w := &VehicleWindow{X: 100, Y: 100, W: 265, H: 177, Tab: 2, Cargo: VehicleCargo{Rows: make([]VehicleCargoRow, 20)}}
+	list := VehicleCargoLayout(w.W, w.H, w.State.HiddenTabs, false)[vcCargoList]
+	x, y := w.X+list.R-4, w.Y+list.B-4
+	w.HandleClick(x, y)
+	w.ScrollDrag(x, y, true)
+	if w.Scroll != 6 {
+		t.Fatalf("scroll %d", w.Scroll)
+	}
+}
+
+// The company list's bar: a press on its down arrow scrolls, opens no
+// company; held, it repeats.
+func TestCompanyListBar(t *testing.T) {
+	opened := 0
+	w := &CompanyListWindow{X: 80, Y: 164, W: 640, H: 272, Rows: make([]CompanyListRow, 15), Hover: -1, OnRow: func(int) { opened++ }}
+	x, y := w.X+w.W-4-4, w.Y+w.H-14-4
+	w.HandleClick(x, y)
+	w.ScrollDrag(x, y, true)
+	if w.Scroll != 6 || opened != 0 {
+		t.Fatalf("scroll %d opened %d", w.Scroll, opened)
+	}
+}
