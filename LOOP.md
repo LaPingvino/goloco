@@ -1554,3 +1554,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-07 — the Company list's first tab (CompanyList: the four sortable columns, faces, the status bar), from the face dropdown's last item; a row opens that company. Strings: {NEWLINE x y} placed and skipped by FillArgs. PARTIAL: its graph tabs and icons, resizing, the hover row.
 - 2026-11-07 — the Company list's tab icons (Common::drawTabs: recoloured graph icons, the currency symbol on values / payment rates).
 - 2026-11-07 — the Company list's tab currency mark is currency_symbol itself ("£", the glyph loadCurrency swaps), not the currency's prefix + suffix.
+- 2026-11-07 — the Company list's hover row (onScrollMouseOver: the unk30 band, wcolour2 text; leaving the list keeps it).

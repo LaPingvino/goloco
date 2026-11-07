@@ -17,7 +17,7 @@ import (
 // panel's dropdown's last item (CompanyList::open).
 //
 // PARTIAL: the other tabs (performance, cargo units / distance, values,
-// payment rates, speed records: graphs), resizing, the hover row.
+// payment rates, speed records: graphs), resizing.
 
 // CompanyListSize is CompanyList::kWindowSize.
 var CompanyListSize = [2]int{640, 272}
@@ -136,6 +136,15 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 		}
 		cx, cy, cw, ch, _ = drawVScrollView(rt, svL, svT, svR-svL+1, svB-svT+1, gfx8.InsetColour{Map: sec}, len(w.Rows)*25, w.Scroll)
 		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 3)) // clearSingle(shade 3)
+		if w.Hover >= 0 && w.Hover < len(w.Rows) {                      // drawRect(0, y, width, 24, ExtColour::unk30, transparent)
+			if m30, err := g1.GetPaletteMap(0x30); err == nil {
+				y := cy + w.Hover*25 - w.Scroll
+				t, b := max(y, cy), min(y+23, cy+ch-1)
+				if t <= b {
+					gfx8.FillRectTranslucent(rt, cx, t, cx+cw-1, b, m30)
+				}
+			}
+		}
 		for i, r := range w.Rows {
 			y := cy + i*25 - w.Scroll
 			if y+25 <= cy || y >= cy+ch || r.Face <= 0 || r.Face >= len(g1.Elements) {
@@ -176,8 +185,12 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 		if y+25 <= 0 || y >= ch {
 			continue
 		}
-		DrawTextBold(clip, r.Name, ox+0+27, oy+y-1+8, black)
-		DrawTextBold(clip, r.Status, ox+175, oy+y+7, black)
+		tc := black // the hovered row: wcolour2_stringid
+		if i == w.Hover {
+			tc = win2
+		}
+		DrawTextBold(clip, r.Name, ox+0+27, oy+y-1+8, tc)
+		DrawTextBold(clip, r.Status, ox+175, oy+y+7, tc)
 		perf := i18n.PerformanceIndex
 		if r.Trend != 0 { // (upstream's condition: increased and decreased both set)
 			perf = i18n.PerformanceIndexDecrease
@@ -186,8 +199,8 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 			}
 		}
 		rating := i18n.CorporateRatingPlatelayer + min(9, max(0, int(r.Performance)/100))
-		drawFormattedEx(clip, ox+385, oy+y-1, ui18nFill(perf, int16OneDecimal(r.Performance), i18n.Str(rating)), black, black, red)
-		DrawTextBold(clip, L.Currency48(r.Value), ox+530, oy+y-1+8, black)
+		drawFormattedEx(clip, ox+385, oy+y-1, ui18nFill(perf, int16OneDecimal(r.Performance), i18n.Str(rating)), tc, tc, red)
+		DrawTextBold(clip, L.Currency48(r.Value), ox+530, oy+y-1+8, tc)
 	}
 	status := ui18nFill(i18n.CompaniesPlural, strconv.Itoa(len(w.Rows)))
 	if len(w.Rows) == 1 {
@@ -240,5 +253,18 @@ func (w *CompanyListWindow) drawTabs(rt *gfx8.RenderTarget, sec []uint8) {
 			m = sec
 		}
 		drawTab(rt, 3+31*i, 15, i == current, sec, img, m)
+	}
+}
+
+// MouseOver is onScrollMouseOver (called only over the scroll view): the
+// row under the pointer is rowHover, −1 below the last row; leaving the
+// list keeps it.
+func (w *CompanyListWindow) MouseOver(x, y int) {
+	if x < w.X+3 || x > w.X+w.W-4 || y < w.Y+56+1 || y > w.Y+w.H-14 {
+		return
+	}
+	w.Hover = -1
+	if r := (y - (w.Y + 56 + 1) + w.Scroll) / 25; r >= 0 && r < len(w.Rows) {
+		w.Hover = r
 	}
 }
