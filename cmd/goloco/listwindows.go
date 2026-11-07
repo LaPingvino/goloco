@@ -148,6 +148,14 @@ func (g *Game) openStationWindow(id int) {
 	}
 	w := ui.NewStationWindow(g.sw, g.sh, info.Name, info.Status, tc, wc)
 	w.Cargo, w.Accepted = g.stationCargoLines(id)
+	if om := g.r.ObjMgr; om != nil && id < len(g.w.Map.StationNames) { // CargoRatings: every cargo with an origin
+		for c, cs := range g.w.Map.StationNames[id].Cargo {
+			if cs.Origin == 0xFFFF || c >= len(om.CargoObjects) || om.CargoObjects[c] == nil {
+				continue
+			}
+			w.Ratings = append(w.Ratings, ui.StationRating{Name: om.CargoObjects[c].Name, Rating: int(cs.Rating)})
+		}
+	}
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.StationView(id, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnStation(id) }
 	w.OnClose = func() { g.stationWin = nil }

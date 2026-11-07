@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"strconv"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
@@ -26,7 +27,8 @@ type StationWindow struct {
 	X, Y                int
 	Title, Status       string
 	TitleColour, Colour uint8
-	Tab                 int // 0 Station, 1 Cargo
+	Tab                 int // 0 Station, 1 Cargo, 2 Cargo ratings
+	Ratings             []StationRating
 	Cargo               []StationCargoLine
 	Accepted            []int // the accepted cargo's unitInlineSprite, in cargo order
 	View                func(w, h int) *gfx8.RenderTarget
@@ -45,21 +47,29 @@ func NewStationWindow(sw, sh int, title, status string, titleColour, colour uint
 // stationViewport is prepareDraw's: 3,44 to width − 4, height − 14.
 func stationViewport() (l, t, r, b int) { return 3, 44, stationWinW - 4, stationWinH - 14 }
 
+// width is the current tab's kWindowSize width (Cargo ratings: 249).
+func (w *StationWindow) width() int {
+	if w.Tab == 2 {
+		return 249
+	}
+	return stationWinW
+}
+
 func (w *StationWindow) Contains(px, py int) bool {
-	return px >= w.X && py >= w.Y && px < w.X+stationWinW && py < w.Y+stationWinH
+	return px >= w.X && py >= w.Y && px < w.X+w.width() && py < w.Y+stationWinH
 }
 
 // HandleClick is Station::onMouseUp: close, centre_on_viewport (the
 // viewport's bottom-right 24 × 24).
 func (w *StationWindow) HandleClick(px, py int) {
 	rx, ry := px-w.X, py-w.Y
-	if rx >= stationWinW-15 && rx < stationWinW-2 && ry >= 2 && ry < 15 {
+	if rx >= w.width()-15 && rx < w.width()-2 && ry >= 2 && ry < 15 {
 		if w.OnClose != nil {
 			w.OnClose()
 		}
 		return
 	}
-	for t := 0; t < 2; t++ { // Common::switchTab (the ported tabs)
+	for t := 0; t < 3; t++ { // Common::switchTab
 		if rx >= 3+31*t && rx < 3+31*t+31 && ry >= 15 && ry < 42 {
 			w.Tab = t
 			return
@@ -90,6 +100,10 @@ func (w *StationWindow) Draw(screen *ebiten.Image) {
 	}
 	if w.Tab == 1 {
 		w.drawCargo(screen)
+		return
+	}
+	if w.Tab == 2 {
+		w.drawRatings(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -213,4 +227,75 @@ func (w *StationWindow) drawCargo(screen *ebiten.Image) {
 		})
 	}
 	DrawWindowCaptionStation(screen, w.X+1, w.Y+1, stationWinW-2, w.Title, w.TitleColour)
+}
+
+// StationRating is one cargo with an origin (CargoRatings::drawScroll): its
+// name and rating (0 … 200).
+type StationRating struct {
+	Name   string
+	Rating int
+}
+
+// drawRatings is CargoRatings::draw and drawScroll: 249 wide, the scroll
+// view (3, 44 to width − 4, height − 14) cleared to shade 4; per rated cargo
+// the name (wcolour2_stringid, clipped to 98) at (1, y), the bar at (100, y)
+// — drawRatingBar: a 100 × 10 inset frame, filled 2 in to (rating × 327 /
+// 256) × 96 / 256 in green, yellow under 100 or red under 50 — and
+// "N%" (rating / 2) at (201, y); 10 apart.
+func (w *StationWindow) drawRatings(screen *ebiten.Image) {
+	g1 := globalG1Font.g1
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	pal := g1.GetPalette()
+	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
+	ww := w.width()
+	l, t, r, b := 3, 44, ww-4, stationWinH-14
+	DrawWindowFrame(screen, w.X, w.Y, ww, stationWinH, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, ww, stationWinH, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, 0, 41, ww-1, stationWinH-1, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, ww-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		for i := 0; i < 3; i++ {
+			drawTab(rt, 3+31*i, 15, i == 2, sec, tabNoIcon, nil)
+		}
+		gfx8.FillRectInset(rt, l, t, r, b, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+		cx, cy := l+1, t+1
+		gfx8.FillRect(rt, cx, cy, r-1, b-1, gfx8.Shade(sec, 4))
+		for i, rr := range w.Ratings {
+			y := cy + 10*i
+			if y+9 > b-1 {
+				break
+			}
+			x := cx + 100
+			gfx8.FillRectInset(rt, x, y, x+99, y+9, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillNone)
+			colour := 13 // Colour::green
+			if rr.Rating < 100 {
+				colour = 16 // yellow
+				if rr.Rating < 50 {
+					colour = 27 // red
+				}
+			}
+			amount := (rr.Rating * 327 / 256) & 0xFF // uint8_t
+			if bar := amount * 96 / 256; bar > 2 {
+				if cm, err := g1.GetPaletteMap(colour); err == nil {
+					gfx8.FillRectInset(rt, x+2, y+2, x+1+bar, y+8, gfx8.InsetColour{Map: cm}, 0)
+				}
+			}
+		}
+	})
+	clip := screen.SubImage(image.Rect(w.X+l+1, w.Y+t+1, w.X+r, w.Y+b)).(*ebiten.Image)
+	for i, rr := range w.Ratings {
+		y := w.Y + t + 1 + 10*i
+		name := rr.Name
+		for len(name) > 0 && MeasureTextFont(name, G1FontMediumNormal) > 98 {
+			name = name[:len(name)-1]
+		}
+		DrawTextFont(clip, name, G1FontMediumNormal, w.X+l+1+1, y, win2)
+		DrawTextFont(clip, strconv.Itoa(rr.Rating/2)+"%", G1FontMediumNormal, w.X+l+1+201, y, black)
+	}
+	DrawWindowCaptionStation(screen, w.X+1, w.Y+1, ww-2, w.Title, w.TitleColour)
 }
