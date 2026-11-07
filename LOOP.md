@@ -90,7 +90,8 @@ PL. [ ] **Playable and fun, by the clickables list** (ranked 2026-11-06 from scr
    1b. FOUND by Joop 2026-11-07 (playing the test page): "Train track building mode misses the rotate when first
       positioning and has a few mismatches, but seems mostly working!" — NEXT: the construction window's rotate before
       the first piece is placed (upstream: the start position's direction, rotatable before the first build), then
-      compare a track build against the reference binary to find the mismatches.
+      the mismatches — Joop: "not pieces, dialog": they are in the construction window itself, not the track drawn;
+      compare goloco's Railway Track window against the reference binary's, tab by tab.
    2. (orderWait / orderForceUnload DONE 2026-11-07: createOrderDropdown + addNewOrder; passSignal DONE 2026-11-07: VehiclePassSignal; changeDirection DONE 2026-11-07: VehicleReverse / pickupDirection; speedControl DONE 2026-11-07: VehicleSpeedControl, the held slider, Manual behind the driver cheat — the Cheats window that sets it is item 8) Vehicle window orders that make routes worth building: orderWait (wait for full load), orderForceUnload,
       orderReverse, passSignal; refit (choose cargo); speedControl / changeDirection (manual driving); remove (sell).
    3. (STARTED 2026-11-07: the Station tab — viewport, status, centre view, the blackText caption — opened from the Stations list; the Cargo tab; the Cargo ratings tab; the catchment button; renaming; NEXT: the lists' scrolling, the vehicle tabs) StationWindow (13): cargo waiting, ratings, which cargo goes where — the feedback that tells a player what to
