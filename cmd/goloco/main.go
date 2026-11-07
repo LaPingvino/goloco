@@ -1406,6 +1406,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.buildVehicle.Draw(screen)
 	}
 	if g.vehicleWin != nil { // opened after the Build window: on top (PARTIAL: the window stack's real order)
+		if tr, err := g.w.Map.TrainOf(g.routeHead); err == nil { // the owner's colour, as each draw sets it
+			if o := int(g.w.Map.Entities[tr.Head].Owner); o < len(g.w.CompanyColours) {
+				g.vehicleWin.TitleColour = g.w.CompanyColours[o]
+			}
+		}
 		g.vehicleWin.FrameNo = g.windowFrame
 		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
 			g.vehicleWin.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
@@ -1421,6 +1426,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.companyFinances != nil { // the latest opened over the others (PARTIAL: the window stack's real order)
 		g.companyFinances.Data = g.companyFinancesData(g.companyFinancesID) // the figures as they change
+		if id := g.companyFinancesID; id >= 0 && id < len(g.w.CompanyColours) {
+			g.companyFinances.TitleColour = g.w.CompanyColours[id] // WindowManager's draw: an owned window's primary is its company's colour
+		}
 		g.companyFinances.CargoLines = g.companyCargoLines(g.companyFinancesID)
 		g.companyFinances.Challenge = g.companyChallenge(g.companyFinancesID)
 		g.companyFinances.Status = g.companyStatus(g.companyFinancesID)
