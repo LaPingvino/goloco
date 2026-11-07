@@ -53,15 +53,29 @@ type CompanyListWindow struct {
 	OnRow               func(id int)
 	SkinImage           int // the interface skin's image base (the tab icons)
 	FrameNo             int
-	Tab                 int // 0 the list, 1 performance, 2 cargo units, 3 cargo distance, 4 values (PARTIAL: payment rates, speed records)
-	CurrentMonths       int // getCurrentYear() × 12 + getCurrentMonth(): the graphs' x range
+	Tab                 int                // 0 the list, 1 performance, 2 cargo units, 3 cargo distance, 4 values, 5 payment rates (PARTIAL: speed records)
+	Cargos              []CompanyListCargo // the payment rates tab's lines, by cargo slot
+	CurrentMonths       int                // getCurrentYear() × 12 + getCurrentMonth(): the graphs' x range
 }
 
 // CompanyPerformanceSize is CompanyPerformance::kWindowSize; the graph
 // tabs' kWindowSizes follow it.
 var CompanyPerformanceSize = [2]int{635, 322}
 
-var companyTabSizes = [][2]int{CompanyListSize, CompanyPerformanceSize, {640, 272}, {660, 272}, {685, 322}}
+var companyTabSizes = [][2]int{CompanyListSize, CompanyPerformanceSize, {640, 272}, {660, 272}, {685, 322}, {495, 342}}
+
+// CompanyListCargo is a loaded cargo object for CargoPaymentRates: its name,
+// its line colour (_cargoLineColour by slot) and its delivered-cargo payment
+// table (Economy::getDeliveryCargoPaymentsTable: 100 units, 10 blocks, 2, 4
+// … 120 days).
+type CompanyListCargo struct {
+	Name     string
+	Colour   uint8
+	Payments [60]int32
+}
+
+// CargoLineColour is CargoPaymentRates' _cargoLineColour.
+var CargoLineColour = [32]uint8{27, 4, 16, 7, 18, 13, 25, 8, 21, 0, 2, 3, 5, 6, 9, 10, 11, 12, 14, 15, 17, 19, 1, 20, 22, 23, 24, 26, 28, 29, 30, 1}
 
 // companyListHeaders are the four TableHeaders (x, width) and their labels
 // (the sorted one's "▼" variant: the next string id).
@@ -138,7 +152,7 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 	if globalG1Font == nil {
 		return
 	}
-	if w.Tab >= 1 && w.Tab <= 4 {
+	if w.Tab >= 1 && w.Tab <= 5 {
 		w.drawGraphTab(screen)
 		return
 	}
@@ -334,9 +348,39 @@ func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 		gs.XOffset, gs.YAxisLabelIncrement, gs.YAxisStepSize, title = 65, 25, 1000, i18n.TitleCargoDistanceGraphs
 	case 4:
 		gs.XOffset, gs.YAxisLabelIncrement, gs.YAxisStepSize, title = 90, 25, 10000, i18n.TitleCompanyValues
+	case 5: // CargoPaymentRates::draw (0x00437120): back to front, 2 days a tick, a label every 20
+		gs.Top, gs.Height = 41+14, w.H-41-20-2*companyListWindowPadding
+		gs.XOffset, gs.YAxisLabelIncrement, gs.YAxisStepSize, title = 80, 25, 0, i18n.TitleCargoPaymentRates
+		gs.Flags, gs.DataEnd, gs.XAxisLabelIncrement, gs.XAxisRange, gs.XAxisStepSize = 0, 60, 20, 2, 2
 	}
 	gs.XAxisTickIncrement = (gs.Width - gs.XOffset) / 120
+	if w.Tab == 5 {
+		gs.XAxisTickIncrement = (gs.Width - gs.XOffset) / 60
+	}
+	type legendItem struct {
+		name   string
+		colour uint8
+	}
+	var legend []legendItem
+	for _, c := range w.Cargos {
+		if w.Tab != 5 {
+			break
+		}
+		line := make([]int64, len(c.Payments))
+		for i, v := range c.Payments {
+			line[i] = int64(v)
+		}
+		cm, _ := g1.GetPaletteMap(int(c.Colour))
+		gs.Lines = append(gs.Lines, line)
+		gs.DataStart = append(gs.DataStart, 0)
+		gs.LineColour = append(gs.LineColour, gfx8.Shade(cm, 6))
+		legend = append(legend, legendItem{c.Name, c.Colour})
+	}
 	for _, r := range w.Rows { // in company order (the legend's)
+		if w.Tab == 5 {
+			break
+		}
+		legend = append(legend, legendItem{r.Name, r.Colour})
 		line := make([]int64, 120)
 		for i := range line {
 			switch w.Tab {
@@ -365,8 +409,8 @@ func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 		w.drawTabs(rt, sec)
 		labels = gs.Draw(rt, sec)
 		x, y := w.W-companyListLegendWidth-companyListWindowPadding, 52
-		for _, r := range w.Rows {
-			cm, _ := g1.GetPaletteMap(int(r.Colour))
+		for _, r := range legend {
+			cm, _ := g1.GetPaletteMap(int(r.colour))
 			gfx8.FillRect(rt, x, y+3, x+4, y+7, gfx8.Shade(cm, 6))
 			y += 10
 		}
@@ -376,7 +420,10 @@ func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 	w.drawTabCurrency(screen, black)
 	for _, l := range labels { // graph_label_format: the small font, black
 		var s string
-		if l.XAxis { // rawdate_short: the month's short name, a space, the year
+		if l.XAxis && w.Tab == 5 { // cargo_delivered_days
+			s = ui18nFill(i18n.CargoDeliveredDays, strconv.Itoa(int(int16(l.Value))))
+			DrawTextFont(screen, s, G1FontSmall, w.X+l.X-MeasureTextFont(s, G1FontSmall)/2, w.Y+l.Y, black)
+		} else if l.XAxis { // rawdate_short: the month's short name, a space, the year
 			s = i18n.Str(i18n.MonthShortJanuary+int(l.Value%12)) + " " + strconv.Itoa(int(l.Value/12))
 			DrawTextFont(screen, s, G1FontSmall, w.X+l.X-MeasureTextFont(s, G1FontSmall)/2, w.Y+l.Y, black)
 		} else {
@@ -387,14 +434,23 @@ func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 				s = strconv.Itoa(int(int32(l.Value)))
 			case 4: // small_company_value_currency
 				s = L.Currency48(l.Value)
+			case 5: // cargo_delivered_currency: {CURRENCY32}
+				s = L.Currency48(int64(int32(l.Value)))
 			}
 			DrawTextFont(screen, s, G1FontSmall, w.X+l.X-MeasureTextFont(s, G1FontSmall), w.Y+l.Y, black)
 		}
 	}
 	x, y := w.X+w.W-companyListLegendWidth-companyListWindowPadding, w.Y+52
-	for _, r := range w.Rows { // small_black_string, clipped to 94
-		DrawTextFont(screen, r.Name, G1FontSmall, x+6, y, black)
+	for _, r := range legend { // small_black_string, clipped to 94
+		DrawTextFont(screen, r.name, G1FontSmall, x+6, y, black)
 		y += 10
+	}
+	if w.Tab == 5 { // the chart's title (100 units, 10 blocks) and "Transit time", centred on the canvas
+		mid := w.X + gs.XOffset + (gs.Width-gs.XOffset)/2
+		s := stripCodes(ui18nFill(i18n.CargoDeliverGraphTitle, "100", "10"))
+		DrawTextFont(screen, s, G1FontSmall, mid-MeasureTextFont(s, G1FontSmall)/2, w.Y+41+1, black)
+		s = stripCodes(i18n.Str(i18n.CargoTransitTime))
+		DrawTextFont(screen, s, G1FontSmall, mid-MeasureTextFont(s, G1FontSmall)/2, w.Y+w.H-13, black)
 	}
 }
 
