@@ -34,6 +34,8 @@ type TrackObject struct {
 	// BuildCostFactor and CostIndex price a piece (CreateTrack).
 	BuildCostFactor int16
 	CostIndex       uint8
+	// SellCostFactor (0x16) prices the removal of a piece (removeTrack).
+	SellCostFactor int16
 	// TunnelCostFactor (0x18) prices a piece built underground (createTrack).
 	TunnelCostFactor int16
 	// BridgeNames are its bridges' DAT names (load resolves them into bridges).
@@ -114,6 +116,7 @@ func ParseTrackObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tr
 		DisplayOffset:      data[0x34],
 		// buildCostFactor 0x14, costIndex 0x1A (offsets from the compiler)
 		BuildCostFactor:  int16(uint16(data[0x14]) | uint16(data[0x15])<<8),
+		SellCostFactor:   int16(uint16(data[0x16]) | uint16(data[0x17])<<8),
 		CostIndex:        data[0x1A],
 		TunnelCostFactor: int16(uint16(data[0x18]) | uint16(data[0x19])<<8),
 	}

@@ -41,7 +41,9 @@ type BridgeObject struct {
 	// (createRoad / createTrack: base + height × the height above ground).
 	BaseCostFactor   int16
 	HeightCostFactor int16
-	DesignedYear     uint16
+	// SellCostFactor (0x12) prices removing a piece on the bridge (removeTrack).
+	SellCostFactor int16
+	DesignedYear   uint16
 
 	// ImageOffset is the base G1 pool index set by LoadImageTable.
 	ImageOffset uint32
@@ -95,6 +97,7 @@ func ParseBridgeObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*B
 		DisabledTrackCfg: binary.LittleEndian.Uint16(data[0x14:]),
 		CostIndex:        data[0x0D],
 		BaseCostFactor:   int16(uint16(data[0x0E]) | uint16(data[0x0F])<<8),
+		SellCostFactor:   int16(uint16(data[0x12]) | uint16(data[0x13])<<8),
 		HeightCostFactor: int16(uint16(data[0x10]) | uint16(data[0x11])<<8),
 		DesignedYear:     binary.LittleEndian.Uint16(data[BridgeDesignedYearOffset:]),
 	}
