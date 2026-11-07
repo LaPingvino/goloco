@@ -4,6 +4,7 @@ import (
 	"image"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -13,14 +14,21 @@ import (
 // station (zoom half) with the centre-view button in its corner, and the
 // status bar (getStatusString).
 // clickable(StationWindow.cpp): close_button centre_on_viewport
-// PARTIAL: the Cargo and Cargo ratings tabs and the vehicle tabs (and the
-// tabs' images), renaming by the caption, resizing, the viewport's rotation.
+// The Cargo tab: the cargo waiting (Cargo::drawScroll) and "Accepts:" with
+// the accepted cargo's sprites (Cargo::draw).
+// PARTIAL: the Cargo ratings tab and the vehicle tabs (and the tabs'
+// images), renaming by the caption, resizing, the viewport's rotation, the
+// cargo list's scrolling, the catchment button (showStationCatchment), the
+// status bar's tooltip.
 const stationWinW, stationWinH = 223, 136 // Station::kWindowSize
 
 type StationWindow struct {
 	X, Y                int
 	Title, Status       string
 	TitleColour, Colour uint8
+	Tab                 int // 0 Station, 1 Cargo
+	Cargo               []StationCargoLine
+	Accepted            []int // the accepted cargo's unitInlineSprite, in cargo order
 	View                func(w, h int) *gfx8.RenderTarget
 	OnCentreView        func()
 	OnClose             func()
@@ -51,15 +59,37 @@ func (w *StationWindow) HandleClick(px, py int) {
 		}
 		return
 	}
+	for t := 0; t < 2; t++ { // Common::switchTab (the ported tabs)
+		if rx >= 3+31*t && rx < 3+31*t+31 && ry >= 15 && ry < 42 {
+			w.Tab = t
+			return
+		}
+	}
+	if w.Tab != 0 {
+		return
+	}
 	_, _, r, b := stationViewport()
 	if rx >= r-24 && rx <= r-1 && ry >= b-24 && ry <= b-1 && w.OnCentreView != nil {
 		w.OnCentreView()
 	}
 }
 
+// StationCargoLine is one cargo waiting (Cargo::drawScroll): its
+// unitInlineSprite, the units drawn (min(quantity, 400) + 9) / 10, the
+// quantity line ("N passengers"), and the origin line when it came from
+// another station ("" when it starts here).
+type StationCargoLine struct {
+	Sprite, Units int
+	Text, Origin  string
+}
+
 // Draw is Station::draw.
 func (w *StationWindow) Draw(screen *ebiten.Image) {
 	if globalG1Font == nil {
+		return
+	}
+	if w.Tab == 1 {
+		w.drawCargo(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -104,5 +134,83 @@ func (w *StationWindow) Draw(screen *ebiten.Image) {
 	// status_bar: black_stringid with the status, left-clipped at (3, height − 12) − 1.
 	black := g1.GetPalette()[paletteBlack0]
 	DrawTextFont(screen, w.Status, G1FontMediumNormal, w.X+3-1, w.Y+stationWinH-12-1, black)
+	DrawWindowCaptionStation(screen, w.X+1, w.Y+1, stationWinW-2, w.Title, w.TitleColour)
+}
+
+// drawCargo is Cargo::draw and drawScroll: the scroll view (3, 44 to
+// width − 26, height − 14) cleared to the secondary colour's shade 4, each
+// cargo's unit sprites 10 apart from (1, y) and its line right-aligned at
+// the view's width − 14 in WINDOW_2 with the black outline (y + 10; the
+// origin line likewise; then 2 more) — "Nothing waiting" when none —; the
+// catchment button; and the status bar's "Accepts: " with the accepted
+// cargo's sprites 12 apart after it, or "Nothing".
+func (w *StationWindow) drawCargo(screen *ebiten.Image) {
+	g1 := globalG1Font.g1
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	pal := g1.GetPalette()
+	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
+	l, t, r, b := 3, 44, stationWinW-26, stationWinH-14
+	DrawWindowFrame(screen, w.X, w.Y, stationWinW, stationWinH, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, stationWinW, stationWinH, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, 0, 41, stationWinW-1, stationWinH-1, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, stationWinW-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		for i := 0; i < 3; i++ {
+			drawTab(rt, 3+31*i, 15, i == 1, sec, tabNoIcon, nil)
+		}
+		gfx8.FillRectInset(rt, l, t, r, b, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+		gfx8.FillRect(rt, l+1, t+1, r-1, b-1, gfx8.Shade(sec, 4))
+		if sp, err := gfx8.Decode(&g1.Elements[2379]); err == nil { // show_station_catchment at (width − 25, 44)
+			gfx8.DrawSpriteNoise(rt, sp, stationWinW-25, 44, gfx8.OpFor(sp, true, false), sec, nil)
+		}
+		y := 1
+		for _, c := range w.Cargo {
+			for i, x := 0, 1; i < c.Units && x < r-l-1; i, x = i+1, x+10 {
+				drawG1At(rt, c.Sprite, l+1+x, t+1+y)
+			}
+			y += 10
+			if c.Origin != "" {
+				y += 10
+			}
+			y += 2
+		}
+	})
+	clip := screen.SubImage(image.Rect(w.X+l+1, w.Y+t+1, w.X+r, w.Y+b)).(*ebiten.Image)
+	y := w.Y + t + 1 + 1
+	xr := w.X + l + 1 + (r - l + 1) - 14
+	for _, c := range w.Cargo {
+		tw, _ := MeasureTextBold(c.Text)
+		DrawTextOutlined(clip, c.Text, xr-tw, y, win2, black)
+		y += 10
+		if c.Origin != "" {
+			ow, _ := MeasureTextBold(c.Origin)
+			DrawTextOutlined(clip, c.Origin, xr-ow, y, win2, black)
+			y += 10
+		}
+		y += 2
+	}
+	if len(w.Cargo) == 0 { // nothing_waiting at (1, 0)
+		DrawTextFont(clip, i18n.Str(i18n.NothingWaiting), G1FontMediumNormal, w.X+l+1+1, w.Y+t+1, black)
+	}
+	// The status bar (3, height − 12): accepted_cargo_separator, then the sprites.
+	label := stripCodes(i18n.Str(i18n.AcceptedCargoSeparator))
+	sx, sy := w.X+3, w.Y+stationWinH-12
+	DrawTextFont(screen, label, G1FontMediumNormal, sx-1, sy-1, black)
+	lw := MeasureTextFont(label, G1FontMediumNormal)
+	ox := sx + lw + 2
+	if len(w.Accepted) == 0 {
+		DrawTextFont(screen, i18n.Str(i18n.CargoNothingAccepted), G1FontMediumNormal, ox, sy, black)
+	} else {
+		draw8(screen, ox, sy-1, 12*len(w.Accepted)+12, 12, func(rt *gfx8.RenderTarget) {
+			for i, sp := range w.Accepted {
+				drawG1At(rt, sp, 12*i, 0)
+			}
+		})
+	}
 	DrawWindowCaptionStation(screen, w.X+1, w.Y+1, stationWinW-2, w.Title, w.TitleColour)
 }

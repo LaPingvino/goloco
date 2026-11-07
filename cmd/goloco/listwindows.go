@@ -147,6 +147,7 @@ func (g *Game) openStationWindow(id int) {
 		tc = g.w.CompanyColours[info.Owner]
 	}
 	w := ui.NewStationWindow(g.sw, g.sh, info.Name, info.Status, tc, wc)
+	w.Cargo, w.Accepted = g.stationCargoLines(id)
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.StationView(id, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnStation(id) }
 	w.OnClose = func() { g.stationWin = nil }
@@ -1868,4 +1869,49 @@ func (g *Game) speedControl(headID uint16, speed int8) {
 	if g.vehicleWin != nil {
 		g.vehicleWin.ManualPower = speed
 	}
+}
+
+// stationCargoLines is what the Station window's Cargo tab shows: for each
+// cargo with a quantity, its sprite, the units drawn ((min(q, 400) + 9) /
+// 10), "N <unit name>" (unitNameSingular for 1) and, from another station,
+// "(en-route from <that station>)" split over the two lines as
+// station_cargo_en_route_start / _end; and the accepted cargo's sprites.
+func (g *Game) stationCargoLines(id int) (lines []ui.StationCargoLine, accepted []int) {
+	m := &g.w.Map
+	om := g.r.ObjMgr
+	if om == nil || id < 0 || id >= len(m.StationNames) {
+		return nil, nil
+	}
+	names := map[int]string{}
+	for _, s := range g.w.StationList() {
+		names[s.ID] = s.Name
+	}
+	st := &m.StationNames[id]
+	for c := range st.Cargo {
+		cs := st.Cargo[c]
+		if c >= len(om.CargoObjects) || om.CargoObjects[c] == nil {
+			continue
+		}
+		co := om.CargoObjects[c]
+		if cs.Flags&1 != 0 { // isAccepted
+			accepted = append(accepted, int(co.ImageOffset))
+		}
+		if cs.Quantity == 0 {
+			continue
+		}
+		unit := co.UnitNamePlural
+		if cs.Quantity == 1 {
+			unit = co.UnitNameSingular
+		}
+		name := ui.FillArgs(ui.ObjectString(unit), ui.Comma32(int64(cs.Quantity)))
+		l := ui.StationCargoLine{Sprite: int(co.ImageOffset), Units: (int(min(cs.Quantity, 400)) + 9) / 10}
+		if int(cs.Origin) != id {
+			l.Text = ui.StripCodes(ui.FillArgs(i18n.Str(i18n.StationCargoEnRouteStart), name))
+			l.Origin = ui.StripCodes(ui.FillArgs(i18n.Str(i18n.StationCargoEnRouteEnd), names[int(cs.Origin)]))
+		} else {
+			l.Text = ui.StripCodes(ui.FillArgs(i18n.Str(i18n.StationCargo), name))
+		}
+		lines = append(lines, l)
+	}
+	return lines, accepted
 }
