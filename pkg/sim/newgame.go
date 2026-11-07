@@ -22,6 +22,7 @@ const (
 	stringIDNewCompany  = 2 // StringIds::new_company
 	colourMax           = 31
 	colourMutedSeaGreen = 11
+	colourGrey          = 1 // Colour::grey: the neutral company's
 	companyIDNull       = 0xFF
 )
 
