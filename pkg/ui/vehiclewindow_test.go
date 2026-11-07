@@ -54,3 +54,26 @@ func TestVehicleWindowPositioning(t *testing.T) {
 		t.Errorf("an unmoved caption click renames: %d", renamed)
 	}
 }
+
+// Details' car list bar: a press on its down arrow scrolls (and starts no
+// car drag); held, it repeats; released, it stops.
+func TestVehicleCarListBar(t *testing.T) {
+	w := &VehicleWindow{X: 100, Y: 100, W: 265, H: 177, Tab: 1, Cars: make([]TrainCarDraw, 20),
+		State: VehicleDetailsState{Own: true}, OnDropMove: func(int, int) {}}
+	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+	list := lw[vdCarList]
+	x, y := w.X+list.R-4, w.Y+list.B-4
+	if !w.carBar(x, y) {
+		t.Fatal("the down arrow is not on the bar")
+	}
+	w.HandleClick(x, y)
+	if w.Scroll != 3 || w.Dragging {
+		t.Fatalf("press: scroll %d dragging %v", w.Scroll, w.Dragging)
+	}
+	w.ScrollDrag(x, y, true)
+	w.ScrollDrag(x, y, false)
+	w.ScrollDrag(x, y, true)
+	if w.Scroll != 6 {
+		t.Fatalf("hold / release: %d", w.Scroll)
+	}
+}
