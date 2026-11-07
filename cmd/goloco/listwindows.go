@@ -202,8 +202,7 @@ func (g *Game) openBuildVehicleFor(tab int, target uint16) {
 }
 
 // buildNewOpen is Vehicle Details' buildNew dropdown (onMouseDown): Modify
-// vehicle (BuildVehicle::openByVehicleId) and Clone vehicle.
-// PARTIAL: Clone vehicle (cloneVehicle) does nothing yet.
+// vehicle (BuildVehicle::openByVehicleId) and Clone vehicle (cloneVehicle).
 func (g *Game) buildNewOpen(headID uint16, x, y, w, h int) {
 	m := &g.w.Map
 	tr, err := m.TrainOf(headID)
@@ -219,11 +218,37 @@ func (g *Game) buildNewOpen(headID uint16, x, y, w, h int) {
 	}
 	d.Highlighted = 0
 	d.OnSelect = func(item int) {
-		if item <= 0 {
+		switch item {
+		case 0:
 			g.openBuildVehicleFor(vt, headID)
+		case 1:
+			g.cloneVehicle(headID)
 		}
 	}
 	g.dropdown = d
+}
+
+// cloneVehicle is Vehicle::Details' cloneVehicle: the cloneVehicle command
+// for the controlling company (paid under VehiclePurchases); done, the new
+// vehicle's Details window opens; refused, the error window (cant_clone_vehicle
+// and the reason).
+func (g *Game) cloneVehicle(headID uint16) {
+	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
+		return
+	}
+	m := &g.w.Map
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	var head uint16
+	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureVehiclePurchases, func(flags uint8) (int32, bool) {
+		return m.CloneVehicle(c, flags, headID, &head)
+	}); !ok {
+		g.openError(i18n.Label(i18n.CantCloneVehicle), cmdErrorText(c))
+		return
+	}
+	if head != sim.EntityIDNull {
+		g.openVehicleDetails(head)
+	}
 }
 
 // buyVehicle is onScrollMouseDown's purchase: the createVehicle command (no
