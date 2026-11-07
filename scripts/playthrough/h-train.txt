@@ -1,6 +1,8 @@
 # PL.1 playthrough, stage H (in progress): stage G's line, then Build Vehicles
 # (668–697 on the toolbar) → Build Trains → the 3F 'Jinty' row: Train 1 is
-# bought (£81,370 → £65,172) and its window opens on the details tab. Next:
+# bought (£81,370 → £65,172) and its window opens on the details tab; its
+# add-vehicle button → Modify vehicle → the list scrolled (wheel) → Passenger
+# Carriage joins Train 1 (£4,883). Next: place the train on the line.
 wait 20
 seed 1950
 scenario Weatherworld
