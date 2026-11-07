@@ -2,7 +2,9 @@
 # (668–697 on the toolbar) → Build Trains → the 3F 'Jinty' row: Train 1 is
 # bought (£81,370 → £65,172) and its window opens on the details tab; its
 # add-vehicle button → Modify vehicle → the list scrolled (wheel) → Passenger
-# Carriage joins Train 1 (£4,883). Next: place the train on the line.
+# Carriage joins Train 1 (£4,883); the Build window closed, the pickup button
+# and a click on the line's visible end (318,397; the window covers the rest):
+# Train 1 stands on the track, its window on the main tab. Next: its route.
 wait 20
 seed 1950
 scenario Weatherworld
@@ -98,4 +100,19 @@ click 240 431
 move 400 560
 wait 2
 shot /tmp/goloco-playthrough/pt-h-h9b.png
+move 641 107
+wait 1
+click 641 107
+wait 1
+move 518 288
+wait 1
+click 518 288
+wait 1
+move 318 397
+wait 2
+shot /tmp/goloco-playthrough/pt-h-p1.png
+click 318 397
+move 700 520
+wait 3
+shot /tmp/goloco-playthrough/pt-h-p2.png
 quit
