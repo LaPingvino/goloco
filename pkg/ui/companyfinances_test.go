@@ -83,3 +83,22 @@ func TestCompanyWindowPositioning(t *testing.T) {
 		t.Errorf("unmoved click: renamed %d", renamed)
 	}
 }
+
+// sortCompanyList's orders: performance (the default) and value highest
+// first, name by strcmp; a header click sorts by it.
+func TestCompanyListSort(t *testing.T) {
+	w := &CompanyListWindow{W: 640, H: 272, SortMode: 2, Rows: []CompanyListRow{
+		{ID: 0, Name: "Bravo", Performance: 50, Value: 900}, {ID: 1, Name: "Alpha", Performance: 70, Value: 100}}}
+	w.Sort()
+	if w.Rows[0].ID != 1 {
+		t.Errorf("performance: %d first", w.Rows[0].ID)
+	}
+	w.HandleClick(w.X+534+5, w.Y+45) // the value header
+	if w.SortMode != 3 || w.Rows[0].ID != 0 {
+		t.Errorf("value: mode %d, %d first", w.SortMode, w.Rows[0].ID)
+	}
+	w.HandleClick(w.X+4+5, w.Y+45) // the name header
+	if w.Rows[0].Name != "Alpha" {
+		t.Errorf("name: %s first", w.Rows[0].Name)
+	}
+}

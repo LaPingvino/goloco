@@ -67,6 +67,7 @@ type Game struct {
 	companyFinances                *ui.CompanyFinancesWindow // the Company window's Finances tab when open (PL.1)
 	companyFinancesID              int
 	colourDropdown                 *ui.ColourDropdown        // Dropdown::showColour when open
+	companyList                    *ui.CompanyListWindow     // CompanyList when open
 	scenarioDetails                string                    // the started scenario's description (the Challenge tab; PARTIAL: a saved game's)
 	vehicleWin                     *ui.VehicleWindow         // the Vehicle window when open (5P.g)
 	diagMouse                      *[2]int                   // DIAGNOSTIC ONLY: the mouse held at a point (the roadghost diag's hover)
@@ -757,6 +758,8 @@ func (g *Game) Update() error {
 			g.colourDropdown = nil
 		} else if g.companyFinances != nil && g.companyFinances.Contains(g.mouseX, g.mouseY) {
 			g.companyFinances.HandleClick(g.mouseX, g.mouseY) // drawn on top: clicked first
+		} else if g.companyList != nil && g.companyList.Contains(g.mouseX, g.mouseY) {
+			g.companyList.HandleClick(g.mouseX, g.mouseY)
 		} else if g.vehicleWin != nil && g.vehicleWin.Contains(g.mouseX, g.mouseY) {
 			g.vehicleWin.HandleClick(g.mouseX, g.mouseY)
 		} else if g.buildVehicle != nil && g.buildVehicle.Contains(g.mouseX, g.mouseY) {
@@ -1439,6 +1442,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.townWin != nil {
 		g.townWin.Draw(screen)
+	}
+	if g.companyList != nil {
+		g.companyList.Draw(screen)
 	}
 	if g.companyFinances != nil { // the latest opened over the others (PARTIAL: the window stack's real order)
 		g.companyFinances.Data = g.companyFinancesData(g.companyFinancesID) // the figures as they change
