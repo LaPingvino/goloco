@@ -83,6 +83,30 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 			f.Disabled[3] = om.AvailableCompatibleRoadMods(g.buildObjID, unlocked) == none
 		} else {
 			f.Disabled[3] = om.AvailableCompatibleMods(g.buildObjID, unlocked) == none
+			// drawTrackTabs' content: the selected station type, the selected
+			// signal and the available extras (modList).
+			tt := &ui.TrackTabIcons{}
+			if list := om.AvailableCompatibleStations(g.buildObjID, false, year); len(list) > 0 {
+				if st := om.GetTrainStationObjectByIndex(pickSlot(list, g.consStation)); st != nil {
+					tt.StationImage, tt.StationRecolourable = int(st.ImageOffset), st.Flags&1 != 0
+				}
+			}
+			if list := om.AvailableCompatibleSignals(g.buildObjID, year); len(list) > 0 {
+				if sg := om.GetTrainSignalObjectByIndex(pickSlot(list, g.consSignal)); sg != nil {
+					tt.SignalImage, tt.SignalNumFrames, tt.SignalAnimSpeed = int(sg.ImageOffset), int(sg.NumFrames), int(sg.AnimSpeed)
+				}
+			}
+			for _, m := range om.AvailableCompatibleMods(g.buildObjID, unlocked) {
+				if m == 0xFF || int(m) >= len(om.TrackExtraOrder) {
+					continue
+				}
+				if ex := om.Extra(om.TrackExtraOrder[m]); ex != nil && ex.Image >= 8 {
+					tt.ExtraImages = append(tt.ExtraImages, int(ex.Image)-8) // var_0E: the image table's start
+				}
+			}
+			if g.buildMode == buildModeTrack {
+				f.Track = tt
+			}
 		}
 	}
 	if g.buildMode == buildModeAirport { // drawAirportTabs; caption title_airport
