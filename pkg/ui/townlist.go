@@ -164,6 +164,7 @@ func townOrder(mode int, a, b TownRow) bool {
 
 // StationRow is one station of the station list.
 type StationRow struct {
+	ID                    int // the station's id (the row opens its window)
 	Name, Status, Accepts string
 	Waiting               int
 	AcceptsKey            string // orderByAccepts: the accepted cargo names run together
@@ -188,8 +189,10 @@ func NewStationList(sw int, stations []StationRow, titleColour, colour uint8) *T
 	w.Sort = func(mode int) {
 		order := append([]StationRow(nil), stations...)
 		sort.SliceStable(order, func(i, j int) bool { return stationOrder(mode, order[i], order[j]) })
+		w.RowIDs = w.RowIDs[:0]
 		for i, s := range order {
 			w.Rows[i] = []string{s.Name, s.Status, itoa3(s.Waiting) + " units", s.Accepts}
+			w.RowIDs = append(w.RowIDs, s.ID)
 		}
 	}
 	w.Sort(0)
