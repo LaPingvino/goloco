@@ -26,6 +26,9 @@ import (
 // CompanyFinancesSize is Finances::kWindowSize.
 var CompanyFinancesSize = [2]int{636, 319}
 
+// CompanyColourSchemeSize is ColourScheme::kWindowSize.
+var CompanyColourSchemeSize = [2]int{265, 252}
+
 // CompanyDetailsSize is Details::kWindowSize.
 var CompanyDetailsSize = [2]int{340, 194}
 
@@ -127,11 +130,16 @@ type CompanyFinancesWindow struct {
 	// images[ownerEmotion] + 1, in FaceColour), name and status line.
 	Status CompanyStatus
 	// Details is what Details::draw shows.
-	Details   CompanyDetails
-	Scroll    int
-	SkinImage int // the interface skin's image base (the tab icons)
-	FrameNo   int // the window's frameNo: the current tab's icon animates
-	OnClose   func()
+	Details CompanyDetails
+	// Colours is what ColourScheme::draw shows.
+	Colours CompanyColours
+	// OnColourMode is a vehicle type\'s checkbox (colourType 1–10): its own
+	// scheme on or off (ChangeCompanyColourScheme, setColourMode).
+	OnColourMode func(colourType int, on bool)
+	Scroll       int
+	SkinImage    int // the interface skin's image base (the tab icons)
+	FrameNo      int // the window's frameNo: the current tab's icon animates
+	OnClose      func()
 	// OnLoan is the stepper's − (−1) or + (+1): onMouseDown loan_decrease /
 	// loan_increase (a step of £1,000 × the click-repeat step).
 	OnLoan func(dir int)
@@ -153,6 +161,11 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 	switch {
 	case in(lw[cwClose]) && w.OnClose != nil:
 		w.OnClose()
+	case in(lw[cwTabColour]) && w.Tab != CompanyTabColourScheme:
+		w.switchTab(CompanyTabColourScheme)
+	case w.Tab == CompanyTabColourScheme && w.Colours.Own && w.colourCheckAt(x, y) >= 0 && w.OnColourMode != nil:
+		i := w.colourCheckAt(x, y) // onMouseUp check_…: the vehicle type's scheme toggled
+		w.OnColourMode(i+1, w.Colours.Custom&(1<<(i+1)) == 0)
 	case in(lw[cwTabDetails]) && w.Tab != CompanyTabDetails:
 		w.switchTab(CompanyTabDetails)
 	case in(lw[cwTabStatus]) && w.Tab != CompanyTabStatus:
@@ -195,6 +208,8 @@ func (w *CompanyFinancesWindow) switchTab(tab int) {
 		w.W, w.H = CompanyStatusSize[0], CompanyStatusSize[1]
 	case CompanyTabDetails:
 		w.W, w.H = CompanyDetailsSize[0], CompanyDetailsSize[1]
+	case CompanyTabColourScheme:
+		w.W, w.H = CompanyColourSchemeSize[0], CompanyColourSchemeSize[1]
 	}
 	w.Scroll = 0
 }
@@ -218,6 +233,10 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 	}
 	if w.Tab == CompanyTabDetails {
 		w.drawDetails(screen)
+		return
+	}
+	if w.Tab == CompanyTabColourScheme {
+		w.drawColourScheme(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -787,5 +806,94 @@ func (w *CompanyFinancesWindow) drawDetails(screen *ebiten.Image) {
 			lw2, _ := MeasureTextBold(ln)
 			DrawTextBold(screen, ln, w.X+(vpL+vpR)/2-lw2/2, w.Y+(vpT+vpB)/2-5+i*10, black)
 		}
+	}
+}
+
+// CompanyColours is the Colour scheme tab's content: the main scheme, each
+// vehicle type's, which types have their own (customVehicleColoursSet, bit
+// 1–10), and whether it is the controlling company's (else all disabled).
+type CompanyColours struct {
+	Main    [2]uint8
+	Vehicle [10][2]uint8
+	Custom  uint32
+	Own     bool
+}
+
+const imgColourSwatchRecolourable = 2306 // ImageIds::colour_swatch_recolourable
+
+var companyColourLabels = [10]int{i18n.ColourSteamLocomotives, i18n.ColourDieselLocomotives, i18n.ColourElectricLocomotives,
+	i18n.ColourMultipleUnits, i18n.ColourPassengerVehicles, i18n.ColourFreightVehicles, i18n.ColourBuses, i18n.ColourTrucks,
+	i18n.ColourAircraft, i18n.ColourShips}
+
+// colourCheckAt is the vehicle-type checkbox (0–9: Checkbox (15, 81 + 17i),
+// 204 × 12) under a point, −1 none.
+func (w *CompanyFinancesWindow) colourCheckAt(x, y int) int {
+	for i := 0; i < 10; i++ {
+		l, t := w.X+15, w.Y+81+17*i
+		if x >= l && x < l+204 && y >= t && y < t+12 {
+			return i
+		}
+	}
+	return -1
+}
+
+// drawColourScheme is ColourScheme::draw (0x00432F9A) after prepareDraw: the
+// main scheme's two swatches (221 / 239, 48), "Main colour scheme" at
+// (6, 48 + 3) and "Special colour schemes used for" 17 below; each vehicle
+// type's checkbox (15, 81 + 17i: Checkbox::draw — the box, the tick when its
+// bit is set, the label 14 right, in the window's colour) and, when set, its
+// two swatches (221 / 239, 78 + 17i). A swatch is ColourButton::draw: the
+// recolourable swatch image in its colour. PARTIAL: the hover / pressed
+// swatch images, another company's disabled look, the company select's face.
+func (w *CompanyFinancesWindow) drawColourScheme(screen *ebiten.Image) {
+	g1 := globalG1Font.g1
+	pal := g1.GetPalette()
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	lw := CompanyFinancesLayout(w.W, w.H)
+	c := &w.Colours
+	swatch := func(rt *gfx8.RenderTarget, x, y int, colour uint8) {
+		if imgColourSwatchRecolourable >= len(g1.Elements) {
+			return
+		}
+		if sp, err := gfx8.Decode(&g1.Elements[imgColourSwatchRecolourable]); err == nil {
+			m, _ := g1.GetPaletteMap(int(colour))
+			gfx8.DrawSpriteNoise(rt, sp, x, y, gfx8.OpFor(sp, m != nil, false), m, nil)
+		}
+	}
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		p := lw[cwPanel]
+		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		w.drawCompanyTabs(rt, lw[:], cwTabColour, sec, prim)
+		swatch(rt, 221, 48, c.Main[0])
+		swatch(rt, 239, 48, c.Main[1])
+		for i := 0; i < 10; i++ {
+			y := 81 + 17*i
+			gfx8.FillRectInset(rt, 15, y, 15+9, y+9, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			if c.Custom&(1<<(i+1)) != 0 {
+				swatch(rt, 221, 78+17*i, c.Vehicle[i][0])
+				swatch(rt, 239, 78+17*i, c.Vehicle[i][1])
+			}
+		}
+	})
+	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, ui18nFill(i18n.TitleCompanyColourScheme, w.Title), int(w.TitleColour))
+	red, _ := TextColours(27)
+	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
+	drawFormattedEx(screen, w.X+6, w.Y+48+3, i18n.Str(i18n.MainColourScheme), win2, black, red)
+	drawFormattedEx(screen, w.X+6, w.Y+48+3+17, i18n.Str(i18n.SpecialColourSchemesUsedFor), win2, black, red)
+	wc, _ := TextColours(int(w.Colour))
+	for i := 0; i < 10; i++ {
+		y := w.Y + 81 + 17*i
+		if c.Custom&(1<<(i+1)) != 0 {
+			DrawTextBold(screen, string(rune(0xAC)), w.X+15, y, wc)
+		}
+		DrawTextBold(screen, stripCodes(i18n.Str(companyColourLabels[i])), w.X+15+10+4, y, wc)
 	}
 }

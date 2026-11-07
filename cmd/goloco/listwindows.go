@@ -1266,6 +1266,9 @@ func (g *Game) openCompanyFinances(company int) {
 		Tab:   ui.CompanyTabFinances, // openFinances: currentTab = tab_finances
 		Title: g.w.Map.CompanyName(company), Data: g.companyFinancesData(company),
 		OnClose: func() { g.companyFinances = nil }, OnLoan: func(dir int) { g.changeLoan(company, dir) },
+		OnColourMode: func(colourType int, on bool) { // ColourScheme onMouseUp check_…
+			g.changeCompanyColour(company, sim.ColourSchemeChange{Company: uint8(company), ColourType: uint8(colourType), Value: b2u8(on), SetMode: true})
+		},
 		OnAutopay: func() { // onMouseUp loan_autopay: challengeFlags ^= autopayLoan
 			if company < len(g.w.Map.CompanyFaces) {
 				g.w.Map.CompanyFaces[company].ChallengeFlags ^= sim.CompanyFlagAutopayLoan
@@ -1443,4 +1446,32 @@ func (g *Game) companyDetails(company int) ui.CompanyDetails {
 		det.Trend = 1
 	}
 	return det
+}
+
+// changeCompanyColour is a ChangeCompanyColourScheme with apply (its error
+// title error_cant_change_colour_scheme on a refusal).
+func (g *Game) changeCompanyColour(company int, a sim.ColourSchemeChange) {
+	m := &g.w.Map
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) { return m.ChangeCompanyColourScheme(c, f, a, g.r.ObjMgr) }); !ok {
+		g.openError(i18n.Label(i18n.ErrorCantChangeColourScheme), cmdErrorText(c))
+	}
+}
+
+func b2u8(b bool) uint8 {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// companyColours is what ColourScheme::prepareDraw reads of a company.
+func (g *Game) companyColours(company int) ui.CompanyColours {
+	m := &g.w.Map
+	if company < 0 || company >= len(m.CompanyColourSchemes) {
+		return ui.CompanyColours{}
+	}
+	cs := &m.CompanyColourSchemes[company]
+	ctrl, _ := g.w.ControllingCompany()
+	return ui.CompanyColours{Main: cs.Main, Vehicle: cs.Vehicle, Custom: cs.CustomSet, Own: company == ctrl}
 }
