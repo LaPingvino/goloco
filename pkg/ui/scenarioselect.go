@@ -39,16 +39,20 @@ var (
 
 // ScenarioSelectWindow is the window state.
 type ScenarioSelectWindow struct {
-	X, Y     int
-	Tab      int
-	Scroll   int  // list scroll offset in px
-	dragging bool // the scrollbar's thumb is being dragged
-	dragY    int
-	Selected *scenario.ScenarioMeta
-	byCat    [5][]*scenario.ScenarioMeta
-	OnStart  func(*scenario.ScenarioMeta)
-	OnClose  func()
-	content  [4]int // the list's content rectangle, window-relative (set by Draw)
+	// ObjectiveText, if set, is the scenario index entry's objective string
+	// (ScenarioManager loadScenarioProgress: formatChallengeArguments with
+	// the delivered cargo's object loaded); else the meta's own description.
+	ObjectiveText func(m *scenario.ScenarioMeta) string
+	X, Y          int
+	Tab           int
+	Scroll        int  // list scroll offset in px
+	dragging      bool // the scrollbar's thumb is being dragged
+	dragY         int
+	Selected      *scenario.ScenarioMeta
+	byCat         [5][]*scenario.ScenarioMeta
+	OnStart       func(*scenario.ScenarioMeta)
+	OnClose       func()
+	content       [4]int // the list's content rectangle, window-relative (set by Draw)
 }
 
 // NewScenarioSelect opens the window for screen size sw × sh.
@@ -102,16 +106,23 @@ func (w *ScenarioSelectWindow) HandleClick(px, py int) {
 		}
 		return
 	}
-	if w.in(ssList, px, py) {
+	if w.in(ssList, px, py) { // onScrollMouseDown: the row clicked starts at once (Scenario::loadAndStart)
 		idx := (py - (w.Y + ssList[1] + 1) + w.Scroll) / ssRowHeight
-		if idx >= 0 && idx < len(w.byCat[w.Tab]) {
-			m := w.byCat[w.Tab][idx]
-			if m == w.Selected && w.OnStart != nil {
-				w.OnStart(m)
-				return
-			}
-			w.Selected = m
+		if idx >= 0 && idx < len(w.byCat[w.Tab]) && w.OnStart != nil {
+			w.OnStart(w.byCat[w.Tab][idx])
 		}
+	}
+}
+
+// MouseOver is onScrollMouseOver (0x00443FB2): the row under the pointer is
+// the one whose details show.
+func (w *ScenarioSelectWindow) MouseOver(px, py int) {
+	if !w.in(ssList, px, py) {
+		return
+	}
+	idx := (py - (w.Y + ssList[1] + 1) + w.Scroll) / ssRowHeight
+	if idx >= 0 && idx < len(w.byCat[w.Tab]) {
+		w.Selected = w.byCat[w.Tab][idx]
 	}
 }
 
@@ -239,7 +250,11 @@ func (w *ScenarioSelectWindow) Draw(screen *ebiten.Image) {
 	DrawTextBold(screen, i18n.Label(i18n.ChallengeLabel), bx, y, win2)
 	y += 10
 	if m.HasObjective {
-		for _, ln := range wrapTooltip("  "+m.Objective.DescribeWithCargo(m.ObjectiveCargoName), 170) {
+		text := m.Objective.DescribeWithCargo(m.ObjectiveCargoName)
+		if w.ObjectiveText != nil {
+			text = w.ObjectiveText(m)
+		}
+		for _, ln := range wrapTooltip("  "+text, 170) { // challenge_value: two spaces, then the objective
 			DrawTextBold(screen, ln, bx, y, black)
 			y += 10
 		}
