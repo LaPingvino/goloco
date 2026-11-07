@@ -59,7 +59,7 @@ func FillArgs(s string, args ...string) string {
 		}
 		code := s[i+1 : i+end]
 		s = s[i+end+1:]
-		if strings.HasPrefix(code, "COLOUR") || code == "NEWLINE" || strings.HasPrefix(code, "NEWLINE ") || strings.HasPrefix(code, "SPRITE ") || strings.HasPrefix(code, "MOVE_X ") || len(args) == 0 { // not arguments: colours, line breaks, inline sprites, pen moves
+		if strings.HasPrefix(code, "COLOUR") || code == "NEWLINE" || strings.HasPrefix(code, "NEWLINE ") || strings.HasPrefix(code, "SPRITE ") || strings.HasPrefix(code, "MOVE_X ") || strings.HasSuffix(code, "FONT") || len(args) == 0 { // not arguments: colours, line breaks, inline sprites, pen moves, font changes
 			b.WriteString("{" + code + "}")
 			continue
 		}
