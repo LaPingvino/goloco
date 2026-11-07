@@ -129,24 +129,25 @@ type Scenario struct {
 	HasObjective     bool
 	// ObjectiveTimeLimitUntilYear / MonthsInChallenge: scenarioObjectiveProgress.
 	ObjectiveTimeLimitUntilYear, ObjectiveMonthsInChallenge uint16
-	CurrentMonth                                            uint8    // general.currentMonth (0x1C)
-	CurrentDayOfMonth                                       uint8    // general.currentDayOfMonth (0x1D)
-	GameStateFlags                                          uint32   // GameState flags (0x10): tileManagerLoaded 1, unk2 2
-	IndustryManagerFlags                                    uint8    // GameState industryFlags (0x42F): disallowIndustriesCloseDown 1
-	NumberOfIndustries                                      uint8    // GameState numberOfIndustries (0x415): 0 low, 1 medium, 2 high
-	DayCounter                                              uint16   // general.dayCounter (0x18)
-	PlayerCompanies                                         [2]uint8 // playerCompanies (0x24)
-	LoanInterestRate                                        uint8    // loanInterestRate (0x1AE)
-	MaxLoanSize                                             uint16   // maxLoanSize (0x402)
-	StartingLoanSize                                        uint16   // startingLoanSize (0x400)
-	SeaLevel, LastLandOption                                uint8    // GameState seaLevel (0x19A), lastLandOption (0x19E)
-	CurrentSnowLine, CurrentSeason                          uint8    // GameState 0x19C / 0x19D
-	PreferredAI                                             [3]uint8 // preferredAIIntelligence / Aggressiveness / Competitiveness (0x3FD)
-	DefaultLevelCrossingType                                uint8    // currentDefaultLevelCrossingType (0x1AC)
-	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors  uint16   // 0x430 / 0x432
-	Orders                                                  []byte   // GameState orders[] (ParseOrders)
-	OrderTableLength                                        uint32   // GameState orderTableLength (0x1A0): the bytes of orders[] in use
-	Routings                                                []uint16 // GameState routings[] (ParseRoutings), by RoutingHandle
+	CurrentMonth                                            uint8          // general.currentMonth (0x1C)
+	CurrentDayOfMonth                                       uint8          // general.currentDayOfMonth (0x1D)
+	GameStateFlags                                          uint32         // GameState flags (0x10): tileManagerLoaded 1, unk2 2
+	IndustryManagerFlags                                    uint8          // GameState industryFlags (0x42F): disallowIndustriesCloseDown 1
+	CompanyRecords                                          CompanyRecords // GameState companyRecords (0x436)
+	NumberOfIndustries                                      uint8          // GameState numberOfIndustries (0x415): 0 low, 1 medium, 2 high
+	DayCounter                                              uint16         // general.dayCounter (0x18)
+	PlayerCompanies                                         [2]uint8       // playerCompanies (0x24)
+	LoanInterestRate                                        uint8          // loanInterestRate (0x1AE)
+	MaxLoanSize                                             uint16         // maxLoanSize (0x402)
+	StartingLoanSize                                        uint16         // startingLoanSize (0x400)
+	SeaLevel, LastLandOption                                uint8          // GameState seaLevel (0x19A), lastLandOption (0x19E)
+	CurrentSnowLine, CurrentSeason                          uint8          // GameState 0x19C / 0x19D
+	PreferredAI                                             [3]uint8       // preferredAIIntelligence / Aggressiveness / Competitiveness (0x3FD)
+	DefaultLevelCrossingType                                uint8          // currentDefaultLevelCrossingType (0x1AC)
+	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors  uint16         // 0x430 / 0x432
+	Orders                                                  []byte         // GameState orders[] (ParseOrders)
+	OrderTableLength                                        uint32         // GameState orderTableLength (0x1A0): the bytes of orders[] in use
+	Routings                                                []uint16       // GameState routings[] (ParseRoutings), by RoutingHandle
 	// GameState roadObjectIdIsAnyRoadTypeCompatible (0x1A4) and
 	// roadObjectIdIsUsableByAllCompanies (0x1A8): bit per road object id.
 	RoadAnyTypeCompatible uint32
@@ -743,4 +744,12 @@ func ParseLabelFrame(b []byte) LabelFrame {
 // (l, t)–(r, b) (inclusive, that zoom's viewport pixels).
 func (f LabelFrame) Contains(l, t, r, b int, zoom int) bool {
 	return !(t > int(f.Bottom[zoom]) || b < int(f.Top[zoom]) || l > int(f.Right[zoom]) || r < int(f.Left[zoom]))
+}
+
+// CompanyRecords is CompanyManager::Records: the land, air and water speed
+// records (Speed16 mph, 0 none), who set each (0xFF none) and when (days).
+type CompanyRecords struct {
+	Speed   [3]uint16 // 0x436
+	Company [3]uint8  // 0x43C
+	Date    [3]uint32 // 0x440
 }

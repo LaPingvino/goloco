@@ -42,28 +42,29 @@ type Map struct {
 	// by a ghost CreateTrainStation for the Station tab.
 	LastAdjoiningStation                                    int
 	LastAdjoiningStationX, LastAdjoiningStationY            int32
-	TrafficHandedness                                       uint8       // GameState trafficHandedness
-	LastRailroadOption, LastRoadOption, LastTrackTypeOption uint8       // GameState: the toolbar's last track / road
-	LastBuildVehiclesOption                                 uint8       // GameState: the Build Vehicles menu's last type (VehicleType)
-	LastAirport, LastShipPort                               uint8       // GameState: the Port menu's airport / dock object (0xFF: none)
-	PickupDirection                                         uint8       // GameState pickupDirection: placing vehicles facing the other way
-	UnlockedVehicles                                        [][7]uint32 // per company: Company::unlockedVehicles
-	CurrentYear                                             uint16      // GameState general.currentYear
-	CurrentMonth                                            uint8       // GameState general.currentMonth
-	CurrentDayOfMonth                                       uint8       // GameState general.currentDayOfMonth
-	GameStateFlags                                          uint32      // GameState flags: tileManagerLoaded 1, unk2 2
-	IndustryManagerFlags                                    uint8       // GameState industryFlags: disallowIndustriesCloseDown 1
-	NumberOfIndustries                                      uint8       // GameState numberOfIndustries: 0 low, 1 medium, 2 high
-	DayCounter                                              uint16      // GameState general.dayCounter
-	PlayerCompanies                                         [2]uint8    // GameState playerCompanies
-	LoanInterestRate                                        uint8       // GameState loanInterestRate
-	MaxLoanSize                                             uint16      // GameState maxLoanSize
-	StartingLoanSize                                        uint16      // GameState startingLoanSize
-	SeaLevel, LastLandOption                                uint8       // GameState seaLevel, lastLandOption
-	CurrentSnowLine, CurrentSeason                          uint8       // GameState currentSnowLine, currentSeason
-	EntriesEnd                                              int         // TileManager entriesEnd as the generator's inserts move it (numFreeElements = kMaxElements − EntriesEnd)
-	PreferredAI                                             [3]uint8    // GameState preferredAI intelligence / aggressiveness / competitiveness
-	DefaultLevelCrossingType                                uint8       // GameState currentDefaultLevelCrossingType
+	TrafficHandedness                                       uint8                   // GameState trafficHandedness
+	LastRailroadOption, LastRoadOption, LastTrackTypeOption uint8                   // GameState: the toolbar's last track / road
+	LastBuildVehiclesOption                                 uint8                   // GameState: the Build Vehicles menu's last type (VehicleType)
+	LastAirport, LastShipPort                               uint8                   // GameState: the Port menu's airport / dock object (0xFF: none)
+	PickupDirection                                         uint8                   // GameState pickupDirection: placing vehicles facing the other way
+	UnlockedVehicles                                        [][7]uint32             // per company: Company::unlockedVehicles
+	CurrentYear                                             uint16                  // GameState general.currentYear
+	CurrentMonth                                            uint8                   // GameState general.currentMonth
+	CurrentDayOfMonth                                       uint8                   // GameState general.currentDayOfMonth
+	GameStateFlags                                          uint32                  // GameState flags: tileManagerLoaded 1, unk2 2
+	IndustryManagerFlags                                    uint8                   // GameState industryFlags: disallowIndustriesCloseDown 1
+	CompanyRecords                                          scenario.CompanyRecords // GameState companyRecords (PARTIAL: setting a record, arrival.go)
+	NumberOfIndustries                                      uint8                   // GameState numberOfIndustries: 0 low, 1 medium, 2 high
+	DayCounter                                              uint16                  // GameState general.dayCounter
+	PlayerCompanies                                         [2]uint8                // GameState playerCompanies
+	LoanInterestRate                                        uint8                   // GameState loanInterestRate
+	MaxLoanSize                                             uint16                  // GameState maxLoanSize
+	StartingLoanSize                                        uint16                  // GameState startingLoanSize
+	SeaLevel, LastLandOption                                uint8                   // GameState seaLevel, lastLandOption
+	CurrentSnowLine, CurrentSeason                          uint8                   // GameState currentSnowLine, currentSeason
+	EntriesEnd                                              int                     // TileManager entriesEnd as the generator's inserts move it (numFreeElements = kMaxElements − EntriesEnd)
+	PreferredAI                                             [3]uint8                // GameState preferredAI intelligence / aggressiveness / competitiveness
+	DefaultLevelCrossingType                                uint8                   // GameState currentDefaultLevelCrossingType
 	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors  uint16
 	Objective                                               scenario.Objective // the scenario objective
 	ObjectiveUntilYear                                      uint16             // scenarioObjectiveProgress.timeLimitUntilYear
@@ -196,6 +197,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.CurrentDayOfMonth = sc.CurrentDayOfMonth
 	m.GameStateFlags = sc.GameStateFlags
 	m.IndustryManagerFlags = sc.IndustryManagerFlags
+	m.CompanyRecords = sc.CompanyRecords
 	m.NumberOfIndustries = sc.NumberOfIndustries
 	m.DayCounter = sc.DayCounter
 	m.PlayerCompanies, m.LoanInterestRate, m.MaxLoanSize = sc.PlayerCompanies, sc.LoanInterestRate, sc.MaxLoanSize
