@@ -1337,6 +1337,7 @@ func (g *Game) openCompanyFinances(company int) {
 			}
 		}}
 	cw := g.companyFinances
+	cw.ScrollToLatest() // openFinances: scrollToLatestData
 	cw.Face, cw.FaceColour = g.companyFace(company)
 	cw.CompanyID, cw.ScreenW, cw.ScreenH = company, g.sw, g.sh
 	for id := range g.w.CompanyNames { // populateCompanySelect: every non-empty slot
@@ -1395,7 +1396,7 @@ func (g *Game) companyFinancesData(company int) ui.CompanyFinances {
 	c := &m.Companies[company]
 	cur := int(m.CurrentYear)
 	years := min(int(c.NumExpenditureYears), len(c.Expenditures))
-	f := ui.CompanyFinances{CurrentYear: cur, Loan: int64(c.CurrentLoan), InterestRate: int(m.LoanInterestRate),
+	f := ui.CompanyFinances{CurrentYear: cur, NumYears: int(c.NumExpenditureYears), Loan: int64(c.CurrentLoan), InterestRate: int(m.LoanInterestRate),
 		Cash: c.Cash, Value: c.CompanyValueHistory[0], Profit: c.VehicleProfit}
 	ctrl, _ := g.w.ControllingCompany()
 	f.Own = company == ctrl

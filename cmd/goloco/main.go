@@ -724,6 +724,7 @@ func (g *Game) Update() error {
 	}
 	if g.companyFinances != nil {
 		g.companyFinances.UpdateHeld(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
+		g.companyFinances.UpdateDrag(g.mouseX, g.inMousePressed(ebiten.MouseButtonLeft))
 	}
 	if g.companyList != nil {
 		g.companyList.MouseOver(g.mouseX, g.mouseY)

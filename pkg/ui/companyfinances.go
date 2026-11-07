@@ -19,10 +19,9 @@ import (
 // from the player panel's company value (PlayerInfoPanel companyValueMouseUp
 // → CompanyWindow::openFinances).
 //
-// PARTIAL: the other tabs (drawn, not yet opened), the company select
-// button's face, the held stepper's growing step, the horizontal scrollbar
-// (shown upstream once the years overflow 499 px: from the fourth year),
-// renaming.
+// The scroll view's horizontal bar shows once the years overflow its 499 px
+// (getScrollSize: numExpenditureYears × 128, + 1). PARTIAL: holding its
+// buttons (the scroll click repeat) and their pressed look.
 
 // CompanyFinancesSize is Finances::kWindowSize.
 var CompanyFinancesSize = [2]int{636, 319}
@@ -102,6 +101,7 @@ func CompanyFinancesLayout(w, h int) (lw [cfCount]BVWidget) {
 // figures below the table, already formatted as the game formats them.
 type CompanyFinances struct {
 	Years        []int
+	NumYears     int // numExpenditureYears (getScrollSize's, uncapped)
 	Expenditures [][17]int32
 	CurrentYear  int
 	Own          bool // the controlling company's: the loan controls show
@@ -148,6 +148,8 @@ type CompanyFinancesWindow struct {
 	// type; primary or secondary) with its screen rect, for showColour.
 	OnColour  func(colourType int, primary bool, x, y, w, h int)
 	Scroll    int
+	hDrag     bool // the bar's thumb dragged (horizontalDragFollow), from hDragX
+	hDragX    int
 	SkinImage int // the interface skin's image base (the tab icons)
 	FrameNo   int // the window's frameNo: the current tab's icon animates
 	OnClose   func()
@@ -186,6 +188,7 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 	switch {
 	case in(lw[cwClose]) && w.OnClose != nil:
 		w.OnClose()
+	case w.hBarClick(x, y):
 	case in(lw[cwCompanySelect]) && len(w.Companies) > 0 && w.OpenDropdown != nil: // onMouseDown company_select
 		w.OpenDropdown(CompanySelectDropdown(w.X+lw[cwCompanySelect].L, w.Y+lw[cwCompanySelect].T, w.TitleColour, w.Companies, w.CompanyID, w.ScreenW, w.ScreenH, w.OnCompany))
 	case in(lw[cwCaption]): // windowPositionBegin; the rename comes on an unmoved release (PositionEnd)
@@ -246,6 +249,61 @@ func (w *CompanyFinancesWindow) switchTab(tab int) {
 		w.W, w.H = CompanyColourSchemeSize[0], CompanyColourSchemeSize[1]
 	}
 	w.Scroll = 0
+	if tab == CompanyTabFinances { // switchTab: Finances::scrollToLatestData
+		w.ScrollToLatest()
+	}
+}
+
+// financesContentW is the Finances scroll view's contentWidth.
+func (w *CompanyFinancesWindow) financesContentW() int {
+	return w.Data.NumYears*companyFinancesExpenditureColumnWidth + 1
+}
+
+// ScrollToLatest is Finances::scrollToLatestData: the last full page.
+func (w *CompanyFinancesWindow) ScrollToLatest() {
+	sc := CompanyFinancesLayout(w.W, w.H)[cfScroll]
+	w.Scroll = L.HScrollLatest(sc.R-sc.L+1, w.financesContentW())
+}
+
+// hBar reports whether the Finances scroll view shows its horizontal bar.
+func (w *CompanyFinancesWindow) hBar() bool {
+	sc := CompanyFinancesLayout(w.W, w.H)[cfScroll]
+	return w.Tab == CompanyTabFinances && w.financesContentW() > sc.R-sc.L+1
+}
+
+// hBarClick is a press on the bar (ScrollView's getPart and its handlers):
+// true when it was on it.
+func (w *CompanyFinancesWindow) hBarClick(x, y int) bool {
+	if !w.hBar() {
+		return false
+	}
+	sc := CompanyFinancesLayout(w.W, w.H)[cfScroll]
+	if x < w.X+sc.L || x > w.X+sc.R || y < w.Y+sc.B-L.ScrollbarSize || y > w.Y+sc.B {
+		return false
+	}
+	ww := sc.R - sc.L + 1
+	part := L.HScrollPart(x-(w.X+sc.L), ww, w.financesContentW(), w.Scroll)
+	if part == "thumb" {
+		w.hDrag, w.hDragX = true, x
+		return true
+	}
+	w.Scroll = L.HScrollClick(part, ww, w.financesContentW(), w.Scroll)
+	return true
+}
+
+// UpdateDrag is the thumb's drag: horizontalDragFollow by the pointer's
+// move, until the release.
+func (w *CompanyFinancesWindow) UpdateDrag(x int, down bool) {
+	if !w.hDrag {
+		return
+	}
+	if !down {
+		w.hDrag = false
+		return
+	}
+	sc := CompanyFinancesLayout(w.W, w.H)[cfScroll]
+	w.Scroll = L.HScrollDrag(sc.R-sc.L+1, w.financesContentW(), w.Scroll, x-w.hDragX)
+	w.hDragX = x
 }
 
 // Draw is the current tab's draw.
@@ -304,6 +362,10 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 		gfx8.FillRectInset(rt, sc.L, sc.T, sc.R, sc.B, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 		cx, cy := sc.L+L.ScrollbarMargin, sc.T+L.ScrollbarMargin
 		cw, ch := sc.R-sc.L+1-2*L.ScrollbarMargin, sc.B-sc.T+1-2*L.ScrollbarMargin
+		if w.hBar() { // drawHScroll, below the content
+			ch -= L.ScrollbarSize
+			w.drawHBar(rt, sc, sec)
+		}
 		sub := gfx8.NewRenderTarget(cw, ch) // the scroll's content, then copied into the view
 		for yy := range ch {
 			copy(sub.Bits[yy*cw:(yy+1)*cw], rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw])
@@ -344,8 +406,16 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 	for i, y := 0, w.Y+62; i < 17; i, y = i+1, y+10 {
 		drawFormattedEx(screen, w.X+5, y-1, ui18nFill(i18n.Wcolour2Stringid, i18n.Str(companyExpenditureLabels[i])), win2, black, red)
 	}
-	// The years' columns, clipped to the scroll view.
-	clip := screen.SubImage(image.Rect(w.X+sc.L+1, w.Y+sc.T+1, w.X+sc.R, w.Y+sc.B)).(*ebiten.Image)
+	// The years' columns, clipped to the scroll view (above the bar).
+	clipB := w.Y + sc.B
+	if w.hBar() {
+		clipB -= L.ScrollbarSize
+		pb := pal[paletteBlack0] // the arrows: "\x90\xBE" / "\x90\xAF" at kArrowOffset
+		bx, by, bw := w.X+sc.L+L.ScrollbarMargin, w.Y+sc.B+1-L.ScrollbarSize-L.ScrollbarMargin, sc.R-sc.L+1-2*L.ScrollbarMargin
+		DrawTextBold(screen, string(rune(0xBE)), bx+2, by-1, pb)
+		DrawTextBold(screen, string(rune(0xAF)), bx+bw-L.ScrollbarSize+L.ScrollbarMargin+2, by-1, pb)
+	}
+	clip := screen.SubImage(image.Rect(w.X+sc.L+1, w.Y+sc.T+1, w.X+sc.R, clipB)).(*ebiten.Image)
 	x := w.X + sc.L + 1 + 132 - sc.L + companyFinancesExpenditureColumnWidth - w.Scroll
 	for i := 0; i < years; i++ {
 		y := w.Y + 46 // drawFinanceYear: right-aligned, underlined; the current year in WINDOW_2
@@ -1041,4 +1111,26 @@ func (w *CompanyFinancesWindow) drawCompanySelect(rt *gfx8.RenderTarget, b BVWid
 		m, _ := g1.GetPaletteMap(int(w.FaceColour))
 		gfx8.DrawSpriteNoise(rt, sp, b.L+1, b.T+1, gfx8.OpFor(sp, m != nil, false), m, nil)
 	}
+}
+
+// drawHBar is ScrollViewWidget's drawHScroll: the hatched track (shade 7,
+// hatched shade 3) with its lines at 2, 3, 7 and 8, the left and right
+// buttons and the thumb (hThumbLeft … hThumbRight − 1), at the view's
+// bottom inside its 1 px margin.
+func (w *CompanyFinancesWindow) drawHBar(rt *gfx8.RenderTarget, sc BVWidget, sec []uint8) {
+	c := gfx8.InsetColour{Map: sec}
+	ww, wh := sc.R-sc.L+1, sc.B-sc.T+1
+	x, y := sc.L+L.ScrollbarMargin, sc.T+wh-L.ScrollbarSize-L.ScrollbarMargin
+	bw := ww - 2*L.ScrollbarMargin
+	s3, s7 := gfx8.Shade(sec, 3), gfx8.Shade(sec, 7)
+	gfx8.FillRect(rt, x, y, x+bw-1, y+L.ScrollbarSize-1, s7)
+	fillRectCrossHatch(rt, x, y, x+bw-1, y+L.ScrollbarSize-1, s3)
+	for _, ln := range [][2]int{{2, int(s3)}, {3, int(s7)}, {7, int(s3)}, {8, int(s7)}} {
+		gfx8.FillRect(rt, x, y+ln[0], x+bw-1, y+ln[0], uint8(ln[1]))
+	}
+	gfx8.FillRectInset(rt, x, y, x+L.ScrollbarSize-1, y+L.ScrollbarSize-1, c, 0)
+	rx := x + bw - L.ScrollbarSize + L.ScrollbarMargin
+	gfx8.FillRectInset(rt, rx, y, rx+L.ScrollbarSize-1, y+L.ScrollbarSize-1, c, 0)
+	l, r := L.HThumb(ww, w.financesContentW(), w.Scroll)
+	gfx8.FillRectInset(rt, x+l, y, x+l+(r-l-L.ScrollbarMargin)-1, y+L.ScrollbarSize-1, c, 0)
 }
