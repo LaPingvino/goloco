@@ -274,6 +274,10 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		}
 		log.Println("[Scenario] Read Animations,", len(animations), "bytes")
 		sc.Animations = parseAnimations(animations, animCount)
+		// The chunk runs from GameState.animations to its end, so it holds the
+		// user strings too (S5GameState.h: animations 0x4268C4, userStrings
+		// 0x432A44) — where a scenario's town names are.
+		sc.UserStrings = parseUserStringsAt(animations, userStringsOffset-animationsOffset)
 	} else {
 		gameState, err := reader.ReadChunk()
 		if err != nil {
@@ -1359,6 +1363,16 @@ func parseUserStrings(gs []byte) []string {
 	if len(gs) == GameStateSizeType2 {
 		off = userStringsOffsetType2
 	}
+	return parseUserStringsAt(gs, off)
+}
+
+// animationsOffset is GameState.animations (S5GameState.h), where a
+// scenario's third game-state chunk begins.
+const animationsOffset = 0x4268C4
+
+// parseUserStringsAt reads the user strings table at off in b.
+func parseUserStringsAt(b []byte, off int) []string {
+	gs := b
 	if len(gs) < off+userStringsCount*userStringSize {
 		return nil
 	}
