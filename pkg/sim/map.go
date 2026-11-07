@@ -78,7 +78,6 @@ type Map struct {
 	LastCollision        *CollisionAt
 	CompanyColours       []uint8                        // owner → main colour (CompanyManager::updateColours); nil if none
 	CompanyColourSchemes []scenario.CompanyColourScheme // company slot → main / vehicle colours, custom set
-	StationOwners        []uint8                        // station id → owner (Station::owner); nil if none
 	UserStrings          []string                       // GameState userStrings (StringIds 0x8000+); town names
 	StationNames         []scenario.StationName         // station id → name StringId + town
 }
@@ -213,7 +212,6 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.IndustryObjectIDs = sc.IndustryObjectIDs
 	m.CompanyColours = sc.CompanyColours
 	m.CompanyColourSchemes = sc.CompanyColourSchemes
-	m.StationOwners = sc.StationOwners
 	m.UserStrings = sc.UserStrings
 	m.StationNames = sc.StationNames
 	if len(m.StationNames) == 0 { // a scenario has no station table: StationManager::reset — every slot empty

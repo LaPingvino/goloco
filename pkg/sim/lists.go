@@ -90,8 +90,8 @@ func (w *Map) StationList(cargos []*objects.CargoObject) []StationInfo {
 				}
 				status, waiting, accepts := w.stationCargoText(id, cargos)
 				owner := -1
-				if id < len(w.StationOwners) {
-					owner = int(w.StationOwners[id])
+				if o, ok := w.StationOwner(id); ok {
+					owner = int(o)
 				}
 				out = append(out, StationInfo{ID: id, TileX: x, TileY: y, Kind: kind, Name: w.StationName(id), Owner: owner,
 					Status: status, Waiting: waiting, Accepts: accepts})
