@@ -555,6 +555,8 @@ func (g *Game) Update() error {
 	}
 	if g.script != nil {
 		g.script.step()
+		g.scriptScenario()
+		g.scriptCamera()
 		if g.script.quit {
 			return ebiten.Termination
 		}
@@ -2996,6 +2998,9 @@ func (g *Game) loadScenario(filePath string) error {
 		// Scenario::loadAndStart: a new rng seed from the time and the old
 		// rng, then Scenario::start (pkg/sim StartScenario).
 		gameW.Map.Rng1 = *core.NewPrngSeed(uint32(time.Now().UnixMilli())^oldRng.Srand0(), oldRng.Srand1())
+		if g.script != nil && g.script.seed != nil { // a playthrough's "seed N": the whole state fixed, the same game every run
+			gameW.Map.Rng1 = *core.NewPrngSeed(*g.script.seed, *g.script.seed^0x5EED)
+		}
 		var gen *sim.TerrainOptions
 		if sc.LandscapeToGenerate {
 			gen = &sim.TerrainOptions{MinLandHeight: sc.Options.MinLandHeight, TopographyStyle: sc.Options.TopographyStyle,

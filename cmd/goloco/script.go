@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/LaPingvino/goloco/pkg/scenario"
 	"log"
 	"os"
 	"strconv"
@@ -47,7 +48,17 @@ type inputScript struct {
 	keysJust         map[ebiten.Key]bool
 
 	shotRequest string
-	quit        bool
+	// cameraReq: "camera X Y" — the main view centred on tile (X, Y), so a
+	// playthrough starts where it means to whatever the scenario's saved view
+	// or the time passed (scripted runs only).
+	cameraReq *[2]float64
+	// scenarioReq: "scenario NAME" — that scenario started (as the New Game
+	// list's Start does), by name rather than by where its row happens to be.
+	scenarioReq string
+	// seed: "seed N" — the time loadAndStart mixes into the new game's rng,
+	// fixed (a generated landscape, the company … the same every run).
+	seed *uint32
+	quit bool
 }
 
 var scriptKeyNames = map[string]ebiten.Key{
@@ -128,6 +139,21 @@ func (s *inputScript) step() {
 	case "wheel":
 		dy, _ := strconv.ParseFloat(fields[1], 64)
 		s.wheelDY = dy
+	case "seed":
+		if len(fields) >= 2 {
+			if n, err := strconv.ParseUint(fields[1], 10, 32); err == nil {
+				v := uint32(n)
+				s.seed = &v
+			}
+		}
+	case "scenario":
+		s.scenarioReq = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "scenario"))
+	case "camera":
+		if len(fields) >= 3 {
+			x, _ := strconv.ParseFloat(fields[1], 64)
+			y, _ := strconv.ParseFloat(fields[2], 64)
+			s.cameraReq = &[2]float64{x, y}
+		}
 	case "shot":
 		s.shotRequest = fields[1]
 		s.waitUntil = time.Now().Add(300 * time.Millisecond) // let Draw consume it
@@ -201,3 +227,37 @@ func (g *Game) scriptShotName() string {
 }
 
 var errScriptQuit = fmt.Errorf("script quit")
+
+// scriptCamera applies a script's "camera X Y" (once).
+func (g *Game) scriptCamera() {
+	if g.script == nil || g.script.cameraReq == nil || g.w == nil {
+		return
+	}
+	c := g.script.cameraReq
+	g.script.cameraReq = nil
+	g.w.SetCamera(c[0], c[1])
+}
+
+// scriptScenario starts a script's "scenario NAME" (once): the scenario of
+// that name in the game's Scenarios folder, as the New Game list starts it.
+func (g *Game) scriptScenario() {
+	if g.script == nil || g.script.scenarioReq == "" {
+		return
+	}
+	name := g.script.scenarioReq
+	g.script.scenarioReq = ""
+	metas, _ := scenario.ScanScenarios(g.dataDir + "/../Scenarios")
+	if len(metas) == 0 {
+		metas, _ = scenario.ScanScenarios(g.dataDir)
+	}
+	for _, m := range metas {
+		if strings.EqualFold(m.Name, name) {
+			g.scenarioSelect = nil
+			if err := g.loadScenario(m.FilePath); err != nil {
+				log.Printf("[Script] scenario %q: %v", name, err)
+			}
+			return
+		}
+	}
+	log.Printf("[Script] no scenario named %q", name)
+}
