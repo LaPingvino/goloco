@@ -328,3 +328,13 @@ func roadStationObject(om *objects.ObjectManager, id uint8) *objects.RoadStation
 	}
 	return om.RoadStationObjects[id]
 }
+
+// StationCatchmentDisplay is setCatchmentDisplay(station, flag_0) for the
+// Station window's catchment button: the station's catchment, a byte per
+// tile (nil for no such station).
+func (m *Map) StationCatchmentDisplay(id int, om *objects.ObjectManager) []uint8 {
+	if id < 0 || id >= len(m.StationNames) {
+		return nil
+	}
+	return m.catchment(&m.StationNames[id], om)
+}

@@ -164,8 +164,39 @@ func (g *Game) openStationWindow(id int) {
 	}
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.StationView(id, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnStation(id) }
-	w.OnClose = func() { g.stationWin = nil }
+	w.Catchment = g.catchmentStation == id
+	w.OnCatchment = func() { // station_catchment: toggles this station's catchment
+		if g.catchmentStation == id {
+			g.showStationCatchment(-1)
+		} else {
+			g.showStationCatchment(id)
+		}
+		w.Catchment = g.catchmentStation == id
+	}
+	w.OnClose = func() { // Cargo::onClose: the catchment goes with the window
+		if g.catchmentStation == id {
+			g.showStationCatchment(-1)
+		}
+		g.stationWin = nil
+	}
 	g.stationWin = w
+}
+
+// showStationCatchment is StationWindow's showStationCatchment: the selected
+// station (_lastSelectedStation, −1 none) changes; the old one's display is
+// cleared (sub_491BC6, catchmentArea reset) and the new one's set
+// (setCatchmentDisplay flag_0, catchmentArea). PARTIAL: Construction's
+// sub_4A6FAC (the construction window's own ghost display) first.
+func (g *Game) showStationCatchment(id int) {
+	if id == g.catchmentStation {
+		return
+	}
+	g.catchmentStation = id
+	if id < 0 {
+		g.w.SetCatchmentDisplay(nil)
+		return
+	}
+	g.w.SetCatchmentDisplay(g.w.Map.StationCatchmentDisplay(id, g.r.ObjMgr))
 }
 
 // openTownsWindow lists the scenario's towns with population and size.
