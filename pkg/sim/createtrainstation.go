@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/scenario"
+import (
+	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // TrainStationPlacement is TrainStationPlacementArgs: a track piece (its
 // position, rotation, piece id, the tile's sequence index, track object)
@@ -56,7 +59,8 @@ func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g
 	trackObj, stationObj := om.TrackObjects[a.TrackObjectID], om.TrainStationObjects[a.Type]
 	compat := TrackCompatibleFlags[a.TrackID]
 	if trackObj.StationTrackPieces&stationObj.TrackPieces&compat != compat {
-		return 0, false // track_road_unsuitable_for_station
+		c.ErrorText = i18n.TrackRoadUnsuitableForStation
+		return 0, false
 	}
 	initial, _ := m.getElTrack(a.X, a.Y, a.Z, a.Rotation, a.TrackObjectID, a.TrackID, a.Index)
 	if initial == nil || !checkCompanyCompatibility(c, initial.Owner) {
@@ -101,6 +105,7 @@ func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g
 			case nearbyRequiresNewStation:
 				id, ok := m.AllocateNewStation(sx, sy, sz, c.Company, 0, om)
 				if !ok {
+					c.ErrorText = i18n.TooManyStationsInGame
 					return 0, false
 				}
 				m.DeallocateStation(id)
@@ -119,8 +124,13 @@ func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g
 		if el == nil {
 			return 0, false // (the AI's no-track query isn't ported)
 		}
-		if el.HasSignal || el.HasLevelCrossing {
-			return 0, false // signal_in_the_way / level_crossing_in_the_way
+		if el.HasSignal {
+			c.ErrorText = i18n.SignalInTheWay
+			return 0, false
+		}
+		if el.HasLevelCrossing {
+			c.ErrorText = i18n.LevelCrossingInTheWay
+			return 0, false
 		}
 		t := m.TileAt(int(px)>>5, int(py)>>5)
 		connect := piece.ConnectFlags[el.Rotation]
@@ -133,7 +143,8 @@ func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g
 				continue
 			}
 			if connect&TrackPieces[o.TrackID][o.SequenceIndex].ConnectFlags[o.Rotation] != 0 {
-				return 0, false // station_cannot_be_built_on_a_junction
+				c.ErrorText = i18n.StationCannotBeBuiltOnAJunction
+				return 0, false
 			}
 		}
 		var old *scenario.StationElement
@@ -167,7 +178,9 @@ func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g
 				}
 				return ClearCollision
 			}
+			m.LastCollision = nil
 			if ok, _ := m.ApplyClearAtStandardHeight(px, py, baseZ+8, clearZ, quarters, 0, aiRes); !ok {
+				c.ErrorText, c.ErrorArg = m.collisionMessage(c)
 				return 0, false
 			}
 		}
@@ -177,7 +190,9 @@ func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g
 			}
 			return ClearNoCollision
 		}
+		m.LastCollision = nil
 		if ok, _ := m.ApplyClearAtStandardHeight(px, py, baseZ, clearZ, quarters, 0, surface); !ok {
+			c.ErrorText, c.ErrorArg = m.collisionMessage(c)
 			return 0, false
 		}
 		if el.HasStation && flags&CmdGhost != 0 {

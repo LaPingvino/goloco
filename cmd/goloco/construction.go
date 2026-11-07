@@ -584,8 +584,8 @@ func (g *Game) removeStationGhost() {
 // refused on another track type (wrong_type_of_track_road), then
 // CreateTrainStation with apply, after removeConstructionGhosts; a failure
 // opens the error window titled cant_build_pop3_string with the station's
-// name. PARTIAL: the command's own error text (goloco's commands don't set
-// one yet, so only the title shows), the construct sound.
+// name and the command's reason (when the command sets one). PARTIAL: the
+// construct sound.
 func (g *Game) stationToolUp(sx, sy int) {
 	if g.buildMode == buildModeAirport {
 		g.airportToolUp(sx, sy)
@@ -617,7 +617,7 @@ func (g *Game) stationToolUp(sx, sy int) {
 	}
 	c, g1 := g.stationCmd()
 	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreateTrainStation(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
-		g.openError(title, "")
+		g.openError(title, cmdErrorText(c))
 	}
 }
 
@@ -860,4 +860,17 @@ func (g *Game) airportToolUp(sx, sy int) {
 	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreateAirport(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
 		g.openError(title, "")
 	}
+}
+
+// cmdErrorText is the error window's second line: the command's reason
+// (setErrorText, with its name argument), "" when it set none.
+func cmdErrorText(c *sim.Cmd) string {
+	if c.ErrorText == 0 {
+		return ""
+	}
+	msg := i18n.Label(c.ErrorText)
+	if c.ErrorArg != "" {
+		msg = ui.FormatErrorArgs(msg, c.ErrorArg)
+	}
+	return msg
 }

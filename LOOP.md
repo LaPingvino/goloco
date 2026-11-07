@@ -1504,7 +1504,7 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
       set at every createTrack / clearTrack / clearRoad refusal). TileClearance's collision texts ported too
       (setCollisionErrorMessage: "Raise or lower land first", "<name> in the way", "Object in the way"; Map.LastCollision →
       collisionMessage): at the fixed spot it says "Raise or lower land first" — a slope; upstream refuses flat track
-      there too. The script now builds at 660,470 (flat, east of Town 1): three pieces, £84,300 → £83,745. NEXT: the station click there places nothing and shows no error — find why (click on a piece, not the head? station tool errors), then stations at both ends. NEXT:
+      there too. The script now builds at 660,470 (flat, east of Town 1): three pieces, £84,300 → £83,745. The station: the click must hit a drawn piece (700,458); it was refused because a scenario has no station table — now StationManager::reset's 1024 empty slots when the save carries none — and the station command sets its reasons (unsuitable track, signal / level crossing in the way, junction, too many stations, clearance). A station now stands on the line (£472). NEXT: a second station at the other end, then Build Vehicles. NEXT:
       find it (Joop: "look at OpenTTD for how seeds are used" — its generation seed is one value saved with the game,
       every generator drawing from it), then a stable stage f, then Build Vehicles → place → route → start → earn.
 - 2026-11-07 — PL.1 e: createTrackCheck (per-piece checks + bridge / tunnel costs).
@@ -1517,3 +1517,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-07 — refused track pieces open the error window with upstream's reason (Cmd.ErrorText); clearance reasons next.
 - 2026-11-07 — the clearance's "… in the way" / "Raise or lower land first" reasons ported; the playthrough's spot is a slope.
 - 2026-11-07 — playthrough moved to flat ground (three charged pieces east of Town 1); the station click places nothing yet.
+- 2026-11-07 — first station built in the playthrough: scenarios get StationManager::reset's empty slots; station refusals carry their reasons.

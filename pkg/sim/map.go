@@ -216,4 +216,13 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.StationOwners = sc.StationOwners
 	m.UserStrings = sc.UserStrings
 	m.StationNames = sc.StationNames
+	if len(m.StationNames) == 0 { // a scenario has no station table: StationManager::reset — every slot empty
+		m.StationNames = make([]scenario.StationName, MaxStations)
+		for i := range m.StationNames {
+			m.StationNames[i].Name = stationNameNull
+		}
+	}
 }
+
+// MaxStations is Limits::kMaxStations.
+const MaxStations = 1024
