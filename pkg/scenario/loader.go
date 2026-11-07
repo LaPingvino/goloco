@@ -1542,6 +1542,8 @@ type CompanyEconomy struct {
 	NumExpenditureYears      uint8         // 0x57
 	HistorySize              uint16        // 0x88CC
 	NumMonthsInTheRed        uint8         // 0x8C4F
+	StartedDate              uint32        // 0x0498 the day the company started
+	HeadquartersX            int16         // 0x257A −1: no headquarters
 	CargoUnitsDistanceHist   [120]uint32   // 0x8C54
 	CargoUnitsDeliveredHist  [120]uint32   // 0x85FC
 	PerformanceIndexHist     [120]int16    // 0x87DC
@@ -1563,6 +1565,8 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 		raw := uint64(binary.LittleEndian.Uint32(r[0x08:])) | uint64(binary.LittleEndian.Uint16(r[0x0C:]))<<32
 		c.Cash = int64(raw<<16) >> 16 // sign-extend the 48 bits
 		c.CurrentLoan = int32(binary.LittleEndian.Uint32(r[0x0E:]))
+		c.StartedDate = binary.LittleEndian.Uint32(r[0x0498:])
+		c.HeadquartersX = int16(binary.LittleEndian.Uint16(r[0x257A:]))
 		c.AvailableVehicles = binary.LittleEndian.Uint16(r[0x50:])
 		for k := range c.TransportTypeCount {
 			c.TransportTypeCount[k] = binary.LittleEndian.Uint16(r[0x8BA4+2*k:])

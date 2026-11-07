@@ -205,6 +205,8 @@ func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectM
 	face.Competitor, face.ChallengeFlags, face.Emotion = competitor, 0, 0
 	face.OwnerName = stringIDNewOwner // company->ownerName = StringIds::new_owner
 	c.Var49C, c.Var4A0 = 0, 0
+	c.StartedDate = m.CurrentDay // company->startedDate = getCurrentDay()
+	c.HeadquartersX = -1
 	m.CompanyNames[id] = stringIDNewCompany
 	for {
 		primary := uint8((m.Rng1.RandNext() & 0xFF) * colourMax / 256)

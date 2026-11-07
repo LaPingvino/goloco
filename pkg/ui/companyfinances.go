@@ -26,6 +26,9 @@ import (
 // CompanyFinancesSize is Finances::kWindowSize.
 var CompanyFinancesSize = [2]int{636, 319}
 
+// CompanyDetailsSize is Details::kWindowSize.
+var CompanyDetailsSize = [2]int{340, 194}
+
 // CompanyStatusSize is Status::kWindowSize.
 var CompanyStatusSize = [2]int{270, 182}
 
@@ -122,7 +125,9 @@ type CompanyFinancesWindow struct {
 	Challenge CompanyChallenge
 	// Status is what Status::draw shows: the owner's face (competitor
 	// images[ownerEmotion] + 1, in FaceColour), name and status line.
-	Status    CompanyStatus
+	Status CompanyStatus
+	// Details is what Details::draw shows.
+	Details   CompanyDetails
 	Scroll    int
 	SkinImage int // the interface skin's image base (the tab icons)
 	FrameNo   int // the window's frameNo: the current tab's icon animates
@@ -148,6 +153,8 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 	switch {
 	case in(lw[cwClose]) && w.OnClose != nil:
 		w.OnClose()
+	case in(lw[cwTabDetails]) && w.Tab != CompanyTabDetails:
+		w.switchTab(CompanyTabDetails)
 	case in(lw[cwTabStatus]) && w.Tab != CompanyTabStatus:
 		w.switchTab(CompanyTabStatus)
 	case in(lw[cwTabFinances]) && w.Tab != CompanyTabFinances:
@@ -186,6 +193,8 @@ func (w *CompanyFinancesWindow) switchTab(tab int) {
 		w.W, w.H = CompanyChallengeSize[0], CompanyChallengeSize[1]
 	case CompanyTabStatus:
 		w.W, w.H = CompanyStatusSize[0], CompanyStatusSize[1]
+	case CompanyTabDetails:
+		w.W, w.H = CompanyDetailsSize[0], CompanyDetailsSize[1]
 	}
 	w.Scroll = 0
 }
@@ -205,6 +214,10 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 	}
 	if w.Tab == CompanyTabStatus {
 		w.drawStatus(screen)
+		return
+	}
+	if w.Tab == CompanyTabDetails {
+		w.drawDetails(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -381,9 +394,10 @@ func stripCodes(s string) string {
 	return b.String()
 }
 
-// drawFormattedEx is drawFormatted with {COLOUR RED} and {MOVE_X n} (the pen
-// to x + n).
-func drawFormattedEx(screen *ebiten.Image, x, y int, s string, win2, black, red color.Color) {
+// drawFormattedEx is drawFormatted with {COLOUR RED}, {MOVE_X n} (the pen to
+// x + n), {NEWLINE} (the next line, 10 below) and {SPRITE n} (g1 image n
+// inline, the pen past its width). It returns the y after the last line.
+func drawFormattedEx(screen *ebiten.Image, x, y int, s string, win2, black, red color.Color) int {
 	cx, col := x, win2
 	for len(s) > 0 {
 		if s[0] == '{' {
@@ -402,6 +416,18 @@ func drawFormattedEx(screen *ebiten.Image, x, y int, s string, win2, black, red 
 				if n, err := strconv.Atoi(strings.TrimPrefix(code, "MOVE_X ")); err == nil {
 					cx = x + n
 				}
+			case code == "NEWLINE":
+				cx, y = x, y+10
+			case strings.HasPrefix(code, "SPRITE "):
+				if n, err := strconv.Atoi(strings.TrimPrefix(code, "SPRITE ")); err == nil && globalG1Font != nil && n >= 0 && n < len(globalG1Font.g1.Elements) {
+					if sp, err := gfx8.Decode(&globalG1Font.g1.Elements[n]); err == nil {
+						sx, sy := cx, y
+						draw8(screen, sx+sp.XOffset, sy+sp.YOffset, sp.Width, sp.Height, func(rt *gfx8.RenderTarget) {
+							gfx8.DrawSpriteNoise(rt, sp, -sp.XOffset, -sp.YOffset, gfx8.OpFor(sp, false, false), nil, nil)
+						})
+						cx += sp.Width
+					}
+				}
 			}
 			s = s[end+1:]
 			continue
@@ -416,6 +442,7 @@ func drawFormattedEx(screen *ebiten.Image, x, y int, s string, win2, black, red 
 		cx += pw
 		s = s[next:]
 	}
+	return y
 }
 
 // Interface skin image ids of the Company window's tabs (InterfaceSkin::ImageIds).
@@ -685,4 +712,80 @@ func (w *CompanyFinancesWindow) drawStatus(screen *ebiten.Image) {
 		DrawTextBold(screen, ln, w.X+(nameL+nameR)/2-lw2/2, w.Y+nameT+5+i*10, black)
 	}
 	drawFormattedEx(screen, w.X+labL-1, w.Y+labT-1, ui18nFill(i18n.BlackStringid, st.Status), win2, black, red)
+}
+
+// CompanyDetails is the Details tab's content.
+type CompanyDetails struct {
+	Started      string // startedDate, formatted (company_details_started)
+	Performance  int16  // performanceIndex
+	Trend        int    // +1 increased, −1 decreased (challengeFlags)
+	OwnerName    string
+	Counts       [6]uint16 // transportTypeCount
+	Headquarters bool      // headquartersX != −1
+}
+
+var companyDetailsCounts = [6]int{i18n.CompanyDetailsTrainsCount, i18n.CompanyDetailsBusesCount, i18n.CompanyDetailsTrucksCount,
+	i18n.CompanyDetailsTramsCount, i18n.CompanyDetailsAircraftCount, i18n.CompanyDetailsShipsCount}
+
+// drawDetails is Details::draw (0x00432919): the started date and the
+// performance (its trend's string) from (3, 48), the owner 25 below, each
+// non-zero vehicle count 5 below that; "Headquarters" over the viewport
+// (219–314 × 54–173: a TextBox's inset) and, with none built,
+// not_yet_constructed in it. PARTIAL: the AI details, the headquarters
+// viewport and the build / rotate buttons (building one), the company
+// select's face.
+func (w *CompanyFinancesWindow) drawDetails(screen *ebiten.Image) {
+	g1 := globalG1Font.g1
+	pal := g1.GetPalette()
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	lw := CompanyFinancesLayout(w.W, w.H)
+	d := &w.Details
+	vpL, vpT, vpR, vpB := 219, 54, 219+96-1, 54+120-1
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		p := lw[cwPanel]
+		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		w.drawCompanyTabs(rt, lw[:], cwTabDetails, sec, prim)
+		gfx8.FillRectInset(rt, vpL, vpT, vpR, vpB, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+	})
+	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, ui18nFill(i18n.TitleCompanyDetails, w.Title), int(w.TitleColour))
+	red, _ := TextColours(27)
+	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
+	x, y := w.X+3, w.Y+48
+	drawFormattedEx(screen, x, y, ui18nFill(i18n.CompanyDetailsStarted, d.Started), win2, black, red)
+	y += 10
+	perf := i18n.CompanyDetailsPerformance
+	switch {
+	case d.Trend < 0:
+		perf = i18n.CompanyDetailsPerformanceDecreasing
+	case d.Trend > 0:
+		perf = i18n.CompanyDetailsPerformanceIncreasing
+	}
+	rating := i18n.CorporateRatingPlatelayer + min(9, max(0, int(d.Performance)/100))                                  // formatPerformanceIndex
+	drawFormattedEx(screen, x, y, ui18nFill(perf, int16OneDecimal(d.Performance), i18n.Str(rating)), win2, black, red) // two lines ({NEWLINE})
+	y += 25
+	drawFormattedEx(screen, x, y, ui18nFill(i18n.OwnerLabel, stripCodes(d.OwnerName)), win2, black, red)
+	y += 10 + 5
+	for i, n := range d.Counts {
+		if n != 0 {
+			drawFormattedEx(screen, x, y, ui18nFill(companyDetailsCounts[i], strconv.Itoa(int(n))), win2, black, red)
+			y += 10
+		}
+	}
+	hq := stripCodes(i18n.Str(i18n.Wcolour2Headquarters))
+	hw, _ := MeasureTextBold(hq)
+	drawFormattedEx(screen, w.X+(vpL+vpR)/2-hw/2, w.Y+vpT-12, i18n.Str(i18n.Wcolour2Headquarters), win2, black, red)
+	if !d.Headquarters {
+		for i, ln := range WrapTextBold(stripCodes(i18n.Str(i18n.NotYetConstructed)), vpR-vpL-1) {
+			lw2, _ := MeasureTextBold(ln)
+			DrawTextBold(screen, ln, w.X+(vpL+vpR)/2-lw2/2, w.Y+(vpT+vpB)/2-5+i*10, black)
+		}
+	}
 }

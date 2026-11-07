@@ -1425,3 +1425,22 @@ func (g *Game) companyStatus(company int) ui.CompanyStatus {
 	st.Own = company == ctrl
 	return st
 }
+
+// companyDetails is what Details::draw reads of a company.
+func (g *Game) companyDetails(company int) ui.CompanyDetails {
+	m := &g.w.Map
+	if company < 0 || company >= len(m.Companies) || company >= len(m.CompanyFaces) {
+		return ui.CompanyDetails{}
+	}
+	c, f := &m.Companies[company], &m.CompanyFaces[company]
+	y, mo, d := uilayout.CalcDate(c.StartedDate)
+	det := ui.CompanyDetails{Started: uilayout.DateDMY(d, i18n.Month(mo+1), y), Performance: f.Performance,
+		OwnerName: m.OwnerName(company), Counts: c.TransportTypeCount, Headquarters: c.HeadquartersX != -1}
+	switch {
+	case f.ChallengeFlags&(1<<5) != 0: // decreasedPerformance
+		det.Trend = -1
+	case f.ChallengeFlags&(1<<4) != 0: // increasedPerformance
+		det.Trend = 1
+	}
+	return det
+}
