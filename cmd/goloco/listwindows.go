@@ -369,12 +369,13 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		OnRoute:       func(a string) { g.routeAction(headID, a); g.openVehicleWindow(headID, 4) },
 		Express:       m.Entities[tr.Veh1].Var48&sim.Flags48ExpressMode != 0,
 		Tab:           tab, Main: ui.VehicleMainState{Own: own, Manual: h.VehicleFlags&sim.VehicleFlagManualControl != 0},
-		StopStartImage: stopStartImage(h.VehicleFlags),
-		OnTab:          func(t int) { g.openVehicleWindow(headID, t) },
-		View:           func(w, h int) *gfx8.RenderTarget { return g.w.VehicleView(headID, w, h) },
-		OnCentreView:   func() { g.centreViewportOpen(headID) },
-		OnStopStart:    func(x, y, w, hh int) { g.stopStartOpen(headID, x, y, w, hh) },
-		OnRefit:        func(x, y, w, hh int) { g.refitOpen(headID, x, y, w, hh) }}
+		StopStartImage:  stopStartImage(h.VehicleFlags),
+		OnTab:           func(t int) { g.openVehicleWindow(headID, t) },
+		View:            func(w, h int) *gfx8.RenderTarget { return g.w.VehicleView(headID, w, h) },
+		OnCentreView:    func() { g.centreViewportOpen(headID) },
+		OnStopStart:     func(x, y, w, hh int) { g.stopStartOpen(headID, x, y, w, hh) },
+		OnRefit:         func(x, y, w, hh int) { g.refitOpen(headID, x, y, w, hh) },
+		OnOrderDropdown: func(kind string, x, y, w, hh int) { g.orderDropdown(headID, kind, x, y, w, hh) }}
 	if own {
 		g.vehicleWin.OnRename = func() { g.renameVehicle(headID, tc, wc) }
 	}
@@ -754,20 +755,82 @@ func (g *Game) routeToolDown(sx, sy int) {
 	if hit.Waypoint != nil {
 		order = hit.Waypoint // route through (0x004B5160 / 0x004B5223)
 	}
-	offset := uint16(h.SizeOfOrderTable - 1) // addNewOrder: before the End order
+	g.addNewOrder(g.routeHead, order)
+}
+
+// addNewOrder is Route's addNewOrder: the order inserted before the selected
+// one (or before End), the selection following it when the table grew;
+// refused, the error window (orders_cant_insert and the reason).
+// PARTIAL: generateNumDisplayFrames.
+func (g *Game) addNewOrder(headID uint16, order []byte) {
+	m := &g.w.Map
+	tr, err := m.TrainOf(headID)
+	if err != nil {
+		return
+	}
+	h := m.Entities[tr.Head]
+	offset := uint16(h.SizeOfOrderTable - 1)
 	if orders := m.OrderTable(h.OrderTableOffset); g.routeSel >= 0 && g.routeSel < len(orders) {
 		offset = uint16(orders[g.routeSel].Offset - int(h.OrderTableOffset))
 	}
 	company, _ := g.w.ControllingCompany()
 	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
 	before := h.SizeOfOrderTable
-	if _, ok := m.VehicleOrderInsert(c, sim.CmdApply, g.routeHead, offset, order); !ok {
+	if _, ok := m.DoCommandFor(c, sim.CmdApply, 0, func(f uint8) (int32, bool) { return m.VehicleOrderInsert(c, f, headID, offset, order) }); !ok {
+		g.openError(i18n.Label(i18n.OrdersCantInsert), cmdErrorText(c))
 		return
 	}
-	if m.Entities[tr.Head].SizeOfOrderTable != before && g.routeSel != -1 {
+	if tr, err := m.TrainOf(headID); err == nil && m.Entities[tr.Head].SizeOfOrderTable != before && g.routeSel != -1 {
 		g.routeSel++
 	}
-	g.openVehicleWindow(g.routeHead, 4)
+	g.openVehicleWindow(headID, 4)
+}
+
+// orderDropdown is Route's createOrderDropdown: one item per cargo the
+// vehicle's cars carry (trainAcceptedCargoTypes), "Unload all {cargo}
+// {sprite}" (orders_unload_all2) or "Wait for full load of …"
+// (orders_wait_for_full_load_of2), shown as text at the button in the
+// window's secondary colour, the first highlighted; the one picked is added
+// as an OrderUnloadAll / OrderWaitFor of that cargo (onDropdown).
+func (g *Game) orderDropdown(headID uint16, kind string, x, y, w, h int) {
+	m := &g.w.Map
+	om := g.r.ObjMgr
+	tr, err := m.TrainOf(headID)
+	if err != nil || om == nil {
+		return
+	}
+	accepted := m.Entities[tr.Head].TrainAcceptedCargoTypes
+	format, typ := i18n.Str(i18n.OrdersUnloadAll2), sim.OrderUnloadAll
+	if kind == "wait" {
+		format, typ = i18n.Str(i18n.OrdersWaitForFullLoadOf2), sim.OrderWaitFor
+	}
+	if i := strings.Index(format, "{SPRITE}"); i >= 0 {
+		format = format[:i] // the inline cargo sprite: TrailSprite
+	}
+	var items []ui.DropdownItem
+	var ids []uint8
+	for id, co := range om.CargoObjects {
+		if co == nil || id >= 32 || accepted&(1<<id) == 0 {
+			continue
+		}
+		items = append(items, ui.DropdownItem{Text: ui.FillArgs(format, co.Name), TrailSprite: int(co.ImageOffset)})
+		ids = append(ids, uint8(id))
+	}
+	if len(items) == 0 {
+		return
+	}
+	colour := uint8(1)
+	if g.vehicleWin != nil {
+		colour = g.vehicleWin.Colour
+	}
+	d := ui.NewDropdownShowText(x, y, w, h, colour, items, 10, g.sw, g.sh)
+	d.Highlighted = 0
+	d.OnSelect = func(item int) {
+		if item >= 0 && item < len(ids) {
+			g.addNewOrder(headID, []byte{typ | ids[item]<<3})
+		}
+	}
+	g.dropdown = d
 }
 
 // pickupMode is the picked-up vehicle's TransportMode (0xFF: none).

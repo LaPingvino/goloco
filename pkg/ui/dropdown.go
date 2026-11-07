@@ -443,6 +443,9 @@ func itemTextWidth(it DropdownItem) int {
 	if it.MoveX10 {
 		tw += 10
 	}
+	if g1 := globalG1Font.g1; it.TrailSprite > 0 && it.TrailSprite < len(g1.Elements) {
+		tw += int(g1.Elements[it.TrailSprite].Width) // getStringWidth: an inline {SPRITE} adds its width
+	}
 	return tw
 }
 
