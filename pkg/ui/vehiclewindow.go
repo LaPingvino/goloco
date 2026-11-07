@@ -5,6 +5,7 @@ import (
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
+	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
@@ -296,6 +297,7 @@ type VehicleWindow struct {
 	Cars                []TrainCarDraw
 	Names               []string // each car's vehicle object name
 	Scroll              int
+	hold                L.VScrollHold // a press on the car list\'s scrollbar held (stateScrollLeft)
 	OnClose             func()
 	OnPickup            func() // Common::onPickup: lift the vehicle, or take the placing tool
 	PickupActive        bool   // the placing tool is this window's (the button shown pressed)
@@ -409,7 +411,7 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 			}
 		}
-		cx, cy, cw, ch, _ := drawVScrollView(rt, list.L, list.T, list.R-list.L+1, list.B-list.T+1, gfx8.InsetColour{Map: sec}, len(w.Cars)*rowH, w.Scroll)
+		cx, cy, cw, ch, _ := drawVScrollViewPressed(rt, list.L, list.T, list.R-list.L+1, list.B-list.T+1, gfx8.InsetColour{Map: sec}, len(w.Cars)*rowH, w.Scroll, w.hold.PressedPart())
 		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 4)) // clearSingle(getShade(secondary, 4))
 		if cw <= 0 || ch <= 0 {
 			return
@@ -740,6 +742,9 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 		w.OnBuildNew(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
 	case in(lw[vdRemove]) && w.OnSell != nil: // Details::onMouseUp remove: VehicleSell(head)
 		w.OnSell()
+	case w.carBar(x, y): // scrollLeftBegin on the car list's bar
+		list := lw[vdCarList]
+		w.Scroll = w.hold.Begin(y-(w.Y+list.T), y, list.B-list.T+1, len(w.Cars)*vehicleRowHeights[max(0, min(5, w.VehicleType))], w.Scroll)
 	case in(lw[vdCarList]) && w.State.Own && w.OnDropMove != nil: // onScrollMouseDown: the car under it starts a drag
 		list := lw[vdCarList]
 		rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
@@ -887,4 +892,29 @@ func (w *VehicleWindow) PositionEnd(x, y, screenH int) {
 	if !w.posMoved && w.OnRename != nil {
 		w.OnRename()
 	}
+}
+
+// carBar reports whether a point is on the Details car list's vertical bar
+// (shown when the cars overflow the view).
+func (w *VehicleWindow) carBar(x, y int) bool {
+	if w.Tab != 1 {
+		return false
+	}
+	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+	list := lw[vdCarList]
+	rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
+	return !list.Hidden && len(w.Cars)*rowH > list.B-list.T+1 &&
+		y >= w.Y+list.T && y <= w.Y+list.B && x <= w.X+list.R &&
+		x >= w.X+list.R+1-L.ScrollbarSize-L.ScrollbarMargin
+}
+
+// ScrollDrag is the car list bar's held press each tick (VScrollHold.Continue).
+func (w *VehicleWindow) ScrollDrag(x, y int, held bool) {
+	if w.hold.Part == "" {
+		return
+	}
+	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+	list := lw[vdCarList]
+	rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
+	w.Scroll = w.hold.Continue(held && w.Tab == 1, w.carBar(x, y), y-(w.Y+list.T), y, list.B-list.T+1, len(w.Cars)*rowH, w.Scroll)
 }
