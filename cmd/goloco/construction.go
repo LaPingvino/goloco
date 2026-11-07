@@ -879,3 +879,39 @@ func cmdErrorText(c *sim.Cmd) string {
 	}
 	return msg
 }
+
+// updateTrackGhost is the Construction tab's tool update while positioning
+// (onToolUpdate → onToolUpdateSingle for track): with the track window on
+// its Construction tab and no head placed yet, the selected piece in the
+// construction rotation (getTrackPieceId) stands as a ghost under the
+// cursor; otherwise none. PARTIAL: road (the road ghost), building off
+// existing track (tryMakeTrackJunctionAtLoc), the construction arrow.
+func (g *Game) updateTrackGhost() {
+	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
+		return
+	}
+	if g.buildMode != buildModeTrack || g.consTab != 0 || g.inTitleScreen || g.w.ConstructionHeadState().Active || g.hoverTileX < 0 {
+		g.removeTrackGhost()
+		return
+	}
+	p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation)
+	if !ok {
+		g.removeTrackGhost()
+		return
+	}
+	bridge := uint8(0xFF)
+	if list := g.r.ObjMgr.AvailableCompatibleBridges(g.buildObjID, false, int(g.w.CurrentYear)); len(list) > 0 {
+		bridge = uint8(pickSlot(list, g.consBridge))
+	}
+	c, _ := g.stationCmd()
+	g.w.UpdateTrackGhost(c, g.hoverTileX, g.hoverTileY, p.ID, p.Rotation, uint8(g.buildObjID), bridge)
+}
+
+// removeTrackGhost is removeConstructionGhosts' track part (removeTrackGhosts).
+func (g *Game) removeTrackGhost() {
+	if g.w == nil || g.w.TrackGhost == nil {
+		return
+	}
+	c, _ := g.stationCmd()
+	g.w.RemoveTrackGhost(c)
+}

@@ -9,6 +9,11 @@ type State struct {
 	ConsHead      ConstructionHead // shared track/road construction head
 	consStack     []placedPiece    // undo stack for placed track pieces
 	consRoadStack []placedPiece    // undo stack for placed road pieces
+	// TrackGhost is the construction ghost while positioning (trackghost.go);
+	// ghostPos / ghostCost its last position (ghostTrackPos) and cost.
+	TrackGhost *TrackGhost
+	ghostPos   [3]int32
+	ghostCost  int32
 
 	// Waves (wave.go): the wave table, the generator they draw from (upstream
 	// gPrng2) and the tile loop's start offset within its 16×16 block.

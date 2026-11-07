@@ -2,7 +2,7 @@
 # Cloudburst), then a line of ten straights from 250,420 (the eleventh would
 # need a bridge over the ridge: the error window says so) and a train station
 # at each end — the line a first train will run (stage H: Build Vehicles).
-# £84,300 → £81,370.
+# £84,300 → £80,781 (2026-11-07; was £81,370 when written).
 wait 20
 seed 1950
 scenario Weatherworld

@@ -700,6 +700,7 @@ func (g *Game) Update() error {
 			g.w.ClearConstructionHead()
 		}
 	}
+	g.updateTrackGhost()
 
 	// Update dropdown hover if visible
 	if g.dropdown != nil && g.dropdown.Visible {
@@ -838,6 +839,7 @@ func (g *Game) Update() error {
 				g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked, or a dock
 			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad) && g.hoverTileX >= 0 {
 				// Track/road mode: clicking the map sets the construction head.
+				g.removeTrackGhost()
 				g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
 			}
 		}
