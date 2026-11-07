@@ -1,0 +1,60 @@
+# PL.1 playthrough, stage G2: a line along Cloudburst for a paying route. From
+# 230,372 a right-hand curve (113,97 then Build), the straight (77,112) six
+# times: the line runs south-east behind the town's north row; a station at
+# each end (398,380 and 545,457), both accepting Passengers (the station
+# ghost's catchment), two separate stations. £84,300 → £81,520.
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+click 592 14
+move 400 300
+wait 2
+move 230 372
+wait 1
+click 230 372
+wait 2
+move 113 97
+wait 1
+click 113 97
+wait 1
+shot /tmp/goloco-playthrough/pt-g2-t1.png
+click 77 235
+wait 1
+move 77 112
+wait 1
+click 77 112
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+move 400 300
+wait 1
+shot /tmp/goloco-playthrough/pt-g2-t2.png
+click 61 67
+wait 2
+move 398 380
+wait 2
+shot /tmp/goloco-playthrough/pt-g2-u1.png
+click 398 380
+wait 2
+move 545 457
+wait 2
+shot /tmp/goloco-playthrough/pt-g2-u2.png
+click 545 457
+wait 2
+move 700 520
+wait 2
+shot /tmp/goloco-playthrough/pt-g2-u3.png
+quit
