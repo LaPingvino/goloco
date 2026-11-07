@@ -1465,6 +1465,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.townList.Draw(screen)
 	}
 	if g.stationWin != nil {
+		g.stationWin.FrameNo = g.windowFrame
 		g.stationWin.Draw(screen)
 	}
 	if g.townWin != nil {

@@ -27,7 +27,10 @@ type StationWindow struct {
 	X, Y                int
 	Title, Status       string
 	TitleColour, Colour uint8
-	Tab                 int // 0 Station, 1 Cargo, 2 Cargo ratings
+	Tab                 int   // 0 Station, 1 Cargo, 2 Cargo ratings
+	SkinImage           int   // the interface skin's image base (the tab icons)
+	FrameNo             int   // the window's frameNo (the cargo tab animates)
+	CompanyColour       uint8 // the station owner's colour (the station tab's icon)
 	Ratings             []StationRating
 	Cargo               []StationCargoLine
 	Accepted            []int // the accepted cargo's unitInlineSprite, in cargo order
@@ -119,9 +122,7 @@ func (w *StationWindow) Draw(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, stationWinW-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := 0; i < 3; i++ { // leftAlignTabs(tab_station … tab_cargo_ratings)
-			drawTab(rt, 3+31*i, 15, i == 0, sec, tabNoIcon, nil)
-		}
+		w.drawStationTabs(rt, sec, 0)
 		gfx8.FillRectInset(rt, l, t, r, b, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 	})
 	if w.View != nil {
@@ -174,9 +175,7 @@ func (w *StationWindow) drawCargo(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, stationWinW-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := 0; i < 3; i++ {
-			drawTab(rt, 3+31*i, 15, i == 1, sec, tabNoIcon, nil)
-		}
+		w.drawStationTabs(rt, sec, 1)
 		gfx8.FillRectInset(rt, l, t, r, b, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 		gfx8.FillRect(rt, l+1, t+1, r-1, b-1, gfx8.Shade(sec, 4))
 		if sp, err := gfx8.Decode(&g1.Elements[2379]); err == nil { // show_station_catchment at (width − 25, 44)
@@ -259,9 +258,7 @@ func (w *StationWindow) drawRatings(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, ww-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := 0; i < 3; i++ {
-			drawTab(rt, 3+31*i, 15, i == 2, sec, tabNoIcon, nil)
-		}
+		w.drawStationTabs(rt, sec, 2)
 		gfx8.FillRectInset(rt, l, t, r, b, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 		cx, cy := l+1, t+1
 		gfx8.FillRect(rt, cx, cy, r-1, b-1, gfx8.Shade(sec, 4))
@@ -298,4 +295,52 @@ func (w *StationWindow) drawRatings(screen *ebiten.Image) {
 		DrawTextFont(clip, strconv.Itoa(rr.Rating/2)+"%", G1FontMediumNormal, w.X+l+1+201, y, black)
 	}
 	DrawWindowCaptionStation(screen, w.X+1, w.Y+1, ww-2, w.Title, w.TitleColour)
+}
+
+// drawStationTabs is Common::drawTabs: the station tab (the skin's
+// toolbar_menu_stations in the owner's colour), the cargo tab
+// (tab_cargo_delivered_frame0, animated by frameNo / 8 when current) and the
+// cargo ratings tab (tab_cargo_ratings) with up to four of the ratings over
+// it — from (left + 4, top + 14), 3 apart: a translucent ExtColour::unk30
+// strip 23 × 2, then rating × 30 / 256 in its colour's shade 6.
+func (w *StationWindow) drawStationTabs(rt *gfx8.RenderTarget, sec []uint8, current int) {
+	g1 := globalG1Font.g1
+	icons := [3]int{tabNoIcon, tabNoIcon, tabNoIcon}
+	var maps [3][]uint8
+	if w.SkinImage > 0 {
+		icons[0] = w.SkinImage + 190
+		maps[0], _ = g1.GetPaletteMap(int(w.CompanyColour))
+		icons[1] = w.SkinImage + 198
+		if current == 1 {
+			icons[1] += (w.FrameNo / 8) % 4
+		}
+		icons[2] = w.SkinImage + 48
+	}
+	for i := 0; i < 3; i++ {
+		drawTab(rt, 3+31*i, 15, i == current, sec, icons[i], maps[i])
+	}
+	m30, err := g1.GetPaletteMap(0x30)
+	if err != nil {
+		return
+	}
+	x, y := 3+31*2+4, 15+14
+	for i, r := range w.Ratings {
+		if i >= 4 {
+			break
+		}
+		gfx8.FillRectTranslucent(rt, x, y, x+22, y+1, m30)
+		colour := 13
+		if r.Rating < 100 {
+			colour = 16
+			if r.Rating < 50 {
+				colour = 27
+			}
+		}
+		if n := r.Rating * 30 / 256; n > 0 {
+			if cm, err := g1.GetPaletteMap(colour); err == nil {
+				gfx8.FillRect(rt, x, y, x-1+n, y+1, gfx8.Shade(cm, 6))
+			}
+		}
+		y += 3
+	}
 }

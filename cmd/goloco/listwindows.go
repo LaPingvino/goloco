@@ -148,6 +148,12 @@ func (g *Game) openStationWindow(id int) {
 	}
 	w := ui.NewStationWindow(g.sw, g.sh, info.Name, info.Status, tc, wc)
 	w.Cargo, w.Accepted = g.stationCargoLines(id)
+	if om := g.r.ObjMgr; om != nil && om.InterfaceSkin != nil {
+		w.SkinImage = int(om.InterfaceSkin.ImageOffset)
+	}
+	if info.Owner >= 0 && info.Owner < len(g.w.CompanyColours) {
+		w.CompanyColour = g.w.CompanyColours[info.Owner]
+	}
 	if om := g.r.ObjMgr; om != nil && id < len(g.w.Map.StationNames) { // CargoRatings: every cargo with an origin
 		for c, cs := range g.w.Map.StationNames[id].Cargo {
 			if cs.Origin == 0xFFFF || c >= len(om.CargoObjects) || om.CargoObjects[c] == nil {
