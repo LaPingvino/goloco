@@ -375,7 +375,8 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		OnCentreView:    func() { g.centreViewportOpen(headID) },
 		OnStopStart:     func(x, y, w, hh int) { g.stopStartOpen(headID, x, y, w, hh) },
 		OnRefit:         func(x, y, w, hh int) { g.refitOpen(headID, x, y, w, hh) },
-		OnOrderDropdown: func(kind string, x, y, w, hh int) { g.orderDropdown(headID, kind, x, y, w, hh) }}
+		OnOrderDropdown: func(kind string, x, y, w, hh int) { g.orderDropdown(headID, kind, x, y, w, hh) },
+		OnPassSignal:    func() { g.passSignal(headID) }}
 	if own {
 		g.vehicleWin.OnRename = func() { g.renameVehicle(headID, tc, wc) }
 	}
@@ -1768,4 +1769,18 @@ func (g *Game) openCompanyList() {
 	}
 	cl.Sort()
 	g.companyList = cl
+}
+
+// passSignal is Main's passSignal button: VehiclePassSignal for the
+// controlling company (cost 0, TrainRunningCosts); refused, the error window
+// (cant_pass_signal_at_danger).
+func (g *Game) passSignal(headID uint16) {
+	m := &g.w.Map
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureTrainRunningCosts, func(f uint8) (int32, bool) {
+		return m.VehiclePassSignal(c, f, headID)
+	}); !ok {
+		g.openError(i18n.Label(i18n.CantPassSignalAtDanger), cmdErrorText(c))
+	}
 }
