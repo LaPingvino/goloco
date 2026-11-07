@@ -35,10 +35,9 @@ import (
 )
 
 const (
-	defaultWidth    = 800
-	defaultHeight   = 600
-	edgeScrollZone  = 20  // px from screen edge that triggers edge scroll
-	edgeScrollSpeed = 8.0 // world-space pixels per frame at zoom 0
+	defaultWidth       = 800
+	defaultHeight      = 600
+	edgeScrollingSpeed = 12 // Config::edgeScrollingSpeed's default
 )
 
 const (
@@ -875,21 +874,26 @@ func (g *Game) Update() error {
 		}
 	}
 
-	// Edge scrolling: pan when cursor is within edgeScrollZone px of screen edge.
-	// OpenLoco reference: src/OpenLoco/src/Input/Keyboard.cpp edgeScrolling()
-	// Speed is scaled by zoom so scrolling feels consistent at all zoom levels.
-	if ebiten.IsFocused() && !g.rightDragging && !g.noEdgeScrolling {
-		edgeSpeed := edgeScrollSpeed * float64(int(1)<<g.w.GetZoom())
-		if g.mouseX <= edgeScrollZone {
+	// Keyboard.cpp edgeScroll: the cursor on the screen's very edge (x == 0,
+	// x >= width − 1, likewise y) moves the main view by edgeScrollingSpeed
+	// (Config default 12) << zoom — not on the title screen, not with Shift
+	// or Ctrl held, only in the normal input state (not while dragging the
+	// view or moving a window). It was a 20-px zone at 8 px: the view crept
+	// while a toolbar button near the top was clicked.
+	shiftCtrl := ebiten.IsKeyPressed(ebiten.KeyShift) || ebiten.IsKeyPressed(ebiten.KeyControl)
+	positioning := g.vehicleWin != nil && g.vehicleWin.Positioning || g.companyFinances != nil && g.companyFinances.Positioning
+	if ebiten.IsFocused() && !g.rightDragging && !g.noEdgeScrolling && !g.inTitleScreen && !shiftCtrl && !positioning {
+		edgeSpeed := float64(int(edgeScrollingSpeed) << g.w.GetZoom())
+		if g.mouseX == 0 {
 			g.w.PanCamera(-edgeSpeed, 0)
 		}
-		if g.mouseX >= g.sw-edgeScrollZone {
+		if g.mouseX >= g.sw-1 {
 			g.w.PanCamera(edgeSpeed, 0)
 		}
-		if g.mouseY <= edgeScrollZone {
+		if g.mouseY == 0 {
 			g.w.PanCamera(0, -edgeSpeed)
 		}
-		if g.mouseY >= g.sh-edgeScrollZone {
+		if g.mouseY >= g.sh-1 {
 			g.w.PanCamera(0, edgeSpeed)
 		}
 	}
