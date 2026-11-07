@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/scenario"
+import (
+	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // Tile clearance — Map/TileClearance.cpp canConstructAtWithClear (the
 // standard and any-height collision types, a clear function, the position
@@ -102,7 +105,10 @@ func (m *Map) canConstructAtWithClear(px, py int32, baseZ, clearZ, baseQuarter, 
 			switch res {
 			case ClearAllCollisionsRemoved:
 				return true, pos
-			case ClearCollision, ClearCollisionErrorSet:
+			case ClearCollision: // setCollisionErrorMessage: the command names what is in the way
+				m.LastCollision = &CollisionAt{Tile: t, K: k}
+				return false, pos
+			case ClearCollisionErrorSet:
 				return false, pos
 			case ClearCollisionRemoved:
 				removed = true
@@ -253,4 +259,55 @@ func (t *Tile) MaxHeight() int {
 		}
 	}
 	return int(maxClearZ)*smallZStep + 32
+}
+
+// CollisionAt is the element applyClearAtStandardHeight last collided with
+// (TileClearance's setCollisionErrorMessage reads it there; here the command
+// does, with collisionMessage, as it has the objects for the names).
+type CollisionAt struct {
+	Tile *Tile
+	K    int
+}
+
+// collisionMessage is setCollisionErrorMessage (TileClearance.cpp 0x00462C8E):
+// the error text for what is in the way, and the name it carries.
+// PARTIAL: an industry is named by its object, not "<name> (<town>)".
+func (m *Map) collisionMessage(c *Cmd) (text int, arg string) {
+	col := m.LastCollision
+	if col == nil || col.K >= len(col.Tile.Order) {
+		return 0, ""
+	}
+	t, r := col.Tile, col.Tile.Order[col.K]
+	om := c.Objects
+	in := func(name string) (int, string) { return i18n.StringIdInTheWay, name }
+	switch r.Kind {
+	case scenario.KindSurface:
+		return i18n.RaiseOrLowerLandFirst, ""
+	case scenario.KindTrack:
+		if o := c.trackObject(t.Tracks[r.Index].TrackObjectID); o != nil {
+			return in(o.Name)
+		}
+	case scenario.KindStation:
+		names := [4]int{i18n.CaptStation, i18n.CaptStation, i18n.CaptAirport, i18n.CaptShipPort}
+		if st := t.Stations[r.Index].StationType; int(st) < len(names) {
+			return in(i18n.Label(names[st]))
+		}
+	case scenario.KindSignal:
+		return in(i18n.Label(i18n.CaptSignal))
+	case scenario.KindBuilding:
+		if om != nil && int(t.Buildings[r.Index].ObjectID) < len(om.BuildingObjects) && om.BuildingObjects[t.Buildings[r.Index].ObjectID] != nil {
+			return in(om.BuildingObjects[t.Buildings[r.Index].ObjectID].Name)
+		}
+	case scenario.KindTree:
+		if om != nil && int(t.Trees[r.Index].TreeObjectID) < len(om.TreeObjects) && om.TreeObjects[t.Trees[r.Index].TreeObjectID] != nil {
+			return in(om.TreeObjects[t.Trees[r.Index].TreeObjectID].Name)
+		}
+	case scenario.KindWall:
+		return i18n.ObjectInTheWay, ""
+	case scenario.KindRoad:
+		if o := c.roadObject(t.Roads[r.Index].RoadObjectID); o != nil {
+			return in(o.Name)
+		}
+	}
+	return 0, ""
 }

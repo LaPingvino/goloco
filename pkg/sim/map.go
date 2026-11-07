@@ -72,7 +72,10 @@ type Map struct {
 	// CurrencyMultiplicationFactor prices cost indices (Economy).
 	CurrencyMultiplicationFactor [32]uint32
 
-	IndustryObjectIDs    []uint8                        // industry index → industry object (GameState industries)
+	IndustryObjectIDs []uint8 // industry index → industry object (GameState industries)
+	// LastCollision: what applyClearAtStandardHeight last collided with (for
+	// the command's error text; clearance.go).
+	LastCollision        *CollisionAt
 	CompanyColours       []uint8                        // owner → main colour (CompanyManager::updateColours); nil if none
 	CompanyColourSchemes []scenario.CompanyColourScheme // company slot → main / vehicle colours, custom set
 	StationOwners        []uint8                        // station id → owner (Station::owner); nil if none

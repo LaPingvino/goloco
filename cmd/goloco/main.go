@@ -3693,6 +3693,9 @@ func (g *Game) consPlace(id int) {
 			msg := ""
 			if c.ErrorText != 0 {
 				msg = i18n.Label(c.ErrorText)
+				if c.ErrorArg != "" {
+					msg = ui.FormatErrorArgs(msg, c.ErrorArg)
+				}
 			}
 			g.openError(title, msg)
 		}
