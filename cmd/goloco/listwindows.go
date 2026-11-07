@@ -1266,6 +1266,9 @@ func (g *Game) openCompanyFinances(company int) {
 		Tab:   ui.CompanyTabFinances, // openFinances: currentTab = tab_finances
 		Title: g.w.Map.CompanyName(company), Data: g.companyFinancesData(company),
 		OnClose: func() { g.companyFinances = nil }, OnLoan: func(dir int) { g.changeLoan(company, dir) },
+		OnColour: func(colourType int, primary bool, x, y, w, h int) {
+			g.colourSwatchOpen(company, colourType, primary, x, y, h)
+		},
 		OnColourMode: func(colourType int, on bool) { // ColourScheme onMouseUp check_…
 			g.changeCompanyColour(company, sim.ColourSchemeChange{Company: uint8(company), ColourType: uint8(colourType), Value: b2u8(on), SetMode: true})
 		},
@@ -1474,4 +1477,35 @@ func (g *Game) companyColours(company int) ui.CompanyColours {
 	cs := &m.CompanyColourSchemes[company]
 	ctrl, _ := g.w.ControllingCompany()
 	return ui.CompanyColours{Main: cs.Main, Vehicle: cs.Vehicle, Custom: cs.CustomSet, Own: company == ctrl}
+}
+
+// colourSwatchOpen is ColourScheme's onMouseDown on a colour swatch:
+// showColour with the colour now set highlighted — every colour for a
+// secondary, all but the competing companies' (competingColourMask) for a
+// primary; onDropdown: ChangeCompanyColourScheme with the colour picked.
+func (g *Game) colourSwatchOpen(company, colourType int, primary bool, x, y, h int) {
+	m := &g.w.Map
+	if company < 0 || company >= len(m.CompanyColourSchemes) {
+		return
+	}
+	cs := &m.CompanyColourSchemes[company]
+	pair := cs.Main
+	if colourType > 0 {
+		pair = cs.Vehicle[colourType-1]
+	}
+	selected := pair[1]
+	available := uint32(0x7FFFFFFF)
+	if primary {
+		selected = pair[0]
+		available &^= m.CompetingColourMask(company)
+	}
+	var colour uint8 = 1
+	if g.companyFinances != nil {
+		colour = g.companyFinances.Colour
+	}
+	d := ui.NewColourDropdown(x, y, h, available, selected, colour, g.sw, g.sh)
+	d.OnSelect = func(c uint8) {
+		g.changeCompanyColour(company, sim.ColourSchemeChange{Company: uint8(company), ColourType: uint8(colourType), Value: c, IsPrimary: primary})
+	}
+	g.colourDropdown = d
 }

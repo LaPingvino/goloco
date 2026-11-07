@@ -136,10 +136,13 @@ type CompanyFinancesWindow struct {
 	// OnColourMode is a vehicle type\'s checkbox (colourType 1–10): its own
 	// scheme on or off (ChangeCompanyColourScheme, setColourMode).
 	OnColourMode func(colourType int, on bool)
-	Scroll       int
-	SkinImage    int // the interface skin's image base (the tab icons)
-	FrameNo      int // the window's frameNo: the current tab's icon animates
-	OnClose      func()
+	// OnColour is a swatch\'s onMouseDown (colourType 0 main, 1–10 a vehicle
+	// type; primary or secondary) with its screen rect, for showColour.
+	OnColour  func(colourType int, primary bool, x, y, w, h int)
+	Scroll    int
+	SkinImage int // the interface skin's image base (the tab icons)
+	FrameNo   int // the window's frameNo: the current tab's icon animates
+	OnClose   func()
 	// OnLoan is the stepper's − (−1) or + (+1): onMouseDown loan_decrease /
 	// loan_increase (a step of £1,000 × the click-repeat step).
 	OnLoan func(dir int)
@@ -163,6 +166,9 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 		w.OnClose()
 	case in(lw[cwTabColour]) && w.Tab != CompanyTabColourScheme:
 		w.switchTab(CompanyTabColourScheme)
+	case w.Tab == CompanyTabColourScheme && w.Colours.Own && w.OnColour != nil && w.colourSwatchAt(x, y) != nil:
+		s := w.colourSwatchAt(x, y)
+		w.OnColour(s.colourType, s.primary, w.X+s.x, w.Y+s.y, 16, 16)
 	case w.Tab == CompanyTabColourScheme && w.Colours.Own && w.colourCheckAt(x, y) >= 0 && w.OnColourMode != nil:
 		i := w.colourCheckAt(x, y) // onMouseUp check_…: the vehicle type's scheme toggled
 		w.OnColourMode(i+1, w.Colours.Custom&(1<<(i+1)) == 0)
@@ -896,4 +902,39 @@ func (w *CompanyFinancesWindow) drawColourScheme(screen *ebiten.Image) {
 		}
 		DrawTextBold(screen, stripCodes(i18n.Str(companyColourLabels[i])), w.X+15+10+4, y, wc)
 	}
+}
+
+type colourSwatch struct {
+	colourType int
+	primary    bool
+	x, y       int
+}
+
+// colourSwatchAt is the ColourButton (16 × 16) under a point: the main
+// scheme's (221 / 239, 48), or a vehicle type's when its scheme is set
+// (221 / 239, 78 + 17i); nil none.
+func (w *CompanyFinancesWindow) colourSwatchAt(x, y int) *colourSwatch {
+	try := func(t int, primary bool, sx, sy int) *colourSwatch {
+		if x >= w.X+sx && x < w.X+sx+16 && y >= w.Y+sy && y < w.Y+sy+16 {
+			return &colourSwatch{t, primary, sx, sy}
+		}
+		return nil
+	}
+	for _, p := range []bool{true, false} {
+		sx := 221
+		if !p {
+			sx = 239
+		}
+		if s := try(0, p, sx, 48); s != nil {
+			return s
+		}
+		for i := 0; i < 10; i++ {
+			if w.Colours.Custom&(1<<(i+1)) != 0 {
+				if s := try(i+1, p, sx, 78+17*i); s != nil {
+					return s
+				}
+			}
+		}
+	}
+	return nil
 }

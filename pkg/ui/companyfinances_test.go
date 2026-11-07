@@ -48,3 +48,21 @@ func TestCompanyWindowSwitchTab(t *testing.T) {
 		t.Errorf("cargo: tab %d %d×%d", w.Tab, w.W, w.H)
 	}
 }
+
+// showColour: 31 colours (all but one) in getItemsPerRow(31) = 8 columns,
+// 4 rows of 16 px; the selected one highlighted; a cell picks its colour.
+func TestColourDropdown(t *testing.T) {
+	d := NewColourDropdown(300, 200, 16, 0x7FFFFFFF, 5, 1, 800, 600)
+	if len(d.Colours) != 31 || d.Columns != 8 || d.W != 8*16+4 || d.H != 4*16+4 || d.Highlighted != 5 {
+		t.Fatalf("grid %d colours %d cols %d×%d hl %d", len(d.Colours), d.Columns, d.W, d.H, d.Highlighted)
+	}
+	if d.Y != 200+17 {
+		t.Errorf("below the widget: y %d", d.Y)
+	}
+	var got uint8 = 255
+	d.OnSelect = func(c uint8) { got = c }
+	d.HandleClick(d.X+2+16*2+3, d.Y+2+16*1+3) // row 1, column 2: colour 10
+	if got != 10 {
+		t.Errorf("picked %d", got)
+	}
+}

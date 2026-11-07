@@ -105,3 +105,7 @@ func (m *Map) updateCompanyColours() {
 		m.CompanyColours[companyIDNeutral] = colourGrey
 	}
 }
+
+// CompetingColourMask is competingColourMask: the colours too close to
+// another company's (a primary colour can't be one of them).
+func (m *Map) CompetingColourMask(company int) uint32 { return m.competingColourMask(company) }
