@@ -714,6 +714,13 @@ func (g *Game) Update() error {
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 	}
+	if g.vehicleWin != nil && g.vehicleWin.Positioning { // statePositioningWindow
+		if g.inMousePressed(ebiten.MouseButtonLeft) {
+			g.vehicleWin.PositionMove(g.mouseX, g.mouseY, g.sh)
+		} else {
+			g.vehicleWin.PositionEnd(g.mouseX, g.mouseY, g.sh)
+		}
+	}
 	if g.vehicleWin != nil && os.Getenv("GOLOCO_DIAG_DRAG_HOLD") == "" {
 		g.vehicleWin.MouseOver(g.mouseX, g.mouseY)
 	}

@@ -25,6 +25,9 @@ import (
 //	move <x> <y>        move the cursor
 //	click <x> <y>       move + left press (release follows next frame)
 //	rightclick <x> <y>  move + right press
+//	press <x> <y>       move + left press, held until release
+//	release <x> <y>     move + left release (after press)
+//	drag <x1> <y1> <x2> <y2>  press, five moves, release (a window by its title)
 //	key <name>          tap a key: R X ESC Q E ENTER SPACE ...
 //	wheel <dy>          mouse wheel step at current cursor
 //	shot <file.png>     save a full-frame screenshot
@@ -41,6 +44,7 @@ type inputScript struct {
 	leftJust         bool
 	leftReleaseNext  bool
 	leftJustReleased bool
+	leftHeld         bool // between press and release
 	rightJust        bool
 	rightReleaseNext bool
 	rightJustRel     bool
@@ -126,6 +130,21 @@ func (s *inputScript) step() {
 		s.mouseX, s.mouseY, s.hasMouse = arg(1), arg(2), true
 		s.leftJust = true
 		s.leftReleaseNext = true
+	case "press":
+		s.mouseX, s.mouseY, s.hasMouse = arg(1), arg(2), true
+		s.leftJust, s.leftHeld = true, true
+	case "release":
+		s.mouseX, s.mouseY, s.hasMouse = arg(1), arg(2), true
+		s.leftHeld = false
+		s.leftReleaseNext = true
+	case "drag": // expands in place: press, moves a frame apart, release
+		x1, y1, x2, y2 := arg(1), arg(2), arg(3), arg(4)
+		steps := []string{fmt.Sprintf("press %d %d", x1, y1)}
+		for i := 1; i <= 5; i++ {
+			steps = append(steps, fmt.Sprintf("move %d %d", x1+(x2-x1)*i/5, y1+(y2-y1)*i/5))
+		}
+		steps = append(steps, fmt.Sprintf("release %d %d", x2, y2))
+		s.cmds = append(s.cmds[:s.idx], append(steps, s.cmds[s.idx:]...)...)
 	case "rightclick":
 		s.mouseX, s.mouseY, s.hasMouse = arg(1), arg(2), true
 		s.rightJust = true
@@ -183,6 +202,14 @@ func (g *Game) inMouseJustPressed(btn ebiten.MouseButton) bool {
 		}
 	}
 	return inpututil.IsMouseButtonJustPressed(btn)
+}
+
+// inMousePressed is ebiten.IsMouseButtonPressed with a script's held press.
+func (g *Game) inMousePressed(btn ebiten.MouseButton) bool {
+	if g.script != nil && btn == ebiten.MouseButtonLeft && g.script.leftHeld {
+		return true
+	}
+	return ebiten.IsMouseButtonPressed(btn)
 }
 
 func (g *Game) inMouseJustReleased(btn ebiten.MouseButton) bool {

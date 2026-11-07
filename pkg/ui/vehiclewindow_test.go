@@ -33,3 +33,24 @@ func TestVehicleDetailsLayout(t *testing.T) {
 		t.Errorf("paint colours %+v %+v", p[vdPaintPrimary], p[vdPaintSecondary])
 	}
 }
+
+// The caption moves the window (statePositioningWindow: the pointer's y
+// clamped to 29 … height − 29) and is a rename click only when unmoved.
+func TestVehicleWindowPositioning(t *testing.T) {
+	renamed := 0
+	w := &VehicleWindow{X: 100, Y: 100, W: 265, H: 177, OnRename: func() { renamed++ }}
+	w.HandleClick(150, 105)
+	if !w.Positioning {
+		t.Fatal("a press on the caption doesn't start moving")
+	}
+	w.PositionMove(170, 125, 600)
+	w.PositionEnd(200, 5, 600) // y clamped to 29
+	if w.X != 150 || w.Y != 24 || w.Positioning || renamed != 0 { // 100+20, then to y 29 from 125: −96
+		t.Errorf("moved to %d,%d positioning %v renamed %d", w.X, w.Y, w.Positioning, renamed)
+	}
+	w.HandleClick(160, w.Y+5)
+	w.PositionEnd(160, w.Y+5, 600)
+	if renamed != 1 {
+		t.Errorf("an unmoved caption click renames: %d", renamed)
+	}
+}
