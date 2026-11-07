@@ -1366,3 +1366,43 @@ func (g *Game) companyChallenge(company int) ui.CompanyChallenge {
 	c.MonthsLeft = int(o.TimeLimitYears)*12 - int(m.ObjectiveMonthsInChallenge)
 	return c
 }
+
+// scenarioObjectiveText is loadScenarioProgress's objective string for a
+// scenario in the list: formatChallengeArguments with the time limit's year
+// (timeLimitYears + the start year − 1) and the delivered cargo's object
+// (looked up by its DAT name, as loadTemporaryObject loads it). PARTIAL:
+// the scenario's own currency for the amounts.
+func (g *Game) scenarioObjectiveText(m *scenario.ScenarioMeta) string {
+	o := m.Objective
+	co := ui.ChallengeObjective{Type: o.Type, Flags: o.Flags, CompanyValue: o.CompanyValue, MonthlyProfit: o.MonthlyVehicleProfit,
+		PerformanceIndex: o.PerformanceIndex, CargoAmount: o.DeliveredCargoAmount, TimeLimitYears: o.TimeLimitYears,
+		UntilYear: int(o.TimeLimitYears) + int(m.StartYear) - 1}
+	if g.r != nil && g.r.ObjMgr != nil && m.ObjectiveCargoName != "" {
+		if lo := g.r.ObjMgr.GetObject(m.ObjectiveCargoName); lo != nil {
+			if c, ok := lo.Object.(*objects.CargoObject); ok {
+				co.CargoUnitPlural = ui.ObjectString(c.UnitNamePlural)
+			}
+		}
+	}
+	return stripCodesKeepText(ui.ChallengeObjectiveText(co))
+}
+
+// stripCodesKeepText drops the {…} codes left in a formatted string (the
+// list wraps plain text).
+func stripCodesKeepText(s string) string {
+	var b strings.Builder
+	for len(s) > 0 {
+		i := strings.IndexByte(s, '{')
+		if i < 0 {
+			b.WriteString(s)
+			break
+		}
+		b.WriteString(s[:i])
+		j := strings.IndexByte(s[i:], '}')
+		if j < 0 {
+			break
+		}
+		s = s[i+j+1:]
+	}
+	return b.String()
+}

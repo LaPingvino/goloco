@@ -600,6 +600,7 @@ func (g *Game) Update() error {
 		}
 		if g.scenarioSelect != nil { // and the scenario list's
 			g.scenarioSelect.Drag(g.mouseY, ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft))
+			g.scenarioSelect.MouseOver(g.mouseX, g.mouseY)
 		}
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
@@ -3165,6 +3166,7 @@ func (g *Game) openNewGameWindow() {
 		metas, _ = scenario.ScanScenarios(g.dataDir)
 	}
 	w := ui.NewScenarioSelect(metas, g.sw, g.sh)
+	w.ObjectiveText = g.scenarioObjectiveText
 	w.OnClose = func() { g.scenarioSelect = nil }
 	w.OnStart = func(m *scenario.ScenarioMeta) {
 		g.scenarioSelect = nil
