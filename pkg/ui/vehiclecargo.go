@@ -101,7 +101,7 @@ func (w *VehicleWindow) drawCargo(screen *ebiten.Image) {
 			}
 		}
 		var cw, ch int
-		cx, cy, cw, ch, _ = drawVScrollView(rt, list.L, list.T, list.R-list.L+1, list.B-list.T+1, gfx8.InsetColour{Map: sec}, len(c.Rows)*rowH, w.Scroll)
+		cx, cy, cw, ch, _ = drawVScrollViewPressed(rt, list.L, list.T, list.R-list.L+1, list.B-list.T+1, gfx8.InsetColour{Map: sec}, len(c.Rows)*rowH, w.Scroll, w.hold.PressedPart())
 		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 4)) // clearSingle(getShade(secondary, 4))
 		if cw <= 0 || ch <= 0 {
 			return

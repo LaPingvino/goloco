@@ -57,6 +57,7 @@ type CompanyListWindow struct {
 	Records             [3]SpeedRecord     // land, air, water
 	Highlight           uint32             // var_854: the legend item hovered (a bit per company id / cargo slot)
 	HoverTicks          int                // _hoverItemTicks
+	hold                L.VScrollHold      // a press on the list\'s scrollbar held (stateScrollLeft)
 	Cargos              []CompanyListCargo // the payment rates tab's lines, by cargo slot
 	CurrentMonths       int                // getCurrentYear() × 12 + getCurrentMonth(): the graphs' x range
 }
@@ -150,6 +151,10 @@ func (w *CompanyListWindow) HandleClick(x, y int) {
 			return
 		}
 	}
+	if w.onBar(x, y) { // scrollLeftBegin on the bar
+		w.Scroll = w.hold.Begin(y-(w.Y+56), y, w.H-14-56+1, len(w.Rows)*25, w.Scroll)
+		return
+	}
 	if in(3, 56, w.W-4-3+1, w.H-14-56+1) && w.OnRow != nil { // the scroll view: a row (25 high)
 		if r := (y - (w.Y + 56 + 1) + w.Scroll) / 25; r >= 0 && r < len(w.Rows) {
 			w.OnRow(w.Rows[r].ID)
@@ -195,7 +200,7 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 			r := min(h.x+h.w-1, w.W-8)
 			gfx8.FillRectInset(rt, h.x, 43, r, 43+11, gfx8.InsetColour{Map: sec}, 0)
 		}
-		cx, cy, cw, ch, _ = drawVScrollView(rt, svL, svT, svR-svL+1, svB-svT+1, gfx8.InsetColour{Map: sec}, len(w.Rows)*25, w.Scroll)
+		cx, cy, cw, ch, _ = drawVScrollViewPressed(rt, svL, svT, svR-svL+1, svB-svT+1, gfx8.InsetColour{Map: sec}, len(w.Rows)*25, w.Scroll, w.hold.PressedPart())
 		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 3)) // clearSingle(shade 3)
 		if w.Hover >= 0 && w.Hover < len(w.Rows) {                      // drawRect(0, y, width, 24, ExtColour::unk30, transparent)
 			if m30, err := g1.GetPaletteMap(0x30); err == nil {
@@ -610,4 +615,20 @@ func (w *CompanyListWindow) Update(mx, my int, front, rightDown bool) {
 		}
 	}
 	w.Highlight = sel
+}
+
+// onBar reports whether a point is on the list tab's vertical bar (shown
+// when the rows overflow the scroll view).
+func (w *CompanyListWindow) onBar(x, y int) bool {
+	h := w.H - 14 - 56 + 1
+	return w.Tab == 0 && len(w.Rows)*25 > h && y >= w.Y+56 && y <= w.Y+w.H-14 &&
+		x <= w.X+w.W-4 && x >= w.X+w.W-4+1-L.ScrollbarSize-L.ScrollbarMargin
+}
+
+// ScrollDrag is the bar's held press each tick (VScrollHold.Continue).
+func (w *CompanyListWindow) ScrollDrag(x, y int, held bool) {
+	if w.hold.Part == "" {
+		return
+	}
+	w.Scroll = w.hold.Continue(held && w.Tab == 0, w.onBar(x, y), y-(w.Y+56), y, w.H-14-56+1, len(w.Rows)*25, w.Scroll)
 }

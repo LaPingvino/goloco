@@ -722,6 +722,9 @@ func (g *Game) Update() error {
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 	}
+	if g.companyList != nil {
+		g.companyList.ScrollDrag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
+	}
 	if g.vehicleWin != nil {
 		g.vehicleWin.ScrollDrag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
 	}
