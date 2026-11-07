@@ -155,8 +155,8 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 		}
 	})
 	DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, i18n.Str(i18n.TitleCompanyList))
-	for _, t := range []int{4, 5} { // the values and payment rates tabs: the currency symbol, right-aligned at (left + 28, top + 15)
-		sym := L.Currency.Prefix + L.Currency.Suffix
+	for _, t := range []int{4, 5} { // the values and payment rates tabs: currency_symbol ("£": the glyph loadCurrency swaps), right-aligned at (left + 28, top + 15)
+		sym := stripCodes(i18n.Str(i18n.CurrencySymbol))
 		sw, _ := MeasureTextBold(sym)
 		DrawTextBold(screen, sym, w.X+3+31*t+28-sw, w.Y+15+14+1, pal[paletteBlack0])
 	}
