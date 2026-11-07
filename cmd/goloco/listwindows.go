@@ -1336,6 +1336,28 @@ func (g *Game) openCompanyFinances(company int) {
 				g.w.Map.CompanyFaces[company].ChallengeFlags ^= sim.CompanyFlagAutopayLoan
 			}
 		}}
+	cw := g.companyFinances
+	cw.Face, cw.FaceColour = g.companyFace(company)
+	cw.CompanyID, cw.ScreenW, cw.ScreenH = company, g.sw, g.sh
+	for id := range g.w.CompanyNames { // populateCompanySelect: every non-empty slot
+		if g.w.CompanyNames[id] == 0 || id >= len(g.w.CompanyFaces) {
+			continue
+		}
+		face, col := g.companyFace(id)
+		cw.Companies = append(cw.Companies, ui.CompanyChoice{ID: id, Name: g.w.CompanyName(id), Performance: int(g.w.CompanyFaces[id].Performance), Face: face, Colour: col})
+	}
+	cw.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
+	cw.OnCompany = func(id int) { // switchCompany: the window turns to that company, on its place and tab
+		if id == company {
+			return
+		}
+		x, y, tab := cw.X, cw.Y, cw.Tab
+		g.openCompanyFinances(id)
+		if n := g.companyFinances; n != nil {
+			n.X, n.Y = x, y
+			n.SwitchTab(tab)
+		}
+	}
 }
 
 // changeLoan is Finances' loan_decrease / loan_increase: the loan ∓ £1,000 ×

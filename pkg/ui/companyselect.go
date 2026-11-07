@@ -19,26 +19,31 @@ type CompanyChoice struct {
 // showText at the widget in the primary colour made translucent; the
 // window's owner highlighted.
 func (w *TownListWindow) companySelect() *DropdownMenu {
-	cs := append([]CompanyChoice(nil), w.Companies...)
+	return CompanySelectDropdown(w.X+w.W-28, w.Y+14, w.TitleColour, w.Companies, w.OwnerID, w.ScreenW, w.ScreenH, w.OnCompany)
+}
+
+// CompanySelectDropdown is populateCompanySelect for a company select
+// button at (x, y) in a window of title colour tc.
+func CompanySelectDropdown(x, y int, tc uint8, companies []CompanyChoice, owner, sw, sh int, onCompany func(id int)) *DropdownMenu {
+	cs := append([]CompanyChoice(nil), companies...)
 	sort.SliceStable(cs, func(i, j int) bool { return cs[i].Performance > cs[j].Performance })
 	items := make([]DropdownItem, len(cs))
 	for i, c := range cs {
 		items[i] = DropdownItem{Text: c.Name, Sprite: c.Face, SpriteColour: c.Colour, CompanySelect: true}
 	}
-	sw, sh := w.ScreenW, w.ScreenH
 	if sw <= 0 || sh <= 0 {
 		sw, sh = 1<<20, 1<<20
 	}
-	d := NewDropdownShowText(w.X+w.W-28, w.Y+14, 26, 26, w.TitleColour, items, 25, sw, sh)
-	d.SetToolbarColour(w.TitleColour) // translucent: kDropdownColourTable (setColourAndInputFlags)
+	d := NewDropdownShowText(x, y, 26, 26, tc, items, 25, sw, sh)
+	d.SetToolbarColour(tc) // translucent: kDropdownColourTable (setColourAndInputFlags)
 	for i, c := range cs {
-		if c.ID == w.OwnerID {
+		if c.ID == owner {
 			d.Highlighted = i // setHighlightedItem
 		}
 	}
 	d.OnSelect = func(i int) { // onCompanyDropdown
-		if i >= 0 && i < len(cs) && w.OnCompany != nil {
-			w.OnCompany(cs[i].ID)
+		if i >= 0 && i < len(cs) && onCompany != nil {
+			onCompany(cs[i].ID)
 		}
 	}
 	return d
