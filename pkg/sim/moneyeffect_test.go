@@ -23,7 +23,7 @@ func TestMoneyEffectLifetime(t *testing.T) {
 	for k, v := range m.MoneyEffects {
 		id, e = k, v
 	}
-	if id < maxNormalEntities || e.Z != 50 || e.SubType != effectTypeWindowCurrency || e.Amount != 1234 {
+	if id < maxNormalEntities || e.Z != 50 || e.SubType != effectTypeWindowCurrency || e.Amount != -1234 { // spendMoneyEffect creates it with −amount
 		t.Fatalf("id %d effect %+v", id, *e)
 	}
 	m.UpdateMoneyEffects(0)

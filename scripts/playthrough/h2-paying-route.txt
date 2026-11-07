@@ -1,0 +1,148 @@
+# PL.1 playthrough, stage H2: the first paying route. Stage G2's line along
+# Cloudburst, then stage H's train steps on it — Build Vehicles → Build Trains
+# → 3F 'Jinty'; Details' add-vehicle → Modify vehicle → Passenger Carriage;
+# placed on the line (500,437); Route: the window dragged off the line, both
+# stations; Main → Start — and 90 s of running: Finances shows "5 Passengers
+# transported 4 blocks in 2 days = £29", fares float up as "+ £…".
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+click 592 14
+move 400 300
+wait 2
+move 230 372
+wait 1
+click 230 372
+wait 2
+move 113 97
+wait 1
+click 113 97
+wait 1
+click 77 235
+wait 1
+move 77 112
+wait 1
+click 77 112
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+move 400 300
+wait 1
+click 61 67
+wait 2
+move 398 380
+wait 2
+click 398 380
+wait 2
+move 545 457
+wait 2
+click 545 457
+wait 2
+move 700 520
+wait 2
+click 682 14
+move 400 300
+wait 2
+click 723 42
+move 400 300
+wait 2
+move 220 235
+wait 1
+click 220 235
+move 400 300
+wait 2
+move 518 264
+wait 1
+click 518 264
+wait 1
+move 540 284
+wait 1
+click 540 284
+move 400 560
+wait 2
+move 300 440
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+move 240 431
+wait 1
+click 240 431
+move 400 560
+wait 2
+move 641 107
+wait 1
+click 641 107
+wait 1
+move 518 288
+wait 1
+click 518 288
+wait 1
+move 500 437
+wait 2
+click 500 437
+move 700 520
+wait 3
+move 417 232
+wait 1
+click 417 232
+wait 2
+drag 380 216 560 120
+wait 1
+move 400 382
+wait 1
+click 400 382
+wait 1
+move 548 459
+wait 1
+click 548 459
+wait 1
+move 700 520
+wait 2
+shot /tmp/goloco-playthrough/pt-h2-v1.png
+move 465 140
+wait 1
+click 465 140
+wait 1
+move 699 168
+wait 1
+click 699 168
+wait 1
+move 715 197
+wait 1
+click 715 197
+move 700 520
+wait 90
+move 558 140
+wait 1
+click 558 140
+move 700 520
+wait 2
+shot /tmp/goloco-playthrough/pt-h2-v2.png
+quit
