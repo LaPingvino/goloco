@@ -173,6 +173,9 @@ func (g *Game) openStationWindow(id int) {
 		}
 		w.Catchment = g.catchmentStation == id
 	}
+	if own, ok := g.w.Map.StationOwner(id); ok && g.w.Map.IsPlayerCompany(int(own)) { // enableRenameByCaption
+		w.OnRename = func() { g.renameStation(id, tc, wc) }
+	}
 	w.OnClose = func() { // Cargo::onClose: the catchment goes with the window
 		if g.catchmentStation == id {
 			g.showStationCatchment(-1)
@@ -1959,4 +1962,33 @@ func (g *Game) stationCargoLines(id int) (lines []ui.StationCargoLine, accepted 
 		lines = append(lines, l)
 	}
 	return lines, accepted
+}
+
+// renameStation is renameStationPrompt and textInput: the text input
+// (title_station_name, prompt_type_new_station_name with the station's
+// town, the current name),
+// then RenameStation for the controlling company (Miscellaneous); refused,
+// the error window (error_cant_rename_station). The window shows the new
+// name.
+func (g *Game) renameStation(id int, titleColour, colour uint8) {
+	m := &g.w.Map
+	town := "" // args2: station->town
+	if infos := g.w.TownList(); id < len(m.StationNames) && int(m.StationNames[id].Town) < len(infos) {
+		town = infos[m.StationNames[id].Town].Name
+	}
+	g.textInput = ui.OpenTextInput(i18n.Str(i18n.TitleStationName), ui.FillArgs(i18n.Str(i18n.PromptTypeNewStationName), town),
+		m.StationName(id), 31, g.sw, g.sh, titleColour, colour, true, func(text string) {
+			company, _ := g.w.ControllingCompany()
+			c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+			if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) {
+				return m.RenameStation(c, f, id, text, g.r.ObjMgr)
+			}); !ok {
+				g.openError(i18n.Label(i18n.ErrorCantRenameStation), cmdErrorText(c))
+				return
+			}
+			if g.stationWin != nil {
+				g.stationWin.Title = m.StationName(id)
+			}
+			g.w.StationsChanged()
+		})
 }
