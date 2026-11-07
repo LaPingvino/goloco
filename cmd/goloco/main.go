@@ -1419,6 +1419,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.companyFinances.Challenge = g.companyChallenge(g.companyFinancesID)
 		g.companyFinances.Status = g.companyStatus(g.companyFinancesID)
 		g.companyFinances.Details = g.companyDetails(g.companyFinancesID)
+		g.companyFinances.Colours = g.companyColours(g.companyFinancesID)
 		g.companyFinances.FrameNo = g.windowFrame
 		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
 			g.companyFinances.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
