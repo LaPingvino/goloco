@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/objects"
+import (
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // createTrack (GameCommands/Track/CreateTrack.cpp 321–585), PL.1 (e): the
 // game command a player builds track with (the construction window's "Build
@@ -8,9 +11,10 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // arguments, the track extras that fit the piece, the height rule and the
 // cost of the track and its extras.
 // createTrackCheck (part 3) is the per-piece checks and the bridge / tunnel
-// costs. PARTIAL: the apply step (inserting the elements), the company
-// observation, emotion and sound. Until then the window still builds with
-// PlaceTrackAtHead (no cost — LOOP PL.1 e).
+// costs; createTrackApply (part 4) places the pieces, and createTrack is the
+// whole command. PARTIAL: the company observation, emotion and sound; the
+// construction window still builds with PlaceTrackAtHead (no cost — LOOP
+// PL.1 e) until it goes through createTrack.
 
 // trackPlacementArgs is TrackPlacementArgs.
 type trackPlacementArgs struct {
@@ -190,4 +194,85 @@ func (m *Map) createTrackCheck(c *Cmd, a trackPlacementArgs, flags uint8) (creat
 		}
 	}
 	return r, true
+}
+
+// createTrackApply is createTrack's insertion (CreateTrack.cpp 0x0049C015 on,
+// with flags apply): per piece the walls on the tile below the track removed
+// and the surface's industry and growth cleared at the track's height (not
+// for ghosts or AI plans), then the TrackElement inserted — heights,
+// rotation, object, sequence, piece, owner, the valid extras, the bridge, a
+// level crossing, flag_6 on the last tile, ghost / AI flags.
+func (m *Map) createTrackApply(c *Cmd, a trackPlacementArgs, flags uint8, r *createTrackResult) bool {
+	if flags&CmdApply == 0 {
+		return true
+	}
+	ghostOrAI := flags&(CmdGhost|CmdAiAllocated) != 0
+	last := len(TrackPieces[a.TrackID]) - 1
+	for _, p := range r.Pieces {
+		t := m.TileAt(int(p.X/tileSize), int(p.Y/tileSize))
+		if t == nil {
+			return false
+		}
+		if !ghostOrAI {
+			t.removeAllWallsBelow(p.BaseZ)
+			if z := int(t.BaseZ) * smallZStep; z <= int(p.Z) && int(p.Z)-z < 12*smallZStep {
+				m.removeSurfaceIndustry(p.X, p.Y, t, c)
+				t.setTerrainStyleAsCleared()
+			}
+		}
+		el := scenario.TrackElement{
+			BaseZ: p.BaseZ, ClearZ: p.ClearZ, Rotation: a.Rotation & 3, TrackObjectID: a.TrackObjectID,
+			SequenceIndex: p.Index, TrackID: a.TrackID, Owner: c.Company,
+			Mods:             r.ValidMods & 0xF,
+			BridgeID:         a.Bridge & 7,
+			HasBridge:        p.HasBridge,
+			HasLevelCrossing: p.HasLevelCrossing,
+			IsLast:           int(p.Index) == last,
+			Ghost:            flags&CmdGhost != 0,
+			AiAllocated:      flags&CmdAiAllocated != 0,
+		}
+		t.insertTrackElement(el, p.Quarter&0xF)
+		if flags&CmdAiAllocated == 0 {
+			m.mapInvalidateTileFull(p.X, p.Y)
+		}
+	}
+	return true
+}
+
+// createTrack is the game command (CreateTrack.cpp 321–585): the checks and
+// costs (createTrackCheck), then the pieces placed. The cost, and false where
+// upstream returns kFailure.
+func (m *Map) createTrack(c *Cmd, a trackPlacementArgs, flags uint8) (int32, bool) {
+	r, ok := m.createTrackCheck(c, a, flags)
+	if !ok || !m.createTrackApply(c, a, flags, &r) {
+		return 0, false
+	}
+	return r.Cost, true
+}
+
+// insertTrackElement is TileManager::insertElement for track: after every
+// element at or below its height; its ref carries the flags byte (quarters,
+// ghost, AI, flag_6) that the clearance checks read.
+func (t *Tile) insertTrackElement(el scenario.TrackElement, quarters uint8) {
+	t.Tracks = append(t.Tracks, el)
+	at := len(t.Order)
+	for i, r := range t.Order {
+		if el.BaseZ < t.baseZOf(r) {
+			at = i
+			break
+		}
+	}
+	f := quarters & 0xF
+	if el.Ghost {
+		f |= elemFlagGhost
+	}
+	if el.AiAllocated {
+		f |= elemFlagAiAllocated
+	}
+	if el.IsLast {
+		f |= 1 << 6
+	}
+	t.Order = append(t.Order, scenario.ElemRef{})
+	copy(t.Order[at+1:], t.Order[at:])
+	t.Order[at] = scenario.ElemRef{Kind: scenario.KindTrack, Index: uint16(len(t.Tracks) - 1), Flags: f}
 }

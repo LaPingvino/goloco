@@ -69,3 +69,41 @@ func TestCreateTrackCheck(t *testing.T) {
 		t.Errorf("a multi-tile piece: ok %v, %d pieces", ok, len(r.Pieces))
 	}
 }
+
+// createTrack whole: a straight is placed (owner, last flag, the ref's
+// quarters) and costs what the check said; the same piece again is refused
+// (clearTrack: already built); a ghost isn't marked as owned walls-removal.
+func TestCreateTrack(t *testing.T) {
+	h := &objects.ObjectHeader{}
+	copy(h.Name[:], "TRACKST ")
+	track := &objects.TrackObject{Header: h, BuildCostFactor: 100}
+	c := &Cmd{Company: 2, Objects: &objects.ObjectManager{TrackObjects: []*objects.TrackObject{track}}}
+	m := &Map{Width: 8, Height: 8, Tiles: make([][]Tile, 8)}
+	for y := range m.Tiles {
+		m.Tiles[y] = make([]Tile, 8)
+		for x := range m.Tiles[y] {
+			m.Tiles[y][x].BaseZ = 4
+		}
+	}
+	a := trackPlacementArgs{X: 3 * 32, Y: 3 * 32, Z: 16, TrackID: 0, Bridge: 0xFF}
+	check, _ := m.createTrackCheck(c, a, 0)
+	cost, ok := m.createTrack(c, a, CmdApply)
+	tile := m.TileAt(3, 3)
+	if !ok || cost != check.Cost || len(tile.Tracks) != 1 {
+		t.Fatalf("placed: ok %v cost %d tracks %d", ok, cost, len(tile.Tracks))
+	}
+	e := tile.Tracks[0]
+	if e.Owner != 2 || !e.IsLast || e.BaseZ != 4 || e.Ghost {
+		t.Errorf("the element: %+v", e)
+	}
+	if _, ok := m.createTrack(c, a, CmdApply); ok || len(tile.Tracks) != 1 {
+		t.Error("the same piece again was built")
+	}
+	g := trackPlacementArgs{X: 5 * 32, Y: 5 * 32, Z: 16, TrackID: 0, Bridge: 0xFF}
+	if _, ok := m.createTrack(c, g, CmdApply|CmdGhost); !ok || !m.TileAt(5, 5).Tracks[0].Ghost {
+		t.Error("a ghost piece")
+	}
+	if _, ok := m.createTrack(c, trackPlacementArgs{X: 6 * 32, Y: 6 * 32, Z: 16, Bridge: 0xFF}, 0); !ok || len(m.TileAt(6, 6).Tracks) != 0 {
+		t.Error("without apply nothing is placed")
+	}
+}
