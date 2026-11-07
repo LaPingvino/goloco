@@ -431,7 +431,7 @@ func (m *Map) Sub47DA8D(tr Train, unk1, var113612C uint32, om *objects.ObjectMan
 			}
 		}
 		if !processed && int(head.StationID) != tileStation && v1.Var48&flags48ExpressMode == 0 {
-			if tileStation < len(m.StationOwners) && m.StationOwners[tileStation] == v1.Owner {
+			if o, ok := m.StationOwner(tileStation); ok && o == v1.Owner {
 				return Sub4ACEE7Result{Al: 4, StationID: tileStation}
 			}
 		}

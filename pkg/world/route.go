@@ -151,7 +151,7 @@ func (w *World) RouteAt(sx, sy int, mode uint8) (RouteHit, bool) {
 		return RouteHit{}, false
 	}
 	id := int(el.StationID)
-	if id >= len(m.StationOwners) || m.StationOwners[id] != me {
+	if o, ok := m.StationOwner(id); !ok || o != me {
 		return RouteHit{}, false
 	}
 	return RouteHit{Station: id}, true

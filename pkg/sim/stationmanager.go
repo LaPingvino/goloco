@@ -370,3 +370,13 @@ func (m *Map) calculateCargoRating(st *scenario.StationName, c *scenario.Station
 	}
 	return min(max(r, 0), 200)
 }
+
+// StationOwner is Station::owner: kept on the station record (StationNames,
+// which AllocateNewStation fills in) — the one place, as upstream has it, so
+// a station built in this game is its builder's like a saved game's.
+func (m *Map) StationOwner(id int) (uint8, bool) {
+	if id < 0 || id >= len(m.StationNames) || m.StationNames[id].Name == stationNameNull {
+		return 0, false
+	}
+	return m.StationNames[id].Owner, true
+}

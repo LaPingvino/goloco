@@ -858,9 +858,9 @@ func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st sc
 		}
 		rd := t.Roads[prev.Index]
 		var remap, tl []uint8 // getCompanyColour(station->owner) and its translucent canopy colour
-		if int(st.StationID) < len(m.StationOwners) {
-			remap = r.companyRemap(m, m.StationOwners[st.StationID])
-			tl = r.canopyTranslucent(m, m.StationOwners[st.StationID], rso.Flags&objects.RoadStationFlagRecolourable != 0)
+		if owner, ok := m.StationOwner(int(st.StationID)); ok {
+			remap = r.companyRemap(m, owner)
+			tl = r.canopyTranslucent(m, owner, rso.Flags&objects.RoadStationFlagRecolourable != 0)
 		}
 		// cargoTypeFlags: all; a passenger/freight station drops its cargo type,
 		// a passenger-only one then keeps just that type.
