@@ -97,3 +97,25 @@ func (m *Map) DetermineUnlockedVehicles(id int, om *objects.ObjectManager) (bits
 	}
 	return bits
 }
+
+// DetermineAvailableVehicles is VehicleManager::determineAvailableVehicles:
+// the company's unlocked vehicles, then the vehicle types among them
+// (determineAvailableVehicleTypes: a bit per VehicleObject::type) — what the
+// Build Vehicles menu offers.
+func (m *Map) DetermineAvailableVehicles(id int, om *objects.ObjectManager) {
+	if id < 0 || id >= len(m.UnlockedVehicles) {
+		return
+	}
+	bits := m.DetermineUnlockedVehicles(id, om)
+	m.UnlockedVehicles[id] = bits
+	if id >= len(m.Companies) {
+		return
+	}
+	var types uint16
+	for i, v := range om.Vehicles {
+		if v != nil && i < 224 && bits[i/32]&(1<<(i%32)) != 0 {
+			types |= 1 << uint(v.Type)
+		}
+	}
+	m.Companies[id].AvailableVehicles = types
+}
