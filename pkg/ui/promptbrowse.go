@@ -56,8 +56,7 @@ type PromptBrowseWindow struct {
 	entries  []pbEntry
 	Selected int
 	Scroll   int
-	dragging bool // the scrollbar's thumb is being dragged
-	dragY    int
+	hold     L.VScrollHold // a press on the scrollbar held (stateScrollLeft)
 	content  [4]int
 	OnPick   func(path string)
 	OnClose  func()
@@ -230,12 +229,7 @@ func (w *PromptBrowseWindow) HandleClick(px, py int) {
 		// The scrollbar (ScrollView): buttons and track move the list, the
 		// thumb starts a drag (Drag).
 		l := w.list()
-		switch part := L.VScrollPart(py-(w.Y+l[1]), l[3], len(w.entries)*pbRowHeight, w.Scroll); part {
-		case "thumb":
-			w.dragY, w.dragging = py, true
-		default:
-			w.Scroll = L.VScrollClick(part, l[3], len(w.entries)*pbRowHeight, w.Scroll)
-		}
+		w.Scroll = w.hold.Begin(py-(w.Y+l[1]), py, l[3], len(w.entries)*pbRowHeight, w.Scroll)
 	case w.in(w.list(), px, py):
 		l := w.list()
 		idx := (py - (w.Y + l[1] + 1) + w.Scroll) / pbRowHeight
@@ -283,7 +277,7 @@ func (w *PromptBrowseWindow) Draw(screen *ebiten.Image) {
 			gfx8.DrawSpriteNoise(rt, sp, pbParent[0], pbParent[1], gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
 		}
 		l := w.list()
-		cx, cy, cw, ch, _ := drawVScrollView(rt, l[0], l[1], l[2], l[3], gfx8.InsetColour{Map: sec}, len(w.entries)*pbRowHeight, w.Scroll)
+		cx, cy, cw, ch, _ := drawVScrollViewPressed(rt, l[0], l[1], l[2], l[3], gfx8.InsetColour{Map: sec}, len(w.entries)*pbRowHeight, w.Scroll, w.hold.PressedPart())
 		w.content = [4]int{cx, cy, cw, ch}
 		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 4))
 		m30, _ := g1.GetPaletteMap(0x30)
@@ -424,20 +418,11 @@ func (w *PromptBrowseWindow) onScrollbar(px, py int) bool {
 		px >= w.X+l[0]+l[2]-L.ScrollbarSize-L.ScrollbarMargin
 }
 
-// Drag follows the mouse while the thumb is held (verticalDragFollow); held
-// false ends the drag.
-func (w *PromptBrowseWindow) Drag(py int, held bool) {
-	if !w.dragging {
-		return
-	}
-	if !held {
-		w.dragging = false
-		return
-	}
-	if dy := py - w.dragY; dy != 0 {
-		w.Scroll = L.VScrollDrag(w.list()[3], len(w.entries)*pbRowHeight, w.Scroll, dy)
-		w.dragY = py
-	}
+// Drag is the scrollbar's held press each tick (VScrollHold.Continue): the
+// thumb follows the pointer, a held button repeats while on it.
+func (w *PromptBrowseWindow) Drag(px, py int, held bool) {
+	l := w.list()
+	w.Scroll = w.hold.Continue(held, w.onScrollbar(px, py), py-(w.Y+l[1]), py, l[3], len(w.entries)*pbRowHeight, w.Scroll)
 }
 
 // HandleRightClick is a right click on the list (onScrollMouseDown with the

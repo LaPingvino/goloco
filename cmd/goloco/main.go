@@ -598,10 +598,10 @@ func (g *Game) Update() error {
 			g.w.SetCamera(cx, cy)
 		}
 		if g.browse != nil { // the load/save list's thumb follows the mouse while held
-			g.browse.Drag(g.mouseY, ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft))
+			g.browse.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
 		}
 		if g.scenarioSelect != nil { // and the scenario list's
-			g.scenarioSelect.Drag(g.mouseY, ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft))
+			g.scenarioSelect.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
 			g.scenarioSelect.MouseOver(g.mouseX, g.mouseY)
 		}
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
@@ -710,7 +710,7 @@ func (g *Game) Update() error {
 		g.townList.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
 	}
 	if g.browse != nil { // the load/save list's thumb too
-		g.browse.Drag(g.mouseY, ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft))
+		g.browse.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
 	}
 	if g.pickupOn && !g.inTitleScreen { // pickupToolUpdate: the ghost under the cursor
 		if g.overWindow(g.mouseX, g.mouseY) {
