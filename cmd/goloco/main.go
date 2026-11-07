@@ -722,6 +722,9 @@ func (g *Game) Update() error {
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
 	}
+	if g.companyFinances != nil {
+		g.companyFinances.UpdateHeld(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
+	}
 	if g.companyList != nil {
 		g.companyList.MouseOver(g.mouseX, g.mouseY)
 		cl := g.companyList // findAt: in the window and no modal over it

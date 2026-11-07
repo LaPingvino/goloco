@@ -10,6 +10,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 	"log"
+	"math"
 	"os"
 	"sort"
 	"strconv"
@@ -1322,7 +1323,7 @@ func (g *Game) openCompanyFinances(company int) {
 	g.companyFinances = &ui.CompanyFinancesWindow{X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h, TitleColour: tc, Colour: wc,
 		Tab:   ui.CompanyTabFinances, // openFinances: currentTab = tab_finances
 		Title: g.w.Map.CompanyName(company), Data: g.companyFinancesData(company),
-		OnClose: func() { g.companyFinances = nil }, OnLoan: func(dir int) { g.changeLoan(company, dir) },
+		OnClose: func() { g.companyFinances = nil }, OnLoan: func(dir, step int) { g.changeLoan(company, dir, step) },
 		OnRename: func() { g.renameCompany(company, tc, wc) },
 		OnColour: func(colourType int, primary bool, x, y, w, h int) {
 			g.colourSwatchOpen(company, colourType, primary, x, y, h)
@@ -1337,22 +1338,22 @@ func (g *Game) openCompanyFinances(company int) {
 		}}
 }
 
-// changeLoan is Finances' loan_decrease / loan_increase: the loan ∓ £1,000
-// (getClickRepeatStepSize: 1 for a click; PARTIAL: the held button's
-// growing step), as ChangeLoan with apply; a refusal opens the error window
+// changeLoan is Finances' loan_decrease / loan_increase: the loan ∓ £1,000 ×
+// getClickRepeatStepSize (1 for a click, growing while held), as ChangeLoan with apply; a refusal opens the error window
 // (cant_pay_back_loan / cant_borrow_any_more_money and the command's reason).
-func (g *Game) changeLoan(company, dir int) {
+func (g *Game) changeLoan(company, dir, step int) {
 	m := &g.w.Map
 	if company < 0 || company >= len(m.Companies) {
 		return
 	}
 	cur := m.Companies[company].CurrentLoan
-	newLoan, title := cur+1000, i18n.CantBorrowAnyMoreMoney
+	bound := func(v int64) int32 { return int32(min(max(v, math.MinInt32), math.MaxInt32)) } // Math::Bound
+	newLoan, title := bound(int64(cur)+int64(step)*1000), i18n.CantBorrowAnyMoreMoney
 	if dir < 0 {
 		if cur == 0 {
 			return
 		}
-		newLoan, title = max(cur-1000, 0), i18n.CantPayBackLoan
+		newLoan, title = max(bound(int64(cur)-int64(step)*1000), 0), i18n.CantPayBackLoan
 	}
 	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
 	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureLoanInterest, func(f uint8) (int32, bool) { return m.ChangeLoan(c, f, newLoan) }); !ok {

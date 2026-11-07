@@ -153,7 +153,10 @@ type CompanyFinancesWindow struct {
 	OnClose   func()
 	// OnLoan is the stepper's − (−1) or + (+1): onMouseDown loan_decrease /
 	// loan_increase (a step of £1,000 × the click-repeat step).
-	OnLoan func(dir int)
+	OnLoan func(dir, step int)
+	// loanHeld is the loan button pressed (−1 / +1, 0 none) and
+	// loanRepeat its _clickRepeatTicks.
+	loanHeld, loanRepeat int
 	// OnAutopay is onMouseUp loan_autopay: the flag toggled.
 	OnAutopay func()
 }
@@ -194,9 +197,11 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 		w.switchTab(CompanyTabChallenge)
 	case w.Tab != CompanyTabFinances: // the loan controls are the Finances tab's only
 	case w.Data.Own && in(lw[cfLoanDecrease]) && w.OnLoan != nil:
-		w.OnLoan(-1)
+		w.loanHeld, w.loanRepeat = -1, 1
+		w.OnLoan(-1, 1)
 	case w.Data.Own && in(lw[cfLoanIncrease]) && w.OnLoan != nil:
-		w.OnLoan(1)
+		w.loanHeld, w.loanRepeat = 1, 1
+		w.OnLoan(1, 1)
 	case w.Data.Own && in(lw[cfLoanAutopay]) && w.OnAutopay != nil:
 		w.OnAutopay()
 	}
@@ -978,3 +983,30 @@ func (w *CompanyFinancesWindow) PositionEnd(x, y, screenH int) {
 
 // SwitchTab is Common::switchTab from outside (CompanyWindow::open's tab).
 func (w *CompanyFinancesWindow) SwitchTab(tab int) { w.switchTab(tab) }
+
+// UpdateHeld is MouseInput's click repeat for the holdable loan buttons:
+// while the button stays pressed over its widget the ticks count, and from
+// 16 every 4th repeats onMouseDown with getClickRepeatStepSize (10 to the
+// power ticks / 100); the release resets them.
+func (w *CompanyFinancesWindow) UpdateHeld(x, y int, down bool) {
+	if !down || w.loanHeld == 0 {
+		w.loanHeld, w.loanRepeat = 0, 0
+		return
+	}
+	lw := CompanyFinancesLayout(w.W, w.H)
+	b := lw[cfLoanIncrease]
+	if w.loanHeld < 0 {
+		b = lw[cfLoanDecrease]
+	}
+	if x < w.X+b.L || x > w.X+b.R || y < w.Y+b.T || y > w.Y+b.B || w.Tab != CompanyTabFinances {
+		return
+	}
+	w.loanRepeat++
+	if w.loanRepeat >= 16 && w.loanRepeat%4 == 0 && w.OnLoan != nil {
+		step := 1
+		for i := 0; i < w.loanRepeat/100; i++ {
+			step *= 10
+		}
+		w.OnLoan(w.loanHeld, step)
+	}
+}

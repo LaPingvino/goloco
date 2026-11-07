@@ -102,3 +102,26 @@ func TestCompanyListSort(t *testing.T) {
 		t.Errorf("name: %s first", w.Rows[0].Name)
 	}
 }
+
+// The loan buttons repeat while held: a step on the press, then every 4th
+// tick from 16, the step ×10 every 100 ticks; letting go stops it.
+func TestLoanClickRepeat(t *testing.T) {
+	var steps []int
+	w := &CompanyFinancesWindow{X: 82, Y: 140, W: 636, H: 319, Tab: CompanyTabFinances, Data: CompanyFinances{Own: true},
+		OnLoan: func(dir, step int) { steps = append(steps, dir*step) }}
+	b := CompanyFinancesLayout(w.W, w.H)[cfLoanIncrease]
+	x, y := w.X+(b.L+b.R)/2, w.Y+(b.T+b.B)/2
+	w.HandleClick(x, y)
+	for i := 0; i < 103; i++ { // ticks 2 … 104
+		w.UpdateHeld(x, y, true)
+	}
+	// 1 (press); 16, 20 … 96: 21 × 1; 100, 104: 2 × 10
+	if len(steps) != 1+21+2 || steps[0] != 1 || steps[1] != 1 || steps[22] != 10 || steps[23] != 10 {
+		t.Fatalf("steps %v", steps)
+	}
+	w.UpdateHeld(x, y, false)
+	w.UpdateHeld(x, y, true)
+	if len(steps) != 24 {
+		t.Fatalf("repeated after release: %v", steps)
+	}
+}
