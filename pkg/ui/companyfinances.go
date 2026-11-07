@@ -136,6 +136,8 @@ type CompanyFinancesWindow struct {
 	// OnColourMode is a vehicle type\'s checkbox (colourType 1–10): its own
 	// scheme on or off (ChangeCompanyColourScheme, setColourMode).
 	OnColourMode func(colourType int, on bool)
+	// OnRename is onMouseUp caption: renameCompanyPrompt (any tab).
+	OnRename func()
 	// OnColour is a swatch\'s onMouseDown (colourType 0 main, 1–10 a vehicle
 	// type; primary or secondary) with its screen rect, for showColour.
 	OnColour  func(colourType int, primary bool, x, y, w, h int)
@@ -164,6 +166,8 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 	switch {
 	case in(lw[cwClose]) && w.OnClose != nil:
 		w.OnClose()
+	case in(lw[cwCaption]) && w.OnRename != nil: // PARTIAL: dragging the window by its caption
+		w.OnRename()
 	case in(lw[cwTabColour]) && w.Tab != CompanyTabColourScheme:
 		w.switchTab(CompanyTabColourScheme)
 	case w.Tab == CompanyTabColourScheme && w.Colours.Own && w.OnColour != nil && w.colourSwatchAt(x, y) != nil:

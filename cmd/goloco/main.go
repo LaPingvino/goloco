@@ -515,12 +515,28 @@ func (g *Game) Update() error {
 		t0 := time.Now()
 		defer func() { fstats.addUpdate(time.Since(t0)) }()
 	}
+	// The script steps before the modal windows, so a playthrough can type
+	// into a text input or answer a prompt (it used to stall behind one).
+	if g.script != nil {
+		g.script.step()
+		g.scriptScenario()
+		g.scriptCamera()
+		if g.script.quit {
+			return ebiten.Termination
+		}
+	}
+	g.mouseX, g.mouseY = ebiten.CursorPosition()
+	if g.diagMouse != nil {
+		g.mouseX, g.mouseY = g.diagMouse[0], g.diagMouse[1]
+	}
+	if g.script != nil && g.script.hasMouse {
+		g.mouseX, g.mouseY = g.script.mouseX, g.script.mouseY
+	}
 	if g.textInput != nil { // TextInputWindow: keyUp (typed characters, editing keys, Enter / Escape), onMouseUp, onUpdate
 		t := g.textInput
 		t.Update()
 		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
-			mx, my := ebiten.CursorPosition()
-			t.HandleClick(mx, my)
+			t.HandleClick(g.mouseX, g.mouseY)
 		}
 		var keys []int
 		for k, code := range map[ebiten.Key]int{ebiten.KeyBackspace: ui.KeyBackspace, ebiten.KeyDelete: ui.KeyDelete, ebiten.KeyHome: ui.KeyHome,
@@ -529,8 +545,8 @@ func (g *Game) Update() error {
 				keys = append(keys, code)
 			}
 		}
-		t.Keys(ebiten.AppendInputChars(nil), keys, inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter),
-			inpututil.IsKeyJustPressed(ebiten.KeyEscape))
+		t.Keys(g.inChars(), keys, g.inKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter),
+			g.inKeyJustPressed(ebiten.KeyEscape))
 		if t.Closed && g.textInput == t {
 			g.textInput = nil
 		}
@@ -556,21 +572,6 @@ func (g *Game) Update() error {
 	}
 	if g.quitAfterSave {
 		return ebiten.Termination
-	}
-	if g.script != nil {
-		g.script.step()
-		g.scriptScenario()
-		g.scriptCamera()
-		if g.script.quit {
-			return ebiten.Termination
-		}
-	}
-	g.mouseX, g.mouseY = ebiten.CursorPosition()
-	if g.diagMouse != nil {
-		g.mouseX, g.mouseY = g.diagMouse[0], g.diagMouse[1]
-	}
-	if g.script != nil && g.script.hasMouse {
-		g.mouseX, g.mouseY = g.script.mouseX, g.script.mouseY
 	}
 	if g.browse != nil { // PromptBrowse: mouse-over row, typed filename, Enter/Escape
 		g.browse.HandleHover(g.mouseX, g.mouseY)
@@ -1426,6 +1427,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.companyFinances != nil { // the latest opened over the others (PARTIAL: the window stack's real order)
 		g.companyFinances.Data = g.companyFinancesData(g.companyFinancesID) // the figures as they change
+		g.companyFinances.Title = g.w.Map.CompanyName(g.companyFinancesID)  // the caption's company->name
 		if id := g.companyFinancesID; id >= 0 && id < len(g.w.CompanyColours) {
 			g.companyFinances.TitleColour = g.w.CompanyColours[id] // WindowManager's draw: an owned window's primary is its company's colour
 		}

@@ -1266,6 +1266,7 @@ func (g *Game) openCompanyFinances(company int) {
 		Tab:   ui.CompanyTabFinances, // openFinances: currentTab = tab_finances
 		Title: g.w.Map.CompanyName(company), Data: g.companyFinancesData(company),
 		OnClose: func() { g.companyFinances = nil }, OnLoan: func(dir int) { g.changeLoan(company, dir) },
+		OnRename: func() { g.renameCompany(company, tc, wc) },
 		OnColour: func(colourType int, primary bool, x, y, w, h int) {
 			g.colourSwatchOpen(company, colourType, primary, x, y, h)
 		},
@@ -1508,4 +1509,26 @@ func (g *Game) colourSwatchOpen(company, colourType int, primary bool, x, y, h i
 		g.changeCompanyColour(company, sim.ColourSchemeChange{Company: uint8(company), ColourType: uint8(colourType), Value: c, IsPrimary: primary})
 	}
 	g.colourDropdown = d
+}
+
+// renameCompany is renameCompanyPrompt and renameCompany: the text input
+// (title_name_company, prompt_enter_new_company_name, the current name), then
+// — a non-empty name — RenameCompany with apply (cannot_rename_this_company
+// and the reason on a refusal).
+func (g *Game) renameCompany(company int, titleColour, colour uint8) {
+	m := &g.w.Map
+	g.textInput = ui.OpenTextInput(i18n.Str(i18n.TitleNameCompany), i18n.Str(i18n.PromptEnterNewCompanyName),
+		m.CompanyName(company), 31, g.sw, g.sh, titleColour, colour, true, func(text string) {
+			if text == "" {
+				return
+			}
+			c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+			if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) { return m.RenameCompany(c, f, company, text) }); !ok {
+				g.openError(i18n.Label(i18n.CannotRenameThisCompany), cmdErrorText(c))
+				return
+			}
+			if g.companyFinances != nil {
+				g.companyFinances.Title = m.CompanyName(company)
+			}
+		})
 }
