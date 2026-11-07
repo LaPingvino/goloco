@@ -105,3 +105,10 @@ func (m *Map) NewChallengeProgress(id int, om *objects.ObjectManager) uint8 {
 
 // uint8n mirrors the uint8_t progress local.
 func uint8n(v int) int { return int(uint8(v)) }
+
+// CompanyFlagChallengeCompleted and CompanyFlagChallengeFailed are
+// CompanyFlags::challengeCompleted / challengeFailed (the Challenge tab).
+const (
+	CompanyFlagChallengeCompleted = companyFlagChallengeCompleted
+	CompanyFlagChallengeFailed    = companyFlagChallengeFailed
+)
