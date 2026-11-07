@@ -285,3 +285,24 @@ func (w *BuildVehicleWindow) HandleClick(x, y int) {
 		}
 	}
 }
+
+// HandleWheel is WindowManager::wheelInput → windowScrollWheelInput on the
+// vehicle list when the pointer is over it: 17 px a notch (MouseInput's
+// wheel ∓17, down scrolls down), clamped to the content's height less the
+// view's (bottom − top − 1). ok false elsewhere on the window.
+func (w *BuildVehicleWindow) HandleWheel(x, y int, dy float64) bool {
+	lw := BuildVehicleLayout(w.W, w.H, w.Disabled, w.NumTrackTabs)
+	list := lw[bvList]
+	if list.Hidden || x < w.X+list.L || x > w.X+list.R || y < w.Y+list.T || y > w.Y+list.B {
+		return false
+	}
+	wheel := 0
+	if dy < 0 {
+		wheel = 17
+	} else if dy > 0 {
+		wheel = -17
+	}
+	size := max(0, len(w.Rows)*sim.BuildVehicleRowHeight[w.Tab]-(list.B-list.T-1))
+	w.Scroll = min(max(w.Scroll+wheel, 0), size)
+	return true
+}
