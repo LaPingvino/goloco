@@ -17,9 +17,8 @@ import (
 // clickable(StationWindow.cpp): close_button centre_on_viewport
 // The Cargo tab: the cargo waiting (Cargo::drawScroll) and "Accepts:" with
 // the accepted cargo's sprites (Cargo::draw).
-// PARTIAL: the Cargo ratings tab and the vehicle tabs (and the tabs'
-// images), renaming by the caption, resizing, the viewport's rotation, the
-// cargo list's scrolling, the status bar's tooltip.
+// PARTIAL: the vehicle tabs, resizing, the viewport's rotation, the cargo
+// list's scrolling, the status bar's tooltip.
 const stationWinW, stationWinH = 223, 136 // Station::kWindowSize
 
 type StationWindow struct {
@@ -36,8 +35,11 @@ type StationWindow struct {
 	// OnCatchment is the Cargo tab's station_catchment (onMouseUp:
 	// showStationCatchment, toggling); Catchment is whether this station's
 	// catchment shows (the button activated).
-	OnCatchment  func()
-	Catchment    bool
+	OnCatchment func()
+	Catchment   bool
+	// OnRename is the caption\'s click (renameStationPrompt), nil while the
+	// caption is disabled (enableRenameByCaption: not a player\'s station).
+	OnRename     func()
 	View         func(w, h int) *gfx8.RenderTarget
 	OnCentreView func()
 	OnClose      func()
@@ -76,8 +78,15 @@ func (w *StationWindow) HandleClick(px, py int) {
 		}
 		return
 	}
+	if rx >= 1 && rx < w.width()-15 && ry >= 1 && ry <= 13 && w.OnRename != nil { // Common::onMouseUp caption
+		w.OnRename()
+		return
+	}
 	for t := 0; t < 3; t++ { // Common::switchTab
 		if rx >= 3+31*t && rx < 3+31*t+31 && ry >= 15 && ry < 42 {
+			if t != 1 && w.Catchment && w.OnCatchment != nil { // leaving for another tab: this station's catchment goes
+				w.OnCatchment()
+			}
 			w.Tab = t
 			return
 		}

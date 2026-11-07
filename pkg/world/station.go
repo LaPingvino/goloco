@@ -64,3 +64,7 @@ func (w *World) PlaceStationOnTile(x, y int, stationObjID uint8) bool {
 	log.Printf("[Station] placed at (%d,%d) z%d objSlot=%d", x, y, te.BaseZ, stationObjID)
 	return true
 }
+
+// StationsChanged marks the station list stale (a station renamed): it is
+// rebuilt on its next read.
+func (w *World) StationsChanged() { w.stationsGen++ }
