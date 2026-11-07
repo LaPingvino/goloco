@@ -67,6 +67,7 @@ type Game struct {
 	buildVehicle                   *ui.BuildVehicleWindow    // the Build Vehicle window when open (5P.f)
 	companyFinances                *ui.CompanyFinancesWindow // the Company window's Finances tab when open (PL.1)
 	companyFinancesID              int
+	scenarioDetails                string                    // the started scenario's description (the Challenge tab; PARTIAL: a saved game's)
 	vehicleWin                     *ui.VehicleWindow         // the Vehicle window when open (5P.g)
 	diagMouse                      *[2]int                   // DIAGNOSTIC ONLY: the mouse held at a point (the roadghost diag's hover)
 	ghostWater                     sim.VehicleWaterPlacement // _ghostVehiclePos for a boat ghost (ghostProgress 0)
@@ -1414,6 +1415,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.companyFinances != nil { // the latest opened over the others (PARTIAL: the window stack's real order)
 		g.companyFinances.Data = g.companyFinancesData(g.companyFinancesID) // the figures as they change
 		g.companyFinances.CargoLines = g.companyCargoLines(g.companyFinancesID)
+		g.companyFinances.Challenge = g.companyChallenge(g.companyFinancesID)
 		g.companyFinances.FrameNo = g.windowFrame
 		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
 			g.companyFinances.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
@@ -3028,6 +3030,7 @@ func (g *Game) loadScenario(filePath string) error {
 		if g.script != nil && g.script.seed != nil { // a playthrough's "seed N": the whole state fixed, the same game every run
 			gameW.Map.Rng1 = *core.NewPrngSeed(*g.script.seed, *g.script.seed^0x5EED)
 		}
+		g.scenarioDetails = sc.Options.Description // GameState scenarioDetails (Scenario::start copies the options')
 		var gen *sim.TerrainOptions
 		if sc.LandscapeToGenerate {
 			gen = &sim.TerrainOptions{MinLandHeight: sc.Options.MinLandHeight, TopographyStyle: sc.Options.TopographyStyle,

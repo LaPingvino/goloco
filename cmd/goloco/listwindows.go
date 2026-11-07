@@ -1343,3 +1343,26 @@ func (g *Game) companyCargoLines(company int) []string {
 	}
 	return out
 }
+
+// companyChallenge is what Challenge::draw reads: the scenario's details, the
+// objective (formatChallengeArguments) and the player company's progress.
+func (g *Game) companyChallenge(company int) ui.CompanyChallenge {
+	m := &g.w.Map
+	o := m.Objective
+	co := ui.ChallengeObjective{Type: o.Type, Flags: o.Flags, CompanyValue: o.CompanyValue, MonthlyProfit: o.MonthlyVehicleProfit,
+		PerformanceIndex: o.PerformanceIndex, CargoAmount: o.DeliveredCargoAmount, TimeLimitYears: o.TimeLimitYears,
+		UntilYear: int(m.ObjectiveUntilYear), TitleOrEditor: g.inTitleScreen}
+	if om := g.r.ObjMgr; om != nil && int(o.DeliveredCargoType) < len(om.CargoObjects) && om.CargoObjects[o.DeliveredCargoType] != nil {
+		co.CargoUnitPlural = ui.ObjectString(om.CargoObjects[o.DeliveredCargoType].UnitNamePlural)
+	}
+	c := ui.CompanyChallenge{Details: g.scenarioDetails, Objective: ui.ChallengeObjectiveText(co)}
+	if company >= 0 && company < len(m.Companies) && company < len(m.CompanyFaces) {
+		c.Progress = int(m.Companies[company].ChallengeProgress)
+		flags := m.CompanyFaces[company].ChallengeFlags
+		c.Completed, c.Failed = flags&sim.CompanyFlagChallengeCompleted != 0, flags&sim.CompanyFlagChallengeFailed != 0
+	}
+	c.CompletedMonths = int(m.ObjectiveCompletedInMonths)
+	c.TimeLimited = o.Flags&4 != 0
+	c.MonthsLeft = int(o.TimeLimitYears)*12 - int(m.ObjectiveMonthsInChallenge)
+	return c
+}

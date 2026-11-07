@@ -26,6 +26,9 @@ import (
 // CompanyFinancesSize is Finances::kWindowSize.
 var CompanyFinancesSize = [2]int{636, 319}
 
+// CompanyChallengeSize is Challenge::kWindowSize.
+var CompanyChallengeSize = [2]int{320, 182}
+
 // CompanyCargoDeliveredSize is CargoDelivered::kWindowSize.
 var CompanyCargoDeliveredSize = [2]int{240, 382}
 
@@ -112,10 +115,12 @@ type CompanyFinancesWindow struct {
 	// CargoLines is CargoDelivered::draw's list: each delivered cargo's
 	// unit name with its count (black_stringid), in cargo order.
 	CargoLines []string
-	Scroll     int
-	SkinImage  int // the interface skin's image base (the tab icons)
-	FrameNo    int // the window's frameNo: the current tab's icon animates
-	OnClose    func()
+	// Challenge is what Challenge::draw shows (the player company's).
+	Challenge CompanyChallenge
+	Scroll    int
+	SkinImage int // the interface skin's image base (the tab icons)
+	FrameNo   int // the window's frameNo: the current tab's icon animates
+	OnClose   func()
 	// OnLoan is the stepper's − (−1) or + (+1): onMouseDown loan_decrease /
 	// loan_increase (a step of £1,000 × the click-repeat step).
 	OnLoan func(dir int)
@@ -141,6 +146,8 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 		w.switchTab(CompanyTabFinances)
 	case in(lw[cwTabCargo]) && w.Tab != CompanyTabCargoDelivered:
 		w.switchTab(CompanyTabCargoDelivered)
+	case in(lw[cwTabChallenge]) && w.Tab != CompanyTabChallenge && w.Data.Own: // disableChallengeTab: another company's
+		w.switchTab(CompanyTabChallenge)
 	case w.Tab != CompanyTabFinances: // the loan controls are the Finances tab's only
 	case w.Data.Own && in(lw[cfLoanDecrease]) && w.OnLoan != nil:
 		w.OnLoan(-1)
@@ -167,6 +174,8 @@ func (w *CompanyFinancesWindow) switchTab(tab int) {
 		w.W, w.H = CompanyFinancesSize[0], CompanyFinancesSize[1]
 	case CompanyTabCargoDelivered:
 		w.W, w.H = CompanyCargoDeliveredSize[0], CompanyCargoDeliveredSize[1]
+	case CompanyTabChallenge:
+		w.W, w.H = CompanyChallengeSize[0], CompanyChallengeSize[1]
 	}
 	w.Scroll = 0
 }
@@ -178,6 +187,10 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 	}
 	if w.Tab == CompanyTabCargoDelivered {
 		w.drawCargoDelivered(screen)
+		return
+	}
+	if w.Tab == CompanyTabChallenge {
+		w.drawChallenge(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -466,5 +479,139 @@ func (w *CompanyFinancesWindow) drawCargoDelivered(screen *ebiten.Image) {
 	}
 	if len(w.CargoLines) == 0 {
 		drawFormattedEx(screen, w.X+10, y, i18n.Str(i18n.CargoDeliveredNone), win2, black, red)
+	}
+}
+
+// CompanyChallenge is the Challenge tab's content.
+type CompanyChallenge struct {
+	Details         string // scenarioDetails
+	Objective       string // formatChallengeArguments, filled in (challenge_value's {STRINGID})
+	Progress        int    // challengeProgress (%)
+	Completed       bool
+	Failed          bool
+	CompletedMonths int // completedChallengeInMonths
+	TimeLimited     bool
+	MonthsLeft      int // timeLimitYears × 12 − monthsInChallenge
+}
+
+// ChallengeObjective is what formatChallengeArguments reads of the
+// objective and its progress.
+type ChallengeObjective struct {
+	Type             uint8 // companyValue, vehicleProfit, performanceIndex, cargoDelivery
+	Flags            uint8 // beTopCompany, beWithinTopThreeCompanies, withinTimeLimit
+	CompanyValue     uint32
+	MonthlyProfit    uint32
+	PerformanceIndex uint8
+	CargoUnitPlural  string // the cargo's unitNamePlural ("" for none)
+	CargoAmount      uint32
+	TimeLimitYears   uint8
+	UntilYear        int  // progress.timeLimitUntilYear
+	TitleOrEditor    bool // "within N years" instead of "by the end of"
+}
+
+// ChallengeObjectiveText is Scenario::formatChallengeArguments: the
+// objective's sentence, then its first two qualifiers (top company / top
+// three / the time limit), as the {STRINGID}s it fills.
+func ChallengeObjectiveText(o ChallengeObjective) string {
+	var extra []string
+	if o.Flags&1 != 0 {
+		extra = append(extra, i18n.Str(i18n.AndBeTheTopPerformingCompany))
+	}
+	if o.Flags&2 != 0 {
+		extra = append(extra, i18n.Str(i18n.AndBeOneOfTheTop3PerformingCompanies))
+	}
+	if o.Flags&4 != 0 {
+		if o.TitleOrEditor {
+			extra = append(extra, ui18nFill(i18n.WithinYears, strconv.Itoa(int(o.TimeLimitYears))))
+		} else {
+			extra = append(extra, ui18nFill(i18n.ByTheEndOf, strconv.Itoa(o.UntilYear)))
+		}
+	}
+	extra = append(extra, "", "") // the two empty string ids pushed last
+	a, b := extra[0], extra[1]
+	switch o.Type {
+	case 0:
+		return ui18nFill(i18n.AchieveACompanyValueOf, L.Currency48(int64(o.CompanyValue)), a, b)
+	case 1:
+		return ui18nFill(i18n.AchieveAMonthlyProfitFromVehiclesOf, L.Currency48(int64(o.MonthlyProfit)), a, b)
+	case 2:
+		pi := int16(o.PerformanceIndex) * 10 // formatPerformanceIndex: the index and its rating's name
+		rating := i18n.CorporateRatingPlatelayer + min(9, int(pi)/100)
+		return ui18nFill(i18n.AchieveAPerformanceIndexOf, int16OneDecimal(pi), i18n.Str(rating), a, b)
+	case 3:
+		cargo := ""
+		if o.CargoUnitPlural != "" {
+			cargo = FillArgs(o.CargoUnitPlural, Comma32(int64(o.CargoAmount)))
+		}
+		return ui18nFill(i18n.Deliver, cargo, a, b)
+	}
+	return ""
+}
+
+// drawChallenge is Challenge::draw (0x00433DEB): the scenario's details, the
+// challenge and its objective, then the outcome — success in years and
+// months, failure — or the progress and, time-limited, the time left.
+// PARTIAL: beaten by the other player (no multiplayer).
+func (w *CompanyFinancesWindow) drawChallenge(screen *ebiten.Image) {
+	g1 := globalG1Font.g1
+	pal := g1.GetPalette()
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	lw := CompanyFinancesLayout(w.W, w.H)
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		p := lw[cwPanel]
+		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		w.drawCompanyTabs(rt, lw[:], cwTabChallenge, sec, prim)
+	})
+	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, ui18nFill(i18n.TitleCompanyChallenge, w.Title), int(w.TitleColour))
+	red, _ := TextColours(27)
+	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
+	c := &w.Challenge
+	x, y := w.X+5, w.Y+47
+	// drawStringLeftWrapped: each line 10 below the last; it returns the
+	// position after the last line.
+	wrapped := func(s string, width int, col color.Color) {
+		for _, part := range strings.Split(s, "{NEWLINE}") {
+			lead := ""
+			if strings.HasPrefix(part, "{COLOUR") { // a line's colour stays with its first word
+				if e := strings.IndexByte(part, '}'); e > 0 {
+					lead, part = part[:e+1], part[e+1:]
+				}
+			}
+			for i, ln := range WrapTextBold(stripCodes(part), width) {
+				if i == 0 && lead != "" {
+					drawFormattedEx(screen, x, y, lead+ln, win2, black, red)
+				} else {
+					DrawTextBold(screen, ln, x, y, col)
+				}
+				y += 10
+			}
+		}
+	}
+	wrapped(c.Details, w.W-10, black)
+	y += 5
+	drawFormattedEx(screen, x, y, i18n.Str(i18n.ChallengeLabel), win2, black, red)
+	y += 10
+	wrapped(ui18nFill(i18n.ChallengeValue, c.Objective), w.W-10, black)
+	y += 5
+	switch {
+	case c.Completed:
+		wrapped(ui18nFill(i18n.SuccessYouCompletedTheChallengeInYearsMonths, strconv.Itoa(c.CompletedMonths/12), strconv.Itoa(c.CompletedMonths%12)), w.W-10, black)
+		return
+	case c.Failed:
+		wrapped(i18n.Str(i18n.FailedYouFailedToCompleteTheChallenge), w.W-10, black)
+		return
+	}
+	drawFormattedEx(screen, x, y, ui18nFill(i18n.ProgressTowardsCompletingChallengePercent, strconv.Itoa(c.Progress)), win2, black, red)
+	y += 10
+	if c.TimeLimited {
+		drawFormattedEx(screen, x, y, ui18nFill(i18n.TimeRemainingYearsMonths, strconv.Itoa(c.MonthsLeft/12), strconv.Itoa(c.MonthsLeft%12)), win2, black, red)
 	}
 }
