@@ -77,13 +77,15 @@ func (m *Map) CreateMoneyEffect(x, y, z int32, company uint8, amount int32) (uin
 }
 
 // SpendMoneyEffect is CompanyManager::spendMoneyEffect (0x0046DC9F): the
-// effect 10 above the location. PARTIAL: an unset location (Location::null:
-// the main viewport's centre) is skipped — the sim has no viewport.
+// effect 10 above the location, of −amount (money spent shows "− £…",
+// income — spent as −profit — "+ £…"). PARTIAL: an unset location
+// (Location::null: the main viewport's centre) is skipped — the sim has no
+// viewport.
 func (m *Map) SpendMoneyEffect(x, y, z int32, company uint8, amount int32) {
 	if x == -32768 {
 		return
 	}
-	m.CreateMoneyEffect(x, y, z+10, company, amount)
+	m.CreateMoneyEffect(x, y, z+10, company, -amount)
 }
 
 // updateMoneyEffect is MoneyEffect::update (0x0044063E) for one effect;
