@@ -47,6 +47,7 @@ const (
 // PARTIAL: the AI's placement without a road (aiAllocated, index 0), the
 // error texts, the company's thinking emotion, the viewport invalidations.
 func (m *Map) CreateRoadStation(c *Cmd, flags uint8, a RoadStationPlacement, g1 G1Raw) (int32, bool) {
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0)): where the money effect shows
 	om := c.Objects
 	if om == nil || int(a.RoadObjectID) >= len(om.RoadObjects) || om.RoadObjects[a.RoadObjectID] == nil ||
 		int(a.Type) >= len(om.RoadStationObjects) || om.RoadStationObjects[a.Type] == nil || int(a.RoadID) >= len(RoadPieces) {

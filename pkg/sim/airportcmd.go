@@ -204,6 +204,7 @@ func (m *Map) airportBuilding(c *Cmd, stationID int, tx, ty int, baseHeight int3
 // centre, label, sub_48D794. PARTIAL: the company observation and emotion,
 // the construction sound, the error texts.
 func (m *Map) CreateAirport(c *Cmd, flags uint8, a AirportPlacement, g1 G1Raw) (int32, bool) {
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0)): where the money effect shows
 	om := c.Objects
 	if om == nil || int(a.Type) >= len(om.AirportObjects) || om.AirportObjects[a.Type] == nil || a.Rotation > 3 {
 		return 0, false
