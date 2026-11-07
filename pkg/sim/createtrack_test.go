@@ -34,3 +34,38 @@ func TestCreateTrackCost(t *testing.T) {
 		t.Error("an empty slot must fail")
 	}
 }
+
+// createTrack's checks: a flat straight on the ground passes with its cost;
+// raised without a bridge, or below 16, it fails; a long curve covers its
+// tiles.
+func TestCreateTrackCheck(t *testing.T) {
+	h := &objects.ObjectHeader{}
+	copy(h.Name[:], "TRACKST ")
+	track := &objects.TrackObject{Header: h, BuildCostFactor: 100}
+	c := &Cmd{Company: 0, Objects: &objects.ObjectManager{TrackObjects: []*objects.TrackObject{track}}}
+	m := &Map{Width: 8, Height: 8, Tiles: make([][]Tile, 8)}
+	for y := range m.Tiles {
+		m.Tiles[y] = make([]Tile, 8)
+		for x := range m.Tiles[y] {
+			m.Tiles[y][x].BaseZ = 4 // the ground at z 16
+		}
+	}
+	a := trackPlacementArgs{X: 3 * 32, Y: 3 * 32, Z: 16, TrackID: 0, Bridge: 0xFF}
+	r, ok := m.createTrackCheck(c, a, 0)
+	_, base, _ := m.createTrackCost(c, a)
+	if !ok || len(r.Pieces) != 1 || r.Pieces[0].BaseZ != 4 || r.Cost != base {
+		t.Fatalf("flat straight: ok %v, %+v", ok, r)
+	}
+	a.Z = 32
+	if _, ok := m.createTrackCheck(c, a, 0); ok {
+		t.Error("raised without a bridge: must fail")
+	}
+	a.Z = 8
+	if _, ok := m.createTrackCheck(c, a, 0); ok {
+		t.Error("below 16: too low")
+	}
+	a = trackPlacementArgs{X: 4 * 32, Y: 4 * 32, Z: 16, TrackID: 1, Bridge: 0xFF} // the diagonal piece: several tiles
+	if r, ok := m.createTrackCheck(c, a, 0); !ok || len(r.Pieces) != len(TrackPieces[1]) {
+		t.Errorf("a multi-tile piece: ok %v, %d pieces", ok, len(r.Pieces))
+	}
+}
