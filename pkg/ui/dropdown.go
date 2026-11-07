@@ -56,6 +56,15 @@ type DropdownItem struct {
 	// "{NEWLINE 1 2}{SPRITE}{NEWLINE 26 8}{STRINGID}": Sprite (the owner's
 	// face, recoloured to SpriteColour) at the item's (1, 2), Text at (26, 8).
 	CompanySelect bool
+	// CompanyPerformance is dropdown_company_performance's layout
+	// "{NEWLINE 0 8}{STRINGID}{NEWLINE 25 2}{SPRITE}{NEWLINE 51 2}{STRINGID}
+	// {NEWLINE 51 12}{COLOUR WINDOW_1}{INT16_1DP}% “{STRINGID}”": Text (the
+	// position) at (0, 8), Sprite (the face) at (25, 2), Lines[0] (the name)
+	// at (51, 2), Lines[1] (the performance) at (51, 12) in WINDOW_1.
+	CompanyPerformance bool
+	// CompaniesListItem is dropdown_companies_list's layout: Sprite at
+	// (1, 2), Text at (33, 8).
+	CompaniesListItem bool
 	// MenuSprite is menu_sprite_stringid's layout "{SPRITE}{NEWLINE 31 8}
 	// {STRINGID}": Sprite (recoloured to SpriteColour) at the item's pen
 	// origin, then " " + Text at (31, 8).
@@ -189,8 +198,10 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 				if sp, err := gfx8.Decode(&g1.Elements[it.Sprite]); err == nil {
 					m, _ := g1.GetPaletteMap(int(it.SpriteColour))
 					sx, sy := 2, 1+i*ih+1
-					if it.CompanySelect {
+					if it.CompanySelect || it.CompaniesListItem {
 						sx, sy = 2+1, 1+i*ih+2
+					} else if it.CompanyPerformance {
+						sx, sy = 2+25, 1+i*ih+2
 					} else if it.MenuSprite {
 						sx, sy = 2, 1+i*ih
 					}
@@ -199,6 +210,21 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 			}
 			if it.CompanySelect {
 				labels = append(labels, label{it.Text, 2 + 26, 1 + i*ih + 8, c, inset})
+				continue
+			}
+			if it.CompaniesListItem {
+				labels = append(labels, label{it.Text, 2 + 33, 1 + i*ih + 8, c, inset})
+				continue
+			}
+			if it.CompanyPerformance {
+				labels = append(labels, label{it.Text, 2, 1 + i*ih + 8, c, inset})
+				if len(it.Lines) > 0 {
+					labels = append(labels, label{it.Lines[0], 2 + 51, 1 + i*ih + 2, c, inset})
+				}
+				if len(it.Lines) > 1 {
+					w1 := c // {COLOUR WINDOW_1}: the dropdown's colour, shade 9 (white when highlighted)
+					labels = append(labels, label{it.Lines[1], 2 + 51, 1 + i*ih + 12, w1, inset})
+				}
 				continue
 			}
 			if it.MenuSprite {
@@ -381,6 +407,24 @@ func NewDropdownShowItemHeight(x, y, width, height int, colour uint8, items []Dr
 // width, 26 + the name's).
 func itemTextWidth(it DropdownItem) int {
 	tw, _ := MeasureTextBold(it.Text)
+	if it.CompanyPerformance {
+		w := tw
+		if g1 := globalG1Font.g1; it.Sprite > 0 && it.Sprite < len(g1.Elements) {
+			w = max(w, 25+int(g1.Elements[it.Sprite].Width))
+		}
+		for _, l := range it.Lines {
+			lw, _ := MeasureTextBold(l)
+			w = max(w, 51+lw)
+		}
+		return w
+	}
+	if it.CompaniesListItem {
+		sw := 0
+		if g1 := globalG1Font.g1; it.Sprite > 0 && it.Sprite < len(g1.Elements) {
+			sw = int(g1.Elements[it.Sprite].Width)
+		}
+		return max(1+sw, 33+tw)
+	}
 	if it.CompanySelect {
 		sw := 0
 		if g1 := globalG1Font.g1; it.Sprite > 0 && it.Sprite < len(g1.Elements) {

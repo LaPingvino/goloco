@@ -969,3 +969,6 @@ func (w *CompanyFinancesWindow) PositionEnd(x, y, screenH int) {
 		w.OnRename()
 	}
 }
+
+// SwitchTab is Common::switchTab from outside (CompanyWindow::open's tab).
+func (w *CompanyFinancesWindow) SwitchTab(tab int) { w.switchTab(tab) }

@@ -789,6 +789,10 @@ func (g *Game) Update() error {
 				// the bottom-bar windows swallow the click; the player panel's
 				// company value is companyValueMouseUp: the Company window's Finances
 				px, py := uilayout.PlayerPanelPos(g.sw, g.sh)
+				if r := uilayout.PlayerPanelFace; uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh) &&
+					g.mouseX >= px+r[0] && g.mouseX < px+r[0]+r[2] && g.mouseY >= py+r[1] && g.mouseY < py+r[1]+r[3] {
+					g.playerCompanyDropdown(px+r[0], py+r[1], r[2], r[3]) // playerMouseDown
+				}
 				if r := uilayout.PlayerPanelCompanyVal; uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh) &&
 					g.mouseX >= px+r[0] && g.mouseX < px+r[0]+r[2] && g.mouseY >= py+r[1] && g.mouseY < py+r[1]+r[3] {
 					company, _ := g.w.ControllingCompany()
