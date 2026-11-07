@@ -369,14 +369,15 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		OnRoute:       func(a string) { g.routeAction(headID, a); g.openVehicleWindow(headID, 4) },
 		Express:       m.Entities[tr.Veh1].Var48&sim.Flags48ExpressMode != 0,
 		Tab:           tab, Main: ui.VehicleMainState{Own: own, Manual: h.VehicleFlags&sim.VehicleFlagManualControl != 0},
-		StopStartImage:  stopStartImage(h.VehicleFlags),
-		OnTab:           func(t int) { g.openVehicleWindow(headID, t) },
-		View:            func(w, h int) *gfx8.RenderTarget { return g.w.VehicleView(headID, w, h) },
-		OnCentreView:    func() { g.centreViewportOpen(headID) },
-		OnStopStart:     func(x, y, w, hh int) { g.stopStartOpen(headID, x, y, w, hh) },
-		OnRefit:         func(x, y, w, hh int) { g.refitOpen(headID, x, y, w, hh) },
-		OnOrderDropdown: func(kind string, x, y, w, hh int) { g.orderDropdown(headID, kind, x, y, w, hh) },
-		OnPassSignal:    func() { g.passSignal(headID) }}
+		StopStartImage:    stopStartImage(h.VehicleFlags),
+		OnTab:             func(t int) { g.openVehicleWindow(headID, t) },
+		View:              func(w, h int) *gfx8.RenderTarget { return g.w.VehicleView(headID, w, h) },
+		OnCentreView:      func() { g.centreViewportOpen(headID) },
+		OnStopStart:       func(x, y, w, hh int) { g.stopStartOpen(headID, x, y, w, hh) },
+		OnRefit:           func(x, y, w, hh int) { g.refitOpen(headID, x, y, w, hh) },
+		OnOrderDropdown:   func(kind string, x, y, w, hh int) { g.orderDropdown(headID, kind, x, y, w, hh) },
+		OnPassSignal:      func() { g.passSignal(headID) },
+		OnChangeDirection: func() { g.changeDirection(headID) }}
 	if own {
 		g.vehicleWin.OnRename = func() { g.renameVehicle(headID, tc, wc) }
 	}
@@ -1782,5 +1783,24 @@ func (g *Game) passSignal(headID uint16) {
 		return m.VehiclePassSignal(c, f, headID)
 	}); !ok {
 		g.openError(i18n.Label(i18n.CantPassSignalAtDanger), cmdErrorText(c))
+	}
+}
+
+// changeDirection is Main's onChangeDirection: with this vehicle's pickup
+// tool active, the placement direction flips (pickupDirection ^= 1);
+// otherwise VehicleReverse for the controlling company, refused → the error
+// window (cant_reverse_train).
+func (g *Game) changeDirection(headID uint16) {
+	m := &g.w.Map
+	if g.pickupOn && g.pickupHead == headID {
+		m.PickupDirection ^= 1
+		return
+	}
+	company, _ := g.w.ControllingCompany()
+	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureTrainRunningCosts, func(f uint8) (int32, bool) {
+		return m.VehicleReverse(c, f, headID)
+	}); !ok {
+		g.openError(i18n.Label(i18n.CantReverseTrain), cmdErrorText(c))
 	}
 }

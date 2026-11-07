@@ -345,7 +345,9 @@ type VehicleWindow struct {
 	OnOrderDropdown func(kind string, x, y, w, h int)
 	// OnPassSignal is Main::onMouseUp passSignal: VehiclePassSignal.
 	OnPassSignal func()
-	Express      bool // Route: veh1 Flags48::expressMode (express pressed, else local)
+	// OnChangeDirection is Main::onChangeDirection.
+	OnChangeDirection func()
+	Express           bool // Route: veh1 Flags48::expressMode (express pressed, else local)
 	// View is Main's viewport, 8-bit, of the given size (nil: none — the
 	// vehicle not placed).
 	View         func(w, h int) *gfx8.RenderTarget
@@ -703,6 +705,8 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			w.OnCentreView()
 		case in(lw[vmPassSignal]) && w.OnPassSignal != nil: // Main::onMouseUp passSignal
 			w.OnPassSignal()
+		case in(lw[vmChangeDirection]) && w.OnChangeDirection != nil: // Main::onMouseUp changeDirection
+			w.OnChangeDirection()
 		}
 		return
 	}
