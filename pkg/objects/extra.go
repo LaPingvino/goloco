@@ -17,7 +17,9 @@ type ExtraObject struct {
 	// the compiler).
 	Pieces          uint16
 	BuildCostFactor int16
-	CostIndex       uint8
+	// SellCostFactor (0x08) prices removing the extra with its piece (removeTrack).
+	SellCostFactor int16
+	CostIndex      uint8
 	// PaintStyle (0x04) picks the addition tables (track: Style0/1); Image is
 	// load's image = the image table's base + 8 (0 without sprites loaded).
 	PaintStyle uint8
@@ -35,6 +37,7 @@ func ParseExtraObject(header *ObjectHeader, data []byte, g1 G1Loader) (*ExtraObj
 	ex := &ExtraObject{Header: header, Name: name,
 		Pieces:          uint16(data[0x02]) | uint16(data[0x03])<<8,
 		BuildCostFactor: int16(uint16(data[0x06]) | uint16(data[0x07])<<8),
+		SellCostFactor:  int16(uint16(data[0x08]) | uint16(data[0x09])<<8),
 		CostIndex:       data[0x05], PaintStyle: data[0x04]}
 	if g1 != nil && offset < len(data) {
 		imgRes, err := g1.LoadImageTable(data[offset:])
