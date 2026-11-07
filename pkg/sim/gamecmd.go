@@ -273,6 +273,10 @@ func doCommand(flags uint8, run func(flags uint8) (int32, bool)) (int32, bool) {
 	return min(cost, cost2), true
 }
 
+// ExpenditureConstruction is ExpenditureType::Construction (createTrack's
+// setExpenditureType).
+const ExpenditureConstruction = 12
+
 // ExpenditureVehiclePurchases is ExpenditureType::VehiclePurchases (the
 // createVehicle command's setExpenditureType).
 const ExpenditureVehiclePurchases = 13

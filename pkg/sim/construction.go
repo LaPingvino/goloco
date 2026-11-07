@@ -302,3 +302,45 @@ func (s *State) removeRoadElement(x, y int, roadID, rotation, seq, baseZ uint8) 
 // DrawRoadConstructionGhost renders the selected road piece translucently at
 // the head, covering every sequence tile. Uses the Style0 single-image-per-
 // rotation offsets (roads 0-2 base merge sprites are valid direct images).
+
+// BuildTrackAtHead builds trackID at the construction head the way the
+// construction window does (Construction/ConstructionTab constructTrack): the
+// createTrack game command for the player's company — checked, then charged
+// (Construction) — and on success the head moves on along the piece. The
+// cost; false when the command refuses (no money, in the way, too high …).
+func (s *State) BuildTrackAtHead(c *Cmd, trackID int, trackObjID uint8) (int32, bool) {
+	h := s.ConsHead
+	if !h.Active || trackID < 0 || trackID >= len(TrackPieces) || h.Rotation > 3 {
+		return 0, false
+	}
+	a := trackPlacementArgs{X: int32(h.X) * 32, Y: int32(h.Y) * 32, Z: int32(h.BaseZ) * 4, Rotation: h.Rotation & 3,
+		TrackID: uint8(trackID), TrackObjectID: trackObjID, Bridge: 0xFF}
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
+	var placed []trackPiecePlan
+	cost, ok := s.DoCommandFor(c, CmdApply, ExpenditureConstruction, func(flags uint8) (int32, bool) {
+		if flags&CmdApply == 0 {
+			return s.createTrack(c, a, flags)
+		}
+		r, ok := s.createTrackCheck(c, a, flags)
+		if !ok || !s.createTrackApply(c, a, flags, &r) {
+			return 0, false
+		}
+		placed = r.Pieces
+		return r.Cost, true
+	})
+	if !ok {
+		return 0, false
+	}
+	p := placedPiece{trackID: trackID, rotation: h.Rotation}
+	for _, pl := range placed {
+		p.tiles = append(p.tiles, [2]int{int(pl.X / 32), int(pl.Y / 32)})
+		p.BaseZ = append(p.BaseZ, pl.BaseZ)
+	}
+	s.consStack = append(s.consStack, p)
+	tc := TrackCoordinates[trackID<<3|int(h.Rotation&3)]
+	s.ConsHead.X += int(tc.DX) / 32
+	s.ConsHead.Y += int(tc.DY) / 32
+	s.ConsHead.BaseZ = uint8(int(s.ConsHead.BaseZ) + int(tc.DZ)/4)
+	s.ConsHead.Rotation = tc.RotEnd
+	return cost, true
+}

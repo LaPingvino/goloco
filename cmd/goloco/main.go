@@ -3670,6 +3670,9 @@ func (g *Game) consPlace(id int) {
 	var built bool
 	if g.consIsRoad() {
 		built = g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
+	} else if g.r != nil && g.r.ObjMgr != nil { // the createTrack game command: checked and charged (PL.1 e)
+		c, _ := g.stationCmd()
+		_, built = g.w.BuildTrackAtHead(c, id, uint8(g.buildObjID))
 	} else {
 		built = g.w.PlaceTrackAtHead(id, uint8(g.buildObjID))
 	}
