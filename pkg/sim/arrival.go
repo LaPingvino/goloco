@@ -9,8 +9,8 @@ import (
 // (0x004B9987), updateLastJourneyAverageSpeed (0x004BACAF) and
 // beginUnloading (0x004B99E1).
 //
-// PARTIAL: updateLastJourneyAverageSpeed's speed records (CompanyManager
-// records, the newSpeedRecord message, company emotion) are not ported; the
+// PARTIAL: updateLastJourneyAverageSpeed's newSpeedRecord message and the
+// owner's happy emotion (goloco has no messages or activeEmotions yet); the
 // unloading / loading that follow (updateUnloadCargo, updateLoadCargo,
 // beginNewJourney, item 5.7 part 2) are not ported, so an unloading vehicle
 // waits there.
@@ -73,7 +73,14 @@ func (m *Map) updateLastJourneyAverageSpeed(tr Train) {
 	head.BreakdownFlags &^= BreakdownJourneyStarted
 	dist := olmath.Distance2D(olmath.Vector2i{X: int32(head.JourneyStartX), Y: int32(head.JourneyStartY)}, olmath.Vector2i{X: int32(v2.PosX), Y: int32(v2.PosY)})
 	ticks := m.ScenarioTicks - head.JourneyStartTicks
-	adjDist := int64(dist) * 21
+	mod, recordType := int64(21), 0 // rail, road
+	switch head.Mode {
+	case 2: // air
+		mod, recordType = 36, 1
+	case 3: // water
+		mod, recordType = 31, 2
+	}
+	adjDist := int64(dist) * mod
 	adjTime := ticks
 	for adjDist > 0xFFFFFFFF {
 		adjDist >>= 1
@@ -83,5 +90,13 @@ func (m *Map) updateLastJourneyAverageSpeed(tr Train) {
 		return
 	}
 	avg := int16(uint32(adjDist) / adjTime)
-	head.LastAverageSpeed = min(v2.MaxSpeed, avg)
+	avg = min(v2.MaxSpeed, avg)
+	head.LastAverageSpeed = avg
+	rec := &m.CompanyRecords // a new speed record for the mode's kind
+	if avg <= int16(rec.Speed[recordType]) {
+		return
+	}
+	rec.Speed[recordType] = uint16(avg)
+	rec.Date[recordType] = m.CurrentDay
+	rec.Company[recordType] = head.Owner
 }
