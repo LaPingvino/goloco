@@ -3013,7 +3013,13 @@ func (g *Game) loadScenario(filePath string) error {
 				MinForestDensity: sc.Options.MinForestDensity, MaxForestDensity: sc.Options.MaxForestDensity,
 				MinAltitudeForTrees: sc.Options.MinAltitudeForTrees, MaxAltitudeForTrees: sc.Options.MaxAltitudeForTrees}
 		}
+		if g.script != nil && g.script.seed != nil {
+			log.Printf("[Seed] before generating: rng %08x %08x, generate %v", gameW.Map.Rng1.Srand0(), gameW.Map.Rng1.Srand1(), sc.LandscapeToGenerate)
+		}
 		gameW.Map.StartScenarioGenerating(sc.Options.StartYear, gen, g.r.G1, g.objMgr)
+		if g.script != nil && g.script.seed != nil {
+			log.Printf("[Seed] after starting: rng %08x %08x, company colour %v", gameW.Map.Rng1.Srand0(), gameW.Map.Rng1.Srand1(), gameW.Map.CompanyColours)
+		}
 	}
 	g.w = gameW
 	g.currentScenarioPath = filePath
