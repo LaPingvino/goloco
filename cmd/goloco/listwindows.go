@@ -1264,7 +1264,12 @@ func (g *Game) openCompanyFinances(company int) {
 	g.companyFinancesID = company
 	g.companyFinances = &ui.CompanyFinancesWindow{X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h, TitleColour: tc, Colour: wc,
 		Title: g.w.Map.CompanyName(company), Data: g.companyFinancesData(company),
-		OnClose: func() { g.companyFinances = nil }, OnLoan: func(dir int) { g.changeLoan(company, dir) }}
+		OnClose: func() { g.companyFinances = nil }, OnLoan: func(dir int) { g.changeLoan(company, dir) },
+		OnAutopay: func() { // onMouseUp loan_autopay: challengeFlags ^= autopayLoan
+			if company < len(g.w.Map.CompanyFaces) {
+				g.w.Map.CompanyFaces[company].ChallengeFlags ^= sim.CompanyFlagAutopayLoan
+			}
+		}}
 }
 
 // changeLoan is Finances' loan_decrease / loan_increase: the loan ∓ £1,000
@@ -1308,6 +1313,7 @@ func (g *Game) companyFinancesData(company int) ui.CompanyFinances {
 	f.Own = company == ctrl
 	if company < len(m.CompanyFaces) {
 		f.Bankrupt = m.CompanyFaces[company].ChallengeFlags&(1<<9) != 0 // CompanyFlags::bankrupt
+		f.Autopay = m.CompanyFaces[company].ChallengeFlags&sim.CompanyFlagAutopayLoan != 0
 	}
 	for i := 0; i < years; i++ {
 		f.Years = append(f.Years, cur-(years-i)+1)

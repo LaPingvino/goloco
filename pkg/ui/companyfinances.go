@@ -85,6 +85,7 @@ type CompanyFinances struct {
 	Bankrupt     bool
 	Value        int64
 	Profit       int64
+	Autopay      bool // challengeFlags autopayLoan: the checkbox ticked
 }
 
 // CompanyFinancesWindow is the window.
@@ -98,6 +99,8 @@ type CompanyFinancesWindow struct {
 	// OnLoan is the stepper's − (−1) or + (+1): onMouseDown loan_decrease /
 	// loan_increase (a step of £1,000 × the click-repeat step).
 	OnLoan func(dir int)
+	// OnAutopay is onMouseUp loan_autopay: the flag toggled.
+	OnAutopay func()
 }
 
 // Contains reports whether the point is on the window.
@@ -117,6 +120,8 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 		w.OnLoan(-1)
 	case w.Data.Own && in(lw[cfLoanIncrease]) && w.OnLoan != nil:
 		w.OnLoan(1)
+	case w.Data.Own && in(lw[cfLoanAutopay]) && w.OnAutopay != nil:
+		w.OnAutopay()
 	}
 }
 
@@ -191,6 +196,9 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 				b := lw[i]
 				gfx8.FillRectInset(rt, b.L, b.T, b.R, b.B, gfx8.InsetColour{Map: sec}, 0)
 			}
+			// Checkbox::drawCheckBox: a 10 × 10 box (inset, fillDarker).
+			a := lw[cfLoanAutopay]
+			gfx8.FillRectInset(rt, a.L, a.T, a.L+9, a.T+9, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 		}
 	})
 	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, ui18nFill(i18n.TitleCompanyFinances, w.Title), int(w.TitleColour))
@@ -252,6 +260,14 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 			tw, _ := MeasureTextBold(t)
 			DrawTextBold(screen, t, w.X+(bb.L+bb.R+1)/2-tw/2, w.Y+bb.T, black)
 		}
+		// The autopay checkbox: the check mark (0xAC) when set, the label 4
+		// past the box — both in the window's colour (opaque).
+		a := lw[cfLoanAutopay]
+		wc, _ := TextColours(int(w.Colour))
+		if d.Autopay {
+			DrawTextBold(screen, string(rune(0xAC)), w.X+a.L, w.Y+a.T, wc)
+		}
+		DrawTextBold(screen, stripCodes(i18n.Str(i18n.LoanAutopay)), w.X+a.L+10+4, w.Y+a.T, wc)
 		drawFormattedEx(screen, w.X+b.R+3, w.Y+b.T+1, ui18nFill(i18n.InterestPerYear, strconv.Itoa(d.InterestRate)), win2, black, red)
 	}
 	cash := i18n.CashPositive
