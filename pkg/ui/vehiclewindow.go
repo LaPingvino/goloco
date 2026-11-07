@@ -300,13 +300,17 @@ type VehicleWindow struct {
 	OnPickup            func() // Common::onPickup: lift the vehicle, or take the placing tool
 	PickupActive        bool   // the placing tool is this window's (the button shown pressed)
 	PickupImage         int    // getPickupImageIdandTooltip's image (0: none)
-	Tab                 int    // 0 Main, 1 Details (the other tabs are not ported yet)
-	Main                VehicleMainState
-	StopStartImage      int                  // Main: the red / green / yellow flag
-	OnStopStart         func(x, y, w, h int) // Main: stopStartOpen at the button's screen rectangle
-	OnRefit             func(x, y, w, h int) // Cargo: onRefitButton at the button's screen rectangle
-	OnRename            func()               // every tab's caption: renameVehicle (nil: disabled — another company's)
-	OnSell              func()               // Details: the remove button (sell the whole vehicle)
+	BuildNewImage       int    // Details' buildNew: skin + build_additional_<type> (0: none)
+	// OnBuildNew is Details::onMouseDown(buildNew): the button's screen rect,
+	// for its dropdown (Modify vehicle / Clone vehicle).
+	OnBuildNew     func(x, y, w, h int)
+	Tab            int // 0 Main, 1 Details (the other tabs are not ported yet)
+	Main           VehicleMainState
+	StopStartImage int                  // Main: the red / green / yellow flag
+	OnStopStart    func(x, y, w, h int) // Main: stopStartOpen at the button's screen rectangle
+	OnRefit        func(x, y, w, h int) // Cargo: onRefitButton at the button's screen rectangle
+	OnRename       func()               // every tab's caption: renameVehicle (nil: disabled — another company's)
+	OnSell         func()               // Details: the remove button (sell the whole vehicle)
 	// Details' car drag (onScrollMouseDown → DragVehiclePart, scrollDragEnd):
 	// Dragging while a car (DragCar, its row) follows the mouse (DragX, DragY);
 	// dropped on the bin OnDropSell(row), on the list OnDropMove(row, dest row;
@@ -387,6 +391,11 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 				gfx8.FillRectInset(rt, b.L, b.T, b.R, b.B, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
 			}
 			if sp, err := gfx8.Decode(&g1.Elements[w.PickupImage]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			}
+		}
+		if b := lw[vdBuildNew]; !b.Hidden && w.BuildNewImage > 0 && w.BuildNewImage < len(g1.Elements) { // recolour(buildImage, company colour)
+			if sp, err := gfx8.Decode(&g1.Elements[w.BuildNewImage]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 			}
 		}
@@ -721,6 +730,9 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 		w.OnTab(2)
 	case in(lw[vdPickup]) && !pickupDisabled && w.OnPickup != nil:
 		w.OnPickup()
+	case in(lw[vdBuildNew]) && w.OnBuildNew != nil:
+		b := lw[vdBuildNew]
+		w.OnBuildNew(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
 	case in(lw[vdRemove]) && w.OnSell != nil: // Details::onMouseUp remove: VehicleSell(head)
 		w.OnSell()
 	case in(lw[vdCarList]) && w.State.Own && w.OnDropMove != nil: // onScrollMouseDown: the car under it starts a drag

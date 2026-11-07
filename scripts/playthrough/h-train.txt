@@ -1,7 +1,6 @@
 # PL.1 playthrough, stage H (in progress): stage G's line, then Build Vehicles
 # (668–697 on the toolbar) → Build Trains → the 3F 'Jinty' row: Train 1 is
 # bought (£81,370 → £65,172) and its window opens on the details tab. Next:
-# a carriage, then placing it on the line.
 wait 20
 seed 1950
 scenario Weatherworld
@@ -63,4 +62,38 @@ click 220 235
 move 400 300
 wait 2
 shot /tmp/goloco-playthrough/pt-h-h3.png
+move 518 264
+wait 1
+click 518 264
+wait 1
+shot /tmp/goloco-playthrough/pt-h-h9a.png
+move 540 284
+wait 1
+click 540 284
+move 400 560
+wait 2
+move 300 440
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+move 240 431
+wait 1
+click 240 431
+move 400 560
+wait 2
+shot /tmp/goloco-playthrough/pt-h-h9b.png
 quit
