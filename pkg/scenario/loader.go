@@ -1275,6 +1275,7 @@ type CompanyFace struct {
 	Competitor, Emotion uint8
 	Performance         int16
 	ChallengeFlags      uint32 // 0x04 CompanyFlags (increased/decreasedPerformance 1<<4 / 1<<5)
+	OwnerName           uint16 // 0x02 ownerName (a StringId: a user string, or new_owner)
 }
 
 // parseCompanyFaces returns every company slot's CompanyFace.
@@ -1289,7 +1290,8 @@ func parseCompanyFaces(gs []byte) []CompanyFace {
 	out := make([]CompanyFace, companyMaxCount)
 	for i := range out {
 		o := companiesGameStateOffset + i*size
-		out[i] = CompanyFace{gs[o+0x18], gs[o+0x19], int16(binary.LittleEndian.Uint16(gs[o+0x16:])), binary.LittleEndian.Uint32(gs[o+0x04:])}
+		out[i] = CompanyFace{gs[o+0x18], gs[o+0x19], int16(binary.LittleEndian.Uint16(gs[o+0x16:])), binary.LittleEndian.Uint32(gs[o+0x04:]),
+			binary.LittleEndian.Uint16(gs[o+0x02:])}
 	}
 	return out
 }

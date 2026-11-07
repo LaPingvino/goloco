@@ -26,6 +26,9 @@ import (
 // CompanyFinancesSize is Finances::kWindowSize.
 var CompanyFinancesSize = [2]int{636, 319}
 
+// CompanyStatusSize is Status::kWindowSize.
+var CompanyStatusSize = [2]int{270, 182}
+
 // CompanyChallengeSize is Challenge::kWindowSize.
 var CompanyChallengeSize = [2]int{320, 182}
 
@@ -117,6 +120,9 @@ type CompanyFinancesWindow struct {
 	CargoLines []string
 	// Challenge is what Challenge::draw shows (the player company's).
 	Challenge CompanyChallenge
+	// Status is what Status::draw shows: the owner's face (competitor
+	// images[ownerEmotion] + 1, in FaceColour), name and status line.
+	Status    CompanyStatus
 	Scroll    int
 	SkinImage int // the interface skin's image base (the tab icons)
 	FrameNo   int // the window's frameNo: the current tab's icon animates
@@ -142,6 +148,8 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 	switch {
 	case in(lw[cwClose]) && w.OnClose != nil:
 		w.OnClose()
+	case in(lw[cwTabStatus]) && w.Tab != CompanyTabStatus:
+		w.switchTab(CompanyTabStatus)
 	case in(lw[cwTabFinances]) && w.Tab != CompanyTabFinances:
 		w.switchTab(CompanyTabFinances)
 	case in(lw[cwTabCargo]) && w.Tab != CompanyTabCargoDelivered:
@@ -176,6 +184,8 @@ func (w *CompanyFinancesWindow) switchTab(tab int) {
 		w.W, w.H = CompanyCargoDeliveredSize[0], CompanyCargoDeliveredSize[1]
 	case CompanyTabChallenge:
 		w.W, w.H = CompanyChallengeSize[0], CompanyChallengeSize[1]
+	case CompanyTabStatus:
+		w.W, w.H = CompanyStatusSize[0], CompanyStatusSize[1]
 	}
 	w.Scroll = 0
 }
@@ -191,6 +201,10 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 	}
 	if w.Tab == CompanyTabChallenge {
 		w.drawChallenge(screen)
+		return
+	}
+	if w.Tab == CompanyTabStatus {
+		w.drawStatus(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -614,4 +628,61 @@ func (w *CompanyFinancesWindow) drawChallenge(screen *ebiten.Image) {
 	if c.TimeLimited {
 		drawFormattedEx(screen, x, y, ui18nFill(i18n.TimeRemainingYearsMonths, strconv.Itoa(c.MonthsLeft/12), strconv.Itoa(c.MonthsLeft%12)), win2, black, red)
 	}
+}
+
+// CompanyStatus is the Status tab's content.
+type CompanyStatus struct {
+	Face       int // the owner's image (images[ownerEmotion] + 1); 0 none
+	FaceColour uint8
+	OwnerName  string
+	Status     string // getOwnerStatus, filled in
+	Own        bool   // the controlling company's: change_owner_name shows
+}
+
+// drawStatus is Status::draw (0x00432055) at 270 × 182 (prepareDraw's
+// widgets: the face 177–242 × 57–122, change_owner_name 154–266 × 124–145,
+// the status label 3–256 × 170–179): "Owner:" centred 12 above the face, the
+// face at its widget + 1, the owner's name centred in change_owner_name + 5,
+// the status line at the label − 1. PARTIAL: the headquarters viewport and
+// its centre button (no headquarters yet), the jail bars, the company
+// select's face, renaming.
+func (w *CompanyFinancesWindow) drawStatus(screen *ebiten.Image) {
+	g1 := globalG1Font.g1
+	pal := g1.GetPalette()
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	lw := CompanyFinancesLayout(w.W, w.H)
+	st := &w.Status
+	faceL, faceT, faceR := w.W-93, 57, w.W-28
+	nameL, nameT, nameR := w.W-116, 124, w.W-4
+	labL, labT := 3, w.H-12 // its right (w.W − 14) clips the line: PARTIAL, not clipped
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		p := lw[cwPanel]
+		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		w.drawCompanyTabs(rt, lw[:], cwTabStatus, sec, prim)
+		if st.Face > 0 && st.Face < len(g1.Elements) {
+			if sp, err := gfx8.Decode(&g1.Elements[st.Face]); err == nil {
+				m, _ := g1.GetPaletteMap(int(st.FaceColour))
+				gfx8.DrawSpriteNoise(rt, sp, faceL+1, faceT+1, gfx8.OpFor(sp, m != nil, false), m, nil)
+			}
+		}
+	})
+	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, ui18nFill(i18n.TitleCompany, w.Title), int(w.TitleColour))
+	red, _ := TextColours(27)
+	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
+	owner := stripCodes(i18n.Str(i18n.WindowOwner))
+	ow, _ := MeasureTextBold(owner)
+	drawFormattedEx(screen, w.X+(faceL+faceR)/2-ow/2, w.Y+faceT-12, i18n.Str(i18n.WindowOwner), win2, black, red)
+	for i, ln := range WrapTextBold(stripCodes(st.OwnerName), nameR-nameL) { // drawStringCentredWrapped (new_owner's {POP16} prints nothing)
+		lw2, _ := MeasureTextBold(ln)
+		DrawTextBold(screen, ln, w.X+(nameL+nameR)/2-lw2/2, w.Y+nameT+5+i*10, black)
+	}
+	drawFormattedEx(screen, w.X+labL-1, w.Y+labT-1, ui18nFill(i18n.BlackStringid, st.Status), win2, black, red)
 }
