@@ -1413,6 +1413,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.companyFinances != nil { // the latest opened over the others (PARTIAL: the window stack's real order)
 		g.companyFinances.Data = g.companyFinancesData(g.companyFinancesID) // the figures as they change
+		g.companyFinances.FrameNo = g.windowFrame
+		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
+			g.companyFinances.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
+		}
 		g.companyFinances.Draw(screen)
 	}
 

@@ -18,7 +18,7 @@ import (
 // from the player panel's company value (PlayerInfoPanel companyValueMouseUp
 // → CompanyWindow::openFinances).
 //
-// PARTIAL: the other tabs (drawn, not yet opened), the tab icons and the
+// PARTIAL: the other tabs (drawn, not yet opened), the
 // company select button's face, the loan stepper's buttons and autopay
 // checkbox (drawn as text only), the horizontal scrollbar (shown upstream
 // once the years overflow 499 px: from the fourth year), renaming.
@@ -95,6 +95,8 @@ type CompanyFinancesWindow struct {
 	Title               string // the company's name (caption: "{STRINGID} - Finances")
 	Data                CompanyFinances
 	Scroll              int
+	SkinImage           int // the interface skin's image base (the tab icons)
+	FrameNo             int // the window's frameNo: the current tab's icon animates
 	OnClose             func()
 	// OnLoan is the stepper's − (−1) or + (+1): onMouseDown loan_decrease /
 	// loan_increase (a step of £1,000 × the click-repeat step).
@@ -155,10 +157,7 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := 0; i < 6; i++ {
-			t := lw[cwTabStatus+i]
-			drawTab(rt, t.L, t.T, cwTabStatus+i == cwTabFinances, sec, tabNoIcon, nil)
-		}
+		w.drawCompanyTabs(rt, lw[:], cwTabFinances, sec, prim)
 		// The labels' zebra stripes (getShade(secondary, 6), crossHatching).
 		stripe := gfx8.Shade(sec, 6)
 		for i, y := 0, 62; i < 17; i, y = i+1, y+10 {
@@ -348,5 +347,47 @@ func drawFormattedEx(screen *ebiten.Image, x, y int, s string, win2, black, red 
 		pw, _ := MeasureTextBold(part)
 		cx += pw
 		s = s[next:]
+	}
+}
+
+// Interface skin image ids of the Company window's tabs (InterfaceSkin::ImageIds).
+const (
+	skinTabCompany              = 173
+	skinTabCompanyDetails       = 181
+	skinTabColourSchemeFrame0   = 49
+	skinTabFinancesFrame0       = 113
+	skinTabCargoDeliveredFrame0 = 198
+	skinTabCupFrame0            = 129
+)
+
+// drawCompanyTabs is Common::drawTabs: each tab's skin icon — status;
+// details recoloured to the primary colour; colour scheme (8 frames, /4),
+// finances (16 frames, /2), cargo delivered (4, /4) and challenge (16, /4)
+// animating on the current tab.
+func (w *CompanyFinancesWindow) drawCompanyTabs(rt *gfx8.RenderTarget, lw []BVWidget, current int, sec, prim []uint8) {
+	frame := func(base, n, div, tab int) int {
+		if tab == current {
+			return w.SkinImage + base + (w.FrameNo/div)%n
+		}
+		return w.SkinImage + base
+	}
+	icons := []struct {
+		img int
+		m   []uint8
+	}{
+		{w.SkinImage + skinTabCompany, nil},
+		{w.SkinImage + skinTabCompanyDetails, prim},
+		{frame(skinTabColourSchemeFrame0, 8, 4, cwTabColour), nil},
+		{frame(skinTabFinancesFrame0, 16, 2, cwTabFinances), nil},
+		{frame(skinTabCargoDeliveredFrame0, 4, 4, cwTabCargo), nil},
+		{frame(skinTabCupFrame0, 16, 4, cwTabChallenge), nil},
+	}
+	for i, ic := range icons {
+		t := lw[cwTabStatus+i]
+		img := ic.img
+		if w.SkinImage == 0 {
+			img = tabNoIcon
+		}
+		drawTab(rt, t.L, t.T, cwTabStatus+i == current, sec, img, ic.m)
 	}
 }
