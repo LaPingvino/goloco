@@ -26,6 +26,19 @@ import (
 // CompanyFinancesSize is Finances::kWindowSize.
 var CompanyFinancesSize = [2]int{636, 319}
 
+// CompanyCargoDeliveredSize is CargoDelivered::kWindowSize.
+var CompanyCargoDeliveredSize = [2]int{240, 382}
+
+// Company window tabs (currentTab: widx − tab_status).
+const (
+	CompanyTabStatus = iota
+	CompanyTabDetails
+	CompanyTabColourScheme
+	CompanyTabFinances
+	CompanyTabCargoDelivered
+	CompanyTabChallenge
+)
+
 // Company window widgets (Common::widx then Finances::widx).
 const (
 	cwFrame = iota
@@ -94,10 +107,15 @@ type CompanyFinancesWindow struct {
 	TitleColour, Colour uint8
 	Title               string // the company's name (caption: "{STRINGID} - Finances")
 	Data                CompanyFinances
-	Scroll              int
-	SkinImage           int // the interface skin's image base (the tab icons)
-	FrameNo             int // the window's frameNo: the current tab's icon animates
-	OnClose             func()
+	// Tab is the current tab (CompanyTab…): Finances or Cargo delivered so far.
+	Tab int
+	// CargoLines is CargoDelivered::draw's list: each delivered cargo's
+	// unit name with its count (black_stringid), in cargo order.
+	CargoLines []string
+	Scroll     int
+	SkinImage  int // the interface skin's image base (the tab icons)
+	FrameNo    int // the window's frameNo: the current tab's icon animates
+	OnClose    func()
 	// OnLoan is the stepper's − (−1) or + (+1): onMouseDown loan_decrease /
 	// loan_increase (a step of £1,000 × the click-repeat step).
 	OnLoan func(dir int)
@@ -110,14 +128,20 @@ func (w *CompanyFinancesWindow) Contains(x, y int) bool {
 	return x >= w.X && x < w.X+w.W && y >= w.Y && y < w.Y+w.H
 }
 
-// HandleClick handles a press: the close button, the loan stepper (the
-// controlling company's own window only).
+// HandleClick handles a press: the close button, the Finances and Cargo
+// delivered tabs (Common::switchTab), the loan stepper and autopay (the
+// controlling company's own window only). PARTIAL: the other tabs.
 func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 	lw := CompanyFinancesLayout(w.W, w.H)
 	in := func(b BVWidget) bool { return x >= w.X+b.L && x <= w.X+b.R && y >= w.Y+b.T && y <= w.Y+b.B }
 	switch {
 	case in(lw[cwClose]) && w.OnClose != nil:
 		w.OnClose()
+	case in(lw[cwTabFinances]) && w.Tab != CompanyTabFinances:
+		w.switchTab(CompanyTabFinances)
+	case in(lw[cwTabCargo]) && w.Tab != CompanyTabCargoDelivered:
+		w.switchTab(CompanyTabCargoDelivered)
+	case w.Tab != CompanyTabFinances: // the loan controls are the Finances tab's only
 	case w.Data.Own && in(lw[cfLoanDecrease]) && w.OnLoan != nil:
 		w.OnLoan(-1)
 	case w.Data.Own && in(lw[cfLoanIncrease]) && w.OnLoan != nil:
@@ -134,9 +158,26 @@ var companyExpenditureLabels = [17]int{
 	i18n.Construction, i18n.VehiclePurchases, i18n.VehicleDisposals, i18n.LoanInterest, i18n.Miscellaneous,
 }
 
-// Draw is Finances::draw and drawScroll.
+// switchTab is Common::switchTab: the window takes the tab's size, keeping
+// its place.
+func (w *CompanyFinancesWindow) switchTab(tab int) {
+	w.Tab = tab
+	switch tab {
+	case CompanyTabFinances:
+		w.W, w.H = CompanyFinancesSize[0], CompanyFinancesSize[1]
+	case CompanyTabCargoDelivered:
+		w.W, w.H = CompanyCargoDeliveredSize[0], CompanyCargoDeliveredSize[1]
+	}
+	w.Scroll = 0
+}
+
+// Draw is the current tab's draw.
 func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 	if globalG1Font == nil {
+		return
+	}
+	if w.Tab == CompanyTabCargoDelivered {
+		w.drawCargoDelivered(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -389,5 +430,41 @@ func (w *CompanyFinancesWindow) drawCompanyTabs(rt *gfx8.RenderTarget, lw []BVWi
 			img = tabNoIcon
 		}
 		drawTab(rt, t.L, t.T, cwTabStatus+i == current, sec, img, ic.m)
+	}
+}
+
+// drawCargoDelivered is CargoDelivered::draw (0x00433ACD): the common
+// widgets, "Cargo delivered:" at (5, 47), then each cargo the company has
+// delivered at (10, y) ten apart, or cargo_delivered_none.
+func (w *CompanyFinancesWindow) drawCargoDelivered(screen *ebiten.Image) {
+	g1 := globalG1Font.g1
+	pal := g1.GetPalette()
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	lw := CompanyFinancesLayout(w.W, w.H)
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		p := lw[cwPanel]
+		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		w.drawCompanyTabs(rt, lw[:], cwTabCargo, sec, prim)
+	})
+	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, ui18nFill(i18n.TitleCompanyCargoDelivered, w.Title), int(w.TitleColour))
+	red, _ := TextColours(27)
+	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
+	y := w.Y + 47
+	drawFormattedEx(screen, w.X+5, y, i18n.Str(i18n.CargoDelivered), win2, black, red)
+	y += 10
+	for _, l := range w.CargoLines {
+		drawFormattedEx(screen, w.X+10, y, ui18nFill(i18n.BlackStringid, l), win2, black, red)
+		y += 10
+	}
+	if len(w.CargoLines) == 0 {
+		drawFormattedEx(screen, w.X+10, y, i18n.Str(i18n.CargoDeliveredNone), win2, black, red)
 	}
 }

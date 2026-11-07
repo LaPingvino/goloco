@@ -153,3 +153,6 @@ func (w *VehicleWindow) drawFinances(screen *ebiten.Image) {
 	drawFormatted(screen, x, y, f.Profit, win2, black)
 	drawFormatted(screen, x, w.Y+w.H-14, f.SaleValue, win2, black)
 }
+
+// Comma32 is {COMMA32}: as {COMMA16}, for a 32-bit value.
+func Comma32(n int64) string { return Comma16(int(n)) }

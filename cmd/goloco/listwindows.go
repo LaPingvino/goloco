@@ -1321,3 +1321,25 @@ func (g *Game) companyFinancesData(company int) ui.CompanyFinances {
 	}
 	return f
 }
+
+// companyCargoLines is CargoDelivered::draw's list: for each cargo object
+// the company has delivered, its unit name (singular for one) with the count.
+func (g *Game) companyCargoLines(company int) []string {
+	m := &g.w.Map
+	if company < 0 || company >= len(m.Companies) || g.r == nil || g.r.ObjMgr == nil {
+		return nil
+	}
+	var out []string
+	for i, n := range m.Companies[company].CargoDelivered {
+		if n == 0 || i >= len(g.r.ObjMgr.CargoObjects) || g.r.ObjMgr.CargoObjects[i] == nil {
+			continue
+		}
+		c := g.r.ObjMgr.CargoObjects[i]
+		unit := c.UnitNamePlural
+		if n == 1 {
+			unit = c.UnitNameSingular
+		}
+		out = append(out, ui.FillArgs(ui.ObjectString(unit), ui.Comma32(int64(n))))
+	}
+	return out
+}
