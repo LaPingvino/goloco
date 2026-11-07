@@ -117,6 +117,7 @@ func (m *Map) createBaseVehicle(company, mode, vehicleType, trackType uint8) (ui
 	v1, _ := m.newVehicleEntity(scenario.VehicleTypeVeh1)
 	common(v1, headID)
 	v1.TargetSpeed, v1.TimeAtSignal, v1.Var48 = 0, 0, 0
+	v1.LastIncome.Day = -1 // no income yet: Finances shows "Last income: N/A"
 	link(v1)
 	v2, _ := m.newVehicleEntity(scenario.VehicleTypeVeh2)
 	common(v2, headID)
