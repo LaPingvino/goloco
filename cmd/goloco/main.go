@@ -65,6 +65,8 @@ type Game struct {
 	options                        *ui.OptionsWindow         // the Options window when open
 	townList                       *ui.TownListWindow        // the town list when open
 	buildVehicle                   *ui.BuildVehicleWindow    // the Build Vehicle window when open (5P.f)
+	companyFinances                *ui.CompanyFinancesWindow // the Company window's Finances tab when open (PL.1)
+	companyFinancesID              int
 	vehicleWin                     *ui.VehicleWindow         // the Vehicle window when open (5P.g)
 	diagMouse                      *[2]int                   // DIAGNOSTIC ONLY: the mouse held at a point (the roadghost diag's hover)
 	ghostWater                     sim.VehicleWaterPlacement // _ghostVehiclePos for a boat ghost (ghostProgress 0)
@@ -738,6 +740,8 @@ func (g *Game) Update() error {
 				// Click outside dropdown - close it
 				g.dropdown = nil
 			}
+		} else if g.companyFinances != nil && g.companyFinances.Contains(g.mouseX, g.mouseY) {
+			g.companyFinances.HandleClick(g.mouseX, g.mouseY) // drawn on top: clicked first
 		} else if g.vehicleWin != nil && g.vehicleWin.Contains(g.mouseX, g.mouseY) {
 			g.vehicleWin.HandleClick(g.mouseX, g.mouseY)
 		} else if g.buildVehicle != nil && g.buildVehicle.Contains(g.mouseX, g.mouseY) {
@@ -767,7 +771,14 @@ func (g *Game) Update() error {
 					g.speedMult, g.isPaused = 4, false
 				}
 			} else if (uilayout.InTimePanel(g.mouseX, g.mouseY, g.sw, g.sh) || uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh)) && !g.inTitleScreen {
-				// the bottom-bar windows swallow the click
+				// the bottom-bar windows swallow the click; the player panel's
+				// company value is companyValueMouseUp: the Company window's Finances
+				px, py := uilayout.PlayerPanelPos(g.sw, g.sh)
+				if r := uilayout.PlayerPanelCompanyVal; uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh) &&
+					g.mouseX >= px+r[0] && g.mouseX < px+r[0]+r[2] && g.mouseY >= py+r[1] && g.mouseY < py+r[1]+r[3] {
+					company, _ := g.w.ControllingCompany()
+					g.openCompanyFinances(company)
+				}
 			} else if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
 				g.toolbar.Buttons[btnIdx].Pressed = true
 				g.handleToolbarButton(btnIdx)
@@ -1399,6 +1410,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.townWin != nil {
 		g.townWin.Draw(screen)
+	}
+	if g.companyFinances != nil { // the latest opened over the others (PARTIAL: the window stack's real order)
+		g.companyFinances.Data = g.companyFinancesData(g.companyFinancesID) // the figures as they change
+		g.companyFinances.Draw(screen)
 	}
 
 	// Draw dropdown menu on top of everything else

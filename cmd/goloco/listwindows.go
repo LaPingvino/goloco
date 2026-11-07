@@ -593,6 +593,7 @@ func (g *Game) removeLandGhost() {
 func (g *Game) overWindow(x, y int) bool {
 	return g.vehicleWin != nil && g.vehicleWin.Contains(x, y) ||
 		g.buildVehicle != nil && g.buildVehicle.Contains(x, y) ||
+		g.companyFinances != nil && g.companyFinances.Contains(x, y) ||
 		g.townList != nil && g.townList.Contains(x, y) ||
 		g.options != nil && g.options.Contains(x, y) ||
 		g.toolbar.HandleClick(x, y) >= 0 ||
@@ -1243,4 +1244,51 @@ func (g *Game) buildNewImage(h *scenario.VehicleEntity) int {
 		return 0
 	}
 	return int(g.r.ObjMgr.InterfaceSkin.ImageOffset) + 411 + int(h.VehicleType)
+}
+
+// openCompanyFinances is CompanyWindow::openFinances: the Company window on
+// its Finances tab (636 × 319, centred: createWindow's placement PARTIAL), the
+// owner's colours.
+func (g *Game) openCompanyFinances(company int) {
+	if g.w == nil || company < 0 || company >= len(g.w.Map.Companies) {
+		return
+	}
+	var tc, wc uint8 = 0, 1
+	if om := g.r.ObjMgr; om != nil && om.InterfaceSkin != nil {
+		tc, wc = om.InterfaceSkin.WindowTitlebarColour, om.InterfaceSkin.WindowPlayerColor
+	}
+	if company < len(g.w.CompanyColours) { // the company's own colour, as its windows are
+		tc = g.w.CompanyColours[company]
+	}
+	w, h := ui.CompanyFinancesSize[0], ui.CompanyFinancesSize[1]
+	g.companyFinancesID = company
+	g.companyFinances = &ui.CompanyFinancesWindow{X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h, TitleColour: tc, Colour: wc,
+		Title: g.w.Map.CompanyName(company), Data: g.companyFinancesData(company),
+		OnClose: func() { g.companyFinances = nil }}
+}
+
+// companyFinancesData is what Finances::draw reads of a company: its
+// expenditure columns (numExpenditureYears, oldest first, the current year
+// last), the loan and interest rate, cash (bankrupt), the latest company
+// value and the vehicles' profit.
+func (g *Game) companyFinancesData(company int) ui.CompanyFinances {
+	m := &g.w.Map
+	if company < 0 || company >= len(m.Companies) {
+		return ui.CompanyFinances{}
+	}
+	c := &m.Companies[company]
+	cur := int(m.CurrentYear)
+	years := min(int(c.NumExpenditureYears), len(c.Expenditures))
+	f := ui.CompanyFinances{CurrentYear: cur, Loan: int64(c.CurrentLoan), InterestRate: int(m.LoanInterestRate),
+		Cash: c.Cash, Value: c.CompanyValueHistory[0], Profit: c.VehicleProfit}
+	ctrl, _ := g.w.ControllingCompany()
+	f.Own = company == ctrl
+	if company < len(m.CompanyFaces) {
+		f.Bankrupt = m.CompanyFaces[company].ChallengeFlags&(1<<9) != 0 // CompanyFlags::bankrupt
+	}
+	for i := 0; i < years; i++ {
+		f.Years = append(f.Years, cur-(years-i)+1)
+		f.Expenditures = append(f.Expenditures, c.Expenditures[years-i-1])
+	}
+	return f
 }
