@@ -1156,3 +1156,7 @@ func (w *CompanyFinancesWindow) drawHBar(rt *gfx8.RenderTarget, sc BVWidget, sec
 	l, r := L.HThumb(ww, w.financesContentW(), w.Scroll)
 	gfx8.FillRectInset(rt, x+l, y, x+l+(r-l-L.ScrollbarMargin)-1, y+L.ScrollbarSize-1, c, pressed("thumb"))
 }
+
+// StripCodes is stripCodes for callers outside the package: the text with
+// its {…} formatting codes taken out.
+func StripCodes(s string) string { return stripCodes(s) }
