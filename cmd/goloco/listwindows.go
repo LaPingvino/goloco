@@ -1618,7 +1618,9 @@ func (g *Game) openCompanyList() {
 		f := m.CompanyFaces[id]
 		r := ui.CompanyListRow{ID: id, Name: m.CompanyName(id), Face: face, FaceColour: col, Status: g.companyStatus(id).Status,
 			Performance: f.Performance, Value: m.Companies[id].CompanyValueHistory[0],
-			PerfHist: m.Companies[id].PerformanceIndexHist, HistorySize: int(m.Companies[id].HistorySize)}
+			PerfHist: m.Companies[id].PerformanceIndexHist, HistorySize: int(m.Companies[id].HistorySize),
+			CargoHist: m.Companies[id].CargoUnitsDeliveredHist, DistHist: m.Companies[id].CargoUnitsDistanceHist,
+			ValueHist: m.Companies[id].CompanyValueHistory}
 		if id < len(g.w.CompanyColours) {
 			r.Colour = g.w.CompanyColours[id]
 		}

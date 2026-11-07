@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"image/color"
 	"sort"
 	"strconv"
 
@@ -32,8 +33,11 @@ type CompanyListRow struct {
 	Performance int16
 	Trend       int // performance_index_increase / _decrease (see below)
 	Value       int64
-	Colour      uint8      // the company's colour (its graph line, shade 6)
-	PerfHist    [120]int16 // performanceIndexHistory
+	Colour      uint8       // the company's colour (its graph line, shade 6)
+	PerfHist    [120]int16  // performanceIndexHistory
+	CargoHist   [120]uint32 // cargoUnitsDeliveredHistory (read as int32)
+	DistHist    [120]uint32 // cargoUnitsDistanceHistory (read as int32)
+	ValueHist   [120]int64  // companyValueHistory (currency48)
 	HistorySize int
 }
 
@@ -49,12 +53,15 @@ type CompanyListWindow struct {
 	OnRow               func(id int)
 	SkinImage           int // the interface skin's image base (the tab icons)
 	FrameNo             int
-	Tab                 int // 0 the list, 1 performance (PARTIAL: the other graph tabs)
+	Tab                 int // 0 the list, 1 performance, 2 cargo units, 3 cargo distance, 4 values (PARTIAL: payment rates, speed records)
 	CurrentMonths       int // getCurrentYear() × 12 + getCurrentMonth(): the graphs' x range
 }
 
-// CompanyPerformanceSize is CompanyPerformance::kWindowSize.
+// CompanyPerformanceSize is CompanyPerformance::kWindowSize; the graph
+// tabs' kWindowSizes follow it.
 var CompanyPerformanceSize = [2]int{635, 322}
+
+var companyTabSizes = [][2]int{CompanyListSize, CompanyPerformanceSize, {640, 272}, {660, 272}, {685, 322}}
 
 // companyListHeaders are the four TableHeaders (x, width) and their labels
 // (the sorted one's "▼" variant: the next string id).
@@ -96,7 +103,7 @@ func (w *CompanyListWindow) HandleClick(x, y int) {
 		}
 		return
 	}
-	for t, size := range [][2]int{CompanyListSize, CompanyPerformanceSize} { // Common::switchTab (the ported tabs)
+	for t, size := range companyTabSizes { // Common::switchTab (the ported tabs)
 		if in(3+31*t, 15, 31, 27) && t != w.Tab {
 			w.Tab, w.W, w.H = t, size[0], size[1]
 			return
@@ -131,8 +138,8 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 	if globalG1Font == nil {
 		return
 	}
-	if w.Tab == 1 {
-		w.drawPerformance(screen)
+	if w.Tab >= 1 && w.Tab <= 4 {
+		w.drawGraphTab(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -185,11 +192,7 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 		}
 	})
 	DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, i18n.Str(i18n.TitleCompanyList))
-	for _, t := range []int{4, 5} { // the values and payment rates tabs: currency_symbol ("£": the glyph loadCurrency swaps), right-aligned at (left + 28, top + 15)
-		sym := stripCodes(i18n.Str(i18n.CurrencySymbol))
-		sw, _ := MeasureTextBold(sym)
-		DrawTextBold(screen, sym, w.X+3+31*t+28-sw, w.Y+15+14+1, pal[paletteBlack0])
-	}
+	w.drawTabCurrency(screen, pal[paletteBlack0])
 	red, _ := TextColours(27)
 	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
 	for i, h := range companyListHeaders {
@@ -296,14 +299,18 @@ const (
 	companyListWindowPadding = 4
 )
 
-// drawPerformance is CompanyPerformance::draw (0x00436490) and
-// drawGraphAndLegend (0x004365E4): each company's performanceIndexHistory
-// (front to back from its historySize) on the chart — 17 below for the x
-// labels, 40 left for the y labels every 20 px, a tick per month and a label
-// every 12, the x range the current month — then the legend (a 5 × 5 swatch
-// and the name in the small font, 10 apart) at (width − 104, 52).
+// drawGraphTab is the graph tabs' draw and drawGraphAndLegend (0x004365E4):
+// each company's history (front to back from its historySize) on the chart —
+// 17 below for the x labels, the tab's xOffset left for the y labels every
+// yAxisLabelIncrement px, a tick per month and a label every 12, the x range
+// the current month — then the legend (a 5 × 5 swatch and the name in the
+// small font, 10 apart) at (width − 104, 52). The tabs:
+// CompanyPerformance::draw (0x00436490: performanceIndexHistory, xOffset 40,
+// labels every 20, percentage_one_decimal_place), CargoUnits (xOffset 45),
+// CargoDistance (65; both every 25, cargo_units_delivered "{INT32}") and
+// CompanyValues (90, every 25, small_company_value_currency).
 // PARTIAL: highlighting a company's line (var_854, hovering the legend).
-func (w *CompanyListWindow) drawPerformance(screen *ebiten.Image) {
+func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 	g1 := globalG1Font.g1
 	pal := g1.GetPalette()
 	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
@@ -319,11 +326,29 @@ func (w *CompanyListWindow) drawPerformance(screen *ebiten.Image) {
 		Height: w.H - 41 - 2*companyListWindowPadding, YOffset: 17, XOffset: 40, YAxisLabelIncrement: 20,
 		DataEnd: maxHist, XAxisLabelIncrement: 12, YAxisStepSize: 100, Flags: ChartDataFrontToBack,
 		XAxisRange: w.CurrentMonths, XAxisStepSize: 1, PointFlags: ChartDrawLines}
+	title := i18n.TitleCompanyPerformance
+	switch w.Tab {
+	case 2:
+		gs.XOffset, gs.YAxisLabelIncrement, gs.YAxisStepSize, title = 45, 25, 1000, i18n.TitleCompanyCargoUnits
+	case 3:
+		gs.XOffset, gs.YAxisLabelIncrement, gs.YAxisStepSize, title = 65, 25, 1000, i18n.TitleCargoDistanceGraphs
+	case 4:
+		gs.XOffset, gs.YAxisLabelIncrement, gs.YAxisStepSize, title = 90, 25, 10000, i18n.TitleCompanyValues
+	}
 	gs.XAxisTickIncrement = (gs.Width - gs.XOffset) / 120
 	for _, r := range w.Rows { // in company order (the legend's)
-		line := make([]int64, len(r.PerfHist))
-		for i, v := range r.PerfHist {
-			line[i] = int64(v)
+		line := make([]int64, 120)
+		for i := range line {
+			switch w.Tab {
+			case 1:
+				line[i] = int64(r.PerfHist[i])
+			case 2:
+				line[i] = int64(int32(r.CargoHist[i]))
+			case 3:
+				line[i] = int64(int32(r.DistHist[i]))
+			case 4:
+				line[i] = r.ValueHist[i]
+			}
 		}
 		cm, _ := g1.GetPaletteMap(int(r.Colour))
 		gs.Lines = append(gs.Lines, line)
@@ -346,15 +371,23 @@ func (w *CompanyListWindow) drawPerformance(screen *ebiten.Image) {
 			y += 10
 		}
 	})
-	DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, i18n.Str(i18n.TitleCompanyPerformance))
+	DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, i18n.Str(title))
 	black := pal[paletteBlack0]
+	w.drawTabCurrency(screen, black)
 	for _, l := range labels { // graph_label_format: the small font, black
 		var s string
 		if l.XAxis { // rawdate_short: the month's short name, a space, the year
 			s = i18n.Str(i18n.MonthShortJanuary+int(l.Value%12)) + " " + strconv.Itoa(int(l.Value/12))
 			DrawTextFont(screen, s, G1FontSmall, w.X+l.X-MeasureTextFont(s, G1FontSmall)/2, w.Y+l.Y, black)
-		} else { // percentage_one_decimal_place
-			s = int16OneDecimal(int16(l.Value)) + "%"
+		} else {
+			switch w.Tab {
+			case 1: // percentage_one_decimal_place
+				s = int16OneDecimal(int16(l.Value)) + "%"
+			case 2, 3: // cargo_units_delivered: {INT32} (the currency48 pushed, read as int32)
+				s = strconv.Itoa(int(int32(l.Value)))
+			case 4: // small_company_value_currency
+				s = L.Currency48(l.Value)
+			}
 			DrawTextFont(screen, s, G1FontSmall, w.X+l.X-MeasureTextFont(s, G1FontSmall), w.Y+l.Y, black)
 		}
 	}
@@ -362,5 +395,16 @@ func (w *CompanyListWindow) drawPerformance(screen *ebiten.Image) {
 	for _, r := range w.Rows { // small_black_string, clipped to 94
 		DrawTextFont(screen, r.Name, G1FontSmall, x+6, y, black)
 		y += 10
+	}
+}
+
+// drawTabCurrency is drawTabs' text part: the values and payment rates tabs
+// carry currency_symbol ("£": the glyph loadCurrency swaps), right-aligned
+// at (left + 28, top + 15).
+func (w *CompanyListWindow) drawTabCurrency(screen *ebiten.Image, black color.Color) {
+	for _, t := range []int{4, 5} {
+		sym := stripCodes(i18n.Str(i18n.CurrencySymbol))
+		sw, _ := MeasureTextBold(sym)
+		DrawTextBold(screen, sym, w.X+3+31*t+28-sw, w.Y+15+14+1, black)
 	}
 }
