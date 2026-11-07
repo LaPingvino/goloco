@@ -27,9 +27,9 @@ wait 2
 shot /tmp/goloco-playthrough/pt-f1-track.png
 click 61 67
 wait 2
-move 660 470
+move 700 458
 wait 1
-click 660 470
+click 700 458
 wait 2
 move 700 500
 wait 2
