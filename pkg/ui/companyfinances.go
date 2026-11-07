@@ -154,6 +154,17 @@ type CompanyFinancesWindow struct {
 	// OnLoan is the stepper's − (−1) or + (+1): onMouseDown loan_decrease /
 	// loan_increase (a step of £1,000 × the click-repeat step).
 	OnLoan func(dir, step int)
+	// The company select button (every tab): the company's owner face
+	// (images[ownerEmotion], in its colour) and populateCompanySelect's
+	// companies; OnCompany is switchCompany.
+	Face         int
+	FaceColour   uint8
+	CompanyID    int
+	Companies    []CompanyChoice
+	OpenDropdown func(*DropdownMenu)
+	OnCompany    func(id int)
+	ScreenW      int
+	ScreenH      int
 	// loanHeld is the loan button pressed (−1 / +1, 0 none) and
 	// loanRepeat its _clickRepeatTicks.
 	loanHeld, loanRepeat int
@@ -175,6 +186,8 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 	switch {
 	case in(lw[cwClose]) && w.OnClose != nil:
 		w.OnClose()
+	case in(lw[cwCompanySelect]) && len(w.Companies) > 0 && w.OpenDropdown != nil: // onMouseDown company_select
+		w.OpenDropdown(CompanySelectDropdown(w.X+lw[cwCompanySelect].L, w.Y+lw[cwCompanySelect].T, w.TitleColour, w.Companies, w.CompanyID, w.ScreenW, w.ScreenH, w.OnCompany))
 	case in(lw[cwCaption]): // windowPositionBegin; the rename comes on an unmoved release (PositionEnd)
 		w.Positioning, w.posLastX, w.posLastY, w.posMoved = true, x, y, false
 	case in(lw[cwTabColour]) && w.Tab != CompanyTabColourScheme:
@@ -277,6 +290,7 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			w.drawCompanySelect(rt, lw[cwCompanySelect])
 		}
 		w.drawCompanyTabs(rt, lw[:], cwTabFinances, sec, prim)
 		// The labels' zebra stripes (getShade(secondary, 6), crossHatching).
@@ -550,6 +564,7 @@ func (w *CompanyFinancesWindow) drawCargoDelivered(screen *ebiten.Image) {
 		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			w.drawCompanySelect(rt, lw[cwCompanySelect])
 		}
 		w.drawCompanyTabs(rt, lw[:], cwTabCargo, sec, prim)
 	})
@@ -653,6 +668,7 @@ func (w *CompanyFinancesWindow) drawChallenge(screen *ebiten.Image) {
 		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			w.drawCompanySelect(rt, lw[cwCompanySelect])
 		}
 		w.drawCompanyTabs(rt, lw[:], cwTabChallenge, sec, prim)
 	})
@@ -737,6 +753,7 @@ func (w *CompanyFinancesWindow) drawStatus(screen *ebiten.Image) {
 		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			w.drawCompanySelect(rt, lw[cwCompanySelect])
 		}
 		w.drawCompanyTabs(rt, lw[:], cwTabStatus, sec, prim)
 		if st.Face > 0 && st.Face < len(g1.Elements) {
@@ -796,6 +813,7 @@ func (w *CompanyFinancesWindow) drawDetails(screen *ebiten.Image) {
 		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			w.drawCompanySelect(rt, lw[cwCompanySelect])
 		}
 		w.drawCompanyTabs(rt, lw[:], cwTabDetails, sec, prim)
 		gfx8.FillRectInset(rt, vpL, vpT, vpR, vpB, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
@@ -896,6 +914,7 @@ func (w *CompanyFinancesWindow) drawColourScheme(screen *ebiten.Image) {
 		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			w.drawCompanySelect(rt, lw[cwCompanySelect])
 		}
 		w.drawCompanyTabs(rt, lw[:], cwTabColour, sec, prim)
 		swatch(rt, 221, 48, c.Main[0])
@@ -1008,5 +1027,18 @@ func (w *CompanyFinancesWindow) UpdateHeld(x, y int, down bool) {
 			step *= 10
 		}
 		w.OnLoan(w.loanHeld, step)
+	}
+}
+
+// drawCompanySelect is Common::drawCompanySelect: the owner's face at the
+// button's (left + 1, top + 1), recoloured to the company's colour.
+func (w *CompanyFinancesWindow) drawCompanySelect(rt *gfx8.RenderTarget, b BVWidget) {
+	g1 := globalG1Font.g1
+	if w.Face <= 0 || w.Face >= len(g1.Elements) {
+		return
+	}
+	if sp, err := gfx8.Decode(&g1.Elements[w.Face]); err == nil {
+		m, _ := g1.GetPaletteMap(int(w.FaceColour))
+		gfx8.DrawSpriteNoise(rt, sp, b.L+1, b.T+1, gfx8.OpFor(sp, m != nil, false), m, nil)
 	}
 }
