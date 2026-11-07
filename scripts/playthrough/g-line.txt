@@ -1,0 +1,54 @@
+# PL.1 playthrough, stage G: as F (seed 1950, Weatherworld, a fixed view by
+# Cloudburst), then a line of ten straights from 250,420 (the eleventh would
+# need a bridge over the ridge: the error window says so) and a train station
+# at each end — the line a first train will run (stage H: Build Vehicles).
+# £84,300 → £81,370.
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+click 592 14
+move 400 300
+wait 2
+move 250 420
+wait 1
+click 250 420
+wait 2
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+click 77 235
+wait 1
+wait 1
+shot /tmp/goloco-playthrough/pt-g-l1.png
+click 61 67
+wait 2
+move 302 395
+wait 1
+click 302 395
+wait 2
+move 497 302
+wait 1
+click 497 302
+wait 2
+move 700 500
+wait 2
+shot /tmp/goloco-playthrough/pt-g-l2.png
+quit
