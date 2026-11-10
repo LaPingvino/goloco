@@ -62,3 +62,41 @@ func TestPlayerInfrastructureOptions(t *testing.T) {
 		t.Errorf("last railroad %#x, want %#x", m.LastRailroadOption, rails[0])
 	}
 }
+
+// companyGetAvailableRoads: roads (bit 7) that aren't trams, then road-type
+// rail tracks (no bit 7); every any-road-type non-tram road is in it.
+func TestCompanyAvailableRoads(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	m.StartScenario(1950, om)
+	got := m.companyAvailableRoads(m.PlayerCompanies[0], om)
+	t.Logf("available roads % x", got)
+	seenTrack := false
+	for _, id := range got {
+		if id&(1<<7) != 0 {
+			if seenTrack {
+				t.Error("a road after the road-type tracks")
+			}
+			if r := om.GetRoadObjectByIndex(int(id &^ (1 << 7))); r == nil || r.Flags&roadObjFlagIsRail != 0 {
+				t.Errorf("entry %#x isn't a non-tram road", id)
+			}
+		} else {
+			seenTrack = true
+			if tr := om.GetTrackObjectByIndex(int(id)); tr == nil || tr.Flags&trackObjFlagIsRoad == 0 {
+				t.Errorf("entry %#x isn't a road-type track", id)
+			}
+		}
+	}
+	for i := range om.RoadObjects {
+		r := om.GetRoadObjectByIndex(i)
+		if r == nil || r.Flags&roadFlagAnyRoadTypeCompatible == 0 || r.Flags&roadObjFlagIsRail != 0 {
+			continue
+		}
+		found := false
+		for _, id := range got {
+			found = found || id == uint8(i)|1<<7
+		}
+		if !found {
+			t.Errorf("road %d %q missing", i, r.Name)
+		}
+	}
+}

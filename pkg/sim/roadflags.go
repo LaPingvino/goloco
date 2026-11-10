@@ -96,7 +96,8 @@ func (s *staticSet) insert(v uint8) {
 
 // companyAvailableRoads is companyGetAvailableRoads (0x00478265): the road
 // types the company's unlocked road vehicles run on and the any-road-type
-// roads (bit 7 set), without the rail (tram) ones.
+// roads (bit 7 set), without the rail (tram) ones; then the track types of
+// its unlocked rail vehicles that are roads (TrackObjectFlags::isRoad).
 func (m *Map) companyAvailableRoads(company uint8, om *objects.ObjectManager) []uint8 {
 	var roads staticSet
 	for i, v := range om.Vehicles {
@@ -114,6 +115,17 @@ func (m *Map) companyAvailableRoads(company uint8, om *objects.ObjectManager) []
 	var out []uint8
 	for _, id := range roads {
 		if r := om.GetRoadObjectByIndex(int(id &^ (1 << 7))); r != nil && r.Flags&roadObjFlagIsRail == 0 {
+			out = append(out, id)
+		}
+	}
+	var tracks staticSet // then the rail vehicles' track types that are roads (no bit 7)
+	for i, v := range om.Vehicles {
+		if v != nil && m.isVehicleIndexUnlocked(company, uint16(i)) && v.Mode == objects.TransportModeRail {
+			tracks.insert(om.TrackTypeFor(v))
+		}
+	}
+	for _, id := range tracks {
+		if t := om.GetTrackObjectByIndex(int(id)); t != nil && t.Flags&trackObjFlagIsRoad != 0 {
 			out = append(out, id)
 		}
 	}
