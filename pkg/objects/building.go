@@ -61,7 +61,10 @@ type BuildingObject struct {
 	// density; a misc building's generator function).
 	DesignedYear, ObsoleteYear uint16
 	GeneratorFunction          uint8
-	ScaffoldingColour          uint8 // 0x9D
+	// AverageNumberOnMap (0x9F): how many of a misc building a generated map gets
+	// (and a pylon line's spacing).
+	AverageNumberOnMap uint8
+	ScaffoldingColour  uint8 // 0x9D
 
 	// Calculated from image table during load
 	ImageOffset uint32 // Base sprite index in global G1 pool
@@ -164,6 +167,7 @@ func ParseBuildingObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 	bldg.DesignedYear = uint16(data[0x94]) | uint16(data[0x95])<<8
 	bldg.ObsoleteYear = uint16(data[0x96]) | uint16(data[0x97])<<8
 	bldg.GeneratorFunction = data[0x9E]
+	bldg.AverageNumberOnMap = data[0x9F]
 	bldg.ScaffoldingColour = data[0x9D]
 	for i := 0; i < int(bldg.NumElevatorSequences) && offset+2 <= len(data); i++ {
 		size := int(binary.LittleEndian.Uint16(data[offset : offset+2]))
