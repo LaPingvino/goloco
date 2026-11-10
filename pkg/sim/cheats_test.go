@@ -69,3 +69,28 @@ func TestCheats(t *testing.T) {
 		}
 	}
 }
+
+func TestShuntAndFreeCashCheats(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	if len(trains) == 0 {
+		t.Skip("no trains")
+	}
+	h := m.Entities[trains[0].Head]
+	c := &Cmd{Company: h.Owner, Objects: om}
+	if _, ok := m.VehicleShuntCheat(c, CmdApply, h.ID); !ok || m.Entities[trains[0].Head].VehicleFlags&vehicleFlagShuntCheat == 0 {
+		t.Error("shunt cheat not set")
+	}
+	if _, ok := m.VehicleShuntCheat(c, CmdApply, 0xFFFE); ok {
+		t.Error("shunt cheat on no vehicle")
+	}
+	n := len(m.Messages)
+	m.FreeCashCheat(c, CmdApply)
+	if m.Companies[c.Company].JailStatus != 30 || len(m.Messages) != n+1 || m.Messages[n].Type != MsgCompanyCheated {
+		t.Fatalf("jail %d, messages %d → %d", m.Companies[c.Company].JailStatus, n, len(m.Messages))
+	}
+	t.Logf("%q", m.Messages[n].Text)
+	if m.Messages[n].Text == "" {
+		t.Error("no scandal text")
+	}
+}

@@ -32,7 +32,7 @@ const (
 
 // Cheat is the cheat game command (GenericCheatArgs: the subcommand and up
 // to three parameters): nothing unless applied. Its cost (always 0).
-// PARTIAL: the vehicle shunt and free-cash cheats (their own commands).
+// The vehicle shunt and free-cash cheats are their own commands below.
 func (m *Map) Cheat(c *Cmd, flags uint8, sub CheatCommand, p1, p2, p3 int32) (int32, bool) {
 	if flags&CmdApply == 0 {
 		return 0, true
@@ -174,4 +174,28 @@ func (m *Map) cheatCompleteChallenge(id int, om *objects.ObjectManager) {
 	m.CompanyFaces[id].ChallengeFlags &^= companyFlagChallengeBeaten | companyFlagChallengeCompleted | companyFlagChallengeFailed
 	m.Companies[id].ChallengeProgress = 100
 	m.evaluateChallengeProgress(id, om)
+}
+
+// VehicleShuntCheat is vehicleShuntCheat (0x004BAC53): refused for no such
+// head; applied, the head gets shuntCheat (its cars keep the player's order).
+func (m *Map) VehicleShuntCheat(c *Cmd, flags uint8, headID uint16) (int32, bool) {
+	tr, err := m.TrainOf(headID)
+	if err != nil {
+		return 0, false
+	}
+	if flags&CmdApply != 0 {
+		m.Entities[tr.Head].VehicleFlags |= vehicleFlagShuntCheat
+	}
+	return 0, true
+}
+
+// FreeCashCheat is freeCashCheat (0x00438A08): applied, the updating company
+// goes to jail for 30 days and companyCheated is posted. PARTIAL: the
+// company's dejected emotion, the window invalidations.
+func (m *Map) FreeCashCheat(c *Cmd, flags uint8) (int32, bool) {
+	if flags&CmdApply != 0 && int(c.Company) < len(m.Companies) {
+		m.Companies[c.Company].JailStatus = 30
+		m.PostMessage(c.Objects, MsgCompanyCheated, 0xFF, uint16(c.Company), 0xFFFF, 0xFFFF)
+	}
+	return 0, true
 }
