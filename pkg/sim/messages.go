@@ -5,6 +5,7 @@ import (
 
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/uilayout"
 )
 
 // MessageManager (MessageManager.cpp): the news / advice message store in the
@@ -264,6 +265,12 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 		}
 		s = fillStringIDs(locoText(i18n.Str(i18n.MessageIsPromotedTo)), m.ownerName(int(msg.Subjects[0]), om),
 			rating(int(msg.Subjects[1])-1), rating(int(msg.Subjects[1])))
+	case MsgNewSpeedRecord, MsgNewSpeedRecord2: // the record kind, the vehicle's type, the record speed
+		if h := m.entity(msg.Subjects[0]); h != nil && msg.Subjects[2] < 3 && h.VehicleType < 6 {
+			s = fillStringIDs(locoText(i18n.Str(i18n.MessageNewSpeedRecord)),
+				locoText(i18n.Str(i18n.Land+int(msg.Subjects[2]))), locoText(i18n.Str(i18n.Train2+int(h.VehicleType))))
+			s = strings.Replace(s, "{VELOCITY}", locoText(uilayout.Velocity(int(m.CompanyRecords.Speed[msg.Subjects[2]]))), 1)
+		}
 	case MsgCompanyCheated: // the owner's name
 		s = fillStringIDs(locoText(i18n.Str(i18n.MessageCorporateScandal)), m.ownerName(int(msg.Subjects[0]), om))
 	case MsgNewIndustry: // the industry object's name, the industry's town

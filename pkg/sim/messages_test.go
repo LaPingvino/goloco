@@ -354,3 +354,19 @@ func TestUnableToLandText(t *testing.T) {
 		t.Errorf("text %q", got)
 	}
 }
+
+func TestSpeedRecordText(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	if len(trains) == 0 {
+		t.Skip("no vehicles")
+	}
+	h := m.Entities[trains[0].Head]
+	m.CompanyRecords.Speed[0] = 87
+	m.PostMessage(om, MsgNewSpeedRecord, h.Owner, h.ID, uint16(h.Owner), 0)
+	got := m.Messages[len(m.Messages)-1].Text
+	t.Logf("%q", got)
+	if !contains(got, "speed record!") || !contains(got, "87mph") {
+		t.Errorf("text %q", got)
+	}
+}
