@@ -1,5 +1,7 @@
 package sim
 
+import "github.com/LaPingvino/goloco/pkg/i18n"
+
 // The construction window's track ghost while positioning (ConstructionTab
 // onToolUpdateSingle 0x004A1968, constructionGhostLoop, placeTrackGhost
 // 0x0049FA45 and removeTrackGhosts): the selected piece placed as a ghost
@@ -68,31 +70,11 @@ func (s *State) placeTrackGhost(c *Cmd, a trackPlacementArgs) (int32, bool) {
 // and whether one stands. PARTIAL: tryMakeTrackJunctionAtLoc (building off
 // existing track), the construction arrow and the selected tiles drawn.
 func (s *State) UpdateTrackGhost(c *Cmd, tx, ty int, trackID, rot, objID uint8, bridge uint8) (int32, bool) {
-	land, water, ok := s.constructionHeight(tx, ty)
-	if !ok || int(trackID) >= len(TrackPieces) {
+	x, y, h, ok := s.trackPositionHeight(tx, ty, trackID, rot)
+	if !ok {
 		s.RemoveTrackGhost(c)
 		return 0, false
 	}
-	h := max(land, water)
-	x, y := int32(tx)*32, int32(ty)*32
-	pieces := TrackPieces[trackID]
-	var maxH int32 // getMaxConstructHeightFromExistingSelection over setMapSelectedTilesFromPiece's tiles
-	minZ := int32(pieces[0].Z)
-	for _, p := range pieces {
-		minZ = min(minZ, int32(p.Z))
-		if p.Flags&(1<<7) != 0 { // PreviewTrackFlags::diagonal: not selected
-			continue
-		}
-		dx, dy := rotOffset(p.X, p.Y, rot)
-		px, py := int(x+int32(dx))/32, int(y+int32(dy))/32
-		if l, w, ok := s.constructionHeight(px, py); ok {
-			maxH = max(maxH, l)
-			if w != 0 {
-				maxH = max(maxH, w+16)
-			}
-		}
-	}
-	h = max(maxH, h) - minZ - 16
 	pos := [3]int32{x, y, h}
 	if s.TrackGhost != nil && s.ghostPos == pos {
 		return s.ghostCost, true
@@ -114,6 +96,77 @@ func (s *State) UpdateTrackGhost(c *Cmd, tx, ty int, trackID, rot, objID uint8, 
 		}
 		a.Z += 32
 	}
+}
+
+// trackPositionHeight is the height onToolUpdateSingle / onToolUpSingle give a
+// piece placed at the tile (tx, ty) (no junction): getConstructionPos — its land
+// height, at least its water's —, the piece's tiles' highest construction
+// height (water + 16 over water) if higher, less the piece's lowest point, then
+// 16 down. The tile in world units too.
+func (s *State) trackPositionHeight(tx, ty int, trackID, rot uint8) (x, y, h int32, ok bool) {
+	land, water, ok := s.constructionHeight(tx, ty)
+	if !ok || int(trackID) >= len(TrackPieces) {
+		return 0, 0, 0, false
+	}
+	h = max(land, water)
+	x, y = int32(tx)*32, int32(ty)*32
+	pieces := TrackPieces[trackID]
+	var maxH int32 // getMaxConstructHeightFromExistingSelection over setMapSelectedTilesFromPiece's tiles
+	minZ := int32(pieces[0].Z)
+	for _, p := range pieces {
+		minZ = min(minZ, int32(p.Z))
+		if p.Flags&(1<<7) != 0 { // PreviewTrackFlags::diagonal: not selected
+			continue
+		}
+		dx, dy := rotOffset(p.X, p.Y, rot)
+		px, py := int(x+int32(dx))/32, int(y+int32(dy))/32
+		if l, w, ok := s.constructionHeight(px, py); ok {
+			maxH = max(maxH, l)
+			if w != 0 {
+				maxH = max(maxH, w+16)
+			}
+		}
+	}
+	return x, y, max(maxH, h) - minZ - 16, true
+}
+
+// BuildTrackAtTile is onToolUpSingle + constructionLoop for track without a
+// junction (ConstructionTab 0x0049DC97 / 0x004A0121): the first click on the
+// map. The head is set at the tile at trackPositionHeight in the construction
+// rotation and the piece built there (constructTrack, as the Construct
+// button); refused, tried once more 16 higher — unless the error is
+// error_can_only_build_above_ground —, then the construction rotation turns
+// 90° (onMouseUp rotate_90) and the head stays. The cost and whether it was
+// built. PARTIAL: shift's deeper search, junctions (tryMakeTrackJunctionAtLoc),
+// the error sound.
+func (s *State) BuildTrackAtTile(c *Cmd, tx, ty, trackID int, objID uint8) (int32, bool) {
+	rot := s.ConsHead.Rotation & 3
+	if trackID < 0 || trackID >= len(TrackPieces) {
+		return 0, false
+	}
+	_, _, h, ok := s.trackPositionHeight(tx, ty, uint8(trackID), rot)
+	if !ok {
+		return 0, false
+	}
+	h = max(0, h) // onToolUpSingle: "Height should never go negative"
+	for tries := 2; ; {
+		s.ConsHead = ConstructionHead{Active: true, X: tx, Y: ty, BaseZ: uint8(h / 4), Rotation: rot}
+		if cost, ok := s.BuildTrackAtHead(c, trackID, objID); ok {
+			return cost, true
+		}
+		if c.ErrorText == i18n.ErrorCanOnlyBuildAboveGround {
+			break
+		}
+		if tries--; tries == 0 {
+			break
+		}
+		if h -= 16; h < 0 {
+			break
+		}
+		h += 32
+	}
+	s.ConsHead.Rotation = (rot + 1) & 3
+	return 0, false
 }
 
 // UpdateHeadTrackGhost is updateConstruction's track ghost (ConstructionTab
