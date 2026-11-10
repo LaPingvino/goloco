@@ -115,12 +115,13 @@ func (m *Map) maxHeightOfNewBuilding(om *objects.ObjectManager, x, y, z int32, l
 	return int(minClear) * smallZStep
 }
 
-// newBuildingArgs is generateNewBuildingArgs (0x0042CF7C): the closest
+// newBuildingArgs is generateNewBuildingArgs (0x0042CF7C): the CLOSEST
 // town's wanted amenities (none before 64 buildings), the candidates for its
-// density (or one lower), one drawn with the town's prng, a variation that
-// fits and a colour from the object's set; nothing when the closest town
-// isn't the growing one.
-func (m *Map) newBuildingArgs(om *objects.ObjectManager, town int, p *core.Prng, x, y, z int32, target int, rotation uint8, large, immediate bool) (BuildingPlacement, bool) {
+// density (or one lower), and — with that closest town's prng, as upstream —
+// a building drawn, a variation that fits and a colour from the object's
+// set; nothing (after the draws, as upstream) when the closest town isn't
+// the growing one.
+func (m *Map) newBuildingArgs(om *objects.ObjectManager, town int, x, y, z int32, target int, rotation uint8, large, immediate bool) (BuildingPlacement, bool) {
 	ti, density, ok := m.ClosestTownAndDensity(x, y)
 	if !ok {
 		return BuildingPlacement{}, false
@@ -142,8 +143,8 @@ func (m *Map) newBuildingArgs(om *objects.ObjectManager, town int, p *core.Prng,
 			return BuildingPlacement{}, false
 		}
 	}
-	// The draws use the growing town's prng (Town::grow's town; the closest
-	// one is only for density and amenities, as upstream).
+	p := core.NewPrngSeed(tw.Prng[0], tw.Prng[1]) // town->prng: the closest town's
+	defer func() { tw.Prng = [2]uint32{p.Srand0(), p.Srand1()} }()
 	id := cands[int(p.RandNext()&0xFFFF)*len(cands)/65536]
 	obj := om.BuildingObjects[id]
 	var vars []uint8
@@ -200,7 +201,12 @@ func (m *Map) constructBuilding(c *Cmd, town int, p *core.Prng, x, y, z int32, r
 	if h == 0 {
 		return
 	}
-	a, ok := m.newBuildingArgs(c.Objects, town, p, bx, by, bz, h, rot, large, false)
+	// The growing town's state goes back before the args draw (they may be
+	// the same town) and is read again after.
+	gt := &m.Towns[town]
+	gt.Prng = [2]uint32{p.Srand0(), p.Srand1()}
+	a, ok := m.newBuildingArgs(c.Objects, town, bx, by, bz, h, rot, large, false)
+	*p = *core.NewPrngSeed(gt.Prng[0], gt.Prng[1])
 	if !ok {
 		return
 	}

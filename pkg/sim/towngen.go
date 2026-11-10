@@ -9,9 +9,9 @@ import (
 
 // New towns — GameCommands/Town/CreateTown.cpp's placement (item 5.9f).
 // initialiseTown (the record, its name) and recalculateSize are ported below
-// and in towngrow.go.
-// PARTIAL: the growth (Town::grow, eight rounds of size² with the year moved
-// back 51 years) — so the generator does not place towns yet.
+// and in towngrow.go; the command itself with its growth (eight rounds of
+// size² Town::grow from 51 years back) is CreateTown (createtown.go), which
+// the generator's GenerateTowns calls.
 
 // countNearbyWaterTiles is TileManager::countNearbyWaterTiles: water
 // surfaces on every other tile (a checkerboard keyed to the area's corner) of

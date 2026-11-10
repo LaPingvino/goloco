@@ -126,3 +126,30 @@ func TestTownRoadTakeover(t *testing.T) {
 		t.Errorf("after the takeover: owner %d object %d (was %d)", el.Owner, el.RoadObjectID, obj)
 	}
 }
+
+// generateNewBuildingArgs draws with the CLOSEST town's prng (town->prng
+// after getClosestTownAndDensity) and only then refuses when that isn't the
+// growing town: asked for town A at town B's centre, B's prng moves, A's
+// doesn't, and nothing is placed.
+func TestNewBuildingArgsUsesClosestTownPrng(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	if len(m.Towns) < 2 {
+		t.Skip("fewer than two towns")
+	}
+	bx, by := int32(m.Towns[1].X), int32(m.Towns[1].Y)
+	if ti, _, _ := m.ClosestTownAndDensity(bx, by); ti != 1 {
+		t.Skip("town 1's centre isn't closest to town 1")
+	}
+	m.CurrentYear = 1990 // candidates at every density
+	a0, b0 := m.Towns[0].Prng, m.Towns[1].Prng
+	_, ok := m.newBuildingArgs(om, 0, bx, by, 0, 255, 0, false, false)
+	if ok {
+		t.Error("a building for town 0 at town 1's centre")
+	}
+	if m.Towns[0].Prng != a0 {
+		t.Error("the growing town's prng moved")
+	}
+	if m.Towns[1].Prng == b0 {
+		t.Error("the closest town's prng didn't move (no draws?)")
+	}
+}
