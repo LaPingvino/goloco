@@ -132,3 +132,30 @@ func TestCargoAcceptedMessage(t *testing.T) {
 		t.Errorf("message %+v", got)
 	}
 }
+
+// The celebration and new-industry texts, with the pack's {NEWLINE} as the
+// newline control code (5) the save's messages carry.
+func TestCelebrationAndNewIndustryText(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	if len(m.Towns) == 0 || len(m.Industries) == 0 {
+		t.Skip("no towns / industries")
+	}
+	tw, ind := m.Towns[0], m.Industries[0]
+	m.PostMessage(om, MsgCitizensCelebrate, 0, 1, tw.ID, tw.ID|0<<8)
+	m.PostMessage(om, MsgWorkersCelebrate, 0, 1, uint16(ind.ID), uint16(ind.ID)|0<<8)
+	m.PostMessage(om, MsgNewIndustry, 0xFF, uint16(ind.ID), 0xFFFF, 0xFFFF)
+	n := len(m.Messages)
+	for _, e := range m.Messages[n-3:] {
+		t.Logf("%d: %q", e.Type, e.Text)
+		if e.Text == "" {
+			t.Errorf("type %d has no text", e.Type)
+		}
+	}
+	if !contains(m.Messages[n-3].Text, "Citizens Celebrate!\x05First ") {
+		t.Errorf("citizens: %q", m.Messages[n-3].Text)
+	}
+	name, _ := m.IndustryName(0, om)
+	if !contains(m.Messages[n-2].Text, name) {
+		t.Errorf("workers: %q lacks %q", m.Messages[n-2].Text, name)
+	}
+}

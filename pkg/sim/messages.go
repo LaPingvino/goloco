@@ -186,7 +186,8 @@ func (m *Map) UpdateMessagesDaily() {
 // messageText is post's formatString per message type, as Loco-encoded bytes
 // (messageString: the save's messages are stored so), cut at 197 bytes as
 // upstream (locoStrlen, then the two-byte 0xFF check). Formatted so far: the
-// cargo accepted / no longer accepted messages, and the industry messages (closing down, production up / down — the industry
+// cargo accepted / no longer accepted, citizens / workers celebrate, new
+// industry messages, and the industry messages (closing down, production up / down — the industry
 // object's nameClosingDown / nameUpProduction / nameDownProduction with the
 // industry's name for its stringidArgs). PARTIAL: the other types (empty
 // text; the news window will need them).
@@ -206,6 +207,40 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 			cargo = locoText(om.CargoObjects[msg.Subjects[1]].Name)
 		}
 		s = fillStringIDs(locoText(i18n.Str(id)), m.StationName(int(msg.Subjects[0])), cargo)
+	case MsgCitizensCelebrate, MsgWorkersCelebrate: // subject 2: the cargo << 8 | the town / industry
+		cargo := ""
+		if co := m.cargoObject(om, msg.Subjects[2]>>8); co != nil {
+			cargo = locoText(co.Name)
+		}
+		if msg.Type == MsgCitizensCelebrate {
+			id := i18n.MessageFirstStringArriveAt
+			if co := m.cargoObject(om, msg.Subjects[2]>>8); co != nil && co.Flags&cargoFlagDelivering != 0 {
+				id = i18n.MessageFirstStringDeliveryArivesAt
+			}
+			town := ""
+			if tw := m.TownByID(msg.Subjects[2] & 0xFF); tw != nil {
+				town = m.TownName(tw.Name, int(tw.ID))
+			}
+			s = fillStringIDs(locoText(i18n.Str(id)), cargo, town)
+		} else {
+			name := ""
+			if i := m.industryIndex(msg.Subjects[2] & 0xFF); i >= 0 {
+				name, _ = m.IndustryName(i, om)
+			}
+			s = fillStringIDs(locoText(i18n.Str(i18n.MessageFirstStringDeliveredTo)), cargo, name)
+		}
+	case MsgNewIndustry: // the industry object's name, the industry's town
+		if i := m.industryIndex(msg.Subjects[0]); i >= 0 && om != nil {
+			ind := m.Industries[i]
+			obj, town := "", ""
+			if o := om.GetIndustryObjectByIndex(int(ind.ObjectID)); o != nil {
+				obj = locoText(o.Name)
+			}
+			if tw := m.TownByID(ind.Town); tw != nil {
+				town = m.TownName(tw.Name, int(tw.ID))
+			}
+			s = fillStringIDs(locoText(i18n.Str(i18n.MessageNewStringUnderConstructionNear)), obj, town)
+		}
 	}
 	if len(s) > 197 {
 		s = s[:197]
@@ -243,13 +278,37 @@ func (m *Map) industryMessage(om *objects.ObjectManager, id uint16, k int) strin
 }
 
 // locoText is a UTF-8 string (a language pack's or an object's) as Loco bytes
-// (convertUnicodeToLoco per character).
+// (convertUnicodeToLoco per character), {NEWLINE} as its control code (5).
 func locoText(s string) string {
+	s = strings.ReplaceAll(s, "{NEWLINE}", "\x05")
 	b := make([]byte, 0, len(s))
 	for _, r := range s {
+		if r < 0x20 { // control codes (the newline) pass as they are
+			b = append(b, byte(r))
+			continue
+		}
 		b = append(b, byte(i18n.LocoChar(r)))
 	}
 	return string(b)
+}
+
+const cargoFlagDelivering = 1 << 2 // CargoObjectFlags::delivering
+
+func (m *Map) cargoObject(om *objects.ObjectManager, id uint16) *objects.CargoObject {
+	if om == nil || int(id) >= len(om.CargoObjects) {
+		return nil
+	}
+	return om.CargoObjects[id]
+}
+
+// industryIndex is the index in m.Industries of the industry with this id (−1 none).
+func (m *Map) industryIndex(id uint16) int {
+	for i := range m.Industries {
+		if uint16(m.Industries[i].ID) == id {
+			return i
+		}
+	}
+	return -1
 }
 
 // fillStringIDs puts the (already formatted, Loco-encoded) arguments in for

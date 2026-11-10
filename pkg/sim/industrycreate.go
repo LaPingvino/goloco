@@ -316,8 +316,7 @@ var placementAttempts = [25][2]int32{{1, 0}, {3, -1}, {3, -1}, {3, -1}, {3, -1},
 // rotatable), a query then the placement; its centre the average of its
 // tiles; its grounds (industryGrounds: the claimed fields, perimeter walls,
 // expandGrounds); the cost. The industry is freed again when a building can't
-// be placed, or on a query. PARTIAL: the newIndustry message (no
-// MessageManager).
+// be placed, or on a query. A real one not built at once posts newIndustry.
 func (m *Map) CreateIndustry(c *Cmd, flags uint8, a IndustryPlacement) (int32, uint8, bool) {
 	prng := [2]uint32{gameCommandCreateIndustry, a.Srand1}
 	id, _, ok := m.industryAllocateChecked(a.Type, a.X, a.Y, prng, c.Objects)
@@ -431,6 +430,9 @@ func (m *Map) CreateIndustry(c *Cmd, flags uint8, a IndustryPlacement) (int32, u
 		free()
 	}
 	total += m.InflationAdjustedCost(obj.CostFactor, obj.CostIndex, 3)
+	if flags&CmdApply != 0 && flags&CmdGhost == 0 && !a.BuildImmediately {
+		m.PostMessage(c.Objects, MsgNewIndustry, 0xFF, uint16(id), 0xFFFF, 0xFFFF)
+	}
 	return total, id, true
 }
 
