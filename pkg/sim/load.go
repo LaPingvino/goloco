@@ -12,7 +12,7 @@ import (
 // updateLoadCargoComponent, beginNewJourney (0x004BAC74) and landLoadingUpdate
 // (0x004A9011).
 //
-// PARTIAL: the cantWaitForFullLoad message, the cargo sprite update (drawn
+// The cantWaitForFullLoad news is posted. PARTIAL: the cargo sprite update (drawn
 // from the cargo state anyway) and the Ui invalidations are not ported.
 // After loading, pathingShouldReverse / tryReverse run as upstream.
 
@@ -179,7 +179,10 @@ func (m *Map) UpdateLoadCargo(tr Train, om *objects.ObjectManager) bool {
 							m.BeginLoading(tr)
 							return true
 						}
-						cantWait = true // (cantWaitForFullLoad message: PARTIAL)
+						if head.Owner == m.ControllingCompany {
+							m.PostMessage(om, MsgCantWaitForFullLoad, head.Owner, head.ID, head.StationID, 0xFFFF)
+						}
+						cantWait = true
 						break
 					}
 				}

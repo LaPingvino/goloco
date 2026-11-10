@@ -131,6 +131,9 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 	cars := m.CarPhysicsOf(tr, om)
 	sp := Vehicle2Speed{CurrentSpeed: v2.CurrentSpeed, MotorState: v2.MotorState}
 	sp.UpdateSpeed(v1.TargetSpeed, head.VehicleFlags, head.ManualPower, v2.TotalPower, v2.TotalWeight, v2.Var73&1 != 0, cars)
+	if sp.SlippedToAHalt && head.Owner == m.ControllingCompany {
+		m.PostMessage(om, MsgVehicleSlipped, head.Owner, head.ID, 0xFFFF, 0xFFFF)
+	}
 	for ci, car := range tr.Cars {
 		for _, cc := range car {
 			for _, i := range []int{cc.Front, cc.Back, cc.Body} {
