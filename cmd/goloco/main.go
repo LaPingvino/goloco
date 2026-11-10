@@ -3812,11 +3812,17 @@ func (g *Game) consDisplayID() int {
 	return -1
 }
 
-// openTrackBuildError is doCommand's failure for createTrack:
-// Error::open(cant_build_pop3_string with the track's name, the command's reason).
+// openTrackBuildError is doCommand's failure for createTrack / createRoad:
+// Error::open(cant_build_pop3_string with the track's or road's name, the
+// command's reason).
 func (g *Game) openTrackBuildError(c *sim.Cmd) {
 	title := i18n.Label(i18n.CantBuildPop3String)
-	if id := g.buildObjID; id >= 0 && id < len(g.r.ObjMgr.TrackObjects) && g.r.ObjMgr.TrackObjects[id] != nil {
+	id := g.buildObjID
+	if g.consIsRoad() {
+		if id >= 0 && id < len(g.r.ObjMgr.RoadObjects) && g.r.ObjMgr.RoadObjects[id] != nil {
+			title = ui.FormatErrorArgs(title, g.r.ObjMgr.RoadObjects[id].Name)
+		}
+	} else if id >= 0 && id < len(g.r.ObjMgr.TrackObjects) && g.r.ObjMgr.TrackObjects[id] != nil {
 		title = ui.FormatErrorArgs(title, g.r.ObjMgr.TrackObjects[id].Name)
 	}
 	msg := ""
@@ -3831,10 +3837,13 @@ func (g *Game) openTrackBuildError(c *sim.Cmd) {
 
 func (g *Game) consPlace(id int) {
 	var built bool
-	if g.consIsRoad() {
-		// constructRoad: removeConstructionGhosts first (the ghost stands where the piece goes).
+	if g.consIsRoad() && g.r != nil && g.r.ObjMgr != nil {
+		// constructRoad: the createRoad game command (ghost taken up first), checked and charged.
 		c, _ := g.stationCmd()
-		g.w.RemoveRoadGhost(c)
+		if _, built = g.w.BuildRoadAtHead(c, id, uint8(g.buildObjID)); !built {
+			g.openTrackBuildError(c)
+		}
+	} else if g.consIsRoad() {
 		built = g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
 	} else if g.r != nil && g.r.ObjMgr != nil { // the createTrack game command: checked and charged (PL.1 e)
 		c, _ := g.stationCmd()
