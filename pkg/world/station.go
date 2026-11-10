@@ -16,17 +16,6 @@ import (
 // board→travel→deliver loop that used to live here are retired with the
 // SimVehicles (item 5).
 
-// PlaceStationAtHead attaches a train station to the track piece under the
-// construction head. Returns false when the head is inactive or its tile has no
-// track origin element to carry the station.
-func (w *World) PlaceStationAtHead(stationObjID uint8) bool {
-	h := w.ConsHead
-	if !h.Active {
-		return false
-	}
-	return w.PlaceStationOnTile(h.X, h.Y, stationObjID)
-}
-
 // PlaceStationOnTile marks the SequenceIndex-0 track element on tile (x,y) as a
 // station, appends a matching scenario.StationElement (so paintStation renders
 // it). Returns false if the tile has no track origin or already carries a
