@@ -1,0 +1,161 @@
+package sim
+
+// GameCommands/Cheats/Cheat.cpp: the cheat game command's subcommands, and
+// the vehicle shunt cheat.
+
+// CheatCommand (Cheat.h).
+type CheatCommand uint8
+
+const (
+	CheatAcquireAssets CheatCommand = iota
+	CheatAddCash
+	CheatClearLoan
+	CheatCompanyRatings
+	CheatSwitchCompany
+	CheatToggleBankruptcy
+	CheatToggleJail
+	CheatVehicleReliability
+	CheatModifyDate
+	CheatCompleteChallenge
+)
+
+const (
+	maxCompanyRating = 1000  // kMaxCompanyRating
+	minCompanyRating = -1000 // kMinCompanyRating
+)
+
+// Cheat is the cheat game command (GenericCheatArgs: the subcommand and up
+// to three parameters): nothing unless applied. Its cost (always 0).
+// PARTIAL: toggleJail (Company::jailStatus isn't parsed yet) and modifyDate
+// (InitialiseDate takes only the year) do nothing.
+func (m *Map) Cheat(c *Cmd, flags uint8, sub CheatCommand, p1, p2 int32) (int32, bool) {
+	if flags&CmdApply == 0 {
+		return 0, true
+	}
+	switch sub {
+	case CheatAcquireAssets:
+		m.cheatAcquireAssets(c.Company, uint8(p1))
+	case CheatAddCash:
+		if pc := int(m.PlayerCompanies[0]); pc < len(m.Companies) {
+			m.Companies[pc].Cash += int64(p1)
+		}
+	case CheatClearLoan:
+		if pc := int(m.PlayerCompanies[0]); pc < len(m.Companies) {
+			m.Companies[pc].CurrentLoan = 0
+		}
+	case CheatCompanyRatings:
+		m.cheatCompanyRatings(p1 != 0, p2)
+	case CheatSwitchCompany:
+		m.cheatSwitchCompany(uint8(p1))
+	case CheatToggleBankruptcy:
+		if int(p1) < len(m.CompanyFaces) {
+			m.CompanyFaces[p1].ChallengeFlags ^= companyFlagBankrupt
+		}
+	case CheatVehicleReliability:
+		m.cheatVehicleReliability(c.Company, p1)
+	case CheatCompleteChallenge:
+		m.cheatCompleteChallenge(int(p1))
+	}
+	return 0, true
+}
+
+// cheatAcquireAssets: every road, track, station and vehicle of the target
+// company becomes ours (the updating company's).
+func (m *Map) cheatAcquireAssets(ours, target uint8) {
+	for y := range m.Tiles {
+		for x := range m.Tiles[y] {
+			t := &m.Tiles[y][x]
+			for i := range t.Roads {
+				if t.Roads[i].Owner == target {
+					t.Roads[i].Owner = ours
+				}
+			}
+			for i := range t.Tracks {
+				if t.Tracks[i].Owner == target {
+					t.Tracks[i].Owner = ours
+				}
+			}
+		}
+	}
+	for i := range m.StationNames {
+		if m.StationNames[i].Name != stationNameNull && m.StationNames[i].Owner == target {
+			m.StationNames[i].Owner = ours
+		}
+	}
+	trains, _ := m.Trains()
+	for _, tr := range trains {
+		if m.Entities[tr.Head].Owner != target {
+			continue
+		}
+		for _, i := range trainComponents(tr) { // applyToComponents
+			m.Entities[i].Owner = ours
+		}
+	}
+}
+
+// cheatCompanyRatings: in every town that rates the controlling company —
+// upstream tests with "companiesWithRating &= bit", which also clears the
+// other companies' bits; kept — the rating set to value × 1000 (absolute) or
+// scaled by 1 + 1 / value around −1000, clamped to ±1000.
+func (m *Map) cheatCompanyRatings(absolute bool, value int32) {
+	id := m.ControllingCompany
+	for i := range m.Towns {
+		tw := &m.Towns[i]
+		tw.CompaniesWithRating &= 1 << id
+		if tw.CompaniesWithRating == 0 || int(id) >= len(tw.CompanyRatings) {
+			continue
+		}
+		var r int16
+		if absolute {
+			r = int16(value * maxCompanyRating)
+		} else {
+			r = tw.CompanyRatings[id] + maxCompanyRating
+			r = int16(float32(r) * (1 + 1/float32(value))) // newRanking *= 1.0f + 1.0f / value (int16 ← float)
+			r -= maxCompanyRating
+		}
+		tw.CompanyRatings[id] = min(max(r, minCompanyRating), maxCompanyRating)
+	}
+}
+
+// cheatSwitchCompany: control passes to the target; when the other player
+// has it, the two swap.
+func (m *Map) cheatSwitchCompany(target uint8) {
+	ours, other := m.PlayerCompanies[0], m.PlayerCompanies[1]
+	if target == ours {
+		return
+	}
+	if target == other {
+		m.PlayerCompanies[0], m.PlayerCompanies[1] = other, ours
+	} else {
+		m.PlayerCompanies[0] = target
+	}
+	m.ControllingCompany = m.PlayerCompanies[0]
+}
+
+// cheatVehicleReliability: each of our trains' vehicle 2 takes the
+// reliability, and each car's front bogie that × 256.
+func (m *Map) cheatVehicleReliability(ours uint8, rel int32) {
+	trains, _ := m.Trains()
+	for _, tr := range trains {
+		if m.Entities[tr.Head].Owner != ours {
+			continue
+		}
+		m.Entities[tr.Veh2].Veh2Reliability = uint8(rel)
+		for _, car := range tr.Cars {
+			if len(car) > 0 {
+				m.Entities[car[0].Front].Reliability = uint16(rel * 256)
+			}
+		}
+	}
+}
+
+// cheatCompleteChallenge: unless already completed, the challenge flags
+// cleared, progress 100, and the challenge evaluated (completing it).
+func (m *Map) cheatCompleteChallenge(id int) {
+	if id >= len(m.Companies) || id >= len(m.CompanyFaces) || m.CompanyFaces[id].ChallengeFlags&companyFlagChallengeCompleted != 0 {
+		return
+	}
+	m.CompanyFaces[id].ChallengeFlags &^= companyFlagChallengeBeaten | companyFlagChallengeCompleted | companyFlagChallengeFailed
+	m.Companies[id].ChallengeProgress = 100
+	m.evaluateChallengeProgress(id)
+}
