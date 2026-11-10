@@ -35,6 +35,9 @@ type Renderer struct {
 	// Catchment is the map selection's catchment area (MapSelectionFlags::
 	// catchmentArea with isWithinCatchmentDisplay); nil: not shown.
 	Catchment func(tileX, tileY int) bool
+	// ConstructionArrow is World::getConstructionArrow with
+	// MapSelectionFlags::enableConstructionArrow as Visible.
+	ConstructionArrow ConstructionArrow
 	// workers paint columns in parallel (Viewport::paint's
 	// std::execution::par): clones with their own session and scratch.
 	workers      []*Renderer
@@ -224,6 +227,7 @@ func (r *Renderer) worker(i int) *Renderer {
 	}
 	r.workers[i].WaveFrame = r.WaveFrame // set after the workers may exist: passed on each time
 	r.workers[i].Catchment = r.Catchment
+	r.workers[i].ConstructionArrow = r.ConstructionArrow
 	return r.workers[i]
 }
 
@@ -1192,6 +1196,11 @@ func (r *Renderer) paintTile(s *paint.Session, m *sim.Map, x, y int, tall bool, 
 		}
 		return
 	}
+	// paintTileElementsSetup paints the arrow before its vertical cull
+	// (rotation 0: kUnkOffsets[0] = (0, 0), the arrow's tile is the tile).
+	if !tall {
+		r.paintConstructionArrow(s, x, y)
+	}
 	t := m.TileAt(x, y)
 	if t == nil {
 		return
@@ -1237,6 +1246,37 @@ func (r *Renderer) paintTile(s *paint.Session, m *sim.Map, x, y int, tall bool, 
 			s.FlushPendingSegments()
 		}
 	}
+}
+
+// ConstructionArrow is the construction head's arrow (World::ConstructionArrow
+// with MapSelectionFlags::enableConstructionArrow).
+type ConstructionArrow struct {
+	Visible   bool
+	X, Y, Z   int32 // world units; Z world z
+	Direction uint8 // constructionRotation: 0-3 cardinal, 4-15 the other arrow sets
+}
+
+// kConstructionArrowImages (ImageIds::construction_arrow_north … _north_west).
+const constructionArrowNorth = 428
+
+// paintConstructionArrow is PaintTile.cpp's paintConstructionArrow
+// (0x00461EA7): on the arrow's tile (session.getUnkPosition() == arrow.pos),
+// the arrow image for its direction (rotation 0: dirIndex = direction),
+// yellow, as a parent at the arrow's height, bbox offset z + 10, size
+// (32, 32, -1), no interaction.
+func (r *Renderer) paintConstructionArrow(s *paint.Session, x, y int) {
+	a := r.ConstructionArrow
+	if !a.Visible || a.X != int32(x)*32 || a.Y != int32(y)*32 {
+		return
+	}
+	sp := r.spriteFor(constructionArrowNorth + int(a.Direction&0xF))
+	if sp == nil {
+		return
+	}
+	s.SetSpritePosition(x*32, y*32)
+	s.ItemType = paint.ItemNoInteraction
+	z := int(a.Z)
+	s.AddAsParent(paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, true, false), PalMap: r.colourMap(16)}, paint.Pos3{Z: z}, paint.Pos3{Z: z + 10}, paint.Pos3{X: 32, Y: 32, Z: -1}) // Colour::yellow
 }
 
 // paintVoid is PaintTile.cpp's paintVoid (rotation 0): ImageIds::blank_tile
