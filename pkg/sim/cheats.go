@@ -1,5 +1,7 @@
 package sim
 
+import "log"
+
 // GameCommands/Cheats/Cheat.cpp: the cheat game command's subcommands, and
 // the vehicle shunt cheat.
 
@@ -26,9 +28,8 @@ const (
 
 // Cheat is the cheat game command (GenericCheatArgs: the subcommand and up
 // to three parameters): nothing unless applied. Its cost (always 0).
-// PARTIAL: toggleJail (Company::jailStatus isn't parsed yet) and modifyDate
-// (InitialiseDate takes only the year) do nothing.
-func (m *Map) Cheat(c *Cmd, flags uint8, sub CheatCommand, p1, p2 int32) (int32, bool) {
+// PARTIAL: the vehicle shunt and free-cash cheats (their own commands).
+func (m *Map) Cheat(c *Cmd, flags uint8, sub CheatCommand, p1, p2, p3 int32) (int32, bool) {
 	if flags&CmdApply == 0 {
 		return 0, true
 	}
@@ -53,6 +54,17 @@ func (m *Map) Cheat(c *Cmd, flags uint8, sub CheatCommand, p1, p2 int32) (int32,
 		}
 	case CheatVehicleReliability:
 		m.cheatVehicleReliability(c.Company, p1)
+	case CheatToggleJail:
+		if int(p1) < len(m.Companies) {
+			if m.Companies[p1].JailStatus == 0 {
+				m.Companies[p1].JailStatus = 30
+			} else {
+				m.Companies[p1].JailStatus = 0
+			}
+		}
+	case CheatModifyDate:
+		m.InitialiseDateYMD(uint16(p1), uint8(p2), uint8(p3))
+		log.Printf("Date set to: Day=%d Month=%d Year=%d", p3, p2, p1) // Logging::info
 	case CheatCompleteChallenge:
 		m.cheatCompleteChallenge(int(p1))
 	}

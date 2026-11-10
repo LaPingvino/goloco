@@ -5,15 +5,15 @@ package sim
 
 // VehicleRepaintFlags (VehicleRepaint.h).
 const (
-	RepaintBody             uint8 = 1 << 0
-	RepaintFrontBogie       uint8 = 1 << 1
-	RepaintBackBogie        uint8 = 1 << 2
-	RepaintEntireCar        uint8 = 1 << 3
-	RepaintEntireTrain      uint8 = 1 << 4
-	RepaintFromVehicleUi          = RepaintBody | RepaintFrontBogie | RepaintBackBogie | RepaintEntireCar
-	kBodyColour                   = 0
-	kFrontBogieColour             = 1
-	kBackBogieColour              = 2
+	RepaintBody          uint8 = 1 << 0
+	RepaintFrontBogie    uint8 = 1 << 1
+	RepaintBackBogie     uint8 = 1 << 2
+	RepaintEntireCar     uint8 = 1 << 3
+	RepaintEntireTrain   uint8 = 1 << 4
+	RepaintFromVehicleUi       = RepaintBody | RepaintFrontBogie | RepaintBackBogie | RepaintEntireCar
+	kBodyColour                = 0
+	kFrontBogieColour          = 1
+	kBackBogieColour           = 2
 )
 
 // ColourScheme is a vehicle's primary and secondary colour.
