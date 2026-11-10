@@ -125,7 +125,8 @@ func (m *Map) InitialiseTiles() {
 // initialiseDate, TileManager::initialise, the height map (original
 // generator), rivers, generateLand, water, terrain styles, the snow line,
 // surface variation, trees, towns, industries, misc buildings. PARTIAL:
-// Scenario::reset, sub_4969E0 / sub_4748D4.
+// Scenario::reset, sub_4969E0 (the weather), sub_4748D4 beyond its road
+// object flags and default level crossing.
 func (m *Map) GenerateLandscape(startYear uint16, o TerrainOptions, g1 G1Raw, om *objects.ObjectManager) {
 	m.InitialiseDate(startYear)
 	m.InitialiseSnowLine(om)
@@ -142,6 +143,8 @@ func (m *Map) GenerateLandscape(startYear uint16, o TerrainOptions, g1 G1Raw, om
 	m.GenerateIndustries(o, om)
 	m.GenerateMiscBuildings(om)
 	m.GenerateSurfaceVariation(om)
+	m.UpdateRoadObjectIdFlags(om) // sub_4748D4's road object flags
+	m.UpdateDefaultLevelCrossingType(om)
 }
 
 // Surface slope shapes (SurfaceSlope).
@@ -275,6 +278,10 @@ func NewGeneratedMap(seed0, seed1 uint32, startYear uint16, o TerrainOptions, g1
 		// leaves it alone without a climate).
 		m.CurrentSnowLine = 0xFF
 	}
+	// The editor runs Scenario::sub_4748D4 after the object selection, before
+	// generating: the road object flags town growth reads.
+	m.UpdateRoadObjectIdFlags(om)
+	m.UpdateDefaultLevelCrossingType(om)
 	m.GenerateLandscape(startYear, o, g1, om)
 	return m
 }
