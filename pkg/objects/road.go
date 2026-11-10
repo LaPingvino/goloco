@@ -34,6 +34,8 @@ type RoadObject struct {
 	BridgeNames []string
 	// BuildCostFactor and CostIndex price a piece (CreateRoad).
 	BuildCostFactor int16
+	// SellCostFactor (0x06) is a piece's refund (RemoveRoad's roadRemoveCost).
+	SellCostFactor int16
 	// TunnelCostFactor (0x08) prices a piece built underground.
 	TunnelCostFactor int16
 	CostIndex        uint8
@@ -108,6 +110,7 @@ func ParseRoadObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Roa
 		// buildCostFactor 0x04, costIndex 0x0A (offsets from the compiler)
 		BuildCostFactor:  int16(uint16(data[0x04]) | uint16(data[0x05])<<8),
 		CostIndex:        data[0x0A],
+		SellCostFactor:   int16(uint16(data[0x06]) | uint16(data[0x07])<<8),
 		TunnelCostFactor: int16(uint16(data[0x08]) | uint16(data[0x09])<<8),
 		Flags:            uint16(data[0x12]) | uint16(data[0x13])<<8,
 		TargetTownSize:   data[0x2E],
