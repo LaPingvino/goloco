@@ -55,3 +55,35 @@ func TestGrowTownConstructsBuildings(t *testing.T) {
 		t.Errorf("roads changed %d → %d without road flags", r0, r1)
 	}
 }
+
+// Growing with road branching adds junctions: over many rounds the title
+// towns gain road pieces (straights or very small curves off their roads).
+func TestGrowTownAddsJunctions(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	roads := func() (n int) {
+		for y := range m.Tiles {
+			for x := range m.Tiles[y] {
+				n += len(m.Tiles[y][x].Roads)
+			}
+		}
+		return
+	}
+	r0 := roads()
+	for round := 0; round < 60; round++ {
+		for i := range m.Towns {
+			m.GrowTown(om, i, TownGrowAllowRoadBranching)
+		}
+	}
+	r1 := roads()
+	t.Logf("road pieces %d → %d", r0, r1)
+	if r1 <= r0 {
+		t.Error("no junction was added")
+	}
+}
+
+// The edge table as extracted: a straight at rotation 0 reaches edges 0 and 2.
+func TestRoadTadConnectionEdge(t *testing.T) {
+	if RoadTadConnectionEdge[0] != 0b0101 || RoadTadConnectionEdge[1] != 0b1010 || RoadTadConnectionEdge[79] != 0 {
+		t.Errorf("table %v…", RoadTadConnectionEdge[:4])
+	}
+}

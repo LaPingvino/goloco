@@ -209,3 +209,97 @@ func (m *Map) constructBuilding(c *Cmd, town int, p *core.Prng, x, y, z int32, r
 	}
 	m.CreateBuilding(c, CmdApply, a)
 }
+
+// intersectionCheck is Town.cpp kIntersectionCheck: the tiles either side
+// along an edge's axis (even edges: y, odd: x) that must not already have a
+// road reaching that edge.
+var intersectionCheck = [2][4][2]int32{
+	{{0, -2}, {0, -1}, {0, 1}, {0, 2}},
+	{{-2, 0}, {-1, 0}, {1, 0}, {2, 0}},
+}
+
+// roadReachesEdge is sub_498D9A (0x00498D9A): a (non-ghost, non-AI) road of
+// an any-road-type-compatible object at this height on the tile whose piece
+// connects to the edge.
+func (m *Map) roadReachesEdge(x, y, z int32, edge uint8) bool {
+	if x < 0 || y < 0 {
+		return false
+	}
+	t := m.TileAt(int(x)>>5, int(y)>>5)
+	if t == nil {
+		return false
+	}
+	for _, r := range t.Order {
+		if r.Kind != scenario.KindRoad || int(r.Index) >= len(t.Roads) {
+			continue
+		}
+		el := t.Roads[r.Index]
+		if int32(el.BaseZ)*smallZStep != z || m.RoadAnyTypeCompatible&(1<<el.RoadObjectID) == 0 || el.Ghost || el.AiAllocated {
+			continue
+		}
+		if tad := int(el.RoadID)<<3 | int(el.Rotation&3); tad < len(RoadTadConnectionEdge) && RoadTadConnectionEdge[tad]&(1<<edge) != 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// addRoadJunction is Town::grow's addRoadJunction (0x004984C5): on a straight
+// or very small curve off a bridge, one time in about 40 (randNext & 0xFFFF ≤
+// 0x666) and not below the surface, a free edge of the piece is drawn (from
+// the same draw's bits 16–23); unless a road already reaches that edge two
+// tiles either way, a straight (or a very small curve when the opposite /
+// next edge is free) is placed through createRoad towards it. Whether it
+// placed one (the walk then stops).
+func (m *Map) addRoadJunction(c *Cmd, p *core.Prng, x, y, z int32, rad uint16, onBridge bool, roadObj uint8, conns []uint16) bool {
+	if id := rad >> 3 & 0xF; id > 2 || onBridge {
+		return false
+	}
+	rv := p.RandNext()
+	if rv&0xFFFF > 0x666 {
+		return false
+	}
+	t := m.TileAt(int(x)>>5, int(y)>>5)
+	if t == nil || z < int32(t.BaseZ)*smallZStep {
+		return false
+	}
+	var edges uint8
+	for _, cn := range conns {
+		if i := int(cn & TaDBasicMask); i < len(RoadTadConnectionEdge) {
+			edges |= RoadTadConnectionEdge[i]
+		}
+	}
+	edges ^= 0xF
+	n := 0
+	for i := range 4 {
+		if edges&(1<<i) != 0 {
+			n++
+		}
+	}
+	if n == 0 {
+		return false
+	}
+	num := int32((rv>>16)&0xFF) * int32(n) / 256
+	i := uint8(0)
+	for ; i < 4 && num >= 0; i++ {
+		if edges&(1<<i) != 0 {
+			num--
+		}
+	}
+	edge := i - 1
+	for _, o := range intersectionCheck[edge&1] {
+		if m.roadReachesEdge(x+o[0]*tileSize, y+o[1]*tileSize, z, edge) {
+			return false
+		}
+	}
+	newRoad := uint8(0)
+	if edges&(1<<(edge^2)) != 0 {
+		if edges&(1<<((edge-1)&3)) != 0 {
+			newRoad = 1
+		} else {
+			newRoad = 2
+		}
+	}
+	m.createRoad(c, roadPlacementArgs{X: x, Y: y, Z: z, Rotation: edge ^ 2, RoadID: newRoad, Bridge: 0xFF, RoadObjectID: roadObj}, CmdApply)
+	return true
+}
