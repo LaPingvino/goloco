@@ -151,6 +151,12 @@ func (m *Map) tileRange(ax, ay, bx, by int) (x0, y0, x1, y1 int) {
 // coordinates): only the lowest tiles of the range move, each by
 // raiseSurfaceCornerFlags (a step up where the table says so). The cost.
 func (m *Map) raiseLand(c *Cmd, ax, ay, bx, by int, corner uint8, flags uint8) (int32, bool) {
+	return m.raiseLandWith(c, ax, ay, bx, by, corner, flags, RemovedBuildings{})
+}
+
+// raiseLandWith is raiseLand with the caller's removed-buildings set (upstream
+// passes it in: the mountain tool shares one over all its steps).
+func (m *Map) raiseLandWith(c *Cmd, ax, ay, bx, by int, corner uint8, flags uint8, removed RemovedBuildings) (int32, bool) {
 	x0, y0, x1, y1 := m.tileRange(ax, ay, bx, by)
 	lowest := 255
 	for y := y0; y <= y1; y++ {
@@ -158,7 +164,6 @@ func (m *Map) raiseLand(c *Cmd, ax, ay, bx, by int, corner uint8, flags uint8) (
 			lowest = min(lowest, int(m.Tiles[y][x].BaseZ))
 		}
 	}
-	removed := RemovedBuildings{}
 	var total int32
 	for y := y0; y <= y1; y++ {
 		for x := x0; x <= x1; x++ {
@@ -186,6 +191,12 @@ func (m *Map) raiseLand(c *Cmd, ax, ay, bx, by int, corner uint8, flags uint8) (
 // whose highest corner is the range's highest move, each by
 // lowerSurfaceCornerFlags (a step down where the table says so). The cost.
 func (m *Map) lowerLand(c *Cmd, ax, ay, bx, by int, corner uint8, flags uint8) (int32, bool) {
+	return m.lowerLandWith(c, ax, ay, bx, by, corner, flags, RemovedBuildings{})
+}
+
+// lowerLandWith is lowerLand with the caller's removed-buildings set (upstream
+// passes it in: the mountain tool shares one over all its steps).
+func (m *Map) lowerLandWith(c *Cmd, ax, ay, bx, by int, corner uint8, flags uint8, removed RemovedBuildings) (int32, bool) {
 	x0, y0, x1, y1 := m.tileRange(ax, ay, bx, by)
 	highest := 0
 	for y := y0; y <= y1; y++ {
@@ -193,7 +204,6 @@ func (m *Map) lowerLand(c *Cmd, ax, ay, bx, by int, corner uint8, flags uint8) (
 			highest = max(highest, int(surfaceCornerHeight(&m.Tiles[y][x])))
 		}
 	}
-	removed := RemovedBuildings{}
 	var total int32
 	for y := y0; y <= y1; y++ {
 		for x := x0; x <= x1; x++ {
