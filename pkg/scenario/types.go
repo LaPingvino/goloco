@@ -436,8 +436,10 @@ type TrackElement struct {
 	IsLast        bool  // byte 1 (element flags) bit 6: flag_6 — last tile of the piece
 	// HasLevelCrossing is TrackElement::hasLevelCrossing (byte 6 bit 4).
 	HasLevelCrossing bool
-	Ghost            bool // byte 1 bit 4: ElementFlags::ghost
-	AiAllocated      bool // byte 1 bit 5: ElementFlags::aiAllocated
+	// HasGhostMods is TrackElement::hasGhostMods (byte 4 bit 6): a ghost track mod is shown on it.
+	HasGhostMods bool
+	Ghost        bool // byte 1 bit 4: ElementFlags::ghost
+	AiAllocated  bool // byte 1 bit 5: ElementFlags::aiAllocated
 }
 
 // RoadElement represents a road section on a tile.

@@ -522,6 +522,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					TrackID:          elem[4] & 0x3F,
 					IsLast:           elem[1]&0x40 != 0, // ElementFlags::flag_6
 					HasLevelCrossing: elem[6]&0x10 != 0,
+					HasGhostMods:     elem[4]&0x40 != 0,
 					Ghost:            elem[1]&0x10 != 0,
 					AiAllocated:      elem[1]&0x20 != 0,
 					HasBridge:        elem[4]&0x80 != 0,
