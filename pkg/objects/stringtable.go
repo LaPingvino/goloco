@@ -1,56 +1,56 @@
 package objects
 
-// parseStringTable extracts the first string from a Locomotion object string table.
-//
+// chooseString is ObjectStringTable.cpp loadStringTable's choice over one
+// [langID][str\0]…[0xFF] table: the SelectedLocoLanguage string, else the
+// English backup (english_uk always; english_us only while no backup is
+// set), else anyStr — updated on every entry until an English or target
+// string has been seen. It returns the table's length (past the 0xFF) and the
+// chosen string's bytes as stored (control codes kept; nil for none).
 // OpenLoco reference: src/OpenLoco/src/Objects/ObjectStringTable.cpp
-//
-//	loadStringTable() at address 0x00472172
-//
-// Format: Sequence of [languageID byte][null-terminated string], ending with 0xFF byte.
-//
-//	Example: 09 "Hello\0" 09 "World\0" FF
-//
-// Returns: (tableLength, firstString)
-func parseStringTable(data []byte) (int, string) {
-	if len(data) < 1 {
-		return 0, ""
-	}
-
+// (loadStringTable, 0x00472172).
+func chooseString(data []byte) (int, []byte) {
+	var target, eng, anyStr []byte
 	pos := 0
-	firstString := ""
-
-	// Iterate through language/string pairs until we hit 0xFF terminator
-	for pos < len(data) {
-		if data[pos] == 0xFF {
-			// Found terminator - include it in the length
-			return pos + 1, firstString
-		}
-
-		// Skip language ID byte
+	for pos < len(data) && data[pos] != 0xFF {
+		lang := data[pos]
 		pos++
-		if pos >= len(data) {
-			break
-		}
-
-		// Find null terminator of string
-		stringStart := pos
+		start := pos
 		for pos < len(data) && data[pos] != 0 {
 			pos++
 		}
-
-		// Extract string if this is the first one
-		if firstString == "" && pos > stringStart {
-			firstString = cleanString(data[stringStart:pos])
-		}
-
-		// Skip the null terminator
+		str := data[start:pos]
 		if pos < len(data) {
-			pos++
+			pos++ // the null
+		}
+		if lang == 0 { // english_uk
+			eng = str
+		} else if lang == 1 && eng == nil { // english_us
+			eng = str
+		}
+		if lang == SelectedLocoLanguage {
+			target = str
+		}
+		if eng == nil && target == nil {
+			anyStr = str
 		}
 	}
+	if pos < len(data) {
+		pos++ // the 0xFF
+	}
+	switch {
+	case target != nil:
+		return pos, target
+	case eng != nil:
+		return pos, eng
+	}
+	return pos, anyStr
+}
 
-	// If we reached end without finding 0xFF, return what we have
-	return pos, firstString
+// parseStringTable is chooseString with the string cleaned of control codes
+// (printable ASCII only). Returns (tableLength, string).
+func parseStringTable(data []byte) (int, string) {
+	n, raw := chooseString(data)
+	return n, cleanString(raw)
 }
 
 // cleanString removes non-printable characters and 0xFF format codes from a string
@@ -74,15 +74,9 @@ func isPrintable(b byte) bool {
 	return b >= 0x20 && b < 0x7F
 }
 
-// firstRawString is a string table's first string as stored (its bytes up to
-// the null, control codes kept), nil for an empty table.
-func firstRawString(data []byte) []byte {
-	if len(data) < 2 || data[0] == 0xFF {
-		return nil
-	}
-	end := 1
-	for end < len(data) && data[end] != 0 {
-		end++
-	}
-	return append([]byte(nil), data[1:end]...)
+// chosenRawString is the table's chosen string as stored (control codes
+// kept), a copy.
+func chosenRawString(data []byte) []byte {
+	_, raw := chooseString(data)
+	return append([]byte(nil), raw...)
 }

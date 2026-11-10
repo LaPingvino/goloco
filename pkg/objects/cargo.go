@@ -41,42 +41,15 @@ type CargoObject struct {
 // OpenLoco reference: Localisation::LocoLanguageId / loadStringTable.
 var SelectedLocoLanguage uint8 = 0
 
-// walkStringTableLang walks one [langID][str\0]…[0xFF] string table starting
-// at offset, returning the offset past the 0xFF terminator and the best
-// string: exact SelectedLocoLanguage match, else English (0/1), else the
-// first entry.
+// walkStringTableLang walks one string table starting at offset: the offset
+// past its 0xFF terminator and the string loadStringTable chooses
+// (chooseString), as stored.
 func walkStringTableLang(data []byte, offset int) (int, string) {
-	var target, english, first string
-	for offset < len(data) && data[offset] != 0xFF {
-		lang := data[offset]
-		offset++
-		start := offset
-		for offset < len(data) && data[offset] != 0 {
-			offset++
-		}
-		s := string(data[start:offset])
-		offset++ // null terminator
-		if first == "" {
-			first = s
-		}
-		if (lang == 0 || lang == 1) && english == "" {
-			english = s
-		}
-		if lang == SelectedLocoLanguage && target == "" {
-			target = s
-		}
+	if offset >= len(data) {
+		return offset, ""
 	}
-	if offset < len(data) {
-		offset++ // 0xFF terminator
-	}
-	switch {
-	case target != "":
-		return offset, target
-	case english != "":
-		return offset, english
-	default:
-		return offset, first
-	}
+	n, raw := chooseString(data[offset:])
+	return offset + n, string(raw)
 }
 
 // ParseCargoObjectWithG1 parses a cargo object, loading its image table into
