@@ -260,6 +260,8 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 		}
 		s = fillStringIDs(locoText(i18n.Str(i18n.MessageIsPromotedTo)), m.ownerName(int(msg.Subjects[0]), om),
 			rating(int(msg.Subjects[1])-1), rating(int(msg.Subjects[1])))
+	case MsgCompanyCheated: // the owner's name
+		s = fillStringIDs(locoText(i18n.Str(i18n.MessageCorporateScandal)), m.ownerName(int(msg.Subjects[0]), om))
 	case MsgNewIndustry: // the industry object's name, the industry's town
 		if i := m.industryIndex(msg.Subjects[0]); i >= 0 && om != nil {
 			ind := m.Industries[i]
