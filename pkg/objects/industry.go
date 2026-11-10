@@ -17,7 +17,7 @@ type IndustryObject struct {
 	// the numbered variant for a second one in a town), nameClosingDown,
 	// nameUpProduction, nameDownProduction, nameSingular, namePlural.
 	Strings [8]string
-	// RawStrings are the same tables' first strings as stored, control codes
+	// RawStrings are the same tables' chosen strings as stored, control codes
 	// kept (Strings has them cleaned out).
 	RawStrings [8][]byte
 
@@ -123,7 +123,7 @@ func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 			o.Name = str
 		}
 		o.Strings[i] = str
-		o.RawStrings[i] = firstRawString(data[p : p+n])
+		o.RawStrings[i] = chosenRawString(data[p : p+n])
 		p += n
 	}
 	np := int(o.NumBuildingParts)

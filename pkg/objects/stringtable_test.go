@@ -108,9 +108,10 @@ func TestParseStringTable_MultiLanguageEdgeCases(t *testing.T) {
 }
 
 func TestParseStringTable_TrimsAtFirstNull(t *testing.T) {
-	// Strings must end at first NUL. Ensure embedded bytes after NUL are ignored.
-	// Construct: lang id, "ab\0rest", FF
-	raw := []byte{0x09, 'a', 'b', 0x00, 'r', 'e', 's', 't', 0xFF}
+	// A string ends at its NUL; what follows is the next entry's language id
+	// (upstream reads "ab\0rest" as "ab" then language 'r' with "est"), so
+	// the table here is well formed: lang id, "ab\0", FF.
+	raw := []byte{0x09, 'a', 'b', 0x00, 0xFF}
 	n, s := parseStringTable(raw)
 	if s != "ab" {
 		t.Fatalf("expected 'ab', got %q", s)
