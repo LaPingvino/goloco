@@ -12,6 +12,14 @@ import (
 type IndustryObject struct {
 	Header *ObjectHeader
 	Name   string
+	// Strings are the 8 string tables in load order: name, var_02 (an
+	// industry's own name, "{STRINGID} …" with its town), unused (var_02 + 1:
+	// the numbered variant for a second one in a town), nameClosingDown,
+	// nameUpProduction, nameDownProduction, nameSingular, namePlural.
+	Strings [8]string
+	// RawStrings are the same tables' first strings as stored, control codes
+	// kept (Strings has them cleaned out).
+	RawStrings [8][]byte
 
 	NumBuildingParts                uint8        // 0x1E
 	NumBuildingVariations           uint8        // 0x1F
@@ -114,6 +122,8 @@ func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 		if i == 0 {
 			o.Name = str
 		}
+		o.Strings[i] = str
+		o.RawStrings[i] = firstRawString(data[p : p+n])
 		p += n
 	}
 	np := int(o.NumBuildingParts)

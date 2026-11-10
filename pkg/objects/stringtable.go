@@ -73,3 +73,16 @@ func cleanString(data []byte) string {
 func isPrintable(b byte) bool {
 	return b >= 0x20 && b < 0x7F
 }
+
+// firstRawString is a string table's first string as stored (its bytes up to
+// the null, control codes kept), nil for an empty table.
+func firstRawString(data []byte) []byte {
+	if len(data) < 2 || data[0] == 0xFF {
+		return nil
+	}
+	end := 1
+	for end < len(data) && data[end] != 0 {
+		end++
+	}
+	return append([]byte(nil), data[1:end]...)
+}
