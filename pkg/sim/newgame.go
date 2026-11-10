@@ -245,8 +245,7 @@ func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectM
 // redetermined), sub_4748D4's default level crossing, the objective's time
 // limit and month count.
 //
-// PARTIAL: the snow line and season, sub_4748D4's road object flags, last
-// track type, infrastructure options and terraform objects, setRecords(zero),
+// PARTIAL: the snow line and season, setRecords(zero),
 // initialiseDefaultTrackRoadMods, the scenario name / details copy, labels
 // and the windows / viewport / music resets (cmd/goloco's side).
 func (m *Map) StartScenario(startYear uint16, om *objects.ObjectManager) {
@@ -268,7 +267,11 @@ func (m *Map) StartScenarioGenerating(startYear uint16, gen *TerrainOptions, g1 
 			m.DetermineAvailableVehicles(id, om) // CompanyManager::determineAvailableVehicles
 		}
 	}
+	// sub_4748D4 (Scenario::start, after the player company):
+	m.UpdateRoadObjectIdFlags(om)
 	m.UpdateDefaultLevelCrossingType(om)
+	m.UpdateScenarioObjectOptions(om)
+	m.UpdatePlayerInfrastructureOptions(om)
 	m.ObjectiveUntilYear = uint16(m.Objective.TimeLimitYears) - 1 + m.CurrentYear
 	m.ObjectiveMonthsInChallenge = 0
 }
