@@ -5,9 +5,8 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // The year's end — CompanyManager::updateYearly (Company.cpp updateYearly),
 // ObjectManager::updateDefaultLevelCrossingType and updateYearly2.
 //
-// PARTIAL: TileManager::updateYearly; in updateYearly2 the availableVehicles
-// recalculation (determineAvailableVehicleTypes), the newVehicle message and
-// the construction window's road / rail options.
+// PARTIAL: TileManager::updateYearly; in updateYearly2 the construction
+// window's road / rail options.
 
 const expenditureHistoryCapacity = 16
 
@@ -49,8 +48,11 @@ func (m *Map) UpdateDefaultLevelCrossingType(om *objects.ObjectManager) {
 	m.DefaultLevelCrossingType = uint8(best)
 }
 
-// updateYearly2: vehicles designed this year are unlocked for every company
-// allowed their type; vehicles going obsolete this year are locked for all.
+// updateYearly2 (0x004C3A9E): vehicles designed this year are unlocked for
+// every company allowed their type and not having them yet — its available
+// types recalculated and, for the controlling company and an announced
+// (not quietInvention) vehicle, newVehicle posted; vehicles going obsolete
+// this year are locked for all.
 func (m *Map) updateYearly2(om *objects.ObjectManager) {
 	for vid, v := range om.Vehicles {
 		if v == nil {
@@ -65,10 +67,15 @@ func (m *Map) updateYearly2(om *objects.ObjectManager) {
 				if m.IsPlayerCompany(id) {
 					forbidden = m.ForbiddenVehiclesPlayers
 				}
-				if forbidden&(1<<v.Type) != 0 {
+				if forbidden&(1<<v.Type) != 0 || m.UnlockedVehicles[id][vid/32]&(1<<(vid%32)) != 0 {
 					continue
 				}
 				m.UnlockedVehicles[id][vid/32] |= 1 << (vid % 32)
+				m.Companies[id].AvailableVehicles = m.availableVehicleTypes(id, om)
+				if uint8(id) != m.ControllingCompany || v.Flags&vehicleFlagQuietInvention != 0 {
+					continue
+				}
+				m.PostMessage(om, MsgNewVehicle, 0xFF, uint16(vid), 0xFFFF, 0xFFFF)
 			}
 		}
 		if m.CurrentYear == v.Obsolete {
@@ -111,11 +118,19 @@ func (m *Map) DetermineAvailableVehicles(id int, om *objects.ObjectManager) {
 	if id >= len(m.Companies) {
 		return
 	}
+	m.Companies[id].AvailableVehicles = m.availableVehicleTypes(id, om)
+}
+
+const vehicleFlagQuietInvention = 1 << 15 // VehicleObjectFlags::quietInvention: no newspaper announcement
+
+// availableVehicleTypes is determineAvailableVehicleTypes: a bit per
+// VehicleObject::type among the company's unlocked vehicles.
+func (m *Map) availableVehicleTypes(id int, om *objects.ObjectManager) uint16 {
 	var types uint16
 	for i, v := range om.Vehicles {
-		if v != nil && i < 224 && bits[i/32]&(1<<(i%32)) != 0 {
+		if v != nil && i < 224 && m.UnlockedVehicles[id][i/32]&(1<<(i%32)) != 0 {
 			types |= 1 << uint(v.Type)
 		}
 	}
-	m.Companies[id].AvailableVehicles = types
+	return types
 }
