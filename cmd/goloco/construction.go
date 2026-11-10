@@ -184,8 +184,31 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 	return f, st
 }
 
+// consWindowOrigin is where the track / road window opens: Construction::
+// openWithFlags creates it with no position, so WindowManager::createWindow
+// places it (ui.AutoWindowPosition: (0, 30) under the toolbar on an empty
+// screen; before, goloco put it at (10, 40)). An open one keeps its place.
+func (g *Game) consWindowOrigin() (int, int) {
+	if g.windowMgr != nil {
+		for _, w := range g.windowMgr.Windows {
+			if w.Title == i18n.Label(i18n.Construction) {
+				return w.X, w.Y
+			}
+		}
+	}
+	sw, sh := g.sw, g.sh
+	if sw <= 0 || sh <= 0 {
+		sw, sh = defaultWidth, defaultHeight
+	}
+	if g.windowMgr == nil {
+		return ui.AutoWindowPosition(ui.ConstructionW, ui.ConstructionH, sw, sh, nil)
+	}
+	return g.windowMgr.AutoPosition(ui.ConstructionW, ui.ConstructionH, sw, sh)
+}
+
 func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
-	win := ui.NewSimpleWindow(i18n.Label(i18n.Construction), 10, 40, ui.ConstructionW, ui.ConstructionH)
+	x, y := g.consWindowOrigin()
+	win := ui.NewSimpleWindow(i18n.Label(i18n.Construction), x, y, ui.ConstructionW, ui.ConstructionH)
 	win.Ported = true
 	win.PortedDraw = func(screen *ebiten.Image, x, y int) {
 		f, st := g.constructionFrame(x, y)

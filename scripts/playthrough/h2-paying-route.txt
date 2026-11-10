@@ -17,31 +17,31 @@ move 230 372
 wait 1
 click 230 372
 wait 2
-move 113 97
+move 103 87
 wait 1
-click 113 97
+click 103 87
 wait 1
-click 77 235
+click 67 225
 wait 1
-move 77 112
+move 67 102
 wait 1
-click 77 112
+click 67 102
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
 move 400 300
 wait 1
-click 61 67
+click 51 57
 wait 2
 move 398 380
 wait 2
