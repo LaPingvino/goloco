@@ -3882,15 +3882,6 @@ func (g *Game) firstTrainStationSlot() uint8 {
 	return 0
 }
 
-// consPlaceStation attaches a station to the track piece under the head, using
-// the first populated train-station object slot. Track mode only.
-func (g *Game) consPlaceStation() {
-	if g.consIsRoad() {
-		return
-	}
-	g.w.PlaceStationAtHead(g.firstTrainStationSlot())
-}
-
 // consObjectNames returns the object display names for the current mode,
 // indexed by object slot (empty string for unused slots).
 func (g *Game) consObjectNames() []string {

@@ -245,8 +245,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		if tab := f.TabAt(rx, ry); tab >= 0 || (ry >= 15 && ry < 42) { // tabs
 			switch tab {
 			case 1:
-				g.consTab = 1 // switchTab; tabReset turns the placing tool on
-				g.consPlaceStation()
+				g.consTab = 1 // switchTab; tabReset turns the placing tool on (the Station tab's tool builds, through createTrainStation)
 			case 0, 2, 3:
 				g.consTab = tab // switchTab; tabReset picks the both-directions tool
 				g.consSigOne = false
