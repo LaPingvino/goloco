@@ -1396,10 +1396,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	// Ghost preview for build mode (both chain from the construction head).
-	if g.buildMode == buildModeTrack {
-		g.w.DrawConstructionGhost(screen, g.consSelectedTrackID(), g.buildObjID)
-		ui.MarkForeign(screen.Bounds())
-	} else if g.buildMode == buildModeRoad {
+	// Track: the real ghost at the head, painted in the world
+	// (UpdateHeadTrackGhost); road keeps goloco's overlay until its ghost is ported.
+	if g.buildMode == buildModeRoad {
 		g.w.DrawRoadConstructionGhost(screen, g.consSelectedRoadID(), g.buildObjID)
 		ui.MarkForeign(screen.Bounds())
 	}

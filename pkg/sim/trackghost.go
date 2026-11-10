@@ -115,3 +115,32 @@ func (s *State) UpdateTrackGhost(c *Cmd, tx, ty int, trackID, rot, objID uint8, 
 		a.Z += 32
 	}
 }
+
+// UpdateHeadTrackGhost is updateConstruction's track ghost (ConstructionTab
+// 0x0049FD66): with the head placed, the selected piece trackID stands as a
+// ghost at the head — getTrackPlacementArgs at (cState.x, cState.y,
+// constructionZ), the arguments BuildTrackAtHead builds with — through
+// placeTrackGhost. Upstream places it on each update while
+// GhostVisibilityFlags::track is clear (removeConstructionGhosts clears it on
+// every change of head or piece); here: when the head or the piece differ from
+// the ghost standing, or none stands (a refused one is tried again, as there).
+// trackID < 0 (nothing buildable selected) or no head: the ghost removed.
+// PARTIAL: the bridge retry (placeTrackGhost's), the cost shown.
+func (s *State) UpdateHeadTrackGhost(c *Cmd, trackID int, objID uint8) {
+	h := s.ConsHead
+	if !h.Active || trackID < 0 || trackID >= len(TrackPieces) || h.Rotation > 3 {
+		s.RemoveTrackGhost(c)
+		return
+	}
+	a := headTrackArgs(h, trackID, objID)
+	if g := s.TrackGhost; g != nil && g.X == a.X && g.Y == a.Y && g.Z == a.Z && g.Rotation == a.Rotation && g.TrackID == a.TrackID && g.TrackObjectID == a.TrackObjectID {
+		return
+	}
+	s.placeTrackGhost(c, a)
+}
+
+// headTrackArgs is the createTrack arguments for trackID at the head.
+func headTrackArgs(h ConstructionHead, trackID int, objID uint8) trackPlacementArgs {
+	return trackPlacementArgs{X: int32(h.X) * 32, Y: int32(h.Y) * 32, Z: int32(h.BaseZ) * 4, Rotation: h.Rotation & 3,
+		TrackID: uint8(trackID), TrackObjectID: objID, Bridge: 0xFF}
+}

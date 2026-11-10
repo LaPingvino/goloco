@@ -309,8 +309,10 @@ func (s *State) BuildTrackAtHead(c *Cmd, trackID int, trackObjID uint8) (int32, 
 	if !h.Active || trackID < 0 || trackID >= len(TrackPieces) || h.Rotation > 3 {
 		return 0, false
 	}
-	a := trackPlacementArgs{X: int32(h.X) * 32, Y: int32(h.Y) * 32, Z: int32(h.BaseZ) * 4, Rotation: h.Rotation & 3,
-		TrackID: uint8(trackID), TrackObjectID: trackObjID, Bridge: 0xFF}
+	// constructTrack: removeConstructionGhosts first (the ghost stands where
+	// the piece goes).
+	s.RemoveTrackGhost(c)
+	a := headTrackArgs(h, trackID, trackObjID)
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
 	var placed []trackPiecePlan
 	cost, ok := s.DoCommandFor(c, CmdApply, ExpenditureConstruction, func(flags uint8) (int32, bool) {
