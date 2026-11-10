@@ -224,3 +224,40 @@ func TestChallengeMessages(t *testing.T) {
 		t.Errorf("another company: %+v, beaten flag %v", got, m.CompanyFaces[pc].ChallengeFlags&companyFlagChallengeBeaten != 0)
 	}
 }
+
+// A vehicle designed this year, not yet unlocked for the controlling company,
+// is unlocked and announced ("New Vehicle Invented - “…”!").
+func TestNewVehicleMessage(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	pc := int(m.ControllingCompany)
+	vid := -1
+	for i, v := range om.Vehicles {
+		if v != nil && v.Flags&vehicleFlagQuietInvention == 0 && (m.ForbiddenVehiclesPlayers|m.ForbiddenVehiclesCompetitors)&(1<<v.Type) == 0 {
+			vid = i
+			break
+		}
+	}
+	if vid < 0 || pc >= len(m.UnlockedVehicles) {
+		t.Skip("no announced vehicle")
+	}
+	m.CurrentYear = om.Vehicles[vid].Designed
+	m.UnlockedVehicles[pc][vid/32] &^= 1 << (vid % 32)
+	n := len(m.Messages)
+	m.updateYearly2(om)
+	if m.UnlockedVehicles[pc][vid/32]&(1<<(vid%32)) == 0 {
+		t.Fatal("not unlocked")
+	}
+	found := false
+	for _, e := range m.Messages[n:] {
+		if e.Type == MsgNewVehicle && int(e.Subjects[0]) == vid {
+			found = true
+			t.Logf("%q", e.Text)
+			if !contains(e.Text, om.Vehicles[vid].DisplayName) || om.Vehicles[vid].DisplayName == "" {
+				t.Errorf("text %q, name %q", e.Text, om.Vehicles[vid].DisplayName)
+			}
+		}
+	}
+	if !found {
+		t.Error("no newVehicle message")
+	}
+}

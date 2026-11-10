@@ -242,6 +242,10 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 		id := map[MessageType]int{MsgCongratulationsCompleted: i18n.MessageCongratulationsYouHaveCompleted,
 			MsgFailedObjectives: i18n.MessageFailureYouHaveFailed, MsgHaveBeenBeaten: i18n.MessageBeatenHasCompleted}[msg.Type]
 		s = fillStringIDs(locoText(i18n.Str(id)), m.ownerName(int(msg.Subjects[0]), om))
+	case MsgNewVehicle: // the vehicle object's name
+		if om != nil && int(msg.Subjects[0]) < len(om.Vehicles) && om.Vehicles[msg.Subjects[0]] != nil {
+			s = fillStringIDs(locoText(i18n.Str(i18n.MessageNewVehicleInvented)), om.Vehicles[msg.Subjects[0]].DisplayName)
+		}
 	case MsgNewIndustry: // the industry object's name, the industry's town
 		if i := m.industryIndex(msg.Subjects[0]); i >= 0 && om != nil {
 			ind := m.Industries[i]
