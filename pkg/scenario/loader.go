@@ -725,6 +725,9 @@ func parseScenarioOptions(data []byte) Options {
 		opts.MinLandHeight = data[0x184]
 		opts.TopographyStyle = data[0x185]
 		opts.HillDensity = data[0x186]
+		if len(data) > 0x188 {
+			opts.NumberOfTowns, opts.MaxTownSize = data[0x187], data[0x188]
+		}
 		opts.NumberOfForests = binary.LittleEndian.Uint16(data[0x17A:]) // trees (offsets from the compiler)
 		opts.MinForestRadius, opts.MaxForestRadius = data[0x17C], data[0x17D]
 		opts.MinForestDensity, opts.MaxForestDensity = data[0x17E], data[0x17F]

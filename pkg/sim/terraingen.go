@@ -23,6 +23,8 @@ type TerrainOptions struct {
 	// Rivers (OpenLoco's options; none in vanilla scenarios).
 	NumRiverbeds, MinRiverWidth, MaxRiverWidth, RiverbankWidth, RiverMeanderRate uint8
 	LandDistributionPatterns                                                     [32]uint8 // per land object slot
+	// Towns (generateTowns).
+	NumberOfTowns, MaxTownSize uint8
 	// Trees.
 	NumberOfForests, NumberRandomTrees                                                                             uint16
 	MinForestRadius, MaxForestRadius, MinForestDensity, MaxForestDensity, MinAltitudeForTrees, MaxAltitudeForTrees uint8
