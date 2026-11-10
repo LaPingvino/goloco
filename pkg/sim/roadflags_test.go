@@ -47,7 +47,11 @@ func TestStaticSetOrder(t *testing.T) {
 // last road is a road type and the last railroad an available rail track.
 func TestPlayerInfrastructureOptions(t *testing.T) {
 	m, om := loadDataMap(t, "title.dat")
+	m.CompanyRecords.Speed[0], m.CompanyRecords.Company[0], m.CompanyRecords.Date[0] = 120, 3, 9999
 	m.StartScenario(1950, om)
+	if r := m.CompanyRecords; r.Speed != [3]uint16{} || r.Company != [3]uint8{0xFF, 0xFF, 0xFF} || r.Date != [3]uint32{} {
+		t.Errorf("records after the start: %+v", r)
+	}
 	pc := m.PlayerCompanies[0]
 	if r := om.GetRoadObjectByIndex(int(m.LastRoadOption &^ (1 << 7))); m.LastRoadOption != 0xFF && (m.LastRoadOption&(1<<7) == 0 || r == nil) {
 		t.Errorf("last road option %#x", m.LastRoadOption)
