@@ -332,3 +332,25 @@ func TestPromotionMessage(t *testing.T) {
 		t.Errorf("text %q", got)
 	}
 }
+
+func TestUnableToLandText(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	if len(trains) == 0 {
+		t.Skip("no vehicles")
+	}
+	h := m.Entities[trains[0].Head]
+	st := 0
+	for i, s := range m.StationNames {
+		if s.Name != stationNameNull {
+			st = i
+			break
+		}
+	}
+	m.PostMessage(om, MsgUnableToLandAtAirport, h.Owner, h.ID, uint16(st), 0xFFFF)
+	got := m.Messages[len(m.Messages)-1].Text
+	t.Logf("%q", got)
+	if !contains(got, m.VehicleName(h.Name, int(h.OrdinalNumber))) || !contains(got, m.StationName(st)) {
+		t.Errorf("text %q", got)
+	}
+}
