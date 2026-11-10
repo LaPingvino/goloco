@@ -22,6 +22,10 @@ type WaterObject struct {
 	Header      *ObjectHeader
 	Name        string
 	ImageOffset uint32 // base sprite index in G1 pool
+	// CostIndex (0x02) and CostFactor (0x04) price a tile of water
+	// (TileManager::adjustWaterHeight).
+	CostIndex  uint8
+	CostFactor int16
 }
 
 // kSlopeToWaterShape maps tile slope (4-bit lower nibble) to water sprite shape index.
@@ -51,7 +55,7 @@ func ParseWaterObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Wa
 		return nil, fmt.Errorf("water object data too small: %d bytes", len(data))
 	}
 
-	w := &WaterObject{Header: header}
+	w := &WaterObject{Header: header, CostIndex: data[0x02], CostFactor: int16(uint16(data[0x04]) | uint16(data[0x05])<<8)}
 
 	// Fixed struct: StringId(2) + costIndex(1) + var03(1) + costFactor(2) + image(4) + mapPixelImage(4) = 14 bytes
 	// String table begins after the fixed struct at offset 0x0E.
