@@ -1,5 +1,7 @@
 package sim
 
+import "github.com/LaPingvino/goloco/pkg/objects"
+
 // Company performance and value — World/Company.cpp calculatePerformanceIndex
 // and calculateCompanyValue, Math::Vector::fastSquareRoot (table generated,
 // checked against 2000 upstream vectors).
@@ -120,10 +122,11 @@ func rotate120[T any](h *[120]T, v T) {
 // companiesUpdateMonthly1 is CompanyManager::updateMonthly1 → each company's
 // Company::updateMonthly1 (the controlling company's promotion posts
 // companyPromoted). PARTIAL: the competitor start delay, emotions
-// (angry / happy / scared / worried / dejected), the Ui invalidations and stopAllCompanyVehicles on bankruptcy (a
-// game command) are not ported. The bankruptcy news are posted (warnings at 3
-// and 6 months in the red for the controlling company, declared at 9).
-func (m *Map) companiesUpdateMonthly1() {
+// (angry / happy / scared / worried / dejected) and the Ui invalidations are
+// not ported. The bankruptcy news are posted (warnings at 3 and 6 months in
+// the red for the controlling company, declared at 9), and a bankruptcy
+// stops the company's vehicles (stopAllCompanyVehicles).
+func (m *Map) companiesUpdateMonthly1(om *objects.ObjectManager) {
 	for id := range m.Companies {
 		if id >= len(m.CompanyFaces) || m.CompanyEmpty(id) {
 			continue
@@ -174,6 +177,7 @@ func (m *Map) companiesUpdateMonthly1() {
 					if face.ChallengeFlags&(companyFlagChallengeBeaten|companyFlagChallengeCompleted) == 0 {
 						face.ChallengeFlags |= companyFlagChallengeFailed
 					}
+					m.stopAllCompanyVehicles(uint8(id), om)
 				}
 				if uint8(id) == m.ControllingCompany {
 					switch c.NumMonthsInTheRed {
@@ -187,5 +191,19 @@ func (m *Map) companiesUpdateMonthly1() {
 				c.NumMonthsInTheRed = 0
 			}
 		}
+	}
+}
+
+// stopAllCompanyVehicles (Company.cpp): as the company, every non-ghost
+// vehicle of it stopped (vehicleChangeRunningMode stopVehicle, applied).
+func (m *Map) stopAllCompanyVehicles(company uint8, om *objects.ObjectManager) {
+	trains, _ := m.Trains()
+	c := &Cmd{Company: company, Objects: om}
+	for _, tr := range trains {
+		h := m.Entities[tr.Head]
+		if h.Owner != company || h.Flags38&flags38IsGhost != 0 {
+			continue
+		}
+		m.VehicleChangeRunningMode(c, CmdApply, h.ID, RunningModeStop)
 	}
 }

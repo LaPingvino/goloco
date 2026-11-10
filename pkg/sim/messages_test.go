@@ -269,7 +269,15 @@ func TestNewVehicleMessage(t *testing.T) {
 // Months in the red: the controlling company is warned at 3 and 6 and
 // declared bankrupt at 9, each with its company's name.
 func TestBankruptcyMessages(t *testing.T) {
-	m, _ := loadDataMap(t, "title.dat")
+	m, om := loadDataMap(t, "title.dat")
+	// The controlling company owns no vehicles in the title save: control one that does.
+	trains0, _ := m.Trains()
+	for _, tr := range trains0 {
+		if o := m.Entities[tr.Head].Owner; o != CompanyNeutral {
+			m.ControllingCompany = o
+			break
+		}
+	}
 	pc := int(m.ControllingCompany)
 	for i := range m.Companies {
 		if i != pc {
@@ -282,7 +290,7 @@ func TestBankruptcyMessages(t *testing.T) {
 	var types []MessageType
 	for range 9 {
 		m.Companies[pc].Cash = -1000000
-		m.companiesUpdateMonthly1()
+		m.companiesUpdateMonthly1(om)
 	}
 	for _, e := range m.Messages[n:] {
 		if e.CompanyID == uint8(pc) {
@@ -296,6 +304,19 @@ func TestBankruptcyMessages(t *testing.T) {
 	}
 	if m.CompanyFaces[pc].ChallengeFlags&companyFlagBankrupt == 0 {
 		t.Error("not bankrupt after 9 months")
+	}
+	trains, _ := m.Trains() // stopAllCompanyVehicles
+	owned := 0
+	for _, tr := range trains {
+		if m.Entities[tr.Head].Owner == uint8(pc) {
+			owned++
+		}
+		if h := m.Entities[tr.Head]; h.Owner == uint8(pc) && h.Flags38&flags38IsGhost == 0 && h.VehicleFlags&VehicleFlagCommandStop == 0 && h.Status != StatusStopped {
+			t.Errorf("vehicle %d still running after the bankruptcy", h.ID)
+		}
+	}
+	if owned == 0 {
+		t.Error("the bankrupt company has no vehicles to check")
 	}
 }
 
