@@ -5,19 +5,19 @@ import "testing"
 func TestMessages(t *testing.T) {
 	m := &Map{ActiveMessageIndex: messageIDNull, CurrentDay: 1000}
 	// Dedup: cantWaitForFullLoad (shouldDedup) posted twice with the same subjects is kept once.
-	m.PostMessage(MsgCantWaitForFullLoad, 0, 5, 7, 0xFFFF)
-	m.PostMessage(MsgCantWaitForFullLoad, 1, 5, 7, 0xFFFF)
+	m.PostMessage(nil, MsgCantWaitForFullLoad, 0, 5, 7, 0xFFFF)
+	m.PostMessage(nil, MsgCantWaitForFullLoad, 1, 5, 7, 0xFFFF)
 	if len(m.Messages) != 1 {
 		t.Fatalf("dedup: %d messages", len(m.Messages))
 	}
 	// newCompany doesn't dedup.
-	m.PostMessage(MsgNewCompany, 0, 2, 3, 0xFFFF)
-	m.PostMessage(MsgNewCompany, 0, 2, 3, 0xFFFF)
+	m.PostMessage(nil, MsgNewCompany, 0, 2, 3, 0xFFFF)
+	m.PostMessage(nil, MsgNewCompany, 0, 2, 3, 0xFFFF)
 	if len(m.Messages) != 3 {
 		t.Fatalf("no dedup: %d messages", len(m.Messages))
 	}
 	// A vehicle subject removed: its references blank (not in the first message — upstream's loop).
-	m.PostMessage(MsgVehicleSlipped, 0, 5, 0xFFFF, 0xFFFF)
+	m.PostMessage(nil, MsgVehicleSlipped, 0, 5, 0xFFFF, 0xFFFF)
 	m.RemoveAllSubjectRefs(5, MsgArgVehicle)
 	if m.Messages[3].Subjects[0] != 0xFFFF {
 		t.Error("the slipped vehicle's reference stayed")
@@ -36,11 +36,11 @@ func TestMessages(t *testing.T) {
 	// goes; here only slot 10 was shown.
 	m.Messages = nil
 	for i := range kMaxMessages {
-		m.PostMessage(MsgNewCompany, 0, uint16(i), 0, 0)
+		m.PostMessage(nil, MsgNewCompany, 0, uint16(i), 0, 0)
 		m.Messages[len(m.Messages)-1].TimeActive = 0
 	}
 	m.Messages[10].TimeActive = 0xFFFF // shown and closed
-	m.PostMessage(MsgNewCompany, 0, 999, 0, 0)
+	m.PostMessage(nil, MsgNewCompany, 0, 999, 0, 0)
 	if len(m.Messages) != kMaxMessages || m.Messages[10].Subjects[0] == 10 {
 		t.Errorf("eviction: %d messages, slot 10 subject %d", len(m.Messages), m.Messages[10].Subjects[0])
 	}
@@ -68,4 +68,30 @@ func TestLoadedMessages(t *testing.T) {
 	if len(m.Messages) != n {
 		t.Errorf("a day's update dropped %d loaded messages already past their time", n-len(m.Messages))
 	}
+}
+
+// An industry's production-up message reads as the game's: the object's
+// nameUpProduction with the industry's name.
+func TestIndustryMessageText(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	if len(m.Industries) == 0 {
+		t.Skip("no industries")
+	}
+	ind := m.Industries[0]
+	m.PostMessage(om, MsgIndustryProductionUp, 0xFF, uint16(ind.ID), 0xFFFF, 0xFFFF)
+	last := m.Messages[len(m.Messages)-1]
+	name, _ := m.IndustryName(0, om)
+	t.Logf("%q", last.Text)
+	if last.Text == "" || !contains(last.Text, name) {
+		t.Errorf("text %q doesn't name %q", last.Text, name)
+	}
+}
+
+func contains(s, sub string) bool {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
 }
