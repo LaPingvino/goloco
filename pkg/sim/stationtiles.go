@@ -206,9 +206,9 @@ func (m *Map) RecalculateStationModes(id int, om *objects.ObjectManager) {
 // station numbered scenarioTicks & 0x3FF, when in use, runs Station::update —
 // updateCargoAcceptance (0x00492640): its accepted cargo and their industries
 // recalculated. Returns the accepted set before and after (equal: no change).
-// PARTIAL: the controlling company's cargoNowAccepted / cargoNoLongerAccepted
-// messages (alertCargoAcceptanceChange; goloco has no messages yet) and the
-// station window's invalidation.
+// A change at a station of the controlling company posts, cargo by cargo,
+// cargoNoLongerAccepted / cargoNowAccepted (alertCargoAcceptanceChange
+// 0x00492683). PARTIAL: the station window's invalidation.
 func (m *Map) stationsUpdate(om *objects.ObjectManager) (before, after uint32) {
 	id := int(m.ScenarioTicks & 0x3FF)
 	if id >= len(m.StationNames) || m.StationNames[id].Name == stationNameNull {
@@ -222,5 +222,15 @@ func (m *Map) stationsUpdate(om *objects.ObjectManager) (before, after uint32) {
 	}
 	accepted, s := m.CalcAcceptedCargo(id, om)
 	m.setAcceptance(st, accepted, &s, om)
+	if before != accepted && st.Owner == m.ControllingCompany {
+		for c := range 32 { // kMaxCargoStats
+			was, now := before&(1<<c) != 0, accepted&(1<<c) != 0
+			if was && !now {
+				m.PostMessage(om, MsgCargoNoLongerAccepted, st.Owner, uint16(id), uint16(c), 0xFFFF)
+			} else if !was && now {
+				m.PostMessage(om, MsgCargoNowAccepted, st.Owner, uint16(id), uint16(c), 0xFFFF)
+			}
+		}
+	}
 	return before, accepted
 }
