@@ -72,4 +72,20 @@ func TestGeneratedMapHasTowns(t *testing.T) {
 	if len(m.Industries) == 0 || industryTiles == 0 {
 		t.Error("the generated map has no industries")
 	}
+	misc := map[string]int{}
+	for y := range m.Tiles {
+		for x := range m.Tiles[y] {
+			for _, b := range m.Tiles[y][x].Buildings {
+				if b.IsMisc && b.SequenceIndex == 0 {
+					if o := om.GetBuildingObjectByIndex(int(b.ObjectID)); o != nil {
+						misc[o.Name]++
+					}
+				}
+			}
+		}
+	}
+	t.Logf("misc buildings: %v", misc)
+	if len(misc) == 0 {
+		t.Error("the generated map has no misc buildings")
+	}
 }
