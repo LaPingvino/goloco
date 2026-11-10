@@ -229,6 +229,10 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 			}
 			s = fillStringIDs(locoText(i18n.Str(i18n.MessageFirstStringDeliveredTo)), cargo, name)
 		}
+	case MsgUnableToLandAtAirport: // the vehicle (name + ordinal), the airport's station
+		if h := m.entity(msg.Subjects[0]); h != nil {
+			s = fillStringIDs(locoText(i18n.Str(i18n.MessageNotAbleToLandAt)), m.VehicleName(h.Name, int(h.OrdinalNumber)), m.StationName(int(msg.Subjects[1])))
+		}
 	case MsgCantWaitForFullLoad, MsgVehicleSlipped: // the vehicle (name + ordinal); the station
 		if h := m.entity(msg.Subjects[0]); h != nil {
 			veh := m.VehicleName(h.Name, int(h.OrdinalNumber))

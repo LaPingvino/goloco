@@ -258,9 +258,8 @@ func (m *Map) beginNewJourney(tr Train) {
 // airplaneApproachTarget, which the caller does): the edge it was on freed;
 // a new edge taken and marked occupied — or, leaving the airport
 // (airportEdgeNull), a journey begun and, when its next stop is an airport
-// that takes it (any one for an AI's aircraft), that station its target.
-// PARTIAL: the player's "unable to land at airport" message (no
-// MessageManager).
+// that takes it (any one for an AI's aircraft), that station its target —
+// else, for the controlling company, unableToLandAtAirport is posted.
 func (m *Map) airplaneTakeEdge(tr Train, newEdge uint8, om *objects.ObjectManager) {
 	head := &m.Entities[tr.Head]
 	if head.StationID != stationIDNull && head.AirportMovementEdge != airportEdgeNull && int(head.StationID) < len(m.StationNames) {
@@ -296,5 +295,7 @@ func (m *Map) airplaneTakeEdge(tr Train, newEdge uint8, om *objects.ObjectManage
 	}
 	if v := m.aircraftObject(tr, om); v != nil && om.AirportObjects[el.ObjectID].Flags&compatibleAirportType(v) != 0 {
 		head.StationID = sid
-	} // else: unableToLandAtAirport (see PARTIAL)
+	} else if head.Owner == m.ControllingCompany {
+		m.PostMessage(om, MsgUnableToLandAtAirport, head.Owner, head.ID, sid, 0xFFFF)
+	}
 }
