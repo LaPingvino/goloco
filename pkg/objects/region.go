@@ -13,6 +13,8 @@ type RegionObject struct {
 	// one's town filter (0 all towns, 1 may snow, 2 in desert).
 	CargoInfluenceNames      []string
 	CargoInfluenceTownFilter [4]uint8
+	// Flags (0x06): RegionObjectFlags (bit 0 rightHandTraffic).
+	Flags uint16
 }
 
 // ParseRegionObject reads the fields towns use (no images).
@@ -22,6 +24,7 @@ func ParseRegionObject(header *ObjectHeader, data []byte) *RegionObject {
 		return r
 	}
 	n := int(data[0x08])
+	r.Flags = uint16(data[0x06]) | uint16(data[0x07])<<8
 	copy(r.CargoInfluenceTownFilter[:], data[0x0D:0x11])
 	off, name := walkStringTableLang(data, 0x12)
 	r.Name = name
