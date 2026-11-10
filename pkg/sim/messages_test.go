@@ -190,3 +190,37 @@ func TestVehicleMessageText(t *testing.T) {
 		t.Error("the full-load message doesn't name the station")
 	}
 }
+
+// The challenge's end: the controlling company completing it posts the
+// congratulations (with its owner's name); another company completing it
+// posts "have been beaten" and marks the controlling company beaten.
+func TestChallengeMessages(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	pc := int(m.ControllingCompany)
+	other := -1
+	for i := range m.Companies {
+		if i != pc && !m.CompanyEmpty(i) {
+			other = i
+			break
+		}
+	}
+	m.CompanyFaces[pc].ChallengeFlags = 0
+	m.Companies[pc].ChallengeProgress = 100
+	m.evaluateChallengeProgress(pc, om)
+	got := m.Messages[len(m.Messages)-1]
+	t.Logf("%q", got.Text)
+	if got.Type != MsgCongratulationsCompleted || got.Text == "" {
+		t.Errorf("controlling company: %+v", got)
+	}
+	if other < 0 {
+		return
+	}
+	m.CompanyFaces[pc].ChallengeFlags = 0
+	m.Companies[other].ChallengeProgress = 100
+	m.evaluateChallengeProgress(other, om)
+	got = m.Messages[len(m.Messages)-1]
+	t.Logf("%q", got.Text)
+	if got.Type != MsgHaveBeenBeaten || m.CompanyFaces[pc].ChallengeFlags&companyFlagChallengeBeaten == 0 {
+		t.Errorf("another company: %+v, beaten flag %v", got, m.CompanyFaces[pc].ChallengeFlags&companyFlagChallengeBeaten != 0)
+	}
+}

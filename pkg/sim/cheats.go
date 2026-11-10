@@ -1,6 +1,10 @@
 package sim
 
-import "log"
+import (
+	"log"
+
+	"github.com/LaPingvino/goloco/pkg/objects"
+)
 
 // GameCommands/Cheats/Cheat.cpp: the cheat game command's subcommands, and
 // the vehicle shunt cheat.
@@ -66,7 +70,7 @@ func (m *Map) Cheat(c *Cmd, flags uint8, sub CheatCommand, p1, p2, p3 int32) (in
 		m.InitialiseDateYMD(uint16(p1), uint8(p2), uint8(p3))
 		log.Printf("Date set to: Day=%d Month=%d Year=%d", p3, p2, p1) // Logging::info
 	case CheatCompleteChallenge:
-		m.cheatCompleteChallenge(int(p1))
+		m.cheatCompleteChallenge(int(p1), c.Objects)
 	}
 	return 0, true
 }
@@ -163,11 +167,11 @@ func (m *Map) cheatVehicleReliability(ours uint8, rel int32) {
 
 // cheatCompleteChallenge: unless already completed, the challenge flags
 // cleared, progress 100, and the challenge evaluated (completing it).
-func (m *Map) cheatCompleteChallenge(id int) {
+func (m *Map) cheatCompleteChallenge(id int, om *objects.ObjectManager) {
 	if id >= len(m.Companies) || id >= len(m.CompanyFaces) || m.CompanyFaces[id].ChallengeFlags&companyFlagChallengeCompleted != 0 {
 		return
 	}
 	m.CompanyFaces[id].ChallengeFlags &^= companyFlagChallengeBeaten | companyFlagChallengeCompleted | companyFlagChallengeFailed
 	m.Companies[id].ChallengeProgress = 100
-	m.evaluateChallengeProgress(id)
+	m.evaluateChallengeProgress(id, om)
 }

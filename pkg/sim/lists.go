@@ -287,16 +287,23 @@ func (w *Map) VehicleName(id uint16, ordinal int) string {
 // stringIDNewOwner is StringIds::new_owner.
 const stringIDNewOwner = 3
 
-// OwnerName is a company's owner's name (Company::ownerName: a user string,
-// or new_owner's "New Owner"); "" if unknown.
-func (w *Map) OwnerName(id int) string {
+// OwnerName is a company's owner's name (Company::ownerName): a user
+// string, new_owner ("Unnamed{POP16}" — POP16 prints nothing), or — an AI
+// company's, set to competitorObj->name (CompanyManager.cpp:605) — its
+// competitor object's name; "" if unknown.
+func (w *Map) OwnerName(id int, om *objects.ObjectManager) string {
 	if id < 0 || id >= len(w.CompanyFaces) {
 		return ""
 	}
-	if n := w.CompanyFaces[id].OwnerName; n >= 0x8000 && int(n-0x8000) < len(w.UserStrings) {
+	f := w.CompanyFaces[id]
+	switch n := f.OwnerName; {
+	case n >= 0x8000 && int(n-0x8000) < len(w.UserStrings):
 		return w.UserStrings[n-0x8000]
-	} else if n == stringIDNewOwner {
-		return i18n.Str(i18n.NewOwner)
+	case n == stringIDNewOwner:
+		return strings.ReplaceAll(i18n.Str(i18n.NewOwner), "{POP16}", "")
+	case om != nil && int(f.Competitor) < len(om.CompetitorObjects) && om.CompetitorObjects[f.Competitor] != nil:
+		// The object's name starts with pop16 (0x88), which prints nothing.
+		return strings.ReplaceAll(om.CompetitorObjects[f.Competitor].Name, "\x88", "")
 	}
 	return ""
 }
