@@ -1,6 +1,10 @@
 package sim
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/LaPingvino/goloco/pkg/i18n"
+)
 
 func TestMessages(t *testing.T) {
 	m := &Map{ActiveMessageIndex: messageIDNull, CurrentDay: 1000}
@@ -292,5 +296,18 @@ func TestBankruptcyMessages(t *testing.T) {
 	}
 	if m.CompanyFaces[pc].ChallengeFlags&companyFlagBankrupt == 0 {
 		t.Error("not bankrupt after 9 months")
+	}
+}
+
+// A promotion: the controlling company's rating going up posts
+// companyPromoted naming the old and new rating.
+func TestPromotionMessage(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	pc := int(m.ControllingCompany)
+	m.PostMessage(om, MsgCompanyPromoted, 0xFF, uint16(pc), 3, 0xFFFF)
+	got := m.Messages[len(m.Messages)-1].Text
+	t.Logf("%q", got)
+	if !contains(got, " is promoted from ") || !contains(got, locoText(i18n.Str(i18n.CorporateRatingPlatelayer+2))) || !contains(got, locoText(i18n.Str(i18n.CorporateRatingPlatelayer+3))) {
+		t.Errorf("text %q", got)
 	}
 }

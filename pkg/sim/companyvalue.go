@@ -118,9 +118,9 @@ func rotate120[T any](h *[120]T, v T) {
 }
 
 // companiesUpdateMonthly1 is CompanyManager::updateMonthly1 → each company's
-// Company::updateMonthly1. PARTIAL: the competitor start delay, emotions
-// (angry / happy / scared / worried / dejected), the companyPromoted
-// message, the Ui invalidations and stopAllCompanyVehicles on bankruptcy (a
+// Company::updateMonthly1 (the controlling company's promotion posts
+// companyPromoted). PARTIAL: the competitor start delay, emotions
+// (angry / happy / scared / worried / dejected), the Ui invalidations and stopAllCompanyVehicles on bankruptcy (a
 // game command) are not ported. The bankruptcy news are posted (warnings at 3
 // and 6 months in the red for the controlling company, declared at 9).
 func (m *Map) companiesUpdateMonthly1() {
@@ -144,6 +144,9 @@ func (m *Map) companiesUpdateMonthly1() {
 		face.Performance = perf
 		if rating := uint8(min(9, perf/100)); rating > c.CurrentRating { // performanceToRating
 			c.CurrentRating = rating
+			if uint8(id) == m.ControllingCompany {
+				m.PostMessage(nil, MsgCompanyPromoted, 0xFF, uint16(id), uint16(rating), 0xFFFF)
+			}
 		}
 		vp, value := m.CalculateCompanyValue(id)
 		rotate120(&c.CompanyValueHistory, value)
