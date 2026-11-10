@@ -79,7 +79,7 @@ func (m *Map) trackRemoveCost(c *Cmd, a TrackRemoval, p0 PreviewTrack, sx, sy, s
 // one is missing) and, applying, removed; the cost is the piece's sell price
 // plus, when it stood on a bridge, the bridge's. The caller pays under
 // Construction. Signals on the piece go first (a nested SignalRemoval of the
-// sides it has). PARTIAL: setLevelCrossingFlags after each tile, the demolish
+// sides it has); after each tile setLevelCrossingFlags. PARTIAL: the demolish
 // sound.
 func (m *Map) RemoveTrack(c *Cmd, flags uint8, a TrackRemoval, g1 G1Raw) (int32, bool) {
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
@@ -145,6 +145,7 @@ func (m *Map) RemoveTrack(c *Cmd, flags uint8, a TrackRemoval, g1 G1Raw) (int32,
 		}
 		pt.Tracks = append(pt.Tracks[:pi], pt.Tracks[pi+1:]...)
 		pt.removeRef(scenario.KindTrack, pi)
+		m.setLevelCrossingFlags(x, y, z)
 	}
 	total += pieceCost
 	if hadBridge && c.Objects != nil && int(bridge) < len(c.Objects.BridgeObjects) {
