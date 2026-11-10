@@ -303,3 +303,114 @@ func (m *Map) addRoadJunction(c *Cmd, p *core.Prng, x, y, z int32, rad uint16, o
 	m.createRoad(c, roadPlacementArgs{X: x, Y: y, Z: z, Rotation: edge ^ 2, RoadID: newRoad, Bridge: 0xFF, RoadObjectID: roadObj}, CmdApply)
 	return true
 }
+
+const roadFlagCanHaveStreetLights = 1 << 8 // RoadObjectFlags::canHaveStreetLights
+
+// hasNearbyBuildings is 0x00498CB7: any building on the 5×5 tiles round the tile.
+func (m *Map) hasNearbyBuildings(tx, ty int) bool {
+	x0, y0, x1, y1 := m.tileRange(tx-2, ty-2, tx+2, ty+2)
+	for y := y0; y <= y1; y++ {
+		for x := x0; x <= x1; x++ {
+			if len(m.Tiles[y][x].Buildings) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// streetLightStyle is getStreetLightStyle (0x00498C6B): 0 for a road that
+// can't have street lights or a density-0 town; else how many of the street
+// light object's styles the current year has reached.
+func (m *Map) streetLightStyle(om *objects.ObjectManager, roadObj uint8, density uint8) uint8 {
+	ro := om.GetRoadObjectByIndex(int(roadObj))
+	if ro == nil || ro.Flags&roadFlagCanHaveStreetLights == 0 || density == 0 {
+		return 0
+	}
+	for i, y := range om.StreetLightDesignedYears {
+		if m.CurrentYear < y {
+			return uint8(i)
+		}
+	}
+	return uint8(len(om.StreetLightDesignedYears))
+}
+
+// updateAndTakeoverRoad (Town.cpp 0x0047AD83): when the new road object fits
+// the piece, every tile's matching (non-ghost, non-AI, any-road-type
+// compatible) road at its height takes the owner and object, and — without a
+// level crossing — the street light style.
+func (m *Map) updateAndTakeoverRoad(om *objects.ObjectManager, x, y, z int32, rad uint16, newObj, newOwner, light uint8) {
+	id := uint8(rad >> 3 & 0xF)
+	ro := om.GetRoadObjectByIndex(int(newObj))
+	if ro == nil || int(id) >= len(RoadPieces) {
+		return
+	}
+	if pf := RoadCompatibleFlags[id]; ro.RoadPieces&pf != pf {
+		return
+	}
+	sx, sy, sz := x, y, z
+	if rad&4 != 0 {
+		sx, sy, sz = roadEndTile(x, y, z, rad)
+	}
+	dir := uint8(rad & 3)
+	for _, pc := range RoadPieces[id] {
+		ox, oy := rotOffset(pc.X, pc.Y, dir)
+		px, py, pz := sx+int32(ox), sy+int32(oy), sz+int32(pc.Z)
+		t := m.TileAt(int(px)>>5, int(py)>>5)
+		if t == nil || px < 0 || py < 0 {
+			continue
+		}
+		for _, r := range t.Order {
+			if r.Kind != scenario.KindRoad || int(r.Index) >= len(t.Roads) {
+				continue
+			}
+			el := &t.Roads[r.Index]
+			if int32(el.BaseZ)*smallZStep != pz || el.Ghost || el.AiAllocated {
+				continue
+			}
+			if cur := om.GetRoadObjectByIndex(int(el.RoadObjectID)); cur == nil || cur.Flags&roadFlagAnyRoadTypeCompatible == 0 {
+				continue
+			}
+			el.Owner, el.RoadObjectID = newOwner, newObj
+			if !el.HasLevelCrossing {
+				el.LevelCrossingObjectID = light & 3 // setStreetLightStyle: byte 5 bits 2–3
+			}
+		}
+	}
+}
+
+// townRoadUpdate is the grow walk's takeover / update block (Town.cpp, in
+// Town::grow): a company's road is taken over (neutralRoadTakeover) when on
+// a bridge or with buildings near; a neutral one of another type is updated
+// to the ideal one (roadUpdate) when that is no slower and it isn't one way;
+// one of the ideal type gets the town's current street light style. True
+// when the walk stops (after a takeover or a type update).
+func (m *Map) townRoadUpdate(om *objects.ObjectManager, info roadInformation, x, y, z int32, rad uint16, onBridge bool, ideal uint8, density uint8, growFlags uint8) bool {
+	near := func() bool { return onBridge || m.hasNearbyBuildings(int(x)>>5, int(y)>>5) }
+	light := uint8(0)
+	if info.HasStreetLight {
+		light = info.StreetLightStyle
+	}
+	if info.Owner != CompanyNeutral {
+		if growFlags&TownGrowNeutralRoadTakeover != 0 && near() {
+			m.updateAndTakeoverRoad(om, x, y, z, rad, info.RoadObjectID, CompanyNeutral, light)
+			return true
+		}
+		return false
+	}
+	if info.RoadObjectID != ideal {
+		cur, idl := om.GetRoadObjectByIndex(int(info.RoadObjectID)), om.GetRoadObjectByIndex(int(ideal))
+		if cur != nil && idl != nil && cur.Flags&roadFlagIsOneWay == 0 && cur.MaxSpeed <= idl.MaxSpeed &&
+			growFlags&TownGrowRoadUpdate != 0 && near() {
+			m.updateAndTakeoverRoad(om, x, y, z, rad, ideal, info.Owner, light)
+			return true
+		}
+		return false
+	}
+	if growFlags&TownGrowRoadUpdate != 0 && info.HasStreetLight {
+		if ns := m.streetLightStyle(om, info.RoadObjectID, density); ns != info.StreetLightStyle && near() {
+			m.updateAndTakeoverRoad(om, x, y, z, rad, info.RoadObjectID, info.Owner, ns)
+		}
+	}
+	return false
+}

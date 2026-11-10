@@ -66,16 +66,19 @@ type ObjectManager struct {
 	CargoObjects         []*CargoObject          // cargo slot order (reordered per scenario)
 	HillShapesObjects    []*HillShapesObject     // every loaded hill shapes object; HillShapes is the scenario's
 	HillShapes           *HillShapesObject
-	Climate              *ClimateObject              // the scenario's climate
-	Region               *RegionObject               // the scenario\'s region
-	TownNames            *TownNamesObject            // the scenario\'s town names
-	CompetitorObjects    []*CompetitorObject         // competitor slot order (reordered per scenario)
-	StreetLightImage     uint32                      // the StreetLight object's image (0: none loaded)
-	Scaffolding          *ScaffoldingObject          // the Scaffolding object (nil: none loaded)
-	CliffEdgeObjs        map[string]*CliffEdgeObject // keyed by upper-case name
-	WaterObj             *WaterObject                // the single water object (slot 170)
-	InterfaceSkin        *InterfaceSkinObject
-	ObjDataPath          string
+	Climate              *ClimateObject      // the scenario's climate
+	Region               *RegionObject       // the scenario\'s region
+	TownNames            *TownNamesObject    // the scenario\'s town names
+	CompetitorObjects    []*CompetitorObject // competitor slot order (reordered per scenario)
+	StreetLightImage     uint32              // the StreetLight object's image (0: none loaded)
+	// StreetLightDesignedYears is StreetLightObject::designedYear (0x02): the
+	// years each later street light style comes in (getStreetLightStyle).
+	StreetLightDesignedYears [3]uint16
+	Scaffolding              *ScaffoldingObject          // the Scaffolding object (nil: none loaded)
+	CliffEdgeObjs            map[string]*CliffEdgeObject // keyed by upper-case name
+	WaterObj                 *WaterObject                // the single water object (slot 170)
+	InterfaceSkin            *InterfaceSkinObject
+	ObjDataPath              string
 
 	// Sprite pool for object sprites
 	NextSpriteIndex uint32
@@ -441,6 +444,9 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 
 	case ObjectTypeStreetLight: // StreetLightObject::load: name, then the image table (image = its base)
 		if len(decompressed) >= 0xC {
+			for i := range m.StreetLightDesignedYears { // designedYear[3] at 0x02
+				m.StreetLightDesignedYears[i] = uint16(decompressed[0x02+2*i]) | uint16(decompressed[0x03+2*i])<<8
+			}
 			off, _ := walkStringTableLang(decompressed, 0xC)
 			if l, ok := m.G1File.(G1Loader); ok && off < len(decompressed) {
 				if res, err := l.LoadImageTable(decompressed[off:]); err == nil {

@@ -87,3 +87,42 @@ func TestRoadTadConnectionEdge(t *testing.T) {
 		t.Errorf("table %v…", RoadTadConnectionEdge[:4])
 	}
 }
+
+// A company's road beside town buildings is taken over by the town
+// (neutralRoadTakeover): the owner becomes neutral, the object kept.
+func TestTownRoadTakeover(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	// A neutral straight with buildings near, made a company's.
+	tx, ty, ri := -1, -1, -1
+	for y := 4; y < m.Height-4 && tx < 0; y++ {
+		for x := 4; x < m.Width-4; x++ {
+			tl := m.TileAt(x, y)
+			if len(tl.Roads) != 1 || tl.Roads[0].RoadID != 0 || tl.Roads[0].Owner != CompanyNeutral || tl.Roads[0].SequenceIndex != 0 || !m.hasNearbyBuildings(x, y) {
+				continue
+			}
+			if ro := om.GetRoadObjectByIndex(int(tl.Roads[0].RoadObjectID)); ro == nil || ro.Flags&roadFlagAnyRoadTypeCompatible == 0 {
+				continue
+			}
+			tx, ty, ri = x, y, 0
+			break
+		}
+	}
+	if tx < 0 {
+		t.Skip("no neutral town straight near buildings")
+	}
+	el := &m.TileAt(tx, ty).Roads[ri]
+	el.Owner = 3
+	c := &Cmd{Company: CompanyNeutral, Objects: om}
+	rad := uint16(el.Rotation & 3)
+	info := m.getRoadInformation(c, int32(tx)*32, int32(ty)*32, int32(el.BaseZ)*4, rad)
+	if info.Owner != 3 {
+		t.Fatalf("road information owner %d", info.Owner)
+	}
+	obj := el.RoadObjectID
+	if !m.townRoadUpdate(om, info, int32(tx)*32, int32(ty)*32, int32(el.BaseZ)*4, rad, false, obj, 1, TownGrowNeutralRoadTakeover) {
+		t.Fatal("the takeover didn't stop the walk")
+	}
+	if el.Owner != CompanyNeutral || el.RoadObjectID != obj {
+		t.Errorf("after the takeover: owner %d object %d (was %d)", el.Owner, el.RoadObjectID, obj)
+	}
+}

@@ -334,10 +334,10 @@ func (m *Map) buildInitialRoad(c *Cmd, town int) {
 // one (buildInitialRoad), when growFlags allow.
 // constructBuilding runs on each piece off a bridge (constructBuildings);
 // after each step addRoadJunction (allowRoadBranching), the walk ending when
-// it placed a road.
-// PARTIAL (its own port, queue 5.9f3): the takeover of company roads / road
-// type updates / street lights (roadUpdate, neutralRoadTakeover — and their
-// early break out of the walk) — skipped here, so those flags do nothing yet.
+// it placed a road. Before that, on each piece, a company's road is taken
+// over / a road updated to the town's type / its street lights renewed
+// (neutralRoadTakeover, roadUpdate: townRoadUpdate), the walk stopping after
+// a takeover or a type update.
 func (m *Map) GrowTown(om *objects.ObjectManager, town int, growFlags uint8) {
 	c := &Cmd{Company: CompanyNeutral, Objects: om}
 	ext, ok := m.findRoadExtent(town, om)
@@ -367,10 +367,14 @@ func (m *Map) GrowTown(om *objects.ObjectManager, town int, growFlags uint8) {
 	}
 	onBridge := ext.IsBridge
 	for i := 0; i < 75; i++ {
-		if closest, _, ok := m.ClosestTownAndDensity(x, y); !ok || closest != town {
+		closest, density, ok := m.ClosestTownAndDensity(x, y)
+		if !ok || closest != town {
 			break
 		}
 		info := m.getRoadInformation(c, x, y, z, tad)
+		if m.townRoadUpdate(om, info, x, y, z, tad, onBridge, ideal, density, growFlags) {
+			break
+		}
 		if growFlags&TownGrowConstructBuildings != 0 && !onBridge {
 			p = core.NewPrngSeed(tw.Prng[0], tw.Prng[1])
 			m.constructBuilding(c, town, p, x, y, z, tad, growFlags)
