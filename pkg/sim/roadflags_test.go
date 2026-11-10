@@ -28,3 +28,33 @@ func TestScenarioObjectOptions(t *testing.T) {
 		t.Errorf("default land %d", m.LastLandOption)
 	}
 }
+
+// staticSet iterates as the compiled sfl set: newest first, repeats kept in place.
+func TestStaticSetOrder(t *testing.T) {
+	var s staticSet
+	for _, v := range []uint8{0x83, 0x81, 0x80, 0x85, 0x82, 0x84, 0x81} {
+		s.insert(v)
+	}
+	want := []uint8{0x84, 0x82, 0x85, 0x80, 0x81, 0x83} // the probe's output
+	for i := range want {
+		if i >= len(s) || s[i] != want[i] {
+			t.Fatalf("order % x, want % x", []byte(s), want)
+		}
+	}
+}
+
+// After a scenario start (sub_4748D4 with the player company), the toolbar's
+// last road is a road type and the last railroad an available rail track.
+func TestPlayerInfrastructureOptions(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	m.StartScenario(1950, om)
+	pc := m.PlayerCompanies[0]
+	if r := om.GetRoadObjectByIndex(int(m.LastRoadOption &^ (1 << 7))); m.LastRoadOption != 0xFF && (m.LastRoadOption&(1<<7) == 0 || r == nil) {
+		t.Errorf("last road option %#x", m.LastRoadOption)
+	}
+	rails := m.companyAvailableRailTracks(pc, om)
+	t.Logf("last road %#x, last railroad %#x, rail tracks % x", m.LastRoadOption, m.LastRailroadOption, rails)
+	if len(rails) > 0 && m.LastRailroadOption != rails[0] {
+		t.Errorf("last railroad %#x, want %#x", m.LastRailroadOption, rails[0])
+	}
+}

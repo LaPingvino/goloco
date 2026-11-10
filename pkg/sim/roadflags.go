@@ -76,3 +76,103 @@ func (m *Map) UpdateScenarioObjectOptions(om *objects.ObjectManager) {
 	}
 	m.ResetDefaultLandObject(om)
 }
+
+
+// staticSet is sfl::static_unordered_set<uint8_t, 8>'s iteration as the
+// compiled container gives it: unique values, the most recently first
+// inserted first (a value inserted again keeps its place). Checked with a
+// probe built against OpenLoco's sfl (2026-11-10: 83 81 80 85 82 84 → 84 82
+// 85 80 81 83).
+type staticSet []uint8
+
+func (s *staticSet) insert(v uint8) {
+	for _, e := range *s {
+		if e == v {
+			return
+		}
+	}
+	*s = append(staticSet{v}, *s...)
+}
+
+// companyAvailableRoads is companyGetAvailableRoads (0x00478265): the road
+// types the company's unlocked road vehicles run on and the any-road-type
+// roads (bit 7 set), without the rail (tram) ones.
+func (m *Map) companyAvailableRoads(company uint8, om *objects.ObjectManager) []uint8 {
+	var roads staticSet
+	for i, v := range om.Vehicles {
+		if v != nil && m.isVehicleIndexUnlocked(company, uint16(i)) && v.Mode == objects.TransportModeRoad {
+			if tt := om.TrackTypeFor(v); tt != 0xFF {
+				roads.insert(tt | 1<<7)
+			}
+		}
+	}
+	for i := range om.RoadObjects {
+		if r := om.GetRoadObjectByIndex(i); r != nil && r.Flags&roadFlagAnyRoadTypeCompatible != 0 {
+			roads.insert(uint8(i) | 1<<7)
+		}
+	}
+	var out []uint8
+	for _, id := range roads {
+		if r := om.GetRoadObjectByIndex(int(id &^ (1 << 7))); r != nil && r.Flags&roadObjFlagIsRail == 0 {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// companyAvailableRailTracks is companyGetAvailableRailTracks (0x004A6841):
+// the track types the company's unlocked rail vehicles run on (not road
+// tracks), then the rail (tram) roads (bit 7 set).
+func (m *Map) companyAvailableRailTracks(company uint8, om *objects.ObjectManager) []uint8 {
+	var tracks staticSet
+	for i, v := range om.Vehicles {
+		if v != nil && m.isVehicleIndexUnlocked(company, uint16(i)) && v.Mode == objects.TransportModeRail {
+			tracks.insert(om.TrackTypeFor(v))
+		}
+	}
+	var out []uint8
+	for _, id := range tracks {
+		if t := om.GetTrackObjectByIndex(int(id)); t != nil && t.Flags&trackObjFlagIsRoad == 0 {
+			out = append(out, id)
+		}
+	}
+	var roads staticSet
+	for i, v := range om.Vehicles {
+		if v != nil && m.isVehicleIndexUnlocked(company, uint16(i)) && v.Mode == objects.TransportModeRoad {
+			if tt := om.TrackTypeFor(v); tt != 0xFF {
+				roads.insert(tt | 1<<7)
+			}
+		}
+	}
+	for i := range om.RoadObjects {
+		if r := om.GetRoadObjectByIndex(i); r != nil && r.Flags&roadFlagAnyRoadTypeCompatible != 0 {
+			roads.insert(uint8(i) | 1<<7)
+		}
+	}
+	for _, id := range roads {
+		if r := om.GetRoadObjectByIndex(int(id &^ (1 << 7))); r != nil && r.Flags&roadObjFlagIsRail != 0 {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// UpdatePlayerInfrastructureOptions is CompanyManager's
+// updatePlayerInfrastructureOptions: the toolbar's last road (the last track
+// type option as a road, else the player's first available road) and last
+// railroad (the first available rail track), 0xFF none.
+func (m *Map) UpdatePlayerInfrastructureOptions(om *objects.ObjectManager) {
+	pc := m.PlayerCompanies[0]
+	road := m.LastTrackTypeOption | 1<<7
+	if road == 0xFF {
+		road = 0xFF
+		if r := m.companyAvailableRoads(pc, om); len(r) > 0 {
+			road = r[0]
+		}
+	}
+	m.LastRoadOption = road
+	m.LastRailroadOption = 0xFF
+	if t := m.companyAvailableRailTracks(pc, om); len(t) > 0 {
+		m.LastRailroadOption = t[0]
+	}
+}
