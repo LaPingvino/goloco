@@ -2,8 +2,10 @@ package sim
 
 // VehicleBogie::update (0x004AA008) and updateRoll (0x004AAC02).
 //
-// PARTIAL: bogie collisions (checkForCollisions / collision) and the crashed
-// segment update (updateSegmentCrashed) are not ported.
+// PARTIAL: bogie collisions — the detection is ported (CheckForCollisions,
+// collision.go) but not yet called from the motion; VehicleBogie::collision /
+// destroyTrain and the crashed segment update (updateSegmentCrashed) are not
+// ported.
 
 // WheelSlippingDuration is kWheelSlippingDuration (ticks).
 const WheelSlippingDuration = 64
