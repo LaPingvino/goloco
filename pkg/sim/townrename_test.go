@@ -27,7 +27,7 @@ func TestRenameTown(t *testing.T) {
 	// A station named after town 0 ("{town}" or a template on it).
 	st := -1
 	for i, sn := range m.StationNames {
-		if sn.Name != 0 && sn.Town == 0 {
+		if sn.Name != stationNameNull && sn.Town == 0 {
 			st = i
 			break
 		}

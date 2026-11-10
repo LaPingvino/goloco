@@ -30,8 +30,8 @@ func (w *Map) StationName(id int) string {
 	}
 	sn := w.StationNames[id]
 	town := ""
-	if int(sn.Town) < len(w.Towns) {
-		town = w.TownName(w.Towns[sn.Town].Name, int(sn.Town))
+	if tw := w.TownByID(sn.Town); tw != nil { // TownManager::get: by id (Towns skips empty slots)
+		town = w.TownName(tw.Name, int(sn.Town))
 	}
 	switch {
 	case sn.Name >= 0x8000 && sn.Name < 0x8000+2048:

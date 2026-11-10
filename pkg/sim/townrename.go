@@ -31,7 +31,7 @@ func (m *Map) RenameTown(c *Cmd, flags uint8, town int, name string, g1 G1Raw) (
 	m.emptyUserString(old)
 	m.UpdateTownLabel(town, g1)
 	for i := range m.StationNames {
-		if m.StationNames[i].Name != 0 { // stations(): the live ones
+		if m.StationNames[i].Name != stationNameNull { // stations(): the live ones
 			m.UpdateStationLabel(i, g1)
 		}
 	}
