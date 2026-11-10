@@ -119,9 +119,10 @@ func rotate120[T any](h *[120]T, v T) {
 
 // companiesUpdateMonthly1 is CompanyManager::updateMonthly1 → each company's
 // Company::updateMonthly1. PARTIAL: the competitor start delay, emotions
-// (angry / happy / scared / worried / dejected), the companyPromoted and
-// bankruptcy messages, the Ui invalidations and stopAllCompanyVehicles on
-// bankruptcy (a game command) are not ported.
+// (angry / happy / scared / worried / dejected), the companyPromoted
+// message, the Ui invalidations and stopAllCompanyVehicles on bankruptcy (a
+// game command) are not ported. The bankruptcy news are posted (warnings at 3
+// and 6 months in the red for the controlling company, declared at 9).
 func (m *Map) companiesUpdateMonthly1() {
 	for id := range m.Companies {
 		if id >= len(m.CompanyFaces) || m.CompanyEmpty(id) {
@@ -161,9 +162,22 @@ func (m *Map) companiesUpdateMonthly1() {
 			if c.Cash < 0 {
 				c.NumMonthsInTheRed++
 				if c.NumMonthsInTheRed == 9 {
+					msg := MsgBankruptcyDeclaredCompetitor
+					if uint8(id) == m.ControllingCompany {
+						msg = MsgBankruptcyDeclared
+					}
+					m.PostMessage(nil, msg, uint8(id), uint16(id), 0xFFFF, 0xFFFF) // the text needs no objects
 					face.ChallengeFlags |= companyFlagBankrupt
 					if face.ChallengeFlags&(companyFlagChallengeBeaten|companyFlagChallengeCompleted) == 0 {
 						face.ChallengeFlags |= companyFlagChallengeFailed
+					}
+				}
+				if uint8(id) == m.ControllingCompany {
+					switch c.NumMonthsInTheRed {
+					case 3:
+						m.PostMessage(nil, MsgBankruptcyWarning6MonthsRemaining, uint8(id), uint16(id), 0xFFFF, 0xFFFF)
+					case 6:
+						m.PostMessage(nil, MsgBankruptcyWarning3MonthsRemaining, uint8(id), uint16(id), 0xFFFF, 0xFFFF)
 					}
 				}
 			} else {

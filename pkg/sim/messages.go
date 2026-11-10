@@ -246,6 +246,11 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 		if om != nil && int(msg.Subjects[0]) < len(om.Vehicles) && om.Vehicles[msg.Subjects[0]] != nil {
 			s = fillStringIDs(locoText(i18n.Str(i18n.MessageNewVehicleInvented)), om.Vehicles[msg.Subjects[0]].DisplayName)
 		}
+	case MsgBankruptcyWarning6MonthsRemaining, MsgBankruptcyWarning3MonthsRemaining, MsgBankruptcyDeclared, MsgBankruptcyDeclaredCompetitor: // the company's name
+		id := map[MessageType]int{MsgBankruptcyWarning6MonthsRemaining: i18n.MessageBankruptcyWarning6MonthsRemaining,
+			MsgBankruptcyWarning3MonthsRemaining: i18n.MessageBankruptcyWarning3MonthsRemaining,
+			MsgBankruptcyDeclared:                i18n.MessageBankrupt, MsgBankruptcyDeclaredCompetitor: i18n.MessageBankrupt2}[msg.Type]
+		s = fillStringIDs(locoText(i18n.Str(id)), m.companyNameLoco(int(msg.Subjects[0])))
 	case MsgNewIndustry: // the industry object's name, the industry's town
 		if i := m.industryIndex(msg.Subjects[0]); i >= 0 && om != nil {
 			ind := m.Industries[i]
@@ -351,4 +356,13 @@ func (m *Map) ownerName(company int, om *objects.ObjectManager) string {
 		return locoText(m.OwnerName(company, om)) // the pack's (UTF-8) string
 	}
 	return m.OwnerName(company, om) // a user string or an object's: Loco bytes already
+}
+
+// companyNameLoco is CompanyName as Loco bytes (user strings are stored so;
+// the pack's strings converted).
+func (m *Map) companyNameLoco(company int) string {
+	if company >= 0 && company < len(m.CompanyNames) && m.CompanyNames[company] >= kUserStringsStart {
+		return m.CompanyName(company)
+	}
+	return locoText(m.CompanyName(company))
 }

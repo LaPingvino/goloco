@@ -261,3 +261,36 @@ func TestNewVehicleMessage(t *testing.T) {
 		t.Error("no newVehicle message")
 	}
 }
+
+// Months in the red: the controlling company is warned at 3 and 6 and
+// declared bankrupt at 9, each with its company's name.
+func TestBankruptcyMessages(t *testing.T) {
+	m, _ := loadDataMap(t, "title.dat")
+	pc := int(m.ControllingCompany)
+	for i := range m.Companies {
+		if i != pc {
+			m.Companies[i].Cash = 1 << 30 // keep the others out of the red
+		}
+	}
+	m.CompanyFaces[pc].ChallengeFlags &^= companyFlagBankrupt
+	m.Companies[pc].NumMonthsInTheRed = 0
+	n := len(m.Messages)
+	var types []MessageType
+	for range 9 {
+		m.Companies[pc].Cash = -1000000
+		m.companiesUpdateMonthly1()
+	}
+	for _, e := range m.Messages[n:] {
+		if e.CompanyID == uint8(pc) {
+			types = append(types, e.Type)
+			t.Logf("%q", e.Text)
+		}
+	}
+	want := []MessageType{MsgBankruptcyWarning6MonthsRemaining, MsgBankruptcyWarning3MonthsRemaining, MsgBankruptcyDeclared}
+	if len(types) != 3 || types[0] != want[0] || types[1] != want[1] || types[2] != want[2] {
+		t.Errorf("posted %v, want %v", types, want)
+	}
+	if m.CompanyFaces[pc].ChallengeFlags&companyFlagBankrupt == 0 {
+		t.Error("not bankrupt after 9 months")
+	}
+}
