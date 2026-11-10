@@ -510,7 +510,13 @@ type SignalElement struct {
 // SignalSide is SignalElement::Side (_4, _5).
 type SignalSide struct{ B4, B5 uint8 }
 
-func (s SignalSide) HasSignal() bool  { return s.B4&0x80 != 0 }
+func (s SignalSide) HasSignal() bool { return s.B4&0x80 != 0 }
+func (s *SignalSide) SetHasSignal(v bool) {
+	s.B4 &^= 0x80
+	if v {
+		s.B4 |= 0x80
+	}
+}
 func (s SignalSide) IsOccupied() bool { return s.B4&0x40 != 0 }
 func (s SignalSide) Unk4() uint8      { return (s.B4 >> 4) & 3 }
 func (s SignalSide) AllLights() uint8 { return s.B5 >> 4 }
