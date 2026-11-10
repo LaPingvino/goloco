@@ -1,6 +1,11 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/objects"
+import (
+	"strings"
+
+	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/objects"
+)
 
 // MessageManager (MessageManager.cpp): the news / advice message store in the
 // GameState — posting with dedup and eviction, removal, subject clean-up and
@@ -178,9 +183,10 @@ func (m *Map) UpdateMessagesDaily() {
 	}
 }
 
-// messageText is post's formatString per message type, cut at 197 bytes as
+// messageText is post's formatString per message type, as Loco-encoded bytes
+// (messageString: the save's messages are stored so), cut at 197 bytes as
 // upstream (locoStrlen, then the two-byte 0xFF check). Formatted so far: the
-// industry messages (closing down, production up / down — the industry
+// cargo accepted / no longer accepted messages, and the industry messages (closing down, production up / down — the industry
 // object's nameClosingDown / nameUpProduction / nameDownProduction with the
 // industry's name for its stringidArgs). PARTIAL: the other types (empty
 // text; the news window will need them).
@@ -190,6 +196,16 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 	case MsgIndustryClosingDown, MsgIndustryProductionUp, MsgIndustryProductionDown:
 		k := map[MessageType]int{MsgIndustryClosingDown: 3, MsgIndustryProductionUp: 4, MsgIndustryProductionDown: 5}[msg.Type]
 		s = m.industryMessage(om, msg.Subjects[0], k)
+	case MsgCargoNowAccepted, MsgCargoNoLongerAccepted: // the station (with its town), the cargo
+		id := i18n.MessageNowAccepts
+		if msg.Type == MsgCargoNoLongerAccepted {
+			id = i18n.MessageNoLongerAccepts
+		}
+		cargo := ""
+		if om != nil && int(msg.Subjects[1]) < len(om.CargoObjects) && om.CargoObjects[msg.Subjects[1]] != nil {
+			cargo = locoText(om.CargoObjects[msg.Subjects[1]].Name)
+		}
+		s = fillStringIDs(locoText(i18n.Str(id)), m.StationName(int(msg.Subjects[0])), cargo)
 	}
 	if len(s) > 197 {
 		s = s[:197]
@@ -224,4 +240,30 @@ func (m *Map) industryMessage(om *objects.ObjectManager, id uint16, k int) strin
 		return string(out)
 	}
 	return ""
+}
+
+// locoText is a UTF-8 string (a language pack's or an object's) as Loco bytes
+// (convertUnicodeToLoco per character).
+func locoText(s string) string {
+	b := make([]byte, 0, len(s))
+	for _, r := range s {
+		b = append(b, byte(i18n.LocoChar(r)))
+	}
+	return string(b)
+}
+
+// fillStringIDs puts the (already formatted, Loco-encoded) arguments in for
+// the template's {STRINGID}s in order; other codes are left as written.
+func fillStringIDs(tmpl string, args ...string) string {
+	var b strings.Builder
+	for {
+		i := strings.Index(tmpl, "{STRINGID}")
+		if i < 0 || len(args) == 0 {
+			b.WriteString(tmpl)
+			return b.String()
+		}
+		b.WriteString(tmpl[:i])
+		b.WriteString(args[0])
+		args, tmpl = args[1:], tmpl[i+len("{STRINGID}"):]
+	}
 }

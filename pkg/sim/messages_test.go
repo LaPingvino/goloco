@@ -95,3 +95,40 @@ func contains(s, sub string) bool {
 	}
 	return false
 }
+
+// A controlling-company station whose acceptance comes back posts "now
+// accepts", formatted with the station and the cargo.
+func TestCargoAcceptedMessage(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	id, cargo := -1, -1
+	for i, st := range m.StationNames {
+		if st.Name == stationNameNull {
+			continue
+		}
+		for c := range st.Cargo {
+			if st.Cargo[c].Flags&cargoStatAccepted != 0 {
+				id, cargo = i, c
+				break
+			}
+		}
+		if id >= 0 {
+			break
+		}
+	}
+	if id < 0 {
+		t.Skip("no station accepting cargo")
+	}
+	m.ControllingCompany = m.StationNames[id].Owner
+	m.StationNames[id].Cargo[cargo].Flags &^= cargoStatAccepted
+	n := len(m.Messages)
+	m.ScenarioTicks = uint32(id) // stationsUpdate runs station scenarioTicks & 0x3FF
+	m.stationsUpdate(om)
+	if len(m.Messages) != n+1 {
+		t.Fatalf("%d messages posted, want 1", len(m.Messages)-n)
+	}
+	got := m.Messages[len(m.Messages)-1]
+	t.Logf("%q", got.Text)
+	if got.Type != MsgCargoNowAccepted || int(got.Subjects[0]) != id || int(got.Subjects[1]) != cargo || !contains(got.Text, " now accepts ") {
+		t.Errorf("message %+v", got)
+	}
+}
