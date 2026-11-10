@@ -299,9 +299,13 @@ func CalcDays(year, month, day int) uint32 {
 // day progression and scenario ticks reset, inflation set for the year.
 // PARTIAL: the season, the vehicle preview rotation and
 // CompanyManager::determineAvailableVehicles.
-func (m *Map) InitialiseDate(year uint16) {
-	m.CurrentDay = CalcDays(int(year), 0, 1)
-	m.CurrentYear, m.CurrentMonth, m.CurrentDayOfMonth = year, 0, 0 // setDate: day − 1
+func (m *Map) InitialiseDate(year uint16) { m.InitialiseDateYMD(year, 0, 1) }
+
+// InitialiseDateYMD is initialiseDate(year, month, day) (month 0-based, day
+// 1-based), as InitialiseDate.
+func (m *Map) InitialiseDateYMD(year uint16, month, day uint8) {
+	m.CurrentDay = CalcDays(int(year), int(month), int(day))
+	m.CurrentYear, m.CurrentMonth, m.CurrentDayOfMonth = year, month, day-1 // setDate: day − 1
 	m.DayCounter = 0
 	m.ScenarioTicks = 0
 	m.SetInflationForYear(m.CurrentYear)

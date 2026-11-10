@@ -1551,6 +1551,7 @@ type CompanyEconomy struct {
 	HeadquartersX            int16         // 0x257A −1: no headquarters
 	HeadquartersY            int16         // 0x257C
 	HeadquartersZ            uint8         // 0x2579 (SmallZ)
+	JailStatus               uint16        // 0x8E34 jailStatus (days left in jail)
 	CargoUnitsDistanceHist   [120]uint32   // 0x8C54
 	CargoUnitsDeliveredHist  [120]uint32   // 0x85FC
 	PerformanceIndexHist     [120]int16    // 0x87DC
@@ -1576,6 +1577,9 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 		c.HeadquartersX = int16(binary.LittleEndian.Uint16(r[0x257A:]))
 		c.HeadquartersY = int16(binary.LittleEndian.Uint16(r[0x257C:]))
 		c.HeadquartersZ = r[0x2579]
+		if len(r) > 0x8E35 {
+			c.JailStatus = binary.LittleEndian.Uint16(r[0x8E34:])
+		}
 		c.AvailableVehicles = binary.LittleEndian.Uint16(r[0x50:])
 		for k := range c.TransportTypeCount {
 			c.TransportTypeCount[k] = binary.LittleEndian.Uint16(r[0x8BA4+2*k:])
