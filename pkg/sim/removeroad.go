@@ -85,7 +85,7 @@ func (m *Map) roadRemoveCost(c *Cmd, a RoadRemoval, p0 PreviewTrack, sx, sy, sz 
 // bridge's (OpenLoco's addition). A road stop on the piece goes first (a
 // nested RoadStationRemoval), unless another road at that height also uses
 // it. The caller pays under Construction.
-// PARTIAL: setLevelCrossingFlags after each tile; madeAnyChanges; the sound.
+// After each tile setLevelCrossingFlags. PARTIAL: madeAnyChanges; the sound.
 func (m *Map) RemoveRoad(c *Cmd, flags uint8, a RoadRemoval, g1 G1Raw) (int32, bool) {
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
 	if int(a.RoadID) >= len(RoadPieces) {
@@ -138,6 +138,7 @@ func (m *Map) RemoveRoad(c *Cmd, flags uint8, a RoadRemoval, g1 G1Raw) (int32, b
 		}
 		pt.Roads = append(pt.Roads[:pi], pt.Roads[pi+1:]...)
 		pt.removeRef(scenario.KindRoad, pi)
+		m.setLevelCrossingFlags(x, y, z)
 	}
 	total += pieceCost
 	if removeBridge && el.Owner != CompanyNeutral && c.Objects != nil && int(bridge) < len(c.Objects.BridgeObjects) {
