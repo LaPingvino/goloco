@@ -229,9 +229,8 @@ func (m *Map) industriesUpdateMonthly(om *objects.ObjectManager) {
 // prng); the month's produced share kept in the 20-year histories (÷ 50,
 // at most 255); the monthly totals moved to the previous month's and the
 // percentage transported worked out; an industry closing down with no
-// production left removed (RemoveIndustry). PARTIAL: the news messages
-// (MessageManager::post: production up / down, closing down) — goloco has
-// no messages yet.
+// production left removed (RemoveIndustry); the news posted for production
+// up / down and closing down (MessageManager::post).
 func (m *Map) industryUpdateMonthly(ind *scenario.Industry, om *objects.ObjectManager) {
 	if ind.Flags&industryFlagIsGhost != 0 {
 		return
@@ -250,10 +249,12 @@ func (m *Map) industryUpdateMonthly(ind *scenario.Industry, om *objects.ObjectMa
 		if m.isMonthlyProductionUp(ind, obj) {
 			ind.DailyProductionTarget[0] = min(100, ind.DailyProductionTarget[0]*2)
 			ind.DailyProductionTarget[1] = min(100, ind.DailyProductionTarget[1]*2)
+			m.PostMessage(om, MsgIndustryProductionUp, 0xFF, uint16(ind.ID), 0xFFFF, 0xFFFF)
 			event = true
 		} else if m.isMonthlyProductionDown(ind, obj) {
 			ind.DailyProductionTarget[0] /= 2
 			ind.DailyProductionTarget[1] /= 2
+			m.PostMessage(om, MsgIndustryProductionDown, 0xFF, uint16(ind.ID), 0xFFFF, 0xFFFF)
 			event = true
 		}
 	}
@@ -261,6 +262,7 @@ func (m *Map) industryUpdateMonthly(ind *scenario.Industry, om *objects.ObjectMa
 		if m.isMonthlyProductionClosing(ind, obj) {
 			ind.Flags |= industryFlagClosingDown
 			ind.DailyProductionTarget = [2]uint16{}
+			m.PostMessage(om, MsgIndustryClosingDown, 0xFF, uint16(ind.ID), 0xFFFF, 0xFFFF)
 		}
 	}
 	for k := 0; k < 2; k++ {

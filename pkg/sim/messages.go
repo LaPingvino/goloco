@@ -1,5 +1,7 @@
 package sim
 
+import "github.com/LaPingvino/goloco/pkg/objects"
+
 // MessageManager (MessageManager.cpp): the news / advice message store in the
 // GameState — posting with dedup and eviction, removal, subject clean-up and
 // the daily expiry. The descriptors are generated (messagetypes_gen.go).
@@ -87,9 +89,9 @@ func (m *Map) messageDuration(t MessageType) int64 {
 // type and subjects is there; at the limit, among the messages already
 // shown (timeActive ≠ 0) the one with the most life left (duration + date −
 // today, which upstream names "oldest"; ages below 0 never qualify) goes,
-// else the same over all. PARTIAL: the message text (formatString per type), the window
+// else the same over all; the text formatted at posting (messageText). PARTIAL: the window
 // invalidation.
-func (m *Map) PostMessage(t MessageType, company uint8, a, b, c uint16) {
+func (m *Map) PostMessage(om *objects.ObjectManager, t MessageType, company uint8, a, b, c uint16) {
 	msg := Message{Type: t, CompanyID: company, Subjects: [3]uint16{a, b, c}, Date: m.CurrentDay}
 	if int(t) < len(MessageTypeDescriptors) && MessageTypeDescriptors[t].Flags&msgFlagShouldDedup != 0 {
 		for _, e := range m.Messages {
@@ -117,6 +119,7 @@ func (m *Map) PostMessage(t MessageType, company uint8, a, b, c uint16) {
 			m.removeMessage(at)
 		}
 	}
+	msg.Text = m.messageText(msg, om)
 	m.Messages = append(m.Messages, msg)
 }
 
@@ -173,4 +176,52 @@ func (m *Map) UpdateMessagesDaily() {
 			m.removeMessage(i)
 		}
 	}
+}
+
+// messageText is post's formatString per message type, cut at 197 bytes as
+// upstream (locoStrlen, then the two-byte 0xFF check). Formatted so far: the
+// industry messages (closing down, production up / down — the industry
+// object's nameClosingDown / nameUpProduction / nameDownProduction with the
+// industry's name for its stringidArgs). PARTIAL: the other types (empty
+// text; the news window will need them).
+func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
+	var s string
+	switch msg.Type {
+	case MsgIndustryClosingDown, MsgIndustryProductionUp, MsgIndustryProductionDown:
+		k := map[MessageType]int{MsgIndustryClosingDown: 3, MsgIndustryProductionUp: 4, MsgIndustryProductionDown: 5}[msg.Type]
+		s = m.industryMessage(om, msg.Subjects[0], k)
+	}
+	if len(s) > 197 {
+		s = s[:197]
+	}
+	return s
+}
+
+// industryMessage formats the industry object's string table k with the
+// industry (by id) as stringidArgs' argument (its name, which takes its town).
+func (m *Map) industryMessage(om *objects.ObjectManager, id uint16, k int) string {
+	if om == nil {
+		return ""
+	}
+	for i := range m.Industries {
+		if uint16(m.Industries[i].ID) != id {
+			continue
+		}
+		obj := om.GetIndustryObjectByIndex(int(m.Industries[i].ObjectID))
+		if obj == nil {
+			return ""
+		}
+		name, _ := m.IndustryName(i, om)
+		var out []byte
+		for _, c := range obj.RawStrings[k] {
+			switch {
+			case c == 0x83: // stringidArgs: the industry's name
+				out = append(out, name...)
+			case c >= 0x20 && c < 0x7F:
+				out = append(out, c)
+			}
+		}
+		return string(out)
+	}
+	return ""
 }
