@@ -111,22 +111,39 @@ func (m *Map) companiesUpdateDaily(om *objects.ObjectManager) {
 	}
 	m.Companies[id].ChallengeProgress = m.NewChallengeProgress(id, om)
 	if m.CompanyFaces[id].ChallengeFlags&(companyFlagChallengeBeaten|companyFlagChallengeCompleted|companyFlagChallengeFailed) == 0 {
-		m.evaluateChallengeProgress(id)
+		m.evaluateChallengeProgress(id, om)
 	}
 	m.updateLoanAutorepay(id) // updateDailyControllingPlayer
 }
 
-// evaluateChallengeProgress: progress 100 completes the challenge, 255 fails
-// it (the player company; no secondary player). PARTIAL: the messages, owner
-// emotions, the company window's challenge tab and saveNewScore
-// (completedChallengeInMonths is set).
-func (m *Map) evaluateChallengeProgress(id int) {
+// evaluateChallengeProgress (Company.cpp): progress 100 completes the
+// challenge — for the controlling company the secondary player is marked
+// beaten and congratulationsCompleted posted, for another the controlling
+// company is marked beaten and haveBeenBeaten posted; either way the months
+// taken are kept —, 255 fails it (failedObjectives for the controlling
+// company). PARTIAL: owner emotions, the company window's challenge tab,
+// saveNewScore.
+func (m *Map) evaluateChallengeProgress(id int, om *objects.ObjectManager) {
 	switch m.Companies[id].ChallengeProgress {
 	case 100:
 		m.CompanyFaces[id].ChallengeFlags |= companyFlagChallengeCompleted
+		if uint8(id) == m.ControllingCompany {
+			if s := int(m.PlayerCompanies[1]); s != companyIDNull && s < len(m.CompanyFaces) {
+				m.CompanyFaces[s].ChallengeFlags |= companyFlagChallengeBeaten
+			}
+			m.PostMessage(om, MsgCongratulationsCompleted, uint8(id), uint16(id), 0xFFFF, 0xFFFF)
+		} else {
+			if c := int(m.ControllingCompany); c != companyIDNull && c < len(m.CompanyFaces) {
+				m.CompanyFaces[c].ChallengeFlags |= companyFlagChallengeBeaten
+			}
+			m.PostMessage(om, MsgHaveBeenBeaten, uint8(id), uint16(id), 0xFFFF, 0xFFFF)
+		}
 		m.ObjectiveCompletedInMonths = m.ObjectiveMonthsInChallenge
 	case 255:
 		m.CompanyFaces[id].ChallengeFlags |= companyFlagChallengeFailed
+		if uint8(id) == m.ControllingCompany {
+			m.PostMessage(om, MsgFailedObjectives, uint8(id), uint16(id), 0xFFFF, 0xFFFF)
+		}
 	}
 }
 

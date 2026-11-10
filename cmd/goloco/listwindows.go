@@ -1694,7 +1694,7 @@ func (g *Game) companyStatus(company int) ui.CompanyStatus {
 	if face > 0 {
 		face++
 	}
-	st := ui.CompanyStatus{Face: face, FaceColour: col, OwnerName: g.w.Map.OwnerName(company), Status: i18n.Str(i18n.CompanyStatusEmpty)}
+	st := ui.CompanyStatus{Face: face, FaceColour: col, OwnerName: g.w.Map.OwnerName(company, g.objMgr), Status: i18n.Str(i18n.CompanyStatusEmpty)}
 	if company < len(g.w.Map.CompanyFaces) && g.w.Map.CompanyFaces[company].ChallengeFlags&(1<<9) != 0 {
 		st.Status = i18n.Str(i18n.CompanyStatusBankrupt)
 	}
@@ -1712,7 +1712,7 @@ func (g *Game) companyDetails(company int) ui.CompanyDetails {
 	c, f := &m.Companies[company], &m.CompanyFaces[company]
 	y, mo, d := uilayout.CalcDate(c.StartedDate)
 	det := ui.CompanyDetails{Started: uilayout.DateDMY(d, i18n.Month(mo+1), y), Performance: f.Performance,
-		OwnerName: m.OwnerName(company), Counts: c.TransportTypeCount, Headquarters: c.HeadquartersX != -1}
+		OwnerName: m.OwnerName(company, g.objMgr), Counts: c.TransportTypeCount, Headquarters: c.HeadquartersX != -1}
 	switch {
 	case f.ChallengeFlags&(1<<5) != 0: // decreasedPerformance
 		det.Trend = -1

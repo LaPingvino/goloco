@@ -9,7 +9,8 @@ import (
 // (0x004B9987), updateLastJourneyAverageSpeed (0x004BACAF) and
 // beginUnloading (0x004B99E1).
 //
-// PARTIAL: updateLastJourneyAverageSpeed's newSpeedRecord message and the
+// updateLastJourneyAverageSpeed posts newSpeedRecord (its text PARTIAL:
+// {VELOCITY}). PARTIAL: the
 // owner's happy emotion (goloco has no messages or activeEmotions yet); the
 // unloading / loading that follow (updateUnloadCargo, updateLoadCargo,
 // beginNewJourney, item 5.7 part 2) are not ported, so an unloading vehicle
@@ -99,4 +100,5 @@ func (m *Map) updateLastJourneyAverageSpeed(tr Train) {
 	rec.Speed[recordType] = uint16(avg)
 	rec.Date[recordType] = m.CurrentDay
 	rec.Company[recordType] = head.Owner
+	m.PostMessage(nil, MsgNewSpeedRecord, head.Owner, head.ID, uint16(head.Owner), uint16(recordType))
 }

@@ -204,13 +204,13 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 		}
 		cargo := ""
 		if om != nil && int(msg.Subjects[1]) < len(om.CargoObjects) && om.CargoObjects[msg.Subjects[1]] != nil {
-			cargo = locoText(om.CargoObjects[msg.Subjects[1]].Name)
+			cargo = om.CargoObjects[msg.Subjects[1]].Name // an object string: Loco bytes
 		}
 		s = fillStringIDs(locoText(i18n.Str(id)), m.StationName(int(msg.Subjects[0])), cargo)
 	case MsgCitizensCelebrate, MsgWorkersCelebrate: // subject 2: the cargo << 8 | the town / industry
 		cargo := ""
 		if co := m.cargoObject(om, msg.Subjects[2]>>8); co != nil {
-			cargo = locoText(co.Name)
+			cargo = co.Name // an object string: Loco bytes
 		}
 		if msg.Type == MsgCitizensCelebrate {
 			id := i18n.MessageFirstStringArriveAt
@@ -238,12 +238,16 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 				s = fillStringIDs(locoText(i18n.Str(i18n.MessageNotAllowedToWaitForFullLoadAt)), veh, m.StationName(int(msg.Subjects[1])))
 			}
 		}
+	case MsgCongratulationsCompleted, MsgFailedObjectives, MsgHaveBeenBeaten: // the company's owner name
+		id := map[MessageType]int{MsgCongratulationsCompleted: i18n.MessageCongratulationsYouHaveCompleted,
+			MsgFailedObjectives: i18n.MessageFailureYouHaveFailed, MsgHaveBeenBeaten: i18n.MessageBeatenHasCompleted}[msg.Type]
+		s = fillStringIDs(locoText(i18n.Str(id)), m.ownerName(int(msg.Subjects[0]), om))
 	case MsgNewIndustry: // the industry object's name, the industry's town
 		if i := m.industryIndex(msg.Subjects[0]); i >= 0 && om != nil {
 			ind := m.Industries[i]
 			obj, town := "", ""
 			if o := om.GetIndustryObjectByIndex(int(ind.ObjectID)); o != nil {
-				obj = locoText(o.Name)
+				obj = o.Name // an object string (cleaned to ASCII)
 			}
 			if tw := m.TownByID(ind.Town); tw != nil {
 				town = m.TownName(tw.Name, int(tw.ID))
@@ -286,7 +290,7 @@ func (m *Map) industryMessage(om *objects.ObjectManager, id uint16, k int) strin
 	return ""
 }
 
-// locoText is a UTF-8 string (a language pack's or an object's) as Loco bytes
+// locoText is a UTF-8 string (a language pack's — object strings are Loco bytes already) as Loco bytes
 // (convertUnicodeToLoco per character), {NEWLINE} as its control code (5).
 func locoText(s string) string {
 	s = strings.ReplaceAll(s, "{NEWLINE}", "\x05")
@@ -334,4 +338,13 @@ func fillStringIDs(tmpl string, args ...string) string {
 		b.WriteString(args[0])
 		args, tmpl = args[1:], tmpl[i+len("{STRINGID}"):]
 	}
+}
+
+// ownerName is OwnerName as Loco bytes: user strings and object strings are
+// stored so; only the pack's new_owner is converted.
+func (m *Map) ownerName(company int, om *objects.ObjectManager) string {
+	if company >= 0 && company < len(m.CompanyFaces) && m.CompanyFaces[company].OwnerName == stringIDNewOwner {
+		return locoText(m.OwnerName(company, om)) // the pack's (UTF-8) string
+	}
+	return m.OwnerName(company, om) // a user string or an object's: Loco bytes already
 }
