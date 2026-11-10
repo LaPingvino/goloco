@@ -251,6 +251,15 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 			MsgBankruptcyWarning3MonthsRemaining: i18n.MessageBankruptcyWarning3MonthsRemaining,
 			MsgBankruptcyDeclared:                i18n.MessageBankrupt, MsgBankruptcyDeclaredCompetitor: i18n.MessageBankrupt2}[msg.Type]
 		s = fillStringIDs(locoText(i18n.Str(id)), m.companyNameLoco(int(msg.Subjects[0])))
+	case MsgCompanyPromoted: // the owner's name, the old and the new rating (subject 1)
+		rating := func(r int) string {
+			if r < 0 || r > 9 { // getCorporateRatingAsStringId: unknown → platelayer
+				r = 0
+			}
+			return locoText(i18n.Str(i18n.CorporateRatingPlatelayer + r))
+		}
+		s = fillStringIDs(locoText(i18n.Str(i18n.MessageIsPromotedTo)), m.ownerName(int(msg.Subjects[0]), om),
+			rating(int(msg.Subjects[1])-1), rating(int(msg.Subjects[1])))
 	case MsgNewIndustry: // the industry object's name, the industry's town
 		if i := m.industryIndex(msg.Subjects[0]); i >= 0 && om != nil {
 			ind := m.Industries[i]

@@ -232,8 +232,8 @@ func (w *Map) CompanyName(id int) string {
 	if id >= 0 && id < len(w.CompanyNames) {
 		if n := w.CompanyNames[id]; n >= 0x8000 && int(n-0x8000) < len(w.UserStrings) {
 			return w.UserStrings[n-0x8000]
-		} else if n == 2 {
-			return "New Company"
+		} else if n == stringIDNewCompany {
+			return strings.ReplaceAll(i18n.Str(int(n)), "{POP16}", "") // new_company: "New Company{POP16}"
 		}
 	}
 	return ""
