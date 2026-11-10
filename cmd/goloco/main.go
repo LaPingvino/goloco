@@ -842,9 +842,25 @@ func (g *Game) Update() error {
 				g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
 			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad || g.buildMode == buildModeDock || g.buildMode == buildModeAirport) && g.consTab == 1 && !g.inTitleScreen {
 				g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked, or a dock
-			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad) && g.hoverTileX >= 0 {
-				// Track/road mode: clicking the map sets the construction head.
+			} else if g.buildMode == buildModeTrack && g.hoverTileX >= 0 && g.r != nil && g.r.ObjMgr != nil {
+				// onToolUpSingle + constructionLoop: the first click builds the
+				// selected piece at the tile (the head set there), as the Construct
+				// button would; refused, the error window shows and the rotation turns.
 				g.removeTrackGhost()
+				if p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation); ok {
+					c, _ := g.stationCmd()
+					if _, built := g.w.BuildTrackAtTile(c, g.hoverTileX, g.hoverTileY, int(p.ID), uint8(g.buildObjID)); built {
+						g.errorWin = nil // the loop's WindowManager::close(WindowType::error)
+						if g.consOneShot >= 0 {
+							g.consOneShot, g.consCurve = -1, 0
+						}
+					} else {
+						g.openTrackBuildError(c)
+					}
+				}
+			} else if g.buildMode == buildModeRoad && g.hoverTileX >= 0 {
+				// Road mode: clicking the map sets the construction head. PARTIAL:
+				// the first click building the road piece (as track's).
 				g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
 			}
 		}
@@ -3796,6 +3812,23 @@ func (g *Game) consDisplayID() int {
 	return -1
 }
 
+// openTrackBuildError is doCommand's failure for createTrack:
+// Error::open(cant_build_pop3_string with the track's name, the command's reason).
+func (g *Game) openTrackBuildError(c *sim.Cmd) {
+	title := i18n.Label(i18n.CantBuildPop3String)
+	if id := g.buildObjID; id >= 0 && id < len(g.r.ObjMgr.TrackObjects) && g.r.ObjMgr.TrackObjects[id] != nil {
+		title = ui.FormatErrorArgs(title, g.r.ObjMgr.TrackObjects[id].Name)
+	}
+	msg := ""
+	if c.ErrorText != 0 {
+		msg = i18n.Label(c.ErrorText)
+		if c.ErrorArg != "" {
+			msg = ui.FormatErrorArgs(msg, c.ErrorArg)
+		}
+	}
+	g.openError(title, msg)
+}
+
 func (g *Game) consPlace(id int) {
 	var built bool
 	if g.consIsRoad() {
@@ -3806,20 +3839,7 @@ func (g *Game) consPlace(id int) {
 	} else if g.r != nil && g.r.ObjMgr != nil { // the createTrack game command: checked and charged (PL.1 e)
 		c, _ := g.stationCmd()
 		if _, built = g.w.BuildTrackAtHead(c, id, uint8(g.buildObjID)); !built {
-			// doCommand's failure: Error::open(cant_build_pop3_string with the
-			// track's name, the command's reason).
-			title := i18n.Label(i18n.CantBuildPop3String)
-			if id := g.buildObjID; id >= 0 && id < len(g.r.ObjMgr.TrackObjects) && g.r.ObjMgr.TrackObjects[id] != nil {
-				title = ui.FormatErrorArgs(title, g.r.ObjMgr.TrackObjects[id].Name)
-			}
-			msg := ""
-			if c.ErrorText != 0 {
-				msg = i18n.Label(c.ErrorText)
-				if c.ErrorArg != "" {
-					msg = ui.FormatErrorArgs(msg, c.ErrorArg)
-				}
-			}
-			g.openError(title, msg)
+			g.openTrackBuildError(c)
 		}
 	} else {
 		built = g.w.PlaceTrackAtHead(id, uint8(g.buildObjID))
