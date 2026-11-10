@@ -1621,13 +1621,17 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 		}
 		if d == "bridgedrop" { // the bridge list open
 			defer func() {
-				f, _ := g.constructionFrame(10, 40)
-				g.openBridgeDropdown(10, 40, f.SkinColour, f.CompanyColour)
+				x, y := g.consWindowOrigin()
+				f, _ := g.constructionFrame(x, y)
+				g.openBridgeDropdown(x, y, f.SkinColour, f.CompanyColour)
 			}()
 		}
 		if d == "sigdrop" { // the signal tab with its dropdown open
 			g.consTab = 2
-			defer g.openConsDropdown(10, 40, g.r.ObjMgr.InterfaceSkin.WindowConstructionColour, false)
+			defer func() {
+				x, y := g.consWindowOrigin()
+				g.openConsDropdown(x, y, g.r.ObjMgr.InterfaceSkin.WindowConstructionColour, false)
+			}()
 		}
 		if d == "overhead" { // the tram road (its overhead wires), one ticked
 			g.buildMode = buildModeRoad

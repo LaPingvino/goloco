@@ -21,29 +21,29 @@ move 250 420
 wait 1
 click 250 420
 wait 2
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
-click 77 235
+click 67 225
 wait 1
 wait 1
 shot /tmp/goloco-playthrough/pt-g-l1.png
-click 61 67
+click 51 57
 wait 2
 move 302 395
 wait 1
