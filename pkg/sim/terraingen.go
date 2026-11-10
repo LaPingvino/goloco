@@ -25,6 +25,8 @@ type TerrainOptions struct {
 	LandDistributionPatterns                                                     [32]uint8 // per land object slot
 	// Towns (generateTowns).
 	NumberOfTowns, MaxTownSize uint8
+	// NumberOfIndustries is the options' numberOfIndustries (generateIndustries).
+	NumberOfIndustries uint8
 	// Trees.
 	NumberOfForests, NumberRandomTrees                                                                             uint16
 	MinForestRadius, MaxForestRadius, MinForestDensity, MaxForestDensity, MinAltitudeForTrees, MaxAltitudeForTrees uint8
