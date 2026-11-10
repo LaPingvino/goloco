@@ -627,9 +627,11 @@ type Options struct {
 	ObjectiveCargoName string // DAT name of the delivery cargo (e.g. PASS)
 
 	// Generation parameters (used when landscapeGenerationDone is clear)
-	MinLandHeight                                                                                                  uint8 // base height (0-15)
-	TopographyStyle                                                                                                uint8 // 0=flat,1=smallHills,2=mountains,3=halfMtHills,4=halfMtFlat
-	HillDensity                                                                                                    uint8 // 0-100
+	MinLandHeight   uint8 // base height (0-15)
+	TopographyStyle uint8 // 0=flat,1=smallHills,2=mountains,3=halfMtHills,4=halfMtFlat
+	HillDensity     uint8 // 0-100
+	// NumberOfTowns (0x187) and MaxTownSize (0x188): generateTowns' count and largest size.
+	NumberOfTowns, MaxTownSize                                                                                     uint8
 	NumberOfForests, NumberRandomTrees                                                                             uint16
 	MinForestRadius, MaxForestRadius, MinForestDensity, MaxForestDensity, MinAltitudeForTrees, MaxAltitudeForTrees uint8
 	LandDistributionPatterns                                                                                       [32]uint8 // per land object slot (0x0A): LandDistributionPattern

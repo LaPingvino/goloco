@@ -3142,7 +3142,8 @@ func (g *Game) loadScenario(filePath string) error {
 				NumberOfForests:          sc.Options.NumberOfForests, NumberRandomTrees: sc.Options.NumberRandomTrees,
 				MinForestRadius: sc.Options.MinForestRadius, MaxForestRadius: sc.Options.MaxForestRadius,
 				MinForestDensity: sc.Options.MinForestDensity, MaxForestDensity: sc.Options.MaxForestDensity,
-				MinAltitudeForTrees: sc.Options.MinAltitudeForTrees, MaxAltitudeForTrees: sc.Options.MaxAltitudeForTrees}
+				MinAltitudeForTrees: sc.Options.MinAltitudeForTrees, MaxAltitudeForTrees: sc.Options.MaxAltitudeForTrees,
+				NumberOfTowns: sc.Options.NumberOfTowns, MaxTownSize: sc.Options.MaxTownSize}
 		}
 		if g.script != nil && g.script.seed != nil {
 			log.Printf("[Seed] before generating: rng %08x %08x, generate %v", gameW.Map.Rng1.Srand0(), gameW.Map.Rng1.Srand1(), sc.LandscapeToGenerate)
