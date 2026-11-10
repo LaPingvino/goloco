@@ -84,9 +84,9 @@ func (m *Map) signalRemoveCost(c *Cmd, a SignalRemoval, p0 PreviewTrack, sx, sy,
 // compatible; the refund from the first tile; then on each tile (all must be
 // there) the asked sides are switched off — for a ghost removal only ghost
 // sides — and the element goes when no side is left (the track's signal flag
-// cleared). The cost.
-// PARTIAL: sub_4A2AD7 (the vehicles' paths on the piece after a real
-// removal); the viewport invalidation (goloco redraws).
+// cleared); after a real (not ghost or AI) removal the block's signals are
+// re-evaluated (sub_4A2AD7, UpdateBlockSignals). The cost.
+// PARTIAL: the viewport invalidation (goloco redraws).
 func (m *Map) RemoveSignal(c *Cmd, flags uint8, a SignalRemoval) (int32, bool) {
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
 	if int(a.TrackID) >= len(TrackPieces) {
@@ -143,6 +143,10 @@ func (m *Map) RemoveSignal(c *Cmd, flags uint8, a SignalRemoval) (int32, bool) {
 			pt.Signals = append(pt.Signals[:si], pt.Signals[si+1:]...)
 			pt.removeRef(scenario.KindSignal, si)
 		}
+	}
+	if flags&CmdApply != 0 && flags&(CmdAiAllocated|CmdGhost) == 0 {
+		// sub_4A2AD7: the block's signals re-set occupied / free.
+		m.UpdateBlockSignals(sx, sy, sz, uint16(a.TrackID)<<3|uint16(a.Rotation&3), c.Company, a.TrackObjectID)
 	}
 	return cost, true
 }
