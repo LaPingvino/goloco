@@ -914,7 +914,13 @@ func (g *Game) updateTrackGhost() {
 	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
 		return
 	}
-	if g.buildMode != buildModeTrack || g.consTab != 0 || g.inTitleScreen || g.w.ConstructionHeadState().Active || g.hoverTileX < 0 {
+	if g.buildMode == buildModeTrack && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active {
+		// updateConstruction: the selected piece as a ghost at the head.
+		c, _ := g.stationCmd()
+		g.w.UpdateHeadTrackGhost(c, g.consSelectedTrackID(), uint8(g.buildObjID))
+		return
+	}
+	if g.buildMode != buildModeTrack || g.consTab != 0 || g.inTitleScreen || g.hoverTileX < 0 {
 		g.removeTrackGhost()
 		return
 	}
