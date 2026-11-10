@@ -937,6 +937,14 @@ func (g *Game) updateTrackGhost() {
 	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
 		return
 	}
+	// updateConstruction for a road: the selected road piece as a ghost at the head.
+	if g.buildMode == buildModeRoad && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active {
+		c, _ := g.stationCmd()
+		g.w.UpdateHeadRoadGhost(c, g.consSelectedRoadID(), uint8(g.buildObjID))
+	} else if g.w.RoadGhost != nil {
+		c, _ := g.stationCmd()
+		g.w.RemoveRoadGhost(c)
+	}
 	if g.buildMode == buildModeTrack && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active {
 		// updateConstruction: the selected piece as a ghost at the head.
 		c, _ := g.stationCmd()

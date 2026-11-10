@@ -12,6 +12,8 @@ type State struct {
 	// TrackGhost is the construction ghost while positioning (trackghost.go);
 	// ghostPos / ghostCost its last position (ghostTrackPos) and cost.
 	TrackGhost *TrackGhost
+	// RoadGhost is the road construction ghost at the head (roadghost.go).
+	RoadGhost *RoadGhost
 	ghostPos   [3]int32
 	ghostCost  int32
 
