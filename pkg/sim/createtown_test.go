@@ -59,8 +59,17 @@ func TestGeneratedMapHasTowns(t *testing.T) {
 			roads += len(m.Tiles[y][x].Roads)
 		}
 	}
-	t.Logf("%d towns, %d building elements, %d road pieces", len(m.Towns), buildings, roads)
+	industryTiles := 0
+	for y := range m.Tiles {
+		for x := range m.Tiles[y] {
+			industryTiles += len(m.Tiles[y][x].Industries)
+		}
+	}
+	t.Logf("%d towns, %d building elements, %d road pieces; %d industries (%d industry elements)", len(m.Towns), buildings, roads, len(m.Industries), industryTiles)
 	if len(m.Towns) == 0 || buildings == 0 || roads == 0 {
 		t.Error("the generated map has no grown towns")
+	}
+	if len(m.Industries) == 0 || industryTiles == 0 {
+		t.Error("the generated map has no industries")
 	}
 }

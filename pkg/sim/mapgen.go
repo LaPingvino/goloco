@@ -124,9 +124,8 @@ func (m *Map) InitialiseTiles() {
 // GenerateLandscape is MapGenerator::generate as far as it is ported:
 // initialiseDate, TileManager::initialise, the height map (original
 // generator), rivers, generateLand, water, terrain styles, the snow line,
-// surface variation, trees, towns. PARTIAL: Scenario::reset, industries, misc
-// buildings, sub_4969E0 / sub_4748D4 — so a generated map has land, water,
-// trees and towns but no industries yet.
+// surface variation, trees, towns, industries. PARTIAL: Scenario::reset, misc
+// buildings, sub_4969E0 / sub_4748D4.
 func (m *Map) GenerateLandscape(startYear uint16, o TerrainOptions, g1 G1Raw, om *objects.ObjectManager) {
 	m.InitialiseDate(startYear)
 	m.InitialiseSnowLine(om)
@@ -140,7 +139,8 @@ func (m *Map) GenerateLandscape(startYear uint16, o TerrainOptions, g1 G1Raw, om
 	m.GenerateSurfaceVariation(om)
 	m.GenerateTrees(o, om)
 	m.GenerateTowns(o, g1, om)
-	// industries, misc buildings: PARTIAL
+	m.GenerateIndustries(o, om)
+	// misc buildings: PARTIAL
 	m.GenerateSurfaceVariation(om)
 }
 
@@ -238,7 +238,7 @@ func EditorDefaultTerrainOptions(om *objects.ObjectManager) TerrainOptions {
 		NumRiverbeds: 0, MinRiverWidth: 10, MaxRiverWidth: 20, RiverbankWidth: 5, RiverMeanderRate: 10,
 		NumberOfForests: 100, MinForestRadius: 4, MaxForestRadius: 40, MinForestDensity: 1, MaxForestDensity: 7,
 		NumberRandomTrees: 1000, MinAltitudeForTrees: 0, MaxAltitudeForTrees: 25,
-		NumberOfTowns: 55, MaxTownSize: 3}
+		NumberOfTowns: 55, MaxTownSize: 3, NumberOfIndustries: 1}
 	if om != nil {
 		for i := range o.LandDistributionPatterns {
 			if l := om.GetLandObjectByIndex(i); l != nil {

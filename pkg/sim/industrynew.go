@@ -323,3 +323,63 @@ func (m *Map) findRandomNewIndustryLocation(objID uint8, om *objects.ObjectManag
 	}
 	return 0, 0, false
 }
+
+// isCargoProducedAnywhere is MapGenerator's 0x004595B7: the most common
+// building cargo, or a cargo some industry object available this year
+// produces (the objects, not the industries on the map — unlike
+// canCargoTypeBeProducedInWorld).
+func (m *Map) isCargoProducedAnywhere(cargo uint8, om *objects.ObjectManager) bool {
+	if mostCommonBuildingCargoType(om) == cargo {
+		return true
+	}
+	for i := range om.IndustryObjects {
+		obj := om.GetIndustryObjectByIndex(i)
+		if obj == nil || m.CurrentYear < obj.DesignedYear || m.CurrentYear >= obj.ObsoleteYear {
+			continue
+		}
+		if p, _ := om.IndustryCargoIDs(obj); p[0] == cargo || p[1] == cargo {
+			return true
+		}
+	}
+	return false
+}
+
+// GenerateIndustries is MapGenerator's generateIndustries (0x004597FD): for
+// each industry object available this year whose required cargo can be had
+// (all of it with requiresAllCargo, else some), capOfTypeOfIndustry
+// (numberOfIndustries) industries, each tried 50 times and built at once
+// (createNewIndustry, as the neutral company). PARTIAL: the progress bar.
+func (m *Map) GenerateIndustries(o TerrainOptions, om *objects.ObjectManager) {
+	if om == nil {
+		return
+	}
+	for id := range om.IndustryObjects {
+		obj := om.GetIndustryObjectByIndex(id)
+		if obj == nil || m.CurrentYear < obj.DesignedYear || m.CurrentYear >= obj.ObsoleteYear {
+			continue
+		}
+		if _, req := om.IndustryCargoIDs(obj); req[0] != 0xFF {
+			specified, available := 0, 0
+			for _, c := range req {
+				if c == 0xFF {
+					continue
+				}
+				specified++
+				if m.isCargoProducedAnywhere(c, om) {
+					available++
+				}
+			}
+			if obj.Flags&objects.IndustryFlagRequiresAllCargo != 0 {
+				if specified != available {
+					continue
+				}
+			} else if available == 0 {
+				continue
+			}
+		}
+		n := m.capOfTypeOfIndustry(obj, o.NumberOfIndustries)
+		for i := int32(0); i < n; i++ {
+			m.createNewIndustry(uint8(id), true, 50, om)
+		}
+	}
+}
