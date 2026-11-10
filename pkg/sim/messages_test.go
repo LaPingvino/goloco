@@ -159,3 +159,34 @@ func TestCelebrationAndNewIndustryText(t *testing.T) {
 		t.Errorf("workers: %q lacks %q", m.Messages[n-2].Text, name)
 	}
 }
+
+// The vehicle news texts name the vehicle ("Train 3") and, for the full load,
+// the station.
+func TestVehicleMessageText(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	if len(trains) == 0 {
+		t.Skip("no trains")
+	}
+	h := m.Entities[trains[0].Head]
+	st := -1
+	for i, s := range m.StationNames {
+		if s.Name != stationNameNull {
+			st = i
+			break
+		}
+	}
+	m.PostMessage(om, MsgVehicleSlipped, h.Owner, h.ID, 0xFFFF, 0xFFFF)
+	m.PostMessage(om, MsgCantWaitForFullLoad, h.Owner, h.ID, uint16(st), 0xFFFF)
+	n := len(m.Messages)
+	veh := m.VehicleName(h.Name, int(h.OrdinalNumber))
+	for _, e := range m.Messages[n-2:] {
+		t.Logf("%q", e.Text)
+		if !contains(e.Text, veh) {
+			t.Errorf("%q doesn't name %q", e.Text, veh)
+		}
+	}
+	if !contains(m.Messages[n-1].Text, m.StationName(st)) {
+		t.Error("the full-load message doesn't name the station")
+	}
+}

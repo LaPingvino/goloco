@@ -54,6 +54,9 @@ type CarPhysics struct {
 type Vehicle2Speed struct {
 	CurrentSpeed int32 // Speed32
 	MotorState   uint8
+	// SlippedToAHalt: stopped on an incline at ≤ 3 mph (the vehicleSlipped
+	// news, which the caller posts for the controlling company).
+	SlippedToAHalt bool
 }
 
 // UpdateSpeed is Vehicle2::update up to sub_4A9F20: it sets MotorState and
@@ -106,7 +109,7 @@ func (v *Vehicle2Speed) UpdateSpeed(targetSpeed int16, headFlags uint16, manualP
 		ebp /= 2
 		if headFlags&VehicleFlagUnk0 == 0 {
 			v.MotorState = MotorStoppedOnIncline
-			// (a "vehicle slipped" message is posted at ≤ 3 mph: not ported)
+			v.SlippedToAHalt = v.CurrentSpeed <= 3<<16 // currentSpeed <= 3.0_mph
 		}
 	}
 	if onRack && !slipping && totalWeight != 0 {

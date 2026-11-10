@@ -229,6 +229,15 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 			}
 			s = fillStringIDs(locoText(i18n.Str(i18n.MessageFirstStringDeliveredTo)), cargo, name)
 		}
+	case MsgCantWaitForFullLoad, MsgVehicleSlipped: // the vehicle (name + ordinal); the station
+		if h := m.entity(msg.Subjects[0]); h != nil {
+			veh := m.VehicleName(h.Name, int(h.OrdinalNumber))
+			if msg.Type == MsgVehicleSlipped {
+				s = fillStringIDs(locoText(i18n.Str(i18n.MessageHasSlippedToAHaltOnIncline)), veh)
+			} else {
+				s = fillStringIDs(locoText(i18n.Str(i18n.MessageNotAllowedToWaitForFullLoadAt)), veh, m.StationName(int(msg.Subjects[1])))
+			}
+		}
 	case MsgNewIndustry: // the industry object's name, the industry's town
 		if i := m.industryIndex(msg.Subjects[0]); i >= 0 && om != nil {
 			ind := m.Industries[i]
