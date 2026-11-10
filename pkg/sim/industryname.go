@@ -21,8 +21,8 @@ func (m *Map) industryNameFormat(raw []byte, town uint16, number int16) (string,
 		case c == 0x84 && i+2 < len(raw): // stringidStr
 			id := uint16(raw[i+1]) | uint16(raw[i+2])<<8
 			i += 2
-			if id == townNamesEnd && int(town) < len(m.Towns) {
-				b.WriteString(m.TownName(m.Towns[town].Name, int(town)))
+			if tw := m.TownByID(town); id == townNamesEnd && tw != nil { // the town by id
+				b.WriteString(m.TownName(tw.Name, int(town)))
 			} else {
 				ok = false
 			}

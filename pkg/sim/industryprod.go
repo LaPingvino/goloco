@@ -173,7 +173,7 @@ func (m *Map) industriesUpdateProducedCargoStats(om *objects.ObjectManager) {
 					continue
 				}
 				sn := &m.StationNames[id]
-				if sn.Name == 0 { // station->empty()
+				if sn.Name == stationNameNull { // station->empty()
 					continue
 				}
 				cs := &sn.Cargo[cargo]
