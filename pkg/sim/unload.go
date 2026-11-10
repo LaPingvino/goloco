@@ -10,7 +10,7 @@ import (
 // updateUnloadCargoComponent and getLoadingModifier.
 //
 // updateLastIncomeStats (Vehicle1 lastIncome) is here too (incomestats.go).
-// PARTIAL: the workersCelebrate / citizensCelebrate messages, the AI
+// The workersCelebrate / citizensCelebrate news are posted. PARTIAL: the AI
 // thought revenue (aiThoughts[].var_80), the
 // money effect and income sound are not ported.
 
@@ -125,7 +125,10 @@ func (m *Map) updateUnloadCargoComponent(tr Train, cargo *scenario.VehicleCargo,
 						ind.ReceivedMonthlyTotal[i] = boundAdd16(ind.ReceivedMonthlyTotal[i], uint32(cargo.Qty))
 					}
 				}
-				ind.HistoryMinProduction |= 1 << cargo.Type // (workersCelebrate message: PARTIAL)
+				if ind.HistoryMinProduction&(1<<cargo.Type) == 0 {
+					ind.HistoryMinProduction |= 1 << cargo.Type
+					m.PostMessage(om, MsgWorkersCelebrate, head.Owner, head.ID, uint16(cs.IndustryID), uint16(cs.IndustryID)|uint16(cargo.Type)<<8)
+				}
 				if t := m.TownByID(ind.Town); t != nil {
 					t.Var1A8 |= 1 << cargo.Type
 				}
@@ -134,8 +137,9 @@ func (m *Map) updateUnloadCargoComponent(tr Train, cargo *scenario.VehicleCargo,
 				}
 			}
 		}
-		if t := m.TownByID(station.Town); t != nil {
-			t.Var1A8 |= 1 << cargo.Type // (citizensCelebrate message when new: PARTIAL)
+		if t := m.TownByID(station.Town); t != nil && t.Var1A8&(1<<cargo.Type) == 0 {
+			t.Var1A8 |= 1 << cargo.Type
+			m.PostMessage(om, MsgCitizensCelebrate, head.Owner, head.ID, station.Town, station.Town|uint16(cargo.Type)<<8)
 		}
 		cs.Flags |= cargoStatFlag3
 	} else {
