@@ -56,7 +56,12 @@ type BuildingObject struct {
 	DemolishRatingReduction int16     // 0xAA
 	ElevatorSequences       [][]uint8 // heights; size is a power of 2
 	ScaffoldingSegmentType  uint8     // 0x9C (0xFF = none)
-	ScaffoldingColour       uint8     // 0x9D
+	// DesignedYear (0x94) / ObsoleteYear (0x96): when a town may build it;
+	// GeneratorFunction (0x9E): the town densities it goes in (bit per
+	// density; a misc building's generator function).
+	DesignedYear, ObsoleteYear uint16
+	GeneratorFunction          uint8
+	ScaffoldingColour          uint8 // 0x9D
 
 	// Calculated from image table during load
 	ImageOffset uint32 // Base sprite index in global G1 pool
@@ -156,6 +161,9 @@ func ParseBuildingObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 	bldg.ClearCostFactor = int16(uint16(data[0x9A]) | uint16(data[0x9B])<<8)
 	bldg.DemolishRatingReduction = int16(uint16(data[0xAA]) | uint16(data[0xAB])<<8)
 	bldg.ScaffoldingSegmentType = data[0x9C]
+	bldg.DesignedYear = uint16(data[0x94]) | uint16(data[0x95])<<8
+	bldg.ObsoleteYear = uint16(data[0x96]) | uint16(data[0x97])<<8
+	bldg.GeneratorFunction = data[0x9E]
 	bldg.ScaffoldingColour = data[0x9D]
 	for i := 0; i < int(bldg.NumElevatorSequences) && offset+2 <= len(data); i++ {
 		size := int(binary.LittleEndian.Uint16(data[offset : offset+2]))
