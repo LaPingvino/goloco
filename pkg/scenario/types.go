@@ -150,6 +150,10 @@ type Scenario struct {
 	Routings                                                []uint16       // GameState routings[] (ParseRoutings), by RoutingHandle
 	// GameState roadObjectIdIsAnyRoadTypeCompatible (0x1A4) and
 	// roadObjectIdIsUsableByAllCompanies (0x1A8): bit per road object id.
+	// Messages / ActiveMessageIndex are GameState numMessages + messages (0x13B6 / 0x13BA, 0xD4
+	// bytes each) and activeMessageIndex (0x13B8).
+	Messages              []MessageRecord
+	ActiveMessageIndex    uint16
 	RoadAnyTypeCompatible uint32
 	// Rng is GameState rng (gPrng1: srand0, srand1 at 0x00); UnkRng gPrng2 (0x08).
 	Rng, UnkRng           [2]uint32
@@ -765,4 +769,16 @@ type CompanyRecords struct {
 	Speed   [3]uint16 // 0x436
 	Company [3]uint8  // 0x43C
 	Date    [3]uint32 // 0x440
+}
+
+// MessageRecord is Message.h's Message as stored (0xD4 bytes): type (0x00),
+// messageString (0x01, 198 bytes, Loco-encoded), companyId (0xC7),
+// timeActive (0xC8), itemSubjects (0xCA), date (0xD0).
+type MessageRecord struct {
+	Type       uint8
+	Text       []byte
+	CompanyID  uint8
+	TimeActive uint16
+	Subjects   [3]uint16
+	Date       uint32
 }

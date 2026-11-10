@@ -138,7 +138,13 @@ func (m *Map) AddRoad(x, y int, re scenario.RoadElement) bool {
 // LoadScenario fills the map from a loaded scenario or save: size, every
 // tile's surface and elements, towns and the saved vehicle entities.
 func (m *Map) LoadScenario(sc *scenario.Scenario) {
-	m.ActiveMessageIndex = messageIDNull // PARTIAL: the save's messages (GameState) aren't loaded yet
+	m.Messages, m.ActiveMessageIndex = nil, sc.ActiveMessageIndex
+	for _, r := range sc.Messages { // the save's messages (their stored, already formatted text)
+		m.Messages = append(m.Messages, Message{Type: MessageType(r.Type), Text: string(r.Text), CompanyID: r.CompanyID, TimeActive: r.TimeActive, Subjects: r.Subjects, Date: r.Date})
+	}
+	if sc.Messages == nil {
+		m.ActiveMessageIndex = messageIDNull
+	}
 	m.Width, m.Height = sc.MapWidth, sc.MapHeight
 	m.Tiles = make([][]Tile, m.Height)
 	for y := 0; y < m.Height; y++ {

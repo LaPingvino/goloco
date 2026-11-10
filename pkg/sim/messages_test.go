@@ -45,3 +45,27 @@ func TestMessages(t *testing.T) {
 		t.Errorf("eviction: %d messages, slot 10 subject %d", len(m.Messages), m.Messages[10].Subjects[0])
 	}
 }
+
+// The title save's messages load: a count within the limit, known types,
+// dates not after today, and the stored (formatted) text.
+func TestLoadedMessages(t *testing.T) {
+	m, _ := loadDataMap(t, "title.dat")
+	t.Logf("%d messages, active %#x", len(m.Messages), m.ActiveMessageIndex)
+	if len(m.Messages) > kMaxMessages {
+		t.Fatalf("%d messages", len(m.Messages))
+	}
+	for i, e := range m.Messages {
+		if int(e.Type) >= len(MessageTypeDescriptors) || e.Date > m.CurrentDay {
+			t.Errorf("message %d: type %d date %d (today %d)", i, e.Type, e.Date, m.CurrentDay)
+		}
+		if i < 3 {
+			t.Logf("  %d: type %d company %d subjects %v date %d %q", i, e.Type, e.CompanyID, e.Subjects, e.Date, e.Text)
+		}
+	}
+	// None of them is past its duration (the game expires them daily).
+	n := len(m.Messages)
+	m.UpdateMessagesDaily()
+	if len(m.Messages) != n {
+		t.Errorf("a day's update dropped %d loaded messages already past their time", n-len(m.Messages))
+	}
+}

@@ -1711,7 +1711,8 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 			sc.CompanyRecords.Date[i] = binary.LittleEndian.Uint32(gs[0x440+4*i:])
 		}
 	}
-	sc.NumberOfIndustries = gs[0x415]         // numberOfIndustries: 0 low, 1 medium, 2 high
+	sc.NumberOfIndustries = gs[0x415] // numberOfIndustries: 0 low, 1 medium, 2 high
+	sc.Messages, sc.ActiveMessageIndex = parseMessages(gs)
 	if len(gs) > GeneralCurrentYearOffset+1 { // general.currentYear (from the compiler: 0x1A)
 		sc.CurrentYear = binary.LittleEndian.Uint16(gs[GeneralCurrentYearOffset:])
 	}
@@ -1786,4 +1787,39 @@ func parseAnimations(data []byte, n int) []Animation {
 		out[i] = Animation{BaseZ: r[0], Type: r[1], X: int16(binary.LittleEndian.Uint16(r[2:])), Y: int16(binary.LittleEndian.Uint16(r[4:]))}
 	}
 	return out
+}
+
+// parseMessages reads GameState numMessages (0x13B6), activeMessageIndex
+// (0x13B8) and the first numMessages of messages[200] (0x13BA, 0xD4 each).
+func parseMessages(gs []byte) ([]MessageRecord, uint16) {
+	const base, size, maxMessages = 0x13BA, 0xD4, 200
+	if len(gs) < base+size*maxMessages {
+		return nil, 0xFFFF
+	}
+	n := int(binary.LittleEndian.Uint16(gs[0x13B6:]))
+	active := binary.LittleEndian.Uint16(gs[0x13B8:])
+	n = min(n, maxMessages)
+	out := make([]MessageRecord, n)
+	for i := range out {
+		r := gs[base+i*size : base+(i+1)*size]
+		text := r[0x01 : 0x01+198]
+		if j := indexByte(text, 0); j >= 0 {
+			text = text[:j]
+		}
+		out[i] = MessageRecord{Type: r[0x00], Text: append([]byte(nil), text...), CompanyID: r[0xC7],
+			TimeActive: binary.LittleEndian.Uint16(r[0xC8:]), Date: binary.LittleEndian.Uint32(r[0xD0:])}
+		for k := range 3 {
+			out[i].Subjects[k] = binary.LittleEndian.Uint16(r[0xCA+2*k:])
+		}
+	}
+	return out, active
+}
+
+func indexByte(b []byte, c byte) int {
+	for i, v := range b {
+		if v == c {
+			return i
+		}
+	}
+	return -1
 }
