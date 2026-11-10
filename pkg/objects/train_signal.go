@@ -31,8 +31,12 @@ type TrainSignalObject struct {
 	Flags       uint16 // TrainSignalObjectFlags
 	AnimSpeed   uint8
 	NumFrames   uint8
-	IsLeft      bool // flags bit 0: left vs right orientation
-	HasLights   bool // flags bit 1
+	// CostFactor (0x06), SellCostFactor (0x08) and CostIndex (0x0A) price a
+	// signal (CreateSignal, RemoveSignal's signalRemoveCost).
+	CostFactor, SellCostFactor int16
+	CostIndex                  uint8
+	IsLeft                     bool // flags bit 0: left vs right orientation
+	HasLights                  bool // flags bit 1
 
 	// DesignedYear/ObsoleteYear (0x1A/0x1C): when it is available.
 	DesignedYear, ObsoleteYear uint16
@@ -95,12 +99,15 @@ func ParseTrainSignalObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader
 
 	flags := uint16(data[0x02]) | uint16(data[0x03])<<8
 	obj := &TrainSignalObject{
-		Header:    header,
-		Flags:     flags,
-		AnimSpeed: data[0x04],
-		NumFrames: data[0x05],
-		IsLeft:    flags&0x01 != 0,
-		HasLights: flags&0x02 != 0,
+		Header:         header,
+		Flags:          flags,
+		AnimSpeed:      data[0x04],
+		NumFrames:      data[0x05],
+		CostFactor:     int16(uint16(data[0x06]) | uint16(data[0x07])<<8),
+		SellCostFactor: int16(uint16(data[0x08]) | uint16(data[0x09])<<8),
+		CostIndex:      data[0x0A],
+		IsLeft:         flags&0x01 != 0,
+		HasLights:      flags&0x02 != 0,
 	}
 	numCompatible := data[0x12]
 	obj.DesignedYear = uint16(data[0x1A]) | uint16(data[0x1B])<<8

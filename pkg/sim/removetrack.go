@@ -78,8 +78,9 @@ func (m *Map) trackRemoveCost(c *Cmd, a TrackRemoval, p0 PreviewTrack, sx, sy, s
 // as a nested command); then every tile of the piece is found (refused when
 // one is missing) and, applying, removed; the cost is the piece's sell price
 // plus, when it stood on a bridge, the bridge's. The caller pays under
-// Construction. PARTIAL: a signal on the piece refuses it (SignalRemoval is
-// not ported), setLevelCrossingFlags after each tile, the demolish sound.
+// Construction. Signals on the piece go first (a nested SignalRemoval of the
+// sides it has). PARTIAL: setLevelCrossingFlags after each tile, the demolish
+// sound.
 func (m *Map) RemoveTrack(c *Cmd, flags uint8, a TrackRemoval, g1 G1Raw) (int32, bool) {
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
 	if int(a.TrackID) >= len(TrackPieces) {
@@ -95,7 +96,18 @@ func (m *Map) RemoveTrack(c *Cmd, flags uint8, a TrackRemoval, g1 G1Raw) (int32,
 	}
 	var total int32
 	if el.HasSignal {
-		return 0, false // PARTIAL: SignalRemoval
+		// A nested SignalRemoval of the sides the signal element after it has.
+		sr := SignalRemoval{X: a.X, Y: a.Y, Z: a.Z, Rotation: a.Rotation, TrackID: a.TrackID, Index: a.Index, TrackObjectID: a.TrackObjectID}
+		if _, _, pos := m.signalTrackAt(sr, a.X, a.Y, a.Z, a.Index); pos >= 0 {
+			if si := signalAfter(t, pos); si >= 0 {
+				sr.Left, sr.Right = t.Signals[si].Sides[0].HasSignal(), t.Signals[si].Sides[1].HasSignal()
+			}
+		}
+		cost, ok := nested(flags, func(f uint8) (int32, bool) { return m.RemoveSignal(c, f, sr) })
+		if !ok {
+			return 0, false
+		}
+		total += cost
 	}
 	if el.HasStation {
 		cost, ok := nested(flags, func(f uint8) (int32, bool) {
