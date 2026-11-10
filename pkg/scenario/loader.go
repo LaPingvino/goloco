@@ -548,6 +548,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 				re := RoadElement{
 					RoadID:                elem[4] & 0x0F,
 					HasBridge:             elem[4]&0x80 != 0,
+					HasGhostMods:          elem[4]&0x40 != 0,
 					BridgeID:              elem[6] >> 5,
 					SequenceIndex:         elem[5] & 0x03,
 					LevelCrossingObjectID: (elem[5] >> 2) & 0x03,
