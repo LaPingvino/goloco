@@ -451,6 +451,7 @@ type RoadElement struct {
 	Rotation              uint8 // byte 0 bits [1:0]: 0-3
 	SequenceIndex         uint8 // byte 5 bits [1:0]: multi-tile piece index
 	HasBridge             bool  // byte 4 bit 7
+	HasGhostMods          bool  // byte 4 bit 6: RoadElement::hasGhostMods
 	BridgeID              uint8 // byte 6 bits [7:5]: bridge object slot index (only valid if HasBridge)
 	HasLevelCrossing      bool  // byte 7 bit 5
 	HasStationElement     bool  // byte 0 bit 7 (hasStationElement)
