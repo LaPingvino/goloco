@@ -94,7 +94,13 @@ func TestCreateRoadMod(t *testing.T) {
 		return n
 	}
 	before := count()
+	// The dry run walks the same network: each piece's reverse must count as
+	// visited or the dry cost doubles (nothing is set to stop it).
+	dryAll, _ := m.CreateRoadMod(c, 0, a)
 	cost, ok := m.CreateRoadMod(c, CmdApply, a)
+	if dryAll != cost {
+		t.Errorf("all connected: dry run %d, applied %d", dryAll, cost)
+	}
 	n := count() - before
 	t.Logf("all connected: %d road tiles modded for %d (one straight %d)", n, cost, dry)
 	if !ok || n != 3 || cost != 3*dry {

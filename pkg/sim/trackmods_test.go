@@ -86,9 +86,13 @@ func TestCreateTrackModAllConnected(t *testing.T) {
 	before := count()
 	a := TrackModsPlacement{X: int32(x) * 32, Y: int32(y) * 32, Z: int32(el.BaseZ) * 4, Rotation: el.Rotation, Index: el.SequenceIndex, Type: 1, TrackObjectID: el.TrackObjectID, Section: ModSectionAllConnected}
 	single, _ := m.CreateTrackMod(c, 0, TrackModsPlacement{X: a.X, Y: a.Y, Z: a.Z, Rotation: a.Rotation, Index: a.Index, Type: 1, TrackObjectID: a.TrackObjectID})
+	dryAll, _ := m.CreateTrackMod(c, 0, a) // the reverse marked visited, or this doubles
 	cost, ok := m.CreateTrackMod(c, CmdApply, a)
 	if !ok {
 		t.Fatal("refused")
+	}
+	if dryAll != cost {
+		t.Errorf("all connected: dry run %d, applied %d", dryAll, cost)
 	}
 	after := count()
 	t.Logf("tiles with the mod: %d → %d; cost %d (one straight %d)", before, after, cost, single)
