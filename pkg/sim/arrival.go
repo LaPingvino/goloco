@@ -9,8 +9,7 @@ import (
 // (0x004B9987), updateLastJourneyAverageSpeed (0x004BACAF) and
 // beginUnloading (0x004B99E1).
 //
-// updateLastJourneyAverageSpeed posts newSpeedRecord (its text PARTIAL:
-// {VELOCITY}). PARTIAL: the
+// updateLastJourneyAverageSpeed posts newSpeedRecord. PARTIAL: the
 // owner's happy emotion (goloco has no messages or activeEmotions yet); the
 // unloading / loading that follow (updateUnloadCargo, updateLoadCargo,
 // beginNewJourney, item 5.7 part 2) are not ported, so an unloading vehicle
