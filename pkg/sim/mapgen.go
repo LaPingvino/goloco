@@ -257,7 +257,7 @@ func EditorDefaultTerrainOptions(om *objects.ObjectManager) TerrainOptions {
 // 384 × 384) with the landscape generated (GenerateLandscape) on an rng
 // seeded with seed0 / seed1 — the open build's stand-in for title.dat.
 func NewGeneratedMap(seed0, seed1 uint32, startYear uint16, o TerrainOptions, g1 G1Raw, om *objects.ObjectManager) *Map {
-	m := &Map{Width: 384, Height: 384}
+	m := &Map{Width: 384, Height: 384, ActiveMessageIndex: messageIDNull}
 	m.Rng1 = *core.NewPrngSeed(seed0, seed1)
 	if om != nil && om.HillShapes == nil { // no scenario chose one: the object selection's (the only one loaded, upstream)
 		for _, h := range om.HillShapesObjects {

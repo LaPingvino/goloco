@@ -11,7 +11,7 @@ import (
 //
 // PARTIAL: of dateTick only the day itself, VehicleManager::updateDaily and
 // the player companies' challenge progress run; StationManager /
-// IndustryManager / MessageManager daily updates, the snow line, the monthly,
+// IndustryManager daily updates (the MessageManager one is in), the snow line, the monthly,
 // quarterly and yearly updates (of the monthly ones monthsInChallenge,
 // CompanyManager::updateMonthly1, VehicleManager::updateMonthly and
 // Economy::updateMonthly run), and the rest of
@@ -74,6 +74,7 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 	m.stationsUpdateDaily(om) // StationManager::updateDaily (stationmanager.go)
 	m.vehiclesUpdateDaily(om)
 	m.industriesUpdateDaily(om) // IndustryManager::updateDaily (industryprod.go)
+	m.UpdateMessagesDaily()     // MessageManager::updateDaily (messages.go)
 	yesterday, today := CalcDate(m.CurrentDay-1), CalcDate(m.CurrentDay)
 	m.CurrentYear, m.CurrentMonth, m.CurrentDayOfMonth = uint16(today.Year), uint8(today.Month), uint8(today.Day)
 	if today.Month != yesterday.Month { // end of every month

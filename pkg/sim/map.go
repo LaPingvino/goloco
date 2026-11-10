@@ -14,29 +14,33 @@ type Map struct {
 	// InvalidateEntity: see entitymove.go (EntityBase::invalidateSprite).
 	InvalidateEntity InvalidateEntity
 	// InvalidateTile: ViewportManager::invalidate(pos, …) (entitymove.go).
-	InvalidateTile        InvalidateTile
-	Width, Height         int
-	Tiles                 [][]Tile        // [y][x]
-	Towns                 []scenario.Town // parsed town records
-	Entities              []scenario.VehicleEntity
-	EntityLists           *EntityLists                // EntityManager's lists (entitylists.go): from the save, else reset
-	MoneyEffects          map[uint16]*MoneyEffect     // money effect entities by id (moneyeffect.go)
-	VehicleListData       []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
-	CompanyFaces          []scenario.CompanyFace      // company slot → competitor, emotion, performance
-	Orders                []byte                      // GameState orders[]
-	OrderTableLength      uint32                      // GameState orderTableLength: the bytes of Orders in use
-	Routings              []uint16                    // GameState routings[], by RoutingHandle (routing.go)
-	RoadAnyTypeCompatible uint32                      // GameState roadObjectIdIsAnyRoadTypeCompatible
-	RoadUsableByAll       uint32                      // GameState roadObjectIdIsUsableByAllCompanies
-	Rng1                  core.Prng                   // GameState rng (gPrng1), from the save
-	TitleMode             bool                        // SceneManager::isTitleMode (pending breakdowns don\'t happen)
-	ScenarioTicks         uint32                      // GameState scenarioTicks: +1 per game tick (UpdateVehicles)
-	Companies             []scenario.CompanyEconomy   // the save\'s companies (economy)
-	Industries            []scenario.Industry         // the save\'s industries (deliveries)
-	vehicleMangled113623B uint8                       // VehicleHead.cpp module static _vehicleMangled_113623B (sub_4ACEF1)
-	CurrentDay            uint32                      // GameState general.currentDay
-	CompanyNames          []uint16                    // company slot → name StringId
-	ControllingCompany    uint8                       // playerCompanies[0] (getControllingId)
+	InvalidateTile   InvalidateTile
+	Width, Height    int
+	Tiles            [][]Tile        // [y][x]
+	Towns            []scenario.Town // parsed town records
+	Entities         []scenario.VehicleEntity
+	EntityLists      *EntityLists                // EntityManager's lists (entitylists.go): from the save, else reset
+	MoneyEffects     map[uint16]*MoneyEffect     // money effect entities by id (moneyeffect.go)
+	VehicleListData  []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
+	CompanyFaces     []scenario.CompanyFace      // company slot → competitor, emotion, performance
+	Orders           []byte                      // GameState orders[]
+	OrderTableLength uint32                      // GameState orderTableLength: the bytes of Orders in use
+	Routings         []uint16                    // GameState routings[], by RoutingHandle (routing.go)
+	// Messages / ActiveMessageIndex are GameState messages / numMessages and
+	// activeMessageIndex (messages.go; 0xFFFF none).
+	Messages              []Message
+	ActiveMessageIndex    uint16
+	RoadAnyTypeCompatible uint32                    // GameState roadObjectIdIsAnyRoadTypeCompatible
+	RoadUsableByAll       uint32                    // GameState roadObjectIdIsUsableByAllCompanies
+	Rng1                  core.Prng                 // GameState rng (gPrng1), from the save
+	TitleMode             bool                      // SceneManager::isTitleMode (pending breakdowns don\'t happen)
+	ScenarioTicks         uint32                    // GameState scenarioTicks: +1 per game tick (UpdateVehicles)
+	Companies             []scenario.CompanyEconomy // the save\'s companies (economy)
+	Industries            []scenario.Industry       // the save\'s industries (deliveries)
+	vehicleMangled113623B uint8                     // VehicleHead.cpp module static _vehicleMangled_113623B (sub_4ACEF1)
+	CurrentDay            uint32                    // GameState general.currentDay
+	CompanyNames          []uint16                  // company slot → name StringId
+	ControllingCompany    uint8                     // playerCompanies[0] (getControllingId)
 	// LastAdjoiningStation / Pos are the legacy return state's
 	// lastConstructedAdjoiningStation (-1 null) and ...Pos (X -1: none), set
 	// by a ghost CreateTrainStation for the Station tab.
@@ -134,6 +138,7 @@ func (m *Map) AddRoad(x, y int, re scenario.RoadElement) bool {
 // LoadScenario fills the map from a loaded scenario or save: size, every
 // tile's surface and elements, towns and the saved vehicle entities.
 func (m *Map) LoadScenario(sc *scenario.Scenario) {
+	m.ActiveMessageIndex = messageIDNull // PARTIAL: the save's messages (GameState) aren't loaded yet
 	m.Width, m.Height = sc.MapWidth, sc.MapHeight
 	m.Tiles = make([][]Tile, m.Height)
 	for y := 0; y < m.Height; y++ {
