@@ -167,10 +167,6 @@ func (s *State) UndoLastTrack() bool {
 	return true
 }
 
-// drawHeadMarker outlines the construction-head tile with a bright pulsing
-// diamond so the head is visible even over busy terrain (OpenLoco shows a
-// construction arrow here).
-
 func (s *State) removeTrackElement(x, y int, trackID, rotation, seq, baseZ uint8) {
 	t := s.TileAt(x, y)
 	if t == nil {

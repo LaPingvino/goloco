@@ -1,32 +1,11 @@
 package world
 
 import (
-	"image/color"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
-func (w *World) drawHeadMarker(screen *ebiten.Image, scale float64) {
-	h := w.ConsHead
-	if !h.Active {
-		return
-	}
-	vpX, vpY := w.tileToScreen(h.X, h.Y)
-	vpY -= float64(h.BaseZ) * 4.0
-	cx := float32(math.Round((vpX - w.camX) * scale))
-	cy := float32(math.Round((vpY - w.camY) * scale))
-	s := float32(scale)
-	// Tile diamond corners relative to the anchor (top corner).
-	pts := [4][2]float32{{0, 0}, {32 * s, 16 * s}, {0, 32 * s}, {-32 * s, 16 * s}}
-	pulse := uint8(180 + 75*math.Sin(float64(w.frameCounter)*0.2))
-	col := color.RGBA{255, 255, pulse, 255}
-	for i := range pts {
-		a, b := pts[i], pts[(i+1)%4]
-		vector.StrokeLine(screen, cx+a[0], cy+a[1], cx+b[0], cy+b[1], 2, col, false)
-	}
-}
 
 // removeTrackElement deletes one exactly-matching track element from a tile.
 
@@ -181,7 +160,9 @@ func (w *World) DrawConstructionGhost(screen *ebiten.Image, trackID, objID int) 
 		screen.DrawImage(img, op)
 	}
 
-	w.drawHeadMarker(screen, scale)
+	// The head shows as upstream's blinking construction arrow, painted in the
+	// world (constructionarrow.go); the pulsing diamond drawn here before was
+	// goloco's own marker, not upstream's.
 
 	if trackObj != nil && trackObj.Image != 0 && w.CanPlaceTrackAtHead(trackID) &&
 		trackID < len(kTrackParts) && kTrackParts[trackID] != nil {

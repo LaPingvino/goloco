@@ -701,6 +701,11 @@ func (g *Game) Update() error {
 		}
 	}
 	g.updateTrackGhost()
+	// updateConstruction's updateConstructionArrow: the track / road window on
+	// its Construction tab with the head placed (not while hovering).
+	if g.w != nil {
+		g.w.UpdateConstructionArrow((g.buildMode == buildModeTrack || g.buildMode == buildModeRoad) && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active)
+	}
 
 	// Update dropdown hover if visible
 	if g.dropdown != nil && g.dropdown.Visible {
