@@ -332,10 +332,11 @@ func (m *Map) buildInitialRoad(c *Cmd, town int) {
 // (not a station's road end) the road is extended (appendToRoadEnd); where
 // it branches, a branch is drawn by the town's prng. No road yet: the first
 // one (buildInitialRoad), when growFlags allow.
+// constructBuilding runs on each piece off a bridge (constructBuildings).
 // PARTIAL (each its own port, queue 5.9f3): the takeover of company roads /
-// road type updates / street lights (roadUpdate, neutralRoadTakeover),
-// constructBuilding (constructBuildings), addRoadJunction
-// (allowRoadBranching) — skipped here, so those flags do nothing yet.
+// road type updates / street lights (roadUpdate, neutralRoadTakeover — and
+// their early break out of the walk), addRoadJunction (allowRoadBranching)
+// — skipped here, so those flags do nothing yet.
 func (m *Map) GrowTown(om *objects.ObjectManager, town int, growFlags uint8) {
 	c := &Cmd{Company: CompanyNeutral, Objects: om}
 	ext, ok := m.findRoadExtent(town, om)
@@ -369,6 +370,11 @@ func (m *Map) GrowTown(om *objects.ObjectManager, town int, growFlags uint8) {
 			break
 		}
 		info := m.getRoadInformation(c, x, y, z, tad)
+		if growFlags&TownGrowConstructBuildings != 0 && !onBridge {
+			p = core.NewPrngSeed(tw.Prng[0], tw.Prng[1])
+			m.constructBuilding(c, town, p, x, y, z, tad, growFlags)
+			save()
+		}
 		end, _ := RoadConnectionEnd(x, y, z, tad)
 		rc := m.RoadConnections(end.X, end.Y, end.Z, end.NextRotation, CompanyNeutral, 0xFF, 0, 0)
 		if len(rc.Connections) == 0 {
