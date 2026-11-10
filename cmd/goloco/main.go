@@ -1396,12 +1396,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	// Ghost preview for build mode (both chain from the construction head).
-	// Track: the real ghost at the head, painted in the world
-	// (UpdateHeadTrackGhost); road keeps goloco's overlay until its ghost is ported.
-	if g.buildMode == buildModeRoad {
-		g.w.DrawRoadConstructionGhost(screen, g.consSelectedRoadID(), g.buildObjID)
-		ui.MarkForeign(screen.Bounds())
-	}
+	// Track and road: the real ghost at the head, painted in the world
+	// (UpdateHeadTrackGhost / UpdateHeadRoadGhost) — goloco's overlays are gone.
 
 	if g.inTitleScreen {
 		g.drawTitleMenu(screen)
@@ -3803,6 +3799,9 @@ func (g *Game) consDisplayID() int {
 func (g *Game) consPlace(id int) {
 	var built bool
 	if g.consIsRoad() {
+		// constructRoad: removeConstructionGhosts first (the ghost stands where the piece goes).
+		c, _ := g.stationCmd()
+		g.w.RemoveRoadGhost(c)
 		built = g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
 	} else if g.r != nil && g.r.ObjMgr != nil { // the createTrack game command: checked and charged (PL.1 e)
 		c, _ := g.stationCmd()
