@@ -143,8 +143,9 @@ func (m *Map) GenerateLandscape(startYear uint16, o TerrainOptions, g1 G1Raw, om
 	m.GenerateIndustries(o, om)
 	m.GenerateMiscBuildings(om)
 	m.GenerateSurfaceVariation(om)
-	m.UpdateRoadObjectIdFlags(om) // sub_4748D4's road object flags
+	m.UpdateRoadObjectIdFlags(om) // sub_4748D4
 	m.UpdateDefaultLevelCrossingType(om)
+	m.UpdateScenarioObjectOptions(om)
 }
 
 // Surface slope shapes (SurfaceSlope).
@@ -282,6 +283,7 @@ func NewGeneratedMap(seed0, seed1 uint32, startYear uint16, o TerrainOptions, g1
 	// generating: the road object flags town growth reads.
 	m.UpdateRoadObjectIdFlags(om)
 	m.UpdateDefaultLevelCrossingType(om)
+	m.UpdateScenarioObjectOptions(om)
 	m.GenerateLandscape(startYear, o, g1, om)
 	return m
 }
