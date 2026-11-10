@@ -2496,13 +2496,19 @@ func TestCreateIndustry(t *testing.T) {
 	}
 	for _, tl := range ind.Tiles {
 		found := false
-		for _, e := range m.TileAt(int(tl[0])>>5, int(tl[1])>>5).Industries {
+		tt := m.TileAt(int(tl[0])>>5, int(tl[1])>>5)
+		for _, e := range tt.Industries {
 			if e.IndustryID == id && e.SequenceIndex == 0 {
 				found = true
 			}
 		}
 		if !found {
 			t.Errorf("no element of the industry at its tile %v", tl)
+		}
+		for _, r := range tt.Order { // insertElement<IndustryElement>(…, 0xF)
+			if r.Kind == scenario.KindIndustry && tt.Industries[r.Index].IndustryID == id && r.Flags&0xF != 0xF {
+				t.Errorf("industry element at %v occupies quarters %#x, want 0xF", tl, r.Flags&0xF)
+			}
 		}
 	}
 	for i := 0; i < 2; i++ {

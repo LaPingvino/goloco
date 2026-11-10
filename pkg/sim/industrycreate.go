@@ -263,10 +263,11 @@ func (m *Map) placeIndustryBuilding(c *Cmd, id uint8, x, y int32, direction, bui
 			t.Industries = append(t.Industries, scenario.IndustryElement{IndustryID: id, BuildingType: buildingType, Colour: colour,
 				SequenceIndex: uint8(seq), Rotation: direction, IsConstructed: buildImmediate, BaseZ: highest, ClearZ: clearZ})
 			t.insertRef(scenario.KindIndustry, len(t.Industries)-1, highest)
-			if flags&CmdGhost != 0 {
-				for i := range t.Order {
-					if r := &t.Order[i]; r.Kind == scenario.KindIndustry && int(r.Index) == len(t.Industries)-1 {
-						r.Flags |= 0x10
+			for i := range t.Order { // insertElement<IndustryElement>(…, 0xF): every quarter occupied
+				if r := &t.Order[i]; r.Kind == scenario.KindIndustry && int(r.Index) == len(t.Industries)-1 {
+					r.Flags |= 0xF
+					if flags&CmdGhost != 0 {
+						r.Flags |= elemFlagGhost
 					}
 				}
 			}
