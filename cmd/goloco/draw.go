@@ -152,6 +152,10 @@ func (g *Game) drawTitleScreen(screen *ebiten.Image) {
 // drawGameWindows draws the toolbar and the game's windows, bottom to top
 // (gameClick tests them in the reverse order), the menus and modals last.
 func (g *Game) drawGameWindows(screen *ebiten.Image) {
+	m := &g.w.Map // the button faces: the last track and road options, in the player's colour
+	ctrl, _ := g.w.ControllingCompany()
+	g.toolbar.LastRailroadOption, g.toolbar.LastRoadOption = m.LastRailroadOption, m.LastRoadOption
+	g.toolbar.CompanyColour = g.companyColours(ctrl).Main[0]
 	g.toolbar.Draw(screen, g.r)
 	ui.MarkForeign(image.Rect(g.toolbar.X, g.toolbar.Y, g.toolbar.X+g.toolbar.Width, g.toolbar.Y+g.toolbar.Height))
 	g.windowMgr.Draw(screen, g.r)
