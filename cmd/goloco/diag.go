@@ -262,7 +262,7 @@ func (g *Game) diagOpenWindows() {
 		} else if os.Getenv("GOLOCO_DIAG_BROWSE") == "save" {
 			g.openSaveWindow()
 		} else {
-			g.openFileWindow("Load Game", false)
+			g.openLoadGameWindow()
 		}
 	}
 	if os.Getenv("GOLOCO_DIAG_NEWGAME") != "" && g.scenarioSelect == nil && !g.diagNewGameDone {

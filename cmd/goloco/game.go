@@ -41,8 +41,9 @@ const (
 
 // Game is the running program: the world shown (w — the title map or a game's),
 // the renderer and its object manager (r, r.ObjMgr: nil only without game
-// data), the open windows, and the tools' state. w and r are set once by
-// NewGame and never nil.
+// data), the open windows, and the tools' state. w and r are never nil: NewGame
+// sets both, and w is only ever replaced by another world (loadScenario,
+// quitToMenu).
 type Game struct {
 	// The world, its renderer, sound.
 	w          *world.World
