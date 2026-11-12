@@ -95,3 +95,10 @@ func (m *Map) RenameIndustry(c *Cmd, flags uint8, i int, name string, om *object
 	m.emptyUserString(old)
 	return 0, true
 }
+
+// IndustryFoundedByPlayer is renameIndustryPrompt's test outside the editor:
+// founded by a company (flag_04) and that company a player's.
+func (m *Map) IndustryFoundedByPlayer(i int) bool {
+	ind := &m.Industries[i]
+	return ind.Flags&industryFlag04 != 0 && m.IsPlayerCompany(int(ind.Owner))
+}

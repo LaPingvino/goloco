@@ -7,6 +7,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 )
 
@@ -163,6 +164,7 @@ func (g *Game) openTownWindow(id int) {
 	w := ui.NewTownWindow(g.sw, g.sh, t.Name, t.Size, int(t.Population), tc, wc)
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.TownView(id, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnTown(id) }
+	w.OnRename = func() { g.renameTown(id, w) }
 	w.RatingsTab = 2 // tab_company_ratings: each company the town rates
 	w.Ratings = func() []ui.RatingLine {
 		if id >= len(g.w.Map.Towns) {
@@ -313,6 +315,7 @@ func (g *Game) openIndustryWindow(id int) {
 	w := ui.NewIndustryWindow(g.sw, g.sh, name, m.IndustryStatusString(idx, g.r.ObjMgr), tc, wc)
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.IndustryView(idx, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnIndustry(idx) }
+	w.OnRename = func() { g.renameIndustry(idx, w) }
 	w.OnClose = func() { g.viewWin = nil }
 	w.CargoTab = 3 // tab_transported
 	w.Cargo = func() (bool, bool, []ui.CargoMonthLine) {
@@ -403,3 +406,63 @@ var (
 		objects.ISVehicleTramsFrame0, objects.ISVehicleAircraftFrame0, objects.ISVehicleShipsFrame0}
 	vehicleTabCounts = []int{8, 8, 8, 8, 8, 8}
 )
+
+// renameTown is renameTownPrompt and textInput: title_town_name,
+// prompt_type_new_town_name with the town's name, its current name; then
+// renameTown for the controlling company (Miscellaneous); refused, the error
+// window (error_cant_rename_town). The window shows the new name.
+func (g *Game) renameTown(id int, win *ui.ViewWindow) {
+	infos := g.w.TownList()
+	if id < 0 || id >= len(infos) {
+		return
+	}
+	tc, wc := g.windowColours(false)
+	g.textInput = ui.OpenTextInput(i18n.Str(i18n.TitleTownName), ui.FillArgs(i18n.Str(i18n.PromptTypeNewTownName), infos[id].Name),
+		infos[id].Name, 31, g.sw, g.sh, tc, wc, true, func(text string) {
+			m := &g.w.Map
+			c := g.playerCmd()
+			g1, _ := g.r.ObjMgr.G1File.(sim.G1Raw)
+			if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) {
+				return m.RenameTown(c, f, id, text, g1)
+			}); !ok {
+				g.openError(i18n.Label(i18n.ErrorCantRenameTown), cmdErrorText(c))
+				return
+			}
+			if infos := g.w.TownList(); id < len(infos) {
+				win.Title = infos[id].Name
+			}
+			if old := g.townList; old != nil && old.Caption == i18n.Label(i18n.TitleTowns) { // the open town list repopulated
+				g.openTownsWindow()
+				g.townList.X, g.townList.Y, g.townList.Scroll = old.X, old.Y, old.Scroll
+			}
+		})
+}
+
+// renameIndustry is renameIndustryPrompt and textInput: outside the editor
+// only an industry the player's company founded (flag_04, a player owner);
+// title_industry_name, prompt_enter_new_industry_name with the industry's
+// town (as upstream), its current name; then renameIndustry
+// (Miscellaneous); refused, error_cant_rename_industry.
+func (g *Game) renameIndustry(idx int, win *ui.ViewWindow) {
+	m := &g.w.Map
+	if idx < 0 || idx >= len(m.Industries) || !m.IndustryFoundedByPlayer(idx) {
+		return
+	}
+	name, _ := m.IndustryName(idx, g.r.ObjMgr)
+	town := ""
+	if infos := g.w.TownList(); int(m.Industries[idx].Town) < len(infos) {
+		town = infos[m.Industries[idx].Town].Name
+	}
+	tc, wc := g.windowColours(false)
+	g.textInput = ui.OpenTextInput(i18n.Str(i18n.TitleIndustryName), ui.FillArgs(i18n.Str(i18n.PromptEnterNewIndustryName), town),
+		name, 31, g.sw, g.sh, tc, wc, true, func(text string) {
+			c := g.playerCmd()
+			if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) {
+				return m.RenameIndustry(c, f, idx, text, g.r.ObjMgr)
+			}); !ok {
+				g.openError(i18n.Label(i18n.ErrorCantRenameIndustry), cmdErrorText(c))
+				return
+			}
+			win.Title, _ = m.IndustryName(idx, g.r.ObjMgr)
+		})
+}

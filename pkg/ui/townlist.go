@@ -12,12 +12,11 @@ import (
 
 // TownList — a port of Ui/Windows/TownList.cpp, the town list tab: 600×197 at
 // (screen width - 600, 30), skin windowTitlebarColour / windowColour; caption,
-// close button, panel, four tabs, the sortable column headers (Name, Type,
-// Population, Stations), a ScrollView of 10 px rows and the "N towns" status.
-// The tabs' images come from TabIcon (drawTabs).
-// PARTIAL: only the list tab (build-town/buildings tabs not ported), header
-// sorting (rows keep the scenario order), window resizing and
-// the resize handle.
+// close button, panel, four tabs (the three build tabs disabled outside the
+// editor, so hidden), the sortable column headers (Name, Type, Population,
+// Stations), a ScrollView of 10 px rows and the "N towns" status. The tabs'
+// images come from TabIcon (drawTabs).
+// PARTIAL: the editor's build tabs, window resizing and the resize handle.
 
 const (
 	tlW, tlH    = 600, 197
