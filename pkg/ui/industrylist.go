@@ -100,8 +100,8 @@ const newIndustryCell = 112
 // drawn by drawIndustry; the selected one (rowHover) inset; at the bottom its
 // name and build cost ("No industry available" when there are none). A click
 // selects (onScrollMouseDown) and calls OnSelect. PARTIAL: hover
-// (onScrollMouseOver: var_846 and its tooltip), the placement tool (fund /
-// ghost / placement cost), the tabs' images.
+// (onScrollMouseOver: var_846 and its tooltip). The placement tool:
+// cmd/goloco industrytool.go.
 func NewIndustryGrid(sw int, choices []NewIndustryChoice, selected int, titleColour, colour uint8, onSelect func(id int)) *TownListWindow {
 	const w578, h172 = 578, 172
 	w := &TownListWindow{X: sw - 759, Y: 30, W: w578, H: h172, TitleColour: titleColour, Colour: colour,

@@ -14,8 +14,9 @@ import (
 // (screen width - 600, 30), skin windowTitlebarColour / windowColour; caption,
 // close button, panel, four tabs, the sortable column headers (Name, Type,
 // Population, Stations), a ScrollView of 10 px rows and the "N towns" status.
-// PARTIAL: only the list tab (build-town/buildings tabs not ported), tab
-// icons, header sorting (rows keep the scenario order), window resizing and
+// The tabs' images come from TabIcon (drawTabs).
+// PARTIAL: only the list tab (build-town/buildings tabs not ported), header
+// sorting (rows keep the scenario order), window resizing and
 // the resize handle.
 
 const (
@@ -103,6 +104,9 @@ type TownListWindow struct {
 	// CurrentTab is the selected tab; OnTab is called when a tab is clicked.
 	CurrentTab int
 	OnTab      func(tab int)
+	// TabIcon is drawTabs' image for tab i (a g1 element id; < 0 none) and
+	// the colour it is recoloured to (Gfx::recolour; < 0 none).
+	TabIcon func(i int) (image, colour int)
 	// ColourCaption: the caption is Style::colourText (StationList,
 	// VehicleList) rather than whiteText (TownList).
 	ColourCaption bool
@@ -304,10 +308,18 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := range w.Tabs {
-			// PARTIAL: the tabs' skin icons (drawTabs) are not drawn yet; the
-			// inactive-tab overlay and line are (Widget::drawTab with kContentUnk).
-			drawTab(rt, 3+31*i, 15, i == w.CurrentTab, sec, tabNoIcon, nil)
+		for i := range w.Tabs { // drawTabs: Widget::drawTab with each tab's image
+			icon, colour := tabNoIcon, -1
+			if w.TabIcon != nil {
+				if img, c := w.TabIcon(i); img >= 0 && img < len(g1.Elements) {
+					icon, colour = img, c
+				}
+			}
+			var m []uint8
+			if colour >= 0 {
+				m, _ = g1.GetPaletteMap(colour)
+			}
+			drawTab(rt, 3+31*i, 15, i == w.CurrentTab, sec, icon, m)
 		}
 		for _, c := range w.Columns {
 			hw := min(c.HeaderW, w.W-4-c.HeaderX) // headers are clipped to the window (prepareDraw)
