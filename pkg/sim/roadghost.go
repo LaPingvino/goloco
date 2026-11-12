@@ -63,7 +63,7 @@ func (s *State) BuildRoadAtHead(c *Cmd, roadID int, roadObjID uint8) (int32, boo
 	}
 	s.RemoveRoadGhost(c)
 	a := roadPlacementArgs{X: int32(h.X) * 32, Y: int32(h.Y) * 32, Z: int32(h.BaseZ) * 4, Rotation: h.Rotation & 3,
-		RoadID: uint8(roadID), RoadObjectID: roadObjID, Bridge: 0xFF}
+		RoadID: uint8(roadID), RoadObjectID: roadObjID, Bridge: s.bridge()}
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
 	cost, ok := s.DoCommandFor(c, CmdApply, ExpenditureConstruction, func(f uint8) (int32, bool) {
 		return s.createRoad(c, a, f)
@@ -91,7 +91,7 @@ func (s *State) UpdateHeadRoadGhost(c *Cmd, roadID int, objID uint8) {
 		return
 	}
 	a := roadPlacementArgs{X: int32(h.X) * 32, Y: int32(h.Y) * 32, Z: int32(h.BaseZ) * 4, Rotation: h.Rotation & 3,
-		RoadID: uint8(roadID), RoadObjectID: objID, Bridge: 0xFF}
+		RoadID: uint8(roadID), RoadObjectID: objID, Bridge: s.bridge()}
 	if g := s.RoadGhost; g != nil && g.X == a.X && g.Y == a.Y && g.Z == a.Z && g.Rotation == a.Rotation && g.RoadID == a.RoadID && g.RoadObjectID == a.RoadObjectID {
 		return
 	}
@@ -122,7 +122,7 @@ func (s *State) UpdateRoadGhost(c *Cmd, tx, ty int, roadID, rot, objID uint8, ju
 		return s.ghostCost, true
 	}
 	s.ghostPos = pos
-	a := roadPlacementArgs{X: x, Y: y, Z: h, Rotation: rot, RoadID: roadID, RoadObjectID: objID, Bridge: 0xFF}
+	a := roadPlacementArgs{X: x, Y: y, Z: h, Rotation: rot, RoadID: roadID, RoadObjectID: objID, Bridge: s.bridge()}
 	for tries := 2; ; {
 		cost, ok := s.placeRoadGhost(c, a)
 		if ok {

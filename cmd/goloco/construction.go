@@ -558,6 +558,11 @@ func (g *Game) updateTrackGhost() {
 	if g.r.ObjMgr == nil {
 		return
 	}
+	// cState.lastSelectedBridge: the window's bridge choice, for every piece built
+	g.w.ConsBridge = 0
+	if list := g.r.ObjMgr.AvailableCompatibleBridges(g.buildObjID, g.consIsRoad(), int(g.w.CurrentYear)); len(list) > 0 {
+		g.w.ConsBridge = uint8(pickSlot(list, g.consBridge)) + 1
+	}
 	// updateConstruction for a road: the selected road piece as a ghost at the head.
 	if g.buildMode == buildModeRoad && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active {
 		c := g.playerCmd()

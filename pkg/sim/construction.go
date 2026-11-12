@@ -312,7 +312,7 @@ func (s *State) BuildTrackAtHead(c *Cmd, trackID int, trackObjID uint8) (int32, 
 	// constructTrack: removeConstructionGhosts first (the ghost stands where
 	// the piece goes).
 	s.RemoveTrackGhost(c)
-	a := headTrackArgs(h, trackID, trackObjID)
+	a := headTrackArgs(h, trackID, trackObjID, s.bridge()) // getTrackPlacementArgs: lastSelectedBridge
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
 	var placed []trackPiecePlan
 	cost, ok := s.DoCommandFor(c, CmdApply, ExpenditureConstruction, func(flags uint8) (int32, bool) {
