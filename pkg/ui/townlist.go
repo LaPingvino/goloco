@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/LaPingvino/goloco/pkg/core"
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
@@ -485,13 +486,13 @@ type VehicleRow struct {
 	Cargos []int
 }
 
-// vehicleOrder is VehicleList.cpp getOrder: name (strcmp, default), profit
+// vehicleOrder is VehicleList.cpp getOrder: name (strlogicalcmp, default), profit
 // (descending), age (dayCreated ascending: the oldest first), reliability
 // (descending).
 func vehicleOrder(mode int, a, b VehicleRow) bool {
 	switch mode {
-	case 0:
-		return a.Name < b.Name
+	case 0: // orderByName: strlogicalcmp
+		return core.StrLogicalCmp(a.Name, b.Name) < 0
 	case 1:
 		return b.RecentProfit-a.RecentProfit < 0
 	case 2:
