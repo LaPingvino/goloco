@@ -434,7 +434,7 @@ func (g *Game) hudOrMapClick() {
 		// button would; refused, the error window shows and the rotation turns.
 		g.removeTrackGhost()
 		if p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation); ok {
-			c, _ := g.stationCmd()
+			c := g.playerCmd()
 			if _, built := g.w.BuildTrackAtTile(c, g.hoverTileX, g.hoverTileY, int(p.ID), uint8(g.buildObjID)); built {
 				g.errorWin = nil // the loop's WindowManager::close(WindowType::error)
 				if g.consOneShot >= 0 {

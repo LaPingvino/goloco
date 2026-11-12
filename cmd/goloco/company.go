@@ -103,10 +103,7 @@ func (g *Game) openCompanyFinances(company int) {
 	if g.w == nil || company < 0 || company >= len(g.w.Map.Companies) {
 		return
 	}
-	var tc, wc uint8 = 0, 1
-	if sk := g.skin(); sk != nil {
-		tc, wc = sk.WindowTitlebarColour, sk.WindowPlayerColor
-	}
+	tc, wc := g.windowColours(true)
 	if company < len(g.w.CompanyColours) { // the company's own colour, as its windows are
 		tc = g.w.CompanyColours[company]
 	}
@@ -372,10 +369,7 @@ func (g *Game) renameCompany(company int, titleColour, colour uint8) {
 // company's window.
 func (g *Game) openCompanyList() {
 	m := &g.w.Map
-	var tc, wc uint8 = 0, 1
-	if sk := g.skin(); sk != nil {
-		tc, wc = sk.WindowTitlebarColour, sk.WindowColour
-	}
+	tc, wc := g.windowColours(false)
 	var rows []ui.CompanyListRow
 	for id := range m.CompanyNames {
 		if m.CompanyEmpty(id) || id >= len(m.CompanyFaces) || id >= len(m.Companies) {

@@ -25,10 +25,7 @@ func (g *Game) openStationWindow(id int) {
 	if info == nil {
 		return
 	}
-	var tc, wc uint8 = 0, 1
-	if sk := g.skin(); sk != nil {
-		tc, wc = sk.WindowTitlebarColour, sk.WindowColour
-	}
+	tc, wc := g.windowColours(false)
 	if info.Owner >= 0 && info.Owner < len(g.w.CompanyColours) {
 		tc = g.w.CompanyColours[info.Owner]
 	}
@@ -147,8 +144,7 @@ func (g *Game) renameStation(id int, titleColour, colour uint8) {
 	}
 	g.textInput = ui.OpenTextInput(i18n.Str(i18n.TitleStationName), ui.FillArgs(i18n.Str(i18n.PromptTypeNewStationName), town),
 		m.StationName(id), 31, g.sw, g.sh, titleColour, colour, true, func(text string) {
-			company, _ := g.w.ControllingCompany()
-			c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+			c := g.playerCmd()
 			if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) {
 				return m.RenameStation(c, f, id, text, g.r.ObjMgr)
 			}); !ok {

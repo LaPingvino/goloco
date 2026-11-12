@@ -31,8 +31,7 @@ func (g *Game) onPickup(headID uint16) {
 		g.openVehicleDetails(headID)
 		return
 	}
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	if _, ok := m.VehiclePickup(c, sim.CmdApply, headID); !ok {
 		log.Printf("[Game] can't remove vehicle %d", headID)
 		return
@@ -70,8 +69,7 @@ func (g *Game) pickupToolDown(sx, sy int) bool {
 		return false
 	}
 	m := &g.w.Map
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	if g.ghostProgress != -1 && g.ghostPlace.TrackAndDirection == p.TrackAndDirection && g.ghostPlace.X == p.X &&
 		g.ghostPlace.Y == p.Y && g.ghostPlace.Z == p.Z && int(g.ghostPlace.TrackProgress) == int(p.TrackProgress) && m.VehicleIsGhost(head) {
 		p.ConvertGhost = true // the ghost where it stands becomes the vehicle
@@ -83,12 +81,18 @@ func (g *Game) pickupToolDown(sx, sy int) bool {
 		log.Printf("[Game] can't place vehicle %d here", head)
 		return false
 	}
+	g.pickupPlaced(c, head)
+	return true
+}
+
+// pickupPlaced is pickupToolPlacementCommandCallback: shift starts the placed
+// vehicle, the tool is cancelled, the window shown again on Main.
+func (g *Game) pickupPlaced(c *sim.Cmd, head uint16) {
 	if ebiten.IsKeyPressed(ebiten.KeyShift) {
-		m.VehicleChangeRunningMode(c, sim.CmdApply, head, sim.RunningModeStart)
+		g.w.Map.VehicleChangeRunningMode(c, sim.CmdApply, head, sim.RunningModeStart)
 	}
 	g.pickupOn = false
 	g.openVehicleWindow(head, 0) // callOnMouseUp(tabMain)
-	return true
 }
 
 // pickupToolUpdate is pickupToolUpdateLand for rail and road: the placement under the
@@ -113,8 +117,7 @@ func (g *Game) pickupToolUpdate(sx, sy int) {
 		return
 	}
 	g.removeLandGhost()
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	if _, ok := g.w.Map.VehiclePlace(c, sim.CmdApply|sim.CmdGhost|sim.CmdNoErrorWindow, p); ok {
 		g.ghostPlace, g.ghostProgress = p, int(p.TrackProgress)
 	}
@@ -128,8 +131,7 @@ func (g *Game) removeLandGhost() {
 		return
 	}
 	if g.w != nil && g.r != nil && g.w.Map.VehicleIsGhost(g.pickupHead) {
-		company, _ := g.w.ControllingCompany()
-		c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+		c := g.playerCmd()
 		g.w.Map.VehiclePickup(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdGhost, g.pickupHead)
 	}
 	g.ghostProgress = -1
@@ -152,17 +154,12 @@ func (g *Game) pickupToolDownWater(sx, sy int) bool {
 		g.removeBoatGhost()
 	}
 	g.ghostProgress = -1
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	if _, ok := m.VehiclePlaceWater(c, sim.CmdApply, p); !ok {
 		log.Printf("[Game] can't place vehicle %d here", head)
 		return false
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyShift) {
-		m.VehicleChangeRunningMode(c, sim.CmdApply, head, sim.RunningModeStart)
-	}
-	g.pickupOn = false
-	g.openVehicleWindow(head, 0)
+	g.pickupPlaced(c, head)
 	return true
 }
 
@@ -181,8 +178,7 @@ func (g *Game) pickupToolUpdateWater(sx, sy int) {
 	}
 	g.ghostWater = p
 	g.removeBoatGhost()
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	if _, ok := g.w.Map.VehiclePlaceWater(c, sim.CmdApply|sim.CmdGhost|sim.CmdNoErrorWindow, p); ok {
 		g.ghostProgress = 0
 	}
@@ -192,8 +188,7 @@ func (g *Game) pickupToolUpdateWater(sx, sy int) {
 // (VehiclePickupWater, apply | noErrorWindow | ghost); _ghostTrackProgress = -1.
 func (g *Game) removeBoatGhost() {
 	if g.w != nil && g.r != nil && g.w.Map.VehicleIsGhost(g.pickupHead) {
-		company, _ := g.w.ControllingCompany()
-		c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+		c := g.playerCmd()
 		g.w.Map.VehiclePickupWater(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdGhost, g.pickupHead)
 	}
 	g.ghostProgress = -1
@@ -216,17 +211,12 @@ func (g *Game) pickupToolDownAir(sx, sy int) bool {
 	if !p.ConvertGhost {
 		g.removeAirplaneGhost()
 	}
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	if _, ok := m.VehiclePlaceAir(c, sim.CmdApply, p); !ok {
 		log.Printf("[Game] can't place vehicle %d here", head)
 		return false
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyShift) {
-		m.VehicleChangeRunningMode(c, sim.CmdApply, head, sim.RunningModeStart)
-	}
-	g.pickupOn = false
-	g.openVehicleWindow(head, 0)
+	g.pickupPlaced(c, head)
 	return true
 }
 
@@ -244,8 +234,7 @@ func (g *Game) pickupToolUpdateAir(sx, sy int) {
 		return
 	}
 	g.removeAirplaneGhost()
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	if _, ok := g.w.Map.VehiclePlaceAir(c, sim.CmdApply|sim.CmdGhost|sim.CmdNoErrorWindow, p); ok {
 		g.ghostAirStation, g.ghostAirNode = p.StationID, p.AirportNode
 	}
@@ -255,8 +244,7 @@ func (g *Game) pickupToolUpdateAir(sx, sy int) {
 // (VehiclePickupAir, apply | noErrorWindow | ghost); no ghost airport.
 func (g *Game) removeAirplaneGhost() {
 	if g.w != nil && g.r != nil && g.w.Map.VehicleIsGhost(g.pickupHead) {
-		company, _ := g.w.ControllingCompany()
-		c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+		c := g.playerCmd()
 		g.w.Map.VehiclePickupAir(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdGhost, g.pickupHead)
 	}
 	g.ghostAirStation = 0xFFFF

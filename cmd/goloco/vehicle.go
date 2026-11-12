@@ -64,10 +64,7 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		}
 		names = append(names, n)
 	}
-	var tc, wc uint8 = 0, 1
-	if sk := g.skin(); sk != nil {
-		tc, wc = sk.WindowTitlebarColour, sk.WindowPlayerColor
-	}
+	tc, wc := g.windowColours(true)
 	if int(h.Owner) < len(g.w.CompanyColours) {
 		tc = g.w.CompanyColours[h.Owner]
 	}
@@ -175,8 +172,7 @@ func (g *Game) stopStartOpen(headID uint16, x, y, w, h int) {
 		case 2:
 			mode = sim.RunningModeDriveManually
 		}
-		company, _ := g.w.ControllingCompany()
-		c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+		c := g.playerCmd()
 		if _, ok := m.VehicleChangeRunningMode(c, sim.CmdApply, headID, mode); !ok {
 			log.Printf("[Game] can't %s vehicle %d", []string{"stop", "start", "drive"}[item], headID)
 		}
@@ -387,8 +383,7 @@ func (g *Game) refitOpen(headID uint16, x, y, w, h int) {
 	d.Highlighted = 0
 	d.OnSelect = func(item int) {
 		apply := func() {
-			company, _ := g.w.ControllingCompany()
-			c := &sim.Cmd{Company: uint8(company), Objects: om}
+			c := g.playerCmd()
 			if _, ok := m.VehicleRefit(c, sim.CmdApply, headID, ids[item]); !ok {
 				log.Printf("[Game] %s", i18n.Str(i18n.CantRefitVehicle))
 			}
@@ -427,8 +422,7 @@ func (g *Game) renameVehicle(headID uint16, titleColour, colour uint8) {
 			if text == "" {
 				return
 			}
-			company, _ := g.w.ControllingCompany()
-			if _, ok := m.VehicleRename(&sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}, sim.CmdApply, headID, text); !ok {
+			if _, ok := m.VehicleRename(g.playerCmd(), sim.CmdApply, headID, text); !ok {
 				log.Printf("[Game] %s", i18n.Str(i18n.CantRenameThisVehicle))
 			}
 			if g.vehicleWin != nil {
@@ -442,8 +436,7 @@ func (g *Game) renameVehicle(headID uint16, titleColour, colour uint8) {
 // WindowManager::close) and the pickup tool with it.
 func (g *Game) sellVehicle(headID uint16) {
 	m := &g.w.Map
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	cost, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureVehicleDisposals, func(flags uint8) (int32, bool) {
 		return m.VehicleSell(c, flags, headID)
 	})
@@ -467,8 +460,7 @@ func (g *Game) dropCar(headID uint16, row, dest int) {
 		return
 	}
 	src := m.Entities[tr.Cars[row][0].Front].ID
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	var run func()
 	var title, msg, ok int
 	if dest == -2 {
@@ -504,8 +496,7 @@ func (g *Game) dropCar(headID uint16, row, dest int) {
 // (cant_pass_signal_at_danger).
 func (g *Game) passSignal(headID uint16) {
 	m := &g.w.Map
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureTrainRunningCosts, func(f uint8) (int32, bool) {
 		return m.VehiclePassSignal(c, f, headID)
 	}); !ok {
@@ -523,8 +514,7 @@ func (g *Game) changeDirection(headID uint16) {
 		m.PickupDirection ^= 1
 		return
 	}
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureTrainRunningCosts, func(f uint8) (int32, bool) {
 		return m.VehicleReverse(c, f, headID)
 	}); !ok {
@@ -537,8 +527,7 @@ func (g *Game) changeDirection(headID uint16) {
 // following the head's new manualPower.
 func (g *Game) speedControl(headID uint16, speed int8) {
 	m := &g.w.Map
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureTrainRunningCosts, func(f uint8) (int32, bool) {
 		return m.VehicleSpeedControl(c, f, headID, speed)
 	})

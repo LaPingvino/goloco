@@ -554,6 +554,13 @@ func (g *Game) skin() *objects.InterfaceSkinObject {
 	return g.r.ObjMgr.InterfaceSkin
 }
 
+// playerCmd is a game command's context as the controlling company (what
+// GameCommands::getUpdatingCompanyId is for a command from the UI).
+func (g *Game) playerCmd() *sim.Cmd {
+	company, _ := g.w.ControllingCompany()
+	return &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+}
+
 // mouseMoved is Input::hasPendingMouseInputUpdate for GameTicks: the cursor
 // moved since the last frame.
 func (g *Game) mouseMoved() bool {

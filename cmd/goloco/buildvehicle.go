@@ -38,10 +38,7 @@ func (g *Game) openBuildVehicleFor(tab int, target uint16) {
 			rows = append(rows, ui.BVRow{ID: id, Vehicle: v, Name: v.DisplayName})
 		}
 	}
-	var tc, wc uint8 = 0, 1
-	if om.InterfaceSkin != nil {
-		tc, wc = om.InterfaceSkin.WindowTitlebarColour, om.InterfaceSkin.WindowPlayerColor
-	}
+	tc, wc := g.windowColours(true)
 	var p, s uint8
 	if company >= 0 && company < len(m.CompanyColourSchemes) {
 		p, s = m.CompanyColourSchemes[company].Main[0], m.CompanyColourSchemes[company].Main[1]
@@ -67,8 +64,7 @@ func (g *Game) buyVehicle(tab int, id, target uint16) {
 		return
 	}
 	m := &g.w.Map
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	var head uint16
 	cost, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureVehiclePurchases, func(flags uint8) (int32, bool) {
 		if target != sim.EntityIDNull { // gcArgs.vehicleId = _buildTargetVehicle: a car added to it
@@ -99,8 +95,7 @@ func (g *Game) cloneVehicle(headID uint16) {
 		return
 	}
 	m := &g.w.Map
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	var head uint16
 	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureVehiclePurchases, func(flags uint8) (int32, bool) {
 		return m.CloneVehicle(c, flags, headID, &head)
