@@ -55,23 +55,34 @@ func drawTab(rt *gfx8.RenderTarget, x, y int, active bool, sec []uint8, icon int
 	gfx8.FillRect(rt, x, y+26, x+31-1, y+26, gfx8.Shade(sec, 7))
 }
 
-// drawTabDisabled is drawTabBackground for a disabled tab (opaque colour):
-// the tab's silhouette solid in shade 6 one pixel down-right, then in shade
-// 4 over it (drawImageSolid).
-func drawTabDisabled(rt *gfx8.RenderTarget, x, y int, sec []uint8) {
-	sp, err := gfx8.Decode(&globalG1Font.g1.Elements[imgTab])
-	if err != nil {
-		return
-	}
-	solid := func(c uint8) []uint8 {
-		m := make([]uint8, 256)
-		for i := range m {
-			m[i] = c
+// tabLayout is Widget::leftAlignTabs (tab width 31, from x 3): a disabled
+// tab is hidden and the tabs after it move left. Its x per tab (-1 hidden).
+func tabLayout(n int, disabled func(int) bool) []int {
+	xs := make([]int, n)
+	x := 3
+	for i := range xs {
+		if disabled != nil && disabled(i) {
+			xs[i] = -1
+			continue
 		}
-		return m
+		xs[i] = x
+		x += 31
 	}
-	gfx8.DrawSprite(rt, sp, x+1, y+1, gfx8.OpTransparent|gfx8.OpSrc, solid(gfx8.Shade(sec, 6)))
-	gfx8.DrawSprite(rt, sp, x, y, gfx8.OpTransparent|gfx8.OpSrc, solid(gfx8.Shade(sec, 4)))
+	return xs
+}
+
+// tabAt is the tab under window point (rx, ry) in a leftAlignTabs layout
+// (tabs at y 15, 31 × 27); -1 none.
+func tabAt(xs []int, rx, ry int) int {
+	if ry < 15 || ry >= 42 {
+		return -1
+	}
+	for i, x := range xs {
+		if x >= 0 && rx >= x && rx < x+31 {
+			return i
+		}
+	}
+	return -1
 }
 
 // drawProductionTab is IndustryWindow.cpp drawProductionTab's drawing: the tab

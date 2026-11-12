@@ -19,7 +19,7 @@ import (
 // the expand / demolish buttons are hidden and the viewport takes their 22 px.
 // clickable(TownWindow.cpp, IndustryWindow.cpp): close_button centre_on_viewport
 // The industry's Transported tab (IndustryWindow.cpp Transported, 300×127):
-// last month's received and produced cargo; its Production tabs are disabled
+// last month's received and produced cargo; its Production tabs are disabled (hidden)
 // where it produces no first / second cargo (setDisabledWidgets).
 // The Production and Production 2 tabs (299×282) graph the monthly production
 // history of its first / second cargo (Common::draw). Each tab captions its own
@@ -48,7 +48,7 @@ type ViewWindow struct {
 	// recoloured to (< 0 none) and, for an Industry window's production tab,
 	// the produced cargo's inline sprite (< 0: an ordinary tab).
 	TabIcon     func(i int) (image, colour, cargo int)
-	TabDisabled [4]bool // disabledWidgets' tabs
+	TabDisabled [4]bool // disabledWidgets' tabs: hidden, the later ones moved left (leftAlignTabs)
 	// CargoTab is the Transported tab's index (0: none); Cargo gives its
 	// lines (received and produced last month), read each draw.
 	CargoTab int
@@ -179,8 +179,7 @@ func (w *ViewWindow) HandleClick(px, py int) {
 		}
 		return
 	}
-	if ry >= 15 && ry < 42 && rx >= 3 && rx < 3+31*w.Tabs {
-		i := (rx - 3) / 31
+	if i := tabAt(tabLayout(w.Tabs, w.tabDisabled), rx, ry); i >= 0 {
 		var g GraphTab
 		graph := false
 		if w.Graph != nil {
@@ -229,9 +228,9 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
+		xs := tabLayout(w.Tabs, w.tabDisabled)
 		for i := 0; i < w.Tabs; i++ {
-			if w.TabDisabled[i] {
-				drawTabDisabled(rt, 3+31*i, 15, sec)
+			if xs[i] < 0 { // disabled: hidden (leftAlignTabs)
 				continue
 			}
 			icon, colour, cargo := tabNoIcon, -1, -1
@@ -245,10 +244,10 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 				m, _ = g1.GetPaletteMap(colour)
 			}
 			if cargo >= 0 {
-				drawProductionTab(rt, 3+31*i, 15, i == w.Tab, sec, icon, m, cargo)
+				drawProductionTab(rt, xs[i], 15, i == w.Tab, sec, icon, m, cargo)
 				continue
 			}
-			drawTab(rt, 3+31*i, 15, i == w.Tab, sec, icon, m)
+			drawTab(rt, xs[i], 15, i == w.Tab, sec, icon, m)
 		}
 		if w.Tab == 0 {
 			gfx8.FillRectInset(rt, l, t, r, b, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
@@ -416,3 +415,5 @@ func (w *ViewWindow) drawRatings(screen *ebiten.Image, win2, black color.Color) 
 		y += 10
 	}
 }
+
+func (w *ViewWindow) tabDisabled(i int) bool { return i < len(w.TabDisabled) && w.TabDisabled[i] }
