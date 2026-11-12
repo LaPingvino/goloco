@@ -155,21 +155,48 @@ const (
 	extColourUnk74 = 0x74 // + a colour: Colours::getGlass
 )
 
-// DrawTooltip is ToolTip.cpp common + draw: text (medium bold, max 196 px
-// wide, word-wrapped) in a translucent box 26 px below the cursor, centred on
-// it, kept on screen. tooltipColour is the interface skin's tooltipColour.
+// TooltipRegular marks a tooltip text in the regular font (a buffer that
+// starts with ControlCodes::Font::regular, as the Fund New Industries cells').
+const TooltipRegular = "{REGULAR}"
+
+// tooltipFont is the font a tooltip text ends up in: medium bold, unless it
+// opens with a font code ({SMALLFONT} — most widget tooltips — or
+// TooltipRegular); colour codes go (it is drawn black).
+func tooltipFont(text string) (string, int) {
+	font := G1FontMediumBold
+	for {
+		switch {
+		case strings.HasPrefix(text, "{SMALLFONT}"):
+			text, font = text[len("{SMALLFONT}"):], G1FontSmall
+		case strings.HasPrefix(text, TooltipRegular):
+			text, font = text[len(TooltipRegular):], G1FontMediumNormal
+		case strings.HasPrefix(text, "{COLOUR "):
+			if i := strings.IndexByte(text, '}'); i >= 0 {
+				text = text[i+1:]
+				continue
+			}
+			return text, font
+		default:
+			return text, font
+		}
+	}
+}
+
+// DrawTooltip is ToolTip.cpp common + draw: text (medium bold unless its own
+// font code says otherwise, max 196 px wide, word-wrapped; 10 px a line) in a
+// translucent box 26 px below the cursor, centred on it, kept on screen.
+// tooltipColour is the interface skin's tooltipColour.
 // PARTIAL: wrapping breaks at spaces with pkg/ui text measurement (upstream's
-// TextRenderer::wrapString is not ported) and lines are drawn with DrawTextBold.
+// TextRenderer::wrapString is not ported).
 func DrawTooltip(screen *ebiten.Image, text string, cursorX, cursorY int, tooltipColour uint8) {
 	if globalG1Font == nil || text == "" {
 		return
 	}
-	lines := wrapTooltip(text, 196)
+	text, font := tooltipFont(text)
+	lines := wrapTooltip(text, 196, font)
 	ww := 0
 	for _, l := range lines {
-		if w, _ := MeasureTextBold(l); w > ww {
-			ww = w
-		}
+		ww = max(ww, MeasureTextFont(l, font))
 	}
 	sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
 	width := ww + 3
@@ -204,16 +231,16 @@ func DrawTooltip(screen *ebiten.Image, text string, cursorX, cursorY int, toolti
 	// drawStringCentredRaw at ((width+1)/2 + x - 1, y + 1), Colour::black.
 	cx := (width+1)/2 + x - 1
 	for i, l := range lines {
-		lw, _ := MeasureTextBold(l)
-		DrawTextBold(screen, l, cx-lw/2, y+1+i*10, color.Black)
+		lw := MeasureTextFont(l, font)
+		DrawTextFont(screen, l, font, cx-lw/2, y+1+i*10, color.Black)
 	}
 }
 
-func wrapTooltip(text string, maxW int) []string {
+func wrapTooltip(text string, maxW, font int) []string {
 	if i := strings.IndexByte(text, '\n'); i >= 0 { // {NEWLINE}
-		return append(wrapTooltip(text[:i], maxW), wrapTooltip(text[i+1:], maxW)...)
+		return append(wrapTooltip(text[:i], maxW, font), wrapTooltip(text[i+1:], maxW, font)...)
 	}
-	if w, _ := MeasureTextBold(text); w <= maxW {
+	if MeasureTextFont(text, font) <= maxW {
 		return []string{text}
 	}
 	var lines []string
@@ -223,7 +250,7 @@ func wrapTooltip(text string, maxW int) []string {
 		if cur != "" {
 			try = cur + " " + word
 		}
-		if w, _ := MeasureTextBold(try); w > maxW && cur != "" {
+		if MeasureTextFont(try, font) > maxW && cur != "" {
 			lines = append(lines, cur)
 			cur = word
 		} else {

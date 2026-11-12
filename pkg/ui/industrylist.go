@@ -152,7 +152,7 @@ func NewIndustryGrid(sw int, choices []NewIndustryChoice, selected int, titleCol
 			return ""
 		}
 		if i := cellAt(px, py); i >= 0 {
-			return choices[i].Tooltip
+			return TooltipRegular + choices[i].Tooltip // buffer_337 opens with Font::regular
 		}
 		return ""
 	}

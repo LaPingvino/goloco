@@ -508,11 +508,12 @@ func (g *Game) refreshList() {
 	}
 }
 
-// labels is the active language's texts of string ids (widget tooltips).
+// labels is the active language's strings of ids as stored, font and colour
+// codes kept (widget tooltips: DrawTooltip reads them).
 func labels(ids ...int) []string {
 	out := make([]string, len(ids))
 	for i, id := range ids {
-		out[i] = i18n.Label(id)
+		out[i] = i18n.Str(id)
 	}
 	return out
 }
