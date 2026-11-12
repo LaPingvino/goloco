@@ -83,7 +83,8 @@ func (g *Game) openVehicleListFor(company, tab int) {
 	w.OnClose = func() { g.townList = nil }
 	w.OnTab = func(t int) { g.openVehicleListFor(company, t) }
 	g.listTabIcons(w, vehicleTabFrames, vehicleTabCounts, int(tc)) // recoloured to the company colour
-	w.TabDisabled = func(i int) bool {                             // disableUnavailableVehicleTypes: availableVehicles ^ 0x3F
+	w.TabTooltips = labels(i18n.TooltipTrains, i18n.TooltipBuses, i18n.TooltipTrucks, i18n.TooltipTrams, i18n.TooltipAircraft, i18n.TooltipShips)
+	w.TabDisabled = func(i int) bool { // disableUnavailableVehicleTypes: availableVehicles ^ 0x3F
 		return company < len(g.w.Map.Companies) && g.w.Map.Companies[company].AvailableVehicles&(1<<i) == 0
 	}
 	w.Reopen = func() { g.openVehicleListFor(company, tab) }
@@ -130,6 +131,7 @@ func (g *Game) openStationList(tab int) {
 	w.OnClose = func() { g.townList = nil }
 	w.OnRow = func(id int) { g.openStationWindow(id) }             // onScrollMouseDown: Station::open
 	g.listTabIcons(w, stationTabFrames, stationTabCounts, int(tc)) // the company colour
+	w.TabTooltips = labels(i18n.TooltipAllStations, i18n.TooltipRailStations, i18n.TooltipRoadStations, i18n.TooltipAirports, i18n.TooltipShipPorts)
 	w.Reopen = func() { g.openStationList(tab) }
 	g.townList = w
 }
@@ -149,6 +151,7 @@ func (g *Game) openTownsWindow() {
 		g.openTownWindow(id)
 	}
 	g.listTabIcons(w, townTabFrames, townTabCounts, -1)
+	w.TabTooltips = labels(i18n.TooltipTownList, i18n.TooltipBuildTown, i18n.TooltipBuildBuildings, i18n.TooltipBuildMiscBuildings)
 	// Outside the editor / sandbox the build-town, build-buildings and misc
 	// buildings tabs are disabled (TownList.cpp open), so hidden.
 	w.TabDisabled = func(i int) bool { return i > 0 }
@@ -169,6 +172,7 @@ func (g *Game) openTownWindow(id int) {
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.TownView(id, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnTown(id) }
 	w.OnRename = func() { g.renameTown(id, w) }
+	w.TabTooltips = labels(i18n.TooltipTown, i18n.TooltipPopulationGraph, i18n.TooltipTownRatingsEachCompany)
 	w.RatingsTab = 2 // tab_company_ratings: each company the town rates
 	w.Ratings = func() []ui.RatingLine {
 		if id >= len(g.w.Map.Towns) {
@@ -250,6 +254,7 @@ func (g *Game) openIndustryList() {
 		}
 	}
 	g.listTabIcons(w, industryTabFrames, industryTabCounts, -1)
+	w.TabTooltips = labels(i18n.TooltipIndustriesList, i18n.TooltipFundNewIndustries)
 	w.Reopen = g.openIndustryList
 	g.townList = w
 }
@@ -297,6 +302,7 @@ func (g *Game) openNewIndustries() {
 		}
 	}
 	g.listTabIcons(w, industryTabFrames, industryTabCounts, -1)
+	w.TabTooltips = labels(i18n.TooltipIndustriesList, i18n.TooltipFundNewIndustries)
 	g.townList = w
 	g.industryToolStart(w)
 }
@@ -322,6 +328,7 @@ func (g *Game) openIndustryWindow(id int) {
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.IndustryView(idx, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnIndustry(idx) }
 	w.OnRename = func() { g.renameIndustry(idx, w) }
+	w.TabTooltips = labels(i18n.TooltipIndustry, i18n.TooltipProductionGraph, i18n.TooltipProductionGraph, i18n.TooltipStatistics)
 	w.OnClose = func() { g.viewWin = nil }
 	w.CargoTab = 3 // tab_transported
 	w.Cargo = func() (bool, bool, []ui.CargoMonthLine) {
@@ -499,4 +506,13 @@ func (g *Game) refreshList() {
 			}
 		}
 	}
+}
+
+// labels is the active language's texts of string ids (widget tooltips).
+func labels(ids ...int) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = i18n.Label(id)
+	}
+	return out
 }

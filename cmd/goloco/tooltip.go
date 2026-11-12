@@ -1,30 +1,32 @@
 package main
 
 import (
+	"time"
+
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // Window tooltips (Input/MouseInput.cpp's tooltip timing, ToolTip.cpp): a
-// window's tooltip under the mouse opens once the mouse has rested 2 s (at
-// once within 1 s of the last one closing), and closes after 8 s — staying
-// closed until the mouse moves — or when the mouse moves. Times in updates
-// (60 a second).
+// tooltip under the mouse opens once the mouse has rested 2 s (at once within
+// 1 s of the last one closing), and closes after 8 s — staying closed until
+// the mouse moves — or when the mouse moves. Real time, as upstream adds
+// getTimeSinceLastTick.
 // The toolbar's buttons give theirs the same way (Toolbar.HoveredTooltip).
 const (
-	tipDelay     = 120 // 2000 ms
-	tipQuickOpen = 60  // tooltipNotShownTicks ≤ 1000: no delay
-	tipLifetime  = 480 // 8000 ms
+	tipDelay     = 2000 * time.Millisecond
+	tipQuickOpen = 1000 * time.Millisecond // tooltipNotShownTicks ≤ 1000: no delay
+	tipLifetime  = 8000 * time.Millisecond
 )
 
 type tooltipState struct {
-	text        string
-	x, y        int
-	rest, shown int
-	showing     bool
-	expired     bool // closed by its lifetime: not again until the mouse moves
-	closedAt    int  // windowFrame when the last tooltip closed
-	everClosed  bool
+	text     string
+	x, y     int
+	since    time.Time // the mouse at rest here since
+	shownAt  time.Time
+	showing  bool
+	expired  bool      // closed by its lifetime: not again until the mouse moves
+	closedAt time.Time // when the last tooltip closed (zero: never)
 }
 
 // windowTooltip is the tooltip the toolbar button or window under the mouse
@@ -33,45 +35,55 @@ func (g *Game) windowTooltip() string {
 	if tip := g.toolbar.HoveredTooltip(); tip != "" {
 		return tip
 	}
-	if w := g.townList; w != nil && w.Tooltip != nil && w.Contains(g.mouseX, g.mouseY) {
-		return w.Tooltip(g.mouseX, g.mouseY)
+	mx, my := g.mouseX, g.mouseY
+	switch { // the window on top first, as clicks go
+	case g.viewWin != nil && g.viewWin.Contains(mx, my):
+		return g.viewWin.WidgetTooltip(mx, my)
+	case g.stationWin != nil && g.stationWin.Contains(mx, my):
+		return g.stationWin.WidgetTooltip(mx, my)
+	case g.townList != nil && g.townList.Contains(mx, my):
+		if w := g.townList; w.Tooltip != nil {
+			if tip := w.Tooltip(mx, my); tip != "" {
+				return tip
+			}
+		}
+		return g.townList.WidgetTooltip(mx, my)
 	}
 	return ""
 }
 
-func (t *tooltipState) close(frame int) {
+func (t *tooltipState) close(now time.Time) {
 	if t.showing {
-		t.closedAt, t.everClosed = frame, true
+		t.closedAt = now
 	}
 	t.showing = false
 }
 
 // updateTooltip runs the timing each update.
 func (g *Game) updateTooltip() {
-	t := &g.tip
+	t, now := &g.tip, time.Now()
 	text := g.windowTooltip()
 	if text != t.text || g.mouseX != t.x || g.mouseY != t.y { // moved, or another tooltip
-		t.close(g.windowFrame)
-		t.text, t.x, t.y, t.rest, t.shown, t.expired = text, g.mouseX, g.mouseY, 0, 0, false
-		t.showing = text != "" && t.everClosed && g.windowFrame-t.closedAt <= tipQuickOpen
-		return
-	}
-	if t.text == "" || t.expired {
-		return
-	}
-	if !t.showing {
-		if t.rest++; t.rest >= tipDelay {
-			t.showing = true
+		t.close(now)
+		t.text, t.x, t.y, t.since, t.expired = text, g.mouseX, g.mouseY, now, false
+		if text != "" && !t.closedAt.IsZero() && now.Sub(t.closedAt) <= tipQuickOpen {
+			t.showing, t.shownAt = true, now
 		}
 		return
 	}
-	if t.shown++; t.shown >= tipLifetime {
-		t.close(g.windowFrame)
+	switch {
+	case t.text == "" || t.expired:
+	case !t.showing:
+		if now.Sub(t.since) >= tipDelay {
+			t.showing, t.shownAt = true, now
+		}
+	case now.Sub(t.shownAt) >= tipLifetime:
+		t.close(now)
 		t.expired = true
 	}
 }
 
-// drawTooltip draws the open window tooltip at the mouse.
+// drawTooltip draws the open tooltip at the mouse.
 func (g *Game) drawTooltip(screen *ebiten.Image) {
 	if !g.tip.showing || g.tip.text == "" {
 		return

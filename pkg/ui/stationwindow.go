@@ -621,3 +621,25 @@ func (w *StationWindow) cargoBar(rx, ry int) bool {
 	l, t, wd, ht, contentH := w.cargoList()
 	return contentH > ht && rx >= l+wd-L.ScrollbarSize-L.ScrollbarMargin && rx < l+wd && ry >= t && ry < t+ht
 }
+
+// stationTabTooltips are the Station window's tab tooltips (makeCommonWidgets).
+var stationTabTooltips = [9]int{i18n.TooltipStation, i18n.TooltipStationCargo, i18n.TooltipStationCargoRatings,
+	i18n.TooltipTrains, i18n.TooltipBuses, i18n.TooltipTrucks, i18n.TooltipTrams, i18n.TooltipAircraft, i18n.TooltipShips}
+
+// WidgetTooltip is the tooltip of the widget under a screen point: close, a
+// tab, and on the Station tab the centre-view button.
+func (w *StationWindow) WidgetTooltip(px, py int) string {
+	rx, ry := px-w.X, py-w.Y
+	if rx >= w.width()-15 && rx < w.width()-2 && ry >= 2 && ry < 15 {
+		return i18n.Label(i18n.TooltipCloseWindow)
+	}
+	if i := tabAt(w.stationTabs(), rx, ry); i >= 0 {
+		return i18n.Label(stationTabTooltips[i])
+	}
+	if w.Tab == 0 {
+		if _, _, r, b := stationViewport(); rx >= r-24 && rx <= r-1 && ry >= b-24 && ry <= b-1 {
+			return i18n.Label(i18n.MoveMainViewToShowThis)
+		}
+	}
+	return ""
+}
