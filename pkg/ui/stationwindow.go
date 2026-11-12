@@ -3,9 +3,11 @@ package ui
 import (
 	"image"
 	"strconv"
+	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
+	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -17,8 +19,11 @@ import (
 // clickable(StationWindow.cpp): close_button centre_on_viewport
 // The Cargo tab: the cargo waiting (Cargo::drawScroll) and "Accepts:" with
 // the accepted cargo's sprites (Cargo::draw).
-// PARTIAL: the vehicle tabs, resizing, the viewport's rotation, the cargo
-// list's scrolling, the status bar's tooltip.
+// The vehicle tabs (VehiclesStopping, 400×200): one per vehicle type with a
+// vehicle calling here (the others hidden: leftAlignTabs), each listing those
+// vehicles by name, drawn inline with their status; a row opens the vehicle.
+// PARTIAL: resizing, the viewport's rotation, the cargo list's scrolling,
+// the status bar's tooltip, the vehicle list's scrollbar drag.
 const stationWinW, stationWinH = 223, 136 // Station::kWindowSize
 
 type StationWindow struct {
@@ -44,13 +49,38 @@ type StationWindow struct {
 	OnCentreView func()
 	OnClose      func()
 	viewImg      *ebiten.Image
+
+	// VehicleTypes are the types with a vehicle calling here
+	// (setVehicleTypeAvailable); Vehicles(t) those of type t, by name
+	// (populateVehicleList / sortVehicleList); OnVehicle a row's click.
+	VehicleTypes [6]bool
+	Vehicles     func(t int) []VehicleRow
+	OnVehicle    func(headID uint16)
+	vScroll      int
+	vHover       int // rowHover's row (-1 none)
+}
+
+// The vehicle tabs (Tab 3 + VehicleType): VehiclesStopping::kWindowSize.
+const stationVehiclesW, stationVehiclesH = 400, 200
+
+// stationTabs are the window's nine tabs laid out (leftAlignTabs): station,
+// cargo, ratings, then the six vehicle types, those without a vehicle calling
+// hidden.
+func (w *StationWindow) stationTabs() []int {
+	return tabLayout(9, func(i int) bool { return i >= 3 && !w.VehicleTypes[i-3] })
+}
+
+// vehicleList is the open vehicle tab's list rectangle (3, 44 to width − 4,
+// height − 14) and its rows' height (the type's row height).
+func (w *StationWindow) vehicleList() (l, t, wd, ht, rowH int) {
+	return 3, 44, stationVehiclesW - 4 - 3 + 1, stationVehiclesH - 14 - 44 + 1, vehicleListRowHeights[w.Tab-3]
 }
 
 // NewStationWindow places the window centred (createWindow's placement:
 // PARTIAL).
 func NewStationWindow(sw, sh int, title, status string, titleColour, colour uint8) *StationWindow {
 	return &StationWindow{X: (sw - stationWinW) / 2, Y: (sh - stationWinH) / 2, Title: title, Status: status,
-		TitleColour: titleColour, Colour: colour}
+		TitleColour: titleColour, Colour: colour, vHover: -1}
 }
 
 // stationViewport is prepareDraw's: 3,44 to width − 4, height − 14.
@@ -58,14 +88,51 @@ func stationViewport() (l, t, r, b int) { return 3, 44, stationWinW - 4, station
 
 // width is the current tab's kWindowSize width (Cargo ratings: 249).
 func (w *StationWindow) width() int {
-	if w.Tab == 2 {
+	switch {
+	case w.Tab == 2:
 		return 249
+	case w.Tab >= 3:
+		return stationVehiclesW
 	}
 	return stationWinW
 }
 
+func (w *StationWindow) height() int {
+	if w.Tab >= 3 {
+		return stationVehiclesH
+	}
+	return stationWinH
+}
+
 func (w *StationWindow) Contains(px, py int) bool {
-	return px >= w.X && py >= w.Y && px < w.X+w.width() && py < w.Y+stationWinH
+	return px >= w.X && py >= w.Y && px < w.X+w.width() && py < w.Y+w.height()
+}
+
+// MouseOver is VehiclesStopping's onScrollMouseOver: the row under the mouse.
+func (w *StationWindow) MouseOver(px, py int) {
+	if w.Tab < 3 || w.Vehicles == nil {
+		return
+	}
+	l, t, wd, ht, rowH := w.vehicleList()
+	rx, ry := px-w.X, py-w.Y
+	if rx < l || rx >= l+wd-L.ScrollbarSize-L.ScrollbarMargin || ry < t || ry >= t+ht {
+		return
+	}
+	i := (ry - (t + 1) + w.vScroll) / rowH
+	if i >= len(w.Vehicles(w.Tab-3)) {
+		i = -1
+	}
+	w.vHover = i
+}
+
+// HandleWheel scrolls a vehicle tab's list.
+func (w *StationWindow) HandleWheel(dy float64) {
+	if w.Tab < 3 || w.Vehicles == nil {
+		return
+	}
+	_, _, _, ht, rowH := w.vehicleList()
+	maxScroll := max(len(w.Vehicles(w.Tab-3))*rowH-ht, 0)
+	w.vScroll = min(max(w.vScroll-int(dy*float64(rowH)), 0), maxScroll)
 }
 
 // HandleClick is Station::onMouseUp: close, centre_on_viewport (the
@@ -82,14 +149,16 @@ func (w *StationWindow) HandleClick(px, py int) {
 		w.OnRename()
 		return
 	}
-	for t := 0; t < 3; t++ { // Common::switchTab
-		if rx >= 3+31*t && rx < 3+31*t+31 && ry >= 15 && ry < 42 {
-			if t != 1 && w.Catchment && w.OnCatchment != nil { // leaving for another tab: this station's catchment goes
-				w.OnCatchment()
-			}
-			w.Tab = t
-			return
+	if t := tabAt(w.stationTabs(), rx, ry); t >= 0 { // Common::switchTab
+		if t != 1 && w.Catchment && w.OnCatchment != nil { // leaving for another tab: this station's catchment goes
+			w.OnCatchment()
 		}
+		w.Tab, w.vScroll, w.vHover = t, 0, -1
+		return
+	}
+	if w.Tab >= 3 { // onScrollMouseDown: the vehicle's window; the scrollbar's buttons and track page
+		w.vehicleClick(rx, ry)
+		return
 	}
 	if w.Tab == 1 && rx >= stationWinW-25 && rx <= stationWinW-2 && ry >= 44 && ry < 44+24 && w.OnCatchment != nil {
 		w.OnCatchment()
@@ -124,6 +193,10 @@ func (w *StationWindow) Draw(screen *ebiten.Image) {
 	}
 	if w.Tab == 2 {
 		w.drawRatings(screen)
+		return
+	}
+	if w.Tab >= 3 {
+		w.drawVehicles(screen)
 		return
 	}
 	g1 := globalG1Font.g1
@@ -336,8 +409,23 @@ func (w *StationWindow) drawStationTabs(rt *gfx8.RenderTarget, sec []uint8, curr
 		}
 		icons[2] = w.SkinImage + 48
 	}
+	xs := w.stationTabs()
 	for i := 0; i < 3; i++ {
-		drawTab(rt, 3+31*i, 15, i == current, sec, icons[i], maps[i])
+		drawTab(rt, xs[i], 15, i == current, sec, icons[i], maps[i])
+	}
+	cm, _ := g1.GetPaletteMap(int(w.CompanyColour))
+	for t := 0; t < 6; t++ { // the vehicle tabs: vehicle_*_frame_0, frameNo / 2 when current, in the company colour
+		if xs[3+t] < 0 {
+			continue
+		}
+		icon := tabNoIcon
+		if w.SkinImage > 0 {
+			icon = w.SkinImage + stationVehicleTabFrames[t]
+			if current == 3+t {
+				icon += (w.FrameNo / 2) % 8
+			}
+		}
+		drawTab(rt, xs[3+t], 15, current == 3+t, sec, icon, cm)
 	}
 	m30, err := g1.GetPaletteMap(0x30)
 	if err != nil {
@@ -363,4 +451,120 @@ func (w *StationWindow) drawStationTabs(rt *gfx8.RenderTarget, sec []uint8, curr
 		}
 		y += 3
 	}
+}
+
+// stationVehicleTabFrames are kTabAnimations' first frames by vehicle type:
+// trains, buses, trucks, trams, aircraft, ships (vehicle_*_frame_0).
+var stationVehicleTabFrames = [6]int{418, 434, 450, 442, 426, 458}
+
+// vehicleClick is a click in a vehicle tab's list: on its scrollbar the
+// buttons scroll a row and the track a page; on a row its vehicle opens.
+func (w *StationWindow) vehicleClick(rx, ry int) {
+	if w.Vehicles == nil {
+		return
+	}
+	rows := w.Vehicles(w.Tab - 3)
+	l, t, wd, ht, rowH := w.vehicleList()
+	if rx < l || rx >= l+wd || ry < t || ry >= t+ht {
+		return
+	}
+	if rx >= l+wd-L.ScrollbarSize-L.ScrollbarMargin && len(rows)*rowH > ht {
+		step := rowH
+		switch {
+		case ry < t+L.ScrollbarMargin+L.ScrollbarSize:
+			step = -rowH
+		case ry >= t+ht-L.ScrollbarMargin-L.ScrollbarSize:
+		case ry < t+ht/2:
+			step = -ht
+		default:
+			step = ht
+		}
+		w.vScroll = min(max(w.vScroll+step, 0), len(rows)*rowH-ht)
+		return
+	}
+	if i := (ry - (t + 1) + w.vScroll) / rowH; i >= 0 && i < len(rows) && w.OnVehicle != nil {
+		w.OnVehicle(rows[i].HeadID)
+	}
+}
+
+// drawVehicles is VehiclesStopping::draw and drawScroll: the caption
+// (stringid_trains … with the station's name), the list on the secondary
+// colour's shade 1, the hover row in shade 0, each vehicle drawn inline at
+// its row's bottom and "name - status" outlined at (1, y + 2) (the status
+// red where it says so), and the footer ("N trains" …).
+func (w *StationWindow) drawVehicles(screen *ebiten.Image) {
+	g1 := globalG1Font.g1
+	sec, err := g1.GetPaletteMap(int(w.Colour))
+	if err != nil {
+		return
+	}
+	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
+	pal := g1.GetPalette()
+	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
+	var rows []VehicleRow
+	if w.Vehicles != nil {
+		rows = w.Vehicles(w.Tab - 3)
+	}
+	W, H := stationVehiclesW, stationVehiclesH
+	l, t, wd, ht, rowH := w.vehicleList()
+	w.vScroll = min(w.vScroll, max(len(rows)*rowH-ht, 0))
+	var cx, cy, cw, ch int
+	var bar bool
+	DrawWindowFrame(screen, w.X, w.Y, W, H, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, W, H, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, 0, 41, W-1, H-1, gfx8.InsetColour{Map: sec}, 0)
+		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+		}
+		w.drawStationTabs(rt, sec, w.Tab)
+		cx, cy, cw, ch, bar = drawVScrollViewPressed(rt, l, t, wd, ht, gfx8.InsetColour{Map: sec}, len(rows)*rowH, w.vScroll, "")
+		if cw <= 0 || ch <= 0 {
+			return
+		}
+		sub := gfx8.NewRenderTarget(cw, ch)
+		for i := range sub.Bits {
+			sub.Bits[i] = gfx8.Shade(sec, 1) // clearSingle(shade 1)
+		}
+		for i, v := range rows {
+			y := i*rowH - w.vScroll
+			if y+rowH <= 0 || y >= ch {
+				continue
+			}
+			if i == w.vHover {
+				gfx8.FillRect(sub, 0, max(y, 0), cw-1, min(y+rowH-1, ch-1), gfx8.Shade(sec, 0))
+			}
+			DrawTrainInline(sub, v.Cars, 0, y+(rowH-28)/2+6)
+		}
+		for yy := range ch {
+			copy(rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw], sub.Bits[yy*cw:(yy+1)*cw])
+		}
+	})
+	if bar {
+		drawVScrollArrows(screen, w.X+l, w.Y+t, wd, ht)
+	}
+	clip := screen.SubImage(image.Rect(w.X+cx, w.Y+cy, w.X+cx+cw, w.Y+cy+ch)).(*ebiten.Image)
+	for i, v := range rows {
+		y := w.Y + cy + i*rowH - w.vScroll + 2
+		if y+10 < w.Y+cy || y > w.Y+cy+ch {
+			continue
+		}
+		x := w.X + cx + 1
+		name := v.Name
+		if v.Status != "" {
+			name += " - "
+		}
+		x += DrawTextOutlined(clip, name, x, y, win2, black)
+		if v.Status != "" {
+			c := win2
+			if v.StatusRed {
+				if rm, err := g1.GetPaletteMap(27); err == nil { // Colour::red
+					c = pal[gfx8.Shade(rm, 9)]
+				}
+			}
+			DrawTextOutlined(clip, v.Status, x, y, c, black)
+		}
+	}
+	DrawTextBold(screen, vehicleListFooter(w.Tab-3, len(rows)), w.X+3, w.Y+H-13, black)
+	caption := strings.Replace(i18n.Label(i18n.StringidTrains+w.Tab-3), "{STRINGID}", w.Title, 1)
+	DrawWindowCaptionStation(screen, w.X+1, w.Y+1, W-2, caption, w.TitleColour)
 }

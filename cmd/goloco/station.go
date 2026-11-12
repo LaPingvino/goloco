@@ -5,6 +5,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
+	"sort"
 )
 
 // station.go — the Station window (StationWindow.cpp) and its catchment.
@@ -45,6 +46,25 @@ func (g *Game) openStationWindow(id int) {
 			w.Ratings = append(w.Ratings, ui.StationRating{Name: om.CargoObjects[c].Name, Rating: int(cs.Rating)})
 		}
 	}
+	// VehiclesStopping::populateVehicleList: every vehicle with an order at
+	// this station, by type (which tabs show), each type's by name.
+	var byType [6][]ui.VehicleRow
+	for _, v := range g.w.VehicleListRows() {
+		if v.Type < 0 || v.Type >= 6 || !g.w.Map.VehicleStopsAt(v.HeadID, id) {
+			continue
+		}
+		var cars []ui.TrainCarDraw
+		for _, c := range g.w.TrainCars(v.HeadID) {
+			cars = append(cars, ui.TrainCarDraw(c))
+		}
+		byType[v.Type] = append(byType[v.Type], ui.VehicleRow{HeadID: v.HeadID, Name: v.Name, Cars: cars, Status: v.Status, StatusRed: v.StatusRed})
+		w.VehicleTypes[v.Type] = true
+	}
+	for t := range byType { // sortVehicleList: orderByName (strlogicalcmp; PARTIAL: plain string order)
+		sort.SliceStable(byType[t], func(i, j int) bool { return byType[t][i].Name < byType[t][j].Name })
+	}
+	w.Vehicles = func(t int) []ui.VehicleRow { return byType[t] }
+	w.OnVehicle = func(head uint16) { g.openVehicleDetails(head) } // onScrollMouseDown: Vehicle::Main::open
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.StationView(id, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnStation(id) }
 	w.Catchment = g.catchmentStation == id

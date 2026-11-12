@@ -61,6 +61,10 @@ func (g *Game) routeWheelToWindows() bool {
 		g.browse.HandleWheel(dy)
 		return true
 	}
+	if g.stationWin != nil && g.stationWin.Contains(g.mouseX, g.mouseY) { // a vehicle tab's list
+		g.stationWin.HandleWheel(dy)
+		return true
+	}
 	if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
 		g.townList.HandleWheel(dy)
 		return true
