@@ -109,7 +109,7 @@ func NewIndustryGrid(sw int, choices []NewIndustryChoice, selected int, titleCol
 		Caption: i18n.Label(i18n.TitleFundNewIndustries), Tabs: 2, CurrentTab: 1, RowHeight: newIndustryCell, Hover: -1}
 	w.List = [4]int{3, 45, w578 - 4 - 3 + 1, h172 - 14 - 45 + 1}
 	w.Rows = make([][]string, (len(choices)+4)/5) // getScrollSize: (4 + rowCount) / 5 rows
-	sel, hov := -1, -1 // rowHover (chosen), var_846 (under the mouse)
+	sel, hov := -1, -1                            // rowHover (chosen), var_846 (under the mouse)
 	for i, c := range choices {
 		if c.ID == selected {
 			sel = i

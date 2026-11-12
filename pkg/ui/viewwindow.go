@@ -27,7 +27,8 @@ import (
 // The town's Population tab graphs its history (Population::draw).
 // The town's Company ratings tab (CompanyRatings::draw, 340×208) lists the
 // local authority's rating of each company with one.
-// PARTIAL: renaming by the caption, the
+// A click on the caption renames (OnRename).
+// PARTIAL: the
 // editor's buttons, resizing, the viewport's own scrolling, the status's
 // clipping (drawStringLeftClipped).
 type ViewWindow struct {
@@ -41,7 +42,9 @@ type ViewWindow struct {
 	View         func(w, h int) *gfx8.RenderTarget
 	OnCentreView func()
 	OnClose      func()
-	viewImg      *ebiten.Image
+	// OnRename is the caption's click (renameTownPrompt / renameIndustryPrompt).
+	OnRename func()
+	viewImg  *ebiten.Image
 
 	Tab int // currentTab
 	// TabIcon is drawTabs' tab i: its image (< 0 none), the colour it is
@@ -176,6 +179,12 @@ func (w *ViewWindow) HandleClick(px, py int) {
 	if rx >= w.W-15 && rx < w.W-2 && ry >= 2 && ry < 15 {
 		if w.OnClose != nil {
 			w.OnClose()
+		}
+		return
+	}
+	if rx >= 1 && rx < w.W-1 && ry >= 1 && ry < 14 { // the caption: rename
+		if w.OnRename != nil {
+			w.OnRename()
 		}
 		return
 	}
