@@ -6,7 +6,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/construct"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
-	L "github.com/LaPingvino/goloco/pkg/uilayout"
+	"github.com/LaPingvino/goloco/pkg/uilayout"
 
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
@@ -525,10 +525,10 @@ func (g *Game) openBridgeDropdown(wx, wy int, colour, company uint8) {
 		}
 		speed := "Unlimited"
 		if b.MaxSpeed != 0xFFFF { // kSpeed16Null
-			speed = L.Velocity(int(b.MaxSpeed))
+			speed = uilayout.Velocity(int(b.MaxSpeed))
 		}
 		items[i] = ui.DropdownItem{Sprite: int(b.ImageOffset), SpriteColour: company,
-			Lines: []string{"Max. speed: " + speed, "Height limit: " + L.Height(int(b.MaxHeight))}}
+			Lines: []string{"Max. speed: " + speed, "Height limit: " + uilayout.Height(int(b.MaxHeight))}}
 		if s == cur {
 			hl = i
 		}
