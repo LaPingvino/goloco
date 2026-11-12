@@ -145,6 +145,9 @@ func (g *Game) openTownsWindow() {
 		g.openTownWindow(id)
 	}
 	g.listTabIcons(w, townTabFrames, townTabCounts, -1)
+	// Outside the editor / sandbox the build-town, build-buildings and misc
+	// buildings tabs are disabled (TownList.cpp open), so hidden.
+	w.TabDisabled = func(i int) bool { return i > 0 }
 	g.townList = w
 }
 
