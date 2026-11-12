@@ -6,6 +6,7 @@ import (
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/ui"
 )
 
@@ -169,6 +170,50 @@ func (g *Game) openIndustryList() {
 	w := ui.NewIndustryList(g.sw, rows, tc, wc)
 	w.OnClose = func() { g.townList = nil }
 	w.OnRow = func(id int) { g.openIndustryWindow(id) } // onScrollMouseDown: Industry::open
+	w.OnTab = func(t int) {
+		if t == 1 {
+			g.openNewIndustries()
+		}
+	}
+	g.townList = w
+}
+
+// openNewIndustries is the industry list's second tab (NewIndustries):
+// updateBuildableIndustries — outside the editor, the industries the player
+// may found (canBeFoundedByPlayer) and whose years include this one — each
+// with its inflation-adjusted cost (costFactor, costIndex, divisor 3).
+func (g *Game) openNewIndustries() {
+	om, m := g.r.ObjMgr, &g.w.Map
+	var choices []ui.NewIndustryChoice
+	for i, obj := range om.IndustryObjects {
+		if obj == nil || obj.Flags&objects.IndustryFlagCanBeFoundedByPlayer == 0 {
+			continue
+		}
+		if y := int(m.CurrentYear); y < int(obj.DesignedYear) || y > int(obj.ObsoleteYear) {
+			continue
+		}
+		var parts []uint8
+		if len(obj.Variations) > 0 {
+			parts = obj.Variations[0]
+		}
+		colour := uint8(0) // bitScanReverse(availableColours), else black
+		for c := 31; c >= 0; c-- {
+			if obj.AvailableColours&(1<<c) != 0 {
+				colour = uint8(c)
+				break
+			}
+		}
+		choices = append(choices, ui.NewIndustryChoice{ID: i, Name: obj.Strings[0], Cost: int64(m.InflationAdjustedCost(obj.CostFactor, obj.CostIndex, 3)),
+			Image: obj.BuildingImageIDs, Colour: colour, Parts: parts, PartHeights: obj.PartHeights})
+	}
+	tc, wc := g.windowColours(false)
+	w := ui.NewIndustryGrid(g.sw, choices, g.lastIndustryOption, tc, wc, func(id int) { g.lastIndustryOption = id })
+	w.OnClose = func() { g.townList = nil }
+	w.OnTab = func(t int) {
+		if t == 0 {
+			g.openIndustryList()
+		}
+	}
 	g.townList = w
 }
 

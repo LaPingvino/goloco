@@ -246,3 +246,6 @@ const (
 	IndustryFlagCanIncreaseProduction = 1 << 18
 	IndustryFlagCanDecreaseProduction = 1 << 19
 )
+
+// IndustryFlagCanBeFoundedByPlayer is IndustryObjectFlags::canBeFoundedByPlayer.
+const IndustryFlagCanBeFoundedByPlayer = 1 << 16

@@ -129,13 +129,14 @@ type Game struct {
 	airportRotation      uint8                      // cState.constructionRotation in the airport window
 
 	// The Vehicle window's tools (vehicle_pickup.go, vehicle_route.go).
-	pickupOn       bool   // the Vehicle window's pickup (placing) tool is active
-	pickupHead     uint16 // the vehicle head it places
-	driverCheat    bool   // SceneManager driverCheatEnabled (the Cheats window's; off)
-	routeSel       int    // the Vehicle window's Route selection (orderTableIndex; -1: none)
-	lastTownOption int    // ToolbarTopCommon.cpp _lastTownOption: the Towns menu's last item (0 towns, 1 industries)
-	routeTool      bool   // the Route tab's tool (adding stops by clicking the map) is active
-	routeHead      uint16 // whose Route that selection is
+	pickupOn           bool   // the Vehicle window's pickup (placing) tool is active
+	pickupHead         uint16 // the vehicle head it places
+	driverCheat        bool   // SceneManager driverCheatEnabled (the Cheats window's; off)
+	routeSel           int    // the Vehicle window's Route selection (orderTableIndex; -1: none)
+	lastTownOption     int    // ToolbarTopCommon.cpp _lastTownOption: the Towns menu's last item (0 towns, 1 industries)
+	lastIndustryOption int    // GameState lastIndustryOption: the industry last chosen to fund (PARTIAL: not from the save; -1 none)
+	routeTool          bool   // the Route tab's tool (adding stops by clicking the map) is active
+	routeHead          uint16 // whose Route that selection is
 	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,
 	// _ghostTrackProgress; ghostProgress -1: none).
 	ghostPlace      sim.VehiclePlacement
@@ -315,30 +316,31 @@ func NewGame() *Game {
 
 	log.Println("[Game] Game initialization complete")
 	return &Game{
-		catchmentStation: -1,
-		routeSel:         -1,                                                                    // none selected
-		ghostProgress:    -1,                                                                    // no ghost placed
-		showFPS:          configValue("showFPS") == "true" || os.Getenv("GOLOCO_SHOWFPS") != "", // Config::showFPS (Config.cpp: default false)
-		scale:            loadScale(),
-		w:                w,
-		consSignal:       -1,
-		consOneShot:      -1,
-		consBridge:       -1,
-		consStation:      -1,
-		titleWorld:       w, // keep a reference so Quit to Menu can restore it
-		r:                r,
-		toolbar:          toolbar,
-		windowMgr:        windowMgr,
-		audioMgr:         audioMgr,
-		titleSeq:         titleSeq,
-		dataDir:          dataDir,
-		inTitleScreen:    true,
-		musicEnabled:     true,
-		sw:               defaultWidth,
-		sh:               defaultHeight,
-		speedMult:        1,
-		hoverTileX:       -1,
-		hoverTileY:       -1,
+		catchmentStation:   -1,
+		routeSel:           -1,                                                                    // none selected
+		ghostProgress:      -1,                                                                    // no ghost placed
+		lastIndustryOption: -1,                                                                    // none chosen yet
+		showFPS:            configValue("showFPS") == "true" || os.Getenv("GOLOCO_SHOWFPS") != "", // Config::showFPS (Config.cpp: default false)
+		scale:              loadScale(),
+		w:                  w,
+		consSignal:         -1,
+		consOneShot:        -1,
+		consBridge:         -1,
+		consStation:        -1,
+		titleWorld:         w, // keep a reference so Quit to Menu can restore it
+		r:                  r,
+		toolbar:            toolbar,
+		windowMgr:          windowMgr,
+		audioMgr:           audioMgr,
+		titleSeq:           titleSeq,
+		dataDir:            dataDir,
+		inTitleScreen:      true,
+		musicEnabled:       true,
+		sw:                 defaultWidth,
+		sh:                 defaultHeight,
+		speedMult:          1,
+		hoverTileX:         -1,
+		hoverTileY:         -1,
 		// Warm the title's sprites in the background (prewarmTick); the title
 		// draws at once and decodes anything it needs first on use, as upstream
 		// draws g1 sprites directly with no preload phase.
