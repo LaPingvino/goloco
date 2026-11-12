@@ -116,8 +116,8 @@ func (w *VehicleWindow) drawCargo(screen *ebiten.Image) {
 				continue
 			}
 			x, y := cargoX-carInlineWidth(r.Car), i*rowH-w.Scroll+(rowH-22)/2
-			drawCarInline(sub, r.Car, x, y, false)
-			drawCarInline(sub, r.Car, x, y, true)
+			drawCarInline(sub, r.Car, x, y, false, nil)
+			drawCarInline(sub, r.Car, x, y, true, nil)
 		}
 		for yy := range ch {
 			copy(rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw], sub.Bits[yy*cw:(yy+1)*cw])
