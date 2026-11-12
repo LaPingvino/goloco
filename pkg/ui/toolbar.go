@@ -48,6 +48,11 @@ type Toolbar struct {
 	Height  int
 	Buttons []ToolbarButton
 	Visible bool
+	// What the Railroad and Road buttons show (ToolbarTop.cpp draw): the
+	// game state's last options (bit 7: a road object; 0xFF: none) in the
+	// player's colour. The game sets them each frame.
+	LastRailroadOption, LastRoadOption uint8
+	CompanyColour                      uint8
 }
 
 // NewToolbar creates a new toolbar matching OpenLoco's layout
@@ -286,30 +291,30 @@ func (t *Toolbar) drawButton(screen *ebiten.Image, btn *ToolbarButton, renderer 
 		}
 	}
 
-	// Railroad / Road: draw the first available track/road preview image on top of the
-	// empty-opaque background, mirroring OpenLoco ToolbarTop.cpp::draw().
-	// OpenLoco reference: ToolbarTop.cpp:818-852 (railroad_menu draw)
-	//   fg_image = recolour(obj->image + TrackObj::ImageIds::kUiPreviewImage0, companyColour)
+	// Railroad / Road: the last option's preview on the button face
+	// (ToolbarTop.cpp draw 0x00439DE4, ToolbarTopCommon.cpp draw): a road
+	// object's image, or a track object's + kUiPreviewImage0 (0), recoloured
+	// to the player's colour; the road button only once there is a road option.
 	if !drewSprite || btn.Tooltip == "Railroad" || btn.Tooltip == "Road" {
-		var previewSpriteID int = -1
-		const defaultCompanyColour = 7
-		if btn.Tooltip == "Railroad" && renderer.ObjMgr != nil {
-			for _, tr := range renderer.ObjMgr.TrackObjects {
-				if tr != nil {
-					previewSpriteID = int(tr.Image) // kUiPreviewImage0 = offset 0
-					break
+		previewSpriteID := -1
+		opt := uint8(0xFF)
+		switch btn.Tooltip {
+		case "Railroad":
+			opt = t.LastRailroadOption
+		case "Road":
+			opt = t.LastRoadOption
+		}
+		if om := renderer.ObjMgr; om != nil && opt != 0xFF {
+			if opt&(1<<7) != 0 {
+				if ro := om.GetRoadObjectByIndex(int(opt &^ (1 << 7))); ro != nil {
+					previewSpriteID = int(ro.Image)
 				}
-			}
-		} else if btn.Tooltip == "Road" && renderer.ObjMgr != nil {
-			for _, ro := range renderer.ObjMgr.RoadObjects {
-				if ro != nil {
-					previewSpriteID = int(ro.Image) // kUiPreviewImage0 = offset 0
-					break
-				}
+			} else if tr := om.GetTrackObjectByIndex(int(opt)); tr != nil {
+				previewSpriteID = int(tr.Image)
 			}
 		}
 		if previewSpriteID >= 0 {
-			img := renderer.GetSpriteColoured(previewSpriteID, defaultCompanyColour)
+			img := renderer.GetSpriteColoured(previewSpriteID, int(t.CompanyColour))
 			if img == nil {
 				img = renderer.GetSprite(previewSpriteID)
 			}
