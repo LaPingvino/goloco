@@ -1704,3 +1704,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-12 (night) — ship wakes + ship exhaust; air/water bodies run animationUpdate. Seen with the shipsail diag.
 - 2026-11-12 (night) — sub_4AAB0B ported fully: body speed animation / tilt / wheel frames. Data: 9 body sprites with wheel frames, 2 speed-animated (HFOIL1, JFOIL1 — ships: upstream skips sub_4AAB0B for water, and upstream reads hasSpeedAnimation only in VehicleDraw (UI previews): in-world foils stay at frame 0 upstream too — matches), no tilt sprites in the loaded set. None on title.dat; zoom-0 shot of playthrough h is clean but too fine to see rods.
 - 2026-11-12 (night) — window tooltip timing (tooltip.go) + grid cell tooltip. NEXT small: route the toolbar tooltips through the same timing; station status-bar tooltip.
+- 2026-11-12 (night) — widget tooltips (close / tabs / centre view) on Town, Industry, Station and list windows; tooltip timing in real time.
