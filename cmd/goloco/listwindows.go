@@ -160,6 +160,29 @@ func (g *Game) openTownWindow(id int) {
 	w := ui.NewTownWindow(g.sw, g.sh, t.Name, t.Size, int(t.Population), tc, wc)
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.TownView(id, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnTown(id) }
+	// drawTabs: the town (toolbar_menu_towns), population (tab_population, 8
+	// frames, recoloured to the window's secondary colour) and company ratings
+	// (tab_ratings, 16 frames); the current one animated by frameNo / 4.
+	w.TabIcon = func(i int) (int, int, int) {
+		sk := g.skin()
+		if sk == nil {
+			return -1, -1, -1
+		}
+		anim := func(n int) int {
+			if i == w.Tab {
+				return (g.windowFrame / 4) % n
+			}
+			return 0
+		}
+		base := int(sk.ImageOffset)
+		switch i {
+		case 0:
+			return base + 189, -1, -1
+		case 1:
+			return base + 57 + anim(8), int(wc), -1
+		}
+		return base + 145 + anim(16), -1, -1
+	}
 	w.OnClose = func() { g.viewWin = nil }
 	g.viewWin = w
 }
@@ -264,6 +287,34 @@ func (g *Game) openIndustryWindow(id int) {
 	if obj := g.r.ObjMgr.GetIndustryObjectByIndex(int(m.Industries[idx].ObjectID)); obj != nil { // setDisabledWidgets
 		produced, _ := g.r.ObjMgr.IndustryCargoIDs(obj)
 		w.TabDisabled[1], w.TabDisabled[2] = produced[0] == 0xFF, produced[1] == 0xFF
+		// drawTabs: the industry (toolbar_menu_industries), the production
+		// tabs (tab_production, 8 frames, in the window's secondary colour,
+		// with the cargo's inline sprite) and transported (tab_transported, 7
+		// frames); the current one animated by frameNo / 4.
+		w.TabIcon = func(i int) (int, int, int) {
+			sk := g.skin()
+			if sk == nil {
+				return -1, -1, -1
+			}
+			anim := func(n int) int {
+				if i == w.Tab {
+					return (g.windowFrame / 4) % n
+				}
+				return 0
+			}
+			base := int(sk.ImageOffset)
+			switch i {
+			case 0:
+				return base + 191, -1, -1
+			case 1, 2:
+				cargo := -1
+				if c := int(produced[i-1]); c < len(g.r.ObjMgr.CargoObjects) && g.r.ObjMgr.CargoObjects[c] != nil {
+					cargo = int(g.r.ObjMgr.CargoObjects[c].ImageOffset) // unitInlineSprite
+				}
+				return base + 89 + anim(8), int(wc), cargo
+			}
+			return base + 161 + anim(7), -1, -1
+		}
 		w.Production = func(n int) (string, []uint8, int, int) {
 			label := ""
 			if c := int(produced[0]); c < len(g.r.ObjMgr.CargoObjects) && g.r.ObjMgr.CargoObjects[c] != nil {

@@ -24,8 +24,8 @@ import (
 // The Production and Production 2 tabs (299×282) graph the monthly production
 // history of its first / second cargo (Common::draw). Each tab captions its own
 // way ("{name}", "… - Monthly Production", "… - Statistics").
-// PARTIAL: the town's other tabs (Population, Company ratings), the tabs'
-// images, renaming by the caption, the editor's buttons, resizing, the viewport's own scrolling, the
+// PARTIAL: the town's other tabs (Population, Company ratings), renaming by
+// the caption, the editor's buttons, resizing, the viewport's own scrolling, the
 // status's clipping (drawStringLeftClipped).
 type ViewWindow struct {
 	X, Y, W, H          int
@@ -41,6 +41,10 @@ type ViewWindow struct {
 	viewImg      *ebiten.Image
 
 	Tab         int     // currentTab
+	// TabIcon is drawTabs' tab i: its image (< 0 none), the colour it is
+	// recoloured to (< 0 none) and, for an Industry window's production tab,
+	// the produced cargo's inline sprite (< 0: an ordinary tab).
+	TabIcon func(i int) (image, colour, cargo int)
 	TabDisabled [4]bool // disabledWidgets' tabs
 	// CargoTab is the Transported tab's index (0: none); Cargo gives its
 	// lines (received and produced last month), read each draw.
@@ -168,7 +172,21 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 				drawTabDisabled(rt, 3+31*i, 15, sec)
 				continue
 			}
-			drawTab(rt, 3+31*i, 15, i == w.Tab, sec, tabNoIcon, nil)
+			icon, colour, cargo := tabNoIcon, -1, -1
+			if w.TabIcon != nil {
+				if img, c, cg := w.TabIcon(i); img >= 0 && img < len(g1.Elements) {
+					icon, colour, cargo = img, c, cg
+				}
+			}
+			var m []uint8
+			if colour >= 0 {
+				m, _ = g1.GetPaletteMap(colour)
+			}
+			if cargo >= 0 {
+				drawProductionTab(rt, 3+31*i, 15, i == w.Tab, sec, icon, m, cargo)
+				continue
+			}
+			drawTab(rt, 3+31*i, 15, i == w.Tab, sec, icon, m)
 		}
 		if w.Tab == 0 {
 			gfx8.FillRectInset(rt, l, t, r, b, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
