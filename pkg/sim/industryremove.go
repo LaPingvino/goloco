@@ -43,8 +43,10 @@ func (m *Map) removeIndustryElement(x, y, z int32, om *objects.ObjectManager) {
 				if int32(bt.Industries[j].BaseZ)*4 != z {
 					continue
 				}
+				clearZ := int32(bt.Industries[j].ClearZ) * 4
 				bt.Industries = append(bt.Industries[:j], bt.Industries[j+1:]...)
 				bt.removeRef(scenario.KindIndustry, j)
+				m.invalidateTile((x+off[0])&^31, (y+off[1])&^31, z, clearZ, ZoomEighth, defaultRadius) // ViewportManager::invalidate
 				break
 			}
 		}
@@ -69,6 +71,8 @@ func (m *Map) revokeAllSurfaceClaims(id uint8) {
 				continue
 			}
 			t.IsIndustrial, t.GrowthStage, t.Variation = false, 0, 0
+			base := int32(t.BaseZ) * 4
+			m.invalidateTile(int32(tx)*32, int32(ty)*32, base, base+32, ZoomEighth, defaultRadius)
 			t.removeAllWallsAbove(t.BaseZ)
 		}
 	}

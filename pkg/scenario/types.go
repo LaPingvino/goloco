@@ -75,10 +75,6 @@ type Scenario struct {
 	// CurrencyMultiplicationFactor is GameState general.currencyMultiplicationFactor.
 	CurrencyMultiplicationFactor [32]uint32
 
-	// IndustryObjectIDs[industry index] = that industry's object id (GameState
-	// industries table); IndustryElement.IndustryID indexes it.
-	IndustryObjectIDs []uint8
-
 	// TrainStationObjectOrder is the list of train-station-object names in slot order.
 	// Slots 313-328 (16 slots).
 	TrainStationObjectOrder []string

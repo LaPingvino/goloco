@@ -1282,7 +1282,7 @@ func (m *ObjectManager) GetIndustryObjectByIndex(index int) *IndustryObject {
 }
 
 // ReorderIndustryObjects rebuilds IndustryObjects in the scenario's industry
-// slot order (RequiredObjects slots 809..824), which IndustryObjectIDs index.
+// slot order (RequiredObjects slots 809..824), which an industry's ObjectID indexes.
 func (m *ObjectManager) ReorderIndustryObjects(order []string) {
 	reordered := make([]*IndustryObject, len(order))
 	for i, name := range order {

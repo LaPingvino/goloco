@@ -313,7 +313,6 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 			log.Printf("[Scenario] Parsed %d vehicle entities (Head+Body) from GameState", len(sc.Entities))
 		}
 
-		sc.IndustryObjectIDs = parseIndustryObjectIDs(gameState)
 		sc.CompanyColours = parseCompanyColours(gameState)
 		sc.CompanyNames = parseCompanyNames(gameState)
 		sc.CompanyFaces = parseCompanyFaces(gameState)
@@ -1514,23 +1513,6 @@ func parseStationNames(gs []byte) []StationName {
 		}
 	}
 	return out
-}
-
-// parseIndustryObjectIDs returns, per industry index, its industry object id
-// (what IndustryElement.IndustryID refers to). nil if the chunk is too short.
-func parseIndustryObjectIDs(gs []byte) []uint8 {
-	off := industriesGameStateOffset
-	if len(gs) == GameStateSizeType2 {
-		off = industriesGameStateOffsetType2
-	}
-	if len(gs) < off+industryMaxCount*industryRecordSize {
-		return nil
-	}
-	ids := make([]uint8, industryMaxCount)
-	for i := range ids {
-		ids[i] = gs[off+i*industryRecordSize+industryObjectIDOffset]
-	}
-	return ids
 }
 
 // CompanyEconomy is what the economy reads and writes of a company (S5

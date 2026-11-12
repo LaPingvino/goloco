@@ -79,7 +79,6 @@ type Map struct {
 	// CurrencyMultiplicationFactor prices cost indices (Economy).
 	CurrencyMultiplicationFactor [32]uint32
 
-	IndustryObjectIDs []uint8 // industry index → industry object (GameState industries)
 	// LastCollision: what applyClearAtStandardHeight last collided with (for
 	// the command's error text; clearance.go).
 	LastCollision        *CollisionAt
@@ -224,7 +223,6 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.ObjectiveUntilYear = sc.ObjectiveTimeLimitUntilYear
 	m.ObjectiveMonthsInChallenge = sc.ObjectiveMonthsInChallenge
 	m.CurrencyMultiplicationFactor = sc.CurrencyMultiplicationFactor
-	m.IndustryObjectIDs = sc.IndustryObjectIDs
 	m.CompanyColours = sc.CompanyColours
 	m.CompanyColourSchemes = sc.CompanyColourSchemes
 	m.UserStrings = sc.UserStrings
