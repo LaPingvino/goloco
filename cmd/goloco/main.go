@@ -100,50 +100,10 @@ func main() {
 		game.openNewGameWindow()
 	}
 	if os.Getenv("GOLOCO_OPEN") == "track" && game.w != nil {
-		// Headless construction test: open the window and chain a piece
-		// sequence from the map centre so captures verify connections.
-		game.buildMode = buildModeTrack
-		game.windowMgr.OpenWindow(game.newPortedConstructionWindow())
-		mw, mh := game.w.GetMapSize()
-		game.w.SetConstructionHead(mw/2, mh/2)
-		// Straight line so the piece origins fall on a predictable tile row and
-		// the first/last pieces can carry stations for the board→deliver loop.
-		seq := []int{0, 0, 0, 0, 0}
-		var firstX, firstY, lastX, lastY int
-		for i, id := range seq {
-			h := game.w.ConstructionHeadState()
-			if i == 0 {
-				firstX, firstY = h.X, h.Y
-			}
-			if i == len(seq)-1 {
-				lastX, lastY = h.X, h.Y
-			}
-			if !game.w.PlaceTrackAtHead(id, 0) {
-				log.Printf("[ConsTest] piece %d not placeable at head %+v", id, game.w.ConstructionHeadState())
-			}
-		}
-		log.Printf("[ConsTest] head after sequence: %+v", game.w.ConstructionHeadState())
-		// Stations on the first and last pieces of the line.
-		stationSlot := game.firstTrainStationSlot()
-		if game.w.PlaceStationOnTile(firstX, firstY, stationSlot) {
-			log.Printf("[ConsTest] station A placed at (%d,%d)", firstX, firstY)
-		}
-		if game.w.PlaceStationOnTile(lastX, lastY, stationSlot) {
-			log.Printf("[ConsTest] station B placed at (%d,%d)", lastX, lastY)
-		}
+		game.openTrackTest()
 	}
 	if os.Getenv("GOLOCO_OPEN") == "road" && game.w != nil {
-		// Headless road construction test: chain straight + very-small curves.
-		game.buildMode = buildModeRoad
-		game.windowMgr.OpenWindow(game.newPortedConstructionWindow())
-		mw, mh := game.w.GetMapSize()
-		game.w.SetConstructionHead(mw/2, mh/2)
-		for _, id := range []int{0, 2, 0, 1, 0} {
-			if !game.w.PlaceRoadAtHead(id, 0) {
-				log.Printf("[RoadConsTest] piece %d not placeable at head %+v", id, game.w.ConstructionHeadState())
-			}
-		}
-		log.Printf("[RoadConsTest] head after sequence: %+v", game.w.ConstructionHeadState())
+		game.openRoadTest()
 	}
 
 	ebiten.SetWindowSize(defaultWidth, defaultHeight)
@@ -153,6 +113,56 @@ func main() {
 	if err := ebiten.RunGame(game); err != nil && err != ebiten.Termination {
 		log.Fatal(err)
 	}
+}
+
+// openTrackTest is GOLOCO_OPEN=track, the headless construction test: the
+// window open and a piece sequence chained from the map centre, so captures
+// verify connections.
+func (g *Game) openTrackTest() {
+	g.buildMode = buildModeTrack
+	g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+	mw, mh := g.w.GetMapSize()
+	g.w.SetConstructionHead(mw/2, mh/2)
+	// Straight line so the piece origins fall on a predictable tile row and
+	// the first/last pieces can carry stations for the board→deliver loop.
+	seq := []int{0, 0, 0, 0, 0}
+	var firstX, firstY, lastX, lastY int
+	for i, id := range seq {
+		h := g.w.ConstructionHeadState()
+		if i == 0 {
+			firstX, firstY = h.X, h.Y
+		}
+		if i == len(seq)-1 {
+			lastX, lastY = h.X, h.Y
+		}
+		if !g.w.PlaceTrackAtHead(id, 0) {
+			log.Printf("[ConsTest] piece %d not placeable at head %+v", id, g.w.ConstructionHeadState())
+		}
+	}
+	log.Printf("[ConsTest] head after sequence: %+v", g.w.ConstructionHeadState())
+	// Stations on the first and last pieces of the line.
+	stationSlot := g.firstTrainStationSlot()
+	if g.w.PlaceStationOnTile(firstX, firstY, stationSlot) {
+		log.Printf("[ConsTest] station A placed at (%d,%d)", firstX, firstY)
+	}
+	if g.w.PlaceStationOnTile(lastX, lastY, stationSlot) {
+		log.Printf("[ConsTest] station B placed at (%d,%d)", lastX, lastY)
+	}
+}
+
+// openRoadTest is GOLOCO_OPEN=road, the headless road construction test:
+// straight pieces and very small curves chained.
+func (g *Game) openRoadTest() {
+	g.buildMode = buildModeRoad
+	g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+	mw, mh := g.w.GetMapSize()
+	g.w.SetConstructionHead(mw/2, mh/2)
+	for _, id := range []int{0, 2, 0, 1, 0} {
+		if !g.w.PlaceRoadAtHead(id, 0) {
+			log.Printf("[RoadConsTest] piece %d not placeable at head %+v", id, g.w.ConstructionHeadState())
+		}
+	}
+	log.Printf("[RoadConsTest] head after sequence: %+v", g.w.ConstructionHeadState())
 }
 
 // firstTrainStationSlot returns the first populated train-station object slot,
