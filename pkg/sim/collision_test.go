@@ -49,7 +49,7 @@ func TestCheckForCollisions(t *testing.T) {
 // for the first player company's own, nothing left to sell, motors stopped,
 // the bogie that ran into it and its body exploding (var_5A bit 31, the speed
 // / 8), the first train's bogie flagged unk_5; on later ticks a crashed train's
-// parts stay where they are. And the motion's per-step check reports the hit.
+// parts slide to a stop. And the motion's per-step check reports the hit.
 func TestTrainCrash(t *testing.T) {
 	m, om := loadDataMap(t, "title.dat")
 	trains, _ := m.Trains()
@@ -98,12 +98,26 @@ func TestTrainCrash(t *testing.T) {
 	if len(m.Messages) == before {
 		t.Error("no crash news for the player's train")
 	}
-	// later ticks: the crashed train's parts stay put
-	x0, y0 := m.Entities[a.Cars[0][0].Back].PosX, m.Entities[a.Cars[0][0].Back].PosY
-	for range 20 {
+	// later ticks (landCrashedUpdate): every bogie slows by 1/64 a tick to a
+	// stop, the exploding one slides off its track, and the bodies explode
+	// with their bogies
+	x0, y0 := m.Entities[bogie].PosX, m.Entities[bogie].PosY
+	for range 400 {
 		m.updateTrain(a, om)
 	}
-	if e := m.Entities[a.Cars[0][0].Back]; e.PosX != x0 || e.PosY != y0 {
-		t.Error("a crashed train's bogie moved")
+	for _, car := range a.Cars {
+		for _, cc := range car {
+			for _, i := range []int{cc.Front, cc.Back} {
+				if v := m.Entities[i].Var5A &^ (1 << 31); v != 0 {
+					t.Errorf("bogie %d still at speed %#x after 400 ticks", i, v)
+				}
+			}
+		}
+	}
+	if e := m.Entities[bogie]; e.PosX == x0 && e.PosY == y0 {
+		t.Error("the exploding bogie didn't slide")
+	}
+	if m.Entities[a.Cars[0][0].Body].VehicleFlags&vehicleFlagUnk5 == 0 {
+		t.Error("the body of an exploded bogie didn't explode")
 	}
 }
