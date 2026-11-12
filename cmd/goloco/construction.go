@@ -6,15 +6,20 @@ import (
 	"github.com/LaPingvino/goloco/pkg/construct"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
-	"github.com/LaPingvino/goloco/pkg/uilayout"
-
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
+	"github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-// The ported construction window (pkg/ui ConstructionFrame + construction tab)
-// for railway track and roads, in place of the improvised SimpleWindow.
+// construction.go — the ported construction window (pkg/ui ConstructionFrame +
+// construction tab) for railway track and roads: the frame and tab states, the
+// piece / gradient selection, the track-vs-road dispatch, and the head's ghost.
+// The Station tab's map tools are in stationtool.go.
+//
+// OpenLoco reference: src/OpenLoco/src/Ui/Windows/Construction/Construction.cpp
+// Curve row + slope row of sprite buttons, Rotate/Undo, and a Build action.
+// Click the map to place the construction head; pieces then chain from it.
 
 // consPieceNames maps upstream's piece widgets to goloco's consCurve values
 // (the old window's sprite↔value pairs) and gradient widgets to consSlope.
@@ -543,390 +548,6 @@ func (g *Game) openBridgeDropdown(wx, wy int, colour, company uint8) {
 	g.dropdown = d
 }
 
-// stationArgsAt is getTrainStationPlacementArgsFromCursor with the selected
-// station type; ok false off track.
-func (g *Game) stationArgsAt(sx, sy int) (sim.TrainStationPlacement, bool) {
-	if g.r == nil || g.r.ObjMgr == nil {
-		return sim.TrainStationPlacement{}, false
-	}
-	list := g.r.ObjMgr.AvailableCompatibleStations(g.buildObjID, false, int(g.w.CurrentYear))
-	if len(list) == 0 {
-		return sim.TrainStationPlacement{}, false
-	}
-	return g.w.TrainStationPlacementAt(sx, sy, uint8(pickSlot(list, g.consStation)))
-}
-
-func (g *Game) stationCmd() (*sim.Cmd, sim.G1Raw) {
-	company, _ := g.w.ControllingCompany()
-	g1, _ := g.r.ObjMgr.G1File.(sim.G1Raw)
-	return &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}, g1
-}
-
-// stationToolUpdate is StationTab's onToolUpdateTrainStation (0x0049E421 side):
-// off track, the ghost goes (onToolUpdateFail); on the same piece it stays;
-// else the old ghost goes and a new one is placed (apply | noErrorWindow |
-// noPayment | ghost), its cost kept; the catchment shown on the map and the
-// ghost's accepted / produced cargo (calcAcceptedCargoTrainStationGhost).
-func (g *Game) stationToolUpdate(sx, sy int) {
-	if g.buildMode == buildModeAirport {
-		g.airportToolUpdate(sx, sy)
-		return
-	}
-	if g.buildMode == buildModeDock {
-		g.dockToolUpdate(sx, sy)
-		return
-	}
-	if g.consIsRoad() {
-		g.roadStationToolUpdate(sx, sy)
-		return
-	}
-	a, ok := g.stationArgsAt(sx, sy)
-	if !ok {
-		g.removeStationGhost()
-		return
-	}
-	if gh := g.stationGhost; gh != nil && gh.X == a.X && gh.Y == a.Y && gh.Z == a.Z && gh.Rotation == a.Rotation &&
-		gh.TrackID == a.TrackID && gh.Index == a.Index && gh.TrackObjectID == a.TrackObjectID {
-		return
-	}
-	g.removeStationGhost()
-	c, g1 := g.stationCmd()
-	cost, ok := g.w.Map.CreateTrainStation(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdNoPayment|sim.CmdGhost, a, g1)
-	g.stationGhostCost = cost
-	if ok {
-		g.stationGhost = &a
-		m := &g.w.Map // constructingStationId and the ghost's catchment cargo
-		g.stationGhostStation = m.LastAdjoiningStation
-		x, y := m.LastAdjoiningStationX, m.LastAdjoiningStationY
-		if x == -1 {
-			x, y = a.X, a.Y
-		}
-		g.stationGhostAccepted, g.stationGhostProduced = m.CalcAcceptedCargoTrainStationGhost(g.stationGhostStation, x, y, 0xFFFFFFFF, g.r.ObjMgr)
-		g.w.SetCatchmentDisplay(m.GhostCatchmentDisplay(g.stationGhostStation, x, y, g.r.ObjMgr)) // catchmentArea + setCatchmentDisplay / sub_491BF5 (flag_0)
-	}
-}
-
-// removeStationGhost is removeConstructionGhosts' station part: the ghost
-// removed as it was placed. Only with a station ghost showing
-// (GhostVisibilityFlags::station) is the catchment display cleared — so the
-// Station window's own catchment (showStationCatchment) stays.
-func (g *Game) removeStationGhost() {
-	if g.stationGhost != nil || g.roadStationGhost != nil || g.dockGhost != nil || g.airportGhost != nil {
-		g.w.SetCatchmentDisplay(nil) // sub_491BC6 + resetMapSelectionFlag(catchmentArea)
-		g.catchmentStation = -1      // the catchment shown is the ghost's from here
-	}
-	if rg := g.roadStationGhost; rg != nil { // stationGhostType & (1 << 7): RoadStationRemovalArgs
-		g.roadStationGhost = nil
-		c, g1 := g.stationCmd()
-		g.w.Map.RemoveRoadStation(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdNoPayment|sim.CmdGhost,
-			sim.RoadStationRemoval{X: rg.X, Y: rg.Y, Z: rg.Z, Rotation: rg.Rotation, RoadID: rg.RoadID, Index: rg.Index, RoadObjectID: rg.RoadObjectID}, g1)
-	}
-	gh := g.stationGhost
-	if gh == nil {
-		return
-	}
-	g.stationGhost = nil
-	c, g1 := g.stationCmd()
-	g.w.Map.RemoveTrainStation(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdNoPayment|sim.CmdGhost,
-		sim.TrainStationRemoval{X: gh.X, Y: gh.Y, Z: gh.Z, Rotation: gh.Rotation, TrackID: gh.TrackID, Index: gh.Index, TrackObjectID: gh.TrackObjectID}, g1)
-}
-
-// stationToolUp is StationTab's onToolUpTrainStation (0x004A5390): the
-// placement from the track under the cursor (getTrainStationPlacementArgsFromCursor),
-// refused on another track type (wrong_type_of_track_road), then
-// CreateTrainStation with apply, after removeConstructionGhosts; a failure
-// opens the error window titled cant_build_pop3_string with the station's
-// name and the command's reason (when the command sets one). PARTIAL: the
-// construct sound.
-func (g *Game) stationToolUp(sx, sy int) {
-	if g.buildMode == buildModeAirport {
-		g.airportToolUp(sx, sy)
-		return
-	}
-	if g.buildMode == buildModeDock {
-		g.dockToolUp(sx, sy)
-		return
-	}
-	if g.consIsRoad() {
-		g.roadStationToolUp(sx, sy)
-		return
-	}
-	g.removeStationGhost()
-	a, ok := g.stationArgsAt(sx, sy)
-	if !ok {
-		return
-	}
-	title := ""
-	om := g.r.ObjMgr
-	if list := om.AvailableCompatibleStations(g.buildObjID, false, int(g.w.CurrentYear)); len(list) > 0 {
-		if id := pickSlot(list, g.consStation); id >= 0 && id < len(om.TrainStationObjects) && om.TrainStationObjects[id] != nil {
-			title = ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop3String), om.TrainStationObjects[id].Name)
-		}
-	}
-	if int(a.TrackObjectID) != g.buildObjID {
-		g.openError("", i18n.Label(i18n.WrongTypeOfTrackRoad))
-		return
-	}
-	c, g1 := g.stationCmd()
-	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreateTrainStation(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
-		g.openError(title, cmdErrorText(c))
-	}
-}
-
-// openError is Error::open at the mouse.
-func (g *Game) openError(title, message string) {
-	mx, my := ebiten.CursorPosition()
-	g.errorWin = ui.OpenError(title, message, mx, my, g.sw, g.sh)
-}
-
-// roadStationArgsAt is getRoadStationPlacementArgsFromCursor with the
-// selected stop type.
-func (g *Game) roadStationArgsAt(sx, sy int) (sim.RoadStationPlacement, int, bool) {
-	if g.r == nil || g.r.ObjMgr == nil {
-		return sim.RoadStationPlacement{}, -1, false
-	}
-	list := g.r.ObjMgr.AvailableCompatibleStations(g.buildObjID, true, int(g.w.CurrentYear))
-	if len(list) == 0 {
-		return sim.RoadStationPlacement{}, -1, false
-	}
-	typ := pickSlot(list, g.consStation)
-	a, ok := g.w.RoadStationPlacementAt(sx, sy, uint8(typ))
-	return a, typ, ok
-}
-
-// roadStationToolUpdate is StationTab's onToolUpdateRoadStation: as the train
-// one, with the road stop ghost; the catchment's cargo filtered by the stop
-// (a passenger stop: its cargo only; a freight bay: all but that).
-func (g *Game) roadStationToolUpdate(sx, sy int) {
-	a, typ, ok := g.roadStationArgsAt(sx, sy)
-	if !ok {
-		g.removeStationGhost()
-		return
-	}
-	if gh := g.roadStationGhost; gh != nil && gh.X == a.X && gh.Y == a.Y && gh.Z == a.Z && gh.Rotation == a.Rotation &&
-		gh.RoadID == a.RoadID && gh.Index == a.Index && gh.RoadObjectID == a.RoadObjectID {
-		return
-	}
-	g.removeStationGhost()
-	c, g1 := g.stationCmd()
-	cost, ok := g.w.Map.CreateRoadStation(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdNoPayment|sim.CmdGhost, a, g1)
-	g.stationGhostCost = cost
-	if !ok {
-		return
-	}
-	g.roadStationGhost = &a
-	m := &g.w.Map
-	g.stationGhostStation = m.LastAdjoiningStation
-	x, y := m.LastAdjoiningStationX, m.LastAdjoiningStationY
-	if x == -1 {
-		x, y = a.X, a.Y
-	}
-	g.w.SetCatchmentDisplay(m.GhostCatchmentDisplay(g.stationGhostStation, x, y, g.r.ObjMgr))
-	g.stationGhostAccepted, g.stationGhostProduced = m.CalcAcceptedCargoTrainStationGhost(g.stationGhostStation, x, y, sim.RoadStationCargoFilter(g.r.ObjMgr, typ), g.r.ObjMgr)
-}
-
-// roadStationToolUp is StationTab's onToolUpRoadStation (0x004A548F): after
-// removeConstructionGhosts, CreateRoadStation with apply on the road under
-// the cursor; a failure opens the error window titled cant_build_pop3_string
-// with the stop's name. PARTIAL: the construct sound, the command's own
-// error text.
-func (g *Game) roadStationToolUp(sx, sy int) {
-	g.removeStationGhost()
-	a, typ, ok := g.roadStationArgsAt(sx, sy)
-	if !ok {
-		return
-	}
-	om := g.r.ObjMgr
-	title := ""
-	if typ >= 0 && typ < len(om.RoadStationObjects) && om.RoadStationObjects[typ] != nil {
-		title = ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop3String), om.RoadStationObjects[typ].Name)
-	}
-	c, g1 := g.stationCmd()
-	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreateRoadStation(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
-		g.openError(title, "")
-	}
-}
-
-// ghostTabInfo is the Station tab's ghost part: cState.stationCost, the
-// station it joins (or New Station) and the catchment's cargo lists.
-func (g *Game) ghostTabInfo(st *ui.StationTabState) {
-	om := g.r.ObjMgr
-	st.Cost = int64(g.stationGhostCost) // cState.stationCost while a ghost stands
-	st.Ghost = true
-	st.GhostName = i18n.Label(i18n.NewStation)
-	if id := g.stationGhostStation; id >= 0 && id < len(g.w.Map.StationNames) {
-		st.GhostName = g.w.Map.StationName(id)
-	}
-	lines := func(bits uint32) []ui.CargoLine {
-		var out []ui.CargoLine
-		for i := 0; i < 32; i++ {
-			if bits&(1<<i) == 0 || i >= len(om.CargoObjects) || om.CargoObjects[i] == nil {
-				continue
-			}
-			c := om.CargoObjects[i]
-			out = append(out, ui.CargoLine{Name: c.Name, Image: int(c.ImageOffset)})
-		}
-		return out
-	}
-	st.Accepted, st.Produced = lines(g.stationGhostAccepted), lines(g.stationGhostProduced)
-}
-
-// dockArgsAt is getDockPlacementArgsFromCursor: the surface or water under
-// the cursor (getSurfaceOrWaterLocFromUi), the dock placed by
-// getDockPlacementArgs with the selected dock.
-func (g *Game) dockArgsAt(sx, sy int) (sim.PortPlacement, int, bool) {
-	if g.r == nil || g.r.ObjMgr == nil {
-		return sim.PortPlacement{}, -1, false
-	}
-	list := g.r.ObjMgr.AvailableDocks(int(g.w.CurrentYear))
-	if len(list) == 0 {
-		return sim.PortPlacement{}, -1, false
-	}
-	px, py, ok := g.w.SurfaceOrWaterAt(sx, sy)
-	if !ok {
-		return sim.PortPlacement{}, -1, false
-	}
-	typ := pickSlot(list, g.consStation)
-	a, ok := g.w.Map.DockPlacementAt(px, py, uint8(typ), g.r.ObjMgr)
-	return a, typ, ok
-}
-
-// dockToolUpdate is StationTab's onToolUpdateDock: the ghost dock follows
-// the cursor (createPort with apply | noErrorWindow | noPayment | ghost),
-// its cost, the catchment shown (sub_491D20) and its cargo
-// (calcAcceptedCargoDockGhost). PARTIAL: the construction arrow and the
-// selected 2×2 tiles (map selection).
-func (g *Game) dockToolUpdate(sx, sy int) {
-	a, _, ok := g.dockArgsAt(sx, sy)
-	if !ok {
-		g.removeStationGhost()
-		return
-	}
-	if gh := g.dockGhost; gh != nil && gh.X == a.X && gh.Y == a.Y && gh.Z == a.Z && gh.Rotation == a.Rotation && gh.Type == a.Type {
-		return
-	}
-	g.removeStationGhost()
-	c, g1 := g.stationCmd()
-	cost, ok := g.w.Map.CreatePort(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdNoPayment|sim.CmdGhost, a, g1)
-	g.stationGhostCost = cost
-	if !ok {
-		return
-	}
-	g.dockGhost = &a
-	m := &g.w.Map
-	g.stationGhostStation = m.LastAdjoiningStation
-	x, y := m.LastAdjoiningStationX, m.LastAdjoiningStationY
-	if x == -1 {
-		x, y = a.X, a.Y
-	}
-	g.w.SetCatchmentDisplay(m.GhostDockCatchmentDisplay(g.stationGhostStation, x, y, g.r.ObjMgr))
-	g.stationGhostAccepted, g.stationGhostProduced = m.CalcAcceptedCargoDockGhost(g.stationGhostStation, x, y, 0xFFFFFFFF, g.r.ObjMgr)
-}
-
-// dockToolUp is StationTab's onToolUpDock (0x004A55AB): after
-// removeConstructionGhosts, createPort with apply; a failure opens the error
-// window titled cant_build_pop3_string with the dock's name.
-func (g *Game) dockToolUp(sx, sy int) {
-	g.removeStationGhost()
-	a, typ, ok := g.dockArgsAt(sx, sy)
-	if !ok {
-		return
-	}
-	om := g.r.ObjMgr
-	title := ""
-	if typ >= 0 && typ < len(om.DockObjects) && om.DockObjects[typ] != nil {
-		title = ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop3String), om.DockObjects[typ].Name)
-	}
-	c, g1 := g.stationCmd()
-	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreatePort(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
-		g.openError(title, "")
-	}
-}
-
-// airportArgsAt is getAirportPlacementArgsFromCursor: the surface or water
-// under the cursor, the selected airport at the window's rotation.
-func (g *Game) airportArgsAt(sx, sy int) (sim.AirportPlacement, int, bool) {
-	if g.r == nil || g.r.ObjMgr == nil {
-		return sim.AirportPlacement{}, -1, false
-	}
-	list := g.r.ObjMgr.AvailableAirports(int(g.w.CurrentYear))
-	if len(list) == 0 {
-		return sim.AirportPlacement{}, -1, false
-	}
-	px, py, ok := g.w.SurfaceOrWaterAt(sx, sy)
-	if !ok {
-		return sim.AirportPlacement{}, -1, false
-	}
-	typ := pickSlot(list, g.consStation)
-	a, ok := g.w.Map.AirportPlacementAt(px, py, uint8(typ), g.airportRotation, g.r.ObjMgr)
-	return a, typ, ok
-}
-
-// airportToolUpdate is StationTab's onToolUpdateAirport: the ghost airport
-// follows the cursor, its cost, the catchment (sub_491C6F) and its cargo
-// (calcAcceptedCargoAirportGhost). PARTIAL: the construction arrow and the
-// selected tiles of its extents.
-func (g *Game) airportToolUpdate(sx, sy int) {
-	a, typ, ok := g.airportArgsAt(sx, sy)
-	if !ok {
-		g.removeStationGhost()
-		return
-	}
-	if gh := g.airportGhost; gh != nil && *gh == a {
-		return
-	}
-	g.removeStationGhost()
-	c, g1 := g.stationCmd()
-	cost, ok := g.w.Map.CreateAirport(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdNoPayment|sim.CmdGhost, a, g1)
-	g.stationGhostCost = cost
-	if !ok {
-		return
-	}
-	g.airportGhost = &a
-	m := &g.w.Map
-	g.stationGhostStation = m.LastAdjoiningStation
-	x, y := m.LastAdjoiningStationX, m.LastAdjoiningStationY
-	if x == -1 {
-		x, y = a.X, a.Y
-	}
-	ap := g.r.ObjMgr.AirportObjects[typ]
-	g.w.SetCatchmentDisplay(m.GhostAirportCatchmentDisplay(g.stationGhostStation, ap, x, y, a.Rotation, g.r.ObjMgr))
-	g.stationGhostAccepted, g.stationGhostProduced = m.CalcAcceptedCargoAirportGhost(g.stationGhostStation, ap, x, y, a.Rotation, 0xFFFFFFFF, g.r.ObjMgr)
-}
-
-// airportToolUp is StationTab's onToolUpAirport (0x004A5550): after
-// removeConstructionGhosts, createAirport with apply; a failure opens the
-// error window titled cant_build_pop3_string with the airport's name.
-func (g *Game) airportToolUp(sx, sy int) {
-	g.removeStationGhost()
-	a, typ, ok := g.airportArgsAt(sx, sy)
-	if !ok {
-		return
-	}
-	om := g.r.ObjMgr
-	title := ""
-	if typ >= 0 && typ < len(om.AirportObjects) && om.AirportObjects[typ] != nil {
-		title = ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop3String), om.AirportObjects[typ].Name)
-	}
-	c, g1 := g.stationCmd()
-	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreateAirport(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
-		g.openError(title, "")
-	}
-}
-
-// cmdErrorText is the error window's second line: the command's reason
-// (setErrorText, with its name argument), "" when it set none.
-func cmdErrorText(c *sim.Cmd) string {
-	if c.ErrorText == 0 {
-		return ""
-	}
-	msg := i18n.Label(c.ErrorText)
-	if c.ErrorArg != "" {
-		msg = ui.FormatErrorArgs(msg, c.ErrorArg)
-	}
-	return msg
-}
-
 // updateTrackGhost is the Construction tab's tool update while positioning
 // (onToolUpdate → onToolUpdateSingle for track): with the track window on
 // its Construction tab and no head placed yet, the selected piece in the
@@ -975,4 +596,216 @@ func (g *Game) removeTrackGhost() {
 	}
 	c, _ := g.stationCmd()
 	g.w.RemoveTrackGhost(c)
+}
+
+// consSelectedTrackID resolves the current curve/slope selection to the first
+// placeable track id at the head, or -1.
+func (g *Game) consSelectedTrackID() int {
+	// getTrackPieceId (pkg/construct) for the chosen piece and gradient at
+	// the head's constructionRotation.
+	rot := g.w.ConstructionHeadState().Rotation
+	p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), rot)
+	if !ok || !g.w.CanPlaceTrackAtHead(int(p.ID)) {
+		return -1
+	}
+	return int(p.ID)
+}
+
+// consTrackPiece is lastSelectedTrackPiece: a one-shot piece if chosen, else
+// the curve buttons' piece.
+func (g *Game) consTrackPiece() uint8 {
+	if g.consOneShot >= 0 {
+		return uint8(g.consOneShot)
+	}
+	switch g.consCurve {
+	case -1:
+		return construct.LeftCurveVerySmall
+	case 1:
+		return construct.RightCurveVerySmall
+	case -2:
+		return construct.LeftCurveSmall
+	case 2:
+		return construct.RightCurveSmall
+	case -3:
+		return construct.LeftCurve
+	case 3:
+		return construct.RightCurve
+	case -4:
+		return construct.LeftCurveLarge
+	case 4:
+		return construct.RightCurveLarge
+	}
+	return construct.Straight
+}
+
+// consTrackGradient is lastSelectedTrackGradient for goloco's slope choice.
+func consTrackGradient(slope int) uint8 {
+	switch slope {
+	case -2:
+		return construct.SteepSlopeDown
+	case -1:
+		return construct.SlopeDown
+	case 1:
+		return construct.SlopeUp
+	case 2:
+		return construct.SteepSlopeUp
+	}
+	return construct.Level
+}
+
+// consDualTrackPiece is the piece the left or right dual-track button
+// chooses at this heading (construct.DualTrackButtons).
+func consDualTrackPiece(right bool, rot uint8) int {
+	_, _, l, r := construct.DualTrackButtons(rot)
+	if right {
+		return int(r)
+	}
+	return int(l)
+}
+
+// consSelectedRoadID is getRoadPieceId (pkg/construct) for the chosen piece
+// and gradient at the head, if it can be placed there; else -1.
+func (g *Game) consSelectedRoadID() int {
+	rot := g.w.ConstructionHeadState().Rotation
+	p, ok := construct.GetRoadPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), rot)
+	if !ok || !g.w.CanPlaceRoadAtHead(int(p.ID)) {
+		return -1
+	}
+	return int(p.ID)
+}
+
+func (g *Game) consIsRoad() bool { return g.buildMode == buildModeRoad }
+
+func (g *Game) consSelectedID() int {
+	if g.consIsRoad() {
+		return g.consSelectedRoadID()
+	}
+	return g.consSelectedTrackID()
+}
+
+// consDisplayID returns a piece id to show in the preview panel for the current
+// curve/slope selection, regardless of whether it is placeable at the head (so
+// the panel always shows the piece the buttons describe). Falls back to the
+// first candidate, or straight.
+func (g *Game) consDisplayID() int {
+	if id := g.consSelectedID(); id >= 0 {
+		return id
+	}
+	// The piece getTrackPieceId/getRoadPieceId gives; none (−1) when it
+	// can't be built at this heading.
+	rot := g.w.ConstructionHeadState().Rotation
+	get := construct.GetTrackPieceID
+	if g.consIsRoad() {
+		get = construct.GetRoadPieceID
+	}
+	if p, ok := get(g.consTrackPiece(), consTrackGradient(g.consSlope), rot); ok {
+		return int(p.ID)
+	}
+	return -1
+}
+
+// openTrackBuildError is doCommand's failure for createTrack / createRoad:
+// Error::open(cant_build_pop3_string with the track's or road's name, the
+// command's reason).
+func (g *Game) openTrackBuildError(c *sim.Cmd) {
+	title := i18n.Label(i18n.CantBuildPop3String)
+	id := g.buildObjID
+	if g.consIsRoad() {
+		if id >= 0 && id < len(g.r.ObjMgr.RoadObjects) && g.r.ObjMgr.RoadObjects[id] != nil {
+			title = ui.FormatErrorArgs(title, g.r.ObjMgr.RoadObjects[id].Name)
+		}
+	} else if id >= 0 && id < len(g.r.ObjMgr.TrackObjects) && g.r.ObjMgr.TrackObjects[id] != nil {
+		title = ui.FormatErrorArgs(title, g.r.ObjMgr.TrackObjects[id].Name)
+	}
+	msg := ""
+	if c.ErrorText != 0 {
+		msg = i18n.Label(c.ErrorText)
+		if c.ErrorArg != "" {
+			msg = ui.FormatErrorArgs(msg, c.ErrorArg)
+		}
+	}
+	g.openError(title, msg)
+}
+
+func (g *Game) consPlace(id int) {
+	var built bool
+	if g.consIsRoad() && g.r != nil && g.r.ObjMgr != nil {
+		// constructRoad: the createRoad game command (ghost taken up first), checked and charged.
+		c, _ := g.stationCmd()
+		if _, built = g.w.BuildRoadAtHead(c, id, uint8(g.buildObjID)); !built {
+			g.openTrackBuildError(c)
+		}
+	} else if g.consIsRoad() {
+		built = g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
+	} else if g.r != nil && g.r.ObjMgr != nil { // the createTrack game command: checked and charged (PL.1 e)
+		c, _ := g.stationCmd()
+		if _, built = g.w.BuildTrackAtHead(c, id, uint8(g.buildObjID)); !built {
+			g.openTrackBuildError(c)
+		}
+	} else {
+		built = g.w.PlaceTrackAtHead(id, uint8(g.buildObjID))
+	}
+	if built && g.consOneShot >= 0 {
+		// constructTrack/constructRoad: one-shot pieces (≥ 9) go back to straight.
+		g.consOneShot, g.consCurve = -1, 0
+	}
+}
+
+func (g *Game) consUndo() {
+	if g.consIsRoad() {
+		g.w.UndoLastRoad()
+	} else {
+		g.w.UndoLastTrack()
+	}
+}
+
+// consObjectNames returns the object display names for the current mode,
+// indexed by object slot (empty string for unused slots).
+func (g *Game) consObjectNames() []string {
+	var names []string
+	if g.r == nil || g.r.ObjMgr == nil {
+		return names
+	}
+	if g.consIsRoad() {
+		for _, o := range g.r.ObjMgr.RoadObjects {
+			if o != nil {
+				names = append(names, o.Name)
+			} else {
+				names = append(names, "")
+			}
+		}
+	} else {
+		for _, o := range g.r.ObjMgr.TrackObjects {
+			if o != nil {
+				names = append(names, o.Name)
+			} else {
+				names = append(names, "")
+			}
+		}
+	}
+	return names
+}
+
+// consObjName is the current object slot's display name, or "(none)".
+func (g *Game) consObjName() string {
+	names := g.consObjectNames()
+	if g.buildObjID >= 0 && g.buildObjID < len(names) && names[g.buildObjID] != "" {
+		return names[g.buildObjID]
+	}
+	return "(none)"
+}
+
+// consCycleType advances g.buildObjID to the next populated object slot.
+func (g *Game) consCycleType(dir int) {
+	names := g.consObjectNames()
+	n := len(names)
+	if n == 0 {
+		return
+	}
+	for k := 0; k < n; k++ {
+		g.buildObjID = ((g.buildObjID+dir)%n + n) % n
+		if names[g.buildObjID] != "" {
+			return
+		}
+	}
 }
