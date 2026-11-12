@@ -14,8 +14,8 @@ type State struct {
 	TrackGhost *TrackGhost
 	// RoadGhost is the road construction ghost at the head (roadghost.go).
 	RoadGhost *RoadGhost
-	ghostPos   [3]int32
-	ghostCost  int32
+	ghostPos  [3]int32
+	ghostCost int32
 
 	// Waves (wave.go): the wave table, the generator they draw from (upstream
 	// gPrng2) and the tile loop's start offset within its 16×16 block.

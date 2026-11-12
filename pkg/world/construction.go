@@ -6,7 +6,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-
 // removeTrackElement deletes one exactly-matching track element from a tile.
 
 func (w *World) DrawRoadConstructionGhost(screen *ebiten.Image, roadID, objID int) {

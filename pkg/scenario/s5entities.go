@@ -296,6 +296,7 @@ type VehicleEntity struct {
 	CurMonthRevenue     int32    // Vehicle2 curMonthRevenue (0x5E)
 	Profit              [4]int32 // Vehicle2 profit[4] (0x62), last 4 months net
 	RefundCost          uint32   // bogie / body refundCost (0x62)
+	Var5A               uint32   // bogie / body var_5A (0x5A): the crash's speed, then its fall (bit 31: exploding)
 	TotalRefundCost     uint32   // VehicleHead totalRefundCost (0x69)
 	Var3C               int32    // VehicleHead / Vehicle1 var_3C (0x3C): distance budget the moves draw down
 	Var4F               int8     // Vehicle2 var_4F (0x4F): the road object it is on (-1 none)
@@ -448,6 +449,7 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			CurMonthRevenue:     int32(binary.LittleEndian.Uint32(e[0x5E:])),
 			Profit:              [4]int32{int32(binary.LittleEndian.Uint32(e[0x62:])), int32(binary.LittleEndian.Uint32(e[0x66:])), int32(binary.LittleEndian.Uint32(e[0x6A:])), int32(binary.LittleEndian.Uint32(e[0x6E:]))},
 			RefundCost:          binary.LittleEndian.Uint32(e[0x62:]),
+			Var5A:               binary.LittleEndian.Uint32(e[0x5A:]),
 			TotalRefundCost:     binary.LittleEndian.Uint32(e[0x69:]),
 			Var3C:               int32(binary.LittleEndian.Uint32(e[0x3C:])),
 			Var4F:               int8(e[0x4F]),

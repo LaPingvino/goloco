@@ -94,10 +94,18 @@ func (mt *mountainTool) adjustSurfaceSlope(x, y int32, targetBaseZ int8, targetC
 	}
 }
 
-func (mt *mountainTool) south(x, y int32, z uint8) { mt.adjustSurfaceSlope(x, y, int8(z), 2, slopeCornerSouth) }
-func (mt *mountainTool) west(x, y int32, z uint8)  { mt.adjustSurfaceSlope(x, y, int8(z), 3, slopeCornerWest) }
-func (mt *mountainTool) north(x, y int32, z uint8) { mt.adjustSurfaceSlope(x, y, int8(z), 0, slopeCornerNorth) }
-func (mt *mountainTool) east(x, y int32, z uint8)  { mt.adjustSurfaceSlope(x, y, int8(z), 1, slopeCornerEast) }
+func (mt *mountainTool) south(x, y int32, z uint8) {
+	mt.adjustSurfaceSlope(x, y, int8(z), 2, slopeCornerSouth)
+}
+func (mt *mountainTool) west(x, y int32, z uint8) {
+	mt.adjustSurfaceSlope(x, y, int8(z), 3, slopeCornerWest)
+}
+func (mt *mountainTool) north(x, y int32, z uint8) {
+	mt.adjustSurfaceSlope(x, y, int8(z), 0, slopeCornerNorth)
+}
+func (mt *mountainTool) east(x, y int32, z uint8) {
+	mt.adjustSurfaceSlope(x, y, int8(z), 1, slopeCornerEast)
+}
 
 // adjustMountainCentre: raiseLand / lowerLand over the selection, every corner.
 func (mt *mountainTool) adjustMountainCentre(a MountainArgs) (int32, bool) {

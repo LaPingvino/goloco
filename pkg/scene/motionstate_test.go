@@ -358,7 +358,7 @@ func TestSavedBogies(t *testing.T) {
 					b := roll(e)
 					x0, y0 := c.X, c.Y
 					for range 50 {
-						if !m.BogieUpdate(&c, &b, d1, d2, head.HeadVar53) {
+						if m.BogieUpdate(&c, &b, d1, d2, head.HeadVar53).Flags&sim.MotionNoRouteFound != 0 {
 							t.Fatalf("head %d: bogie lost its route", head.ID)
 						}
 					}
