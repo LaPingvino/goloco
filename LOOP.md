@@ -1700,3 +1700,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-12 (night) — town / industry rename by caption. NOTE: list windows are snapshots at open (upstream repopulates on update) — other changes (populations, new industries) don't show until reopened; worth a general refresh-on-update later.
 - 2026-11-12 (night) — lists repopulate (~1/s) via TownListWindow.Reopen + refreshList. Hover follows the row id (RowIDs).
 - 2026-11-12 (night) — Station window vehicle tabs (VehiclesStopping). Seen after h2. Repopulates ~1/s; strlogicalcmp ported. PARTIAL: thumb drag.
+- 2026-11-12 (06:30) — regression pass after the night: all 9 playthroughs rc=0, no panics; g £79,468, g2 £81,335 (as recorded); h2 train earns.
