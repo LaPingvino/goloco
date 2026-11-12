@@ -3,9 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/LaPingvino/goloco/pkg/construct"
-	"github.com/LaPingvino/goloco/pkg/paint"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"image"
 	"image/color"
 	"image/png"
@@ -16,6 +13,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/LaPingvino/goloco/pkg/construct"
+	"github.com/LaPingvino/goloco/pkg/paint"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"github.com/LaPingvino/goloco/pkg/audio"
@@ -94,7 +95,6 @@ type Game struct {
 	mouseY                         int
 	dataDir                        string
 	inTitleScreen                  bool
-	soundEnabled                   bool   // whether sound effects are on
 	musicEnabled                   bool   // whether music is on
 	currentScenarioPath            string // path of the currently loaded scenario/save
 	saveMsg                        string // transient "Game Saved!" status overlay
@@ -123,7 +123,6 @@ type Game struct {
 	driverCheat bool   // SceneManager driverCheatEnabled (the Cheats window's; off)
 	routeSel    int    // the Vehicle window's Route selection (orderTableIndex; -1: none)
 	routeTool   bool   // the Route tab's tool (adding stops by clicking the map) is active
-	drawn       int    // frames drawn so far (diagnostics that need a painted view wait for some)
 	routeHead   uint16 // whose Route that selection is
 	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,
 	// _ghostTrackProgress; ghostProgress -1: none).
@@ -192,20 +191,12 @@ type Game struct {
 	// quitAfterSave: exit cleanly once the map save has completed.
 	quitAfterSave bool
 
-	// Loading-screen state.  When loadingSpriteIDs != nil, the game is in the
-	// sprite-preload phase and will draw the OpenLoco-style loading screen.
-	loadingSpriteIDs []int // full list collected from the world
-	loadingStep      int   // next index to process
-
 	// Background sprite prewarm: decode+pack a few sprites per frame within a
 	// small time budget, so the game shows at once instead of after a blocking
 	// preload of every sprite (11,057 for the title).
 	prewarmIDs       []int
 	prewarmPos       int
-	firstFrameLogged bool   // the start-to-first-world-frame time has been logged
-	loadingStepSize  int    // sprites per frame
-	loadingCaption   string // text shown in the loading window caption
-	loadingStyleFlip bool   // alternates between train style 0 and 1 each load
+	firstFrameLogged bool // the start-to-first-world-frame time has been logged
 }
 
 func findLocoDataDir() string {
@@ -297,19 +288,11 @@ func NewGame() *Game {
 			// overrides the TTF/embedded fallback set up by InitFonts.
 			ui.InitG1Font(g1)
 
-			// Populate the UI drawing palette from the loaded G1 so window
-			// backgrounds, buttons and other widgets more closely match the
-			// original Locomotion look-and-feel.
-			//
-			// Set the package-level global palette so DrawingContext and UI
-			// widgets can use the game's palette everywhere. As a fallback,
-			// also attempt to copy the palette into a temporary DrawingContext.
+			// Set the package-level global palette from the loaded G1 so
+			// DrawingContext and UI widgets (window backgrounds, buttons …)
+			// use the game's palette everywhere.
 			if graphics.SetGlobalPalette(r.G1) {
 				log.Printf("Applied G1 palette to UI drawing context")
-			} else {
-				// Fallback: still try to copy into a temporary DC for local use
-				var tmpDC graphics.DrawingContext
-				tmpDC.UseRendererPalette(r.G1)
 			}
 		}
 
@@ -483,7 +466,6 @@ func NewGame() *Game {
 		titleSeq:         titleSeq,
 		dataDir:          dataDir,
 		inTitleScreen:    true,
-		soundEnabled:     true,
 		musicEnabled:     true,
 		sw:               defaultWidth,
 		sh:               defaultHeight,
@@ -493,8 +475,7 @@ func NewGame() *Game {
 		// Warm the title's sprites in the background (prewarmTick); the title
 		// draws at once and decodes anything it needs first on use, as upstream
 		// draws g1 sprites directly with no preload phase.
-		prewarmIDs:     titleSpriteIDs,
-		loadingCaption: "title.dat",
+		prewarmIDs: titleSpriteIDs,
 	}
 }
 
@@ -1261,47 +1242,6 @@ func (g *Game) handleToolbarButton(idx int) {
 	}
 }
 
-// drawLoadingScreen draws the OpenLoco-style progress window.
-//
-// NOT REACHED since the blocking sprite preload was dropped (loop tick 6):
-// upstream shows this window while an S5 file loads (S5/S5.cpp:728,
-// Ui::ProgressBar::begin(StringIds::loading)), not for sprites. goloco loads
-// the file synchronously before the next frame; wire this to real S5 load
-// progress (Ui/Windows/ProgressBar.cpp) when loading moves off the frame.
-func (g *Game) drawLoadingScreen(screen *ebiten.Image) {
-	total := len(g.loadingSpriteIDs)
-	if total == 0 {
-		return
-	}
-	style := 0
-	if g.loadingStyleFlip {
-		style = 1
-	}
-	// Ui::ProgressBar (pkg/ui/progressbar.go); the caption is StringIds::loading.
-	ui.DrawProgressBar(screen, "Loading...", uint8(g.loadingStep*255/total), style)
-}
-
-// doLoadingStep preloads up to loadingStepSize sprites per frame into the atlas.
-// Returns true when all sprites have been packed and loading is complete.
-func (g *Game) doLoadingStep() bool {
-	size := g.loadingStepSize
-	if size <= 0 {
-		size = 50
-	}
-	end := g.loadingStep + size
-	if end > len(g.loadingSpriteIDs) {
-		end = len(g.loadingSpriteIDs)
-	}
-	g.r.PrewarmSpriteList(g.loadingSpriteIDs[g.loadingStep:end])
-	g.loadingStep = end
-	if g.loadingStep >= len(g.loadingSpriteIDs) {
-		g.loadingSpriteIDs = nil // loading complete
-		log.Printf("[Game] Sprite preload complete — atlas has %d sprites", g.r.AtlasPackedCount())
-		return true
-	}
-	return false
-}
-
 // prewarmBudget is the per-frame time spent warming sprites in the background.
 const prewarmBudget = 4 * time.Millisecond
 
@@ -1325,20 +1265,11 @@ func (g *Game) prewarmTick() {
 var processStart = time.Now()
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.drawn++
 	if g.shotsEvery > 0 && g.shotsLeft > 0 && time.Since(g.shotsLast) >= g.shotsEvery && os.Getenv("GOLOCO_SHOT_PAINTDUMP") != "" {
 		paint.Dump = &[]string{} // diagnostic: this frame's paint structs, saved with the shot
 	}
 	defer g.maybeSaveShot(screen) // captures (--shots) of the finished frame: after the FPS counter
 	defer g.drawFPS(screen)       // SoftwareDrawingEngine: the FPS counter over everything, last
-	// ── Loading screen ──────────────────────────────────────────────────────
-	// When loadingSpriteIDs is set, show OpenLoco-style progress window and
-	// pack sprites into the atlas N per frame. Normal draw is skipped.
-	if g.loadingSpriteIDs != nil {
-		g.drawLoadingScreen(screen)
-		g.doLoadingStep()
-		return
-	}
 	if !g.firstFrameLogged {
 		g.firstFrameLogged = true
 		log.Printf("[Game] First world frame %v after start", time.Since(processStart).Round(time.Millisecond))
@@ -2765,103 +2696,19 @@ func (g *Game) maybeSaveShot(screen *ebiten.Image) {
 	}
 }
 
-// iclamp clamps v to [lo, hi].
-func iclamp(v, lo, hi int) int {
-	if v < lo {
-		return lo
-	}
-	if v > hi {
-		return hi
-	}
-	return v
-}
-
 // fillRect is a thin wrapper around vector.FillRect using float64 args (no anti-aliasing).
 // Replaces the deprecated ebitenutil.DrawRect.
 func fillRect(dst *ebiten.Image, x, y, w, h float64, c color.Color) {
 	vector.FillRect(dst, float32(x), float32(y), float32(w), float32(h), c, false)
 }
 
-// drawButton renders a Windows 95-style 3D beveled button with a centered text label.
-//
-//   - pressed=true inverts the bevel so the button looks inset/active (e.g. toggle ON state).
-//   - enabled=false renders the button greyed out.
-//
-// Colors match the overall Locomotion beige palette; when a global palette is
-// loaded the nearest indices are selected automatically via FillRect chains.
-//
-// OpenLoco reference: src/OpenLoco/src/Graphics/SoftwareDrawingContext.cpp drawRect3d
-func drawButton(screen *ebiten.Image, x, y, w, h int, label string, pressed, enabled bool) {
-	var bgC, lightC, darkC, textC color.RGBA
-	if !enabled {
-		bgC = color.RGBA{168, 163, 148, 255}
-		lightC = color.RGBA{194, 190, 175, 255}
-		darkC = color.RGBA{118, 114, 102, 255}
-		textC = color.RGBA{108, 104, 94, 255}
-	} else if pressed {
-		// Invert bevel: dark on top/left, light on bottom/right
-		bgC = color.RGBA{190, 185, 168, 255}
-		lightC = color.RGBA{110, 107, 96, 255}
-		darkC = color.RGBA{232, 229, 214, 255}
-		textC = color.RGBA{20, 15, 10, 255}
-	} else {
-		bgC = color.RGBA{205, 200, 183, 255}
-		lightC = color.RGBA{238, 235, 220, 255}
-		darkC = color.RGBA{112, 108, 97, 255}
-		textC = color.RGBA{20, 15, 10, 255}
-	}
-	fillRect(screen, float64(x), float64(y), float64(w), float64(h), bgC)
-	// Outer bevel
-	fillRect(screen, float64(x), float64(y), float64(w), 1, lightC)
-	fillRect(screen, float64(x), float64(y), 1, float64(h), lightC)
-	fillRect(screen, float64(x), float64(y+h-1), float64(w), 1, darkC)
-	fillRect(screen, float64(x+w-1), float64(y), 1, float64(h), darkC)
-	// Inner bevel
-	if w > 3 && h > 3 {
-		fillRect(screen, float64(x+1), float64(y+1), float64(w-2), 1, lightC)
-		fillRect(screen, float64(x+1), float64(y+1), 1, float64(h-2), lightC)
-		fillRect(screen, float64(x+1), float64(y+h-2), float64(w-2), 1, darkC)
-		fillRect(screen, float64(x+w-2), float64(y+1), 1, float64(h-2), darkC)
-	}
-	lw, _ := ui.MeasureText(label)
-	lx := x + (w-lw)/2
-	ly := y + (h-10)/2 // top-anchored 10px bitmap glyphs, vertically centred
-	if pressed {
-		lx++
-		ly++
-	}
-	ui.DrawText(screen, label, lx, ly, textC)
-}
-
-// ColourNone means no palette remap — draw with the base palette as-is.
-const ColourNone = -1
-
-// OpenLoco Colour enum indices (Colour.h).
-const (
-	ColourBlack           = 0
-	ColourGrey            = 1
-	ColourWhite           = 2
-	ColourMutedDarkPurple = 3
-	ColourMutedPurple     = 4
-	ColourPurple          = 5
-	ColourDarkBlue        = 6
-	ColourBlue            = 7
-)
-
-// drawUISprite draws a G1 sprite at (x,y) in screen coordinates.
-// colour is an OpenLoco Colour index (0=black, 1=grey, …) or ColourNone for no remap.
-// The sprite's G1 xOffset/yOffset are applied, matching OpenLoco's drawImage().
+// drawUISprite draws a G1 sprite at (x,y) in screen coordinates, with no
+// palette remap. The sprite's G1 xOffset/yOffset are applied, matching
+// OpenLoco's drawImage().
 //
 // OpenLoco reference: src/OpenLoco/src/Graphics/SoftwareDrawingContext.cpp drawImage()
-//
-//	→ PaletteMap::getForColour() → G1[2170+colour] 256-byte remap table
-func (g *Game) drawUISprite(screen *ebiten.Image, spriteID, x, y, colour int) {
-	var img *ebiten.Image
-	if colour == ColourNone {
-		img = g.r.GetSprite(spriteID)
-	} else {
-		img = g.r.GetSpriteColoured(spriteID, colour)
-	}
+func (g *Game) drawUISprite(screen *ebiten.Image, spriteID, x, y int) {
+	img := g.r.GetSprite(spriteID)
 	if img == nil {
 		return
 	}
@@ -2897,13 +2744,11 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 	// OpenLoco reference: src/OpenLoco/src/Ui/Windows/TitleLogo.cpp,
 	// ImageIds::locomotion_logo = 3624.
 	const spriteLocomotionLogo = 3624
-	var subY int
 	if logo := g.r.GetSprite(spriteLocomotionLogo); logo != nil {
-		_, lh, xOff, yOff, _ := g.r.GetSpriteInfo(spriteLocomotionLogo)
+		_, _, xOff, yOff, _ := g.r.GetSpriteInfo(spriteLocomotionLogo)
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(float64(xOff), float64(yOff))
 		screen.DrawImage(logo, op)
-		subY = int(yOff) + int(lh) + 6
 		logoRect = logo.Bounds().Add(image.Pt(int(xOff), int(yOff)))
 	} else {
 		// Fallback branding when the logo sprite is unavailable.
@@ -2917,11 +2762,9 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 			ui.DrawTextBoldScaled(screen, logoText, logoX+d[0], logoY+d[1], logoScale, shadow)
 		}
 		ui.DrawTextBoldScaled(screen, logoText, logoX, logoY, logoScale, color.RGBA{220, 220, 255, 255})
-		subY = logoY + int(9.0*logoScale) + 8
-		logoRect = image.Rect(0, 0, 298, subY)
+		logoRect = image.Rect(0, 0, 298, logoY+int(9.0*logoScale)+8)
 	}
-
-	_ = subY // upstream draws no subtitle under the logo (TitleLogo.cpp)
+	// upstream draws no subtitle under the logo (TitleLogo.cpp)
 
 	// --- Options button: top-right (sw-60, 0), 60×15 ---
 	// OpenLoco: TitleOptions.cpp at (Ui::width()-60, 0)
@@ -2981,9 +2824,9 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 
 		if g.r.GetSprite(globeID) != nil {
 			// Draw globe base then overlay (OpenLoco: drawImage x2 per button)
-			g.drawUISprite(screen, globeID, bx, by, ColourNone)
+			g.drawUISprite(screen, globeID, bx, by)
 			if btn.overlay >= 0 {
-				g.drawUISprite(screen, btn.overlay, bx, by, ColourNone)
+				g.drawUISprite(screen, btn.overlay, bx, by)
 			}
 		} else {
 			// Fallback: coloured rectangle + text label
@@ -3150,9 +2993,12 @@ func (g *Game) loadScenario(filePath string) error {
 	g.inTitleScreen = false
 
 	// Warm the new scenario's sprites in the background (see prewarmTick).
+	// PARTIAL: upstream shows the progress window while an S5 file loads
+	// (S5/S5.cpp:728, Ui::ProgressBar::begin(StringIds::loading)), not for
+	// sprites. goloco loads the file synchronously before the next frame; wire
+	// ui.DrawProgressBar (pkg/ui/progressbar.go, Ui/Windows/ProgressBar.cpp) to
+	// real S5 load progress when loading moves off the frame.
 	g.prewarmIDs, g.prewarmPos = gameW.CollectSpriteIDs(), 0
-	g.loadingCaption = filepath.Base(filePath)
-	g.loadingStyleFlip = !g.loadingStyleFlip
 	log.Printf("[Game] Queued %d sprites for background prewarm from %s", len(g.prewarmIDs), filePath)
 
 	g.inGame = true
@@ -3190,11 +3036,6 @@ func (g *Game) openSaveWindow() {
 		}
 	}
 	g.browse = w
-}
-
-// saveGame writes the current scenario path to a new .goloco JSON save file.
-func (g *Game) saveGame() error {
-	return g.saveGameTo(filepath.Join(goLocoSavesDir(), fmt.Sprintf("save_%d.goloco", time.Now().Unix())))
 }
 
 // saveGameTo writes the current scenario path to a .goloco JSON save file.
@@ -3770,13 +3611,6 @@ func (g *Game) consSelectedRoadID() int {
 
 func (g *Game) consIsRoad() bool { return g.buildMode == buildModeRoad }
 
-func (g *Game) consCanPlace(id int) bool {
-	if g.consIsRoad() {
-		return g.w.CanPlaceRoadAtHead(id)
-	}
-	return g.w.CanPlaceTrackAtHead(id)
-}
-
 func (g *Game) consSelectedID() int {
 	if g.consIsRoad() {
 		return g.consSelectedRoadID()
@@ -3924,51 +3758,6 @@ func (g *Game) consCycleType(dir int) {
 		}
 	}
 }
-
-// Construction window layout — content-relative offsets, styled after the
-// original Locomotion "Railway Track" window (reference/gallery-screenshot-0.png).
-//
-// OpenLoco reference: src/OpenLoco/src/Ui/Windows/Construction/ConstructionTab.cpp
-const (
-	consWinW = 138
-	consWinH = 282
-
-	consBtnS   = 22 // small (curve/slope) button size
-	consBigBtn = 24 // large-curve / straight button size
-
-	consTabY = 2
-	consTabH = 26
-	consTabW = 42
-
-	consCurveY = 32 // primary curve row (6 buttons, no straight)
-	consRow2Y  = 56 // large-left / straight / large-right
-	consSlopeY = 82 // slope row (5 buttons)
-	consTypeY  = 108
-	consTypeH  = 20
-	consPrevY  = 132 // piece preview panel
-	consPrevH  = 58
-	consCostY  = 196
-	consIconY  = 214
-	consIconS  = 24
-	consStatY  = 244
-)
-
-// consCurveVals / consCurveSprites: the six primary-row curve buttons, sharpest
-// (very-small) on the outside, medium nearest the centre — mirrors the original.
-var consCurveVals = []int{-1, -2, -3, 3, 2, 1}
-var consCurveSprites = []int{2340, 2342, 2344, 2345, 2343, 2341}
-
-// consRow2Vals: large-left curve, straight (up-arrow), large-right curve.
-var consRow2Vals = []int{-4, 0, 4}
-var consRow2Sprites = []int{2346, 2335, 2347}
-
-var consSlopeVals = []int{-2, -1, 0, 1, 2}
-var consSlopeSprites = []int{2348, 2349, 2350, 2351, 2352}
-
-const (
-	spriteRotateObject = 2365 // ImageIds::rotate_object (red curved arrow)
-	spriteRemoveObject = 2361 // ImageIds::construction_remove (undo/remove)
-)
 
 // drawInlineDiag (GOLOCO_DIAG_INLINE) is drawVehicleInline for the first ten
 // rail and road vehicle types, in a panel at (20, 60).

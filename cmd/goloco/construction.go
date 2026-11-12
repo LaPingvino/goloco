@@ -1,11 +1,12 @@
 package main
 
 import (
+	"image"
+
 	"github.com/LaPingvino/goloco/pkg/construct"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
-	"image"
 
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
