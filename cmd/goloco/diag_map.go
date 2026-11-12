@@ -216,6 +216,14 @@ func (g *Game) diagMoneyEffect() {
 	g.diagMoney = true
 }
 
+// diagCash (GOLOCO_DIAG_BUILDVEHICLE=cash) — DIAGNOSTIC ONLY: the cheat
+// command's addCash (£10,000,000 to the player's company), for what costs
+// more than a new game's money (funding an industry).
+func (g *Game) diagCash() {
+	g.w.Map.Cheat(g.playerCmd(), sim.CmdApply, sim.CheatAddCash, 10_000_000, 0, 0)
+	log.Print("[Diag] cash: £10,000,000 added")
+}
+
 // diagCrash (GOLOCO_DIAG_BUILDVEHICLE=crash) — DIAGNOSTIC ONLY: the first
 // two rail trains on the map collide (BogieCollision, the first at 60 mph),
 // the view on the first's front bogie: explosions, crash particles, the
