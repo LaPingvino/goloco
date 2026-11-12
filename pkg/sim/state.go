@@ -6,13 +6,13 @@ import "github.com/LaPingvino/goloco/pkg/core"
 // construction head and undo history. pkg/world embeds it and draws it.
 type State struct {
 	Map
-	ConsHead      ConstructionHead // shared track/road construction head
+	ConsHead ConstructionHead // shared track/road construction head
 	// ConsBridge is cState.lastSelectedBridge + 1 (0: none): the bridge type a
 	// track or road piece is built with where it needs one (getTrackPlacementArgs
 	// / getRoadPlacementArgs). The game sets it from the window's choice.
-	ConsBridge uint8
-	consStack     []placedPiece    // undo stack for placed track pieces
-	consRoadStack []placedPiece    // undo stack for placed road pieces
+	ConsBridge    uint8
+	consStack     []placedPiece // undo stack for placed track pieces
+	consRoadStack []placedPiece // undo stack for placed road pieces
 	// TrackGhost is the construction ghost while positioning (trackghost.go);
 	// ghostPos / ghostCost its last position (ghostTrackPos) and cost.
 	TrackGhost *TrackGhost

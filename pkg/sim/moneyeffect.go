@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/scenario"
+import (
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // Money effects (item ME): upstream's money popups are entities
 // (Effects/MoneyEffect.cpp): made by spendMoneyEffect when a company is paid
@@ -141,7 +144,7 @@ func (m *Map) freeMoneyEffect(id uint16) {
 // from its head, each entity's next taken as it is reached (ListIterator), so
 // an effect freed by its update doesn't end the walk; money effects and the
 // crash effects (effect.go). rotation is the main viewport's.
-func (m *Map) UpdateEffects(rotation int) {
+func (m *Map) UpdateEffects(om *objects.ObjectManager, rotation int) {
 	if len(m.MoneyEffects)+len(m.Effects) == 0 || m.EntityLists == nil {
 		return
 	}
@@ -151,7 +154,7 @@ func (m *Map) UpdateEffects(rotation int) {
 		if e := m.MoneyEffects[id]; e != nil {
 			m.updateMoneyEffect(id, e, rotation)
 		} else if e := m.Effects[id]; e != nil {
-			m.updateEffect(id, e)
+			m.updateEffect(om, id, e)
 		}
 		id = next
 	}

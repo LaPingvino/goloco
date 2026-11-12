@@ -59,13 +59,13 @@ func (m *Map) store(i int, c *MotionComponent) {
 
 // UpdateVehicles runs one vehicle tick for every land vehicle.
 func (m *Map) UpdateVehicles(om *objects.ObjectManager) {
-	m.ScenarioTicks++             // ScenarioManager: one scenario tick per game tick
-	m.dateTick(om)                // tickLogic: dateTick before the managers' updates
-	m.UpdateTowns(om)             // TownManager::update (towngrowroad.go)
-	m.industriesUpdate(om)        // IndustryManager::update: the farm tiles (industryfarm.go)
-	defer m.UpdateAnimations(om)  // AnimationManager::update: after the vehicles (tickLogic's order)
-	defer m.UpdateEffects(0) // EffectsManager::update: after the stations (PARTIAL: rotation 0 — the sim has no viewport)
-	defer m.stationsUpdate(om)    // StationManager::update: after the vehicles, before the animations (defers run last-first)
+	m.ScenarioTicks++            // ScenarioManager: one scenario tick per game tick
+	m.dateTick(om)               // tickLogic: dateTick before the managers' updates
+	m.UpdateTowns(om)            // TownManager::update (towngrowroad.go)
+	m.industriesUpdate(om)       // IndustryManager::update: the farm tiles (industryfarm.go)
+	defer m.UpdateAnimations(om) // AnimationManager::update: after the vehicles (tickLogic's order)
+	defer m.UpdateEffects(om, 0) // EffectsManager::update: after the stations (PARTIAL: rotation 0 — the sim has no viewport)
+	defer m.stationsUpdate(om)   // StationManager::update: after the vehicles, before the animations (defers run last-first)
 	trains, err := m.Trains()
 	if err != nil {
 		return
@@ -207,6 +207,7 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 				}
 				m.invalidateSprite(body)
 			}
+			m.bodyUpdateAnimation(tr, cc, om, d.D2)
 		}
 	}
 

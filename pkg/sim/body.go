@@ -10,8 +10,7 @@ import (
 // updateSpritePitch / updateSpritePitchSteepSlopes and the
 // calculateYaw*FromVector family (yaw_gen.go).
 //
-// PARTIAL: VehicleBody::update's animationUpdate (smoke, steam, sparks,
-// wakes) and sub_4AAB0B (body animation / tilt frame) are not ported.
+// VehicleBody::update's animationUpdate and var_44 step: exhaust.go.
 
 // kVehicleBodyIndexToPitch.
 var bodyIndexToPitch = [10]uint8{0, 1, 2, 3, 4, 0, 5, 6, 7, 8}

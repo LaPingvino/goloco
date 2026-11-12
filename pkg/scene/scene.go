@@ -1020,6 +1020,30 @@ func (r *Renderer) paintEffectEntity(s *paint.Session, e *sim.Effect) {
 	var id int
 	var pm []uint8
 	switch e.SubType {
+	case sim.EffectExhaust: // paintExhaustEntity: zoom 1 at most
+		if zoom > 1 {
+			return
+		}
+		obj := sim.SteamObjectOf(r.Objects, e)
+		if obj == nil {
+			return
+		}
+		run := obj.Frames[(e.ObjectID>>7)&1]
+		if int(e.Frame) >= len(run) {
+			return
+		}
+		spr := r.Sprite(int(uint32(run[e.Frame].ImageOffset) + obj.Image + obj.Var0A))
+		if spr == nil {
+			return
+		}
+		img := paint.Image{Sprite: spr, Op: gfx8.OpFor(spr, false, false)}
+		off := paint.Pos3{Z: int(e.Z)}
+		if obj.Flags&objects.SteamFlagUnk3 == 0 {
+			s.AddAsParent(img, off, off, paint.Pos3{X: 1, Y: 1})
+		} else {
+			s.AddAsParent(img, off, paint.Pos3{X: -12, Y: -12, Z: int(e.Z)}, paint.Pos3{X: 24, Y: 24})
+		}
+		return
 	case sim.EffectVehicleCrashParticle:
 		if zoom != 0 {
 			return

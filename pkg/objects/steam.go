@@ -19,6 +19,7 @@ type SteamObject struct {
 	SpriteWidth, SpriteHeightNeg, SpriteHeightPos uint8
 	Flags                                         uint16
 	Image                                         uint32 // baseImageId
+	Var0A                                         uint32 // var_0A: the painter adds it to every frame's image
 	Frames                                        [2][]SteamFrame
 	SoundNames                                    []string // soundEffects' headers (numSoundEffects at 0x1E)
 }
@@ -31,6 +32,7 @@ const (
 	SteamFlagApplyWind           = 1 << 0
 	SteamFlagDisperseOnCollision = 1 << 1
 	SteamFlagHasTunnelSounds     = 1 << 2
+	SteamFlagUnk3                = 1 << 3 // painted with a 24×24 box about its centre
 )
 
 const steamObjectSize = 0x28
@@ -46,6 +48,7 @@ func ParseSteamObject(header *ObjectHeader, data []byte, g G1Loader, ext extentM
 		NumImages:          binary.LittleEndian.Uint16(data[0x02:]),
 		NumStationaryTicks: data[0x04],
 		Flags:              binary.LittleEndian.Uint16(data[0x08:]),
+		Var0A:              binary.LittleEndian.Uint32(data[0x0A:]),
 	}
 	off, name := walkStringTableLang(data, steamObjectSize)
 	o.Name = name

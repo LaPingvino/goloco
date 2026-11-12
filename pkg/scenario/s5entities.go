@@ -321,6 +321,7 @@ type VehicleEntity struct {
 	CargoFrame        uint8
 	BrakeLightTimeout uint8
 	BodyIndex         uint8
+	ChuffSoundIndex   uint8 // VehicleBody chuffSoundIndex (0x55): the steam puff's chuff count
 	// The entity's screen rectangle (EntityBase spriteLeft/Top/Right/Bottom),
 	// for paintEntities' culling.
 	SpriteLeft, SpriteTop, SpriteRight, SpriteBottom int16
@@ -382,6 +383,7 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			CargoFrame:        e[vbCargoFrame],
 			BrakeLightTimeout: e[v2BrakeLightTimeout],
 			BodyIndex:         e[vbBodyIndex],
+			ChuffSoundIndex:   e[vbBodyIndex+1],
 			SpriteLeft:        int16(uint16(e[ebSpriteLeft]) | uint16(e[ebSpriteLeft+1])<<8),
 			SpriteTop:         int16(uint16(e[ebSpriteTop]) | uint16(e[ebSpriteTop+1])<<8),
 			SpriteRight:       int16(uint16(e[ebSpriteRight]) | uint16(e[ebSpriteRight+1])<<8),
