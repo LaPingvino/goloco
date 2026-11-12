@@ -1702,3 +1702,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-12 (night) — Station window vehicle tabs (VehiclesStopping). Seen after h2. Repopulates ~1/s; strlogicalcmp ported. PARTIAL: thumb drag.
 - 2026-11-12 (06:30) — regression pass after the night: all 9 playthroughs rc=0, no panics; g £79,468, g2 £81,335 (as recorded); h2 train earns.
 - 2026-11-12 (night) — ship wakes + ship exhaust; air/water bodies run animationUpdate. Seen with the shipsail diag.
+- 2026-11-12 (night) — sub_4AAB0B ported fully: body speed animation / tilt / wheel frames. Not verified visually up close (zoom 0 shot of a steam loco moving would show the rods) — TO SEE.
