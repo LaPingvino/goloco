@@ -1691,3 +1691,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-12 (night) — map selection (full tile) ported: scene.Selection + World.SetMapSelection; industry tool uses it; TestMapSelectionBox. Note: scene render WORKERS copy renderer settings — any new Renderer field must be passed in worker() (bit me: Selection). PARTIAL: corner/quarter/edge/water types.
 - 2026-11-12 (night) — list windows tab icons (TownListWindow.TabIcon + cmd listTabIcons): towns, industries, stations, vehicles. Seen: town + industry lists. Station + vehicle lists seen too (company colour); vehicle types not available → disabled tabs.
 - 2026-11-12 (night) — Town + Industry window tab icons (ViewWindow.TabIcon, ui drawProductionTab). Seen on screen.
+- 2026-11-12 (night) — FLAKE seen once: `xvfb-run go test ./pkg/ui ./cmd/goloco` → cmd/goloco FAIL with no test output (likely X/GLFW init); 18 reruns pass. Watch for it; if it recurs, capture -v output.
