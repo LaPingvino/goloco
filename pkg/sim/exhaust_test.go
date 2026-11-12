@@ -10,6 +10,8 @@ func TestTrainsGiveOffExhaust(t *testing.T) {
 	if len(om.SteamObjects) == 0 {
 		t.Skip("no steam objects")
 	}
+	invalidated := 0 // EntityBase::invalidateSprite: puffs redraw where they were and go
+	m.InvalidateEntity = func(l, t, r, b int16) { invalidated++ }
 	made, most := 0, 0
 	seen := map[uint16]bool{}
 	for range 600 {
@@ -37,6 +39,9 @@ func TestTrainsGiveOffExhaust(t *testing.T) {
 				delete(seen, id) // freed (the slot may be reused)
 			}
 		}
+	}
+	if invalidated < made {
+		t.Errorf("%d puffs made, only %d sprite invalidations", made, invalidated)
 	}
 	if made == 0 {
 		t.Fatal("600 ticks of the title map's trains made no exhaust")
