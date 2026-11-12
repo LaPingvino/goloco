@@ -129,3 +129,18 @@ func (m *Map) OrderTable(begin uint32) []Order {
 	}
 	return out
 }
+
+// VehicleStopsAt is StationWindow.cpp vehicleStopsAtActiveStation: one of the
+// vehicle's orders (stop at / route through) names the station.
+func (m *Map) VehicleStopsAt(headID uint16, station int) bool {
+	i := m.entityIndexOf(headID)
+	if i < 0 {
+		return false
+	}
+	for _, o := range m.OrderTable(m.Entities[i].OrderTableOffset) {
+		if o.HasFlags(OrderHasStation) && o.Station() == station {
+			return true
+		}
+	}
+	return false
+}

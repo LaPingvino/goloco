@@ -467,6 +467,7 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 
 // VehicleRow is one vehicle of the vehicle list.
 type VehicleRow struct {
+	HeadID      uint16 // the vehicle (a row's click opens it)
 	Name        string
 	Profit      int64 // totalRecentProfit / 4
 	AgeYears    int
