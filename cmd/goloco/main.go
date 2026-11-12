@@ -69,7 +69,7 @@ func main() {
 		}
 	}
 
-	if diagMode && game.w != nil {
+	if diagMode {
 		if diagTileX < 0 {
 			if diagKind == "" {
 				diagKind = "worst"
@@ -99,10 +99,10 @@ func main() {
 	if os.Getenv("GOLOCO_OPEN") == "newgame" {
 		game.openNewGameWindow()
 	}
-	if os.Getenv("GOLOCO_OPEN") == "track" && game.w != nil {
+	if os.Getenv("GOLOCO_OPEN") == "track" {
 		game.openTrackTest()
 	}
-	if os.Getenv("GOLOCO_OPEN") == "road" && game.w != nil {
+	if os.Getenv("GOLOCO_OPEN") == "road" {
 		game.openRoadTest()
 	}
 

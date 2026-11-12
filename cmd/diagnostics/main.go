@@ -599,19 +599,21 @@ func catalogue() []Category {
 					Confidence: conf(sigNoTodo("pkg/ui/simplewindow.go")),
 				},
 				{
-					Name:       "Load game file browser",
-					Detect:     func(r string) bool { return hasPattern(r, "cmd/goloco/main.go", `openLoadGameWindow|openFileWindow`) },
-					Confidence: conf(sigBonus("cmd/goloco/main.go", "openLoadGameWindow")),
+					Name: "Load game file browser",
+					Detect: func(r string) bool {
+						return hasPattern(r, "cmd/goloco/scenario.go", `openLoadGameWindow|openFileWindow`)
+					},
+					Confidence: conf(sigBonus("cmd/goloco/scenario.go", "openLoadGameWindow")),
 				},
 				{
 					Name:       "Save game (.goloco JSON)",
-					Detect:     func(r string) bool { return hasPattern(r, "cmd/goloco/main.go", `saveGame|GoLocoSave`) },
-					Confidence: conf(sigBonus("cmd/goloco/main.go", "GoLocoSave")),
+					Detect:     func(r string) bool { return hasPattern(r, "cmd/goloco/scenario.go", `saveGame|GoLocoSave`) },
+					Confidence: conf(sigBonus("cmd/goloco/scenario.go", "GoLocoSave")),
 				},
 				{
 					Name:       "Options dialog (sound/music)",
-					Detect:     func(r string) bool { return hasPattern(r, "cmd/goloco/main.go", `openOptionsWindow`) },
-					Confidence: conf(sigBonus("cmd/goloco/main.go", "soundEnabled|musicEnabled")),
+					Detect:     func(r string) bool { return hasPattern(r, "cmd/goloco/options.go", `openOptionsWindow`) },
+					Confidence: conf(sigBonus("cmd/goloco/options.go", "soundEnabled|musicEnabled")),
 				},
 				{
 					Name:       "Music playback",
@@ -620,10 +622,10 @@ func catalogue() []Category {
 				},
 				{
 					Name:   "Quit to Menu restores title world",
-					Detect: func(r string) bool { return hasPattern(r, "cmd/goloco/main.go", `quitToMenu|titleWorld`) },
+					Detect: func(r string) bool { return hasPattern(r, "cmd/goloco/scenario.go", `quitToMenu|titleWorld`) },
 					Confidence: conf(
 						sigTests("pkg/title/title_test.go", "Restart"),
-						sigBonus("cmd/goloco/main.go", "titleWorld"),
+						sigBonus("cmd/goloco/scenario.go", "titleWorld"),
 					),
 				},
 				{Name: "Sound effects", Detect: func(r string) bool { return hasPattern(r, "pkg/audio/audio.go", `PlaySound|SoundEffect`) }, Note: "CSSx.DAT files not loaded"},

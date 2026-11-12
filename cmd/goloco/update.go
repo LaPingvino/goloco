@@ -19,9 +19,7 @@ import (
 func (g *Game) Update() error {
 	g.windowFrame++
 	g.diagTrackShip()
-	if g.w != nil {
-		g.w.TitleMode = g.inTitleScreen // SceneManager::isTitleMode() for the viewport's names
-	}
+	g.w.TitleMode = g.inTitleScreen // SceneManager::isTitleMode() for the viewport's names
 	if fstats.on {
 		t0 := time.Now()
 		defer func() { fstats.addUpdate(time.Since(t0)) }()
@@ -273,9 +271,7 @@ func (g *Game) updateConstructionTools() {
 	g.updateTrackGhost()
 	// updateConstruction's updateConstructionArrow: the track / road window on
 	// its Construction tab with the head placed (not while hovering).
-	if g.w != nil {
-		g.w.UpdateConstructionArrow(g.consHasHead() && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active)
-	}
+	g.w.UpdateConstructionArrow(g.consHasHead() && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active)
 }
 
 // updateHeld is what follows the mouse without a click: menu and toolbar
@@ -428,7 +424,7 @@ func (g *Game) hudOrMapClick() {
 		g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
 	} else if g.stationToolOn() {
 		g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked, or a dock
-	} else if g.buildMode == buildModeTrack && g.hoverTileX >= 0 && g.r != nil && g.r.ObjMgr != nil {
+	} else if g.buildMode == buildModeTrack && g.hoverTileX >= 0 && g.r.ObjMgr != nil {
 		// onToolUpSingle + constructionLoop: the first click builds the
 		// selected piece at the tile (the head set there), as the Construct
 		// button would; refused, the error window shows and the rotation turns.
@@ -570,7 +566,7 @@ func (g *Game) updateSpeedKeys() {
 // diagTrackShip is the shipsail / planefly diagnostics' every frame: the view
 // follows diagShip, its state logged.
 func (g *Game) diagTrackShip() {
-	if g.diagShip != 0 && g.w != nil {
+	if g.diagShip != 0 {
 		if tr, err := g.w.Map.TrainOf(g.diagShip); err == nil {
 			g.diagShipFrames++
 			if g.diagFollow && g.diagShipFrames%15 == 0 {

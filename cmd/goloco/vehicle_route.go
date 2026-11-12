@@ -30,7 +30,7 @@ func (g *Game) routeLines(h *scenario.VehicleEntity) []ui.RouteLine {
 		case sim.OrderStopAt, sim.OrderRouteThrough:
 			arg = m.StationName(o.Station())
 		case sim.OrderUnloadAll, sim.OrderWaitFor:
-			if c := int(o.Cargo()); g.r != nil && g.r.ObjMgr != nil && c < len(g.r.ObjMgr.CargoObjects) && g.r.ObjMgr.CargoObjects[c] != nil {
+			if c := int(o.Cargo()); g.r.ObjMgr != nil && c < len(g.r.ObjMgr.CargoObjects) && g.r.ObjMgr.CargoObjects[c] != nil {
 				arg = g.r.ObjMgr.CargoObjects[c].Name
 			}
 		}

@@ -25,9 +25,6 @@ func (g *Game) openVehicleDetails(headID uint16) { g.openVehicleWindow(headID, 1
 // openVehicleWindow opens (or refreshes) the Vehicle window on a tab: 0 Main,
 // 1 Details.
 func (g *Game) openVehicleWindow(headID uint16, tab int) {
-	if g.w == nil {
-		return
-	}
 	// The same vehicle's window refreshed or switching tabs keeps its place
 	// (switchTab only resizes it); a new window is placed afresh.
 	var keep *[2]int
@@ -187,7 +184,7 @@ func (g *Game) stopStartOpen(headID uint16, x, y, w, h int) {
 // object's image + kUiPickupFromTrack (16) when placed, kUiPlaceOnTrack (17)
 // when not. PARTIAL: road, air and water (0: no image).
 func (g *Game) pickupImage(h *scenario.VehicleEntity) int {
-	if h.Mode != 0 || g.r == nil || g.r.ObjMgr == nil {
+	if h.Mode != 0 || g.r.ObjMgr == nil {
 		return 0
 	}
 	t := g.r.ObjMgr.GetTrackObjectByIndex(int(h.TrackType))

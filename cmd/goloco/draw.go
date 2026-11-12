@@ -296,9 +296,6 @@ func (g *Game) drawPlayerPanel(screen *ebiten.Image) {
 // controlling company: the owner's image (companyFace), performanceIndex and
 // the increased/decreasedPerformance flags.
 func (g *Game) playerPanelCompany(st *ui.PlayerPanelState) {
-	if g.w == nil {
-		return
-	}
 	id, _ := g.w.ControllingCompany()
 	if id >= len(g.w.CompanyFaces) {
 		return
