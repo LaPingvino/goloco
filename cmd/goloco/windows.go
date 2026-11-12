@@ -6,6 +6,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
+	"strings"
 )
 
 // windows.go — what the open windows share: whether any is open or under the
@@ -92,6 +93,9 @@ func cmdErrorText(c *sim.Cmd) string {
 	msg := i18n.Label(c.ErrorText)
 	if c.ErrorArg != "" {
 		msg = ui.FormatErrorArgs(msg, c.ErrorArg)
+	}
+	if strings.Contains(msg, "{CURRENCY32}") { // FormatArguments::common(payment)
+		msg = strings.Replace(msg, "{CURRENCY32}", uilayout.Currency48(int64(c.ErrorCost)), 1)
 	}
 	return msg
 }
