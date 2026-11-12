@@ -63,7 +63,7 @@ Build: `go build -o goloco ./cmd/goloco`. Always verify visually:
   like OpenLoco tutorial playback. CAUTION: scripted input ORs with real
   hardware input — coordinate with the user before driving the visible
   window, their clicks will interleave.
-- `GOLOCO_OPEN=newgame|track` — open a window / chain a test track at start.
+- `GOLOCO_OPEN=newgame|track|road` — open a window / chain a test track or road at start.
 - `GOLOCO_DEBUG_SPRITES=1` — per-object sprite ranges + decode stack traces.
 - `GOLOCO_NO_SMOOTH/NO_TRACK/NO_STATION=1` — render-pass kill switches for
   visual bisection (find which pass draws an artefact).
@@ -72,16 +72,13 @@ Build: `go build -o goloco ./cmd/goloco`. Always verify visually:
   N -info-end M]`; read the PNGs with vision. `scripts/fetch-fonts.sh` gets
   the OpenTTD TTFs (Unicode fallback).
 
-- On the VPS (vps2) Xvfb is not installed yet (needs `sudo pacman -S xorg-server-xvfb`) and the
-  OpenLoco config (~/.config/OpenLoco/openloco.yml) is not set up. Until then, visual checks go through
-  the wasm test page: `go run ./cmd/webpack -out <dir>` builds it (see LOOP.md, item 1, for the
-  headless check and the private publish).
+- On the VPS (vps2) Xvfb is installed: `xvfb-run -a -s "-screen 0 800x600x24" env SDL_AUDIODRIVER=dummy
+  GOLOCO_SCRIPT=scripts/playthrough/<x>.txt ./goloco` runs a playthrough (outside Claude Code's sandbox,
+  which blocks the X socket). The real OpenLoco runs the same way: scripts/olref/README.md. The private
+  wasm test page: scripts/redeploy-test-page.sh.
 - ALWAYS run long headless sessions under Xvfb so the desktop/screen-lock
   cannot freeze the loop: `Xvfb :99 -screen 0 800x600x24 &` then
   `DISPLAY=:99 WAYLAND_DISPLAY= ./goloco …` (xorg-server-xvfb installed).
-- `GOLOCO_OPEN=win` — autonomous scenario attempt: builds a shuttle beside
-  a town (World.FindTownsideRun), stations, vehicle; the objective counter
-  runs to the win banner. First victory: Weatherworld, 648/500 PASS.
 
 Read captures with vision, judge against real Locomotion, fix, re-capture.
 The scenario boot takes ~40-80s wall (software rendering ~10-20 fps).

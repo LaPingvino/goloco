@@ -696,17 +696,6 @@ func (r *Renderer) PrewarmSpriteRange(start, end int) int {
 	return n
 }
 
-// PrewarmSpriteList decodes and packs the given G1 sprite IDs into the atlas.
-func (r *Renderer) PrewarmSpriteList(ids []int) int {
-	n := 0
-	for _, id := range ids {
-		if r.GetSprite(id) != nil {
-			n++
-		}
-	}
-	return n
-}
-
 // AtlasPackedCount returns the number of sprites currently in the main atlas.
 func (r *Renderer) AtlasPackedCount() int {
 	if r.mainAtlas == nil {

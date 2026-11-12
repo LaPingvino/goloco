@@ -315,6 +315,8 @@ func NewGame() *Game {
 	log.Println("[Game] Game initialization complete")
 	return &Game{
 		catchmentStation: -1,
+		routeSel:         -1,                                                                    // none selected
+		ghostProgress:    -1,                                                                    // no ghost placed
 		showFPS:          configValue("showFPS") == "true" || os.Getenv("GOLOCO_SHOWFPS") != "", // Config::showFPS (Config.cpp: default false)
 		scale:            loadScale(),
 		w:                w,
