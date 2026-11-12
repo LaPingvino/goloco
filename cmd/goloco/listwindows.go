@@ -471,7 +471,7 @@ func (g *Game) renameIndustry(idx int, win *ui.ViewWindow) {
 
 // refreshList is the lists' onUpdate repopulating: the open list (if it can
 // reopen) rebuilt from the game's current data, keeping where it is, its
-// scroll, its sort and its hover row; not while a mouse button is held (a
+// scroll, its sort and its hover row (by its id); not while a mouse button is held (a
 // scrollbar drag or a click in progress).
 func (g *Game) refreshList() {
 	old := g.townList
@@ -489,4 +489,13 @@ func (g *Game) refreshList() {
 		w.Sort(old.SortMode)
 	}
 	w.Scroll, w.Hover = old.Scroll, old.Hover
+	if old.Hover >= 0 && old.Hover < len(old.RowIDs) { // rowHover is the row's id: it follows the row
+		w.Hover = -1
+		for i, id := range w.RowIDs {
+			if id == old.RowIDs[old.Hover] {
+				w.Hover = i
+				break
+			}
+		}
+	}
 }
