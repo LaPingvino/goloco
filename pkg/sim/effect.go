@@ -79,10 +79,34 @@ func (m *Map) newEffect(e Effect) (*Effect, bool) {
 	}
 	p := &e
 	m.Effects[id] = p
+	m.invalidateEffect(p) // create's moveTo: its post-invalidation
 	return p, true
 }
 
+// invalidateEffect is EntityBase::invalidateSprite for an effect: its sprite
+// rectangle about gameToScreen (rotation 0, as moveTo's for the vehicles).
+func (m *Map) invalidateEffect(e *Effect) {
+	if m.InvalidateEntity == nil {
+		return
+	}
+	vx, vy := e.Y-e.X, (e.Y+e.X)>>1-e.Z
+	m.InvalidateEntity(int16(vx-int32(e.Width)), int16(vy-int32(e.HeightNeg)), int16(vx+int32(e.Width)), int16(vy+int32(e.HeightPos)))
+}
+
+// moveEffect is EntityBase::moveTo for an effect: invalidated where it was
+// and where it goes.
+func (m *Map) moveEffect(e *Effect, x, y, z int32) {
+	m.invalidateEffect(e)
+	e.X, e.Y, e.Z = x, y, z
+	m.invalidateEffect(e)
+}
+
+// freeEffect is EntityManager::freeEntity for an effect: invalidated, then
+// its slot back on the free list.
 func (m *Map) freeEffect(id uint16) {
+	if e := m.Effects[id]; e != nil {
+		m.invalidateEffect(e)
+	}
 	delete(m.Effects, id)
 	m.EntityLists.freeEntity(id)
 }
@@ -131,11 +155,13 @@ func (m *Map) updateEffect(om *objects.ObjectManager, id uint16, e *Effect) {
 	case effectTypeExhaust:
 		m.updateExhaust(om, id, e)
 	case effectTypeExplosionCloud:
+		m.invalidateEffect(e)
 		e.Frame += 0x80
 		if e.Frame >= 0x1200 {
 			m.freeEffect(id)
 		}
 	case effectTypeSplash:
+		m.invalidateEffect(e)
 		e.Frame += 0x55
 		if e.Frame >= 0x1C00 {
 			m.freeEffect(id)
@@ -149,6 +175,7 @@ func (m *Map) updateEffect(om *objects.ObjectManager, id uint16, e *Effect) {
 // resistance on the push, the 16.16 step, a splash (and the end) where it
 // falls into water, a bounce off the land.
 func (m *Map) updateCrashParticle(id uint16, e *Effect) {
+	m.invalidateEffect(e)
 	e.TimeToLive--
 	if e.TimeToLive == 0 {
 		m.freeEffect(id)
@@ -171,7 +198,7 @@ func (m *Map) updateCrashParticle(id uint16, e *Effect) {
 		e.AccZ = -e.AccZ
 		nz = int32(land)
 	}
-	e.X, e.Y, e.Z = nx, ny, nz
+	m.moveEffect(e, nx, ny, nz)
 	e.Frame += crashParticleSpeed
 	if e.Frame >= crashParticleMaxFrames {
 		e.Frame = 0

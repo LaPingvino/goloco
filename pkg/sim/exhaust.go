@@ -66,7 +66,9 @@ func (m *Map) updateExhaust(om *objects.ObjectManager, id uint16, e *Effect) {
 	if obj.Flags&objects.SteamFlagApplyWind != 0 {
 		res := uint32(e.Wind) + 7000
 		e.Wind = uint16(res)
-		e.X += int32(res >> 16)
+		if dx := int32(res >> 16); dx != 0 {
+			m.moveEffect(e, e.X+dx, e.Y, e.Z)
+		}
 	}
 	e.Stationary++
 	if e.Stationary < obj.NumStationaryTicks {
@@ -79,7 +81,7 @@ func (m *Map) updateExhaust(om *objects.ObjectManager, id uint16, e *Effect) {
 		m.freeEffect(id)
 		return
 	}
-	e.Z += int32(run[e.Frame].Height)
+	m.moveEffect(e, e.X, e.Y, e.Z+int32(run[e.Frame].Height))
 	if obj.Flags&objects.SteamFlagDisperseOnCollision != 0 && m.exhaustMeetsElement(om, e) {
 		m.freeEffect(id)
 	}
