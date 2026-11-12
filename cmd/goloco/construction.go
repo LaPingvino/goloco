@@ -560,15 +560,15 @@ func (g *Game) updateTrackGhost() {
 	}
 	// updateConstruction for a road: the selected road piece as a ghost at the head.
 	if g.buildMode == buildModeRoad && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active {
-		c, _ := g.stationCmd()
+		c := g.playerCmd()
 		g.w.UpdateHeadRoadGhost(c, g.consSelectedRoadID(), uint8(g.buildObjID))
 	} else if g.w.RoadGhost != nil {
-		c, _ := g.stationCmd()
+		c := g.playerCmd()
 		g.w.RemoveRoadGhost(c)
 	}
 	if g.buildMode == buildModeTrack && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active {
 		// updateConstruction: the selected piece as a ghost at the head.
-		c, _ := g.stationCmd()
+		c := g.playerCmd()
 		g.w.UpdateHeadTrackGhost(c, g.consSelectedTrackID(), uint8(g.buildObjID))
 		return
 	}
@@ -585,7 +585,7 @@ func (g *Game) updateTrackGhost() {
 	if list := g.r.ObjMgr.AvailableCompatibleBridges(g.buildObjID, false, int(g.w.CurrentYear)); len(list) > 0 {
 		bridge = uint8(pickSlot(list, g.consBridge))
 	}
-	c, _ := g.stationCmd()
+	c := g.playerCmd()
 	g.w.UpdateTrackGhost(c, g.hoverTileX, g.hoverTileY, p.ID, p.Rotation, uint8(g.buildObjID), bridge)
 }
 
@@ -594,7 +594,7 @@ func (g *Game) removeTrackGhost() {
 	if g.w == nil || g.w.TrackGhost == nil {
 		return
 	}
-	c, _ := g.stationCmd()
+	c := g.playerCmd()
 	g.w.RemoveTrackGhost(c)
 }
 
@@ -736,14 +736,14 @@ func (g *Game) consPlace(id int) {
 	var built bool
 	if g.consIsRoad() && g.r != nil && g.r.ObjMgr != nil {
 		// constructRoad: the createRoad game command (ghost taken up first), checked and charged.
-		c, _ := g.stationCmd()
+		c := g.playerCmd()
 		if _, built = g.w.BuildRoadAtHead(c, id, uint8(g.buildObjID)); !built {
 			g.openTrackBuildError(c)
 		}
 	} else if g.consIsRoad() {
 		built = g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
 	} else if g.r != nil && g.r.ObjMgr != nil { // the createTrack game command: checked and charged (PL.1 e)
-		c, _ := g.stationCmd()
+		c := g.playerCmd()
 		if _, built = g.w.BuildTrackAtHead(c, id, uint8(g.buildObjID)); !built {
 			g.openTrackBuildError(c)
 		}

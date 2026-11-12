@@ -23,10 +23,11 @@ func (g *Game) stationArgsAt(sx, sy int) (sim.TrainStationPlacement, bool) {
 	return g.w.TrainStationPlacementAt(sx, sy, uint8(pickSlot(list, g.consStation)))
 }
 
+// stationCmd is playerCmd with the raw G1 the station commands read their
+// objects' images from.
 func (g *Game) stationCmd() (*sim.Cmd, sim.G1Raw) {
-	company, _ := g.w.ControllingCompany()
 	g1, _ := g.r.ObjMgr.G1File.(sim.G1Raw)
-	return &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}, g1
+	return g.playerCmd(), g1
 }
 
 // stationToolUpdate is StationTab's onToolUpdateTrainStation (0x0049E421 side):

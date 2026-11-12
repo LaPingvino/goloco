@@ -55,7 +55,7 @@ func (g *Game) routeAction(headID uint16, action string) {
 	}
 	h := m.Entities[tr.Head]
 	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	orders := m.OrderTable(h.OrderTableOffset)
 	rel := func(o sim.Order) uint16 { return uint16(o.Offset - int(h.OrderTableOffset)) }
 	sel := g.routeSel
@@ -136,8 +136,7 @@ func (g *Game) addNewOrder(headID uint16, order []byte) {
 	if orders := m.OrderTable(h.OrderTableOffset); g.routeSel >= 0 && g.routeSel < len(orders) {
 		offset = uint16(orders[g.routeSel].Offset - int(h.OrderTableOffset))
 	}
-	company, _ := g.w.ControllingCompany()
-	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+	c := g.playerCmd()
 	before := h.SizeOfOrderTable
 	if _, ok := m.DoCommandFor(c, sim.CmdApply, 0, func(f uint8) (int32, bool) { return m.VehicleOrderInsert(c, f, headID, offset, order) }); !ok {
 		g.openError(i18n.Label(i18n.OrdersCantInsert), cmdErrorText(c))

@@ -44,10 +44,7 @@ func (g *Game) openVehicleListFor(company, tab int) {
 				RecentProfit: v.RecentProfit, DayCreated: v.DayCreated, Cars: cars, Status: v.Status, StatusRed: v.StatusRed, Cargos: v.Cargos})
 		}
 	}
-	var tc, wc uint8 = 0, 1
-	if sk := g.skin(); sk != nil {
-		tc, wc = sk.WindowTitlebarColour, sk.WindowPlayerColor
-	}
+	tc, wc := g.windowColours(true)
 	// The window's owner is the company, so WindowManager draws its primary
 	// colour as the company's colour (CompanyManager::getCompanyColour).
 	if company < len(g.w.CompanyColours) {
@@ -98,10 +95,7 @@ func (g *Game) openStationsWindow() {
 		rows = append(rows, ui.StationRow{ID: s.ID, Name: s.Name, Status: s.Status, Waiting: s.Waiting, Accepts: s.Accepts,
 			AcceptsKey: g.w.StationAcceptsKey(s.ID)})
 	}
-	var tc, wc uint8 = 0, 1
-	if sk := g.skin(); sk != nil {
-		tc, wc = sk.WindowTitlebarColour, sk.WindowPlayerColor
-	}
+	tc, wc := g.windowColours(true)
 	// The window's owner is the company, so WindowManager draws its primary
 	// colour as the company's colour (CompanyManager::getCompanyColour).
 	if company < len(g.w.CompanyColours) {
@@ -124,10 +118,7 @@ func (g *Game) openTownsWindow() {
 	for i, t := range infos {
 		rows[i] = ui.TownRow{ID: i, Name: t.Name, Type: t.Size, Size: t.SizeIndex, Population: int(t.Population), Stations: t.NumStations}
 	}
-	var tc, wc uint8 = 0, 1
-	if sk := g.skin(); sk != nil {
-		tc, wc = sk.WindowTitlebarColour, sk.WindowColour
-	}
+	tc, wc := g.windowColours(false)
 	w := ui.NewTownList(g.sw, rows, tc, wc)
 	w.OnClose = func() { g.townList = nil }
 	w.OnRow = func(id int) { // onScrollMouseDown: Town::open
@@ -144,10 +135,7 @@ func (g *Game) openTownWindow(id int) {
 		return
 	}
 	t := infos[id]
-	var tc, wc uint8 = 0, 1
-	if sk := g.skin(); sk != nil {
-		tc, wc = sk.WindowTitlebarColour, sk.WindowColour
-	}
+	tc, wc := g.windowColours(false)
 	w := ui.NewTownWindow(g.sw, g.sh, t.Name, t.Size, int(t.Population), tc, wc)
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.TownView(id, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnTown(id) }

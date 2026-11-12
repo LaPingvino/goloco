@@ -18,6 +18,21 @@ func (g *Game) uiOpen() bool {
 		(g.dropdown != nil && g.dropdown.Visible) || (g.windowMgr != nil && len(g.windowMgr.Windows) > 0)
 }
 
+// windowColours are a window's title bar and body colours from the interface
+// skin (0 and 1 without one): the body in the player-window colour for a
+// company's windows (vehicles, stations lists, finances …), else the plain
+// window colour. An owned window's title bar then takes its company's colour.
+func (g *Game) windowColours(player bool) (tc, wc uint8) {
+	sk := g.skin()
+	if sk == nil {
+		return 0, 1
+	}
+	if player {
+		return sk.WindowTitlebarColour, sk.WindowPlayerColor
+	}
+	return sk.WindowTitlebarColour, sk.WindowColour
+}
+
 // overWindow reports whether a screen point is on one of goloco's windows or
 // bars, where the tool does not act (the viewport is under none of them).
 func (g *Game) overWindow(x, y int) bool {
