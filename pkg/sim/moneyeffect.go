@@ -137,12 +137,12 @@ func (m *Map) freeMoneyEffect(id uint16) {
 	}
 }
 
-// UpdateMoneyEffects is EffectsManager::update (0x004402F4) for the money
-// effects: the misc list walked from its head, each entity's next taken as it
-// is reached (ListIterator), so an effect freed by its update doesn't end the
-// walk. rotation is the main viewport's.
-func (m *Map) UpdateMoneyEffects(rotation int) {
-	if len(m.MoneyEffects) == 0 || m.EntityLists == nil {
+// UpdateEffects is EffectsManager::update (0x004402F4): the misc list walked
+// from its head, each entity's next taken as it is reached (ListIterator), so
+// an effect freed by its update doesn't end the walk; money effects and the
+// crash effects (effect.go). rotation is the main viewport's.
+func (m *Map) UpdateEffects(rotation int) {
+	if len(m.MoneyEffects)+len(m.Effects) == 0 || m.EntityLists == nil {
 		return
 	}
 	l := m.EntityLists
@@ -150,6 +150,8 @@ func (m *Map) UpdateMoneyEffects(rotation int) {
 		next := l.Links[id].Next
 		if e := m.MoneyEffects[id]; e != nil {
 			m.updateMoneyEffect(id, e, rotation)
+		} else if e := m.Effects[id]; e != nil {
+			m.updateEffect(id, e)
 		}
 		id = next
 	}

@@ -83,7 +83,24 @@ func TestTrainCrash(t *testing.T) {
 		t.Fatalf("the motion didn't report the collision: %+v", r)
 	}
 	before := len(m.Messages)
+	misc := m.EntityLists.Counts[EntityListMisc]
 	m.BogieCollision(a, bogie, m.Entities[hit].ID)
+	// explodeComponent: a cloud per exploding part, crash particles in its colours
+	clouds, particles := 0, 0
+	for _, e := range m.Effects {
+		switch e.SubType {
+		case effectTypeExplosionCloud:
+			clouds++
+		case effectTypeVehicleCrashParticle:
+			particles++
+			if e.SpriteBase > 4 || e.TimeToLive < 140 || e.Frame/256 >= 12 {
+				t.Errorf("crash particle out of range: %+v", *e)
+			}
+		}
+	}
+	if clouds < 2 || particles == 0 || int(m.EntityLists.Counts[EntityListMisc]) != int(misc)+len(m.Effects) {
+		t.Errorf("explosion: %d clouds, %d particles, misc %d → %d", clouds, particles, misc, m.EntityLists.Counts[EntityListMisc])
+	}
 	ha, hb := m.Entities[a.Head], m.Entities[b.Head]
 	if ha.Status != StatusCrashed || hb.Status != StatusCrashed || ha.TotalRefundCost != 0 || hb.TotalRefundCost != 0 {
 		t.Errorf("not both crashed and worthless: %d %d", ha.Status, hb.Status)
@@ -104,6 +121,10 @@ func TestTrainCrash(t *testing.T) {
 	x0, y0 := m.Entities[bogie].PosX, m.Entities[bogie].PosY
 	for range 400 {
 		m.updateTrain(a, om)
+		m.UpdateEffects(0)
+	}
+	if len(m.Effects) != 0 || m.EntityLists.Counts[EntityListMisc] != misc {
+		t.Errorf("%d effects outlived 400 ticks (misc %d, was %d)", len(m.Effects), m.EntityLists.Counts[EntityListMisc], misc)
 	}
 	for _, car := range a.Cars {
 		for _, cc := range car {

@@ -216,6 +216,34 @@ func (g *Game) diagMoneyEffect() {
 	g.diagMoney = true
 }
 
+// diagCrash (GOLOCO_DIAG_BUILDVEHICLE=crash) — DIAGNOSTIC ONLY: the first
+// two rail trains on the map collide (BogieCollision, the first at 60 mph),
+// the view on the first's front bogie: explosions, crash particles, the
+// wreck sliding.
+func (g *Game) diagCrash() {
+	g.inTitleScreen = false
+	m := &g.w.Map
+	m.TitleMode = false
+	trains, _ := m.Trains()
+	var rail []sim.Train
+	for _, t := range trains {
+		if h := m.Entities[t.Head]; h.Mode == 0 && h.TileX != -1 && len(t.Cars) > 0 {
+			rail = append(rail, t)
+		}
+	}
+	if len(rail) < 2 {
+		log.Print("[Diag] crash: fewer than two rail trains")
+		return
+	}
+	a, b := rail[0], rail[1]
+	bogie := a.Cars[0][0].Front
+	m.Entities[a.Veh2].CurrentSpeed = 60 << 16
+	m.BogieCollision(a, bogie, m.Entities[b.Cars[0][0].Front].ID)
+	e := m.Entities[bogie]
+	g.w.CenterOn(fmt.Sprintf("tile:%d,%d", int(e.PosX)/32, int(e.PosY)/32))
+	log.Printf("[Diag] crash: train %d into %d at %d,%d,%d: %d effects", a.Head, b.Head, e.PosX, e.PosY, e.PosZ, len(m.Effects))
+}
+
 // diagAirportGhost (GOLOCO_DIAG_BUILDVEHICLE=airportghost) — DIAGNOSTIC ONLY:
 // the airport window's tool over the first spot an airport takes (dry run), as
 // the player; the ghost held, rotated once

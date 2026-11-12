@@ -7,10 +7,8 @@ import "github.com/LaPingvino/goloco/pkg/scenario"
 // applyDestructionToComponent. A bogie whose step hits another vehicle
 // (CheckForCollisions, called from the motion) crashes its train and the one
 // it hit.
-//
-// PARTIAL: explodeComponent's sound and its ExplosionCloud and
-// VehicleCrashParticle entities are not made (goloco has no effect entities
-// yet). What a crashed train's parts do afterwards: crashupdate.go.
+// explodeComponent's effects: effect.go. What a crashed train's parts do
+// afterwards: crashupdate.go.
 
 const vehicleFlagUnk5 = 1 << 5 // VehicleFlags::unk_5: the bogie that collided
 
@@ -72,9 +70,10 @@ func (m *Map) DestroyTrain(tr Train, self int) {
 	}
 }
 
-// applyDestructionToComponent: the part explodes (PARTIAL: no effect
-// entities) and its var_5A becomes an eighth of the speed, flagged exploding.
+// applyDestructionToComponent: the part explodes and its var_5A becomes an
+// eighth of the speed, flagged exploding.
 func (m *Map) applyDestructionToComponent(i int) {
+	m.explodeComponent(i)
 	e := &m.Entities[i]
 	e.Var5A &^= 1 << 31
 	e.Var5A >>= 3

@@ -21,6 +21,7 @@ type Map struct {
 	Entities         []scenario.VehicleEntity
 	EntityLists      *EntityLists                // EntityManager's lists (entitylists.go): from the save, else reset
 	MoneyEffects     map[uint16]*MoneyEffect     // money effect entities by id (moneyeffect.go)
+	Effects          map[uint16]*Effect          // crash effect entities by id (effect.go)
 	VehicleListData  []scenario.VehicleListEntry // heads + veh1/veh2 data for the vehicle list
 	CompanyFaces     []scenario.CompanyFace      // company slot → competitor, emotion, performance
 	Orders           []byte                      // GameState orders[]
