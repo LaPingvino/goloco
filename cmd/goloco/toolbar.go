@@ -56,8 +56,8 @@ func (g *Game) setToolbarColour(d *ui.DropdownMenu, btn *ui.ToolbarButton) {
 //
 // clickable(ToolbarTop.cpp): build_vehicles_menu port_menu vehicles_menu stations_menu
 // clickable(ToolbarTop.cpp): railroad_menu
-// clickable(ToolbarTopCommon.cpp): zoom_menu
-// clickable-partial(ToolbarTop.cpp): loadsave_menu audio_menu towns_menu
+// clickable(ToolbarTopCommon.cpp): zoom_menu towns_menu
+// clickable-partial(ToolbarTop.cpp): loadsave_menu audio_menu
 // clickable(ToolbarTopCommon.cpp): railroad_menu road_menu
 // (not yet: rotate_menu and view_menu only log; terraform_menu, port_menu, cheats_menu nothing)
 func (g *Game) handleToolbarButton(idx int) {
@@ -136,7 +136,7 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Stations":
 		g.stationsMenu(btn) // by station type (ToolbarTop.cpp stationsMenuMouseDown)
 	case "Towns":
-		g.openTownsWindow()
+		g.townsMenu(btn) // Towns / Industries (ToolbarTopCommon.cpp townsMenuMouseDown)
 	default:
 		// Not ported yet: no window (an invented placeholder window would not
 		// be the game's own).
@@ -389,5 +389,29 @@ func (g *Game) stationsMenu(btn *ui.ToolbarButton) {
 	}
 	d := g.toolbarImageMenu(btn, items)
 	d.Highlighted = 0
+	g.dropdown = d
+}
+
+// townsMenu is ToolbarTopCommon.cpp townsMenuMouseDown (0x0043A8CE): Towns
+// and Industries (the skin's toolbar_menu_towns / _industries), the last one
+// chosen highlighted (_lastTownOption, kept for the session as upstream).
+// Choosing is townsMenuDropdown: TownList::open or IndustryList::open.
+func (g *Game) townsMenu(btn *ui.ToolbarButton) {
+	if g.skin() == nil {
+		return
+	}
+	skin := int(g.skin().ImageOffset)
+	items := []ui.DropdownItem{
+		{MenuSprite: true, Sprite: skin + objects.ISToolbarMenuTowns, Text: i18n.Label(i18n.MenuTowns), Action: func() {
+			g.lastTownOption = 0
+			g.openTownsWindow()
+		}},
+		{MenuSprite: true, Sprite: skin + objects.ISToolbarMenuIndustries, Text: i18n.Label(i18n.MenuIndustries), Action: func() {
+			g.lastTownOption = 1
+			g.openIndustryList()
+		}},
+	}
+	d := g.toolbarImageMenu(btn, items)
+	d.Highlighted = g.lastTownOption
 	g.dropdown = d
 }

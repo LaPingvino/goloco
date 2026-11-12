@@ -265,7 +265,10 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		}
 		log.Println("[Scenario] Read Towns,", len(towns), "bytes")
 		sc.Towns = parseTowns(towns)
-		log.Printf("[Scenario] Parsed %d towns", len(sc.Towns))
+		// … and the industries right after the 80 towns (GameState::industries
+		// follows GameState::towns): a scenario's industry records.
+		sc.Industries = parseIndustriesAt(towns, townMaxCount*townRecordSize)
+		log.Printf("[Scenario] Parsed %d towns, %d industries", len(sc.Towns), len(sc.Industries))
 
 		// Animations
 		animations, err := reader.ReadChunk()
@@ -1622,6 +1625,12 @@ func parseIndustries(gs []byte) []Industry {
 	if len(gs) == GameStateSizeType2 {
 		off = industriesGameStateOffsetType2
 	}
+	return parseIndustriesAt(gs, off)
+}
+
+// parseIndustriesAt reads the industry slots starting at off: in a save's
+// game state, or in a scenario's towns-industries-stations chunk.
+func parseIndustriesAt(gs []byte, off int) []Industry {
 	if len(gs) < off+industryMaxCount*industryRecordSize {
 		return nil
 	}
