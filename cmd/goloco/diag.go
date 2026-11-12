@@ -166,7 +166,8 @@ func (g *Game) diagOpenWindows() {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && (!diagNeedsScene[v] || g.w.SceneReady()) {
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && (!diagNeedsScene[v] || g.w.SceneReady()) &&
+		(v != "cash" || !g.inTitleScreen) { // cash: once a game runs (a scenario loaded by the script resets the company)
 		g.buildVehDiagDone = true
 		g.diagScenario(v)
 	}

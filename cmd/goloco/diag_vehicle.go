@@ -52,6 +52,8 @@ func (g *Game) diagScenario(v string) {
 		g.diagMoneyEffect()
 	case "crash":
 		g.diagCrash()
+	case "cash":
+		g.diagCash()
 	case "airportghost":
 		g.diagAirportGhost()
 	case "dockghost", "docktool":
