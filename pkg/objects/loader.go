@@ -58,6 +58,7 @@ type ObjectManager struct {
 	extraNames           map[string]string       // track/road extra DAT name → display name
 	extras               map[string]*ExtraObject // track/road extra DAT name → object
 	RoadObjects          []*RoadObject           // all loaded road objects
+	SteamObjects         []*SteamObject          // smoke / steam / spark objects, in load order (steam.go)
 	TrainStationObjects  []*TrainStationObject   // all loaded train-station objects
 	RoadStationObjects   []*RoadStationObject    // all loaded road-station objects
 	TrainSignalObjects   []*TrainSignalObject    // all loaded train-signal objects (slots 268-283)
@@ -454,6 +455,17 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 				}
 			}
 		}
+
+	case ObjectTypeSteam:
+		g1Loader, _ := m.G1File.(G1Loader)
+		ext, _ := m.G1File.(extentMeasurer)
+		st, err := ParseSteamObject(header, decompressed, g1Loader, ext)
+		if err != nil {
+			return fmt.Errorf("parsing steam: %w", err)
+		}
+		loaded.Object = st
+		loaded.ImageOffset = st.Image
+		m.SteamObjects = append(m.SteamObjects, st)
 
 	case ObjectTypeTunnel:
 		var g1Loader G1Loader
