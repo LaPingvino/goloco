@@ -81,6 +81,9 @@ func (g *Game) openVehicleListFor(company, tab int) {
 	w.OnClose = func() { g.townList = nil }
 	w.OnTab = func(t int) { g.openVehicleListFor(company, t) }
 	g.listTabIcons(w, vehicleTabFrames, vehicleTabCounts, int(tc)) // recoloured to the company colour
+	w.TabDisabled = func(i int) bool { // disableUnavailableVehicleTypes: availableVehicles ^ 0x3F
+		return company < len(g.w.Map.Companies) && g.w.Map.Companies[company].AvailableVehicles&(1<<i) == 0
+	}
 	g.townList = w
 }
 
