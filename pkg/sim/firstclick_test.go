@@ -23,7 +23,7 @@ func TestBuildTrackAtTile(t *testing.T) {
 				continue
 			}
 			s.ConsHead = ConstructionHead{Rotation: 0}
-			if _, ok := s.BuildTrackAtTile(c, x, y, 0, 0); !ok {
+			if _, ok := s.BuildTrackAtTile(c, x, y, 0, 0, -1); !ok {
 				continue // money, ownership, clearance …: another tile
 			}
 			tracks := 0
@@ -41,7 +41,7 @@ func TestBuildTrackAtTile(t *testing.T) {
 			}
 			// A click that can't build (off the map's drawable area) turns the rotation.
 			s.ConsHead.Rotation = 1
-			if _, ok := s.BuildTrackAtTile(c, 0, 0, 0, 0); ok {
+			if _, ok := s.BuildTrackAtTile(c, 0, 0, 0, 0, -1); ok {
 				t.Fatal("built at the map's edge")
 			}
 			if s.ConsHead.Rotation != 2 {
@@ -77,7 +77,7 @@ func TestBuildRoadAtTile(t *testing.T) {
 			if len(tl.Order) != 1 || tl.Slope != 0 || tl.WaterLevel != 0 {
 				continue
 			}
-			if _, ok := s.UpdateRoadGhost(c, x, y, 0, 0, uint8(obj)); !ok {
+			if _, ok := s.UpdateRoadGhost(c, x, y, 0, 0, uint8(obj), -1); !ok {
 				continue
 			}
 			ghosts := 0
@@ -91,7 +91,7 @@ func TestBuildRoadAtTile(t *testing.T) {
 			}
 			s.RemoveRoadGhost(c)
 			s.ConsHead = ConstructionHead{Rotation: 0}
-			if _, ok := s.BuildRoadAtTile(c, x, y, 0, uint8(obj)); !ok {
+			if _, ok := s.BuildRoadAtTile(c, x, y, 0, uint8(obj), -1); !ok {
 				continue // money, clearance …: another tile
 			}
 			real := 0
@@ -107,7 +107,7 @@ func TestBuildRoadAtTile(t *testing.T) {
 				t.Fatalf("the head after the first piece: %+v (clicked %d,%d)", h, x, y)
 			}
 			s.ConsHead.Rotation = 1
-			if _, ok := s.BuildRoadAtTile(c, 0, 0, 0, uint8(obj)); ok {
+			if _, ok := s.BuildRoadAtTile(c, 0, 0, 0, uint8(obj), -1); ok {
 				t.Fatal("built at the map's edge")
 			}
 			if s.ConsHead.Rotation != 2 {

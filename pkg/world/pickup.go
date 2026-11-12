@@ -238,3 +238,48 @@ func (w *World) AirPlacementAt(head uint16, sx, sy int) (sim.VehicleAirPlacement
 	}
 	return out, true
 }
+
+// JunctionAt is ConstructionTab's tryMakeTrackJunctionAtLoc / tryMakeRoadJunctionAtLoc
+// (0x004A4011 getExistingTrackAtLoc, getExistingRoadAtLoc): the track (or road)
+// element under the cursor, the height its piece starts at (its baseHeight
+// less the piece's z at that sequence), and the tile under the cursor at that
+// height (screenGetMapXyWithZ: viewportCoordToMapCoord, rotation 0). A track
+// piece counts only if it keeps its height (kTrackCoordinates' z 0); a road
+// any piece. ok false: build on the ground as usual. PARTIAL: rotation 0 only.
+func (w *World) JunctionAt(sx, sy int, road bool) (tx, ty int, h int32, ok bool) {
+	if w.scene == nil {
+		return 0, 0, 0, false
+	}
+	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	want := paint.ItemTrack
+	if road {
+		want = paint.ItemRoad
+	}
+	ps := w.scene.InteractionAt(&w.Map, v, sx, sy, func(it paint.InteractionItem) bool { return it == want })
+	if ps == nil {
+		return 0, 0, 0, false
+	}
+	if road {
+		re, isRoad := ps.Item.(*scenario.RoadElement)
+		if !isRoad || int(re.RoadID) >= len(sim.RoadPieces) || int(re.SequenceIndex) >= len(sim.RoadPieces[re.RoadID]) {
+			return 0, 0, 0, false
+		}
+		h = int32(re.BaseZ)*4 - int32(sim.RoadPieces[re.RoadID][re.SequenceIndex].Z)
+	} else {
+		te, isTrack := ps.Item.(*scenario.TrackElement)
+		if !isTrack || int(te.TrackID) >= len(sim.TrackPieces) || int(te.SequenceIndex) >= len(sim.TrackPieces[te.TrackID]) {
+			return 0, 0, 0, false
+		}
+		if sim.TrackCoordinates[int(te.TrackID)<<3].DZ != 0 { // getUnkTrack(id << 3).pos.z == 0
+			return 0, 0, 0, false
+		}
+		h = int32(te.BaseZ)*4 - int32(sim.TrackPieces[te.TrackID][te.SequenceIndex].Z)
+	}
+	// viewportCoordToMapCoord(x, y, z, 0): (y - x/2 + z, y + x/2 + z)
+	vx, vy := int32(sx<<v.Zoom+v.X), int32(sy<<v.Zoom+v.Y)
+	mx, my := vy-(vx>>1)+h, vy+(vx>>1)+h
+	if mx < 0 || my < 0 || mx >= int32(w.Map.Width)*32 || my >= int32(w.Map.Height)*32 { // validCoords
+		return 0, 0, 0, false
+	}
+	return int(mx / 32), int(my / 32), h, true
+}

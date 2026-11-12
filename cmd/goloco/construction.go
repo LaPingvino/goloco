@@ -566,7 +566,8 @@ func (g *Game) updateTrackGhost() {
 		// onToolUpdateSingle for a road: the piece under the cursor as a ghost
 		c := g.playerCmd()
 		if p, ok := construct.GetRoadPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation); ok {
-			g.w.UpdateRoadGhost(c, g.hoverTileX, g.hoverTileY, p.ID, p.Rotation, uint8(g.buildObjID))
+			tx, ty, jh := g.consTarget(true)
+			g.w.UpdateRoadGhost(c, tx, ty, p.ID, p.Rotation, uint8(g.buildObjID), jh)
 		} else {
 			g.w.RemoveRoadGhost(c)
 		}
@@ -594,7 +595,8 @@ func (g *Game) updateTrackGhost() {
 		bridge = uint8(pickSlot(list, g.consBridge))
 	}
 	c := g.playerCmd()
-	g.w.UpdateTrackGhost(c, g.hoverTileX, g.hoverTileY, p.ID, p.Rotation, uint8(g.buildObjID), bridge)
+	tx, ty, jh := g.consTarget(false)
+	g.w.UpdateTrackGhost(c, tx, ty, p.ID, p.Rotation, uint8(g.buildObjID), bridge, jh)
 }
 
 // removeTrackGhost is removeConstructionGhosts' track part (removeTrackGhosts).
@@ -821,4 +823,15 @@ func (g *Game) consCycleType(dir int) {
 			return
 		}
 	}
+}
+
+// consTarget is where the construction tool points: on existing track (or
+// road) under the cursor, that tile at that piece's height
+// (tryMakeTrackJunctionAtLoc / tryMakeRoadJunctionAtLoc: a junction); else
+// the hovered tile on the ground (junction -1).
+func (g *Game) consTarget(road bool) (tx, ty int, junction int32) {
+	if jx, jy, h, ok := g.w.JunctionAt(g.mouseX, g.mouseY, road); ok {
+		return jx, jy, h
+	}
+	return g.hoverTileX, g.hoverTileY, -1
 }
