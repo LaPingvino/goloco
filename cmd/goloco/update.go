@@ -298,6 +298,7 @@ func (g *Game) updateHeld() {
 	}
 	if g.industryToolOn() && !g.inTitleScreen { // the Fund New Industries tool: its ghost under the cursor
 		if g.overWindow(g.mouseX, g.mouseY) {
+			g.w.SetMapSelection(false, 0, 0, 0, 0)
 			g.removeIndustryGhost()
 		} else {
 			g.industryToolUpdate(g.mouseX, g.mouseY)
