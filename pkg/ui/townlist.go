@@ -613,7 +613,7 @@ func FormatCurrency(v int64) string { return currency32(v) }
 // close button's (tooltip_close_window) or a tab's.
 func (w *TownListWindow) WidgetTooltip(px, py int) string {
 	if w.in([4]int{w.W - 15, 2, 13, 13}, px, py) {
-		return i18n.Label(i18n.TooltipCloseWindow)
+		return i18n.Str(i18n.TooltipCloseWindow)
 	}
 	if i := tabAt(tabLayout(w.Tabs, w.TabDisabled), px-w.X, py-w.Y); i >= 0 && i < len(w.TabTooltips) {
 		return w.TabTooltips[i]

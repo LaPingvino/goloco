@@ -230,13 +230,13 @@ func (w *ScenarioSelectWindow) Draw(screen *ebiten.Image) {
 	DrawTextBold(screen, m.Name, bx+col/2-tw/2, by, win2)
 	if !m.HasPreview {
 		y := by + 14 + 1 + 1 + 59
-		for k, ln := range wrapTooltip(i18n.Label(i18n.RandomlyGeneratedLandscape), 128) {
+		for k, ln := range wrapTooltip(i18n.Label(i18n.RandomlyGeneratedLandscape), 128, G1FontMediumBold) {
 			lw, _ := MeasureTextBold(ln)
 			DrawTextBold(screen, ln, bx+20+1+1+64-lw/2, y+k*10, black)
 		}
 	}
 	y := by + 150
-	for _, ln := range wrapTooltip(m.Description, 170) {
+	for _, ln := range wrapTooltip(m.Description, 170, G1FontMediumBold) {
 		DrawTextBold(screen, ln, bx, y, black)
 		y += 10
 	}
@@ -248,7 +248,7 @@ func (w *ScenarioSelectWindow) Draw(screen *ebiten.Image) {
 		if w.ObjectiveText != nil {
 			text = w.ObjectiveText(m)
 		}
-		for _, ln := range wrapTooltip("  "+text, 170) { // challenge_value: two spaces, then the objective
+		for _, ln := range wrapTooltip("  "+text, 170, G1FontMediumBold) { // challenge_value: two spaces, then the objective
 			DrawTextBold(screen, ln, bx, y, black)
 			y += 10
 		}

@@ -631,14 +631,14 @@ var stationTabTooltips = [9]int{i18n.TooltipStation, i18n.TooltipStationCargo, i
 func (w *StationWindow) WidgetTooltip(px, py int) string {
 	rx, ry := px-w.X, py-w.Y
 	if rx >= w.width()-15 && rx < w.width()-2 && ry >= 2 && ry < 15 {
-		return i18n.Label(i18n.TooltipCloseWindow)
+		return i18n.Str(i18n.TooltipCloseWindow)
 	}
 	if i := tabAt(w.stationTabs(), rx, ry); i >= 0 {
-		return i18n.Label(stationTabTooltips[i])
+		return i18n.Str(stationTabTooltips[i])
 	}
 	if w.Tab == 0 {
 		if _, _, r, b := stationViewport(); rx >= r-24 && rx <= r-1 && ry >= b-24 && ry <= b-1 {
-			return i18n.Label(i18n.MoveMainViewToShowThis)
+			return i18n.Str(i18n.MoveMainViewToShowThis)
 		}
 	}
 	return ""
