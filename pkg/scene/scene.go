@@ -831,8 +831,7 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	}
 	// The catchment area (PaintSurface.cpp): constructionCatchmentSlope by the
 	// water surface's display slope (getWaterSurface), dark blue, as a parent
-	// at its height, bbox (32,32,1). PARTIAL: upstream draws it after the
-	// selection boxes, which goloco paints elsewhere.
+	// at its height, bbox (32,32,1); after the selection box, as upstream.
 	if r.Catchment != nil && r.Catchment(x, y) {
 		h, slope := z, t.Slope
 		if wh := int(t.WaterLevel) * 16; wh > h {
