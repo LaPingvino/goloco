@@ -90,7 +90,7 @@ type Game struct {
 	browse            *ui.PromptBrowseWindow    // the Load window when open
 	options           *ui.OptionsWindow         // the Options window when open
 	townList          *ui.TownListWindow        // the town list when open
-	townWin           *ui.TownWindow            // the Town window (TownWindow.cpp)
+	viewWin           *ui.ViewWindow            // the Town or Industry window (its first tab)
 	stationWin        *ui.StationWindow         // the Station window (StationWindow.cpp)
 	catchmentStation  int                       // _lastSelectedStation: whose catchment shows (−1 none)
 	buildVehicle      *ui.BuildVehicleWindow    // the Build Vehicle window when open (5P.f)

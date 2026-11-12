@@ -193,8 +193,8 @@ func (g *Game) drawGameWindows(screen *ebiten.Image) {
 		g.stationWin.FrameNo = g.windowFrame
 		g.stationWin.Draw(screen)
 	}
-	if g.townWin != nil {
-		g.townWin.Draw(screen)
+	if g.viewWin != nil {
+		g.viewWin.Draw(screen)
 	}
 	if g.companyList != nil {
 		g.companyList.FrameNo = g.windowFrame
