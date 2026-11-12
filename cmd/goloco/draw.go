@@ -262,8 +262,8 @@ func (g *Game) drawPlayerPanel(screen *ebiten.Image) {
 	g.playerPanelCompany(&st)
 	wx, wy := uilayout.PlayerPanelPos(g.sw, g.sh)
 	cv, pf := uilayout.PlayerPanelCompanyVal, uilayout.PlayerPanelPerformance
-	st.HoverCash = g.mouseX >= wx+cv[0] && g.mouseX < wx+cv[0]+cv[2] && g.mouseY >= wy+cv[1] && g.mouseY < wy+cv[1]+cv[3]
-	st.HoverPerf = g.mouseX >= wx+pf[0] && g.mouseX < wx+pf[0]+pf[2] && g.mouseY >= wy+pf[1] && g.mouseY < wy+pf[1]+pf[3]
+	st.HoverCash = inRect(g.mouseX, g.mouseY, wx+cv[0], wy+cv[1], cv[2], cv[3])
+	st.HoverPerf = inRect(g.mouseX, g.mouseY, wx+pf[0], wy+pf[1], pf[2], pf[3])
 	ui.DrawPlayerPanel(screen, st)
 }
 
@@ -313,7 +313,7 @@ func (g *Game) drawTimePanel(screen *ebiten.Image) {
 	}
 	wx, wy := uilayout.TimePanelPos(g.sw, g.sh)
 	d := uilayout.TimePanelDate
-	st.HoverDate = g.mouseX >= wx+d[0] && g.mouseX < wx+d[0]+d[2] && g.mouseY >= wy+d[1] && g.mouseY < wy+d[1]+d[3]
+	st.HoverDate = inRect(g.mouseX, g.mouseY, wx+d[0], wy+d[1], d[2], d[3])
 	ui.DrawTimePanel(screen, st)
 	if st.HoverDate && g.hasObjective {
 		// formatChallenge (string 647: date, then 695 / 696 / 699 + 700).

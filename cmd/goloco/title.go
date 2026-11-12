@@ -36,16 +36,13 @@ const (
 
 func (g *Game) handleTitleMenuClick(mx, my int) {
 	// --- Exit button: bottom-right corner ---
-	exitX := g.sw - titleExitW
-	exitY := g.sh - titleExitH
-	if mx >= exitX && mx < g.sw && my >= exitY && my < g.sh {
+	if inRect(mx, my, g.sw-titleExitW, g.sh-titleExitH, titleExitW, titleExitH) {
 		log.Println("[Game] Exit clicked")
 		os.Exit(0)
 	}
 
 	// --- Options button: top-right corner ---
-	optX := g.sw - titleOptionsW
-	if mx >= optX && mx < g.sw && my >= 0 && my < titleOptionsH {
+	if inRect(mx, my, g.sw-titleOptionsW, 0, titleOptionsW, titleOptionsH) {
 		g.openOptionsWindow()
 		return
 	}
@@ -53,11 +50,10 @@ func (g *Game) handleTitleMenuClick(mx, my int) {
 	// --- Main menu buttons: bottom-centre ---
 	menuX := (g.sw - titleMenuW) / 2
 	menuY := g.sh - titleMenuH - titleMenuMargin
-	relX := mx - menuX
-	if relX < 0 || relX >= titleMenuW || my < menuY || my >= menuY+titleMenuH {
+	if !inRect(mx, my, menuX, menuY, titleMenuW, titleMenuH) {
 		return
 	}
-	btnIdx := relX / titleBtnSize
+	btnIdx := (mx - menuX) / titleBtnSize
 
 	// clickable(TitleMenu.cpp): scenario_list_btn load_game_btn
 	switch btnIdx {
@@ -120,8 +116,7 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 	// --- Options button: top-right (sw-60, 0), 60×15 ---
 	// OpenLoco: TitleOptions.cpp at (Ui::width()-60, 0)
 	optX := g.sw - titleOptionsW
-	optHovered := g.mouseX >= optX && g.mouseX < g.sw &&
-		g.mouseY >= 0 && g.mouseY < titleOptionsH
+	optHovered := inRect(g.mouseX, g.mouseY, optX, 0, titleOptionsW, titleOptionsH)
 	// OpenLoco's TitleOptions window is transparent — plain white text with a
 	// subtle darkening only on hover (the solid coloured boxes read as
 	// misrendered rectangles).
@@ -162,8 +157,7 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 		bx := menuX + i*titleBtnSize
 		by := menuY
 
-		hovered := g.mouseX >= bx && g.mouseX < bx+titleBtnSize &&
-			g.mouseY >= by && g.mouseY < by+titleBtnSize
+		hovered := inRect(g.mouseX, g.mouseY, bx, by, titleBtnSize, titleBtnSize)
 		if hovered {
 			tip = btn.label // the button's tooltip (TitleMenu.cpp's title_menu_* StringIds)
 		}
@@ -206,8 +200,7 @@ func (g *Game) drawTitleMenu(screen *ebiten.Image) {
 	// OpenLoco: TitleExit.cpp at (Ui::width()-40, Ui::height()-28)
 	exitX := g.sw - titleExitW
 	exitY := g.sh - titleExitH
-	exitHovered := g.mouseX >= exitX && g.mouseX < g.sw &&
-		g.mouseY >= exitY && g.mouseY < g.sh
+	exitHovered := inRect(g.mouseX, g.mouseY, exitX, exitY, titleExitW, titleExitH)
 	// Transparent like OpenLoco's TitleExit window; hover darkens.
 	if exitHovered {
 		fillRect(screen, float64(exitX), float64(exitY), float64(titleExitW), float64(titleExitH), color.RGBA{0, 0, 0, 90})

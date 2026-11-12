@@ -18,18 +18,7 @@ import (
 
 func (g *Game) Update() error {
 	g.windowFrame++
-	if g.diagShip != 0 && g.w != nil {
-		if tr, err := g.w.Map.TrainOf(g.diagShip); err == nil {
-			g.diagShipFrames++
-			if g.diagFollow && g.diagShipFrames%15 == 0 {
-				g.w.CentreOnVehicle(g.diagShip)
-			}
-			if g.diagShipFrames%120 == 0 {
-				h, v2 := g.w.Map.Entities[tr.Head], g.w.Map.Entities[tr.Veh2]
-				log.Printf("[Diag] shipsail frame %d: ship at %d,%d yaw %d, %.0f mph, status %d, station %d", g.diagShipFrames, v2.PosX, v2.PosY, v2.SpriteYaw, float64(v2.CurrentSpeed)/65536, h.Status, h.StationID)
-			}
-		}
-	}
+	g.diagTrackShip()
 	if g.w != nil {
 		g.w.TitleMode = g.inTitleScreen // SceneManager::isTitleMode() for the viewport's names
 	}
@@ -54,36 +43,7 @@ func (g *Game) Update() error {
 	if g.script != nil && g.script.hasMouse {
 		g.mouseX, g.mouseY = g.script.mouseX, g.script.mouseY
 	}
-	if g.textInput != nil { // TextInputWindow: keyUp (typed characters, editing keys, Enter / Escape), onMouseUp, onUpdate
-		t := g.textInput
-		t.Update()
-		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
-			t.HandleClick(g.mouseX, g.mouseY)
-		}
-		var keys []int
-		for k, code := range map[ebiten.Key]int{ebiten.KeyBackspace: ui.KeyBackspace, ebiten.KeyDelete: ui.KeyDelete, ebiten.KeyHome: ui.KeyHome,
-			ebiten.KeyEnd: ui.KeyEnd, ebiten.KeyArrowLeft: ui.KeyLeft, ebiten.KeyArrowRight: ui.KeyRight} {
-			if inpututil.IsKeyJustPressed(k) || inpututil.KeyPressDuration(k) > 30 && inpututil.KeyPressDuration(k)%3 == 0 { // key repeat
-				keys = append(keys, code)
-			}
-		}
-		t.Keys(g.inChars(), keys, g.inKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter),
-			g.inKeyJustPressed(ebiten.KeyEscape))
-		if t.Closed && g.textInput == t {
-			g.textInput = nil
-		}
-		return nil
-	}
-	if g.prompt != nil { // the modal confirmation takes all input (setCurrentModalType)
-		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
-			mx, my := ebiten.CursorPosition()
-			g.prompt.HandleClick(mx, my)
-		}
-		g.prompt.Key(inpututil.IsKeyJustPressed(ebiten.KeyEscape),
-			inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
-		if g.prompt.Closed {
-			g.prompt = nil
-		}
+	if g.updateModal() {
 		return nil
 	}
 	// A right click on the load/save list deletes a file (after asking).
@@ -103,63 +63,151 @@ func (g *Game) Update() error {
 	}
 
 	if g.inTitleScreen {
-		// Title screen: advance camera animation and apply to world.
-		// w.Update() must be called here too — it increments animTick which
-		// drives water wave animation and demo train movement.
-		g.titleFrame++
-		g.w.Map.TitleMode = true
-		for range g.w.GameTicks(g.mouseMoved()) { // tickLogic(numUpdates): the title is a running game upstream
-			g.w.Update()
-			g.w.TickSavedVehicles()
-			if g.titleSeq != nil {
-				g.titleSeq.Update()
-			}
-		}
-		if g.titleSeq != nil {
-			cx, cy := g.titleSeq.GetCameraPosition()
-			g.w.SetCamera(cx, cy)
-		}
-		if g.browse != nil { // the load/save list's thumb follows the mouse while held
-			g.browse.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-		}
-		if g.scenarioSelect != nil { // and the scenario list's
-			g.scenarioSelect.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-			g.scenarioSelect.MouseOver(g.mouseX, g.mouseY)
-		}
-		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-			g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
-		}
-		if g.dropdown != nil && g.dropdown.Visible { // a window's dropdown (Options' language, heights …)
-			g.dropdown.UpdateHover(g.mouseX, g.mouseY)
-		}
-		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
-			// An open dropdown is on top: it takes the click (a click outside
-			// closes it); then the ScenarioSelect window, then the window manager.
-			if g.dropdown != nil && g.dropdown.Visible {
-				if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
-					g.dropdown = nil
-				}
-			} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
-				g.townList.HandleClick(g.mouseX, g.mouseY)
-			} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
-				g.options.HandleClick(g.mouseX, g.mouseY)
-			} else if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
-				g.browse.HandleClick(g.mouseX, g.mouseY)
-			} else if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
-				g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
-			} else if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
-				g.handleTitleMenuClick(g.mouseX, g.mouseY)
-			}
-		}
-		if g.inMouseJustReleased(ebiten.MouseButtonLeft) {
-			g.windowMgr.StopDrag()
-		}
-		g.routeWheelToWindows()
+		g.updateTitle()
 		return nil
 	}
+	g.updateGame()
+	return nil
+}
 
-	// --- Gameplay mode ONLY below this point ---
+// updateModal gives the frame's input to an open text input or confirmation,
+// and reports that one took it.
+func (g *Game) updateModal() bool {
+	if g.textInput != nil { // TextInputWindow: keyUp (typed characters, editing keys, Enter / Escape), onMouseUp, onUpdate
+		t := g.textInput
+		t.Update()
+		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
+			t.HandleClick(g.mouseX, g.mouseY)
+		}
+		var keys []int
+		for k, code := range map[ebiten.Key]int{ebiten.KeyBackspace: ui.KeyBackspace, ebiten.KeyDelete: ui.KeyDelete, ebiten.KeyHome: ui.KeyHome,
+			ebiten.KeyEnd: ui.KeyEnd, ebiten.KeyArrowLeft: ui.KeyLeft, ebiten.KeyArrowRight: ui.KeyRight} {
+			if inpututil.IsKeyJustPressed(k) || inpututil.KeyPressDuration(k) > 30 && inpututil.KeyPressDuration(k)%3 == 0 { // key repeat
+				keys = append(keys, code)
+			}
+		}
+		t.Keys(g.inChars(), keys, g.inKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter),
+			g.inKeyJustPressed(ebiten.KeyEscape))
+		if t.Closed && g.textInput == t {
+			g.textInput = nil
+		}
+		return true
+	}
+	if g.prompt != nil { // the modal confirmation takes all input (setCurrentModalType)
+		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
+			mx, my := ebiten.CursorPosition()
+			g.prompt.HandleClick(mx, my)
+		}
+		g.prompt.Key(inpututil.IsKeyJustPressed(ebiten.KeyEscape),
+			inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
+		if g.prompt.Closed {
+			g.prompt = nil
+		}
+		return true
+	}
+	return false
+}
 
+// updateTitle is a frame of the title screen: the title map ticking under its
+// camera tour, the windows opened from the menu, and the menu itself.
+func (g *Game) updateTitle() {
+	// Title screen: advance camera animation and apply to world.
+	// w.Update() must be called here too — it increments animTick which
+	// drives water wave animation and demo train movement.
+	g.titleFrame++
+	g.w.Map.TitleMode = true
+	for range g.w.GameTicks(g.mouseMoved()) { // tickLogic(numUpdates): the title is a running game upstream
+		g.w.Update()
+		g.w.TickSavedVehicles()
+		if g.titleSeq != nil {
+			g.titleSeq.Update()
+		}
+	}
+	if g.titleSeq != nil {
+		cx, cy := g.titleSeq.GetCameraPosition()
+		g.w.SetCamera(cx, cy)
+	}
+	if g.browse != nil { // the load/save list's thumb follows the mouse while held
+		g.browse.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
+	}
+	if g.scenarioSelect != nil { // and the scenario list's
+		g.scenarioSelect.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
+		g.scenarioSelect.MouseOver(g.mouseX, g.mouseY)
+	}
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
+	}
+	if g.dropdown != nil && g.dropdown.Visible { // a window's dropdown (Options' language, heights …)
+		g.dropdown.UpdateHover(g.mouseX, g.mouseY)
+	}
+	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
+		// An open dropdown is on top: it takes the click (a click outside
+		// closes it); then the ScenarioSelect window, then the window manager.
+		if g.dropdown != nil && g.dropdown.Visible {
+			if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
+				g.dropdown = nil
+			}
+		} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
+			g.townList.HandleClick(g.mouseX, g.mouseY)
+		} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
+			g.options.HandleClick(g.mouseX, g.mouseY)
+		} else if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
+			g.browse.HandleClick(g.mouseX, g.mouseY)
+		} else if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
+			g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
+		} else if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
+			g.handleTitleMenuClick(g.mouseX, g.mouseY)
+		}
+	}
+	if g.inMouseJustReleased(ebiten.MouseButtonLeft) {
+		g.windowMgr.StopDrag()
+	}
+	g.routeWheelToWindows()
+}
+
+// updateGame is a frame of a running game.
+func (g *Game) updateGame() {
+	g.updateToolCancel()
+	g.diagKeepMoneyEffect()
+	g.updateConstructionTools()
+	g.updateHeld()
+	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
+		g.gameClick()
+	}
+	if g.inMouseJustReleased(ebiten.MouseButtonLeft) && g.dropdown != nil && g.dropdown.Visible {
+		// the release of the press that opened a toolbar menu — after the press:
+		// a quick click brings both in one frame (ui.DropdownMenu
+		// HandleOpeningRelease): on its button, the highlighted item
+		if g.dropdown.HandleOpeningRelease(g.mouseX, g.mouseY) {
+			g.dropdown = nil
+		}
+	}
+	if g.inMouseJustReleased(ebiten.MouseButtonLeft) {
+		for i := range g.toolbar.Buttons {
+			g.toolbar.Buttons[i].Pressed = false
+		}
+		g.windowMgr.StopDrag()
+	}
+
+	g.updateCamera()
+	g.updateSpeedKeys()
+	// Update world (skipped when paused; repeated per speed multiplier)
+	if n := g.w.GameTicks(g.mouseMoved()); !g.isPaused { // tickLogic(numUpdates × the speed)
+		for i := 0; i < n*g.speedMult; i++ {
+			g.w.Update()
+			g.w.TickVehicles() // gameplay: the ported vehicle tick
+			if g.inGame {
+				g.checkObjective()
+			}
+		}
+	}
+	if g.saveMsgFrames > 0 {
+		g.saveMsgFrames--
+	}
+}
+
+// updateToolCancel: Escape ends the Vehicle window's tools.
+func (g *Game) updateToolCancel() {
 	// Escape cancels the Route tab's tool (toolCancel).
 	if g.routeTool && !g.pickupOn && g.inKeyJustPressed(ebiten.KeyEscape) {
 		g.routeTool = false
@@ -173,7 +221,10 @@ func (g *Game) Update() error {
 			g.openVehicleDetails(head)
 		}
 	}
+}
 
+// diagKeepMoneyEffect is GOLOCO_DIAG_BUILDVEHICLE=moneyeffect's every frame.
+func (g *Game) diagKeepMoneyEffect() {
 	if g.diagMoney && len(g.w.Map.MoneyEffects) == 0 { // DIAGNOSTIC ONLY (moneyeffect)
 		g.w.Map.TitleMode = false
 		if px, py, ok := g.w.SurfaceOrWaterAt(g.sw/2, g.sh/2); ok {
@@ -184,12 +235,17 @@ func (g *Game) Update() error {
 			}
 		}
 	}
+}
 
+// updateConstructionTools moves what the construction window's tools show on
+// the map with the cursor — the Station tab's ghost, the hover tile, the
+// track ghost, the head's arrow — and takes build mode's keys.
+func (g *Game) updateConstructionTools() {
 	// The station tab's ghost follows the cursor (onToolUpdateTrainStation),
 	// and goes once the tab or the mode does.
 	if g.diagHoldGhost {
 		// DIAGNOSTIC ONLY: the ghost stays for the screenshot
-	} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad || g.buildMode == buildModeDock || g.buildMode == buildModeAirport) && g.consTab == 1 && !g.inTitleScreen {
+	} else if g.stationToolOn() {
 		g.stationToolUpdate(g.mouseX, g.mouseY)
 	} else if g.stationGhost != nil || g.roadStationGhost != nil || g.dockGhost != nil || g.airportGhost != nil {
 		g.removeStationGhost()
@@ -197,7 +253,7 @@ func (g *Game) Update() error {
 
 	// Build mode: update hover tile every frame (track and road; the dock
 	// window has no construction head)
-	if g.buildMode == buildModeTrack || g.buildMode == buildModeRoad {
+	if g.consHasHead() {
 		g.hoverTileX, g.hoverTileY = g.tileUnderCursor(g.mouseX, g.mouseY)
 		// Keyboard shortcuts for build mode
 		if g.inKeyJustPressed(ebiten.KeyR) {
@@ -205,11 +261,7 @@ func (g *Game) Update() error {
 			g.w.RotateConstructionHead()
 		}
 		if g.inKeyJustPressed(ebiten.KeyX) {
-			if g.buildMode == buildModeRoad {
-				g.w.UndoLastRoad()
-			} else {
-				g.w.UndoLastTrack()
-			}
+			g.consUndo()
 		}
 		if g.inKeyJustPressed(ebiten.KeyEscape) {
 			g.buildMode = buildModeNone
@@ -222,9 +274,14 @@ func (g *Game) Update() error {
 	// updateConstruction's updateConstructionArrow: the track / road window on
 	// its Construction tab with the head placed (not while hovering).
 	if g.w != nil {
-		g.w.UpdateConstructionArrow((g.buildMode == buildModeTrack || g.buildMode == buildModeRoad) && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active)
+		g.w.UpdateConstructionArrow(g.consHasHead() && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active)
 	}
+}
 
+// updateHeld is what follows the mouse without a click: menu and toolbar
+// hover, the pickup tool's ghost, and the windows' scrollbars, held buttons,
+// dragged cars and moved frames.
+func (g *Game) updateHeld() {
 	// Update dropdown hover if visible
 	if g.dropdown != nil && g.dropdown.Visible {
 		g.dropdown.UpdateHover(g.mouseX, g.mouseY)
@@ -267,7 +324,7 @@ func (g *Game) Update() error {
 	if g.companyList != nil {
 		g.companyList.MouseOver(g.mouseX, g.mouseY)
 		cl := g.companyList // findAt: in the window and no modal over it
-		in := g.mouseX >= cl.X && g.mouseX < cl.X+cl.W && g.mouseY >= cl.Y && g.mouseY < cl.Y+cl.H
+		in := inRect(g.mouseX, g.mouseY, cl.X, cl.Y, cl.W, cl.H)
 		cl.Update(g.mouseX, g.mouseY, in && g.companyFinances == nil, ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight))
 	}
 	if g.companyFinances != nil && g.companyFinances.Positioning { // statePositioningWindow
@@ -293,111 +350,110 @@ func (g *Game) Update() error {
 			g.vehicleWin.DragEnd(g.mouseX, g.mouseY)
 		}
 	}
-	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
-		// Check dropdown first (it's on top: a window's dropdown lies over the
-		// window that opened it)
-		if g.dropdown != nil && g.dropdown.Visible {
-			if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
-				// Click outside dropdown - close it
-				g.dropdown = nil
-			}
-		} else if g.colourDropdown != nil && g.colourDropdown.Visible {
-			g.colourDropdown.HandleClick(g.mouseX, g.mouseY) // a colour picked, or closed
-			g.colourDropdown = nil
-		} else if g.companyFinances != nil && g.companyFinances.Contains(g.mouseX, g.mouseY) {
-			g.companyFinances.HandleClick(g.mouseX, g.mouseY) // drawn on top: clicked first
-		} else if g.companyList != nil && g.companyList.Contains(g.mouseX, g.mouseY) {
-			g.companyList.HandleClick(g.mouseX, g.mouseY)
-		} else if g.townWin != nil && g.townWin.Contains(g.mouseX, g.mouseY) { // the click goes to the window drawn on top (the draw order, reversed)
-			g.townWin.HandleClick(g.mouseX, g.mouseY)
-		} else if g.stationWin != nil && g.stationWin.Contains(g.mouseX, g.mouseY) {
-			g.stationWin.HandleClick(g.mouseX, g.mouseY)
-		} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
-			g.townList.HandleClick(g.mouseX, g.mouseY)
-		} else if g.vehicleWin != nil && g.vehicleWin.Contains(g.mouseX, g.mouseY) {
-			g.vehicleWin.HandleClick(g.mouseX, g.mouseY)
-		} else if g.buildVehicle != nil && g.buildVehicle.Contains(g.mouseX, g.mouseY) {
-			g.buildVehicle.HandleClick(g.mouseX, g.mouseY)
-		} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
-			g.options.HandleClick(g.mouseX, g.mouseY)
-		} else if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
-			g.browse.HandleClick(g.mouseX, g.mouseY)
-		} else if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
-			g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
-		} else if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
-			if sp := uilayout.TimePanelSpeedAt(g.mouseX, g.mouseY, g.sw, g.sh); sp >= 0 && !g.inTitleScreen {
-				// TimePanel speed buttons: pause toggles; the others set the speed.
-				// clickable(TimePanel.cpp): pause_btn normal_speed_btn fast_forward_btn extra_fast_forward_btn
-				switch sp {
-				case 0:
-					g.isPaused = !g.isPaused
-				case 1:
-					g.speedMult, g.isPaused = 1, false
-				case 2:
-					g.speedMult, g.isPaused = 2, false
-				case 3:
-					g.speedMult, g.isPaused = 4, false
-				}
-			} else if (uilayout.InTimePanel(g.mouseX, g.mouseY, g.sw, g.sh) || uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh)) && !g.inTitleScreen {
-				// the bottom-bar windows swallow the click; the player panel's
-				// company value is companyValueMouseUp: the Company window's Finances
-				px, py := uilayout.PlayerPanelPos(g.sw, g.sh)
-				if r := uilayout.PlayerPanelFace; uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh) &&
-					g.mouseX >= px+r[0] && g.mouseX < px+r[0]+r[2] && g.mouseY >= py+r[1] && g.mouseY < py+r[1]+r[3] {
-					g.playerCompanyDropdown(px+r[0], py+r[1], r[2], r[3]) // playerMouseDown
-				}
-				if r := uilayout.PlayerPanelCompanyVal; uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh) &&
-					g.mouseX >= px+r[0] && g.mouseX < px+r[0]+r[2] && g.mouseY >= py+r[1] && g.mouseY < py+r[1]+r[3] {
-					company, _ := g.w.ControllingCompany()
-					g.openCompanyFinances(company)
-				}
-			} else if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
-				g.toolbar.Buttons[btnIdx].Pressed = true
-				g.handleToolbarButton(btnIdx)
-			} else if g.pickupOn && !g.inTitleScreen {
-				g.pickupToolDown(g.mouseX, g.mouseY) // the Vehicle window's placing tool
-			} else if g.routeTool && g.vehicleWin != nil && !g.inTitleScreen {
-				g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
-			} else if (g.buildMode == buildModeTrack || g.buildMode == buildModeRoad || g.buildMode == buildModeDock || g.buildMode == buildModeAirport) && g.consTab == 1 && !g.inTitleScreen {
-				g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked, or a dock
-			} else if g.buildMode == buildModeTrack && g.hoverTileX >= 0 && g.r != nil && g.r.ObjMgr != nil {
-				// onToolUpSingle + constructionLoop: the first click builds the
-				// selected piece at the tile (the head set there), as the Construct
-				// button would; refused, the error window shows and the rotation turns.
-				g.removeTrackGhost()
-				if p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation); ok {
-					c, _ := g.stationCmd()
-					if _, built := g.w.BuildTrackAtTile(c, g.hoverTileX, g.hoverTileY, int(p.ID), uint8(g.buildObjID)); built {
-						g.errorWin = nil // the loop's WindowManager::close(WindowType::error)
-						if g.consOneShot >= 0 {
-							g.consOneShot, g.consCurve = -1, 0
-						}
-					} else {
-						g.openTrackBuildError(c)
-					}
-				}
-			} else if g.buildMode == buildModeRoad && g.hoverTileX >= 0 {
-				// Road mode: clicking the map sets the construction head. PARTIAL:
-				// the first click building the road piece (as track's).
-				g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
-			}
-		}
-	}
-	if g.inMouseJustReleased(ebiten.MouseButtonLeft) && g.dropdown != nil && g.dropdown.Visible {
-		// the release of the press that opened a toolbar menu — after the press:
-		// a quick click brings both in one frame (ui.DropdownMenu
-		// HandleOpeningRelease): on its button, the highlighted item
-		if g.dropdown.HandleOpeningRelease(g.mouseX, g.mouseY) {
+}
+
+// gameClick sends a left press to what lies under it, topmost first: an open
+// dropdown, the windows (the draw order, reversed), then the HUD and the map.
+func (g *Game) gameClick() {
+	// Check dropdown first (it's on top: a window's dropdown lies over the
+	// window that opened it)
+	if g.dropdown != nil && g.dropdown.Visible {
+		if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
+			// Click outside dropdown - close it
 			g.dropdown = nil
 		}
+	} else if g.colourDropdown != nil && g.colourDropdown.Visible {
+		g.colourDropdown.HandleClick(g.mouseX, g.mouseY) // a colour picked, or closed
+		g.colourDropdown = nil
+	} else if g.companyFinances != nil && g.companyFinances.Contains(g.mouseX, g.mouseY) {
+		g.companyFinances.HandleClick(g.mouseX, g.mouseY) // drawn on top: clicked first
+	} else if g.companyList != nil && g.companyList.Contains(g.mouseX, g.mouseY) {
+		g.companyList.HandleClick(g.mouseX, g.mouseY)
+	} else if g.townWin != nil && g.townWin.Contains(g.mouseX, g.mouseY) { // the click goes to the window drawn on top (the draw order, reversed)
+		g.townWin.HandleClick(g.mouseX, g.mouseY)
+	} else if g.stationWin != nil && g.stationWin.Contains(g.mouseX, g.mouseY) {
+		g.stationWin.HandleClick(g.mouseX, g.mouseY)
+	} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
+		g.townList.HandleClick(g.mouseX, g.mouseY)
+	} else if g.vehicleWin != nil && g.vehicleWin.Contains(g.mouseX, g.mouseY) {
+		g.vehicleWin.HandleClick(g.mouseX, g.mouseY)
+	} else if g.buildVehicle != nil && g.buildVehicle.Contains(g.mouseX, g.mouseY) {
+		g.buildVehicle.HandleClick(g.mouseX, g.mouseY)
+	} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
+		g.options.HandleClick(g.mouseX, g.mouseY)
+	} else if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
+		g.browse.HandleClick(g.mouseX, g.mouseY)
+	} else if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
+		g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
+	} else if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
+		g.hudOrMapClick()
 	}
-	if g.inMouseJustReleased(ebiten.MouseButtonLeft) {
-		for i := range g.toolbar.Buttons {
-			g.toolbar.Buttons[i].Pressed = false
-		}
-		g.windowMgr.StopDrag()
-	}
+}
 
+// hudOrMapClick is a left press no window took: the bottom panels, the
+// toolbar, else the active tool on the map.
+func (g *Game) hudOrMapClick() {
+	if sp := uilayout.TimePanelSpeedAt(g.mouseX, g.mouseY, g.sw, g.sh); sp >= 0 && !g.inTitleScreen {
+		// TimePanel speed buttons: pause toggles; the others set the speed.
+		// clickable(TimePanel.cpp): pause_btn normal_speed_btn fast_forward_btn extra_fast_forward_btn
+		switch sp {
+		case 0:
+			g.isPaused = !g.isPaused
+		case 1:
+			g.setSpeed(1)
+		case 2:
+			g.setSpeed(2)
+		case 3:
+			g.setSpeed(4)
+		}
+	} else if (uilayout.InTimePanel(g.mouseX, g.mouseY, g.sw, g.sh) || uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh)) && !g.inTitleScreen {
+		// the bottom-bar windows swallow the click; the player panel's
+		// company value is companyValueMouseUp: the Company window's Finances
+		px, py := uilayout.PlayerPanelPos(g.sw, g.sh)
+		if r := uilayout.PlayerPanelFace; uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh) &&
+			inRect(g.mouseX, g.mouseY, px+r[0], py+r[1], r[2], r[3]) {
+			g.playerCompanyDropdown(px+r[0], py+r[1], r[2], r[3]) // playerMouseDown
+		}
+		if r := uilayout.PlayerPanelCompanyVal; uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh) &&
+			inRect(g.mouseX, g.mouseY, px+r[0], py+r[1], r[2], r[3]) {
+			company, _ := g.w.ControllingCompany()
+			g.openCompanyFinances(company)
+		}
+	} else if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
+		g.toolbar.Buttons[btnIdx].Pressed = true
+		g.handleToolbarButton(btnIdx)
+	} else if g.pickupOn && !g.inTitleScreen {
+		g.pickupToolDown(g.mouseX, g.mouseY) // the Vehicle window's placing tool
+	} else if g.routeTool && g.vehicleWin != nil && !g.inTitleScreen {
+		g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
+	} else if g.stationToolOn() {
+		g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked, or a dock
+	} else if g.buildMode == buildModeTrack && g.hoverTileX >= 0 && g.r != nil && g.r.ObjMgr != nil {
+		// onToolUpSingle + constructionLoop: the first click builds the
+		// selected piece at the tile (the head set there), as the Construct
+		// button would; refused, the error window shows and the rotation turns.
+		g.removeTrackGhost()
+		if p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation); ok {
+			c, _ := g.stationCmd()
+			if _, built := g.w.BuildTrackAtTile(c, g.hoverTileX, g.hoverTileY, int(p.ID), uint8(g.buildObjID)); built {
+				g.errorWin = nil // the loop's WindowManager::close(WindowType::error)
+				if g.consOneShot >= 0 {
+					g.consOneShot, g.consCurve = -1, 0
+				}
+			} else {
+				g.openTrackBuildError(c)
+			}
+		}
+	} else if g.buildMode == buildModeRoad && g.hoverTileX >= 0 {
+		// Road mode: clicking the map sets the construction head. PARTIAL:
+		// the first click building the road piece (as track's).
+		g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
+	}
+}
+
+// updateCamera moves the main view: right-drag, the pan and zoom keys, the
+// wheel (unless a window takes it), and edge scrolling.
+func (g *Game) updateCamera() {
 	// Right-click drag to pan the map.
 	// OpenLoco reference: src/OpenLoco/src/Input/MouseInput.cpp stateViewportRight()
 	// dragOffset is scaled by (1 << zoom) to convert screen pixels → world pixels.
@@ -479,44 +535,51 @@ func (g *Game) Update() error {
 			g.w.PanCamera(0, edgeSpeed)
 		}
 	}
+}
 
+// setSpeed runs the game at mult ticks per tick, unpaused.
+func (g *Game) setSpeed(mult int) {
+	g.speedMult, g.isPaused = mult, false
+}
+
+// updateSpeedKeys takes the game speed keys and F12's diagnostic crop.
+func (g *Game) updateSpeedKeys() {
 	// Speed controls: Space=pause, F3=×1, F4=×2, F5=×4, F6=×8
 	if g.inKeyJustPressed(ebiten.KeySpace) {
 		g.isPaused = !g.isPaused
 	}
 	if g.inKeyJustPressed(ebiten.KeyF3) {
-		g.speedMult = 1
-		g.isPaused = false
+		g.setSpeed(1)
 	}
 	if g.inKeyJustPressed(ebiten.KeyF4) {
-		g.speedMult = 2
-		g.isPaused = false
+		g.setSpeed(2)
 	}
 	if g.inKeyJustPressed(ebiten.KeyF5) {
-		g.speedMult = 4
-		g.isPaused = false
+		g.setSpeed(4)
 	}
 	if g.inKeyJustPressed(ebiten.KeyF6) {
-		g.speedMult = 8
-		g.isPaused = false
+		g.setSpeed(8)
 	}
 	if g.inKeyJustPressed(ebiten.KeyF12) {
 		g.diagPending = true
 		g.diagTileX = -1
 		g.diagTileY = -1
 	}
-	// Update world (skipped when paused; repeated per speed multiplier)
-	if n := g.w.GameTicks(g.mouseMoved()); !g.isPaused { // tickLogic(numUpdates × the speed)
-		for i := 0; i < n*g.speedMult; i++ {
-			g.w.Update()
-			g.w.TickVehicles() // gameplay: the ported vehicle tick
-			if g.inGame {
-				g.checkObjective()
+}
+
+// diagTrackShip is the shipsail / planefly diagnostics' every frame: the view
+// follows diagShip, its state logged.
+func (g *Game) diagTrackShip() {
+	if g.diagShip != 0 && g.w != nil {
+		if tr, err := g.w.Map.TrainOf(g.diagShip); err == nil {
+			g.diagShipFrames++
+			if g.diagFollow && g.diagShipFrames%15 == 0 {
+				g.w.CentreOnVehicle(g.diagShip)
+			}
+			if g.diagShipFrames%120 == 0 {
+				h, v2 := g.w.Map.Entities[tr.Head], g.w.Map.Entities[tr.Veh2]
+				log.Printf("[Diag] shipsail frame %d: ship at %d,%d yaw %d, %.0f mph, status %d, station %d", g.diagShipFrames, v2.PosX, v2.PosY, v2.SpriteYaw, float64(v2.CurrentSpeed)/65536, h.Status, h.StationID)
 			}
 		}
 	}
-	if g.saveMsgFrames > 0 {
-		g.saveMsgFrames--
-	}
-	return nil
 }

@@ -51,9 +51,7 @@ func (g *Game) routeWheelToWindows() bool {
 	}
 	for i := len(g.windowMgr.Windows) - 1; i >= 0; i-- {
 		w := g.windowMgr.Windows[i]
-		if w.Visible && w.OnScrollWheel != nil &&
-			g.mouseX >= w.X && g.mouseX < w.X+w.Width &&
-			g.mouseY >= w.Y && g.mouseY < w.Y+w.Height {
+		if w.Visible && w.OnScrollWheel != nil && inRect(g.mouseX, g.mouseY, w.X, w.Y, w.Width, w.Height) {
 			w.OnScrollWheel(dy)
 			return true
 		}
@@ -81,4 +79,9 @@ func cmdErrorText(c *sim.Cmd) string {
 		msg = ui.FormatErrorArgs(msg, c.ErrorArg)
 	}
 	return msg
+}
+
+// inRect reports the point (px, py) inside the w×h rectangle at (x, y).
+func inRect(px, py, x, y, w, h int) bool {
+	return px >= x && px < x+w && py >= y && py < y+h
 }

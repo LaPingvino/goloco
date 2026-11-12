@@ -264,12 +264,12 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 			}
 			return
 		}
-		if g.consTab == 1 && g.buildMode == buildModeAirport && rx >= 112 && rx < 112+24 && ry >= 104 && ry < 104+24 {
+		if g.consTab == 1 && g.buildMode == buildModeAirport && inRect(rx, ry, 112, 104, 24, 24) {
 			g.airportRotation = (g.airportRotation + 1) & 3 // widx::rotate: constructionRotation++, stationCost = failure
 			g.stationGhostCost = 0
 			return
 		}
-		if g.consTab == 1 && rx >= 3 && rx < 3+132 && ry >= 45 && ry < 45+12 {
+		if g.consTab == 1 && inRect(rx, ry, 3, 45, 132, 12) {
 			g.openConsDropdown(win.X, win.Y, f.SkinColour, true)
 			return
 		}
@@ -676,6 +676,18 @@ func (g *Game) consSelectedRoadID() int {
 
 func (g *Game) consIsRoad() bool { return g.buildMode == buildModeRoad }
 
+// consHasHead: the track and road windows build from a construction head (the
+// dock and airport windows have none).
+func (g *Game) consHasHead() bool {
+	return g.buildMode == buildModeTrack || g.buildMode == buildModeRoad
+}
+
+// stationToolOn: a construction window is on its Station tab (every mode has
+// one), so the map takes the station tool.
+func (g *Game) stationToolOn() bool {
+	return g.buildMode != buildModeNone && g.consTab == 1 && !g.inTitleScreen
+}
+
 func (g *Game) consSelectedID() int {
 	if g.consIsRoad() {
 		return g.consSelectedRoadID()
@@ -717,14 +729,7 @@ func (g *Game) openTrackBuildError(c *sim.Cmd) {
 	} else if id >= 0 && id < len(g.r.ObjMgr.TrackObjects) && g.r.ObjMgr.TrackObjects[id] != nil {
 		title = ui.FormatErrorArgs(title, g.r.ObjMgr.TrackObjects[id].Name)
 	}
-	msg := ""
-	if c.ErrorText != 0 {
-		msg = i18n.Label(c.ErrorText)
-		if c.ErrorArg != "" {
-			msg = ui.FormatErrorArgs(msg, c.ErrorArg)
-		}
-	}
-	g.openError(title, msg)
+	g.openError(title, cmdErrorText(c))
 }
 
 func (g *Game) consPlace(id int) {
