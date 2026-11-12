@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/scenario"
+import (
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // Crash effects: Effects/ExplosionEffect.cpp (ExplosionCloud),
 // VehicleCrashEffect.cpp (VehicleCrashParticle) and SplashEffect.cpp, made by
@@ -44,6 +47,11 @@ type Effect struct {
 	SpriteBase                  uint8
 	VelX, VelY, VelZ            int16
 	AccX, AccY, AccZ            int32
+	// An exhaust's (exhaust.go): objectId (steam slot, 0x80 the second frame
+	// run), stationaryProgress and windProgress; its frameNum is Frame.
+	ObjectID   uint8
+	Stationary uint8
+	Wind       uint16
 }
 
 // createEntityMisc is EntityManager::createEntityMisc: none past
@@ -118,8 +126,10 @@ func (m *Map) createSplash(x, y, z int32) {
 
 // updateEffect is the crash effects' update: ExplosionCloud (0x004407CC),
 // Splash (0x004407E0) and VehicleCrashParticle (0x004406A0).
-func (m *Map) updateEffect(id uint16, e *Effect) {
+func (m *Map) updateEffect(om *objects.ObjectManager, id uint16, e *Effect) {
 	switch e.SubType {
+	case effectTypeExhaust:
+		m.updateExhaust(om, id, e)
 	case effectTypeExplosionCloud:
 		e.Frame += 0x80
 		if e.Frame >= 0x1200 {

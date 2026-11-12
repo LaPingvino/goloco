@@ -121,7 +121,7 @@ func TestTrainCrash(t *testing.T) {
 	x0, y0 := m.Entities[bogie].PosX, m.Entities[bogie].PosY
 	for range 400 {
 		m.updateTrain(a, om)
-		m.UpdateEffects(0)
+		m.UpdateEffects(om, 0)
 	}
 	if len(m.Effects) != 0 || m.EntityLists.Counts[EntityListMisc] != misc {
 		t.Errorf("%d effects outlived 400 ticks (misc %d, was %d)", len(m.Effects), m.EntityLists.Counts[EntityListMisc], misc)

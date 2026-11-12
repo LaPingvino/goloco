@@ -75,3 +75,7 @@ func ComputeXYVector(magnitude int32, yaw uint8) (x, y int32) {
 	v := YawToDirectionVector[yaw&63]
 	return v[0] * magnitude / 256, v[1] * magnitude / 256
 }
+
+// PitchHorizontalFactor is kPitchHorizontalFactor (0x00503B50): −sin(pitch)·256
+// per Pitch; computeXYMagnitude(height, pitch) is factor · height / 256.
+var PitchHorizontalFactor = [13]int16{0, -26, -52, -75, -98, 26, 52, 75, 98, -44, 44, -84, 84}

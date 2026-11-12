@@ -183,3 +183,7 @@ func ParseTrainStationObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loade
 
 	return obj, nil
 }
+
+// TrainStationFlagNoCanopy is TrainStationFlags::noCanopy (recolourable:
+// layout_gen.go).
+const TrainStationFlagNoCanopy = 1 << 1
