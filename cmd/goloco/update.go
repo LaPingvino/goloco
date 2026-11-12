@@ -210,6 +210,9 @@ func (g *Game) updateToolCancel() {
 	if g.routeTool && !g.pickupOn && g.inKeyJustPressed(ebiten.KeyEscape) {
 		g.routeTool = false
 	}
+	if g.industryToolOn() && g.inKeyJustPressed(ebiten.KeyEscape) { // toolCancel → onToolAbort
+		g.industryToolAbort()
+	}
 	// Escape cancels the pickup tool (pickupToolAbort: no ghost to remove yet).
 	if g.pickupOn && g.inKeyJustPressed(ebiten.KeyEscape) {
 		head := g.pickupHead
@@ -292,6 +295,13 @@ func (g *Game) updateHeld() {
 	}
 	if g.browse != nil { // the load/save list's thumb too
 		g.browse.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
+	}
+	if g.industryToolOn() && !g.inTitleScreen { // the Fund New Industries tool: its ghost under the cursor
+		if g.overWindow(g.mouseX, g.mouseY) {
+			g.removeIndustryGhost()
+		} else {
+			g.industryToolUpdate(g.mouseX, g.mouseY)
+		}
 	}
 	if g.pickupOn && !g.inTitleScreen { // pickupToolUpdate: the ghost under the cursor
 		if g.overWindow(g.mouseX, g.mouseY) {
@@ -418,6 +428,8 @@ func (g *Game) hudOrMapClick() {
 	} else if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
 		g.toolbar.Buttons[btnIdx].Pressed = true
 		g.handleToolbarButton(btnIdx)
+	} else if g.industryToolOn() && !g.inTitleScreen {
+		g.industryToolDown(g.mouseX, g.mouseY) // the Fund New Industries tool
 	} else if g.pickupOn && !g.inTitleScreen {
 		g.pickupToolDown(g.mouseX, g.mouseY) // the Vehicle window's placing tool
 	} else if g.routeTool && g.vehicleWin != nil && !g.inTitleScreen {

@@ -159,6 +159,11 @@ func NewIndustryGrid(sw int, choices []NewIndustryChoice, selected int, titleCol
 			return
 		}
 		c := choices[sel]
+		if w.PlacementCost != nil { // the ghost's placement cost, unless it failed
+			if cost, ok := w.PlacementCost(); ok {
+				c.Cost = cost
+			}
+		}
 		// build_cost "{COLOUR WINDOW_2}Cost: {COLOUR BLACK}{CURRENCY32}", right-aligned at width − 19
 		sec, _ := g1.GetPaletteMap(int(w.Colour))
 		label, _, _ := strings.Cut(i18n.Label(i18n.BuildCost), "{COLOUR BLACK}")
