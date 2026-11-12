@@ -44,73 +44,90 @@ const (
 // data), the open windows, and the tools' state. w and r are set once by
 // NewGame and never nil.
 type Game struct {
-	diagConsDone                   bool
-	noEdgeScrolling                bool // Options > Controls: edge scrolling off (Config::edgeScrolling)
-	w                              *world.World
-	titleWorld                     *world.World // preserved title-screen world; restored on Quit to Menu
-	r                              *render.Renderer
-	toolbar                        *ui.Toolbar
-	windowMgr                      *ui.SimpleWindowManager
-	audioMgr                       *audio.Manager
-	scenarioSelect                 *ui.ScenarioSelectWindow // the New Game window when open
-	diagNewGameDone                bool
-	browse                         *ui.PromptBrowseWindow    // the Load window when open
-	options                        *ui.OptionsWindow         // the Options window when open
-	townList                       *ui.TownListWindow        // the town list when open
-	buildVehicle                   *ui.BuildVehicleWindow    // the Build Vehicle window when open (5P.f)
-	companyFinances                *ui.CompanyFinancesWindow // the Company window's Finances tab when open (PL.1)
-	companyFinancesID              int
-	colourDropdown                 *ui.ColourDropdown        // Dropdown::showColour when open
-	companyList                    *ui.CompanyListWindow     // CompanyList when open
-	scenarioDetails                string                    // the started scenario's description (the Challenge tab; PARTIAL: a saved game's)
-	vehicleWin                     *ui.VehicleWindow         // the Vehicle window when open (5P.g)
-	diagMouse                      *[2]int                   // DIAGNOSTIC ONLY: the mouse held at a point (the roadghost diag's hover)
-	ghostWater                     sim.VehicleWaterPlacement // _ghostVehiclePos for a boat ghost (ghostProgress 0)
-	ghostAirStation                uint16                    // _ghostAirportStationId (0xFFFF none)
-	ghostAirNode                   uint8                     // _ghostAirportNode
-	diagShip                       uint16                    // DIAGNOSTIC ONLY: the shipsail diag's ship, logged as it goes
-	diagFollow                     bool                      // DIAGNOSTIC ONLY: keep the view on diagShip (planefly)
-	diagShipFrames                 int
-	buildVehDiagDone               bool
-	diagTownsDone                  bool
-	diagOptionsDone                bool
-	diagBrowseDone                 bool
-	titleSeq                       *title.Sequence
-	inGame                         bool // a scenario / save is loaded into gameplay
-	dropdown                       *ui.DropdownMenu
-	mouseX                         int
-	lastTickMouseX, lastTickMouseY int       // the cursor at the last GameTicks (mouseMoved)
-	showFPS                        bool      // Config::showFPS (drawFPS)
-	scale                          float64   // Config::scaleFactor: the game drawn at window ÷ scale, scaled up
-	fpsRef                         time.Time // FPSCounter's _referenceTime
-	fpsFrames                      int
-	fpsCurrent                     float64
-	mouseY                         int
-	dataDir                        string
-	inTitleScreen                  bool
-	musicEnabled                   bool   // whether music is on
-	currentScenarioPath            string // path of the currently loaded scenario/save
-	saveMsg                        string // transient "Game Saved!" status overlay
-	saveMsgFrames                  int    // frames remaining to show saveMsg
+	// The world, its renderer, sound.
+	w          *world.World
+	titleWorld *world.World // preserved title-screen world; restored on Quit to Menu
+	r          *render.Renderer
+	audioMgr   *audio.Manager
+	dataDir    string
 
-	// Current logical screen dimensions (updated by Layout each frame)
-	sw, sh int
+	// The screen and the mouse.
+	sw, sh                         int     // current logical screen dimensions (updated by Layout each frame)
+	scale                          float64 // Config::scaleFactor: the game drawn at window ÷ scale, scaled up
+	mouseX, mouseY                 int
+	lastTickMouseX, lastTickMouseY int  // the cursor at the last GameTicks (mouseMoved)
+	rightDragging                  bool // right-click drag pan state
+	dragLastX, dragLastY           int
+	windowFrame                    int // counts Updates: the windows' frameNo (onUpdate's frameNo += 1)
 
-	// Right-click drag pan state
-	rightDragging bool
-	dragLastX     int
-	dragLastY     int
+	// The title screen.
+	inTitleScreen bool
+	titleSeq      *title.Sequence
+	titleFrame    int    // title screen globe animation counter (incremented each frame)
+	titleTip      string // the hovered title button's tooltip (drawn last)
 
-	// Title screen globe animation counter (incremented each frame)
-	titleFrame  int
-	windowFrame int // counts Updates: the windows' frameNo (onUpdate's frameNo += 1)
+	// The running game.
+	inGame              bool   // a scenario / save is loaded into gameplay
+	currentScenarioPath string // path of the currently loaded scenario/save
+	scenarioDetails     string // the started scenario's description (the Challenge tab; PARTIAL: a saved game's)
+	objective           scenario.Objective
+	hasObjective        bool
+	gameWon             bool
+	progress            *progressFile
+	isPaused            bool   // speed controls
+	speedMult           int    // 1, 2, 4, or 8
+	saveMsg             string // transient "Game Saved!" status overlay
+	saveMsgFrames       int    // frames remaining to show saveMsg
 
-	// Speed controls
-	isPaused  bool
-	speedMult int // 1, 2, 4, or 8
+	// The toolbar and the windows, each nil unless open.
+	toolbar           *ui.Toolbar
+	lastPortOption    int // ToolbarTop's _lastPortOption: 0 airport, 1 dock
+	windowMgr         *ui.SimpleWindowManager
+	dropdown          *ui.DropdownMenu
+	colourDropdown    *ui.ColourDropdown        // Dropdown::showColour when open
+	scenarioSelect    *ui.ScenarioSelectWindow  // the New Game window when open
+	browse            *ui.PromptBrowseWindow    // the Load window when open
+	options           *ui.OptionsWindow         // the Options window when open
+	townList          *ui.TownListWindow        // the town list when open
+	townWin           *ui.TownWindow            // the Town window (TownWindow.cpp)
+	stationWin        *ui.StationWindow         // the Station window (StationWindow.cpp)
+	catchmentStation  int                       // _lastSelectedStation: whose catchment shows (−1 none)
+	buildVehicle      *ui.BuildVehicleWindow    // the Build Vehicle window when open (5P.f)
+	vehicleWin        *ui.VehicleWindow         // the Vehicle window when open (5P.g)
+	companyFinances   *ui.CompanyFinancesWindow // the Company window's Finances tab when open (PL.1)
+	companyFinancesID int
+	companyList       *ui.CompanyListWindow // CompanyList when open
+	prompt            *ui.PromptOkCancel    // an open confirmation (modal: it takes all input)
+	textInput         *ui.TextInputWindow   // an open text input (renaming); PARTIAL: takes all input, upstream's is not modal
+	errorWin          *ui.ErrorWindow       // WindowType::error (one at a time)
 
-	// Build mode (track/road placement)
-	buildMode   int    // buildModeNone / buildModeTrack / buildModeRoad
+	// The construction window (construction.go).
+	buildMode   int   // buildModeNone / Track / Road / Dock / Airport
+	buildObjID  int   // index into TrackObjects / RoadObjects
+	consTab     int   // construction window tab: 0 construction, 1 station, 2 signal, 3 overhead
+	consCurve   int   // construction curve selection: -4 (left large) … 0 … +4
+	consSlope   int   // construction slope selection: -2 (steep down) … 0 … +2
+	consOneShot int   // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
+	consBridge  int   // lastSelectedBridge (slot; -1 = the first available)
+	consSignal  int   // signal tab: lastSelectedSignal (slot; -1 = the first available)
+	consSigOne  bool  // signal tab: single direction chosen (isSignalBothDirections = 0)
+	consStation int   // station tab: lastSelectedStationType (slot; -1 = the first available)
+	consMods    uint8 // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
+	hoverTileX  int   // tile under cursor in build mode (-1 if invalid)
+	hoverTileY  int
+
+	// The Station tab's ghosts (stationtool.go).
+	stationGhost         *sim.TrainStationPlacement // the station tab's ghost (cState.stationGhost*), nil none
+	stationGhostCost     int32                      // cState.stationCost
+	stationGhostStation  int                        // cState.constructingStationId (-1 new)
+	stationGhostAccepted uint32                     // constructingStationAcceptedCargoTypes
+	stationGhostProduced uint32                     // constructingStationProducedCargoTypes
+	roadStationGhost     *sim.RoadStationPlacement  // the road stop ghost (stationGhostType bit 7)
+	dockGhost            *sim.PortPlacement         // the dock ghost (stationGhostType bit 14)
+	airportGhost         *sim.AirportPlacement      // the airport ghost (stationGhostType bit 15)
+	airportRotation      uint8                      // cState.constructionRotation in the airport window
+
+	// The Vehicle window's tools (vehicle_pickup.go, vehicle_route.go).
 	pickupOn    bool   // the Vehicle window's pickup (placing) tool is active
 	pickupHead  uint16 // the vehicle head it places
 	driverCheat bool   // SceneManager driverCheatEnabled (the Cheats window's; off)
@@ -119,51 +136,45 @@ type Game struct {
 	routeHead   uint16 // whose Route that selection is
 	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,
 	// _ghostTrackProgress; ghostProgress -1: none).
-	ghostPlace    sim.VehiclePlacement
-	ghostProgress int
-	diagLogged    bool // GOLOCO_DIAG_BUILDVEHICLE=place: the first placement logged
-	objective     scenario.Objective
-	hasObjective  bool
-	gameWon       bool
-	progress      *progressFile
+	ghostPlace      sim.VehiclePlacement
+	ghostProgress   int
+	ghostWater      sim.VehicleWaterPlacement // _ghostVehiclePos for a boat ghost (ghostProgress 0)
+	ghostAirStation uint16                    // _ghostAirportStationId (0xFFFF none)
+	ghostAirNode    uint8                     // _ghostAirportNode
 
-	consCurve         int    // construction curve selection: -4 (left large) … 0 … +4
-	consTab           int    // construction window tab: 0 construction, 2 signal (1 station places directly)
-	consSigOne        bool   // signal tab: single direction chosen (isSignalBothDirections = 0)
+	// Options (options.go; Config).
+	noEdgeScrolling   bool   // Options > Controls: edge scrolling off (Config::edgeScrolling)
+	musicEnabled      bool   // whether music is on
+	showFPS           bool   // Config::showFPS (drawFPS)
+	frameLimit        int    // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
+	fsResolution      [2]int // Config display.fullscreenResolution
 	preferredCurrency string // Config::preferredCurrency (DAT name; PARTIAL: not saved)
 	// preferredCurrencyFlags are Config usePreferredCurrencyForNewGames and
 	// usePreferredCurrencyAlways (default off).
-	vehDiagDone            bool   // GOLOCO_DIAG_VEHLIST opened
-	fsResolution           [2]int // Config display.fullscreenResolution
 	preferredCurrencyFlags [2]bool
-	frameLimit             int                        // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
-	prompt                 *ui.PromptOkCancel         // an open confirmation (modal: it takes all input)
-	textInput              *ui.TextInputWindow        // an open text input (renaming); PARTIAL: takes all input, upstream's is not modal
-	consBridge             int                        // lastSelectedBridge (slot; -1 = the first available)
-	consOneShot            int                        // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
-	consSignal             int                        // signal tab: lastSelectedSignal (slot; -1 = the first available)
-	consStation            int                        // station tab: lastSelectedStationType (slot; -1 = the first available)
-	stationGhost           *sim.TrainStationPlacement // the station tab's ghost (cState.stationGhost*), nil none
-	stationGhostCost       int32                      // cState.stationCost
-	roadStationGhost       *sim.RoadStationPlacement  // the road stop ghost (stationGhostType bit 7)
-	dockGhost              *sim.PortPlacement         // the dock ghost (stationGhostType bit 14)
-	townWin                *ui.TownWindow             // the Town window (TownWindow.cpp)
-	stationWin             *ui.StationWindow          // the Station window (StationWindow.cpp)
-	catchmentStation       int                        // _lastSelectedStation: whose catchment shows (−1 none)
-	diagMoney              bool                       // DIAGNOSTIC ONLY: keep a money popup alive (moneyeffect)
-	airportGhost           *sim.AirportPlacement      // the airport ghost (stationGhostType bit 15)
-	airportRotation        uint8                      // cState.constructionRotation in the airport window
-	lastPortOption         int                        // ToolbarTop's _lastPortOption: 0 airport, 1 dock
-	errorWin               *ui.ErrorWindow            // WindowType::error (one at a time)
-	stationGhostStation    int                        // cState.constructingStationId (-1 new)
-	stationGhostAccepted   uint32                     // constructingStationAcceptedCargoTypes
-	stationGhostProduced   uint32                     // constructingStationProducedCargoTypes
-	diagHoldGhost          bool                       // DIAGNOSTIC ONLY: the stationghost diag keeps its ghost
-	consMods               uint8                      // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
-	consSlope              int                        // construction slope selection: -2 (steep down) … 0 … +2
-	buildObjID             int                        // index into TrackObjects / RoadObjects
-	hoverTileX             int                        // tile under cursor in build mode (-1 if invalid)
-	hoverTileY             int
+
+	// The FPS counter (drawFPS).
+	fpsRef     time.Time // FPSCounter's _referenceTime
+	fpsFrames  int
+	fpsCurrent float64
+
+	// Background sprite prewarm: decode+pack a few sprites per frame within a
+	// small time budget, so the game shows at once instead of after a blocking
+	// preload of every sprite (11,057 for the title).
+	prewarmIDs       []int
+	prewarmPos       int
+	firstFrameLogged bool // the start-to-first-world-frame time has been logged
+
+	// scripted input playback (GOLOCO_SCRIPT)
+	script *inputScript
+
+	// --shots mode: periodic full-frame captures (shot_NN.png), then quit.
+	shotsEvery time.Duration // wall-clock interval between captures
+	shotsLeft  int
+	shotsLast  time.Time
+	shotsN     int
+	// quitAfterSave: exit cleanly once the map save has completed.
+	quitAfterSave bool
 
 	// Diagnostic crop: when set, save a 480×360 PNG centred on diagTileX/Y after the next Draw.
 	// diagQuit=true means quit afterwards (CLI --diag mode); false keeps the game running (F12).
@@ -172,24 +183,22 @@ type Game struct {
 	diagTileX   int
 	diagTileY   int
 
-	// scripted input playback (GOLOCO_SCRIPT)
-	script *inputScript
-
-	// --shots mode: periodic full-frame captures (shot_NN.png), then quit.
-	shotsEvery time.Duration // wall-clock interval between captures
-	titleTip   string        // the hovered title button's tooltip (drawn last)
-	shotsLeft  int
-	shotsLast  time.Time
-	shotsN     int
-	// quitAfterSave: exit cleanly once the map save has completed.
-	quitAfterSave bool
-
-	// Background sprite prewarm: decode+pack a few sprites per frame within a
-	// small time budget, so the game shows at once instead of after a blocking
-	// preload of every sprite (11,057 for the title).
-	prewarmIDs       []int
-	prewarmPos       int
-	firstFrameLogged bool // the start-to-first-world-frame time has been logged
+	// The GOLOCO_DIAG_* switches' state (diag*.go): each "Done" is a switch
+	// that has run.
+	diagConsDone     bool
+	diagNewGameDone  bool
+	diagTownsDone    bool
+	diagOptionsDone  bool
+	diagBrowseDone   bool
+	buildVehDiagDone bool
+	vehDiagDone      bool    // GOLOCO_DIAG_VEHLIST opened
+	diagLogged       bool    // GOLOCO_DIAG_BUILDVEHICLE=place: the first placement logged
+	diagMouse        *[2]int // DIAGNOSTIC ONLY: the mouse held at a point (the roadghost diag's hover)
+	diagShip         uint16  // DIAGNOSTIC ONLY: the shipsail diag's ship, logged as it goes
+	diagFollow       bool    // DIAGNOSTIC ONLY: keep the view on diagShip (planefly)
+	diagShipFrames   int
+	diagMoney        bool // DIAGNOSTIC ONLY: keep a money popup alive (moneyeffect)
+	diagHoldGhost    bool // DIAGNOSTIC ONLY: the stationghost diag keeps its ghost
 }
 
 func NewGame() *Game {
