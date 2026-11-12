@@ -143,8 +143,8 @@ func (g *Game) buildNewOpen(headID uint16, x, y, w, h int) {
 // buildNewImage is Details::prepareDraw's buildNew image: the interface
 // skin's build_additional_<vehicle type> (411 + type).
 func (g *Game) buildNewImage(h *scenario.VehicleEntity) int {
-	if g.r == nil || g.r.ObjMgr == nil || g.r.ObjMgr.InterfaceSkin == nil || h.VehicleType > 5 {
+	if g.skin() == nil || h.VehicleType > 5 {
 		return 0
 	}
-	return int(g.r.ObjMgr.InterfaceSkin.ImageOffset) + 411 + int(h.VehicleType)
+	return int(g.skin().ImageOffset) + 411 + int(h.VehicleType)
 }

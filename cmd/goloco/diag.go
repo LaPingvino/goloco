@@ -88,15 +88,15 @@ func (g *Game) drawInlineDiag(screen *ebiten.Image) {
 		ui.DrawTextBold(screen, "Bitmap text", 20, 20, color.Black)
 		ui.DrawTextBold(screen, "TTF 日本語 text", 120, 20, color.Black)
 	}
-	if os.Getenv("GOLOCO_DIAG_INLINE") == "" || g.objMgr == nil {
+	if os.Getenv("GOLOCO_DIAG_INLINE") == "" || g.r.ObjMgr == nil {
 		return
 	}
 	var vs []*objects.VehicleObject
 	var offs []int
-	for _, v := range g.objMgr.Vehicles {
+	for _, v := range g.r.ObjMgr.Vehicles {
 		if v != nil && v.ImageOffset != 0 && (v.Mode == objects.TransportModeRail || v.Mode == objects.TransportModeRoad) && len(vs) < 10 {
 			vs = append(vs, v)
-			offs = append(offs, g.objMgr.VehicleYDisplayOffset(v))
+			offs = append(offs, g.r.ObjMgr.VehicleYDisplayOffset(v))
 		}
 	}
 	log.Printf("[diag] inline: %d vehicle types", len(vs))
@@ -305,14 +305,14 @@ func (g *Game) diagOpenWindows() {
 func (g *Game) diagDrawPanels(screen *ebiten.Image) {
 	if os.Getenv("GOLOCO_DIAG_TIMEPANEL") != "" {
 		st := ui.TimePanelState{Date: uilayout.DateDMY(1, "January", 1950), Speed: 1}
-		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-			st.SkinColour = g.r.ObjMgr.InterfaceSkin.TimeToolbarColour
-			st.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
+		if sk := g.skin(); sk != nil {
+			st.SkinColour = sk.TimeToolbarColour
+			st.SkinImage = int(sk.ImageOffset)
 		}
 		ui.DrawTimePanel(screen, st)
 		ps := ui.PlayerPanelState{Cash: 2500000}
-		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-			ps.SkinColour = g.r.ObjMgr.InterfaceSkin.PlayerInfoToolbarColour
+		if sk := g.skin(); sk != nil {
+			ps.SkinColour = sk.PlayerInfoToolbarColour
 		}
 		g.playerPanelCompany(&ps)
 		ui.DrawPlayerPanel(screen, ps)
@@ -321,8 +321,8 @@ func (g *Game) diagDrawPanels(screen *ebiten.Image) {
 		// Diagnostic: an upstream-style window frame + caption (FrameWidget,
 		// CaptionWidget ports) for headless shots; the colour is the skin's window colour.
 		var c uint8 = 1
-		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-			c = g.r.ObjMgr.InterfaceSkin.WindowColour
+		if sk := g.skin(); sk != nil {
+			c = sk.WindowColour
 		}
 		ui.DrawWindowFrame(screen, 200, 60, 360, 220, c, false)
 		ui.DrawWindowCaption(screen, 201, 61, 358, "Select Scenario")
@@ -354,8 +354,8 @@ func (g *Game) diagDrawPanels(screen *ebiten.Image) {
 	if os.Getenv("GOLOCO_DIAG_TOOLTIP") != "" {
 		// Diagnostic: a tooltip over the frame (ToolTip.cpp port), for headless shots.
 		var c uint8
-		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-			c = g.r.ObjMgr.InterfaceSkin.TooltipColour
+		if sk := g.skin(); sk != nil {
+			c = sk.TooltipColour
 		}
 		ui.DrawTooltip(screen, "Change viewport settings", 380, 120, c)
 		ui.DrawTooltip(screen, "Build tracks, stations, signals and train depots, and place them on the map", 560, 240, c)
@@ -367,8 +367,8 @@ func (g *Game) diagDrawPanels(screen *ebiten.Image) {
 			{Text: "Screenshot"}, {Separator: true}, {Text: "About", Disabled: true}, {Text: "Options"}, {Separator: true},
 			{Text: "Quit to Menu"}, {Text: "Quit to Desktop"}})
 		d.Highlighted = 1
-		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-			d.SetToolbarColour(g.r.ObjMgr.InterfaceSkin.TopToolbarPrimaryColour)
+		if sk := g.skin(); sk != nil {
+			d.SetToolbarColour(sk.TopToolbarPrimaryColour)
 		}
 		d.Draw(screen)
 	}

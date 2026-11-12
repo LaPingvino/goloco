@@ -19,8 +19,8 @@ import (
 func (g *Game) openOptionsWindow() {
 	// The ported Options window, Audio tab (pkg/ui/options.go).
 	var tc, oc uint8 = 0, 1
-	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-		tc, oc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowOptionsColour
+	if sk := g.skin(); sk != nil {
+		tc, oc = sk.WindowTitlebarColour, sk.WindowOptionsColour
 	}
 	w := ui.NewOptions(g.sw, g.sh, tc, oc)
 	w.TitleMusic = g.musicEnabled
@@ -61,17 +61,17 @@ func (g *Game) openOptionsWindow() {
 	// Regional tab: the scenario's currency object, the preferred one
 	// (Config default CURRDOLL), and title mode.
 	w.TitleMode = g.inTitleScreen
-	if g.objMgr != nil {
-		if c := g.objMgr.GetCurrencyObject(g.objMgr.CurrencySlot); c != nil {
+	if g.r.ObjMgr != nil {
+		if c := g.r.ObjMgr.GetCurrencyObject(g.r.ObjMgr.CurrencySlot); c != nil {
 			w.CurrencyName = c.Name
 		}
 		if g.preferredCurrency == "" {
 			g.preferredCurrency = "CURRDOLL" // Config default
 		}
-		if c := g.objMgr.GetCurrencyObject(g.preferredCurrency); c != nil {
+		if c := g.r.ObjMgr.GetCurrencyObject(g.preferredCurrency); c != nil {
 			w.PreferredCurrencyName = c.Name
 		}
-		w.Currencies = g.objMgr.AvailableCurrencies()
+		w.Currencies = g.r.ObjMgr.AvailableCurrencies()
 		langs := i18n.Available()
 		for i, l := range langs {
 			w.Languages = append(w.Languages, l.NativeName)
@@ -91,7 +91,7 @@ func (g *Game) openOptionsWindow() {
 		w.OnPreferredCurrency = func(dat string) { // preferredCurrencyDropdown
 			g.preferredCurrency = dat
 			g.loadPreferredCurrencyAlways()
-			if c := g.objMgr.GetCurrencyObject(g.objMgr.CurrencySlot); c != nil {
+			if c := g.r.ObjMgr.GetCurrencyObject(g.r.ObjMgr.CurrencySlot); c != nil {
 				w.CurrencyName = c.Name
 			}
 		}
@@ -100,12 +100,12 @@ func (g *Game) openOptionsWindow() {
 			g.preferredCurrencyFlags[i] = v
 			if i == 1 {
 				g.loadPreferredCurrencyAlways()
-				if c := g.objMgr.GetCurrencyObject(g.objMgr.CurrencySlot); c != nil {
+				if c := g.r.ObjMgr.GetCurrencyObject(g.r.ObjMgr.CurrencySlot); c != nil {
 					w.CurrencyName = c.Name
 				}
 			}
 		}
-		w.OnCurrency = func(dat string) { useCurrency(g.objMgr, dat) } // currencyDropdown
+		w.OnCurrency = func(dat string) { useCurrency(g.r.ObjMgr, dat) } // currencyDropdown
 	}
 	// Controls tab: Config::edgeScrolling (default on). zoomToCursor and
 	// invertRightMouseViewPan are kept in the window only: goloco has neither yet.
@@ -158,13 +158,13 @@ func useCurrency(om *objects.ObjectManager, dat string) {
 // currency becomes the loaded one, unless it already is or it can't be
 // loaded (then the old one stays).
 func (g *Game) loadPreferredCurrency() {
-	if g.objMgr == nil || g.preferredCurrency == "" || g.preferredCurrency == g.objMgr.CurrencySlot {
+	if g.r.ObjMgr == nil || g.preferredCurrency == "" || g.preferredCurrency == g.r.ObjMgr.CurrencySlot {
 		return
 	}
-	if g.objMgr.GetCurrencyObject(g.preferredCurrency) == nil {
+	if g.r.ObjMgr.GetCurrencyObject(g.preferredCurrency) == nil {
 		return
 	}
-	useCurrency(g.objMgr, g.preferredCurrency)
+	useCurrency(g.r.ObjMgr, g.preferredCurrency)
 }
 
 // loadPreferredCurrencyAlways: only with usePreferredCurrencyAlways.

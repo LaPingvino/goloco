@@ -43,25 +43,47 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		screen.Fill(color.RGBA{0, 0, 0, 255})
 	}
 
-	// Full-map PNG save: skip normal game draw; show progress and render one chunk.
-	if done, total := g.w.MapSaveProgress(); total > 0 {
-		pct := float64(done) / float64(total)
-		sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
-		fillRect(screen, 0, 0, float64(sw), float64(sh), color.RGBA{20, 20, 30, 220})
-		barX, barY, barW, barH := float64(sw/2-200), float64(sh/2-12), 400.0, 24.0
-		fillRect(screen, barX, barY, barW, barH, color.RGBA{60, 60, 80, 255})
-		fillRect(screen, barX, barY, barW*pct, barH, color.RGBA{80, 180, 80, 255})
-		label := fmt.Sprintf("Saving full map... %d/%d (%.0f%%)", done, total, pct*100)
-		ui.DrawText(screen, label, sw/2-100, sh/2-8, color.RGBA{255, 255, 255, 255})
-		if g.w.StepMapSave() {
-			if err := g.w.FinishMapSave(); err != nil {
-				log.Printf("FinishMapSave: %v", err)
-			}
-			g.quitAfterSave = true
-		}
+	if g.drawMapSave(screen) {
 		return
 	}
+	g.drawWorld(screen)
+	if g.inTitleScreen {
+		g.drawTitleScreen(screen)
+		return
+	}
+	g.drawGameWindows(screen)
+	g.drawOverlays(screen)
+}
 
+// drawMapSave is the full-map PNG save: while one runs it takes the frame —
+// its progress, and one more chunk rendered — and reports that it did.
+func (g *Game) drawMapSave(screen *ebiten.Image) bool {
+	done, total := g.w.MapSaveProgress()
+	if total <= 0 {
+		return false
+	}
+	pct := float64(done) / float64(total)
+	sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
+	fillRect(screen, 0, 0, float64(sw), float64(sh), color.RGBA{20, 20, 30, 220})
+	barX, barY, barW, barH := float64(sw/2-200), float64(sh/2-12), 400.0, 24.0
+	fillRect(screen, barX, barY, barW, barH, color.RGBA{60, 60, 80, 255})
+	fillRect(screen, barX, barY, barW*pct, barH, color.RGBA{80, 180, 80, 255})
+	label := fmt.Sprintf("Saving full map... %d/%d (%.0f%%)", done, total, pct*100)
+	ui.DrawText(screen, label, sw/2-100, sh/2-8, color.RGBA{255, 255, 255, 255})
+	if g.w.StepMapSave() {
+		if err := g.w.FinishMapSave(); err != nil {
+			log.Printf("FinishMapSave: %v", err)
+		}
+		g.quitAfterSave = true
+	}
+	return true
+}
+
+// drawWorld draws the map view, and saves the diagnostic crop when one is
+// pending. The build mode's ghost preview is part of it: track and road chain
+// from the construction head, the real ghost at the head painted in the world
+// (UpdateHeadTrackGhost / UpdateHeadRoadGhost) — goloco's overlays are gone.
+func (g *Game) drawWorld(screen *ebiten.Image) {
 	// If a diagnostic crop is pending for a specific tile, move the camera
 	// here (after Update has run) so the title-sequence camera override
 	// doesn't undo the positioning we set earlier.
@@ -89,48 +111,47 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			g.quitAfterSave = true
 		}
 	}
+}
 
-	// Ghost preview for build mode (both chain from the construction head).
-	// Track and road: the real ghost at the head, painted in the world
-	// (UpdateHeadTrackGhost / UpdateHeadRoadGhost) — goloco's overlays are gone.
-
-	if g.inTitleScreen {
-		g.drawTitleMenu(screen)
-		g.windowMgr.Draw(screen, g.r) // allow windows (e.g. Load Game) on title screen
-		g.windowMgr.MarkForeign()
-		if g.scenarioSelect != nil {
-			g.scenarioSelect.Draw(screen)
-		}
-		if g.browse != nil {
-			g.browse.Draw(screen)
-		}
-		if g.options != nil {
-			g.options.Draw(screen)
-		}
-		if g.townList != nil {
-			g.townList.Draw(screen)
-		}
-		if g.dropdown != nil && g.dropdown.Visible { // a window's dropdown, on top
-			g.dropdown.Draw(screen)
-		}
-		if g.prompt != nil { // a confirmation, on top of everything
-			g.prompt.Draw(screen)
-		}
-		// A title button's tooltip (ToolTip.cpp), when no window is over it.
-		// PARTIAL: shown at once, as goloco's other tooltips (upstream waits).
-		if g.titleTip != "" && g.options == nil && g.browse == nil && g.scenarioSelect == nil && g.prompt == nil &&
-			(g.dropdown == nil || !g.dropdown.Visible) {
-			var c uint8
-			if g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-				c = g.r.ObjMgr.InterfaceSkin.TooltipColour
-			}
-			ui.DrawTooltip(screen, g.titleTip, g.mouseX, g.mouseY, c)
-		}
-		g.drawInlineDiag(screen)
-		return
+// drawTitleScreen draws the title menu and the windows that open over it.
+func (g *Game) drawTitleScreen(screen *ebiten.Image) {
+	g.drawTitleMenu(screen)
+	g.windowMgr.Draw(screen, g.r) // allow windows (e.g. Load Game) on title screen
+	g.windowMgr.MarkForeign()
+	if g.scenarioSelect != nil {
+		g.scenarioSelect.Draw(screen)
 	}
+	if g.browse != nil {
+		g.browse.Draw(screen)
+	}
+	if g.options != nil {
+		g.options.Draw(screen)
+	}
+	if g.townList != nil {
+		g.townList.Draw(screen)
+	}
+	if g.dropdown != nil && g.dropdown.Visible { // a window's dropdown, on top
+		g.dropdown.Draw(screen)
+	}
+	if g.prompt != nil { // a confirmation, on top of everything
+		g.prompt.Draw(screen)
+	}
+	// A title button's tooltip (ToolTip.cpp), when no window is over it.
+	// PARTIAL: shown at once, as goloco's other tooltips (upstream waits).
+	if g.titleTip != "" && g.options == nil && g.browse == nil && g.scenarioSelect == nil && g.prompt == nil &&
+		(g.dropdown == nil || !g.dropdown.Visible) {
+		var c uint8
+		if sk := g.skin(); sk != nil {
+			c = sk.TooltipColour
+		}
+		ui.DrawTooltip(screen, g.titleTip, g.mouseX, g.mouseY, c)
+	}
+	g.drawInlineDiag(screen)
+}
 
-	// --- Gameplay HUD ---
+// drawGameWindows draws the toolbar and the game's windows, bottom to top
+// (gameClick tests them in the reverse order), the menus and modals last.
+func (g *Game) drawGameWindows(screen *ebiten.Image) {
 	g.toolbar.Draw(screen, g.r)
 	ui.MarkForeign(image.Rect(g.toolbar.X, g.toolbar.Y, g.toolbar.X+g.toolbar.Width, g.toolbar.Y+g.toolbar.Height))
 	g.windowMgr.Draw(screen, g.r)
@@ -154,8 +175,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			}
 		}
 		g.vehicleWin.FrameNo = g.windowFrame
-		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-			g.vehicleWin.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
+		if sk := g.skin(); sk != nil {
+			g.vehicleWin.SkinImage = int(sk.ImageOffset)
 		}
 		g.vehicleWin.Draw(screen)
 		g.vehicleWin.DrawDrag(screen) // DragVehiclePart: stickToFront
@@ -173,8 +194,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.companyList != nil {
 		g.companyList.FrameNo = g.windowFrame
 		g.companyList.CurrentMonths = int(g.w.Map.CurrentYear)*12 + int(g.w.Map.CurrentMonth)
-		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-			g.companyList.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
+		if sk := g.skin(); sk != nil {
+			g.companyList.SkinImage = int(sk.ImageOffset)
 		}
 		g.companyList.Draw(screen)
 	}
@@ -190,8 +211,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.companyFinances.Details = g.companyDetails(g.companyFinancesID)
 		g.companyFinances.Colours = g.companyColours(g.companyFinancesID)
 		g.companyFinances.FrameNo = g.windowFrame
-		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-			g.companyFinances.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
+		if sk := g.skin(); sk != nil {
+			g.companyFinances.SkinImage = int(sk.ImageOffset)
 		}
 		g.companyFinances.Draw(screen)
 	}
@@ -216,7 +237,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			g.errorWin.Draw(screen)
 		}
 	}
+}
 
+// drawOverlays draws the bottom panels and what lies over the game: the
+// objective banner, the save message.
+func (g *Game) drawOverlays(screen *ebiten.Image) {
 	statusY := g.sh - 20
 	// Bottom bar: the ported PlayerInfoPanel (left) and TimePanel (right).
 	g.drawPlayerPanel(screen)
@@ -256,8 +281,8 @@ func (g *Game) drawPlayerPanel(screen *ebiten.Image) {
 	if cash, ok := g.w.ControllingCompanyCash(); ok {
 		st.Cash = cash
 	}
-	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-		st.SkinColour = g.r.ObjMgr.InterfaceSkin.PlayerInfoToolbarColour
+	if sk := g.skin(); sk != nil {
+		st.SkinColour = sk.PlayerInfoToolbarColour
 	}
 	g.playerPanelCompany(&st)
 	wx, wy := uilayout.PlayerPanelPos(g.sw, g.sh)
@@ -307,9 +332,9 @@ func (g *Game) drawTimePanel(screen *ebiten.Image) {
 	default:
 		st.Speed = 3
 	}
-	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-		st.SkinColour = g.r.ObjMgr.InterfaceSkin.TimeToolbarColour
-		st.SkinImage = int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
+	if sk := g.skin(); sk != nil {
+		st.SkinColour = sk.TimeToolbarColour
+		st.SkinImage = int(sk.ImageOffset)
 	}
 	wx, wy := uilayout.TimePanelPos(g.sw, g.sh)
 	d := uilayout.TimePanelDate
@@ -333,8 +358,8 @@ func (g *Game) drawTimePanel(screen *ebiten.Image) {
 			}
 		}
 		var c uint8
-		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-			c = g.r.ObjMgr.InterfaceSkin.TooltipColour
+		if sk := g.skin(); sk != nil {
+			c = sk.TooltipColour
 		}
 		ui.DrawTooltip(screen, tip, g.mouseX, g.mouseY, c)
 	}

@@ -26,16 +26,16 @@ func (g *Game) openStationWindow(id int) {
 		return
 	}
 	var tc, wc uint8 = 0, 1
-	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowColour
+	if sk := g.skin(); sk != nil {
+		tc, wc = sk.WindowTitlebarColour, sk.WindowColour
 	}
 	if info.Owner >= 0 && info.Owner < len(g.w.CompanyColours) {
 		tc = g.w.CompanyColours[info.Owner]
 	}
 	w := ui.NewStationWindow(g.sw, g.sh, info.Name, info.Status, tc, wc)
 	w.Cargo, w.Accepted = g.stationCargoLines(id)
-	if om := g.r.ObjMgr; om != nil && om.InterfaceSkin != nil {
-		w.SkinImage = int(om.InterfaceSkin.ImageOffset)
+	if sk := g.skin(); sk != nil {
+		w.SkinImage = int(sk.ImageOffset)
 	}
 	if info.Owner >= 0 && info.Owner < len(g.w.CompanyColours) {
 		w.CompanyColour = g.w.CompanyColours[info.Owner]

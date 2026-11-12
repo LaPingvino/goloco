@@ -46,8 +46,8 @@ func (g *Game) loadScenario(filePath string) error {
 	g.hasObjective = sc.HasObjective
 	g.gameWon = false
 
-	if g.objMgr != nil {
-		reorderScenarioObjects(g.objMgr, sc)
+	if g.r.ObjMgr != nil {
+		reorderScenarioObjects(g.r.ObjMgr, sc)
 		// Scenario::start (a .SC5: a new game) runs loadPreferredCurrencyNewGame;
 		// loading a saved game (S5 import) runs loadPreferredCurrencyAlways.
 		if strings.EqualFold(filepath.Ext(filePath), ".sc5") {
@@ -61,7 +61,7 @@ func (g *Game) loadScenario(filePath string) error {
 	oldRng := g.w.Map.Rng1 // loadAndStart: the rng before the load
 	gameW := world.NewWorld(g.r)
 	gameW.LoadFromScenario(sc)
-	if strings.EqualFold(filepath.Ext(filePath), ".sc5") && g.objMgr != nil {
+	if strings.EqualFold(filepath.Ext(filePath), ".sc5") && g.r.ObjMgr != nil {
 		// Scenario::loadAndStart: a new rng seed from the time and the old
 		// rng, then Scenario::start (pkg/sim StartScenario).
 		gameW.Map.Rng1 = *core.NewPrngSeed(uint32(time.Now().UnixMilli())^oldRng.Srand0(), oldRng.Srand1())
@@ -86,7 +86,7 @@ func (g *Game) loadScenario(filePath string) error {
 		if g.script != nil && g.script.seed != nil {
 			log.Printf("[Seed] before generating: rng %08x %08x, generate %v", gameW.Map.Rng1.Srand0(), gameW.Map.Rng1.Srand1(), sc.LandscapeToGenerate)
 		}
-		gameW.Map.StartScenarioGenerating(sc.Options.StartYear, gen, g.r.G1, g.objMgr)
+		gameW.Map.StartScenarioGenerating(sc.Options.StartYear, gen, g.r.G1, g.r.ObjMgr)
 		if g.script != nil && g.script.seed != nil {
 			log.Printf("[Seed] after starting: rng %08x %08x, company colour %v", gameW.Map.Rng1.Srand0(), gameW.Map.Rng1.Srand1(), gameW.Map.CompanyColours)
 		}

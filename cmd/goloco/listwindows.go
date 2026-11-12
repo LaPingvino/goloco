@@ -45,8 +45,8 @@ func (g *Game) openVehicleListFor(company, tab int) {
 		}
 	}
 	var tc, wc uint8 = 0, 1
-	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowPlayerColor
+	if sk := g.skin(); sk != nil {
+		tc, wc = sk.WindowTitlebarColour, sk.WindowPlayerColor
 	}
 	// The window's owner is the company, so WindowManager draws its primary
 	// colour as the company's colour (CompanyManager::getCompanyColour).
@@ -55,8 +55,8 @@ func (g *Game) openVehicleListFor(company, tab int) {
 	}
 	// The cargo filter's list: every loaded cargo object, by its slot.
 	var cargos []ui.VehicleListCargo
-	if g.objMgr != nil {
-		for id, c := range g.objMgr.CargoObjects {
+	if g.r.ObjMgr != nil {
+		for id, c := range g.r.ObjMgr.CargoObjects {
 			if c != nil {
 				cargos = append(cargos, ui.VehicleListCargo{ID: id, Name: c.Name, Sprite: int(c.ImageOffset)}) // unitInlineSprite
 			}
@@ -99,8 +99,8 @@ func (g *Game) openStationsWindow() {
 			AcceptsKey: g.w.StationAcceptsKey(s.ID)})
 	}
 	var tc, wc uint8 = 0, 1
-	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowPlayerColor
+	if sk := g.skin(); sk != nil {
+		tc, wc = sk.WindowTitlebarColour, sk.WindowPlayerColor
 	}
 	// The window's owner is the company, so WindowManager draws its primary
 	// colour as the company's colour (CompanyManager::getCompanyColour).
@@ -125,8 +125,8 @@ func (g *Game) openTownsWindow() {
 		rows[i] = ui.TownRow{ID: i, Name: t.Name, Type: t.Size, Size: t.SizeIndex, Population: int(t.Population), Stations: t.NumStations}
 	}
 	var tc, wc uint8 = 0, 1
-	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowColour
+	if sk := g.skin(); sk != nil {
+		tc, wc = sk.WindowTitlebarColour, sk.WindowColour
 	}
 	w := ui.NewTownList(g.sw, rows, tc, wc)
 	w.OnClose = func() { g.townList = nil }
@@ -145,8 +145,8 @@ func (g *Game) openTownWindow(id int) {
 	}
 	t := infos[id]
 	var tc, wc uint8 = 0, 1
-	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowColour
+	if sk := g.skin(); sk != nil {
+		tc, wc = sk.WindowTitlebarColour, sk.WindowColour
 	}
 	w := ui.NewTownWindow(g.sw, g.sh, t.Name, t.Size, int(t.Population), tc, wc)
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.TownView(id, vw, vh) }
