@@ -180,6 +180,7 @@ type Scenario struct {
 	LastRailroadOption, LastRoadOption, LastTrackTypeOption uint8
 	LastAirport, LastShipPort                               uint8 // GameState 0x194 / 0x195: the Port menu's objects (0xFF none)
 	LastBuildVehiclesOption                                 uint8 // a VehicleType (0x414)
+	LastVehicleType                                         uint8 // the Vehicles menu's last type, a VehicleType (0x197)
 	PickupDirection                                         uint8 // GameState 0x198: placing vehicles facing the other way
 
 	// Towns holds the non-empty town records parsed from the scenario Towns

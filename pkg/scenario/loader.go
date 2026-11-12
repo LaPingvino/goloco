@@ -1742,6 +1742,7 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 		sc.LastRailroadOption, sc.LastRoadOption, sc.LastTrackTypeOption = gs[0x192], gs[0x193], gs[0x1AD]
 		sc.LastAirport, sc.LastShipPort = gs[0x194], gs[0x195]
 		sc.LastBuildVehiclesOption = gs[0x414] // GameState::lastBuildVehiclesOption
+		sc.LastVehicleType = gs[0x197]         // GameState::lastVehicleType
 		sc.PickupDirection = gs[0x198]         // GameState::pickupDirection
 	}
 }
