@@ -120,15 +120,25 @@ func (g *Game) pickupToolUpdate(sx, sy int) {
 // removeLandGhost is Vehicle.cpp's: a ghost-placed vehicle lifted again
 // (VehiclePickup, apply | noErrorWindow | ghost); _ghostTrackProgress = -1.
 func (g *Game) removeLandGhost() {
-	if g.pickupMode() == 3 {
-		g.removeBoatGhost()
-		return
-	}
 	if g.w.Map.VehicleIsGhost(g.pickupHead) {
 		c := g.playerCmd()
 		g.w.Map.VehiclePickup(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdGhost, g.pickupHead)
 	}
 	g.ghostProgress = -1
+}
+
+// pickupToolAbort is Vehicle.cpp's (0x004B3035): the tool's ghost, if any,
+// lifted by its own transport mode's command — land (VehiclePickup), air
+// (VehiclePickupAir) or water (the boat's).
+func (g *Game) pickupToolAbort() {
+	switch g.pickupMode() {
+	case 2:
+		g.removeAirplaneGhost()
+	case 3:
+		g.removeBoatGhost()
+	default:
+		g.removeLandGhost()
+	}
 }
 
 // pickupToolDownWater is Vehicle.cpp's: the dock nearest the cursor; the

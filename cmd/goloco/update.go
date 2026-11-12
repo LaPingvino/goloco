@@ -213,7 +213,7 @@ func (g *Game) updateToolCancel() {
 	// Escape cancels the pickup tool (pickupToolAbort: no ghost to remove yet).
 	if g.pickupOn && g.inKeyJustPressed(ebiten.KeyEscape) {
 		head := g.pickupHead
-		g.removeLandGhost() // pickupToolAbort
+		g.pickupToolAbort()
 		g.pickupOn = false
 		if g.vehicleWin != nil {
 			g.openVehicleDetails(head)
@@ -295,7 +295,7 @@ func (g *Game) updateHeld() {
 	}
 	if g.pickupOn && !g.inTitleScreen { // pickupToolUpdate: the ghost under the cursor
 		if g.overWindow(g.mouseX, g.mouseY) {
-			g.removeLandGhost()
+			g.pickupToolAbort() // no ghost under a window, whatever the vehicle
 		} else {
 			g.pickupToolUpdate(g.mouseX, g.mouseY)
 		}
