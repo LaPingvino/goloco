@@ -109,8 +109,6 @@ func (g *Game) loadScenario(filePath string) error {
 	if g.titleSeq != nil {
 		g.titleSeq.Stop()
 	}
-	g.windowMgr.CloseWindow("Load Game")
-	g.windowMgr.CloseWindow("New Game")
 	log.Printf("[Game] Loaded scenario: %s (%dx%d)", filePath, sc.MapWidth, sc.MapHeight)
 	if z, err := strconv.Atoi(os.Getenv("GOLOCO_ZOOM")); err == nil { // diagnostic: start at another zoom
 		g.w.SetZoom(z)
@@ -223,13 +221,9 @@ func (g *Game) openNewGameWindow() {
 	g.scenarioSelect = w
 }
 
-// openLoadGameWindow opens the file browser for all supported file types.
-func (g *Game) openLoadGameWindow() { g.openFileWindow("Load Game", false) }
-
-// openFileWindow is the shared implementation for the two-panel file browser.
-// title is the window title (also used as the CloseWindow key).
-// scenariosOnly restricts the file list to .SC5 files when true.
-func (g *Game) openFileWindow(title string, scenariosOnly bool) {
+// openLoadGameWindow opens the file browser (PromptBrowse, load mode) for all
+// supported file types.
+func (g *Game) openLoadGameWindow() {
 	// The ported PromptBrowse window (pkg/ui/promptbrowse.go), load mode.
 	startDir := ""
 	if home, err := os.UserHomeDir(); err == nil {
@@ -238,11 +232,7 @@ func (g *Game) openFileWindow(title string, scenariosOnly bool) {
 	if g.dataDir != "" {
 		startDir = filepath.Dir(g.dataDir) // one level up from "Data/"
 	}
-	exts := []string{".sv5", ".sc5", ".goloco"}
-	if scenariosOnly {
-		exts = []string{".sc5"}
-	}
-	w := ui.NewPromptBrowse(title, startDir, exts, g.sw, g.sh)
+	w := ui.NewPromptBrowse("Load Game", startDir, []string{".sv5", ".sc5", ".goloco"}, g.sw, g.sh)
 	w.OnClose = func() { g.browse = nil }
 	w.Confirm = func(caption, text, ok string, then func()) { // right-click delete asks first
 		g.prompt = ui.NewPromptOkCancel(caption, text, ok, g.sw, g.sh, then)

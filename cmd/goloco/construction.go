@@ -21,8 +21,8 @@ import (
 // Curve row + slope row of sprite buttons, Rotate/Undo, and a Build action.
 // Click the map to place the construction head; pieces then chain from it.
 
-// consPieceNames maps upstream's piece widgets to goloco's consCurve values
-// (the old window's sprite↔value pairs) and gradient widgets to consSlope.
+// consPieceCurve maps upstream's piece widgets to goloco's consCurve values,
+// consGradientSlope its gradient widgets to consSlope.
 var (
 	consPieceCurve = map[string]int{
 		"left_hand_curve_very_small": -1, "left_hand_curve_small": -2, "left_hand_curve": -3,

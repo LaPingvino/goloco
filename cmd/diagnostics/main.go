@@ -601,7 +601,7 @@ func catalogue() []Category {
 				{
 					Name: "Load game file browser",
 					Detect: func(r string) bool {
-						return hasPattern(r, "cmd/goloco/scenario.go", `openLoadGameWindow|openFileWindow`)
+						return hasPattern(r, "cmd/goloco/scenario.go", `openLoadGameWindow`)
 					},
 					Confidence: conf(sigBonus("cmd/goloco/scenario.go", "openLoadGameWindow")),
 				},
