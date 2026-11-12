@@ -48,6 +48,8 @@ func (g *Game) windowTooltip() string {
 			}
 		}
 		return g.townList.WidgetTooltip(mx, my)
+	case g.vehicleWin != nil && g.vehicleWin.Contains(mx, my):
+		return g.vehicleWin.Tooltip()
 	}
 	return ""
 }

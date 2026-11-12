@@ -231,3 +231,12 @@ func CalcDate(totalDays uint32) (year, month, day int) {
 	}
 	return 1800 + years, 11, 31
 }
+
+// Power formats ControlCodes::power: hp, or kW (× 764 / 1024, vanilla's
+// ratio) in the metric format.
+func Power(hp int) string {
+	if Metric {
+		return groupInt(int64(float64(hp)*0.74609375)) + "kW"
+	}
+	return groupInt(int64(hp)) + "hp"
+}

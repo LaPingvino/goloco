@@ -1024,3 +1024,12 @@ func (w *VehicleWindow) drawSpeedControl(screen *ebiten.Image) {
 		DrawTextFont(screen, s, G1FontSmall, mid-MeasureTextFont(s, G1FontSmall)/2, t[1], black)
 	}
 }
+
+// Tooltip is the car tooltip on the Details and Cargo tabs: the car row under
+// the mouse (rowHover), not while dragging.
+func (w *VehicleWindow) Tooltip() string {
+	if (w.Tab != 1 && w.Tab != 2) || w.Dragging || w.Hover < 0 || w.Hover >= len(w.Cars) {
+		return ""
+	}
+	return carTooltip(w.Cars[w.Hover])
+}

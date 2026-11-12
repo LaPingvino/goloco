@@ -15,6 +15,12 @@ type TrainCar struct {
 	Components []objects.CarComponent
 	Reversed   bool
 	Brake      bool
+	// The car's front bogie's creationDay, refundCost and reliability, and
+	// its rack rail's name (the Vehicle window's car tooltip).
+	Built       uint32
+	Value       int64
+	Reliability uint16
+	RackName    string
 }
 
 // TrainCars is Vehicle(head).cars: from the head through veh1 and veh2 (the
@@ -68,7 +74,8 @@ func (w *World) TrainCars(headID uint16) []TrainCar {
 				return nil
 			}
 			cars = append(cars, TrainCar{Object: obj, YOffset: om.VehicleYDisplayOffset(obj), Reversed: body.Flags38&(1<<1) != 0,
-				Brake: veh2.BrakeLightTimeout != 0})
+				Brake: veh2.BrakeLightTimeout != 0, Built: front.CreationDay, Value: int64(front.RefundCost),
+				Reliability: front.Reliability, RackName: om.ExtraName(obj.RackRailName)})
 		}
 		c := &cars[len(cars)-1]
 		c.Components = append(c.Components, comp)
