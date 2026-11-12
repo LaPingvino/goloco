@@ -270,8 +270,8 @@ func (m *Map) emitterUpdate(tr Train, cc CarComponent, om *objects.ObjectManager
 // bodyUpdateAnimation is VehicleBody::update after sub_4AC255: a slipping
 // wheel adds to the distance (unkDistance2 + slip·320 + 500, the slip
 // counted back down past half), then animationUpdate, then sub_4AAB0B's
-// var_44 step (an eighth of the distance, against the body's direction).
-// PARTIAL: the rest of sub_4AAB0B (speed animation and tilt frames).
+// var_44 step (an eighth of the distance, against the body's direction) and
+// the rest of sub_4AAB0B: the body's animation frame (bodyAnimationFrame).
 func (m *Map) bodyUpdateAnimation(tr Train, cc CarComponent, om *objects.ObjectManager, unkDistance int32) {
 	body := &m.Entities[cc.Body]
 	if ws := int32(body.WheelSlipping); ws != 0 {
@@ -286,6 +286,63 @@ func (m *Map) bodyUpdateAnimation(tr Train, cc CarComponent, om *objects.ObjectM
 		step = -step
 	}
 	body.Var44 += uint16(step)
+	m.bodyAnimationFrame(tr, cc, om)
+}
+
+// bodyAnimationFrame is sub_4AAB0B's frame: a body with a speed animation
+// shows the frame its speed reaches of the vehicle's top speed (speed /
+// (top / frames), the last at most); a rail body with roll frames tilts into
+// the curve above 35 mph (kCurvatureDegrees by the front bogie's track, an
+// S-bend's second half the other way; frame 1 or 2 by side and direction,
+// through 0 when changing sides); any other the wheel frame (var_44 >> 12).
+func (m *Map) bodyAnimationFrame(tr Train, cc CarComponent, om *objects.ObjectManager) {
+	body := &m.Entities[cc.Body]
+	v := vehicleObject(om, body.ObjectID)
+	if body.ObjectSpriteType == 0xFF || v == nil || int(body.ObjectSpriteType) >= len(v.BodySprites) {
+		return
+	}
+	sp := v.BodySprites[body.ObjectSpriteType]
+	v2 := &m.Entities[tr.Veh2]
+	var target uint8
+	switch {
+	case sp.Flags&objects.BodyFlagHasSpeedAnimation != 0:
+		if n := sp.NumAnimationFrames; n > 0 {
+			if per := int64(v.Speed / uint16(n)); per > 0 { // Speed32 / Speed16: both in 16.16
+				target = min(uint8(int64(v2.CurrentSpeed)/(per<<16)), n-1)
+			}
+		}
+	case sp.NumRollFrames != 1 && body.Mode == 0: // TransportMode::rail
+		target = body.Animation
+		var tilt int8
+		if v2.CurrentSpeed >= 35<<16 {
+			front := &m.Entities[cc.Front]
+			if i := int(front.TrackAndDirection >> 2); i < len(TrackCurvatureDegree) {
+				tilt = TrackCurvatureDegree[i]
+			}
+			if id := (front.TrackAndDirection >> 3) & 0x3F; (id == 12 || id == 13) && front.SubPosition >= 48 {
+				tilt = -tilt // the S-bend's second half
+			}
+			rev := body.Flags38&f38IsReversed != 0
+			switch {
+			case tilt < 0 && rev, tilt > 0 && !rev:
+				tilt = 2
+			case tilt != 0:
+				tilt = 1
+			}
+			if tilt != 0 && target != 0 && target != uint8(tilt) { // changing sides: through 0
+				tilt = 0
+			}
+		}
+		target = uint8(tilt)
+	default:
+		if n := sp.NumAnimationFrames; n > 0 {
+			target = uint8(int16(body.Var44)>>12) & (n - 1)
+		}
+	}
+	if body.Animation != target {
+		body.Animation = target
+		m.invalidateSprite(body)
+	}
 }
 
 const vehicleTypeShip = 5 // VehicleType::ship
