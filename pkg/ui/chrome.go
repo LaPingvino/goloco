@@ -141,3 +141,17 @@ func DrawWindowCaptionStation(screen *ebiten.Image, x, y, w int, text string, co
 	})
 	DrawWindowCaptionColour(screen, x, y, w, text, 0) // Colour::black
 }
+
+// translucentInset is a colour's translucent fillRectInset colour
+// (colour.translucent(): getTranslucent shades 0–2).
+func translucentInset(colour uint8) gfx8.InsetColour {
+	g1 := globalG1Font.g1
+	cmap, _ := g1.GetPaletteMap(int(colour))
+	var trans [3][]uint8
+	if int(colour) < len(paint.TranslucentColour) {
+		for k := range trans {
+			trans[k], _ = g1.GetPaletteMap(int(paint.TranslucentColour[colour][k]))
+		}
+	}
+	return gfx8.InsetColour{Map: cmap, Translucent: true, Trans: trans}
+}
