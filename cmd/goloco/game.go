@@ -234,101 +234,17 @@ func NewGame() *Game {
 
 	// Try to load real Locomotion G1.DAT sprites
 	dataDir := findLocoDataDir()
-	var objMgr *objects.ObjectManager
-
 	if dataDir != "" {
-		log.Printf("[Game] Found Locomotion data directory: %s", dataDir)
-		g1Path := filepath.Join(dataDir, "g1.DAT")
-		log.Printf("Loading G1 sprites from: %s", g1Path)
-
-		g1, err := assets.LoadG1(g1Path)
-		if err != nil {
-			log.Printf("Failed to load G1: %v", err)
-		} else {
-			log.Printf("Loaded %d sprites from G1.DAT", g1.GetSpriteCount())
-			r.G1 = g1
-
-			// Authentic Locomotion bitmap text from the g1 glyph sprites;
-			// overrides the TTF/embedded fallback set up by InitFonts.
-			ui.InitG1Font(g1)
-
-			// Set the package-level global palette from the loaded G1 so
-			// DrawingContext and UI widgets (window backgrounds, buttons …)
-			// use the game's palette everywhere.
-			if graphics.SetGlobalPalette(r.G1) {
-				log.Printf("Applied G1 palette to UI drawing context")
-			}
-		}
-
-		// Load objects from ObjData
-		objDataDir := filepath.Join(filepath.Dir(dataDir), "ObjData")
-		if _, err := os.Stat(objDataDir); err == nil {
-			log.Printf("Loading objects from: %s", objDataDir)
-			objMgr = objects.NewObjectManager(objDataDir)
-
-			// Set base sprite index to after G1 sprites and attach G1 for dynamic loading
-			if g1 != nil {
-				objMgr.SetBaseSpriteIndex(uint32(g1.GetSpriteCount()))
-				objMgr.G1File = g1
-				log.Printf("ObjectManager will use dynamic G1 sprite pool (starting at index %d)", g1.GetSpriteCount())
-			}
-
-			// Load InterfaceSkin first (INTERDEF.DAT)
-			interfaceSkinPath := filepath.Join(objDataDir, "INTERDEF.DAT")
-			if _, err := os.Stat(interfaceSkinPath); err == nil {
-				log.Printf("Loading InterfaceSkin from: %s", interfaceSkinPath)
-				if _, err := objMgr.LoadObject(interfaceSkinPath); err != nil {
-					log.Printf("Failed to load InterfaceSkin: %v", err)
-				} else if objMgr.InterfaceSkin != nil {
-					log.Printf("Loaded InterfaceSkin: %s with %d sprites",
-						objMgr.InterfaceSkin.DisplayName,
-						objMgr.InterfaceSkin.ImageCount)
-				}
-			}
-
-			if err := objMgr.LoadAllObjects(); err != nil {
-				log.Printf("Failed to load objects: %v", err)
-			} else {
-				log.Printf("Loaded %d vehicles, %d land objects", len(objMgr.Vehicles), len(objMgr.LandObjects))
-			}
-
-			// Connect object manager to renderer for sprite access
-			r.ObjMgr = objMgr
-		}
+		loadLocomotionData(r, dataDir)
 	} else if og := openGraphicsDir(); og != "" {
-		// The open build (item O): no Locomotion folder — OpenGraphics (MIT):
-		// its palette and an empty base pool (assets.NewOpenG1), its objects.
-		// The bitmap fonts are g1.DAT's, so the TTF fallback stays.
-		log.Printf("[Game] No Locomotion data; the open build from %s", og)
-		if g1, err := assets.NewOpenG1(filepath.Join(og, "locopal.jasc.pal")); err != nil {
-			log.Printf("[Game] open build: %v", err)
-		} else {
-			r.G1 = g1
-			graphics.SetGlobalPalette(r.G1)
-			objMgr = objects.NewObjectManager(filepath.Join(og, "ObjData"))
-			objMgr.SetBaseSpriteIndex(uint32(g1.GetSpriteCount()))
-			objMgr.G1File = g1
-			if err := objMgr.LoadAllObjects(); err != nil {
-				log.Printf("[Game] open build: objects: %v", err)
-			}
-			log.Printf("[Game] open build: %d vehicles, %d land objects, %d images", len(objMgr.Vehicles), len(objMgr.LandObjects), g1.GetTotalSprites())
-			r.ObjMgr = objMgr
-		}
+		loadOpenGraphics(r, og)
 	} else {
 		log.Printf("Locomotion data directory not found")
 	}
 
 	// Fall back to placeholder tiles if G1 not loaded
 	if r.G1 == nil {
-		log.Printf("Using placeholder tiles...")
-		if err := assets.GeneratePlaceholderAtlas("assets"); err != nil {
-			log.Printf("Failed to generate placeholder: %v", err)
-		} else {
-			if at, err := render.LoadAtlasFromDir("assets/extracted"); err == nil {
-				r.Atlas = at
-				log.Printf("Loaded %d placeholder tiles", len(at.Images))
-			}
-		}
+		loadPlaceholderAtlas(r)
 	}
 
 	w := world.NewWorld(r)
@@ -337,38 +253,9 @@ func NewGame() *Game {
 
 	// Try to load the title scenario
 	if dataDir != "" {
-		titlePath := filepath.Join(dataDir, "title.dat")
-		log.Printf("[Game] Loading title scenario from: %s", titlePath)
-		if sc, err := scenario.LoadScenarioData(titlePath); err == nil {
-			// Load packed objects embedded in the scenario file first.
-			// These take priority over ObjData files and provide scenario-
-			// specific assets (buildings, vehicles, etc.) that may not exist
-			// in the standard ObjData directory.
-			if objMgr != nil && len(sc.PackedObjectsRaw) > 0 {
-				packedOK := 0
-				for _, po := range sc.PackedObjectsRaw {
-					if _, err := objMgr.LoadObjectFromHeaderAndData(po.HeaderBytes, po.Data); err != nil {
-						log.Printf("[Game] Failed to load packed object: %v", err)
-					} else {
-						packedOK++
-					}
-				}
-				log.Printf("[Game] Loaded %d/%d packed objects from scenario", packedOK, len(sc.PackedObjectsRaw))
-			}
-
-			// Reorder objects to match the slot order declared in the
-			// scenario's RequiredObjects chunk before loading tiles,
-			// so that element indices resolve to the correct objects.
-			if objMgr != nil {
-				reorderScenarioObjects(objMgr, sc)
-			}
-			w.LoadFromScenario(sc)
-			log.Printf("[Game] Loaded title scenario: %dx%d map", sc.MapWidth, sc.MapHeight)
-		} else {
-			log.Printf("[Game] Could not load title scenario: %v", err)
-		}
-	} else if r.G1 != nil && objMgr != nil { // the open build: no title.dat — a landscape with the editor's defaults
-		m := sim.NewGeneratedMap(0x4C4F434F, 0x474F4C4F, 1900, sim.EditorDefaultTerrainOptions(objMgr), r.G1, objMgr)
+		loadTitleMap(w, r, dataDir)
+	} else if r.G1 != nil && r.ObjMgr != nil { // the open build: no title.dat — a landscape with the editor's defaults
+		m := sim.NewGeneratedMap(0x4C4F434F, 0x474F4C4F, 1900, sim.EditorDefaultTerrainOptions(r.ObjMgr), r.G1, r.ObjMgr)
 		w.LoadGenerated(m)
 		log.Printf("[Game] open build: generated title landscape %dx%d", m.Width, m.Height)
 	}
@@ -439,6 +326,137 @@ func NewGame() *Game {
 		// draws at once and decodes anything it needs first on use, as upstream
 		// draws g1 sprites directly with no preload phase.
 		prewarmIDs: titleSpriteIDs,
+	}
+}
+
+// loadLocomotionData loads the Locomotion folder's G1 (sprites, palette, the
+// bitmap fonts) and its ObjData objects into the renderer.
+func loadLocomotionData(r *render.Renderer, dataDir string) {
+	log.Printf("[Game] Found Locomotion data directory: %s", dataDir)
+	g1Path := filepath.Join(dataDir, "g1.DAT")
+	log.Printf("Loading G1 sprites from: %s", g1Path)
+
+	g1, err := assets.LoadG1(g1Path)
+	if err != nil {
+		log.Printf("Failed to load G1: %v", err)
+	} else {
+		log.Printf("Loaded %d sprites from G1.DAT", g1.GetSpriteCount())
+		r.G1 = g1
+
+		// Authentic Locomotion bitmap text from the g1 glyph sprites;
+		// overrides the TTF/embedded fallback set up by InitFonts.
+		ui.InitG1Font(g1)
+
+		// Set the package-level global palette from the loaded G1 so
+		// DrawingContext and UI widgets (window backgrounds, buttons …)
+		// use the game's palette everywhere.
+		if graphics.SetGlobalPalette(r.G1) {
+			log.Printf("Applied G1 palette to UI drawing context")
+		}
+	}
+
+	// Load objects from ObjData
+	objDataDir := filepath.Join(filepath.Dir(dataDir), "ObjData")
+	if _, err := os.Stat(objDataDir); err == nil {
+		log.Printf("Loading objects from: %s", objDataDir)
+		objMgr := objects.NewObjectManager(objDataDir)
+
+		// Set base sprite index to after G1 sprites and attach G1 for dynamic loading
+		if g1 != nil {
+			objMgr.SetBaseSpriteIndex(uint32(g1.GetSpriteCount()))
+			objMgr.G1File = g1
+			log.Printf("ObjectManager will use dynamic G1 sprite pool (starting at index %d)", g1.GetSpriteCount())
+		}
+
+		// Load InterfaceSkin first (INTERDEF.DAT)
+		interfaceSkinPath := filepath.Join(objDataDir, "INTERDEF.DAT")
+		if _, err := os.Stat(interfaceSkinPath); err == nil {
+			log.Printf("Loading InterfaceSkin from: %s", interfaceSkinPath)
+			if _, err := objMgr.LoadObject(interfaceSkinPath); err != nil {
+				log.Printf("Failed to load InterfaceSkin: %v", err)
+			} else if objMgr.InterfaceSkin != nil {
+				log.Printf("Loaded InterfaceSkin: %s with %d sprites",
+					objMgr.InterfaceSkin.DisplayName,
+					objMgr.InterfaceSkin.ImageCount)
+			}
+		}
+
+		if err := objMgr.LoadAllObjects(); err != nil {
+			log.Printf("Failed to load objects: %v", err)
+		} else {
+			log.Printf("Loaded %d vehicles, %d land objects", len(objMgr.Vehicles), len(objMgr.LandObjects))
+		}
+
+		// Connect object manager to renderer for sprite access
+		r.ObjMgr = objMgr
+	}
+}
+
+// loadOpenGraphics is the open build (item O): no Locomotion folder —
+// OpenGraphics (MIT): its palette and an empty base pool (assets.NewOpenG1),
+// its objects. The bitmap fonts are g1.DAT's, so the TTF fallback stays.
+func loadOpenGraphics(r *render.Renderer, og string) {
+	log.Printf("[Game] No Locomotion data; the open build from %s", og)
+	if g1, err := assets.NewOpenG1(filepath.Join(og, "locopal.jasc.pal")); err != nil {
+		log.Printf("[Game] open build: %v", err)
+	} else {
+		r.G1 = g1
+		graphics.SetGlobalPalette(r.G1)
+		objMgr := objects.NewObjectManager(filepath.Join(og, "ObjData"))
+		objMgr.SetBaseSpriteIndex(uint32(g1.GetSpriteCount()))
+		objMgr.G1File = g1
+		if err := objMgr.LoadAllObjects(); err != nil {
+			log.Printf("[Game] open build: objects: %v", err)
+		}
+		log.Printf("[Game] open build: %d vehicles, %d land objects, %d images", len(objMgr.Vehicles), len(objMgr.LandObjects), g1.GetTotalSprites())
+		r.ObjMgr = objMgr
+	}
+}
+
+// loadPlaceholderAtlas is the fallback with no G1 at all: generated tiles.
+func loadPlaceholderAtlas(r *render.Renderer) {
+	log.Printf("Using placeholder tiles...")
+	if err := assets.GeneratePlaceholderAtlas("assets"); err != nil {
+		log.Printf("Failed to generate placeholder: %v", err)
+	} else {
+		if at, err := render.LoadAtlasFromDir("assets/extracted"); err == nil {
+			r.Atlas = at
+			log.Printf("Loaded %d placeholder tiles", len(at.Images))
+		}
+	}
+}
+
+// loadTitleMap loads title.dat, the title screen's scenario, into the world.
+func loadTitleMap(w *world.World, r *render.Renderer, dataDir string) {
+	titlePath := filepath.Join(dataDir, "title.dat")
+	log.Printf("[Game] Loading title scenario from: %s", titlePath)
+	if sc, err := scenario.LoadScenarioData(titlePath); err == nil {
+		// Load packed objects embedded in the scenario file first.
+		// These take priority over ObjData files and provide scenario-
+		// specific assets (buildings, vehicles, etc.) that may not exist
+		// in the standard ObjData directory.
+		if r.ObjMgr != nil && len(sc.PackedObjectsRaw) > 0 {
+			packedOK := 0
+			for _, po := range sc.PackedObjectsRaw {
+				if _, err := r.ObjMgr.LoadObjectFromHeaderAndData(po.HeaderBytes, po.Data); err != nil {
+					log.Printf("[Game] Failed to load packed object: %v", err)
+				} else {
+					packedOK++
+				}
+			}
+			log.Printf("[Game] Loaded %d/%d packed objects from scenario", packedOK, len(sc.PackedObjectsRaw))
+		}
+
+		// Reorder objects to match the slot order declared in the
+		// scenario's RequiredObjects chunk before loading tiles,
+		// so that element indices resolve to the correct objects.
+		if r.ObjMgr != nil {
+			reorderScenarioObjects(r.ObjMgr, sc)
+		}
+		w.LoadFromScenario(sc)
+		log.Printf("[Game] Loaded title scenario: %dx%d map", sc.MapWidth, sc.MapHeight)
+	} else {
+		log.Printf("[Game] Could not load title scenario: %v", err)
 	}
 }
 

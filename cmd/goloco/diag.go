@@ -3,7 +3,6 @@ package main
 import (
 	"image"
 	"image/color"
-	"image/png"
 	"log"
 	"os"
 	"path/filepath"
@@ -65,14 +64,8 @@ func saveDiagCrop(screen *ebiten.Image, g *Game, tileX, tileY int) {
 
 	crop := screen.SubImage(image.Rect(x0, y0, x0+diagCropW, y0+diagCropH))
 
-	f, err := os.Create(debugPath("diag.png"))
-	if err != nil {
-		log.Printf("[Diag] Cannot create diag.png: %v", err)
-		return
-	}
-	defer f.Close()
-	if err := png.Encode(f, crop); err != nil {
-		log.Printf("[Diag] Encode failed: %v", err)
+	if err := savePNG(debugPath("diag.png"), crop); err != nil {
+		log.Printf("[Diag] %v", err)
 		return
 	}
 	log.Printf("[Diag] Saved diag.png (%dx%d crop centred on tile %d,%d, screen offset %d,%d)",
@@ -197,75 +190,60 @@ func (g *Game) diagOpenWindows() {
 	if os.Getenv("GOLOCO_DIAG_OPTIONS") != "" && g.options == nil && !g.diagOptionsDone {
 		g.diagOptionsDone = true
 		g.openOptionsWindow()
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "controls" && g.options != nil {
-			g.options.Tab = ui.OptTabControls
-			g.options.Controls = [3]bool{true, false, true}
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regional" && g.options != nil {
-			g.options.Tab = ui.OptTabRegional
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "framesolid" && g.options != nil {
+		o := g.options
+		switch os.Getenv("GOLOCO_DIAG_OPTIONS") {
+		case "controls":
+			o.Tab = ui.OptTabControls
+			o.Controls = [3]bool{true, false, true}
+		case "regional":
+			o.Tab = ui.OptTabRegional
+		case "framesolid":
 			ui.FrameStyle = 1 // the Rendering tab with solid frames
-			g.options.Tab = ui.OptTabRendering
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "prompt" { // the replace-file confirmation
+			o.Tab = ui.OptTabRendering
+		case "prompt": // the replace-file confirmation
 			g.options = nil
 			g.prompt = ui.NewPromptOkCancel("Save Game", "Replace existing file: “Bottleneck Blues”?", "Replace", g.sw, g.sh, nil)
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "renderscale" && g.options != nil {
-			g.options.Tab = ui.OptTabRendering // and a click on Vehicles min. display scale
-			g.options.HandleClick(g.options.X+240, g.options.Y+66)
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "framelimit" && g.options != nil {
-			g.options.Tab = ui.OptTabDisplay // and a click on Frame rate limit
-			g.options.HandleClick(g.options.X+240, g.options.Y+114)
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "displayres" && g.options != nil {
-			g.options.Tab = ui.OptTabDisplay // in fullscreen mode, a click on Display Resolution
-			g.options.ScreenMode = 1
-			g.options.HandleClick(g.options.X+240, g.options.Y+82)
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "displaymode" && g.options != nil {
-			g.options.Tab = ui.OptTabDisplay // and a click on Screen mode
-			g.options.HandleClick(g.options.X+240, g.options.Y+66)
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionalcurrency" && g.options != nil {
-			g.options.Tab = ui.OptTabRegional // and a click on Preferred currency
-			g.options.HandleClick(g.options.X+190, g.options.Y+122)
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionalcurrent" && g.options != nil {
-			g.options.Tab = ui.OptTabRegional // and a click on Current currency (as in a game)
-			g.options.TitleMode = false
-			g.options.HandleClick(g.options.X+190, g.options.Y+107)
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionalalways" && g.options != nil {
-			g.options.Tab = ui.OptTabRegional // in a game, a click on 'always' (the current currency greys)
-			g.options.TitleMode = false
-			g.options.HandleClick(g.options.X+100, g.options.Y+153)
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionallang" && g.options != nil {
-			g.options.Tab = ui.OptTabRegional // and a click on Language
-			g.options.HandleClick(g.options.X+190, g.options.Y+52)
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionalheights" && g.options != nil {
-			g.options.Tab = ui.OptTabRegional // and a click on Heights
-			g.options.HandleClick(g.options.X+190, g.options.Y+87)
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "regionaldrop" && g.options != nil {
-			g.options.Tab = ui.OptTabRegional // and a click on Distance and Speed
-			g.options.HandleClick(g.options.X+190, g.options.Y+72)
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "display" && g.options != nil {
-			g.options.Tab = ui.OptTabDisplay
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "company" && g.options != nil {
-			g.options.Tab = ui.OptTabCompany
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "rendering" && g.options != nil {
-			g.options.Tab = ui.OptTabRendering
-		}
-		if os.Getenv("GOLOCO_DIAG_OPTIONS") == "misc" && g.options != nil {
-			g.options.Tab = ui.OptTabMisc
+		case "renderscale":
+			o.Tab = ui.OptTabRendering // and a click on Vehicles min. display scale
+			o.HandleClick(o.X+240, o.Y+66)
+		case "framelimit":
+			o.Tab = ui.OptTabDisplay // and a click on Frame rate limit
+			o.HandleClick(o.X+240, o.Y+114)
+		case "displayres":
+			o.Tab = ui.OptTabDisplay // in fullscreen mode, a click on Display Resolution
+			o.ScreenMode = 1
+			o.HandleClick(o.X+240, o.Y+82)
+		case "displaymode":
+			o.Tab = ui.OptTabDisplay // and a click on Screen mode
+			o.HandleClick(o.X+240, o.Y+66)
+		case "regionalcurrency":
+			o.Tab = ui.OptTabRegional // and a click on Preferred currency
+			o.HandleClick(o.X+190, o.Y+122)
+		case "regionalcurrent":
+			o.Tab = ui.OptTabRegional // and a click on Current currency (as in a game)
+			o.TitleMode = false
+			o.HandleClick(o.X+190, o.Y+107)
+		case "regionalalways":
+			o.Tab = ui.OptTabRegional // in a game, a click on 'always' (the current currency greys)
+			o.TitleMode = false
+			o.HandleClick(o.X+100, o.Y+153)
+		case "regionallang":
+			o.Tab = ui.OptTabRegional // and a click on Language
+			o.HandleClick(o.X+190, o.Y+52)
+		case "regionalheights":
+			o.Tab = ui.OptTabRegional // and a click on Heights
+			o.HandleClick(o.X+190, o.Y+87)
+		case "regionaldrop":
+			o.Tab = ui.OptTabRegional // and a click on Distance and Speed
+			o.HandleClick(o.X+190, o.Y+72)
+		case "display":
+			o.Tab = ui.OptTabDisplay
+		case "company":
+			o.Tab = ui.OptTabCompany
+		case "rendering":
+			o.Tab = ui.OptTabRendering
+		case "misc":
+			o.Tab = ui.OptTabMisc
 		}
 	}
 	if os.Getenv("GOLOCO_DIAG_BROWSE") != "" && g.browse == nil && !g.diagBrowseDone {
