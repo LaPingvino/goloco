@@ -160,6 +160,15 @@ func (g *Game) openTownWindow(id int) {
 	w := ui.NewTownWindow(g.sw, g.sh, t.Name, t.Size, int(t.Population), tc, wc)
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.TownView(id, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnTown(id) }
+	w.Graph = func(i int) (ui.GraphTab, bool) { // the Population tab: the town's history from historyMinPopulation
+		if i != 1 || id >= len(g.w.Map.Towns) {
+			return ui.GraphTab{}, false
+		}
+		t := &g.w.Map.Towns[id]
+		size := min(int(t.HistorySize), len(t.History))
+		return ui.GraphTab{Caption: i18n.TitleTownPopulation, History: t.History[:size], FirstTick: int(t.HistoryMinPopulation),
+			Month: int(g.w.Map.CurrentMonth), Year: int(g.w.Map.CurrentYear), Layout: ui.TownGraphLayout}, true
+	}
 	// drawTabs: the town (toolbar_menu_towns), population (tab_population, 8
 	// frames, recoloured to the window's secondary colour) and company ratings
 	// (tab_ratings, 16 frames); the current one animated by frameNo / 4.
@@ -315,14 +324,19 @@ func (g *Game) openIndustryWindow(id int) {
 			}
 			return base + 161 + anim(7), -1, -1
 		}
-		w.Production = func(n int) (string, []uint8, int, int) {
+		w.Graph = func(i int) (ui.GraphTab, bool) { // the Production tabs (1, 2)
+			if i != 1 && i != 2 {
+				return ui.GraphTab{}, false
+			}
 			label := ""
 			if c := int(produced[0]); c < len(g.r.ObjMgr.CargoObjects) && g.r.ObjMgr.CargoObjects[c] != nil {
 				label = g.r.ObjMgr.CargoObjects[c].UnitsAndCargoName // producedCargoType[0] on both tabs
 			}
 			ind := &g.w.Map.Industries[idx]
+			n := i - 1
 			size := min(int(ind.HistorySize[n]), len(ind.History[n]))
-			return label, ind.History[n][:size], int(g.w.Map.CurrentMonth), int(g.w.Map.CurrentYear)
+			return ui.GraphTab{Caption: i18n.TitleIndustryMonthlyProduction, Label: label, History: ind.History[n][:size],
+				Month: int(g.w.Map.CurrentMonth), Year: int(g.w.Map.CurrentYear), Layout: ui.IndustryGraphLayout}, true
 		}
 	}
 	g.viewWin = w

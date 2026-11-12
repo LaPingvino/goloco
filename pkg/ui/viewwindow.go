@@ -24,9 +24,10 @@ import (
 // The Production and Production 2 tabs (299×282) graph the monthly production
 // history of its first / second cargo (Common::draw). Each tab captions its own
 // way ("{name}", "… - Monthly Production", "… - Statistics").
-// PARTIAL: the town's other tabs (Population, Company ratings), renaming by
-// the caption, the editor's buttons, resizing, the viewport's own scrolling, the
-// status's clipping (drawStringLeftClipped).
+// The town's Population tab graphs its history (Population::draw).
+// PARTIAL: the town's Company ratings tab, renaming by the caption, the
+// editor's buttons, resizing, the viewport's own scrolling, the status's
+// clipping (drawStringLeftClipped).
 type ViewWindow struct {
 	X, Y, W, H          int
 	Tabs                int    // 3 (town) or 4 (industry)
@@ -50,10 +51,9 @@ type ViewWindow struct {
 	// lines (received and produced last month), read each draw.
 	CargoTab int
 	Cargo    func() (receives, produces bool, lines []CargoMonthLine)
-	// Production gives the Production tabs' graph (n 0, 1): the label (the
-	// first cargo's unitsAndCargoName on both tabs, as upstream), that
-	// cargo's monthly history, and the current month (0–11) and year.
-	Production func(n int) (label string, history []uint8, month, year int)
+	// Graph gives tab i's monthly history graph (ok false: not a graph tab):
+	// the industry's Production tabs, the town's Population tab.
+	Graph func(i int) (g GraphTab, ok bool)
 	baseW      int // the first tab's size (switchTab: kWindowSize)
 	baseH      int
 }
@@ -67,11 +67,41 @@ type CargoMonthLine struct {
 	Percent  uint8
 }
 
-// Transported tab: kWindowSize (onResize sets it); the Production tabs:
-// kMinWindowSize.
-const (
-	transportedW, transportedH = 300, 127
-	productionW, productionH   = 299, 282
+// Transported tab: kWindowSize (onResize sets it).
+const transportedW, transportedH = 300, 127
+
+// GraphTab is a history graph tab: its caption (a StringId with the place's
+// name), the label above the graph (a cargo's unitsAndCargoName; "" none),
+// the history (a pixel per month), the current month (0–11) and year, the
+// first y label (counting up 1000 a line), and where it all goes.
+type GraphTab struct {
+	Caption     int
+	Label       string
+	History     []uint8
+	Month, Year int
+	FirstTick   int
+	Layout      GraphLayout
+}
+
+// GraphLayout is where a graph tab draws (window coordinates): its window
+// size; the grid lines from GridX, GridW wide, every 20 px from the height
+// less BottomInset up to Top, labelled right-aligned at GridX − 2… (x 39);
+// year labels at YearY; January lines from VTop down to the height less
+// VBottomInset; nothing above ClipTop (clipRenderTarget).
+type GraphLayout struct {
+	W, H                      int
+	GridX, GridW              int
+	BottomInset, Top          int
+	YearY, VTop, VBottomInset int
+	ClipTop                   int
+}
+
+// The two graphs' layouts: IndustryWindow.cpp Common::draw (299×282) and
+// TownWindow.cpp Population::draw (299×172, clipped to y 44 down, its
+// coordinates 44 lower).
+var (
+	IndustryGraphLayout = GraphLayout{W: 299, H: 282, GridX: 41, GridW: 239, BottomInset: 7, Top: 68, YearY: 56, VTop: 67, VBottomInset: 8}
+	TownGraphLayout     = GraphLayout{W: 299, H: 172, GridX: 39, GridW: 241, BottomInset: 13, Top: 58, YearY: 46, VTop: 55, VBottomInset: 12, ClipTop: 44}
 )
 
 // caption is Common::prepareDraw's caption per tab: title_town,
@@ -83,7 +113,12 @@ func (w *ViewWindow) caption() string {
 	case w.Tab == w.CargoTab:
 		return strings.Replace(i18n.Label(i18n.TitleStatistics), "{STRINGID}", w.Title, 1)
 	}
-	return strings.Replace(i18n.Label(i18n.TitleIndustryMonthlyProduction), "{STRINGID}", w.Title, 1)
+	if w.Graph != nil {
+		if g, ok := w.Graph(w.Tab); ok {
+			return strings.Replace(i18n.Label(g.Caption), "{STRINGID}", w.Title, 1)
+		}
+	}
+	return w.Title
 }
 
 // NewTownWindow is Town::open's window (223×161, three tabs), its status
@@ -126,16 +161,20 @@ func (w *ViewWindow) HandleClick(px, py int) {
 	}
 	if ry >= 15 && ry < 42 && rx >= 3 && rx < 3+31*w.Tabs {
 		i := (rx - 3) / 31
-		graph := w.Production != nil && (i == 1 || i == 2) && w.CargoTab != 0
-		if !w.TabDisabled[i] && (i == 0 || i == w.CargoTab || graph) {
+		var g GraphTab
+		graph := false
+		if w.Graph != nil {
+			g, graph = w.Graph(i)
+		}
+		if !w.TabDisabled[i] && (i == 0 || (i == w.CargoTab && w.CargoTab != 0) || graph) {
 			w.Tab = i
 			switch {
 			case i == 0:
 				w.W, w.H = w.baseW, w.baseH
-			case i == w.CargoTab:
-				w.W, w.H = transportedW, transportedH
+			case graph:
+				w.W, w.H = g.Layout.W, g.Layout.H
 			default:
-				w.W, w.H = productionW, productionH
+				w.W, w.H = transportedW, transportedH
 			}
 		}
 		return
@@ -195,8 +234,10 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 	if w.Tab != 0 {
 		if w.Tab == w.CargoTab {
 			w.drawCargo(screen, g1.GetPalette()[gfx8.Shade(sec, 9)], g1.GetPalette()[paletteBlack0])
-		} else {
-			w.drawProduction(screen, sec, g1.GetPalette()[paletteBlack0])
+		} else if w.Graph != nil {
+			if g, ok := w.Graph(w.Tab); ok {
+				w.drawGraph(screen, sec, g1.GetPalette()[paletteBlack0], g)
+			}
 		}
 		DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.caption(), colourWhite)
 		return
@@ -264,31 +305,33 @@ func (w *ViewWindow) drawCargo(screen *ebiten.Image, win2, black color.Color) {
 	}
 }
 
-// drawProduction is Common::draw (0x00456079) for a Production tab: the
-// "(units of cargo)" label at (2, 44); from the graph's bottom (height − 7)
-// up to y 68 every 20 px a grid line (x 41, 239 wide, shade 4) labelled
-// 0, 1000, 2000 … right-aligned at x 39 (population_graph_people, as
-// upstream); then back from the newest month a pixel per month: each
-// January a year label (every third, centred at y 56) and a vertical grid
-// line, and the history joined month to month in shade 7 (the newest
-// segment not drawn: it may be zeroed).
-func (w *ViewWindow) drawProduction(screen *ebiten.Image, sec []uint8, black color.Color) {
-	if w.Production == nil {
-		return
+// drawGraph is IndustryWindow.cpp Common::draw (0x00456079) and
+// TownWindow.cpp Population::draw, by the tab's layout: the label (if any) at
+// (2, 44); from the graph's bottom up every 20 px a grid line in shade 4
+// labelled FirstTick, +1000 … right-aligned at x 39 (population_graph_people,
+// as upstream); then back from the newest month a pixel per month: each
+// January a year label (every third, centred) and a vertical grid line, and
+// the history joined month to month in shade 7 (the newest segment not
+// drawn: it may be zeroed). Nothing above ClipTop.
+func (w *ViewWindow) drawGraph(screen *ebiten.Image, sec []uint8, black color.Color, g GraphTab) {
+	L := g.Layout
+	small := func(s string, x, y int) {
+		if y >= L.ClipTop {
+			DrawTextFont(screen, s, G1FontSmall, w.X+x, w.Y+y, black)
+		}
 	}
-	label, hist, month, year := w.Production(w.Tab - 1)
-	small := func(s string, x, y int) { DrawTextFont(screen, s, G1FontSmall, x, y, black) }
-	bottom := w.H - 7
+	bottom := w.H - L.BottomInset
 	grid := gfx8.Shade(sec, 4)
 	type tick struct {
 		x, y int
 		s    string
 	}
 	var ticks []tick
+	hist, month, year := g.History, g.Month, g.Year
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
-		yTick := 0
-		for y := bottom; y >= 68; y -= 20 {
-			gfx8.FillRect(rt, 41, y, 41+239-1, y, grid)
+		yTick := g.FirstTick
+		for y := bottom; y >= L.Top; y -= 20 {
+			gfx8.FillRect(rt, L.GridX, y, L.GridX+L.GridW-1, y, grid)
 			s := strconv.Itoa(yTick)
 			ticks = append(ticks, tick{39 - MeasureTextFont(s, G1FontSmall), y - 6, s})
 			yTick += 1000
@@ -299,13 +342,15 @@ func (w *ViewWindow) drawProduction(screen *ebiten.Image, sec []uint8, black col
 			if month == 0 {
 				if yearSkip == 0 {
 					s := strconv.Itoa(year)
-					ticks = append(ticks, tick{x - MeasureTextFont(s, G1FontSmall)/2, 56, s})
+					ticks = append(ticks, tick{x - MeasureTextFont(s, G1FontSmall)/2, L.YearY, s})
 				}
-				gfx8.FillRect(rt, x, 56+11, x, 56+11+w.H-74-1, grid)
+				gfx8.FillRect(rt, x, max(L.VTop, L.ClipTop), x, w.H-L.VBottomInset, grid)
 			}
 			if i < len(hist)-1 {
 				y1, y2 := bottom-int(hist[i]), bottom-int(hist[i+1])
-				chartDrawLine(rt, x, y1, x+1, y2, gfx8.Shade(sec, 7))
+				if min(y1, y2) >= L.ClipTop {
+					chartDrawLine(rt, x, y1, x+1, y2, gfx8.Shade(sec, 7))
+				}
 			}
 			if month == 0 {
 				month, year = 11, year-1
@@ -317,8 +362,10 @@ func (w *ViewWindow) drawProduction(screen *ebiten.Image, sec []uint8, black col
 			}
 		}
 	})
-	small(strings.Replace(i18n.Label(i18n.ProductionGraphLabel), "{STRINGID}", ObjectString(label), 1), w.X+2, w.Y-24+68)
+	if g.Label != "" {
+		small(strings.Replace(i18n.Label(i18n.ProductionGraphLabel), "{STRINGID}", ObjectString(g.Label), 1), 2, 44)
+	}
 	for _, t := range ticks {
-		small(t.s, w.X+t.x, w.Y+t.y)
+		small(t.s, t.x, t.y)
 	}
 }
