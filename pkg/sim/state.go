@@ -7,6 +7,10 @@ import "github.com/LaPingvino/goloco/pkg/core"
 type State struct {
 	Map
 	ConsHead      ConstructionHead // shared track/road construction head
+	// ConsBridge is cState.lastSelectedBridge + 1 (0: none): the bridge type a
+	// track or road piece is built with where it needs one (getTrackPlacementArgs
+	// / getRoadPlacementArgs). The game sets it from the window's choice.
+	ConsBridge uint8
 	consStack     []placedPiece    // undo stack for placed track pieces
 	consRoadStack []placedPiece    // undo stack for placed road pieces
 	// TrackGhost is the construction ghost while positioning (trackghost.go);

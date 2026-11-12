@@ -208,7 +208,7 @@ func (s *State) UpdateHeadTrackGhost(c *Cmd, trackID int, objID uint8) {
 		s.RemoveTrackGhost(c)
 		return
 	}
-	a := headTrackArgs(h, trackID, objID)
+	a := headTrackArgs(h, trackID, objID, s.bridge())
 	if g := s.TrackGhost; g != nil && g.X == a.X && g.Y == a.Y && g.Z == a.Z && g.Rotation == a.Rotation && g.TrackID == a.TrackID && g.TrackObjectID == a.TrackObjectID {
 		return
 	}
@@ -216,10 +216,13 @@ func (s *State) UpdateHeadTrackGhost(c *Cmd, trackID int, objID uint8) {
 }
 
 // headTrackArgs is the createTrack arguments for trackID at the head.
-func headTrackArgs(h ConstructionHead, trackID int, objID uint8) trackPlacementArgs {
+func headTrackArgs(h ConstructionHead, trackID int, objID, bridge uint8) trackPlacementArgs {
 	return trackPlacementArgs{X: int32(h.X) * 32, Y: int32(h.Y) * 32, Z: int32(h.BaseZ) * 4, Rotation: h.Rotation & 3,
-		TrackID: uint8(trackID), TrackObjectID: objID, Bridge: 0xFF}
+		TrackID: uint8(trackID), TrackObjectID: objID, Bridge: bridge}
 }
+
+// bridge is the selected bridge type for the placement arguments (0xFF none).
+func (s *State) bridge() uint8 { return s.ConsBridge - 1 }
 
 // minPieceZ is getMinPieceHeight: the piece's lowest point.
 func minPieceZ(pieces []PreviewTrack) int32 {

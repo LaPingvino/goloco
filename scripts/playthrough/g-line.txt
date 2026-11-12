@@ -1,8 +1,10 @@
 # PL.1 playthrough, stage G: as F (seed 1950, Weatherworld, a fixed view by
-# Cloudburst), then a line of ten straights from 250,420 (the eleventh would
-# need a bridge over the ridge: the error window says so) and a train station
+# Cloudburst), then a line of eleven straights from 250,420 (the eleventh
+# crosses the ridge on a bridge: the window's selected one, used since
+# 2026-11-12 — before, every build ignored it and said "Bridge needed") and a train station
 # at each end — the line a first train will run (stage H: Build Vehicles).
-# £84,300 → £80,781 (2026-11-07; was £81,370 when written).
+# £84,300 → £79,468 (2026-11-12, with the bridge; £80,781 before it, £81,370
+# when written).
 wait 20
 seed 1950
 scenario Weatherworld
