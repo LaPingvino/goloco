@@ -23,7 +23,7 @@ import (
 // vehicle calling here (the others hidden: leftAlignTabs), each listing those
 // vehicles by name, drawn inline with their status; a row opens the vehicle.
 // PARTIAL: resizing, the viewport's rotation, the cargo list's scrolling,
-// the status bar's tooltip, the vehicle list's scrollbar drag.
+// the status bar's tooltip.
 const stationWinW, stationWinH = 223, 136 // Station::kWindowSize
 
 type StationWindow struct {
@@ -57,7 +57,8 @@ type StationWindow struct {
 	Vehicles     func(t int) []VehicleRow
 	OnVehicle    func(headID uint16)
 	vScroll      int
-	vHover       int // rowHover's row (-1 none)
+	vHover       int           // rowHover's row (-1 none)
+	hold         L.VScrollHold // a press on the list's scrollbar held
 }
 
 // The vehicle tabs (Tab 3 + VehicleType): VehiclesStopping::kWindowSize.
@@ -458,7 +459,7 @@ func (w *StationWindow) drawStationTabs(rt *gfx8.RenderTarget, sec []uint8, curr
 var stationVehicleTabFrames = [6]int{418, 434, 450, 442, 426, 458}
 
 // vehicleClick is a click in a vehicle tab's list: on its scrollbar the
-// buttons scroll a row and the track a page; on a row its vehicle opens.
+// buttons, track and thumb (held: Drag); on a row its vehicle opens.
 func (w *StationWindow) vehicleClick(rx, ry int) {
 	if w.Vehicles == nil {
 		return
@@ -468,18 +469,8 @@ func (w *StationWindow) vehicleClick(rx, ry int) {
 	if rx < l || rx >= l+wd || ry < t || ry >= t+ht {
 		return
 	}
-	if rx >= l+wd-L.ScrollbarSize-L.ScrollbarMargin && len(rows)*rowH > ht {
-		step := rowH
-		switch {
-		case ry < t+L.ScrollbarMargin+L.ScrollbarSize:
-			step = -rowH
-		case ry >= t+ht-L.ScrollbarMargin-L.ScrollbarSize:
-		case ry < t+ht/2:
-			step = -ht
-		default:
-			step = ht
-		}
-		w.vScroll = min(max(w.vScroll+step, 0), len(rows)*rowH-ht)
+	if rx >= l+wd-L.ScrollbarSize-L.ScrollbarMargin && len(rows)*rowH > ht { // ScrollView's buttons, track and thumb
+		w.vScroll = w.hold.Begin(ry-t, w.Y+ry, ht, len(rows)*rowH, w.vScroll)
 		return
 	}
 	if i := (ry - (t + 1) + w.vScroll) / rowH; i >= 0 && i < len(rows) && w.OnVehicle != nil {
@@ -517,7 +508,7 @@ func (w *StationWindow) drawVehicles(screen *ebiten.Image) {
 			gfx8.DrawSpriteNoise(rt, sp, W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 		w.drawStationTabs(rt, sec, w.Tab)
-		cx, cy, cw, ch, bar = drawVScrollViewPressed(rt, l, t, wd, ht, gfx8.InsetColour{Map: sec}, len(rows)*rowH, w.vScroll, "")
+		cx, cy, cw, ch, bar = drawVScrollViewPressed(rt, l, t, wd, ht, gfx8.InsetColour{Map: sec}, len(rows)*rowH, w.vScroll, w.hold.PressedPart())
 		if cw <= 0 || ch <= 0 {
 			return
 		}
@@ -567,4 +558,16 @@ func (w *StationWindow) drawVehicles(screen *ebiten.Image) {
 	DrawTextBold(screen, vehicleListFooter(w.Tab-3, len(rows)), w.X+3, w.Y+H-13, black)
 	caption := strings.Replace(i18n.Label(i18n.StringidTrains+w.Tab-3), "{STRINGID}", w.Title, 1)
 	DrawWindowCaptionStation(screen, w.X+1, w.Y+1, W-2, caption, w.TitleColour)
+}
+
+// Drag is the vehicle list's scrollbar press held each tick
+// (VScrollHold.Continue): the thumb follows, a held button repeats.
+func (w *StationWindow) Drag(px, py int, held bool) {
+	if w.Tab < 3 || w.Vehicles == nil {
+		return
+	}
+	l, t, wd, ht, rowH := w.vehicleList()
+	rx, ry := px-w.X, py-w.Y
+	onBar := rx >= l+wd-L.ScrollbarSize-L.ScrollbarMargin && rx < l+wd && ry >= t && ry < t+ht
+	w.vScroll = w.hold.Continue(held, onBar, ry-t, py, ht, len(w.Vehicles(w.Tab-3))*rowH, w.vScroll)
 }
