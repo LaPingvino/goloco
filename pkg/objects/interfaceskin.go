@@ -54,37 +54,46 @@ type InterfaceSkinObject struct {
 // These are offsets from the InterfaceSkinObject.Img base.
 // Usage: interface.Img + ImageIds.ToolbarLoadsave
 const (
-	ISPreviewImage                     = 0
-	ISToolbarPause                     = 1
-	ISToolbarPauseHover                = 2
-	ISToolbarLoadsave                  = 3
-	ISToolbarLoadsaveHover             = 4
-	ISToolbarZoom                      = 5
-	ISToolbarZoomHover                 = 6
-	ISToolbarRotate                    = 7
-	ISToolbarRotateHover               = 8
-	ISToolbarTerraform                 = 9
-	ISToolbarTerraformHover            = 10
-	ISToolbarAudioActive               = 11
-	ISToolbarAudioActiveHover          = 12
-	ISToolbarAudioInactive             = 13
-	ISToolbarAudioInactiveHover        = 14
-	ISToolbarView                      = 15
-	ISToolbarViewHover                 = 16
-	ISToolbarTowns                     = 17
-	ISToolbarTownsHover                = 18
-	ISToolbarEmptyOpaque               = 19
-	ISToolbarEmptyOpaqueHover          = 20
-	ISToolbarEmptyTransparent          = 21
-	ISToolbarEmptyTransparentHover     = 22
-	ISToolbarIndustries                = 23
-	ISToolbarIndustriesHover           = 24
-	ISToolbarAirports                  = 25
-	ISToolbarAirportsHover             = 26
-	ISToolbarPorts                     = 27
-	ISToolbarPortsHover                = 28
-	ISToolbarCogwheels                 = 29
-	ISToolbarCogwheelsHover            = 30
+	ISPreviewImage                 = 0
+	ISToolbarPause                 = 1
+	ISToolbarPauseHover            = 2
+	ISToolbarLoadsave              = 3
+	ISToolbarLoadsaveHover         = 4
+	ISToolbarZoom                  = 5
+	ISToolbarZoomHover             = 6
+	ISToolbarRotate                = 7
+	ISToolbarRotateHover           = 8
+	ISToolbarTerraform             = 9
+	ISToolbarTerraformHover        = 10
+	ISToolbarAudioActive           = 11
+	ISToolbarAudioActiveHover      = 12
+	ISToolbarAudioInactive         = 13
+	ISToolbarAudioInactiveHover    = 14
+	ISToolbarView                  = 15
+	ISToolbarViewHover             = 16
+	ISToolbarTowns                 = 17
+	ISToolbarTownsHover            = 18
+	ISToolbarEmptyOpaque           = 19
+	ISToolbarEmptyOpaqueHover      = 20
+	ISToolbarEmptyTransparent      = 21
+	ISToolbarEmptyTransparentHover = 22
+	ISToolbarIndustries            = 23
+	ISToolbarIndustriesHover       = 24
+	ISToolbarAirports              = 25
+	ISToolbarAirportsHover         = 26
+	ISToolbarPorts                 = 27
+	ISToolbarPortsHover            = 28
+	ISToolbarCogwheels             = 29
+	ISToolbarCogwheelsHover        = 30
+	// The Vehicles button's faces (vehicle_*_frame_0), by VehicleType: train,
+	// bus, truck, tram, aircraft, ship.
+	ISVehicleTrainFrame0    = 418
+	ISVehicleAircraftFrame0 = 426
+	ISVehicleBusesFrame0    = 434
+	ISVehicleTramsFrame0    = 442
+	ISVehicleTrucksFrame0   = 450
+	ISVehicleShipsFrame0    = 458
+
 	ISToolbarBuildVehicleTrain         = 31
 	ISToolbarBuildVehicleTrainHover    = 32
 	ISToolbarBuildVehicleBus           = 33

@@ -21,7 +21,7 @@ var buttonImageIDs = map[string][2]uint32{
 	"Railroad":       {objects.ISToolbarEmptyOpaque, objects.ISToolbarEmptyOpaqueHover},
 	"Road":           {objects.ISToolbarEmptyOpaque, objects.ISToolbarEmptyOpaqueHover},
 	"Port/Airport":   {objects.ISToolbarAirports, objects.ISToolbarAirportsHover},
-	"Build Vehicles": {objects.ISToolbarBuildVehicleTrain, objects.ISToolbarBuildVehicleTrainHover},
+	"Build Vehicles": {objects.ISToolbarEmptyOpaque, objects.ISToolbarEmptyOpaqueHover}, // its face: the last type (Draw)
 	"Vehicles":       {objects.ISToolbarEmptyOpaque, objects.ISToolbarEmptyOpaqueHover},
 	"Stations":       {objects.ISToolbarStations, objects.ISToolbarStationsHover},
 	"Towns":          {objects.ISToolbarTowns, objects.ISToolbarTownsHover},
@@ -53,7 +53,18 @@ type Toolbar struct {
 	// player's colour. The game sets them each frame.
 	LastRailroadOption, LastRoadOption uint8
 	CompanyColour                      uint8
+	// The Vehicles and Build Vehicles buttons' faces: the last VehicleType
+	// each menu chose (lastVehicleType, lastBuildVehiclesOption).
+	LastVehicleType, LastBuildVehiclesOption uint8
 }
+
+// vehicleButtonFaces is ToolbarTop.cpp draw's button_face_image_ids and
+// kBuildVehicleImages, by VehicleType (train, bus, truck, tram, aircraft,
+// ship): interface-skin image indices.
+var vehicleButtonFaces = [6]int{objects.ISVehicleTrainFrame0, objects.ISVehicleBusesFrame0, objects.ISVehicleTrucksFrame0,
+	objects.ISVehicleTramsFrame0, objects.ISVehicleAircraftFrame0, objects.ISVehicleShipsFrame0}
+var buildVehicleButtonFaces = [6]int{objects.ISToolbarBuildVehicleTrain, objects.ISToolbarBuildVehicleBus, objects.ISToolbarBuildVehicleTruck,
+	objects.ISToolbarBuildVehicleTram, 39, 41} // toolbar_build_vehicle_airplane, _boat
 
 // NewToolbar creates a new toolbar matching OpenLoco's layout
 //
@@ -295,8 +306,17 @@ func (t *Toolbar) drawButton(screen *ebiten.Image, btn *ToolbarButton, renderer 
 	// (ToolbarTop.cpp draw 0x00439DE4, ToolbarTopCommon.cpp draw): a road
 	// object's image, or a track object's + kUiPreviewImage0 (0), recoloured
 	// to the player's colour; the road button only once there is a road option.
-	if !drewSprite || btn.Tooltip == "Railroad" || btn.Tooltip == "Road" {
+	if !drewSprite || btn.Tooltip == "Railroad" || btn.Tooltip == "Road" || btn.Tooltip == "Vehicles" || btn.Tooltip == "Build Vehicles" {
 		previewSpriteID := -1
+		if sk := renderer.ObjMgr; sk != nil && sk.InterfaceSkin != nil {
+			// the Vehicles / Build Vehicles faces (ToolbarTop.cpp draw)
+			switch {
+			case btn.Tooltip == "Vehicles" && int(t.LastVehicleType) < len(vehicleButtonFaces):
+				previewSpriteID = int(sk.InterfaceSkin.ImageOffset) + vehicleButtonFaces[t.LastVehicleType]
+			case btn.Tooltip == "Build Vehicles" && int(t.LastBuildVehiclesOption) < len(buildVehicleButtonFaces):
+				previewSpriteID = int(sk.InterfaceSkin.ImageOffset) + buildVehicleButtonFaces[t.LastBuildVehiclesOption]
+			}
+		}
 		opt := uint8(0xFF)
 		switch btn.Tooltip {
 		case "Railroad":
