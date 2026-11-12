@@ -341,3 +341,37 @@ func (w *World) SetCatchmentDisplay(cm []uint8) {
 		return tx >= 0 && tx < mw && i >= 0 && i < len(cm) && cm[i]&(1<<1) != 0
 	}
 }
+
+// SetMapSelection sets the map selection (setMapSelectionFlags(enable) with
+// setMapSelectionArea, MapSelectionType::full) to the tiles a..b inclusive,
+// or clears it (on false: resetMapSelectionFlag(enable)); the old and new
+// areas are invalidated (mapInvalidateSelectionRect).
+func (w *World) SetMapSelection(on bool, ax, ay, bx, by int) {
+	area := [4]int{ax, ay, bx, by}
+	if on == w.selOn && (!on || area == w.selArea) {
+		return
+	}
+	inval := func(a [4]int) {
+		for ty := a[1]; ty <= a[3]; ty++ {
+			for tx := a[0]; tx <= a[2]; tx++ {
+				w.invalidateTile(int32(tx)*32, int32(ty)*32, 0, 1120, 3, 32)
+			}
+		}
+	}
+	if w.selOn {
+		inval(w.selArea)
+	}
+	w.selOn, w.selArea = on, area
+	if w.scene == nil {
+		return
+	}
+	if !on {
+		w.scene.Selection = nil
+		return
+	}
+	inval(area)
+	w.scene.Selection = func(tx, ty int) bool {
+		a := w.selArea
+		return tx >= a[0] && tx <= a[2] && ty >= a[1] && ty <= a[3]
+	}
+}

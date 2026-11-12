@@ -10,8 +10,7 @@ import (
 // The Fund New Industries tab's tool (IndustryList.cpp NewIndustries): set
 // while the tab is open (switchTab's toolSet); the chosen industry's ghost
 // follows the cursor (onToolUpdate), a click funds it there (onToolDown).
-// PARTIAL: the selection's tile highlight (setMapSelectionArea), the
-// construct sound, the error window's text ("Can't build this here…").
+// PARTIAL: the construct sound.
 
 // industryTool is the tool's state: on while the tab is open; the ghost
 // placed (_industryGhostPlaced/Pos/Type/Id); the last ghost's cost
@@ -47,6 +46,7 @@ func (g *Game) industryToolStart(win *ui.TownListWindow) {
 
 // industryToolAbort is onToolAbort (removeIndustryGhost) and the tool's end.
 func (g *Game) industryToolAbort() {
+	g.w.SetMapSelection(false, 0, 0, 0, 0)
 	g.removeIndustryGhost()
 	g.indTool.on = false
 }
@@ -83,10 +83,13 @@ func (g *Game) removeIndustryGhost() {
 // its cost kept for the window.
 func (g *Game) industryToolUpdate(x, y int) {
 	a, ok := g.industryPlacementAt(x, y)
-	if !ok {
+	if !ok { // resetMapSelectionFlag(enable)
+		g.w.SetMapSelection(false, 0, 0, 0, 0)
 		g.removeIndustryGhost()
 		return
 	}
+	tx, ty := int(a.X>>5), int(a.Y>>5) // setMapSelectionCorner(full), setMapSelectionArea(pos, pos)
+	g.w.SetMapSelection(true, tx, ty, tx, ty)
 	a.BuildImmediately = true // ghosts show the buildings, not scaffolding
 	t := &g.indTool
 	if t.ghost && t.ghostX == a.X && t.ghostY == a.Y && t.ghostType == a.Type {

@@ -38,6 +38,8 @@ type tile = sim.Tile
 type World struct {
 	townScene *scene.Renderer   // the Town window's viewport (townview.go)
 	catchment []uint8           // SetCatchmentDisplay's map (nil: none)
+	selOn     bool              // SetMapSelection: the selection is shown
+	selArea   [4]int            // its tiles: min x, min y, max x, max y
 	consArrow constructionArrow // the construction head's arrow (constructionarrow.go)
 	// SceneEvery: render the world every n-th frame (≤ 1: every frame); the
 	// game raises it while its UI is open (drawScene).

@@ -35,6 +35,11 @@ type Renderer struct {
 	// Catchment is the map selection's catchment area (MapSelectionFlags::
 	// catchmentArea with isWithinCatchmentDisplay); nil: not shown.
 	Catchment func(tileX, tileY int) bool
+	// Selection is the map selection (MapSelectionFlags::enable with
+	// getMapSelectionArea, MapSelectionType::full): a tile in it gets the
+	// selection box on its surface. nil: none. PARTIAL: the corner, quarter,
+	// edge and water selection types.
+	Selection func(tileX, tileY int) bool
 	// ConstructionArrow is World::getConstructionArrow with
 	// MapSelectionFlags::enableConstructionArrow as Visible.
 	ConstructionArrow ConstructionArrow
@@ -231,6 +236,7 @@ func (r *Renderer) worker(i int) *Renderer {
 	}
 	r.workers[i].WaveFrame = r.WaveFrame // set after the workers may exist: passed on each time
 	r.workers[i].Catchment = r.Catchment
+	r.workers[i].Selection = r.Selection
 	r.workers[i].ConstructionArrow = r.ConstructionArrow
 	return r.workers[i]
 }
@@ -251,8 +257,12 @@ type View struct {
 	Tiles image.Rectangle
 }
 
-// constructionCatchmentSlope0 is ImageIds::constructionCatchmentSlope0 (+ display slope).
-const constructionCatchmentSlope0 = 341
+// constructionCatchmentSlope0 / constructionSelectionCornersSlope0 are
+// ImageIds' catchment and selection boxes (+ display slope).
+const (
+	constructionCatchmentSlope0        = 341
+	constructionSelectionCornersSlope0 = 322
+)
 
 var slopeToDisplay = [32]int{0, 2, 1, 3, 8, 10, 9, 11, 4, 6, 5, 7, 12, 14, 13, 15, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 16, 0, 18, 15, 0}
 
@@ -786,6 +796,14 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	}
 	// PaintSurface.cpp paintMainSurface: offset (0,0,baseHeight), bbox (32,32,-1).
 	s.AddAsParent(paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, paint.Pos3{Z: z}, paint.Pos3{Z: z}, paint.Pos3{X: 32, Y: 32, Z: -1})
+	// paintSurfaceFullTileSelection: kCornerSelectionBoxFromSlope by the
+	// display slope in ExtColour::unk25, attached to the surface.
+	if r.Selection != nil && r.Selection(x, y) {
+		if sel := sprite(constructionSelectionCornersSlope0 + slopeToDisplay[t.Slope&0x1F]); sel != nil {
+			pm := r.colourMap(0x25)
+			s.AttachToPrevious(paint.Image{Sprite: sel, Op: gfx8.OpFor(sel, pm != nil, false), PalMap: pm}, 0, 0)
+		}
+	}
 	if snowAttach != nil && s.Zoom <= 2 { // the partial snow image only up to zoom 2
 		s.AttachToPrevious(*snowAttach, 0, 0)
 	}
