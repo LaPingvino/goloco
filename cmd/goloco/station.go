@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/core"
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/sim"
@@ -60,8 +61,8 @@ func (g *Game) openStationWindow(id int) {
 		byType[v.Type] = append(byType[v.Type], ui.VehicleRow{HeadID: v.HeadID, Name: v.Name, Cars: cars, Status: v.Status, StatusRed: v.StatusRed})
 		w.VehicleTypes[v.Type] = true
 	}
-	for t := range byType { // sortVehicleList: orderByName (strlogicalcmp; PARTIAL: plain string order)
-		sort.SliceStable(byType[t], func(i, j int) bool { return byType[t][i].Name < byType[t][j].Name })
+	for t := range byType { // sortVehicleList: orderByName (strlogicalcmp)
+		sort.SliceStable(byType[t], func(i, j int) bool { return core.StrLogicalCmp(byType[t][i].Name, byType[t][j].Name) < 0 })
 	}
 	w.Vehicles = func(t int) []ui.VehicleRow { return byType[t] }
 	w.OnVehicle = func(head uint16) { g.openVehicleDetails(head) } // onScrollMouseDown: Vehicle::Main::open
