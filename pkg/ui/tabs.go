@@ -73,3 +73,37 @@ func drawTabDisabled(rt *gfx8.RenderTarget, x, y int, sec []uint8) {
 	gfx8.DrawSprite(rt, sp, x+1, y+1, gfx8.OpTransparent|gfx8.OpSrc, solid(gfx8.Shade(sec, 6)))
 	gfx8.DrawSprite(rt, sp, x, y, gfx8.OpTransparent|gfx8.OpSrc, solid(gfx8.Shade(sec, 4)))
 }
+
+// drawProductionTab is IndustryWindow.cpp drawProductionTab's drawing: the tab
+// background, its image at the tab's corner (not shifted when inactive), the
+// produced cargo's inline sprite at (18, 14), then Widget::drawTab with
+// kContentUnk — the inactive overlay and line over both.
+func drawProductionTab(rt *gfx8.RenderTarget, x, y int, active bool, sec []uint8, icon int, iconMap []uint8, cargo int) {
+	g1 := globalG1Font.g1
+	bg := imgTab
+	if active {
+		bg++
+	}
+	if sp, err := gfx8.Decode(&g1.Elements[bg]); err == nil {
+		gfx8.DrawSpriteNoise(rt, sp, x, y, gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
+	}
+	for _, d := range []struct {
+		id, dx, dy int
+		m          []uint8
+	}{{icon, 0, 0, iconMap}, {cargo, 18, 14, nil}} {
+		if d.id >= 0 && d.id < len(g1.Elements) {
+			if sp, err := gfx8.Decode(&g1.Elements[d.id]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, x+d.dx, y+d.dy, gfx8.OpFor(sp, d.m != nil, false), d.m, nil)
+			}
+		}
+	}
+	if active {
+		return
+	}
+	if sp, err := gfx8.Decode(&g1.Elements[imgTab]); err == nil {
+		if m, err := g1.GetPaletteMap(extColourUnk33); err == nil {
+			gfx8.DrawSpriteNoise(rt, sp, x, y, gfx8.OpFor(sp, false, true), m, nil)
+		}
+	}
+	gfx8.FillRect(rt, x, y+26, x+31-1, y+26, gfx8.Shade(sec, 7))
+}
