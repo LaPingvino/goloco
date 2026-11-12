@@ -112,7 +112,7 @@ func (g *Game) loadScenario(filePath string) error {
 	g.windowMgr.CloseWindow("Load Game")
 	g.windowMgr.CloseWindow("New Game")
 	log.Printf("[Game] Loaded scenario: %s (%dx%d)", filePath, sc.MapWidth, sc.MapHeight)
-	if z, err := strconv.Atoi(os.Getenv("GOLOCO_ZOOM")); err == nil && g.w != nil { // diagnostic: start at another zoom
+	if z, err := strconv.Atoi(os.Getenv("GOLOCO_ZOOM")); err == nil { // diagnostic: start at another zoom
 		g.w.SetZoom(z)
 	}
 	return nil
@@ -174,7 +174,7 @@ func (g *Game) scenarioObjectiveText(m *scenario.ScenarioMeta) string {
 	co := ui.ChallengeObjective{Type: o.Type, Flags: o.Flags, CompanyValue: o.CompanyValue, MonthlyProfit: o.MonthlyVehicleProfit,
 		PerformanceIndex: o.PerformanceIndex, CargoAmount: o.DeliveredCargoAmount, TimeLimitYears: o.TimeLimitYears,
 		UntilYear: int(o.TimeLimitYears) + int(m.StartYear) - 1}
-	if g.r != nil && g.r.ObjMgr != nil && m.ObjectiveCargoName != "" {
+	if g.r.ObjMgr != nil && m.ObjectiveCargoName != "" {
 		if lo := g.r.ObjMgr.GetObject(m.ObjectiveCargoName); lo != nil {
 			if c, ok := lo.Object.(*objects.CargoObject); ok {
 				co.CargoUnitPlural = ui.ObjectString(c.UnitNamePlural)

@@ -150,7 +150,7 @@ func (g *Game) handleToolbarButton(idx int) {
 // railroad menu asks for GameCommands::getUpdatingCompanyId ("This looks
 // odd"); outside a command that is the controlling company, as here.
 func (g *Game) constructionMenu(btn *ui.ToolbarButton, rail bool) {
-	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return
 	}
 	m, om := &g.w.Map, g.r.ObjMgr
@@ -209,7 +209,7 @@ func (g *Game) openConstructionWithFlags(flags uint8) {
 // portMenuDropdown: the option remembered, Construction::openWithFlags.
 // PARTIAL: the airport and dock construction windows (logged for now).
 func (g *Game) portMenu(btn *ui.ToolbarButton) {
-	if g.w == nil || g.skin() == nil {
+	if g.skin() == nil {
 		return
 	}
 	m := &g.w.Map
@@ -271,7 +271,7 @@ func (g *Game) openPortConstruction(option int) {
 // BuildVehicle::openByType. PARTIAL: the button face doesn't yet show the last
 // type's image (kBuildVehicleImages).
 func (g *Game) buildVehiclesMenu(btn *ui.ToolbarButton) {
-	if g.w == nil || g.skin() == nil {
+	if g.skin() == nil {
 		return
 	}
 	m := &g.w.Map

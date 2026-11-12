@@ -13,7 +13,7 @@ import (
 // stationArgsAt is getTrainStationPlacementArgsFromCursor with the selected
 // station type; ok false off track.
 func (g *Game) stationArgsAt(sx, sy int) (sim.TrainStationPlacement, bool) {
-	if g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return sim.TrainStationPlacement{}, false
 	}
 	list := g.r.ObjMgr.AvailableCompatibleStations(g.buildObjID, false, int(g.w.CurrentYear))
@@ -144,7 +144,7 @@ func (g *Game) stationToolUp(sx, sy int) {
 // roadStationArgsAt is getRoadStationPlacementArgsFromCursor with the
 // selected stop type.
 func (g *Game) roadStationArgsAt(sx, sy int) (sim.RoadStationPlacement, int, bool) {
-	if g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return sim.RoadStationPlacement{}, -1, false
 	}
 	list := g.r.ObjMgr.AvailableCompatibleStations(g.buildObjID, true, int(g.w.CurrentYear))
@@ -237,7 +237,7 @@ func (g *Game) ghostTabInfo(st *ui.StationTabState) {
 // the cursor (getSurfaceOrWaterLocFromUi), the dock placed by
 // getDockPlacementArgs with the selected dock.
 func (g *Game) dockArgsAt(sx, sy int) (sim.PortPlacement, int, bool) {
-	if g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return sim.PortPlacement{}, -1, false
 	}
 	list := g.r.ObjMgr.AvailableDocks(int(g.w.CurrentYear))
@@ -308,7 +308,7 @@ func (g *Game) dockToolUp(sx, sy int) {
 // airportArgsAt is getAirportPlacementArgsFromCursor: the surface or water
 // under the cursor, the selected airport at the window's rotation.
 func (g *Game) airportArgsAt(sx, sy int) (sim.AirportPlacement, int, bool) {
-	if g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return sim.AirportPlacement{}, -1, false
 	}
 	list := g.r.ObjMgr.AvailableAirports(int(g.w.CurrentYear))

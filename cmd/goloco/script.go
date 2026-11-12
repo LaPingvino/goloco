@@ -272,7 +272,7 @@ func (g *Game) scriptShotName() string {
 
 // scriptCamera applies a script's "camera X Y" (once).
 func (g *Game) scriptCamera() {
-	if g.script == nil || g.script.cameraReq == nil || g.w == nil {
+	if g.script == nil || g.script.cameraReq == nil {
 		return
 	}
 	c := g.script.cameraReq

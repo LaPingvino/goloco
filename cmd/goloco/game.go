@@ -39,6 +39,10 @@ const (
 	buildModeAirport = 4 // openWithFlags(1 << 31): the airport window (Station tab only, rotate button)
 )
 
+// Game is the running program: the world shown (w — the title map or a game's),
+// the renderer and its object manager (r, r.ObjMgr: nil only without game
+// data), the open windows, and the tools' state. w and r are set once by
+// NewGame and never nil.
 type Game struct {
 	diagConsDone                   bool
 	noEdgeScrolling                bool // Options > Controls: edge scrolling off (Config::edgeScrolling)
@@ -566,7 +570,7 @@ func (g *Game) prewarmTick() {
 // skin is the loaded interface skin object (INTERDEF.DAT): the windows'
 // colours and the toolbar images; nil without game data.
 func (g *Game) skin() *objects.InterfaceSkinObject {
-	if g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return nil
 	}
 	return g.r.ObjMgr.InterfaceSkin

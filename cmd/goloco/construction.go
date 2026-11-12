@@ -55,7 +55,7 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 	}
 	var st ui.ConstructionTabState
 	company, _ := g.w.ControllingCompany()
-	if g.r != nil && g.r.ObjMgr != nil {
+	if g.r.ObjMgr != nil {
 		if sk := g.r.ObjMgr.InterfaceSkin; sk != nil {
 			f.SkinColour = sk.WindowConstructionColour
 		}
@@ -154,7 +154,7 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 	st.BridgeImage, st.Company = -1, f.CompanyColour
 	// trackCost/roadCost: the selected piece's cost while extending (the
 	// ghost's cost upstream).
-	if !st.Hover && g.r != nil && g.r.ObjMgr != nil {
+	if !st.Hover && g.r.ObjMgr != nil {
 		if id := g.consSelectedID(); id >= 0 {
 			cmf := &g.w.CurrencyMultiplicationFactor
 			om := g.r.ObjMgr
@@ -178,7 +178,7 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 			}
 		}
 	}
-	if g.r != nil && g.r.ObjMgr != nil {
+	if g.r.ObjMgr != nil {
 		om := g.r.ObjMgr
 		// lastSelectedBridge: the first available (PARTIAL: the scenario's remembered bridges[]).
 		if list := om.AvailableCompatibleBridges(g.buildObjID, g.consIsRoad(), int(g.w.CurrentYear)); len(list) > 0 {
@@ -327,7 +327,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 // scenario's remembered choice, Scenario::getConstruction().signals).
 func (g *Game) signalTabState() ui.SignalTabState {
 	st := ui.SignalTabState{Both: !g.consSigOne, Image: -1}
-	if g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return st
 	}
 	om := g.r.ObjMgr
@@ -345,7 +345,7 @@ func (g *Game) signalTabState() ui.SignalTabState {
 // (getAvailableCompatibleMods: modList) with their names, and the ticked ones.
 func (g *Game) overheadTabState() ui.OverheadTabState {
 	st := ui.OverheadTabState{Selected: g.consMods}
-	if g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return st
 	}
 	om := g.r.ObjMgr
@@ -376,7 +376,7 @@ func (g *Game) overheadTabState() ui.OverheadTabState {
 // remembered choice) and the company's colour.
 func (g *Game) stationTabState(company uint8) ui.StationTabState {
 	st := ui.StationTabState{Image: -1, Company: company}
-	if g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return st
 	}
 	om := g.r.ObjMgr
@@ -438,7 +438,7 @@ func pickSlot(list []int, sel int) int {
 // type, the selected one highlighted; choosing sets lastSelected….
 // PARTIAL: Scenario::getConstruction()'s remembered choice isn't written.
 func (g *Game) openConsDropdown(wx, wy int, colour uint8, station bool) {
-	if g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return
 	}
 	om := g.r.ObjMgr
@@ -512,7 +512,7 @@ func (g *Game) openConsDropdown(wx, wy int, colour uint8, station bool) {
 // "Height limit:" (dropdown_bridge_stats), the current one highlighted.
 // Units as the Regional tab's Distance and Speed sets them (uilayout).
 func (g *Game) openBridgeDropdown(wx, wy int, colour, company uint8) {
-	if g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return
 	}
 	om := g.r.ObjMgr
@@ -555,7 +555,7 @@ func (g *Game) openBridgeDropdown(wx, wy int, colour, company uint8) {
 // cursor; otherwise none. PARTIAL: road (the road ghost), building off
 // existing track (tryMakeTrackJunctionAtLoc), the construction arrow.
 func (g *Game) updateTrackGhost() {
-	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return
 	}
 	// updateConstruction for a road: the selected road piece as a ghost at the head.
@@ -591,7 +591,7 @@ func (g *Game) updateTrackGhost() {
 
 // removeTrackGhost is removeConstructionGhosts' track part (removeTrackGhosts).
 func (g *Game) removeTrackGhost() {
-	if g.w == nil || g.w.TrackGhost == nil {
+	if g.w.TrackGhost == nil {
 		return
 	}
 	c := g.playerCmd()
@@ -734,7 +734,7 @@ func (g *Game) openTrackBuildError(c *sim.Cmd) {
 
 func (g *Game) consPlace(id int) {
 	var built bool
-	if g.consIsRoad() && g.r != nil && g.r.ObjMgr != nil {
+	if g.consIsRoad() && g.r.ObjMgr != nil {
 		// constructRoad: the createRoad game command (ghost taken up first), checked and charged.
 		c := g.playerCmd()
 		if _, built = g.w.BuildRoadAtHead(c, id, uint8(g.buildObjID)); !built {
@@ -742,7 +742,7 @@ func (g *Game) consPlace(id int) {
 		}
 	} else if g.consIsRoad() {
 		built = g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
-	} else if g.r != nil && g.r.ObjMgr != nil { // the createTrack game command: checked and charged (PL.1 e)
+	} else if g.r.ObjMgr != nil { // the createTrack game command: checked and charged (PL.1 e)
 		c := g.playerCmd()
 		if _, built = g.w.BuildTrackAtHead(c, id, uint8(g.buildObjID)); !built {
 			g.openTrackBuildError(c)
@@ -768,7 +768,7 @@ func (g *Game) consUndo() {
 // indexed by object slot (empty string for unused slots).
 func (g *Game) consObjectNames() []string {
 	var names []string
-	if g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return names
 	}
 	if g.consIsRoad() {

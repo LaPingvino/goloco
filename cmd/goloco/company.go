@@ -100,7 +100,7 @@ func (g *Game) openCompanyWindow(company int) {
 // its Finances tab (636 × 319, centred: createWindow's placement PARTIAL), the
 // owner's colours.
 func (g *Game) openCompanyFinances(company int) {
-	if g.w == nil || company < 0 || company >= len(g.w.Map.Companies) {
+	if company < 0 || company >= len(g.w.Map.Companies) {
 		return
 	}
 	tc, wc := g.windowColours(true)
@@ -204,7 +204,7 @@ func (g *Game) companyFinancesData(company int) ui.CompanyFinances {
 // the company has delivered, its unit name (singular for one) with the count.
 func (g *Game) companyCargoLines(company int) []string {
 	m := &g.w.Map
-	if company < 0 || company >= len(m.Companies) || g.r == nil || g.r.ObjMgr == nil {
+	if company < 0 || company >= len(m.Companies) || g.r.ObjMgr == nil {
 		return nil
 	}
 	var out []string

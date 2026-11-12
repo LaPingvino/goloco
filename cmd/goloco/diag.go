@@ -53,7 +53,7 @@ func saveDiagCrop(screen *ebiten.Image, g *Game, tileX, tileY int) {
 
 	// Centre pixel: use tile position when valid, otherwise screen centre.
 	cx, cy := sw/2, sh/2
-	if g.w != nil && tileX >= 0 && tileY >= 0 {
+	if tileX >= 0 && tileY >= 0 {
 		cx, cy = g.w.TileToScreenPx(tileX, tileY)
 	}
 
@@ -106,7 +106,7 @@ func abs(v int) int {
 // diagOpenWindows runs the GOLOCO_DIAG_* switches that open a window or set a
 // situation up, each once, after a frame is drawn (the next frame shows it).
 func (g *Game) diagOpenWindows() {
-	if os.Getenv("GOLOCO_DIAG_TOWNS") != "" && g.townList == nil && !g.diagTownsDone && g.w != nil {
+	if os.Getenv("GOLOCO_DIAG_TOWNS") != "" && g.townList == nil && !g.diagTownsDone {
 		g.diagTownsDone = true
 		if d := os.Getenv("GOLOCO_DIAG_TOWNS"); d == "stations" {
 			g.openStationsWindow()
@@ -166,11 +166,11 @@ func (g *Game) diagOpenWindows() {
 		}
 		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 	}
-	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && g.w != nil && (!diagNeedsScene[v] || g.w.SceneReady()) {
+	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && (!diagNeedsScene[v] || g.w.SceneReady()) {
 		g.buildVehDiagDone = true
 		g.diagScenario(v)
 	}
-	if os.Getenv("GOLOCO_DIAG_VEHLIST") != "" && !g.vehDiagDone && g.w != nil { // the vehicle list (trains of their first owner)
+	if os.Getenv("GOLOCO_DIAG_VEHLIST") != "" && !g.vehDiagDone { // the vehicle list (trains of their first owner)
 		g.vehDiagDone = true
 		g.openVehicleList(0)
 		if os.Getenv("GOLOCO_DIAG_VEHLIST") == "cargo" && g.townList != nil { // transporting cargo, the cargo dropdown open
@@ -305,7 +305,7 @@ func (g *Game) diagDrawPanels(screen *ebiten.Image) {
 		ui.DrawWindowFrame(screen, 200, 60, 360, 220, c, false)
 		ui.DrawWindowCaption(screen, 201, 61, 358, "Select Scenario")
 	}
-	if os.Getenv("GOLOCO_DIAG_CONSTRUCTION") == "frame" && g.r != nil && g.r.ObjMgr != nil {
+	if os.Getenv("GOLOCO_DIAG_CONSTRUCTION") == "frame" && g.r.ObjMgr != nil {
 		// Diagnostic: the ported construction frame for the first track object.
 		f := &ui.ConstructionFrame{X: 10, Y: 40, Title: "Railway", FrameNo: g.titleFrame}
 		if sk := g.r.ObjMgr.InterfaceSkin; sk != nil {

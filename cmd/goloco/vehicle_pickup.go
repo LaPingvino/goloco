@@ -16,9 +16,6 @@ import (
 // lifted (VehiclePickup) and the window reopened (callOnMouseUp tabDetails).
 // PARTIAL: the main view's unfocus, the error title, road / air / water.
 func (g *Game) onPickup(headID uint16) {
-	if g.w == nil || g.r == nil {
-		return
-	}
 	m := &g.w.Map
 	tr, err := m.TrainOf(headID)
 	if err != nil {
@@ -41,9 +38,6 @@ func (g *Game) onPickup(headID uint16) {
 
 // pickupMode is the picked-up vehicle's TransportMode (0xFF: none).
 func (g *Game) pickupMode() uint8 {
-	if g.w == nil {
-		return 0xFF
-	}
 	tr, err := g.w.Map.TrainOf(g.pickupHead)
 	if err != nil {
 		return 0xFF
@@ -130,7 +124,7 @@ func (g *Game) removeLandGhost() {
 		g.removeBoatGhost()
 		return
 	}
-	if g.w != nil && g.r != nil && g.w.Map.VehicleIsGhost(g.pickupHead) {
+	if g.w.Map.VehicleIsGhost(g.pickupHead) {
 		c := g.playerCmd()
 		g.w.Map.VehiclePickup(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdGhost, g.pickupHead)
 	}
@@ -187,7 +181,7 @@ func (g *Game) pickupToolUpdateWater(sx, sy int) {
 // removeBoatGhost is Vehicle.cpp's: a ghost boat lifted
 // (VehiclePickupWater, apply | noErrorWindow | ghost); _ghostTrackProgress = -1.
 func (g *Game) removeBoatGhost() {
-	if g.w != nil && g.r != nil && g.w.Map.VehicleIsGhost(g.pickupHead) {
+	if g.w.Map.VehicleIsGhost(g.pickupHead) {
 		c := g.playerCmd()
 		g.w.Map.VehiclePickupWater(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdGhost, g.pickupHead)
 	}
@@ -243,7 +237,7 @@ func (g *Game) pickupToolUpdateAir(sx, sy int) {
 // removeAirplaneGhost is Vehicle.cpp's: a ghost aircraft lifted
 // (VehiclePickupAir, apply | noErrorWindow | ghost); no ghost airport.
 func (g *Game) removeAirplaneGhost() {
-	if g.w != nil && g.r != nil && g.w.Map.VehicleIsGhost(g.pickupHead) {
+	if g.w.Map.VehicleIsGhost(g.pickupHead) {
 		c := g.playerCmd()
 		g.w.Map.VehiclePickupAir(c, sim.CmdApply|sim.CmdNoErrorWindow|sim.CmdGhost, g.pickupHead)
 	}

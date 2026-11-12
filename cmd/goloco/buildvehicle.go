@@ -22,7 +22,7 @@ func (g *Game) openBuildVehicle(tab int) { g.openBuildVehicleFor(tab, sim.Entity
 // vehicle, and a row adds a car to it); EntityIDNull builds new vehicles.
 // PARTIAL: the caption still says "Build …" for a target.
 func (g *Game) openBuildVehicleFor(tab int, target uint16) {
-	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return
 	}
 	m, om := &g.w.Map, g.r.ObjMgr
@@ -60,7 +60,7 @@ func (g *Game) openBuildVehicleFor(tab int, target uint16) {
 // the error window ("Can't build …" with the reason), Config::buildLockedVehicles
 // (false).
 func (g *Game) buyVehicle(tab int, id, target uint16) {
-	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return
 	}
 	m := &g.w.Map
@@ -91,7 +91,7 @@ func (g *Game) buyVehicle(tab int, id, target uint16) {
 // vehicle's Details window opens; refused, the error window (cant_clone_vehicle
 // and the reason).
 func (g *Game) cloneVehicle(headID uint16) {
-	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
+	if g.r.ObjMgr == nil {
 		return
 	}
 	m := &g.w.Map
