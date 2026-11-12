@@ -80,8 +80,11 @@ type TownListWindow struct {
 	ExtraClick func(px, py int) bool
 	// ExtraMouseOver replaces MouseOver's row hover inside the list.
 	ExtraMouseOver func(px, py int)
-	// Tooltip is the window's tooltip at a screen point ("" none).
+	// Tooltip is the window's tooltip at a screen point ("" none) — a
+	// content tooltip, before the widgets' (WidgetTooltip).
 	Tooltip func(px, py int) string
+	// TabTooltips are the tabs' tooltips (the Tab widgets' tooltip strings).
+	TabTooltips []string
 	// PlacementCost is the Fund New Industries tool's ghost cost (ok false:
 	// none, or kFailure — the object's own cost shows).
 	PlacementCost func() (int64, bool)
@@ -605,3 +608,15 @@ func countLabel(n, singular, plural int) string {
 
 // FormatCurrency is {CURRENCY32} (formatCurrency) for other packages.
 func FormatCurrency(v int64) string { return currency32(v) }
+
+// WidgetTooltip is the tooltip of the widget under a screen point: the
+// close button's (tooltip_close_window) or a tab's.
+func (w *TownListWindow) WidgetTooltip(px, py int) string {
+	if w.in([4]int{w.W - 15, 2, 13, 13}, px, py) {
+		return i18n.Label(i18n.TooltipCloseWindow)
+	}
+	if i := tabAt(tabLayout(w.Tabs, w.TabDisabled), px-w.X, py-w.Y); i >= 0 && i < len(w.TabTooltips) {
+		return w.TabTooltips[i]
+	}
+	return ""
+}

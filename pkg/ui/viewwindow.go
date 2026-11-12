@@ -46,7 +46,8 @@ type ViewWindow struct {
 	OnRename func()
 	viewImg  *ebiten.Image
 
-	Tab int // currentTab
+	Tab         int      // currentTab
+	TabTooltips []string // the tabs' tooltips
 	// TabIcon is drawTabs' tab i: its image (< 0 none), the colour it is
 	// recoloured to (< 0 none) and, for an Industry window's production tab,
 	// the produced cargo's inline sprite (< 0: an ordinary tab).
@@ -426,3 +427,22 @@ func (w *ViewWindow) drawRatings(screen *ebiten.Image, win2, black color.Color) 
 }
 
 func (w *ViewWindow) tabDisabled(i int) bool { return i < len(w.TabDisabled) && w.TabDisabled[i] }
+
+// WidgetTooltip is the tooltip of the widget under a screen point: close,
+// a tab, and on the first tab the centre-view button
+// (move_main_view_to_show_this).
+func (w *ViewWindow) WidgetTooltip(px, py int) string {
+	rx, ry := px-w.X, py-w.Y
+	if rx >= w.W-15 && rx < w.W-2 && ry >= 2 && ry < 15 {
+		return i18n.Label(i18n.TooltipCloseWindow)
+	}
+	if i := tabAt(tabLayout(w.Tabs, w.tabDisabled), rx, ry); i >= 0 && i < len(w.TabTooltips) {
+		return w.TabTooltips[i]
+	}
+	if w.Tab == 0 {
+		if _, _, r, b := w.viewport(); rx >= r-24 && rx <= r-1 && ry >= b-24 && ry <= b-1 {
+			return i18n.Label(i18n.MoveMainViewToShowThis)
+		}
+	}
+	return ""
+}
