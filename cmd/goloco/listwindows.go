@@ -156,3 +156,18 @@ func (g *Game) openTownWindow(id int) {
 	w.OnClose = func() { g.townWin = nil }
 	g.townWin = w
 }
+
+// openIndustryList is IndustryList::open (its list tab): every industry with
+// its status and production. PARTIAL: a row doesn't open the industry's
+// window yet (Industry window not ported).
+func (g *Game) openIndustryList() {
+	var rows []ui.IndustryListRow
+	for _, r := range g.w.Map.IndustryList(g.r.ObjMgr) {
+		rows = append(rows, ui.IndustryListRow{ID: r.ID, Name: r.Name, Status: r.Status, Produces: r.Produces,
+			Transported: r.Transported, LastMonth: r.LastMonth, Unit: r.Unit})
+	}
+	tc, wc := g.windowColours(false)
+	w := ui.NewIndustryList(g.sw, rows, tc, wc)
+	w.OnClose = func() { g.townList = nil }
+	g.townList = w
+}

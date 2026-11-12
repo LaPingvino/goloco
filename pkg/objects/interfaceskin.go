@@ -87,6 +87,8 @@ const (
 	ISToolbarCogwheelsHover        = 30
 	// The Vehicles button's faces (vehicle_*_frame_0), by VehicleType: train,
 	// bus, truck, tram, aircraft, ship.
+	ISToolbarMenuTowns      = 189 // the Towns menu's items (toolbar_menu_towns / _industries)
+	ISToolbarMenuIndustries = 191
 	ISAllStations           = 182 // then rail_stations, road_stations, airports, ship_ports (183–186)
 	ISVehicleTrainFrame0    = 418
 	ISVehicleAircraftFrame0 = 426
