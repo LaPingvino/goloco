@@ -27,6 +27,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	defer g.maybeSaveShot(screen) // captures (--shots) of the finished frame: after the FPS counter
 	defer g.drawFPS(screen)       // SoftwareDrawingEngine: the FPS counter over everything, last
+	defer g.drawTooltip(screen)   // the tooltip window, over the other windows
 	if !g.firstFrameLogged {
 		g.firstFrameLogged = true
 		log.Printf("[Game] First world frame %v after start", time.Since(processStart).Round(time.Millisecond))

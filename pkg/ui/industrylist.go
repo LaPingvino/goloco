@@ -13,8 +13,8 @@ import (
 
 // The industry list (Ui/Windows/IndustryList.cpp): its list tab — Name,
 // Status, Production transported, Production last month — on the shared
-// table window, 759 wide (kWindowSize). PARTIAL: the second tab (fund new
-// industries) and the resizing.
+// table window, 759 wide (kWindowSize); its second tab: NewIndustryGrid.
+// PARTIAL: the resizing.
 
 // IndustryListRow is one industry: IndustryList.cpp drawScroll's cells.
 type IndustryListRow struct {
@@ -89,6 +89,7 @@ type NewIndustryChoice struct {
 	Colour      uint8
 	Parts       []uint8 // getBuildingParts(0)
 	PartHeights []uint8
+	Tooltip     string // "Produces …, Requires …" (the cell's tooltip)
 }
 
 // The new-industries tab (NewIndustries, 578×172): a scroll view of 112 px
@@ -100,8 +101,8 @@ const newIndustryCell = 112
 // drawn by drawIndustry; the selected one (rowHover) inset; at the bottom its
 // name and build cost ("No industry available" when there are none). A click
 // selects (onScrollMouseDown) and calls OnSelect; the cell under the mouse
-// (onScrollMouseOver: var_846) is lit and named. PARTIAL: its tooltip. The
-// placement tool:
+// (onScrollMouseOver: var_846) is lit and named, its tooltip the cargo it
+// produces and requires. The placement tool:
 // cmd/goloco industrytool.go.
 func NewIndustryGrid(sw int, choices []NewIndustryChoice, selected int, titleColour, colour uint8, onSelect func(id int)) *TownListWindow {
 	const w578, h172 = 578, 172
@@ -145,6 +146,16 @@ func NewIndustryGrid(sw int, choices []NewIndustryChoice, selected int, titleCol
 		return -1
 	}
 	w.ExtraMouseOver = func(px, py int) { hov = cellAt(px, py) } // onScrollMouseOver: var_846
+	w.Tooltip = func(px, py int) string {                        // the cell's tooltip (buffer_337)
+		l := w.List
+		if !w.in(l, px, py) {
+			return ""
+		}
+		if i := cellAt(px, py); i >= 0 {
+			return choices[i].Tooltip
+		}
+		return ""
+	}
 	w.ExtraClick = func(px, py int) bool {
 		l := w.List
 		if !w.in(l, px, py) || px >= w.X+l[0]+l[2]-L.ScrollbarSize-L.ScrollbarMargin {
