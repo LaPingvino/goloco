@@ -865,6 +865,14 @@ func (g *Game) Update() error {
 			}
 		}
 	}
+	if g.inMouseJustReleased(ebiten.MouseButtonLeft) && g.dropdown != nil && g.dropdown.Visible {
+		// the release of the press that opened a toolbar menu — after the press:
+		// a quick click brings both in one frame (ui.DropdownMenu
+		// HandleOpeningRelease): on its button, the highlighted item
+		if g.dropdown.HandleOpeningRelease(g.mouseX, g.mouseY) {
+			g.dropdown = nil
+		}
+	}
 	if g.inMouseJustReleased(ebiten.MouseButtonLeft) {
 		for i := range g.toolbar.Buttons {
 			g.toolbar.Buttons[i].Pressed = false
@@ -1150,17 +1158,16 @@ func (g *Game) toolbarDropdown(btn *ui.ToolbarButton, items []ui.DropdownItem) *
 //	11: Vehicles, 12: Stations, 13: Towns
 //
 // clickable(ToolbarTop.cpp): build_vehicles_menu port_menu
-// clickable-partial(ToolbarTop.cpp): railroad_menu
+// clickable(ToolbarTop.cpp): railroad_menu
 // clickable(ToolbarTopCommon.cpp): zoom_menu
 // clickable-partial(ToolbarTop.cpp): loadsave_menu audio_menu vehicles_menu stations_menu towns_menu
-// clickable-partial(ToolbarTopCommon.cpp): railroad_menu road_menu
+// clickable(ToolbarTopCommon.cpp): railroad_menu road_menu
 // (not yet: rotate_menu and view_menu only log; terraform_menu, port_menu, cheats_menu nothing)
 func (g *Game) handleToolbarButton(idx int) {
 	btn := &g.toolbar.Buttons[idx]
 	tooltip := btn.Tooltip
 
 	// Create appropriate dropdown or window based on button tooltip
-	var win *ui.SimpleWindow
 	switch tooltip {
 	case "Load/Save":
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTop.cpp:117-154
@@ -1225,24 +1232,12 @@ func (g *Game) handleToolbarButton(idx int) {
 		log.Println("[Game] Terraform menu (not yet implemented)")
 		return
 	case "Railroad":
-		g.buildMode = buildModeTrack
-		g.buildObjID = 0
-		if names := g.consObjectNames(); len(names) > 0 && names[0] == "" {
-			g.consCycleType(1) // slot 0 empty in this scenario — first populated slot
-		}
-		g.consCurve = 0
-		g.consSlope = 0
-		win = g.newPortedConstructionWindow()
+		g.constructionMenu(btn, true) // listwindows.go: the company's track types, the last one highlighted
+		return
 
 	case "Road":
-		g.buildMode = buildModeRoad
-		g.buildObjID = 0
-		if names := g.consObjectNames(); len(names) > 0 && names[0] == "" {
-			g.consCycleType(1) // slot 0 empty in this scenario — first populated slot
-		}
-		g.consCurve = 0
-		g.consSlope = 0
-		win = g.newPortedConstructionWindow()
+		g.constructionMenu(btn, false)
+		return
 	case "Port/Airport":
 		g.portMenu(btn)
 		return
@@ -1263,10 +1258,6 @@ func (g *Game) handleToolbarButton(idx int) {
 		// be the game's own).
 		log.Printf("[Game] %s: window not ported yet", tooltip)
 		return
-	}
-
-	if win != nil {
-		g.windowMgr.OpenWindow(win)
 	}
 }
 
