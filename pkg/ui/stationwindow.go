@@ -22,8 +22,9 @@ import (
 // The vehicle tabs (VehiclesStopping, 400×200): one per vehicle type with a
 // vehicle calling here (the others hidden: leftAlignTabs), each listing those
 // vehicles by name, drawn inline with their status; a row opens the vehicle.
-// PARTIAL: resizing, the viewport's rotation, the cargo list's scrolling,
-// the status bar's tooltip.
+// The Cargo tab's list scrolls (getScrollSize: 12 a cargo, 10 more with an
+// origin).
+// PARTIAL: resizing, the viewport's rotation, the status bar's tooltip.
 const stationWinW, stationWinH = 223, 136 // Station::kWindowSize
 
 type StationWindow struct {
@@ -59,6 +60,8 @@ type StationWindow struct {
 	vScroll      int
 	vHover       int           // rowHover's row (-1 none)
 	hold         L.VScrollHold // a press on the list's scrollbar held
+	cScroll      int           // the Cargo tab's scroll offset
+	cHold        L.VScrollHold // a press on the Cargo tab's scrollbar held
 }
 
 // The vehicle tabs (Tab 3 + VehicleType): VehiclesStopping::kWindowSize.
@@ -126,8 +129,13 @@ func (w *StationWindow) MouseOver(px, py int) {
 	w.vHover = i
 }
 
-// HandleWheel scrolls a vehicle tab's list.
+// HandleWheel scrolls a vehicle tab's list or the Cargo tab's.
 func (w *StationWindow) HandleWheel(dy float64) {
+	if w.Tab == 1 {
+		_, _, _, ht, contentH := w.cargoList()
+		w.cScroll = min(max(w.cScroll-int(dy*10), 0), max(contentH-ht, 0))
+		return
+	}
 	if w.Tab < 3 || w.Vehicles == nil {
 		return
 	}
@@ -159,6 +167,11 @@ func (w *StationWindow) HandleClick(px, py int) {
 	}
 	if w.Tab >= 3 { // onScrollMouseDown: the vehicle's window; the scrollbar's buttons and track page
 		w.vehicleClick(rx, ry)
+		return
+	}
+	if w.Tab == 1 && w.cargoBar(rx, ry) { // the Cargo list's scrollbar
+		_, t, _, ht, contentH := w.cargoList()
+		w.cScroll = w.cHold.Begin(ry-t, py, ht, contentH, w.cScroll)
 		return
 	}
 	if w.Tab == 1 && rx >= stationWinW-25 && rx <= stationWinW-2 && ry >= 44 && ry < 44+24 && w.OnCatchment != nil {
@@ -259,7 +272,10 @@ func (w *StationWindow) drawCargo(screen *ebiten.Image) {
 	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
 	pal := g1.GetPalette()
 	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
-	l, t, r, b := 3, 44, stationWinW-26, stationWinH-14
+	l, t, lw, lh, contentH := w.cargoList()
+	w.cScroll = min(w.cScroll, max(contentH-lh, 0))
+	var cx, cy, cw, ch int
+	var bar bool
 	DrawWindowFrame(screen, w.X, w.Y, stationWinW, stationWinH, w.TitleColour, true)
 	draw8(screen, w.X, w.Y, stationWinW, stationWinH, func(rt *gfx8.RenderTarget) {
 		gfx8.FillRectInset(rt, 0, 41, stationWinW-1, stationWinH-1, gfx8.InsetColour{Map: sec}, 0)
@@ -267,18 +283,22 @@ func (w *StationWindow) drawCargo(screen *ebiten.Image) {
 			gfx8.DrawSpriteNoise(rt, sp, stationWinW-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 		w.drawStationTabs(rt, sec, 1)
-		gfx8.FillRectInset(rt, l, t, r, b, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
-		gfx8.FillRect(rt, l+1, t+1, r-1, b-1, gfx8.Shade(sec, 4))
+		cx, cy, cw, ch, bar = drawVScrollViewPressed(rt, l, t, lw, lh, gfx8.InsetColour{Map: sec}, contentH, w.cScroll, w.cHold.PressedPart())
+		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 4))
 		if w.Catchment { // activated: the image button drawn pressed
 			gfx8.FillRectInset(rt, stationWinW-25, 44, stationWinW-2, 44+23, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
 		}
 		if sp, err := gfx8.Decode(&g1.Elements[2379]); err == nil { // show_station_catchment at (width − 25, 44)
 			gfx8.DrawSpriteNoise(rt, sp, stationWinW-25, 44, gfx8.OpFor(sp, true, false), sec, nil)
 		}
-		y := 1
+		sub := gfx8.NewRenderTarget(cw, ch) // the scroll view's own target (its clip)
+		for yy := range ch {
+			copy(sub.Bits[yy*cw:(yy+1)*cw], rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw])
+		}
+		y := 1 - w.cScroll
 		for _, c := range w.Cargo {
-			for i, x := 0, 1; i < c.Units && x < r-l-1; i, x = i+1, x+10 {
-				drawG1At(rt, c.Sprite, l+1+x, t+1+y)
+			for i, x := 0, 1; i < c.Units && x < cw; i, x = i+1, x+10 {
+				drawG1At(sub, c.Sprite, x, y)
 			}
 			y += 10
 			if c.Origin != "" {
@@ -286,10 +306,16 @@ func (w *StationWindow) drawCargo(screen *ebiten.Image) {
 			}
 			y += 2
 		}
+		for yy := range ch {
+			copy(rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw], sub.Bits[yy*cw:(yy+1)*cw])
+		}
 	})
-	clip := screen.SubImage(image.Rect(w.X+l+1, w.Y+t+1, w.X+r, w.Y+b)).(*ebiten.Image)
-	y := w.Y + t + 1 + 1
-	xr := w.X + l + 1 + (r - l + 1) - 14
+	if bar {
+		drawVScrollArrows(screen, w.X+l, w.Y+t, lw, lh)
+	}
+	clip := screen.SubImage(image.Rect(w.X+cx, w.Y+cy, w.X+cx+cw, w.Y+cy+ch)).(*ebiten.Image)
+	y := w.Y + cy + 1 - w.cScroll
+	xr := w.X + cx + lw - 14
 	for _, c := range w.Cargo {
 		tw, _ := MeasureTextBold(c.Text)
 		DrawTextOutlined(clip, c.Text, xr-tw, y, win2, black)
@@ -302,14 +328,14 @@ func (w *StationWindow) drawCargo(screen *ebiten.Image) {
 		y += 2
 	}
 	if len(w.Cargo) == 0 { // nothing_waiting at (1, 0)
-		DrawTextFont(clip, i18n.Str(i18n.NothingWaiting), G1FontMediumNormal, w.X+l+1+1, w.Y+t+1, black)
+		DrawTextFont(clip, i18n.Str(i18n.NothingWaiting), G1FontMediumNormal, w.X+cx+1, w.Y+cy, black)
 	}
 	// The status bar (3, height − 12): accepted_cargo_separator, then the sprites.
 	label := stripCodes(i18n.Str(i18n.AcceptedCargoSeparator))
 	sx, sy := w.X+3, w.Y+stationWinH-12
 	DrawTextFont(screen, label, G1FontMediumNormal, sx-1, sy-1, black)
-	lw := MeasureTextFont(label, G1FontMediumNormal)
-	ox := sx + lw + 2
+	labelW := MeasureTextFont(label, G1FontMediumNormal)
+	ox := sx + labelW + 2
 	if len(w.Accepted) == 0 {
 		DrawTextFont(screen, i18n.Str(i18n.CargoNothingAccepted), G1FontMediumNormal, ox, sy, black)
 	} else {
@@ -563,6 +589,11 @@ func (w *StationWindow) drawVehicles(screen *ebiten.Image) {
 // Drag is the vehicle list's scrollbar press held each tick
 // (VScrollHold.Continue): the thumb follows, a held button repeats.
 func (w *StationWindow) Drag(px, py int, held bool) {
+	if w.Tab == 1 {
+		_, t, _, ht, contentH := w.cargoList()
+		w.cScroll = w.cHold.Continue(held, w.cargoBar(px-w.X, py-w.Y), py-w.Y-t, py, ht, contentH, w.cScroll)
+		return
+	}
 	if w.Tab < 3 || w.Vehicles == nil {
 		return
 	}
@@ -570,4 +601,23 @@ func (w *StationWindow) Drag(px, py int, held bool) {
 	rx, ry := px-w.X, py-w.Y
 	onBar := rx >= l+wd-L.ScrollbarSize-L.ScrollbarMargin && rx < l+wd && ry >= t && ry < t+ht
 	w.vScroll = w.hold.Continue(held, onBar, ry-t, py, ht, len(w.Vehicles(w.Tab-3))*rowH, w.vScroll)
+}
+
+// cargoList is the Cargo tab's scroll view (3, 44 to width − 26, height − 14:
+// x, y, width, height) and its content height (getScrollSize).
+func (w *StationWindow) cargoList() (l, t, wd, ht, contentH int) {
+	for _, c := range w.Cargo {
+		contentH += 12
+		if c.Origin != "" {
+			contentH += 10
+		}
+	}
+	return 3, 44, stationWinW - 26 - 3 + 1, stationWinH - 14 - 44 + 1, contentH
+}
+
+// cargoBar reports window point (rx, ry) on the Cargo tab's scrollbar (shown
+// when the cargo doesn't fit).
+func (w *StationWindow) cargoBar(rx, ry int) bool {
+	l, t, wd, ht, contentH := w.cargoList()
+	return contentH > ht && rx >= l+wd-L.ScrollbarSize-L.ScrollbarMargin && rx < l+wd && ry >= t && ry < t+ht
 }
