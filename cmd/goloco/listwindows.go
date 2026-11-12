@@ -81,7 +81,7 @@ func (g *Game) openVehicleListFor(company, tab int) {
 	w.OnClose = func() { g.townList = nil }
 	w.OnTab = func(t int) { g.openVehicleListFor(company, t) }
 	g.listTabIcons(w, vehicleTabFrames, vehicleTabCounts, int(tc)) // recoloured to the company colour
-	w.TabDisabled = func(i int) bool { // disableUnavailableVehicleTypes: availableVehicles ^ 0x3F
+	w.TabDisabled = func(i int) bool {                             // disableUnavailableVehicleTypes: availableVehicles ^ 0x3F
 		return company < len(g.w.Map.Companies) && g.w.Map.Companies[company].AvailableVehicles&(1<<i) == 0
 	}
 	g.townList = w
@@ -160,6 +160,33 @@ func (g *Game) openTownWindow(id int) {
 	w := ui.NewTownWindow(g.sw, g.sh, t.Name, t.Size, int(t.Population), tc, wc)
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.TownView(id, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnTown(id) }
+	w.RatingsTab = 2 // tab_company_ratings: each company the town rates
+	w.Ratings = func() []ui.RatingLine {
+		if id >= len(g.w.Map.Towns) {
+			return nil
+		}
+		t := &g.w.Map.Towns[id]
+		var lines []ui.RatingLine
+		for c := range t.CompanyRatings {
+			if t.CompaniesWithRating&(1<<c) == 0 {
+				continue
+			}
+			r := (int(min(max(t.CompanyRatings[c], -1000), 1000)) + 1000) / 20
+			rank := i18n.TownRatingAppalling
+			switch {
+			case r >= 70:
+				rank = i18n.TownRatingExcellent
+			case r >= 60:
+				rank = i18n.TownRatingGood
+			case r >= 50:
+				rank = i18n.TownRatingAverage
+			case r >= 25:
+				rank = i18n.TownRatingPoor
+			}
+			lines = append(lines, ui.RatingLine{Name: g.w.CompanyName(c), Percent: r, Rank: i18n.Label(rank)})
+		}
+		return lines
+	}
 	w.Graph = func(i int) (ui.GraphTab, bool) { // the Population tab: the town's history from historyMinPopulation
 		if i != 1 || id >= len(g.w.Map.Towns) {
 			return ui.GraphTab{}, false

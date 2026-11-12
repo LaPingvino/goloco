@@ -25,7 +25,9 @@ import (
 // history of its first / second cargo (Common::draw). Each tab captions its own
 // way ("{name}", "… - Monthly Production", "… - Statistics").
 // The town's Population tab graphs its history (Population::draw).
-// PARTIAL: the town's Company ratings tab, renaming by the caption, the
+// The town's Company ratings tab (CompanyRatings::draw, 340×208) lists the
+// local authority's rating of each company with one.
+// PARTIAL: renaming by the caption, the
 // editor's buttons, resizing, the viewport's own scrolling, the status's
 // clipping (drawStringLeftClipped).
 type ViewWindow struct {
@@ -41,11 +43,11 @@ type ViewWindow struct {
 	OnClose      func()
 	viewImg      *ebiten.Image
 
-	Tab         int     // currentTab
+	Tab int // currentTab
 	// TabIcon is drawTabs' tab i: its image (< 0 none), the colour it is
 	// recoloured to (< 0 none) and, for an Industry window's production tab,
 	// the produced cargo's inline sprite (< 0: an ordinary tab).
-	TabIcon func(i int) (image, colour, cargo int)
+	TabIcon     func(i int) (image, colour, cargo int)
 	TabDisabled [4]bool // disabledWidgets' tabs
 	// CargoTab is the Transported tab's index (0: none); Cargo gives its
 	// lines (received and produced last month), read each draw.
@@ -54,6 +56,10 @@ type ViewWindow struct {
 	// Graph gives tab i's monthly history graph (ok false: not a graph tab):
 	// the industry's Production tabs, the town's Population tab.
 	Graph func(i int) (g GraphTab, ok bool)
+	// RatingsTab is the Company ratings tab's index (0: none); Ratings gives
+	// its lines, read each draw.
+	RatingsTab int
+	Ratings    func() []RatingLine
 	baseW      int // the first tab's size (switchTab: kWindowSize)
 	baseH      int
 }
@@ -67,8 +73,20 @@ type CargoMonthLine struct {
 	Percent  uint8
 }
 
-// Transported tab: kWindowSize (onResize sets it).
-const transportedW, transportedH = 300, 127
+// Transported tab: kWindowSize (onResize sets it); the Company ratings tab's.
+const (
+	transportedW, transportedH = 300, 127
+	ratingsW, ratingsH         = 340, 208
+)
+
+// RatingLine is a company's line on the Company ratings tab: its name, the
+// rating as a percent ((rating clamped to ±1000 + 1000) / 20) and its rank's
+// word.
+type RatingLine struct {
+	Name    string
+	Percent int
+	Rank    string
+}
 
 // GraphTab is a history graph tab: its caption (a StringId with the place's
 // name), the label above the graph (a cargo's unitsAndCargoName; "" none),
@@ -110,8 +128,10 @@ func (w *ViewWindow) caption() string {
 	switch {
 	case w.Tab == 0:
 		return w.Title
-	case w.Tab == w.CargoTab:
+	case w.Tab == w.CargoTab && w.CargoTab != 0:
 		return strings.Replace(i18n.Label(i18n.TitleStatistics), "{STRINGID}", w.Title, 1)
+	case w.Tab == w.RatingsTab && w.RatingsTab != 0:
+		return strings.Replace(i18n.Label(i18n.TitleTownLocalAuthority), "{STRINGID}", w.Title, 1)
 	}
 	if w.Graph != nil {
 		if g, ok := w.Graph(w.Tab); ok {
@@ -166,13 +186,16 @@ func (w *ViewWindow) HandleClick(px, py int) {
 		if w.Graph != nil {
 			g, graph = w.Graph(i)
 		}
-		if !w.TabDisabled[i] && (i == 0 || (i == w.CargoTab && w.CargoTab != 0) || graph) {
+		cargo, ratings := i == w.CargoTab && w.CargoTab != 0, i == w.RatingsTab && w.RatingsTab != 0
+		if !w.TabDisabled[i] && (i == 0 || cargo || ratings || graph) {
 			w.Tab = i
 			switch {
 			case i == 0:
 				w.W, w.H = w.baseW, w.baseH
 			case graph:
 				w.W, w.H = g.Layout.W, g.Layout.H
+			case ratings:
+				w.W, w.H = ratingsW, ratingsH
 			default:
 				w.W, w.H = transportedW, transportedH
 			}
@@ -232,8 +255,11 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 		}
 	})
 	if w.Tab != 0 {
-		if w.Tab == w.CargoTab {
-			w.drawCargo(screen, g1.GetPalette()[gfx8.Shade(sec, 9)], g1.GetPalette()[paletteBlack0])
+		win2, black := g1.GetPalette()[gfx8.Shade(sec, 9)], g1.GetPalette()[paletteBlack0]
+		if w.Tab == w.CargoTab && w.CargoTab != 0 {
+			w.drawCargo(screen, win2, black)
+		} else if w.Tab == w.RatingsTab && w.RatingsTab != 0 {
+			w.drawRatings(screen, win2, black)
 		} else if w.Graph != nil {
 			if g, ok := w.Graph(w.Tab); ok {
 				w.drawGraph(screen, sec, g1.GetPalette()[paletteBlack0], g)
@@ -367,5 +393,26 @@ func (w *ViewWindow) drawGraph(screen *ebiten.Image, sec []uint8, black color.Co
 	}
 	for _, t := range ticks {
 		small(t.s, t.x, t.y)
+	}
+}
+
+// drawRatings is CompanyRatings::draw: at (4, 46) the heading in WINDOW_2,
+// then 4 in and 14 down a line per rated company, 10 apart:
+// town_rating_company_percentage_rank "{COLOUR WINDOW_2}{STRINGID}:
+// {COLOUR BLACK}{INT16}% ({STRINGID})". (Upstream pushes a 0 between the
+// name and the rating; the line drawn is the rating, as the game shows.)
+func (w *ViewWindow) drawRatings(screen *ebiten.Image, win2, black color.Color) {
+	x, y := w.X+4, w.Y+46
+	DrawTextBold(screen, i18n.Label(i18n.LocalAuthorityRatingsTransportCompanies), x, y, win2)
+	x, y = x+4, y+14
+	if w.Ratings == nil {
+		return
+	}
+	for _, r := range w.Ratings() {
+		name := r.Name + ": "
+		nw, _ := MeasureTextBold(name)
+		DrawTextBold(screen, name, x, y, win2)
+		DrawTextBold(screen, strconv.Itoa(r.Percent)+"% ("+r.Rank+")", x+nw, y, black)
+		y += 10
 	}
 }
