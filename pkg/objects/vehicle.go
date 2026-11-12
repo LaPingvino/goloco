@@ -16,7 +16,11 @@ type VehicleObject struct {
 	ExtraNames   []string
 	CompatNames  []string // the compatible vehicles' object names (headers)
 	RackRailName string
-	Header       ObjectHeader
+	// Animations is animation[2] (0x10D): each emitter's kind (none, steam
+	// puffs, diesel exhaust, sparks, ship wake), its height, and the steam
+	// object it names (load resolves the header into objectId).
+	Animations [2]VehicleEmitterAnimation
+	Header     ObjectHeader
 
 	// Basic properties (from the decompressed data)
 	Name                uint16 // String ID
@@ -91,6 +95,26 @@ type VehicleCarComponent struct {
 	BodySpriteIdx        uint8
 	EmitterHorizontalPos uint8
 }
+
+// VehicleEmitterAnimation is VehicleObjectEmitterAnimation.
+type VehicleEmitterAnimation struct {
+	SteamName   string // the steam object's header ("" none, or not a steam object)
+	VerticalPos uint8  // emitterVerticalPos
+	Type        uint8  // EmitterAnimationType
+}
+
+// EmitterAnimationType.
+const (
+	EmitterNone = iota
+	EmitterSteamPuff1
+	EmitterSteamPuff2
+	EmitterSteamPuff3
+	EmitterDieselExhaust1
+	EmitterElectricSpark1
+	EmitterElectricSpark2
+	EmitterDieselExhaust2
+	EmitterShipWake
+)
 
 // VehicleBodySprite describes body sprite layout
 type VehicleBodySprite struct {
@@ -583,10 +607,16 @@ func walkVariableSections(v *VehicleObject, data []byte) int {
 
 	// 5. Emitter-animation headers: one per animation slot with type ≠ none.
 	//    animation[2] lives at 0x10D in the fixed struct, 3 bytes each, type at +2.
-	for i := 0; i < 2; i++ {
-		if data[0x10D+i*3+2] != 0 {
-			offset += HeaderSize
+	for i := range v.Animations {
+		a := &v.Animations[i]
+		a.VerticalPos, a.Type, a.SteamName = data[0x10D+i*3+1], data[0x10D+i*3+2], ""
+		if a.Type == EmitterNone {
+			continue
 		}
+		if offset < len(data) && ObjectType(data[offset]&0x3F) == ObjectTypeSteam { // only a steam header resolves
+			a.SteamName = headerName(data, offset)
+		}
+		offset += HeaderSize
 	}
 
 	// 6. Compatible-vehicle headers (VehicleObject::load resolves them into
