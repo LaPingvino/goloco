@@ -290,6 +290,9 @@ func (g *Game) updateHeld() {
 		g.toolbar.UpdateHover(g.mouseX, g.mouseY)
 	}
 
+	if g.townList != nil { // onScrollMouseOver: the row (or grid cell) under the mouse
+		g.townList.MouseOver(g.mouseX, g.mouseY)
+	}
 	if g.townList != nil { // the list's scrollbar thumb follows the mouse while held
 		g.townList.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
 	}
