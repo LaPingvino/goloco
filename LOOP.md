@@ -1706,3 +1706,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-12 (night) — window tooltip timing (tooltip.go) + grid cell tooltip. NEXT small: route the toolbar tooltips through the same timing; station status-bar tooltip.
 - 2026-11-12 (night) — widget tooltips (close / tabs / centre view) on Town, Industry, Station and list windows; tooltip timing in real time.
 - 2026-11-12 (night) — Vehicle window car tooltip (the 5P.g PARTIAL). Note: upstream top toolbar has NO tooltips (ToolbarButton default null); goloco shows its own short ones (from Joop's 2026-11-01 mouseover request) — ask whether to keep.
+- 2026-11-12 (morning) — vehicle window button hover frames; dragged car greyed SEEN (drag diag + GOLOCO_DIAG_DRAG_HOLD=1). The 5P.g PARTIAL list is now empty but the disabled (solid) button look.
