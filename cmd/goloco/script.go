@@ -3,12 +3,13 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/LaPingvino/goloco/pkg/scenario"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/LaPingvino/goloco/pkg/scenario"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -268,8 +269,6 @@ func (g *Game) scriptShotName() string {
 	g.script.shotRequest = ""
 	return n
 }
-
-var errScriptQuit = fmt.Errorf("script quit")
 
 // scriptCamera applies a script's "camera X Y" (once).
 func (g *Game) scriptCamera() {

@@ -4,11 +4,12 @@ import (
 	"log"
 	"runtime"
 
-	"github.com/LaPingvino/goloco/pkg/ui"
 	"os"
 	"runtime/pprof"
 	"slices"
 	"time"
+
+	"github.com/LaPingvino/goloco/pkg/ui"
 )
 
 // Frame timing for LOOP item 0 (responsiveness): GOLOCO_FRAMESTATS=1 logs,

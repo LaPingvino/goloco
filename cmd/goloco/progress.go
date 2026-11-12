@@ -61,8 +61,3 @@ func (p *progressFile) markCompleted(path, objective string, score uint32) {
 	p.save()
 	log.Printf("[Progress] %s marked completed", name)
 }
-
-func (p *progressFile) isCompleted(path string) bool {
-	_, done := p.Completed[filepath.Base(path)]
-	return done
-}

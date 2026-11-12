@@ -1,6 +1,14 @@
 package main
 
 import (
+	"image"
+	"log"
+	"math"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -9,13 +17,6 @@ import (
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
-	"image"
-	"log"
-	"math"
-	"os"
-	"sort"
-	"strconv"
-	"strings"
 )
 
 // listwindows.go — the right-toolbar list windows: the ported VehicleList,
