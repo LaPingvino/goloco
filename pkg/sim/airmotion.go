@@ -28,6 +28,7 @@ func (m *Map) updateAircraft(tr Train, om *objects.ObjectManager) {
 	}
 	m.updateBreakdown(tr, om)
 	m.updateAir(tr, om)
+	m.bodiesAnimate(tr, om) // the bodies' update: animationUpdate
 }
 
 // updateAir is VehicleHead::updateAir: stopped, it calls at its station;

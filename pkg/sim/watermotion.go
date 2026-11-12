@@ -7,9 +7,10 @@ import (
 )
 
 // Boats move (AW.a): VehicleHead::updateWater (VehicleHead.cpp 0x00427122
-// region, 2330) and updateWaterMotion (2833) — Vehicle1 / Vehicle2 / bodies /
-// bogies / the tail do nothing for water vehicles (their update returns at
-// once), so a boat's tick is the head's: var_5C, the breakdown, updateWater.
+// region, 2330) and updateWaterMotion (2833) — Vehicle1 / Vehicle2 / bogies /
+// the tail do nothing for water vehicles (their update returns at once) and
+// the bodies only animationUpdate (exhaust.go bodiesAnimate), so a boat's
+// tick is the head's: var_5C, the breakdown, updateWater, then that.
 // PARTIAL: the body's sub_4AAB0B (animation; not ported for land either),
 // produceLeavingDockSound, the driving sounds.
 
@@ -39,6 +40,7 @@ func (m *Map) updateBoat(tr Train, om *objects.ObjectManager) {
 	}
 	m.updateBreakdown(tr, om)
 	m.updateWater(tr, om)
+	m.bodiesAnimate(tr, om) // the bodies' update: animationUpdate (wakes, exhaust)
 }
 
 // updateWater is VehicleHead::updateWater.
