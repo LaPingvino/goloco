@@ -66,7 +66,8 @@ type StationInfo struct {
 	Status       string
 	Waiting      int
 	Accepts      string
-	Owner        int // Station::owner (-1 unknown)
+	Owner        int    // Station::owner (-1 unknown)
+	Flags        uint16 // Station::flags (StationFlags: transport modes, flag_5 …)
 }
 
 // StationList returns every placed/loaded station on the map.  A station spans
@@ -94,8 +95,12 @@ func (w *Map) StationList(cargos []*objects.CargoObject) []StationInfo {
 				if o, ok := w.StationOwner(id); ok {
 					owner = int(o)
 				}
+				var flags uint16
+				if id >= 0 && id < len(w.StationNames) {
+					flags = uint16(w.StationNames[id].Flags)
+				}
 				out = append(out, StationInfo{ID: id, TileX: x, TileY: y, Kind: kind, Name: w.StationName(id), Owner: owner,
-					Status: status, Waiting: waiting, Accepts: accepts})
+					Status: status, Waiting: waiting, Accepts: accepts, Flags: flags})
 			}
 		}
 	}

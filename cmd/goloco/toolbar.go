@@ -29,6 +29,9 @@ func (g *Game) toolbarDropdown(btn *ui.ToolbarButton, items []ui.DropdownItem) *
 func (g *Game) toolbarImageMenu(btn *ui.ToolbarButton, items []ui.DropdownItem) *ui.DropdownMenu {
 	d := ui.NewDropdownShowText(btn.X, btn.Y, btn.Width, btn.Height, ui.DropdownColour, items, 25, g.sw, g.sh)
 	g.setToolbarColour(d, btn)
+	// showBelow without flag 1<<7: the release of the opening press on the
+	// button takes the highlighted item (MouseInput.cpp 0x4C7BC7)
+	d.OpenedByPress(image.Rect(btn.X, btn.Y, btn.X+btn.Width, btn.Y+btn.Height))
 	return d
 }
 
@@ -51,10 +54,10 @@ func (g *Game) setToolbarColour(d *ui.DropdownMenu, btn *ui.ToolbarButton) {
 //	6: Terraform, 7: Railroad, 8: Road, 9: Port/Airport, 10: Build Vehicles
 //	11: Vehicles, 12: Stations, 13: Towns
 //
-// clickable(ToolbarTop.cpp): build_vehicles_menu port_menu vehicles_menu
+// clickable(ToolbarTop.cpp): build_vehicles_menu port_menu vehicles_menu stations_menu
 // clickable(ToolbarTop.cpp): railroad_menu
 // clickable(ToolbarTopCommon.cpp): zoom_menu
-// clickable-partial(ToolbarTop.cpp): loadsave_menu audio_menu stations_menu towns_menu
+// clickable-partial(ToolbarTop.cpp): loadsave_menu audio_menu towns_menu
 // clickable(ToolbarTopCommon.cpp): railroad_menu road_menu
 // (not yet: rotate_menu and view_menu only log; terraform_menu, port_menu, cheats_menu nothing)
 func (g *Game) handleToolbarButton(idx int) {
@@ -131,7 +134,7 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Vehicles":
 		g.vehiclesMenu(btn) // by type, with counts (ToolbarTop.cpp vehiclesMenuMouseDown)
 	case "Stations":
-		g.openStationsWindow()
+		g.stationsMenu(btn) // by station type (ToolbarTop.cpp stationsMenuMouseDown)
 	case "Towns":
 		g.openTownsWindow()
 	default:
@@ -183,7 +186,6 @@ func (g *Game) constructionMenu(btn *ui.ToolbarButton, rail bool) {
 	}
 	d := g.toolbarImageMenu(btn, items)
 	d.Highlighted = highlighted
-	d.OpenedByPress(image.Rect(btn.X, btn.Y, btn.X+btn.Width, btn.Y+btn.Height))
 	g.dropdown = d
 }
 
@@ -240,7 +242,6 @@ func (g *Game) portMenu(btn *ui.ToolbarButton) {
 	} else {
 		d.Highlighted = 0
 	}
-	d.OpenedByPress(image.Rect(btn.X, btn.Y, btn.X+btn.Width, btn.Y+btn.Height)) // a click on the button takes the highlighted one
 	g.dropdown = d
 }
 
@@ -362,5 +363,31 @@ func (g *Game) vehiclesMenu(btn *ui.ToolbarButton) {
 	if h := int(m.LastVehicleType); h < len(items) {
 		d.Highlighted = h
 	}
+	g.dropdown = d
+}
+
+// stationsMenu is ToolbarTop.cpp stationsMenuMouseDown (0x0043A4E9): all
+// stations, rail stations, road stations, airports, ship ports — the skin's
+// images recoloured to the player's colour —, "All stations" highlighted.
+// Choosing one is stationsMenuDropdown: StationList::open(the controlling
+// company, that type).
+func (g *Game) stationsMenu(btn *ui.ToolbarButton) {
+	if g.skin() == nil {
+		return
+	}
+	company, _ := g.w.ControllingCompany()
+	var colour uint8
+	if company >= 0 && company < len(g.w.CompanyColours) {
+		colour = g.w.CompanyColours[company]
+	}
+	skin := int(g.skin().ImageOffset)
+	var items []ui.DropdownItem
+	for t := 0; t < 5; t++ {
+		tab := t
+		items = append(items, ui.DropdownItem{MenuSprite: true, Sprite: skin + objects.ISAllStations + t, SpriteColour: colour,
+			Text: i18n.Label(i18n.AllStations + t), Action: func() { g.openStationList(tab) }})
+	}
+	d := g.toolbarImageMenu(btn, items)
+	d.Highlighted = 0
 	g.dropdown = d
 }
