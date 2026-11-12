@@ -118,6 +118,9 @@ type TownListWindow struct {
 	// is the current one, its header shows "▼" (table_header_*_desc).
 	Sort     func(mode int)
 	SortMode int
+	// Reopen rebuilds the window from the game's current data (the lists'
+	// onUpdate repopulating); nil: kept as opened.
+	Reopen func()
 }
 
 // setTableGeometry fills the 600×197 town/station list geometry.

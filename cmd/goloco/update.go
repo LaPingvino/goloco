@@ -290,6 +290,9 @@ func (g *Game) updateHeld() {
 		g.toolbar.UpdateHover(g.mouseX, g.mouseY)
 	}
 
+	if g.windowFrame%60 == 0 { // the open list repopulated about once a second
+		g.refreshList()
+	}
 	if g.townList != nil { // onScrollMouseOver: the row (or grid cell) under the mouse
 		g.townList.MouseOver(g.mouseX, g.mouseY)
 	}
