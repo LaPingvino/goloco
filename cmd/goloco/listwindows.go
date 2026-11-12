@@ -205,6 +205,15 @@ func (g *Game) openIndustryWindow(id int) {
 	if obj := g.r.ObjMgr.GetIndustryObjectByIndex(int(m.Industries[idx].ObjectID)); obj != nil { // setDisabledWidgets
 		produced, _ := g.r.ObjMgr.IndustryCargoIDs(obj)
 		w.TabDisabled[1], w.TabDisabled[2] = produced[0] == 0xFF, produced[1] == 0xFF
+		w.Production = func(n int) (string, []uint8, int, int) {
+			label := ""
+			if c := int(produced[0]); c < len(g.r.ObjMgr.CargoObjects) && g.r.ObjMgr.CargoObjects[c] != nil {
+				label = g.r.ObjMgr.CargoObjects[c].UnitsAndCargoName // producedCargoType[0] on both tabs
+			}
+			ind := &g.w.Map.Industries[idx]
+			size := min(int(ind.HistorySize[n]), len(ind.History[n]))
+			return label, ind.History[n][:size], int(g.w.Map.CurrentMonth), int(g.w.Map.CurrentYear)
+		}
 	}
 	g.viewWin = w
 }
