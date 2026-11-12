@@ -398,8 +398,8 @@ func (w *ViewWindow) drawGraph(screen *ebiten.Image, sec []uint8, black color.Co
 // drawRatings is CompanyRatings::draw: at (4, 46) the heading in WINDOW_2,
 // then 4 in and 14 down a line per rated company, 10 apart:
 // town_rating_company_percentage_rank "{COLOUR WINDOW_2}{STRINGID}:
-// {COLOUR BLACK}{INT16}% ({STRINGID})". (Upstream pushes a 0 between the
-// name and the rating; the line drawn is the rating, as the game shows.)
+// {COLOUR BLACK}{INT16}% ({STRINGID})" (the 0 upstream pushes after the
+// name is the user string's own argument: formatString skips one for it).
 func (w *ViewWindow) drawRatings(screen *ebiten.Image, win2, black color.Color) {
 	x, y := w.X+4, w.Y+46
 	DrawTextBold(screen, i18n.Label(i18n.LocalAuthorityRatingsTransportCompanies), x, y, win2)
