@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/LaPingvino/goloco/pkg/core"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 )
@@ -115,10 +116,12 @@ func (g *Game) industryToolDown(x, y int) {
 		c := g.playerCmd()
 		land, _ := g.w.Map.GetHeight(a.X, a.Y)
 		c.Pos = &[3]int32{a.X, a.Y, int32(land)} // setPosition
-		g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) {
+		if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) {
 			cost, _, ok := g.w.Map.CreateIndustry(c, f, a)
 			return cost, ok
-		})
+		}); !ok { // setErrorTitle(error_cant_build_this_here)
+			g.openError(i18n.Label(i18n.ErrorCantBuildThisHere), cmdErrorText(c))
+		}
 	}
 	g.w.Rng2.RandNext()
 	g.indTool.prng = g.w.Rng2

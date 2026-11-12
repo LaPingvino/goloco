@@ -1,5 +1,7 @@
 package sim
 
+import "github.com/LaPingvino/goloco/pkg/i18n"
+
 import "github.com/LaPingvino/goloco/pkg/objects"
 
 // Company performance and value — World/Company.cpp calculatePerformanceIndex
@@ -89,23 +91,34 @@ func (m *Map) IsPlayerCompany(id int) bool {
 
 // ensureCompanyFunding is CompanyManager::ensureCompanyFunding (outside the
 // editor): a player needs the cash; an AI takes a loan in 1000 steps up to
-// the inflation-adjusted maximum. The error texts are not ported.
-func (m *Map) ensureCompanyFunding(id int, payment int32) bool {
+// the inflation-adjusted maximum. A refusal sets the command's error text
+// (cmd may be nil: none kept): company_is_bankrupt, or
+// not_enough_cash_requires_currency32 with the payment.
+func (m *Map) ensureCompanyFunding(cmd *Cmd, id int, payment int32) bool {
 	if payment <= 0 || id == companyIDNeutral {
 		return true
+	}
+	refuse := func(text int) bool {
+		if cmd != nil {
+			cmd.ErrorText, cmd.ErrorCost = text, payment
+		}
+		return false
 	}
 	c := &m.Companies[id]
 	if m.IsPlayerCompany(id) {
 		if m.CompanyFaces[id].ChallengeFlags&companyFlagBankrupt != 0 {
-			return false
+			return refuse(i18n.CompanyIsBankrupt)
 		}
-		return c.Cash >= int64(payment)
+		if c.Cash < int64(payment) {
+			return refuse(i18n.NotEnoughCashRequiresCurrency32)
+		}
+		return true
 	}
 	if c.Cash < int64(payment) {
 		if need := -(c.Cash - int64(payment)); need > 0 {
 			loan := (need + aiLoanStep - 1) / aiLoanStep * aiLoanStep
 			if loan+int64(c.CurrentLoan) > int64(m.InflationAdjustedCost(int16(m.MaxLoanSize), 0, 8)) {
-				return false
+				return refuse(i18n.NotEnoughCashRequiresCurrency32)
 			}
 			c.CurrentLoan += int32(loan)
 			c.Cash += loan
@@ -162,7 +175,7 @@ func (m *Map) companiesUpdateMonthly1(om *objects.ObjectManager) {
 			}
 		}
 		interest := c.CurrentLoan * int32(m.LoanInterestRate) / 1200
-		m.ensureCompanyFunding(id, interest+1)
+		m.ensureCompanyFunding(nil, id, interest+1)
 		m.ApplyPaymentToCompany(uint8(id), interest, expenditureLoanInterest)
 		if face.ChallengeFlags&companyFlagBankrupt == 0 {
 			if c.Cash < 0 {

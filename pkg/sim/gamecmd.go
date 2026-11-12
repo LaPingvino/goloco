@@ -41,6 +41,9 @@ type Cmd struct {
 	ErrorText int
 	// ErrorArg is the name ErrorText's {STRINGID} / {STRING} shows.
 	ErrorArg string
+	// ErrorCost is the amount ErrorText's {CURRENCY32} shows
+	// (FormatArguments::common(payment)).
+	ErrorCost int32
 }
 
 func (c *Cmd) isPlayer(company uint8) bool { return c.Players != nil && c.Players(company) }
@@ -307,7 +310,7 @@ func (m *Map) DoCommandFor(c *Cmd, flags uint8, expenditure uint8, run func(flag
 		cost = 0
 	}
 	if flags&(CmdAllowNegativeCashFlow|CmdNoPayment) == 0 && cost != 0 && !c.Editor {
-		if !m.ensureCompanyFunding(int(c.Company), cost) {
+		if !m.ensureCompanyFunding(c, int(c.Company), cost) {
 			return 0, false
 		}
 	}

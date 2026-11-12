@@ -264,7 +264,7 @@ func (m *Map) placeIndustryBuilding(c *Cmd, id uint8, x, y int32, direction, bui
 				SequenceIndex: uint8(seq), Rotation: direction, IsConstructed: buildImmediate, BaseZ: highest, ClearZ: clearZ})
 			t.insertRef(scenario.KindIndustry, len(t.Industries)-1, highest)
 			m.invalidateTile(px&^31, py&^31, int32(highest)*4, int32(clearZ)*4, ZoomEighth, defaultRadius) // ViewportManager::invalidate
-			for i := range t.Order { // insertElement<IndustryElement>(…, 0xF): every quarter occupied
+			for i := range t.Order {                                                                       // insertElement<IndustryElement>(…, 0xF): every quarter occupied
 				if r := &t.Order[i]; r.Kind == scenario.KindIndustry && int(r.Index) == len(t.Industries)-1 {
 					r.Flags |= 0xF
 					if flags&CmdGhost != 0 {
