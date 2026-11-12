@@ -365,8 +365,8 @@ func (g *Game) gameClick() {
 		g.companyFinances.HandleClick(g.mouseX, g.mouseY) // drawn on top: clicked first
 	} else if g.companyList != nil && g.companyList.Contains(g.mouseX, g.mouseY) {
 		g.companyList.HandleClick(g.mouseX, g.mouseY)
-	} else if g.townWin != nil && g.townWin.Contains(g.mouseX, g.mouseY) { // the click goes to the window drawn on top (the draw order, reversed)
-		g.townWin.HandleClick(g.mouseX, g.mouseY)
+	} else if g.viewWin != nil && g.viewWin.Contains(g.mouseX, g.mouseY) { // the click goes to the window drawn on top (the draw order, reversed)
+		g.viewWin.HandleClick(g.mouseX, g.mouseY)
 	} else if g.stationWin != nil && g.stationWin.Contains(g.mouseX, g.mouseY) {
 		g.stationWin.HandleClick(g.mouseX, g.mouseY)
 	} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {

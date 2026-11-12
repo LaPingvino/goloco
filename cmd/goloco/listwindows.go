@@ -153,13 +153,12 @@ func (g *Game) openTownWindow(id int) {
 	w := ui.NewTownWindow(g.sw, g.sh, t.Name, t.Size, int(t.Population), tc, wc)
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.TownView(id, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnTown(id) }
-	w.OnClose = func() { g.townWin = nil }
-	g.townWin = w
+	w.OnClose = func() { g.viewWin = nil }
+	g.viewWin = w
 }
 
 // openIndustryList is IndustryList::open (its list tab): every industry with
-// its status and production. PARTIAL: a row doesn't open the industry's
-// window yet (Industry window not ported).
+// its status and production; a row opens its Industry window.
 func (g *Game) openIndustryList() {
 	var rows []ui.IndustryListRow
 	for _, r := range g.w.Map.IndustryList(g.r.ObjMgr) {
@@ -169,5 +168,30 @@ func (g *Game) openIndustryList() {
 	tc, wc := g.windowColours(false)
 	w := ui.NewIndustryList(g.sw, rows, tc, wc)
 	w.OnClose = func() { g.townList = nil }
+	w.OnRow = func(id int) { g.openIndustryWindow(id) } // onScrollMouseDown: Industry::open
 	g.townList = w
+}
+
+// openIndustryWindow is IndustryWindow open (industry id): the window on its
+// Industry tab, its viewport on the industry, its status getStatusString; the
+// centre-view button moves the main view there.
+func (g *Game) openIndustryWindow(id int) {
+	m := &g.w.Map
+	idx := -1
+	for i := range m.Industries {
+		if int(m.Industries[i].ID) == id && m.Industries[i].Name != 0xFFFF {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return
+	}
+	name, _ := m.IndustryName(idx, g.r.ObjMgr)
+	tc, wc := g.windowColours(false)
+	w := ui.NewIndustryWindow(g.sw, g.sh, name, m.IndustryStatusString(idx, g.r.ObjMgr), tc, wc)
+	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.IndustryView(idx, vw, vh) }
+	w.OnCentreView = func() { g.w.CentreOnIndustry(idx) }
+	w.OnClose = func() { g.viewWin = nil }
+	g.viewWin = w
 }
