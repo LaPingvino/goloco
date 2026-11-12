@@ -21,9 +21,11 @@ import (
 // The industry's Transported tab (IndustryWindow.cpp Transported, 300×127):
 // last month's received and produced cargo; its Production tabs are disabled
 // where it produces no first / second cargo (setDisabledWidgets).
-// PARTIAL: the other tabs (town: Population, Company ratings; industry:
-// Production, Production 2 — clicking them does nothing) and the tabs' images,
-// renaming by the caption, the editor's buttons, resizing, the viewport's own scrolling, the
+// The Production and Production 2 tabs (299×282) graph the monthly production
+// history of its first / second cargo (Common::draw). Each tab captions its own
+// way ("{name}", "… - Monthly Production", "… - Statistics").
+// PARTIAL: the town's other tabs (Population, Company ratings), the tabs'
+// images, renaming by the caption, the editor's buttons, resizing, the viewport's own scrolling, the
 // status's clipping (drawStringLeftClipped).
 type ViewWindow struct {
 	X, Y, W, H          int
@@ -44,8 +46,12 @@ type ViewWindow struct {
 	// lines (received and produced last month), read each draw.
 	CargoTab int
 	Cargo    func() (receives, produces bool, lines []CargoMonthLine)
-	baseW    int // the first tab's size (switchTab: kWindowSize)
-	baseH    int
+	// Production gives the Production tabs' graph (n 0, 1): the label (the
+	// first cargo's unitsAndCargoName on both tabs, as upstream), that
+	// cargo's monthly history, and the current month (0–11) and year.
+	Production func(n int) (label string, history []uint8, month, year int)
+	baseW      int // the first tab's size (switchTab: kWindowSize)
+	baseH      int
 }
 
 // CargoMonthLine is a Transported tab line: a cargo's unit name, how much,
@@ -57,8 +63,24 @@ type CargoMonthLine struct {
 	Percent  uint8
 }
 
-// Transported tab: kWindowSize (onResize sets it).
-const transportedW, transportedH = 300, 127
+// Transported tab: kWindowSize (onResize sets it); the Production tabs:
+// kMinWindowSize.
+const (
+	transportedW, transportedH = 300, 127
+	productionW, productionH   = 299, 282
+)
+
+// caption is Common::prepareDraw's caption per tab: title_town,
+// title_industry_monthly_production, title_statistics.
+func (w *ViewWindow) caption() string {
+	switch {
+	case w.Tab == 0:
+		return w.Title
+	case w.Tab == w.CargoTab:
+		return strings.Replace(i18n.Label(i18n.TitleStatistics), "{STRINGID}", w.Title, 1)
+	}
+	return strings.Replace(i18n.Label(i18n.TitleIndustryMonthlyProduction), "{STRINGID}", w.Title, 1)
+}
 
 // NewTownWindow is Town::open's window (223×161, three tabs), its status
 // status_town_population "{STRINGID} population {INT32}". Placed as
@@ -100,11 +122,16 @@ func (w *ViewWindow) HandleClick(px, py int) {
 	}
 	if ry >= 15 && ry < 42 && rx >= 3 && rx < 3+31*w.Tabs {
 		i := (rx - 3) / 31
-		if !w.TabDisabled[i] && (i == 0 || i == w.CargoTab) {
+		graph := w.Production != nil && (i == 1 || i == 2) && w.CargoTab != 0
+		if !w.TabDisabled[i] && (i == 0 || i == w.CargoTab || graph) {
 			w.Tab = i
-			w.W, w.H = w.baseW, w.baseH
-			if i != 0 {
+			switch {
+			case i == 0:
+				w.W, w.H = w.baseW, w.baseH
+			case i == w.CargoTab:
 				w.W, w.H = transportedW, transportedH
+			default:
+				w.W, w.H = productionW, productionH
 			}
 		}
 		return
@@ -148,8 +175,12 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 		}
 	})
 	if w.Tab != 0 {
-		w.drawCargo(screen, g1.GetPalette()[gfx8.Shade(sec, 9)], g1.GetPalette()[paletteBlack0])
-		DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, colourWhite)
+		if w.Tab == w.CargoTab {
+			w.drawCargo(screen, g1.GetPalette()[gfx8.Shade(sec, 9)], g1.GetPalette()[paletteBlack0])
+		} else {
+			w.drawProduction(screen, sec, g1.GetPalette()[paletteBlack0])
+		}
+		DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.caption(), colourWhite)
 		return
 	}
 	if w.View != nil {
@@ -212,5 +243,64 @@ func (w *ViewWindow) drawCargo(screen *ebiten.Image, win2, black color.Color) {
 	}
 	if produces {
 		block(i18n.ProducedCargo, true)
+	}
+}
+
+// drawProduction is Common::draw (0x00456079) for a Production tab: the
+// "(units of cargo)" label at (2, 44); from the graph's bottom (height − 7)
+// up to y 68 every 20 px a grid line (x 41, 239 wide, shade 4) labelled
+// 0, 1000, 2000 … right-aligned at x 39 (population_graph_people, as
+// upstream); then back from the newest month a pixel per month: each
+// January a year label (every third, centred at y 56) and a vertical grid
+// line, and the history joined month to month in shade 7 (the newest
+// segment not drawn: it may be zeroed).
+func (w *ViewWindow) drawProduction(screen *ebiten.Image, sec []uint8, black color.Color) {
+	if w.Production == nil {
+		return
+	}
+	label, hist, month, year := w.Production(w.Tab - 1)
+	small := func(s string, x, y int) { DrawTextFont(screen, s, G1FontSmall, x, y, black) }
+	bottom := w.H - 7
+	grid := gfx8.Shade(sec, 4)
+	type tick struct {
+		x, y int
+		s    string
+	}
+	var ticks []tick
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		yTick := 0
+		for y := bottom; y >= 68; y -= 20 {
+			gfx8.FillRect(rt, 41, y, 41+239-1, y, grid)
+			s := strconv.Itoa(yTick)
+			ticks = append(ticks, tick{39 - MeasureTextFont(s, G1FontSmall), y - 6, s})
+			yTick += 1000
+		}
+		yearSkip := 0
+		for i := len(hist) - 1; i > 0; i-- {
+			x := 41 + i
+			if month == 0 {
+				if yearSkip == 0 {
+					s := strconv.Itoa(year)
+					ticks = append(ticks, tick{x - MeasureTextFont(s, G1FontSmall)/2, 56, s})
+				}
+				gfx8.FillRect(rt, x, 56+11, x, 56+11+w.H-74-1, grid)
+			}
+			if i < len(hist)-1 {
+				y1, y2 := bottom-int(hist[i]), bottom-int(hist[i+1])
+				chartDrawLine(rt, x, y1, x+1, y2, gfx8.Shade(sec, 7))
+			}
+			if month == 0 {
+				month, year = 11, year-1
+				if yearSkip++; yearSkip >= 3 {
+					yearSkip = 0
+				}
+			} else {
+				month--
+			}
+		}
+	})
+	small(strings.Replace(i18n.Label(i18n.ProductionGraphLabel), "{STRINGID}", ObjectString(label), 1), w.X+2, w.Y-24+68)
+	for _, t := range ticks {
+		small(t.s, w.X+t.x, w.Y+t.y)
 	}
 }
