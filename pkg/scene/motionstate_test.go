@@ -2303,7 +2303,7 @@ func TestTreesMatchUpstream(t *testing.T) {
 	}
 	o := sim.TerrainOptions{MinLandHeight: sc.Options.MinLandHeight, TopographyStyle: sc.Options.TopographyStyle, HillDensity: sc.Options.HillDensity,
 		HillsEdgeOfMap: sc.Options.Flags&2 != 0, SeaLevel: sc.SeaLevel, LandDistributionPatterns: sc.Options.LandDistributionPatterns}
-	m.GenerateLandscape(sc.Options.StartYear, o, r.G1, r.Objects) // no forests / random trees: the map the trees go on
+	m.GenerateTerrainOnly(sc.Options.StartYear, o, r.G1, r.Objects) // the map the trees go on (upstream's harness: before towns, industries, misc buildings)
 	saved := make([][]sim.Tile, m.Height)
 	for y := range m.Tiles {
 		saved[y] = append([]sim.Tile(nil), m.Tiles[y]...)

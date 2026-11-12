@@ -128,6 +128,21 @@ func (m *Map) InitialiseTiles() {
 // Scenario::reset, sub_4969E0 (the weather), sub_4748D4 beyond its road
 // object flags and default level crossing.
 func (m *Map) GenerateLandscape(startYear uint16, o TerrainOptions, g1 G1Raw, om *objects.ObjectManager) {
+	m.GenerateTerrainOnly(startYear, o, g1, om)
+	m.GenerateTrees(o, om)
+	m.GenerateTowns(o, g1, om)
+	m.GenerateIndustries(o, om)
+	m.GenerateMiscBuildings(om)
+	m.GenerateSurfaceVariation(om)
+	m.UpdateRoadObjectIdFlags(om) // sub_4748D4
+	m.UpdateDefaultLevelCrossingType(om)
+	m.UpdateScenarioObjectOptions(om)
+}
+
+// GenerateTerrainOnly is MapGenerator::generate's steps up to the trees: the
+// date, the tiles, the height map, rivers, land, water, terrain and surface
+// variation — the map the trees go on.
+func (m *Map) GenerateTerrainOnly(startYear uint16, o TerrainOptions, g1 G1Raw, om *objects.ObjectManager) {
 	m.InitialiseDate(startYear)
 	m.InitialiseSnowLine(om)
 	m.InitialiseTiles()
@@ -138,14 +153,6 @@ func (m *Map) GenerateLandscape(startYear uint16, o TerrainOptions, g1 G1Raw, om
 	m.GenerateWater(o.SeaLevel)
 	m.GenerateTerrain(hm, o.LandDistributionPatterns, o.SeaLevel, om)
 	m.GenerateSurfaceVariation(om)
-	m.GenerateTrees(o, om)
-	m.GenerateTowns(o, g1, om)
-	m.GenerateIndustries(o, om)
-	m.GenerateMiscBuildings(om)
-	m.GenerateSurfaceVariation(om)
-	m.UpdateRoadObjectIdFlags(om) // sub_4748D4
-	m.UpdateDefaultLevelCrossingType(om)
-	m.UpdateScenarioObjectOptions(om)
 }
 
 // Surface slope shapes (SurfaceSlope).
