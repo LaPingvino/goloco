@@ -21,7 +21,7 @@ import (
 var diagNeedsScene = map[string]bool{"routeadd": true, "routewaypoint": true, "express": true, "roadghost": true,
 	"shipghost": true, "shipsail": true, "planefly": true, "planeghost": true, "newindustry": true,
 	"newindustrybuild": true, "waves": true, "playable": true, "towns": true, "buildstation": true,
-	"stationtool": true, "stationghost": true}
+	"stationtool": true, "stationghost": true, "crash": true}
 
 // diagScenario runs GOLOCO_DIAG_BUILDVEHICLE's scenario v (once): a number is
 // the Build Vehicle window on that tab; the names set a situation up through
@@ -50,6 +50,8 @@ func (g *Game) diagScenario(v string) {
 		g.diagVehicleTab(v)
 	case "moneyeffect":
 		g.diagMoneyEffect()
+	case "crash":
+		g.diagCrash()
 	case "airportghost":
 		g.diagAirportGhost()
 	case "dockghost", "docktool":

@@ -63,6 +63,10 @@ type Renderer struct {
 	// (GetPaletteMap2 allocates), and the palette lookup handed to the painters.
 	entsByTile map[[2]int][]*scenario.VehicleEntity
 	entKeys    [][2]int // the tiles entitiesByTile filled last (reset next call)
+	// effByTile is entitiesByTile's crash effects (sim.Effect) per tile;
+	// effKeys the tiles it filled last.
+	effByTile map[[2]int][]*sim.Effect
+	effKeys   [][2]int
 	// station cargo inputs, kept (stationCargo)
 	cargoPlatforms map[int]*paint.CargoPlatform
 	cargoSlots     map[string]int               // cargoSlot cache (GetName allocates)
@@ -960,7 +964,84 @@ func (r *Renderer) entitiesByTile(m *sim.Map, v View, lw, lh int) map[[2]int][]*
 		}
 		out[k] = append(out[k], e)
 	}
+	r.effectsByTile(m, left, top, right, bottom)
 	return out
+}
+
+// effectsByTile fills effByTile: the crash effects whose sprite rectangle
+// (spriteWidth / heights about their gameToScreen point, rotation 0 as the
+// vehicles') meets the render target, in the misc list's order.
+func (r *Renderer) effectsByTile(m *sim.Map, left, top, right, bottom int) {
+	if r.effByTile == nil {
+		r.effByTile = map[[2]int][]*sim.Effect{}
+	}
+	for _, k := range r.effKeys {
+		r.effByTile[k] = r.effByTile[k][:0]
+	}
+	r.effKeys = r.effKeys[:0]
+	if len(m.Effects) == 0 || m.EntityLists == nil {
+		return
+	}
+	l := m.EntityLists
+	for id := l.Heads[sim.EntityListMisc]; id != sim.EntityIDNull; id = l.Links[id].Next {
+		e := m.Effects[id]
+		if e == nil || e.X < 0 || e.Y < 0 || e.X >= 0x4000 || e.Y >= 0x4000 {
+			continue
+		}
+		vx, vy := int(e.Y-e.X), int((e.Y+e.X)>>1-e.Z)
+		if vy-int(e.HeightNeg) > bottom || vy+int(e.HeightPos) <= top || vx-int(e.Width) > right || vx+int(e.Width) <= left {
+			continue
+		}
+		k := [2]int{int(e.X) / 32, int(e.Y) / 32}
+		if len(r.effByTile[k]) == 0 {
+			r.effKeys = append(r.effKeys, k)
+		}
+		r.effByTile[k] = append(r.effByTile[k], e)
+	}
+}
+
+// Crash effect sprites (ImageIds.h): vehicle_crash_<set>_00, explosion_cloud_00,
+// splash_00, each run consecutive.
+const (
+	imgVehicleCrash0  = 3302 // 5 sets of 12
+	imgExplosionCloud = 3372 // 18
+	imgSplash         = 3421 // 28
+)
+
+// paintEffectEntity is PaintEffectEntity.cpp for the crash effects:
+// paintVehicleCrashParticleEntity (zoom 0 only, in the part's colours),
+// paintExplosionCloudEntity and paintSplashEntity (zoom 2 at most); each a
+// parent at its height, frame / 256 into its run.
+func (r *Renderer) paintEffectEntity(s *paint.Session, e *sim.Effect) {
+	zoom := s.Zoom
+	s.ItemType = paint.ItemEntity
+	s.CurrentItem = e
+	s.SetSpritePosition(int(e.X), int(e.Y))
+	var id int
+	var pm []uint8
+	switch e.SubType {
+	case sim.EffectVehicleCrashParticle:
+		if zoom != 0 {
+			return
+		}
+		id = imgVehicleCrash0 + int(e.SpriteBase)*12 + int(e.Frame)/256
+		pm = r.palette2()(e.Colour[0], e.Colour[1])
+	case sim.EffectExplosionCloud:
+		id = imgExplosionCloud + int(e.Frame)/256
+	case sim.EffectSplash:
+		id = imgSplash + int(e.Frame)/256
+	default:
+		return
+	}
+	if zoom > 2 {
+		return
+	}
+	spr := r.Sprite(id)
+	if spr == nil {
+		return
+	}
+	off := paint.Pos3{Z: int(e.Z)}
+	s.AddAsParent(paint.Image{Sprite: spr, Op: gfx8.OpFor(spr, pm != nil, false), PalMap: pm}, off, off, paint.Pos3{X: 1, Y: 1})
 }
 
 // extColourGhost is ExtColour::unk2C, Gfx::applyGhostToImage's colour with
@@ -1318,6 +1399,12 @@ func (r *Renderer) paintTileEntities(s *paint.Session, m *sim.Map, x, y int, ent
 			continue
 		}
 		r.paintVehicleEntity(s, m, e)
+	}
+	if flyingOnly { // isEntityFlyingOrFloating: vehicles only
+		return
+	}
+	for _, e := range r.effByTile[[2]int{x, y}] { // ASSUMPTION: after the tile's vehicles (upstream: one spatial list)
+		r.paintEffectEntity(s, e)
 	}
 }
 

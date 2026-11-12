@@ -26,17 +26,17 @@ func TestMoneyEffectLifetime(t *testing.T) {
 	if id < maxNormalEntities || e.Z != 50 || e.SubType != effectTypeWindowCurrency || e.Amount != -1234 { // spendMoneyEffect creates it with −amount
 		t.Fatalf("id %d effect %+v", id, *e)
 	}
-	m.UpdateMoneyEffects(0)
+	m.UpdateEffects(0)
 	if e.X != 321 || e.Y != 319 || e.Z != 53 || e.Frame != 1 { // frame 0: nudge (1,-1), rise 3
 		t.Fatalf("after one update %+v", *e)
 	}
 	for i := 0; i < 159; i++ {
-		m.UpdateMoneyEffects(0)
+		m.UpdateEffects(0)
 	}
 	if len(m.MoneyEffects) != 1 || e.Frame != 160 {
 		t.Fatalf("frame %d, %d effects", e.Frame, len(m.MoneyEffects))
 	}
-	m.UpdateMoneyEffects(0) // frame 160: freed
+	m.UpdateEffects(0) // frame 160: freed
 	if len(m.MoneyEffects) != 0 || m.EntityLists.Counts[EntityListNullMoney] != free {
 		t.Fatalf("not freed: %d effects, nullMoney %d", len(m.MoneyEffects), m.EntityLists.Counts[EntityListNullMoney])
 	}

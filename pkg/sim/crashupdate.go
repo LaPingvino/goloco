@@ -4,7 +4,6 @@ import (
 	"github.com/LaPingvino/goloco/pkg/coords"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/olmath"
-	"github.com/LaPingvino/goloco/pkg/scenario"
 )
 
 // A crashed train's parts: VehicleHead::landCrashedUpdate (VehicleHead.cpp
@@ -96,7 +95,7 @@ func (m *Map) bogieCrashed(i int, om *objects.ObjectManager) {
 	nx, ny, nz := px+dx, py+dy, pz-int32(e.TileBaseZ/32)
 	bounce := func() { // off something: turned, exploded if it hadn't, half the speed
 		if speed >= 5*mph {
-			m.rotateAndExplode(e, true)
+			m.rotateAndExplode(i, true)
 		}
 		e.Var5A = uint32(speed/2) | 1<<31
 	}
@@ -108,7 +107,7 @@ func (m *Map) bogieCrashed(i int, om *objects.ObjectManager) {
 		if m.destroyedBogieHits(i, nx, ny, nz) {
 			nz = pz
 			if e.TileBaseZ >= 0x0A {
-				m.rotateAndExplode(e, false)
+				m.rotateAndExplode(i, false)
 			}
 			e.TileBaseZ = 0
 		}
@@ -124,20 +123,27 @@ func (m *Map) bogieCrashed(i int, om *objects.ObjectManager) {
 	}
 	if water != 0 && int32(water) < pz && int32(water) >= nz {
 		e.SpriteYaw = (e.SpriteYaw + 4) & 0x3F
-		e.VehicleFlags |= vehicleFlagUnk5 // PARTIAL: the splash and its sound
+		if e.VehicleFlags&vehicleFlagUnk5 == 0 {
+			m.createSplash(int32(e.PosX), int32(e.PosY), int32(water)) // PARTIAL: its splash2 sound
+			e.VehicleFlags |= vehicleFlagUnk5
+		}
 	}
 	m.moveTo(e, nx, ny, nz)
 }
 
-// rotateAndExplode is rotateAndExplodeIfNotAlreadyExploded: a quarter turn of
-// the yaw circle's 64 steps by 4, and the part explodes once (unk_5).
-func (m *Map) rotateAndExplode(e *scenario.VehicleEntity, clockwise bool) {
+// rotateAndExplode is rotateAndExplodeIfNotAlreadyExploded: a turn of 4 of
+// the yaw circle's 64 steps, and the part explodes once (unk_5).
+func (m *Map) rotateAndExplode(i int, clockwise bool) {
+	e := &m.Entities[i]
 	if clockwise {
 		e.SpriteYaw = (e.SpriteYaw + 4) & 0x3F
 	} else {
 		e.SpriteYaw = (e.SpriteYaw - 4) & 0x3F
 	}
-	e.VehicleFlags |= vehicleFlagUnk5 // explodeComponent: PARTIAL (no effect entities)
+	if e.VehicleFlags&vehicleFlagUnk5 == 0 {
+		m.explodeComponent(i)
+		e.VehicleFlags |= vehicleFlagUnk5
+	}
 }
 
 // destroyedBogieHits is destroyedBogieCheckForCollision: a tile element in
@@ -190,6 +196,7 @@ func (m *Map) bodyCrashed(cc CarComponent, om *objects.ObjectManager) {
 	}
 	m.invalidateSprite(body)
 	if body.VehicleFlags&vehicleFlagUnk5 == 0 && (f.VehicleFlags&vehicleFlagUnk5 != 0 || b.VehicleFlags&vehicleFlagUnk5 != 0) {
-		body.VehicleFlags |= vehicleFlagUnk5 // explodeComponent: PARTIAL
+		m.explodeComponent(cc.Body)
+		body.VehicleFlags |= vehicleFlagUnk5
 	}
 }
