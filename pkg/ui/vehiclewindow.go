@@ -328,6 +328,8 @@ type VehicleWindow struct {
 	// Hover is rowHover in the Details / Cargo list: the car row under the
 	// mouse (−1 none; while dragging len(Cars) is the tail, below the last).
 	Hover         int
+	mouseX        int // the mouse in window coordinates (MouseOver; the buttons' hover)
+	mouseY        int
 	OnDropSell    func(row int)
 	OnDropMove    func(row, dest int)
 	dragImg       *ebiten.Image
@@ -403,24 +405,23 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 			gfx8.DrawSpriteNoise(rt, sp, lw[vwClose].L, lw[vwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 		w.drawVehicleTabs(rt, lw[:], vwTabDetails, sec, prim)
-		// The pickup button (ImageButton::draw): inset while its tool is
-		// active, then its image. PARTIAL: hover, the disabled (solid) look,
-		// Gfx::recolour's exact colouring (the company colour here), the
-		// other right-bar buttons.
+		// The right bar's ImageButtons (ImageButton::draw): the frame (buttonFrame),
+		// then the image. PARTIAL: the disabled (solid) look, Gfx::recolour's
+		// exact colouring (the company colour here).
 		if b := lw[vdPickup]; !b.Hidden && w.PickupImage > 0 && w.PickupImage < len(g1.Elements) {
-			if w.PickupActive {
-				gfx8.FillRectInset(rt, b.L, b.T, b.R, b.B, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
-			}
+			w.buttonFrame(rt, b, w.PickupActive, sec)
 			if sp, err := gfx8.Decode(&g1.Elements[w.PickupImage]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 			}
 		}
 		if b := lw[vdBuildNew]; !b.Hidden && w.BuildNewImage > 0 && w.BuildNewImage < len(g1.Elements) { // recolour(buildImage, company colour)
+			w.buttonFrame(rt, b, false, sec)
 			if sp, err := gfx8.Decode(&g1.Elements[w.BuildNewImage]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 			}
 		}
 		if b := lw[vdRemove]; !b.Hidden { // ImageButton rubbish_bin (tooltip_sell_or_drag_vehicle)
+			w.buttonFrame(rt, b, false, sec)
 			if sp, err := gfx8.Decode(&g1.Elements[imgRubbishBin]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 			}
@@ -497,8 +498,8 @@ func (w *VehicleWindow) drawMain(screen *ebiten.Image) {
 			if lw[b.i].Hidden || b.img <= 0 || b.img >= len(g1.Elements) {
 				continue
 			}
-			if b.i == vmPickup && w.PickupActive {
-				gfx8.FillRectInset(rt, lw[b.i].L, lw[b.i].T, lw[b.i].R, lw[b.i].B, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
+			if b.i != vmCentreViewport { // the centre-view button is painted into the viewport
+				w.buttonFrame(rt, lw[b.i], b.i == vmPickup && w.PickupActive, sec)
 			}
 			if sp, err := gfx8.Decode(&g1.Elements[b.img]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, lw[b.i].L, lw[b.i].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
@@ -880,6 +881,7 @@ func (w *VehicleWindow) drawRowHover(sub *gfx8.RenderTarget, rowH, width int, de
 // scrollDrag): rowHover from the mouse — getCarFromScrollView at the
 // cursor, or at the row's middle while dragging (none then: the tail).
 func (w *VehicleWindow) MouseOver(x, y int) {
+	w.mouseX, w.mouseY = x-w.X, y-w.Y
 	w.Hover = -1
 	var list BVWidget
 	switch w.Tab {
@@ -1036,4 +1038,21 @@ func (w *VehicleWindow) Tooltip() string {
 		return ""
 	}
 	return carTooltip(w.Cars[w.Hover])
+}
+
+// buttonFrame is ImageButton::draw's frame: under the mouse (draw_3) a
+// translucent raised frame in the window's colour — inset when activated —;
+// otherwise, activated, an inset one; else none.
+func (w *VehicleWindow) buttonFrame(rt *gfx8.RenderTarget, b BVWidget, activated bool, sec []uint8) {
+	flags := 0
+	if activated {
+		flags = gfx8.InsetBorderInset
+	}
+	if w.mouseX >= b.L && w.mouseX <= b.R && w.mouseY >= b.T && w.mouseY <= b.B {
+		gfx8.FillRectInset(rt, b.L, b.T, b.R, b.B, translucentInset(w.Colour), flags)
+		return
+	}
+	if activated {
+		gfx8.FillRectInset(rt, b.L, b.T, b.R, b.B, gfx8.InsetColour{Map: sec}, flags)
+	}
 }
