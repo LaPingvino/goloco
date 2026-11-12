@@ -9,6 +9,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // listwindows.go — the right-toolbar list windows: the ported VehicleList,
@@ -85,6 +86,7 @@ func (g *Game) openVehicleListFor(company, tab int) {
 	w.TabDisabled = func(i int) bool {                             // disableUnavailableVehicleTypes: availableVehicles ^ 0x3F
 		return company < len(g.w.Map.Companies) && g.w.Map.Companies[company].AvailableVehicles&(1<<i) == 0
 	}
+	w.Reopen = func() { g.openVehicleListFor(company, tab) }
 	g.townList = w
 }
 
@@ -128,6 +130,7 @@ func (g *Game) openStationList(tab int) {
 	w.OnClose = func() { g.townList = nil }
 	w.OnRow = func(id int) { g.openStationWindow(id) }             // onScrollMouseDown: Station::open
 	g.listTabIcons(w, stationTabFrames, stationTabCounts, int(tc)) // the company colour
+	w.Reopen = func() { g.openStationList(tab) }
 	g.townList = w
 }
 
@@ -149,6 +152,7 @@ func (g *Game) openTownsWindow() {
 	// Outside the editor / sandbox the build-town, build-buildings and misc
 	// buildings tabs are disabled (TownList.cpp open), so hidden.
 	w.TabDisabled = func(i int) bool { return i > 0 }
+	w.Reopen = g.openTownsWindow
 	g.townList = w
 }
 
@@ -246,6 +250,7 @@ func (g *Game) openIndustryList() {
 		}
 	}
 	g.listTabIcons(w, industryTabFrames, industryTabCounts, -1)
+	w.Reopen = g.openIndustryList
 	g.townList = w
 }
 
@@ -431,10 +436,7 @@ func (g *Game) renameTown(id int, win *ui.ViewWindow) {
 			if infos := g.w.TownList(); id < len(infos) {
 				win.Title = infos[id].Name
 			}
-			if old := g.townList; old != nil && old.Caption == i18n.Label(i18n.TitleTowns) { // the open town list repopulated
-				g.openTownsWindow()
-				g.townList.X, g.townList.Y, g.townList.Scroll = old.X, old.Y, old.Scroll
-			}
+			g.refreshList() // the open list repopulated
 		})
 }
 
@@ -465,4 +467,26 @@ func (g *Game) renameIndustry(idx int, win *ui.ViewWindow) {
 			}
 			win.Title, _ = m.IndustryName(idx, g.r.ObjMgr)
 		})
+}
+
+// refreshList is the lists' onUpdate repopulating: the open list (if it can
+// reopen) rebuilt from the game's current data, keeping where it is, its
+// scroll, its sort and its hover row; not while a mouse button is held (a
+// scrollbar drag or a click in progress).
+func (g *Game) refreshList() {
+	old := g.townList
+	if old == nil || old.Reopen == nil || g.inMousePressed(ebiten.MouseButtonLeft) {
+		return
+	}
+	old.Reopen()
+	w := g.townList
+	if w == nil || w == old {
+		return
+	}
+	w.X, w.Y = old.X, old.Y
+	if w.Sort != nil && w.SortMode != old.SortMode {
+		w.SortMode = old.SortMode
+		w.Sort(old.SortMode)
+	}
+	w.Scroll, w.Hover = old.Scroll, old.Hover
 }
