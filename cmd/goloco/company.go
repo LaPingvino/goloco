@@ -18,18 +18,18 @@ import (
 // companyFace is the owner's image of a company: its competitor object's
 // images[ownerEmotion], recoloured to mainColours.primary (0 if unknown).
 func (g *Game) companyFace(company int) (int, uint8) {
-	if g.objMgr == nil || company >= len(g.w.CompanyFaces) {
+	if g.r.ObjMgr == nil || company >= len(g.w.CompanyFaces) {
 		return 0, 0
 	}
 	f := g.w.CompanyFaces[company]
-	if int(f.Competitor) >= len(g.objMgr.CompetitorObjects) || g.objMgr.CompetitorObjects[f.Competitor] == nil || f.Emotion >= 9 {
+	if int(f.Competitor) >= len(g.r.ObjMgr.CompetitorObjects) || g.r.ObjMgr.CompetitorObjects[f.Competitor] == nil || f.Emotion >= 9 {
 		return 0, 0
 	}
 	var colour uint8
 	if company < len(g.w.CompanyColours) {
 		colour = g.w.CompanyColours[company]
 	}
-	return int(g.objMgr.CompetitorObjects[f.Competitor].Images[f.Emotion]), colour
+	return int(g.r.ObjMgr.CompetitorObjects[f.Competitor].Images[f.Emotion]), colour
 }
 
 // playerCompanyDropdown is PlayerInfoPanel's playerMouseDown: every company
@@ -71,8 +71,8 @@ func (g *Game) playerCompanyDropdown(x, y, w, h int) {
 	}
 	items = append(items, ui.DropdownItem{Text: listText, Sprite: listIcon, CompaniesListItem: true})
 	var colour uint8 = ui.DropdownColour
-	if om := g.r.ObjMgr; om != nil && om.InterfaceSkin != nil {
-		colour = om.InterfaceSkin.PlayerInfoToolbarColour
+	if sk := g.skin(); sk != nil {
+		colour = sk.PlayerInfoToolbarColour
 	}
 	d := ui.NewDropdownShowText(x, y, w, h, colour, items, 25, g.sw, g.sh)
 	d.SetToolbarColour(colour)
@@ -104,8 +104,8 @@ func (g *Game) openCompanyFinances(company int) {
 		return
 	}
 	var tc, wc uint8 = 0, 1
-	if om := g.r.ObjMgr; om != nil && om.InterfaceSkin != nil {
-		tc, wc = om.InterfaceSkin.WindowTitlebarColour, om.InterfaceSkin.WindowPlayerColor
+	if sk := g.skin(); sk != nil {
+		tc, wc = sk.WindowTitlebarColour, sk.WindowPlayerColor
 	}
 	if company < len(g.w.CompanyColours) { // the company's own colour, as its windows are
 		tc = g.w.CompanyColours[company]
@@ -257,7 +257,7 @@ func (g *Game) companyStatus(company int) ui.CompanyStatus {
 	if face > 0 {
 		face++
 	}
-	st := ui.CompanyStatus{Face: face, FaceColour: col, OwnerName: g.w.Map.OwnerName(company, g.objMgr), Status: i18n.Str(i18n.CompanyStatusEmpty)}
+	st := ui.CompanyStatus{Face: face, FaceColour: col, OwnerName: g.w.Map.OwnerName(company, g.r.ObjMgr), Status: i18n.Str(i18n.CompanyStatusEmpty)}
 	if company < len(g.w.Map.CompanyFaces) && g.w.Map.CompanyFaces[company].ChallengeFlags&(1<<9) != 0 {
 		st.Status = i18n.Str(i18n.CompanyStatusBankrupt)
 	}
@@ -275,7 +275,7 @@ func (g *Game) companyDetails(company int) ui.CompanyDetails {
 	c, f := &m.Companies[company], &m.CompanyFaces[company]
 	y, mo, d := uilayout.CalcDate(c.StartedDate)
 	det := ui.CompanyDetails{Started: uilayout.DateDMY(d, i18n.Month(mo+1), y), Performance: f.Performance,
-		OwnerName: m.OwnerName(company, g.objMgr), Counts: c.TransportTypeCount, Headquarters: c.HeadquartersX != -1}
+		OwnerName: m.OwnerName(company, g.r.ObjMgr), Counts: c.TransportTypeCount, Headquarters: c.HeadquartersX != -1}
 	switch {
 	case f.ChallengeFlags&(1<<5) != 0: // decreasedPerformance
 		det.Trend = -1
@@ -373,8 +373,8 @@ func (g *Game) renameCompany(company int, titleColour, colour uint8) {
 func (g *Game) openCompanyList() {
 	m := &g.w.Map
 	var tc, wc uint8 = 0, 1
-	if om := g.r.ObjMgr; om != nil && om.InterfaceSkin != nil {
-		tc, wc = om.InterfaceSkin.WindowTitlebarColour, om.InterfaceSkin.WindowColour
+	if sk := g.skin(); sk != nil {
+		tc, wc = sk.WindowTitlebarColour, sk.WindowColour
 	}
 	var rows []ui.CompanyListRow
 	for id := range m.CompanyNames {

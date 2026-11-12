@@ -19,14 +19,25 @@ import (
 func (g *Game) toolbarDropdown(btn *ui.ToolbarButton, items []ui.DropdownItem) *ui.DropdownMenu {
 	d := ui.NewDropdownMenu(btn.X, btn.Y+btn.Height, items)
 	d.Place(btn.X, btn.Y, btn.Width, btn.Height, g.sw, g.sh)
-	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-		sk := g.r.ObjMgr.InterfaceSkin
-		cols := [4]uint8{sk.TopToolbarPrimaryColour, sk.TopToolbarSecondaryColour, sk.TopToolbarTertiaryColour, sk.TopToolbarQuaternaryColour}
-		if btn.ColorGroup >= 0 && btn.ColorGroup < 4 {
-			d.SetToolbarColour(cols[btn.ColorGroup])
-		}
-	}
+	g.setToolbarColour(d, btn)
 	return d
+}
+
+// toolbarImageMenu is the toolbar's menu of images with text (Dropdown's
+// showBelow with 25 px items, flag 1 << 6), in the button's colour.
+func (g *Game) toolbarImageMenu(btn *ui.ToolbarButton, items []ui.DropdownItem) *ui.DropdownMenu {
+	d := ui.NewDropdownShowText(btn.X, btn.Y, btn.Width, btn.Height, ui.DropdownColour, items, 25, g.sw, g.sh)
+	g.setToolbarColour(d, btn)
+	return d
+}
+
+// setToolbarColour gives a toolbar button's menu the interface skin's
+// top-toolbar colour for the button's group.
+func (g *Game) setToolbarColour(d *ui.DropdownMenu, btn *ui.ToolbarButton) {
+	if sk := g.skin(); sk != nil && btn.ColorGroup >= 0 && btn.ColorGroup < 4 {
+		cols := [4]uint8{sk.TopToolbarPrimaryColour, sk.TopToolbarSecondaryColour, sk.TopToolbarTertiaryColour, sk.TopToolbarQuaternaryColour}
+		d.SetToolbarColour(cols[btn.ColorGroup])
+	}
 }
 
 // handleToolbarButton handles clicks on toolbar buttons, matching the new
@@ -71,7 +82,6 @@ func (g *Game) handleToolbarButton(idx int) {
 			{Text: i18n.Label(i18n.MenuExitOpenloco), Action: func() { os.Exit(0) }},
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
-		return
 
 	case "Audio":
 		items := []ui.DropdownItem{
@@ -83,7 +93,6 @@ func (g *Game) handleToolbarButton(idx int) {
 			}},
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
-		return
 
 	case "Zoom":
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTopCommon.cpp:95-132
@@ -92,7 +101,6 @@ func (g *Game) handleToolbarButton(idx int) {
 			{Text: i18n.Label(i18n.MenuZoomOut), Action: func() { g.w.ZoomOut() }},
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
-		return
 
 	case "Rotate":
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTopCommon.cpp:135-143
@@ -101,7 +109,6 @@ func (g *Game) handleToolbarButton(idx int) {
 			{Text: i18n.Label(i18n.MenuRotateAntiClockwise), Action: func() { log.Println("[Game] Rotate CCW") }},
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
-		return
 
 	case "View":
 		items := []ui.DropdownItem{
@@ -109,37 +116,27 @@ func (g *Game) handleToolbarButton(idx int) {
 			{Text: "See Through Tracks", Action: func() { log.Println("[Game] See through tracks") }},
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
-		return
 	case "Terraform":
 		log.Println("[Game] Terraform menu (not yet implemented)")
-		return
 	case "Railroad":
 		g.constructionMenu(btn, true) // the company's track types, the last one highlighted
-		return
 
 	case "Road":
 		g.constructionMenu(btn, false)
-		return
 	case "Port/Airport":
 		g.portMenu(btn)
-		return
 	case "Build Vehicles":
 		g.buildVehiclesMenu(btn)
-		return
 	case "Vehicles":
 		g.openVehiclesWindow()
-		return
 	case "Stations":
 		g.openStationsWindow()
-		return
 	case "Towns":
 		g.openTownsWindow()
-		return
 	default:
 		// Not ported yet: no window (an invented placeholder window would not
 		// be the game's own).
 		log.Printf("[Game] %s: window not ported yet", tooltip)
-		return
 	}
 }
 
@@ -183,11 +180,7 @@ func (g *Game) constructionMenu(btn *ui.ToolbarButton, rail bool) {
 			highlighted = i
 		}
 	}
-	d := ui.NewDropdownShowText(btn.X, btn.Y, btn.Width, btn.Height, ui.DropdownColour, items, 25, g.sw, g.sh)
-	if sk := om.InterfaceSkin; sk != nil && btn.ColorGroup >= 0 && btn.ColorGroup < 4 {
-		cols := [4]uint8{sk.TopToolbarPrimaryColour, sk.TopToolbarSecondaryColour, sk.TopToolbarTertiaryColour, sk.TopToolbarQuaternaryColour}
-		d.SetToolbarColour(cols[btn.ColorGroup])
-	}
+	d := g.toolbarImageMenu(btn, items)
 	d.Highlighted = highlighted
 	d.OpenedByPress(image.Rect(btn.X, btn.Y, btn.X+btn.Width, btn.Y+btn.Height))
 	g.dropdown = d
@@ -216,12 +209,12 @@ func (g *Game) openConstructionWithFlags(flags uint8) {
 // portMenuDropdown: the option remembered, Construction::openWithFlags.
 // PARTIAL: the airport and dock construction windows (logged for now).
 func (g *Game) portMenu(btn *ui.ToolbarButton) {
-	if g.w == nil || g.r == nil || g.r.ObjMgr == nil || g.r.ObjMgr.InterfaceSkin == nil {
+	if g.w == nil || g.skin() == nil {
 		return
 	}
 	m := &g.w.Map
 	m.UpdateAvailableAirportAndDockOptions(g.r.ObjMgr) // upstream runs it on load / company changes; the state it leaves is what the menu reads
-	skin := int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
+	skin := int(g.skin().ImageOffset)
 	var items []ui.DropdownItem
 	var options []int
 	add := func(option, img, label int) {
@@ -240,11 +233,7 @@ func (g *Game) portMenu(btn *ui.ToolbarButton) {
 	if len(items) == 0 {
 		return
 	}
-	d := ui.NewDropdownShowText(btn.X, btn.Y, btn.Width, btn.Height, ui.DropdownColour, items, 25, g.sw, g.sh)
-	if sk := g.r.ObjMgr.InterfaceSkin; btn.ColorGroup >= 0 && btn.ColorGroup < 4 {
-		cols := [4]uint8{sk.TopToolbarPrimaryColour, sk.TopToolbarSecondaryColour, sk.TopToolbarTertiaryColour, sk.TopToolbarQuaternaryColour}
-		d.SetToolbarColour(cols[btn.ColorGroup])
-	}
+	d := g.toolbarImageMenu(btn, items)
 	if g.lastPortOption != options[0] && len(items) > 1 { // the second item when the last option isn't the first
 		d.Highlighted = 1
 	} else {
@@ -282,7 +271,7 @@ func (g *Game) openPortConstruction(option int) {
 // BuildVehicle::openByType. PARTIAL: the button face doesn't yet show the last
 // type's image (kBuildVehicleImages).
 func (g *Game) buildVehiclesMenu(btn *ui.ToolbarButton) {
-	if g.w == nil || g.r == nil || g.r.ObjMgr == nil || g.r.ObjMgr.InterfaceSkin == nil {
+	if g.w == nil || g.skin() == nil {
 		return
 	}
 	m := &g.w.Map
@@ -295,7 +284,7 @@ func (g *Game) buildVehiclesMenu(btn *ui.ToolbarButton) {
 	if company >= 0 && company < len(g.w.CompanyColours) {
 		colour = g.w.CompanyColours[company]
 	}
-	skin := int(g.r.ObjMgr.InterfaceSkin.ImageOffset)
+	skin := int(g.skin().ImageOffset)
 	var items []ui.DropdownItem
 	for vt := 0; vt < 6; vt++ {
 		if avail&(1<<vt) == 0 {
@@ -311,11 +300,7 @@ func (g *Game) buildVehiclesMenu(btn *ui.ToolbarButton) {
 	if len(items) == 0 {
 		return
 	}
-	d := ui.NewDropdownShowText(btn.X, btn.Y, btn.Width, btn.Height, ui.DropdownColour, items, 25, g.sw, g.sh)
-	if sk := g.r.ObjMgr.InterfaceSkin; btn.ColorGroup >= 0 && btn.ColorGroup < 4 {
-		cols := [4]uint8{sk.TopToolbarPrimaryColour, sk.TopToolbarSecondaryColour, sk.TopToolbarTertiaryColour, sk.TopToolbarQuaternaryColour}
-		d.SetToolbarColour(cols[btn.ColorGroup])
-	}
+	d := g.toolbarImageMenu(btn, items)
 	if h := int(m.LastBuildVehiclesOption); h < len(items) {
 		d.Highlighted = h
 	}

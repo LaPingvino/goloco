@@ -47,7 +47,6 @@ type Game struct {
 	r                              *render.Renderer
 	toolbar                        *ui.Toolbar
 	windowMgr                      *ui.SimpleWindowManager
-	objMgr                         *objects.ObjectManager
 	audioMgr                       *audio.Manager
 	scenarioSelect                 *ui.ScenarioSelectWindow // the New Game window when open
 	diagNewGameDone                bool
@@ -426,7 +425,6 @@ func NewGame() *Game {
 		r:                r,
 		toolbar:          toolbar,
 		windowMgr:        windowMgr,
-		objMgr:           objMgr,
 		audioMgr:         audioMgr,
 		titleSeq:         titleSeq,
 		dataDir:          dataDir,
@@ -545,6 +543,15 @@ func (g *Game) prewarmTick() {
 		log.Printf("[Game] Background prewarm complete after %v — atlas has %d sprites", time.Since(processStart).Round(time.Millisecond), g.r.AtlasPackedCount())
 		g.prewarmIDs, g.prewarmPos = nil, 0
 	}
+}
+
+// skin is the loaded interface skin object (INTERDEF.DAT): the windows'
+// colours and the toolbar images; nil without game data.
+func (g *Game) skin() *objects.InterfaceSkinObject {
+	if g.r == nil || g.r.ObjMgr == nil {
+		return nil
+	}
+	return g.r.ObjMgr.InterfaceSkin
 }
 
 // mouseMoved is Input::hasPendingMouseInputUpdate for GameTicks: the cursor

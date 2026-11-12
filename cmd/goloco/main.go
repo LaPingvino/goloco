@@ -158,11 +158,11 @@ func main() {
 // firstTrainStationSlot returns the first populated train-station object slot,
 // or 0 when none are loaded. Used to pick a station type for placement.
 func (g *Game) firstTrainStationSlot() uint8 {
-	if g.objMgr == nil {
+	if g.r.ObjMgr == nil {
 		return 0
 	}
 	for i := 0; i < 16; i++ {
-		if g.objMgr.GetTrainStationObjectByIndex(i) != nil {
+		if g.r.ObjMgr.GetTrainStationObjectByIndex(i) != nil {
 			return uint8(i)
 		}
 	}

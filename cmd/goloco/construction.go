@@ -119,16 +119,16 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 		g.consTab, f.Tab = 1, 1
 		f.Title = i18n.Label(i18n.TitleAirport)
 		f.Disabled = [4]bool{true, false, true, true}
-		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-			f.StationTabIcon = int(g.r.ObjMgr.InterfaceSkin.ImageOffset) + objects.ISToolbarMenuAirport
+		if sk := g.skin(); sk != nil {
+			f.StationTabIcon = int(sk.ImageOffset) + objects.ISToolbarMenuAirport
 		}
 	}
 	if g.buildMode == buildModeDock { // drawDockTabs; StationTab::prepareDraw's caption title_ship_port
 		g.consTab, f.Tab = 1, 1
 		f.Title = i18n.Label(i18n.TitleShipPort)
 		f.Disabled = [4]bool{true, false, true, true}
-		if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-			f.StationTabIcon = int(g.r.ObjMgr.InterfaceSkin.ImageOffset) + objects.ISToolbarMenuShipPort
+		if sk := g.skin(); sk != nil {
+			f.StationTabIcon = int(sk.ImageOffset) + objects.ISToolbarMenuShipPort
 		}
 	}
 	st.Rotation = g.w.ConstructionHeadState().Rotation

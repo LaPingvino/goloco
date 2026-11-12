@@ -65,8 +65,8 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		names = append(names, n)
 	}
 	var tc, wc uint8 = 0, 1
-	if g.r != nil && g.r.ObjMgr != nil && g.r.ObjMgr.InterfaceSkin != nil {
-		tc, wc = g.r.ObjMgr.InterfaceSkin.WindowTitlebarColour, g.r.ObjMgr.InterfaceSkin.WindowPlayerColor
+	if sk := g.skin(); sk != nil {
+		tc, wc = sk.WindowTitlebarColour, sk.WindowPlayerColor
 	}
 	if int(h.Owner) < len(g.w.CompanyColours) {
 		tc = g.w.CompanyColours[h.Owner]
