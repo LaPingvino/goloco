@@ -10,6 +10,7 @@ wait 20
 camera 60 250
 wait 2
 click 592 14
+wait 1
 move 400 300
 wait 2
 move 250 420

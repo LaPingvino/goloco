@@ -9,6 +9,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
+	"image"
 	"log"
 	"math"
 	"os"
@@ -1389,6 +1390,7 @@ func (g *Game) portMenu(btn *ui.ToolbarButton) {
 	} else {
 		d.Highlighted = 0
 	}
+	d.OpenedByPress(image.Rect(btn.X, btn.Y, btn.X+btn.Width, btn.Y+btn.Height)) // a click on the button takes the highlighted one
 	g.dropdown = d
 }
 
@@ -1991,4 +1993,70 @@ func (g *Game) renameStation(id int, titleColour, colour uint8) {
 			}
 			g.w.StationsChanged()
 		})
+}
+
+// constructionMenu is the toolbar's railroad menu (ToolbarTop.cpp
+// railroadMenuMouseDown, 0x0043A0EF) or road menu (ToolbarTopCommon.cpp
+// roadMenuMouseDown, 0x0043A19F): the company's available track or road
+// types — each its object's image recoloured to the player's colour and its
+// name — with the last one chosen highlighted, so a click without moving
+// takes it (Dropdown's highlighted item on release). Choosing one is
+// Construction::openWithFlags (openConstructionWithFlags). Upstream's
+// railroad menu asks for GameCommands::getUpdatingCompanyId ("This looks
+// odd"); outside a command that is the controlling company, as here.
+func (g *Game) constructionMenu(btn *ui.ToolbarButton, rail bool) {
+	if g.w == nil || g.r == nil || g.r.ObjMgr == nil {
+		return
+	}
+	m, om := &g.w.Map, g.r.ObjMgr
+	ctrl, _ := g.w.ControllingCompany()
+	objs, last := m.CompanyAvailableRoads(uint8(ctrl), om), m.LastRoadOption
+	if rail {
+		objs, last = m.CompanyAvailableRailTracks(uint8(ctrl), om), m.LastRailroadOption
+	}
+	if len(objs) == 0 {
+		return // "Sanity check: any objects available?"
+	}
+	colour := g.companyColours(ctrl).Main[0] // getPlayerCompanyColour: the main colour's primary
+	var items []ui.DropdownItem
+	highlighted := 0
+	for i, obj := range objs {
+		name, image := "", 0
+		if obj&(1<<7) != 0 {
+			if r := om.GetRoadObjectByIndex(int(obj &^ (1 << 7))); r != nil {
+				name, image = r.Name, int(r.Image)
+			}
+		} else if t := om.GetTrackObjectByIndex(int(obj)); t != nil {
+			name, image = t.Name, int(t.Image) // + TrackObj::ImageIds::kUiPreviewImage0 (0)
+		}
+		obj := obj
+		items = append(items, ui.DropdownItem{MenuSprite: true, Sprite: image, SpriteColour: colour, Text: name, Action: func() { g.openConstructionWithFlags(obj) }})
+		if obj == last {
+			highlighted = i
+		}
+	}
+	d := ui.NewDropdownShowText(btn.X, btn.Y, btn.Width, btn.Height, ui.DropdownColour, items, 25, g.sw, g.sh)
+	if sk := om.InterfaceSkin; sk != nil && btn.ColorGroup >= 0 && btn.ColorGroup < 4 {
+		cols := [4]uint8{sk.TopToolbarPrimaryColour, sk.TopToolbarSecondaryColour, sk.TopToolbarTertiaryColour, sk.TopToolbarQuaternaryColour}
+		d.SetToolbarColour(cols[btn.ColorGroup])
+	}
+	d.Highlighted = highlighted
+	d.OpenedByPress(image.Rect(btn.X, btn.Y, btn.X+btn.Width, btn.Y+btn.Height))
+	g.dropdown = d
+}
+
+// openConstructionWithFlags is Construction::openWithFlags for a track or
+// road type (bit 7: a road object): the construction window opens with it,
+// the piece and gradient reset, and the toolbar's last option follows
+// (setTrackOptions). PARTIAL: upstream's keep-the-window case (a road over
+// an any-road-type-compatible road keeps the open window and its head).
+func (g *Game) openConstructionWithFlags(flags uint8) {
+	if flags&(1<<7) != 0 {
+		g.buildMode, g.buildObjID = buildModeRoad, int(flags&^(1<<7))
+	} else {
+		g.buildMode, g.buildObjID = buildModeTrack, int(flags)
+	}
+	g.consCurve, g.consSlope = 0, 0
+	g.w.Map.SetTrackOptions(flags, g.r.ObjMgr)
+	g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
 }

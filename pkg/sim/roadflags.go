@@ -77,7 +77,6 @@ func (m *Map) UpdateScenarioObjectOptions(om *objects.ObjectManager) {
 	m.ResetDefaultLandObject(om)
 }
 
-
 // staticSet is sfl::static_unordered_set<uint8_t, 8>'s iteration as the
 // compiled container gives it: unique values, the most recently first
 // inserted first (a value inserted again keeps its place). Checked with a
@@ -186,5 +185,37 @@ func (m *Map) UpdatePlayerInfrastructureOptions(om *objects.ObjectManager) {
 	m.LastRailroadOption = 0xFF
 	if t := m.companyAvailableRailTracks(pc, om); len(t) > 0 {
 		m.LastRailroadOption = t[0]
+	}
+}
+
+// CompanyAvailableRoads is companyGetAvailableRoads, for the toolbar's road
+// menu (ToolbarTopCommon.cpp roadMenuMouseDown).
+func (m *Map) CompanyAvailableRoads(company uint8, om *objects.ObjectManager) []uint8 {
+	return m.companyAvailableRoads(company, om)
+}
+
+// CompanyAvailableRailTracks is companyGetAvailableRailTracks, for the
+// toolbar's railroad menu (ToolbarTop.cpp railroadMenuMouseDown).
+func (m *Map) CompanyAvailableRailTracks(company uint8, om *objects.ObjectManager) []uint8 {
+	return m.companyAvailableRailTracks(company, om)
+}
+
+// SetTrackOptions is Construction::Common::setTrackOptions (0x004A3A06): the
+// track type a construction window opens with becomes the toolbar's last
+// road option (a road, or a track that is a road) or last railroad option (a
+// track, or a road that is rail — a tram line).
+func (m *Map) SetTrackOptions(trackType uint8, om *objects.ObjectManager) {
+	if trackType&(1<<7) != 0 {
+		if r := om.GetRoadObjectByIndex(int(trackType &^ (1 << 7))); r != nil && r.Flags&roadObjFlagIsRail == 0 {
+			m.LastRoadOption = trackType
+		} else {
+			m.LastRailroadOption = trackType
+		}
+		return
+	}
+	if t := om.GetTrackObjectByIndex(int(trackType)); t != nil && t.Flags&trackObjFlagIsRoad == 0 {
+		m.LastRailroadOption = trackType
+	} else {
+		m.LastRoadOption = trackType
 	}
 }

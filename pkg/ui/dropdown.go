@@ -31,6 +31,52 @@ type DropdownMenu struct {
 	// ItemHeight is _dropdownItemHeight (0 = 10; show's flag 1<<6 sets it).
 	ItemHeight int
 	Visible    bool
+	// Origin is the widget that opened it, for the release that follows the
+	// opening press (MouseInput.cpp stateWidgetPressed, 0x4C7BC7): released
+	// over Origin, the highlighted item is chosen (dropdownRegisterSelection
+	// of kDropdownItemUndefined → the menus take getHighlightedItem); released
+	// over an item, that item. Set by OpenedByPress; the first release clears it.
+	Origin      image.Rectangle
+	pressActive bool
+}
+
+// OpenedByPress marks the dropdown as opened by a press on origin (a toolbar
+// button): the release that follows chooses (HandleOpeningRelease).
+func (d *DropdownMenu) OpenedByPress(origin image.Rectangle) {
+	d.Origin, d.pressActive = origin, true
+}
+
+// HandleOpeningRelease handles the release of the press that opened the
+// dropdown: over the origin, the highlighted item's action (none
+// highlighted: nothing, the menu stays open); over an item, that item; else
+// the menu stays open for a click. It reports whether the dropdown closed.
+func (d *DropdownMenu) HandleOpeningRelease(x, y int) bool {
+	if !d.Visible || !d.pressActive {
+		return false
+	}
+	d.pressActive = false
+	if image.Pt(x, y).In(d.Origin) {
+		if d.Highlighted < 0 || d.Highlighted >= len(d.Items) {
+			return false
+		}
+		it := &d.Items[d.Highlighted]
+		if it.Disabled || it.Separator {
+			return false
+		}
+		d.Visible = false
+		if it.Action != nil {
+			it.Action()
+		}
+		if d.OnSelect != nil {
+			d.OnSelect(d.Highlighted)
+		}
+		return true
+	}
+	if x >= d.X && x < d.X+d.Width && y >= d.Y && y < d.Y+d.Height {
+		d.HandleClick(x, y)
+		return !d.Visible
+	}
+	return false
 }
 
 // DropdownItem represents a single item in a dropdown menu
@@ -346,16 +392,17 @@ func (d *DropdownMenu) UpdateHover(x, y int) {
 		return
 	}
 
-	// Check if mouse is inside dropdown
+	// Only over an item does the highlight move (MouseInput.cpp 0x4C7F02:
+	// setHighlightedItem when dropdownIndexFromPoint has one); elsewhere it
+	// stays — the menu's own highlighted item, chosen by a release on its
+	// button, survives the mouse leaving the list.
 	if x < d.X || x >= d.X+d.Width || y < d.Y || y >= d.Y+d.Height {
-		d.Highlighted = -1
 		return
 	}
 
 	itemHeight := d.itemHeight()
 	relY := y - d.Y - 2 // getItemIndexAtPosition: "2px of padding on the top of the list"
 	if relY < 0 {
-		d.Highlighted = -1
 		return
 	}
 	index := relY / itemHeight
