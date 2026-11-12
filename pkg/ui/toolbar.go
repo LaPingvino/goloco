@@ -208,27 +208,22 @@ func (t *Toolbar) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 		}
 	}
 
-	// Draw buttons
-	var hoveredTooltip string
+	// Draw buttons (their tooltips: HoveredTooltip, timed and drawn by the game)
 	for i := range t.Buttons {
 		if !t.Buttons[i].Hidden {
 			t.drawButton(screen, &t.Buttons[i], renderer)
-			if t.Buttons[i].Hovered && t.Buttons[i].Tooltip != "" {
-				hoveredTooltip = t.Buttons[i].Tooltip
-			}
 		}
 	}
+}
 
-	// Draw tooltip if hovering
-	if hoveredTooltip != "" {
-		// ToolTip.cpp: the tooltip window opens relative to the cursor.
-		var skinColour uint8
-		if renderer != nil && renderer.ObjMgr != nil && renderer.ObjMgr.InterfaceSkin != nil {
-			skinColour = renderer.ObjMgr.InterfaceSkin.TooltipColour
+// HoveredTooltip is the tooltip of the button under the mouse ("" none).
+func (t *Toolbar) HoveredTooltip() string {
+	for i := range t.Buttons {
+		if b := &t.Buttons[i]; !b.Hidden && b.Hovered && b.Tooltip != "" {
+			return b.Tooltip
 		}
-		mx, my := ebiten.CursorPosition()
-		DrawTooltip(screen, hoveredTooltip, mx, my, skinColour)
 	}
+	return ""
 }
 
 func (t *Toolbar) drawButton(screen *ebiten.Image, btn *ToolbarButton, renderer *render.Renderer) {

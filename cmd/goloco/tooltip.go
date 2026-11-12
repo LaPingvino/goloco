@@ -10,7 +10,7 @@ import (
 // once within 1 s of the last one closing), and closes after 8 s — staying
 // closed until the mouse moves — or when the mouse moves. Times in updates
 // (60 a second).
-// PARTIAL: the toolbar's tooltips still show at once (pkg/ui toolbar.go).
+// The toolbar's buttons give theirs the same way (Toolbar.HoveredTooltip).
 const (
 	tipDelay     = 120 // 2000 ms
 	tipQuickOpen = 60  // tooltipNotShownTicks ≤ 1000: no delay
@@ -27,8 +27,12 @@ type tooltipState struct {
 	everClosed  bool
 }
 
-// windowTooltip is the tooltip the window under the mouse gives there.
+// windowTooltip is the tooltip the toolbar button or window under the mouse
+// gives there.
 func (g *Game) windowTooltip() string {
+	if tip := g.toolbar.HoveredTooltip(); tip != "" {
+		return tip
+	}
 	if w := g.townList; w != nil && w.Tooltip != nil && w.Contains(g.mouseX, g.mouseY) {
 		return w.Tooltip(g.mouseX, g.mouseY)
 	}
