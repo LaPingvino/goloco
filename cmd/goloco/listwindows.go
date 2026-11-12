@@ -80,6 +80,7 @@ func (g *Game) openVehicleListFor(company, tab int) {
 	}
 	w.OnClose = func() { g.townList = nil }
 	w.OnTab = func(t int) { g.openVehicleListFor(company, t) }
+	g.listTabIcons(w, vehicleTabFrames, vehicleTabCounts, int(tc)) // recoloured to the company colour
 	g.townList = w
 }
 
@@ -121,7 +122,8 @@ func (g *Game) openStationList(tab int) {
 	w.CurrentTab = tab
 	w.OnTab = func(t int) { g.openStationList(t) }
 	w.OnClose = func() { g.townList = nil }
-	w.OnRow = func(id int) { g.openStationWindow(id) } // onScrollMouseDown: Station::open
+	w.OnRow = func(id int) { g.openStationWindow(id) }             // onScrollMouseDown: Station::open
+	g.listTabIcons(w, stationTabFrames, stationTabCounts, int(tc)) // the company colour
 	g.townList = w
 }
 
@@ -139,6 +141,7 @@ func (g *Game) openTownsWindow() {
 	w.OnRow = func(id int) { // onScrollMouseDown: Town::open
 		g.openTownWindow(id)
 	}
+	g.listTabIcons(w, townTabFrames, townTabCounts, -1)
 	g.townList = w
 }
 
@@ -175,6 +178,7 @@ func (g *Game) openIndustryList() {
 			g.openNewIndustries()
 		}
 	}
+	g.listTabIcons(w, industryTabFrames, industryTabCounts, -1)
 	g.townList = w
 }
 
@@ -219,6 +223,7 @@ func (g *Game) openNewIndustries() {
 			g.openIndustryList()
 		}
 	}
+	g.listTabIcons(w, industryTabFrames, industryTabCounts, -1)
 	g.townList = w
 	g.industryToolStart(w)
 }
@@ -268,3 +273,35 @@ func (g *Game) openIndustryWindow(id int) {
 	}
 	g.viewWin = w
 }
+
+// listTabIcons is a list window's drawTabs: tab i's interface skin image
+// (skin->img + frames[i]), the current tab animated through its counts[i]
+// frames by the window's frameNo / 2 (1: still), recoloured to colour (< 0:
+// none — the company colour for the station and vehicle lists).
+func (g *Game) listTabIcons(w *ui.TownListWindow, frames, counts []int, colour int) {
+	w.TabIcon = func(i int) (int, int) {
+		sk := g.skin()
+		if sk == nil || i >= len(frames) {
+			return -1, -1
+		}
+		img := int(sk.ImageOffset) + frames[i]
+		if i == w.CurrentTab && counts[i] > 1 {
+			img += (g.windowFrame / 2) % counts[i]
+		}
+		return img, colour
+	}
+}
+
+// The lists' tab images (InterfaceSkinObject.h ImageIds).
+var (
+	townTabFrames     = []int{189, 363, 379, 395} // toolbar_menu_towns, build_town / build_buildings / build_misc_buildings_frame_0
+	townTabCounts     = []int{1, 16, 16, 16}
+	industryTabFrames = []int{191, 347} // toolbar_menu_industries, build_industry_frame_0
+	industryTabCounts = []int{1, 16}
+	stationTabFrames  = []int{objects.ISAllStations, objects.ISAllStations + 1, objects.ISAllStations + 2, objects.ISAllStations + 3, objects.ISAllStations + 4}
+	stationTabCounts  = []int{1, 1, 1, 1, 1}
+	// the vehicle list's: trains, buses, trucks, trams, aircraft, ships (vehicle_*_frame_0, 8 frames each)
+	vehicleTabFrames = []int{objects.ISVehicleTrainFrame0, objects.ISVehicleBusesFrame0, objects.ISVehicleTrucksFrame0,
+		objects.ISVehicleTramsFrame0, objects.ISVehicleAircraftFrame0, objects.ISVehicleShipsFrame0}
+	vehicleTabCounts = []int{8, 8, 8, 8, 8, 8}
+)
