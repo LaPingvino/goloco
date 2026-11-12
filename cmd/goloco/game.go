@@ -136,6 +136,7 @@ type Game struct {
 	lastTownOption     int          // ToolbarTopCommon.cpp _lastTownOption: the Towns menu's last item (0 towns, 1 industries)
 	lastIndustryOption int          // GameState lastIndustryOption: the industry last chosen to fund (PARTIAL: not from the save; -1 none)
 	indTool            industryTool // the Fund New Industries tab's tool (industrytool.go)
+	tip                tooltipState // the window tooltip's timing (tooltip.go)
 	routeTool          bool         // the Route tab's tool (adding stops by clicking the map) is active
 	routeHead          uint16       // whose Route that selection is
 	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,

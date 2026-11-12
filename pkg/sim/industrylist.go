@@ -172,3 +172,23 @@ func (m *Map) IndustryCargoMonths(i int, om *objects.ObjectManager) (receives, p
 	}
 	return receives, produces, lines
 }
+
+// IndustryObjectTooltip is the Fund New Industries cell's tooltip
+// (onScrollMouseOver): "Produces " and getProducedCargoString, ", " between,
+// "Requires " and getRequiredCargoString (or-joined unless it requires all).
+func IndustryObjectTooltip(obj *objects.IndustryObject, om *objects.ObjectManager) string {
+	produced, required := om.IndustryCargoIDs(obj)
+	produces := produced[0] != 0xFF || produced[1] != 0xFF
+	requires := required[0] != 0xFF || required[1] != 0xFF || required[2] != 0xFF
+	s := ""
+	if produces {
+		s = i18n.Label(i18n.IndustryProduces) + cargoList(om, produced[:], false)
+		if requires {
+			s += i18n.Label(i18n.CargoComma)
+		}
+	}
+	if requires {
+		s += i18n.Label(i18n.IndustryRequires) + cargoList(om, required[:], obj.Flags&objects.IndustryFlagRequiresAllCargo == 0)
+	}
+	return s
+}

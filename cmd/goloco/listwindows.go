@@ -280,7 +280,8 @@ func (g *Game) openNewIndustries() {
 			}
 		}
 		choices = append(choices, ui.NewIndustryChoice{ID: i, Name: obj.Strings[0], Cost: int64(m.InflationAdjustedCost(obj.CostFactor, obj.CostIndex, 3)),
-			Image: obj.BuildingImageIDs, Colour: colour, Parts: parts, PartHeights: obj.PartHeights})
+			Image: obj.BuildingImageIDs, Colour: colour, Parts: parts, PartHeights: obj.PartHeights,
+			Tooltip: sim.IndustryObjectTooltip(obj, om)})
 	}
 	tc, wc := g.windowColours(false)
 	w := ui.NewIndustryGrid(g.sw, choices, g.lastIndustryOption, tc, wc, func(id int) {

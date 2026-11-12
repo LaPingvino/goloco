@@ -80,6 +80,8 @@ type TownListWindow struct {
 	ExtraClick func(px, py int) bool
 	// ExtraMouseOver replaces MouseOver's row hover inside the list.
 	ExtraMouseOver func(px, py int)
+	// Tooltip is the window's tooltip at a screen point ("" none).
+	Tooltip func(px, py int) string
 	// PlacementCost is the Fund New Industries tool's ghost cost (ok false:
 	// none, or kFailure — the object's own cost shows).
 	PlacementCost func() (int64, bool)

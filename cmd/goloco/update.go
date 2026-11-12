@@ -299,6 +299,7 @@ func (g *Game) updateHeld() {
 	if g.stationWin != nil { // a Station window vehicle tab's row under the mouse
 		g.stationWin.MouseOver(g.mouseX, g.mouseY)
 	}
+	g.updateTooltip() // a window's tooltip under the resting mouse
 	if g.stationWin != nil { // a vehicle tab's scrollbar thumb follows the mouse while held
 		g.stationWin.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
 	}
