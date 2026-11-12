@@ -664,10 +664,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			cmap, x, y, v.Ticks, sprite)
 	case scenario.KindIndustry:
 		ie := t.Industries[ref.Index]
-		if int(ie.IndustryID) >= len(m.IndustryObjectIDs) {
-			return
-		}
-		io := om.GetIndustryObjectByIndex(int(m.IndustryObjectIDs[ie.IndustryID]))
+		io := m.IndustryObjectOf(&ie, om)
 		if io == nil || int(ie.BuildingType) >= len(io.Variations) {
 			return
 		}
@@ -675,12 +672,13 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		frames, speeds := an.frames, an.speeds
 		cmap := r.colourMap(int(ie.Colour))
 		s.PaintIndustry(paint.IndustryEl{Rotation: ie.Rotation, SequenceIndex: ie.SequenceIndex, BuildingType: ie.BuildingType,
-			Var6Low: ie.Var6Low, SectionProgress: ie.SectionProgress, IsConstructed: ie.IsConstructed, BaseZ: ie.BaseZ, ClearZ: ie.ClearZ},
+			Var6Low: ie.Var6Low, SectionProgress: ie.SectionProgress, IsConstructed: ie.IsConstructed, BaseZ: ie.BaseZ, ClearZ: ie.ClearZ,
+			Ghost: ref.Flags&(1<<4) != 0},
 			paint.IndustryObj{BuildingImageIDs: int(io.BuildingImageIDs), Parts: io.Variations[ie.BuildingType], PartHeights: io.PartHeights,
 				PartAnimFrames: frames, PartAnimSpeed: speeds, AnimationSequences: io.AnimationSequences,
 				LargeTile: io.BuildingSizeFlags&(1<<ie.BuildingType) != 0,
 				Shadow:    r.shadow(s.Zoom, io.Flags&objects.IndustryFlagHasShadows != 0, int(ie.BuildingType)*4+int(io.ShadowImageIDs), int(ie.Colour), true),
-				Scaffold:  r.scaffold(io.ScaffoldingSegmentType, io.ScaffoldingColour)},
+				Scaffold:  r.scaffold(io.ScaffoldingSegmentType, io.ScaffoldingColour), GhostMap: r.colourMap(extColourGhost)},
 			cmap, x, y, v.Ticks, sprite)
 	case scenario.KindWall:
 		wl := t.Walls[ref.Index]
@@ -755,8 +753,8 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	// Variation) is then the industry id. Snow: below (fieldSnow) unless the
 	// object draws its farm tiles above snow (at zoom 0).
 	fieldSnow := false
-	if t.IsIndustrial && int(t.Variation) < len(m.IndustryObjectIDs) {
-		if io := om.GetIndustryObjectByIndex(int(m.IndustryObjectIDs[t.Variation])); io != nil && io.FieldImageIDs != 0 {
+	if t.IsIndustrial {
+		if io := m.IndustryObjectByID(t.Variation, om); io != nil && io.FieldImageIDs != 0 {
 			variation := int(io.NumImagesPerFieldGrowthStage)*int(t.GrowthStage) + ((int(io.FarmTileNumImageAngles)-1)&0)*21
 			th := z + int(paint.SurfaceTreeHeight[ds])
 			if tree := sprite(int(io.FieldImageIDs) + variation + 19); tree != nil {

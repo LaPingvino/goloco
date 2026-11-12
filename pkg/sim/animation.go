@@ -155,12 +155,20 @@ func (m *Map) updateBuildingAnimation2(a scenario.Animation, om *objects.ObjectM
 	return false
 }
 
-// industryObjectOf is industry->getObject() for an industry element.
-func (m *Map) industryObjectOf(el *scenario.IndustryElement, om *objects.ObjectManager) *objects.IndustryObject {
-	if int(el.IndustryID) >= len(m.IndustryObjectIDs) {
+// IndustryObjectOf is industry->getObject() for an industry element: its
+// industry's object, as the industry is now (one made after loading too).
+func (m *Map) IndustryObjectOf(el *scenario.IndustryElement, om *objects.ObjectManager) *objects.IndustryObject {
+	return m.IndustryObjectByID(el.IndustryID, om)
+}
+
+// IndustryObjectByID is IndustryManager::get(id)->getObject(): nil when no
+// industry has that id.
+func (m *Map) IndustryObjectByID(id uint8, om *objects.ObjectManager) *objects.IndustryObject {
+	ind := m.industryByID(id)
+	if ind == nil {
 		return nil
 	}
-	return om.GetIndustryObjectByIndex(int(m.IndustryObjectIDs[el.IndustryID]))
+	return om.GetIndustryObjectByIndex(int(ind.ObjectID))
 }
 
 // updateIndustryAnimation1 (IndustryElement.cpp): the first industry element
@@ -180,7 +188,7 @@ func (m *Map) updateIndustryAnimation1(a scenario.Animation, om *objects.ObjectM
 		if el.BaseZ != a.BaseZ {
 			continue
 		}
-		obj := m.industryObjectOf(el, om)
+		obj := m.IndustryObjectOf(el, om)
 		if obj == nil || int(el.BuildingType) >= len(obj.Variations) {
 			return true
 		}
@@ -247,7 +255,7 @@ func (m *Map) updateIndustryAnimation2(a scenario.Animation, om *objects.ObjectM
 		if el.BaseZ != a.BaseZ || el.Var6Low&(1<<5) == 0 {
 			continue
 		}
-		obj := m.industryObjectOf(el, om)
+		obj := m.IndustryObjectOf(el, om)
 		if obj == nil || int(el.BuildingType) >= len(obj.Variations) {
 			continue
 		}

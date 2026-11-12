@@ -5,7 +5,9 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 // Industries — a port of Paint/PaintIndustry.cpp paintIndustry /
 // paintIndustryBuilding, with shadows and the under-construction sections
 // (industry fields are the surface painter's industrial branch, in scene).
-// with their scaffolding while under construction. PARTIAL: ghosts.
+// with their scaffolding while under construction; a ghost (the Fund New
+// Industries tool's) in the ghost colour, not interactive. PARTIAL: the
+// ghost's scaffolding (applyGhostToImage on it) and its shadow.
 
 // IndustryEl is what paintIndustry reads from an industry element.
 type IndustryEl struct {
@@ -13,6 +15,7 @@ type IndustryEl struct {
 	Var6Low, SectionProgress              uint8
 	IsConstructed                         bool
 	BaseZ, ClearZ                         uint8 // SmallZ
+	Ghost                                 bool  // isGhost
 }
 
 // IndustryObj is what paintIndustry reads from an industry object.
@@ -26,11 +29,16 @@ type IndustryObj struct {
 	LargeTile          bool // buildingSizeFlags & (1 << buildingType)
 	Shadow             Shadow
 	Scaffold           *Scaffold // scaffolding while under construction (nil: none)
+	GhostMap           []uint8   // Gfx::applyGhostToImage's palette map
 }
 
 // PaintIndustry paints an industry element at the current sprite position.
 func (s *Session) PaintIndustry(el IndustryEl, obj IndustryObj, colourMap []uint8, tileX, tileY int, ticks uint32, sprite func(int) *gfx8.Sprite) {
 	s.ItemType = ItemIndustry // setItemType (PaintIndustry.cpp:164; the inner noInteraction resets not yet ported)
+	if el.Ghost {             // baseColour = applyGhostToImage(0), no interaction
+		s.ItemType = ItemNoInteraction
+		colourMap = obj.GhostMap
+	}
 	rotation := (s.Rotation + el.Rotation) & 3
 	baseHeight := int(el.BaseZ) * 4
 	bbz := min(int(el.ClearZ)*4-baseHeight, 128) - 2
