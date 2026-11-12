@@ -1690,3 +1690,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-12 (night) — ensureCompanyFunding error texts ported (Not enough cash - requires {CURRENCY32}, company is bankrupt); industry tool shows Can't build this here.
 - 2026-11-12 (night) — map selection (full tile) ported: scene.Selection + World.SetMapSelection; industry tool uses it; TestMapSelectionBox. Note: scene render WORKERS copy renderer settings — any new Renderer field must be passed in worker() (bit me: Selection). PARTIAL: corner/quarter/edge/water types.
 - 2026-11-12 (night) — list windows tab icons (TownListWindow.TabIcon + cmd listTabIcons): towns, industries, stations, vehicles. Seen: town + industry lists. Station + vehicle lists seen too (company colour); vehicle types not available → disabled tabs.
+- 2026-11-12 (night) — Town + Industry window tab icons (ViewWindow.TabIcon, ui drawProductionTab). Seen on screen.
