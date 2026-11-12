@@ -207,14 +207,20 @@ func (g *Game) openNewIndustries() {
 			Image: obj.BuildingImageIDs, Colour: colour, Parts: parts, PartHeights: obj.PartHeights})
 	}
 	tc, wc := g.windowColours(false)
-	w := ui.NewIndustryGrid(g.sw, choices, g.lastIndustryOption, tc, wc, func(id int) { g.lastIndustryOption = id })
-	w.OnClose = func() { g.townList = nil }
+	w := ui.NewIndustryGrid(g.sw, choices, g.lastIndustryOption, tc, wc, func(id int) {
+		g.lastIndustryOption = id
+		g.indTool.costOK = false // onScrollMouseDown: _industryPlacementCost = kFailure
+	})
+	w.PlacementCost = func() (int64, bool) { return int64(g.indTool.cost), g.indTool.ghost && g.indTool.costOK }
+	w.OnClose = func() { g.industryToolAbort(); g.townList = nil } // onClose: toolCancel
 	w.OnTab = func(t int) {
 		if t == 0 {
+			g.industryToolAbort()
 			g.openIndustryList()
 		}
 	}
 	g.townList = w
+	g.industryToolStart(w)
 }
 
 // openIndustryWindow is IndustryWindow open (industry id): the window on its

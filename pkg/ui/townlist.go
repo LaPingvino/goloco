@@ -74,10 +74,13 @@ type TownListWindow struct {
 	// Window-specific widgets: Extra8 draws into the 8-bit frame, ExtraText
 	// draws text over it, ExtraClick takes a click first (true = handled);
 	// OpenDropdown shows a dropdown for the window.
-	Extra8       func(rt *gfx8.RenderTarget, sec []uint8)
-	ExtraText    func(screen *ebiten.Image)
-	ExtraClick   func(px, py int) bool
-	OpenDropdown func(*DropdownMenu)
+	Extra8     func(rt *gfx8.RenderTarget, sec []uint8)
+	ExtraText  func(screen *ebiten.Image)
+	ExtraClick func(px, py int) bool
+	// PlacementCost is the Fund New Industries tool's ghost cost (ok false:
+	// none, or kFailure — the object's own cost shows).
+	PlacementCost func() (int64, bool)
+	OpenDropdown  func(*DropdownMenu)
 	// Face, if > 0, is the company owner's image drawn on the company select
 	// button (ImageButton at width − 28, 14; image at +1, +1) recoloured to
 	// FaceColour (the company's primary colour).
