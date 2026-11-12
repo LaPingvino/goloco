@@ -1709,3 +1709,18 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-12 (morning) — vehicle window button hover frames; dragged car greyed SEEN (drag diag + GOLOCO_DIAG_DRAG_HOLD=1). The 5P.g PARTIAL list is now empty but the disabled (solid) button look.
 - 2026-11-12 (morning) — vehicle window disabled buttons (silhouette, no click). The 5P.g PARTIAL list is empty but Gfx::recolour's exact colouring.
 - 2026-11-12 (08:06) — final regression: all 9 playthroughs rc=0, no panics, after the morning's changes.
+- 2026-11-12 (Fable 5.2, merged aa1b10e) — reference harness rebuilt (scripts/olref: ol.sh launcher, xt.py input, untitle.py = real OpenLoco loads title.dat as a save, pair.py side-by-side). Hover-opens-menu was OpenLoco 26.08's toolbarAutoMenu (on by default; the ported source opens on hover unconditionally) — off in the scratch config. Side-by-side (title.dat both) found, goloco to fix:
+  1. Industry/Town/Station windows open centred; upstream auto-places (WindowManager.cpp:563).
+  2. Clicking a station/town/industry label on the map opens nothing (MouseInput.cpp:496/502/534).
+  3. Station list lacks the company-select portrait (other companies' stations unreachable).
+  4. One list + one view window at a time (g.townList / g.viewWin slots); upstream keeps them all.
+  5. Mini-viewports: terrain with a triangular hole pattern, no town/station labels.
+  6. View-window status line thin + unclipped; upstream medium bold, clipped with "…".
+  7. {INT32} not grouped: "1648" vs "1,661", axis "10000" vs "10,000", towns list.
+  8. Close box nearly invisible on Industry/Town window title bars.
+  9. No resize grip on resizable windows.
+  10. Fund New Industries opens with nothing selected; upstream falls back to the first row (IndustryList.cpp:1234).
+  11. Industry/Town list hover row sticks after the mouse leaves (upstream clears rowHover, event_08/09).
+  12. Toolbar: goloco tooltip + no menu; upstream no tooltip, menu on hover (Joop to decide).
+  Unconfirmed: {SMALLFONT} glyphs look smaller/heavier than the binary's (graph axis, tooltips — check g1font.go:269 mapping); Dallas 1648 vs 1661 at load.
+  Not defects: Town Statistics tab + industry "awaiting" sections are newer than our source; station caption colour matches our source.
