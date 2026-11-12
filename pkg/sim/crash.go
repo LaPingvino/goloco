@@ -10,8 +10,7 @@ import "github.com/LaPingvino/goloco/pkg/scenario"
 //
 // PARTIAL: explodeComponent's sound and its ExplosionCloud and
 // VehicleCrashParticle entities are not made (goloco has no effect entities
-// yet); the crashed parts don't yet fall and burn out (VehicleHead.cpp:4041,
-// the bogies' and bodies' updateSegmentCrashed): a crashed train stands still.
+// yet). What a crashed train's parts do afterwards: crashupdate.go.
 
 const vehicleFlagUnk5 = 1 << 5 // VehicleFlags::unk_5: the bogie that collided
 

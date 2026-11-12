@@ -100,8 +100,11 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 	m.updateHead(tr, d.D1, om)
 	if head.Status == StatusCrashed || head.Status == StatusStuck {
 		// updateLand returns false for both (VehicleHead.cpp 0x004A9B0B): the
-		// train's other parts aren't updated. A crashed one runs
-		// landCrashedUpdate instead (PARTIAL, crash.go: its parts don't fall yet).
+		// train's other parts aren't updated; a crashed one's parts slide, fall
+		// and burn out instead (crashupdate.go).
+		if head.Status == StatusCrashed {
+			m.landCrashedUpdate(tr, om)
+		}
 		return
 	}
 
