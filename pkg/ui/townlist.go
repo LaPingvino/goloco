@@ -171,8 +171,9 @@ type StationRow struct {
 }
 
 // NewStationList opens the station list (StationList.cpp): columns Name,
-// Status, Total waiting, Accepts; five tabs. PARTIAL: the transport-mode icons after
-// the name, the per-mode tabs' filtering, the company select button.
+// Status, Total waiting, Accepts; five tabs (the game filters by tab:
+// cmd/goloco openStationList). PARTIAL: the transport-mode icons after the
+// name, the company select button.
 func NewStationList(sw int, stations []StationRow, titleColour, colour uint8) *TownListWindow {
 	rows := make([][]string, len(stations))
 	for i, s := range stations {

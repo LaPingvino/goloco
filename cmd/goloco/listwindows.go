@@ -83,13 +83,25 @@ func (g *Game) openVehicleListFor(company, tab int) {
 }
 
 // openStationsWindow lists every placed/loaded station on the map.
-func (g *Game) openStationsWindow() {
-	// The ported StationList window (pkg/ui/townlist.go, shared table layout).
-	// StationList::open(getControllingId()): the controlling company's stations.
+func (g *Game) openStationsWindow() { g.openStationList(0) }
+
+// stationTabMasks is StationList.cpp tabInformationByType's stationMask, by
+// tab: all modes, rail, road, air, water (StationFlags transportMode*).
+var stationTabMasks = [5]uint16{0xF, 1 << 0, 1 << 1, 1 << 2, 1 << 3}
+
+// openStationList is StationList::open(the controlling company, tab): the
+// company's stations of the tab's transport modes (populateStationList:
+// owner, not flag_5 — not fully created —, flags & the tab's mask), captioned
+// "{company} - All Stations" / "Rail Stations" …; a tab click reopens it on
+// that tab.
+func (g *Game) openStationList(tab int) {
 	company, cname := g.w.ControllingCompany()
 	var rows []ui.StationRow
 	for _, s := range g.w.StationList() {
 		if s.Owner >= 0 && s.Owner != company {
+			continue
+		}
+		if s.Flags&(1<<5) != 0 || s.Flags&stationTabMasks[tab] == 0 {
 			continue
 		}
 		rows = append(rows, ui.StationRow{ID: s.ID, Name: s.Name, Status: s.Status, Waiting: s.Waiting, Accepts: s.Accepts,
@@ -103,8 +115,10 @@ func (g *Game) openStationsWindow() {
 	}
 	w := ui.NewStationList(g.sw, rows, tc, wc)
 	if cname != "" {
-		w.Caption = strings.Replace(i18n.Label(i18n.StringidAllStations), "{STRINGID}", cname, 1) // "{STRINGID} - All Stations"
+		w.Caption = strings.Replace(i18n.Label(i18n.StringidAllStations+tab), "{STRINGID}", cname, 1) // "{STRINGID} - Rail Stations" …
 	}
+	w.CurrentTab = tab
+	w.OnTab = func(t int) { g.openStationList(t) }
 	w.OnClose = func() { g.townList = nil }
 	w.OnRow = func(id int) { g.openStationWindow(id) } // onScrollMouseDown: Station::open
 	g.townList = w
