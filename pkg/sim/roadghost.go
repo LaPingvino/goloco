@@ -102,14 +102,17 @@ func (s *State) UpdateHeadRoadGhost(c *Cmd, roadID int, objID uint8) {
 // the cursor, as UpdateTrackGhost: the piece roadID in rotation rot at the
 // tile's position height (piecePositionHeight over the road piece's tiles),
 // unchanged from the last position nothing, else placed as a ghost and,
-// refused, once more 16 higher. PARTIAL: tryMakeRoadJunctionAtLoc (building
-// off an existing road), shift's deeper search.
-func (s *State) UpdateRoadGhost(c *Cmd, tx, ty int, roadID, rot, objID uint8) (int32, bool) {
+// refused, once more 16 higher. junction >= 0: on an existing road (as
+// UpdateTrackGhost's). PARTIAL: shift's deeper search.
+func (s *State) UpdateRoadGhost(c *Cmd, tx, ty int, roadID, rot, objID uint8, junction int32) (int32, bool) {
 	if int(roadID) >= len(RoadPieces) {
 		s.RemoveRoadGhost(c)
 		return 0, false
 	}
 	x, y, h, ok := s.piecePositionHeight(tx, ty, RoadPieces[roadID], rot)
+	if ok && junction >= 0 { // tryMakeRoadJunctionAtLoc: on an existing road
+		h = junction - minPieceZ(RoadPieces[roadID]) - 16
+	}
 	if !ok {
 		s.RemoveRoadGhost(c)
 		return 0, false
@@ -141,7 +144,7 @@ func (s *State) UpdateRoadGhost(c *Cmd, tx, ty int, roadID, rot, objID uint8) (i
 // BuildTrackAtTile: the head set at the tile at the road piece's position
 // height and the piece built there (constructRoad); refused, once more 16
 // higher unless only above ground is allowed, then the rotation turns 90°.
-func (s *State) BuildRoadAtTile(c *Cmd, tx, ty, roadID int, objID uint8) (int32, bool) {
+func (s *State) BuildRoadAtTile(c *Cmd, tx, ty, roadID int, objID uint8, junction int32) (int32, bool) {
 	rot := s.ConsHead.Rotation & 3
 	if roadID < 0 || roadID >= len(RoadPieces) {
 		return 0, false
@@ -150,8 +153,12 @@ func (s *State) BuildRoadAtTile(c *Cmd, tx, ty, roadID int, objID uint8) (int32,
 	if !ok {
 		return 0, false
 	}
+	tries := 2
+	if junction >= 0 { // on an existing road: exactly its height, one try
+		h, tries = junction, 1
+	}
 	h = max(0, h) // onToolUpSingle: "Height should never go negative"
-	for tries := 2; ; {
+	for {
 		s.ConsHead = ConstructionHead{Active: true, X: tx, Y: ty, BaseZ: uint8(h / 4), Rotation: rot}
 		if cost, ok := s.BuildRoadAtHead(c, roadID, objID); ok {
 			return cost, true

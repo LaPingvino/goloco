@@ -429,9 +429,10 @@ func (g *Game) hudOrMapClick() {
 		// selected piece at the tile (the head set there), as the Construct
 		// button would; refused, the error window shows and the rotation turns.
 		g.removeTrackGhost()
+		tx, ty, jh := g.consTarget(false)
 		if p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation); ok {
 			c := g.playerCmd()
-			if _, built := g.w.BuildTrackAtTile(c, g.hoverTileX, g.hoverTileY, int(p.ID), uint8(g.buildObjID)); built {
+			if _, built := g.w.BuildTrackAtTile(c, tx, ty, int(p.ID), uint8(g.buildObjID), jh); built {
 				g.errorWin = nil // the loop's WindowManager::close(WindowType::error)
 				if g.consOneShot >= 0 {
 					g.consOneShot, g.consCurve = -1, 0
@@ -445,8 +446,9 @@ func (g *Game) hudOrMapClick() {
 		// click builds the selected piece at the tile (the head set there).
 		c := g.playerCmd()
 		g.w.RemoveRoadGhost(c)
+		tx, ty, jh := g.consTarget(true)
 		if p, ok := construct.GetRoadPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation); ok {
-			if _, built := g.w.BuildRoadAtTile(c, g.hoverTileX, g.hoverTileY, int(p.ID), uint8(g.buildObjID)); built {
+			if _, built := g.w.BuildRoadAtTile(c, tx, ty, int(p.ID), uint8(g.buildObjID), jh); built {
 				g.errorWin = nil
 				if g.consOneShot >= 0 {
 					g.consOneShot, g.consCurve = -1, 0

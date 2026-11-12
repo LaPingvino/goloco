@@ -69,8 +69,16 @@ func (s *State) placeTrackGhost(c *Cmd, a trackPlacementArgs) (int32, bool) {
 // higher (two tries; shift's deeper search is not ported). The ghost's cost
 // and whether one stands. PARTIAL: tryMakeTrackJunctionAtLoc (building off
 // existing track), the construction arrow and the selected tiles drawn.
-func (s *State) UpdateTrackGhost(c *Cmd, tx, ty int, trackID, rot, objID uint8, bridge uint8) (int32, bool) {
+//
+// junction >= 0 is tryMakeTrackJunctionAtLoc's: the height of the existing
+// track under the cursor, (tx, ty) the tile under it there; the piece then
+// starts at that height (makeJunction: no selection height, less the piece's
+// lowest point, 16 down) instead of the ground's.
+func (s *State) UpdateTrackGhost(c *Cmd, tx, ty int, trackID, rot, objID uint8, bridge uint8, junction int32) (int32, bool) {
 	x, y, h, ok := s.trackPositionHeight(tx, ty, trackID, rot)
+	if ok && junction >= 0 {
+		h = junction - minPieceZ(TrackPieces[trackID]) - 16
+	}
 	if !ok {
 		s.RemoveTrackGhost(c)
 		return 0, false
@@ -147,7 +155,10 @@ func (s *State) piecePositionHeight(tx, ty int, pieces []PreviewTrack, rot uint8
 // 90° (onMouseUp rotate_90) and the head stays. The cost and whether it was
 // built. PARTIAL: shift's deeper search, junctions (tryMakeTrackJunctionAtLoc),
 // the error sound.
-func (s *State) BuildTrackAtTile(c *Cmd, tx, ty, trackID int, objID uint8) (int32, bool) {
+//
+// junction >= 0: on existing track (tryMakeTrackJunctionAtLoc) — the piece
+// built at exactly that height, one try (onToolUpSingle's makeJunction).
+func (s *State) BuildTrackAtTile(c *Cmd, tx, ty, trackID int, objID uint8, junction int32) (int32, bool) {
 	rot := s.ConsHead.Rotation & 3
 	if trackID < 0 || trackID >= len(TrackPieces) {
 		return 0, false
@@ -156,8 +167,12 @@ func (s *State) BuildTrackAtTile(c *Cmd, tx, ty, trackID int, objID uint8) (int3
 	if !ok {
 		return 0, false
 	}
+	tries := 2
+	if junction >= 0 {
+		h, tries = junction, 1
+	}
 	h = max(0, h) // onToolUpSingle: "Height should never go negative"
-	for tries := 2; ; {
+	for {
 		s.ConsHead = ConstructionHead{Active: true, X: tx, Y: ty, BaseZ: uint8(h / 4), Rotation: rot}
 		if cost, ok := s.BuildTrackAtHead(c, trackID, objID); ok {
 			return cost, true
@@ -204,4 +219,13 @@ func (s *State) UpdateHeadTrackGhost(c *Cmd, trackID int, objID uint8) {
 func headTrackArgs(h ConstructionHead, trackID int, objID uint8) trackPlacementArgs {
 	return trackPlacementArgs{X: int32(h.X) * 32, Y: int32(h.Y) * 32, Z: int32(h.BaseZ) * 4, Rotation: h.Rotation & 3,
 		TrackID: uint8(trackID), TrackObjectID: objID, Bridge: 0xFF}
+}
+
+// minPieceZ is getMinPieceHeight: the piece's lowest point.
+func minPieceZ(pieces []PreviewTrack) int32 {
+	m := int32(pieces[0].Z)
+	for _, p := range pieces {
+		m = min(m, int32(p.Z))
+	}
+	return m
 }
