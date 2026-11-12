@@ -98,6 +98,12 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 	m.updateBreakdown(tr, om)
 	// VehicleHead::updateLand (headupdate.go; its PARTIAL states do nothing).
 	m.updateHead(tr, d.D1, om)
+	if head.Status == StatusCrashed || head.Status == StatusStuck {
+		// updateLand returns false for both (VehicleHead.cpp 0x004A9B0B): the
+		// train's other parts aren't updated. A crashed one runs
+		// landCrashedUpdate instead (PARTIAL, crash.go: its parts don't fall yet).
+		return
+	}
 
 	// Vehicle1::update.
 	if road {
@@ -169,14 +175,21 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 				if veh := vehicleObject(om, e.ObjectID); veh != nil && e.ObjectSpriteType != 0xFF {
 					roll.NumAnimationFrames = veh.BogieSprites[e.ObjectSpriteType&1].NumAnimationFrames
 				}
-				ok := m.BogieUpdate(&c, &roll, d.D1, d.D2, head.HeadVar53)
+				bogie := i
+				c.Collide = func(x, y, z int32) uint16 { return m.CheckForCollisions(bogie, x, y, z) }
+				res := m.BogieUpdate(&c, &roll, d.D1, d.D2, head.HeadVar53)
 				m.store(i, &c)
 				animWas := e.Animation
 				e.Var44, e.Animation = roll.Var44, roll.AnimationIndex
 				if e.Animation != animWas { // VehicleBogie::updateRoll: a new wheel frame
 					m.invalidateSprite(e)
 				}
-				if !ok {
+				if res.Flags&MotionNoRouteFound != 0 { // VehicleBogie::update: destroyTrain
+					m.DestroyTrain(tr, i)
+					return
+				}
+				if res.Flags&MotionCrashed != 0 { // … collision(collidedEntityId)
+					m.BogieCollision(tr, i, res.CollidedEntity)
 					return
 				}
 				moved = moved || c.X != x0 || c.Y != y0 || c.Z != z0

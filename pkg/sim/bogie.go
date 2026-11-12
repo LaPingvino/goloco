@@ -1,11 +1,7 @@
 package sim
 
-// VehicleBogie::update (0x004AA008) and updateRoll (0x004AAC02).
-//
-// PARTIAL: bogie collisions — the detection is ported (CheckForCollisions,
-// collision.go) but not yet called from the motion; VehicleBogie::collision /
-// destroyTrain and the crashed segment update (updateSegmentCrashed) are not
-// ported.
+// VehicleBogie::update (0x004AA008) and updateRoll (0x004AAC02). Its
+// collisions and the train's destruction are in crash.go.
 
 // WheelSlippingDuration is kWheelSlippingDuration (ticks).
 const WheelSlippingDuration = 64
@@ -36,9 +32,10 @@ func (b *BogieRoll) UpdateRoll(distance int32) {
 
 // BogieUpdate is VehicleBogie::update for land vehicles: move by
 // unkDistance1, then roll the wheels by unkDistance2 (or, while slipping,
-// 500 + 320·t with t mirrored after half the slip). false: the train is
-// destroyed (noRouteFound).
-func (m *Map) BogieUpdate(c *MotionComponent, roll *BogieRoll, unkDistance1, unkDistance2 int32, requiredMods uint8) bool {
+// 500 + 320·t with t mirrored after half the slip). The caller acts on the
+// result: noRouteFound destroys the train, crashed is a collision (c.Collide
+// set: CheckForCollisions at each step).
+func (m *Map) BogieUpdate(c *MotionComponent, roll *BogieRoll, unkDistance1, unkDistance2 int32, requiredMods uint8) MotionResult {
 	next := m.TrackNewPiece
 	if c.Road {
 		next = m.RoadNewPiece
@@ -55,5 +52,5 @@ func (m *Map) BogieUpdate(c *MotionComponent, roll *BogieRoll, unkDistance1, unk
 		d = 500 + u*320
 	}
 	roll.UpdateRoll(d)
-	return r.Flags&MotionNoRouteFound == 0
+	return r
 }

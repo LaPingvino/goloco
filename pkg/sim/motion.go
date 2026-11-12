@@ -43,7 +43,10 @@ type MotionComponent struct {
 	Owner             uint8 // company
 	TrackType         uint8 // track (or road) object id
 	IsVehicle2        bool  // the component is the train's Vehicle2
-	Var4F             uint8 // Vehicle2 var_4F: the road object it is on (RoadNewPiece)
+	// Collide is set for a bogie: checkForCollisions at each step's new
+	// position (the entity it hits, 0xFFFF none).
+	Collide func(x, y, z int32) uint16
+	Var4F   uint8 // Vehicle2 var_4F: the road object it is on (RoadNewPiece)
 }
 
 // UpdateVar1136114Flags (Vehicles/Vehicle.h).
@@ -61,6 +64,7 @@ const (
 type MotionResult struct {
 	RemainingDistance int32
 	Flags             uint32
+	CollidedEntity    uint16 // with MotionCrashed: the entity a bogie ran into
 }
 
 // Blocked is Flags & unk_m00.
@@ -100,6 +104,12 @@ func (c *MotionComponent) UpdateMotion(distance int32, nextPiece func(c *MotionC
 		c.RemainingDistance -= MovementNibbleToDistance[MovementNibble(ix, iy, iz, nx, ny, nz)]
 		ix, iy, iz = nx, ny, nz
 		c.SpriteYaw, c.SpritePitch = m.Yaw, m.Pitch
+		if c.Collide != nil { // a bogie: the collision checks (0x004B1761 / 0x0047C95B)
+			if hit := c.Collide(nx, ny, nz); hit != 0xFFFF {
+				res.Flags |= MotionCrashed
+				res.CollidedEntity = hit
+			}
+		}
 	}
 	if moved {
 		c.X, c.Y, c.Z = ix, iy, iz
