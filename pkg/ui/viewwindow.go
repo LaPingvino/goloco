@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"image/color"
 	"strconv"
 	"strings"
 
@@ -17,9 +18,12 @@ import (
 // population, the industry's getStatusString). Outside the editor / sandbox
 // the expand / demolish buttons are hidden and the viewport takes their 22 px.
 // clickable(TownWindow.cpp, IndustryWindow.cpp): close_button centre_on_viewport
+// The industry's Transported tab (IndustryWindow.cpp Transported, 300×127):
+// last month's received and produced cargo; its Production tabs are disabled
+// where it produces no first / second cargo (setDisabledWidgets).
 // PARTIAL: the other tabs (town: Population, Company ratings; industry:
-// Production, Production 2, Transported) and the tabs' images, renaming by the
-// caption, the editor's buttons, resizing, the viewport's own scrolling, the
+// Production, Production 2 — clicking them does nothing) and the tabs' images,
+// renaming by the caption, the editor's buttons, resizing, the viewport's own scrolling, the
 // status's clipping (drawStringLeftClipped).
 type ViewWindow struct {
 	X, Y, W, H          int
@@ -33,7 +37,28 @@ type ViewWindow struct {
 	OnCentreView func()
 	OnClose      func()
 	viewImg      *ebiten.Image
+
+	Tab         int     // currentTab
+	TabDisabled [4]bool // disabledWidgets' tabs
+	// CargoTab is the Transported tab's index (0: none); Cargo gives its
+	// lines (received and produced last month), read each draw.
+	CargoTab int
+	Cargo    func() (receives, produces bool, lines []CargoMonthLine)
+	baseW    int // the first tab's size (switchTab: kWindowSize)
+	baseH    int
 }
+
+// CargoMonthLine is a Transported tab line: a cargo's unit name, how much,
+// and, produced, the percent transported.
+type CargoMonthLine struct {
+	Produced bool
+	Unit     string
+	Qty      uint32
+	Percent  uint8
+}
+
+// Transported tab: kWindowSize (onResize sets it).
+const transportedW, transportedH = 300, 127
 
 // NewTownWindow is Town::open's window (223×161, three tabs), its status
 // status_town_population "{STRINGID} population {INT32}". Placed as
@@ -52,7 +77,7 @@ func NewIndustryWindow(sw, sh int, title, status string, titleColour, colour uin
 
 func newViewWindow(sw, sh, w, h, tabs int, title, status string, titleColour, colour uint8) *ViewWindow {
 	return &ViewWindow{X: (sw - w) / 2, Y: (sh - h) / 2, W: w, H: h, Tabs: tabs, Title: title, Status: status,
-		TitleColour: titleColour, Colour: colour}
+		TitleColour: titleColour, Colour: colour, baseW: w, baseH: h}
 }
 
 // viewport is prepareDraw's viewport outside the editor: 3,44 to
@@ -63,13 +88,28 @@ func (w *ViewWindow) Contains(px, py int) bool {
 	return px >= w.X && py >= w.Y && px < w.X+w.W && py < w.Y+w.H
 }
 
-// HandleClick is onMouseUp: close, centre_on_viewport.
+// HandleClick is onMouseUp: close, the tabs (switchTab: the first and the
+// Transported tab), centre_on_viewport.
 func (w *ViewWindow) HandleClick(px, py int) {
 	rx, ry := px-w.X, py-w.Y
 	if rx >= w.W-15 && rx < w.W-2 && ry >= 2 && ry < 15 {
 		if w.OnClose != nil {
 			w.OnClose()
 		}
+		return
+	}
+	if ry >= 15 && ry < 42 && rx >= 3 && rx < 3+31*w.Tabs {
+		i := (rx - 3) / 31
+		if !w.TabDisabled[i] && (i == 0 || i == w.CargoTab) {
+			w.Tab = i
+			w.W, w.H = w.baseW, w.baseH
+			if i != 0 {
+				w.W, w.H = transportedW, transportedH
+			}
+		}
+		return
+	}
+	if w.Tab != 0 {
 		return
 	}
 	_, _, r, b := w.viewport()
@@ -97,10 +137,21 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 		for i := 0; i < w.Tabs; i++ {
-			drawTab(rt, 3+31*i, 15, i == 0, sec, tabNoIcon, nil)
+			if w.TabDisabled[i] {
+				drawTabDisabled(rt, 3+31*i, 15, sec)
+				continue
+			}
+			drawTab(rt, 3+31*i, 15, i == w.Tab, sec, tabNoIcon, nil)
 		}
-		gfx8.FillRectInset(rt, l, t, r, b, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+		if w.Tab == 0 {
+			gfx8.FillRectInset(rt, l, t, r, b, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+		}
 	})
+	if w.Tab != 0 {
+		w.drawCargo(screen, g1.GetPalette()[gfx8.Shade(sec, 9)], g1.GetPalette()[paletteBlack0])
+		DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, colourWhite)
+		return
+	}
 	if w.View != nil {
 		if rt := w.View(r-l-1, b-t-1); rt != nil {
 			if sp, err := gfx8.Decode(&g1.Elements[imgCentreView]); err == nil {
@@ -126,4 +177,40 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 	black := g1.GetPalette()[paletteBlack0]
 	DrawTextFont(screen, w.Status, G1FontMediumNormal, w.X+3-1, w.Y+w.H-12-1, black)
 	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, colourWhite)
+}
+
+// drawCargo is Transported::draw: from (3, 45), "Received last month:" in
+// WINDOW_2 and each required cargo's amount 4 in, wrapped at 290; 4 below,
+// "Produced last month:" and each produced cargo's amount with its percent
+// transported.
+func (w *ViewWindow) drawCargo(screen *ebiten.Image, win2, black color.Color) {
+	if w.Cargo == nil {
+		return
+	}
+	receives, produces, lines := w.Cargo()
+	x, y := w.X+3, w.Y+45
+	block := func(heading int, produced bool) {
+		DrawTextBold(screen, i18n.Label(heading), x, y, win2)
+		x, y = x+4, y+10
+		for _, l := range lines {
+			if l.Produced != produced {
+				continue
+			}
+			text := FillArgs(ObjectString(l.Unit), Comma32(int64(l.Qty)))
+			if produced { // transported_cargo "{STRINGID} ({INT16}% transported)"
+				text = strings.Replace(strings.Replace(i18n.Label(i18n.TransportedCargo), "{STRINGID}", text, 1), "{INT16}", strconv.Itoa(int(l.Percent)), 1)
+			}
+			for _, part := range WrapTextBold(text, 290) {
+				DrawTextBold(screen, part, x, y, black)
+				y += 10
+			}
+		}
+	}
+	if receives {
+		block(i18n.ReceivedCargo, false)
+		x, y = x-4, y+4
+	}
+	if produces {
+		block(i18n.ProducedCargo, true)
+	}
 }

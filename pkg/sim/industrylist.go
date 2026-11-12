@@ -124,3 +124,51 @@ func (m *Map) IndustryList(om *objects.ObjectManager) []IndustryRow {
 	}
 	return out
 }
+
+// IndustryCargoMonth is one line of the Industry window's Transported tab: a
+// cargo the industry received or produced last month (its unit name,
+// singular for exactly one, as upstream), and of produced cargo the percent
+// transported.
+type IndustryCargoMonth struct {
+	Produced bool
+	Unit     string
+	Qty      uint32
+	Percent  uint8
+}
+
+// IndustryCargoMonths is the Transported tab's data (IndustryWindow.cpp
+// Transported::draw): the required cargoes' receivedCargoQuantityPreviousMonth
+// when it can receive, then the produced cargoes' producedCargoQuantityPreviousMonth
+// and producedCargoPercentTransportedPreviousMonth when it can produce.
+func (m *Map) IndustryCargoMonths(i int, om *objects.ObjectManager) (receives, produces bool, lines []IndustryCargoMonth) {
+	ind := &m.Industries[i]
+	obj := om.GetIndustryObjectByIndex(int(ind.ObjectID))
+	if obj == nil {
+		return false, false, nil
+	}
+	produced, required := om.IndustryCargoIDs(obj)
+	unit := func(c uint8, qty uint32) string {
+		if int(c) >= len(om.CargoObjects) || om.CargoObjects[c] == nil {
+			return ""
+		}
+		if qty == 1 {
+			return om.CargoObjects[c].UnitNameSingular
+		}
+		return om.CargoObjects[c].UnitNamePlural
+	}
+	for k, c := range required {
+		if c != 0xFF {
+			receives = true
+			q := uint32(ind.ReceivedPrevMonth[k])
+			lines = append(lines, IndustryCargoMonth{Unit: unit(c, q), Qty: q})
+		}
+	}
+	for k, c := range produced {
+		if c != 0xFF {
+			produces = true
+			q := uint32(ind.ProducedPrevMonth[k])
+			lines = append(lines, IndustryCargoMonth{Produced: true, Unit: unit(c, q), Qty: q, Percent: ind.PercentTransported[k]})
+		}
+	}
+	return receives, produces, lines
+}
