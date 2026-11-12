@@ -562,6 +562,14 @@ func (g *Game) updateTrackGhost() {
 	if g.buildMode == buildModeRoad && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active {
 		c := g.playerCmd()
 		g.w.UpdateHeadRoadGhost(c, g.consSelectedRoadID(), uint8(g.buildObjID))
+	} else if g.buildMode == buildModeRoad && g.consTab == 0 && !g.inTitleScreen && g.hoverTileX >= 0 {
+		// onToolUpdateSingle for a road: the piece under the cursor as a ghost
+		c := g.playerCmd()
+		if p, ok := construct.GetRoadPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation); ok {
+			g.w.UpdateRoadGhost(c, g.hoverTileX, g.hoverTileY, p.ID, p.Rotation, uint8(g.buildObjID))
+		} else {
+			g.w.RemoveRoadGhost(c)
+		}
 	} else if g.w.RoadGhost != nil {
 		c := g.playerCmd()
 		g.w.RemoveRoadGhost(c)

@@ -1,5 +1,7 @@
 package sim
 
+import "github.com/LaPingvino/goloco/pkg/i18n"
+
 // The construction window's road ghost at the head (ConstructionTab
 // updateConstruction for roads: getRoadPlacementArgs, placeRoadGhost and
 // removeConstructionGhosts' road part), as trackghost.go does for track.
@@ -94,4 +96,77 @@ func (s *State) UpdateHeadRoadGhost(c *Cmd, roadID int, objID uint8) {
 		return
 	}
 	s.placeRoadGhost(c, a)
+}
+
+// UpdateRoadGhost is onToolUpdateSingle for a road without a junction under
+// the cursor, as UpdateTrackGhost: the piece roadID in rotation rot at the
+// tile's position height (piecePositionHeight over the road piece's tiles),
+// unchanged from the last position nothing, else placed as a ghost and,
+// refused, once more 16 higher. PARTIAL: tryMakeRoadJunctionAtLoc (building
+// off an existing road), shift's deeper search.
+func (s *State) UpdateRoadGhost(c *Cmd, tx, ty int, roadID, rot, objID uint8) (int32, bool) {
+	if int(roadID) >= len(RoadPieces) {
+		s.RemoveRoadGhost(c)
+		return 0, false
+	}
+	x, y, h, ok := s.piecePositionHeight(tx, ty, RoadPieces[roadID], rot)
+	if !ok {
+		s.RemoveRoadGhost(c)
+		return 0, false
+	}
+	pos := [3]int32{x, y, h}
+	if s.RoadGhost != nil && s.ghostPos == pos {
+		return s.ghostCost, true
+	}
+	s.ghostPos = pos
+	a := roadPlacementArgs{X: x, Y: y, Z: h, Rotation: rot, RoadID: roadID, RoadObjectID: objID, Bridge: 0xFF}
+	for tries := 2; ; {
+		cost, ok := s.placeRoadGhost(c, a)
+		if ok {
+			s.ghostCost = cost
+			return cost, true
+		}
+		tries--
+		if tries == 0 {
+			return 0, false
+		}
+		if a.Z -= 16; a.Z < 0 {
+			return 0, false
+		}
+		a.Z += 32
+	}
+}
+
+// BuildRoadAtTile is onToolUpSingle + constructionLoop for a road, as
+// BuildTrackAtTile: the head set at the tile at the road piece's position
+// height and the piece built there (constructRoad); refused, once more 16
+// higher unless only above ground is allowed, then the rotation turns 90°.
+func (s *State) BuildRoadAtTile(c *Cmd, tx, ty, roadID int, objID uint8) (int32, bool) {
+	rot := s.ConsHead.Rotation & 3
+	if roadID < 0 || roadID >= len(RoadPieces) {
+		return 0, false
+	}
+	_, _, h, ok := s.piecePositionHeight(tx, ty, RoadPieces[roadID], rot)
+	if !ok {
+		return 0, false
+	}
+	h = max(0, h) // onToolUpSingle: "Height should never go negative"
+	for tries := 2; ; {
+		s.ConsHead = ConstructionHead{Active: true, X: tx, Y: ty, BaseZ: uint8(h / 4), Rotation: rot}
+		if cost, ok := s.BuildRoadAtHead(c, roadID, objID); ok {
+			return cost, true
+		}
+		if c.ErrorText == i18n.ErrorCanOnlyBuildAboveGround {
+			break
+		}
+		if tries--; tries == 0 {
+			break
+		}
+		if h -= 16; h < 0 {
+			break
+		}
+		h += 32
+	}
+	s.ConsHead.Rotation = (rot + 1) & 3
+	return 0, false
 }

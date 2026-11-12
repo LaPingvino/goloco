@@ -104,13 +104,21 @@ func (s *State) UpdateTrackGhost(c *Cmd, tx, ty int, trackID, rot, objID uint8, 
 // height (water + 16 over water) if higher, less the piece's lowest point, then
 // 16 down. The tile in world units too.
 func (s *State) trackPositionHeight(tx, ty int, trackID, rot uint8) (x, y, h int32, ok bool) {
+	if int(trackID) >= len(TrackPieces) {
+		return 0, 0, 0, false
+	}
+	return s.piecePositionHeight(tx, ty, TrackPieces[trackID], rot)
+}
+
+// piecePositionHeight is trackPositionHeight for any piece's tiles (a track's
+// or a road's: onToolUpdateSingle / onToolUpSingle take the piece table).
+func (s *State) piecePositionHeight(tx, ty int, pieces []PreviewTrack, rot uint8) (x, y, h int32, ok bool) {
 	land, water, ok := s.constructionHeight(tx, ty)
-	if !ok || int(trackID) >= len(TrackPieces) {
+	if !ok || len(pieces) == 0 {
 		return 0, 0, 0, false
 	}
 	h = max(land, water)
 	x, y = int32(tx)*32, int32(ty)*32
-	pieces := TrackPieces[trackID]
 	var maxH int32 // getMaxConstructHeightFromExistingSelection over setMapSelectedTilesFromPiece's tiles
 	minZ := int32(pieces[0].Z)
 	for _, p := range pieces {

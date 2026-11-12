@@ -440,10 +440,21 @@ func (g *Game) hudOrMapClick() {
 				g.openTrackBuildError(c)
 			}
 		}
-	} else if g.buildMode == buildModeRoad && g.hoverTileX >= 0 {
-		// Road mode: clicking the map sets the construction head. PARTIAL:
-		// the first click building the road piece (as track's).
-		g.w.SetConstructionHead(g.hoverTileX, g.hoverTileY)
+	} else if g.buildMode == buildModeRoad && g.hoverTileX >= 0 && g.r.ObjMgr != nil {
+		// onToolUpSingle + constructionLoop for a road, as for track: the first
+		// click builds the selected piece at the tile (the head set there).
+		c := g.playerCmd()
+		g.w.RemoveRoadGhost(c)
+		if p, ok := construct.GetRoadPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation); ok {
+			if _, built := g.w.BuildRoadAtTile(c, g.hoverTileX, g.hoverTileY, int(p.ID), uint8(g.buildObjID)); built {
+				g.errorWin = nil
+				if g.consOneShot >= 0 {
+					g.consOneShot, g.consCurve = -1, 0
+				}
+			} else {
+				g.openTrackBuildError(c)
+			}
+		}
 	}
 }
 
