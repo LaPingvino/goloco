@@ -1,0 +1,19 @@
+# A Station window with a vehicle tab in goloco: append this to
+# ../../playthrough/h2-paying-route.txt cut after its pt-h2-v1 shot (a line,
+# two stations and a train with orders in Weatherworld), then run that.
+click 754 14
+wait 1
+move 600 500
+wait 1
+shot go-stations-list.png
+click 300 91
+wait 1
+move 600 500
+wait 1
+shot go-station-1.png
+click 400 260
+wait 1
+move 600 500
+wait 1
+shot go-station-veh.png
+quit

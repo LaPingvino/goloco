@@ -1,0 +1,62 @@
+# The real OpenLoco on the title game (untitle.py), paused: the Industry window
+# (Chicago Food Processing Plant: industry, production, statistics), the list's
+# Fund New Industries tab, the Town window (Dallas: town, ratings), then the
+# Dallas Central station window and its Buses tab. 2026-11-12, OpenLoco 26.08.
+#   ol.sh start $SCRATCH/title.SV5; env -C $SHOTS …/ol.sh run …/tours/windows-openloco.txt
+wait 11
+click 688 592         # pause
+click 571 451         # the news window's close box
+wait 0.5
+press 784 14          # towns menu, held
+wait 0.5
+move 760 66           # … Industries
+wait 0.5
+release 760 66
+wait 1
+click 120 152         # Chicago Food Processing Plant
+move 400 300
+wait 1
+shot ol-industry-1.png
+click 49 462          # production tab
+move 400 300
+wait 1
+shot ol-industry-2.png
+click 80 318          # statistics tab (the window grew upwards)
+move 400 300
+wait 1
+shot ol-industry-3.png
+click 90 58           # the list's Fund New Industries tab
+move 400 300
+wait 1.5
+shot ol-fund.png
+click 611 37          # close it
+click 291 298         # and the industry window
+wait 0.5
+press 784 14
+wait 0.5
+move 760 42           # … Towns
+wait 0.5
+release 760 42
+wait 1
+click 220 172         # Dallas
+move 400 300
+wait 1
+shot ol-town-1.png
+click 206 546         # centre the main view on it
+move 400 300
+wait 2
+shot ol-centred.png
+click 80 439          # Dallas: the ratings tab
+move 600 500
+wait 1
+shot ol-town-ratings.png
+click 332 370         # close the town window (wider on this tab)
+wait 0.5
+click 400 444         # the Dallas Central label
+move 600 500
+wait 1
+shot ol-station-1.png
+click 111 462         # its first vehicle tab
+move 600 500
+wait 1
+shot ol-station-veh.png
