@@ -7,6 +7,7 @@ import (
 
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
 	"github.com/LaPingvino/goloco/pkg/ui"
 )
 
@@ -50,10 +51,10 @@ func (g *Game) setToolbarColour(d *ui.DropdownMenu, btn *ui.ToolbarButton) {
 //	6: Terraform, 7: Railroad, 8: Road, 9: Port/Airport, 10: Build Vehicles
 //	11: Vehicles, 12: Stations, 13: Towns
 //
-// clickable(ToolbarTop.cpp): build_vehicles_menu port_menu
+// clickable(ToolbarTop.cpp): build_vehicles_menu port_menu vehicles_menu
 // clickable(ToolbarTop.cpp): railroad_menu
 // clickable(ToolbarTopCommon.cpp): zoom_menu
-// clickable-partial(ToolbarTop.cpp): loadsave_menu audio_menu vehicles_menu stations_menu towns_menu
+// clickable-partial(ToolbarTop.cpp): loadsave_menu audio_menu stations_menu towns_menu
 // clickable(ToolbarTopCommon.cpp): railroad_menu road_menu
 // (not yet: rotate_menu and view_menu only log; terraform_menu, port_menu, cheats_menu nothing)
 func (g *Game) handleToolbarButton(idx int) {
@@ -128,7 +129,7 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Build Vehicles":
 		g.buildVehiclesMenu(btn)
 	case "Vehicles":
-		g.openVehiclesWindow()
+		g.vehiclesMenu(btn) // by type, with counts (ToolbarTop.cpp vehiclesMenuMouseDown)
 	case "Stations":
 		g.openStationsWindow()
 	case "Towns":
@@ -268,8 +269,8 @@ func (g *Game) openPortConstruction(option int) {
 // the highlighted item is lastBuildVehiclesOption taken as an item index, as
 // upstream does (an enum value, not the item's place — kept). Choosing one is
 // buildVehiclesMenuDropdown: lastBuildVehiclesOption = the type, then
-// BuildVehicle::openByType. PARTIAL: the button face doesn't yet show the last
-// type's image (kBuildVehicleImages).
+// BuildVehicle::openByType. The button face shows the last type
+// (pkg/ui toolbar Draw, kBuildVehicleImages).
 func (g *Game) buildVehiclesMenu(btn *ui.ToolbarButton) {
 	if g.skin() == nil {
 		return
@@ -302,6 +303,63 @@ func (g *Game) buildVehiclesMenu(btn *ui.ToolbarButton) {
 	}
 	d := g.toolbarImageMenu(btn, items)
 	if h := int(m.LastBuildVehiclesOption); h < len(items) {
+		d.Highlighted = h
+	}
+	g.dropdown = d
+}
+
+// vehiclesMenu is ToolbarTop.cpp vehiclesMenuMouseDown (0x0043ABCB): one item
+// per vehicle type the controlling company may have (availableVehicles), its
+// image recoloured to the company colour and how many it owns
+// ("{COMMA16} train" / "trains" — num_*_singular / _plural, by VehicleType),
+// not counting ghosts; lastVehicleType highlighted (as an item index, as
+// upstream). Choosing one is vehiclesMenuDropdown: lastVehicleType = the type,
+// then VehicleList::open(the controlling company, type).
+func (g *Game) vehiclesMenu(btn *ui.ToolbarButton) {
+	if g.skin() == nil {
+		return
+	}
+	m := &g.w.Map
+	company, _ := g.w.ControllingCompany()
+	var avail uint16
+	if company >= 0 && company < len(m.Companies) {
+		avail = m.Companies[company].AvailableVehicles
+	}
+	var colour uint8
+	if company >= 0 && company < len(g.w.CompanyColours) {
+		colour = g.w.CompanyColours[company]
+	}
+	var counts [6]int
+	for i := range m.Entities {
+		e := &m.Entities[i]
+		if e.EntityType == scenario.VehicleTypeHead && int(e.Owner) == company && e.Flags38&0x10 == 0 && e.VehicleType < 6 { // Flags38::isGhost
+			counts[e.VehicleType]++
+		}
+	}
+	faces := [6]int{objects.ISVehicleTrainFrame0, objects.ISVehicleBusesFrame0, objects.ISVehicleTrucksFrame0,
+		objects.ISVehicleTramsFrame0, objects.ISVehicleAircraftFrame0, objects.ISVehicleShipsFrame0}
+	skin := int(g.skin().ImageOffset)
+	var items []ui.DropdownItem
+	for vt := 0; vt < 6; vt++ {
+		if avail&(1<<vt) == 0 {
+			continue
+		}
+		t := vt
+		label := i18n.NumTrainsPlural + t
+		if counts[t] == 1 {
+			label = i18n.NumTrainsSingular + t
+		}
+		items = append(items, ui.DropdownItem{MenuSprite: true, Sprite: skin + faces[t], SpriteColour: colour,
+			Text: ui.FillArgs(i18n.Label(label), ui.Comma16(counts[t])), Action: func() {
+				m.LastVehicleType = uint8(t)
+				g.openVehicleList(t)
+			}})
+	}
+	if len(items) == 0 {
+		return
+	}
+	d := g.toolbarImageMenu(btn, items)
+	if h := int(m.LastVehicleType); h < len(items) {
 		d.Highlighted = h
 	}
 	g.dropdown = d
