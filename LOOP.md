@@ -1697,3 +1697,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-12 (night) — reference check (real OpenLoco on its autosave): town list in game = ONE tab → leftAlignTabs ported (disabled tabs hidden, rest shift left) for ViewWindow + TownListWindow; town list build tabs disabled outside editor. The ratings 0-arg question still open (that save has no town ratings).
 - 2026-11-12 (night) — ratings 0-arg question RESOLVED from source: Formatting.cpp skips a uint16 for user strings, so the 0 is the company name's; rating line correct.
 - 2026-11-12 (night) — list mouse-over (rowHover) + grid var_846 hover. Seen.
+- 2026-11-12 (night) — town / industry rename by caption. NOTE: list windows are snapshots at open (upstream repopulates on update) — other changes (populations, new industries) don't show until reopened; worth a general refresh-on-update later.
