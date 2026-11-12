@@ -299,6 +299,9 @@ func (g *Game) updateHeld() {
 	if g.stationWin != nil { // a Station window vehicle tab's row under the mouse
 		g.stationWin.MouseOver(g.mouseX, g.mouseY)
 	}
+	if g.stationWin != nil { // a vehicle tab's scrollbar thumb follows the mouse while held
+		g.stationWin.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
+	}
 	if g.townList != nil { // the list's scrollbar thumb follows the mouse while held
 		g.townList.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
 	}
