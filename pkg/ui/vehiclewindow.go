@@ -139,6 +139,28 @@ type VehicleMainState struct {
 	Own        bool // CompanyManager::isPlayerCompany(head->owner)
 	Manual     bool // VehicleFlags::manualControl
 	HiddenTabs uint8
+	// What Main::prepareDraw's disabledWidgets read: no cars; veh1's var_3C at
+	// or past 0x3689; air or water, moving (not stopped or loading) while
+	// placed; not placed (tileX −1); the window's tool active; waiting at a
+	// signal.
+	NoCars, Exhausted, AirWaterMoving, Unplaced, ToolActive, WaitingAtSignal bool
+}
+
+// VehicleMainDisabled is Main::prepareDraw's disabledWidgets of the right
+// bar and the centre-view button.
+func VehicleMainDisabled(s VehicleMainState) (d [vmWidgets]bool) {
+	d[vmPickup] = s.NoCars || s.Exhausted || s.AirWaterMoving
+	d[vmChangeDirection] = s.Exhausted
+	if s.Unplaced {
+		d[vmStopStart], d[vmPassSignal], d[vmChangeDirection], d[vmCentreViewport] = true, true, true, true
+		if s.ToolActive {
+			d[vmChangeDirection] = false
+		}
+	}
+	if !s.WaitingAtSignal {
+		d[vmPassSignal] = true
+	}
+	return d
 }
 
 // VehicleMainLayout is Main::widgets after Main::prepareDraw for a window of
@@ -393,7 +415,7 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 	if err != nil {
 		return
 	}
-	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+	lw, pickupDisabled := VehicleDetailsLayout(w.W, w.H, w.State)
 	rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
 	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
 	list := lw[vdCarList]
@@ -406,9 +428,13 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 		}
 		w.drawVehicleTabs(rt, lw[:], vwTabDetails, sec, prim)
 		// The right bar's ImageButtons (ImageButton::draw): the frame (buttonFrame),
-		// then the image. PARTIAL: the disabled (solid) look, Gfx::recolour's
-		// exact colouring (the company colour here).
-		if b := lw[vdPickup]; !b.Hidden && w.PickupImage > 0 && w.PickupImage < len(g1.Elements) {
+		// then the image — disabled, solid (drawDisabledImage). PARTIAL:
+		// Gfx::recolour's exact colouring (the company colour here).
+		if b := lw[vdPickup]; !b.Hidden && w.PickupImage > 0 && w.PickupImage < len(g1.Elements) && pickupDisabled {
+			if sp, err := gfx8.Decode(&g1.Elements[w.PickupImage]); err == nil {
+				drawDisabledImage(rt, sp, b.L, b.T, sec)
+			}
+		} else if b := lw[vdPickup]; !b.Hidden && w.PickupImage > 0 && w.PickupImage < len(g1.Elements) {
 			w.buttonFrame(rt, b, w.PickupActive, sec)
 			if sp, err := gfx8.Decode(&g1.Elements[w.PickupImage]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
@@ -482,6 +508,7 @@ func (w *VehicleWindow) drawMain(screen *ebiten.Image) {
 		return
 	}
 	lw := VehicleMainLayout(w.W, w.H, w.Main)
+	dis := VehicleMainDisabled(w.Main)
 	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
 		p := lw[vwPanel]
@@ -498,12 +525,18 @@ func (w *VehicleWindow) drawMain(screen *ebiten.Image) {
 			if lw[b.i].Hidden || b.img <= 0 || b.img >= len(g1.Elements) {
 				continue
 			}
+			sp, err := gfx8.Decode(&g1.Elements[b.img])
+			if err != nil {
+				continue
+			}
+			if dis[b.i] { // drawImage disabled: the image solid (opaque colour: shades 6 and 4)
+				drawDisabledImage(rt, sp, lw[b.i].L, lw[b.i].T, sec)
+				continue
+			}
 			if b.i != vmCentreViewport { // the centre-view button is painted into the viewport
 				w.buttonFrame(rt, lw[b.i], b.i == vmPickup && w.PickupActive, sec)
 			}
-			if sp, err := gfx8.Decode(&g1.Elements[b.img]); err == nil {
-				gfx8.DrawSpriteNoise(rt, sp, lw[b.i].L, lw[b.i].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
-			}
+			gfx8.DrawSpriteNoise(rt, sp, lw[b.i].L, lw[b.i].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 	})
 	// The viewport (Viewport widget: the picture inside its 1-px border),
@@ -697,6 +730,7 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 	}
 	if w.Tab == 0 { // Main::onMouseUp / onMouseDown
 		lw := VehicleMainLayout(w.W, w.H, w.Main)
+		dis := VehicleMainDisabled(w.Main)
 		switch {
 		case in(lw[vwClose]) && w.OnClose != nil:
 			w.OnClose()
@@ -708,19 +742,19 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			w.OnTab(3)
 		case in(lw[vwTabCargo]) && w.OnTab != nil:
 			w.OnTab(2)
-		case in(lw[vmStopStart]) && w.OnStopStart != nil:
+		case in(lw[vmStopStart]) && w.OnStopStart != nil && !dis[vmStopStart]:
 			b := lw[vmStopStart]
 			w.OnStopStart(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
-		case in(lw[vmPickup]) && w.OnPickup != nil:
+		case in(lw[vmPickup]) && w.OnPickup != nil && !dis[vmPickup]:
 			w.OnPickup()
-		case in(lw[vmCentreViewport]) && w.OnCentreView != nil:
+		case in(lw[vmCentreViewport]) && w.OnCentreView != nil && !dis[vmCentreViewport]:
 			w.OnCentreView()
 		case in(lw[vmSpeedControl]) && w.OnSpeed != nil: // Main::onMouseDown speedControl (holdable)
 			w.speedHeld = true
 			w.speedAt(y)
-		case in(lw[vmPassSignal]) && w.OnPassSignal != nil: // Main::onMouseUp passSignal
+		case in(lw[vmPassSignal]) && w.OnPassSignal != nil && !dis[vmPassSignal]: // Main::onMouseUp passSignal
 			w.OnPassSignal()
-		case in(lw[vmChangeDirection]) && w.OnChangeDirection != nil: // Main::onMouseUp changeDirection
+		case in(lw[vmChangeDirection]) && w.OnChangeDirection != nil && !dis[vmChangeDirection]: // Main::onMouseUp changeDirection
 			w.OnChangeDirection()
 		}
 		return
@@ -1055,4 +1089,12 @@ func (w *VehicleWindow) buttonFrame(rt *gfx8.RenderTarget, b BVWidget, activated
 	if activated {
 		gfx8.FillRectInset(rt, b.L, b.T, b.R, b.B, gfx8.InsetColour{Map: sec}, flags)
 	}
+}
+
+// drawDisabledImage is ImageButton drawImage's disabled branch for an opaque
+// window colour: the image solid in its shade 6 one pixel down-right, shade 4
+// over it (drawImageSolid).
+func drawDisabledImage(rt *gfx8.RenderTarget, sp *gfx8.Sprite, x, y int, colour []uint8) {
+	gfx8.DrawSprite(rt, sp, x+1, y+1, gfx8.OpTransparent|gfx8.OpSrc, solidMap(gfx8.Shade(colour, 6)))
+	gfx8.DrawSprite(rt, sp, x, y, gfx8.OpTransparent|gfx8.OpSrc, solidMap(gfx8.Shade(colour, 4)))
 }
