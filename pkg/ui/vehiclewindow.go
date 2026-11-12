@@ -441,8 +441,12 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 				nameX = append(nameX, 0)
 				continue
 			}
-			drawCarInline(sub, c, 0, y, false)
-			nameX = append(nameX, drawCarInline(sub, c, 0, y, true)+2)
+			var disabled []uint8 // the dragged car: disableColour (the secondary colour)
+			if w.Dragging && i == w.DragCar {
+				disabled = sec
+			}
+			drawCarInline(sub, c, 0, y, false, disabled)
+			nameX = append(nameX, drawCarInline(sub, c, 0, y, true, disabled)+2)
 		}
 		for yy := range ch {
 			copy(rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw], sub.Bits[yy*cw:(yy+1)*cw])
@@ -832,8 +836,8 @@ func (w *VehicleWindow) DrawDrag(screen *ebiten.Image) {
 	// nothing) — not draw8, which repaints its whole box from the 8-bit copy
 	// of the screen (the window's text isn't in it).
 	rt := gfx8.NewRenderTarget(width, 60)
-	drawCarInline(rt, c, 0, 0, false)
-	drawCarInline(rt, c, 0, 0, true)
+	drawCarInline(rt, c, 0, 0, false, nil)
+	drawCarInline(rt, c, 0, 0, true, nil)
 	pal := globalG1Font.g1.GetPalette()
 	pix := make([]byte, 4*width*60)
 	for i, v := range rt.Bits {

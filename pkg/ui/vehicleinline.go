@@ -109,8 +109,11 @@ func carTooltip(c TrainCarDraw) string {
 
 // drawCarInline is drawVehicleInline for a Car (animated): y + 19 + the
 // object's offset, the parts asked for (bogies or bodies) at their screen
-// distances, each in its own colour scheme. Returns the car's screen length.
-func drawCarInline(rt *gfx8.RenderTarget, c TrainCarDraw, x, y int, bodies bool) int {
+// distances, each in its own colour scheme — or, disabled (the car being
+// dragged; a colour's palette map, nil none), solid in its shade 5 one pixel
+// down-right and shade 3 over it (drawImageSolid). Returns the car's screen
+// length.
+func drawCarInline(rt *gfx8.RenderTarget, c TrainCarDraw, x, y int, bodies bool, disabled []uint8) int {
 	g1 := globalG1Font.g1
 	y += 19 + c.YOffset
 	items, total := c.Object.CarDrawItems(40, c.Components, c.Reversed, true, c.Brake)
@@ -126,8 +129,14 @@ func drawCarInline(rt *gfx8.RenderTarget, c TrainCarDraw, x, y int, bodies bool)
 		if err != nil {
 			continue
 		}
+		px := x + int(objects.ScreenDistance(it.Dist, 40))
+		if disabled != nil {
+			gfx8.DrawSprite(rt, sp, px+1, y+1, gfx8.OpTransparent|gfx8.OpSrc, solidMap(gfx8.Shade(disabled, 5)))
+			gfx8.DrawSprite(rt, sp, px, y, gfx8.OpTransparent|gfx8.OpSrc, solidMap(gfx8.Shade(disabled, 3)))
+			continue
+		}
 		pal, _ := g1.GetPaletteMap2(int(it.Colour[0]), int(it.Colour[1]))
-		gfx8.DrawSpriteNoise(rt, sp, x+int(objects.ScreenDistance(it.Dist, 40)), y, gfx8.OpFor(sp, pal != nil, false), pal, nil)
+		gfx8.DrawSpriteNoise(rt, sp, px, y, gfx8.OpFor(sp, pal != nil, false), pal, nil)
 	}
 	return int(objects.ScreenDistance(total, 40))
 }
@@ -138,11 +147,20 @@ func drawCarInline(rt *gfx8.RenderTarget, c TrainCarDraw, x, y int, bodies bool)
 func DrawTrainInline(rt *gfx8.RenderTarget, cars []TrainCarDraw, x, y int) int {
 	start := x
 	for _, c := range cars {
-		x += drawCarInline(rt, c, x, y, false)
+		x += drawCarInline(rt, c, x, y, false, nil)
 	}
 	x = start
 	for _, c := range cars {
-		x += drawCarInline(rt, c, x, y, true)
+		x += drawCarInline(rt, c, x, y, true, nil)
 	}
 	return x
+}
+
+// solidMap is drawImageSolid's palette map: every colour to c.
+func solidMap(c uint8) []uint8 {
+	m := make([]uint8, 256)
+	for i := range m {
+		m[i] = c
+	}
+	return m
 }
