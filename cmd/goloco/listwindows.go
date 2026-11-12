@@ -193,5 +193,18 @@ func (g *Game) openIndustryWindow(id int) {
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.IndustryView(idx, vw, vh) }
 	w.OnCentreView = func() { g.w.CentreOnIndustry(idx) }
 	w.OnClose = func() { g.viewWin = nil }
+	w.CargoTab = 3 // tab_transported
+	w.Cargo = func() (bool, bool, []ui.CargoMonthLine) {
+		rec, prod, months := g.w.Map.IndustryCargoMonths(idx, g.r.ObjMgr)
+		lines := make([]ui.CargoMonthLine, len(months))
+		for k, c := range months {
+			lines[k] = ui.CargoMonthLine{Produced: c.Produced, Unit: c.Unit, Qty: c.Qty, Percent: c.Percent}
+		}
+		return rec, prod, lines
+	}
+	if obj := g.r.ObjMgr.GetIndustryObjectByIndex(int(m.Industries[idx].ObjectID)); obj != nil { // setDisabledWidgets
+		produced, _ := g.r.ObjMgr.IndustryCargoIDs(obj)
+		w.TabDisabled[1], w.TabDisabled[2] = produced[0] == 0xFF, produced[1] == 0xFF
+	}
 	g.viewWin = w
 }
