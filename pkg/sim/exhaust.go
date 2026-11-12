@@ -10,9 +10,9 @@ import (
 // Exhaust entity per puff, a steam object's frames rising) made by
 // VehicleBody::animationUpdate (VehicleBody.cpp 0x004AAC4E) and
 // secondaryAnimationUpdate, one emitter each (animation[0], animation[1]).
-// PARTIAL: the chuff sounds (no sound queue in the sim); the bodies of ships
-// and aircraft (shipWakeAnimationUpdate, diesel exhaust on ships) — goloco's
-// air and water ticks don't run VehicleBody::update yet.
+// Ships and aircraft run animationUpdate from their ticks (VehicleBody::update
+// for air and water: animationUpdate only): the ship's wakes and diesel
+// exhaust. PARTIAL: the chuff sounds (no sound queue in the sim).
 
 const effectTypeExhaust = 0 // EffectType::exhaust
 
@@ -153,16 +153,20 @@ func (m *Map) bodyAnimationUpdate(tr Train, cc CarComponent, om *objects.ObjectM
 // dieselExhaust1/2AnimationUpdate, electricSpark1/2AnimationUpdate.
 func (m *Map) emitterUpdate(tr Train, cc CarComponent, om *objects.ObjectManager, v *objects.VehicleObject, num int, hpos, unkDistance int32) {
 	a := v.Animations[num]
-	if a.Type == objects.EmitterNone || a.Type == objects.EmitterShipWake {
+	if a.Type == objects.EmitterNone {
 		return
 	}
 	body, front, back := &m.Entities[cc.Body], &m.Entities[cc.Front], &m.Entities[cc.Back]
+	v2 := &m.Entities[tr.Veh2]
+	steamID := uint8(om.SteamObjectIndex(a.SteamName)) // objectId (0xFF: not loaded)
+	if a.Type == objects.EmitterShipWake {
+		m.shipWake(om, body, v, v2, steamID)
+		return
+	}
 	if front.BreakdownFlags&breakdownBrokenDown != 0 {
 		return
 	}
-	v2 := &m.Entities[tr.Veh2]
 	reversed := body.Flags38&f38IsReversed != 0
-	steamID := uint8(om.SteamObjectIndex(a.SteamName)) // objectId (0xFF: not loaded)
 	var44 := int32(int16(body.Var44))
 	if reversed {
 		hpos, var44 = -hpos, -var44
@@ -201,6 +205,18 @@ func (m *Map) emitterUpdate(tr Train, cc CarComponent, om *objects.ObjectManager
 			}
 		}
 	case objects.EmitterDieselExhaust1:
+		if m.Entities[tr.Head].VehicleType == vehicleTypeShip { // a ship: back along the hull from its position
+			if v2.CurrentSpeed == 0 || ticks&3 != 0 {
+				return
+			}
+			f := int32(0)
+			if len(v.BodySprites) > 0 {
+				f = int32(v.BodySprites[0].HalfLength) * hpos / 256
+			}
+			dx, dy := olmath.ComputeXYVector(f, body.SpriteYaw^(1<<5))
+			m.createExhaust(om, int32(body.PosX)+dx/2, int32(body.PosY)+dy/2, int32(body.PosZ)+int32(a.VerticalPos), steamID)
+			return
+		}
 		if v2.MotorState != MotorAccelerating || ticks&3 != 0 || body.WheelSlipping != 0 {
 			return
 		}
@@ -270,4 +286,55 @@ func (m *Map) bodyUpdateAnimation(tr Train, cc CarComponent, om *objects.ObjectM
 		step = -step
 	}
 	body.Var44 += uint16(step)
+}
+
+const vehicleTypeShip = 5 // VehicleType::ship
+
+// shipWake is shipWakeAnimationUpdate (0x004ABC8A): moving at 6 mph or more,
+// every 32, 16 (9 mph), 8 (13 mph) or 4 (25 mph) ticks a wake a quarter of
+// the hull back from the ship, half the wake spacing to its right; with a
+// spacing, a second half of it back to the left (from there, as upstream).
+func (m *Map) shipWake(om *objects.ObjectManager, body *scenario.VehicleEntity, v *objects.VehicleObject, v2 *scenario.VehicleEntity, steamID uint8) {
+	const mph = 1 << 16
+	speed := v2.CurrentSpeed
+	if v2.MotorState == MotorStopped || speed < 6*mph {
+		return
+	}
+	freq := uint32(32)
+	switch {
+	case speed >= 25*mph:
+		freq = 4
+	case speed >= 13*mph:
+		freq = 8
+	case speed >= 9*mph:
+		freq = 16
+	}
+	if m.ScenarioTicks%freq != 0 {
+		return
+	}
+	half := int32(0)
+	if len(v.BodySprites) > 0 {
+		half = int32(v.BodySprites[0].HalfLength)
+	}
+	dx, dy := olmath.ComputeXYVector(half, body.SpriteYaw^(1<<5))
+	x, y, z := int32(body.PosX)+dx/4, int32(body.PosY)+dy/4, int32(body.PosZ)
+	dx, dy = olmath.ComputeXYVector(int32(v.ShipWakeSpacing), (body.SpriteYaw+16)&0x3F) // 90° clockwise
+	x, y = x+dx/2, y+dy/2
+	m.createExhaust(om, x, y, z, steamID)
+	if v.ShipWakeSpacing == 0 {
+		return
+	}
+	dx, dy = olmath.ComputeXYVector(int32(v.ShipWakeSpacing), (body.SpriteYaw-16)&0x3F) // 90° anticlockwise
+	m.createExhaust(om, x+dx/2, y+dy/2, z, steamID)
+}
+
+// bodiesAnimate is VehicleBody::update for an air or water vehicle: each
+// body's animationUpdate with unkDistance2, nothing else.
+func (m *Map) bodiesAnimate(tr Train, om *objects.ObjectManager) {
+	_, d2 := UpdateDistances(m.Entities[tr.Veh2].CurrentSpeed)
+	for _, car := range tr.Cars {
+		for _, cc := range car {
+			m.bodyAnimationUpdate(tr, cc, om, d2)
+		}
+	}
 }

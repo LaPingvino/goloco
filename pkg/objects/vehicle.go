@@ -16,6 +16,9 @@ type VehicleObject struct {
 	ExtraNames   []string
 	CompatNames  []string // the compatible vehicles' object names (headers)
 	RackRailName string
+	// ShipWakeSpacing (0x113) is the distance between a ship's two wakes
+	// (0: one wake).
+	ShipWakeSpacing uint8
 	// Animations is animation[2] (0x10D): each emitter's kind (none, steam
 	// puffs, diesel exhaust, sparks, ship wake), its height, and the steam
 	// object it names (load resolves the header into objectId).
@@ -607,6 +610,7 @@ func walkVariableSections(v *VehicleObject, data []byte) int {
 
 	// 5. Emitter-animation headers: one per animation slot with type ≠ none.
 	//    animation[2] lives at 0x10D in the fixed struct, 3 bytes each, type at +2.
+	v.ShipWakeSpacing = data[0x113]
 	for i := range v.Animations {
 		a := &v.Animations[i]
 		a.VerticalPos, a.Type, a.SteamName = data[0x10D+i*3+1], data[0x10D+i*3+2], ""
