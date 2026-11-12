@@ -78,6 +78,8 @@ type TownListWindow struct {
 	Extra8     func(rt *gfx8.RenderTarget, sec []uint8)
 	ExtraText  func(screen *ebiten.Image)
 	ExtraClick func(px, py int) bool
+	// ExtraMouseOver replaces MouseOver's row hover inside the list.
+	ExtraMouseOver func(px, py int)
 	// PlacementCost is the Fund New Industries tool's ghost cost (ok false:
 	// none, or kFailure — the object's own cost shows).
 	PlacementCost func() (int64, bool)
@@ -282,6 +284,32 @@ func (w *TownListWindow) HandleClick(px, py int) {
 			}
 		}
 	}
+}
+
+// MouseOver is onScrollMouseOver: over the list's rows (not its scrollbar)
+// the row under the mouse becomes the hover row (rowHover; past the last row
+// none). ExtraMouseOver takes it first when set (the Fund New Industries
+// grid's cells).
+func (w *TownListWindow) MouseOver(px, py int) {
+	l := w.List
+	if !w.in(l, px, py) || px >= w.X+l[0]+l[2]-L.ScrollbarSize-L.ScrollbarMargin {
+		if w.ExtraMouseOver != nil { // the grid's var_846 cleared off it (event_08); a list keeps rowHover
+			w.ExtraMouseOver(-1<<20, -1<<20)
+		}
+		return
+	}
+	if w.ExtraMouseOver != nil {
+		w.ExtraMouseOver(px, py)
+		return
+	}
+	if w.RowHeight <= 0 {
+		return
+	}
+	i := (py - (w.Y + l[1] + 1) + w.Scroll) / w.RowHeight
+	if i < 0 || i >= len(w.Rows) {
+		i = -1
+	}
+	w.Hover = i
 }
 
 // HandleWheel scrolls the list.

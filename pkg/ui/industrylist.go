@@ -99,8 +99,9 @@ const newIndustryCell = 112
 // "Fund New Industries", a grid of the industries the player can fund, each
 // drawn by drawIndustry; the selected one (rowHover) inset; at the bottom its
 // name and build cost ("No industry available" when there are none). A click
-// selects (onScrollMouseDown) and calls OnSelect. PARTIAL: hover
-// (onScrollMouseOver: var_846 and its tooltip). The placement tool:
+// selects (onScrollMouseDown) and calls OnSelect; the cell under the mouse
+// (onScrollMouseOver: var_846) is lit and named. PARTIAL: its tooltip. The
+// placement tool:
 // cmd/goloco industrytool.go.
 func NewIndustryGrid(sw int, choices []NewIndustryChoice, selected int, titleColour, colour uint8, onSelect func(id int)) *TownListWindow {
 	const w578, h172 = 578, 172
@@ -108,7 +109,7 @@ func NewIndustryGrid(sw int, choices []NewIndustryChoice, selected int, titleCol
 		Caption: i18n.Label(i18n.TitleFundNewIndustries), Tabs: 2, CurrentTab: 1, RowHeight: newIndustryCell, Hover: -1}
 	w.List = [4]int{3, 45, w578 - 4 - 3 + 1, h172 - 14 - 45 + 1}
 	w.Rows = make([][]string, (len(choices)+4)/5) // getScrollSize: (4 + rowCount) / 5 rows
-	sel := -1
+	sel, hov := -1, -1 // rowHover (chosen), var_846 (under the mouse)
 	for i, c := range choices {
 		if c.ID == selected {
 			sel = i
@@ -129,10 +130,21 @@ func NewIndustryGrid(sw int, choices []NewIndustryChoice, selected int, titleCol
 			x := k * newIndustryCell
 			if i == sel {
 				gfx8.FillRectInset(rt, x, y, x+newIndustryCell-1, y+newIndustryCell-1, gfx8.InsetColour{Map: sec}, gfx8.InsetColourLight|gfx8.InsetBorderInset)
+			} else if i == hov {
+				gfx8.FillRectInset(rt, x, y, x+newIndustryCell-1, y+newIndustryCell-1, gfx8.InsetColour{Map: sec}, gfx8.InsetColourLight)
 			}
 			drawIndustryPreview(rt, x+1, y+1, choices[i])
 		}
 	}
+	cellAt := func(px, py int) int { // getRowIndex: -1 past the last
+		l := w.List
+		cx, cy := px-(w.X+l[0]+1), py-(w.Y+l[1]+1)+w.Scroll
+		if i := cx/newIndustryCell + cy/newIndustryCell*5; cx >= 0 && cy >= 0 && cx < 5*newIndustryCell && i < len(choices) {
+			return i
+		}
+		return -1
+	}
+	w.ExtraMouseOver = func(px, py int) { hov = cellAt(px, py) } // onScrollMouseOver: var_846
 	w.ExtraClick = func(px, py int) bool {
 		l := w.List
 		if !w.in(l, px, py) || px >= w.X+l[0]+l[2]-L.ScrollbarSize-L.ScrollbarMargin {
@@ -155,11 +167,15 @@ func NewIndustryGrid(sw int, choices []NewIndustryChoice, selected int, titleCol
 			DrawTextBold(screen, i18n.Label(i18n.NoIndustryAvailable), w.X+3, y, black)
 			return
 		}
-		if sel < 0 {
+		shown := hov // draw: the industry under the mouse (var_846), else the chosen one
+		if shown < 0 {
+			shown = sel
+		}
+		if shown < 0 {
 			return
 		}
-		c := choices[sel]
-		if w.PlacementCost != nil { // the ghost's placement cost, unless it failed
+		c := choices[shown]
+		if hov < 0 && w.PlacementCost != nil { // the chosen one's ghost cost, unless it failed
 			if cost, ok := w.PlacementCost(); ok {
 				c.Cost = cost
 			}
