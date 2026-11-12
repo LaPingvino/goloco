@@ -107,6 +107,9 @@ type TownListWindow struct {
 	// TabIcon is drawTabs' image for tab i (a g1 element id; < 0 none) and
 	// the colour it is recoloured to (Gfx::recolour; < 0 none).
 	TabIcon func(i int) (image, colour int)
+	// TabDisabled reports tab i disabled (disabledWidgets): drawn as the
+	// disabled silhouette without its image, and not clickable.
+	TabDisabled func(i int) bool
 	// ColourCaption: the caption is Style::colourText (StationList,
 	// VehicleList) rather than whiteText (TownList).
 	ColourCaption bool
@@ -248,6 +251,9 @@ func (w *TownListWindow) HandleClick(px, py int) {
 	}
 	for i := range w.Tabs {
 		if w.in([4]int{3 + 31*i, 15, 31, 27}, px, py) {
+			if w.TabDisabled != nil && w.TabDisabled(i) {
+				return
+			}
 			if w.OnTab != nil && i != w.CurrentTab {
 				w.OnTab(i)
 			}
@@ -309,6 +315,10 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 		for i := range w.Tabs { // drawTabs: Widget::drawTab with each tab's image
+			if w.TabDisabled != nil && w.TabDisabled(i) {
+				drawTabDisabled(rt, 3+31*i, 15, sec)
+				continue
+			}
 			icon, colour := tabNoIcon, -1
 			if w.TabIcon != nil {
 				if img, c := w.TabIcon(i); img >= 0 && img < len(g1.Elements) {
