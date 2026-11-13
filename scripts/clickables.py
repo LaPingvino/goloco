@@ -38,6 +38,8 @@ PORTED = {
     "PlayerInfoPanel.cpp": ["pkg/ui/playerpanel.go", "cmd/goloco/draw.go", "cmd/goloco/update.go"],
     "CompanyFaceSelection.cpp": ["pkg/ui/companyselect.go"],
     "ProgressBar.cpp": ["pkg/ui/progressbar.go"],
+    "MusicJukebox.cpp": ["pkg/ui/musicjukebox.go", "cmd/goloco/music.go"],
+    "MusicSelection.cpp": ["pkg/ui/musicselection.go", "cmd/goloco/music.go"],
     "Construction": ["pkg/ui/construction.go", "pkg/ui/constructionoverhead.go", "pkg/ui/constructionsignal.go",
                      "pkg/ui/constructionstation.go", "pkg/ui/constructiontab.go", "cmd/goloco/construction.go",
                      "cmd/goloco/stationtool.go"],
@@ -49,6 +51,14 @@ LABEL = re.compile(r"case\s+(?:[A-Za-z_]+::)*[wW]idx::([A-Za-z_0-9]+)\s*:")
 MARKER = re.compile(r"clickable(-partial)?\(([A-Za-z0-9_./]+)\):\s*([A-Za-z0-9_ ]+)")
 
 
+def snake(name):
+    """A widget id constant as its widx name: Widx::kMusicControlsStop → music_controls_stop
+    (upstream names its widgets by WidgetId constants since 2026; the markers keep the widx names)."""
+    if re.fullmatch(r"k[A-Z][A-Za-z0-9]*", name):
+        return re.sub(r"(?<!^)(?=[A-Z])", "_", name[1:]).lower()
+    return name
+
+
 def upstream_windows(root):
     """{window: set(widget names)} — a folder of files (Construction, News) is one window."""
     out = {}
@@ -58,7 +68,7 @@ def upstream_windows(root):
             [os.path.join(path, f) for f in sorted(os.listdir(path)) if f.endswith(".cpp")] if os.path.isdir(path) else []
         labels = set()
         for f in files:
-            labels |= set(LABEL.findall(open(f, encoding="utf-8", errors="replace").read()))
+            labels |= {snake(n) for n in LABEL.findall(open(f, encoding="utf-8", errors="replace").read())}
         if labels:
             out[name] = labels
     return out
