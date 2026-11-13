@@ -118,8 +118,9 @@ func (g *Game) newCompanyWindow(company int) *ui.CompanyFinancesWindow {
 	cw := &ui.CompanyFinancesWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeCompany, Number: company, W: w, H: h}, TitleColour: tc, Colour: wc,
 		Tab:   ui.CompanyTabFinances, // openFinances: currentTab = tab_finances
 		Title: g.w.Map.CompanyName(company), Data: g.companyFinancesData(company),
-		OnLoan:   func(dir, step int) { g.changeLoan(company, dir, step) },
-		OnRename: func() { g.renameCompany(company, tc, wc) },
+		OnLoan:        func(dir, step int) { g.changeLoan(company, dir, step) },
+		OnRename:      func() { g.renameCompany(company, tc, wc) },
+		OnRenameOwner: func() { g.renameOwner(company, tc, wc) },
 		OnColour: func(colourType int, primary bool, x, y, w, h int) {
 			g.colourSwatchOpen(company, colourType, primary, x, y, h)
 		},
@@ -425,4 +426,24 @@ func (g *Game) openCompanyList() {
 	}
 	cl.Sort()
 	g.showAuto(cl, 0, 0)
+}
+
+// renameOwner is Status's change_owner_name and renameCompanyOwnerName: the
+// text input (title_name_owner, prompt_enter_new_name_for_owner, the owner's
+// name), then — a non-empty name — RenameCompanyOwner with apply
+// (cannot_change_owner_name and the reason on a refusal).
+func (g *Game) renameOwner(company int, titleColour, colour uint8) {
+	m := &g.w.Map
+	g.textInput = ui.OpenTextInput(i18n.Str(i18n.TitleNameOwner), i18n.Str(i18n.PromptEnterNewNameForOwner),
+		m.OwnerName(company, g.r.ObjMgr), 31, g.sw, g.sh, titleColour, colour, true, func(text string) {
+			if text == "" {
+				return
+			}
+			c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
+			if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) {
+				return m.RenameCompanyOwner(c, f, company, text, g.r.ObjMgr)
+			}); !ok {
+				g.openError(i18n.Label(i18n.CannotChangeOwnerName), cmdErrorText(c))
+			}
+		})
 }
