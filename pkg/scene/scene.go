@@ -679,11 +679,12 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		frames, speeds := an.frames, an.speeds
 		cmap := r.colourMap(int(b.Colour))
 		s.PaintBuilding(paint.BuildingEl{Rotation: b.Rotation, SequenceIndex: b.SequenceIndex, Variation: b.Variation, BaseZ: b.BaseZ, ClearZ: b.ClearZ,
-			IsConstructed: b.IsConstructed, Age: b.Age, SectionProgress: b.SectionProgress},
+			IsConstructed: b.IsConstructed, Age: b.Age, SectionProgress: b.SectionProgress, Ghost: ref.Flags&(1<<4) != 0},
 			paint.BuildingObj{Image: int(bo.ImageOffset), NumParts: int(bo.NumParts), Parts: bo.VariationParts[b.Variation], PartHeights: bo.PartHeights,
 				PartAnimFrames: frames, PartAnimSpeed: speeds, ElevatorSequences: bo.ElevatorSequences, LargeTile: bo.HasFlags(objects.BuildingFlagLargeTile),
-				Shadow:   r.shadow(s.Zoom, bo.HasFlags(objects.BuildingFlagHasShadows), (int(bo.NumParts)+int(bo.NumElevatorSequences)+int(b.Variation))*4+int(bo.ImageOffset), colourOrange, false),
-				Scaffold: r.scaffold(bo.ScaffoldingSegmentType, bo.ScaffoldingColour)},
+				Headquarters: bo.HasFlags(objects.BuildingFlagIsHeadquarters),
+				Shadow:       r.shadow(s.Zoom, bo.HasFlags(objects.BuildingFlagHasShadows), (int(bo.NumParts)+int(bo.NumElevatorSequences)+int(b.Variation))*4+int(bo.ImageOffset), colourOrange, false),
+				Scaffold:     r.scaffold(bo.ScaffoldingSegmentType, bo.ScaffoldingColour)},
 			cmap, x, y, v.Ticks, sprite)
 	case scenario.KindIndustry:
 		ie := t.Industries[ref.Index]

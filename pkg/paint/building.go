@@ -16,6 +16,7 @@ type BuildingEl struct {
 	// one at SectionProgress (unk5u).
 	IsConstructed        bool
 	Age, SectionProgress uint8
+	Ghost                bool // elBuilding.isGhost(): no interaction
 }
 
 // BuildingObj is what paintBuilding reads from a building object.
@@ -28,6 +29,7 @@ type BuildingObj struct {
 	PartAnimSpeed     []uint8
 	ElevatorSequences [][]uint8
 	LargeTile         bool // BuildingObjectFlags::largeTile (2×2)
+	Headquarters      bool // BuildingObjectFlags::isHeadquarters: a headquarterBuilding to clicks
 	Shadow            Shadow
 	// Scaffold is the scaffolding drawn while under construction (nil: the
 	// object has none — segment type 0xFF — or no Scaffolding object).
@@ -105,6 +107,12 @@ var (
 // tileY is its tile (for position-modified animations); ticks the scenario ticks.
 func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint8, tileX, tileY int, ticks uint32, sprite func(int) *gfx8.Sprite) {
 	s.ItemType = ItemBuilding // setItemType (PaintBuilding.cpp:168; the inner noInteraction resets not yet ported)
+	if obj.Headquarters {
+		s.ItemType = ItemHeadquarterBuilding
+	}
+	if el.Ghost { // PARTIAL: the ghost colour (applyGhostToImage)
+		s.ItemType = ItemNoInteraction
+	}
 	rotation := (s.Rotation + el.Rotation) & 3
 	baseHeight := int(el.BaseZ) * 4
 	bbz := min(int(el.ClearZ)*4-baseHeight, 128) - 2

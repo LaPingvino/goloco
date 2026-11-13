@@ -158,6 +158,9 @@ type Game struct {
 
 	// scripted input playback (GOLOCO_SCRIPT)
 	script *inputScript
+	// viewportLeft is Input::State::viewportLeft: a left press on the main view
+	// without a tool, waiting for its release (viewportLeftRelease).
+	viewportLeft bool
 
 	// --shots mode: periodic full-frame captures (shot_NN.png), then quit.
 	shotsEvery time.Duration // wall-clock interval between captures

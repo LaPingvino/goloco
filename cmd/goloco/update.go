@@ -164,6 +164,9 @@ func (g *Game) updateGame() {
 		for i := range g.toolbar.Buttons {
 			g.toolbar.Buttons[i].Pressed = false
 		}
+		if g.viewportLeft {
+			g.viewportLeftRelease()
+		}
 	}
 
 	g.updateCamera()
@@ -377,19 +380,33 @@ func (g *Game) hudOrMapClick() {
 	} else if (g.buildMode == buildModeNone || g.consHasHead() && g.consTab == 0) && !g.inTitleScreen {
 		// (while building on from a position the construction window has no
 		// tool on the map — toolCancel — so a click is the viewport's.)
-		// MouseInput.cpp's viewport click without a tool: getItemLeft opens
-		// the vehicle's, town's, station's or industry's window
-		if it, ok := g.w.ItemLeftAt(g.mouseX, g.mouseY); ok {
-			switch it.Kind {
-			case paint.ItemEntity:
-				g.openVehicleWindow(uint16(it.ID), 0)
-			case paint.ItemTownLabel:
-				g.openTownWindow(it.ID)
-			case paint.ItemStationLabel:
-				g.openStationWindow(it.ID)
-			case paint.ItemIndustry:
-				g.openIndustryWindow(it.ID)
-			}
+		// MouseInput.cpp: a press on the main view without a tool begins
+		// State::viewportLeft; its release acts (viewportLeftRelease).
+		g.viewportLeft = true
+	}
+}
+
+// viewportLeftRelease is stateViewportLeft's leftReleased without a tool
+// (0x4C73C2): released over the main view (no window there), getItemLeft at
+// the release point opens the vehicle's, town's, station's or industry's
+// window.
+func (g *Game) viewportLeftRelease() {
+	g.viewportLeft = false
+	if g.overWindow(g.mouseX, g.mouseY) {
+		return // released over another window: _dragWindowType differs
+	}
+	if it, ok := g.w.ItemLeftAt(g.mouseX, g.mouseY); ok {
+		switch it.Kind {
+		case paint.ItemEntity:
+			g.openVehicleWindow(uint16(it.ID), 0)
+		case paint.ItemTownLabel:
+			g.openTownWindow(it.ID)
+		case paint.ItemStationLabel:
+			g.openStationWindow(it.ID)
+		case paint.ItemIndustry:
+			g.openIndustryWindow(it.ID)
+		case paint.ItemHeadquarterBuilding:
+			g.openCompanyWindow(it.ID)
 		}
 	}
 }
