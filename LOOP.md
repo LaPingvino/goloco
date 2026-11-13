@@ -1787,4 +1787,5 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   Dallas 1648/1661: the save's tileUpdateStartLocation was ignored (d342e65). Then one sim Tick in tickLogic's order, waves on scenarioTicks, gPrng2 from the save (28c7413).
   Open: construction head is a pre-port approximation (tile head, undo stack; Joop: after removing the last piece the "+" flips, ghost sticks; red cross only rotates) — Fable porting it on branch construction. Window-stack open points: toolbar/panels not stack windows (a dragged window draws over the toolbar), frame-drag, BuildVehicle/CompanyList resize, vehicle-list column widths. Still: sounds, editor town-build tabs, Gfx::recolour exactness, one-way arrows (PaintRoad.cpp:473).
 - 2026-11-13 (loop) — N0a/N0b/N0e/N0f done (ghost docks, the empty place button, owner rename, Build Vehicles tabs); N0c (music) with Fable on branch jukebox.
-\n- 2026-11-13 (loop) — map clicks on release / nearest vehicle / HQ; upstream e71abfb, b8e249a, 61967bd, 37d7c01, 91c200d, 982c51d, a99386d, 638938c; packs at 09d74ee; music (Fable) merged; run.sh private binary. Deployed b7fbcfe.\n
+
+- 2026-11-13 (loop) — map clicks on release / nearest vehicle / HQ; upstream e71abfb, b8e249a, 61967bd, 37d7c01, 91c200d, 982c51d, a99386d, 638938c; packs at 09d74ee; music (Fable) merged; run.sh private binary. Deployed b7fbcfe.
