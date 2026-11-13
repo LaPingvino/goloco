@@ -1,18 +1,24 @@
 # A Station window with a vehicle tab in goloco: append this to
 # ../../playthrough/h2-paying-route.txt cut after its pt-h2-v1 shot (a line,
 # two stations and a train with orders in Weatherworld), then run that. The
-# Stations list opens at 200,30, the station window at 0,435 (createWindow).
-click 754 14
+# Stations list opens bottom left (0,374: the Railway Track window and Train 1's
+# have the top corners), the station window beside the Railway Track window
+# (140,30) — createWindow's placement.
+press 754 14
+wait 1
+move 754 42
+wait 1
+release 754 42
 wait 1
 move 600 500
 wait 1
 shot go-stations-list.png
-click 300 91
+click 100 437
 wait 1
 move 600 500
 wait 1
 shot go-station-1.png
-click 112 463
+click 251 58
 wait 1
 move 600 500
 wait 1
