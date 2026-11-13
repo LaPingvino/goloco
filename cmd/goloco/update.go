@@ -111,13 +111,11 @@ func (g *Game) updateModal() bool {
 // camera tour, the windows opened from the menu, and the menu itself.
 func (g *Game) updateTitle() {
 	// Title screen: advance camera animation and apply to world.
-	// w.Update() must be called here too — it increments animTick which
-	// drives water wave animation and demo train movement.
+	// The title map is a running game: w.Update is its game tick.
 	g.titleFrame++
 	g.w.Map.TitleMode = true
 	for range g.w.GameTicks(g.mouseMoved()) { // tickLogic(numUpdates): the title is a running game upstream
-		g.w.Update()
-		g.w.TickSavedVehicles()
+		g.w.Update() // tickLogic: one game tick
 		if g.titleSeq != nil {
 			g.titleSeq.Update()
 		}
@@ -193,8 +191,8 @@ func (g *Game) updateGame() {
 	// Update world (skipped when paused; repeated per speed multiplier)
 	if n := g.w.GameTicks(g.mouseMoved()); !g.isPaused { // tickLogic(numUpdates × the speed)
 		for i := 0; i < n*g.speedMult; i++ {
-			g.w.Update()
-			g.w.TickVehicles() // gameplay: the ported vehicle tick
+			g.w.Map.TitleMode = false
+			g.w.Update() // tickLogic: one game tick
 			if g.inGame {
 				g.checkObjective()
 			}

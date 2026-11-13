@@ -60,7 +60,7 @@ type World struct {
 	lastTickTime    time.Time     // GameTicks: the last tick() (its time since)
 	lastUpdate      time.Time     // GameTicks: the last frame (the 40 Hz accumulator)
 	tickAccumulator time.Duration // GameTicks: fixedUpdate's accumulator
-	diagTicksDone   bool          // GOLOCO_DIAG_TICKS has run (TickSavedVehicles)
+	diagTicksDone   bool          // GOLOCO_DIAG_TICKS has run (diagTicks)
 	sim.State                     // simulation state: map, construction head, undo history (pkg/sim)
 	renderer        *render.Renderer
 	// isometric tile dimensions (standard 2:1 ratio)
@@ -472,16 +472,15 @@ func (w *World) CollectSpriteIDs() []int {
 	return ids
 }
 
+// Update is one game tick (OpenLoco.cpp tickLogic, sim.State.Tick); animTick
+// counts them for the renderer's animations.
 func (w *World) Update() {
 	w.animTick++
-	// One game tick of the tile loop and the waves, in upstream's order
-	// (OpenLoco.cpp tick: TileManager::update, then WaveManager::update).
-	var om *objects.ObjectManager
-	if w.renderer != nil {
-		om = w.renderer.ObjMgr
+	if w.renderer == nil || w.renderer.ObjMgr == nil {
+		return
 	}
-	w.UpdateTiles(w.tileOnScreen, om)
-	w.UpdateWaves(uint32(w.animTick))
+	w.diagTicks()
+	w.State.Tick(w.tileOnScreen, w.renderer.ObjMgr) // tickLogic
 }
 
 // mapSaveChunkSize is the pixel size of each rendering tile during full-map save.

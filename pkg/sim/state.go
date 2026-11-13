@@ -1,6 +1,5 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/core"
 
 // State is everything the simulation owns: the map, plus the player's
 // construction head and undo history. pkg/world embeds it and draws it.
@@ -21,8 +20,6 @@ type State struct {
 	ghostPos  [3]int32
 	ghostCost int32
 
-	// Waves (wave.go): the wave table and the generator they draw from
-	// (upstream gPrng2).
+	// Waves (wave.go): the wave table (they draw from Map.Rng2).
 	Waves [MaxWaves]Wave
-	Rng2  core.Prng
 }

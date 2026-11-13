@@ -17,9 +17,8 @@ func TestTileLoopStartFromSave(t *testing.T) {
 	if got := s.Towns[18].Population; got != 1661 {
 		t.Fatalf("town 18 loaded with %d people, want 1661", got)
 	}
-	for tick := 0; tick < 64; tick++ { // the game's tick: tiles, then the rest
-		s.UpdateTiles(func(int, int) bool { return false }, om)
-		s.UpdateVehicles(om)
+	for tick := 0; tick < 64; tick++ {
+		s.Tick(func(int, int) bool { return false }, om)
 		if got := s.Towns[18].Population; got != 1661 {
 			t.Fatalf("town 18 has %d people after %d ticks, want 1661", got, tick+1)
 		}
