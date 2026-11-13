@@ -507,7 +507,7 @@ func (w *CompanyListWindow) drawTabCurrency(screen *ebiten.Image, black color.Co
 // drawSpeedRecords is CompanySpeedRecords::draw: from y + 47, each record
 // set — land_speed_record / air / water (11), and if a company holds it its
 // face recoloured to its colour at x + 4 (7), "Achieved by … on …" at
-// x + 33 (17) — then 5 apart.
+// x + 33 (17) — then 5 apart; with none, "None yet" (no_speedrecords_yet).
 func (w *CompanyListWindow) drawSpeedRecords(screen *ebiten.Image) {
 	g1 := globalG1Font.g1
 	pal := g1.GetPalette()
@@ -547,10 +547,12 @@ func (w *CompanyListWindow) drawSpeedRecords(screen *ebiten.Image) {
 	win2, _ := TextColours(int(w.Colour))
 	red, _ := TextColours(27)
 	y := w.Y + 47
+	hasRecord := false
 	for i, r := range w.Records {
 		if r.Speed == 0 {
 			continue
 		}
+		hasRecord = true
 		drawFormattedEx(screen, w.X+4, y, ui18nFill(i18n.LandSpeedRecord+i, L.Velocity(r.Speed)), black, win2, red)
 		y += 11
 		if r.Held {
@@ -559,6 +561,9 @@ func (w *CompanyListWindow) drawSpeedRecords(screen *ebiten.Image) {
 			y += 17
 		}
 		y += 5
+	}
+	if !hasRecord { // 638938c: no_speedrecords_yet
+		drawFormattedEx(screen, w.X+4, y, i18n.Str(i18n.NoSpeedrecordsYet), black, win2, red)
 	}
 }
 
