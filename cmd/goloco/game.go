@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/LaPingvino/goloco/pkg/assets"
@@ -466,26 +467,79 @@ func loadTitleMap(w *world.World, r *render.Renderer, dataDir string) {
 	}
 }
 
+// findLocoDataDir is the Locomotion install's Data folder
+// (Environment::resolveLocoInstallPath), "" when there is none: GOLOCO_DATA
+// first (named explicitly, not remembered), then the configured
+// loco_install_path, then OpenLoco's own (a player who runs OpenLoco has set
+// it there), then autodetection — whose find is written to the config
+// (Config::write), so later runs from any folder find it. PARTIAL: upstream
+// then asks for the folder (Platform::promptDirectory); goloco says where to
+// set it and goes on with OpenGraphics or placeholders.
 func findLocoDataDir() string {
-	home := os.Getenv("HOME")
-	var candidates []string
-	if d := os.Getenv("GOLOCO_DATA"); d != "" { // the Locomotion folder (or its Data) named explicitly
-		candidates = append(candidates, filepath.Join(d, "Data"), d)
+	valid := func(install string) bool { // validateLocoInstallPath
+		if install == "" {
+			return false
+		}
+		_, err := os.Stat(filepath.Join(install, "Data", "g1.DAT"))
+		return err == nil
+	}
+	if d := os.Getenv("GOLOCO_DATA"); d != "" { // the Locomotion folder, or its Data
+		for _, install := range []string{d, filepath.Dir(d)} {
+			if valid(install) {
+				return filepath.Join(install, "Data")
+			}
+		}
+		log.Printf("[Game] GOLOCO_DATA=%s holds no Data/g1.DAT", d)
+	}
+	if install := configValue("loco_install_path"); install != "" {
+		if valid(install) {
+			return filepath.Join(install, "Data")
+		}
+		log.Printf("[Game] Configured Locomotion game folder %s is missing Data/g1.DAT.", install)
+	}
+	home, _ := os.UserHomeDir()
+	candidates := []string{openLocoInstallPath()}
+	if exe, err := os.Executable(); err == nil { // a build next to the data, wherever it is started from
+		candidates = append(candidates, filepath.Join(filepath.Dir(exe), "..", "locomotion"))
 	}
 	candidates = append(candidates,
-		"../locomotion/Data",
-		"locomotion/Data",
-		filepath.Join(home, "Locomotion/Data"), // an unpacked copy in the home folder
-		filepath.Join(home, "locomotion/Data"),
-		filepath.Join(os.Getenv("HOME"), ".local/share/Steam/steamapps/common/Locomotion/Data"),
-		filepath.Join(os.Getenv("HOME"), ".steam/steam/steamapps/common/Locomotion/Data"),
-		"/usr/share/games/locomotion/Data",
+		"../locomotion", "locomotion",
+		filepath.Join(home, "Locomotion"), filepath.Join(home, "locomotion"),
+		filepath.Join(home, "Projects", "locomotion"),
+		filepath.Join(home, ".local/share/Steam/steamapps/common/Locomotion"),
+		filepath.Join(home, ".steam/steam/steamapps/common/Locomotion"),
+		"/usr/share/games/locomotion",
 	)
+	for _, install := range candidates { // autoDetectLocoInstallPath
+		if !valid(install) {
+			continue
+		}
+		if abs, err := filepath.Abs(install); err == nil {
+			install = abs
+		}
+		log.Printf("[Game] Locomotion game folder found: %s (remembered in %s)", install, configPath())
+		if err := setConfigValue("loco_install_path", install); err != nil {
+			log.Printf("[Game] Could not write %s: %v", configPath(), err)
+		}
+		return filepath.Join(install, "Data")
+	}
+	log.Printf("[Game] Unable to find the Locomotion game folder: set loco_install_path in %s (or GOLOCO_DATA) to the folder holding Data/g1.DAT", configPath())
+	return ""
+}
 
-	for _, dir := range candidates {
-		g1Path := filepath.Join(dir, "g1.DAT")
-		if _, err := os.Stat(g1Path); err == nil {
-			return dir
+// openLocoInstallPath is OpenLoco's own configured loco_install_path ("" none).
+func openLocoInstallPath() string {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "OpenLoco", "openloco.yml"))
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if k, v, ok := strings.Cut(line, ":"); ok && strings.TrimSpace(k) == "loco_install_path" {
+			return strings.Trim(strings.TrimSpace(v), `"'`)
 		}
 	}
 	return ""
