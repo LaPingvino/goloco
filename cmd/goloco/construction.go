@@ -17,24 +17,59 @@ import (
 // piece / gradient selection, the track-vs-road dispatch, and the head's ghost.
 // The Station tab's map tools are in stationtool.go.
 //
-// OpenLoco reference: src/OpenLoco/src/Ui/Windows/Construction/Construction.cpp
-// Curve row + slope row of sprite buttons, Rotate/Undo, and a Build action.
-// Click the map to place the construction head; pieces then chain from it.
+// OpenLoco reference: src/OpenLoco/src/Ui/Windows/Construction/ConstructionTab.cpp
+// The state itself (position, rotation, hovering, piece and gradient) is
+// sim.State.Cons (pkg/sim/construction.go).
 
-// consPieceCurve maps upstream's piece widgets to goloco's consCurve values,
-// consGradientSlope its gradient widgets to consSlope.
+// consPieceWidget maps upstream's piece widgets to lastSelectedTrackPiece
+// (trackPieceWidgets; the dual-track pair and the turnaround go by the
+// rotation, constructionFrame), consGradientWidget its gradient widgets to
+// lastSelectedTrackGradient.
 var (
-	consPieceCurve = map[string]int{
-		"left_hand_curve_very_small": -1, "left_hand_curve_small": -2, "left_hand_curve": -3,
-		"right_hand_curve": 3, "right_hand_curve_small": 2, "right_hand_curve_very_small": 1,
-		"left_hand_curve_large": -4, "straight": 0, "right_hand_curve_large": 4,
+	consPieceWidget = map[string]uint8{
+		"left_hand_curve_very_small": construct.LeftCurveVerySmall, "left_hand_curve_small": construct.LeftCurveSmall,
+		"left_hand_curve": construct.LeftCurve, "left_hand_curve_large": construct.LeftCurveLarge,
+		"right_hand_curve_very_small": construct.RightCurveVerySmall, "right_hand_curve_small": construct.RightCurveSmall,
+		"right_hand_curve": construct.RightCurve, "right_hand_curve_large": construct.RightCurveLarge,
+		"straight": construct.Straight, "s_bend_left": construct.SBendLeft, "s_bend_right": construct.SBendRight,
 	}
-	consGradientSlope = map[string]int{
-		"steep_slope_down": -2, "slope_down": -1, "level": 0, "slope_up": 1, "steep_slope_up": 2,
+	consGradientWidget = map[string]uint8{
+		"steep_slope_down": construct.SteepSlopeDown, "slope_down": construct.SlopeDown, "level": construct.Level,
+		"slope_up": construct.SlopeUp, "steep_slope_up": construct.SteepSlopeUp,
 	}
 )
 
-func nameFor(m map[string]int, v int) string {
+// consUnusedAtRotation is getUnusedPiecesRotation (0x0049DB71): the piece
+// and gradient widgets a track's construction rotation disables — beside a
+// dual track's other track (4–7, 8–11) the curves but the very small ones,
+// one s-bend and the slopes; on the diagonal (12–15) every curve but the
+// large ones, the s-bends and every gradient.
+func consUnusedAtRotation(widget string, rotation uint8) bool {
+	in := func(names ...string) bool {
+		for _, n := range names {
+			if n == widget {
+				return true
+			}
+		}
+		return false
+	}
+	switch {
+	case rotation >= 12:
+		return in("left_hand_curve_very_small", "left_hand_curve_small", "left_hand_curve", "right_hand_curve",
+			"right_hand_curve_very_small", "right_hand_curve_small", "s_bend_dual_track_left", "s_bend_left",
+			"s_bend_right", "s_bend_dual_track_right", "steep_slope_down", "slope_down", "slope_up", "steep_slope_up")
+	case rotation >= 4:
+		sBend := "s_bend_left"
+		if rotation >= 8 {
+			sBend = "s_bend_right"
+		}
+		return in("left_hand_curve_small", "left_hand_curve", "left_hand_curve_large", "right_hand_curve_large",
+			"right_hand_curve", "right_hand_curve_small", sBend, "slope_down", "slope_up")
+	}
+	return false
+}
+
+func nameFor(m map[string]uint8, v uint8) string {
 	for k, x := range m {
 		if x == v {
 			return k
@@ -131,53 +166,25 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 			f.StationTabIcon = int(sk.ImageOffset) + objects.ISToolbarMenuShipPort
 		}
 	}
-	st.Rotation = g.w.ConstructionHeadState().Rotation
-	st.Piece = nameFor(consPieceCurve, g.consCurve)
-	if g.consOneShot >= 0 && g.consIsRoad() {
-		st.Piece = "turnaround"
-	} else if g.consOneShot >= 0 { // the one-shot piece's button is the active one
-		switch g.consOneShot {
-		case construct.SBendLeft:
-			st.Piece = "s_bend_left"
-		case construct.SBendRight:
-			st.Piece = "s_bend_right"
-		default:
-			rot := g.w.ConstructionHeadState().Rotation
+	cs := g.w.Cons
+	st.Rotation = cs.Rotation
+	st.Piece = nameFor(consPieceWidget, cs.Piece)
+	if cs.Piece >= construct.SBendToDualTrack { // the pair of buttons whose pieces go by the rotation
+		switch {
+		case g.consIsRoad():
+			st.Piece = "turnaround"
+		case consDualTrackPiece(false, cs.Rotation) == cs.Piece:
 			st.Piece = "s_bend_dual_track_left"
-			if consDualTrackPiece(false, rot) != g.consOneShot {
-				st.Piece = "s_bend_dual_track_right"
-			}
+		default:
+			st.Piece = "s_bend_dual_track_right"
 		}
 	}
-	st.Gradient = nameFor(consGradientSlope, g.consSlope)
-	st.Hover = !g.w.ConstructionHeadState().Active
+	st.Gradient = nameFor(consGradientWidget, cs.Gradient)
+	st.Hover = cs.Hover
 	st.BridgeImage, st.Company = -1, f.CompanyColour
-	// trackCost/roadCost: the selected piece's cost while extending (the
-	// ghost's cost upstream).
-	if !st.Hover && g.r.ObjMgr != nil {
-		if id := g.consSelectedID(); id >= 0 {
-			cmf := &g.w.CurrencyMultiplicationFactor
-			om := g.r.ObjMgr
-			mods := func(names []string) []*construct.Mod { // trackObj->mods[i]
-				out := make([]*construct.Mod, len(names))
-				for i, n := range names {
-					if e := om.Extra(n); e != nil {
-						out[i] = &construct.Mod{Pieces: e.Pieces, BuildCostFactor: e.BuildCostFactor, CostIndex: e.CostIndex}
-					}
-				}
-				return out
-			}
-			if g.consIsRoad() {
-				if r := om.GetRoadObjectByIndex(g.buildObjID); r != nil {
-					st.Cost = int64(construct.RoadPieceCost(id, r.BuildCostFactor, r.CostIndex, cmf) +
-						construct.ModsCost(true, id, g.consMods, mods(r.ModNames), cmf))
-				}
-			} else if t := om.GetTrackObjectByIndex(g.buildObjID); t != nil {
-				st.Cost = int64(construct.TrackPieceCost(id, t.BuildCostFactor, t.CostIndex, cmf) +
-					construct.ModsCost(false, id, g.consMods, mods(t.ModNames), cmf))
-			}
-		}
-	}
+	// drawCostString's trackCost / roadCost: the ghost's cost (hovering or
+	// building), or the piece's just built.
+	st.Cost = int64(cs.Cost)
 	if g.r.ObjMgr != nil {
 		om := g.r.ObjMgr
 		// lastSelectedBridge: the first available (PARTIAL: the scenario's remembered bridges[]).
@@ -205,17 +212,19 @@ func (g *Game) consWindowOrigin() (int, int) {
 }
 
 func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
+	// Every construction window opens hovering in rotation 0, straight and
+	// level (Common's open, then trackWindow's rotate_90).
+	if g.r.ObjMgr != nil {
+		g.w.EndConstruction(g.playerCmd())
+	}
+	g.w.ResetConstruction()
 	x, y := g.consWindowOrigin()
 	win := ui.NewSimpleWindow(ui.WindowTypeConstruction, x, y, ui.ConstructionW, ui.ConstructionH)
 	win.WinFlags = ui.WindowFlagNoAutoClose // createConstructionWindow: lighterFrame | noAutoClose
 	// The close button ends the construction (Construction's onClose: the
 	// tool cancelled, the ghosts removed) — it used to hide the window and
 	// leave the mode on.
-	win.OnClose = func() {
-		g.buildMode = buildModeNone
-		g.hoverTileX, g.hoverTileY = -1, -1
-		g.w.ClearConstructionHead()
-	}
+	win.OnClose = g.endConstruction
 	win.PortedDraw = func(screen *ebiten.Image, x, y int) {
 		f, st := g.constructionFrame(x, y)
 		if f.Disabled[g.consTab] { // the tab went away (another track type)
@@ -240,12 +249,14 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		// The piece preview in the construct area (goloco's preview drawing;
 		// PARTIAL: upstream draws it with the paint code, drawTrack).
 		if clip, ok := screen.SubImage(image.Rect(x+4, y+146, x+3+132-1, y+145+100-1)).(*ebiten.Image); ok {
-			rot := int(g.w.ConstructionHeadState().Rotation) & 3
-			g.w.DrawPiecePreview(clip, float64(x+3+66), float64(y+145+28), 1.0, g.consIsRoad(), g.consDisplayID(), g.buildObjID, rot)
+			id, rot := -1, int(g.w.Cons.Rotation)&3
+			if p, ok := g.consPiece(); ok {
+				id, rot = int(p.ID), int(p.Rotation)&3
+			}
+			g.w.DrawPiecePreview(clip, float64(x+3+66), float64(y+145+28), 1.0, g.consIsRoad(), id, g.buildObjID, rot)
 		}
 	}
-	// clickable(Construction): close_button tab_construction tab_station tab_signal tab_overhead construct rotate bridge_dropdown station_dropdown signal_dropdown both_directions single_direction checkbox_1 checkbox_2 checkbox_3 checkbox_4 image rotate_90 straight left_hand_curve left_hand_curve_large left_hand_curve_small left_hand_curve_very_small right_hand_curve right_hand_curve_large right_hand_curve_small right_hand_curve_very_small s_bend_left s_bend_right s_bend_dual_track_left s_bend_dual_track_right level slope_up slope_down steep_slope_up steep_slope_down
-	// clickable-partial(Construction): remove
+	// clickable(Construction): close_button tab_construction tab_station tab_signal tab_overhead construct rotate bridge_dropdown station_dropdown signal_dropdown both_directions single_direction checkbox_1 checkbox_2 checkbox_3 checkbox_4 image rotate_90 straight left_hand_curve left_hand_curve_large left_hand_curve_small left_hand_curve_very_small right_hand_curve right_hand_curve_large right_hand_curve_small right_hand_curve_very_small s_bend_left s_bend_right s_bend_dual_track_left s_bend_dual_track_right level slope_up slope_down steep_slope_up steep_slope_down remove
 	win.OnWindowClick = func(rx, ry int) {
 		f, st := g.constructionFrame(win.X, win.Y)
 		if tab := f.TabAt(rx, ry); tab >= 0 || (ry >= 15 && ry < 42) { // tabs
@@ -285,37 +296,36 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 			}
 			return
 		}
-		switch hit := ui.ConstructionHit(rx, ry, st); hit {
+		hit := ui.ConstructionHit(rx, ry, st)
+		if !g.consIsRoad() && consUnusedAtRotation(hit, g.w.Cons.Rotation) {
+			return // a disabled widget (PARTIAL: it isn't drawn greyed yet)
+		}
+		switch hit {
 		case "":
 		case "construct":
-			if id := g.consSelectedID(); id >= 0 {
-				g.consPlace(id)
-			}
+			g.consConstruct()
 		case "bridge":
 			g.openBridgeDropdown(win.X, win.Y, f.SkinColour, f.CompanyColour)
-		case "rotate":
-			g.w.RotateConstructionHead()
+		case "rotate": // rotate_90: the rotate arrows while hovering, the red cross while building
+			g.w.ConstructionRotate90(g.playerCmd())
 		case "remove":
-			g.consUndo()
+			g.consRemove()
 		case "copy", "paste": // PARTIAL: blueprints not ported
-		case "s_bend_left", "s_bend_right":
-			if !g.consIsRoad() { // changeTrackPiece(s_bend_…)
-				g.consOneShot = map[string]int{"s_bend_left": construct.SBendLeft, "s_bend_right": construct.SBendRight}[hit]
-			}
 		case "s_bend_dual_track_left", "s_bend_dual_track_right", "turnaround":
-			if g.consIsRoad() {
-				g.consOneShot = construct.Turnaround // the road's turnaround button
-			} else {
-				g.consOneShot = consDualTrackPiece(hit == "s_bend_dual_track_right", g.w.ConstructionHeadState().Rotation)
+			piece := uint8(construct.Turnaround) // the road's turnaround button
+			if !g.consIsRoad() {
+				piece = consDualTrackPiece(hit == "s_bend_dual_track_right", g.w.Cons.Rotation)
 			}
+			g.w.ChangeTrackPiece(g.playerCmd(), piece, false)
 		default:
-			if v, ok := consPieceCurve[hit]; ok {
-				g.consCurve = v
-				g.consOneShot = -1
-			} else if v, ok := consGradientSlope[hit]; ok {
-				// Piece and gradient are separate choices (changeTrackPiece); a
-				// combination that can't be built gives no piece.
-				g.consSlope = v
+			// changeTrackPiece: piece and gradient are separate choices; a
+			// combination that can't be built gives no piece.
+			if v, ok := consPieceWidget[hit]; ok {
+				if !g.consIsRoad() || v < construct.SBendLeft { // roads have no s-bends
+					g.w.ChangeTrackPiece(g.playerCmd(), v, false)
+				}
+			} else if v, ok := consGradientWidget[hit]; ok {
+				g.w.ChangeTrackPiece(g.playerCmd(), v, true)
 			}
 		}
 	}
@@ -548,145 +558,70 @@ func (g *Game) openBridgeDropdown(wx, wy int, colour, company uint8) {
 	g.dropdown = d
 }
 
-// updateTrackGhost is the Construction tab's tool update while positioning
-// (onToolUpdate → onToolUpdateSingle for track): with the track window on
-// its Construction tab and no head placed yet, the selected piece in the
-// construction rotation (getTrackPieceId) stands as a ghost under the
-// cursor; otherwise none. PARTIAL: road (the road ghost), building off
-// existing track (tryMakeTrackJunctionAtLoc), the construction arrow.
-func (g *Game) updateTrackGhost() {
+// updateConstruction is the Construction tab's part of each update for a
+// track or road window: the window's bridge and mods into the state; while
+// hovering, the tool's update with the cursor over the map (onToolUpdate →
+// onToolUpdateSingle: the ghost and arrow under the cursor); while building,
+// updateConstruction (the ghost and the blinking arrow where the next piece
+// starts). Off the tab or without the window: the ghosts and the arrow go.
+func (g *Game) updateConstruction() {
 	if g.r.ObjMgr == nil {
 		return
 	}
-	// cState.lastSelectedBridge: the window's bridge choice, for every piece built
-	g.w.ConsBridge = 0
-	if list := g.r.ObjMgr.AvailableCompatibleBridges(g.buildObjID, g.consIsRoad(), int(g.w.CurrentYear)); len(list) > 0 {
-		g.w.ConsBridge = uint8(pickSlot(list, g.consBridge)) + 1
-	}
-	// updateConstruction for a road: the selected road piece as a ghost at the head.
-	if g.buildMode == buildModeRoad && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active {
-		c := g.playerCmd()
-		g.w.UpdateHeadRoadGhost(c, g.consSelectedRoadID(), uint8(g.buildObjID))
-	} else if g.buildMode == buildModeRoad && g.consTab == 0 && !g.inTitleScreen && g.hoverTileX >= 0 {
-		// onToolUpdateSingle for a road: the piece under the cursor as a ghost
-		c := g.playerCmd()
-		if p, ok := construct.GetRoadPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation); ok {
-			tx, ty, jh := g.consTarget(true)
-			g.w.UpdateRoadGhost(c, tx, ty, p.ID, p.Rotation, uint8(g.buildObjID), jh)
-		} else {
-			g.w.RemoveRoadGhost(c)
+	if !g.consHasHead() || g.consTab != 0 || g.inTitleScreen {
+		if g.w.TrackGhost != nil || g.w.RoadGhost != nil || g.w.ConsArrow.On {
+			g.w.EndConstruction(g.playerCmd())
 		}
-	} else if g.w.RoadGhost != nil {
-		c := g.playerCmd()
-		g.w.RemoveRoadGhost(c)
-	}
-	if g.buildMode == buildModeTrack && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active {
-		// updateConstruction: the selected piece as a ghost at the head.
-		c := g.playerCmd()
-		g.w.UpdateHeadTrackGhost(c, g.consSelectedTrackID(), uint8(g.buildObjID))
+		g.w.SyncConstructionArrow(false)
 		return
 	}
-	if g.buildMode != buildModeTrack || g.consTab != 0 || g.inTitleScreen || g.hoverTileX < 0 {
-		g.removeTrackGhost()
-		return
-	}
-	p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation)
-	if !ok {
-		g.removeTrackGhost()
-		return
-	}
-	bridge := uint8(0xFF)
-	if list := g.r.ObjMgr.AvailableCompatibleBridges(g.buildObjID, false, int(g.w.CurrentYear)); len(list) > 0 {
-		bridge = uint8(pickSlot(list, g.consBridge))
+	road, obj := g.consIsRoad(), uint8(g.buildObjID)
+	// cState.lastSelectedBridge and lastSelectedMods: the window's choices, for every piece built
+	g.w.Cons.Bridge, g.w.Cons.Mods = 0, g.consMods
+	if list := g.r.ObjMgr.AvailableCompatibleBridges(g.buildObjID, road, int(g.w.CurrentYear)); len(list) > 0 {
+		g.w.Cons.Bridge = uint8(pickSlot(list, g.consBridge)) + 1
 	}
 	c := g.playerCmd()
-	tx, ty, jh := g.consTarget(false)
-	g.w.UpdateTrackGhost(c, tx, ty, p.ID, p.Rotation, uint8(g.buildObjID), bridge, jh)
+	if !g.w.Cons.Hover {
+		g.w.UpdateConstruction(c, road, obj)
+	} else if g.hoverTileX >= 0 && !g.overWindow(g.mouseX, g.mouseY) {
+		tx, ty, jh := g.consTarget(road)
+		g.w.ConstructionToolUpdate(c, tx, ty, jh, road, obj)
+	}
+	g.w.SyncConstructionArrow(true)
 }
 
-// removeTrackGhost is removeConstructionGhosts' track part (removeTrackGhosts).
-func (g *Game) removeTrackGhost() {
-	if g.w.TrackGhost == nil {
-		return
+// endConstruction is the track / road window closing (Common::onClose): the
+// tool cancelled, the ghosts and the arrow removed, the mode off.
+func (g *Game) endConstruction() {
+	if g.r.ObjMgr != nil {
+		g.w.EndConstruction(g.playerCmd())
 	}
-	c := g.playerCmd()
-	g.w.RemoveTrackGhost(c)
+	g.w.ResetConstruction()
+	g.w.SyncConstructionArrow(false)
+	g.buildMode = buildModeNone
+	g.hoverTileX, g.hoverTileY = -1, -1
 }
 
-// consSelectedTrackID resolves the current curve/slope selection to the first
-// placeable track id at the head, or -1.
-func (g *Game) consSelectedTrackID() int {
-	// getTrackPieceId (pkg/construct) for the chosen piece and gradient at
-	// the head's constructionRotation.
-	rot := g.w.ConstructionHeadState().Rotation
-	p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), rot)
-	if !ok || !g.w.CanPlaceTrackAtHead(int(p.ID)) {
-		return -1
+// consPiece is getTrackPieceId / getRoadPieceId (pkg/construct) for the
+// selected piece and gradient in the construction rotation; ok false when
+// that can't be built.
+func (g *Game) consPiece() (construct.TrackPieceID, bool) {
+	cs := g.w.Cons
+	if g.consIsRoad() {
+		return construct.GetRoadPieceID(cs.Piece, cs.Gradient, cs.Rotation)
 	}
-	return int(p.ID)
-}
-
-// consTrackPiece is lastSelectedTrackPiece: a one-shot piece if chosen, else
-// the curve buttons' piece.
-func (g *Game) consTrackPiece() uint8 {
-	if g.consOneShot >= 0 {
-		return uint8(g.consOneShot)
-	}
-	switch g.consCurve {
-	case -1:
-		return construct.LeftCurveVerySmall
-	case 1:
-		return construct.RightCurveVerySmall
-	case -2:
-		return construct.LeftCurveSmall
-	case 2:
-		return construct.RightCurveSmall
-	case -3:
-		return construct.LeftCurve
-	case 3:
-		return construct.RightCurve
-	case -4:
-		return construct.LeftCurveLarge
-	case 4:
-		return construct.RightCurveLarge
-	}
-	return construct.Straight
-}
-
-// consTrackGradient is lastSelectedTrackGradient for goloco's slope choice.
-func consTrackGradient(slope int) uint8 {
-	switch slope {
-	case -2:
-		return construct.SteepSlopeDown
-	case -1:
-		return construct.SlopeDown
-	case 1:
-		return construct.SlopeUp
-	case 2:
-		return construct.SteepSlopeUp
-	}
-	return construct.Level
+	return construct.GetTrackPieceID(cs.Piece, cs.Gradient, cs.Rotation)
 }
 
 // consDualTrackPiece is the piece the left or right dual-track button
 // chooses at this heading (construct.DualTrackButtons).
-func consDualTrackPiece(right bool, rot uint8) int {
+func consDualTrackPiece(right bool, rot uint8) uint8 {
 	_, _, l, r := construct.DualTrackButtons(rot)
 	if right {
-		return int(r)
+		return r
 	}
-	return int(l)
-}
-
-// consSelectedRoadID is getRoadPieceId (pkg/construct) for the chosen piece
-// and gradient at the head, if it can be placed there; else -1.
-func (g *Game) consSelectedRoadID() int {
-	rot := g.w.ConstructionHeadState().Rotation
-	p, ok := construct.GetRoadPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), rot)
-	if !ok || !g.w.CanPlaceRoadAtHead(int(p.ID)) {
-		return -1
-	}
-	return int(p.ID)
+	return l
 }
 
 func (g *Game) consIsRoad() bool { return g.buildMode == buildModeRoad }
@@ -703,29 +638,9 @@ func (g *Game) stationToolOn() bool {
 	return g.buildMode != buildModeNone && g.consTab == 1 && !g.inTitleScreen
 }
 
+// consSelectedID is the selected piece's track or road id (consPiece), -1 none.
 func (g *Game) consSelectedID() int {
-	if g.consIsRoad() {
-		return g.consSelectedRoadID()
-	}
-	return g.consSelectedTrackID()
-}
-
-// consDisplayID returns a piece id to show in the preview panel for the current
-// curve/slope selection, regardless of whether it is placeable at the head (so
-// the panel always shows the piece the buttons describe). Falls back to the
-// first candidate, or straight.
-func (g *Game) consDisplayID() int {
-	if id := g.consSelectedID(); id >= 0 {
-		return id
-	}
-	// The piece getTrackPieceId/getRoadPieceId gives; none (−1) when it
-	// can't be built at this heading.
-	rot := g.w.ConstructionHeadState().Rotation
-	get := construct.GetTrackPieceID
-	if g.consIsRoad() {
-		get = construct.GetRoadPieceID
-	}
-	if p, ok := get(g.consTrackPiece(), consTrackGradient(g.consSlope), rot); ok {
+	if p, ok := g.consPiece(); ok {
 		return int(p.ID)
 	}
 	return -1
@@ -747,35 +662,47 @@ func (g *Game) openTrackBuildError(c *sim.Cmd) {
 	g.openError(title, cmdErrorText(c))
 }
 
-func (g *Game) consPlace(id int) {
-	var built bool
-	if g.consIsRoad() && g.r.ObjMgr != nil {
-		// constructRoad: the createRoad game command (ghost taken up first), checked and charged.
-		c := g.playerCmd()
-		if _, built = g.w.BuildRoadAtHead(c, id, uint8(g.buildObjID)); !built {
-			g.openTrackBuildError(c)
-		}
-	} else if g.consIsRoad() {
-		built = g.w.PlaceRoadAtHead(id, uint8(g.buildObjID))
-	} else if g.r.ObjMgr != nil { // the createTrack game command: checked and charged (PL.1 e)
-		c := g.playerCmd()
-		if _, built = g.w.BuildTrackAtHead(c, id, uint8(g.buildObjID)); !built {
-			g.openTrackBuildError(c)
-		}
-	} else {
-		built = g.w.PlaceTrackAtHead(id, uint8(g.buildObjID))
+// consConstruct is the Construct button — the piece preview —
+// (constructTrackOrRoad): the selected piece built where the state stands,
+// the state moved past it; refused, the error window. Upstream doesn't ask
+// whether the window hovers: a click on the preview then tries the piece
+// where the ghost's position is, 16 below the ground ("Raise or lower land
+// first", checked on OpenLoco 26.08), and hovers on.
+func (g *Game) consConstruct() {
+	if g.r.ObjMgr == nil {
+		return
 	}
-	if built && g.consOneShot >= 0 {
-		// constructTrack/constructRoad: one-shot pieces (≥ 9) go back to straight.
-		g.consOneShot, g.consCurve = -1, 0
+	if _, ok := g.consPiece(); !ok { // constructTrack: no piece, nothing
+		return
+	}
+	c := g.playerCmd()
+	var built bool
+	if g.consIsRoad() {
+		_, built = g.w.ConstructRoad(c, uint8(g.buildObjID))
+	} else {
+		_, built = g.w.ConstructTrack(c, uint8(g.buildObjID))
+	}
+	if !built {
+		g.openTrackBuildError(c)
 	}
 }
 
-func (g *Game) consUndo() {
+// consRemove is the bulldozer button (removeTrack 0x004A0121): the piece
+// behind the state taken up, the state moved back over it; refused, the
+// error window (upstream's title is cant_build_pop3_string here too).
+func (g *Game) consRemove() {
+	if g.r.ObjMgr == nil {
+		return
+	}
+	c, g1 := g.stationCmd()
+	var refused bool
 	if g.consIsRoad() {
-		g.w.UndoLastRoad()
+		_, refused = g.w.ConstructionRemoveRoad(c, uint8(g.buildObjID), g1)
 	} else {
-		g.w.UndoLastTrack()
+		_, refused = g.w.ConstructionRemoveTrack(c, uint8(g.buildObjID), g1)
+	}
+	if refused {
+		g.openTrackBuildError(c)
 	}
 }
 

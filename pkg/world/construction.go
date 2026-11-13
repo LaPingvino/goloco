@@ -1,59 +1,6 @@
 package world
 
-import (
-	"math"
-
-	"github.com/hajimehoshi/ebiten/v2"
-)
-
-// removeTrackElement deletes one exactly-matching track element from a tile.
-
-func (w *World) DrawRoadConstructionGhost(screen *ebiten.Image, roadID, objID int) {
-	h := w.ConsHead
-	if !h.Active || w.renderer == nil || w.renderer.ObjMgr == nil {
-		return
-	}
-	if !w.CanPlaceRoadAtHead(roadID) || roadID < 0 || roadID >= len(kRoadPartsStyle0) {
-		return
-	}
-	roadObj := w.renderer.ObjMgr.GetRoadObjectByIndex(objID)
-	if roadObj == nil || roadObj.Image == 0 {
-		return
-	}
-	pieces := kRoadPartsStyle0[roadID]
-	tiles, baseZ, ok := w.RoadFootprint(roadID)
-	if !ok {
-		return
-	}
-	scale := 1.0 / float64(int(1)<<w.zoom)
-	for seq, tc := range tiles {
-		if seq >= len(pieces) {
-			break
-		}
-		offset := pieces[seq].img[h.Rotation&3]
-		if offset == 0 {
-			continue
-		}
-		spriteID := int(roadObj.Image) + int(offset)
-		img := w.renderer.GetSprite(spriteID)
-		if img == nil {
-			continue
-		}
-		_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
-		if !ok {
-			continue
-		}
-		vpX, vpY := w.tileToScreen(tc[0], tc[1])
-		vpY -= float64(baseZ[seq]) * 4.0
-		drawX := math.Round((vpX - w.camX) * scale)
-		drawY := math.Round((vpY - w.camY) * scale)
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Scale(scale, scale)
-		op.GeoM.Translate(drawX+float64(xOff)*scale, drawY+float64(yOff)*scale)
-		op.ColorScale.ScaleAlpha(0.6)
-		screen.DrawImage(img, op)
-	}
-}
+import "github.com/hajimehoshi/ebiten/v2"
 
 // DrawPiecePreview draws the selected construction piece's sprite(s) centred at
 // (screenCX, screenCY) using the given rotation and scale, into an arbitrary
@@ -127,58 +74,4 @@ func (w *World) DrawPiecePreview(dst *ebiten.Image, screenCX, screenCY, scale fl
 		}
 	}
 	return drawn
-}
-
-// DrawConstructionGhost renders the selected piece translucently at the head,
-// covering every sequence tile, plus a marker diamond on the head tile.
-func (w *World) DrawConstructionGhost(screen *ebiten.Image, trackID, objID int) {
-	h := w.ConsHead
-	if !h.Active || w.renderer == nil || w.renderer.ObjMgr == nil {
-		return
-	}
-	trackObj := w.renderer.ObjMgr.GetTrackObjectByIndex(objID)
-	scale := 1.0 / float64(int(1)<<w.zoom)
-
-	drawAt := func(tileX, tileY int, z uint8, spriteID int) {
-		vpX, vpY := w.tileToScreen(tileX, tileY)
-		vpY -= float64(z) * 4.0
-		drawX := math.Round((vpX - w.camX) * scale)
-		drawY := math.Round((vpY - w.camY) * scale)
-		img := w.renderer.GetSprite(spriteID)
-		if img == nil {
-			return
-		}
-		_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
-		if !ok {
-			return
-		}
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Scale(scale, scale)
-		op.GeoM.Translate(drawX+float64(xOff)*scale, drawY+float64(yOff)*scale)
-		op.ColorScale.ScaleAlpha(0.6)
-		screen.DrawImage(img, op)
-	}
-
-	// The head shows as upstream's blinking construction arrow, painted in the
-	// world (constructionarrow.go); the pulsing diamond drawn here before was
-	// goloco's own marker, not upstream's.
-
-	if trackObj != nil && trackObj.Image != 0 && w.CanPlaceTrackAtHead(trackID) &&
-		trackID < len(kTrackParts) && kTrackParts[trackID] != nil {
-		if tiles, baseZ, ok := w.TrackFootprint(trackID); ok {
-			parts := kTrackParts[trackID]
-			for seq, tc := range tiles {
-				if seq >= len(parts) {
-					break
-				}
-				for layer := 0; layer < 3; layer++ {
-					offset := parts[seq].img[h.Rotation&3][layer]
-					if offset == 0 {
-						continue
-					}
-					drawAt(tc[0], tc[1], baseZ[seq], int(trackObj.Image)+int(offset))
-				}
-			}
-		}
-	}
 }

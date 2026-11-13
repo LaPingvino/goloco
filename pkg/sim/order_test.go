@@ -44,9 +44,11 @@ func TestOrderFollowsMutations(t *testing.T) {
 	if tl.Order[1].Kind != scenario.KindSurface || tl.Order[2].Index != 0 || tl.Order[3].Index != 2 {
 		t.Fatalf("equal-height order wrong: %v", tl.Order)
 	}
-	s.removeTrackElement(0, 0, 0, 0, 0, 4)
+	tl.Tracks = append(tl.Tracks[:1], tl.Tracks[2:]...) // the tunnel track (index 1) goes
+	tl.removeRef(scenario.KindTrack, 1)
 	checkOrder(t, tl)
-	s.removeRoadElement(0, 0, 0, 0, 0, 12)
+	tl.Roads = tl.Roads[:0]
+	tl.removeRef(scenario.KindRoad, 0)
 	checkOrder(t, tl)
 	if len(tl.Tracks) != 2 || len(tl.Roads) != 0 {
 		t.Fatalf("removals: %d tracks %d roads", len(tl.Tracks), len(tl.Roads))

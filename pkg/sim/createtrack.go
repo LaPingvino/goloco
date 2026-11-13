@@ -13,9 +13,8 @@ import (
 // cost of the track and its extras.
 // createTrackCheck (part 3) is the per-piece checks and the bridge / tunnel
 // costs; createTrackApply (part 4) places the pieces, and createTrack is the
-// whole command. PARTIAL: the company observation, emotion and sound; the
-// construction window still builds with PlaceTrackAtHead (no cost — LOOP
-// PL.1 e) until it goes through createTrack.
+// whole command (the construction window's: State.ConstructTrack). PARTIAL:
+// the company observation, emotion and sound.
 
 // trackPlacementArgs is TrackPlacementArgs.
 type trackPlacementArgs struct {

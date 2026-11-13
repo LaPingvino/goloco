@@ -7,9 +7,9 @@ import "testing"
 // leads further; trackAimlessWanderPathing finds no signals on plain track.
 func TestTrackLongestPathing(t *testing.T) {
 	s := flatState(40, 64)
-	s.ConsHead = ConstructionHead{Active: true, X: 30, Y: 20, BaseZ: 64, Rotation: 0}
+	h := headAt(s, 30, 20, 64, 0)
 	for range 5 {
-		if !s.PlaceTrackAtHead(0, 0) {
+		if !h.track(0) {
 			t.Fatal("straight can't be built")
 		}
 	}
@@ -20,10 +20,10 @@ func TestTrackLongestPathing(t *testing.T) {
 	// A junction at (25,20): the line continues 4 more straights west; a
 	// small left curve (track 4) branches off there and ends at once.
 	for range 4 {
-		s.PlaceTrackAtHead(0, 0)
+		h.track(0)
 	}
-	s.ConsHead = ConstructionHead{Active: true, X: 25, Y: 20, BaseZ: 64, Rotation: 0}
-	if !s.PlaceTrackAtHead(4, 0) {
+	h = headAt(s, 25, 20, 64, 0)
+	if !h.track(4) {
 		t.Fatal("curve can't be built")
 	}
 	e, _ := TrackConnectionEnd(26*32, 20*32, 64*4, 0) // the end of the straight at (26,20)
@@ -44,12 +44,12 @@ func TestTrackLongestPathing(t *testing.T) {
 // curve does not; isTrackRoutingResultBetter prefers the straight.
 func TestTrackTargetedPathing(t *testing.T) {
 	s := flatState(40, 64)
-	s.ConsHead = ConstructionHead{Active: true, X: 30, Y: 20, BaseZ: 64, Rotation: 0}
+	h := headAt(s, 30, 20, 64, 0)
 	for range 9 {
-		s.PlaceTrackAtHead(0, 0)
+		h.track(0)
 	}
-	s.ConsHead = ConstructionHead{Active: true, X: 25, Y: 20, BaseZ: 64, Rotation: 0}
-	s.PlaceTrackAtHead(4, 0)
+	h = headAt(s, 25, 20, 64, 0)
+	h.track(4)
 	e, _ := TrackConnectionEnd(26*32, 20*32, 64*4, 0)
 	tc := s.TrackConnections(e.X, e.Y, e.Z, e.NextRotation, 0, 0, 0, 0)
 	target := &RouteTarget{StationID: -1, X: 22 * 32, Y: 20 * 32, Z: 64 * 4, TaD: 0, RX: -1, RY: -1}
@@ -79,12 +79,12 @@ func TestTrackTargetedPathing(t *testing.T) {
 // connection it is a direct hit (noSignals, distance 0).
 func TestTrackPathingWaypoint(t *testing.T) {
 	s := flatState(40, 64)
-	s.ConsHead = ConstructionHead{Active: true, X: 30, Y: 20, BaseZ: 64, Rotation: 0}
+	h := headAt(s, 30, 20, 64, 0)
 	for range 9 {
-		s.PlaceTrackAtHead(0, 0)
+		h.track(0)
 	}
-	s.ConsHead = ConstructionHead{Active: true, X: 25, Y: 20, BaseZ: 64, Rotation: 0}
-	s.PlaceTrackAtHead(4, 0)
+	h = headAt(s, 25, 20, 64, 0)
+	h.track(4)
 	e, _ := TrackConnectionEnd(26*32, 20*32, 64*4, 0)
 	tc := s.TrackConnections(e.X, e.Y, e.Z, e.NextRotation, 0, 0, 0, 0)
 	waypoint := func(tx, ty int, z uint8, dir, track uint8) []byte {
@@ -113,10 +113,10 @@ func TestTrackPathingWaypoint(t *testing.T) {
 // start there), the chosen piece moves to the front of the tile's track run.
 func TestBringTrackElementToFront(t *testing.T) {
 	s := flatState(40, 64)
-	s.ConsHead = ConstructionHead{Active: true, X: 25, Y: 20, BaseZ: 64, Rotation: 0}
-	s.PlaceTrackAtHead(0, 0)
-	s.ConsHead = ConstructionHead{Active: true, X: 25, Y: 20, BaseZ: 64, Rotation: 0}
-	s.PlaceTrackAtHead(4, 0)
+	h := headAt(s, 25, 20, 64, 0)
+	h.track(0)
+	h = headAt(s, 25, 20, 64, 0)
+	h.track(4)
 	tl := s.TileAt(25, 20)
 	first := func() uint8 {
 		for _, r := range tl.Order {

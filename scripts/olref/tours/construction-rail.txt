@@ -1,0 +1,84 @@
+# The Railway Track window's construction state on flat ground (a save of
+# Sandbox Settler: OpenLoco's own autosave of it, README "The same world in
+# both games"), the same script for goloco and `ol.sh run`:
+#   env -C $SHOTS GOLOCO_SCRIPT=…/construction-rail.txt goloco SAVE.SV5
+# hovering (the ghost and the steady arrow under the cursor), the rotate
+# button, the first click, two more pieces, all three taken up (bulldozer),
+# one press more (nothing: the ghost stands where the first piece began), the
+# red cross (hovering again, not turned), a click on the preview while
+# hovering (upstream tries the piece 16 below the ground: an error), a
+# second start, a large curve onto the diagonal and a diagonal
+# straight, both taken up, the cross with track standing, and a click that
+# is refused (the same straight on the piece that stands).
+wait 25
+click 598 14          # the track menu's default: Railway Track at 0,30
+wait 2
+move 500 400
+wait 2
+shot cr-00-hover.png
+click 124 290         # rotate_90 while hovering: a quarter turn
+wait 1
+move 502 402
+wait 2
+shot cr-01-hover-turned.png
+click 500 400         # the first piece
+wait 2
+move 300 520
+wait 2
+shot cr-02-first.png
+click 67 225          # construct
+wait 1
+click 67 225
+wait 2
+shot cr-03-three.png
+click 97 290          # the bulldozer, three times
+wait 1
+click 97 290
+wait 1
+click 97 290
+wait 2
+shot cr-04-removed.png
+click 97 290          # once more: nothing behind
+wait 2
+shot cr-05-remove-again.png
+click 124 290         # the red cross: new construction position
+wait 1
+move 300 520
+wait 2
+shot cr-06-cross.png
+click 67 225          # the preview while hovering
+wait 1
+move 300 520
+wait 2
+shot cr-07-preview-click.png
+move 330 240
+wait 1
+click 330 240         # a second start
+wait 2
+move 300 520
+wait 1
+click 58 87           # left-hand large curve
+wait 1
+click 67 225
+wait 2
+shot cr-08-curve.png
+click 69 110          # straight, on the diagonal
+wait 1
+click 67 225
+wait 2
+shot cr-09-diagonal.png
+click 97 290
+wait 1
+click 97 290
+wait 2
+shot cr-10-back.png
+click 124 290         # the red cross with a piece standing
+wait 1
+move 330 240
+wait 2
+shot cr-11-hover-on-track.png
+click 330 240         # refused
+wait 2
+move 300 520
+wait 2
+shot cr-12-refused.png

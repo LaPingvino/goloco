@@ -48,18 +48,18 @@ func outside(v, lo int) int {
 // finds nothing.
 func TestTrackConnections(t *testing.T) {
 	s := flatState(30, 64)
-	s.ConsHead = ConstructionHead{Active: true, X: 10, Y: 10, BaseZ: 64, Rotation: 0}
+	h := headAt(s, 10, 10, 64, 0)
 	type placed struct {
 		tad     uint16
 		x, y, z int32
 	}
 	var line []placed
 	for _, id := range []int{0, 4, 0} { // straight, leftCurveSmall, straight
-		h := s.ConsHead
-		if !s.PlaceTrackAtHead(id, 0) {
+		at := h.e
+		if !h.track(id) {
 			t.Fatalf("track %d can't be built", id)
 		}
-		line = append(line, placed{uint16(id)<<3 | uint16(h.Rotation&3), int32(h.X) * 32, int32(h.Y) * 32, int32(h.BaseZ) * 4})
+		line = append(line, placed{uint16(id)<<3 | uint16(at.NextRotation&3), at.X, at.Y, at.Z})
 	}
 	for i := 0; i+1 < len(line); i++ {
 		p := line[i]
