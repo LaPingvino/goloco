@@ -37,6 +37,9 @@ func (g *Game) buildVehicleWin() *ui.BuildVehicleWindow {
 func (g *Game) companyListWin() *ui.CompanyListWindow {
 	return winOf[*ui.CompanyListWindow](g, ui.WindowTypeCompanyList, ui.AnyNumber)
 }
+func (g *Game) jukeboxWin() *ui.MusicJukeboxWindow {
+	return winOf[*ui.MusicJukeboxWindow](g, ui.WindowTypeMusicJukebox, ui.AnyNumber)
+}
 func (g *Game) consWin() *ui.SimpleWindow {
 	return winOf[*ui.SimpleWindow](g, ui.WindowTypeConstruction, ui.AnyNumber)
 }
@@ -171,6 +174,8 @@ func (g *Game) routeWheelToWindows() bool {
 		}
 	case *ui.BuildVehicleWindow:
 		w.HandleWheel(g.mouseX, g.mouseY, dy)
+	case *ui.MusicSelectionWindow:
+		w.HandleWheel(dy)
 	}
 	return true
 }
@@ -221,6 +226,15 @@ func (g *Game) updateWindows() {
 			w.Update(mx, my, win == top, ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight)) // findAt: the window under the mouse
 		case *ui.BuildVehicleWindow:
 			w.Drag(mx, my, left)
+		case *ui.MusicJukeboxWindow:
+			w.MouseOver(hx, hy) // the control button under the mouse
+		case *ui.MusicSelectionWindow:
+			if g.jukeboxWin() == nil { // onUpdate: it goes with the jukebox window
+				w.Close()
+				break
+			}
+			w.MouseOver(hx, hy)
+			w.Drag(mx, my, left)
 		case *ui.CompanyFinancesWindow:
 			w.UpdateHeld(mx, my, left)
 			w.UpdateDrag(mx, my, left)
@@ -255,6 +269,10 @@ func (g *Game) prepareWindow(win ui.Win) {
 		skin = int(sk.ImageOffset)
 	}
 	switch w := win.(type) {
+	case *ui.MusicJukeboxWindow:
+		w.State = g.musicJukeboxState()
+	case *ui.OptionsWindow:
+		w.TitleMusic, w.GameMusic = g.playTitleMusic, g.audioCfg.PlayJukeboxMusic // the Audio menu changes them too
 	case *ui.VehicleWindow:
 		if tr, err := g.w.Map.TrainOf(uint16(w.Number)); err == nil { // the owner's colour, as each draw sets it
 			if o := int(g.w.Map.Entities[tr.Head].Owner); o < len(g.w.CompanyColours) {

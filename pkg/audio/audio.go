@@ -4,7 +4,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
@@ -33,6 +35,7 @@ type Manager struct {
 	musicVolume float64
 	sfxVolume   float64
 	browser     browserMusic // js/wasm: music through the browser (browser.go); nil elsewhere
+	musicPaused bool         // PauseMusic holds the track (Music.cpp pauseMusic)
 }
 
 // NewManager creates a new audio manager with an initialized audio context
@@ -50,7 +53,7 @@ func NewManager() *Manager {
 
 // LoadAndPlayMusic loads a WAV file and starts playing it
 // The loop parameter controls whether the music loops continuously
-func (m *Manager) LoadAndPlayMusic(path string, loop bool) error {
+func (m *Manager) LoadAndPlayMusic(path string, loop bool) (err error) {
 	if m == nil {
 		return nil // muted (GOLOCO_MUTE)
 	}
@@ -58,6 +61,9 @@ func (m *Manager) LoadAndPlayMusic(path string, loop bool) error {
 
 	// Stop any currently playing music
 	m.StopMusic()
+	if path, err = FindFile(path); err != nil {
+		return err
+	}
 	if m.browser != nil {
 		return m.browser.play(path, loop, m.musicVolume)
 	}
@@ -127,6 +133,7 @@ func (m *Manager) StopMusic() {
 	if m == nil {
 		return
 	}
+	m.musicPaused = false
 	if m.browser != nil {
 		m.browser.stop()
 	}
@@ -171,7 +178,9 @@ func (m *Manager) SetSFXVolume(vol float64) {
 	m.sfxVolume = vol
 }
 
-// IsMusicPlaying returns true if music is currently playing
+// IsMusicPlaying reports a track that has not reached its end — playing, or
+// held by PauseMusic (Music.cpp: the music handle's isPlaying, which the
+// jukebox asks only while the game runs).
 func (m *Manager) IsMusicPlaying() bool {
 	if m == nil {
 		return false
@@ -179,7 +188,54 @@ func (m *Manager) IsMusicPlaying() bool {
 	if m.browser != nil {
 		return m.browser.playing()
 	}
-	return m.musicPlayer != nil && m.musicPlayer.IsPlaying()
+	return m.musicPlayer != nil && (m.musicPaused || m.musicPlayer.IsPlaying())
+}
+
+// PauseMusic is Music.cpp pauseMusic: a playing track holds its place.
+func (m *Manager) PauseMusic() {
+	if m == nil || m.musicPaused || !m.IsMusicPlaying() {
+		return
+	}
+	m.musicPaused = true
+	if m.browser != nil {
+		m.browser.pause()
+	} else {
+		m.musicPlayer.Pause()
+	}
+}
+
+// UnpauseMusic is Music.cpp unpauseMusic: a paused track plays on.
+func (m *Manager) UnpauseMusic() {
+	if m == nil || !m.musicPaused {
+		return
+	}
+	m.musicPaused = false
+	if m.browser != nil {
+		m.browser.resume()
+	} else if m.musicPlayer != nil {
+		m.musicPlayer.Play()
+	}
+}
+
+// FindFile is a Locomotion file's path whatever the case of its name on disk
+// (OpenLoco asks for "Data/20s1.DAT" and "Data/Rag2.DAT"; an installation
+// has 20s1.dat and rag2.dat): the path itself when it exists, else the entry
+// of its folder that matches without case.
+func FindFile(path string) (string, error) {
+	if _, err := os.Stat(path); err == nil {
+		return path, nil
+	}
+	dir, name := filepath.Split(path)
+	ents, err := os.ReadDir(filepath.Clean(dir))
+	if err != nil {
+		return "", err
+	}
+	for _, e := range ents {
+		if strings.EqualFold(e.Name(), name) {
+			return filepath.Join(dir, e.Name()), nil
+		}
+	}
+	return "", &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
 }
 
 // Update should be called each frame to update audio state.

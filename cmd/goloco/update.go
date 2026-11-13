@@ -171,6 +171,7 @@ func (g *Game) updateGame() {
 
 	g.updateCamera()
 	g.updateSpeedKeys()
+	g.updateMusic()
 	// Update world (skipped when paused; repeated per speed multiplier)
 	if n := g.w.GameTicks(g.mouseMoved()); !g.isPaused { // tickLogic(numUpdates × the speed)
 		for i := 0; i < n*g.speedMult; i++ {

@@ -12,7 +12,9 @@ Locomotion folder, shots go to a scratch directory.
     ol.sh shot out.png                     # the 800x600 game frame
     ol.sh stop
 
-Xvfb needs the Claude Code sandbox off (it blocks the X socket).
+Xvfb needs the Claude Code sandbox off (it blocks the X socket). Two harnesses on
+one display draw into each other's game and take each other's clicks: a second
+one running at the same time needs its own OLREF_DISPLAY (and OLREF_HOME).
 
 | file | what |
 |------|------|
@@ -77,6 +79,13 @@ window's state on such an autosave of Sandbox Settler (flat desert): hover,
 rotate, first click, build, bulldozer back to the start and once more, the red
 cross, a refused click. One script runs on both games; goloco doesn't take the
 save's view, so the two build at different tiles of the same flat ground.
+
+tours/music.txt (the Audio menu, the Jukebox, Music Selection, Options' Audio
+tab, on the title game) and music-title.txt (the Jukebox on the title screen)
+start both games from the same audio settings — OpenLoco picks its track with
+std::rand, so the scratch openloco.yml's audio section names one: `playlist:
+custom` and a customJukebox with one track true. goloco reads the same section
+from $XDG_CONFIG_HOME/goloco/openloco.yml.
 
 For one window: `pair.py out.png goloco.png@X,Y,W,H openloco.png@X,Y,W,H 2`.
 

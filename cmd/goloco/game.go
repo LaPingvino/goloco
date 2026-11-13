@@ -13,6 +13,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/audio"
 	"github.com/LaPingvino/goloco/pkg/graphics"
 	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/jukebox"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/paint"
 	"github.com/LaPingvino/goloco/pkg/render"
@@ -134,8 +135,16 @@ type Game struct {
 	ghostAirNode    uint8                     // _ghostAirportNode
 
 	// Options (options.go; Config).
-	noEdgeScrolling   bool   // Options > Controls: edge scrolling off (Config::edgeScrolling)
-	musicEnabled      bool   // whether music is on
+	noEdgeScrolling bool // Options > Controls: edge scrolling off (Config::edgeScrolling)
+
+	// The music (music.go): the jukebox on the config's audio settings,
+	// Audio's mute, and a track passing in silence (no sound device).
+	jukebox           *jukebox.Jukebox
+	audioCfg          jukebox.Config
+	playTitleMusic    bool // Config audio.playTitleMusic
+	audioMuted        bool // !Audio::isAudioEnabled
+	silentTrack       bool
+	musicPaused       bool
 	showFPS           bool   // Config::showFPS (drawFPS)
 	frameLimit        int    // Options' frame rate limit (0 internal, 1 vsync, 2 unrestricted)
 	fsResolution      [2]int // Config display.fullscreenResolution
@@ -293,19 +302,8 @@ func NewGame() *Game {
 		w.SetCamera(cx, cy)
 	}
 
-	// Start playing title music
-	if dataDir != "" {
-		musicPath := filepath.Join(dataDir, "css5.dat")
-		log.Printf("[Game] Loading music from: %s", musicPath)
-		if err := audioMgr.LoadAndPlayMusic(musicPath, true); err != nil {
-			log.Printf("[Game] WARNING: Could not load music: %v", err)
-		} else {
-			log.Println("[Game] Music loaded and playing!")
-		}
-	}
-
 	log.Println("[Game] Game initialization complete")
-	return &Game{
+	g := &Game{
 		catchmentStation:   -1,
 		ghostProgress:      -1,                                                                    // no ghost placed
 		lastIndustryOption: -1,                                                                    // none chosen yet
@@ -322,7 +320,6 @@ func NewGame() *Game {
 		titleSeq:           titleSeq,
 		dataDir:            dataDir,
 		inTitleScreen:      true,
-		musicEnabled:       true,
 		sw:                 defaultWidth,
 		sh:                 defaultHeight,
 		speedMult:          1,
@@ -333,6 +330,9 @@ func NewGame() *Game {
 		// draws g1 sprites directly with no preload phase.
 		prewarmIDs: titleSpriteIDs,
 	}
+	g.initMusic()
+	g.startTitleMusic() // Title::start
+	return g
 }
 
 // loadLocomotionData loads the Locomotion folder's G1 (sprites, palette, the

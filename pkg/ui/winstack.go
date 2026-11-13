@@ -48,6 +48,8 @@ const (
 	WindowTypeOptions
 	WindowTypeScenarioSelect
 	WindowTypeFileBrowserPrompt
+	WindowTypeMusicJukebox
+	WindowTypeMusicSelection
 )
 
 // WindowFlags are Ui::WindowFlags, those the stack acts on.

@@ -64,6 +64,21 @@ func (h *htmlAudio) setVolume(v float64) {
 	}
 }
 
+// playing: the element has a track that has not reached its end. A track the
+// browser holds back (autoplay policy, or pause) counts: the jukebox must not
+// take silence for a finished track and fetch the next one each tick.
 func (h *htmlAudio) playing() bool {
-	return h.el.Truthy() && !h.el.Get("paused").Bool()
+	return h.el.Truthy() && !h.el.Get("ended").Bool()
+}
+
+func (h *htmlAudio) pause() {
+	if h.el.Truthy() {
+		h.el.Call("pause")
+	}
+}
+
+func (h *htmlAudio) resume() {
+	if h.el.Truthy() {
+		h.el.Call("play")
+	}
 }

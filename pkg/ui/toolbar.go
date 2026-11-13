@@ -56,6 +56,9 @@ type Toolbar struct {
 	// The Vehicles and Build Vehicles buttons' faces: the last VehicleType
 	// each menu chose (lastVehicleType, lastBuildVehiclesOption).
 	LastVehicleType, LastBuildVehiclesOption uint8
+	// AudioMuted is !Audio::isAudioEnabled: the Audio button shows its
+	// inactive image (prepareDraw).
+	AudioMuted bool
 }
 
 // vehicleButtonFaces is ToolbarTop.cpp draw's button_face_image_ids and
@@ -267,6 +270,9 @@ func (t *Toolbar) drawButton(screen *ebiten.Image, btn *ToolbarButton, renderer 
 	// Try to draw the InterfaceSkin sprite if available
 	drewSprite := false
 	if imageIDs, ok := buttonImageIDs[btn.Tooltip]; ok {
+		if btn.Tooltip == "Audio" && t.AudioMuted { // prepareDraw: toolbar_audio_inactive without sound
+			imageIDs = [2]uint32{objects.ISToolbarAudioInactive, objects.ISToolbarAudioInactiveHover}
+		}
 		imageID := imageIDs[0] // normal
 		if btn.Hovered || btn.Pressed {
 			imageID = imageIDs[1] // hover

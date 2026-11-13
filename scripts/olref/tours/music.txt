@@ -1,0 +1,78 @@
+# The Audio menu, the Jukebox, Music Selection and Options' Audio tab on the
+# title game (README "The same world in both games"), one script for goloco
+# and `ol.sh run`. Both start from the same audio settings so the track is
+# the same in both (OpenLoco chooses with std::rand): in openloco.yml's
+# audio section "playlist: custom" and a customJukebox with farOut alone.
+#   env -C $SHOTS XDG_CONFIG_HOME=$CFG GOLOCO_SCRIPT=…/music.txt goloco title.dat
+wait 25
+click 688 592         # pause
+wait 1
+press 45 14           # the Audio menu, held
+wait 1
+move 60 36            # … Mute
+wait 1
+shot mu-00-menu.png
+move 60 75            # … Open jukebox
+wait 1
+release 60 75
+wait 2
+move 400 500
+wait 1
+shot mu-01-jukebox.png
+move 239 299          # the stop button, hovered
+wait 1
+shot mu-02-hover.png
+click 567 320         # the playlist dropdown
+wait 1
+move 400 343
+wait 1
+shot mu-03-playlists.png
+click 400 353         # … custom selection (as it was)
+wait 1
+click 567 278         # the tracks of the playlist
+wait 1
+move 400 500
+wait 1
+shot mu-04-tracks.png
+click 300 310         # away from it
+wait 1
+click 480 337         # Edit selection...
+wait 2
+move 400 550
+wait 1
+shot mu-05-selection.png
+click 239 299         # stop
+wait 1
+move 400 550
+wait 1
+shot mu-06-stopped.png
+press 45 14           # the Audio menu again: Play Music unticked
+wait 1
+move 60 46
+wait 1
+shot mu-07-menu-off.png
+move 60 65            # … Open audio options
+wait 1
+release 60 65
+wait 2
+move 400 550
+wait 1
+shot mu-08-options.png
+press 45 14           # … Mute
+wait 1
+move 60 36
+wait 1
+release 60 36
+wait 1
+move 400 550
+wait 1
+shot mu-09-muted.png
+click 557 232         # Options' close box (the window opened at the Display tab's place)
+wait 1
+click 567 320         # the playlist dropdown
+wait 1
+click 400 333         # … the current era's music: Edit selection goes grey,
+wait 1                #   Music Selection closes
+move 400 550
+wait 1
+shot mu-10-era.png

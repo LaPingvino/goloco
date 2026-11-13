@@ -10,5 +10,8 @@ type browserMusic interface {
 	play(path string, loop bool, volume float64) error
 	stop()
 	setVolume(v float64)
+	// playing: a track that has not ended (paused or not).
 	playing() bool
+	pause()
+	resume()
 }
