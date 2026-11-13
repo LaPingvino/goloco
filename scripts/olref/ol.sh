@@ -11,6 +11,7 @@
 #               autosaves in …/save/autosave) — required, never the player's own
 # OLREF_DISPLAY X display of the harness's Xvfb (default :97)
 # OLREF_DATA    the Locomotion folder (default ~/Projects/locomotion)
+# OLREF_BIN     the OpenLoco binary (default: openloco on PATH)
 #
 # All coordinates are game-window pixels — the ones goloco's GOLOCO_SCRIPT
 # files use. OpenLoco refuses a window less than 160 px smaller than the
@@ -74,7 +75,7 @@ start)
         sleep 0.1
     done
     HOME=$OLREF_HOME XDG_CONFIG_HOME=$OLREF_HOME/.config SDL_AUDIODRIVER=dummy \
-        setsid openloco --locomotion_path "$data" "$@" >"$run/openloco.log" 2>&1 &
+        setsid "${OLREF_BIN:-openloco}" --locomotion_path "$data" "$@" >"$run/openloco.log" 2>&1 &
     echo $! >"$run/openloco.pid"
     echo "openloco $! on $disp (log: $run/openloco.log)"
     ;;
