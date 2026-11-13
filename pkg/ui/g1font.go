@@ -32,6 +32,7 @@ type g1Font struct {
 	g1       *assets.G1File
 	glyphs   map[int]*ebiten.Image // white glyph shapes, tinted at draw time
 	outlines map[int]*ebiten.Image // the glyphs' textRemap1/2 pixels (outline style)
+	insets   map[int]*ebiten.Image // the glyphs' textRemap2 pixels (inset style)
 	widths   [4][224]int8
 }
 
@@ -201,6 +202,82 @@ func (f *g1Font) outline(font, chr int) *ebiten.Image {
 	}
 	f.outlines[idx] = img
 	return img
+}
+
+// insetPlane returns the glyph's textRemap2 pixels (0x03) as a white shape:
+// the inset text style colours them and leaves textRemap1 transparent.
+func (f *g1Font) insetPlane(font, chr int) *ebiten.Image {
+	if chr < 32 || chr > 255 {
+		return nil
+	}
+	idx := g1FontBase + font*224 + (chr - 32)
+	if img, ok := f.insets[idx]; ok {
+		return img
+	}
+	if f.insets == nil {
+		f.insets = map[int]*ebiten.Image{}
+	}
+	e := &f.g1.Elements[idx]
+	w, h := int(e.Width), int(e.Height)
+	indices := e.Data
+	if e.Flags&assets.G1FlagIsRLECompressed != 0 {
+		decoded, err := assets.DecodeRLE(e.Data, w, h)
+		if err != nil {
+			f.insets[idx] = nil
+			return nil
+		}
+		indices = decoded
+	}
+	if w <= 0 || h <= 0 || len(indices) < w*h {
+		f.insets[idx] = nil
+		return nil
+	}
+	m := image.NewRGBA(image.Rect(0, 0, w, h))
+	any := false
+	for i, p := range indices[:w*h] {
+		if p == 0x03 {
+			m.SetRGBA(i%w, i/w, color.RGBA{255, 255, 255, 255})
+			any = true
+		}
+	}
+	var img *ebiten.Image
+	if any {
+		img = ebiten.NewImageFromImage(m)
+	}
+	f.insets[idx] = img
+	return img
+}
+
+// DrawTextInset draws str in medium bold with the inset text style of a
+// window colour (colour.inset(), a disabled widget's text — TextRenderer.cpp
+// setTextColour: textRemap0 the colour's shade 4, textRemap1 transparent,
+// textRemap2 its shade 6). cmap is the colour's palette map. Returns the width.
+func DrawTextInset(screen *ebiten.Image, str string, x, y int, cmap []uint8) int {
+	f := globalG1Font
+	if f == nil || cmap == nil {
+		return 0
+	}
+	pal := f.g1.GetPalette()
+	font, penX := G1FontMediumBold, 0
+	for _, r := range str {
+		chr := i18n.LocoChar(r)
+		idx := g1FontBase + font*224 + (chr - 32)
+		e := &f.g1.Elements[idx]
+		for _, plane := range [2]struct {
+			img *ebiten.Image
+			c   color.Color
+		}{{f.insetPlane(font, chr), pal[gfx8.Shade(cmap, 6)]}, {f.glyph(font, chr), pal[gfx8.Shade(cmap, 4)]}} {
+			if plane.img == nil {
+				continue
+			}
+			op := &ebiten.DrawImageOptions{}
+			op.GeoM.Translate(float64(x+penX+int(e.XOffset)), float64(y+int(e.YOffset)))
+			op.ColorScale.ScaleWithColor(plane.c)
+			screen.DrawImage(plane.img, op)
+		}
+		penX += int(f.widths[font][chr-32])
+	}
+	return penX
 }
 
 // DrawTextOutlined draws str in medium bold with the outline text style

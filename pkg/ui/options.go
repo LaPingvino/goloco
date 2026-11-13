@@ -14,8 +14,9 @@ import (
 // close button, panel, seven 31 px tabs, each tab with upstream's size and
 // caption) and all seven tabs' widgets. Colours: the skin's
 // windowTitlebarColour and windowOptionsColour.
-// Working: the tabs, Audio's title-music checkbox and music volume, Controls'
-// edge scrolling. Display only (at Config's defaults, goloco has no such
+// Working: the tabs, Audio's music group (title music, game music, the
+// jukebox button) and music volume, Controls' edge scrolling.
+// clickable(Options.cpp): play_title_music play_game_music open_jukebox Display only (at Config's defaults, goloco has no such
 // settings yet): Display, Rendering, Regional (dropdowns don't open), Company,
 // Misc, and Controls' other two checkboxes.
 // PARTIAL: tab icon animation; Customize Keys opens nothing; the audio device
@@ -26,10 +27,12 @@ import (
 const (
 	optW           = 366
 	optSoundOff    = 49
-	optSoundH      = 14 + (14 + 18) + 4 // kDeviceRowOffset + kCheckboxRowOffset + 4
+	optSoundH      = 14 + 14 + 4 // kDeviceRowOffset + kNormalTextRowOffset + 4
 	optVolOff      = optSoundOff + optSoundH + 4
 	optVolH        = 16 + 3*26
-	optH           = optVolOff + optVolH + 4
+	optMusicOff    = optVolOff + optVolH + 4 // kMusicGroupOffset
+	optMusicH      = 14 + 14 + 14 + 4        // kPlayGameMusicRowOffset + kNormalTextRowOffset + 4
+	optH           = optMusicOff + optMusicH + 4
 	imgTab         = 2387
 	imgTabDisplay  = 2391
 	imgTabControl  = 2392
@@ -72,6 +75,12 @@ type OptionsWindow struct {
 	TitleMusic   bool
 	MusicVolume  float64 // 0..1
 	OnTitleMusic func(bool)
+	// GameMusic is Config audio.playJukeboxMusic (play_game_music; the
+	// jukebox button is disabled without it); OnGameMusic is its click
+	// (playGameMusicOnMouseUp), OnOpenJukebox the button's.
+	GameMusic     bool
+	OnGameMusic   func()
+	OnOpenJukebox func()
 	// ShowFPS is Config::showFPS (the Display tab's show_fps checkbox);
 	// OnShowFPS toggles it (Config::write).
 	ShowFPS   bool
@@ -163,11 +172,21 @@ func optDropdown(rt *gfx8.RenderTarget, x, y, w int, sec []uint8) {
 	gfx8.FillRectInset(rt, bx, y+1, bx+11-1, y+1+10-1, gfx8.InsetColour{Map: sec}, 0)
 }
 
+// The Audio tab's music group (AudioTab::_widgets): the two checkboxes and
+// the jukebox button.
+var (
+	optTitleMusic  = [4]int{10, optMusicOff + 14, 346, 12}
+	optGameMusic   = [4]int{10, optMusicOff + 28, 173, 12}
+	optOpenJukebox = [4]int{236, optMusicOff + 28, 120, 12}
+)
+
 func (w *OptionsWindow) size() (int, int) { s := optTabSize[w.Tab]; return s[0], s[1] }
 
-// NewOptions opens the window centred (createWindowCentred).
+// NewOptions is Options::open's window: centred at the Display tab's size
+// (createWindowCentred), on the Display tab.
 func NewOptions(sw, sh int, titleColour, colour uint8) *OptionsWindow {
-	return &OptionsWindow{WinBase: WinBase{WinType: WindowTypeOptions, X: (sw - optW) / 2, Y: (sh - optH) / 2, W: optW, H: optH}, TitleColour: titleColour, Colour: colour, Tab: OptTabAudio,
+	dw, dh := optTabSize[OptTabDisplay][0], optTabSize[OptTabDisplay][1]
+	return &OptionsWindow{WinBase: WinBase{WinType: WindowTypeOptions, X: (sw - dw) / 2, Y: (sh - dh) / 2, W: dw, H: dh}, TitleColour: titleColour, Colour: colour, Tab: OptTabDisplay,
 		VehiclesMinScale: 2, StationNamesMinScale: 2}
 }
 
@@ -402,10 +421,22 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 	if w.Tab != OptTabAudio {
 		return
 	}
-	if w.in([4]int{10, optSoundOff + 14 + 18, 346, 12}, px, py) {
+	if w.in(optTitleMusic, px, py) {
 		w.TitleMusic = !w.TitleMusic
 		if w.OnTitleMusic != nil {
 			w.OnTitleMusic(w.TitleMusic)
+		}
+		return
+	}
+	if w.in(optGameMusic, px, py) {
+		if w.OnGameMusic != nil {
+			w.OnGameMusic()
+		}
+		return
+	}
+	if w.in(optOpenJukebox, px, py) {
+		if w.GameMusic && w.OnOpenJukebox != nil {
+			w.OnOpenJukebox()
 		}
 		return
 	}
@@ -524,9 +555,13 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		groupBox(rt, 4, optVolOff, optW-8, optVolH, sec, i18n.Label(i18n.FrameVolume))
 		// Device row (dropdown widget: inset field + button)
 		gfx8.FillRectInset(rt, 10, optSoundOff+14, 10+346-1, optSoundOff+14+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
-		// Checkbox box
-		cy := optSoundOff + 14 + 18
-		gfx8.FillRectInset(rt, 10, cy, 10+10-1, cy+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+		// The music group: two checkboxes and the jukebox Button
+		groupBox(rt, 4, optMusicOff, optW-8, optMusicH, sec, i18n.Label(i18n.FrameMusic))
+		for _, c := range [][4]int{optTitleMusic, optGameMusic} {
+			gfx8.FillRectInset(rt, c[0], c[1], c[0]+10-1, c[1]+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+		}
+		b := optOpenJukebox
+		gfx8.FillRectInset(rt, b[0], b[1], b[0]+b[2]-1, b[1]+b[3]-1, gfx8.InsetColour{Map: sec}, 0)
 		track, terr := gfx8.Decode(&g1.Elements[imgSliderTrack])
 		thumb, herr := gfx8.Decode(&g1.Elements[imgSliderThumb])
 		for i := range 6 {
@@ -555,10 +590,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		DrawTextBold(screen, label, w.X+26+(160-1)/2-lw/2, w.Y+94, text)
 		return
 	}
-	inset := func(t string, x, y int) { // colour.inset(): shade 4 at +1,+1, then shade 6
-		DrawTextBold(screen, t, x+1, y+1, pal[gfx8.Shade(sec, 4)])
-		DrawTextBold(screen, t, x, y, pal[gfx8.Shade(sec, 6)])
-	}
+	inset := func(t string, x, y int) { DrawTextInset(screen, t, x, y, sec) } // colour.inset()
 	if w.Tab == OptTabMisc {
 		// Config defaults: every tweak off, autosave every month, 12 autosaves.
 		// i18n.Label(i18n.ExportPluginObjects) is hidden: it shows only when
@@ -710,9 +742,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 				v = v[:len(v)-1]
 			}
 			if i == 3 && w.currencyDisabled() { // disabled: colour.inset()
-				c6, c4 := pal[gfx8.Shade(sec, 6)], pal[gfx8.Shade(sec, 4)]
-				DrawTextBold(screen, v, w.X+183+1+1, w.Y+r.y+1+1, c4)
-				DrawTextBold(screen, v, w.X+183+1, w.Y+r.y+1, c6)
+				inset(v, w.X+183+1, w.Y+r.y+1)
 			} else {
 				DrawTextBold(screen, v, w.X+183+1, w.Y+r.y+1, black) // ComboBox text, FD = colour 0
 			}
@@ -735,11 +765,24 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 	DrawTextBold(screen, i18n.Label(i18n.FrameSound), w.X+4+5, w.Y+optSoundOff, text)
 	DrawTextBold(screen, i18n.Label(i18n.FrameVolume), w.X+4+5, w.Y+optVolOff, text)
 	DrawTextBold(screen, "Default", w.X+10+2, w.Y+optSoundOff+14+1, black)
-	cy := optSoundOff + 14 + 18
-	if w.TitleMusic {
-		DrawTextBold(screen, string(rune(0xAC)), w.X+10, w.Y+cy, text)
+	DrawTextBold(screen, i18n.Label(i18n.FrameMusic), w.X+4+5, w.Y+optMusicOff, text)
+	for _, c := range []struct {
+		r     [4]int
+		on    bool
+		label int
+	}{{optTitleMusic, w.TitleMusic, i18n.PlayTitleMusic}, {optGameMusic, w.GameMusic, i18n.PlayGameMusic}} {
+		if c.on {
+			DrawTextBold(screen, string(rune(0xAC)), w.X+c.r[0], w.Y+c.r[1], text)
+		}
+		DrawTextBold(screen, i18n.Label(c.label), w.X+c.r[0]+10+4, w.Y+c.r[1], text)
 	}
-	DrawTextBold(screen, i18n.Label(i18n.PlayTitleMusic), w.X+10+10+4, w.Y+cy, text)
+	jl := i18n.Label(i18n.OptionsOpenJukebox) // Button, centred; disabled without game music
+	jw, _ := MeasureTextBold(jl)
+	if jx := w.X + optOpenJukebox[0] + (optOpenJukebox[2]-1)/2 - jw/2; w.GameMusic {
+		DrawTextBold(screen, jl, jx, w.Y+optOpenJukebox[1], text)
+	} else {
+		inset(jl, jx, w.Y+optOpenJukebox[1])
+	}
 	labels := [6]string{i18n.Label(i18n.MasterVolume), i18n.Label(i18n.MusicChannelVolume), i18n.Label(i18n.EffectsVolume), i18n.Label(i18n.VehiclesVolume), i18n.Label(i18n.UiVolume), i18n.Label(i18n.AmbientVolume)}
 	for i, l := range labels {
 		lx, _, y := optSliderRow(i)

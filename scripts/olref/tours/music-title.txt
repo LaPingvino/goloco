@@ -1,0 +1,30 @@
+# The Jukebox on the title screen (no game: its track dropdown and buttons
+# are disabled), from Options' Audio tab. Both games start with
+# "playJukeboxMusic: false" in openloco.yml's audio section; one script for
+# goloco (no scenario argument) and `ol.sh start` (no save), `ol.sh run`.
+wait 25
+click 770 7           # the title's Options
+wait 2
+click 280 252         # the Audio tab
+wait 2
+move 400 550
+wait 1
+shot mt-00-options.png
+click 215 440         # Play music during gameplay: on (the setting alone)
+wait 1
+click 496 440         # Open jukebox...
+wait 2
+move 400 550
+wait 1
+shot mt-01-jukebox.png
+click 239 299         # stop: disabled, nothing
+wait 1
+click 250 500         # Options to the front; Play title screen music: off
+wait 1
+click 215 426
+wait 1
+move 400 550
+wait 1
+shot mt-02-no-title-music.png
+click 215 426         # … and on again
+wait 1

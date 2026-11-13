@@ -58,7 +58,8 @@ func (g *Game) setToolbarColour(d *ui.DropdownMenu, btn *ui.ToolbarButton) {
 // clickable(ToolbarTop.cpp): build_vehicles_menu port_menu vehicles_menu stations_menu
 // clickable(ToolbarTop.cpp): railroad_menu
 // clickable(ToolbarTopCommon.cpp): zoom_menu towns_menu
-// clickable-partial(ToolbarTop.cpp): loadsave_menu audio_menu
+// clickable-partial(ToolbarTop.cpp): loadsave_menu
+// clickable(ToolbarTop.cpp): audio_menu
 // clickable(ToolbarTopCommon.cpp): railroad_menu road_menu
 // (not yet: rotate_menu and view_menu only log; terraform_menu, port_menu, cheats_menu nothing)
 func (g *Game) handleToolbarButton(idx int) {
@@ -89,15 +90,20 @@ func (g *Game) handleToolbarButton(idx int) {
 		g.dropdown = g.toolbarDropdown(btn, items)
 
 	case "Audio":
+		// audioMenuMouseDown (0x0043B04B) and audioMenuDropdown (0x0043B0B8):
+		// Mute and Play Music with their ticks, the audio options, the
+		// jukebox; a click without moving takes Mute (setHighlightedItem(0)).
+		// PARTIAL: no editor mode (Play Music and the jukebox disabled there).
 		items := []ui.DropdownItem{
-			{Text: "Stop Music", Action: func() {
-				if g.audioMgr != nil {
-					g.audioMgr.StopMusic()
-					log.Println("[Game] Music stopped")
-				}
-			}},
+			{Text: i18n.Label(i18n.MenuMute), Checkmark: true, Selected: !g.isAudioEnabled(), Action: g.toggleSound},
+			{Text: i18n.Label(i18n.MenuPlayMusic), Checkmark: true, Selected: g.audioCfg.PlayJukeboxMusic, Action: g.togglePlayMusic},
+			{Separator: true},
+			{Text: i18n.Label(i18n.MenuOpenAudioOptions), Action: g.openAudioSettings},
+			{Text: i18n.Label(i18n.MenuOpenJukebox), Action: g.openMusicJukebox},
 		}
-		g.dropdown = g.toolbarDropdown(btn, items)
+		d := g.toolbarDropdown(btn, items)
+		d.Highlighted = 0
+		g.dropdown = d
 
 	case "Zoom":
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTopCommon.cpp:95-132

@@ -14,16 +14,27 @@ import (
 // options.go — the Options window's wiring to the game and the config file,
 // and the currency Options and scenario loads choose.
 
-// openOptionsWindow opens an Options window with proper 3D toggle buttons for
-// sound and music, styled after OpenLoco's option panels.
+// openAudioSettings is Options::openAudioSettings (the Audio menu's "Open
+// audio options"): Options::open, then its Audio tab (the window stays where
+// the Display tab's size centred it, and takes the Audio tab's size).
+func (g *Game) openAudioSettings() {
+	g.openOptionsWindow()
+	if w := g.optionsWin(); w != nil {
+		w.Tab = ui.OptTabAudio
+		w.PrepareDraw()
+		g.wins.MoveInsideScreenEdges(w)
+	}
+}
+
+// openOptionsWindow is Options::open: the Options window (pkg/ui/options.go)
+// on its Display tab, wired to the game and the config.
 func (g *Game) openOptionsWindow() {
-	// The ported Options window, Audio tab (pkg/ui/options.go).
 	var tc, oc uint8 = 0, 1
 	if sk := g.skin(); sk != nil {
 		tc, oc = sk.WindowTitlebarColour, sk.WindowOptionsColour
 	}
 	w := ui.NewOptions(g.sw, g.sh, tc, oc)
-	w.TitleMusic = g.musicEnabled
+	w.TitleMusic, w.GameMusic = g.playTitleMusic, g.audioCfg.PlayJukeboxMusic
 	w.MusicVolume = 1
 	if g.audioMgr != nil {
 		w.MusicVolume = g.audioMgr.MusicVolume()
@@ -128,12 +139,16 @@ func (g *Game) openOptionsWindow() {
 		}
 		setConfigValue("showFPS", v)
 	}
-	w.OnTitleMusic = func(on bool) {
-		g.musicEnabled = on
-		if !on && g.audioMgr != nil {
-			g.audioMgr.StopMusic()
+	w.OnTitleMusic = g.setPlayTitleMusic // playTitleMusicOnMouseUp
+	w.OnGameMusic = func() {             // playGameMusicOnMouseUp
+		if g.inTitleScreen { // !isPlayMode: the setting alone
+			g.audioCfg.PlayJukeboxMusic = !g.audioCfg.PlayJukeboxMusic
+			g.writeAudioConfig()
+			return
 		}
+		g.togglePlayMusic()
 	}
+	w.OnOpenJukebox = g.openMusicJukebox
 	w.OnMusicVol = func(v float64) {
 		if g.audioMgr != nil {
 			g.audioMgr.SetMusicVolume(v)

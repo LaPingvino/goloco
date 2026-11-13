@@ -110,6 +110,7 @@ func (g *Game) loadScenario(filePath string) error {
 	if g.titleSeq != nil {
 		g.titleSeq.Stop()
 	}
+	g.resetMusic() // Title::stop's stopMusic; Scenario.cpp start / S5.cpp load: Audio::resetMusic
 	log.Printf("[Game] Loaded scenario: %s (%dx%d)", filePath, sc.MapWidth, sc.MapHeight)
 	if z, err := strconv.Atoi(os.Getenv("GOLOCO_ZOOM")); err == nil { // diagnostic: start at another zoom
 		g.w.SetZoom(z)
@@ -138,6 +139,7 @@ func (g *Game) quitToMenu() {
 	if g.titleSeq != nil {
 		g.titleSeq.Restart()
 	}
+	g.startTitleMusic() // Title::start
 }
 
 // checkObjective reports the scenario won once the sim has marked the player

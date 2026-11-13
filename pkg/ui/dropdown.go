@@ -124,7 +124,11 @@ type DropdownItem struct {
 	SpriteColour uint8
 	Lines        []string
 	MoveX10      bool
-	Action       func()
+	// Checkmark is dropdown_without_checkmark's "{MOVE_X 10}{STRINGID}": the
+	// text 10 px in, and when Selected dropdown_with_checkmark's "✓" at the
+	// left (the Audio menu's Mute and Play Music).
+	Checkmark bool
+	Action    func()
 	// TrailSprite, if > 0, is an inline {SPRITE} drawn after the text at the
 	// pen position (carrying_cargoid_sprite).
 	TrailSprite int
@@ -164,13 +168,11 @@ const (
 // Place applies showText's placement for a widget and screen size.
 func NewDropdownMenu(x, y int, items []DropdownItem) *DropdownMenu {
 	maxW := 0
-	for _, it := range items {
+	for _, it := range items { // getMaxStringWidth of each item's formatted string
 		if it.Separator {
 			continue
 		}
-		if w, _ := MeasureTextBold(it.Text); w > maxW {
-			maxW = w
-		}
+		maxW = max(maxW, itemTextWidth(it))
 	}
 	itemWidth := maxW + 3
 	return &DropdownMenu{
@@ -309,7 +311,7 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 			}
 			if it.TrailSprite > 0 && it.Text != "" {
 				tx := 2
-				if it.MoveX10 {
+				if it.MoveX10 || it.Checkmark {
 					tx += 10
 				}
 				tw, _ := MeasureTextBold(it.Text)
@@ -320,9 +322,13 @@ func (d *DropdownMenu) Draw(screen *ebiten.Image) {
 			}
 			if it.Text != "" {
 				x := 2
-				if it.MoveX10 {
+				if it.MoveX10 || it.Checkmark {
 					if it.Selected {
-						labels = append(labels, label{"»", 2, 1 + i*ih, c, inset})
+						mark := "»"
+						if it.Checkmark {
+							mark = string(rune(0xAC)) // ✓
+						}
+						labels = append(labels, label{mark, 2, 1 + i*ih, c, inset})
 					}
 					x += 10
 				}
@@ -517,11 +523,11 @@ func itemTextWidth(it DropdownItem) int {
 		sp, _ := MeasureTextBold(" " + it.Text)
 		return max(sw, 31+sp)
 	}
-	if it.MoveX10 {
+	if it.MoveX10 || it.Checkmark {
 		tw += 10
 	}
-	if g1 := globalG1Font.g1; it.TrailSprite > 0 && it.TrailSprite < len(g1.Elements) {
-		tw += int(g1.Elements[it.TrailSprite].Width) // getStringWidth: an inline {SPRITE} adds its width
+	if it.TrailSprite > 0 && globalG1Font != nil && it.TrailSprite < len(globalG1Font.g1.Elements) {
+		tw += int(globalG1Font.g1.Elements[it.TrailSprite].Width) // getStringWidth: an inline {SPRITE} adds its width
 	}
 	return tw
 }

@@ -96,6 +96,8 @@ Working: terrain (+edge smoothing, per-tile variation), water, roads/track
 rendering incl. junctions, stations, signals, level crossings, bridges
 (decks only), trees, buildings, vehicles rendered from save data, title
 screen (logo/menu/music), loading screen, bitmap fonts, New Game browser,
+in-game music (pkg/jukebox, cmd/goloco/music.go: the Audio menu, the Jukebox
+and Music Selection windows; the audio settings in openloco.yml),
 RCT-style track construction (head + connected pieces, curve/slope window).
 
 Next (task list): road construction via the same head system (extract
