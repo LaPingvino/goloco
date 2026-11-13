@@ -15,11 +15,11 @@ jobs:
         with:
           go-version-file: go.mod
       # Ebitengine (GLFW, oto) needs the X11, OpenGL and ALSA headers to build,
-      # and the pkg/ui and pkg/world tests need a display: run under Xvfb.
+      # and its test binaries a display: each gets an Xvfb of its own.
       - name: Install Ebitengine's system packages
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libgl1-mesa-dev libxcursor-dev libxi-dev \
             libxinerama-dev libxrandr-dev libxxf86vm-dev xvfb
       - name: Run tests
-        run: xvfb-run -a go test ./...
+        run: scripts/test-all.sh

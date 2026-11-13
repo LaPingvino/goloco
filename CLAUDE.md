@@ -112,5 +112,7 @@ gameplay simulation (movement, economy).
 - Comments cite upstream as `OpenLoco reference: src/.../File.cpp`.
 - Text drawing: y is the TOP of 10px bitmap glyphs; centre in a box with
   `y + (h-10)/2`. Measure with ui.MeasureText.
-- `go test ./pkg/...` must stay green; golden-vector tests preferred (see
+- `scripts/test-all.sh` (go test ./... with -exec scripts/xvfb-exec.sh: Ebitengine
+  needs a display in every test binary that imports it, so a plain `go test`
+  panics in pkg/ui, pkg/world, cmd/goloco) must stay green; golden-vector tests preferred (see
   pkg/core/prng_test.go).
