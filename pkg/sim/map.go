@@ -42,6 +42,13 @@ type Map struct {
 	CurrentDay            uint32                    // GameState general.currentDay
 	CompanyNames          []uint16                  // company slot → name StringId
 	ControllingCompany    uint8                     // playerCompanies[0] (getControllingId)
+
+	// tileUpdateX/Y is GameState tileUpdateStartLocation in tiles: the tile
+	// loop's start offset within its 16×16 block (UpdateTiles, wave.go). It
+	// comes with the save — which building meets which roll of its town's
+	// rng depends on it — and TileManager::initialise zeroes it.
+	tileUpdateX, tileUpdateY int
+
 	// LastAdjoiningStation / Pos are the legacy return state's
 	// lastConstructedAdjoiningStation (-1 null) and ...Pos (X -1: none), set
 	// by a ghost CreateTrainStation for the Station tab.
@@ -190,6 +197,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.RoadAnyTypeCompatible, m.RoadUsableByAll = sc.RoadAnyTypeCompatible, sc.RoadUsableByAll
 	m.Rng1 = *core.NewPrngSeed(sc.Rng[0], sc.Rng[1])
 	m.ScenarioTicks = sc.ScenarioTicks
+	m.tileUpdateX, m.tileUpdateY = int(sc.TileUpdateStart[0]>>5)&0xF, int(sc.TileUpdateStart[1]>>5)&0xF
 	m.Companies = sc.Companies
 	m.Industries = sc.Industries
 	m.Companies = sc.Companies
