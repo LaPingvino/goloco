@@ -31,7 +31,7 @@ import (
 // editor's buttons, resizing, the viewport's own scrolling, the status's
 // clipping (drawStringLeftClipped).
 type ViewWindow struct {
-	X, Y, W, H          int
+	WinBase
 	Tabs                int    // 3 (town) or 4 (industry)
 	Title               string // the place's name
 	Status              string // the status bar's line
@@ -40,7 +40,6 @@ type ViewWindow struct {
 	// place; OnClose closes the window.
 	View         func(w, h int) *gfx8.RenderTarget
 	OnCentreView func()
-	OnClose      func()
 	// OnRename is the caption's click (renameTownPrompt / renameIndustryPrompt).
 	OnRename func()
 	viewImg  *ebiten.Image
@@ -162,7 +161,7 @@ func NewIndustryWindow(sw, sh int, title, status string, titleColour, colour uin
 }
 
 func newViewWindow(sw, sh, w, h, tabs int, title, status string, titleColour, colour uint8) *ViewWindow {
-	return &ViewWindow{X: (sw - w) / 2, Y: (sh - h) / 2, W: w, H: h, Tabs: tabs, Title: title, Status: status,
+	return &ViewWindow{WinBase: WinBase{X: (sw - w) / 2, Y: (sh - h) / 2, W: w, H: h}, Tabs: tabs, Title: title, Status: status,
 		TitleColour: titleColour, Colour: colour, baseW: w, baseH: h}
 }
 
@@ -170,18 +169,12 @@ func newViewWindow(sw, sh, w, h, tabs int, title, status string, titleColour, co
 // width-26+22, height-14 (inclusive edges).
 func (w *ViewWindow) viewport() (l, t, r, b int) { return 3, 44, w.W - 26 + 22, w.H - 14 }
 
-func (w *ViewWindow) Contains(px, py int) bool {
-	return px >= w.X && py >= w.Y && px < w.X+w.W && py < w.Y+w.H
-}
-
 // HandleClick is onMouseUp: close, the tabs (switchTab: the first and the
 // Transported tab), centre_on_viewport.
 func (w *ViewWindow) HandleClick(px, py int) {
 	rx, ry := px-w.X, py-w.Y
 	if rx >= w.W-15 && rx < w.W-2 && ry >= 2 && ry < 15 {
-		if w.OnClose != nil {
-			w.OnClose()
-		}
+		w.Close()
 		return
 	}
 	if rx >= 1 && rx < w.W-1 && ry >= 1 && ry < 14 { // the caption: rename

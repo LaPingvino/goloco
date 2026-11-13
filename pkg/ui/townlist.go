@@ -44,7 +44,7 @@ type TableColumn struct {
 // share the layout): caption, close, panel, tabs, column headers, a scroll
 // view of 10 px rows and a status line.
 type TownListWindow struct {
-	X, Y        int
+	WinBase
 	TitleColour uint8
 	Colour      uint8
 	Caption     string
@@ -60,11 +60,10 @@ type TownListWindow struct {
 	Scroll  int
 	hold    L.VScrollHold // a press on the scrollbar held (stateScrollLeft)
 	content [4]int
-	OnClose func()
 
 	// Geometry: window size, row height, the scroll view rect, the status
 	// label's y and the text's y offset in a row (VehicleList: +2).
-	W, H, RowHeight, StatusY, TextDY int
+	RowHeight, StatusY, TextDY int
 	// RowDraw draws extra content into row i whose top is at y in the scroll
 	// view's own coordinates (VehicleList's drawTrainInline); clipped to it.
 	RowDraw func(rt *gfx8.RenderTarget, i, y int)
@@ -124,9 +123,9 @@ type TownListWindow struct {
 	// is the current one, its header shows "▼" (table_header_*_desc).
 	Sort     func(mode int)
 	SortMode int
-	// Reopen rebuilds the window from the game's current data (the lists'
+	// Rebuild rebuilds the window from the game's current data (the lists'
 	// onUpdate repopulating); nil: kept as opened.
-	Reopen func()
+	Rebuild func() *TownListWindow
 	// LighterFrame is WindowFlags::lighterFrame: the Station and Vehicle lists
 	// set it, the Town and Industry lists don't.
 	LighterFrame bool
@@ -148,7 +147,7 @@ func NewTownList(sw int, towns []TownRow, titleColour, colour uint8) *TownListWi
 	if len(rows) == 1 {
 		status = "1 town"
 	}
-	w := (&TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: i18n.Label(i18n.TitleTowns), Tabs: 4,
+	w := (&TownListWindow{WinBase: WinBase{X: sw - tlW, Y: 30}, TitleColour: titleColour, Colour: colour, Caption: i18n.Label(i18n.TitleTowns), Tabs: 4,
 		Columns: []TableColumn{{4, 200, i18n.Label(i18n.TableHeaderName), 0, 198}, {204, 80, i18n.Label(i18n.TableHeaderTownType), 200, 78}, {284, 70, i18n.Label(i18n.TableHeaderPopulation), 280, 68}, {354, 70, i18n.Label(i18n.TableHeaderStations), 350, 68}},
 		Rows:    rows, Status: status, Hover: -1}).setTableGeometry()
 	// sortTownList (run every update): a stable sort by the header clicked,
@@ -206,7 +205,7 @@ func NewStationList(sw int, stations []StationRow, titleColour, colour uint8) *T
 	if len(rows) == 1 {
 		status = "1 station"
 	}
-	w := (&TownListWindow{X: sw - tlW, Y: 30, TitleColour: titleColour, Colour: colour, Caption: i18n.Label(i18n.AllStations), Tabs: 5, ColourCaption: true,
+	w := (&TownListWindow{WinBase: WinBase{X: sw - tlW, Y: 30}, TitleColour: titleColour, Colour: colour, Caption: i18n.Label(i18n.AllStations), Tabs: 5, ColourCaption: true,
 		Columns: []TableColumn{{4, 200, i18n.Label(i18n.TableHeaderName), 0, 198}, {204, 200, i18n.Label(i18n.TableHeaderStatus), 200, 198}, {404, 90, i18n.Label(i18n.TableHeaderTotalWaiting), 400, 88}, {494, 120, i18n.Label(i18n.TableHeaderAccepts), 490, 118}},
 		Rows:    rows, Status: status, Hover: -1}).setTableGeometry()
 	// sortStationList: a stable sort by the header clicked, name by default.
@@ -244,15 +243,10 @@ func (w *TownListWindow) in(r [4]int, px, py int) bool {
 	return px >= w.X+r[0] && px < w.X+r[0]+r[2] && py >= w.Y+r[1] && py < w.Y+r[1]+r[3]
 }
 
-// Contains reports whether the point is on the window.
-func (w *TownListWindow) Contains(px, py int) bool { return w.in([4]int{0, 0, w.W, w.H}, px, py) }
-
 // HandleClick: close, or a row (selects it, as rowHover).
 func (w *TownListWindow) HandleClick(px, py int) {
 	if w.in([4]int{w.W - 15, 2, 13, 13}, px, py) {
-		if w.OnClose != nil {
-			w.OnClose()
-		}
+		w.Close()
 		return
 	}
 	if w.ExtraClick != nil && w.ExtraClick(px, py) {
@@ -558,10 +552,10 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 		rows[i] = cells(v)
 	}
 	status := vehicleListFooter(tab, len(rows))
-	w := &TownListWindow{X: sw - 550, Y: 30, TitleColour: titleColour, Colour: colour, Caption: vehicleListCaptions()[tab], Tabs: 6,
+	w := &TownListWindow{WinBase: WinBase{X: sw - 550, Y: 30, W: 550, H: 213}, TitleColour: titleColour, Colour: colour, Caption: vehicleListCaptions()[tab], Tabs: 6,
 		Columns: []TableColumn{{4, 310, i18n.Label(i18n.TableHeaderName), 4 + 1 - 4, 310 - 2}, {314, 100, i18n.Label(i18n.TableHeaderMonthlyProfit), 314 + 1 - 4, 100 - 2}, {414, 65, i18n.Label(i18n.TableHeaderAge), 414 + 1 - 4, 65 - 2}, {479, 67, i18n.Label(i18n.TableHeaderReliability), 479 + 1 - 4, 67 - 2}},
 		Rows:    rows, Status: status, Hover: -1, CurrentTab: tab,
-		W: 550, H: 213, RowHeight: vehicleListRowHeights[tab], StatusY: 213 - 13, TextDY: 2, List: [4]int{3, 56, 544, 138},
+		RowHeight: vehicleListRowHeights[tab], StatusY: 213 - 13, TextDY: 2, List: [4]int{3, 56, 544, 138},
 		Outline: true, HoverSolid: true, ColourCaption: true}
 	// drawScroll: drawTrainInline at (0, y + (rowHeight − 28) / 2 + 6).
 	w.RowDraw = func(rt *gfx8.RenderTarget, i, y int) {

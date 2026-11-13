@@ -43,13 +43,12 @@ type CompanyListRow struct {
 
 // CompanyListWindow is the window on its CompanyList tab.
 type CompanyListWindow struct {
-	X, Y, W, H          int
+	WinBase
 	TitleColour, Colour uint8
 	Rows                []CompanyListRow // sorted by SortMode
 	SortMode            int              // 0 name, 1 status, 2 performance (open's default), 3 value
 	Scroll              int
 	Hover               int
-	OnClose             func()
 	OnRow               func(id int)
 	SkinImage           int // the interface skin's image base (the tab icons)
 	FrameNo             int
@@ -120,17 +119,11 @@ func (w *CompanyListWindow) Sort() {
 }
 
 // Contains reports whether the point is on the window.
-func (w *CompanyListWindow) Contains(x, y int) bool {
-	return x >= w.X && x < w.X+w.W && y >= w.Y && y < w.Y+w.H
-}
-
 // HandleClick: close, a header (sort by it), a row (its company).
 func (w *CompanyListWindow) HandleClick(x, y int) {
 	in := func(l, t, ww, h int) bool { return x >= w.X+l && x < w.X+l+ww && y >= w.Y+t && y < w.Y+t+h }
 	if in(w.W-15, 2, 13, 13) {
-		if w.OnClose != nil {
-			w.OnClose()
-		}
+		w.Close()
 		return
 	}
 	for t, size := range companyTabSizes { // Common::switchTab (the ported tabs)

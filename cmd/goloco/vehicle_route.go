@@ -58,7 +58,7 @@ func (g *Game) routeAction(headID uint16, action string) {
 	c := g.playerCmd()
 	orders := m.OrderTable(h.OrderTableOffset)
 	rel := func(o sim.Order) uint16 { return uint16(o.Offset - int(h.OrderTableOffset)) }
-	sel := g.routeSel
+	sel := g.routeSelOf(headID)
 	switch action {
 	case "local", "express": // widx::localMode / expressMode: the player's own only
 		if company < 0 || h.Owner != uint8(company) {
@@ -76,26 +76,26 @@ func (g *Game) routeAction(headID uint16, action string) {
 			target = orders[sel]
 		}
 		m.VehicleOrderDelete(c, sim.CmdApply, headID, rel(target))
-		if g.routeSel >= len(m.OrderTable(m.Entities[tr.Head].OrderTableOffset)) {
-			g.routeSel = -1 // no order selected any more
+		if sel >= len(m.OrderTable(m.Entities[tr.Head].OrderTableOffset)) {
+			g.setRouteSel(headID, -1) // no order selected any more
 		}
 	case "up", "down": // onOrderMove
 		if h.SizeOfOrderTable <= 1 || sel < 0 || sel >= len(orders) {
 			return
 		}
 		if action == "up" {
-			if _, ok := m.VehicleOrderUp(c, sim.CmdApply, headID, rel(orders[sel])); ok && g.routeSel > 0 {
-				g.routeSel--
+			if _, ok := m.VehicleOrderUp(c, sim.CmdApply, headID, rel(orders[sel])); ok && sel > 0 {
+				g.setRouteSel(headID, sel-1)
 			}
 		} else if _, ok := m.VehicleOrderDown(c, sim.CmdApply, headID, rel(orders[sel])); ok && sel+1 < len(orders) {
-			g.routeSel++
+			g.setRouteSel(headID, sel+1)
 		}
 	case "skip":
 		m.VehicleOrderSkip(c, sim.CmdApply, headID)
 	case "reverse": // orderReverseCommand: the selection stays (orderTableIndex untouched)
 		m.VehicleOrderReverse(c, sim.CmdApply, headID)
 	}
-	g.openVehicleWindow(headID, 4)
+	g.refreshVehicleWindow(headID, 4)
 }
 
 // routeToolDown is Route::onToolDown for stops: the station under the cursor
@@ -133,8 +133,9 @@ func (g *Game) addNewOrder(headID uint16, order []byte) {
 	}
 	h := m.Entities[tr.Head]
 	offset := uint16(h.SizeOfOrderTable - 1)
-	if orders := m.OrderTable(h.OrderTableOffset); g.routeSel >= 0 && g.routeSel < len(orders) {
-		offset = uint16(orders[g.routeSel].Offset - int(h.OrderTableOffset))
+	sel := g.routeSelOf(headID)
+	if orders := m.OrderTable(h.OrderTableOffset); sel >= 0 && sel < len(orders) {
+		offset = uint16(orders[sel].Offset - int(h.OrderTableOffset))
 	}
 	c := g.playerCmd()
 	before := h.SizeOfOrderTable
@@ -142,10 +143,10 @@ func (g *Game) addNewOrder(headID uint16, order []byte) {
 		g.openError(i18n.Label(i18n.OrdersCantInsert), cmdErrorText(c))
 		return
 	}
-	if tr, err := m.TrainOf(headID); err == nil && m.Entities[tr.Head].SizeOfOrderTable != before && g.routeSel != -1 {
-		g.routeSel++
+	if tr, err := m.TrainOf(headID); err == nil && m.Entities[tr.Head].SizeOfOrderTable != before && sel != -1 {
+		g.setRouteSel(headID, sel+1)
 	}
-	g.openVehicleWindow(headID, 4)
+	g.refreshVehicleWindow(headID, 4)
 }
 
 // orderDropdown is Route's createOrderDropdown: one item per cargo the
@@ -181,10 +182,7 @@ func (g *Game) orderDropdown(headID uint16, kind string, x, y, w, h int) {
 	if len(items) == 0 {
 		return
 	}
-	colour := uint8(1)
-	if g.vehicleWin != nil {
-		colour = g.vehicleWin.Colour
-	}
+	colour := g.vehicleWinColour(headID)
 	d := ui.NewDropdownShowText(x, y, w, h, colour, items, 10, g.sw, g.sh)
 	d.Highlighted = 0
 	d.OnSelect = func(item int) {
@@ -193,4 +191,30 @@ func (g *Game) orderDropdown(headID uint16, kind string, x, y, w, h int) {
 		}
 	}
 	g.dropdown = d
+}
+
+// updateRouteTool is Route::onUpdate's tool: the front-most window
+// (WindowManager::isInFront) showing the Route tab of one of the controlling
+// company's vehicles takes the tool (toolSet) unless it has it; it loses it
+// when its window closes or leaves the tab (switchTab's toolCancel).
+// PARTIAL: not while the pickup tool is on (upstream's toolSet cancels it).
+func (g *Game) updateRouteTool() {
+	if g.routeTool {
+		if w := g.vehicleWin(g.routeHead); w == nil || w.Tab != 4 {
+			g.routeTool = false
+		}
+	}
+	if g.pickupOn {
+		g.routeTool = false
+		return
+	}
+	for _, win := range g.wins.Windows {
+		w, ok := win.(*ui.VehicleWindow)
+		if !ok || w.Tab != 4 || !w.Main.Own || !g.wins.IsInFront(w) {
+			continue
+		}
+		if head := uint16(w.Number); !g.routeTool || g.routeHead != head {
+			g.routeTool, g.routeHead = true, head
+		}
+	}
 }

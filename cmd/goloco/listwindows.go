@@ -33,8 +33,13 @@ func (g *Game) openVehicleList(tab int) {
 	g.openVehicleListFor(company, tab)
 }
 
-// openVehicleListFor is VehicleList::open(company, type).
-func (g *Game) openVehicleListFor(company, tab int) {
+// openVehicleListFor is VehicleList::open(company, type): the company's
+// vehicle list (WindowType::vehicleList, numbered by the company) brought to
+// the front on that tab, or opened.
+func (g *Game) openVehicleListFor(company, tab int) { g.wins.Show(g.newVehicleList(company, tab)) }
+
+// newVehicleList builds a company's vehicle list on a tab.
+func (g *Game) newVehicleList(company, tab int) *ui.TownListWindow {
 	cname := g.w.CompanyName(company)
 	var rows []ui.VehicleRow
 	for _, v := range g.w.VehicleListRows() {
@@ -63,20 +68,20 @@ func (g *Game) openVehicleListFor(company, tab int) {
 		}
 	}
 	w := ui.NewVehicleList(g.sw, tab, rows, tc, wc, cargos)
+	w.WinType, w.Number = ui.WindowTypeVehicleList, company
 	w.LighterFrame = true
-	g.companySelect(w, company, func(id int) { g.openVehicleListFor(id, tab) })
+	g.companySelect(w, company, func(id int) { g.turnList(w, ui.WindowTypeVehicleList, id, g.newVehicleList(id, tab)) })
 	if cname != "" {
 		w.Caption = cname + " - " + w.Caption // stringid_trains etc.
 	}
-	w.OnClose = func() { g.townList = nil }
 	w.OnTab = func(t int) { g.openVehicleListFor(company, t) }
 	g.listTabIcons(w, vehicleTabFrames, vehicleTabCounts, int(tc)) // recoloured to the company colour
 	w.TabTooltips = labels(i18n.TooltipTrains, i18n.TooltipBuses, i18n.TooltipTrucks, i18n.TooltipTrams, i18n.TooltipAircraft, i18n.TooltipShips)
 	w.TabDisabled = func(i int) bool { // disableUnavailableVehicleTypes: availableVehicles ^ 0x3F
 		return company < len(g.w.Map.Companies) && g.w.Map.Companies[company].AvailableVehicles&(1<<i) == 0
 	}
-	w.Reopen = func() { g.openVehicleListFor(company, tab) }
-	g.townList = w
+	w.Rebuild = func() *ui.TownListWindow { return g.newVehicleList(company, tab) }
+	return w
 }
 
 // companySelect gives a list window the company select button (Vehicle and
@@ -99,6 +104,17 @@ func (g *Game) companySelect(w *ui.TownListWindow, company int, open func(id int
 	w.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
 }
 
+// turnList is a list's onCompanyDropdown: that company's list of the type,
+// if open, comes to the front (bringToFront(type, company)); else this window
+// turns to the company — rebuilt, where it stands.
+func (g *Game) turnList(w *ui.TownListWindow, typ ui.WindowType, company int, rebuilt *ui.TownListWindow) {
+	if open := g.wins.Find(typ, company); open != nil {
+		g.wins.BringToFront(open)
+		return
+	}
+	g.wins.Replace(w, rebuilt)
+}
+
 // openStationsWindow lists the controlling company's stations.
 func (g *Game) openStationsWindow() {
 	company, _ := g.w.ControllingCompany()
@@ -113,7 +129,11 @@ var stationTabMasks = [5]uint16{0xF, 1 << 0, 1 << 1, 1 << 2, 1 << 3}
 // owner, not flag_5 — not fully created —, flags & the tab's mask), captioned
 // "{company} - All Stations" / "Rail Stations" …; a tab click reopens it on
 // that tab.
-func (g *Game) openStationList(company, tab int) {
+func (g *Game) openStationList(company, tab int) { g.wins.Show(g.newStationList(company, tab)) }
+
+// newStationList builds a company's station list (WindowType::stationList,
+// numbered by the company) on a tab.
+func (g *Game) newStationList(company, tab int) *ui.TownListWindow {
 	cname := g.w.CompanyName(company)
 	var rows []ui.StationRow
 	for _, s := range g.w.StationList() {
@@ -133,23 +153,26 @@ func (g *Game) openStationList(company, tab int) {
 		tc = g.w.CompanyColours[company]
 	}
 	w := ui.NewStationList(g.sw, rows, tc, wc)
+	w.WinType, w.Number = ui.WindowTypeStationList, max(company, 0)
 	w.LighterFrame = true
 	if cname != "" {
 		w.Caption = strings.Replace(i18n.Label(i18n.StringidAllStations+tab), "{STRINGID}", cname, 1) // "{STRINGID} - Rail Stations" …
 	}
 	w.CurrentTab = tab
 	w.OnTab = func(t int) { g.openStationList(company, t) }
-	g.companySelect(w, company, func(id int) { g.openStationList(id, tab) })
-	w.OnClose = func() { g.townList = nil }
+	g.companySelect(w, company, func(id int) { g.turnList(w, ui.WindowTypeStationList, id, g.newStationList(id, tab)) })
 	w.OnRow = func(id int) { g.openStationWindow(id) }             // onScrollMouseDown: Station::open
 	g.listTabIcons(w, stationTabFrames, stationTabCounts, int(tc)) // the company colour
 	w.TabTooltips = labels(i18n.TooltipAllStations, i18n.TooltipRailStations, i18n.TooltipRoadStations, i18n.TooltipAirports, i18n.TooltipShipPorts)
-	w.Reopen = func() { g.openStationList(company, tab) }
-	g.townList = w
+	w.Rebuild = func() *ui.TownListWindow { return g.newStationList(company, tab) }
+	return w
 }
 
 // openTownsWindow lists the scenario's towns with population and size.
-func (g *Game) openTownsWindow() {
+func (g *Game) openTownsWindow() { g.wins.Show(g.newTownList()) }
+
+// newTownList builds the town list (WindowType::townList; there is one).
+func (g *Game) newTownList() *ui.TownListWindow {
 	// The ported TownList window (pkg/ui/townlist.go).
 	infos := g.w.TownList()
 	rows := make([]ui.TownRow, len(infos))
@@ -158,7 +181,7 @@ func (g *Game) openTownsWindow() {
 	}
 	tc, wc := g.windowColours(false)
 	w := ui.NewTownList(g.sw, rows, tc, wc)
-	w.OnClose = func() { g.townList = nil }
+	w.WinType = ui.WindowTypeTownList
 	w.OnRow = func(id int) { // onScrollMouseDown: Town::open
 		g.openTownWindow(id)
 	}
@@ -167,13 +190,19 @@ func (g *Game) openTownsWindow() {
 	// Outside the editor / sandbox the build-town, build-buildings and misc
 	// buildings tabs are disabled (TownList.cpp open), so hidden.
 	w.TabDisabled = func(i int) bool { return i > 0 }
-	w.Reopen = g.openTownsWindow
-	g.townList = w
+	w.Rebuild = g.newTownList
+	return w
 }
 
 // openTownWindow is Town::open: the Town window on its Town tab, its
 // viewport on the town; the centre-view button moves the main view there.
+// There is one per town (WindowType::town, numbered by the town): an open
+// one comes to the front (bringToFront(type, number)).
 func (g *Game) openTownWindow(id int) {
+	if open := g.wins.Find(ui.WindowTypeTown, id); open != nil {
+		g.wins.BringToFront(open)
+		return
+	}
 	infos := g.w.TownList()
 	if id < 0 || id >= len(infos) {
 		return
@@ -181,6 +210,7 @@ func (g *Game) openTownWindow(id int) {
 	t := infos[id]
 	tc, wc := g.windowColours(false)
 	w := ui.NewTownWindow(g.sw, g.sh, t.Name, t.Size, int(t.Population), tc, wc)
+	w.WinType, w.Number = ui.WindowTypeTown, id
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.TownView(id, vw, vh) }
 	w.Labels = func(dst *ebiten.Image) { g.w.TownViewLabels(id, dst) }
 	w.OnCentreView = func() { g.w.CentreOnTown(id) }
@@ -245,13 +275,16 @@ func (g *Game) openTownWindow(id int) {
 		}
 		return base + 145 + anim(16), -1, -1
 	}
-	w.OnClose = func() { g.viewWin = nil }
-	g.viewWin = w
+	g.wins.Show(w)
 }
 
 // openIndustryList is IndustryList::open (its list tab): every industry with
 // its status and production; a row opens its Industry window.
-func (g *Game) openIndustryList() {
+func (g *Game) openIndustryList() { g.wins.Show(g.newIndustryList()) }
+
+// newIndustryList builds the industry list's list tab (WindowType::
+// industryList; there is one, its two tabs the same window).
+func (g *Game) newIndustryList() *ui.TownListWindow {
 	var rows []ui.IndustryListRow
 	for _, r := range g.w.Map.IndustryList(g.r.ObjMgr) {
 		rows = append(rows, ui.IndustryListRow{ID: r.ID, Name: r.Name, Status: r.Status, Produces: r.Produces,
@@ -259,7 +292,7 @@ func (g *Game) openIndustryList() {
 	}
 	tc, wc := g.windowColours(false)
 	w := ui.NewIndustryList(g.sw, rows, tc, wc)
-	w.OnClose = func() { g.townList = nil }
+	w.WinType = ui.WindowTypeIndustryList
 	w.OnRow = func(id int) { g.openIndustryWindow(id) } // onScrollMouseDown: Industry::open
 	w.OnTab = func(t int) {
 		if t == 1 {
@@ -268,8 +301,8 @@ func (g *Game) openIndustryList() {
 	}
 	g.listTabIcons(w, industryTabFrames, industryTabCounts, -1)
 	w.TabTooltips = labels(i18n.TooltipIndustriesList, i18n.TooltipFundNewIndustries)
-	w.Reopen = g.openIndustryList
-	g.townList = w
+	w.Rebuild = g.newIndustryList
+	return w
 }
 
 // openNewIndustries is the industry list's second tab (NewIndustries):
@@ -316,7 +349,8 @@ func (g *Game) openNewIndustries() {
 		g.indTool.costOK = false // onScrollMouseDown: _industryPlacementCost = kFailure
 	})
 	w.PlacementCost = func() (int64, bool) { return int64(g.indTool.cost), g.indTool.ghost && g.indTool.costOK }
-	w.OnClose = func() { g.industryToolAbort(); g.townList = nil } // onClose: toolCancel
+	w.WinType = ui.WindowTypeIndustryList
+	w.OnClose = func() { g.industryToolAbort() } // onClose: toolCancel
 	w.OnTab = func(t int) {
 		if t == 0 {
 			g.industryToolAbort()
@@ -325,7 +359,7 @@ func (g *Game) openNewIndustries() {
 	}
 	g.listTabIcons(w, industryTabFrames, industryTabCounts, -1)
 	w.TabTooltips = labels(i18n.TooltipIndustriesList, i18n.TooltipFundNewIndustries)
-	g.townList = w
+	g.wins.Show(w)
 	g.industryToolStart(w)
 }
 
@@ -333,6 +367,10 @@ func (g *Game) openNewIndustries() {
 // Industry tab, its viewport on the industry, its status getStatusString; the
 // centre-view button moves the main view there.
 func (g *Game) openIndustryWindow(id int) {
+	if open := g.wins.Find(ui.WindowTypeIndustry, id); open != nil { // one per industry: bringToFront(type, number)
+		g.wins.BringToFront(open)
+		return
+	}
 	m := &g.w.Map
 	idx := -1
 	for i := range m.Industries {
@@ -347,12 +385,12 @@ func (g *Game) openIndustryWindow(id int) {
 	name, _ := m.IndustryName(idx, g.r.ObjMgr)
 	tc, wc := g.windowColours(false)
 	w := ui.NewIndustryWindow(g.sw, g.sh, name, m.IndustryStatusString(idx, g.r.ObjMgr), tc, wc)
+	w.WinType, w.Number = ui.WindowTypeIndustry, id
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.IndustryView(idx, vw, vh) }
 	w.Labels = func(dst *ebiten.Image) { g.w.IndustryViewLabels(idx, dst) }
 	w.OnCentreView = func() { g.w.CentreOnIndustry(idx) }
 	w.OnRename = func() { g.renameIndustry(idx, w) }
 	w.TabTooltips = labels(i18n.TooltipIndustry, i18n.TooltipProductionGraph, i18n.TooltipProductionGraph, i18n.TooltipStatistics)
-	w.OnClose = func() { g.viewWin = nil }
 	w.CargoTab = 3 // tab_transported
 	w.Cargo = func() (bool, bool, []ui.CargoMonthLine) {
 		rec, prod, months := g.w.Map.IndustryCargoMonths(idx, g.r.ObjMgr)
@@ -408,7 +446,7 @@ func (g *Game) openIndustryWindow(id int) {
 				Month: int(g.w.Map.CurrentMonth), Year: int(g.w.Map.CurrentYear), Layout: ui.IndustryGraphLayout}, true
 		}
 	}
-	g.viewWin = w
+	g.wins.Show(w)
 }
 
 // listTabIcons is a list window's drawTabs: tab i's interface skin image
@@ -500,21 +538,27 @@ func (g *Game) renameIndustry(idx int, win *ui.ViewWindow) {
 		})
 }
 
-// refreshList is the lists' onUpdate repopulating: the open list (if it can
-// reopen) rebuilt from the game's current data, keeping where it is, its
+// refreshList is the lists' onUpdate repopulating: every open list (that can
+// rebuild) built anew from the game's current data, keeping where it is, its
 // scroll, its sort and its hover row (by its id); not while a mouse button is held (a
 // scrollbar drag or a click in progress).
 func (g *Game) refreshList() {
-	old := g.townList
-	if old == nil || old.Reopen == nil || g.inMousePressed(ebiten.MouseButtonLeft) {
+	if g.inMousePressed(ebiten.MouseButtonLeft) {
 		return
 	}
-	old.Reopen()
-	w := g.townList
-	if w == nil || w == old {
+	for _, win := range append([]ui.Win(nil), g.wins.Windows...) {
+		if old, ok := win.(*ui.TownListWindow); ok && old.Rebuild != nil {
+			g.refreshListWindow(old)
+		}
+	}
+}
+
+func (g *Game) refreshListWindow(old *ui.TownListWindow) {
+	w := old.Rebuild()
+	if w == nil {
 		return
 	}
-	w.X, w.Y = old.X, old.Y
+	g.wins.Replace(old, w)
 	if w.Sort != nil && w.SortMode != old.SortMode {
 		w.SortMode = old.SortMode
 		w.Sort(old.SortMode)

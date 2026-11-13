@@ -49,7 +49,7 @@ var (
 
 // PromptBrowseWindow is the window state.
 type PromptBrowseWindow struct {
-	X, Y     int
+	WinBase
 	Title    string
 	Dir      string
 	Exts     []string // lower-case extensions listed, e.g. ".sv5"
@@ -59,7 +59,6 @@ type PromptBrowseWindow struct {
 	hold     L.VScrollHold // a press on the scrollbar held (stateScrollLeft)
 	content  [4]int
 	OnPick   func(path string)
-	OnClose  func()
 
 	// Save mode: the filename being typed, the extension added on OK, the
 	// caret blink counter and the handler.
@@ -116,9 +115,7 @@ func (w *PromptBrowseWindow) HandleText(chars []rune, backspace, enter, escape b
 	w.frame++
 	switch {
 	case escape:
-		if w.OnClose != nil {
-			w.OnClose()
-		}
+		w.Close()
 		return
 	case enter && w.Save:
 		w.ok()
@@ -170,7 +167,8 @@ type pbEntry struct {
 
 // NewPromptBrowse opens the window (createWindowCentred) on dir.
 func NewPromptBrowse(title, dir string, exts []string, sw, sh int) *PromptBrowseWindow {
-	w := &PromptBrowseWindow{X: (sw - pbW) / 2, Y: (sh - pbH) / 2, Title: title, Exts: exts, Selected: -1}
+	w := &PromptBrowseWindow{WinBase: WinBase{WinType: WindowTypeFileBrowserPrompt, X: (sw - pbW) / 2, Y: (sh - pbH) / 2, W: pbW, H: pbH,
+		WinFlags: WindowFlagStickToFront}, Title: title, Exts: exts, Selected: -1}
 	w.chdir(dir)
 	return w
 }
@@ -209,16 +207,13 @@ func (w *PromptBrowseWindow) in(r [4]int, px, py int) bool {
 }
 
 // Contains reports whether the point is on the window.
-func (w *PromptBrowseWindow) Contains(px, py int) bool { return w.in([4]int{0, 0, pbW, pbH}, px, py) }
 
 // HandleClick: close, parent folder, or a list row (select; a second click
 // on the selected row opens the folder or picks the file).
 func (w *PromptBrowseWindow) HandleClick(px, py int) {
 	switch {
 	case w.in(pbClose, px, py):
-		if w.OnClose != nil {
-			w.OnClose()
-		}
+		w.Close()
 	case w.in(pbParent, px, py):
 		if parent := filepath.Dir(w.Dir); parent != w.Dir {
 			w.chdir(parent)

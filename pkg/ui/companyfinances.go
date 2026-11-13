@@ -117,7 +117,7 @@ type CompanyFinances struct {
 
 // CompanyFinancesWindow is the window.
 type CompanyFinancesWindow struct {
-	X, Y, W, H          int
+	WinBase
 	TitleColour, Colour uint8
 	Title               string // the company's name (caption: "{STRINGID} - Finances")
 	Data                CompanyFinances
@@ -140,11 +140,6 @@ type CompanyFinancesWindow struct {
 	OnColourMode func(colourType int, on bool)
 	// OnRename is onMouseUp caption: renameCompanyPrompt (any tab).
 	OnRename func()
-	// Positioning: the window follows the pointer (positioningWindow, begun
-	// on the caption; released unmoved, the caption's click: rename).
-	Positioning        bool
-	posLastX, posLastY int
-	posMoved           bool
 	// OnColour is a swatch\'s onMouseDown (colourType 0 main, 1–10 a vehicle
 	// type; primary or secondary) with its screen rect, for showColour.
 	OnColour  func(colourType int, primary bool, x, y, w, h int)
@@ -154,7 +149,6 @@ type CompanyFinancesWindow struct {
 	hDragX    int
 	SkinImage int // the interface skin's image base (the tab icons)
 	FrameNo   int // the window's frameNo: the current tab's icon animates
-	OnClose   func()
 	// OnLoan is the stepper's − (−1) or + (+1): onMouseDown loan_decrease /
 	// loan_increase (a step of £1,000 × the click-repeat step).
 	OnLoan func(dir, step int)
@@ -177,10 +171,6 @@ type CompanyFinancesWindow struct {
 }
 
 // Contains reports whether the point is on the window.
-func (w *CompanyFinancesWindow) Contains(x, y int) bool {
-	return x >= w.X && x < w.X+w.W && y >= w.Y && y < w.Y+w.H
-}
-
 // HandleClick handles a press: the close button, the Finances and Cargo
 // delivered tabs (Common::switchTab), the loan stepper and autopay (the
 // controlling company's own window only). PARTIAL: the other tabs.
@@ -188,13 +178,15 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 	lw := CompanyFinancesLayout(w.W, w.H)
 	in := func(b BVWidget) bool { return x >= w.X+b.L && x <= w.X+b.R && y >= w.Y+b.T && y <= w.Y+b.B }
 	switch {
-	case in(lw[cwClose]) && w.OnClose != nil:
-		w.OnClose()
+	case in(lw[cwClose]):
+		w.Close()
 	case w.hBarClick(x, y):
 	case in(lw[cwCompanySelect]) && len(w.Companies) > 0 && w.OpenDropdown != nil: // onMouseDown company_select
 		w.OpenDropdown(CompanySelectDropdown(w.X+lw[cwCompanySelect].L, w.Y+lw[cwCompanySelect].T, w.TitleColour, w.Companies, w.CompanyID, w.ScreenW, w.ScreenH, w.OnCompany))
-	case in(lw[cwCaption]): // windowPositionBegin; the rename comes on an unmoved release (PositionEnd)
-		w.Positioning, w.posLastX, w.posLastY, w.posMoved = true, x, y, false
+	case in(lw[cwCaption]): // the caption's click (the stack moves the window by it; an unmoved release arrives here)
+		if w.OnRename != nil {
+			w.OnRename()
+		}
 	case in(lw[cwTabColour]) && w.Tab != CompanyTabColourScheme:
 		w.switchTab(CompanyTabColourScheme)
 	case w.Tab == CompanyTabColourScheme && w.Colours.Own && w.OnColour != nil && w.colourSwatchAt(x, y) != nil:
@@ -1062,28 +1054,6 @@ func (w *CompanyFinancesWindow) colourSwatchAt(x, y int) *colourSwatch {
 		}
 	}
 	return nil
-}
-
-// PositionMove is statePositioningWindow while held: the pointer's y clamped
-// to 29 … screen height − 29, the window moved by its travel.
-func (w *CompanyFinancesWindow) PositionMove(x, y, screenH int) {
-	y = min(max(y, 29), screenH-29)
-	if dx, dy := x-w.posLastX, y-w.posLastY; dx != 0 || dy != 0 {
-		w.X += dx
-		w.Y += dy
-		w.posMoved = true
-	}
-	w.posLastX, w.posLastY = x, y
-}
-
-// PositionEnd is its leftReleased: the last move, then — never moved — the
-// caption's mouse-up (renameCompanyPrompt).
-func (w *CompanyFinancesWindow) PositionEnd(x, y, screenH int) {
-	w.PositionMove(x, y, screenH)
-	w.Positioning = false
-	if !w.posMoved && w.OnRename != nil {
-		w.OnRename()
-	}
 }
 
 // SwitchTab is Common::switchTab from outside (CompanyWindow::open's tab).

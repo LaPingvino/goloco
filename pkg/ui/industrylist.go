@@ -57,7 +57,7 @@ func industryOrder(mode int, a, b IndustryListRow) bool {
 func NewIndustryList(sw int, industries []IndustryListRow, titleColour, colour uint8) *TownListWindow {
 	const w759 = 759
 	status := countLabel(len(industries), i18n.StatusNumIndustriesSingular, i18n.StatusNumIndustriesPlural)
-	w := &TownListWindow{X: sw - w759, Y: 30, TitleColour: titleColour, Colour: colour, Caption: i18n.Label(i18n.TitleIndustries), Tabs: 2,
+	w := &TownListWindow{WinBase: WinBase{X: sw - w759, Y: 30}, TitleColour: titleColour, Colour: colour, Caption: i18n.Label(i18n.TitleIndustries), Tabs: 2,
 		Columns: []TableColumn{{4, 200, i18n.Label(i18n.IndustryTableHeader), 0, 198}, {204, 240, i18n.Label(i18n.IndustryTableHeaderStatus), 200, 238},
 			{444, 160, i18n.Label(i18n.IndustryTableHeaderProduction), 440, 138}, {604, 151, i18n.Label(i18n.IndustryTableHeaderProductionLastMonth), 600, 138}},
 		Status: status, Hover: -1}
@@ -106,7 +106,7 @@ const newIndustryCell = 112
 // cmd/goloco industrytool.go.
 func NewIndustryGrid(sw int, choices []NewIndustryChoice, selected int, titleColour, colour uint8, onSelect func(id int)) *TownListWindow {
 	const w578, h172 = 578, 172
-	w := &TownListWindow{X: sw - 759, Y: 30, W: w578, H: h172, TitleColour: titleColour, Colour: colour,
+	w := &TownListWindow{WinBase: WinBase{X: sw - 759, Y: 30, W: w578, H: h172}, TitleColour: titleColour, Colour: colour,
 		Caption: i18n.Label(i18n.TitleFundNewIndustries), Tabs: 2, CurrentTab: 1, RowHeight: newIndustryCell, Hover: -1}
 	w.List = [4]int{3, 45, w578 - 4 - 3 + 1, h172 - 14 - 45 + 1}
 	w.Rows = make([][]string, (len(choices)+4)/5) // getScrollSize: (4 + rowCount) / 5 rows

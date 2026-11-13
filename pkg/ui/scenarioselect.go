@@ -43,20 +43,20 @@ type ScenarioSelectWindow struct {
 	// (ScenarioManager loadScenarioProgress: formatChallengeArguments with
 	// the delivered cargo's object loaded); else the meta's own description.
 	ObjectiveText func(m *scenario.ScenarioMeta) string
-	X, Y          int
-	Tab           int
-	Scroll        int           // list scroll offset in px
-	hold          L.VScrollHold // a press on the scrollbar held (stateScrollLeft)
-	Selected      *scenario.ScenarioMeta
-	byCat         [5][]*scenario.ScenarioMeta
-	OnStart       func(*scenario.ScenarioMeta)
-	OnClose       func()
-	content       [4]int // the list's content rectangle, window-relative (set by Draw)
+	WinBase
+	Tab      int
+	Scroll   int           // list scroll offset in px
+	hold     L.VScrollHold // a press on the scrollbar held (stateScrollLeft)
+	Selected *scenario.ScenarioMeta
+	byCat    [5][]*scenario.ScenarioMeta
+	OnStart  func(*scenario.ScenarioMeta)
+	content  [4]int // the list's content rectangle, window-relative (set by Draw)
 }
 
 // NewScenarioSelect opens the window for screen size sw × sh.
 func NewScenarioSelect(metas []*scenario.ScenarioMeta, sw, sh int) *ScenarioSelectWindow {
-	w := &ScenarioSelectWindow{X: sw/2 - ssW/2, Y: max(sh/2-ssH/2, 28)}
+	w := &ScenarioSelectWindow{WinBase: WinBase{WinType: WindowTypeScenarioSelect, X: sw/2 - ssW/2, Y: max(sh/2-ssH/2, 28), W: ssW, H: ssH,
+		WinFlags: WindowFlagStickToFront}}
 	for _, m := range metas {
 		c := int(m.Category)
 		if c < 0 || c >= 5 {
@@ -72,19 +72,13 @@ func (w *ScenarioSelectWindow) in(r [4]int, px, py int) bool {
 }
 
 // Contains reports whether the point is on the window.
-func (w *ScenarioSelectWindow) Contains(px, py int) bool {
-	return w.in([4]int{0, 0, ssW, ssH}, px, py)
-}
-
 // clickable(ScenarioSelect.cpp): close tab0 tab1 tab2 tab3 tab4
 // HandleClick: tabs switch the category, a list row selects (a second click on
 // the selected row starts it — upstream starts on a single click; goloco keeps
 // the details visible first), close closes.
 func (w *ScenarioSelectWindow) HandleClick(px, py int) {
 	if w.in(ssClose, px, py) {
-		if w.OnClose != nil {
-			w.OnClose()
-		}
+		w.Close()
 		return
 	}
 	for i, r := range ssTabs {

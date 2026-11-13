@@ -45,6 +45,7 @@ func (g *Game) loadScenario(filePath string) error {
 	g.objective = sc.Objective
 	g.hasObjective = sc.HasObjective
 	g.gameWon = false
+	g.wins.CloseAll() // WindowManager::closeAllFloatingWindows: the windows showed the world that goes
 
 	if g.r.ObjMgr != nil {
 		reorderScenarioObjects(g.r.ObjMgr, sc)
@@ -131,6 +132,7 @@ func (g *Game) quitToMenu() {
 	if g.titleWorld != nil {
 		g.w = g.titleWorld
 	}
+	g.wins.CloseAll()
 	g.inTitleScreen = true
 	g.currentScenarioPath = ""
 	if g.titleSeq != nil {
@@ -211,14 +213,13 @@ func (g *Game) openNewGameWindow() {
 	}
 	w := ui.NewScenarioSelect(metas, g.sw, g.sh)
 	w.ObjectiveText = g.scenarioObjectiveText
-	w.OnClose = func() { g.scenarioSelect = nil }
 	w.OnStart = func(m *scenario.ScenarioMeta) {
-		g.scenarioSelect = nil
+		w.Close()
 		if err := g.loadScenario(m.FilePath); err != nil {
 			log.Printf("[Game] Load error: %v", err)
 		}
 	}
-	g.scenarioSelect = w
+	g.wins.Show(w)
 }
 
 // openLoadGameWindow opens the file browser (PromptBrowse, load mode) for all
@@ -233,17 +234,16 @@ func (g *Game) openLoadGameWindow() {
 		startDir = filepath.Dir(g.dataDir) // one level up from "Data/"
 	}
 	w := ui.NewPromptBrowse("Load Game", startDir, []string{".sv5", ".sc5", ".goloco"}, g.sw, g.sh)
-	w.OnClose = func() { g.browse = nil }
 	w.Confirm = func(caption, text, ok string, then func()) { // right-click delete asks first
 		g.prompt = ui.NewPromptOkCancel(caption, text, ok, g.sw, g.sh, then)
 	}
 	w.OnPick = func(path string) {
-		g.browse = nil
+		w.Close()
 		if err := g.loadScenario(path); err != nil {
 			log.Printf("[Game] Load error: %v", err)
 		}
 	}
-	g.browse = w
+	g.wins.Show(w)
 }
 
 // GoLocoSave is the JSON format for GoLoco native save files (.goloco).
@@ -270,17 +270,16 @@ func (g *Game) openSaveWindow() {
 		name = strings.TrimSuffix(filepath.Base(g.currentScenarioPath), filepath.Ext(g.currentScenarioPath))
 	}
 	w := ui.NewPromptBrowseSave("Save Game", goLocoSavesDir(), name, ".goloco", g.sw, g.sh)
-	w.OnClose = func() { g.browse = nil }
 	w.Confirm = func(caption, text, ok string, then func()) {
 		g.prompt = ui.NewPromptOkCancel(caption, text, ok, g.sw, g.sh, then)
 	}
 	w.OnSave = func(path string) {
-		g.browse = nil
+		w.Close()
 		if err := g.saveGameTo(path); err != nil {
 			log.Printf("[Game] Save error: %v", err)
 		}
 	}
-	g.browse = w
+	g.wins.Show(w)
 }
 
 // saveGameTo writes the current scenario path to a .goloco JSON save file.

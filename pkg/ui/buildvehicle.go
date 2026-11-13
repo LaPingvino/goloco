@@ -142,7 +142,7 @@ type BVRow struct {
 // preview (drawVehicleOverview, the cargo icons), the cargo-filter line,
 // the scroll bar, input, and createWindow's free-spot placement.
 type BuildVehicleWindow struct {
-	X, Y, W, H          int
+	WinBase
 	TitleColour, Colour uint8
 	Tab, TrackTab       int
 	Disabled            uint8
@@ -153,7 +153,6 @@ type BuildVehicleWindow struct {
 	hold                uilayout.VScrollHold // a press on the list\'s scrollbar held (stateScrollLeft)
 	Primary, Secondary  uint8                // the controlling company's colours for the vehicles
 	Message             string
-	OnClose             func()          // the close button
 	OnTab               func(int)       // a vehicle-type tab
 	OnBuy               func(id uint16) // a row clicked (onScrollMouseDown): buy that vehicle
 }
@@ -248,10 +247,6 @@ func (w *BuildVehicleWindow) Draw(screen *ebiten.Image) {
 }
 
 // Contains reports whether the point is on the window.
-func (w *BuildVehicleWindow) Contains(x, y int) bool {
-	return x >= w.X && x < w.X+w.W && y >= w.Y && y < w.Y+w.H
-}
-
 // HandleClick is onMouseUp's close and vehicle-type tabs (BuildVehicle.cpp):
 // close → WindowManager::close; a type tab → switchTab (here: OnTab, which
 // opens the window afresh on that tab). PARTIAL: the track tabs, the list
@@ -264,9 +259,7 @@ func (w *BuildVehicleWindow) HandleClick(x, y int) {
 		return !b.Hidden && x >= w.X+b.L && x <= w.X+b.R && y >= w.Y+b.T && y <= w.Y+b.B
 	}
 	if in(lw[bvClose]) {
-		if w.OnClose != nil {
-			w.OnClose()
-		}
+		w.Close()
 		return
 	}
 	for i := 0; i < 6; i++ {

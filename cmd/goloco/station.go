@@ -17,6 +17,10 @@ import (
 // centre-view button moves the main view there. The window takes the owning
 // company's colour.
 func (g *Game) openStationWindow(id int) {
+	if open := g.wins.Find(ui.WindowTypeStation, id); open != nil { // one per station: bringToFront(type, number)
+		g.wins.BringToFront(open)
+		return
+	}
 	var info *sim.StationInfo
 	for _, s := range g.w.StationList() {
 		if s.ID == id {
@@ -33,6 +37,7 @@ func (g *Game) openStationWindow(id int) {
 		tc = g.w.CompanyColours[info.Owner]
 	}
 	w := ui.NewStationWindow(g.sw, g.sh, info.Name, info.Status, tc, wc)
+	w.Number = id
 	w.Cargo, w.Accepted = g.stationCargoLines(id)
 	if sk := g.skin(); sk != nil {
 		w.SkinImage = int(sk.ImageOffset)
@@ -99,9 +104,8 @@ func (g *Game) openStationWindow(id int) {
 		if g.catchmentStation == id {
 			g.showStationCatchment(-1)
 		}
-		g.stationWin = nil
 	}
-	g.stationWin = w
+	g.wins.Show(w)
 }
 
 // showStationCatchment is StationWindow's showStationCatchment: the selected
@@ -187,8 +191,8 @@ func (g *Game) renameStation(id int, titleColour, colour uint8) {
 				g.openError(i18n.Label(i18n.ErrorCantRenameStation), cmdErrorText(c))
 				return
 			}
-			if g.stationWin != nil {
-				g.stationWin.Title = m.StationName(id)
+			if w := g.stationWin(id); w != nil {
+				w.Title = m.StationName(id)
 			}
 			g.w.StationsChanged()
 		})

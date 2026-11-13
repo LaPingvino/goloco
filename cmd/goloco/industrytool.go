@@ -30,7 +30,7 @@ type industryTool struct {
 // industryToolOn is ToolManager::isToolActive for the tab: on while its
 // window is the open list (another list replacing it ends the tool).
 func (g *Game) industryToolOn() bool {
-	if g.indTool.on && g.townList != g.indTool.win {
+	if g.indTool.on && (g.indTool.win == nil || g.indTool.win.Stack() == nil) {
 		g.industryToolAbort()
 	}
 	return g.indTool.on

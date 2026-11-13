@@ -28,7 +28,7 @@ import (
 const stationWinW, stationWinH = 223, 136 // Station::kWindowSize
 
 type StationWindow struct {
-	X, Y                int
+	WinBase
 	Title, Status       string
 	TitleColour, Colour uint8
 	Tab                 int   // 0 Station, 1 Cargo, 2 Cargo ratings
@@ -48,7 +48,6 @@ type StationWindow struct {
 	OnRename     func()
 	View         func(w, h int) *gfx8.RenderTarget
 	OnCentreView func()
-	OnClose      func()
 	viewImg      *ebiten.Image
 	// Labels draws the station / town names over the viewport (nil: none).
 	Labels ViewLabels
@@ -85,7 +84,7 @@ func (w *StationWindow) vehicleList() (l, t, wd, ht, rowH int) {
 // NewStationWindow places the window centred (createWindow's placement:
 // PARTIAL).
 func NewStationWindow(sw, sh int, title, status string, titleColour, colour uint8) *StationWindow {
-	return &StationWindow{X: (sw - stationWinW) / 2, Y: (sh - stationWinH) / 2, Title: title, Status: status,
+	return &StationWindow{WinBase: WinBase{WinType: WindowTypeStation, X: (sw - stationWinW) / 2, Y: (sh - stationWinH) / 2, W: stationWinW, H: stationWinH}, Title: title, Status: status,
 		TitleColour: titleColour, Colour: colour, vHover: -1}
 }
 
@@ -110,9 +109,8 @@ func (w *StationWindow) height() int {
 	return stationWinH
 }
 
-func (w *StationWindow) Contains(px, py int) bool {
-	return px >= w.X && py >= w.Y && px < w.X+w.width() && py < w.Y+w.height()
-}
+// PrepareDraw is the tabs' onResize (PARTIAL: each tab's kWindowSize, fixed).
+func (w *StationWindow) PrepareDraw() { w.W, w.H = w.width(), w.height() }
 
 // MouseOver is VehiclesStopping's onScrollMouseOver: the row under the mouse.
 func (w *StationWindow) MouseOver(px, py int) {
@@ -151,9 +149,7 @@ func (w *StationWindow) HandleWheel(dy float64) {
 func (w *StationWindow) HandleClick(px, py int) {
 	rx, ry := px-w.X, py-w.Y
 	if rx >= w.width()-15 && rx < w.width()-2 && ry >= 2 && ry < 15 {
-		if w.OnClose != nil {
-			w.OnClose()
-		}
+		w.Close()
 		return
 	}
 	if rx >= 1 && rx < w.width()-15 && ry >= 1 && ry <= 13 && w.OnRename != nil { // Common::onMouseUp caption

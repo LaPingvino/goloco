@@ -38,18 +38,20 @@ func TestVehicleDetailsLayout(t *testing.T) {
 // clamped to 29 … height − 29) and is a rename click only when unmoved.
 func TestVehicleWindowPositioning(t *testing.T) {
 	renamed := 0
-	w := &VehicleWindow{X: 100, Y: 100, W: 265, H: 177, OnRename: func() { renamed++ }}
-	w.HandleClick(150, 105)
-	if !w.Positioning {
+	w := &VehicleWindow{WinBase: WinBase{X: 100, Y: 100, W: 265, H: 177}, OnRename: func() { renamed++ }}
+	s := &WindowStack{ScreenW: 800, ScreenH: 600}
+	s.Open(w)
+	s.Press(150, 105)
+	if !s.Dragging() {
 		t.Fatal("a press on the caption doesn't start moving")
 	}
-	w.PositionMove(170, 125, 600)
-	w.PositionEnd(200, 5, 600)                                    // y clamped to 29
-	if w.X != 150 || w.Y != 24 || w.Positioning || renamed != 0 { // 100+20, then to y 29 from 125: −96
-		t.Errorf("moved to %d,%d positioning %v renamed %d", w.X, w.Y, w.Positioning, renamed)
+	s.Held(170, 125)
+	s.Release(200, 5)                                            // y clamped to 29
+	if w.X != 150 || w.Y != 24 || s.Dragging() || renamed != 0 { // 100+20, then to y 29 from 125: −96
+		t.Errorf("moved to %d,%d positioning %v renamed %d", w.X, w.Y, s.Dragging(), renamed)
 	}
-	w.HandleClick(160, w.Y+5)
-	w.PositionEnd(160, w.Y+5, 600)
+	s.Press(160, w.Y+5)
+	s.Release(160, w.Y+5)
 	if renamed != 1 {
 		t.Errorf("an unmoved caption click renames: %d", renamed)
 	}
@@ -58,7 +60,7 @@ func TestVehicleWindowPositioning(t *testing.T) {
 // Details' car list bar: a press on its down arrow scrolls (and starts no
 // car drag); held, it repeats; released, it stops.
 func TestVehicleCarListBar(t *testing.T) {
-	w := &VehicleWindow{X: 100, Y: 100, W: 265, H: 177, Tab: 1, Cars: make([]TrainCarDraw, 20),
+	w := &VehicleWindow{WinBase: WinBase{X: 100, Y: 100, W: 265, H: 177}, Tab: 1, Cars: make([]TrainCarDraw, 20),
 		State: VehicleDetailsState{Own: true}, OnDropMove: func(int, int) {}}
 	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
 	list := lw[vdCarList]
@@ -80,7 +82,7 @@ func TestVehicleCarListBar(t *testing.T) {
 
 // Cargo's list bar: a press on its down arrow scrolls; held, it repeats.
 func TestVehicleCargoListBar(t *testing.T) {
-	w := &VehicleWindow{X: 100, Y: 100, W: 265, H: 177, Tab: 2, Cargo: VehicleCargo{Rows: make([]VehicleCargoRow, 20)}}
+	w := &VehicleWindow{WinBase: WinBase{X: 100, Y: 100, W: 265, H: 177}, Tab: 2, Cargo: VehicleCargo{Rows: make([]VehicleCargoRow, 20)}}
 	list := VehicleCargoLayout(w.W, w.H, w.State.HiddenTabs, false)[vcCargoList]
 	x, y := w.X+list.R-4, w.Y+list.B-4
 	w.HandleClick(x, y)
@@ -94,7 +96,7 @@ func TestVehicleCargoListBar(t *testing.T) {
 // company; held, it repeats.
 func TestCompanyListBar(t *testing.T) {
 	opened := 0
-	w := &CompanyListWindow{X: 80, Y: 164, W: 640, H: 272, Rows: make([]CompanyListRow, 15), Hover: -1, OnRow: func(int) { opened++ }}
+	w := &CompanyListWindow{WinBase: WinBase{X: 80, Y: 164, W: 640, H: 272}, Rows: make([]CompanyListRow, 15), Hover: -1, OnRow: func(int) { opened++ }}
 	x, y := w.X+w.W-4-4, w.Y+w.H-14-4
 	w.HandleClick(x, y)
 	w.ScrollDrag(x, y, true)
