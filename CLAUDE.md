@@ -108,6 +108,9 @@ rendering incl. junctions, stations, signals, level crossings, bridges
 screen (logo/menu/music), loading screen, bitmap fonts, New Game browser,
 in-game music (pkg/jukebox, cmd/goloco/music.go: the Audio menu, the Jukebox
 and Music Selection windows; the audio settings in openloco.yml),
+the news (pkg/sim/news.go, cmd/goloco/news.go: the ticker, the news window,
+the Messages window from the time panel's date; the news settings in
+openloco.yml; the script command `news` posts a message),
 RCT-style track construction (head + connected pieces, curve/slope window).
 
 Next (task list): road construction via the same head system (extract

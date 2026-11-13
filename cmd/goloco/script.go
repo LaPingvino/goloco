@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/LaPingvino/goloco/pkg/scenario"
+	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -41,6 +42,9 @@ import (
 //	                    and vehicle counts, its vehicles on the map, cargo units delivered — this month
 //	                    and the kept history; the view's rotation 0–3; 1 while a Town window is open), op one of
 //	                    > >= == <= <; a failed check makes the run exit 1
+//	news <type> [a [b [c]]] [date <day>]  post a message of that MessageType
+//	                    with those subjects for the player's company (first
+//	                    moving the game's day): news shots on demand
 //	quit                exit the game
 type inputScript struct {
 	cmds []string
@@ -68,6 +72,8 @@ type inputScript struct {
 	// starts where it means to whatever the scenario's saved view (its place,
 	// zoom and rotation) or the time passed (scripted runs only).
 	cameraReq *[4]float64
+	// newsReq: "news TYPE …" — a message posted (scriptNews).
+	newsReq []string
 	// scenarioReq: "scenario NAME" — that scenario started (as the New Game
 	// list's Start does), by name rather than by where its row happens to be.
 	scenarioReq string
@@ -198,6 +204,8 @@ func (s *inputScript) step() {
 			}
 			s.cameraReq = &c
 		}
+	case "news": // goloco only: post a message — news TYPE [SUBJECT …] [date DAY]
+		s.newsReq = fields[1:]
 	case "shot":
 		s.shotRequest = fields[1]
 		s.waitUntil = gameNow().Add(300 * time.Millisecond) // let Draw consume it
@@ -285,6 +293,36 @@ func (g *Game) scriptShotName() string {
 	n := g.script.shotRequest
 	g.script.shotRequest = ""
 	return n
+}
+
+// scriptNews applies a script's "news TYPE [A [B [C]]] [date DAY]" (once):
+// MessageManager::post of that message type for the player's company with
+// those subjects (0xFFFF when left out) — "date DAY" moves the game's day
+// first (the newspaper's style goes by the message's year). For the shots
+// of news a played game doesn't bring up on demand.
+func (g *Game) scriptNews() {
+	if g.script == nil || g.script.newsReq == nil {
+		return
+	}
+	req := g.script.newsReq
+	g.script.newsReq = nil
+	m := &g.w.Map
+	vals := []uint16{0, 0xFFFF, 0xFFFF, 0xFFFF}
+	n := 0
+	for i := 0; i < len(req); i++ {
+		if req[i] == "date" && i+1 < len(req) {
+			if d, err := strconv.ParseUint(req[i+1], 10, 32); err == nil {
+				m.CurrentDay = uint32(d)
+			}
+			i++
+			continue
+		}
+		if v, err := strconv.ParseUint(req[i], 10, 16); err == nil && n < len(vals) {
+			vals[n] = uint16(v)
+			n++
+		}
+	}
+	m.PostMessage(g.r.ObjMgr, sim.MessageType(vals[0]), m.ControllingCompany, vals[1], vals[2], vals[3])
 }
 
 // scriptCamera applies a script's "camera X Y [ZOOM [ROTATION]]" (once).

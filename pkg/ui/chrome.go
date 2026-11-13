@@ -105,6 +105,20 @@ func DrawWindowCaptionColour(screen *ebiten.Image, x, y, w int, text string, col
 	DrawTextOutlined(screen, text, px, y+1, pal[gfx8.Shade(wm, 9)], pal[paletteBlack0])
 }
 
+// DrawWindowCaptionColourText is Caption::drawSimple with Style::colourText:
+// ControlCodes::windowColour1 — shade 7 of the window's primary colour,
+// outlined in black0.
+func DrawWindowCaptionColourText(screen *ebiten.Image, x, y, w int, text string, colour uint8) {
+	if globalG1Font == nil {
+		return
+	}
+	width := w - 4 - 14
+	text = ClipString(text, G1FontMediumBold, width-8)
+	sw, _ := MeasureTextBold(text)
+	body, outline := WindowColour1Text(int(colour))
+	DrawTextOutlined(screen, text, x+2+width/2-(sw-1)/2, y+1, body, outline)
+}
+
 // DrawWindowCaptionStation is Caption::drawSimple with Style::blackText (the
 // Station window's): drawStationNameBackground — curved_border_left_medium
 // 4 px left of the text, curved_border_right_medium after it, a shade-5 fill
@@ -172,11 +186,11 @@ func ClipString(text string, font, width int) string {
 }
 
 // drawResizeHandle is drawResizeHandle (PanelWidget.cpp; FrameWidget.cpp's
-// lies under it): a resizable window with neither size fixed gets
+// lies under it): a resizable window whose sizes are not both fixed gets
 // window_resize_handle, recoloured to the panel's colour, 18 px in from its
 // bottom-right corner. rt is the window's own target.
 func drawResizeHandle(rt *gfx8.RenderTarget, b *WinBase, cmap []uint8) {
-	if !b.HasResizeHandle() || globalG1Font == nil {
+	if !b.HasPanelResizeHandle() || globalG1Font == nil {
 		return
 	}
 	g1 := globalG1Font.g1

@@ -1,0 +1,44 @@
+# The news ticker on the title game (README "The same world in both games"),
+# one script for goloco and `ol.sh run`: both configs' news section set to
+# ticker for every kind (majorCompany … advice: ticker). The title game posts
+# two speed records in its first days; the ticker writes them out over the
+# time panel. The last shots: the mouse on it — it shows nothing, the date
+# can be read.
+#   env -C $SHOTS XDG_CONFIG_HOME=$CFG GOLOCO_SCRIPT=…/news-ticker.txt goloco title.dat
+move 400 300
+wait 6
+shot tk-00.png
+wait 2
+shot tk-01.png
+wait 2
+shot tk-02.png
+wait 2
+shot tk-03.png
+wait 2
+shot tk-04.png
+wait 2
+shot tk-05.png
+wait 2
+shot tk-06.png
+wait 2
+shot tk-07.png
+wait 2
+shot tk-08.png
+wait 2
+shot tk-09.png
+wait 2
+shot tk-10.png
+wait 2
+shot tk-11.png
+wait 2
+shot tk-12.png
+wait 2
+shot tk-13.png
+wait 2
+move 715 590          # on the ticker
+wait 1
+shot tk-hover.png
+move 400 300
+wait 3
+shot tk-after.png
+quit

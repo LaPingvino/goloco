@@ -37,6 +37,7 @@ type tile = sim.Tile
 // World holds a tile grid for an isometric game world
 type World struct {
 	townScene *scene.Renderer       // the Town window's viewport (townview.go)
+	newsScene [2]*scene.Renderer    // the news window's two viewports (newsview.go)
 	catchment []uint8               // SetCatchmentDisplay's map (nil: none)
 	selOn     bool                  // SetMapSelection: the selection is shown
 	selArea   [4]int                // its tiles: min x, min y, max x, max y

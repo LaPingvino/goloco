@@ -32,8 +32,11 @@ type Map struct {
 	Routings         []uint16                    // GameState routings[], by RoutingHandle (routing.go)
 	// Messages / ActiveMessageIndex are GameState messages / numMessages and
 	// activeMessageIndex (messages.go; 0xFFFF none).
-	Messages              []Message
-	ActiveMessageIndex    uint16
+	Messages           []Message
+	ActiveMessageIndex uint16
+	// CloseNewsWindow is clearActiveMessage's WindowManager::close(
+	// WindowType::news): the game's (nil: no interface).
+	CloseNewsWindow       func()
 	RoadAnyTypeCompatible uint32                    // GameState roadObjectIdIsAnyRoadTypeCompatible
 	RoadUsableByAll       uint32                    // GameState roadObjectIdIsUsableByAllCompanies
 	Rng1                  core.Prng                 // GameState rng (gPrng1), from the save
