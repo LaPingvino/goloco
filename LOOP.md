@@ -91,7 +91,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [ ] N10 Gfx::recolour exactness (the 5P.g note).
 > - [ ] N11 a-newgame has no expect: a key for open windows (expect window scenarioSelect == 1).
 > - [ ] N12 Money pop-ups drawn after the names, not in paint order (drawStringStructs).
-> - [ ] N13 `git -C goloco` can't write .git/config ("Device or resource busy" on branch / worktree delete): find why.
+> - [x] N13 Explained, nothing to fix: the Claude Code sandbox bind-mounts .git/config read-only (by design), so
+>       git can't rewrite it inside the sandbox; branch deletes leave no stale sections (none had any).
 > - [ ] N15 Map tooltips (MapToolTip window: hovering a map item shows its name / status, e.g. "Railway Track /
 >       Right-Click to Modify"; getItemLeft's format arguments), then 2854a10's drag-dimensions tooltip on it.
 > - [x] N16 The pause click works (the report came from the music agent's mixed-up displays); what differed: paused,
