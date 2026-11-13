@@ -12,4 +12,5 @@ wait 1
 click 760 42
 wait 2
 shot /tmp/goloco-playthrough/pt-c1-towns.png
+expect cash == 84300
 quit

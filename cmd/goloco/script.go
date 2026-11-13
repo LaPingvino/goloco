@@ -36,6 +36,11 @@ import (
 //	type <text>         type the rest of the line (into a text input)
 //	wheel <dy>          mouse wheel step at current cursor
 //	shot <file.png>     save a full-frame screenshot
+//	expect <key> <op> <n>  check the game: key cash, stations, vehicles or
+//	                    delivered (the controlling company's cash, station
+//	                    and vehicle counts, cargo units delivered — this month
+//	                    and the kept history), op one of
+//	                    > >= == <= <; a failed check makes the run exit 1
 //	quit                exit the game
 type inputScript struct {
 	cmds []string
@@ -68,7 +73,11 @@ type inputScript struct {
 	// seed: "seed N" — the time loadAndStart mixes into the new game's rng,
 	// fixed (a generated landscape, the company … the same every run).
 	seed *uint32
-	quit bool
+	// expectReq: "expect KEY OP N" — a check of the game's state, run by the
+	// game (scriptExpect); failed: a failed check, the run exits non-zero.
+	expectReq []string
+	failed    bool
+	quit      bool
 }
 
 var scriptKeyNames = map[string]ebiten.Key{
@@ -117,7 +126,7 @@ func (s *inputScript) step() {
 		delete(s.keysJust, k)
 	}
 
-	if time.Now().Before(s.waitUntil) {
+	if gameNow().Before(s.waitUntil) {
 		return
 	}
 	if s.idx >= len(s.cmds) {
@@ -130,7 +139,7 @@ func (s *inputScript) step() {
 	switch strings.ToLower(fields[0]) {
 	case "wait":
 		sec, _ := strconv.ParseFloat(fields[1], 64)
-		s.waitUntil = time.Now().Add(time.Duration(sec * float64(time.Second)))
+		s.waitUntil = gameNow().Add(time.Duration(sec * float64(time.Second)))
 	case "move":
 		s.mouseX, s.mouseY, s.hasMouse = arg(1), arg(2), true
 	case "click":
@@ -174,6 +183,8 @@ func (s *inputScript) step() {
 				s.seed = &v
 			}
 		}
+	case "expect":
+		s.expectReq = fields[1:]
 	case "scenario":
 		s.scenarioReq = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "scenario"))
 	case "camera":
@@ -184,7 +195,7 @@ func (s *inputScript) step() {
 		}
 	case "shot":
 		s.shotRequest = fields[1]
-		s.waitUntil = time.Now().Add(300 * time.Millisecond) // let Draw consume it
+		s.waitUntil = gameNow().Add(300 * time.Millisecond) // let Draw consume it
 	case "quit":
 		s.quit = true
 	default:
@@ -303,4 +314,66 @@ func (g *Game) scriptScenario() {
 		}
 	}
 	log.Printf("[Script] no scenario named %q", name)
+}
+
+// scriptExpect runs a script's "expect KEY OP N" against the controlling
+// company: logged either way, a failure marks the run failed.
+func (g *Game) scriptExpect() {
+	if g.script == nil || g.script.expectReq == nil {
+		return
+	}
+	req := g.script.expectReq
+	g.script.expectReq = nil
+	fail := func(why string) {
+		log.Printf("[Script] EXPECT FAILED: %s — %s", strings.Join(req, " "), why)
+		g.script.failed = true
+	}
+	if len(req) != 3 {
+		fail("want: expect KEY OP N")
+		return
+	}
+	want, err := strconv.ParseInt(req[2], 10, 64)
+	if err != nil {
+		fail(err.Error())
+		return
+	}
+	company, _ := g.w.ControllingCompany()
+	var got int64
+	switch req[0] {
+	case "cash":
+		got, _ = g.w.ControllingCompanyCash()
+	case "stations":
+		for _, s := range g.w.StationList() {
+			if s.Owner == company && s.Flags&(1<<5) == 0 {
+				got++
+			}
+		}
+	case "vehicles":
+		for _, v := range g.w.VehicleListRows() {
+			if v.Owner == company {
+				got++
+			}
+		}
+	case "delivered": // this month's (cargoUnitsTotalDelivered, reset monthly) and the history's
+		if company < len(g.w.Map.Companies) {
+			c := &g.w.Map.Companies[company]
+			got = int64(c.CargoUnitsTotalDelivered)
+			for _, n := range c.CargoUnitsDeliveredHist {
+				got += int64(n)
+			}
+		}
+	default:
+		fail("unknown key")
+		return
+	}
+	ok := map[string]bool{">": got > want, ">=": got >= want, "==": got == want, "<=": got <= want, "<": got < want}
+	res, known := ok[req[1]]
+	switch {
+	case !known:
+		fail("unknown op")
+	case !res:
+		fail(fmt.Sprintf("it is %d", got))
+	default:
+		log.Printf("[Script] expect %s: ok (%d)", strings.Join(req, " "), got)
+	}
 }

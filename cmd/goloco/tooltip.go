@@ -10,7 +10,7 @@ import (
 // Window tooltips (Input/MouseInput.cpp's tooltip timing, ToolTip.cpp): a
 // tooltip under the mouse opens once the mouse has rested 2 s (at once within
 // 1 s of the last one closing), and closes after 8 s — staying closed until
-// the mouse moves — or when the mouse moves. Real time, as upstream adds
+// the mouse moves — or when the mouse moves. Real time (gameNow: virtual while a script plays), as upstream adds
 // getTimeSinceLastTick.
 const (
 	tipDelay     = 2000 * time.Millisecond
@@ -59,7 +59,7 @@ func (t *tooltipState) close(now time.Time) {
 
 // updateTooltip runs the timing each update.
 func (g *Game) updateTooltip() {
-	t, now := &g.tip, time.Now()
+	t, now := &g.tip, gameNow()
 	text := g.windowTooltip()
 	if text != t.text || g.mouseX != t.x || g.mouseY != t.y { // moved, or another tooltip
 		t.close(now)

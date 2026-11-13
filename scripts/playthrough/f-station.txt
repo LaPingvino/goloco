@@ -37,4 +37,5 @@ wait 2
 move 700 500
 wait 2
 shot /tmp/goloco-playthrough/pt-f2-station.png
+expect stations >= 1
 quit

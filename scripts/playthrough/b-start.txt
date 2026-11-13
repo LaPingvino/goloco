@@ -9,4 +9,5 @@ shot /tmp/goloco-playthrough/pt-b1-selected.png
 click 307 201
 wait 25
 shot /tmp/goloco-playthrough/pt-b2-game.png
+expect cash == 84300
 quit

@@ -168,4 +168,5 @@ wait 10
 shot /tmp/goloco-playthrough/pt-h-s3.png
 wait 20
 shot /tmp/goloco-playthrough/pt-h-s4.png
+expect vehicles >= 1
 quit

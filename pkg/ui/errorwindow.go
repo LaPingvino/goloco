@@ -53,7 +53,7 @@ func OpenError(title, message string, mx, my, screenW, screenH int) *ErrorWindow
 		w, _ := MeasureTextBold(l)
 		maxW = max(maxW, w)
 	}
-	e := &ErrorWindow{Lines: lines, opened: time.Now()}
+	e := &ErrorWindow{Lines: lines, opened: Now()}
 	e.W = maxW + 2*errPadding
 	e.H = len(lines)*10 + 2*errPadding
 	e.X = min(max(mx-e.W/2, 0), screenW-e.W-40)
@@ -62,7 +62,7 @@ func OpenError(title, message string, mx, my, screenW, screenH int) *ErrorWindow
 }
 
 // Expired is onPeriodicUpdate's close: var_846 reaching 7.
-func (e *ErrorWindow) Expired() bool { return !e.Hold && time.Since(e.opened) >= 7*time.Second }
+func (e *ErrorWindow) Expired() bool { return !e.Hold && Now().Sub(e.opened) >= 7*time.Second }
 
 // Draw is the panel (frame: the window's size) and the lines centred from
 // y+padding (drawStringCentredRaw).

@@ -153,4 +153,7 @@ click 611 98
 move 700 520
 wait 2
 shot /tmp/goloco-playthrough/pt-h2-v2.png
+expect stations >= 2
+expect vehicles >= 1
+expect delivered > 0
 quit
