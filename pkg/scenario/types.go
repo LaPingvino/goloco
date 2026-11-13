@@ -152,26 +152,32 @@ type Scenario struct {
 	ActiveMessageIndex    uint16
 	RoadAnyTypeCompatible uint32
 	// Rng is GameState rng (gPrng1: srand0, srand1 at 0x00); UnkRng gPrng2 (0x08).
-	Rng, UnkRng           [2]uint32
-	ScenarioTicks         uint32           // GameState scenarioTicks (0x146)
-	TileUpdateStart       [2]int16         // GameState tileUpdateStartLocation (0x156, world units): the tile loop's next start
-	Companies             []CompanyEconomy // per company slot (parseCompanyEconomy)
-	Industries            []Industry       // non-empty industry slots (parseIndustries)
-	RoadUsableByAll       uint32
-	Entities              []VehicleEntity
-	EntityLists           *EntityLists       // EntityManager's lists (saved games; nil for a .SC5)
-	VehicleList           []VehicleListEntry // heads with veh1/veh2 list data (VehicleList.cpp)
-	CurrentDay            uint32             // GameState general.currentDay
-	CompanyNames          []uint16           // company slot → name StringId
-	CompanyFaces          []CompanyFace      // company slot → competitor, emotion, performance
-	LandscapeToGenerate   bool               // a .SC5 without tile elements: Scenario::start generates the landscape
-	TownNamesObjectOrder  []string
-	RegionObjectOrder     []string
-	ClimateObjectOrder    []string
-	HillShapesObjectOrder []string // the hill shapes slot → DAT name
-	CompetitorObjectOrder []string // competitor slot → DAT name
-	ControllingCompany    uint8    // playerCompanies[0] (getControllingId)
-	TrafficHandedness     uint8    // GameState trafficHandedness: 0 left-hand traffic, 1 right-hand
+	Rng, UnkRng   [2]uint32
+	ScenarioTicks uint32 // GameState scenarioTicks (0x146)
+	// SavedView is GameState savedViewX / Y (0x1E, 0x20: the view's centre in
+	// viewport coordinates), savedViewZoom (0x22) and savedViewRotation (0x23);
+	// HasSavedView: GameStateFlags::tileManagerLoaded (the file carries a map).
+	SavedViewX, SavedViewY           int16
+	SavedViewZoom, SavedViewRotation uint8
+	HasSavedView                     bool
+	TileUpdateStart                  [2]int16         // GameState tileUpdateStartLocation (0x156, world units): the tile loop's next start
+	Companies                        []CompanyEconomy // per company slot (parseCompanyEconomy)
+	Industries                       []Industry       // non-empty industry slots (parseIndustries)
+	RoadUsableByAll                  uint32
+	Entities                         []VehicleEntity
+	EntityLists                      *EntityLists       // EntityManager's lists (saved games; nil for a .SC5)
+	VehicleList                      []VehicleListEntry // heads with veh1/veh2 list data (VehicleList.cpp)
+	CurrentDay                       uint32             // GameState general.currentDay
+	CompanyNames                     []uint16           // company slot → name StringId
+	CompanyFaces                     []CompanyFace      // company slot → competitor, emotion, performance
+	LandscapeToGenerate              bool               // a .SC5 without tile elements: Scenario::start generates the landscape
+	TownNamesObjectOrder             []string
+	RegionObjectOrder                []string
+	ClimateObjectOrder               []string
+	HillShapesObjectOrder            []string // the hill shapes slot → DAT name
+	CompetitorObjectOrder            []string // competitor slot → DAT name
+	ControllingCompany               uint8    // playerCompanies[0] (getControllingId)
+	TrafficHandedness                uint8    // GameState trafficHandedness: 0 left-hand traffic, 1 right-hand
 	// The toolbar's last track / road choices (GameState lastRailroadOption,
 	// lastRoadOption, lastTrackTypeOption).
 	LastRailroadOption, LastRoadOption, LastTrackTypeOption uint8

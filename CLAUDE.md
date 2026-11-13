@@ -81,6 +81,11 @@ Build: `go build -o goloco ./cmd/goloco`. Always verify visually:
   `pcm.!default { type null }` gives Ebitengine a device that swallows the
   samples at once — the music's real path runs, each track over in a fraction
   of a second (`[Audio] music: <file>` in the log per track).
+- View rotation: one for every viewport, `sim.Map.CurrentRotation` (WindowManager::getCurrentRotation);
+  `World.RotateView` / Enter / the rotate menu. Project with `sim.GameToScreen` / `Map.GameToScreen`, never an
+  inline `y - x`. A save opens on its saved view in both games: `go run ./scripts/olref/setview -tile X,Y
+  -rotation R in.SV5 out.SV5` makes one that opens anywhere, for pixel comparisons (scripts/olref/README.md).
+  `go run ./cmd/render8 -rotation R -zoom Z` renders a rotated view without a display.
 - ALWAYS run long headless sessions under Xvfb so the desktop/screen-lock
   cannot freeze the loop: `Xvfb :99 -screen 0 800x600x24 &` then
   `DISPLAY=:99 WAYLAND_DISPLAY= ./goloco …` (xorg-server-xvfb installed).

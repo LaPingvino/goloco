@@ -53,8 +53,14 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [x] N0a DONE 6745d11: the dock / airport ghosts were never removed (removeStationGhost); station commands invalidate as upstream.
 > - [x] N0b DONE 6745d11: the place button was drawn empty for road / air / water (pickupImage); playthrough i-ship.
 > - [x] N0c DONE def3584 (Fable): Jukebox, Audio menu (mute / play music / options / jukebox), Jukebox and Music Selection windows, the options' Music group; checked pixel for pixel against OpenLoco.
-> - [ ] N0d (Joop) View rotation doesn't work (the scene / paint / labels / mini-views are rotation 0 only: the
->       PARTIAL "rotation 0" notes; Viewport rotate, gameToScreen by rotation).
+> - [x] N0d DONE (branch rotation): the view rotates — sim.Map.CurrentRotation (WindowManager::getCurrentRotation),
+>       World.RotateView (Window::viewportRotate: the rotate menu, Enter, right button + wheel, the title's
+>       RotateSteps), the scene's generateParameters<0–3> / kUnkOffsets / getRotatedSlope / kNeighbourOffsets,
+>       updateSpatialIndex + updateLabels, hit tests and the windows' viewports; a file opens on its saved view
+>       (place, zoom, rotation); GetHeight's kTileSize 31. Checked against OpenLoco at the four rotations
+>       (scripts/olref/setview). LEFT: the map window's rotation (MapWindow.cpp isn't ported);
+>       the old Ebitengine renderer (GOLOCO_SCENE=0) stays unrotated; a cliff's top hidden under a bridge
+>       (isCliffEdgeTopCoveredByBridge); the rotate menu's images and right-click = anticlockwise.
 > - [x] N0e DONE a9ee189: change_owner_name + RenameCompanyOwner (the company name: the caption click, already there).
 > - [x] N0f DONE 479db2f: drawTransportTypeTabs / drawTrackTypeTabs.
 > - [ ] N1 News / message window (MessageWindow.cpp, the news ticker, MessageManager): missing; also takes part in

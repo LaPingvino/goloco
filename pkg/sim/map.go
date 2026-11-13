@@ -14,7 +14,10 @@ type Map struct {
 	// InvalidateEntity: see entitymove.go (EntityBase::invalidateSprite).
 	InvalidateEntity InvalidateEntity
 	// InvalidateTile: ViewportManager::invalidate(pos, …) (entitymove.go).
-	InvalidateTile   InvalidateTile
+	InvalidateTile InvalidateTile
+	// CurrentRotation is WindowManager::getCurrentRotation: the views' rotation,
+	// 0–3 (viewrotation.go).
+	CurrentRotation  uint8
 	Width, Height    int
 	Tiles            [][]Tile        // [y][x]
 	Towns            []scenario.Town // parsed town records
@@ -242,6 +245,12 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 			m.StationNames[i].Name = stationNameNull
 		}
 	}
+	// S5::importSaveToGameState / Scenario::start: the view starts unrotated
+	// (goloco doesn't take the save's view yet), and
+	// EntityManager::updateSpatialIndex gives every entity its sprite bounds
+	// for it — a save keeps those of the rotation it was saved in.
+	m.CurrentRotation = 0
+	m.UpdateSpatialIndex()
 }
 
 // MaxStations is Limits::kMaxStations.

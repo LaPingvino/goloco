@@ -122,6 +122,9 @@ func (g *Game) updateTitle() {
 		}
 	}
 	if g.titleSeq != nil {
+		if rot := g.titleSeq.GetRotation(); rot != g.w.Rotation() { // Title.cpp RotateStep
+			g.w.SetRotation(rot)
+		}
 		cx, cy := g.titleSeq.GetCameraPosition()
 		g.w.SetCamera(cx, cy)
 	}
@@ -464,8 +467,19 @@ func (g *Game) updateCamera() {
 	if !typing && (g.inKeyJustPressed(ebiten.KeyE) || g.inKeyJustPressed(ebiten.KeyMinus) || g.inKeyJustPressed(ebiten.KeyKPSubtract)) {
 		g.w.ZoomOutAt(g.sw/2, g.sh/2)
 	}
+	// Shortcuts.cpp rotateView (default "Return"): viewportRotateRight — not
+	// while the load / save browser is open, whose Enter opens the file.
+	if browse == nil && g.inKeyJustPressed(ebiten.KeyEnter) {
+		g.w.RotateView(true)
+	}
 	if _, dy := g.inWheel(); dy != 0 {
-		if !g.routeWheelToWindows() {
+		if g.inMousePressed(ebiten.MouseButtonRight) {
+			// MouseInput.cpp processMouseWheel: with the right button held the
+			// wheel turns the view, before any window — right on the zoom-out
+			// direction (its wheel > 0: towards the player, dy < 0 here), left
+			// on the zoom-in one.
+			g.w.RotateView(dy < 0)
+		} else if !g.routeWheelToWindows() {
 			if dy > 0 {
 				g.w.ZoomInAt(g.mouseX, g.mouseY)
 			} else {

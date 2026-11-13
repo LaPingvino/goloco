@@ -8,7 +8,8 @@ import (
 )
 
 // ImageIds::speed_* (the _active variant is +1) and the interface skin's
-// toolbar_menu_map_north (InterfaceSkin::ImageIds, rotation 0).
+// toolbar_menu_map_north (InterfaceSkin::ImageIds; west, south and east
+// follow: map_sprites_by_rotation).
 const (
 	imgSpeedPause     = 2460
 	imgSpeedNormal    = 2462
@@ -25,6 +26,7 @@ type TimePanelState struct {
 	HoverDate  bool   // the date button is hovered (text in white)
 	SkinColour uint8  // InterfaceSkinObject::timeToolbarColour
 	SkinImage  int    // InterfaceSkinObject image base (map globe); <=0: none
+	Rotation   uint8  // WindowManager::getCurrentRotation: which way the globe's arrow points
 }
 
 // DrawTimePanel is TimePanel.cpp draw for the window at the bottom-right: the
@@ -70,7 +72,7 @@ func DrawTimePanel(screen *ebiten.Image, s TimePanelState) {
 		gfx8.FillRectInset(rt, o[0]+1, o[1]+1, o[0]+1+o[2]-2-1, o[1]+1+o[3]-2-1, tc, gfx8.InsetBorderInset|gfx8.InsetFillNone)
 		if s.SkinImage > 0 {
 			mc := L.TimePanelMapChat
-			if sp, err := gfx8.Decode(&g1.Elements[s.SkinImage+skinImgMapNorth]); err == nil {
+			if sp, err := gfx8.Decode(&g1.Elements[s.SkinImage+skinImgMapNorth+int(s.Rotation&3)]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, mc[0]-2, mc[1]-1, gfx8.OpFor(sp, false, false), nil, nil)
 			}
 		}

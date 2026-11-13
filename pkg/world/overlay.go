@@ -192,7 +192,7 @@ func (w *World) drawMoneyEffects(screen *ebiten.Image) {
 			text = "- " + ui.FormatCurrency(-amount)
 		}
 		offsetX := -ui.MeasureTextFont(text, ui.G1FontMediumBold) / 2
-		vx, vy := int(e.Y-e.X), int((e.X+e.Y)>>1-e.Z) // gameToScreen, rotation 0
+		vx, vy := w.gameToView(int(e.X), int(e.Y), int(e.Z))
 		sx := (vx+offsetX)>>z - int(w.camX)>>z
 		sy := vy>>z - int(w.camY)>>z
 		colour := 0

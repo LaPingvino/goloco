@@ -36,10 +36,10 @@ import (
 //	type <text>         type the rest of the line (into a text input)
 //	wheel <dy>          mouse wheel step at current cursor
 //	shot <file.png>     save a full-frame screenshot
-//	expect <key> <op> <n>  check the game: key cash, stations, vehicles, placed or
-//	                    delivered (the controlling company's cash, station
+//	expect <key> <op> <n>  check the game: key cash, stations, vehicles, placed,
+//	                    delivered or rotation (the controlling company's cash, station
 //	                    and vehicle counts, its vehicles on the map, cargo units delivered — this month
-//	                    and the kept history), op one of
+//	                    and the kept history; the view's rotation 0–3), op one of
 //	                    > >= == <= <; a failed check makes the run exit 1
 //	quit                exit the game
 type inputScript struct {
@@ -63,10 +63,11 @@ type inputScript struct {
 	keysJust         map[ebiten.Key]bool
 
 	shotRequest string
-	// cameraReq: "camera X Y" — the main view centred on tile (X, Y), so a
-	// playthrough starts where it means to whatever the scenario's saved view
-	// or the time passed (scripted runs only).
-	cameraReq *[2]float64
+	// cameraReq: "camera X Y [ZOOM [ROTATION]]" — the main view centred on
+	// tile (X, Y) at that zoom and rotation (0 unless given), so a playthrough
+	// starts where it means to whatever the scenario's saved view (its place,
+	// zoom and rotation) or the time passed (scripted runs only).
+	cameraReq *[4]float64
 	// scenarioReq: "scenario NAME" — that scenario started (as the New Game
 	// list's Start does), by name rather than by where its row happens to be.
 	scenarioReq string
@@ -189,9 +190,13 @@ func (s *inputScript) step() {
 		s.scenarioReq = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "scenario"))
 	case "camera":
 		if len(fields) >= 3 {
-			x, _ := strconv.ParseFloat(fields[1], 64)
-			y, _ := strconv.ParseFloat(fields[2], 64)
-			s.cameraReq = &[2]float64{x, y}
+			var c [4]float64 // x, y, then the optional zoom and rotation (0)
+			for i := range c {
+				if i+1 < len(fields) {
+					c[i], _ = strconv.ParseFloat(fields[i+1], 64)
+				}
+			}
+			s.cameraReq = &c
 		}
 	case "shot":
 		s.shotRequest = fields[1]
@@ -282,13 +287,17 @@ func (g *Game) scriptShotName() string {
 	return n
 }
 
-// scriptCamera applies a script's "camera X Y" (once).
+// scriptCamera applies a script's "camera X Y [ZOOM [ROTATION]]" (once).
 func (g *Game) scriptCamera() {
 	if g.script == nil || g.script.cameraReq == nil {
 		return
 	}
 	c := g.script.cameraReq
 	g.script.cameraReq = nil
+	g.w.SetZoom(int(c[2]))
+	if rot := uint8(c[3]) & 3; rot != g.w.Rotation() {
+		g.w.SetRotation(rot)
+	}
 	g.w.SetCamera(c[0], c[1])
 }
 
@@ -362,6 +371,8 @@ func (g *Game) scriptExpect() {
 				}
 			}
 		}
+	case "rotation": // the view's rotation (WindowManager::getCurrentRotation)
+		got = int64(g.w.Rotation())
 	case "delivered": // this month's (cargoUnitsTotalDelivered, reset monthly) and the history's
 		if company < len(g.w.Map.Companies) {
 			c := &g.w.Map.Companies[company]

@@ -67,7 +67,9 @@ func TestGenerateLandVectors(t *testing.T) {
 // GetHeight against upstream's getHeight and slope helpers compiled on a stub
 // surface (tools/gen-paintdata/gen_getheight.cpp): all 32 slope bytes × base
 // heights 0 / 4 / 40 × water 0 / 3 × every point of the tile, plus off the
-// map — the same text, compared by SHA-256.
+// map — the same text, compared by SHA-256. (The helpers' kTileSize is
+// TileManager.cpp's own 31; the vectors were first made with 32, the tile's
+// size, and GetHeight was a unit off on slopes until 2026-11-13.)
 func TestGetHeightMatchesUpstream(t *testing.T) {
 	var b strings.Builder
 	var m Map
@@ -93,7 +95,7 @@ func TestGetHeightMatchesUpstream(t *testing.T) {
 	land, water := m.GetHeight(-1, 5)
 	fmt.Fprintf(&b, "off %d %d\n", land, water)
 	sum := sha256.Sum256([]byte(b.String()))
-	if got := hex.EncodeToString(sum[:]); got != "58a445259afb9857538d5bf8d7d29c88be0d693ad70d4696607d3e680baf9bdd" {
-		t.Fatalf("sha256 %s, upstream 58a445259afb9857538d5bf8d7d29c88be0d693ad70d4696607d3e680baf9bdd", got)
+	if got := hex.EncodeToString(sum[:]); got != "1af84ee6d59a2f63c8758623fd2deee8c12db75944b9849ea7350917a1f94541" {
+		t.Fatalf("sha256 %s, upstream 1af84ee6d59a2f63c8758623fd2deee8c12db75944b9849ea7350917a1f94541", got)
 	}
 }

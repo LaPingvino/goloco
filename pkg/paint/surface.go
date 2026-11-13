@@ -5,8 +5,10 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 // Surface cliff edges — a port of PaintSurface.cpp paintSurfaceCliffEdge /
 // paintSurfaceCliffEdgeImpl / paintEdgeSection and getTileDescriptor's edge
 // heights, with the tunnel portals (track/road entering a slope, inserted by
-// the elements painted before the surface). PARTIAL: rotation 0 only; the
-// underground view is not ported yet.
+// the elements painted before the surface). The caller hands in the slopes as
+// the view shows them (getRotatedSlope) and the neighbours by
+// NeighbourOffsets[rotation]. PARTIAL: the underground view; a cliff's top
+// section hidden under a bridge (isCliffEdgeTopCoveredByBridge).
 
 // Surface is what the cliff code needs of a tile's surface element.
 type Surface struct {
@@ -35,8 +37,16 @@ const (
 	cLeft
 )
 
-// NeighbourOffsets are kNeighbourOffsets[0]: SW, SE, NW, NE (world units).
-var NeighbourOffsets = [4][2]int{{32, 0}, {0, 32}, {0, -32}, {-32, 0}}
+// NeighbourOffsets is kNeighbourOffsets (0x004FD99E): by rotation, the SW, SE,
+// NW and NE neighbours (as the view shows them) from the tile's sprite
+// position — which is the tile's corner kUnkOffsets[rotation], so the offsets
+// take that back (world units).
+var NeighbourOffsets = [4][4][2]int{
+	{{32, 0}, {0, 32}, {0, -32}, {-32, 0}},
+	{{-32, 32}, {-64, 0}, {0, 0}, {-32, -32}},
+	{{-64, -32}, {-32, -64}, {-32, 0}, {0, -32}},
+	{{0, -64}, {32, -32}, {-32, -32}, {0, 0}},
+}
 
 var (
 	edgeFactorOffset = [4]int{0, 16, 16, 0}

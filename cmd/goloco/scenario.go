@@ -92,6 +92,13 @@ func (g *Game) loadScenario(filePath string) error {
 			log.Printf("[Seed] after starting: rng %08x %08x, company colour %v", gameW.Map.Rng1.Srand0(), gameW.Map.Rng1.Srand1(), gameW.Map.CompanyColours)
 		}
 	}
+	// S5::importSaveToGameState / Scenario::start: a file with a map opens on
+	// its saved view (viewportFromSavedView: centre, zoom, rotation), then
+	// updateSpatialIndex and updateLabels; a generated landscape starts
+	// unrotated on the map's centre.
+	if sc.HasSavedView && !sc.LandscapeToGenerate {
+		gameW.SetSavedView(int(sc.SavedViewX), int(sc.SavedViewY), min(sc.SavedViewZoom, 3), sc.SavedViewRotation)
+	}
 	g.w = gameW
 	g.currentScenarioPath = filePath
 	g.inTitleScreen = false

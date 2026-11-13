@@ -3,7 +3,7 @@ package sim
 // Name labels' frames: Town::updateLabel (Town.cpp) and Station::updateLabel
 // (Station.cpp 0x0048DCA5) — the box a town's or station's name takes at
 // each zoom, which drawTownNames / drawStationNames then test and draw at.
-// Rotation 0 (goloco's views don't rotate).
+// At the current rotation (WindowManager::getCurrentRotation).
 
 // G1 fonts (Gfx::Font, as glyph blocks after g1FontBase).
 const (
@@ -36,9 +36,6 @@ func stringWidth(g1 G1Raw, font int, s string) int {
 	return w
 }
 
-// gameToScreen0 is World::gameToScreen at rotation 0.
-func gameToScreen0(x, y, z int) (int, int) { return y - x, ((x + y) >> 1) - z }
-
 // UpdateTownLabel is Town::updateLabel: the name centred 48 px above the
 // town's tile centre on the ground, 11 high, 2 wider than the text in that
 // zoom's font — computed in zoom-0 pixels and shifted down to each zoom.
@@ -46,7 +43,8 @@ func (m *Map) UpdateTownLabel(i int, g1 G1Raw) {
 	t := &m.Towns[i]
 	name := m.TownName(t.Name, i)
 	land, _ := m.GetHeight(int32(t.X), int32(t.Y))
-	sx, sy := gameToScreen0(int(t.X)+TileSize/2, int(t.Y)+TileSize/2, int(land))
+	gx, gy := m.GameToScreen(int32(t.X)+TileSize/2, int32(t.Y)+TileSize/2, int32(land))
+	sx, sy := int(gx), int(gy)
 	sy -= 48
 	for z := 0; z < 4; z++ {
 		w := (stringWidth(g1, kZoomToTownFonts[z], name) + 2) << z
@@ -78,7 +76,8 @@ func stationIcons(flags uint16) string {
 func (m *Map) UpdateStationLabel(id int, g1 G1Raw) {
 	st := &m.StationNames[id]
 	text := m.StationName(id) + " " + stationIcons(st.Flags)
-	vx, vy := gameToScreen0(int(st.X), int(st.Y), int(st.Z))
+	gx, gy := m.GameToScreen(int32(st.X), int32(st.Y), int32(st.Z))
+	vx, vy := int(gx), int(gy)
 	for z := 0; z < 4; z++ {
 		b := kZoomToStationBorder[z]
 		w := (stringWidth(g1, kZoomToStationFonts[z], text) + b.width*2) << z

@@ -7,8 +7,8 @@ import (
 )
 
 // TownView is the Town window's viewport (TownWindow.cpp initViewport): the
-// town's centre at its land height, zoom level 2 (ZoomLevel::quarter),
-// rotation 0, width × height screen pixels. nil: no such town.
+// town's centre at its land height, zoom level 2 (ZoomLevel::quarter), at
+// the view rotation, width × height screen pixels. nil: no such town.
 func (w *World) TownView(idx, width, height int) *gfx8.RenderTarget {
 	return w.renderView(w.townView(idx, width, height))
 }
@@ -72,7 +72,7 @@ func (w *World) viewLabels(dst *ebiten.Image, stations bool, view func(width, he
 }
 
 // placeView renders width × height screen pixels centred on x, y at the
-// tile's land height (getHeight(…).landHeight), zoom quarter, rotation 0.
+// tile's land height (getHeight(…).landHeight), zoom quarter.
 func (w *World) placeView(x, y, width, height int) (scene.View, bool) {
 	if w.renderer == nil || w.renderer.G1 == nil || w.renderer.ObjMgr == nil || width <= 0 || height <= 0 {
 		return scene.View{}, false
@@ -83,7 +83,7 @@ func (w *World) placeView(x, y, width, height int) (scene.View, bool) {
 		z = int(tl.BaseZ) * 4
 	}
 	const zoom = 2
-	vx, vy := y-x, (x+y)>>1-z // gameToScreen, rotation 0
+	vx, vy := w.gameToView(x, y, z)
 	return scene.View{X: vx - (width<<zoom)/2, Y: vy - (height<<zoom)/2, W: width, H: height, Zoom: zoom, Ticks: m.ScenarioTicks}, true
 }
 
@@ -136,7 +136,7 @@ func (w *World) stationView(id, width, height int) (scene.View, bool) {
 	s := &m.StationNames[id]
 	x, y, z := int(s.X), int(s.Y), int(s.Z)
 	const zoom = 1
-	vx, vy := y-x, (x+y)>>1-z // gameToScreen, rotation 0
+	vx, vy := w.gameToView(x, y, z)
 	return scene.View{X: vx - (width<<zoom)/2, Y: vy - (height<<zoom)/2, W: width, H: height, Zoom: zoom, Ticks: m.ScenarioTicks}, true
 }
 

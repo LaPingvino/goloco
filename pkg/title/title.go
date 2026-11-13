@@ -40,26 +40,29 @@ type Sequence struct {
 
 // Waypoint defines a camera cut position in tile coordinates and how many
 // ticks to show it before cutting to the next.
-// Taken directly from OpenLoco Title.cpp _titleSequence (MoveStep + WaitStep pairs).
-// RotateStep and ReloadStep are skipped (rotation not yet supported).
+// Taken directly from OpenLoco Title.cpp _titleSequence (MoveStep + WaitStep
+// pairs); Rotation is the view's rotation there — the RotateSteps
+// (viewportRotateRight) before its MoveStep added up. ReloadStep is skipped
+// (the title map runs on; the four RotateSteps bring the view back to 0).
 // OpenLoco reference: src/OpenLoco/src/Title.cpp
 type Waypoint struct {
-	TileX uint16
-	TileY uint16
-	Wait  uint32 // ticks to show this position (~40 ticks/sec in OpenLoco)
+	TileX    uint16
+	TileY    uint16
+	Wait     uint32 // ticks to show this position (~40 ticks/sec in OpenLoco)
+	Rotation uint8
 }
 
 // defaultWaypoints is the exact OpenLoco title sequence camera positions.
 var defaultWaypoints = []Waypoint{
 	{TileX: 231, TileY: 160, Wait: 368},
 	{TileX: 93, TileY: 59, Wait: 370},
-	{TileX: 314, TileY: 230, Wait: 370},
-	{TileX: 83, TileY: 314, Wait: 370},
-	{TileX: 224, TileY: 253, Wait: 375},
-	{TileX: 210, TileY: 322, Wait: 375},
-	{TileX: 125, TileY: 338, Wait: 375},
-	{TileX: 72, TileY: 138, Wait: 375},
-	{TileX: 178, TileY: 158, Wait: 375},
+	{TileX: 314, TileY: 230, Wait: 370, Rotation: 1}, // RotateStep
+	{TileX: 83, TileY: 314, Wait: 370, Rotation: 1},
+	{TileX: 224, TileY: 253, Wait: 375, Rotation: 3}, // RotateStep, RotateStep
+	{TileX: 210, TileY: 322, Wait: 375, Rotation: 3},
+	{TileX: 125, TileY: 338, Wait: 375, Rotation: 3},
+	{TileX: 72, TileY: 138, Wait: 375, Rotation: 3},
+	{TileX: 178, TileY: 158, Wait: 375}, // RotateStep
 	{TileX: 203, TileY: 316, Wait: 375},
 }
 
@@ -113,6 +116,14 @@ func (s *Sequence) Update() {
 		s.cameraX = float64(next.TileX)
 		s.cameraY = float64(next.TileY)
 	}
+}
+
+// GetRotation is the view rotation of the current waypoint.
+func (s *Sequence) GetRotation() uint8 {
+	if s.waypointIdx < len(s.waypoints) {
+		return s.waypoints[s.waypointIdx].Rotation
+	}
+	return 0
 }
 
 // GetCameraPosition returns the current camera tile position.

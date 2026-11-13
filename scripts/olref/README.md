@@ -23,6 +23,7 @@ one running at the same time needs its own OLREF_DISPLAY (and OLREF_HOME).
 | untitle.py | Data/title.dat → a save the real OpenLoco loads |
 | pair.py | goloco crop, OpenLoco crop, and their differing pixels, side by side |
 | match.py | two map views of one save: find the offset, then diff |
+| setview/ | `go run ./scripts/olref/setview -tile X,Y [-zoom Z] [-rotation R] in.SV5 out.SV5`: a copy of a save that opens on that view |
 | tours/ | the input scripts of past comparisons |
 
 ## Coordinates and scripts
@@ -57,6 +58,20 @@ when a tab changes its size, so take a shot before aiming at the next tab.
 
 Pause (click 688 592) before a series of shots: numbers and graphs stay put.
 
+Two things that stop OpenLoco from starting, both silent on the screen (a
+black frame; the reason is in $OLREF_HOME/.olref/openloco.log):
+
+- "Another OpenLoco session has been found running": its single-instance lock
+  is the file OpenLoco.lock in the *current directory*. Two harnesses (two
+  agents) must start it from different directories — `env -C $SCRATCH/cwd
+  ol.sh start …` — and on different displays (OLREF_DISPLAY).
+- "OpenLoco data path could not be found": from another directory it doesn't
+  find its own language / objects folder; OPENLOCO_DATA_DIR=/usr/share/openloco
+  names it.
+
+A process that failed this way keeps running (it waits on its error box) and
+`ol.sh stop`'s SIGTERM doesn't end it: `pkill -9 -f "openloco .*$SCRATCH"`.
+
 ## The same world in both games
 
 - **Locomotion's title game** — a game with years of history, stations,
@@ -68,9 +83,16 @@ Pause (click 688 592) before a series of shots: numbers and graphs stay put.
 - **OpenLoco's own autosave** — start a scenario in OpenLoco, zoom with the
   wheel, wait for the monthly autosave ($OLREF_HOME/.config/OpenLoco/save/
   autosave, about a minute); `ol.sh start that.SV5` and `goloco that.SV5`
-  (GOLOCO_ZOOM=N; goloco doesn't take the saved zoom) show the same world from
-  nearly the same place and `match.py goloco.png openloco.png diff.png` finds
-  the exact offset. 2026-11-05: zoom 1 and 2 matched pixel for pixel apart from
+  show the same world from the same place: both open a save on its saved view
+  (place, zoom, rotation — goloco since 2026-11-13), so the two frames line up
+  pixel for pixel (`match.py goloco.png openloco.png diff.png` finds an offset
+  when they don't). `setview` writes a copy of a save that opens anywhere, at
+  any zoom and rotation; the rotate key (Enter) then turns both about the
+  view's centre — how the four rotations were compared (2026-11-13: the title
+  save at thirteen places, zoom 0–2: every rotation lines up at offset 0,0 and
+  differs from OpenLoco no more than rotation 0 does — water, smoke, vehicles
+  and trees by the seconds the two ran, and some farm-field tiles, which
+  differ at rotation 0 too). 2026-11-05: zoom 1 and 2 matched pixel for pixel apart from
   the town labels and things that change with time. OpenLoco can't read every
   .SV5 (DEBUG_AUTO_DUMP.SV5: "Unsupported S5 format").
 

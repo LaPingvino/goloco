@@ -1,0 +1,53 @@
+# Playthrough J: the view rotated (the rotate key, Shortcuts.cpp rotateView)
+# and the game played in it. As G (seed 1950, Weatherworld, the fixed view by
+# Cloudburst), then Enter: rotation 1, the ground at the view's centre kept
+# there. Three straights from the view's centre and a station on them —
+# the surface and the track are found under the cursor in the rotated view
+# (getSurfaceOrWaterLocFromUi, getMapCoordinatesFromPos). Three more Enters
+# bring the view back round.
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+expect rotation == 0
+key ENTER
+wait 3
+expect rotation == 1
+shot /tmp/goloco-playthrough/pt-j1-rotated.png
+move 592 14
+wait 1
+click 620 42
+wait 1
+move 400 300
+wait 2
+click 400 300
+wait 2
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 2
+shot /tmp/goloco-playthrough/pt-j2-track.png
+click 51 57
+wait 2
+move 440 340
+wait 1
+click 440 340
+wait 2
+move 700 500
+wait 2
+shot /tmp/goloco-playthrough/pt-j3-station.png
+expect stations >= 1
+key ENTER
+wait 2
+key ENTER
+wait 2
+expect rotation == 3
+shot /tmp/goloco-playthrough/pt-j4-rotation3.png
+key ENTER
+wait 2
+expect rotation == 0
+quit

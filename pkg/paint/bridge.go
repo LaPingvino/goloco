@@ -8,8 +8,7 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 //
 // All of paintBridge is ported: deck, walls and edges, the quarter cases
 // (including 8, the front supports), the NE/SW spans with their pillars, the
-// subType-0 span walls and the shadow. Rotation is 0 here (the scene renderer
-// has no rotation yet).
+// subType-0 span walls and the shadow, at the session's rotation.
 
 // BridgeObj is what paintBridge reads from a bridge object.
 type BridgeObj struct {
@@ -18,7 +17,7 @@ type BridgeObj struct {
 	PillarSpacing uint8
 	HasRoof       bool
 	DeckDepth     int
-	TileX, TileY  int     // the tile being painted (session unkPosition, rotation 0)
+	TileX, TileY  int     // the tile being painted (session unkPosition), in tiles
 	ShadowPal     []uint8 // palette map of ExtColour::unk32 (the bridge shadow)
 }
 
@@ -95,14 +94,19 @@ func (s *Session) PaintBridge(b BridgeEntry, obj BridgeObj, sprite func(int) *gf
 		shadowType = 1
 		s.bridgeQuarterSupportFront(b, obj, add, supportLength, slope)
 	default:
-		// unkTile = toTileSpace(rotate(unkPosition, 0)) + kTwosToOnesCompliment[0], masked by the span.
-		ux := (obj.TileX + BridgeTwosToOnesCompliment[0][0]) & (int(obj.SpanLength) - 1)
-		uy := (obj.TileY + BridgeTwosToOnesCompliment[0][1]) & (int(obj.SpanLength) - 1)
+		// unkTile = toTileSpace(rotate(unkPosition, rotation)) + kTwosToOnesCompliment[rotation], masked by the span.
+		rx, ry := rotate(obj.TileX, obj.TileY, s.Rotation)
+		ux := (rx + BridgeTwosToOnesCompliment[s.Rotation&3][0]) & (int(obj.SpanLength) - 1)
+		uy := (ry + BridgeTwosToOnesCompliment[s.Rotation&3][1]) & (int(obj.SpanLength) - 1)
 		xPillar := uint8(int(obj.PillarSpacing) / (1 << (ux * 2)))
 		yPillar := uint8(int(obj.PillarSpacing) / (1 << (uy * 2)))
 		xSpan, ySpan := BridgeSpanImageSets[0][ux], BridgeSpanImageSets[1][uy]
-		// bridgeRotation, rotation 0/2.
-		if b.EdgesQuarters&(1<<5) == 0 || b.EdgesQuarters&(1<<7) == 0 {
+		// bridgeRotation: by the edges the view's rotation puts across.
+		bridgeRotation := b.EdgesQuarters&(1<<5) == 0 || b.EdgesQuarters&(1<<7) == 0
+		if s.Rotation&1 != 0 {
+			bridgeRotation = !(b.EdgesQuarters&(1<<6) == 0 || b.EdgesQuarters&(1<<4) == 0)
+		}
+		if bridgeRotation {
 			s.bridgeSpan(b, obj, add, supportLength, slope, xPillar, xSpan, &bridgeDirNE)
 		} else {
 			s.bridgeSpan(b, obj, add, supportLength, slope, yPillar, ySpan, &bridgeDirSW)
