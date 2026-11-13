@@ -47,7 +47,7 @@ func (m *Map) roadElementsRange(x, y, z int32) (int, int) {
 // height / 4), the element goes; unless it was a ghost, the tile leaves the
 // station and its modes, centre and label are recalculated.
 // Mirrors upstream: each piece's range is looked up at args.pos, not at the
-// piece's own tile. PARTIAL: the viewport invalidations.
+// piece's own tile (the invalidation is the piece's tile's).
 func (m *Map) RemoveRoadStation(c *Cmd, flags uint8, a RoadStationRemoval, g1 G1Raw) (int32, bool) {
 	om := c.Objects
 	initial, _ := m.getElRoad(a.X, a.Y, a.Z, a.Rotation, a.RoadObjectID, a.RoadID, a.Index)
@@ -97,6 +97,8 @@ func (m *Map) RemoveRoadStation(c *Cmd, flags uint8, a RoadStationRemoval, g1 G1
 					t.Roads[r.Index].ClearZ -= obj.Height
 				}
 			}
+			ox, oy := rotOffset(piece.X, piece.Y, a.Rotation) // roadLoc: the piece's own tile
+			m.invalidateElement(sx+int32(ox), sy+int32(oy), st.BaseZ, st.ClearZ)
 			t.removeStationElement(e)
 		}
 	}

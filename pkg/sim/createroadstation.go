@@ -45,7 +45,7 @@ const (
 // (roadStart.z, "vanilla bug"), and the first road at the height isn't spared
 // by clearFunc0 (elRoad > elReferenceRoad0).
 // PARTIAL: the AI's placement without a road (aiAllocated, index 0), the
-// error texts, the company's thinking emotion, the viewport invalidations.
+// error texts, the company's thinking emotion.
 func (m *Map) CreateRoadStation(c *Cmd, flags uint8, a RoadStationPlacement, g1 G1Raw) (int32, bool) {
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0)): where the money effect shows
 	om := c.Objects
@@ -267,6 +267,7 @@ func (m *Map) CreateRoadStation(c *Cmd, flags uint8, a RoadStationPlacement, g1 
 				eachRoad(func(r *scenario.RoadElement) { r.ClearZ -= h })
 			}
 			registerTile = false // just replacing: not a new tile
+			m.invalidateElement(px, py, old.BaseZ, old.ClearZ)
 			st = old
 		} else {
 			ne := scenario.StationElement{Rotation: last.Rotation, Ghost: flags&CmdGhost != 0, AiAllocated: flags&CmdAiAllocated != 0,
@@ -282,6 +283,7 @@ func (m *Map) CreateRoadStation(c *Cmd, flags uint8, a RoadStationPlacement, g1 
 		eachRoad(func(r *scenario.RoadElement) { r.ClearZ += stationObj.Height / 4 })
 		st.ClearZ = t.Roads[t.Order[k0].Index].ClearZ
 		st.Owner = c.Company
+		m.invalidateElement(px, py, st.BaseZ, st.ClearZ)
 	}
 	if flags&CmdGhost == 0 && flags&CmdApply != 0 && stationID >= 0 {
 		if registerTile {

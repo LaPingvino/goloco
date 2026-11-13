@@ -160,6 +160,7 @@ func (m *Map) airportBuilding(c *Cmd, stationID int, tx, ty int, baseHeight int3
 			t.BaseZ = argBaseZ
 			t.Slope = 0
 			t.GrowthStage = 0
+			m.mapInvalidateTileFull(px, py) // shouldInvalidateTile: not AI-allocated here
 		}
 		if flags&CmdApply == 0 {
 			continue
@@ -188,6 +189,9 @@ func (m *Map) airportBuilding(c *Cmd, stationID int, tx, ty int, baseHeight int3
 			}
 		}
 		m.CreateAnimation(7, px, py, argBaseZ)
+		if flags&CmdAiAllocated == 0 { // shouldInvalidateTile
+			m.mapInvalidateTileFull(px, py)
+		}
 	}
 	return total, true
 }
@@ -308,6 +312,10 @@ func (m *Map) removeAirportTileElement(x, y, z int32, a *objects.AirportObject, 
 		t, k := m.stationElAt(x+off[0], y+off[1], z)
 		if k < 0 {
 			return false
+		}
+		if flags&CmdAiAllocated == 0 {
+			el := &t.Stations[t.Order[k].Index]
+			m.invalidateElement(x+off[0], y+off[1], el.BaseZ, el.ClearZ)
 		}
 		t.removeStationElement(k)
 	}

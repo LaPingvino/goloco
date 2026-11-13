@@ -71,6 +71,13 @@ func (m *Map) mapInvalidateTileFull(x, y int32) {
 	m.invalidateTile(x, y, 0, 1120, ZoomEighth, defaultRadius)
 }
 
+// invalidateElement is ViewportManager::invalidate(pos, el baseHeight,
+// clearHeight, ZoomLevel::eighth) for the tile at world (x, y): what the
+// station commands call before taking an element up.
+func (m *Map) invalidateElement(x, y int32, baseZ, clearZ uint8) {
+	m.invalidateTile(x&^31, y&^31, int32(baseZ)*4, int32(clearZ)*4, ZoomEighth, defaultRadius)
+}
+
 // invalidateTrain is invalidateSprite on every part of a train: the head,
 // Vehicle1, Vehicle2, the tail and each car's bogies and body (Vehicle2::update
 // when the brake lights change).

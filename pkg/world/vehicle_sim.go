@@ -13,7 +13,6 @@ import (
 // board→travel→deliver loop are retired (item 5); new vehicles come with the
 // Build Vehicle window (item 5b).
 
-
 // GameTicks is how many game ticks this frame runs, as OpenLoco.cpp paces
 // them: update() / fixedUpdate() call tick() at most 40 times a second
 // (Engine::UpdateRateHz: a 25 ms accumulator, capped at MaxTimeDeltaMs 500),

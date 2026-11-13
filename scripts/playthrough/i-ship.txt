@@ -1,0 +1,47 @@
+# PL.1 playthrough, stage I: a ship at a dock. Weatherworld (seed 1950) by
+# Cloudburst; Port menu → Ship Port; the dock ghost swept along the shore (the
+# old ghosts must go: removeConstructionGhosts' port part, 2026-11-13) and
+# built at 230,172 ("Cloudburst Docks"); Build Vehicles → Build Ships → the
+# Steam Ferry bought; its window's Main tab → the place-on-water button (it was
+# drawn empty: getPickupImageIdandTooltip had only rail) → a click on the water
+# by the dock places the ship.
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+move 652 14
+wait 1
+click 680 66
+wait 2
+move 180 200
+wait 1
+move 230 172
+wait 1
+shot /tmp/goloco-playthrough/pt-i-ghost.png
+click 230 172
+wait 2
+key ESC
+wait 1
+move 682 14
+wait 1
+click 720 166
+wait 2
+click 370 148
+wait 2
+click 17 420
+wait 2
+click 252 471
+wait 2
+move 190 200
+wait 1
+click 190 200
+wait 3
+move 400 590
+wait 1
+shot /tmp/goloco-playthrough/pt-i-ship.png
+expect stations >= 1
+expect vehicles >= 1
+expect placed >= 1
+quit

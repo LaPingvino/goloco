@@ -190,6 +190,9 @@ func (m *Map) portBuilding(c *Cmd, stationID int, a PortPlacement, flags uint8, 
 					t.Slope = 0        // the slope and the snow coverage (its top bits)
 					t.GrowthStage = 0
 				}
+				if flags&CmdAiAllocated == 0 { // shouldInvalidateTile
+					m.mapInvalidateTileFull(px, py)
+				}
 			}
 		}
 		if flags&CmdApply == 0 {
@@ -219,6 +222,9 @@ func (m *Map) portBuilding(c *Cmd, stationID int, a PortPlacement, flags uint8, 
 			}
 		}
 		m.CreateAnimation(8, px, py, argBaseZ)
+		if flags&CmdAiAllocated == 0 { // shouldInvalidateTile
+			m.mapInvalidateTileFull(px, py)
+		}
 	}
 	return total, true
 }
@@ -348,6 +354,10 @@ func (m *Map) RemovePort(c *Cmd, flags uint8, a PortRemoval, g1 G1Raw) (int32, b
 			return 0, false
 		}
 		if flags&CmdApply != 0 {
+			if flags&CmdAiAllocated == 0 {
+				el := &tt.Stations[tt.Order[kk].Index]
+				m.invalidateElement(a.X+off[0], a.Y+off[1], el.BaseZ, el.ClearZ)
+			}
 			tt.removeStationElement(kk)
 		}
 	}
