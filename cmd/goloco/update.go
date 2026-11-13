@@ -17,6 +17,7 @@ import (
 // click, the camera, the game ticks).
 
 func (g *Game) Update() error {
+	advanceClock()
 	g.windowFrame++
 	g.diagTrackShip()
 	g.w.TitleMode = g.inTitleScreen // SceneManager::isTitleMode() for the viewport's names
@@ -29,6 +30,7 @@ func (g *Game) Update() error {
 	if g.script != nil {
 		g.script.step()
 		g.scriptScenario()
+		g.scriptExpect()
 		g.scriptCamera()
 		if g.script.quit {
 			return ebiten.Termination

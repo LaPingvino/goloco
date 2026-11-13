@@ -25,7 +25,7 @@ import (
 // desktop, and on the web page, which draws a few frames a second, the whole
 // game crawled.
 func (w *World) GameTicks(mouseMoved bool) int {
-	now := time.Now()
+	now := Now()
 	if w.lastUpdate.IsZero() {
 		w.lastUpdate, w.lastTickTime = now, now
 		return 1

@@ -62,4 +62,5 @@ wait 2
 move 700 520
 wait 2
 shot /tmp/goloco-playthrough/pt-g2-u3.png
+expect stations >= 2
 quit

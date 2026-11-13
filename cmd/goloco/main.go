@@ -95,6 +95,7 @@ func main() {
 	game.progress = loadProgress()
 	if p := os.Getenv("GOLOCO_SCRIPT"); p != "" {
 		game.script = loadInputScript(p)
+		useVirtualClock()
 	}
 	if os.Getenv("GOLOCO_OPEN") == "newgame" {
 		game.openNewGameWindow()
@@ -112,6 +113,9 @@ func main() {
 	defer startCPUProfile()() // GOLOCO_CPUPROFILE=file (LOOP item 0)
 	if err := ebiten.RunGame(game); err != nil && err != ebiten.Termination {
 		log.Fatal(err)
+	}
+	if game.script != nil && game.script.failed {
+		os.Exit(1) // a playthrough's expect failed
 	}
 }
 

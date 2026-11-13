@@ -17,4 +17,5 @@ shot /tmp/goloco-playthrough/pt-d1-townwindow.png
 click 207 545
 wait 2
 shot /tmp/goloco-playthrough/pt-d2-centred.png
+expect cash == 84300
 quit
