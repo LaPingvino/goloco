@@ -74,6 +74,12 @@ start)
         python3 -I "$here/xt.py" state >/dev/null 2>&1 && break
         sleep 0.1
     done
+    # openloco-git installs its binary beside its data (/usr/share/openloco/
+    # OpenLoco, language/ and objects/ next to it), where getDataDirectory
+    # (Platform.Posix.cpp) looks for neither "data" nor "../share/openloco".
+    if [ -z "${OPENLOCO_DATA_DIR:-}" ] && [ -d /usr/share/openloco/language ]; then
+        export OPENLOCO_DATA_DIR=/usr/share/openloco
+    fi
     HOME=$OLREF_HOME XDG_CONFIG_HOME=$OLREF_HOME/.config SDL_AUDIODRIVER=dummy \
         setsid "${OLREF_BIN:-openloco}" --locomotion_path "$data" "$@" >"$run/openloco.log" 2>&1 &
     echo $! >"$run/openloco.pid"
@@ -81,8 +87,18 @@ start)
     ;;
 stop)
     need_home
+    # OpenLoco does not always go on SIGTERM (instances were left behind,
+    # drawing on the next run's display): asked first, then killed.
     for p in openloco xvfb; do
-        [ -e "$run/$p.pid" ] && kill "$(cat "$run/$p.pid")" 2>/dev/null || true
+        if [ -e "$run/$p.pid" ]; then
+            pid=$(cat "$run/$p.pid")
+            kill "$pid" 2>/dev/null || true
+            for _ in $(seq 20); do
+                kill -0 "$pid" 2>/dev/null || break
+                sleep 0.1
+            done
+            kill -9 "$pid" 2>/dev/null || true
+        fi
         rm -f "$run/$p.pid"
     done
     ;;
