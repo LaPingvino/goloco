@@ -8,7 +8,8 @@
 #   scripts/playthrough/run.sh [a-newgame h2-paying-route ...]
 here=$(dirname "$(readlink -f "$0")")
 root=$here/../..
-bin=${TMPDIR:-/tmp}/goloco-playthrough-bin
+bin=$(mktemp "${TMPDIR:-/tmp}/goloco-playthrough-bin.XXXXXX") # its own: runs in parallel (other agents) mustn't share it
+trap 'rm -f "$bin"' EXIT
 go -C "$root" build -o "$bin" ./cmd/goloco || exit 1
 names=${*:-$(ls "$here"/*.txt | xargs -n1 basename | sed 's/\.txt$//')}
 status=0
