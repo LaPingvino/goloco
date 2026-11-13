@@ -10,8 +10,8 @@ import (
 // (ViewportInteraction::getItemLeft, as MouseInput.cpp's viewport click uses
 // it): a vehicle (its head), a town label, a station label or an industry.
 type LeftItem struct {
-	Kind paint.InteractionItem // ItemEntity, ItemTownLabel, ItemStationLabel, ItemIndustry
-	ID   int                   // the head's entity id, the town, station or industry
+	Kind paint.InteractionItem // ItemEntity, ItemTownLabel, ItemStationLabel, ItemIndustry, ItemHeadquarterBuilding
+	ID   int                   // the head's entity id, the town, station, industry or company
 }
 
 // ItemLeftAt is getItemLeft at screen point (sx, sy): first only vehicles and
@@ -21,9 +21,8 @@ type LeftItem struct {
 // labels, the last match of each winning). Track, road and station elements
 // count as their station (_track / _road / getStationArguments), which a click
 // does not open. ok is false where the click opens nothing, and in the title.
-// PARTIAL: headquarters (the HQ building's interaction isn't painted yet) and
-// a window's own viewport (getItemLeft's fallback). The game acts on the
-// press; upstream on the release of a click that didn't drag (viewportLeft).
+// A headquarters building gives its company; the nearest vehicle part when
+// nothing was hit (nearestVehicleAt).
 func (w *World) ItemLeftAt(sx, sy int) (LeftItem, bool) {
 	if w.TitleMode || !w.ensureScene() {
 		return LeftItem{}, false
@@ -42,6 +41,17 @@ func (w *World) ItemLeftAt(sx, sy int) (LeftItem, bool) {
 			case paint.ItemIndustry:
 				if el, ok := ps.Item.(*scenario.IndustryElement); ok && industries { // ghosts paint as noInteraction
 					it, found = LeftItem{Kind: paint.ItemIndustry, ID: int(el.IndustryID)}, true
+				}
+			case paint.ItemHeadquarterBuilding: // the company whose headquarters' first tile it is
+				if el, ok := ps.Item.(*scenario.BuildingElement); ok {
+					off := [4][2]int{{0, 0}, {0, 32}, {32, 32}, {32, 0}}[el.SequenceIndex&3] // World::kOffsets
+					fx, fy := int16(ps.MapX-off[0]), int16(ps.MapY-off[1])
+					for id := range w.Map.Companies {
+						if co := &w.Map.Companies[id]; co.HeadquartersX == fx && co.HeadquartersY == fy && co.HeadquartersZ == el.BaseZ {
+							it, found = LeftItem{Kind: paint.ItemHeadquarterBuilding, ID: id}, true
+							break
+						}
+					}
 				}
 			default: // track, road, station elements: no window from a click
 				it, found = LeftItem{Kind: ps.Type}, false
@@ -73,12 +83,68 @@ func (w *World) ItemLeftAt(sx, sy int) (LeftItem, bool) {
 	if it, ok := pass(func(i paint.InteractionItem) bool { return i == paint.ItemEntity }, false); it.Kind == paint.ItemEntity {
 		return it, ok
 	}
-	return pass(func(i paint.InteractionItem) bool {
+	if it, ok := pass(func(i paint.InteractionItem) bool {
 		switch i {
 		case paint.ItemEntity, paint.ItemTrack, paint.ItemRoad, paint.ItemTrainStation, paint.ItemRoadStation,
 			paint.ItemAirport, paint.ItemDock, paint.ItemIndustry, paint.ItemHeadquarterBuilding:
 			return true
 		}
 		return false
-	}, true)
+	}, true); ok {
+		return it, true
+	}
+	return w.nearestVehicleAt(sx, sy)
+}
+
+// vehiclesMinScale is Config::vehiclesMinScale (default 2).
+const vehiclesMinScale = 2
+
+// nearestVehicleAt is getItemLeft's fallback when nothing was hit: up to
+// vehiclesMinScale, the vehicle part (each train's veh2, then its cars'
+// bogies and bodies) whose sprite box holds the point (windowToViewport) and
+// whose box centre is nearest by Manhattan distance, if within 32.
+func (w *World) nearestVehicleAt(sx, sy int) (LeftItem, bool) {
+	if w.zoom > vehiclesMinScale {
+		return LeftItem{}, false
+	}
+	tx, ty := int32(w.camX)+int32(sx)<<w.zoom, int32(w.camY)+int32(sy)<<w.zoom
+	trains, err := w.Map.Trains()
+	if err != nil {
+		return LeftItem{}, false
+	}
+	best, head := uint32(1<<32-1), -1
+	check := func(i, h int) { // checkAndSetNearestVehicle / vehicleDistanceFromLocation
+		e := &w.Map.Entities[i]
+		if e.SpriteLeft == -0x8000 { // Location::null
+			return
+		}
+		l, t, r, b := int32(e.SpriteLeft), int32(e.SpriteTop), int32(e.SpriteRight), int32(e.SpriteBottom)
+		if !(l < tx && t < ty && r >= tx && b >= ty) {
+			return
+		}
+		dx, dy := tx-(r+l)/2, ty-(t+b)/2
+		if dx < 0 {
+			dx = -dx
+		}
+		if dy < 0 {
+			dy = -dy
+		}
+		if d := uint32(dx + dy); d < best {
+			best, head = d, h
+		}
+	}
+	for _, tr := range trains {
+		check(tr.Veh2, tr.Head)
+		for _, car := range tr.Cars {
+			for _, c := range car {
+				check(c.Front, tr.Head)
+				check(c.Back, tr.Head)
+				check(c.Body, tr.Head)
+			}
+		}
+	}
+	if best > 32 || head < 0 {
+		return LeftItem{}, false
+	}
+	return LeftItem{Kind: paint.ItemEntity, ID: int(w.Map.Entities[head].HeadID)}, true
 }
