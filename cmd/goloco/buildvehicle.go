@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/objects"
 	"log"
 
 	"github.com/LaPingvino/goloco/pkg/i18n"
@@ -55,6 +56,48 @@ func (g *Game) newBuildVehicleWindow(tab int, target uint16) *ui.BuildVehicleWin
 		Tab: tab, TrackTab: trackTab, Disabled: m.BuildVehicleDisabledTabs(uint8(company)), NumTrackTabs: len(tabs),
 		Rows: rows, Hover: -1, Primary: p, Secondary: s,
 		OnTab: func(t int) { g.openBuildVehicleFor(t, target) },
+		TabIcon: func(i int) (int, int) { // drawTransportTypeTabs: frame (frameNo / 2) & 0xF on the active tab
+			sk := g.skin()
+			if sk == nil || i >= len(objects.ISBuildVehicleFrame0) {
+				return -1, -1
+			}
+			img := int(sk.ImageOffset) + objects.ISBuildVehicleFrame0[i]
+			if i == tab {
+				img += (g.windowFrame / 2) & 0xF
+			}
+			return img, int(p)
+		},
+		TrackTabIcon: func(i int) (int, int) { // drawTrackTypeTabs
+			if i >= len(tabs) {
+				return -1, -1
+			}
+			switch t := tabs[i]; {
+			case t == 0xFF: // air / water: the toolbar's airport or ship-port image, not recoloured
+				if sk := g.skin(); sk != nil {
+					if tab == 4 {
+						return int(sk.ImageOffset) + objects.ISToolbarMenuAirport, -1
+					}
+					return int(sk.ImageOffset) + objects.ISToolbarMenuShipPort, -1
+				}
+			case t&(1<<7) != 0: // a road: its image, animated (frameNo / 4) & 0x1F when active
+				if r := om.GetRoadObjectByIndex(int(t &^ (1 << 7))); r != nil {
+					img := int(r.Image)
+					if i == trackTab {
+						img += (g.windowFrame / 4) & 0x1F
+					}
+					return img, int(p)
+				}
+			default: // a track: kUiPreviewImage0, animated (frameNo / 4) & 0xF when active
+				if tr := om.GetTrackObjectByIndex(int(t)); tr != nil {
+					img := int(tr.Image)
+					if i == trackTab {
+						img += (g.windowFrame / 4) & 0xF
+					}
+					return img, int(p)
+				}
+			}
+			return -1, -1
+		},
 		OnBuy: func(id uint16) { g.buyVehicle(tab, id, target) }}
 	return bw
 }
