@@ -38,6 +38,11 @@ type DropdownMenu struct {
 	// over an item, that item. Set by OpenedByPress; the first release clears it.
 	Origin      image.Rectangle
 	pressActive bool
+	// leaveCloses is Dropdown::Flags::unk1 (showBelow outside a widget
+	// press: a menu opened by hovering its button): the mouse over anything
+	// but the menu and its button closes it (MouseInput.cpp 0x4C7BC7's
+	// dropdownActive check).
+	leaveCloses bool
 }
 
 // OpenedByPress marks the dropdown as opened by a press on origin (a toolbar
@@ -48,7 +53,17 @@ func (d *DropdownMenu) OpenedByPress(origin image.Rectangle) {
 
 // HoverOpened marks the dropdown as opened by hovering its origin (ToolbarTop
 // onMouseHover = onMouseDown): no press to release yet.
-func (d *DropdownMenu) HoverOpened() { d.pressActive = false }
+func (d *DropdownMenu) HoverOpened() { d.pressActive, d.leaveCloses = false, true }
+
+// LeftBehind reports whether a hover-opened menu is to close: the mouse at
+// (x, y) is over neither the menu nor the button that opened it.
+func (d *DropdownMenu) LeftBehind(x, y int) bool {
+	if !d.Visible || !d.leaveCloses {
+		return false
+	}
+	p := image.Pt(x, y)
+	return !p.In(d.Origin) && !p.In(image.Rect(d.X, d.Y, d.X+d.Width, d.Y+d.Height))
+}
 
 // PressOnOrigin is a press on the widget that opened the dropdown while it is
 // open (stateWidgetPressed: the press does nothing, its release on the widget

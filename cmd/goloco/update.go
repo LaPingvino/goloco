@@ -281,6 +281,12 @@ func (g *Game) updateConstructionTools() {
 // dragged cars and moved frames.
 func (g *Game) updateHeld() {
 	// Update dropdown hover if visible
+	if g.dropdown != nil && g.dropdown.Visible && g.dropdown.LeftBehind(g.mouseX, g.mouseY) {
+		g.dropdown = nil // a hover-opened menu the mouse left (Dropdown unk1)
+		for i := range g.toolbar.Buttons {
+			g.toolbar.Buttons[i].Pressed = false
+		}
+	}
 	if g.dropdown != nil && g.dropdown.Visible {
 		g.dropdown.UpdateHover(g.mouseX, g.mouseY)
 	} else if g.colourDropdown != nil && g.colourDropdown.Visible {
