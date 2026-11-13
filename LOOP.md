@@ -50,6 +50,14 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > upstream reference). Each item: ported as upstream, checked against the real OpenLoco (scripts/olref — the binary
 > is the same commit as ~/Projects/OpenLoco now), scripts/test-all.sh and scripts/playthrough/run.sh green.
 >
+> - [x] N0a DONE 6745d11: the dock / airport ghosts were never removed (removeStationGhost); station commands invalidate as upstream.
+> - [x] N0b DONE 6745d11: the place button was drawn empty for road / air / water (pickupImage); playthrough i-ship.
+> - [ ] N0c (Joop) The music menu (toolbar Audio) shows only "Stop music" (ToolbarTop.cpp audioMenu: play / stop,
+>       music list, next track …).
+> - [ ] N0d (Joop) View rotation doesn't work (the scene / paint / labels / mini-views are rotation 0 only: the
+>       PARTIAL "rotation 0" notes; Viewport rotate, gameToScreen by rotation).
+> - [x] N0e DONE a9ee189: change_owner_name + RenameCompanyOwner (the company name: the caption click, already there).
+> - [x] N0f DONE 479db2f: drawTransportTypeTabs / drawTrackTypeTabs.
 > - [ ] N1 News / message window (MessageWindow.cpp, the news ticker, MessageManager): missing; also takes part in
 >       createWindow placement.
 > - [ ] N2 Company HQ click → Company window: the HQ building's interaction isn't painted (getItemLeft's
@@ -1758,3 +1766,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   12 toolbar as upstream (menus on hover, no tooltips; a hover-opened menu closes when the mouse leaves — Dropdown unk1; its stale highlight had made the road builder default to One-Way Road) · 10 Fund New Industries first row · 11 list hover clears · 7 {INT16}/{INT32} grouped · {SMALLFONT} = Font::regular (the unconfirmed glyph item) · 6 clipString ported, status medium bold · 8 Town/Industry windows and lists without lighterFrame (Station/Vehicle lists with) · 2 map clicks: World.ItemLeftAt (getItemLeft, label passes) opens vehicle/town/station/industry windows · 3 Station list per company + company select · 5 scene origin masked to the zoom grid (holes) and mini-view names (ui.drawViewport + Labels) · 1/4/9 window stack (Fable, dc335c6): several windows, createWindow placement, resizing.
   Dallas 1648/1661: the save's tileUpdateStartLocation was ignored (d342e65). Then one sim Tick in tickLogic's order, waves on scenarioTicks, gPrng2 from the save (28c7413).
   Open: construction head is a pre-port approximation (tile head, undo stack; Joop: after removing the last piece the "+" flips, ghost sticks; red cross only rotates) — Fable porting it on branch construction. Window-stack open points: toolbar/panels not stack windows (a dragged window draws over the toolbar), frame-drag, BuildVehicle/CompanyList resize, vehicle-list column widths. Still: sounds, editor town-build tabs, Gfx::recolour exactness, one-way arrows (PaintRoad.cpp:473).
+- 2026-11-13 (loop) — N0a/N0b/N0e/N0f done (ghost docks, the empty place button, owner rename, Build Vehicles tabs); N0c (music) with Fable on branch jukebox.
