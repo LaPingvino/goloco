@@ -13,11 +13,6 @@ import (
 // board→travel→deliver loop are retired (item 5); new vehicles come with the
 // Build Vehicle window (item 5b).
 
-// TickVehicles is the gameplay tick: the vehicles.
-func (w *World) TickVehicles() {
-	w.Map.TitleMode = false
-	w.TickSavedVehicles()
-}
 
 // GameTicks is how many game ticks this frame runs, as OpenLoco.cpp paces
 // them: update() / fixedUpdate() call tick() at most 40 times a second
@@ -50,13 +45,9 @@ func (w *World) GameTicks(mouseMoved bool) int {
 	return n
 }
 
-// TickSavedVehicles is one game tick of the ported sim (sim.Map.UpdateVehicles:
-// the date, towns, vehicles) on the scenario's own state; GameTicks says how
-// many a frame.
-func (w *World) TickSavedVehicles() {
-	if w.renderer == nil || w.renderer.ObjMgr == nil {
-		return
-	}
+// diagTicks is GOLOCO_DIAG_TICKS=n: n game ticks at once before the first
+// (towns grown …), with what grew logged.
+func (w *World) diagTicks() {
 	if n, err := strconv.Atoi(os.Getenv("GOLOCO_DIAG_TICKS")); err == nil && !w.diagTicksDone { // diagnostics: n game ticks at once, first (towns grown …)
 		w.diagTicksDone = true
 		roads := func() int {
@@ -78,7 +69,7 @@ func (w *World) TickSavedVehicles() {
 		}
 		r0 := roads()
 		for range n {
-			w.Map.UpdateVehicles(w.renderer.ObjMgr)
+			w.State.Tick(w.tileOnScreen, w.renderer.ObjMgr)
 		}
 		var news [][2]int // where roads grew (the first few)
 		for y := range w.Map.Tiles {
@@ -92,5 +83,4 @@ func (w *World) TickSavedVehicles() {
 		}
 		log.Printf("[World] GOLOCO_DIAG_TICKS: %d ticks, road pieces %d → %d, towns %d; new road at %v", n, r0, roads(), len(w.Map.Towns), news)
 	}
-	w.Map.UpdateVehicles(w.renderer.ObjMgr)
 }

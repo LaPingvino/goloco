@@ -34,6 +34,7 @@ type Map struct {
 	RoadAnyTypeCompatible uint32                    // GameState roadObjectIdIsAnyRoadTypeCompatible
 	RoadUsableByAll       uint32                    // GameState roadObjectIdIsUsableByAllCompanies
 	Rng1                  core.Prng                 // GameState rng (gPrng1), from the save
+	Rng2                  core.Prng                 // GameState unkRng (gPrng2: waves, sound frequencies), from the save
 	TitleMode             bool                      // SceneManager::isTitleMode (pending breakdowns don\'t happen)
 	ScenarioTicks         uint32                    // GameState scenarioTicks: +1 per game tick (UpdateVehicles)
 	Companies             []scenario.CompanyEconomy // the save\'s companies (economy)
@@ -196,11 +197,11 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.Routings = sc.Routings
 	m.RoadAnyTypeCompatible, m.RoadUsableByAll = sc.RoadAnyTypeCompatible, sc.RoadUsableByAll
 	m.Rng1 = *core.NewPrngSeed(sc.Rng[0], sc.Rng[1])
+	m.Rng2 = *core.NewPrngSeed(sc.UnkRng[0], sc.UnkRng[1])
 	m.ScenarioTicks = sc.ScenarioTicks
 	m.tileUpdateX, m.tileUpdateY = int(sc.TileUpdateStart[0]>>5)&0xF, int(sc.TileUpdateStart[1]>>5)&0xF
 	m.Companies = sc.Companies
 	m.Industries = sc.Industries
-	m.Companies = sc.Companies
 	m.CurrentDay = sc.CurrentDay
 	m.CompanyNames = sc.CompanyNames
 	m.CompanyFaces = sc.CompanyFaces

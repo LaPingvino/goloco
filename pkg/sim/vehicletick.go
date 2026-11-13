@@ -57,10 +57,31 @@ func (m *Map) store(i int, c *MotionComponent) {
 	}
 }
 
-// UpdateVehicles runs one vehicle tick for every land vehicle.
+// Tick is one game tick, OpenLoco.cpp tickLogic in its order: the scenario
+// tick count, dateTick, TileManager::update (the tile loop; onScreen: the
+// main view's tiles, which it invalidates), WaveManager::update (on the
+// scenario ticks), then the managers (updateManagers).
+func (s *State) Tick(onScreen func(x, y int) bool, om *objects.ObjectManager) {
+	s.ScenarioTicks++
+	s.dateTick(om)
+	s.UpdateTiles(onScreen, om)
+	s.UpdateWaves(s.ScenarioTicks)
+	s.updateManagers(om)
+}
+
+// UpdateVehicles is a game tick without the tile loop and the waves (the
+// scenario tick count, dateTick, the managers): tests that step the
+// economy and the vehicles alone.
 func (m *Map) UpdateVehicles(om *objects.ObjectManager) {
-	m.ScenarioTicks++            // ScenarioManager: one scenario tick per game tick
-	m.dateTick(om)               // tickLogic: dateTick before the managers' updates
+	m.ScenarioTicks++
+	m.dateTick(om)
+	m.updateManagers(om)
+}
+
+// updateManagers is tickLogic after the waves: TownManager, IndustryManager,
+// VehicleManager, StationManager, EffectsManager, AnimationManager.
+// PARTIAL: CompanyManager::update.
+func (m *Map) updateManagers(om *objects.ObjectManager) {
 	m.UpdateTowns(om)            // TownManager::update (towngrowroad.go)
 	m.industriesUpdate(om)       // IndustryManager::update: the farm tiles (industryfarm.go)
 	defer m.UpdateAnimations(om) // AnimationManager::update: after the vehicles (tickLogic's order)
