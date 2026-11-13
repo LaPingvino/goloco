@@ -37,9 +37,9 @@ import (
 //	wheel <dy>          mouse wheel step at current cursor
 //	shot <file.png>     save a full-frame screenshot
 //	expect <key> <op> <n>  check the game: key cash, stations, vehicles, placed,
-//	                    delivered or rotation (the controlling company's cash, station
+//	                    delivered, rotation or townwindows (the controlling company's cash, station
 //	                    and vehicle counts, its vehicles on the map, cargo units delivered — this month
-//	                    and the kept history; the view's rotation 0–3), op one of
+//	                    and the kept history; the view's rotation 0–3; 1 while a Town window is open), op one of
 //	                    > >= == <= <; a failed check makes the run exit 1
 //	quit                exit the game
 type inputScript struct {
@@ -370,6 +370,10 @@ func (g *Game) scriptExpect() {
 					got++
 				}
 			}
+		}
+	case "townwindows": // 1 while a Town window is open
+		if g.wins.Find(ui.WindowTypeTown, ui.AnyNumber) != nil {
+			got = 1
 		}
 	case "rotation": // the view's rotation (WindowManager::getCurrentRotation)
 		got = int64(g.w.Rotation())
