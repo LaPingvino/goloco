@@ -158,9 +158,7 @@ func (m *Map) appendToRoadEnd(c *Cmd, town int, x, y, z int32, rotation, roadObj
 				place(8) // straightSteepSlopeDown
 				return
 			}
-			if corners > 8 { // upstream: 'a mistake by CS', kept
-				return
-			}
+			// (vanilla's "corners > 8: return" — a mistake by CS — removed upstream in e71abfb)
 		}
 		if heightDiff > 8 {
 			return

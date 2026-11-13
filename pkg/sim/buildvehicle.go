@@ -130,7 +130,7 @@ func (m *Map) BuildableVehicles(om *objects.ObjectManager, vehicleType, trackTyp
 		if o.CargoFilter == 0xFE && (cargo.CompatibleCargoCategories[0] != 0 || cargo.CompatibleCargoCategories[1] != 0) {
 			continue
 		}
-		list = append(list, bv{oid, v.DisplayName, powered, v.Designed, v.Obsolete, m.InflationAdjustedCost(v.CostFactor, v.CostIndex, 10),
+		list = append(list, bv{oid, v.DisplayName, powered, v.Designed, v.Obsolete, m.InflationAdjustedCost(v.CostFactor, v.CostIndex, 6), // the sort's cost: divisor 6 (b8e249a; vanilla 10)
 			v.Power, v.Speed, v.Weight, vehicleLength(v), cargo.MaxCargo[0]})
 	}
 	less := func(a, b bv) bool {

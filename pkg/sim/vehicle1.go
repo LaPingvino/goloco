@@ -59,8 +59,7 @@ func (m *Map) Vehicle1RailTargetSpeed(head, veh1, veh2 *scenario.VehicleEntity, 
 		target = min(target, veh2.RackRailMaxSpeed)
 	}
 	if !manual {
-		// upstream keeps the original's bug: var_3C >> 15 as a Speed16
-		target = min(target, int16(uint32(veh1.Var3C)>>15)+5)
+		target = min(target, speedFromDistanceInATick16(veh1.Var3C)+5)
 	}
 	if (manual && head.ManualPower <= -20) || head.VehicleFlags&VehicleFlagCommandStop != 0 {
 		if veh2.CurrentSpeed == 0 {
@@ -121,11 +120,18 @@ func (m *Map) Vehicle1RoadTargetSpeed(head, veh1, veh2 *scenario.VehicleEntity, 
 	if onRack {
 		target = min(target, veh2.RackRailMaxSpeed)
 	}
-	target = min(target, int16(uint32(veh1.Var3C)>>15)+5)
+	target = min(target, speedFromDistanceInATick16(veh1.Var3C)+5)
 	if (head.VehicleFlags&VehicleFlagManualControl != 0 && head.ManualPower <= -20) || head.VehicleFlags&VehicleFlagCommandStop != 0 {
 		if veh2.CurrentSpeed == 0 {
 			target = 0
 		}
 	}
 	return target
+}
+
+// speedFromDistanceInATick16 is toSpeed16(speedFromDistanceInATick(var_3C)):
+// the distance of a tick, doubled to a Speed32, truncated to whole mph (a
+// signed division). Upstream e71abfb fixed vanilla's var_3C >> 15 to this.
+func speedFromDistanceInATick16[T ~int32 | ~uint32](distance T) int16 {
+	return int16(int32(int32(distance)*2) / 65536)
 }
