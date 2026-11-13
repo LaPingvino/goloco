@@ -52,8 +52,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >
 > - [x] N0a DONE 6745d11: the dock / airport ghosts were never removed (removeStationGhost); station commands invalidate as upstream.
 > - [x] N0b DONE 6745d11: the place button was drawn empty for road / air / water (pickupImage); playthrough i-ship.
-> - [ ] N0c (Joop) The music menu (toolbar Audio) shows only "Stop music" (ToolbarTop.cpp audioMenu: play / stop,
->       music list, next track …).
+> - [x] N0c DONE def3584 (Fable): Jukebox, Audio menu (mute / play music / options / jukebox), Jukebox and Music Selection windows, the options' Music group; checked pixel for pixel against OpenLoco.
 > - [ ] N0d (Joop) View rotation doesn't work (the scene / paint / labels / mini-views are rotation 0 only: the
 >       PARTIAL "rotation 0" notes; Viewport rotate, gameToScreen by rotation).
 > - [x] N0e DONE a9ee189: change_owner_name + RenameCompanyOwner (the company name: the caption click, already there).
@@ -95,6 +94,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [ ] N13 `git -C goloco` can't write .git/config ("Device or resource busy" on branch / worktree delete): find why.
 > - [ ] N15 Map tooltips (MapToolTip window: hovering a map item shows its name / status, e.g. "Railway Track /
 >       Right-Click to Modify"; getItemLeft's format arguments), then 2854a10's drag-dimensions tooltip on it.
+> - [ ] N16 The time panel's pause button: a click at 688,592 pauses the real OpenLoco but not goloco (Space works;
+>       seen by the music port's tour).
+> - [ ] N17 Music leftovers: Music Selection opens under the Jukebox (OpenLoco: beside the player panel — a window
+>       goloco doesn't model blocks the spot?); 1 px gaps in shared widgets against 09d74ee (scroll thumb, old
+>       dropdown / group-box sizes, combobox not drawn pressed while open); a web track change fetches blocking.
 > - [ ] N14 (PAUSED until an editor exists) the town list's editor build tabs; updateBuilding's isEditorMode return;
 >       the tileManagerLoaded gate.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).
@@ -1783,3 +1787,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   Dallas 1648/1661: the save's tileUpdateStartLocation was ignored (d342e65). Then one sim Tick in tickLogic's order, waves on scenarioTicks, gPrng2 from the save (28c7413).
   Open: construction head is a pre-port approximation (tile head, undo stack; Joop: after removing the last piece the "+" flips, ghost sticks; red cross only rotates) — Fable porting it on branch construction. Window-stack open points: toolbar/panels not stack windows (a dragged window draws over the toolbar), frame-drag, BuildVehicle/CompanyList resize, vehicle-list column widths. Still: sounds, editor town-build tabs, Gfx::recolour exactness, one-way arrows (PaintRoad.cpp:473).
 - 2026-11-13 (loop) — N0a/N0b/N0e/N0f done (ghost docks, the empty place button, owner rename, Build Vehicles tabs); N0c (music) with Fable on branch jukebox.
+\n- 2026-11-13 (loop) — map clicks on release / nearest vehicle / HQ; upstream e71abfb, b8e249a, 61967bd, 37d7c01, 91c200d, 982c51d, a99386d, 638938c; packs at 09d74ee; music (Fable) merged; run.sh private binary. Deployed b7fbcfe.\n
