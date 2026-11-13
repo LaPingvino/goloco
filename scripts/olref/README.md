@@ -1,6 +1,6 @@
 # Driving the real OpenLoco for reference shots
 
-OpenLoco (the AUR release, /usr/bin/openloco — 26.08) runs headless under Xvfb
+OpenLoco (AUR openloco-git, /usr/bin/openloco — 26.09.r22.g09d74ee39) runs headless under Xvfb
 and is driven through X11's XTest extension (ctypes on libXtst — no xdotool).
 No game data and no screenshots here: OpenLoco reads the player's own
 Locomotion folder, shots go to a scratch directory.
@@ -76,9 +76,11 @@ For one window: `pair.py out.png goloco.png@X,Y,W,H openloco.png@X,Y,W,H 2`.
 
 ## Which source decides
 
-The binary is the 26.08 release (2026-08-13); the source goloco ports,
-~/Projects/OpenLoco, is at b93e074 (2026-07-06) — older. Where the binary and
-goloco differ, read that source before calling it a goloco defect (LOOP.md):
-some of what the binary shows (the Town window's fourth tab, "Cargo awaiting
-…" in an industry's statistics, white station captions) arrived after it. The
-release's own source unpacks from ~/.cache/yay/openloco/openloco-26.08.tar.gz.
+Since 2026-11-13 the binary (openloco-git 09d74ee39) and the source goloco
+ports (~/Projects/OpenLoco, moved to 09d74ee) are the same commit: where they
+differ from goloco, goloco is behind. goloco was ported from b93e074
+(2026-07-06), 161 upstream commits earlier — some of what the binary shows (the
+Town window's fourth tab, "Cargo awaiting …" in an industry's statistics, white
+station captions, toolbarAutoMenu) is that gap, to port, not a bug. `git -C
+~/Projects/OpenLoco log b93e074..09d74ee` lists it. OLREF_BIN runs another
+build. Before, the binary was the 26.08 release — older than b93e074 in parts.
