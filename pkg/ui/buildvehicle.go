@@ -137,8 +137,7 @@ type BVRow struct {
 
 // BuildVehicleWindow is the Build Vehicle window: 500×400 at first, the
 // lighter frame, the skin's titlebar colour and the player colour.
-// PARTIAL (5P.f part 4): the tabs' icons (drawTransportTypeTabs /
-// drawTrackTypeTabs), the search box and the three dropdowns' texts, the
+// PARTIAL (5P.f part 4): the search box and the three dropdowns' texts, the
 // preview (drawVehicleOverview, the cargo icons), the cargo-filter line,
 // the scroll bar, input, and createWindow's free-spot placement.
 type BuildVehicleWindow struct {
@@ -147,6 +146,10 @@ type BuildVehicleWindow struct {
 	Tab, TrackTab       int
 	Disabled            uint8
 	NumTrackTabs        int
+	// TabIcon / TrackTabIcon are drawTransportTypeTabs' and
+	// drawTrackTypeTabs' images for a tab (the active one animated by the
+	// caller) and their colour (-1: none).
+	TabIcon, TrackTabIcon func(i int) (img, colour int)
 	Rows                []BVRow
 	Hover               int // a row index, or -1
 	Scroll              int
@@ -179,14 +182,37 @@ func (w *BuildVehicleWindow) Draw(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[bvClose].L, lw[bvClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		for i := range 6 {
+		icon := func(f func(int) (int, int), i int) (int, []uint8) {
+			if f == nil {
+				return tabNoIcon, nil
+			}
+			img, c := f(i)
+			if img < 0 || img >= len(g1.Elements) {
+				return tabNoIcon, nil
+			}
+			var m []uint8
+			if c >= 0 {
+				m, _ = g1.GetPaletteMap(c)
+			}
+			return img, m
+		}
+		for i := range 6 { // drawTransportTypeTabs
 			if t := lw[bvTabTrains+i]; !t.Hidden {
-				drawTab(rt, t.L, t.T, i == w.Tab, sec, tabNoIcon, nil)
+				img, m := icon(w.TabIcon, i)
+				drawTab(rt, t.L, t.T, i == w.Tab, sec, img, m)
 			}
 		}
+		// drawTrackTypeTabs: the two lines bounding the track tabs (shade 7),
+		// the active tab's underline (shade 5), then each tab.
+		gfx8.FillRect(rt, 0, 69, w.W-187, 69, gfx8.Shade(sec, 7))
+		gfx8.FillRect(rt, w.W-187, 41, w.W-187, 41+27, gfx8.Shade(sec, 7))
 		for i := range 8 {
 			if t := lw[bvTabTrack0+i]; !t.Hidden {
-				drawTab(rt, t.L, t.T, i == w.TrackTab, sec, tabNoIcon, nil)
+				if i == w.TrackTab {
+					gfx8.FillRect(rt, t.L+1, t.T+26, t.L+1+29, t.T+26, gfx8.Shade(sec, 5))
+				}
+				img, m := icon(w.TrackTabIcon, i)
+				drawTab(rt, t.L, t.T, i == w.TrackTab, sec, img, m)
 			}
 		}
 		cx, cy, cw, ch, _ := drawVScrollViewPressed(rt, list.L, list.T, list.R-list.L+1, list.B-list.T+1, gfx8.InsetColour{Map: sec}, len(w.Rows)*rowH, w.Scroll, w.hold.PressedPart())
