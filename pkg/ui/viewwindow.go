@@ -118,6 +118,10 @@ type GraphLayout struct {
 	BottomInset, Top          int
 	YearY, VTop, VBottomInset int
 	ClipTop                   int
+	// ClampToChart: the points clamped into ClipTop–bottom (the Town graph,
+	// a99386d: a population over the chart's height no longer wraps), else
+	// a segment reaching above ClipTop is skipped.
+	ClampToChart bool
 }
 
 // The two graphs' layouts: IndustryWindow.cpp Common::draw (299×282) and
@@ -125,7 +129,7 @@ type GraphLayout struct {
 // coordinates 44 lower).
 var (
 	IndustryGraphLayout = GraphLayout{W: 299, H: 282, MaxH: 337, GridX: 41, GridW: 239, BottomInset: 7, Top: 68, YearY: 56, VTop: 67, VBottomInset: 8}
-	TownGraphLayout     = GraphLayout{W: 299, H: 172, MaxH: 327, GridX: 39, GridW: 241, BottomInset: 13, Top: 58, YearY: 46, VTop: 55, VBottomInset: 12, ClipTop: 44}
+	TownGraphLayout     = GraphLayout{W: 299, H: 172, MaxH: 327, GridX: 39, GridW: 241, BottomInset: 13, Top: 58, YearY: 46, VTop: 55, VBottomInset: 12, ClipTop: 44, ClampToChart: true}
 )
 
 // caption is Common::prepareDraw's caption per tab: title_town,
@@ -394,6 +398,9 @@ func (w *ViewWindow) drawGraph(screen *ebiten.Image, sec []uint8, black color.Co
 			}
 			if i < len(hist)-1 {
 				y1, y2 := bottom-int(hist[i]), bottom-int(hist[i+1])
+				if L.ClampToChart {
+					y1, y2 = min(max(y1, L.ClipTop), bottom), min(max(y2, L.ClipTop), bottom)
+				}
 				if min(y1, y2) >= L.ClipTop {
 					chartDrawLine(rt, x, y1, x+1, y2, gfx8.Shade(sec, 7))
 				}
