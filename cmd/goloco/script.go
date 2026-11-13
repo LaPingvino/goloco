@@ -36,9 +36,9 @@ import (
 //	type <text>         type the rest of the line (into a text input)
 //	wheel <dy>          mouse wheel step at current cursor
 //	shot <file.png>     save a full-frame screenshot
-//	expect <key> <op> <n>  check the game: key cash, stations, vehicles or
+//	expect <key> <op> <n>  check the game: key cash, stations, vehicles, placed or
 //	                    delivered (the controlling company's cash, station
-//	                    and vehicle counts, cargo units delivered — this month
+//	                    and vehicle counts, its vehicles on the map, cargo units delivered — this month
 //	                    and the kept history), op one of
 //	                    > >= == <= <; a failed check makes the run exit 1
 //	quit                exit the game
@@ -83,7 +83,7 @@ type inputScript struct {
 var scriptKeyNames = map[string]ebiten.Key{
 	"R": ebiten.KeyR, "X": ebiten.KeyX, "Q": ebiten.KeyQ, "E": ebiten.KeyE,
 	"ESC": ebiten.KeyEscape, "ESCAPE": ebiten.KeyEscape,
-	"ENTER": ebiten.KeyEnter, "SPACE": ebiten.KeySpace,
+	"ENTER": ebiten.KeyEnter, "SPACE": ebiten.KeySpace, "BACKSPACE": ebiten.KeyBackspace,
 	"W": ebiten.KeyW, "A": ebiten.KeyA, "S": ebiten.KeyS, "D": ebiten.KeyD,
 	"F12": ebiten.KeyF12,
 }
@@ -352,6 +352,14 @@ func (g *Game) scriptExpect() {
 		for _, v := range g.w.VehicleListRows() {
 			if v.Owner == company {
 				got++
+			}
+		}
+	case "placed": // the company's vehicles on the map (head tileX != -1)
+		if trains, err := g.w.Map.Trains(); err == nil {
+			for _, tr := range trains {
+				if h := &g.w.Map.Entities[tr.Head]; int(h.Owner) == company && h.TileX != -1 {
+					got++
+				}
 			}
 		}
 	case "delivered": // this month's (cargoUnitsTotalDelivered, reset monthly) and the history's

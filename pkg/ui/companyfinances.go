@@ -140,6 +140,9 @@ type CompanyFinancesWindow struct {
 	OnColourMode func(colourType int, on bool)
 	// OnRename is onMouseUp caption: renameCompanyPrompt (any tab).
 	OnRename func()
+	// OnRenameOwner is the Status tab's change_owner_name (the button over the
+	// owner's name, the controlling company's only): the owner name prompt.
+	OnRenameOwner func()
 	// OnColour is a swatch\'s onMouseDown (colourType 0 main, 1–10 a vehicle
 	// type; primary or secondary) with its screen rect, for showColour.
 	OnColour  func(colourType int, primary bool, x, y, w, h int)
@@ -187,6 +190,9 @@ func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 		if w.OnRename != nil {
 			w.OnRename()
 		}
+	case w.Tab == CompanyTabStatus && w.Status.Own && w.OnRenameOwner != nil &&
+		in(BVWidget{L: w.W - 116, T: 124, R: w.W - 4, B: 145}): // change_owner_name
+		w.OnRenameOwner()
 	case in(lw[cwTabColour]) && w.Tab != CompanyTabColourScheme:
 		w.switchTab(CompanyTabColourScheme)
 	case w.Tab == CompanyTabColourScheme && w.Colours.Own && w.OnColour != nil && w.colourSwatchAt(x, y) != nil:
@@ -812,7 +818,7 @@ type CompanyStatus struct {
 // face at its widget + 1, the owner's name centred in change_owner_name + 5,
 // the status line at the label − 1. PARTIAL: the headquarters viewport and
 // its centre button (no headquarters yet), the jail bars, the company
-// select's face, renaming.
+// select's face.
 func (w *CompanyFinancesWindow) drawStatus(screen *ebiten.Image) {
 	g1 := globalG1Font.g1
 	pal := g1.GetPalette()
