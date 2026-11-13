@@ -383,6 +383,8 @@ type VehicleWindow struct {
 	View         func(w, h int) *gfx8.RenderTarget
 	OnCentreView func() // Main: centreViewport — the main view moved to the vehicle
 	viewImg      *ebiten.Image
+	// Labels draws the station / town names over the viewport (nil: none).
+	Labels ViewLabels
 }
 
 // Draw draws the current tab: Main (drawMain) or Details (Details::draw and
@@ -544,25 +546,8 @@ func (w *VehicleWindow) drawMain(screen *ebiten.Image) {
 	// both, then put on screen once.
 	if v := lw[vmViewport]; w.View != nil {
 		if rt := w.View(v.R-v.L-1, v.B-v.T-1); rt != nil {
-			if c := lw[vmCentreViewport]; !c.Hidden {
-				if sp, err := gfx8.Decode(&g1.Elements[imgCentreView]); err == nil {
-					gfx8.DrawSpriteNoise(rt, sp, c.L-(v.L+1), c.T-(v.T+1), gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
-				}
-			}
-			pal := g1.GetPalette()
-			pix := make([]byte, rt.Width*rt.Height*4)
-			for k, ix := range rt.Bits[:rt.Width*rt.Height] {
-				c := pal[ix]
-				pix[k*4], pix[k*4+1], pix[k*4+2], pix[k*4+3] = c.R, c.G, c.B, 255
-			}
-			if w.viewImg == nil || w.viewImg.Bounds().Dx() != rt.Width || w.viewImg.Bounds().Dy() != rt.Height {
-				w.viewImg = ebiten.NewImage(rt.Width, rt.Height)
-			}
-			w.viewImg.WritePixels(pix)
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(w.X+v.L+1), float64(w.Y+v.T+1))
-			screen.DrawImage(w.viewImg, op)
-			MarkForeign(image.Rect(w.X+v.L+1, w.Y+v.T+1, w.X+v.R, w.Y+v.B))
+			c := lw[vmCentreViewport]
+			drawViewport(screen, &w.viewImg, rt, w.X+v.L+1, w.Y+v.T+1, w.Labels, !c.Hidden, w.X+c.L, w.Y+c.T, prim)
 		}
 	}
 	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))

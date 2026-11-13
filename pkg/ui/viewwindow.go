@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"image"
 	"image/color"
 	"strconv"
 	"strings"
@@ -45,6 +44,8 @@ type ViewWindow struct {
 	// OnRename is the caption's click (renameTownPrompt / renameIndustryPrompt).
 	OnRename func()
 	viewImg  *ebiten.Image
+	// Labels draws the station / town names over the viewport (nil: none).
+	Labels ViewLabels
 
 	Tab         int      // currentTab
 	TabTooltips []string // the tabs' tooltips
@@ -279,23 +280,7 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 	}
 	if w.View != nil {
 		if rt := w.View(r-l-1, b-t-1); rt != nil {
-			if sp, err := gfx8.Decode(&g1.Elements[imgCentreView]); err == nil {
-				gfx8.DrawSpriteNoise(rt, sp, (r-24)-(l+1), (b-24)-(t+1), gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
-			}
-			pal := g1.GetPalette()
-			pix := make([]byte, rt.Width*rt.Height*4)
-			for k, ix := range rt.Bits[:rt.Width*rt.Height] {
-				c := pal[ix]
-				pix[k*4], pix[k*4+1], pix[k*4+2], pix[k*4+3] = c.R, c.G, c.B, 255
-			}
-			if w.viewImg == nil || w.viewImg.Bounds().Dx() != rt.Width || w.viewImg.Bounds().Dy() != rt.Height {
-				w.viewImg = ebiten.NewImage(rt.Width, rt.Height)
-			}
-			w.viewImg.WritePixels(pix)
-			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(w.X+l+1), float64(w.Y+t+1))
-			screen.DrawImage(w.viewImg, op)
-			MarkForeign(image.Rect(w.X+l+1, w.Y+t+1, w.X+r, w.Y+b))
+			drawViewport(screen, &w.viewImg, rt, w.X+l+1, w.Y+t+1, w.Labels, true, w.X+r-24, w.Y+b-24, sec)
 		}
 	}
 	// the status, left-clipped at the status bar (3, height-12) − 1

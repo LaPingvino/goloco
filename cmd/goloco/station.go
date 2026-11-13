@@ -6,6 +6,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
+	"github.com/hajimehoshi/ebiten/v2"
 	"sort"
 )
 
@@ -80,6 +81,7 @@ func (g *Game) openStationWindow(id int) {
 	}
 	w.OnVehicle = func(head uint16) { g.openVehicleDetails(head) } // onScrollMouseDown: Vehicle::Main::open
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.StationView(id, vw, vh) }
+	w.Labels = func(dst *ebiten.Image) { g.w.StationViewLabels(id, dst) }
 	w.OnCentreView = func() { g.w.CentreOnStation(id) }
 	w.Catchment = g.catchmentStation == id
 	w.OnCatchment = func() { // station_catchment: toggles this station's catchment

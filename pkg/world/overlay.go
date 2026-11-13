@@ -26,16 +26,22 @@ import (
 // drawOverlay renders station plaques, town labels and money floats over the
 // composited world. Gated to zoom 0-1 (labels are illegible when zoomed out).
 func (w *World) drawOverlay(screen *ebiten.Image) {
-	sw := screen.Bounds().Dx()
-	sh := screen.Bounds().Dy()
-	if !w.TitleMode { // Viewport::paint: stations (up to stationNamesMinScale), then towns
-		if w.zoom <= stationNamesMinScale {
-			w.drawStationNames(screen, sw, sh)
-		}
-		w.drawTownNames(screen, sw, sh)
+	if !w.TitleMode {
+		z := max(0, min(3, w.zoom))
+		w.drawNames(screen, int(w.camX)>>z, int(w.camY)>>z, z, true)
 	}
 	w.drawMoneyEffects(screen)
+}
 
+// drawNames is Viewport::paint's names for a view whose top-left is (ox, oy)
+// in the zoom's unzoomed pixels, drawn on dst (its Bounds: the view's screen
+// rectangle, which clips them): the station names up to stationNamesMinScale
+// unless hidden (ViewportFlags::hideStationNames), then the town names.
+func (w *World) drawNames(dst *ebiten.Image, ox, oy, z int, stations bool) {
+	if stations && z <= stationNamesMinScale {
+		w.drawStationNames(dst, ox, oy, z)
+	}
+	w.drawTownNames(dst, ox, oy, z)
 }
 
 // kZoomToTownFonts (Town.cpp): medium bold at zoom 0 and 1, medium normal at
@@ -48,14 +54,15 @@ var kZoomToTownFonts = [4]int{ui.G1FontMediumBold, ui.G1FontMediumBold, ui.G1Fon
 // frame's left + 1, top + 1, in that zoom's font, white with the outline.
 // PARTIAL: the frames are the save's — a town that grows or is renamed keeps
 // its old frame until Town::updateLabel is ported.
-func (w *World) drawTownNames(screen *ebiten.Image, sw, sh int) {
-	z := max(0, min(3, w.zoom))
-	ox, oy := int(w.camX)>>z, int(w.camY)>>z
+func (w *World) drawTownNames(screen *ebiten.Image, ox, oy, z int) {
+	b := screen.Bounds()
+	sw, sh := b.Dx(), b.Dy()
+	ox, oy = ox-b.Min.X, oy-b.Min.Y // view pixels → dst's screen coordinates
 	white, black := ui.TextColours(colourWhite)
 	for i := range w.Map.Towns {
 		t := &w.Map.Towns[i]
 		f := t.LabelFrame
-		if !f.Contains(ox, oy, ox+sw-1, oy+sh-1, z) {
+		if !f.Contains(ox+b.Min.X, oy+b.Min.Y, ox+b.Min.X+sw-1, oy+b.Min.Y+sh-1, z) {
 			continue
 		}
 		x, y := int(f.Left[z])+1-ox, int(f.Top[z])+1-oy
@@ -90,9 +97,10 @@ const labelIconsNone = 230
 // the name with its town and the transport icons. PARTIAL: the hovered
 // station's look (getTranslucent(…, 0)), Station::updateLabel (frames are the
 // save's).
-func (w *World) drawStationNames(screen *ebiten.Image, sw, sh int) {
-	z := max(0, min(3, w.zoom))
-	ox, oy := int(w.camX)>>z, int(w.camY)>>z
+func (w *World) drawStationNames(screen *ebiten.Image, ox, oy, z int) {
+	bd := screen.Bounds()
+	vl, vt, vr, vb := ox, oy, ox+bd.Dx()-1, oy+bd.Dy()-1 // the view's rectangle in its pixels
+	ox, oy = ox-bd.Min.X, oy-bd.Min.Y                    // view pixels → dst's screen coordinates
 	g1 := w.renderer.G1
 	if g1 == nil {
 		return
@@ -106,7 +114,7 @@ func (w *World) drawStationNames(screen *ebiten.Image, sw, sh int) {
 	for id := range w.Map.StationNames {
 		st := &w.Map.StationNames[id]
 		f := st.LabelFrame
-		if st.Name == 0xFFFF || st.Flags&(1<<5) != 0 || !f.Contains(ox, oy, ox+sw-1, oy+sh-1, z) {
+		if st.Name == 0xFFFF || st.Flags&(1<<5) != 0 || !f.Contains(vl, vt, vr, vb, z) {
 			continue
 		}
 		colour := 1 // Colour::grey

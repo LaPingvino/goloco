@@ -371,6 +371,11 @@ func (r *Renderer) RenderPlay(m *sim.Map, v View, k, n int) (*gfx8.RenderTarget,
 // the game can spread a frame's columns over several frames (LOOP item 0).
 // The columns are painted in parallel, as upstream does, one worker a core.
 func (r *Renderer) RenderColumns(m *sim.Map, v View, dst *gfx8.RenderTarget, sx0, sx1 int) {
+	// Viewport::paint: zoomViewRt.x / y &= 0xFFFFFFFF << zoom — the view's
+	// origin on the zoom's pixel grid (off it, a zoomed view's sprites miss
+	// their rows and columns: holes in the land)
+	v.X &= ^0 << v.Zoom
+	v.Y &= ^0 << v.Zoom
 	lw := v.W << v.Zoom
 	cols := r.cols[:0]
 	for colX := v.X &^ 31; colX < v.X+lw; colX += 32 {
@@ -674,6 +679,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			cmap, x, y, v.Ticks, sprite)
 	case scenario.KindIndustry:
 		ie := t.Industries[ref.Index]
+		s.CurrentItem = &t.Industries[ref.Index] // setCurrentItem(element)
 		io := m.IndustryObjectOf(&ie, om)
 		if io == nil || int(ie.BuildingType) >= len(io.Variations) {
 			return

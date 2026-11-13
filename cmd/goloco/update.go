@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/paint"
 	"log"
 	"os"
 	"time"
@@ -494,6 +495,21 @@ func (g *Game) hudOrMapClick() {
 				}
 			} else {
 				g.openTrackBuildError(c)
+			}
+		}
+	} else if g.buildMode == buildModeNone && !g.inTitleScreen {
+		// MouseInput.cpp's viewport click without a tool: getItemLeft opens
+		// the vehicle's, town's, station's or industry's window
+		if it, ok := g.w.ItemLeftAt(g.mouseX, g.mouseY); ok {
+			switch it.Kind {
+			case paint.ItemEntity:
+				g.openVehicleWindow(uint16(it.ID), 0)
+			case paint.ItemTownLabel:
+				g.openTownWindow(it.ID)
+			case paint.ItemStationLabel:
+				g.openStationWindow(it.ID)
+			case paint.ItemIndustry:
+				g.openIndustryWindow(it.ID)
 			}
 		}
 	}

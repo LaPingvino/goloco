@@ -3,6 +3,7 @@ package world
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/scene"
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // VehicleViewImage is the Vehicle window's Main viewport (Main::createViewport):
@@ -14,13 +15,30 @@ import (
 // (the centre-view button) before it reaches the screen. PARTIAL: rotation 0
 // only.
 func (w *World) VehicleView(headID uint16, width, height int) *gfx8.RenderTarget {
-	if w.renderer == nil || w.renderer.G1 == nil || w.renderer.ObjMgr == nil || width <= 0 || height <= 0 {
+	v, ok := w.vehicleView(headID, width, height)
+	if !ok {
 		return nil
+	}
+	if w.vehicleScene == nil {
+		w.vehicleScene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
+	}
+	return w.vehicleScene.Render(&w.Map, v)
+}
+
+// VehicleViewLabels draws the Vehicle window viewport's station and town
+// names on dst, the screen clipped to the viewport.
+func (w *World) VehicleViewLabels(headID uint16, dst *ebiten.Image) {
+	w.viewLabels(dst, true, func(width, height int) (scene.View, bool) { return w.vehicleView(headID, width, height) })
+}
+
+func (w *World) vehicleView(headID uint16, width, height int) (scene.View, bool) {
+	if w.renderer == nil || w.renderer.G1 == nil || w.renderer.ObjMgr == nil || width <= 0 || height <= 0 {
+		return scene.View{}, false
 	}
 	m := &w.Map
 	tr, err := m.TrainOf(headID)
 	if err != nil || m.Entities[tr.Head].TileX == -1 {
-		return nil
+		return scene.View{}, false
 	}
 	target := tr.Veh2
 	if len(tr.Cars) > 0 && len(tr.Cars[0]) > 0 {
@@ -29,11 +47,7 @@ func (w *World) VehicleView(headID uint16, width, height int) *gfx8.RenderTarget
 	e := m.Entities[target]
 	x, y, z := int(e.PosX), int(e.PosY), int(e.PosZ)
 	vx, vy := y-x, (x+y)>>1-z // gameToScreen, rotation 0
-	if w.vehicleScene == nil {
-		w.vehicleScene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
-	}
-	v := scene.View{X: vx - width/2, Y: vy - height/2, W: width, H: height, Zoom: 0, Ticks: m.ScenarioTicks}
-	return w.vehicleScene.Render(m, v)
+	return scene.View{X: vx - width/2, Y: vy - height/2, W: width, H: height, Zoom: 0, Ticks: m.ScenarioTicks}, true
 }
 
 // CentreOnVehicle is Main::onCentreViewportControl: the main view moved to

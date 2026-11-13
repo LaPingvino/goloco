@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/hajimehoshi/ebiten/v2"
 	"log"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
@@ -97,6 +98,7 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		StopStartImage:    stopStartImage(h.VehicleFlags),
 		OnTab:             func(t int) { g.openVehicleWindow(headID, t) },
 		View:              func(w, h int) *gfx8.RenderTarget { return g.w.VehicleView(headID, w, h) },
+		Labels:            func(dst *ebiten.Image) { g.w.VehicleViewLabels(headID, dst) },
 		OnCentreView:      func() { g.centreViewportOpen(headID) },
 		OnStopStart:       func(x, y, w, hh int) { g.stopStartOpen(headID, x, y, w, hh) },
 		OnRefit:           func(x, y, w, hh int) { g.refitOpen(headID, x, y, w, hh) },

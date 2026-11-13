@@ -42,11 +42,7 @@ type RouteHit struct {
 // (0x004B5160 / 0x004B5223). PARTIAL: water waypoints (ships) and the station
 // label hit; the waypoint sound.
 func (w *World) RouteAt(sx, sy int, mode uint8) (RouteHit, bool) {
-	if w.scene == nil && w.renderer != nil && w.renderer.G1 != nil && w.renderer.ObjMgr != nil {
-		w.scene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
-		w.scene.WaveFrame = func(tx, ty int) uint8 { return uint8(w.Waves[sim.WaveIndex(tx, ty)].Frame) } // as drawScene's first frame makes it
-	}
-	if w.scene == nil {
+	if !w.ensureScene() {
 		return RouteHit{}, false
 	}
 	m := &w.Map
@@ -243,4 +239,14 @@ func (w *World) RoadStationPlacementAt(sx, sy int, stationType uint8) (sim.RoadS
 	}
 	return sim.RoadStationPlacement{X: int32(ps.MapX / 32 * 32), Y: int32(ps.MapY / 32 * 32), Z: int32(rd.BaseZ) * 4,
 		Rotation: rd.Rotation, RoadID: rd.RoadID, Index: rd.SequenceIndex, RoadObjectID: rd.RoadObjectID, Type: stationType}, true
+}
+
+// ensureScene makes the scene renderer the hit tests paint with, as
+// drawScene's first frame makes it; false before the graphics are loaded.
+func (w *World) ensureScene() bool {
+	if w.scene == nil && w.renderer != nil && w.renderer.G1 != nil && w.renderer.ObjMgr != nil {
+		w.scene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
+		w.scene.WaveFrame = func(tx, ty int) uint8 { return uint8(w.Waves[sim.WaveIndex(tx, ty)].Frame) }
+	}
+	return w.scene != nil
 }
