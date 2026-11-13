@@ -1,0 +1,33 @@
+# The news window's viewports in a rotated view, on the title game, one
+# script for goloco and `ol.sh run` (as news.txt: the early pause, the rows
+# opened as old news): Enter turns the view to rotation 1 before the news
+# opens, and once more — rotation 2 — while a news window is up (its
+# viewportRotate: the viewports made anew).
+#   env -C $SHOTS XDG_CONFIG_HOME=$CFG GOLOCO_SCRIPT=…/news-rotated.txt goloco title.dat
+wait 5
+click 688 592         # pause
+wait 1
+move 400 300
+key ENTER             # rotation 1
+wait 2
+click 715 580         # the Messages window
+wait 2
+click 550 135         # "New Transport Company!": the owner's face, the town
+wait 1
+move 400 300
+wait 1
+shot nr-00-town-rot1.png
+click 550 210         # "Citizens Celebrate!": the vehicle, the town
+wait 1
+move 400 300
+wait 1
+shot nr-01-vehicle-rot1.png
+click 550 170         # "… closing down!": the industry
+wait 1
+move 400 300
+wait 1
+shot nr-02-industry-rot1.png
+key ENTER             # rotation 2, the news window up
+wait 2
+shot nr-03-industry-rot2.png
+quit

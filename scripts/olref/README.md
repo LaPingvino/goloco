@@ -120,6 +120,8 @@ OpenLoco opens it at (0, 439) — bringToFront swaps a pressed window with the
 list's last one (the time panel, or the news window), so the panels come
 before the other windows in the list and "below the player panel" is tried
 first (ui.WindowStack's order; pkg/ui/news_test.go).
+tours/news-rotated.txt is the news window's viewports at rotation 1 and —
+turned with the window up — 2.
 A message shows for 384 interface updates, some 10 s in OpenLoco, paused or
 not: shoot soon after the click. tours/news-goloco.txt is goloco alone — its
 script command `news TYPE [subjects] [date DAY]` posts a message — for the

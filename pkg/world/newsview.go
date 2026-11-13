@@ -10,8 +10,9 @@ import (
 // The news window's viewports (OpenLoco reference: src/OpenLoco/src/Ui/
 // Windows/News/News.cpp getView): an industry or a town at its land height
 // at zoom half, a station at its own height and a vehicle (its first car's
-// body, else veh2) at zoom full. PARTIAL: rotation 0 only; no message type
-// has a location for a subject.
+// body, else veh2) at zoom full, all at the view rotation (initViewports is
+// the window's viewportRotate too). PARTIAL: no message type has a location
+// for a subject.
 
 // NewsView renders subject slot's (0, 1) viewport on the item of a message
 // argument type; nil when there is none (the item gone, a vehicle not
@@ -44,7 +45,7 @@ func (w *World) newsView(argType uint8, id uint16, width, height int) (scene.Vie
 	}
 	m := &w.Map
 	at := func(x, y, z, zoom int) (scene.View, bool) {
-		vx, vy := y-x, (x+y)>>1-z // gameToScreen, rotation 0
+		vx, vy := w.gameToView(x, y, z) // at the view rotation (getView: WindowManager::getCurrentRotation)
 		return scene.View{X: vx - (width<<zoom)/2, Y: vy - (height<<zoom)/2, W: width, H: height, Zoom: zoom, Ticks: m.ScenarioTicks}, true
 	}
 	land := func(x, y int) int { // getHeight(…).landHeight
