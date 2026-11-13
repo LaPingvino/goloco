@@ -115,6 +115,11 @@ the title game: it posts the same two speed records in its first days in
 both. tours/news-ticker.txt is the ticker — both configs' `news:` section
 set to `ticker` for every kind (majorCompany … advice; OpenLoco's
 openloco.yml has the section already: change it, a second one is ignored).
+Its Town window is the placement check: with the news window up
+OpenLoco opens it at (0, 439) — bringToFront swaps a pressed window with the
+list's last one (the time panel, or the news window), so the panels come
+before the other windows in the list and "below the player panel" is tried
+first (ui.WindowStack's order; pkg/ui/news_test.go).
 A message shows for 384 interface updates, some 10 s in OpenLoco, paused or
 not: shoot soon after the click. tours/news-goloco.txt is goloco alone — its
 script command `news TYPE [subjects] [date DAY]` posts a message — for the
