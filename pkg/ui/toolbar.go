@@ -208,22 +208,12 @@ func (t *Toolbar) Draw(screen *ebiten.Image, renderer *render.Renderer) {
 		}
 	}
 
-	// Draw buttons (their tooltips: HoveredTooltip, timed and drawn by the game)
+	// Draw buttons (no tooltips: ToolbarTop's widgets have none)
 	for i := range t.Buttons {
 		if !t.Buttons[i].Hidden {
 			t.drawButton(screen, &t.Buttons[i], renderer)
 		}
 	}
-}
-
-// HoveredTooltip is the tooltip of the button under the mouse ("" none).
-func (t *Toolbar) HoveredTooltip() string {
-	for i := range t.Buttons {
-		if b := &t.Buttons[i]; !b.Hidden && b.Hovered && b.Tooltip != "" {
-			return b.Tooltip
-		}
-	}
-	return ""
 }
 
 func (t *Toolbar) drawButton(screen *ebiten.Image, btn *ToolbarButton, renderer *render.Renderer) {

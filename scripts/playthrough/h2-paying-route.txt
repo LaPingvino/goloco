@@ -12,7 +12,9 @@ scenario Weatherworld
 wait 20
 camera 60 250
 wait 2
-click 592 14
+move 592 14
+wait 1
+click 620 42
 wait 1
 move 400 300
 wait 2
@@ -56,7 +58,9 @@ click 590 434
 wait 2
 move 700 520
 wait 2
-click 682 14
+move 682 14
+wait 1
+click 720 42
 move 400 300
 wait 2
 click 723 42

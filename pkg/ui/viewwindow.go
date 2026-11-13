@@ -150,7 +150,7 @@ func (w *ViewWindow) caption() string {
 // WindowManager's default position (here centred on the screen).
 func NewTownWindow(sw, sh int, title, size string, population int, titleColour, colour uint8) *ViewWindow {
 	status := strings.Replace(i18n.Label(i18n.StatusTownPopulation), "{STRINGID}", size, 1)
-	status = strings.Replace(status, "{INT32}", strconv.Itoa(population), 1)
+	status = strings.Replace(status, "{INT32}", Comma32(int64(population)), 1)
 	return newViewWindow(sw, sh, 223, 161, 3, title, status, titleColour, colour)
 }
 
@@ -232,7 +232,7 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 	}
 	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
 	l, t, r, b := w.viewport()
-	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, false) // Town/Industry open: no lighterFrame
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
 		gfx8.FillRectInset(rt, 0, 41, w.W-1, w.H-1, gfx8.InsetColour{Map: sec}, 0)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
@@ -300,7 +300,9 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 	}
 	// the status, left-clipped at the status bar (3, height-12) − 1
 	black := g1.GetPalette()[paletteBlack0]
-	DrawTextFont(screen, w.Status, G1FontMediumNormal, w.X+3-1, w.Y+w.H-12-1, black)
+	// drawStringLeftClipped at the status widget (3, h − 12)–(w − 14): one px
+	// up-left, width() − 1, the renderer's default medium bold
+	DrawTextFont(screen, ClipString(w.Status, G1FontMediumBold, w.W-14-3-1), G1FontMediumBold, w.X+3-1, w.Y+w.H-12-1, black)
 	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, colourWhite)
 }
 
@@ -352,7 +354,7 @@ func (w *ViewWindow) drawGraph(screen *ebiten.Image, sec []uint8, black color.Co
 	L := g.Layout
 	small := func(s string, x, y int) {
 		if y >= L.ClipTop {
-			DrawTextFont(screen, s, G1FontSmall, w.X+x, w.Y+y, black)
+			DrawTextFont(screen, s, G1FontMediumNormal, w.X+x, w.Y+y, black)
 		}
 	}
 	bottom := w.H - L.BottomInset
@@ -367,8 +369,8 @@ func (w *ViewWindow) drawGraph(screen *ebiten.Image, sec []uint8, black color.Co
 		yTick := g.FirstTick
 		for y := bottom; y >= L.Top; y -= 20 {
 			gfx8.FillRect(rt, L.GridX, y, L.GridX+L.GridW-1, y, grid)
-			s := strconv.Itoa(yTick)
-			ticks = append(ticks, tick{39 - MeasureTextFont(s, G1FontSmall), y - 6, s})
+			s := Comma32(int64(yTick)) // population_graph_people {INT32}: grouped
+			ticks = append(ticks, tick{39 - MeasureTextFont(s, G1FontMediumNormal), y - 6, s})
 			yTick += 1000
 		}
 		yearSkip := 0
@@ -377,7 +379,7 @@ func (w *ViewWindow) drawGraph(screen *ebiten.Image, sec []uint8, black color.Co
 			if month == 0 {
 				if yearSkip == 0 {
 					s := strconv.Itoa(year)
-					ticks = append(ticks, tick{x - MeasureTextFont(s, G1FontSmall)/2, L.YearY, s})
+					ticks = append(ticks, tick{x - MeasureTextFont(s, G1FontMediumNormal)/2, L.YearY, s})
 				}
 				gfx8.FillRect(rt, x, max(L.VTop, L.ClipTop), x, w.H-L.VBottomInset, grid)
 			}

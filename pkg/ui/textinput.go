@@ -254,7 +254,7 @@ func (w *TextInputWindow) Draw(screen *ebiten.Image) {
 			c.Fill(win2) // fillRect(x, 1, x, 10, getShade(secondary, 9))
 		}
 	}
-	limit := FillArgs(i18n.Str(i18n.NumCharactersLeftIntInt), itoa3(len(w.Session.Buffer)), itoa3(w.Session.InputLenLimit))
+	limit := FillArgs(i18n.Str(i18n.NumCharactersLeftIntInt), Comma16(len(w.Session.Buffer)), Comma16(w.Session.InputLenLimit))
 	lw := measureFormatted(limit)
 	drawFormatted(screen, w.X+tiLimit[0]+tiLimit[2]-lw, w.Y+tiLimit[1], limit, win2, black)
 	ok := i18n.Label(i18n.LabelButtonOk)

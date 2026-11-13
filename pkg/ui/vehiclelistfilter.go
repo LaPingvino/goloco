@@ -28,7 +28,7 @@ func vehicleListFooter(tab, n int) string {
 	if n == 1 {
 		f = vehicleListFooters[tab%6][0]
 	}
-	return strings.Replace(f, "{INT16}", itoa3(n), 1)
+	return strings.Replace(f, "{INT16}", Comma16(n), 1)
 }
 
 // The filter widgets (dropdownWidgets): filter type at (264, 200) 120×12,

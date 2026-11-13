@@ -46,6 +46,21 @@ func (d *DropdownMenu) OpenedByPress(origin image.Rectangle) {
 	d.Origin, d.pressActive = origin, true
 }
 
+// HoverOpened marks the dropdown as opened by hovering its origin (ToolbarTop
+// onMouseHover = onMouseDown): no press to release yet.
+func (d *DropdownMenu) HoverOpened() { d.pressActive = false }
+
+// PressOnOrigin is a press on the widget that opened the dropdown while it is
+// open (stateWidgetPressed: the press does nothing, its release on the widget
+// chooses): it arms HandleOpeningRelease and reports the press taken.
+func (d *DropdownMenu) PressOnOrigin(x, y int) bool {
+	if !d.Visible || d.Origin.Empty() || !image.Pt(x, y).In(d.Origin) {
+		return false
+	}
+	d.pressActive = true
+	return true
+}
+
 // HandleOpeningRelease handles the release of the press that opened the
 // dropdown: over the origin, the highlighted item's action (none
 // highlighted: nothing, the menu stays open); over an item, that item; else
