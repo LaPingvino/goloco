@@ -324,8 +324,8 @@ func (s *WindowStack) Open(w Win) {
 // Replace puts a rebuilt window in the slot of the one it replaces: the same
 // place on the screen and in the order, the old size within the new one's
 // limits (a tab's onResize: setSize(min, max)) — the new one's own size if
-// either has no limits (a tab of one fixed size) —, the stack's resize flags. The old window's onClose does
-// not run: it is the same window.
+// either has no limits (a tab of one fixed size) —, the stack's resize flags.
+// The old window's onClose does not run: it is the same window.
 func (s *WindowStack) Replace(old, w Win) {
 	i := s.indexOf(old)
 	if i < 0 || old == w {

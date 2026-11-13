@@ -246,6 +246,7 @@ func (w *CompanyFinancesWindow) switchTab(tab int) {
 	if tab == CompanyTabFinances { // switchTab: Finances::scrollToLatestData
 		w.ScrollToLatest()
 	}
+	w.MoveInsideScreenEdges() // switchTab ends with it
 }
 
 // financesContentW is the Finances scroll view's contentWidth.
