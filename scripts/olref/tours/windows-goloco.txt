@@ -1,8 +1,7 @@
 # goloco on the title game: the same windows as windows-openloco.txt and at
 # the same places — goloco's window stack places and resizes them as
 # WindowManager does, so the clicks are that tour's (less the pause and the
-# news window, and the station: the player owns none there and a label click
-# opens nothing — see station-goloco.tail.txt).
+# news window, and the station part — see station-goloco.tail.txt).
 #   env -C $SHOTS GOLOCO_SCRIPT=…/windows-goloco.txt goloco ~/Projects/locomotion/Data/title.dat
 wait 11
 press 784 14          # towns menu, held

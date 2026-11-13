@@ -28,7 +28,10 @@ import (
 // (upstream: windowPositionBegin there too) — only the caption does. No white
 // border flash (WindowFlags::whiteBorderMask), no open sound.
 
-// The stack's window types (Ui/WindowType.h), after types.go's.
+// WindowType is a window's type (Ui/WindowType.h), the half of its identity
+// that its number completes.
+type WindowType uint8
+
 const (
 	WindowTypeConstruction WindowType = iota + 32
 	WindowTypeTown
@@ -45,6 +48,16 @@ const (
 	WindowTypeOptions
 	WindowTypeScenarioSelect
 	WindowTypeFileBrowserPrompt
+)
+
+// WindowFlags are Ui::WindowFlags, those the stack acts on.
+type WindowFlags uint32
+
+const (
+	WindowFlagStickToBack  WindowFlags = 1 << 0
+	WindowFlagStickToFront WindowFlags = 1 << 1
+	WindowFlagResizable    WindowFlags = 1 << 2
+	WindowFlagNoAutoClose  WindowFlags = 1 << 5
 )
 
 // Flags the stack keeps itself (MouseInput's stateResizing).
