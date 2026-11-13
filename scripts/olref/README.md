@@ -109,6 +109,18 @@ std::rand, so the scratch openloco.yml's audio section names one: `playlist:
 custom` and a customJukebox with one track true. goloco reads the same section
 from $XDG_CONFIG_HOME/goloco/openloco.yml.
 
+tours/news.txt (the Messages window from the time panel's date, its rows
+opened as news, a subject's window, the settings tab) runs on both games on
+the title game: it posts the same two speed records in its first days in
+both. tours/news-ticker.txt is the ticker — both configs' `news:` section
+set to `ticker` for every kind (majorCompany … advice; OpenLoco's
+openloco.yml has the section already: change it, a second one is ignored).
+A message shows for 384 interface updates, some 10 s in OpenLoco, paused or
+not: shoot soon after the click. tours/news-goloco.txt is goloco alone — its
+script command `news TYPE [subjects] [date DAY]` posts a message — for the
+advice panel, a new vehicle and the pre-1945 newspaper, which the title game
+doesn't bring up.
+
 For one window: `pair.py out.png goloco.png@X,Y,W,H openloco.png@X,Y,W,H 2`.
 
 ## Which source decides

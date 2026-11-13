@@ -50,6 +50,8 @@ const (
 	WindowTypeFileBrowserPrompt
 	WindowTypeMusicJukebox
 	WindowTypeMusicSelection
+	WindowTypeMessages
+	WindowTypeNews
 )
 
 // WindowFlags are Ui::WindowFlags, those the stack acts on.
@@ -60,6 +62,9 @@ const (
 	WindowFlagStickToFront WindowFlags = 1 << 1
 	WindowFlagResizable    WindowFlags = 1 << 2
 	WindowFlagNoAutoClose  WindowFlags = 1 << 5
+	// WindowFlagIgnoreInFindAt (the news ticker): findAt looks through the
+	// window — a press there is for what lies under it — findAtAlt does not.
+	WindowFlagIgnoreInFindAt WindowFlags = 1 << 7
 )
 
 // Flags the stack keeps itself (MouseInput's stateResizing).
@@ -92,6 +97,9 @@ type WinBase struct {
 	MinW, MinH, MaxW, MaxH int
 	WinFlags               WindowFlags
 	OnClose                func()
+	// NoCaption: the window has no caption widget (the news): a press on its
+	// top edge doesn't move it.
+	NoCaption bool
 
 	stack              *WindowStack
 	self               Win
@@ -131,12 +139,19 @@ func (b *WinBase) CanResize() bool {
 	return b.HasFlags(WindowFlagResizable) && (b.MinW != b.MaxW || b.MinH != b.MaxH)
 }
 
-// HasResizeHandle is drawResizeHandle's condition (FrameWidget.cpp,
-// PanelWidget.cpp): resizable and neither dimension fixed — a window that
-// resizes one way only has no handle drawn, though its corner still resizes
-// it (canResize), as upstream.
+// HasResizeHandle is the frame's drawResizeHandle condition (FrameWidget.cpp):
+// resizable and neither dimension fixed. The panel's own (PanelWidget.cpp,
+// HasPanelResizeHandle) is what shows on a window with a panel.
 func (b *WinBase) HasResizeHandle() bool {
 	return b.HasFlags(WindowFlagResizable) && b.MinH != b.MaxH && b.MinW != b.MaxW
+}
+
+// HasPanelResizeHandle is the panel's drawResizeHandle condition
+// (PanelWidget.cpp 0x004CAB8E): resizable and not both dimensions fixed — a
+// window that resizes one way only has its handle too (the Messages window,
+// the graph tabs).
+func (b *WinBase) HasPanelResizeHandle() bool {
+	return b.HasFlags(WindowFlagResizable) && !(b.MinH == b.MaxH && b.MinW == b.MaxW)
 }
 
 // SetSize is Window::setSize(minSize, maxSize): the limits set and the size
@@ -181,6 +196,9 @@ func (b *WinBase) inGrip(x, y int) bool {
 
 func (b *WinBase) onCaption(x, y int) bool {
 	rx, ry := x-b.X, y-b.Y
+	if b.NoCaption {
+		return false
+	}
 	if ry < captionTop || ry > captionBottom || rx < 1 || rx > b.W-2 {
 		return false
 	}
@@ -248,6 +266,19 @@ func (s *WindowStack) FindAt(x, y int) Win {
 	for i := len(s.Windows) - 1; i >= 0; i-- {
 		w := s.Windows[i]
 		prepare(w) // callOnResize
+		if b := w.Base(); b.Contains(x, y) && !b.HasFlags(WindowFlagIgnoreInFindAt) {
+			return w
+		}
+	}
+	return nil
+}
+
+// FindAtAlt is WindowManager::findAtAlt: findAt that sees the windows
+// ignoreInFindAt hides from it.
+func (s *WindowStack) FindAtAlt(x, y int) Win {
+	for i := len(s.Windows) - 1; i >= 0; i-- {
+		w := s.Windows[i]
+		prepare(w)
 		if w.Base().Contains(x, y) {
 			return w
 		}
@@ -427,16 +458,25 @@ func (s *WindowStack) CloseAll() {
 	s.drag = dragNone
 }
 
-// rects are the windows as createWindow's placement sees them: the stack's,
-// back to front, then the fixed ones.
+// rects are the windows as createWindow's placement sees them, in upstream's
+// order: the stack's back to front, then the fixed ones (the toolbar and the
+// panels, made when the game starts), then the stack's stickToFront windows —
+// the news window, the ticker, a prompt —, which are made after those and
+// so lie in front of them. The news thus blocks and anchors a new window as
+// any other window does.
 func (s *WindowStack) rects() []WinRect {
-	var out []WinRect
+	var out, front []WinRect
 	for _, w := range s.Windows {
 		prepare(w)
 		b := w.Base()
-		out = append(out, WinRect{X: b.X, Y: b.Y, W: b.W, H: b.H, StickToBack: b.HasFlags(WindowFlagStickToBack)})
+		r := WinRect{X: b.X, Y: b.Y, W: b.W, H: b.H, StickToBack: b.HasFlags(WindowFlagStickToBack)}
+		if b.HasFlags(WindowFlagStickToFront) {
+			front = append(front, r)
+		} else {
+			out = append(out, r)
+		}
 	}
-	return append(out, s.Fixed...)
+	return append(append(out, s.Fixed...), front...)
 }
 
 // Place is WindowManager::createWindow(type, size, flags, events)'s
@@ -667,7 +707,16 @@ func (s *WindowStack) resizeBy(w Win, dx, dy int) {
 // is marked foreign for draw8's screen copy: its text and viewport are drawn
 // past that copy, and the window over it must read them back.
 func (s *WindowStack) Draw(screen *ebiten.Image, before func(Win)) {
+	s.DrawWhere(screen, before, nil)
+}
+
+// DrawWhere is Draw for the windows keep says yes to (nil: all): the game
+// draws the news over the bottom panels, which are not on this stack.
+func (s *WindowStack) DrawWhere(screen *ebiten.Image, before func(Win), keep func(Win) bool) {
 	for i, w := range s.Windows {
+		if keep != nil && !keep(w) {
+			continue
+		}
 		prepare(w)
 		if before != nil {
 			before(w)

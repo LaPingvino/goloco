@@ -31,6 +31,7 @@ func (g *Game) Update() error {
 		g.scriptScenario()
 		g.scriptExpect()
 		g.scriptCamera()
+		g.scriptNews()
 		if g.script.quit {
 			return ebiten.Termination
 		}
@@ -179,7 +180,9 @@ func (g *Game) updateGame() {
 	g.updateSpeedKeys()
 	g.updateMusic()
 	// Update world (skipped when paused; repeated per speed multiplier)
-	if n := g.w.GameTicks(g.mouseMoved()); !g.isPaused { // tickLogic(numUpdates × the speed)
+	n := g.w.GameTicks(g.mouseMoved())
+	g.updateNews(n)  // sub_431695: MessageManager's update and the news windows', per interface update
+	if !g.isPaused { // tickLogic(numUpdates × the speed)
 		for i := 0; i < n*g.speedMult; i++ {
 			g.w.Map.TitleMode = false
 			g.w.Update() // tickLogic: one game tick
@@ -354,8 +357,14 @@ func (g *Game) hudOrMapClick() {
 			g.setSpeed(4)
 		}
 	} else if (uilayout.InTimePanel(g.mouseX, g.mouseY, g.sw, g.sh) || uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh)) && !g.inTitleScreen {
-		// the bottom-bar windows swallow the click; the player panel's
+		// the bottom-bar windows swallow the click; the time panel's date is
+		// MessageWindow::open (TimePanel.cpp onMouseUp date_btn); the player panel's
 		// company value is companyValueMouseUp: the Company window's Finances
+		// clickable(TimePanel.cpp): date_btn
+		tx, ty := uilayout.TimePanelPos(g.sw, g.sh)
+		if d := uilayout.TimePanelDate; inRect(g.mouseX, g.mouseY, tx+d[0], ty+d[1], d[2], d[3]) {
+			g.openMessagesWindow()
+		}
 		px, py := uilayout.PlayerPanelPos(g.sw, g.sh)
 		if r := uilayout.PlayerPanelFace; uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh) &&
 			inRect(g.mouseX, g.mouseY, px+r[0], py+r[1], r[2], r[3]) {
@@ -543,6 +552,10 @@ func (g *Game) updateSpeedKeys() {
 	}
 	if g.inKeyJustPressed(ebiten.KeyF6) {
 		g.setSpeed(8)
+	}
+	// Shortcuts.cpp showAnnouncementsList (Tab by default): MessageWindow::open.
+	if g.inKeyJustPressed(ebiten.KeyTab) && g.browseWin() == nil {
+		g.openMessagesWindow()
 	}
 	if g.inKeyJustPressed(ebiten.KeyF12) {
 		g.diagPending = true

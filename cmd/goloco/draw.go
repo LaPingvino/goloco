@@ -180,6 +180,7 @@ func (g *Game) drawOverlays(screen *ebiten.Image) {
 	// The objective is not an overlay upstream: it is the time panel's date
 	// tooltip (StringIds::tooltip_daymonthyear_challenge), shown on hover.
 	g.drawTimePanel(screen)
+	g.drawNews(screen) // the news window and the ticker: stickToFront, made after the panels and so over them
 	if g.gameWon {
 		msg := "OBJECTIVE ACHIEVED!"
 		mw, _ := ui.MeasureTextBold(msg)

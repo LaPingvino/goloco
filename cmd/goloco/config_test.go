@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/LaPingvino/goloco/pkg/jukebox"
+	"github.com/LaPingvino/goloco/pkg/sim"
 )
 
 // The config keeps a key across writes, replaces it in place and keeps other
@@ -80,6 +81,34 @@ func TestAudioConfig(t *testing.T) {
 		t.Errorf("read back: %+v, title music %v", cfg, title)
 	}
 	if configValue("audio.playlist") != "custom" || configValue("audio.customJukebox.solace") != "false" || configValue("audio.play_title_music") != "false" {
+		data, _ := os.ReadFile(configPath())
+		t.Errorf("file:\n%s", data)
+	}
+}
+
+// The news section and audio.playNewsSounds: Config's defaults without a
+// file (every kind a news window, the sounds on), and what writeNewsConfig
+// writes read back (ConfigConvert.hpp's names).
+func TestNewsConfig(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
+	settings, sounds := loadNewsConfig()
+	for i, v := range settings {
+		if v != sim.NewsWindow {
+			t.Errorf("default %d: %d", i, v)
+		}
+	}
+	if !sounds {
+		t.Error("news sounds off by default")
+	}
+	g := &Game{newsSettings: settings}
+	g.newsSettings[sim.MsgCritGeneral], g.newsSettings[sim.MsgCritAdvice] = sim.NewsTicker, sim.NewsNone
+	g.writeNewsConfig()
+	settings, sounds = loadNewsConfig()
+	if settings != g.newsSettings || sounds {
+		t.Errorf("read back: %v, sounds %v", settings, sounds)
+	}
+	if configValue("news.general") != "ticker" || configValue("news.advice") != "none" || configValue("news.majorCompany") != "newsWindow" || configValue("audio.playNewsSounds") != "false" {
 		data, _ := os.ReadFile(configPath())
 		t.Errorf("file:\n%s", data)
 	}

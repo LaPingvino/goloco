@@ -68,8 +68,7 @@ const (
 )
 
 // Message is Message.h's Message. Text is messageString as formatted at
-// post time (PARTIAL: not formatted yet — the news window formats from the
-// subjects).
+// post time (messageText), Loco-encoded bytes.
 type Message struct {
 	Type       MessageType
 	Text       string
@@ -95,8 +94,7 @@ func (m *Map) messageDuration(t MessageType) int64 {
 // type and subjects is there; at the limit, among the messages already
 // shown (timeActive ≠ 0) the one with the most life left (duration + date −
 // today, which upstream names "oldest"; ages below 0 never qualify) goes,
-// else the same over all; the text formatted at posting (messageText). PARTIAL: the window
-// invalidation.
+// else the same over all; the text formatted at posting (messageText).
 func (m *Map) PostMessage(om *objects.ObjectManager, t MessageType, company uint8, a, b, c uint16) {
 	msg := Message{Type: t, CompanyID: company, Subjects: [3]uint16{a, b, c}, Date: m.CurrentDay}
 	if int(t) < len(MessageTypeDescriptors) && MessageTypeDescriptors[t].Flags&msgFlagShouldDedup != 0 {
@@ -129,11 +127,14 @@ func (m *Map) PostMessage(om *objects.ObjectManager, t MessageType, company uint
 	m.Messages = append(m.Messages, msg)
 }
 
-// clearActiveMessage (0x00428E0F): the shown message no longer active.
-// PARTIAL: closing the news window.
+// clearActiveMessage (0x00428E0F): the shown message no longer active, the
+// news window closed (CloseNewsWindow: the game's, nil without one).
 func (m *Map) clearActiveMessage() {
 	if i := int(m.ActiveMessageIndex); i < len(m.Messages) {
 		m.Messages[i].TimeActive = 0xFFFF
+	}
+	if m.CloseNewsWindow != nil {
+		m.CloseNewsWindow()
 	}
 	m.ActiveMessageIndex = messageIDNull
 }
@@ -190,8 +191,8 @@ func (m *Map) UpdateMessagesDaily() {
 // cargo accepted / no longer accepted, citizens / workers celebrate, new
 // industry messages, and the industry messages (closing down, production up / down — the industry
 // object's nameClosingDown / nameUpProduction / nameDownProduction with the
-// industry's name for its stringidArgs). PARTIAL: the other types (empty
-// text; the news window will need them).
+// industry's name for its stringidArgs). unk3–unk8 have no text upstream
+// either (0x004287F4: a nop).
 func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 	var s string
 	switch msg.Type {
@@ -234,10 +235,18 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 		if h := m.entity(msg.Subjects[0]); h != nil {
 			s = fillStringIDs(locoText(i18n.Str(i18n.MessageNotAbleToLandAt)), m.VehicleName(h.Name, int(h.OrdinalNumber)), m.StationName(int(msg.Subjects[1])))
 		}
-	case MsgCantWaitForFullLoad, MsgVehicleSlipped: // the vehicle (name + ordinal); the station
+	case MsgNewCompany: // the company's name, the town's
+		town := ""
+		if tw := m.TownByID(msg.Subjects[1]); tw != nil {
+			town = m.TownName(tw.Name, int(tw.ID))
+		}
+		s = fillStringIDs(locoText(i18n.Str(i18n.MessageNewTransportCompany)), m.companyNameLoco(int(msg.Subjects[0])), town)
+	case MsgCantWaitForFullLoad, MsgVehicleSlipped, MsgVehicleCrashed: // the vehicle (name + ordinal); the station
 		if h := m.entity(msg.Subjects[0]); h != nil {
 			veh := m.VehicleName(h.Name, int(h.OrdinalNumber))
-			if msg.Type == MsgVehicleSlipped {
+			if msg.Type == MsgVehicleCrashed {
+				s = fillStringIDs(locoText(i18n.Str(i18n.MessageHasCrashed)), veh)
+			} else if msg.Type == MsgVehicleSlipped {
 				s = fillStringIDs(locoText(i18n.Str(i18n.MessageHasSlippedToAHaltOnIncline)), veh)
 			} else {
 				s = fillStringIDs(locoText(i18n.Str(i18n.MessageNotAllowedToWaitForFullLoadAt)), veh, m.StationName(int(msg.Subjects[1])))

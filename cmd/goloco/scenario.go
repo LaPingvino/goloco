@@ -46,6 +46,7 @@ func (g *Game) loadScenario(filePath string) error {
 	g.hasObjective = sc.HasObjective
 	g.gameWon = false
 	g.wins.CloseAll() // WindowManager::closeAllFloatingWindows: the windows showed the world that goes
+	g.resetNews()
 
 	if g.r.ObjMgr != nil {
 		reorderScenarioObjects(g.r.ObjMgr, sc)

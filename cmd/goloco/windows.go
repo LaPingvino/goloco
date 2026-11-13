@@ -122,7 +122,15 @@ func (g *Game) frontListWin() *ui.TownListWindow { return frontWin[*ui.TownListW
 // uiOpen reports a window, menu or prompt open: the world may then be drawn
 // less often so the UI stays responsive (LOOP item 0).
 func (g *Game) uiOpen() bool {
-	return g.prompt != nil || (g.dropdown != nil && g.dropdown.Visible) || len(g.wins.Windows) > 0
+	if g.prompt != nil || (g.dropdown != nil && g.dropdown.Visible) {
+		return true
+	}
+	for _, w := range g.wins.Windows {
+		if !isNews(w) { // news comes by itself: the world keeps its pace under it
+			return true
+		}
+	}
+	return false
 }
 
 // windowColours are a window's title bar and body colours from the interface
@@ -176,6 +184,8 @@ func (g *Game) routeWheelToWindows() bool {
 		w.HandleWheel(g.mouseX, g.mouseY, dy)
 	case *ui.MusicSelectionWindow:
 		w.HandleWheel(dy)
+	case *ui.MessagesWindow:
+		w.HandleWheel(dy)
 	}
 	return true
 }
@@ -228,6 +238,11 @@ func (g *Game) updateWindows() {
 			w.Drag(mx, my, left)
 		case *ui.MusicJukeboxWindow:
 			w.MouseOver(hx, hy) // the control button under the mouse
+		case *ui.NewsWindow:
+			w.MouseOver(hx, hy) // a subject's button under the mouse
+		case *ui.MessagesWindow:
+			w.MouseOver(hx, hy) // scrollMouseOver: the message under the mouse
+			w.Drag(mx, my, left)
 		case *ui.MusicSelectionWindow:
 			if g.jukeboxWin() == nil { // onUpdate: it goes with the jukebox window
 				w.Close()
@@ -269,6 +284,18 @@ func (g *Game) prepareWindow(win ui.Win) {
 		skin = int(sk.ImageOffset)
 	}
 	switch w := win.(type) {
+	case *ui.NewsWindow:
+		g.fillNews(w)
+	case *ui.NewsTicker:
+		g.fillTicker(w)
+	case *ui.MessagesWindow:
+		for i, v := range g.newsSettings {
+			w.Settings[i] = int(v)
+		}
+		w.PlaySounds = g.playNewsSounds
+		if skin >= 0 {
+			w.SkinImage = skin
+		}
 	case *ui.MusicJukeboxWindow:
 		w.State = g.musicJukeboxState()
 	case *ui.OptionsWindow:
@@ -313,12 +340,20 @@ func (g *Game) prepareWindow(win ui.Win) {
 // drawWindows draws the stack, back to front, and a dragged car over it
 // (DragVehiclePart: stickToFront).
 func (g *Game) drawWindows(screen *ebiten.Image) {
-	g.wins.Draw(screen, g.prepareWindow)
+	g.wins.DrawWhere(screen, g.prepareWindow, func(w ui.Win) bool { return !isNews(w) })
 	for _, win := range g.wins.Windows {
 		if w, ok := win.(*ui.VehicleWindow); ok {
 			w.DrawDrag(screen)
 		}
 	}
+}
+
+// drawNews draws the news window or the ticker, over the bottom panels.
+func (g *Game) drawNews(screen *ebiten.Image) {
+	if g.inTitleScreen {
+		return
+	}
+	g.wins.DrawWhere(screen, g.prepareWindow, isNews)
 }
 
 // fixedWindows are upstream's stickToFront windows goloco keeps outside the

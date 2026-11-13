@@ -1,0 +1,65 @@
+# The Messages window and the news window on the title game (README "The
+# same world in both games"), one script for goloco and `ol.sh run`: the
+# save's messages and the two speed records of its first days (1972: the
+# newspaper with greyed pictures), each
+# opened from the list as old news — no slide-in, at once.
+#   env -C $SHOTS XDG_CONFIG_HOME=$CFG GOLOCO_SCRIPT=…/news.txt goloco title.dat
+# A message shows for 384 interface updates (some 10 s in OpenLoco, paused or
+# not): the shots follow their clicks closely.
+wait 25
+click 688 592         # pause
+wait 1
+click 715 580         # the time panel's date: the Messages window
+wait 2
+move 400 400
+wait 1
+shot nw-00-messages.png
+move 550 135          # a row hovered
+wait 1
+shot nw-01-hover.png
+click 550 135         # … a message with two subjects
+wait 1
+move 400 300
+wait 1
+shot nw-02-two-subjects.png
+click 550 210         # the newest: a vehicle and its owner's face
+wait 1
+move 400 300
+wait 1
+shot nw-03-newest.png
+click 550 95          # an industry's
+wait 1
+move 400 300
+wait 1
+shot nw-04-industry.png
+move 300 540          # the subject's button hovered
+wait 1
+shot nw-05-subject-hover.png
+click 300 540         # … the Industry window
+wait 2
+move 400 300
+wait 1
+shot nw-06-subject-window.png
+click 571 449         # the news window's close button
+wait 1
+move 400 300
+wait 1
+shot nw-07-closed.png
+click 483 58          # the Messages window's settings tab
+wait 1
+move 400 300
+wait 1
+shot nw-08-settings.png
+click 785 82          # the first dropdown
+wait 1
+move 730 106
+wait 1
+shot nw-09-dropdown.png
+click 300 300         # away from it
+wait 1
+click 453 58          # the messages tab again
+wait 1
+move 400 300
+wait 1
+shot nw-10-messages-again.png
+quit

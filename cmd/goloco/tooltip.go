@@ -48,6 +48,10 @@ func (g *Game) windowTooltip() string {
 		return w.Tooltip()
 	case *ui.MusicJukeboxWindow:
 		return w.WidgetTooltip(mx, my)
+	case *ui.NewsWindow:
+		return w.WidgetTooltip(mx, my)
+	case *ui.MessagesWindow:
+		return w.WidgetTooltip(mx, my)
 	case *ui.MusicSelectionWindow:
 		return w.WidgetTooltip(mx, my)
 	}

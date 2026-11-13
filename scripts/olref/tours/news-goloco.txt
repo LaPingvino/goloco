@@ -1,0 +1,44 @@
+# The news goloco's own way (the script's "news" posts a message; OpenLoco
+# has no such command): the kinds the title game doesn't bring up by itself —
+# advice (the red panel), a new vehicle (the turning picture), a promotion,
+# and the newspaper before 1945.
+#   env -C $SHOTS XDG_CONFIG_HOME=$CFG GOLOCO_SCRIPT=…/news-goloco.txt goloco title.dat
+wait 3
+click 688 592         # pause
+wait 1
+news 9 3 0            # cargoNowAccepted: station 3, cargo 0
+wait 1
+shot ng-00-advice-sliding.png
+wait 5
+shot ng-01-advice.png
+move 300 560          # its station's button hovered
+wait 1
+shot ng-02-advice-hover.png
+click 571 491         # the close button
+wait 1
+news 15 5             # newVehicle: vehicle object 5
+wait 6
+shot ng-03-new-vehicle.png
+wait 2
+shot ng-04-new-vehicle-turned.png
+click 571 449
+wait 1
+news 12 739 3         # unableToLandAtAirport: a vehicle and a station side by side
+wait 6
+shot ng-05-advice-two.png
+click 571 491
+wait 1
+news 16 0 3           # companyPromoted: the player's face
+wait 6
+shot ng-06-promoted.png
+click 571 449
+wait 1
+news 18 39 date 47500 # industryProductionUp in 1930: the old newspaper
+wait 6
+shot ng-07-old-paper.png
+click 571 449
+wait 1
+news 18 39 date 68000 # … and in 1986: the new one, its picture in colour
+wait 6
+shot ng-08-new-paper.png
+quit

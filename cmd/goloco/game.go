@@ -139,9 +139,16 @@ type Game struct {
 
 	// The music (music.go): the jukebox on the config's audio settings,
 	// Audio's mute, and a track passing in silence (no sound device).
-	jukebox           *jukebox.Jukebox
-	audioCfg          jukebox.Config
-	playTitleMusic    bool // Config audio.playTitleMusic
+	jukebox        *jukebox.Jukebox
+	audioCfg       jukebox.Config
+	playTitleMusic bool // Config audio.playTitleMusic
+	// The news (news.go): Config's newsSettings and audio.playNewsSounds,
+	// SceneManager's scene age (interface updates since the scene began) and
+	// WindowManager's vehiclePreviewRotationFrame.
+	newsSettings      [sim.MessageCriticalityCount]sim.NewsType
+	playNewsSounds    bool
+	sceneAge          int
+	previewFrame      int
 	audioMuted        bool // !Audio::isAudioEnabled
 	silentTrack       bool
 	musicPaused       bool
@@ -333,6 +340,7 @@ func NewGame() *Game {
 		prewarmIDs: titleSpriteIDs,
 	}
 	g.initMusic()
+	g.newsSettings, g.playNewsSounds = loadNewsConfig()
 	g.startTitleMusic() // Title::start
 	return g
 }
