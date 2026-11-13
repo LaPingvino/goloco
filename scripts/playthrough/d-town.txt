@@ -7,7 +7,9 @@ click 307 201
 wait 1
 click 307 201
 wait 20
-click 784 14
+move 784 14
+wait 1
+click 760 42
 wait 2
 click 220 91
 wait 2

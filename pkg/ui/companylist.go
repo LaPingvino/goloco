@@ -342,7 +342,7 @@ const (
 // 17 below for the x labels, the tab's xOffset left for the y labels every
 // yAxisLabelIncrement px, a tick per month and a label every 12, the x range
 // the current month — then the legend (a 5 × 5 swatch and the name in the
-// small font, 10 apart) at (width − 104, 52). The tabs:
+// {SMALLFONT} (regular) font, 10 apart) at (width − 104, 52). The tabs:
 // CompanyPerformance::draw (0x00436490: performanceIndexHistory, xOffset 40,
 // labels every 20, percentage_one_decimal_place), CargoUnits (xOffset 45),
 // CargoDistance (65; both every 25, cargo_units_delivered "{INT32}") and
@@ -459,14 +459,14 @@ func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 	DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, i18n.Str(title))
 	black := pal[paletteBlack0]
 	w.drawTabCurrency(screen, black)
-	for _, l := range labels { // graph_label_format: the small font, black
+	for _, l := range labels { // graph_label_format: {SMALLFONT} — LanguageFiles maps it to Font::regular —, black
 		var s string
 		if l.XAxis && w.Tab == 5 { // cargo_delivered_days
 			s = ui18nFill(i18n.CargoDeliveredDays, strconv.Itoa(int(int16(l.Value))))
-			DrawTextFont(screen, s, G1FontSmall, w.X+l.X-MeasureTextFont(s, G1FontSmall)/2, w.Y+l.Y, black)
+			DrawTextFont(screen, s, G1FontMediumNormal, w.X+l.X-MeasureTextFont(s, G1FontMediumNormal)/2, w.Y+l.Y, black)
 		} else if l.XAxis { // rawdate_short: the month's short name, a space, the year
 			s = i18n.Str(i18n.MonthShortJanuary+int(l.Value%12)) + " " + strconv.Itoa(int(l.Value/12))
-			DrawTextFont(screen, s, G1FontSmall, w.X+l.X-MeasureTextFont(s, G1FontSmall)/2, w.Y+l.Y, black)
+			DrawTextFont(screen, s, G1FontMediumNormal, w.X+l.X-MeasureTextFont(s, G1FontMediumNormal)/2, w.Y+l.Y, black)
 		} else {
 			switch w.Tab {
 			case 1: // percentage_one_decimal_place
@@ -478,7 +478,7 @@ func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 			case 5: // cargo_delivered_currency: {CURRENCY32}
 				s = L.Currency48(int64(int32(l.Value)))
 			}
-			DrawTextFont(screen, s, G1FontSmall, w.X+l.X-MeasureTextFont(s, G1FontSmall), w.Y+l.Y, black)
+			DrawTextFont(screen, s, G1FontMediumNormal, w.X+l.X-MeasureTextFont(s, G1FontMediumNormal), w.Y+l.Y, black)
 		}
 	}
 	x, y := w.X+w.W-companyListLegendWidth-companyListWindowPadding, w.Y+52
@@ -488,15 +488,15 @@ func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 		if r.bit&w.Highlight != 0 {
 			c = white
 		}
-		DrawTextFont(screen, r.name, G1FontSmall, x+6, y, c)
+		DrawTextFont(screen, r.name, G1FontMediumNormal, x+6, y, c)
 		y += 10
 	}
 	if w.Tab == 5 { // the chart's title (100 units, 10 blocks) and "Transit time", centred on the canvas
 		mid := w.X + gs.XOffset + (gs.Width-gs.XOffset)/2
 		s := stripCodes(ui18nFill(i18n.CargoDeliverGraphTitle, "100", "10"))
-		DrawTextFont(screen, s, G1FontSmall, mid-MeasureTextFont(s, G1FontSmall)/2, w.Y+41+1, black)
+		DrawTextFont(screen, s, G1FontMediumNormal, mid-MeasureTextFont(s, G1FontMediumNormal)/2, w.Y+41+1, black)
 		s = stripCodes(i18n.Str(i18n.CargoTransitTime))
-		DrawTextFont(screen, s, G1FontSmall, mid-MeasureTextFont(s, G1FontSmall)/2, w.Y+w.H-13, black)
+		DrawTextFont(screen, s, G1FontMediumNormal, mid-MeasureTextFont(s, G1FontMediumNormal)/2, w.Y+w.H-13, black)
 	}
 }
 

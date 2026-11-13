@@ -79,7 +79,6 @@ func DrawWindowFrame(screen *ebiten.Image, x, y, w, h int, colour uint8, lighter
 // DrawWindowCaption is Caption::drawSimple with Style::whiteText for a caption widget
 // at x, y of width w: medium bold, clipped to (w - 4 - 14) - 8, centred on
 // 2 + (w - 18) / 2, 1 px down, white text with the outline style (black0).
-// PARTIAL: clipping truncates without upstream's "..." (TextRenderer::clipString).
 func DrawWindowCaption(screen *ebiten.Image, x, y, w int, text string) {
 	DrawWindowCaptionColour(screen, x, y, w, text, colourWhite)
 }
@@ -98,12 +97,7 @@ func DrawWindowCaptionColour(screen *ebiten.Image, x, y, w int, text string, col
 		return
 	}
 	width := w - 4 - 14
-	for len(text) > 0 {
-		if tw, _ := MeasureTextBold(text); tw <= width-8 {
-			break
-		}
-		text = text[:len(text)-1]
-	}
+	text = ClipString(text, G1FontMediumBold, width-8)
 	sw, _ := MeasureTextBold(text)
 	px := x + 2 + width/2 - (sw-1)/2
 	DrawTextOutlined(screen, text, px, y+1, pal[gfx8.Shade(wm, 9)], pal[paletteBlack0])
@@ -119,12 +113,7 @@ func DrawWindowCaptionStation(screen *ebiten.Image, x, y, w int, text string, co
 	}
 	g1 := globalG1Font.g1
 	width := w - 4 - 14
-	for len(text) > 0 {
-		if tw, _ := MeasureTextBold(text); tw <= width-8 {
-			break
-		}
-		text = text[:len(text)-1]
-	}
+	text = ClipString(text, G1FontMediumBold, width-8)
 	sw, _ := MeasureTextBold(text)
 	px, py := x+2+width/2-(sw-1)/2, y+1
 	cm, err := g1.GetPaletteMap(int(colour))
@@ -154,4 +143,28 @@ func translucentInset(colour uint8) gfx8.InsetColour {
 		}
 	}
 	return gfx8.InsetColour{Map: cmap, Translucent: true, Trans: trans}
+}
+
+// ClipString is TextRenderer::clipString: under 6 px nothing; text that fits
+// unchanged; else the longest prefix that, with "..." appended, is narrower
+// than width ("" when none is).
+func ClipString(text string, font, width int) string {
+	if width < 6 {
+		return ""
+	}
+	if MeasureTextFont(text, font) <= width {
+		return text
+	}
+	best := ""
+	for i := range text {
+		if i == 0 {
+			continue
+		}
+		s := text[:i] + "..."
+		if MeasureTextFont(s, font) >= width {
+			break
+		}
+		best = s
+	}
+	return best
 }

@@ -12,7 +12,6 @@ import (
 // 1 s of the last one closing), and closes after 8 s — staying closed until
 // the mouse moves — or when the mouse moves. Real time, as upstream adds
 // getTimeSinceLastTick.
-// The toolbar's buttons give theirs the same way (Toolbar.HoveredTooltip).
 const (
 	tipDelay     = 2000 * time.Millisecond
 	tipQuickOpen = 1000 * time.Millisecond // tooltipNotShownTicks ≤ 1000: no delay
@@ -29,12 +28,9 @@ type tooltipState struct {
 	closedAt time.Time // when the last tooltip closed (zero: never)
 }
 
-// windowTooltip is the tooltip the toolbar button or window under the mouse
-// gives there.
+// windowTooltip is the tooltip the window under the mouse gives there (the
+// toolbar's buttons have none upstream).
 func (g *Game) windowTooltip() string {
-	if tip := g.toolbar.HoveredTooltip(); tip != "" {
-		return tip
-	}
 	mx, my := g.mouseX, g.mouseY
 	switch { // the window on top first, as clicks go
 	case g.viewWin != nil && g.viewWin.Contains(mx, my):

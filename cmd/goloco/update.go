@@ -288,6 +288,16 @@ func (g *Game) updateHeld() {
 		g.colourDropdown.UpdateHover(g.mouseX, g.mouseY)
 	} else {
 		g.toolbar.UpdateHover(g.mouseX, g.mouseY)
+		// ToolbarTop.cpp: onMouseHover = onMouseDown — in the normal input state
+		// (no menu open) a button under the mouse opens its menu.
+		if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 && !g.inTitleScreen &&
+			g.textInput == nil && g.prompt == nil && !g.inMousePressed(ebiten.MouseButtonLeft) {
+			g.toolbar.Buttons[btnIdx].Pressed = true
+			g.handleToolbarButton(btnIdx)
+			if g.dropdown != nil {
+				g.dropdown.HoverOpened()
+			}
+		}
 	}
 
 	if g.windowFrame%60 == 0 { // the open list repopulated about once a second
@@ -378,6 +388,9 @@ func (g *Game) gameClick() {
 	// Check dropdown first (it's on top: a window's dropdown lies over the
 	// window that opened it)
 	if g.dropdown != nil && g.dropdown.Visible {
+		if g.dropdown.PressOnOrigin(g.mouseX, g.mouseY) { // its own button: the release chooses
+			return
+		}
 		if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
 			// Click outside dropdown - close it
 			g.dropdown = nil

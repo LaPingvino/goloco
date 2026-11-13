@@ -160,14 +160,17 @@ const (
 const TooltipRegular = "{REGULAR}"
 
 // tooltipFont is the font a tooltip text ends up in: medium bold, unless it
-// opens with a font code ({SMALLFONT} — most widget tooltips — or
+// opens with a font code ({SMALLFONT} — most widget tooltips: the regular
+// font, as LanguageFiles maps it —, {TINYFONT} the small one, or
 // TooltipRegular); colour codes go (it is drawn black).
 func tooltipFont(text string) (string, int) {
 	font := G1FontMediumBold
 	for {
 		switch {
-		case strings.HasPrefix(text, "{SMALLFONT}"):
-			text, font = text[len("{SMALLFONT}"):], G1FontSmall
+		case strings.HasPrefix(text, "{SMALLFONT}"): // LanguageFiles: SMALLFONT is Font::regular
+			text, font = text[len("{SMALLFONT}"):], G1FontMediumNormal
+		case strings.HasPrefix(text, "{TINYFONT}"): // and TINYFONT Font::small
+			text, font = text[len("{TINYFONT}"):], G1FontSmall
 		case strings.HasPrefix(text, TooltipRegular):
 			text, font = text[len(TooltipRegular):], G1FontMediumNormal
 		case strings.HasPrefix(text, "{COLOUR "):

@@ -127,6 +127,9 @@ type TownListWindow struct {
 	// Reopen rebuilds the window from the game's current data (the lists'
 	// onUpdate repopulating); nil: kept as opened.
 	Reopen func()
+	// LighterFrame is WindowFlags::lighterFrame: the Station and Vehicle lists
+	// set it, the Town and Industry lists don't.
+	LighterFrame bool
 }
 
 // setTableGeometry fills the 600×197 town/station list geometry.
@@ -139,7 +142,7 @@ func (w *TownListWindow) setTableGeometry() *TownListWindow {
 func NewTownList(sw int, towns []TownRow, titleColour, colour uint8) *TownListWindow {
 	rows := make([][]string, len(towns))
 	for i, t := range towns {
-		rows[i] = []string{t.Name, t.Type, itoa3(t.Population), itoa3(t.Stations)}
+		rows[i] = []string{t.Name, t.Type, Comma16(t.Population), Comma16(t.Stations)}
 	}
 	status := countLabel(len(rows), i18n.StatusTownsSingular, i18n.StatusTownsPlural) // TownList.cpp: status_towns_*
 	if len(rows) == 1 {
@@ -155,7 +158,7 @@ func NewTownList(sw int, towns []TownRow, titleColour, colour uint8) *TownListWi
 		sort.SliceStable(order, func(i, j int) bool { return townOrder(mode, order[i], order[j]) })
 		w.RowIDs = w.RowIDs[:0]
 		for i, t := range order {
-			w.Rows[i] = []string{t.Name, t.Type, itoa3(t.Population), itoa3(t.Stations)}
+			w.Rows[i] = []string{t.Name, t.Type, Comma16(t.Population), Comma16(t.Stations)}
 			w.RowIDs = append(w.RowIDs, t.ID)
 		}
 	}
@@ -197,7 +200,7 @@ type StationRow struct {
 func NewStationList(sw int, stations []StationRow, titleColour, colour uint8) *TownListWindow {
 	rows := make([][]string, len(stations))
 	for i, s := range stations {
-		rows[i] = []string{s.Name, s.Status, itoa3(s.Waiting) + " units", s.Accepts}
+		rows[i] = []string{s.Name, s.Status, Comma16(s.Waiting) + " units", s.Accepts}
 	}
 	status := countLabel(len(rows), i18n.StatusNumStationsSingular, i18n.StatusNumStationsPlural) // StationList.cpp: status_num_stations_*
 	if len(rows) == 1 {
@@ -212,7 +215,7 @@ func NewStationList(sw int, stations []StationRow, titleColour, colour uint8) *T
 		sort.SliceStable(order, func(i, j int) bool { return stationOrder(mode, order[i], order[j]) })
 		w.RowIDs = w.RowIDs[:0]
 		for i, s := range order {
-			w.Rows[i] = []string{s.Name, s.Status, itoa3(s.Waiting) + " units", s.Accepts}
+			w.Rows[i] = []string{s.Name, s.Status, Comma16(s.Waiting) + " units", s.Accepts}
 			w.RowIDs = append(w.RowIDs, s.ID)
 		}
 	}
@@ -296,13 +299,17 @@ func (w *TownListWindow) HandleClick(px, py int) {
 
 // MouseOver is onScrollMouseOver: over the list's rows (not its scrollbar)
 // the row under the mouse becomes the hover row (rowHover; past the last row
-// none). ExtraMouseOver takes it first when set (the Fund New Industries
-// grid's cells).
+// none); anywhere else none (event_08 / event_09). ExtraMouseOver takes it
+// first when set (the Fund New Industries grid's cells).
 func (w *TownListWindow) MouseOver(px, py int) {
 	l := w.List
 	if !w.in(l, px, py) || px >= w.X+l[0]+l[2]-L.ScrollbarSize-L.ScrollbarMargin {
-		if w.ExtraMouseOver != nil { // the grid's var_846 cleared off it (event_08); a list keeps rowHover
+		// event_08 / event_09: off the scroll view the hover goes (the grid's
+		// var_846, a list's rowHover)
+		if w.ExtraMouseOver != nil {
 			w.ExtraMouseOver(-1<<20, -1<<20)
+		} else {
+			w.Hover = -1
 		}
 		return
 	}
@@ -339,7 +346,7 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 		return
 	}
 	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
-	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, false)
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, w.LighterFrame)
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
 		gfx8.FillRectInset(rt, 0, 41, w.W-1, w.H-1, gfx8.InsetColour{Map: sec}, 0)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
@@ -533,7 +540,7 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 		if profit < 0 {
 			profit = -profit
 		}
-		age := itoa3(v.AgeYears) + " years"
+		age := Comma16(v.AgeYears) + " years"
 		if v.AgeYears == 1 {
 			age = "1 year"
 		}
@@ -545,7 +552,7 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 		if v.Status != "" {
 			name += " - " + v.Status
 		}
-		return []string{name, p, age, itoa3(v.Reliability) + "%"}
+		return []string{name, p, age, Comma16(v.Reliability) + "%"}
 	}
 	for i, v := range vehicles {
 		rows[i] = cells(v)
@@ -603,7 +610,7 @@ func countLabel(n, singular, plural int) string {
 	if n == 1 {
 		id = singular
 	}
-	return strings.Replace(i18n.Label(id), "{INT16}", itoa3(n), 1)
+	return strings.Replace(i18n.Label(id), "{INT16}", Comma16(n), 1)
 }
 
 // FormatCurrency is {CURRENCY32} (formatCurrency) for other packages.

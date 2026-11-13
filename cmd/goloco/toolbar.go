@@ -21,6 +21,7 @@ func (g *Game) toolbarDropdown(btn *ui.ToolbarButton, items []ui.DropdownItem) *
 	d := ui.NewDropdownMenu(btn.X, btn.Y+btn.Height, items)
 	d.Place(btn.X, btn.Y, btn.Width, btn.Height, g.sw, g.sh)
 	g.setToolbarColour(d, btn)
+	d.OpenedByPress(image.Rect(btn.X, btn.Y, btn.X+btn.Width, btn.Y+btn.Height)) // as toolbarImageMenu
 	return d
 }
 

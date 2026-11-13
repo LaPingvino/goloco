@@ -63,6 +63,7 @@ func (g *Game) openVehicleListFor(company, tab int) {
 		}
 	}
 	w := ui.NewVehicleList(g.sw, tab, rows, tc, wc, cargos)
+	w.LighterFrame = true
 	w.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
 	w.Face, w.FaceColour = g.companyFace(company)
 	// populateCompanySelect's companies: every non-empty slot.
@@ -123,6 +124,7 @@ func (g *Game) openStationList(tab int) {
 		tc = g.w.CompanyColours[company]
 	}
 	w := ui.NewStationList(g.sw, rows, tc, wc)
+	w.LighterFrame = true
 	if cname != "" {
 		w.Caption = strings.Replace(i18n.Label(i18n.StringidAllStations+tab), "{STRINGID}", cname, 1) // "{STRINGID} - Rail Stations" …
 	}
@@ -287,6 +289,15 @@ func (g *Game) openNewIndustries() {
 		choices = append(choices, ui.NewIndustryChoice{ID: i, Name: obj.Strings[0], Cost: int64(m.InflationAdjustedCost(obj.CostFactor, obj.CostIndex, 3)),
 			Image: obj.BuildingImageIDs, Colour: colour, Parts: parts, PartHeights: obj.PartHeights,
 			Tooltip: sim.IndustryObjectTooltip(obj, om)})
+	}
+	// updateBuildableIndustries: rowHover is lastIndustryOption when it is
+	// listed, else the first row (the tool then places that one).
+	listed := false
+	for _, c := range choices {
+		listed = listed || c.ID == g.lastIndustryOption
+	}
+	if !listed && len(choices) > 0 {
+		g.lastIndustryOption = choices[0].ID
 	}
 	tc, wc := g.windowColours(false)
 	w := ui.NewIndustryGrid(g.sw, choices, g.lastIndustryOption, tc, wc, func(id int) {
