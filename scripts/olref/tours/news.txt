@@ -1,12 +1,13 @@
 # The Messages window and the news window on the title game (README "The
 # same world in both games"), one script for goloco and `ol.sh run`: the
-# save's messages and the two speed records of its first days (1972: the
-# newspaper with greyed pictures), each
+# save's five messages (1972: the newspaper with greyed pictures), each
 # opened from the list as old news — no slide-in, at once.
 #   env -C $SHOTS XDG_CONFIG_HOME=$CFG GOLOCO_SCRIPT=…/news.txt goloco title.dat
-# A message shows for 384 interface updates (some 10 s in OpenLoco, paused or
-# not): the shots follow their clicks closely.
-wait 25
+# The pause comes early: from its fourth day on the game posts speed records
+# (the 18th, 21st and 23rd of December), and the rows clicked here would be
+# other messages. A message shows for 384 interface updates (some 10 s in
+# OpenLoco, paused or not): the shots follow their clicks closely.
+wait 5
 click 688 592         # pause
 wait 1
 click 715 580         # the time panel's date: the Messages window
@@ -17,17 +18,17 @@ shot nw-00-messages.png
 move 550 135          # a row hovered
 wait 1
 shot nw-01-hover.png
-click 550 135         # … a message with two subjects
+click 550 135         # … "New Transport Company!": the owner's face, the town
 wait 1
 move 400 300
 wait 1
-shot nw-02-two-subjects.png
-click 550 210         # the newest: a vehicle and its owner's face
+shot nw-02-company.png
+click 550 210         # "Citizens Celebrate!": the vehicle, the town
 wait 1
 move 400 300
 wait 1
-shot nw-03-newest.png
-click 550 95          # an industry's
+shot nw-03-celebrate.png
+click 550 170         # "… closing down!": the industry
 wait 1
 move 400 300
 wait 1
@@ -40,6 +41,13 @@ wait 2
 move 400 300
 wait 1
 shot nw-06-subject-window.png
+click 550 210         # "Citizens Celebrate!" again
+wait 1
+click 490 540         # … its town's button: a Town window, placed with the
+wait 2                # news window up (the bottom left corner is not free)
+move 400 300
+wait 1
+shot nw-06b-town-placed.png
 click 571 449         # the news window's close button
 wait 1
 move 400 300

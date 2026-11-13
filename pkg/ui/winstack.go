@@ -224,6 +224,11 @@ type WindowStack struct {
 	// block and anchor a new window's placement.
 	Fixed []WinRect
 
+	// order is WindowManager's _windows as upstream would hold it, the fixed
+	// windows among the stack's (orderEntry): what createWindow's placement
+	// walks. Windows above stays the order the stack draws and hit-tests in.
+	order []orderEntry
+
 	// The drag: _dragWindowType / _dragWindowNumber, _dragLast, _windowMoved,
 	// and where the press was (the caption's click on an unmoved release).
 	drag             stackDrag
@@ -233,6 +238,80 @@ type WindowStack struct {
 	pressX, pressY   int
 	moved            bool
 	captionClickable bool
+}
+
+// orderEntry is a window of upstream's list: one of the stack's, or fixed
+// window s.Fixed[fixed] (win nil) — a toolbar or panel, stickToFront.
+type orderEntry struct {
+	win   Win
+	fixed int
+}
+
+func (e orderEntry) has(f WindowFlags) bool {
+	if e.win == nil {
+		return f&WindowFlagStickToFront != 0
+	}
+	return e.win.Base().HasFlags(f)
+}
+
+// orderInsert is createWindow's "find right position to insert new window":
+// a stickToBack one before the last of its kind, a stickToFront one at the
+// end, any other after the last window that doesn't stick to the front.
+func (s *WindowStack) orderInsert(e orderEntry) {
+	dst := 0
+	switch {
+	case e.has(WindowFlagStickToBack):
+		for i, o := range s.order {
+			if o.has(WindowFlagStickToBack) {
+				dst = i
+			}
+		}
+	case e.has(WindowFlagStickToFront):
+		dst = len(s.order)
+	default:
+		for i := len(s.order); i > 0; i-- {
+			if !s.order[i-1].has(WindowFlagStickToFront) {
+				dst = i
+				break
+			}
+		}
+	}
+	s.order = append(s.order, orderEntry{})
+	copy(s.order[dst+1:], s.order[dst:])
+	s.order[dst] = e
+}
+
+// syncOrder brings order in line with the stack and the fixed windows:
+// closed windows and fixed windows that are gone leave it; a fixed window
+// not yet in it is made now (Gui::init: at the end), as is a window of the
+// stack it doesn't know.
+func (s *WindowStack) syncOrder() {
+	keep := s.order[:0]
+	wins := make(map[Win]bool, len(s.Windows))
+	fixed := make([]bool, len(s.Fixed))
+	for _, e := range s.order {
+		switch {
+		case e.win != nil:
+			if s.indexOf(e.win) >= 0 && !wins[e.win] {
+				wins[e.win] = true
+				keep = append(keep, e)
+			}
+		case e.fixed < len(s.Fixed) && !fixed[e.fixed]:
+			fixed[e.fixed] = true
+			keep = append(keep, e)
+		}
+	}
+	s.order = keep
+	for i, have := range fixed {
+		if !have {
+			s.orderInsert(orderEntry{fixed: i})
+		}
+	}
+	for _, w := range s.Windows {
+		if !wins[w] {
+			s.orderInsert(orderEntry{win: w})
+		}
+	}
 }
 
 func prepare(w Win) {
@@ -290,10 +369,32 @@ func (s *WindowStack) FindAtAlt(x, y int) Win {
 // places with the front-most one that does not stick to the front or back
 // (upstream swaps the two — it does not move the others down), and a window
 // almost off the screen's left comes back to x 20.
+//
+// In upstream's list (order) the swap is with the front-most window that
+// doesn't stick to the back, whatever it is: the time panel, or the news
+// window when one is up — which is how the panels and the news come to lie
+// before other windows in the list, and what a later window's placement
+// then meets first. PARTIAL: drawing and hit-testing keep the panels and the
+// news in front (Windows' order), where upstream draws by that list.
 func (s *WindowStack) BringToFront(w Win) {
 	b := w.Base()
 	if b.HasFlags(WindowFlagStickToBack | WindowFlagStickToFront) {
 		return
+	}
+	s.syncOrder()
+	for i := len(s.order) - 1; i >= 0; i-- {
+		if s.order[i].has(WindowFlagStickToBack) {
+			continue
+		}
+		if s.order[i].win != w {
+			for k := range s.order {
+				if s.order[k].win == w {
+					s.order[i], s.order[k] = s.order[k], s.order[i]
+					break
+				}
+			}
+		}
+		break
 	}
 	front := -1
 	for i := len(s.Windows) - 1; i >= 0; i-- {
@@ -365,6 +466,7 @@ func (s *WindowStack) Open(w Win) {
 	s.Windows = append(s.Windows, nil)
 	copy(s.Windows[dst+1:], s.Windows[dst:])
 	s.Windows[dst] = w
+	s.syncOrder()
 }
 
 // Replace puts a rebuilt window in the slot of the one it replaces: the same
@@ -388,6 +490,11 @@ func (s *WindowStack) Replace(old, w Win) {
 	b.stack, b.self = s, w
 	ob.stack, ob.self = nil, nil
 	s.Windows[i] = w
+	for k := range s.order {
+		if s.order[k].win == old {
+			s.order[k].win = w
+		}
+	}
 }
 
 // Show opens a window, or — one of its type and number being open — is that
@@ -431,6 +538,7 @@ func (s *WindowStack) Close(w Win) {
 		s.Windows = append(s.Windows[:i], s.Windows[i+1:]...)
 	}
 	b.stack, b.self = nil, nil
+	s.syncOrder()
 }
 
 // CloseType is WindowManager::close(type) (number AnyNumber) or close(type,
@@ -456,27 +564,27 @@ func (s *WindowStack) CloseAll() {
 		}
 	}
 	s.drag = dragNone
+	s.order = nil // a new scene: Gui::init makes the toolbar and the panels anew
 }
 
-// rects are the windows as createWindow's placement sees them, in upstream's
-// order: the stack's back to front, then the fixed ones (the toolbar and the
-// panels, made when the game starts), then the stack's stickToFront windows —
-// the news window, the ticker, a prompt —, which are made after those and
-// so lie in front of them. The news thus blocks and anchors a new window as
-// any other window does.
+// rects are the windows as createWindow's placement sees them: upstream's
+// list (order), back to front — the stack's windows and the fixed ones (the
+// toolbar and the panels) where creation and bringToFront's swaps have put
+// them. The news window, the ticker and the panels thus block and anchor a
+// new window as any other window does, in their turn.
 func (s *WindowStack) rects() []WinRect {
-	var out, front []WinRect
-	for _, w := range s.Windows {
-		prepare(w)
-		b := w.Base()
-		r := WinRect{X: b.X, Y: b.Y, W: b.W, H: b.H, StickToBack: b.HasFlags(WindowFlagStickToBack)}
-		if b.HasFlags(WindowFlagStickToFront) {
-			front = append(front, r)
-		} else {
-			out = append(out, r)
+	s.syncOrder()
+	var out []WinRect
+	for _, e := range s.order {
+		if e.win == nil {
+			out = append(out, s.Fixed[e.fixed])
+			continue
 		}
+		prepare(e.win)
+		b := e.win.Base()
+		out = append(out, WinRect{X: b.X, Y: b.Y, W: b.W, H: b.H, StickToBack: b.HasFlags(WindowFlagStickToBack)})
 	}
-	return append(append(out, s.Fixed...), front...)
+	return out
 }
 
 // Place is WindowManager::createWindow(type, size, flags, events)'s

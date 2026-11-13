@@ -149,6 +149,7 @@ func (g *Game) updateTitle() {
 
 // updateGame is a frame of a running game.
 func (g *Game) updateGame() {
+	g.syncScreen() // the fixed windows known to the stack before a press reorders it
 	g.updateToolCancel()
 	g.diagKeepMoneyEffect()
 	g.updateConstructionTools()

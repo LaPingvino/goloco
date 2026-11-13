@@ -206,3 +206,60 @@ func TestMessagesWindow(t *testing.T) {
 		t.Errorf("back on messages: tab %d h %d scroll %d", w.Tab, w.H, w.scroll)
 	}
 }
+
+// Upstream's list order, which placement walks: bringToFront swaps a window
+// with the front-most one of the list — a panel, or the news window. The
+// sequence of scripts/olref/tours/news.txt, where the real OpenLoco opens
+// the Town window at (0, 439): its corners are taken (the news window blocks
+// the bottom ones), the time panel, the toolbar and the player panel come
+// before the other windows in the list by then, and "below the player
+// panel" passes windowFitsWithinSpace (which checks the bottom against the
+// screen's width) and is clamped onto the screen.
+func TestPlacementOrderWithNews(t *testing.T) {
+	s := &WindowStack{ScreenW: 800, ScreenH: 600}
+	s.Fixed = []WinRect{{X: 0, Y: 0, W: 800, H: 28}, {X: 0, Y: 573, W: 140, H: 27}, {X: 660, Y: 573, W: 140, H: 27}}
+	msg := NewMessagesWindow(800, 0, 0)
+	s.Open(msg)
+	news := func() {
+		s.CloseType(WindowTypeNews, AnyNumber)
+		s.Open(NewNewsWindow(true, true, true, 800, 600))
+	}
+	s.Press(msg.X+100, msg.Y+100) // a row: the window to the front (swapped with the time panel), its news
+	news()
+	s.Press(msg.X+100, msg.Y+100) // another row: swapped with the news window
+	news()
+	ind := newTestWin(WindowTypeIndustry, 1, 0, 0, 223, 137)
+	s.Place(ind) // the news' subject button: the Industry window
+	if ind.X != 0 || ind.Y != 30 {
+		t.Fatalf("the industry window at %d,%d, want 0,30", ind.X, ind.Y)
+	}
+	s.Open(ind)
+	s.Press(msg.X+100, msg.Y+100)
+	news()
+	var kinds []int
+	for _, e := range s.order {
+		switch {
+		case e.win == nil:
+			kinds = append(kinds, e.fixed)
+		case e.win == Win(msg):
+			kinds = append(kinds, 10)
+		case e.win == Win(ind):
+			kinds = append(kinds, 11)
+		default:
+			kinds = append(kinds, 12)
+		}
+	}
+	if !sameOrder(kinds, 2, 0, 1, 11, 10, 12) {
+		t.Errorf("list order %v, want time panel, toolbar, player panel, industry, messages, news", kinds)
+	}
+	town := newTestWin(WindowTypeTown, 2, 0, 0, 223, 161)
+	s.Place(town)
+	if town.X != 0 || town.Y != 439 {
+		t.Errorf("the town window at %d,%d, want 0,439 as OpenLoco", town.X, town.Y)
+	}
+	// A new scene: the list starts over.
+	s.CloseAll()
+	if r := s.rects(); len(r) != 3 || r[0].H != 28 {
+		t.Errorf("after CloseAll: %+v", r)
+	}
+}
