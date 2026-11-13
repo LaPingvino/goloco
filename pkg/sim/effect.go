@@ -84,12 +84,13 @@ func (m *Map) newEffect(e Effect) (*Effect, bool) {
 }
 
 // invalidateEffect is EntityBase::invalidateSprite for an effect: its sprite
-// rectangle about gameToScreen (rotation 0, as moveTo's for the vehicles).
+// rectangle about gameToScreen at the current rotation (as moveTo's for the
+// vehicles).
 func (m *Map) invalidateEffect(e *Effect) {
 	if m.InvalidateEntity == nil {
 		return
 	}
-	vx, vy := e.Y-e.X, (e.Y+e.X)>>1-e.Z
+	vx, vy := m.GameToScreen(e.X, e.Y, e.Z)
 	m.InvalidateEntity(int16(vx-int32(e.Width)), int16(vy-int32(e.HeightNeg)), int16(vx+int32(e.Width)), int16(vy+int32(e.HeightPos)))
 }
 

@@ -13,7 +13,7 @@ type InvalidateEntity func(left, top, right, bottom int16)
 
 // moveTo is EntityBase::moveTo: the old sprite area invalidated (when the
 // entity was placed), the position set, and the sprite bounds recomputed from
-// gameToScreen (rotation 0 — PARTIAL: the view's rotation, LOOP item R) and
+// gameToScreen at the current rotation and
 // the entity's sprite extents, then the new area invalidated. Location::null
 // in x leaves it unplaced (spriteLeft null). (moveSpatialEntry — the entity
 // manager's tile lists — PARTIAL: goloco's renderer indexes by position.)
@@ -26,7 +26,7 @@ func (m *Map) moveTo(e *scenario.VehicleEntity, x, y, z int32) {
 		e.SpriteLeft = locationNull
 		return
 	}
-	vx, vy := y-x, ((y+x)>>1)-z // World::gameToScreen at rotation 0
+	vx, vy := m.GameToScreen(x, y, z)
 	e.SpriteLeft, e.SpriteRight = int16(vx-int32(e.SpriteWidth)), int16(vx+int32(e.SpriteWidth))
 	e.SpriteTop, e.SpriteBottom = int16(vy-int32(e.SpriteHeightNegative)), int16(vy+int32(e.SpriteHeightPositive))
 	m.invalidateSprite(e)

@@ -219,11 +219,10 @@ func (w *World) invalidateEntity(left, top, right, bottom int16) {
 
 // invalidateTile is ViewportManager::invalidate(pos, zMin, zMax, zoom,
 // radius): from gameToScreen(pos + 16, zMax) less radius to gameToScreen(pos +
-// 16, zMin) plus radius (rotation 0 — PARTIAL until LOOP item R).
+// 16, zMin) plus radius, at the current rotation.
 func (w *World) invalidateTile(x, y, zMin, zMax int32, zoom uint8, radius int32) {
-	cx, cy := x+16, y+16
-	ax, ay := cy-cx, ((cy+cx)>>1)-zMax
-	dx, dy := cy-cx, ((cy+cx)>>1)-zMin
+	ax, ay := w.Map.GameToScreen(x+16, y+16, zMax)
+	dx, dy := w.Map.GameToScreen(x+16, y+16, zMin)
 	w.invalidateRect(int(ax-radius), int(ay-radius), int(dx+radius), int(dy+radius), zoom)
 }
 

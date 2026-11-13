@@ -253,7 +253,9 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 			if p, ok := g.consPiece(); ok {
 				id, rot = int(p.ID), int(p.Rotation)&3
 			}
-			g.w.DrawPiecePreview(clip, float64(x+3+66), float64(y+145+28), 1.0, g.consIsRoad(), id, g.buildObjID, rot)
+			// drawTrack / drawRoad paint with options.rotation = getCurrentRotation():
+			// the piece shows as the view shows it.
+			g.w.DrawPiecePreview(clip, float64(x+3+66), float64(y+145+28), 1.0, g.consIsRoad(), id, g.buildObjID, (rot+int(g.w.Rotation()))&3)
 		}
 	}
 	// clickable(Construction): close_button tab_construction tab_station tab_signal tab_overhead construct rotate bridge_dropdown station_dropdown signal_dropdown both_directions single_direction checkbox_1 checkbox_2 checkbox_3 checkbox_4 image rotate_90 straight left_hand_curve left_hand_curve_large left_hand_curve_small left_hand_curve_very_small right_hand_curve right_hand_curve_large right_hand_curve_small right_hand_curve_very_small s_bend_left s_bend_right s_bend_dual_track_left s_bend_dual_track_right level slope_up slope_down steep_slope_up steep_slope_down remove

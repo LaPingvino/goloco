@@ -46,7 +46,7 @@ type Image struct {
 type Struct struct {
 	Type       InteractionItem // ps->type: the session's item type when it was made
 	Item       any             // ps->tileElement / entity: the session's current item (setCurrentItem)
-	MapX, MapY int             // ps->map: the session's sprite position (the tile's world x / y) when made
+	MapX, MapY int             // ps->mapPos: the session's map position (the tile's world x / y) when made
 	Img        Image
 	VpX, VpY   int
 	Mins, Maxs Pos3
@@ -129,7 +129,8 @@ type Session struct {
 	CurrentItem        any
 	arrangeHead        Struct // Arrange's list head
 	Rotation           uint8
-	spriteX, spriteY   int // world position of the tile being painted
+	spriteX, spriteY   int // world position the painters' offsets are relative to (the tile's corner by rotation; an entity's position)
+	mapX, mapY         int // _mapPosition: the tile being painted (world x / y)
 	rtX, rtY, rtW, rtH int // render target in viewport coordinates
 	// Zoom is the render target's zoomLevel (0-3); SpriteFor looks an image
 	// up for the hasZoomSprites recursion (needed when Zoom > 0).
@@ -221,6 +222,11 @@ func (s *Session) newAttached() *Attached {
 
 // SetSpritePosition sets the world position painters' offsets are relative to.
 func (s *Session) SetSpritePosition(x, y int) { s.spriteX, s.spriteY = x, y }
+
+// SetMapPosition is setMapPosition: the tile being painted (paintTileElementsSetup),
+// which every paint struct made from then on carries (ps->mapPos) — the
+// entities painted after a tile too.
+func (s *Session) SetMapPosition(x, y int) { s.mapX, s.mapY = x, y }
 
 // RTRect is the render target in viewport coordinates (x, y, width, height).
 func (s *Session) RTRect() (x, y, w, h int) { return s.rtX, s.rtY, s.rtW, s.rtH }
@@ -376,6 +382,9 @@ func rotate(x, y int, dir uint8) (int, int) {
 // directionFlipXAxis: { 0, 3, 2, 1 }.
 func directionFlipXAxis(d uint8) uint8 { return (d * 3) % 4 }
 
+// DirectionFlipXAxis is directionFlipXAxis for the scene's tile walk.
+func DirectionFlipXAxis(d uint8) uint8 { return directionFlipXAxis(d) }
+
 // GameToScreen is World::gameToScreen.
 func GameToScreen(p Pos3, rotation uint8) (int, int) {
 	x, y := rotate(p.X, p.Y, rotation)
@@ -422,7 +431,7 @@ func (s *Session) create(img Image, off, bbOff, bbSize Pos3) *Struct {
 	mins := Pos3{bx + s.spriteX, by + s.spriteY, bbOff.Z}
 	ps := s.newStruct()
 	ps.Type, ps.Item = s.ItemType, s.CurrentItem
-	ps.MapX, ps.MapY = s.spriteX, s.spriteY
+	ps.MapX, ps.MapY = s.mapX, s.mapY
 	ps.Img, ps.VpX, ps.VpY, ps.Mins = img, vpX, vpY, mins
 	ps.Maxs = Pos3{mins.X + rs.X, mins.Y + rs.Y, mins.Z + rs.Z}
 	return ps

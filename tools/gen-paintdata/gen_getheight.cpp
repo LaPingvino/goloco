@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <initializer_list>
-constexpr int16_t kTileSize = 32;
+constexpr uint8_t kTileSize = 31; // TileManager.cpp's own (above its slope helpers): the last sub-tile coordinate
 namespace World { constexpr int kMapWidth = 384*32, kMapHeight = 384*32; }
 struct Pos2 { int32_t x, y; };
 struct TileHeight { int16_t landHeight, waterHeight; };

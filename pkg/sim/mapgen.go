@@ -189,8 +189,11 @@ func (m *Map) GetHeight(px, py int32) (land, water int16) {
 	return land + surfaceLandHeight(t.Slope, int16(px&0x1F), int16(py&0x1F)), water
 }
 
-// surfaceLandHeight is getHeight's slope switch and its four helpers.
+// surfaceLandHeight is getHeight's slope switch and its four helpers
+// (getOneCornerUpLandHeight …), with their own kTileSize: 31, the last
+// sub-tile coordinate — not the tile's 32.
 func surfaceLandHeight(slopeByte uint8, xl, yl int16) int16 {
+	const kTileSize = 31
 	slope := slopeByte & slopeCornersAll
 	half := func(q int16) int16 {
 		if q > 0 {
@@ -200,40 +203,40 @@ func surfaceLandHeight(slopeByte uint8, xl, yl int16) int16 {
 	}
 	switch slope {
 	case slopeCornerNorth:
-		return half(xl + yl - tileSize)
+		return half(xl + yl - kTileSize)
 	case slopeCornerEast:
 		return half(xl - yl)
 	case slopeCornerSouth:
-		return half(tileSize - yl - xl)
+		return half(kTileSize - yl - xl)
 	case slopeCornerWest:
 		return half(yl - xl)
 	case slopeSideNE:
 		return xl/2 + 1
 	case slopeSideSE:
-		return (tileSize - yl) / 2
+		return (kTileSize - yl) / 2
 	case slopeSideNW:
 		return yl/2 + 1
 	case slopeSideSW:
-		return (tileSize - xl) / 2
+		return (kTileSize - xl) / 2
 	case slopeDownWest, slopeDownSouth, slopeDownEast, slopeDownNorth:
 		var extra, q int16
 		switch slope {
 		case slopeDownWest:
-			extra, q = xl+tileSize-yl, xl-yl
+			extra, q = xl+kTileSize-yl, xl-yl
 		case slopeDownSouth:
-			extra, q = xl+yl, xl+yl-tileSize-1
+			extra, q = xl+yl, xl+yl-kTileSize-1
 		case slopeDownEast:
-			extra, q = tileSize-xl+yl, yl-xl
+			extra, q = kTileSize-xl+yl, yl-xl
 		case slopeDownNorth:
-			extra, q = (tileSize-xl)+(tileSize-yl), tileSize-yl-xl-1
+			extra, q = (kTileSize-xl)+(kTileSize-yl), kTileSize-yl-xl-1
 		}
 		if slopeByte&slopeDoubleHeight != 0 {
 			return extra/2 + 1
 		}
 		return q/2 + 16
 	case slopeValleyWE:
-		if xl+yl > tileSize+1 {
-			return half(tileSize - xl - yl)
+		if xl+yl > kTileSize+1 {
+			return half(kTileSize - xl - yl)
 		}
 		return 0
 	case slopeValleyNS:

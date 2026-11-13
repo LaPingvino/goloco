@@ -30,7 +30,7 @@ internal. Size: S (one tick), M (2–4 ticks), L (a series).
 | pkg/world/world.go:1590 | Buildings: first variation's parts stacked | Paint/PaintBuilding.cpp — the tile's variation and part heights | M | S |
 | pkg/world/world.go:1611 | Buildings under construction skipped | PaintBuilding draws construction stages | M | S |
 | pkg/world/world.go:2615 (old renderer only; the ported default draws them) | Industry fields not drawn | Paint/PaintIndustry.cpp via IndustryObject | M | S |
-| pkg/world/world.go:1541 | Viewport rotation fixed at 0 | Rotation 0–3 throughout the paint code | M | M |
+| pkg/world/world.go (old renderer only, GOLOCO_SCENE=0; the ported default rotates: sim.Map.CurrentRotation) | Viewport rotation fixed at 0 | Rotation 0–3 throughout the paint code | L | M |
 | pkg/world/track_sprites.go:20–26 | Large curves, small-curve slopes and pieces 20–25 TODO | Paint/PaintTrack.cpp — every track piece | H | M |
 | pkg/objects/vehicle.go:433 | Second half of rotation frames not mirrored | Vehicle sprite selection in VehicleDraw.cpp | M | S |
 | pkg/ui/title_menu.go:199–204 | Globe drawn as a square "for now" | The animated globe sprites in the title menu window | L | S |
@@ -42,7 +42,7 @@ internal. Size: S (one tick), M (2–4 ticks), L (a series).
 
 | pkg/world/world.go paintWater + pass-2 blend | FIXED 2026-11-01 (pkg/palblend, zoom 0; zoom > 0 still the old opaque remap). Was: water +35 remapped to an opaque flat colour; blend pass lerps the terrain toward one tint | Blended image without primary = mask: each covered destination pixel is mapped through the palette map (water: image +41) — Graphics/DrawSprite.cpp getDrawBlendOp | H | S |
 
-| pkg/title (the title sequence) | Move + Wait steps only: views 3–10 shown unrotated, no reload at the end | Title.cpp _titleSequence: RotateStep ×4 (viewportRotateRight) and ReloadStep — needs view rotation (LOOP item R) | M | M |
+| pkg/title (the title sequence) | Move, Rotate and Wait steps; no reload at the end (the title map runs on) | Title.cpp _titleSequence: ReloadStep | L | S |
 | pkg/world/overlay.go station plaques | "Station N" as the name, goloco's own plaque | drawStationNames: the station's name, its own label sprites (none in title mode — that part fixed) | M | S |
 
 ## C. Text and UI

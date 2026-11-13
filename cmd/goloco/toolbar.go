@@ -61,7 +61,7 @@ func (g *Game) setToolbarColour(d *ui.DropdownMenu, btn *ui.ToolbarButton) {
 // clickable-partial(ToolbarTop.cpp): loadsave_menu
 // clickable(ToolbarTop.cpp): audio_menu
 // clickable(ToolbarTopCommon.cpp): railroad_menu road_menu
-// (not yet: rotate_menu and view_menu only log; terraform_menu, port_menu, cheats_menu nothing)
+// (not yet: view_menu only logs; terraform_menu, port_menu, cheats_menu nothing)
 func (g *Game) handleToolbarButton(idx int) {
 	btn := &g.toolbar.Buttons[idx]
 	tooltip := btn.Tooltip
@@ -116,8 +116,8 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Rotate":
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTopCommon.cpp:135-143
 		items := []ui.DropdownItem{
-			{Text: i18n.Label(i18n.MenuRotateClockwise), Action: func() { log.Println("[Game] Rotate CW") }},
-			{Text: i18n.Label(i18n.MenuRotateAntiClockwise), Action: func() { log.Println("[Game] Rotate CCW") }},
+			{Text: i18n.Label(i18n.MenuRotateClockwise), Action: func() { g.w.RotateView(true) }},      // rotateMenuDropdown: viewportRotateRight
+			{Text: i18n.Label(i18n.MenuRotateAntiClockwise), Action: func() { g.w.RotateView(false) }}, // viewportRotateLeft
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
 

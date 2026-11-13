@@ -241,7 +241,9 @@ func (r *Renderer) worker(i int) *Renderer {
 	return r.workers[i]
 }
 
-// View is the part of the viewport to draw (viewport coordinates, rotation 0).
+// View is the part of the viewport to draw, in viewport coordinates at the
+// map's rotation (sim.Map.CurrentRotation: upstream's one rotation for every
+// viewport, which the entities' sprite bounds follow too).
 type View struct {
 	// X, Y are the viewport position (zoom-0 pixels); W, H the screen size
 	// in pixels; Zoom 0-3 (each level halves: the view covers W<<Zoom ×
@@ -265,18 +267,6 @@ const (
 )
 
 var slopeToDisplay = [32]int{0, 2, 1, 3, 8, 10, 9, 11, 4, 6, 5, 7, 12, 14, 13, 15, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 16, 0, 18, 15, 0}
-
-// tileWindow is the box of tiles whose sprites can reach the view at rotation 0:
-// a tile's screen x is (y-x)*32 and its y (x+y)*16 minus its height (up to
-// 255*4 px) plus tall objects above it.
-func tileWindow(m *sim.Map, v View) (x0, y0, x1, y1 int) {
-	const margin = 4
-	dMin, dMax := v.X/32-margin, (v.X+v.W)/32+margin           // y - x
-	sMin, sMax := v.Y/16-margin, (v.Y+v.H+255*4+256)/16+margin // x + y
-	x0, x1 = (sMin-dMax)/2, (sMax-dMin)/2
-	y0, y1 = (sMin+dMin)/2, (sMax+dMax)/2
-	return max(x0, 0), max(y0, 0), min(x1, m.Width-1), min(y1, m.Height-1)
-}
 
 // Render draws the view of m into a new 8-bit target.
 func (r *Renderer) Render(m *sim.Map, v View) *gfx8.RenderTarget {
@@ -490,9 +480,9 @@ func (r *Renderer) InteractionAt(m *sim.Map, v View, sx, sy int, accept func(pai
 func (r *Renderer) paintRect(m *sim.Map, v View) *paint.Session {
 	lw, lh := v.W<<v.Zoom, v.H<<v.Zoom // the render target in viewport units (rt.width/height)
 	if r.sess == nil {
-		r.sess = paint.NewSession(0, v.X, v.Y, lw, lh)
+		r.sess = paint.NewSession(m.CurrentRotation&3, v.X, v.Y, lw, lh)
 	} else {
-		r.sess.Reset(0, v.X, v.Y, lw, lh)
+		r.sess.Reset(m.CurrentRotation&3, v.X, v.Y, lw, lh)
 	}
 	s := r.sess
 	if r.spriteFor == nil {
@@ -621,6 +611,9 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 	case scenario.KindTrack:
 		tk := t.Tracks[ref.Index]
 		s.CurrentItem = &t.Tracks[ref.Index] // setCurrentItem(element)
+		if tk.AiAllocated {                  // an AI company's planned track: not drawn (showAiPlanningGhosts, a debug option, off)
+			return
+		}
 		if to := om.GetTrackObjectByIndex(int(tk.TrackObjectID)); to != nil {
 			remap := r.companyRemap(m, tk.Owner)
 			if tk.Ghost { // baseTrackImageColour = Gfx::applyGhostToImage(0)
@@ -640,6 +633,9 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 	case scenario.KindRoad:
 		rd := t.Roads[ref.Index]
 		s.CurrentItem = &t.Roads[ref.Index] // setCurrentItem(element)
+		if rd.AiAllocated {                 // paintRoad: as the track's
+			return
+		}
 		if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
 			var light uint8 // streetLightStyle shares the level crossing id's bits; only without crossing, signal or station
 			if !rd.HasLevelCrossing && !rd.HasSignalElement && !rd.HasStationElement {
@@ -657,7 +653,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 	case scenario.KindSignal:
 		// paintSignal: against entry.prev(), which must be a track element.
 		sg := t.Signals[ref.Index]
-		if prev == nil || prev.Kind != scenario.KindTrack {
+		if sg.AiAllocated || prev == nil || prev.Kind != scenario.KindTrack { // paintSignal: an AI-allocated signal is never drawn
 			return
 		}
 		tk := t.Tracks[prev.Index]
@@ -667,6 +663,9 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			r.signalObj, sprite)
 	case scenario.KindStation:
 		s.CurrentItem = &t.Stations[ref.Index] // setCurrentItem(element)
+		if t.Stations[ref.Index].AiAllocated { // paintStation: as the track's
+			return
+		}
 		r.paintStation(s, m, t, t.Stations[ref.Index], prev, x, y, ticks)
 	case scenario.KindBuilding:
 		b := t.Buildings[ref.Index]
@@ -747,15 +746,17 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	s.ItemType = paint.ItemSurface // setItemType (PaintSurface.cpp:1421)
 	om, sprite := r.Objects, r.Sprite
 	// Session state paintSurface sets (bridge shadows and supports): surface
-	// height/slope, setWaterHeight2, and at the end setGeneralSupportHeight.
-	// Rotation is 0 here, so rotatedSlope is the slope.
+	// height/slope, setWaterHeight2, and at the end setGeneralSupportHeight —
+	// all by the slope as the view shows it (getRotatedSlope).
+	rot := s.Rotation
+	slope := rotatedSlope(t.Slope, rot)
 	z := int(t.BaseZ) * 4
-	s.SetSurface(z, t.Slope&0x1F, int(t.WaterLevel)*16)
+	s.SetSurface(z, slope, int(t.WaterLevel)*16)
 	if t.WaterLevel != 0 {
 		s.SetWaterHeight(int(t.WaterLevel) * 16)
 	}
-	defer s.SetSurfaceSegments(t.Slope & 0x1F)
-	defer s.SetGeneralSupportHeight(z, t.Slope&0x1F)
+	defer s.SetSurfaceSegments(slope)
+	defer s.SetGeneralSupportHeight(z, slope)
 	ti := int(t.TerrainIndex)
 	if t.IsIndustrial {
 		ti = 0
@@ -764,12 +765,13 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	if land == nil {
 		return
 	}
-	ds := slopeToDisplay[t.Slope&0x1F]
+	ds := slopeToDisplay[slope]
 	growth := int(t.GrowthStage)
 	if t.IsIndustrial || growth >= int(land.NumGrowthStages) {
 		growth = 0
 	}
-	idx := int(land.ImageOffset) + land.GetFlatTerrainSpriteIndex() + growth*int(land.NumImagesPerGrowthStage) + ds
+	// variation: the growth stage's images, and the image angle the rotation picks
+	idx := int(land.ImageOffset) + land.GetFlatTerrainSpriteIndex() + growth*int(land.NumImagesPerGrowthStage) + ((int(land.NumImageAngles)-1)&int(rot))*25 + ds
 	if !t.IsIndustrial && t.Variation != 0 && s.Zoom == 0 && ds == 0 && t.WaterLevel == 0 && land.NumGrowthStages > 0 && t.GrowthStage == land.NumGrowthStages-1 {
 		idx = int(land.MapPixelImage) + 3 + int(t.Variation)
 	}
@@ -780,7 +782,7 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	fieldSnow := false
 	if t.IsIndustrial {
 		if io := m.IndustryObjectByID(t.Variation, om); io != nil && io.FieldImageIDs != 0 {
-			variation := int(io.NumImagesPerFieldGrowthStage)*int(t.GrowthStage) + ((int(io.FarmTileNumImageAngles)-1)&0)*21
+			variation := int(io.NumImagesPerFieldGrowthStage)*int(t.GrowthStage) + ((int(io.FarmTileNumImageAngles)-1)&int(rot))*21
 			th := z + int(paint.SurfaceTreeHeight[ds])
 			if tree := sprite(int(io.FieldImageIDs) + variation + 19); tree != nil {
 				s.AddAsParent(paint.Image{Sprite: tree, Op: gfx8.OpFor(tree, false, false)}, paint.Pos3{Z: th}, paint.Pos3{X: 14, Y: 14, Z: th + 4}, paint.Pos3{X: 4, Y: 4, Z: 14})
@@ -814,7 +816,7 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	// paintSurfaceFullTileSelection: kCornerSelectionBoxFromSlope by the
 	// display slope in ExtColour::unk25, attached to the surface.
 	if r.Selection != nil && r.Selection(x, y) {
-		if sel := sprite(constructionSelectionCornersSlope0 + slopeToDisplay[t.Slope&0x1F]); sel != nil {
+		if sel := sprite(constructionSelectionCornersSlope0 + ds); sel != nil {
 			pm := r.colourMap(0x25)
 			s.AttachToPrevious(paint.Image{Sprite: sel, Op: gfx8.OpFor(sel, pm != nil, false), PalMap: pm}, 0, 0)
 		}
@@ -825,16 +827,17 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	// Landscape smoothing (zoom 0; Config::landscapeSmoothing, default on).
 	if s.Zoom == 0 {
 		desc := func(tt *sim.Tile) paint.SmoothTile {
-			d := paint.SmoothTile{Surface: paint.Surface{BaseZ: tt.BaseZ, Slope: tt.Slope & 0x1F, Water: tt.WaterLevel}, Present: true,
-				Land: tt.TerrainIndex, DisplaySlope: slopeToDisplay[tt.Slope&0x1F], Snow: tt.Slope >> 5, Growth: tt.GrowthStage}
+			sl := rotatedSlope(tt.Slope, rot)
+			d := paint.SmoothTile{Surface: paint.Surface{BaseZ: tt.BaseZ, Slope: sl, Water: tt.WaterLevel}, Present: true,
+				Land: tt.TerrainIndex, DisplaySlope: slopeToDisplay[sl], Snow: tt.Slope >> 5, Growth: tt.GrowthStage}
 			if tt.IsIndustrial {
 				d.Land = 0xFF
 			}
 			return d
 		}
 		var nbd [4]paint.SmoothTile
-		for d, o := range paint.NeighbourOffsets {
-			if nt := m.TileAt(x+o[0]/32, y+o[1]/32); nt != nil {
+		for d := range nbd {
+			if nt := r.neighbour(m, x, y, rot, d); nt != nil {
 				nbd[d] = desc(nt)
 			}
 		}
@@ -848,13 +851,13 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	// water surface's display slope (getWaterSurface), dark blue, as a parent
 	// at its height, bbox (32,32,1); after the selection box, as upstream.
 	if r.Catchment != nil && r.Catchment(x, y) {
-		h, slope := z, t.Slope
+		h, slope := z, slope // getWaterSurface(elSurface, selfDescriptor.slope)
 		if wh := int(t.WaterLevel) * 16; wh > h {
 			h += 16 // kMicroZStep
 			if wh != h || t.Slope&0x10 == 0 {
 				slope, h = 0, wh
 			} else {
-				sl := (t.Slope & 0xF) ^ 0xF // rotl4bit(…, 2)
+				sl := (slope & 0xF) ^ 0xF // rotl4bit(…, 2)
 				slope = (sl<<2 | sl>>2) & 0xF
 			}
 		}
@@ -864,16 +867,16 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	}
 
 	var nbs [4]*paint.Surface
-	for d, o := range paint.NeighbourOffsets {
-		if nt := m.TileAt(x+o[0]/32, y+o[1]/32); nt != nil {
+	for d := range nbs {
+		if nt := r.neighbour(m, x, y, rot, d); nt != nil {
 			// Scratch kept on the renderer: &Surface{} here escaped, 4 allocations per tile.
-			r.nbBuf[d] = paint.Surface{BaseZ: nt.BaseZ, Slope: nt.Slope, Water: nt.WaterLevel}
+			r.nbBuf[d] = paint.Surface{BaseZ: nt.BaseZ, Slope: rotatedSlope(nt.Slope, rot), Water: nt.WaterLevel}
 			nbs[d] = &r.nbBuf[d]
 		}
 	}
-	self := paint.Surface{BaseZ: t.BaseZ, Slope: t.Slope, Water: t.WaterLevel}
+	self := paint.Surface{BaseZ: t.BaseZ, Slope: slope, Water: t.WaterLevel}
 	if land.CliffEdgeImage > 0 {
-		s.PaintCliffEdges(paint.Surface{BaseZ: t.BaseZ, Slope: t.Slope}, nbs, int(land.CliffEdgeImage), sprite)
+		s.PaintCliffEdges(paint.Surface{BaseZ: t.BaseZ, Slope: slope}, nbs, int(land.CliffEdgeImage), sprite)
 	}
 	if t.WaterLevel != 0 && r.water.PalMap != nil {
 		wave := -1
@@ -883,6 +886,22 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 		s.PaintWater(self, nbs, r.water, objects.KSlopeToWaterShape[:], int(land.CliffEdgeImage), wave, sprite)
 	}
 
+}
+
+// rotatedSlope is PaintSurface.cpp's getRotatedSlope: the corner bits turned
+// with the view (rotl4bit), the double-height bit kept. The tile's snow bits
+// (goloco keeps the coverage above the slope) are dropped.
+func rotatedSlope(slope, rotation uint8) uint8 {
+	c := slope & 0xF
+	return (c<<(rotation&3)|c>>(4-rotation&3))&0xF | slope&0x10
+}
+
+// neighbour is getTileDescriptor's tile: the one at the sprite position plus
+// kNeighbourOffsets[rotation][dir] (SW, SE, NW, NE as the view shows them) —
+// from the tile (x, y), whose sprite position is its kUnkOffsets corner.
+func (r *Renderer) neighbour(m *sim.Map, x, y int, rot uint8, dir int) *sim.Tile {
+	o := paint.NeighbourOffsets[rot&3][dir]
+	return m.TileAt(x+(kUnkOffsets[rot&3][0]+o[0])/32, y+(kUnkOffsets[rot&3][1]+o[1])/32)
 }
 
 // paintStation is PaintStation.cpp paintStation: by station type; train and road
@@ -999,8 +1018,8 @@ func (r *Renderer) entitiesByTile(m *sim.Map, v View, lw, lh int) map[[2]int][]*
 }
 
 // effectsByTile fills effByTile: the crash effects whose sprite rectangle
-// (spriteWidth / heights about their gameToScreen point, rotation 0 as the
-// vehicles') meets the render target, in the misc list's order.
+// (spriteWidth / heights about their gameToScreen point at the current
+// rotation, as the vehicles') meets the render target, in the misc list's order.
 func (r *Renderer) effectsByTile(m *sim.Map, left, top, right, bottom int) {
 	if r.effByTile == nil {
 		r.effByTile = map[[2]int][]*sim.Effect{}
@@ -1018,7 +1037,8 @@ func (r *Renderer) effectsByTile(m *sim.Map, left, top, right, bottom int) {
 		if e == nil || e.X < 0 || e.Y < 0 || e.X >= 0x4000 || e.Y >= 0x4000 {
 			continue
 		}
-		vx, vy := int(e.Y-e.X), int((e.Y+e.X)>>1-e.Z)
+		gx, gy := m.GameToScreen(e.X, e.Y, e.Z)
+		vx, vy := int(gx), int(gy)
 		if vy-int(e.HeightNeg) > bottom || vy+int(e.HeightPos) <= top || vx-int(e.Width) > right || vx+int(e.Width) <= left {
 			continue
 		}
@@ -1285,31 +1305,52 @@ func (r *Renderer) scaffold(segType, colour uint8) *paint.Scaffold {
 }
 
 // generate is PaintSession::generate → generateTilesAndEntities with
-// generateParameters<0> (rotation 0): from the tile at the target's top-left,
-// down one "vertical quadrant" (+32, +32) at a time, (height + 1040) >> 5
-// times, painting at each step the tile, then four neighbours in upstream's
-// order — (−32, +32) only its tall things (paintTileElements2), (0, +32)
-// fully, (+32, 0) tall things, (+32, −32) and (−32, +64) only flying or
-// floating vehicles (paintEntities2) — each tile's entities after it.
+// generateParameters<rotation>: from the tile at the target's top-left, down
+// one "vertical quadrant" at a time — (+32, +32) turned by
+// directionFlipXAxis(rotation) — (height + 1040) >> 5 times (1056 when
+// rotated), painting at each step the tile, then four neighbours in
+// upstream's order — (−32, +32) only its tall things (paintTileElements2),
+// (0, +32) fully, (+32, 0) tall things, (+32, −32) and (−32, +64) only flying
+// or floating vehicles (paintEntities2), all turned the same way — each tile's
+// entities after it.
 func (r *Renderer) generate(s *paint.Session, m *sim.Map, v View, lw, lh int, ents map[[2]int][]*scenario.VehicleEntity) {
+	rot := s.Rotation
 	n := (lh + 1040) >> 5
-	vx, vy := floor2(v.X, 32), floor2(v.Y-16, 32)
-	mx, my := floor2(vy-(vx>>1), 32), floor2(vy+(vx>>1), 32) // viewportCoordToMapCoord, rotation 0
+	if rot != 0 {
+		n = (lh + 1056) >> 5
+	}
+	gx, gy := sim.ViewportCoordToMapCoord(int32(floor2(v.X, 32)), int32(floor2(v.Y-16, 32)), 0, rot)
+	mx, my := int(gx), int(gy)
+	if rot&1 != 0 {
+		my -= 16
+	}
+	mx, my = floor2(mx, 32), floor2(my, 32)
+	dir := paint.DirectionFlipXAxis(rot)
+	step := func(x, y int32) [2]int { // a quadrant step, in tiles
+		x, y = sim.RotateVec(x, y, dir)
+		return [2]int{int(x), int(y)}
+	}
+	a := [5][2]int{step(-1, 1), step(0, 1), step(1, 0), step(1, -1), step(-1, 2)} // additionalQuadrants
+	next := step(1, 1)                                                            // nextVerticalQuadrant
 	for ; n > 0; n-- {
 		tx, ty := mx>>5, my>>5
 		r.paintTile(s, m, tx, ty, false, v.Ticks)
 		r.paintTileEntities(s, m, tx, ty, ents, false)
-		r.paintTile(s, m, tx-1, ty+1, true, v.Ticks)
-		r.paintTileEntities(s, m, tx-1, ty+1, ents, false)
-		r.paintTile(s, m, tx, ty+1, false, v.Ticks)
-		r.paintTileEntities(s, m, tx, ty+1, ents, false)
-		r.paintTile(s, m, tx+1, ty, true, v.Ticks)
-		r.paintTileEntities(s, m, tx+1, ty, ents, false)
-		r.paintTileEntities(s, m, tx+1, ty-1, ents, true)
-		r.paintTileEntities(s, m, tx-1, ty+2, ents, true)
-		mx, my = mx+32, my+32
+		r.paintTile(s, m, tx+a[0][0], ty+a[0][1], true, v.Ticks)
+		r.paintTileEntities(s, m, tx+a[0][0], ty+a[0][1], ents, false)
+		r.paintTile(s, m, tx+a[1][0], ty+a[1][1], false, v.Ticks)
+		r.paintTileEntities(s, m, tx+a[1][0], ty+a[1][1], ents, false)
+		r.paintTile(s, m, tx+a[2][0], ty+a[2][1], true, v.Ticks)
+		r.paintTileEntities(s, m, tx+a[2][0], ty+a[2][1], ents, false)
+		r.paintTileEntities(s, m, tx+a[3][0], ty+a[3][1], ents, true)
+		r.paintTileEntities(s, m, tx+a[4][0], ty+a[4][1], ents, true)
+		mx, my = mx+next[0]*32, my+next[1]*32
 	}
 }
+
+// kUnkOffsets is PaintTile.cpp's: the corner of a tile that is its sprite
+// position (setEntityPosition) at each rotation, in world units.
+var kUnkOffsets = [4][2]int{{0, 0}, {32, 0}, {32, 32}, {0, 32}}
 
 // brown2 is PaletteIndex::brown2 (Colour.h), the viewport's clear colour.
 const brown2 = 0xD8
@@ -1331,24 +1372,26 @@ func (r *Renderer) paintTile(s *paint.Session, m *sim.Map, x, y int, tall bool, 
 		}
 		return
 	}
-	// paintTileElementsSetup paints the arrow before its vertical cull
-	// (rotation 0: kUnkOffsets[0] = (0, 0), the arrow's tile is the tile).
+	// paintTileElementsSetup: the tile's sprite position is its corner
+	// loc + kUnkOffsets[rotation]; the arrow is painted before the vertical cull.
+	s.SetMapPosition(x*32, y*32)
+	px, py := x*32+kUnkOffsets[s.Rotation][0], y*32+kUnkOffsets[s.Rotation][1]
 	if !tall {
-		r.paintConstructionArrow(s, x, y)
+		r.paintConstructionArrow(s, x, y, px, py)
 	}
 	t := m.TileAt(x, y)
 	if t == nil {
 		return
 	}
-	// paintTileElementsSetup's vertical cull (rotation 0: the tile's corner
-	// at z 0): above the target, or below it even at the tile's full height.
-	vy := (x*32 + y*32) >> 1
+	// paintTileElementsSetup's vertical cull (that corner at z 0): above the
+	// target, or below it even at the tile's full height.
+	_, vy := paint.GameToScreen(paint.Pos3{X: px, Y: py}, s.Rotation)
 	_, rtY, _, rtH := s.RTRect()
 	if vy+52 <= rtY || vy-t.MaxHeight() > rtY+rtH {
 		return
 	}
 	sprite := r.spriteFor
-	s.SetSpritePosition(x*32, y*32)
+	s.SetSpritePosition(px, py)
 	s.ResetTunnels() // paintTileElementsSetup
 	s.SetGeneralSupportHeight(0xFFFF, 0)
 	s.SetSegmentsSupportHeight(paint.SegmentsAll, 0xFFFF, 0)
@@ -1396,31 +1439,32 @@ const constructionArrowNorth = 428
 
 // paintConstructionArrow is PaintTile.cpp's paintConstructionArrow
 // (0x00461EA7): on the arrow's tile (session.getUnkPosition() == arrow.pos),
-// the arrow image for its direction (rotation 0: dirIndex = direction),
-// yellow, as a parent at the arrow's height, bbox offset z + 10, size
-// (32, 32, -1), no interaction.
-func (r *Renderer) paintConstructionArrow(s *paint.Session, x, y int) {
+// at the tile's sprite position (px, py), the arrow image for its direction
+// turned by the view's rotation (the set kept: dirIndex), yellow, as a parent
+// at the arrow's height, bbox offset z + 10, size (32, 32, -1), no interaction.
+func (r *Renderer) paintConstructionArrow(s *paint.Session, x, y, px, py int) {
 	a := r.ConstructionArrow
 	if !a.Visible || a.X != int32(x)*32 || a.Y != int32(y)*32 {
 		return
 	}
-	sp := r.spriteFor(constructionArrowNorth + int(a.Direction&0xF))
+	dirIndex := a.Direction&0xFC | (a.Direction&3+s.Rotation)&3
+	sp := r.spriteFor(constructionArrowNorth + int(dirIndex&0xF))
 	if sp == nil {
 		return
 	}
-	s.SetSpritePosition(x*32, y*32)
+	s.SetSpritePosition(px, py)
 	s.ItemType = paint.ItemNoInteraction
 	z := int(a.Z)
 	s.AddAsParent(paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, true, false), PalMap: r.colourMap(16)}, paint.Pos3{Z: z}, paint.Pos3{Z: z + 10}, paint.Pos3{X: 32, Y: 32, Z: -1}) // Colour::yellow
 }
 
-// paintVoid is PaintTile.cpp's paintVoid (rotation 0): ImageIds::blank_tile
-// at z 16 for a location outside the drawable map, when its screen position
-// can reach the target.
+// paintVoid is PaintTile.cpp's paintVoid: ImageIds::blank_tile at z 16 for a
+// location outside the drawable map (at its sprite corner, loc +
+// kUnkOffsets[rotation]), when its screen position can reach the target.
 func (r *Renderer) paintVoid(s *paint.Session, x, y int) {
 	const blankTile = 448
-	px, py := x*32, y*32
-	vy := (px+py)>>1 - 16 // gameToScreen(loc, 16), rotation 0
+	px, py := x*32+kUnkOffsets[s.Rotation][0], y*32+kUnkOffsets[s.Rotation][1]
+	_, vy := paint.GameToScreen(paint.Pos3{X: px, Y: py, Z: 16}, s.Rotation)
 	_, rtY, _, rtH := s.RTRect()
 	if vy+32 <= rtY || vy-20 >= rtH+rtY {
 		return

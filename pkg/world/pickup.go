@@ -12,8 +12,7 @@ import (
 // the main view: the track element under screen point (sx, sy) (getMapCoordinatesFromPos
 // filtered to track), then the placement on it nearest the cursor
 // (sim.RailPlacementAtCursor), with gameToScreen + viewportToScreen of this
-// view. ok is false where there is no track. PARTIAL: rotation 0 only (goloco's
-// view does not rotate yet).
+// view. ok is false where there is no track.
 func (w *World) RailPlacementAt(head uint16, sx, sy int) (sim.VehiclePlacement, bool) {
 	if w.scene == nil {
 		return sim.VehiclePlacement{}, false
@@ -27,17 +26,17 @@ func (w *World) RailPlacementAt(head uint16, sx, sy int) (sim.VehiclePlacement, 
 	if !ok {
 		return sim.VehiclePlacement{}, false
 	}
-	toScreen := func(x, y, z int32) (int, int) { // gameToScreen (rotation 0), then viewportToScreen
-		vx, vy := int(y-x), int((y+x)>>1-z)
+	toScreen := func(x, y, z int32) (int, int) { // gameToScreen, then viewportToScreen
+		vx, vy := w.gameToView(int(x), int(y), int(z))
 		return (vx - v.X) >> v.Zoom, (vy - v.Y) >> v.Zoom
 	}
-	return w.Map.RailPlacementAtCursor(head, int32(ps.MapX), int32(ps.MapY), te, 0, sx, sy, toScreen)
+	return w.Map.RailPlacementAtCursor(head, int32(ps.MapX), int32(ps.MapY), te, w.Rotation(), sx, sy, toScreen)
 }
 
 // RoadPlacementAt is RailPlacementAt for road vehicles —
 // getVehicleRoadPlacementArgsFromCursor: the road element under the cursor
 // (getMapCoordinatesFromPos filtered to road and tram), its placement nearest
-// the cursor. PARTIAL: rotation 0 only.
+// the cursor.
 func (w *World) RoadPlacementAt(head uint16, sx, sy int) (sim.VehiclePlacement, bool) {
 	if w.scene == nil {
 		return sim.VehiclePlacement{}, false
@@ -51,11 +50,11 @@ func (w *World) RoadPlacementAt(head uint16, sx, sy int) (sim.VehiclePlacement, 
 	if !ok {
 		return sim.VehiclePlacement{}, false
 	}
-	toScreen := func(x, y, z int32) (int, int) { // gameToScreen (rotation 0), then viewportToScreen
-		vx, vy := int(y-x), int((y+x)>>1-z)
+	toScreen := func(x, y, z int32) (int, int) { // gameToScreen, then viewportToScreen
+		vx, vy := w.gameToView(int(x), int(y), int(z))
 		return (vx - v.X) >> v.Zoom, (vy - v.Y) >> v.Zoom
 	}
-	return w.Map.RoadPlacementAtCursor(head, int32(ps.MapX), int32(ps.MapY), re, 0, sx, sy, toScreen)
+	return w.Map.RoadPlacementAtCursor(head, int32(ps.MapX), int32(ps.MapY), re, w.Rotation(), sx, sy, toScreen)
 }
 
 // PlacementAt is pickupToolUpdate / pickupToolDown's choice by the vehicle's
@@ -75,39 +74,13 @@ func (w *World) PlacementAt(head uint16, sx, sy int) (sim.VehiclePlacement, bool
 }
 
 // SurfaceOrWaterAt is ViewportInteraction's getSurfaceOrWaterLocFromUi
-// (main view, rotation 0): the surface or water under the screen point
+// (main view): the surface or water under the screen point
 // (getMapCoordinatesFromPos filtered to both), then five passes of
 // viewportCoordToMapCoord at the land height (or the water's, on water),
-// clamped to the hit tile, and the tile corner of the result.
+// clamped to the hit tile (surfaceLocAt), and the tile corner of the result.
 func (w *World) SurfaceOrWaterAt(sx, sy int) (int32, int32, bool) {
-	if w.scene == nil {
-		return 0, 0, false
-	}
-	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
-	ps := w.scene.InteractionAt(&w.Map, v, sx, sy, func(it paint.InteractionItem) bool {
-		return it == paint.ItemSurface || it == paint.ItemWater
-	})
-	if ps == nil {
-		return 0, 0, false
-	}
-	minX, minY := int32(ps.MapX), int32(ps.MapY)
-	maxX, maxY := minX+31, minY+31
-	var water int16
-	if ps.Type == paint.ItemWater {
-		_, water = w.Map.GetHeight(minX, minY)
-	}
-	mx, my := minX+16, minY+16
-	vx, vy := int32(sx<<v.Zoom+v.X), int32(sy<<v.Zoom+v.Y) // screenToViewport
-	for i := 0; i < 5; i++ {
-		z := int32(water)
-		if ps.Type != paint.ItemWater {
-			land, _ := w.Map.GetHeight(mx, my)
-			z = int32(land)
-		}
-		mx, my = vy-vx>>1+z, vy+vx>>1+z // viewportCoordToMapCoord, rotation 0
-		mx, my = min(max(mx, minX), maxX), min(max(my, minY), maxY)
-	}
-	return mx &^ 0x1F, my &^ 0x1F, true
+	mx, my, ok := w.surfaceLocAt(sx, sy, true)
+	return mx &^ 0x1F, my &^ 0x1F, ok
 }
 
 // WaterPlacementAt is getVehicleWaterPlacementArgsFromCursor (0x00427595):
@@ -161,8 +134,8 @@ const (
 	stationFlagAirport = 1 << 6
 )
 
-// AirPlacementAt is getVehicleAirPlacementArgsFromCursor (main view,
-// rotation 0): the airport under the cursor — or, over the ground or water,
+// AirPlacementAt is getVehicleAirPlacementArgsFromCursor (main view):
+// the airport under the cursor — or, over the ground or water,
 // an airport station whose start is within 5 tiles of it (upstream's loop
 // kept: the last station element it looked at stands) —, then of its
 // terminal nodes (last first) the one nearest the cursor on screen by
@@ -227,7 +200,7 @@ func (w *World) AirPlacementAt(head uint16, sx, sy int) (sim.VehicleAirPlacement
 		if !ok {
 			continue
 		}
-		gx, gy := paint.GameToScreen(paint.Pos3{X: int(x), Y: int(y), Z: int(z)}, 0)
+		gx, gy := w.gameToView(int(x), int(y), int(z))
 		ux, uy := (gx-v.X)>>v.Zoom, (gy-v.Y)>>v.Zoom // viewportToScreen
 		if d := abs32(int32(ux-sx)) + abs32(int32(uy-sy)); d < best {
 			best, out.AirportNode = d, uint8(n)
@@ -243,9 +216,9 @@ func (w *World) AirPlacementAt(head uint16, sx, sy int) (sim.VehicleAirPlacement
 // (0x004A4011 getExistingTrackAtLoc, getExistingRoadAtLoc): the track (or road)
 // element under the cursor, the height its piece starts at (its baseHeight
 // less the piece's z at that sequence), and the tile under the cursor at that
-// height (screenGetMapXyWithZ: viewportCoordToMapCoord, rotation 0). A track
-// piece counts only if it keeps its height (kTrackCoordinates' z 0); a road
-// any piece. ok false: build on the ground as usual. PARTIAL: rotation 0 only.
+// height (screenGetMapXyWithZ: viewportCoordToMapCoord). A track piece counts
+// only if it keeps its height (kTrackCoordinates' z 0); a road any piece. ok
+// false: build on the ground as usual.
 func (w *World) JunctionAt(sx, sy int, road bool) (tx, ty int, h int32, ok bool) {
 	if w.scene == nil {
 		return 0, 0, 0, false
@@ -275,9 +248,8 @@ func (w *World) JunctionAt(sx, sy int, road bool) (tx, ty int, h int32, ok bool)
 		}
 		h = int32(te.BaseZ)*4 - int32(sim.TrackPieces[te.TrackID][te.SequenceIndex].Z)
 	}
-	// viewportCoordToMapCoord(x, y, z, 0): (y - x/2 + z, y + x/2 + z)
 	vx, vy := int32(sx<<v.Zoom+v.X), int32(sy<<v.Zoom+v.Y)
-	mx, my := vy-(vx>>1)+h, vy+(vx>>1)+h
+	mx, my := w.Map.ViewportCoordToMapCoord(vx, vy, h)
 	if mx < 0 || my < 0 || mx >= int32(w.Map.Width)*32 || my >= int32(w.Map.Height)*32 { // validCoords
 		return 0, 0, 0, false
 	}

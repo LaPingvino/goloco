@@ -41,6 +41,9 @@ type World struct {
 	selOn     bool                  // SetMapSelection: the selection is shown
 	selArea   [4]int                // its tiles: min x, min y, max x, max y
 	consArrow sim.ConstructionArrow // the arrow last handed to the renderer (constructionarrow.go)
+	// savedCentre: a saved view's centre still to be placed (SetSavedView
+	// before the first Draw gave the view its size).
+	savedCentre *[2]int
 	// SceneEvery: render the world every n-th frame (≤ 1: every frame); the
 	// game raises it while its UI is open (drawScene).
 	SceneEvery int
@@ -179,18 +182,15 @@ func NewWorld(r *render.Renderer) *World {
 	return w
 }
 
-// tileToScreen converts tile coordinates to viewport pixel coordinates.
-// Matches OpenLoco Map/Tile.cpp::gameToScreen (rotation 0):
+// tileToScreen converts tile coordinates to viewport pixel coordinates:
+// OpenLoco Map/Tile.cpp::gameToScreen of the tile's corner at height 0, at the
+// current rotation (rotation 0: vpX = (tileY - tileX) * 32, vpY = (tileY +
+// tileX) * 16).
 //
-//	vpX = (tileY - tileX) * kTileSize        where kTileSize = 32
-//	vpY = (tileY + tileX) * (kTileSize / 2)  = (tileY + tileX) * 16
-//
-// Height is NOT included here; it is subtracted separately in Draw().
-// Camera offset and zoom are also applied in Draw().
+// Height is NOT included here; it is subtracted separately by the callers.
 func (w *World) tileToScreen(tileX, tileY int) (float64, float64) {
-	vpX := float64((tileY - tileX) * 32)
-	vpY := float64((tileY + tileX) * 16)
-	return vpX, vpY
+	vpX, vpY := w.gameToView(tileX*32, tileY*32, 0)
+	return float64(vpX), float64(vpY)
 }
 
 func (w *World) LoadFromScenario(sc *scenario.Scenario) {
@@ -244,10 +244,19 @@ func (w *World) tileOnScreen(tileX, tileY int) bool {
 // sequence to pan across the map). Uses the same projection as tileToScreen.
 func (w *World) SetCamera(tileX, tileY float64) {
 	w.externalCamera = true
-	// Mirror of tileToScreen: vpX = (tileY-tileX)*32, vpY = (tileY+tileX)*16
+	w.savedCentre = nil
+	// gameToScreen of the (fractional) tile position at the current rotation,
 	// minus the tile's height (gameToScreen: y − z), so raised tiles centre too.
-	worldX := (tileY - tileX) * 32.0
-	worldY := (tileY + tileX) * 16.0
+	fx, fy := tileX*32, tileY*32
+	switch w.Rotation() { // Math::Vector::rotate
+	case 1:
+		fx, fy = fy, -fx
+	case 2:
+		fx, fy = -fx, -fy
+	case 3:
+		fx, fy = -fy, fx
+	}
+	worldX, worldY := fy-fx, (fy+fx)/2
 	if tx, ty := int(tileX), int(tileY); ty >= 0 && ty < len(w.Tiles) && tx >= 0 && tx < len(w.Tiles[ty]) {
 		worldY -= float64(w.Tiles[ty][tx].BaseZ) * 4
 	}
@@ -2308,6 +2317,10 @@ func (w *World) getCliffEdgeOffset(edge int, h uint8) (int16, int16) {
 
 func (w *World) Draw(screen *ebiten.Image) {
 	w.viewW, w.viewH = screen.Bounds().Dx(), screen.Bounds().Dy()
+	if w.savedCentre != nil { // SetSavedView before the view had a size
+		w.placeSavedCentre()
+		w.savedCentre = nil
+	}
 	w.frameCounter++
 	if c := os.Getenv("GOLOCO_DIAG_CENTER"); c != "" { // diagnostics: centre on a train, … (every frame: the title sequence moves the camera)
 		w.CenterOn(c)

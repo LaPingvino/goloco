@@ -12,8 +12,7 @@ import (
 // viewport removed) or the renderer is missing. It has its own scene renderer,
 // so the main view's kept frame is untouched. It is handed back 8-bit, as
 // upstream's viewport paints into the frame, so the window can draw over it
-// (the centre-view button) before it reaches the screen. PARTIAL: rotation 0
-// only.
+// (the centre-view button) before it reaches the screen.
 func (w *World) VehicleView(headID uint16, width, height int) *gfx8.RenderTarget {
 	v, ok := w.vehicleView(headID, width, height)
 	if !ok {
@@ -46,7 +45,7 @@ func (w *World) vehicleView(headID uint16, width, height int) (scene.View, bool)
 	}
 	e := m.Entities[target]
 	x, y, z := int(e.PosX), int(e.PosY), int(e.PosZ)
-	vx, vy := y-x, (x+y)>>1-z // gameToScreen, rotation 0
+	vx, vy := w.gameToView(x, y, z)
 	return scene.View{X: vx - width/2, Y: vy - height/2, W: width, H: height, Zoom: 0, Ticks: m.ScenarioTicks}, true
 }
 
