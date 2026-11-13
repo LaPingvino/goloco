@@ -94,8 +94,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [ ] N13 `git -C goloco` can't write .git/config ("Device or resource busy" on branch / worktree delete): find why.
 > - [ ] N15 Map tooltips (MapToolTip window: hovering a map item shows its name / status, e.g. "Railway Track /
 >       Right-Click to Modify"; getItemLeft's format arguments), then 2854a10's drag-dimensions tooltip on it.
-> - [ ] N16 The time panel's pause button: a click at 688,592 pauses the real OpenLoco but not goloco (Space works;
->       seen by the music port's tour).
+> - [x] N16 The pause click works (the report came from the music agent's mixed-up displays); what differed: paused,
+>       the time panel alternates "* Paused *" with the date (TimePanel::draw) — done.
 > - [ ] N17 Music leftovers: Music Selection opens under the Jukebox (OpenLoco: beside the player panel — a window
 >       goloco doesn't model blocks the spot?); 1 px gaps in shared widgets against 09d74ee (scroll thumb, old
 >       dropdown / group-box sizes, combobox not drawn pressed while open); a web track change fetches blocking.

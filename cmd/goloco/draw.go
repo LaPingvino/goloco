@@ -251,6 +251,12 @@ func (g *Game) drawTimePanel(screen *ebiten.Image) {
 	}
 	mp := &g.w.Map // getCurrentDay's date (pkg/sim dateTick)
 	st := ui.TimePanelState{Date: uilayout.DateDMY(int(mp.CurrentDayOfMonth)+1, i18n.Month(int(mp.CurrentMonth)+1), int(mp.CurrentYear))}
+	// TimePanel::draw: paused, "* Paused *" instead of the date half the time
+	// (numTicksVisible: 30 window updates each). PARTIAL: the browse prompt's
+	// own pause (goloco's prompt doesn't pause).
+	if g.isPaused && (g.windowFrame/30)%2 == 1 {
+		st.Date = i18n.Label(i18n.ToolbarStatusPaused)
+	}
 	switch {
 	case g.isPaused:
 		st.Speed = 0
