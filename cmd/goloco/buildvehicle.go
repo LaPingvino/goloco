@@ -44,11 +44,12 @@ func (g *Game) openBuildVehicleFor(tab int, target uint16) {
 		p, s = m.CompanyColourSchemes[company].Main[0], m.CompanyColourSchemes[company].Main[1]
 	}
 	sw, sh := g.sw, g.sh
-	g.buildVehicle = &ui.BuildVehicleWindow{X: (sw - 500) / 2, Y: (sh - 400) / 2, W: 500, H: 400, TitleColour: tc, Colour: wc,
+	bw := &ui.BuildVehicleWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeBuildVehicle, Number: company, X: (sw - 500) / 2, Y: (sh - 400) / 2, W: 500, H: 400}, TitleColour: tc, Colour: wc,
 		Tab: tab, TrackTab: trackTab, Disabled: m.BuildVehicleDisabledTabs(uint8(company)), NumTrackTabs: len(tabs),
 		Rows: rows, Hover: -1, Primary: p, Secondary: s,
-		OnClose: func() { g.buildVehicle = nil }, OnTab: func(t int) { g.openBuildVehicleFor(t, target) },
+		OnTab: func(t int) { g.openBuildVehicleFor(t, target) },
 		OnBuy: func(id uint16) { g.buyVehicle(tab, id, target) }}
+	g.wins.Show(bw)
 }
 
 // buyVehicle is onScrollMouseDown's purchase: the createVehicle command (no
@@ -80,8 +81,8 @@ func (g *Game) buyVehicle(tab int, id, target uint16) {
 	log.Printf("[Game] bought vehicle %d (head %d) for %d", id, head, cost)
 	if target == sim.EntityIDNull { // only a new vehicle opens its window
 		g.openVehicleDetails(head)
-	} else if g.vehicleWin != nil {
-		g.openVehicleWindow(head, 1) // the target's window shows its new car
+	} else {
+		g.refreshVehicleWindow(head, 1) // the target's window shows its new car
 	}
 	g.openBuildVehicleFor(tab, target) // sub_4B92A5: the list again
 }
@@ -120,9 +121,7 @@ func (g *Game) buildNewOpen(headID uint16, x, y, w, h int) {
 	items := []ui.DropdownItem{{Text: i18n.Label(i18n.DropdownModifyVehicle)}, {Text: i18n.Label(i18n.DropdownCloneVehicle)}}
 	items[0].Selected = true
 	d := ui.NewDropdownMenu(x, y+h, items)
-	if g.vehicleWin != nil {
-		d.Colour = g.vehicleWin.Colour
-	}
+	d.Colour = g.vehicleWinColour(headID)
 	d.Highlighted = 0
 	d.OnSelect = func(item int) {
 		switch item {

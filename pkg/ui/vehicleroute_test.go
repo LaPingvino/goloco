@@ -9,7 +9,7 @@ import "testing"
 func TestVehicleRouteClicks(t *testing.T) {
 	for _, own := range []bool{true, false} {
 		var got []string
-		w := &VehicleWindow{X: 10, Y: 20, W: 265, H: VehicleRouteMinHeight, Tab: 4, Main: VehicleMainState{Own: own}, RouteSel: -1,
+		w := &VehicleWindow{WinBase: WinBase{X: 10, Y: 20, W: 265, H: VehicleRouteMinHeight}, Tab: 4, Main: VehicleMainState{Own: own}, RouteSel: -1,
 			OnRoute: func(a string) { got = append(got, a) }}
 		lw := VehicleRouteLayout(w.W, w.H, 0, !own)
 		click := func(i int) {

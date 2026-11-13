@@ -203,7 +203,7 @@ func (g *Game) openConstructionWithFlags(flags uint8) {
 	}
 	g.consCurve, g.consSlope = 0, 0
 	g.w.Map.SetTrackOptions(flags, g.r.ObjMgr)
-	g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+	g.wins.Show(g.newPortedConstructionWindow())
 }
 
 // portMenu is ToolbarTop's portMenuMouseDown (0x0043A9C0): the airport item
@@ -253,7 +253,7 @@ func (g *Game) openPortConstruction(option int) {
 	if option == 0 { // createAirportConstructionWindow: lastSelectedStationType = lastAirport; rotation 0
 		g.removeStationGhost()
 		g.buildMode, g.consTab, g.consStation, g.airportRotation = buildModeAirport, 1, int(m.LastAirport), 0
-		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+		g.wins.Show(g.newPortedConstructionWindow())
 		return
 	}
 	// createDockConstructionWindow: lastSelectedStationType = lastShipPort,
@@ -261,7 +261,7 @@ func (g *Game) openPortConstruction(option int) {
 	// ghost, placing) — next.
 	g.removeStationGhost()
 	g.buildMode, g.consTab, g.consStation = buildModeDock, 1, int(m.LastShipPort)
-	g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+	g.wins.Show(g.newPortedConstructionWindow())
 }
 
 // buildVehiclesMenu is ToolbarTop.cpp buildVehiclesMenuMouseDown (0x0043AD1F):

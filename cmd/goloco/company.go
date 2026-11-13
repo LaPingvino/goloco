@@ -91,8 +91,8 @@ func (g *Game) playerCompanyDropdown(x, y, w, h int) {
 // tab.
 func (g *Game) openCompanyWindow(company int) {
 	g.openCompanyFinances(company)
-	if g.companyFinances != nil {
-		g.companyFinances.SwitchTab(ui.CompanyTabStatus)
+	if w := g.companyWin(company); w != nil {
+		w.SwitchTab(ui.CompanyTabStatus)
 	}
 }
 
@@ -100,19 +100,26 @@ func (g *Game) openCompanyWindow(company int) {
 // its Finances tab (636 × 319, centred: createWindow's placement PARTIAL), the
 // owner's colours.
 func (g *Game) openCompanyFinances(company int) {
+	if cw := g.newCompanyWindow(company); cw != nil {
+		g.wins.Show(cw)
+	}
+}
+
+// newCompanyWindow builds a company's window (WindowType::company, numbered
+// by the company) on its Finances tab; nil: no such company.
+func (g *Game) newCompanyWindow(company int) *ui.CompanyFinancesWindow {
 	if company < 0 || company >= len(g.w.Map.Companies) {
-		return
+		return nil
 	}
 	tc, wc := g.windowColours(true)
 	if company < len(g.w.CompanyColours) { // the company's own colour, as its windows are
 		tc = g.w.CompanyColours[company]
 	}
 	w, h := ui.CompanyFinancesSize[0], ui.CompanyFinancesSize[1]
-	g.companyFinancesID = company
-	g.companyFinances = &ui.CompanyFinancesWindow{X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h, TitleColour: tc, Colour: wc,
+	cw := &ui.CompanyFinancesWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeCompany, Number: company, X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h}, TitleColour: tc, Colour: wc,
 		Tab:   ui.CompanyTabFinances, // openFinances: currentTab = tab_finances
 		Title: g.w.Map.CompanyName(company), Data: g.companyFinancesData(company),
-		OnClose: func() { g.companyFinances = nil }, OnLoan: func(dir, step int) { g.changeLoan(company, dir, step) },
+		OnLoan:   func(dir, step int) { g.changeLoan(company, dir, step) },
 		OnRename: func() { g.renameCompany(company, tc, wc) },
 		OnColour: func(colourType int, primary bool, x, y, w, h int) {
 			g.colourSwatchOpen(company, colourType, primary, x, y, h)
@@ -125,7 +132,6 @@ func (g *Game) openCompanyFinances(company int) {
 				g.w.Map.CompanyFaces[company].ChallengeFlags ^= sim.CompanyFlagAutopayLoan
 			}
 		}}
-	cw := g.companyFinances
 	cw.ScrollToLatest() // openFinances: scrollToLatestData
 	cw.Face, cw.FaceColour = g.companyFace(company)
 	cw.CompanyID, cw.ScreenW, cw.ScreenH = company, g.sw, g.sh
@@ -141,13 +147,16 @@ func (g *Game) openCompanyFinances(company int) {
 		if id == company {
 			return
 		}
-		x, y, tab := cw.X, cw.Y, cw.Tab
-		g.openCompanyFinances(id)
-		if n := g.companyFinances; n != nil {
-			n.X, n.Y = x, y
-			n.SwitchTab(tab)
+		if open := g.companyWin(id); open != nil { // that company's window is open: it comes to the front
+			g.wins.BringToFront(open)
+			return
+		}
+		if n := g.newCompanyWindow(id); n != nil {
+			n.SwitchTab(cw.Tab)
+			g.wins.Replace(cw, n)
 		}
 	}
+	return cw
 }
 
 // changeLoan is Finances' loan_decrease / loan_increase: the loan ∓ £1,000 ×
@@ -331,8 +340,8 @@ func (g *Game) colourSwatchOpen(company, colourType int, primary bool, x, y, h i
 		available &^= m.CompetingColourMask(company)
 	}
 	var colour uint8 = 1
-	if g.companyFinances != nil {
-		colour = g.companyFinances.Colour
+	if w := g.companyWin(company); w != nil {
+		colour = w.Colour
 	}
 	d := ui.NewColourDropdown(x, y, h, available, selected, colour, g.sw, g.sh)
 	d.OnSelect = func(c uint8) {
@@ -357,8 +366,8 @@ func (g *Game) renameCompany(company int, titleColour, colour uint8) {
 				g.openError(i18n.Label(i18n.CannotRenameThisCompany), cmdErrorText(c))
 				return
 			}
-			if g.companyFinances != nil {
-				g.companyFinances.Title = m.CompanyName(company)
+			if w := g.companyWin(company); w != nil {
+				w.Title = m.CompanyName(company)
 			}
 		})
 }
@@ -391,8 +400,8 @@ func (g *Game) openCompanyList() {
 		rows = append(rows, r)
 	}
 	w, h := ui.CompanyListSize[0], ui.CompanyListSize[1]
-	cl := &ui.CompanyListWindow{X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h, TitleColour: tc, Colour: wc, Rows: rows, SortMode: 2, Hover: -1,
-		OnClose: func() { g.companyList = nil }, OnRow: g.openCompanyWindow}
+	cl := &ui.CompanyListWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeCompanyList, X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h}, TitleColour: tc, Colour: wc, Rows: rows, SortMode: 2, Hover: -1,
+		OnRow: g.openCompanyWindow}
 	for i := range cl.Records { // CompanyManager::getRecords()
 		rec := m.CompanyRecords
 		r := ui.SpeedRecord{Speed: int(rec.Speed[i])}
@@ -416,5 +425,5 @@ func (g *Game) openCompanyList() {
 		}
 	}
 	cl.Sort()
-	g.companyList = cl
+	g.wins.Show(cl)
 }

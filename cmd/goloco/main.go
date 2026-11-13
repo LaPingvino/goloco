@@ -120,7 +120,7 @@ func main() {
 // verify connections.
 func (g *Game) openTrackTest() {
 	g.buildMode = buildModeTrack
-	g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+	g.wins.Show(g.newPortedConstructionWindow())
 	mw, mh := g.w.GetMapSize()
 	g.w.SetConstructionHead(mw/2, mh/2)
 	// Straight line so the piece origins fall on a predictable tile row and
@@ -154,7 +154,7 @@ func (g *Game) openTrackTest() {
 // straight pieces and very small curves chained.
 func (g *Game) openRoadTest() {
 	g.buildMode = buildModeRoad
-	g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+	g.wins.Show(g.newPortedConstructionWindow())
 	mw, mh := g.w.GetMapSize()
 	g.w.SetConstructionHead(mw/2, mh/2)
 	for _, id := range []int{0, 2, 0, 1, 0} {

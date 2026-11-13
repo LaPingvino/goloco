@@ -28,7 +28,6 @@ func (g *Game) openOptionsWindow() {
 	if g.audioMgr != nil {
 		w.MusicVolume = g.audioMgr.MusicVolume()
 	}
-	w.OnClose = func() { g.options = nil }
 	w.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
 	// Screen mode: Ebitengine's fullscreen stands for both fullscreen modes
 	// (it has no exclusive mode); windowed leaves it.
@@ -140,7 +139,7 @@ func (g *Game) openOptionsWindow() {
 			g.audioMgr.SetMusicVolume(v)
 		}
 	}
-	g.options = w
+	g.wins.Show(w)
 }
 
 // useCurrency makes dat the loaded currency object: its slot, then

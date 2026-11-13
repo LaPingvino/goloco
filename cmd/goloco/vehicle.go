@@ -20,32 +20,71 @@ import (
 // tab): 265×177 grown to Details' minimum (192×182 for the controlling
 // company's own vehicle, onResize), the window's colours the owner's, its
 // caption the vehicle's name. PARTIAL: createWindow's placement (centred
-// here), bringing an already open window to the front.
+// here).
 func (g *Game) openVehicleDetails(headID uint16) { g.openVehicleWindow(headID, 1) }
 
-// openVehicleWindow opens (or refreshes) the Vehicle window on a tab: 0 Main,
-// 1 Details.
+// openVehicleWindow is the Vehicle window's open on a tab (0 Main, 1 Details,
+// 2 Cargo, 3 Finances, 4 Route): the vehicle's window — there is one per
+// vehicle (WindowType::vehicle, numbered by its head) — comes to the front on
+// that tab (WindowManager::bringToFront(type, number)), or a new one opens.
 func (g *Game) openVehicleWindow(headID uint16, tab int) {
-	// The same vehicle's window refreshed or switching tabs keeps its place
-	// (switchTab only resizes it); a new window is placed afresh.
-	var keep *[2]int
-	if g.vehicleWin != nil && g.routeHead == headID {
-		keep = &[2]int{g.vehicleWin.X, g.vehicleWin.Y}
+	if w := g.newVehicleWindow(headID, tab); w != nil {
+		g.wins.Show(w)
 	}
-	if g.vehicleWin == nil || g.routeHead != headID { // a new window: no order selected (orderTableIndex -1)
-		g.routeSel, g.routeHead = -1, headID
+}
+
+// refreshVehicleWindow rebuilds the vehicle's window, if it is open, from the
+// game's state on a tab (< 0: the one it is on), where it stands.
+func (g *Game) refreshVehicleWindow(headID uint16, tab int) {
+	old := g.vehicleWin(headID)
+	if old == nil {
+		return
 	}
+	if tab < 0 {
+		tab = old.Tab
+	}
+	if w := g.newVehicleWindow(headID, tab); w != nil {
+		g.wins.Refresh(w)
+	}
+}
+
+// routeSelOf is the vehicle window's selected order (orderTableIndex; -1:
+// none, or no window).
+func (g *Game) routeSelOf(headID uint16) int {
+	if w := g.vehicleWin(headID); w != nil {
+		return w.RouteSel
+	}
+	return -1
+}
+
+func (g *Game) setRouteSel(headID uint16, sel int) {
+	if w := g.vehicleWin(headID); w != nil {
+		w.RouteSel = sel
+	}
+}
+
+// vehicleWinColour is the vehicle window's secondary colour, for a dropdown
+// it opens (1 without the window).
+func (g *Game) vehicleWinColour(headID uint16) uint8 {
+	if w := g.vehicleWin(headID); w != nil {
+		return w.Colour
+	}
+	return 1
+}
+
+// newVehicleWindow builds the Vehicle window of a vehicle on a tab from the
+// game's state (nil: no such vehicle). An open window's order selection is
+// kept; a new one has none (orderTableIndex -1).
+func (g *Game) newVehicleWindow(headID uint16, tab int) *ui.VehicleWindow {
 	m := &g.w.Map
 	tr, err := m.TrainOf(headID)
 	if err != nil {
-		return
+		return nil
 	}
+	routeSel := g.routeSelOf(headID)
 	h := m.Entities[tr.Head]
 	company, _ := g.w.ControllingCompany()
 	own := int(h.Owner) == company
-	// Route's onUpdate: its tool is set while the tab shows the company's own
-	// vehicle (and no other tool — the pickup — holds the cursor).
-	g.routeTool = tab == 4 && own && !g.pickupOn
 	title := ""
 	for _, r := range m.VehicleListRows() {
 		if r.HeadID == headID {
@@ -81,22 +120,22 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 	if tab == 2 {
 		ww, wh = max(ui.VehicleWindowSize[0], ui.VehicleCargoMinSize[0]), max(ui.VehicleWindowSize[1], ui.VehicleCargoMinSize[1])
 	}
-	g.vehicleWin = &ui.VehicleWindow{X: (g.sw - ww) / 2, Y: (g.sh - wh) / 2, W: ww, H: wh, TitleColour: tc, Colour: wc,
+	vw := &ui.VehicleWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeVehicle, Number: int(headID), X: (g.sw - ww) / 2, Y: (g.sh - wh) / 2, W: ww, H: wh}, TitleColour: tc, Colour: wc,
 		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
-		State:   ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
-		OnClose: func() { g.vehicleWin, g.pickupOn, g.routeTool = nil, false, false }, OnPickup: func() { g.onPickup(headID) },
+		State:        ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
+		OnPickup:     func() { g.onPickup(headID) },
 		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h), BuildNewImage: g.buildNewImage(&h),
 		OnBuildNew: func(x, y, w, hh int) { g.buildNewOpen(headID, x, y, w, hh) },
-		Route:      g.routeLines(&h), RouteSel: g.routeSel, Hover: -1, Finances: g.vehicleFinances(tr), Cargo: g.vehicleCargo(tr, cars),
-		OnRouteSelect: func(row int) { g.routeSel = row; g.openVehicleWindow(headID, 4) },
-		OnRoute:       func(a string) { g.routeAction(headID, a); g.openVehicleWindow(headID, 4) },
+		Route:      g.routeLines(&h), RouteSel: routeSel, Hover: -1, Finances: g.vehicleFinances(tr), Cargo: g.vehicleCargo(tr, cars),
+		OnRouteSelect: func(row int) { g.setRouteSel(headID, row); g.refreshVehicleWindow(headID, 4) },
+		OnRoute:       func(a string) { g.routeAction(headID, a); g.refreshVehicleWindow(headID, 4) },
 		Express:       m.Entities[tr.Veh1].Var48&sim.Flags48ExpressMode != 0,
 		Tab:           tab, Main: ui.VehicleMainState{Own: own, Manual: h.VehicleFlags&sim.VehicleFlagManualControl != 0,
 			NoCars: len(tr.Cars) == 0, Exhausted: m.Entities[tr.Veh1].Var3C >= 0x3689,
 			AirWaterMoving: (h.Mode == 2 || h.Mode == 3) && h.Status != sim.StatusStopped && h.Status != sim.StatusLoading && h.TileX != -1,
 			Unplaced:       h.TileX == -1, ToolActive: g.pickupOn && g.pickupHead == headID, WaitingAtSignal: h.Status == sim.StatusWaitingAtSignal},
 		StopStartImage:    stopStartImage(h.VehicleFlags),
-		OnTab:             func(t int) { g.openVehicleWindow(headID, t) },
+		OnTab:             func(t int) { g.refreshVehicleWindow(headID, t) },
 		View:              func(w, h int) *gfx8.RenderTarget { return g.w.VehicleView(headID, w, h) },
 		Labels:            func(dst *ebiten.Image) { g.w.VehicleViewLabels(headID, dst) },
 		OnCentreView:      func() { g.centreViewportOpen(headID) },
@@ -108,14 +147,23 @@ func (g *Game) openVehicleWindow(headID uint16, tab int) {
 		OnSpeed:           func(speed int8) { g.speedControl(headID, speed) },
 		ManualPower:       h.ManualPower}
 	if own {
-		g.vehicleWin.OnRename = func() { g.renameVehicle(headID, tc, wc) }
+		vw.OnRename = func() { g.renameVehicle(headID, tc, wc) }
 	}
-	if keep != nil {
-		g.vehicleWin.X, g.vehicleWin.Y = keep[0], keep[1]
+	// Common's onClose: the tool goes with its window (ToolManager::
+	// isToolActive(type, number) → toolCancel) — another vehicle's stays.
+	vw.OnClose = func() {
+		if g.pickupOn && g.pickupHead == headID {
+			g.pickupToolAbort()
+			g.pickupOn = false
+		}
+		if g.routeHead == headID {
+			g.routeTool = false
+		}
 	}
-	g.vehicleWin.OnSell = func() { g.sellVehicle(headID) }
-	g.vehicleWin.OnDropSell = func(row int) { g.dropCar(headID, row, -2) }
-	g.vehicleWin.OnDropMove = func(row, dest int) { g.dropCar(headID, row, dest) }
+	vw.OnSell = func() { g.sellVehicle(headID) }
+	vw.OnDropSell = func(row int) { g.dropCar(headID, row, -2) }
+	vw.OnDropMove = func(row, dest int) { g.dropCar(headID, row, dest) }
+	return vw
 }
 
 // stopStartImage is Main::prepareDraw's: yellow in manual control, red when
@@ -159,9 +207,7 @@ func (g *Game) stopStartOpen(headID uint16, x, y, w, h int) {
 		items[selected].Selected = true
 	}
 	d := ui.NewDropdownMenu(x, y+h, items) // Dropdown::showText below the button
-	if g.vehicleWin != nil {
-		d.Colour = g.vehicleWin.Colour
-	}
+	d.Colour = g.vehicleWinColour(headID)
 	d.Highlighted = 0 // stop → start highlighted, start or manual → stop
 	if selected == 0 {
 		d.Highlighted = 1
@@ -178,9 +224,7 @@ func (g *Game) stopStartOpen(headID uint16, x, y, w, h int) {
 		if _, ok := m.VehicleChangeRunningMode(c, sim.CmdApply, headID, mode); !ok {
 			log.Printf("[Game] can't %s vehicle %d", []string{"stop", "start", "drive"}[item], headID)
 		}
-		if g.vehicleWin != nil {
-			g.openVehicleWindow(headID, g.vehicleWin.Tab)
-		}
+		g.refreshVehicleWindow(headID, -1)
 	}
 	g.dropdown = d
 }
@@ -206,12 +250,13 @@ func (g *Game) pickupImage(h *scenario.VehicleEntity) int {
 // button — move the main view to show the vehicle, or focus it on the vehicle
 // (following it) — and onCentreViewportDropdown.
 func (g *Game) centreViewportOpen(headID uint16) {
-	if g.vehicleWin == nil {
+	vw := g.vehicleWin(headID)
+	if vw == nil {
 		return
 	}
-	x, y, _ := g.vehicleWin.CentreViewButton()
+	x, y, _ := vw.CentreViewButton()
 	d := ui.NewDropdownMenu(x, y, []ui.DropdownItem{{Text: i18n.Label(i18n.DropdownViewportMove)}, {Text: i18n.Label(i18n.DropdownViewportFocus)}})
-	d.Colour = g.vehicleWin.Colour
+	d.Colour = vw.Colour
 	d.OnSelect = func(item int) {
 		if item <= 0 {
 			g.w.CentreOnVehicle(headID) // viewportCentreMain, without locking
@@ -379,9 +424,7 @@ func (g *Game) refitOpen(headID uint16, x, y, w, h int) {
 		return
 	}
 	d := ui.NewDropdownMenu(x, y+h, items)
-	if g.vehicleWin != nil {
-		d.Colour = g.vehicleWin.Colour
-	}
+	d.Colour = g.vehicleWinColour(headID)
 	d.Highlighted = 0
 	d.OnSelect = func(item int) {
 		apply := func() {
@@ -389,9 +432,7 @@ func (g *Game) refitOpen(headID uint16, x, y, w, h int) {
 			if _, ok := m.VehicleRefit(c, sim.CmdApply, headID, ids[item]); !ok {
 				log.Printf("[Game] %s", i18n.Str(i18n.CantRefitVehicle))
 			}
-			if g.vehicleWin != nil {
-				g.openVehicleWindow(headID, 2)
-			}
+			g.refreshVehicleWindow(headID, 2)
 		}
 		if t, err := m.TrainOf(headID); err == nil && m.HasAnyCargo(t) {
 			g.prompt = ui.NewPromptOkCancel(i18n.Str(i18n.ConfirmVehicleComponentRefitCargoWarningTitle),
@@ -415,10 +456,6 @@ func (g *Game) renameVehicle(headID uint16, titleColour, colour uint8) {
 	}
 	h := m.Entities[tr.Head]
 	typ := i18n.Str([]int{i18n.Train, i18n.Bus, i18n.Truck, i18n.Tram, i18n.Aircraft, i18n.Ship}[min(int(h.VehicleType), 5)])
-	tab := 0
-	if g.vehicleWin != nil {
-		tab = g.vehicleWin.Tab
-	}
 	g.textInput = ui.OpenTextInput(ui.FillArgs(i18n.Str(i18n.TitleNameVehicle), typ), ui.FillArgs(i18n.Str(i18n.PromptEnterNewVehicleName), typ),
 		m.VehicleName(h.Name, int(h.OrdinalNumber)), 31, g.sw, g.sh, titleColour, colour, true, func(text string) {
 			if text == "" {
@@ -427,9 +464,7 @@ func (g *Game) renameVehicle(headID uint16, titleColour, colour uint8) {
 			if _, ok := m.VehicleRename(g.playerCmd(), sim.CmdApply, headID, text); !ok {
 				log.Printf("[Game] %s", i18n.Str(i18n.CantRenameThisVehicle))
 			}
-			if g.vehicleWin != nil {
-				g.openVehicleWindow(headID, tab)
-			}
+			g.refreshVehicleWindow(headID, -1)
 		})
 }
 
@@ -447,7 +482,7 @@ func (g *Game) sellVehicle(headID uint16) {
 		return
 	}
 	log.Printf("[Game] sold vehicle %d for %d", headID, -cost)
-	g.vehicleWin, g.pickupOn, g.routeTool = nil, false, false
+	g.wins.CloseType(ui.WindowTypeVehicle, int(headID))
 }
 
 // dropCar is Details::scrollDragEnd for this vehicle's car at row: dest −2
@@ -533,7 +568,7 @@ func (g *Game) speedControl(headID uint16, speed int8) {
 	m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureTrainRunningCosts, func(f uint8) (int32, bool) {
 		return m.VehicleSpeedControl(c, f, headID, speed)
 	})
-	if g.vehicleWin != nil {
-		g.vehicleWin.ManualPower = speed
+	if vw := g.vehicleWin(headID); vw != nil {
+		vw.ManualPower = speed
 	}
 }

@@ -144,8 +144,8 @@ func (g *Game) diagPlayable() {
 		g.w.CentreOnVehicle(h)
 		log.Printf("[Diag] playable: replaced train %d by bought %d (%d cars, %d orders): bought %v placed %v started %v", oh.ID, h, len(cars), len(orders), okBuy, okPlace, okStart)
 		g.openVehicleWindow(h, 0)
-		if g.vehicleWin != nil {
-			g.vehicleWin.X, g.vehicleWin.Y = 8, 40
+		if g.frontVehicleWin() != nil {
+			g.frontVehicleWin().X, g.frontVehicleWin().Y = 8, 40
 		}
 		break
 	}
@@ -167,7 +167,7 @@ func (g *Game) diagDragCar() {
 		m.Entities[tr.Head].VehicleFlags |= sim.VehicleFlagCommandStop
 		g.inTitleScreen = false
 		g.openVehicleWindow(h.ID, 1)
-		w := g.vehicleWin
+		w := g.frontVehicleWin()
 		order := func() []uint16 {
 			t, _ := m.TrainOf(h.ID)
 			var ids []uint16
@@ -215,8 +215,8 @@ func (g *Game) diagSell() {
 		g.openVehicleWindow(nh, 1)
 		cash := m.Companies[h.Owner].Cash
 		if os.Getenv("GOLOCO_DIAG_SELL_OK") != "" {
-			g.vehicleWin.HandleClick(g.vehicleWin.X+g.vehicleWin.W-14, g.vehicleWin.Y+108) // the bin (right bar, 96–119)
-			log.Printf("[Diag] sell: vehicle %d gone %v, window closed %v, cash %d → %d", nh, m.Entities != nil && func() bool { _, err := m.TrainOf(nh); return err != nil }(), g.vehicleWin == nil, cash, m.Companies[h.Owner].Cash)
+			g.frontVehicleWin().HandleClick(g.frontVehicleWin().X+g.frontVehicleWin().W-14, g.frontVehicleWin().Y+108) // the bin (right bar, 96–119)
+			log.Printf("[Diag] sell: vehicle %d gone %v, window closed %v, cash %d → %d", nh, m.Entities != nil && func() bool { _, err := m.TrainOf(nh); return err != nil }(), g.frontVehicleWin() == nil, cash, m.Companies[h.Owner].Cash)
 		} else {
 			log.Printf("[Diag] sell: vehicle %d, Details open", nh)
 		}
@@ -234,7 +234,7 @@ func (g *Game) diagRename() {
 			m.ControllingCompany = h.Owner
 			g.inTitleScreen = false
 			g.openVehicleWindow(h.ID, 3)
-			g.vehicleWin.HandleClick(g.vehicleWin.X+40, g.vehicleWin.Y+6)
+			g.frontVehicleWin().HandleClick(g.frontVehicleWin().X+40, g.frontVehicleWin().Y+6)
 			if g.textInput != nil {
 				g.textInput.Keys([]rune(" Express"), nil, false, false)
 			}
@@ -243,7 +243,7 @@ func (g *Game) diagRename() {
 				g.textInput.Keys(nil, nil, true, false)
 				g.textInput = nil
 				nh := m.Entities[tr.Head]
-				log.Printf("[Diag] rename: now %q, window %q", m.VehicleName(nh.Name, int(nh.OrdinalNumber)), g.vehicleWin.Title)
+				log.Printf("[Diag] rename: now %q, window %q", m.VehicleName(nh.Name, int(nh.OrdinalNumber)), g.frontVehicleWin().Title)
 			}
 			break
 		}
@@ -273,8 +273,8 @@ func (g *Game) diagRefit() {
 			}
 			g.inTitleScreen = false
 			g.openVehicleWindow(nh, 2)
-			x, y := g.vehicleWin.X+g.vehicleWin.W-14, g.vehicleWin.Y+56 // the refit button (right bar, 44–67)
-			g.vehicleWin.HandleClick(x, y)
+			x, y := g.frontVehicleWin().X+g.frontVehicleWin().W-14, g.frontVehicleWin().Y+56 // the refit button (right bar, 44–67)
+			g.frontVehicleWin().HandleClick(x, y)
 			log.Printf("[Diag] refit: vehicle %d (%s), dropdown %v", nh, ob.DisplayName, g.dropdown != nil)
 			break
 		}
@@ -297,7 +297,7 @@ func (g *Game) diagVehicleTab(v string) {
 		if h.VehicleType == 0 && m.Entities[tr.Veh1].LastIncome.Day != -1 && (v == "finances" || loaded && len(tr.Cars) > 2) {
 			g.inTitleScreen = false
 			g.openVehicleWindow(h.ID, map[string]int{"finances": 3, "cargo": 2}[v])
-			g.vehicleWin.MouseOver(g.vehicleWin.X+60, g.vehicleWin.Y+44+1+22+11) // the second row hovered
+			g.frontVehicleWin().MouseOver(g.frontVehicleWin().X+60, g.frontVehicleWin().Y+44+1+22+11) // the second row hovered
 			log.Printf("[Diag] %s: vehicle %d", v, h.ID)
 			break
 		}
@@ -337,7 +337,7 @@ func (g *Game) diagRouteAdd(v string) {
 					}
 				}
 			}
-			for _, l := range g.vehicleWin.Route {
+			for _, l := range g.frontVehicleWin().Route {
 				log.Printf("[Diag] route after the click: %q", l.Text)
 			}
 			break
@@ -377,11 +377,11 @@ func (g *Game) diagPlaneGhost() {
 			log.Printf("[Diag] planeghost: buying aircraft %d refused", planeObj)
 		} else {
 			g.openVehicleWindow(head, 1)
-			if x, y, ok := g.vehicleWin.PickupButton(); ok {
-				g.vehicleWin.HandleClick(x, y)
+			if x, y, ok := g.frontVehicleWin().PickupButton(); ok {
+				g.frontVehicleWin().HandleClick(x, y)
 			}
-			if g.vehicleWin != nil {
-				g.vehicleWin.X, g.vehicleWin.Y = 4, 40
+			if g.frontVehicleWin() != nil {
+				g.frontVehicleWin().X, g.frontVehicleWin().Y = 4, 40
 			}
 			for r := 0; r < 200 && !m.VehicleIsGhost(head); r += 4 {
 				for _, o := range [][2]int{{r, r / 2}, {-r, r / 2}, {r, -r / 2}, {-r, -r / 2}, {0, r}, {0, -r}} {
@@ -544,11 +544,11 @@ func (g *Game) diagShipGhost() {
 				log.Printf("[Diag] shipghost: buying ship %d refused", shipObj)
 			} else {
 				g.openVehicleWindow(head, 1)
-				if x, y, ok := g.vehicleWin.PickupButton(); ok {
-					g.vehicleWin.HandleClick(x, y)
+				if x, y, ok := g.frontVehicleWin().PickupButton(); ok {
+					g.frontVehicleWin().HandleClick(x, y)
 				}
-				if g.vehicleWin != nil { // out of the way of the dock at the centre (the click re-opened it centred)
-					g.vehicleWin.X, g.vehicleWin.Y = 4, 40
+				if g.frontVehicleWin() != nil { // out of the way of the dock at the centre (the click re-opened it centred)
+					g.frontVehicleWin().X, g.frontVehicleWin().Y = 4, 40
 				}
 				for r := 0; r < 120 && !m.VehicleIsGhost(head); r += 4 {
 					for _, o := range [][2]int{{r, r / 2}, {-r, r / 2}, {r, -r / 2}, {-r, -r / 2}, {0, r}, {0, -r}} {
@@ -592,9 +592,9 @@ func (g *Game) diagRoadGhost() {
 		g.inTitleScreen = false // windows draw over the title world
 		g.w.CenterOn(fmt.Sprintf("tile:%d,%d", v2.TileX/32, v2.TileY/32))
 		g.openVehicleWindow(h.ID, 1)
-		g.vehicleWin.X, g.vehicleWin.Y = 8, 40 // out of the way of the road at the centre
-		if x, y, ok := g.vehicleWin.PickupButton(); ok {
-			g.vehicleWin.HandleClick(x, y)
+		g.frontVehicleWin().X, g.frontVehicleWin().Y = 8, 40 // out of the way of the road at the centre
+		if x, y, ok := g.frontVehicleWin().PickupButton(); ok {
+			g.frontVehicleWin().HandleClick(x, y)
 		}
 		log.Printf("[Diag] road vehicle %d of company %d lifted at tile %d,%d; pickup tool on: %v", h.ID, h.Owner, v2.TileX/32, v2.TileY/32, g.pickupOn)
 		for d := 0; d < 200 && g.pickupOn && !m.VehicleIsGhost(h.ID); d += 4 { // outward from the centre
@@ -626,11 +626,11 @@ func (g *Game) diagExpress() {
 			m.ControllingCompany = h.Owner // DIAGNOSTIC ONLY: play as its owner
 			g.inTitleScreen = false        // DIAGNOSTIC ONLY: draw windows over the title world (it stops cycling maps)
 			g.openVehicleWindow(h.ID, 4)
-			log.Printf("[Diag] train %d express before: %v", h.ID, g.vehicleWin.Express)
-			lw := ui.VehicleRouteLayout(g.vehicleWin.W, g.vehicleWin.H, g.vehicleWin.State.HiddenTabs, false)
+			log.Printf("[Diag] train %d express before: %v", h.ID, g.frontVehicleWin().Express)
+			lw := ui.VehicleRouteLayout(g.frontVehicleWin().W, g.frontVehicleWin().H, g.frontVehicleWin().State.HiddenTabs, false)
 			e := lw[ui.VrExpressMode]
-			g.vehicleWin.HandleClick(g.vehicleWin.X+(e.L+e.R)/2, g.vehicleWin.Y+(e.T+e.B)/2)
-			log.Printf("[Diag] train %d express after the click: %v (veh1 var_48 %#x)", h.ID, g.vehicleWin.Express, m.Entities[tr.Veh1].Var48)
+			g.frontVehicleWin().HandleClick(g.frontVehicleWin().X+(e.L+e.R)/2, g.frontVehicleWin().Y+(e.T+e.B)/2)
+			log.Printf("[Diag] train %d express after the click: %v (veh1 var_48 %#x)", h.ID, g.frontVehicleWin().Express, m.Entities[tr.Veh1].Var48)
 			break
 		}
 	}
@@ -644,16 +644,16 @@ func (g *Game) diagRoute() {
 	for _, tr := range trains {
 		if h := m.Entities[tr.Head]; h.TileX != -1 && h.SizeOfOrderTable > 1 {
 			g.openVehicleWindow(h.ID, 4)
-			for _, l := range g.vehicleWin.Route {
+			for _, l := range g.frontVehicleWin().Route {
 				log.Printf("[Diag] route of %d: %q current %v", h.ID, l.Text, l.Current)
 			}
-			if g.vehicleWin.OnRouteSelect != nil { // select the first order, move it down
-				g.vehicleWin.OnRouteSelect(0)
-				g.vehicleWin.OnRoute("down")
-				for _, l := range g.vehicleWin.Route {
+			if g.frontVehicleWin().OnRouteSelect != nil { // select the first order, move it down
+				g.frontVehicleWin().OnRouteSelect(0)
+				g.frontVehicleWin().OnRoute("down")
+				for _, l := range g.frontVehicleWin().Route {
 					log.Printf("[Diag] after down: %q", l.Text)
 				}
-				log.Printf("[Diag] selection now row %d", g.routeSel)
+				log.Printf("[Diag] selection now row %d", g.frontVehicleWin().RouteSel)
 			}
 			break
 		}
@@ -664,13 +664,13 @@ func (g *Game) diagRoute() {
 // train, then the Vehicle window's Main tab (clicked)
 func (g *Game) diagVehicleMain() {
 	g.openBuildVehicle(0)
-	if w := g.buildVehicle; w != nil {
+	if w := g.buildVehicleWin(); w != nil {
 		w.HandleClick(w.X+3+1+5, w.Y+102+1+5)
 	}
-	g.buildVehicle = nil
-	if vw := g.vehicleWin; vw != nil {
+	g.wins.CloseType(ui.WindowTypeBuildVehicle, ui.AnyNumber)
+	if vw := g.frontVehicleWin(); vw != nil {
 		vw.HandleClick(vw.X+3+15, vw.Y+15+13) // the Main tab
-		log.Printf("[Diag] vehicle window tab %d, flag image %d", g.vehicleWin.Tab, g.vehicleWin.StopStartImage)
+		log.Printf("[Diag] vehicle window tab %d, flag image %d", g.frontVehicleWin().Tab, g.frontVehicleWin().StopStartImage)
 	}
 }
 
@@ -697,19 +697,19 @@ func (g *Game) diagBuyPlace(v string) {
 		}
 	}
 	g.openBuildVehicle(0)
-	if w := g.buildVehicle; w != nil {
+	if w := g.buildVehicleWin(); w != nil {
 		w.HandleClick(w.X+3+1+5, w.Y+102+1+5)
 	}
-	if v == "place" && g.vehicleWin != nil { // then the pickup button, and the first track under a 16-px grid
-		g.buildVehicle = nil
-		if x, y, ok := g.vehicleWin.PickupButton(); ok {
-			g.vehicleWin.HandleClick(x, y)
+	if v == "place" && g.frontVehicleWin() != nil { // then the pickup button, and the first track under a 16-px grid
+		g.wins.CloseType(ui.WindowTypeBuildVehicle, ui.AnyNumber)
+		if x, y, ok := g.frontVehicleWin().PickupButton(); ok {
+			g.frontVehicleWin().HandleClick(x, y)
 		}
 		log.Printf("[Diag] pickup tool on: %v", g.pickupOn)
 		placed := false
 		for sy := 40; sy < g.sh-40 && !placed && g.pickupOn; sy += 16 {
 			for sx := 16; sx < g.sw-16 && !placed; sx += 16 {
-				if g.vehicleWin.Contains(sx, sy) {
+				if g.frontVehicleWin().Contains(sx, sy) {
 					continue
 				}
 				if p, ok := g.w.RailPlacementAt(g.pickupHead, sx, sy); ok && !g.diagLogged {
@@ -728,20 +728,20 @@ func (g *Game) diagBuyPlace(v string) {
 				ghost := g.w.Map.VehicleIsGhost(g.pickupHead)
 				if placed = g.pickupToolDown(sx, sy); placed {
 					log.Printf("[Diag] placed at screen %d,%d (a ghost there before the click: %v; still a ghost: %v); tool on: %v, window placed: %v",
-						sx, sy, ghost, g.w.Map.VehicleIsGhost(g.pickupHead), g.pickupOn, g.vehicleWin.State.Placed)
-					if x, y, ok := g.vehicleWin.StopStartButton(); ok { // then Main's stop / start → Start
-						flag := g.vehicleWin.StopStartImage
-						g.vehicleWin.HandleClick(x, y)
+						sx, sy, ghost, g.w.Map.VehicleIsGhost(g.pickupHead), g.pickupOn, g.frontVehicleWin().State.Placed)
+					if x, y, ok := g.frontVehicleWin().StopStartButton(); ok { // then Main's stop / start → Start
+						flag := g.frontVehicleWin().StopStartImage
+						g.frontVehicleWin().HandleClick(x, y)
 						if g.dropdown != nil && g.dropdown.OnSelect != nil {
 							g.dropdown.OnSelect(1)
 							g.dropdown = nil
 						}
 						tr, _ := g.w.Map.TrainOf(g.pickupHead)
-						log.Printf("[Diag] Main tab %v; stop / start: flag %d → %d, commandStop now %v", g.vehicleWin.Tab == 0, flag, g.vehicleWin.StopStartImage,
+						log.Printf("[Diag] Main tab %v; stop / start: flag %d → %d, commandStop now %v", g.frontVehicleWin().Tab == 0, flag, g.frontVehicleWin().StopStartImage,
 							g.w.Map.Entities[tr.Head].VehicleFlags&sim.VehicleFlagCommandStop != 0)
-						if x, y, ok := g.vehicleWin.CentreViewButton(); ok { // then centre view → focus
+						if x, y, ok := g.frontVehicleWin().CentreViewButton(); ok { // then centre view → focus
 							bx, by := g.tileUnderCursor(g.sw/2, g.sh/2)
-							g.vehicleWin.HandleClick(x+12, y-12)
+							g.frontVehicleWin().HandleClick(x+12, y-12)
 							if g.dropdown != nil && g.dropdown.OnSelect != nil {
 								g.dropdown.OnSelect(1)
 								g.dropdown = nil

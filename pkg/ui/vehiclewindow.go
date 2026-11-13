@@ -311,7 +311,7 @@ var vehicleRowHeights = [6]int{22, 22, 22, 22, 22, 22}
 // brush), the three text lines (power / weight, speed / reliability,
 // length), hover and drag, the scroll bar's input, createWindow's placement.
 type VehicleWindow struct {
-	X, Y, W, H          int
+	WinBase
 	TitleColour, Colour uint8
 	Title               string
 	VehicleType         int
@@ -320,16 +320,10 @@ type VehicleWindow struct {
 	Names               []string // each car's vehicle object name
 	Scroll              int
 	hold                L.VScrollHold // a press on the car list\'s scrollbar held (stateScrollLeft)
-	OnClose             func()
-	OnPickup            func() // Common::onPickup: lift the vehicle, or take the placing tool
-	PickupActive        bool   // the placing tool is this window's (the button shown pressed)
-	PickupImage         int    // getPickupImageIdandTooltip's image (0: none)
-	BuildNewImage       int    // Details' buildNew: skin + build_additional_<type> (0: none)
-	// Positioning: the window follows the pointer (MouseInput's
-	// positioningWindow state, begun on the caption).
-	Positioning        bool
-	posLastX, posLastY int
-	posMoved           bool
+	OnPickup            func()        // Common::onPickup: lift the vehicle, or take the placing tool
+	PickupActive        bool          // the placing tool is this window's (the button shown pressed)
+	PickupImage         int           // getPickupImageIdandTooltip's image (0: none)
+	BuildNewImage       int           // Details' buildNew: skin + build_additional_<type> (0: none)
 	// OnBuildNew is Details::onMouseDown(buildNew): the button's screen rect,
 	// for its dropdown (Modify vehicle / Clone vehicle).
 	OnBuildNew     func(x, y, w, h int)
@@ -654,10 +648,6 @@ func (w *VehicleWindow) StopStartButton() (x, y int, ok bool) {
 }
 
 // Contains reports whether the point is on the window.
-func (w *VehicleWindow) Contains(x, y int) bool {
-	return x >= w.X && x < w.X+w.W && y >= w.Y && y < w.Y+w.H
-}
-
 // HandleClick is Details::onMouseUp: the close button, the pickup button
 // (unless hidden or disabled). PARTIAL: the other tabs and buttons.
 //
@@ -665,11 +655,14 @@ func (w *VehicleWindow) Contains(x, y int) bool {
 // clickable-partial(Vehicle.cpp): pickup
 func (w *VehicleWindow) HandleClick(x, y int) {
 	// The caption (1, 1)–(width − 2, 13) left of the close button, on every
-	// tab: a press starts moving the window (windowPositionBegin); released
-	// without having moved it, it is the caption's click — renameVehicle
-	// (setCaptionEnableState: the controlling company's only); see PositionEnd.
+	// tab: a press starts moving the window (the stack's windowPositionBegin);
+	// released without having moved it, it is the caption's click, which
+	// arrives here — renameVehicle (setCaptionEnableState: the controlling
+	// company's only).
 	if x >= w.X+1 && x <= w.X+w.W-16 && y >= w.Y+1 && y <= w.Y+13 {
-		w.Positioning, w.posLastX, w.posLastY, w.posMoved = true, x, y, false
+		if w.OnRename != nil {
+			w.OnRename()
+		}
 		return
 	}
 	in := func(c BVWidget) bool {
@@ -683,8 +676,8 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			action[vrLocalMode], action[vrExpressMode] = "local", "express"
 		}
 		switch {
-		case in(lw[vwClose]) && w.OnClose != nil:
-			w.OnClose()
+		case in(lw[vwClose]):
+			w.Close()
 		case in(lw[vwTabMain]) && w.OnTab != nil:
 			w.OnTab(0)
 		case in(lw[vwTabDetails]) && w.OnTab != nil:
@@ -717,8 +710,8 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 		lw := VehicleMainLayout(w.W, w.H, w.Main)
 		dis := VehicleMainDisabled(w.Main)
 		switch {
-		case in(lw[vwClose]) && w.OnClose != nil:
-			w.OnClose()
+		case in(lw[vwClose]):
+			w.Close()
 		case in(lw[vwTabDetails]) && w.OnTab != nil:
 			w.OnTab(1)
 		case in(lw[vwTabRoute]) && w.OnTab != nil:
@@ -760,8 +753,8 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			w.OnRefit(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
 			return
 		}
-		if in(lw[vwClose]) && w.OnClose != nil {
-			w.OnClose()
+		if in(lw[vwClose]) {
+			w.Close()
 		}
 		return
 	}
@@ -773,15 +766,15 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 				return
 			}
 		}
-		if in(lw[vwClose]) && w.OnClose != nil {
-			w.OnClose()
+		if in(lw[vwClose]) {
+			w.Close()
 		}
 		return
 	}
 	lw, pickupDisabled := VehicleDetailsLayout(w.W, w.H, w.State)
 	switch {
-	case in(lw[vwClose]) && w.OnClose != nil:
-		w.OnClose()
+	case in(lw[vwClose]):
+		w.Close()
 	case in(lw[vwTabMain]) && w.OnTab != nil:
 		w.OnTab(0)
 	case in(lw[vwTabRoute]) && w.OnTab != nil:
@@ -924,29 +917,6 @@ func (w *VehicleWindow) MouseOver(x, y int) {
 		return
 	}
 	w.Hover = w.carRowAt(sy, rowH)
-}
-
-// PositionMove is statePositioningWindow while the button is held: the
-// pointer's y clamped to 29 … screen height − 29, the window moved by the
-// pointer's travel since the last frame.
-func (w *VehicleWindow) PositionMove(x, y, screenH int) {
-	y = min(max(y, 29), screenH-29)
-	if dx, dy := x-w.posLastX, y-w.posLastY; dx != 0 || dy != 0 {
-		w.X += dx
-		w.Y += dy
-		w.posMoved = true
-	}
-	w.posLastX, w.posLastY = x, y
-}
-
-// PositionEnd is its leftReleased: the last move, then, if the window never
-// moved, the caption's mouse-up (rename).
-func (w *VehicleWindow) PositionEnd(x, y, screenH int) {
-	w.PositionMove(x, y, screenH)
-	w.Positioning = false
-	if !w.posMoved && w.OnRename != nil {
-		w.OnRename()
-	}
 }
 
 // barList is the current tab's scrolled list and its content height:

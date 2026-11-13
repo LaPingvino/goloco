@@ -117,20 +117,7 @@ func (g *Game) drawWorld(screen *ebiten.Image) {
 // drawTitleScreen draws the title menu and the windows that open over it.
 func (g *Game) drawTitleScreen(screen *ebiten.Image) {
 	g.drawTitleMenu(screen)
-	g.windowMgr.Draw(screen, g.r) // allow windows (e.g. Load Game) on title screen
-	g.windowMgr.MarkForeign()
-	if g.scenarioSelect != nil {
-		g.scenarioSelect.Draw(screen)
-	}
-	if g.browse != nil {
-		g.browse.Draw(screen)
-	}
-	if g.options != nil {
-		g.options.Draw(screen)
-	}
-	if g.townList != nil {
-		g.townList.Draw(screen)
-	}
+	g.drawWindows(screen)                        // the windows opened from the menu
 	if g.dropdown != nil && g.dropdown.Visible { // a window's dropdown, on top
 		g.dropdown.Draw(screen)
 	}
@@ -139,7 +126,7 @@ func (g *Game) drawTitleScreen(screen *ebiten.Image) {
 	}
 	// A title button's tooltip (ToolTip.cpp), when no window is over it.
 	// PARTIAL: shown at once, as goloco's other tooltips (upstream waits).
-	if g.titleTip != "" && g.options == nil && g.browse == nil && g.scenarioSelect == nil && g.prompt == nil &&
+	if g.titleTip != "" && len(g.wins.Windows) == 0 && g.prompt == nil &&
 		(g.dropdown == nil || !g.dropdown.Visible) {
 		var c uint8
 		if sk := g.skin(); sk != nil {
@@ -150,8 +137,8 @@ func (g *Game) drawTitleScreen(screen *ebiten.Image) {
 	g.drawInlineDiag(screen)
 }
 
-// drawGameWindows draws the toolbar and the game's windows, bottom to top
-// (gameClick tests them in the reverse order), the menus and modals last.
+// drawGameWindows draws the toolbar and the game's windows, back to front
+// (the stack's order), the menus and modals last.
 func (g *Game) drawGameWindows(screen *ebiten.Image) {
 	m := &g.w.Map // the button faces: the last track and road options, in the player's colour
 	ctrl, _ := g.w.ControllingCompany()
@@ -160,68 +147,7 @@ func (g *Game) drawGameWindows(screen *ebiten.Image) {
 	g.toolbar.CompanyColour = g.companyColours(ctrl).Main[0]
 	g.toolbar.Draw(screen, g.r)
 	ui.MarkForeign(image.Rect(g.toolbar.X, g.toolbar.Y, g.toolbar.X+g.toolbar.Width, g.toolbar.Y+g.toolbar.Height))
-	g.windowMgr.Draw(screen, g.r)
-	g.windowMgr.MarkForeign()
-	if g.scenarioSelect != nil {
-		g.scenarioSelect.Draw(screen)
-	}
-	if g.browse != nil {
-		g.browse.Draw(screen)
-	}
-	if g.options != nil {
-		g.options.Draw(screen)
-	}
-	if g.buildVehicle != nil {
-		g.buildVehicle.Draw(screen)
-	}
-	if g.vehicleWin != nil { // opened after the Build window: on top (PARTIAL: the window stack's real order)
-		if tr, err := g.w.Map.TrainOf(g.routeHead); err == nil { // the owner's colour, as each draw sets it
-			if o := int(g.w.Map.Entities[tr.Head].Owner); o < len(g.w.CompanyColours) {
-				g.vehicleWin.TitleColour = g.w.CompanyColours[o]
-			}
-		}
-		g.vehicleWin.FrameNo = g.windowFrame
-		if sk := g.skin(); sk != nil {
-			g.vehicleWin.SkinImage = int(sk.ImageOffset)
-		}
-		g.vehicleWin.Draw(screen)
-		g.vehicleWin.DrawDrag(screen) // DragVehiclePart: stickToFront
-	}
-	if g.townList != nil {
-		g.townList.Draw(screen)
-	}
-	if g.stationWin != nil {
-		g.stationWin.FrameNo = g.windowFrame
-		g.stationWin.Draw(screen)
-	}
-	if g.viewWin != nil {
-		g.viewWin.Draw(screen)
-	}
-	if g.companyList != nil {
-		g.companyList.FrameNo = g.windowFrame
-		g.companyList.CurrentMonths = int(g.w.Map.CurrentYear)*12 + int(g.w.Map.CurrentMonth)
-		if sk := g.skin(); sk != nil {
-			g.companyList.SkinImage = int(sk.ImageOffset)
-		}
-		g.companyList.Draw(screen)
-	}
-	if g.companyFinances != nil { // the latest opened over the others (PARTIAL: the window stack's real order)
-		g.companyFinances.Data = g.companyFinancesData(g.companyFinancesID) // the figures as they change
-		g.companyFinances.Title = g.w.Map.CompanyName(g.companyFinancesID)  // the caption's company->name
-		if id := g.companyFinancesID; id >= 0 && id < len(g.w.CompanyColours) {
-			g.companyFinances.TitleColour = g.w.CompanyColours[id] // WindowManager's draw: an owned window's primary is its company's colour
-		}
-		g.companyFinances.CargoLines = g.companyCargoLines(g.companyFinancesID)
-		g.companyFinances.Challenge = g.companyChallenge(g.companyFinancesID)
-		g.companyFinances.Status = g.companyStatus(g.companyFinancesID)
-		g.companyFinances.Details = g.companyDetails(g.companyFinancesID)
-		g.companyFinances.Colours = g.companyColours(g.companyFinancesID)
-		g.companyFinances.FrameNo = g.windowFrame
-		if sk := g.skin(); sk != nil {
-			g.companyFinances.SkinImage = int(sk.ImageOffset)
-		}
-		g.companyFinances.Draw(screen)
-	}
+	g.drawWindows(screen)
 
 	// Draw dropdown menu on top of everything else
 	if g.dropdown != nil && g.dropdown.Visible {

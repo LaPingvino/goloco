@@ -66,7 +66,7 @@ var (
 
 // OptionsWindow is the window state.
 type OptionsWindow struct {
-	X, Y         int
+	WinBase
 	TitleColour  uint8
 	Colour       uint8
 	TitleMusic   bool
@@ -81,7 +81,6 @@ type OptionsWindow struct {
 	Scale      float64
 	OnScale    func(float64)
 	OnMusicVol func(float64)
-	OnClose    func()
 
 	// Tab is the current tab (Common::tab); the window takes that tab's size.
 	Tab int
@@ -168,7 +167,7 @@ func (w *OptionsWindow) size() (int, int) { s := optTabSize[w.Tab]; return s[0],
 
 // NewOptions opens the window centred (createWindowCentred).
 func NewOptions(sw, sh int, titleColour, colour uint8) *OptionsWindow {
-	return &OptionsWindow{X: (sw - optW) / 2, Y: (sh - optH) / 2, TitleColour: titleColour, Colour: colour, Tab: OptTabAudio,
+	return &OptionsWindow{WinBase: WinBase{WinType: WindowTypeOptions, X: (sw - optW) / 2, Y: (sh - optH) / 2, W: optW, H: optH}, TitleColour: titleColour, Colour: colour, Tab: OptTabAudio,
 		VehiclesMinScale: 2, StationNamesMinScale: 2}
 }
 
@@ -176,11 +175,8 @@ func (w *OptionsWindow) in(r [4]int, px, py int) bool {
 	return px >= w.X+r[0] && px < w.X+r[0]+r[2] && py >= w.Y+r[1] && py < w.Y+r[1]+r[3]
 }
 
-// Contains reports whether the point is on the window.
-func (w *OptionsWindow) Contains(px, py int) bool {
-	ww, wh := w.size()
-	return w.in([4]int{0, 0, ww, wh}, px, py)
-}
+// PrepareDraw is each tab's onResize: setSize(kWindowSize).
+func (w *OptionsWindow) PrepareDraw() { w.W, w.H = w.size() }
 
 func optSliderRow(i int) (lx, sx, y int) {
 	y = optVolOff + 16 + 26*(i/2)
@@ -194,9 +190,7 @@ func optSliderRow(i int) (lx, sx, y int) {
 func (w *OptionsWindow) HandleClick(px, py int) {
 	ww, _ := w.size()
 	if w.in([4]int{ww - 15, 2, 13, 13}, px, py) {
-		if w.OnClose != nil {
-			w.OnClose()
-		}
+		w.Close()
 		return
 	}
 	for i := range 7 {

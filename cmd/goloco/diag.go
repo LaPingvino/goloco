@@ -106,7 +106,7 @@ func abs(v int) int {
 // diagOpenWindows runs the GOLOCO_DIAG_* switches that open a window or set a
 // situation up, each once, after a frame is drawn (the next frame shows it).
 func (g *Game) diagOpenWindows() {
-	if os.Getenv("GOLOCO_DIAG_TOWNS") != "" && g.townList == nil && !g.diagTownsDone {
+	if os.Getenv("GOLOCO_DIAG_TOWNS") != "" && g.frontListWin() == nil && !g.diagTownsDone {
 		g.diagTownsDone = true
 		if d := os.Getenv("GOLOCO_DIAG_TOWNS"); d == "stations" {
 			g.openStationsWindow()
@@ -115,10 +115,10 @@ func (g *Game) diagOpenWindows() {
 		} else {
 			g.openTownsWindow()
 		}
-		g.townList.Hover = 2
+		g.frontListWin().Hover = 2
 		if d := os.Getenv("GOLOCO_DIAG_TOWNS"); d == "scrolled" { // a click on the track below the thumb
-			l := g.townList.List
-			g.townList.HandleClick(g.townList.X+l[0]+l[2]-6, g.townList.Y+l[1]+l[3]-20)
+			l := g.frontListWin().List
+			g.frontListWin().HandleClick(g.frontListWin().X+l[0]+l[2]-6, g.frontListWin().Y+l[1]+l[3]-20)
 		}
 	}
 	if d := os.Getenv("GOLOCO_DIAG_CONSTRUCTION"); (d == "window" || d == "road" || d == "extend" || d == "signal" || d == "overhead" || d == "station" || d == "sigdrop" || d == "bridgedrop") && !g.diagConsDone {
@@ -164,7 +164,7 @@ func (g *Game) diagOpenWindows() {
 				g.consCycleType(1)
 			}
 		}
-		g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+		g.wins.Show(g.newPortedConstructionWindow())
 	}
 	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && (!diagNeedsScene[v] || g.w.SceneReady()) &&
 		(v != "cash" || !g.inTitleScreen) { // cash: once a game runs (a scenario loaded by the script resets the company)
@@ -174,8 +174,8 @@ func (g *Game) diagOpenWindows() {
 	if os.Getenv("GOLOCO_DIAG_VEHLIST") != "" && !g.vehDiagDone { // the vehicle list (trains of their first owner)
 		g.vehDiagDone = true
 		g.openVehicleList(0)
-		if os.Getenv("GOLOCO_DIAG_VEHLIST") == "cargo" && g.townList != nil { // transporting cargo, the cargo dropdown open
-			w := g.townList
+		if os.Getenv("GOLOCO_DIAG_VEHLIST") == "cargo" && g.frontListWin() != nil { // transporting cargo, the cargo dropdown open
+			w := g.frontListWin()
 			w.HandleClick(w.X+270, w.Y+205)
 			if g.dropdown != nil && g.dropdown.OnSelect != nil {
 				g.dropdown.OnSelect(1)
@@ -183,15 +183,15 @@ func (g *Game) diagOpenWindows() {
 			}
 			w.HandleClick(w.X+400, w.Y+205)
 		}
-		if os.Getenv("GOLOCO_DIAG_VEHLIST") == "company" && g.townList != nil { // the company select dropdown open
-			w := g.townList
+		if os.Getenv("GOLOCO_DIAG_VEHLIST") == "company" && g.frontListWin() != nil { // the company select dropdown open
+			w := g.frontListWin()
 			w.HandleClick(w.X+w.W-20, w.Y+20)
 		}
 	}
-	if os.Getenv("GOLOCO_DIAG_OPTIONS") != "" && g.options == nil && !g.diagOptionsDone {
+	if os.Getenv("GOLOCO_DIAG_OPTIONS") != "" && g.optionsWin() == nil && !g.diagOptionsDone {
 		g.diagOptionsDone = true
 		g.openOptionsWindow()
-		o := g.options
+		o := g.optionsWin()
 		switch os.Getenv("GOLOCO_DIAG_OPTIONS") {
 		case "controls":
 			o.Tab = ui.OptTabControls
@@ -202,7 +202,7 @@ func (g *Game) diagOpenWindows() {
 			ui.FrameStyle = 1 // the Rendering tab with solid frames
 			o.Tab = ui.OptTabRendering
 		case "prompt": // the replace-file confirmation
-			g.options = nil
+			g.wins.CloseType(ui.WindowTypeOptions, ui.AnyNumber)
 			g.prompt = ui.NewPromptOkCancel("Save Game", "Replace existing file: “Bottleneck Blues”?", "Replace", g.sw, g.sh, nil)
 		case "renderscale":
 			o.Tab = ui.OptTabRendering // and a click on Vehicles min. display scale
@@ -247,18 +247,18 @@ func (g *Game) diagOpenWindows() {
 			o.Tab = ui.OptTabMisc
 		}
 	}
-	if os.Getenv("GOLOCO_DIAG_BROWSE") != "" && g.browse == nil && !g.diagBrowseDone {
+	if os.Getenv("GOLOCO_DIAG_BROWSE") != "" && g.browseWin() == nil && !g.diagBrowseDone {
 		g.diagBrowseDone = true
 		if os.Getenv("GOLOCO_DIAG_BROWSE") == "preview" { // a synthetic saved-game preview on the first file
 			g.openLoadGameWindow()
-			if g.browse != nil {
+			if g.browseWin() != nil {
 				img := make([]byte, 250*200)
 				for i := range img {
 					img[i] = byte(10 + (i%250)/25*10 + (i/250)/50) // bands of palette colours
 				}
-				g.browse.Preview = &scenario.SaveDetails{Company: "Joop's Railways", Owner: "Joop", Date: 55000, ChallengeProgress: 42, Image: img}
-				g.browse.ChangeDir(filepath.Join(g.browse.Dir, "Scenarios"))
-				g.browse.SelectFirstFile()
+				g.browseWin().Preview = &scenario.SaveDetails{Company: "Joop's Railways", Owner: "Joop", Date: 55000, ChallengeProgress: 42, Image: img}
+				g.browseWin().ChangeDir(filepath.Join(g.browseWin().Dir, "Scenarios"))
+				g.browseWin().SelectFirstFile()
 			}
 		} else if os.Getenv("GOLOCO_DIAG_BROWSE") == "save" {
 			g.openSaveWindow()
@@ -266,15 +266,15 @@ func (g *Game) diagOpenWindows() {
 			g.openLoadGameWindow()
 		}
 	}
-	if os.Getenv("GOLOCO_DIAG_NEWGAME") != "" && g.scenarioSelect == nil && !g.diagNewGameDone {
+	if os.Getenv("GOLOCO_DIAG_NEWGAME") != "" && g.scenarioWin() == nil && !g.diagNewGameDone {
 		// Diagnostic: open the ScenarioSelect window with its first scenario selected.
 		g.diagNewGameDone = true
 		g.openNewGameWindow()
-		g.scenarioSelect.SelectFirst()
+		g.scenarioWin().SelectFirst()
 		if os.Getenv("GOLOCO_DIAG_NEWGAME") == "many" {
-			g.scenarioSelect.DiagRepeat(3)
-			g.scenarioSelect.Tab = 3
-			g.scenarioSelect.HandleWheel(-4)
+			g.scenarioWin().DiagRepeat(3)
+			g.scenarioWin().Tab = 3
+			g.scenarioWin().HandleWheel(-4)
 		}
 	}
 }

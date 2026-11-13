@@ -32,20 +32,20 @@ type tooltipState struct {
 // toolbar's buttons have none upstream).
 func (g *Game) windowTooltip() string {
 	mx, my := g.mouseX, g.mouseY
-	switch { // the window on top first, as clicks go
-	case g.viewWin != nil && g.viewWin.Contains(mx, my):
-		return g.viewWin.WidgetTooltip(mx, my)
-	case g.stationWin != nil && g.stationWin.Contains(mx, my):
-		return g.stationWin.WidgetTooltip(mx, my)
-	case g.townList != nil && g.townList.Contains(mx, my):
-		if w := g.townList; w.Tooltip != nil {
+	switch w := g.wins.FindAt(mx, my).(type) { // the front-most window under the mouse
+	case *ui.ViewWindow:
+		return w.WidgetTooltip(mx, my)
+	case *ui.StationWindow:
+		return w.WidgetTooltip(mx, my)
+	case *ui.TownListWindow:
+		if w.Tooltip != nil {
 			if tip := w.Tooltip(mx, my); tip != "" {
 				return tip
 			}
 		}
-		return g.townList.WidgetTooltip(mx, my)
-	case g.vehicleWin != nil && g.vehicleWin.Contains(mx, my):
-		return g.vehicleWin.Tooltip()
+		return w.WidgetTooltip(mx, my)
+	case *ui.VehicleWindow:
+		return w.Tooltip()
 	}
 	return ""
 }

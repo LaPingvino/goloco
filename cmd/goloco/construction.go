@@ -195,34 +195,34 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 // places it (ui.AutoWindowPosition: (0, 30) under the toolbar on an empty
 // screen; before, goloco put it at (10, 40)). An open one keeps its place.
 func (g *Game) consWindowOrigin() (int, int) {
-	if g.windowMgr != nil {
-		for _, w := range g.windowMgr.Windows {
-			if w.Title == i18n.Label(i18n.Construction) {
-				return w.X, w.Y
-			}
-		}
+	if w := g.consWin(); w != nil {
+		return w.X, w.Y
 	}
-	sw, sh := g.sw, g.sh
-	if sw <= 0 || sh <= 0 {
-		sw, sh = defaultWidth, defaultHeight
-	}
-	if g.windowMgr == nil {
-		return ui.AutoWindowPosition(ui.ConstructionW, ui.ConstructionH, sw, sh, nil)
-	}
-	return g.windowMgr.AutoPosition(ui.ConstructionW, ui.ConstructionH, sw, sh)
+	g.syncScreen()
+	win := ui.NewSimpleWindow(ui.WindowTypeConstruction, 0, 0, ui.ConstructionW, ui.ConstructionH)
+	g.wins.Place(win)
+	return win.X, win.Y
 }
 
 func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 	x, y := g.consWindowOrigin()
-	win := ui.NewSimpleWindow(i18n.Label(i18n.Construction), x, y, ui.ConstructionW, ui.ConstructionH)
-	win.Ported = true
+	win := ui.NewSimpleWindow(ui.WindowTypeConstruction, x, y, ui.ConstructionW, ui.ConstructionH)
+	win.WinFlags = ui.WindowFlagNoAutoClose // createConstructionWindow: lighterFrame | noAutoClose
+	// The close button ends the construction (Construction's onClose: the
+	// tool cancelled, the ghosts removed) — it used to hide the window and
+	// leave the mode on.
+	win.OnClose = func() {
+		g.buildMode = buildModeNone
+		g.hoverTileX, g.hoverTileY = -1, -1
+		g.w.ClearConstructionHead()
+	}
 	win.PortedDraw = func(screen *ebiten.Image, x, y int) {
 		f, st := g.constructionFrame(x, y)
 		if f.Disabled[g.consTab] { // the tab went away (another track type)
 			g.consTab = 0
 			f, st = g.constructionFrame(x, y)
 		}
-		win.Height = f.Height()
+		win.H = f.Height()
 		f.Draw(screen)
 		defer f.DrawCaption(screen) // after the tab (its draw8 rewrites the window's pixels)
 		switch g.consTab {

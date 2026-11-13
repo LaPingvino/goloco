@@ -81,26 +81,15 @@ type Game struct {
 	saveMsgFrames       int    // frames remaining to show saveMsg
 
 	// The toolbar and the windows, each nil unless open.
-	toolbar           *ui.Toolbar
-	lastPortOption    int // ToolbarTop's _lastPortOption: 0 airport, 1 dock
-	windowMgr         *ui.SimpleWindowManager
-	dropdown          *ui.DropdownMenu
-	colourDropdown    *ui.ColourDropdown        // Dropdown::showColour when open
-	scenarioSelect    *ui.ScenarioSelectWindow  // the New Game window when open
-	browse            *ui.PromptBrowseWindow    // the Load window when open
-	options           *ui.OptionsWindow         // the Options window when open
-	townList          *ui.TownListWindow        // the town list when open
-	viewWin           *ui.ViewWindow            // the Town or Industry window (its first tab)
-	stationWin        *ui.StationWindow         // the Station window (StationWindow.cpp)
-	catchmentStation  int                       // _lastSelectedStation: whose catchment shows (−1 none)
-	buildVehicle      *ui.BuildVehicleWindow    // the Build Vehicle window when open (5P.f)
-	vehicleWin        *ui.VehicleWindow         // the Vehicle window when open (5P.g)
-	companyFinances   *ui.CompanyFinancesWindow // the Company window's Finances tab when open (PL.1)
-	companyFinancesID int
-	companyList       *ui.CompanyListWindow // CompanyList when open
-	prompt            *ui.PromptOkCancel    // an open confirmation (modal: it takes all input)
-	textInput         *ui.TextInputWindow   // an open text input (renaming); PARTIAL: takes all input, upstream's is not modal
-	errorWin          *ui.ErrorWindow       // WindowType::error (one at a time)
+	toolbar          *ui.Toolbar
+	lastPortOption   int            // ToolbarTop's _lastPortOption: 0 airport, 1 dock
+	wins             ui.WindowStack // the open windows, back to front (WindowManager)
+	dropdown         *ui.DropdownMenu
+	colourDropdown   *ui.ColourDropdown  // Dropdown::showColour when open
+	catchmentStation int                 // _lastSelectedStation: whose catchment shows (−1 none)
+	prompt           *ui.PromptOkCancel  // an open confirmation (modal: it takes all input)
+	textInput        *ui.TextInputWindow // an open text input (renaming); PARTIAL: takes all input, upstream's is not modal
+	errorWin         *ui.ErrorWindow     // WindowType::error (one at a time)
 
 	// The construction window (construction.go).
 	buildMode   int   // buildModeNone / Track / Road / Dock / Airport
@@ -132,13 +121,12 @@ type Game struct {
 	pickupOn           bool         // the Vehicle window's pickup (placing) tool is active
 	pickupHead         uint16       // the vehicle head it places
 	driverCheat        bool         // SceneManager driverCheatEnabled (the Cheats window's; off)
-	routeSel           int          // the Vehicle window's Route selection (orderTableIndex; -1: none)
 	lastTownOption     int          // ToolbarTopCommon.cpp _lastTownOption: the Towns menu's last item (0 towns, 1 industries)
 	lastIndustryOption int          // GameState lastIndustryOption: the industry last chosen to fund (PARTIAL: not from the save; -1 none)
 	indTool            industryTool // the Fund New Industries tab's tool (industrytool.go)
 	tip                tooltipState // the window tooltip's timing (tooltip.go)
 	routeTool          bool         // the Route tab's tool (adding stops by clicking the map) is active
-	routeHead          uint16       // whose Route that selection is
+	routeHead          uint16       // the vehicle (window) whose tool that is
 	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,
 	// _ghostTrackProgress; ghostProgress -1: none).
 	ghostPlace      sim.VehiclePlacement
@@ -267,7 +255,6 @@ func NewGame() *Game {
 
 	w := world.NewWorld(r)
 	toolbar := ui.NewToolbar(defaultWidth)
-	windowMgr := ui.NewSimpleWindowManager()
 
 	// Try to load the title scenario
 	if dataDir != "" {
@@ -319,7 +306,6 @@ func NewGame() *Game {
 	log.Println("[Game] Game initialization complete")
 	return &Game{
 		catchmentStation:   -1,
-		routeSel:           -1,                                                                    // none selected
 		ghostProgress:      -1,                                                                    // no ghost placed
 		lastIndustryOption: -1,                                                                    // none chosen yet
 		showFPS:            configValue("showFPS") == "true" || os.Getenv("GOLOCO_SHOWFPS") != "", // Config::showFPS (Config.cpp: default false)
@@ -332,7 +318,6 @@ func NewGame() *Game {
 		titleWorld:         w, // keep a reference so Quit to Menu can restore it
 		r:                  r,
 		toolbar:            toolbar,
-		windowMgr:          windowMgr,
 		audioMgr:           audioMgr,
 		titleSeq:           titleSeq,
 		dataDir:            dataDir,
@@ -554,12 +539,24 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	}
 	g.sw = outsideWidth
 	g.sh = outsideHeight
+	g.syncScreen()
 	// Update toolbar to span the full window width on resize.
 	if g.toolbar != nil && g.toolbar.Width != outsideWidth {
 		g.toolbar.Width = outsideWidth
 		g.toolbar.RightAlignButtons(outsideWidth)
 	}
 	return outsideWidth, outsideHeight
+}
+
+// syncScreen gives the window stack the screen's size (a changed one moves
+// the windows left outside it: relocateWindows) and what stands on it.
+func (g *Game) syncScreen() {
+	sw, sh := g.sw, g.sh
+	if sw <= 0 || sh <= 0 {
+		sw, sh = defaultWidth, defaultHeight
+	}
+	g.wins.Resize(sw, sh)
+	g.wins.Fixed = g.fixedWindows()
 }
 
 // processStart is when the program started; used for startup timings.

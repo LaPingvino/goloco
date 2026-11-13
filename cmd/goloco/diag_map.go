@@ -105,7 +105,7 @@ func (g *Game) diagRoadStationTool(v string) {
 					g.stationToolUpdate(sx, sy+16)
 					log.Printf("[Diag] roadstationghost: tile %d,%d: ghost on hover %v, after leaving %v, back %v, cost %d, accepts %#x produces %#x", x, y, on, off, ghost(), g.stationGhostCost, g.stationGhostAccepted, g.stationGhostProduced)
 					g.diagHoldGhost = true
-					g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+					g.wins.Show(g.newPortedConstructionWindow())
 				} else {
 					g.stationToolUp(sx, sy+16)
 					has := false
@@ -172,7 +172,7 @@ func (g *Game) diagStationTool(v string) {
 						g.stationToolUpdate(sx, sy+16)
 						log.Printf("[Diag] stationghost: tile %d,%d: ghost on hover %v, after leaving %v, back %v, cost %d", x, y, on, off, ghost(), g.stationGhostCost)
 						g.diagHoldGhost = true // the ghost and the tab stay for the shot, its cost in the window
-						g.windowMgr.OpenWindow(g.newPortedConstructionWindow())
+						g.wins.Show(g.newPortedConstructionWindow())
 					} else {
 						g.stationToolUp(sx, sy+16)
 						log.Printf("[Diag] stationtool: clicked %d,%d (tile %d,%d company %d): station now %v", sx, sy+16, x, y, tr.Owner, m.TileAt(x, y).Tracks[r.Index].HasStation)

@@ -42,7 +42,7 @@ func TestBuildVehicleLayout(t *testing.T) {
 // The wheel over the list scrolls it 17 px a notch, within its content; off
 // the list it isn't taken.
 func TestBuildVehicleWheel(t *testing.T) {
-	w := &BuildVehicleWindow{X: 0, Y: 0, W: 500, H: 400}
+	w := &BuildVehicleWindow{WinBase: WinBase{X: 0, Y: 0, W: 500, H: 400}}
 	for i := 0; i < 40; i++ {
 		w.Rows = append(w.Rows, BVRow{})
 	}

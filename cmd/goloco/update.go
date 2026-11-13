@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/LaPingvino/goloco/pkg/paint"
 	"log"
-	"os"
 	"time"
 
 	"github.com/LaPingvino/goloco/pkg/construct"
@@ -46,17 +45,18 @@ func (g *Game) Update() error {
 		return nil
 	}
 	// A right click on the load/save list deletes a file (after asking).
-	if g.browse != nil && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
-		if mx, my := ebiten.CursorPosition(); g.browse.Contains(mx, my) {
-			g.browse.HandleRightClick(mx, my)
+	browse := g.browseWin()
+	if browse != nil && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+		if mx, my := ebiten.CursorPosition(); g.wins.FindAt(mx, my) == ui.Win(browse) {
+			browse.HandleRightClick(mx, my)
 		}
 	}
 	if g.quitAfterSave {
 		return ebiten.Termination
 	}
-	if g.browse != nil { // PromptBrowse: mouse-over row, typed filename, Enter/Escape
-		g.browse.HandleHover(g.mouseX, g.mouseY)
-		g.browse.HandleText(ebiten.AppendInputChars(nil), inpututil.IsKeyJustPressed(ebiten.KeyBackspace),
+	if browse != nil { // PromptBrowse: mouse-over row, typed filename, Enter/Escape
+		browse.HandleHover(g.mouseX, g.mouseY)
+		browse.HandleText(ebiten.AppendInputChars(nil), inpututil.IsKeyJustPressed(ebiten.KeyBackspace),
 			inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter),
 			inpututil.IsKeyJustPressed(ebiten.KeyEscape))
 	}
@@ -124,40 +124,20 @@ func (g *Game) updateTitle() {
 		cx, cy := g.titleSeq.GetCameraPosition()
 		g.w.SetCamera(cx, cy)
 	}
-	if g.browse != nil { // the load/save list's thumb follows the mouse while held
-		g.browse.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-	}
-	if g.scenarioSelect != nil { // and the scenario list's
-		g.scenarioSelect.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-		g.scenarioSelect.MouseOver(g.mouseX, g.mouseY)
-	}
-	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
-	}
+	g.updateWindows()
 	if g.dropdown != nil && g.dropdown.Visible { // a window's dropdown (Options' language, heights …)
 		g.dropdown.UpdateHover(g.mouseX, g.mouseY)
 	}
 	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 		// An open dropdown is on top: it takes the click (a click outside
-		// closes it); then the ScenarioSelect window, then the window manager.
+		// closes it); then the windows, front-most first.
 		if g.dropdown != nil && g.dropdown.Visible {
 			if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
 				g.dropdown = nil
 			}
-		} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
-			g.townList.HandleClick(g.mouseX, g.mouseY)
-		} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
-			g.options.HandleClick(g.mouseX, g.mouseY)
-		} else if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
-			g.browse.HandleClick(g.mouseX, g.mouseY)
-		} else if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
-			g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
-		} else if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
+		} else if !g.windowsPress() {
 			g.handleTitleMenuClick(g.mouseX, g.mouseY)
 		}
-	}
-	if g.inMouseJustReleased(ebiten.MouseButtonLeft) {
-		g.windowMgr.StopDrag()
 	}
 	g.routeWheelToWindows()
 }
@@ -183,7 +163,6 @@ func (g *Game) updateGame() {
 		for i := range g.toolbar.Buttons {
 			g.toolbar.Buttons[i].Pressed = false
 		}
-		g.windowMgr.StopDrag()
 	}
 
 	g.updateCamera()
@@ -217,9 +196,7 @@ func (g *Game) updateToolCancel() {
 		head := g.pickupHead
 		g.pickupToolAbort()
 		g.pickupOn = false
-		if g.vehicleWin != nil {
-			g.openVehicleDetails(head)
-		}
+		g.refreshVehicleWindow(head, 1)
 	}
 }
 
@@ -305,25 +282,11 @@ func (g *Game) updateHeld() {
 		}
 	}
 
-	if g.windowFrame%60 == 0 { // the open list repopulated about once a second
+	if g.windowFrame%60 == 0 { // the open lists repopulated about once a second
 		g.refreshList()
 	}
-	if g.townList != nil { // onScrollMouseOver: the row (or grid cell) under the mouse
-		g.townList.MouseOver(g.mouseX, g.mouseY)
-	}
-	if g.stationWin != nil { // a Station window vehicle tab's row under the mouse
-		g.stationWin.MouseOver(g.mouseX, g.mouseY)
-	}
-	g.updateTooltip()        // a window's tooltip under the resting mouse
-	if g.stationWin != nil { // a vehicle tab's scrollbar thumb follows the mouse while held
-		g.stationWin.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-	}
-	if g.townList != nil { // the list's scrollbar thumb follows the mouse while held
-		g.townList.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-	}
-	if g.browse != nil { // the load/save list's thumb too
-		g.browse.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-	}
+	g.updateWindows()
+	g.updateTooltip()                           // a window's tooltip under the resting mouse
 	if g.industryToolOn() && !g.inTitleScreen { // the Fund New Industries tool: its ghost under the cursor
 		if g.overWindow(g.mouseX, g.mouseY) {
 			g.w.SetMapSelection(false, 0, 0, 0, 0)
@@ -339,56 +302,10 @@ func (g *Game) updateHeld() {
 			g.pickupToolUpdate(g.mouseX, g.mouseY)
 		}
 	}
-	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-		g.windowMgr.HandleDrag(g.mouseX, g.mouseY)
-	}
-	if g.companyList != nil {
-		g.companyList.ScrollDrag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-	}
-	if g.vehicleWin != nil {
-		g.vehicleWin.ScrollDrag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-		g.vehicleWin.SpeedHeld(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-	}
-	if g.buildVehicle != nil {
-		g.buildVehicle.Drag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-	}
-	if g.companyFinances != nil {
-		g.companyFinances.UpdateHeld(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-		g.companyFinances.UpdateDrag(g.mouseX, g.mouseY, g.inMousePressed(ebiten.MouseButtonLeft))
-	}
-	if g.companyList != nil {
-		g.companyList.MouseOver(g.mouseX, g.mouseY)
-		cl := g.companyList // findAt: in the window and no modal over it
-		in := inRect(g.mouseX, g.mouseY, cl.X, cl.Y, cl.W, cl.H)
-		cl.Update(g.mouseX, g.mouseY, in && g.companyFinances == nil, ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight))
-	}
-	if g.companyFinances != nil && g.companyFinances.Positioning { // statePositioningWindow
-		if g.inMousePressed(ebiten.MouseButtonLeft) {
-			g.companyFinances.PositionMove(g.mouseX, g.mouseY, g.sh)
-		} else {
-			g.companyFinances.PositionEnd(g.mouseX, g.mouseY, g.sh)
-		}
-	}
-	if g.vehicleWin != nil && g.vehicleWin.Positioning { // statePositioningWindow
-		if g.inMousePressed(ebiten.MouseButtonLeft) {
-			g.vehicleWin.PositionMove(g.mouseX, g.mouseY, g.sh)
-		} else {
-			g.vehicleWin.PositionEnd(g.mouseX, g.mouseY, g.sh)
-		}
-	}
-	if g.vehicleWin != nil && os.Getenv("GOLOCO_DIAG_DRAG_HOLD") == "" {
-		g.vehicleWin.MouseOver(g.mouseX, g.mouseY)
-	}
-	if g.vehicleWin != nil && g.vehicleWin.Dragging && os.Getenv("GOLOCO_DIAG_DRAG_HOLD") == "" { // DragVehiclePart: follows the mouse, dropped on release (the diag's hold: neither)
-		g.vehicleWin.DragTo(g.mouseX, g.mouseY)
-		if !ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-			g.vehicleWin.DragEnd(g.mouseX, g.mouseY)
-		}
-	}
 }
 
 // gameClick sends a left press to what lies under it, topmost first: an open
-// dropdown, the windows (the draw order, reversed), then the HUD and the map.
+// dropdown, the windows (the stack, front to back), then the HUD and the map.
 func (g *Game) gameClick() {
 	// Check dropdown first (it's on top: a window's dropdown lies over the
 	// window that opened it)
@@ -403,27 +320,7 @@ func (g *Game) gameClick() {
 	} else if g.colourDropdown != nil && g.colourDropdown.Visible {
 		g.colourDropdown.HandleClick(g.mouseX, g.mouseY) // a colour picked, or closed
 		g.colourDropdown = nil
-	} else if g.companyFinances != nil && g.companyFinances.Contains(g.mouseX, g.mouseY) {
-		g.companyFinances.HandleClick(g.mouseX, g.mouseY) // drawn on top: clicked first
-	} else if g.companyList != nil && g.companyList.Contains(g.mouseX, g.mouseY) {
-		g.companyList.HandleClick(g.mouseX, g.mouseY)
-	} else if g.viewWin != nil && g.viewWin.Contains(g.mouseX, g.mouseY) { // the click goes to the window drawn on top (the draw order, reversed)
-		g.viewWin.HandleClick(g.mouseX, g.mouseY)
-	} else if g.stationWin != nil && g.stationWin.Contains(g.mouseX, g.mouseY) {
-		g.stationWin.HandleClick(g.mouseX, g.mouseY)
-	} else if g.townList != nil && g.townList.Contains(g.mouseX, g.mouseY) {
-		g.townList.HandleClick(g.mouseX, g.mouseY)
-	} else if g.vehicleWin != nil && g.vehicleWin.Contains(g.mouseX, g.mouseY) {
-		g.vehicleWin.HandleClick(g.mouseX, g.mouseY)
-	} else if g.buildVehicle != nil && g.buildVehicle.Contains(g.mouseX, g.mouseY) {
-		g.buildVehicle.HandleClick(g.mouseX, g.mouseY)
-	} else if g.options != nil && g.options.Contains(g.mouseX, g.mouseY) {
-		g.options.HandleClick(g.mouseX, g.mouseY)
-	} else if g.browse != nil && g.browse.Contains(g.mouseX, g.mouseY) {
-		g.browse.HandleClick(g.mouseX, g.mouseY)
-	} else if g.scenarioSelect != nil && g.scenarioSelect.Contains(g.mouseX, g.mouseY) {
-		g.scenarioSelect.HandleClick(g.mouseX, g.mouseY)
-	} else if !g.windowMgr.HandleClick(g.mouseX, g.mouseY, true) {
+	} else if !g.windowsPress() { // the windows, front-most first (stateNormalLeft)
 		g.hudOrMapClick()
 	}
 }
@@ -464,7 +361,7 @@ func (g *Game) hudOrMapClick() {
 		g.industryToolDown(g.mouseX, g.mouseY) // the Fund New Industries tool
 	} else if g.pickupOn && !g.inTitleScreen {
 		g.pickupToolDown(g.mouseX, g.mouseY) // the Vehicle window's placing tool
-	} else if g.routeTool && g.vehicleWin != nil && !g.inTitleScreen {
+	} else if g.routeTool && g.vehicleWin(g.routeHead) != nil && !g.inTitleScreen {
 		g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
 	} else if g.stationToolOn() {
 		g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked, or a dock
@@ -543,7 +440,8 @@ func (g *Game) updateCamera() {
 	// Camera panning: WASD or arrow keys (smooth, pixels per frame)
 	const panSpeed = 4.0
 	var panX, panY float64
-	typing := g.browse != nil && g.browse.Save // the focused text box takes the keys
+	browse := g.browseWin()
+	typing := browse != nil && browse.Save // the focused text box takes the keys
 	if ebiten.IsKeyPressed(ebiten.KeyW) || ebiten.IsKeyPressed(ebiten.KeyUp) {
 		panY -= panSpeed
 	}
@@ -587,7 +485,7 @@ func (g *Game) updateCamera() {
 	// view or moving a window). It was a 20-px zone at 8 px: the view crept
 	// while a toolbar button near the top was clicked.
 	shiftCtrl := ebiten.IsKeyPressed(ebiten.KeyShift) || ebiten.IsKeyPressed(ebiten.KeyControl)
-	positioning := g.vehicleWin != nil && g.vehicleWin.Positioning || g.companyFinances != nil && g.companyFinances.Positioning
+	positioning := g.wins.Dragging()
 	if ebiten.IsFocused() && !g.rightDragging && !g.noEdgeScrolling && !g.inTitleScreen && !shiftCtrl && !positioning {
 		edgeSpeed := float64(int(edgeScrollingSpeed) << g.w.GetZoom())
 		if g.mouseX == 0 {

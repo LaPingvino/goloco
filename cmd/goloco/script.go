@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/LaPingvino/goloco/pkg/scenario"
+	"github.com/LaPingvino/goloco/pkg/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -294,7 +295,7 @@ func (g *Game) scriptScenario() {
 	}
 	for _, m := range metas {
 		if strings.EqualFold(m.Name, name) {
-			g.scenarioSelect = nil
+			g.wins.CloseType(ui.WindowTypeScenarioSelect, ui.AnyNumber)
 			if err := g.loadScenario(m.FilePath); err != nil {
 				log.Printf("[Script] scenario %q: %v", name, err)
 			}

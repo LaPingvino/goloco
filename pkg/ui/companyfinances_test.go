@@ -38,7 +38,7 @@ func TestChallengeObjectiveText(t *testing.T) {
 
 // Common::switchTab: a tab click switches and resizes, keeping the place.
 func TestCompanyWindowSwitchTab(t *testing.T) {
-	w := &CompanyFinancesWindow{X: 82, Y: 140, W: 636, H: 319, Tab: CompanyTabFinances, Data: CompanyFinances{Own: true}}
+	w := &CompanyFinancesWindow{WinBase: WinBase{X: 82, Y: 140, W: 636, H: 319}, Tab: CompanyTabFinances, Data: CompanyFinances{Own: true}}
 	w.HandleClick(100, 168) // the status tab (3–33, 15–41)
 	if w.Tab != CompanyTabStatus || w.W != 270 || w.H != 182 || w.X != 82 {
 		t.Errorf("status: tab %d %d×%d at %d", w.Tab, w.W, w.H, w.X)
@@ -70,15 +70,17 @@ func TestColourDropdown(t *testing.T) {
 // The caption moves the window; an unmoved click on it renames.
 func TestCompanyWindowPositioning(t *testing.T) {
 	renamed := 0
-	w := &CompanyFinancesWindow{X: 82, Y: 140, W: 636, H: 319, Tab: CompanyTabFinances, OnRename: func() { renamed++ }}
-	w.HandleClick(300, 146)
-	w.PositionMove(320, 156, 600)
-	w.PositionEnd(330, 160, 600)
+	w := &CompanyFinancesWindow{WinBase: WinBase{X: 82, Y: 140, W: 636, H: 319}, Tab: CompanyTabFinances, OnRename: func() { renamed++ }}
+	s := &WindowStack{ScreenW: 800, ScreenH: 600}
+	s.Open(w)
+	s.Press(300, 146)
+	s.Held(320, 156)
+	s.Release(330, 160)
 	if w.X != 112 || w.Y != 154 || renamed != 0 {
 		t.Errorf("moved to %d,%d renamed %d", w.X, w.Y, renamed)
 	}
-	w.HandleClick(300, w.Y+6)
-	w.PositionEnd(300, w.Y+6, 600)
+	s.Press(300, w.Y+6)
+	s.Release(300, w.Y+6)
 	if renamed != 1 {
 		t.Errorf("unmoved click: renamed %d", renamed)
 	}
@@ -87,7 +89,7 @@ func TestCompanyWindowPositioning(t *testing.T) {
 // sortCompanyList's orders: performance (the default) and value highest
 // first, name by strcmp; a header click sorts by it.
 func TestCompanyListSort(t *testing.T) {
-	w := &CompanyListWindow{W: 640, H: 272, SortMode: 2, Rows: []CompanyListRow{
+	w := &CompanyListWindow{WinBase: WinBase{W: 640, H: 272}, SortMode: 2, Rows: []CompanyListRow{
 		{ID: 0, Name: "Bravo", Performance: 50, Value: 900}, {ID: 1, Name: "Alpha", Performance: 70, Value: 100}}}
 	w.Sort()
 	if w.Rows[0].ID != 1 {
@@ -107,7 +109,7 @@ func TestCompanyListSort(t *testing.T) {
 // tick from 16, the step ×10 every 100 ticks; letting go stops it.
 func TestLoanClickRepeat(t *testing.T) {
 	var steps []int
-	w := &CompanyFinancesWindow{X: 82, Y: 140, W: 636, H: 319, Tab: CompanyTabFinances, Data: CompanyFinances{Own: true},
+	w := &CompanyFinancesWindow{WinBase: WinBase{X: 82, Y: 140, W: 636, H: 319}, Tab: CompanyTabFinances, Data: CompanyFinances{Own: true},
 		OnLoan: func(dir, step int) { steps = append(steps, dir*step) }}
 	b := CompanyFinancesLayout(w.W, w.H)[cfLoanIncrease]
 	x, y := w.X+(b.L+b.R)/2, w.Y+(b.T+b.B)/2
@@ -129,7 +131,7 @@ func TestLoanClickRepeat(t *testing.T) {
 // The Finances bar: a held right button steps 3 each tick while on it, off
 // it it stops and unpresses, back on it resumes; the release clears it.
 func TestFinancesBarHold(t *testing.T) {
-	w := &CompanyFinancesWindow{X: 82, Y: 140, W: 636, H: 319, Tab: CompanyTabFinances, Data: CompanyFinances{Own: true, NumYears: 6}}
+	w := &CompanyFinancesWindow{WinBase: WinBase{X: 82, Y: 140, W: 636, H: 319}, Tab: CompanyTabFinances, Data: CompanyFinances{Own: true, NumYears: 6}}
 	sc := CompanyFinancesLayout(w.W, w.H)[cfScroll]
 	rx, ry := w.X+sc.R-5, w.Y+sc.B-5 // the right button
 	w.HandleClick(rx, ry)

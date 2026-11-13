@@ -85,15 +85,3 @@ func AutoWindowPosition(w, h, screenW, screenH int, wins []WinRect) (int, int) {
 	}
 	return clamp(x, y)
 }
-
-// AutoPosition places a new window as upstream would among the manager's
-// visible windows (none of goloco's SimpleWindows sticks to the back).
-func (wm *SimpleWindowManager) AutoPosition(w, h, screenW, screenH int) (int, int) {
-	var wins []WinRect
-	for _, o := range wm.Windows {
-		if o.Visible {
-			wins = append(wins, WinRect{X: o.X, Y: o.Y, W: o.Width, H: o.Height})
-		}
-	}
-	return AutoWindowPosition(w, h, screenW, screenH, wins)
-}
