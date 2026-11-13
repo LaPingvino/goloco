@@ -76,6 +76,11 @@ Build: `go build -o goloco ./cmd/goloco`. Always verify visually:
   GOLOCO_SCRIPT=scripts/playthrough/<x>.txt ./goloco` runs a playthrough (outside Claude Code's sandbox,
   which blocks the X socket). The real OpenLoco runs the same way: scripts/olref/README.md. The private
   wasm test page: scripts/redeploy-test-page.sh.
+- Sound without a sound device (the VPS has none: goloco then plays on in
+  silence and a track never ends): `ALSA_CONFIG_PATH=<file>` with
+  `pcm.!default { type null }` gives Ebitengine a device that swallows the
+  samples at once — the music's real path runs, each track over in a fraction
+  of a second (`[Audio] music: <file>` in the log per track).
 - ALWAYS run long headless sessions under Xvfb so the desktop/screen-lock
   cannot freeze the loop: `Xvfb :99 -screen 0 800x600x24 &` then
   `DISPLAY=:99 WAYLAND_DISPLAY= ./goloco …` (xorg-server-xvfb installed).
