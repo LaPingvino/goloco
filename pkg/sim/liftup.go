@@ -41,6 +41,7 @@ func (m *Map) LiftUpVehicle(headID uint16, om *objects.ObjectManager) {
 	h := &m.Entities[tr.Head]
 	h.Status = 0 // Status::unk_0
 	h.StationID = 0xFFFF
+	h.BreakdownFlags &^= BreakdownJourneyStarted // 61967bd: the journey doesn't count for the average speed
 }
 
 // eachComponent is Vehicle::applyToComponents: head, veh1, veh2, every car's

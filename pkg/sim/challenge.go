@@ -16,6 +16,7 @@ const (
 	companyFlagChallengeBeaten    = 1 << 8
 	objectiveFlagBeTop            = 1 << 0
 	objectiveFlagTopThree         = 1 << 1
+	objectiveFlagWithinTimeLimit  = 1 << 2 // Scenario::ObjectiveFlags::withinTimeLimit
 )
 
 // CompanyEmpty is Company::empty (name == StringIds::empty).
@@ -62,7 +63,10 @@ func (m *Map) NewChallengeProgress(id int, om *objects.ObjectManager) uint8 {
 	if flags&(companyFlagChallengeFailed|companyFlagChallengeBeaten) != 0 {
 		return 255
 	}
-	if flags&companyFlagUnk2 != 0 && m.ObjectiveUntilYear < m.CurrentYear && m.CurrentMonth != 0 {
+	// 37d7c01: the objective's time limit (vanilla tested companyFlags unk2,
+	// set only when AI-allocated items turn real), and it kicks in on the
+	// 2nd (the day of month counts from 0), not after January.
+	if m.Objective.Flags&objectiveFlagWithinTimeLimit != 0 && m.ObjectiveUntilYear < m.CurrentYear && m.CurrentDayOfMonth != 0 {
 		return 255
 	}
 	o := m.Objective
