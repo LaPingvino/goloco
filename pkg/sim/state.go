@@ -21,9 +21,8 @@ type State struct {
 	ghostPos  [3]int32
 	ghostCost int32
 
-	// Waves (wave.go): the wave table, the generator they draw from (upstream
-	// gPrng2) and the tile loop's start offset within its 16×16 block.
-	Waves                    [MaxWaves]Wave
-	Rng2                     core.Prng
-	tileUpdateX, tileUpdateY int
+	// Waves (wave.go): the wave table and the generator they draw from
+	// (upstream gPrng2).
+	Waves [MaxWaves]Wave
+	Rng2  core.Prng
 }

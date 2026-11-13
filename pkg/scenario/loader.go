@@ -1687,6 +1687,7 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 	sc.OrderTableLength = binary.LittleEndian.Uint32(gs[0x1A0:]) // GameState orderTableLength
 	sc.Rng = [2]uint32{binary.LittleEndian.Uint32(gs[0:]), binary.LittleEndian.Uint32(gs[4:])}
 	sc.ScenarioTicks = binary.LittleEndian.Uint32(gs[0x146:])
+	sc.TileUpdateStart = [2]int16{int16(binary.LittleEndian.Uint16(gs[0x156:])), int16(binary.LittleEndian.Uint16(gs[0x158:]))}
 	sc.UnkRng = [2]uint32{binary.LittleEndian.Uint32(gs[8:]), binary.LittleEndian.Uint32(gs[12:])}
 	sc.RoadUsableByAll = binary.LittleEndian.Uint32(gs[0x1A8:])
 	sc.CurrentDay = ParseCurrentDay(gs)

@@ -106,9 +106,11 @@ func (m *Map) GenerateLand(hm *HeightMap) {
 	}
 }
 
-// InitialiseTiles is TileManager::initialise: every tile a single surface of
-// the last land option (else land object 0) at baseZ 4.
+// InitialiseTiles is TileManager::initialise: the tile loop back at its
+// start, every tile a single surface of the last land option (else land
+// object 0) at baseZ 4.
 func (m *Map) InitialiseTiles() {
+	m.tileUpdateX, m.tileUpdateY = 0, 0
 	land := m.LastLandOption
 	if land == 0xFF {
 		land = 0
