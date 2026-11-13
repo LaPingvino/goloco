@@ -97,11 +97,10 @@ func (g *Game) openCompanyWindow(company int) {
 }
 
 // openCompanyFinances is CompanyWindow::openFinances: the Company window on
-// its Finances tab (636 × 319, centred: createWindow's placement PARTIAL), the
-// owner's colours.
+// its Finances tab (636 × 319), the owner's colours.
 func (g *Game) openCompanyFinances(company int) {
 	if cw := g.newCompanyWindow(company); cw != nil {
-		g.wins.Show(cw)
+		g.showAuto(cw, 270, 182) // create: Status::kWindowSize
 	}
 }
 
@@ -116,7 +115,7 @@ func (g *Game) newCompanyWindow(company int) *ui.CompanyFinancesWindow {
 		tc = g.w.CompanyColours[company]
 	}
 	w, h := ui.CompanyFinancesSize[0], ui.CompanyFinancesSize[1]
-	cw := &ui.CompanyFinancesWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeCompany, Number: company, X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h}, TitleColour: tc, Colour: wc,
+	cw := &ui.CompanyFinancesWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeCompany, Number: company, W: w, H: h}, TitleColour: tc, Colour: wc,
 		Tab:   ui.CompanyTabFinances, // openFinances: currentTab = tab_finances
 		Title: g.w.Map.CompanyName(company), Data: g.companyFinancesData(company),
 		OnLoan:   func(dir, step int) { g.changeLoan(company, dir, step) },
@@ -373,7 +372,7 @@ func (g *Game) renameCompany(company int, titleColour, colour uint8) {
 }
 
 // openCompanyList is CompanyList::open: the list on its first tab, 640 × 272
-// (centred: createWindow's placement PARTIAL), the skin's title bar and
+// the skin's title bar and
 // window colours, sorted by performance (sortMode 2); a row opens that
 // company's window.
 func (g *Game) openCompanyList() {
@@ -400,7 +399,7 @@ func (g *Game) openCompanyList() {
 		rows = append(rows, r)
 	}
 	w, h := ui.CompanyListSize[0], ui.CompanyListSize[1]
-	cl := &ui.CompanyListWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeCompanyList, X: (g.sw - w) / 2, Y: (g.sh - h) / 2, W: w, H: h}, TitleColour: tc, Colour: wc, Rows: rows, SortMode: 2, Hover: -1,
+	cl := &ui.CompanyListWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeCompanyList, W: w, H: h}, TitleColour: tc, Colour: wc, Rows: rows, SortMode: 2, Hover: -1,
 		OnRow: g.openCompanyWindow}
 	for i := range cl.Records { // CompanyManager::getRecords()
 		rec := m.CompanyRecords
@@ -425,5 +424,5 @@ func (g *Game) openCompanyList() {
 		}
 	}
 	cl.Sort()
-	g.wins.Show(cl)
+	g.showAuto(cl, 0, 0)
 }

@@ -137,6 +137,14 @@ func (b *WinBase) SetSize(minW, minH, maxW, maxH int) bool {
 // SetFixedSize is Window::setSize(size).
 func (b *WinBase) SetFixedSize(w, h int) bool { return b.SetSize(w, h, w, h) }
 
+// ApplyLimits is the window's onResize after it is created or changes tab:
+// setSize(min, max) with its own limits, when it has any.
+func (b *WinBase) ApplyLimits() {
+	if b.MaxW != 0 || b.MaxH != 0 {
+		b.SetSize(b.MinW, b.MinH, b.MaxW, b.MaxH)
+	}
+}
+
 // Close is WindowManager::close(window): its onClose event, then off the
 // stack. A window's close button calls it.
 func (b *WinBase) Close() {
@@ -315,8 +323,8 @@ func (s *WindowStack) Open(w Win) {
 
 // Replace puts a rebuilt window in the slot of the one it replaces: the same
 // place on the screen and in the order, the old size within the new one's
-// limits (a tab's onResize: setSize(min, max)) — the new one's own size if it
-// has no limits —, the stack's resize flags. The old window's onClose does
+// limits (a tab's onResize: setSize(min, max)) — the new one's own size if
+// either has no limits (a tab of one fixed size) —, the stack's resize flags. The old window's onClose does
 // not run: it is the same window.
 func (s *WindowStack) Replace(old, w Win) {
 	i := s.indexOf(old)
@@ -325,10 +333,10 @@ func (s *WindowStack) Replace(old, w Win) {
 	}
 	ob, b := old.Base(), w.Base()
 	b.X, b.Y = ob.X, ob.Y
-	if b.MaxW != 0 || b.MaxH != 0 {
+	if (b.MaxW != 0 || b.MaxH != 0) && (ob.MaxW != 0 || ob.MaxH != 0) {
 		b.W, b.H = ob.W, ob.H
-		b.SetSize(b.MinW, b.MinH, b.MaxW, b.MaxH)
 	}
+	b.ApplyLimits()
 	b.WinFlags |= ob.WinFlags & (WindowFlagHasBeenResized | WindowFlagMaximised)
 	b.restoreW, b.restoreH = ob.restoreW, ob.restoreH
 	b.stack, b.self = s, w
@@ -428,6 +436,37 @@ func (s *WindowStack) Place(w Win) {
 func (s *WindowStack) PlaceCentred(w Win) {
 	b := w.Base()
 	b.X, b.Y = s.ScreenW/2-b.W/2, max(28, s.ScreenH/2-b.H/2)
+}
+
+// MoveInsideScreenEdges is Window::moveInsideScreenEdges (a window's
+// switchTab ends with it): a window past the screen's right or left edge,
+// past height − 27 or above 28 comes back in.
+func (s *WindowStack) MoveInsideScreenEdges(w Win) {
+	prepare(w)
+	b := w.Base()
+	dx, dy := 0, 0
+	if over := b.X + b.W - s.ScreenW; over > 0 {
+		dx -= over
+	}
+	if b.X < 0 {
+		dx -= b.X
+	}
+	if over := b.Y + b.H - (s.ScreenH - 27); over > 0 {
+		dy -= over
+	}
+	if b.Y-28 < 0 {
+		dy -= b.Y - 28
+	}
+	b.X += dx
+	b.Y += dy
+}
+
+// MoveInsideScreenEdges is the stack's, for the window itself (nothing off
+// a stack).
+func (b *WinBase) MoveInsideScreenEdges() {
+	if b.stack != nil && b.self != nil {
+		b.stack.MoveInsideScreenEdges(b.self)
+	}
 }
 
 // MoveOtherWindowsDown is WindowManager::moveOtherWindowsDown: the windows

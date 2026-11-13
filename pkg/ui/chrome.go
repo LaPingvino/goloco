@@ -14,6 +14,7 @@ import (
 const (
 	imgFrameBackground    = 2322
 	imgFrameBackgroundAlt = 2323
+	imgWindowResizeHandle = 2305 // ImageIds::window_resize_handle
 	paletteBlack0         = 10
 )
 
@@ -21,7 +22,8 @@ const (
 // background image recoloured to the window colour, repeated from the right
 // across the window width and clipped to the top 41 px, then a 1-px shadow
 // (shade 3, or shade 1 with WindowFlags::lighterFrame) down the right edge.
-// PARTIAL: drawResizeHandle (resizable windows) is not drawn.
+// drawResizeHandle: DrawResizeHandle below, drawn by the window with its
+// panel (the panel's handle covers the frame's).
 // FrameStyle is Config windowFrameStyle: 0 background (the gradient image,
 // default), 1 solid, 2 transparent (Options' Rendering tab sets it).
 var FrameStyle int
@@ -167,4 +169,30 @@ func ClipString(text string, font, width int) string {
 		best = s
 	}
 	return best
+}
+
+// drawResizeHandle is drawResizeHandle (PanelWidget.cpp; FrameWidget.cpp's
+// lies under it): a resizable window with neither size fixed gets
+// window_resize_handle, recoloured to the panel's colour, 18 px in from its
+// bottom-right corner. rt is the window's own target.
+func drawResizeHandle(rt *gfx8.RenderTarget, b *WinBase, cmap []uint8) {
+	if !b.HasResizeHandle() || globalG1Font == nil {
+		return
+	}
+	g1 := globalG1Font.g1
+	if sp, err := gfx8.Decode(&g1.Elements[imgWindowResizeHandle]); err == nil {
+		gfx8.DrawSpriteNoise(rt, sp, b.W-ResizeHandleSize, b.H-ResizeHandleSize, gfx8.OpFor(sp, true, false), cmap, nil)
+	}
+}
+
+// gripBlockedStd is GripBlocker for the usual layout: a viewport or scroll
+// view from (3, 44) to (right, bottom) inclusive, and the status bar label
+// (3, height − 12) to (width − 14, height − 3) — the widgets that reach into
+// the resize corner, where a press is theirs and not the panel's.
+func gripBlockedStd(b *WinBase, px, py, right, bottom int) bool {
+	rx, ry := px-b.X, py-b.Y
+	if rx >= 3 && rx <= right && ry >= 44 && ry <= bottom {
+		return true
+	}
+	return rx >= 3 && rx <= b.W-14 && ry >= b.H-12 && ry <= b.H-3
 }

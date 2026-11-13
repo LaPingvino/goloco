@@ -52,6 +52,51 @@ func (g *Game) stationWin(id int) *ui.StationWindow {
 	return winOf[*ui.StationWindow](g, ui.WindowTypeStation, id)
 }
 
+// showAuto is a window's open() with WindowManager::createWindow(type, size,
+// flags, events): one of its type and number being open, that one comes to
+// the front (replaced by w); else w opens where upstream places a window of
+// createW × createH (0: w's own size) — the size its create() gives it — and
+// then takes its tab's size (onResize; switchTab's moveInsideScreenEdges).
+func (g *Game) showAuto(w ui.Win, createW, createH int) {
+	b := w.Base()
+	if g.wins.Find(b.WinType, b.Number) != nil {
+		g.wins.Show(w)
+		return
+	}
+	g.syncScreen()
+	bw, bh := b.W, b.H
+	if createW > 0 {
+		b.W, b.H = createW, createH
+	}
+	g.wins.Place(w)
+	b.W, b.H = bw, bh
+	b.ApplyLimits()
+	g.wins.Show(w)
+	if createW > 0 {
+		g.wins.MoveInsideScreenEdges(w)
+	}
+}
+
+// showCentred is the same for createWindowCentred.
+func (g *Game) showCentred(w ui.Win) {
+	b := w.Base()
+	if g.wins.Find(b.WinType, b.Number) == nil {
+		g.syncScreen()
+		g.wins.PlaceCentred(w)
+	}
+	g.wins.Show(w)
+}
+
+// showList is TownList::open / IndustryList::open: the list at its own
+// origin (the screen's right, y 30), the windows under it moved down
+// (moveOtherWindowsDown).
+func (g *Game) showList(w ui.Win) {
+	if g.wins.Show(w) {
+		g.syncScreen()
+		g.wins.MoveOtherWindowsDown(w)
+	}
+}
+
 // frontWin is the front-most window of a type (nil: none open).
 func frontWin[T ui.Win](g *Game) T {
 	var zero T

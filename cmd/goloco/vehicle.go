@@ -19,8 +19,7 @@ import (
 // openVehicleDetails is Vehicle::Details::open (Main::open, then the Details
 // tab): 265×177 grown to Details' minimum (192×182 for the controlling
 // company's own vehicle, onResize), the window's colours the owner's, its
-// caption the vehicle's name. PARTIAL: createWindow's placement (centred
-// here).
+// caption the vehicle's name.
 func (g *Game) openVehicleDetails(headID uint16) { g.openVehicleWindow(headID, 1) }
 
 // openVehicleWindow is the Vehicle window's open on a tab (0 Main, 1 Details,
@@ -29,7 +28,7 @@ func (g *Game) openVehicleDetails(headID uint16) { g.openVehicleWindow(headID, 1
 // that tab (WindowManager::bringToFront(type, number)), or a new one opens.
 func (g *Game) openVehicleWindow(headID uint16, tab int) {
 	if w := g.newVehicleWindow(headID, tab); w != nil {
-		g.wins.Show(w)
+		g.showAuto(w, ui.VehicleWindowSize[0], ui.VehicleWindowSize[1]) // Main::open's create: kWindowSize
 	}
 }
 
@@ -105,22 +104,27 @@ func (g *Game) newVehicleWindow(headID uint16, tab int) *ui.VehicleWindow {
 	if int(h.Owner) < len(g.w.CompanyColours) {
 		tc = g.w.CompanyColours[h.Owner]
 	}
-	ww, wh := ui.VehicleWindowSize[0], ui.VehicleWindowSize[1]
-	min := ui.VehicleDetailsMinSize
-	if own {
-		min = ui.VehicleDetailsMinSizePaint
+	// Each tab's onResize: setSize(kMinWindowSize, kMaxWindowSize) — the
+	// window (265 × 177 as created, or as the player left it) brought within
+	// the tab's limits when it opens or changes tab.
+	var lim [4]int
+	switch tab {
+	case 0: // Main
+		lim = [4]int{192, 177, 600, 440}
+	case 1: // Details: 182 high with the paint tools (the controlling company's own)
+		lim = [4]int{ui.VehicleDetailsMinSize[0], ui.VehicleDetailsMinSize[1], 400, 440}
+		if own {
+			lim[0], lim[1] = ui.VehicleDetailsMinSizePaint[0], ui.VehicleDetailsMinSizePaint[1]
+		}
+	case 2: // Cargo
+		lim = [4]int{ui.VehicleCargoMinSize[0], ui.VehicleCargoMinSize[1], 400, 440}
+	case 3: // Finances: one size
+		lim = [4]int{ui.VehicleFinancesSize[0], ui.VehicleFinancesSize[1], ui.VehicleFinancesSize[0], ui.VehicleFinancesSize[1]}
+	default: // Route
+		lim = [4]int{265, ui.VehicleRouteMinHeight, 600, 440}
 	}
-	ww, wh = max(ww, min[0]), max(wh, min[1])
-	if tab == 4 {
-		wh = max(wh, ui.VehicleRouteMinHeight) // Route::kMinWindowSize
-	}
-	if tab == 3 {
-		ww, wh = ui.VehicleFinancesSize[0], ui.VehicleFinancesSize[1] // Finances: min = max size
-	}
-	if tab == 2 {
-		ww, wh = max(ui.VehicleWindowSize[0], ui.VehicleCargoMinSize[0]), max(ui.VehicleWindowSize[1], ui.VehicleCargoMinSize[1])
-	}
-	vw := &ui.VehicleWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeVehicle, Number: int(headID), X: (g.sw - ww) / 2, Y: (g.sh - wh) / 2, W: ww, H: wh}, TitleColour: tc, Colour: wc,
+	vw := &ui.VehicleWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeVehicle, Number: int(headID), W: ui.VehicleWindowSize[0], H: ui.VehicleWindowSize[1],
+		MinW: lim[0], MinH: lim[1], MaxW: lim[2], MaxH: lim[3], WinFlags: ui.WindowFlagResizable}, TitleColour: tc, Colour: wc,
 		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
 		State:        ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
 		OnPickup:     func() { g.onPickup(headID) },
@@ -134,8 +138,13 @@ func (g *Game) newVehicleWindow(headID uint16, tab int) *ui.VehicleWindow {
 			NoCars: len(tr.Cars) == 0, Exhausted: m.Entities[tr.Veh1].Var3C >= 0x3689,
 			AirWaterMoving: (h.Mode == 2 || h.Mode == 3) && h.Status != sim.StatusStopped && h.Status != sim.StatusLoading && h.TileX != -1,
 			Unplaced:       h.TileX == -1, ToolActive: g.pickupOn && g.pickupHead == headID, WaitingAtSignal: h.Status == sim.StatusWaitingAtSignal},
-		StopStartImage:    stopStartImage(h.VehicleFlags),
-		OnTab:             func(t int) { g.refreshVehicleWindow(headID, t) },
+		StopStartImage: stopStartImage(h.VehicleFlags),
+		OnTab: func(t int) { // switchTab
+			g.refreshVehicleWindow(headID, t)
+			if w := g.vehicleWin(headID); w != nil {
+				g.wins.MoveInsideScreenEdges(w)
+			}
+		},
 		View:              func(w, h int) *gfx8.RenderTarget { return g.w.VehicleView(headID, w, h) },
 		Labels:            func(dst *ebiten.Image) { g.w.VehicleViewLabels(headID, dst) },
 		OnCentreView:      func() { g.centreViewportOpen(headID) },

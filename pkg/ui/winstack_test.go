@@ -186,3 +186,71 @@ func TestWindowStackRelocate(t *testing.T) {
 		t.Errorf("moved down to %d and %d, want 230", a.Y, c.Y)
 	}
 }
+
+// The resizable windows' limits, by tab (each tab's onResize), and their
+// layout following the size.
+func TestResizableWindows(t *testing.T) {
+	s := &WindowStack{ScreenW: 800, ScreenH: 600}
+	// Town: 223 × 161 within 192 × 161 … 600 × 440; its viewport follows.
+	town := NewTownWindow(800, 600, "Town", "village", 100, 0, 1)
+	town.WinType = WindowTypeTown
+	town.X, town.Y = 100, 100
+	s.Open(town)
+	if town.W != 223 || town.H != 161 || !town.CanResize() || !town.HasResizeHandle() {
+		t.Fatalf("town window %dx%d", town.W, town.H)
+	}
+	gx, gy := town.X+town.W-2, town.Y+town.H-2
+	s.Press(gx, gy)
+	s.Held(gx+100, gy+60)
+	s.Release(gx+100, gy+60)
+	if _, _, r, b := town.viewport(); town.W != 323 || town.H != 221 || r != 323-4 || b != 221-14 {
+		t.Errorf("town window resized to %dx%d, viewport to %d,%d", town.W, town.H, r, b)
+	}
+	// Inside the viewport's part of the corner the press is the viewport's.
+	if !town.GripBlocked(town.X+town.W-10, town.Y+town.H-16) || town.GripBlocked(town.X+town.W-2, town.Y+town.H-2) {
+		t.Error("the town window's grip: the viewport blocks it, the corner itself doesn't")
+	}
+	// Industry: Production 299 × 282 … 337, no handle (fixed width); back on
+	// the first tab the window is its kWindowSize again (switchTab).
+	ind := NewIndustryWindow(800, 600, "Industry", "", 0, 1)
+	ind.WinType = WindowTypeIndustry
+	ind.Graph = func(i int) (GraphTab, bool) { return GraphTab{Layout: IndustryGraphLayout}, i == 1 || i == 2 }
+	ind.X, ind.Y = 0, 434
+	s.Open(ind)
+	ind.HandleClick(ind.X+34+5, ind.Y+20) // the second tab
+	if ind.Tab != 1 || ind.W != 299 || ind.H != 282 || !ind.CanResize() || ind.HasResizeHandle() {
+		t.Errorf("production tab: tab %d, %dx%d", ind.Tab, ind.W, ind.H)
+	}
+	if ind.Y != 600-27-282 { // moveInsideScreenEdges: the window grew upwards
+		t.Errorf("production tab at y %d, want %d", ind.Y, 600-27-282)
+	}
+	ind.HandleClick(ind.X+3+5, ind.Y+20)
+	if ind.Tab != 0 || ind.W != 223 || ind.H != 137 {
+		t.Errorf("back on the first tab: %dx%d", ind.W, ind.H)
+	}
+	// Station: the vehicle tabs 400 × 200 … 600 × 800; the size stays as the
+	// tabs change (no setSize(kWindowSize) in its switchTab), within limits.
+	st := NewStationWindow(800, 600, "Station", "", 0, 1)
+	if st.W != 223 || st.H != 136 || st.MinW != 223 || st.MaxW != 600 {
+		t.Errorf("station window %dx%d, limits %d…%d", st.W, st.H, st.MinW, st.MaxW)
+	}
+	st.Tab = 3
+	st.PrepareDraw()
+	if st.W != 400 || st.H != 200 {
+		t.Errorf("vehicle tab %dx%d", st.W, st.H)
+	}
+	st.Tab = 2
+	st.PrepareDraw()
+	if st.W != 249 || st.H != 200 {
+		t.Errorf("ratings tab %dx%d, want 249x200", st.W, st.H)
+	}
+	// A list: the scroll view and the status line keep their distance from
+	// the right and the bottom.
+	list := NewTownList(800, []TownRow{{Name: "A"}, {Name: "B"}}, 0, 1).Resizable(192, 100, 600, 900)
+	l0, s0 := list.List, list.StatusY
+	list.W, list.H = 500, 300
+	list.PrepareDraw()
+	if list.List[2] != l0[2]-100 || list.List[3] != l0[3]+103 || list.StatusY != s0+103 {
+		t.Errorf("list resized: scroll view %v (was %v), status y %d (was %d)", list.List, l0, list.StatusY, s0)
+	}
+}

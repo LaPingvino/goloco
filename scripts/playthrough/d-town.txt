@@ -14,7 +14,7 @@ wait 2
 click 220 91
 wait 2
 shot /tmp/goloco-playthrough/pt-d1-townwindow.png
-click 495 354
+click 207 545
 wait 2
 shot /tmp/goloco-playthrough/pt-d2-centred.png
 quit

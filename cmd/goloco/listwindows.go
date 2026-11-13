@@ -36,7 +36,7 @@ func (g *Game) openVehicleList(tab int) {
 // openVehicleListFor is VehicleList::open(company, type): the company's
 // vehicle list (WindowType::vehicleList, numbered by the company) brought to
 // the front on that tab, or opened.
-func (g *Game) openVehicleListFor(company, tab int) { g.wins.Show(g.newVehicleList(company, tab)) }
+func (g *Game) openVehicleListFor(company, tab int) { g.showAuto(g.newVehicleList(company, tab), 0, 0) }
 
 // newVehicleList builds a company's vehicle list on a tab.
 func (g *Game) newVehicleList(company, tab int) *ui.TownListWindow {
@@ -69,6 +69,7 @@ func (g *Game) newVehicleList(company, tab int) *ui.TownListWindow {
 	}
 	w := ui.NewVehicleList(g.sw, tab, rows, tc, wc, cargos)
 	w.WinType, w.Number = ui.WindowTypeVehicleList, company
+	w.Resizable(220, 160, 1200, 2000) // kMinDimensions, kMaxDimensions
 	w.LighterFrame = true
 	g.companySelect(w, company, func(id int) { g.turnList(w, ui.WindowTypeVehicleList, id, g.newVehicleList(id, tab)) })
 	if cname != "" {
@@ -129,7 +130,7 @@ var stationTabMasks = [5]uint16{0xF, 1 << 0, 1 << 1, 1 << 2, 1 << 3}
 // owner, not flag_5 — not fully created —, flags & the tab's mask), captioned
 // "{company} - All Stations" / "Rail Stations" …; a tab click reopens it on
 // that tab.
-func (g *Game) openStationList(company, tab int) { g.wins.Show(g.newStationList(company, tab)) }
+func (g *Game) openStationList(company, tab int) { g.showAuto(g.newStationList(company, tab), 0, 0) }
 
 // newStationList builds a company's station list (WindowType::stationList,
 // numbered by the company) on a tab.
@@ -154,6 +155,7 @@ func (g *Game) newStationList(company, tab int) *ui.TownListWindow {
 	}
 	w := ui.NewStationList(g.sw, rows, tc, wc)
 	w.WinType, w.Number = ui.WindowTypeStationList, max(company, 0)
+	w.Resizable(192, 100, 640, 1200) // kMinDimensions, kMaxDimensions
 	w.LighterFrame = true
 	if cname != "" {
 		w.Caption = strings.Replace(i18n.Label(i18n.StringidAllStations+tab), "{STRINGID}", cname, 1) // "{STRINGID} - Rail Stations" …
@@ -169,7 +171,7 @@ func (g *Game) newStationList(company, tab int) *ui.TownListWindow {
 }
 
 // openTownsWindow lists the scenario's towns with population and size.
-func (g *Game) openTownsWindow() { g.wins.Show(g.newTownList()) }
+func (g *Game) openTownsWindow() { g.showList(g.newTownList()) }
 
 // newTownList builds the town list (WindowType::townList; there is one).
 func (g *Game) newTownList() *ui.TownListWindow {
@@ -182,7 +184,8 @@ func (g *Game) newTownList() *ui.TownListWindow {
 	tc, wc := g.windowColours(false)
 	w := ui.NewTownList(g.sw, rows, tc, wc)
 	w.WinType = ui.WindowTypeTownList
-	w.OnRow = func(id int) { // onScrollMouseDown: Town::open
+	w.Resizable(192, 100, 600, 900) // TownList::kMinDimensions, kMaxDimensions
+	w.OnRow = func(id int) {        // onScrollMouseDown: Town::open
 		g.openTownWindow(id)
 	}
 	g.listTabIcons(w, townTabFrames, townTabCounts, -1)
@@ -275,12 +278,12 @@ func (g *Game) openTownWindow(id int) {
 		}
 		return base + 145 + anim(16), -1, -1
 	}
-	g.wins.Show(w)
+	g.showAuto(w, 0, 0)
 }
 
 // openIndustryList is IndustryList::open (its list tab): every industry with
 // its status and production; a row opens its Industry window.
-func (g *Game) openIndustryList() { g.wins.Show(g.newIndustryList()) }
+func (g *Game) openIndustryList() { g.showList(g.newIndustryList()) }
 
 // newIndustryList builds the industry list's list tab (WindowType::
 // industryList; there is one, its two tabs the same window).
@@ -293,6 +296,7 @@ func (g *Game) newIndustryList() *ui.TownListWindow {
 	tc, wc := g.windowColours(false)
 	w := ui.NewIndustryList(g.sw, rows, tc, wc)
 	w.WinType = ui.WindowTypeIndustryList
+	w.Resizable(192, 100, 759, 900)                     // IndustryList::kMinDimensions, kMaxDimensions
 	w.OnRow = func(id int) { g.openIndustryWindow(id) } // onScrollMouseDown: Industry::open
 	w.OnTab = func(t int) {
 		if t == 1 {
@@ -446,7 +450,7 @@ func (g *Game) openIndustryWindow(id int) {
 				Month: int(g.w.Map.CurrentMonth), Year: int(g.w.Map.CurrentYear), Layout: ui.IndustryGraphLayout}, true
 		}
 	}
-	g.wins.Show(w)
+	g.showAuto(w, 0, 0)
 }
 
 // listTabIcons is a list window's drawTabs: tab i's interface skin image

@@ -105,7 +105,7 @@ func (g *Game) openStationWindow(id int) {
 			g.showStationCatchment(-1)
 		}
 	}
-	g.wins.Show(w)
+	g.showAuto(w, 0, 0)
 }
 
 // showStationCatchment is StationWindow's showStationCatchment: the selected

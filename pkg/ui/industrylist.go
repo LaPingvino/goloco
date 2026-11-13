@@ -14,7 +14,8 @@ import (
 // The industry list (Ui/Windows/IndustryList.cpp): its list tab — Name,
 // Status, Production transported, Production last month — on the shared
 // table window, 759 wide (kWindowSize); its second tab: NewIndustryGrid.
-// PARTIAL: the resizing.
+// Resizable (cmd/goloco: 192 × 100 … 759 × 900).
+// PARTIAL: the Fund New Industries tab's height following its rows.
 
 // IndustryListRow is one industry: IndustryList.cpp drawScroll's cells.
 type IndustryListRow struct {

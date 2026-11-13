@@ -243,7 +243,7 @@ func (g *Game) openLoadGameWindow() {
 			log.Printf("[Game] Load error: %v", err)
 		}
 	}
-	g.wins.Show(w)
+	g.showCentred(w)
 }
 
 // GoLocoSave is the JSON format for GoLoco native save files (.goloco).
@@ -279,7 +279,7 @@ func (g *Game) openSaveWindow() {
 			log.Printf("[Game] Save error: %v", err)
 		}
 	}
-	g.wins.Show(w)
+	g.showCentred(w)
 }
 
 // saveGameTo writes the current scenario path to a .goloco JSON save file.

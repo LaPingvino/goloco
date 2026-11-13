@@ -32,11 +32,16 @@ func vehicleListFooter(tab, n int) string {
 }
 
 // The filter widgets (dropdownWidgets): filter type at (264, 200) 120×12,
-// cargo type at (386, 200) 150×12.
-var (
-	vlFilterBox = [4]int{280 - 16, 200, 120, 12}
-	vlCargoBox  = [4]int{402 - 16, 200, 150, 12}
-)
+// cargo type at (386, 200) 150×12 in the 550 × 213 window; prepareDraw keeps
+// them at the window's right and bottom as it resizes, and hides them when it
+// is no wider than the two and 50 (enoughSpaceForCargoFilters).
+// PARTIAL: goloco's boxes keep their kWindowSize offsets from the corner;
+// upstream's prepareDraw re-derives them (cargo_type.right = width − 20,
+// top = height − 14), which at 550 × 213 is 5 px left and 1 px up of these.
+func vlBoxes(w *TownListWindow) (filter, cargo [4]int, shown bool) {
+	dx, dy := w.W-550, w.H-213
+	return [4]int{280 - 16 + dx, 200 + dy, 120, 12}, [4]int{402 - 16 + dx, 200 + dy, 150, 12}, w.W > 150+120+50
+}
 
 // addVehicleListFilters adds VehicleList's filter type and cargo type
 // dropdowns: "All vehicles" / "Transporting cargo" (var_850); with the
@@ -80,6 +85,10 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 		return "No cargo type selected", 0
 	}
 	w.Extra8 = func(rt *gfx8.RenderTarget, sec []uint8) {
+		vlFilterBox, vlCargoBox, shown := vlBoxes(w)
+		if !shown {
+			return
+		}
 		optDropdown(rt, vlFilterBox[0], vlFilterBox[1], vlFilterBox[2], sec)
 		optDropdown(rt, vlCargoBox[0], vlCargoBox[1], vlCargoBox[2], sec)
 		if mode == 1 && cargo >= 0 { // the cargo's inline sprite after its text
@@ -90,6 +99,10 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 		}
 	}
 	w.ExtraText = func(screen *ebiten.Image) {
+		vlFilterBox, vlCargoBox, shown := vlBoxes(w)
+		if !shown {
+			return
+		}
 		g1 := globalG1Font.g1
 		pal := g1.GetPalette()
 		cmap, _ := g1.GetPaletteMap(int(w.Colour))
@@ -116,7 +129,8 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 		DrawTextBold(screen, arrow, w.X+bx+(11-1)/2-aw/2, w.Y+vlCargoBox[1]+1, black)
 	}
 	w.ExtraClick = func(px, py int) bool {
-		if w.OpenDropdown == nil {
+		vlFilterBox, vlCargoBox, shown := vlBoxes(w)
+		if w.OpenDropdown == nil || !shown {
 			return false
 		}
 		// filter_type_btn: Dropdown::show at the widget, width() − 4.

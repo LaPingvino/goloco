@@ -1,0 +1,69 @@
+# The window stack on the title game: five Town windows opened in a row from
+# the Towns list (where WindowManager::createWindow places them), one dragged
+# over the list, the list and then that window brought to the front
+# (bringToFront), a Town window and the list resized by their grips, the
+# list's grip clicked (maximise) and clicked again (restore).
+#   env -C $SHOTS GOLOCO_SCRIPT=…/windowstack.txt goloco ~/Projects/locomotion/Data/title.dat
+# goloco 2026-11-13: Albuquerque 0,410; Bay City 577,410; Buffalo 225,410 (right
+# of Albuquerque: the list, clicked for each row, has changed places with the
+# front window each time, so Albuquerque is the first in the list); Charlotte
+# 0,247; Chicago 577,247.
+# On the real OpenLoco (untitle.py's save, `ol.sh run`): pause first (click
+# 688 592) and close any news window (its close box: 571 451) — an open, or a
+# just closed, news window takes part in the placement (26.08, 2026-11-13: a
+# Town window then opened at 220,439, createWindow's below-the-window spot
+# clamped onto the screen), so its positions are these only without one.
+wait 14
+press 784 14          # towns menu, held
+wait 1
+move 760 42           # … Towns
+wait 1
+release 760 42
+wait 1
+click 220 92          # Albuquerque
+wait 1
+click 220 102         # Bay City
+wait 1
+click 220 112         # Buffalo
+wait 1
+shot ws-three.png
+click 220 122         # Charlotte
+wait 1
+click 220 132         # Chicago
+wait 1
+move 500 520
+wait 1
+shot ws-five.png
+drag 680 416 300 200  # Bay City by its caption, over the list
+wait 1
+move 500 540
+wait 1
+shot ws-over.png
+click 500 37          # the list's caption: the list comes to the front
+wait 1
+move 500 540
+wait 1
+shot ws-list-front.png
+click 300 300         # Bay City again
+wait 1
+move 500 540
+wait 1
+shot ws-town-front.png
+drag 219 567 319 567  # Albuquerque's grip: 100 wider
+wait 1
+drag 796 223 696 303  # the list's grip: 500 x 277
+wait 1
+move 500 560
+wait 1
+shot ws-resized.png
+click 692 300         # the list's grip clicked: maximised
+wait 1
+move 500 20
+wait 1
+shot ws-maximised.png
+click 796 569         # and again: restored
+wait 1
+move 500 20
+wait 1
+shot ws-restored.png
+quit
