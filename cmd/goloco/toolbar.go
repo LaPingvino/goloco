@@ -386,7 +386,7 @@ func (g *Game) stationsMenu(btn *ui.ToolbarButton) {
 	for t := 0; t < 5; t++ {
 		tab := t
 		items = append(items, ui.DropdownItem{MenuSprite: true, Sprite: skin + objects.ISAllStations + t, SpriteColour: colour,
-			Text: i18n.Label(i18n.AllStations + t), Action: func() { g.openStationList(tab) }})
+			Text: i18n.Label(i18n.AllStations + t), Action: func() { c, _ := g.w.ControllingCompany(); g.openStationList(c, tab) }})
 	}
 	d := g.toolbarImageMenu(btn, items)
 	d.Highlighted = 0

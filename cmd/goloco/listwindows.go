@@ -64,20 +64,7 @@ func (g *Game) openVehicleListFor(company, tab int) {
 	}
 	w := ui.NewVehicleList(g.sw, tab, rows, tc, wc, cargos)
 	w.LighterFrame = true
-	w.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
-	w.Face, w.FaceColour = g.companyFace(company)
-	// populateCompanySelect's companies: every non-empty slot.
-	for id := range g.w.CompanyNames {
-		if g.w.CompanyNames[id] == 0 || id >= len(g.w.CompanyFaces) { // StringIds::empty: no company
-			continue
-		}
-		face, col := g.companyFace(id)
-		w.Companies = append(w.Companies, ui.CompanyChoice{ID: id, Name: g.w.CompanyName(id), Performance: int(g.w.CompanyFaces[id].Performance), Face: face, Colour: col})
-	}
-	w.OwnerID = company
-	w.ScreenW, w.ScreenH = g.sw, g.sh
-	w.OnCompany = func(id int) { g.openVehicleListFor(id, tab) } // onCompanyDropdown: the window turns to that company
-	w.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
+	g.companySelect(w, company, func(id int) { g.openVehicleListFor(id, tab) })
 	if cname != "" {
 		w.Caption = cname + " - " + w.Caption // stringid_trains etc.
 	}
@@ -92,20 +79,42 @@ func (g *Game) openVehicleListFor(company, tab int) {
 	g.townList = w
 }
 
-// openStationsWindow lists every placed/loaded station on the map.
-func (g *Game) openStationsWindow() { g.openStationList(0) }
+// companySelect gives a list window the company select button (Vehicle and
+// Station lists): the owner's face drawn on it (draw: competitor images by
+// ownerEmotion, recoloured to the company's primary colour), and its dropdown
+// of every company (populateCompanySelect: every non-empty slot), a choice
+// turning the window to that company (onCompanyDropdown).
+func (g *Game) companySelect(w *ui.TownListWindow, company int, open func(id int)) {
+	w.Face, w.FaceColour = g.companyFace(company)
+	for id := range g.w.CompanyNames {
+		if g.w.CompanyNames[id] == 0 || id >= len(g.w.CompanyFaces) { // StringIds::empty: no company
+			continue
+		}
+		face, col := g.companyFace(id)
+		w.Companies = append(w.Companies, ui.CompanyChoice{ID: id, Name: g.w.CompanyName(id), Performance: int(g.w.CompanyFaces[id].Performance), Face: face, Colour: col})
+	}
+	w.OwnerID = company
+	w.ScreenW, w.ScreenH = g.sw, g.sh
+	w.OnCompany = open
+	w.OpenDropdown = func(d *ui.DropdownMenu) { g.dropdown = d }
+}
+
+// openStationsWindow lists the controlling company's stations.
+func (g *Game) openStationsWindow() {
+	company, _ := g.w.ControllingCompany()
+	g.openStationList(company, 0)
+}
 
 // stationTabMasks is StationList.cpp tabInformationByType's stationMask, by
 // tab: all modes, rail, road, air, water (StationFlags transportMode*).
 var stationTabMasks = [5]uint16{0xF, 1 << 0, 1 << 1, 1 << 2, 1 << 3}
 
-// openStationList is StationList::open(the controlling company, tab): the
-// company's stations of the tab's transport modes (populateStationList:
+// openStationList is StationList::open(company, tab): the company's stations of the tab's transport modes (populateStationList:
 // owner, not flag_5 — not fully created —, flags & the tab's mask), captioned
 // "{company} - All Stations" / "Rail Stations" …; a tab click reopens it on
 // that tab.
-func (g *Game) openStationList(tab int) {
-	company, cname := g.w.ControllingCompany()
+func (g *Game) openStationList(company, tab int) {
+	cname := g.w.CompanyName(company)
 	var rows []ui.StationRow
 	for _, s := range g.w.StationList() {
 		if s.Owner >= 0 && s.Owner != company {
@@ -129,12 +138,13 @@ func (g *Game) openStationList(tab int) {
 		w.Caption = strings.Replace(i18n.Label(i18n.StringidAllStations+tab), "{STRINGID}", cname, 1) // "{STRINGID} - Rail Stations" …
 	}
 	w.CurrentTab = tab
-	w.OnTab = func(t int) { g.openStationList(t) }
+	w.OnTab = func(t int) { g.openStationList(company, t) }
+	g.companySelect(w, company, func(id int) { g.openStationList(id, tab) })
 	w.OnClose = func() { g.townList = nil }
 	w.OnRow = func(id int) { g.openStationWindow(id) }             // onScrollMouseDown: Station::open
 	g.listTabIcons(w, stationTabFrames, stationTabCounts, int(tc)) // the company colour
 	w.TabTooltips = labels(i18n.TooltipAllStations, i18n.TooltipRailStations, i18n.TooltipRoadStations, i18n.TooltipAirports, i18n.TooltipShipPorts)
-	w.Reopen = func() { g.openStationList(tab) }
+	w.Reopen = func() { g.openStationList(company, tab) }
 	g.townList = w
 }
 
@@ -172,6 +182,7 @@ func (g *Game) openTownWindow(id int) {
 	tc, wc := g.windowColours(false)
 	w := ui.NewTownWindow(g.sw, g.sh, t.Name, t.Size, int(t.Population), tc, wc)
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.TownView(id, vw, vh) }
+	w.Labels = func(dst *ebiten.Image) { g.w.TownViewLabels(id, dst) }
 	w.OnCentreView = func() { g.w.CentreOnTown(id) }
 	w.OnRename = func() { g.renameTown(id, w) }
 	w.TabTooltips = labels(i18n.TooltipTown, i18n.TooltipPopulationGraph, i18n.TooltipTownRatingsEachCompany)
@@ -337,6 +348,7 @@ func (g *Game) openIndustryWindow(id int) {
 	tc, wc := g.windowColours(false)
 	w := ui.NewIndustryWindow(g.sw, g.sh, name, m.IndustryStatusString(idx, g.r.ObjMgr), tc, wc)
 	w.View = func(vw, vh int) *gfx8.RenderTarget { return g.w.IndustryView(idx, vw, vh) }
+	w.Labels = func(dst *ebiten.Image) { g.w.IndustryViewLabels(idx, dst) }
 	w.OnCentreView = func() { g.w.CentreOnIndustry(idx) }
 	w.OnRename = func() { g.renameIndustry(idx, w) }
 	w.TabTooltips = labels(i18n.TooltipIndustry, i18n.TooltipProductionGraph, i18n.TooltipProductionGraph, i18n.TooltipStatistics)
