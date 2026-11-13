@@ -20,7 +20,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
   doesn't fit in a tick, port a faithful slice (with a test) rather than a whole approximate feature.
 - **Never delete a warning to make a number go up.** A TODO / "approximation" / "stub" note goes only
   when the thing it warns about is fixed. cmd/diagnostics rewards "TODO-free" files — ignore that score.
-- **Verify every change**: `go test ./...` (headless-safe packages), plus a visual check for anything
+- **Verify every change**: `scripts/test-all.sh` and `scripts/playthrough/run.sh`, plus a visual check for anything
   that draws (native under Xvfb when installed; otherwise the private wasm test page, item 1).
   Compare against the original (reference/ screenshots, or the OpenLoco build when it runs here).
 - **Game data is not ours.** ~/Projects/locomotion (from ~/locodata.tar.gz) is never committed and
@@ -44,6 +44,35 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
   Blocked and move on — don't work around it.
 
 ## Queue (top = next)
+
+> NOW (Joop 2026-11-13: "collect new issues when you encounter them and work through the list until it's done").
+> This list first, top down; an issue found while working goes at its bottom (one line, where it was seen, the
+> upstream reference). Each item: ported as upstream, checked against the real OpenLoco (scripts/olref — the binary
+> is the same commit as ~/Projects/OpenLoco now), scripts/test-all.sh and scripts/playthrough/run.sh green.
+>
+> - [ ] N1 News / message window (MessageWindow.cpp, the news ticker, MessageManager): missing; also takes part in
+>       createWindow placement.
+> - [ ] N2 Company HQ click → Company window: the HQ building's interaction isn't painted (getItemLeft's
+>       headquarterBuilding).
+> - [ ] N3 Viewport clicks on the release of an undragged click (MouseInput.cpp stateViewportLeft), and
+>       getItemLeft's fallback into a window's viewport.
+> - [ ] N4 Name plates follow towns and stations: Town::updateLabel, Station::updateLabel (frames are the save's).
+> - [ ] N5 The porting gap b93e074..09d74ee (161 upstream commits): triage — list what changes behaviour or
+>       looks goloco already ports (Town window 4th tab, industry "Cargo awaiting", white station captions,
+>       toolbarAutoMenu, map tooltips …), then port them as items here.
+> - [ ] N6 Window stack leftovers: toolbar / panels as stack windows (a dragged window covers the toolbar), drag by
+>       frame, BuildVehicle / CompanyList / Company status resize, vehicle list column widths, open flash/sound.
+> - [ ] N7 Construction leftovers: disabled buttons drawn greyed, gradient-based disabling, a refused road's reason
+>       line, constructRoad's alternate-road retry, the bridge retry, shift's downward search, byte_113607E, the
+>       selected-tile outline, the preview's arrow, the error window at the cursor.
+> - [ ] N8 One-way road arrows (PaintRoad.cpp: one_way_direction_arrows view flag).
+> - [ ] N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks).
+> - [ ] N10 Gfx::recolour exactness (the 5P.g note).
+> - [ ] N11 a-newgame has no expect: a key for open windows (expect window scenarioSelect == 1).
+> - [ ] N12 Money pop-ups drawn after the names, not in paint order (drawStringStructs).
+> - [ ] N13 `git -C goloco` can't write .git/config ("Device or resource busy" on branch / worktree delete): find why.
+> - [ ] N14 (PAUSED until an editor exists) the town list's editor build tabs; updateBuilding's isEditorMode return;
+>       the tileManagerLoaded gate.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).
 SK. [x] **Interface skin images after a save loads.** DONE 2026-11-05: the skin's image table now joins the global image list (LoadImageTable, as every other object; interface->img = its first index); before, only a private counter (NextSpriteIndex) moved, so img + n were other objects' images. The Build Vehicles menu has its images; the time panel's map icon draws again. LEFT (own small items): the toolbar faces upstream draws by state — Build Vehicles (kBuildVehicleImages by lastBuildVehiclesOption, company colour) and Vehicles (vehicle_*_frame_0); goloco's Vehicles button face is blank. Land objects still take NextSpriteIndex (their sprites are drawn from land.Sprites, so harmless now — check before anything indexes G1 by land.ImageOffset).
 
