@@ -47,8 +47,7 @@ func (t *Tile) insertStationAfter(k int, el scenario.StationElement, quarters ui
 // changed), the track's clear height raised by the station's, then
 // addTileToStation, the modes, centre, label and canopies.
 // PARTIAL: the AI's placement without a track (index 0 query), the AI's
-// nearby search, the viewport invalidations and the legacy return state's
-// ghost adjoining-station fields.
+// nearby search and the legacy return state's ghost adjoining-station fields.
 func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g1 G1Raw) (int32, bool) {
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0)): where the money effect shows
 	om := c.Objects
@@ -208,6 +207,7 @@ func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g
 			}
 			old.SequenceIndex = 0
 			registerTile = false
+			m.invalidateElement(px, py, old.BaseZ, old.ClearZ)
 			st = old
 		} else {
 			ne := scenario.StationElement{Rotation: el.Rotation, Ghost: flags&CmdGhost != 0, AiAllocated: flags&CmdAiAllocated != 0,
@@ -227,6 +227,7 @@ func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g
 		el.ClearZ += stationObj.Height / 4
 		st.ClearZ = el.ClearZ
 		st.Owner = c.Company
+		m.invalidateElement(px, py, st.BaseZ, st.ClearZ)
 	}
 	if flags&CmdGhost == 0 && flags&CmdApply != 0 && stationID >= 0 {
 		if registerTile {

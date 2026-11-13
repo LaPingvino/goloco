@@ -31,7 +31,6 @@ func (t *Tile) removeStationElement(k int) {
 // then — unless it was a ghost — the tile out of the station and its cargo,
 // modes, centre, label and canopies recalculated. The emptied station is
 // deallocated later by Station::update, as upstream.
-// PARTIAL: the viewport invalidations.
 func (m *Map) RemoveTrainStation(c *Cmd, flags uint8, a TrainStationRemoval, g1 G1Raw) (int32, bool) {
 	om := c.Objects
 	initial, _ := m.getElTrack(a.X, a.Y, a.Z, a.Rotation, a.TrackObjectID, a.TrackID, a.Index)
@@ -72,6 +71,7 @@ func (m *Map) RemoveTrainStation(c *Cmd, flags uint8, a TrainStationRemoval, g1 
 		}
 		if flags&CmdApply != 0 {
 			el.ClearZ -= obj.Height
+			m.invalidateElement(px, py, st.BaseZ, st.ClearZ)
 			el.HasStation = false
 			t.removeStationElement(k + 1)
 		}

@@ -238,21 +238,44 @@ func (g *Game) stopStartOpen(headID uint16, x, y, w, h int) {
 	g.dropdown = d
 }
 
-// pickupImage is getPickupImageIdandTooltip's image for rail: the track
-// object's image + kUiPickupFromTrack (16) when placed, kUiPlaceOnTrack (17)
-// when not. PARTIAL: road, air and water (0: no image).
+// pickupImage is getPickupImageIdandTooltip's image: by transport mode the
+// track's, road's (0xFF: the default track type's) or water object's
+// pick-up / place image, or the airport ones — pick-up when placed, place
+// when not. (It returned none but for rail, so a road vehicle, aircraft or
+// ship had an empty, invisible place button.)
 func (g *Game) pickupImage(h *scenario.VehicleEntity) int {
-	if h.Mode != 0 || g.r.ObjMgr == nil {
+	om := g.r.ObjMgr
+	if om == nil {
 		return 0
 	}
-	t := g.r.ObjMgr.GetTrackObjectByIndex(int(h.TrackType))
-	if t == nil {
-		return 0
+	placed := h.TileX != -1
+	pick := func(base uint32, pickup, place int) int { // isPlaced ? pickup : place
+		if placed {
+			return int(base) + pickup
+		}
+		return int(base) + place
 	}
-	if h.TileX != -1 {
-		return int(t.Image) + 16
+	switch h.Mode {
+	case 0: // rail: TrackObj kUiPickupFromTrack / kUiPlaceOnTrack
+		if t := om.GetTrackObjectByIndex(int(h.TrackType)); t != nil {
+			return pick(t.Image, 16, 17)
+		}
+	case 1: // road: RoadObj kUiPickupFromRoad / kUiPlaceOnRoad, 0xFF the default track type
+		id := int(h.TrackType)
+		if h.TrackType == 0xFF {
+			id = int(g.w.Map.LastTrackTypeOption) // GameState defaultTrackTypeObjectId (0x1AD)
+		}
+		if r := om.GetRoadObjectByIndex(id); r != nil {
+			return pick(r.Image, 32, 33)
+		}
+	case 2: // air: ImageIds pickupFromAirport / placeOnAirport
+		return pick(0, 2372, 2373)
+	case 3: // water: Water kUiPickupFromWater / kUiPlaceOnWater
+		if om.WaterObj != nil {
+			return pick(om.WaterObj.ImageOffset, 58, 59)
+		}
 	}
-	return int(t.Image) + 17
+	return 0
 }
 
 // centreViewportOpen is Main's onCentreViewportControl: a text dropdown at the

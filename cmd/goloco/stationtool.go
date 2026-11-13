@@ -83,6 +83,17 @@ func (g *Game) removeStationGhost() {
 		g.w.SetCatchmentDisplay(nil) // sub_491BC6 + resetMapSelectionFlag(catchmentArea)
 		g.catchmentStation = -1      // the catchment shown is the ghost's from here
 	}
+	const ghostFlags = sim.CmdApply | sim.CmdNoErrorWindow | sim.CmdNoPayment | sim.CmdGhost
+	if ag := g.airportGhost; ag != nil { // stationGhostType & (1 << 15): AirportRemovalArgs
+		g.airportGhost = nil
+		c, g1 := g.stationCmd()
+		g.w.Map.RemoveAirport(c, ghostFlags, sim.AirportRemoval{X: ag.X, Y: ag.Y, Z: ag.Z}, g1)
+	}
+	if dg := g.dockGhost; dg != nil { // stationGhostType & (1 << 14): PortRemovalArgs
+		g.dockGhost = nil
+		c, g1 := g.stationCmd()
+		g.w.Map.RemovePort(c, ghostFlags, sim.PortRemoval{X: dg.X, Y: dg.Y, Z: dg.Z}, g1)
+	}
 	if rg := g.roadStationGhost; rg != nil { // stationGhostType & (1 << 7): RoadStationRemovalArgs
 		g.roadStationGhost = nil
 		c, g1 := g.stationCmd()

@@ -18,6 +18,7 @@ import (
 // tick / 31 ms, at most 3 — so every Update runs 3 game ticks (1 while the
 // mouse moves), the most upstream's pacing gives a slow frame.
 const scriptStep = 93 * time.Millisecond
+
 var clock struct {
 	virtual bool
 	t       time.Time
