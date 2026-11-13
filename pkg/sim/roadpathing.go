@@ -57,8 +57,8 @@ func (m *Map) roadLongestRecurse(x, y, z int32, tad uint16, p Pathing, st *longe
 		return
 	}
 	for {
-		// Upstream keeps vanilla's mistake: the track weighting, by road id.
-		st.total += TrackUnkWeighting[((tad>>3)&0xF)%44]
+		// The road's weighting (e71abfb; vanilla read the track table by road id).
+		st.total += RoadUnkWeighting[((tad>>3)&0xF)%10]
 		if st.total > pathingMaxWeight {
 			return
 		}

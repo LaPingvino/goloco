@@ -513,7 +513,8 @@ func TestVehiclePickup(t *testing.T) {
 // their head was (as addCarToVehicle does around a new car). A saved stop is
 // where motion left the train, a placement settles it onto exact sub-positions,
 // so the saved game is no exact oracle: every component (but veh1, the road
-// vehicles' look-ahead, which reserves afresh) within 2 px of where it was;
+// vehicles' look-ahead, which reserves afresh, and a road vehicle's head and
+// tail) within 2 px of where it was;
 // a second pickup and placement lands exactly where the first did; refusals
 // only as "in the way" (Unk1).
 func TestPlaceDownRoundTrip(t *testing.T) {
@@ -558,8 +559,12 @@ func TestPlaceDownRoundTrip(t *testing.T) {
 		first := positions(nt)
 		for _, i := range trainComponents(nt) {
 			e := m.Entities[i]
-			if i == nt.Veh1 || (i == nt.Head && h.Mode == 1) {
-				continue // the look-ahead; a road head (it led the route, placing brings it back)
+			if i == nt.Veh1 || (i == nt.Head && h.Mode == 1) || (i == nt.Tail && h.Mode == 1) {
+				// the look-ahead; a road head (it led the route, placing brings it
+				// back); a road tail (it trails the route chosen with the road
+				// weighting upstream e71abfb corrected — a vanilla save is no
+				// oracle for it any more; upstream regenerated its test data too)
+				continue
 			}
 			a, b := saved[e.ID], first[e.ID]
 			for k := range 3 {

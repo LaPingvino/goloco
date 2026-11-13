@@ -115,15 +115,15 @@ func (m *Map) maxHeightOfNewBuilding(om *objects.ObjectManager, x, y, z int32, l
 	return int(minClear) * smallZStep
 }
 
-// newBuildingArgs is generateNewBuildingArgs (0x0042CF7C): the CLOSEST
+// newBuildingArgs is generateNewBuildingArgs (0x0042CF7C): nothing when the
+// closest town isn't the growing one (checked first since upstream e71abfb;
+// vanilla checked after drawing from the closest town's prng); else the
 // town's wanted amenities (none before 64 buildings), the candidates for its
-// density (or one lower), and — with that closest town's prng, as upstream —
-// a building drawn, a variation that fits and a colour from the object's
-// set; nothing (after the draws, as upstream) when the closest town isn't
-// the growing one.
+// density (or one lower), and with its prng a building drawn, a variation
+// that fits and a colour from the object's set.
 func (m *Map) newBuildingArgs(om *objects.ObjectManager, town int, x, y, z int32, target int, rotation uint8, large, immediate bool) (BuildingPlacement, bool) {
 	ti, density, ok := m.ClosestTownAndDensity(x, y)
-	if !ok {
+	if !ok || ti != town {
 		return BuildingPlacement{}, false
 	}
 	tw := &m.Towns[ti]
@@ -143,7 +143,7 @@ func (m *Map) newBuildingArgs(om *objects.ObjectManager, town int, x, y, z int32
 			return BuildingPlacement{}, false
 		}
 	}
-	p := core.NewPrngSeed(tw.Prng[0], tw.Prng[1]) // town->prng: the closest town's
+	p := core.NewPrngSeed(tw.Prng[0], tw.Prng[1]) // town->prng
 	defer func() { tw.Prng = [2]uint32{p.Srand0(), p.Srand1()} }()
 	id := cands[int(p.RandNext()&0xFFFF)*len(cands)/65536]
 	obj := om.BuildingObjects[id]
@@ -163,9 +163,6 @@ func (m *Map) newBuildingArgs(om *objects.ObjectManager, town int, x, y, z int32
 	colour := uint8(0) // Colour::black
 	if len(colours) > 0 {
 		colour = colours[int(p.RandNext()&0xFFFF)*len(colours)/65536]
-	}
-	if ti != town {
-		return BuildingPlacement{}, false
 	}
 	return BuildingPlacement{X: x, Y: y, Z: z, Rotation: rotation, Type: id, Variation: variation, Colour: colour, BuildImmediately: immediate}, true
 }

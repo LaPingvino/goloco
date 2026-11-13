@@ -127,11 +127,11 @@ func TestTownRoadTakeover(t *testing.T) {
 	}
 }
 
-// generateNewBuildingArgs draws with the CLOSEST town's prng (town->prng
-// after getClosestTownAndDensity) and only then refuses when that isn't the
-// growing town: asked for town A at town B's centre, B's prng moves, A's
-// doesn't, and nothing is placed.
-func TestNewBuildingArgsUsesClosestTownPrng(t *testing.T) {
+// generateNewBuildingArgs refuses first when the closest town isn't the
+// growing one (upstream e71abfb; vanilla drew from the closest town's prng
+// before refusing): asked for town A at town B's centre, nothing is placed
+// and neither town's prng moves.
+func TestNewBuildingArgsOtherTownFirst(t *testing.T) {
 	m, om := loadDataMap(t, "title.dat")
 	if len(m.Towns) < 2 {
 		t.Skip("fewer than two towns")
@@ -149,7 +149,7 @@ func TestNewBuildingArgsUsesClosestTownPrng(t *testing.T) {
 	if m.Towns[0].Prng != a0 {
 		t.Error("the growing town's prng moved")
 	}
-	if m.Towns[1].Prng == b0 {
-		t.Error("the closest town's prng didn't move (no draws?)")
+	if m.Towns[1].Prng != b0 { // e71abfb: refused before any draw
+		t.Error("the closest town's prng moved")
 	}
 }

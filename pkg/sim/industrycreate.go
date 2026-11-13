@@ -296,9 +296,8 @@ type IndustryPlacement struct {
 }
 
 const (
-	gameCommandCreateIndustry = 47      // GameCommand::createIndustry
-	industryFlag04            = 1 << 3  // IndustryFlags::flag_04: founded by a company
-	industryNotRotatable      = 1 << 15 // IndustryObjectFlags::notRotatable
+	industryFlag04       = 1 << 3  // IndustryFlags::flag_04: founded by a company
+	industryNotRotatable = 1 << 15 // IndustryObjectFlags::notRotatable
 )
 
 // placementAttempts is kPlacementAttemptDistanceRangeAndMin: as a building's
@@ -319,7 +318,7 @@ var placementAttempts = [25][2]int32{{1, 0}, {3, -1}, {3, -1}, {3, -1}, {3, -1},
 // expandGrounds); the cost. The industry is freed again when a building can't
 // be placed, or on a query. A real one not built at once posts newIndustry.
 func (m *Map) CreateIndustry(c *Cmd, flags uint8, a IndustryPlacement) (int32, uint8, bool) {
-	prng := [2]uint32{gameCommandCreateIndustry, a.Srand1}
+	prng := [2]uint32{a.Srand0, a.Srand1} // e71abfb: srand0 used (vanilla put the command id there)
 	id, _, ok := m.industryAllocateChecked(a.Type, a.X, a.Y, prng, c.Objects)
 	if !ok {
 		return 0, 0, false
@@ -348,15 +347,13 @@ func (m *Map) CreateIndustry(c *Cmd, flags uint8, a IndustryPlacement) (int32, u
 	sync := func() { ind.Prng = [2]uint32{p.Srand0(), p.Srand1()} }
 	colour := randomAvailableColour(p, obj)
 	lastX, lastY := int32(ind.X), int32(ind.Y)
-	randVal := p.RandNext() & 0xFF
-	rate := randVal
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 2; i++ { // e71abfb: a roll per cargo (vanilla reused one and the last target)
 		ind.DailyProduction[i] = 0
 		lo, hi := uint32(obj.InitialProductionRate[i][0]), uint32(obj.InitialProductionRate[i][1])
-		ind.DailyProductionTarget[i] = uint16((hi-lo)*rate/256 + lo)
-		rate = uint32(ind.DailyProductionTarget[i] & 0xFF)
+		ind.DailyProductionTarget[i] = uint16((hi-lo)*(p.RandNext()&0xFF)/256 + lo)
 	}
 	var total int32
+	randVal := p.RandNext() & 0xFF // 0x00454552: the buildings' own roll
 	n := (uint32(obj.MaxNumBuildings)-uint32(obj.MinNumBuildings)+1)*randVal/256 + uint32(obj.MinNumBuildings)
 	for i := uint32(0); i < n && int(i) < len(obj.Buildings); i++ {
 		b := obj.Buildings[i]
@@ -597,9 +594,9 @@ func (m *Map) createNewIndustry(objID uint8, buildImmediately bool, numAttempts 
 		if !ok {
 			continue
 		}
-		before := m.Rng1.Srand0()
-		m.Rng1.RandNext()
-		args := IndustryPlacement{Type: objID, X: x, Y: y, BuildImmediately: buildImmediately, Srand0: m.Rng1.Srand0() - before, Srand1: m.Rng1.Srand1()}
+		s0 := m.Rng1.RandNext() // e71abfb: two rolls (vanilla took a difference of states)
+		s1 := m.Rng1.RandNext()
+		args := IndustryPlacement{Type: objID, X: x, Y: y, BuildImmediately: buildImmediately, Srand0: s0, Srand1: s1}
 		if _, _, ok := m.CreateIndustry(&Cmd{Company: CompanyNeutral, Objects: om}, CmdApply, args); ok {
 			return true
 		}
