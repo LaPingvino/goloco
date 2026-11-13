@@ -90,9 +90,9 @@ func (g *Game) playerCompanyDropdown(x, y, w, h int) {
 // openCompanyWindow is CompanyWindow::open: the Company window on its Status
 // tab.
 func (g *Game) openCompanyWindow(company int) {
-	g.openCompanyFinances(company)
-	if w := g.companyWin(company); w != nil {
-		w.SwitchTab(ui.CompanyTabStatus)
+	if cw := g.newCompanyWindow(company); cw != nil {
+		cw.SwitchTab(ui.CompanyTabStatus)
+		g.showAuto(cw, 0, 0) // create: Status::kWindowSize, the tab it opens on
 	}
 }
 

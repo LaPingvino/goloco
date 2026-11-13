@@ -6,6 +6,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
+	"image"
 	"image/color"
 	"sort"
 	"strings"
@@ -451,6 +452,18 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 	} else {
 		DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, w.Caption)
 	}
+	// A narrowed window cuts its texts off as upstream's widgets and scroll
+	// view clip theirs: the headers and the status at the frame's inside
+	// (width − 4; the status label ends at the resize handle), the rows at
+	// the scroll view.
+	clip := func(l, t, r, b int) *ebiten.Image {
+		if c, ok := screen.SubImage(image.Rect(l, t, r, b)).(*ebiten.Image); ok {
+			return c
+		}
+		return screen
+	}
+	full := screen
+	screen = clip(w.X, w.Y, w.X+w.W-4, w.Y+w.H)
 	for i, c := range w.Columns {
 		label := c.Label
 		if w.Sort != nil && i == w.SortMode {
@@ -459,8 +472,16 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 		DrawTextBold(screen, label, w.X+c.HeaderX, w.Y+43, black)
 	}
 	ct := w.content
+	status := clip(w.X, w.Y, w.X+w.W-ResizeHandleSize, w.Y+w.H)
+	screen = clip(w.X+ct[0], w.Y+ct[1], w.X+ct[0]+ct[2], w.Y+ct[1]+ct[3])
+	defer func() {
+		DrawTextBold(status, w.Status, w.X+4, w.Y+w.StatusY, black)
+		if w.ExtraText != nil {
+			w.ExtraText(full)
+		}
+	}()
 	if len(w.Rows)*w.RowHeight > w.List[3] {
-		drawVScrollArrows(screen, w.X+w.List[0], w.Y+w.List[1], w.List[2], w.List[3])
+		drawVScrollArrows(full, w.X+w.List[0], w.Y+w.List[1], w.List[2], w.List[3])
 	}
 	for i, r := range w.Rows {
 		y := w.Y + ct[1] + i*w.RowHeight - w.Scroll
@@ -505,10 +526,6 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 				DrawTextBold(screen, t, x+cl.TextX, y, c)
 			}
 		}
-	}
-	DrawTextBold(screen, w.Status, w.X+4, w.Y+w.StatusY, black)
-	if w.ExtraText != nil {
-		w.ExtraText(screen)
 	}
 }
 
