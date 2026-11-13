@@ -131,6 +131,9 @@ func (m *Map) CreateRoadStation(c *Cmd, flags uint8, a RoadStationPlacement, g1 
 		return m.InflationAdjustedCost(factor, costIndex, 8) * int32(RoadCostFactor[a.RoadID]) / 256
 	}
 	var total int32
+	// 982c51d: the rotation the stations' tile list gets is piece 0's
+	// element's (it can differ from args.rotation), so removing it matches
+	piece0Rotation := a.Rotation
 	for _, piece := range pieces {
 		ox, oy := rotOffset(piece.X, piece.Y, a.Rotation)
 		px, py, pz := sx+int32(ox), sy+int32(oy), sz+int32(piece.Z)
@@ -270,6 +273,9 @@ func (m *Map) CreateRoadStation(c *Cmd, flags uint8, a RoadStationPlacement, g1 
 			m.invalidateElement(px, py, old.BaseZ, old.ClearZ)
 			st = old
 		} else {
+			if piece.Index == 0 {
+				piece0Rotation = last.Rotation
+			}
 			ne := scenario.StationElement{Rotation: last.Rotation, Ghost: flags&CmdGhost != 0, AiAllocated: flags&CmdAiAllocated != 0,
 				StationType: 1, BaseZ: last.BaseZ}
 			if flags&CmdGhost == 0 && stationID >= 0 {
@@ -287,7 +293,7 @@ func (m *Map) CreateRoadStation(c *Cmd, flags uint8, a RoadStationPlacement, g1 
 	}
 	if flags&CmdGhost == 0 && flags&CmdApply != 0 && stationID >= 0 {
 		if registerTile {
-			m.AddTileToStation(stationID, sx, sy, sz, a.Rotation, om)
+			m.AddTileToStation(stationID, sx, sy, sz, piece0Rotation, om)
 		}
 		m.RecalculateStationModes(stationID, om)
 		m.RecalculateStationCenter(stationID, g1)

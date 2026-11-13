@@ -75,7 +75,7 @@ func (m *Map) Cheat(c *Cmd, flags uint8, sub CheatCommand, p1, p2, p3 int32) (in
 	return 0, true
 }
 
-// cheatAcquireAssets: every road, track, station and vehicle of the target
+// cheatAcquireAssets: every road, track, station element, station and vehicle of the target
 // company becomes ours (the updating company's).
 func (m *Map) cheatAcquireAssets(ours, target uint8) {
 	for y := range m.Tiles {
@@ -89,6 +89,18 @@ func (m *Map) cheatAcquireAssets(ours, target uint8) {
 			for i := range t.Tracks {
 				if t.Tracks[i].Owner == target {
 					t.Tracks[i].Owner = ours
+				}
+			}
+		}
+	}
+	// 91c200d: the station elements too (a station's new owner doesn't own its
+	// road station elements otherwise)
+	for y := range m.Tiles {
+		for x := range m.Tiles[y] {
+			t := &m.Tiles[y][x]
+			for i := range t.Stations {
+				if t.Stations[i].Owner == target {
+					t.Stations[i].Owner = ours
 				}
 			}
 		}
