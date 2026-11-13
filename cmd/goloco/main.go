@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/LaPingvino/goloco/pkg/audio"
+	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -120,30 +121,31 @@ func main() {
 }
 
 // openTrackTest is GOLOCO_OPEN=track, the headless construction test: the
-// window open and a piece sequence chained from the map centre, so captures
-// verify connections.
+// window open and a line of straights laid from the map centre (sim.LayTrack:
+// no game command), a station on its first and last piece.
 func (g *Game) openTrackTest() {
 	g.buildMode = buildModeTrack
 	g.wins.Show(g.newPortedConstructionWindow())
 	mw, mh := g.w.GetMapSize()
-	g.w.SetConstructionHead(mw/2, mh/2)
-	// Straight line so the piece origins fall on a predictable tile row and
-	// the first/last pieces can carry stations for the board→deliver loop.
-	seq := []int{0, 0, 0, 0, 0}
-	var firstX, firstY, lastX, lastY int
-	for i, id := range seq {
-		h := g.w.ConstructionHeadState()
-		if i == 0 {
-			firstX, firstY = h.X, h.Y
-		}
-		if i == len(seq)-1 {
-			lastX, lastY = h.X, h.Y
-		}
-		if !g.w.PlaceTrackAtHead(id, 0) {
-			log.Printf("[ConsTest] piece %d not placeable at head %+v", id, g.w.ConstructionHeadState())
-		}
+	t := g.w.TileAt(mw/2, mh/2)
+	if t == nil {
+		return
 	}
-	log.Printf("[ConsTest] head after sequence: %+v", g.w.ConstructionHeadState())
+	end := sim.ConnectionEnd{X: int32(mw/2) * 32, Y: int32(mh/2) * 32, Z: int32(t.BaseZ) * 4}
+	var firstX, firstY, lastX, lastY int
+	for i := 0; i < 5; i++ {
+		lastX, lastY = int(end.X/32), int(end.Y/32)
+		if i == 0 {
+			firstX, firstY = lastX, lastY
+		}
+		next, ok := g.w.LayTrack(end.X, end.Y, end.Z, end.NextRotation, 0, 0)
+		if !ok {
+			log.Printf("[ConsTest] no straight at %+v", end)
+			break
+		}
+		end = next
+	}
+	log.Printf("[ConsTest] the line ends at %+v", end)
 	// Stations on the first and last pieces of the line.
 	stationSlot := g.firstTrainStationSlot()
 	if g.w.PlaceStationOnTile(firstX, firstY, stationSlot) {
@@ -155,18 +157,25 @@ func (g *Game) openTrackTest() {
 }
 
 // openRoadTest is GOLOCO_OPEN=road, the headless road construction test:
-// straight pieces and very small curves chained.
+// straight pieces and very small curves chained (sim.LayRoad).
 func (g *Game) openRoadTest() {
 	g.buildMode = buildModeRoad
 	g.wins.Show(g.newPortedConstructionWindow())
 	mw, mh := g.w.GetMapSize()
-	g.w.SetConstructionHead(mw/2, mh/2)
-	for _, id := range []int{0, 2, 0, 1, 0} {
-		if !g.w.PlaceRoadAtHead(id, 0) {
-			log.Printf("[RoadConsTest] piece %d not placeable at head %+v", id, g.w.ConstructionHeadState())
-		}
+	t := g.w.TileAt(mw/2, mh/2)
+	if t == nil {
+		return
 	}
-	log.Printf("[RoadConsTest] head after sequence: %+v", g.w.ConstructionHeadState())
+	end := sim.ConnectionEnd{X: int32(mw/2) * 32, Y: int32(mh/2) * 32, Z: int32(t.BaseZ) * 4}
+	for _, id := range []int{0, 2, 0, 1, 0} {
+		next, ok := g.w.LayRoad(end.X, end.Y, end.Z, end.NextRotation, id, 0)
+		if !ok {
+			log.Printf("[RoadConsTest] no piece %d at %+v", id, end)
+			break
+		}
+		end = next
+	}
+	log.Printf("[RoadConsTest] the line ends at %+v", end)
 }
 
 // firstTrainStationSlot returns the first populated train-station object slot,

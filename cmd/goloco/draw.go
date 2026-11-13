@@ -81,9 +81,8 @@ func (g *Game) drawMapSave(screen *ebiten.Image) bool {
 }
 
 // drawWorld draws the map view, and saves the diagnostic crop when one is
-// pending. The build mode's ghost preview is part of it: track and road chain
-// from the construction head, the real ghost at the head painted in the world
-// (UpdateHeadTrackGhost / UpdateHeadRoadGhost) — goloco's overlays are gone.
+// pending. The construction ghost is part of it: a ghost element on the map
+// (sim's ConstructionToolUpdate / UpdateConstruction), painted with the world.
 func (g *Game) drawWorld(screen *ebiten.Image) {
 	// If a diagnostic crop is pending for a specific tile, move the camera
 	// here (after Update has run) so the title-sequence camera override

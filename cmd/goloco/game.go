@@ -96,9 +96,6 @@ type Game struct {
 	buildMode   int   // buildModeNone / Track / Road / Dock / Airport
 	buildObjID  int   // index into TrackObjects / RoadObjects
 	consTab     int   // construction window tab: 0 construction, 1 station, 2 signal, 3 overhead
-	consCurve   int   // construction curve selection: -4 (left large) … 0 … +4
-	consSlope   int   // construction slope selection: -2 (steep down) … 0 … +2
-	consOneShot int   // track: an s-bend/turnaround piece chosen (construct.TrackPiece ≥ 9), -1 none
 	consBridge  int   // lastSelectedBridge (slot; -1 = the first available)
 	consSignal  int   // signal tab: lastSelectedSignal (slot; -1 = the first available)
 	consSigOne  bool  // signal tab: single direction chosen (isSignalBothDirections = 0)
@@ -313,7 +310,6 @@ func NewGame() *Game {
 		scale:              loadScale(),
 		w:                  w,
 		consSignal:         -1,
-		consOneShot:        -1,
 		consBridge:         -1,
 		consStation:        -1,
 		titleWorld:         w, // keep a reference so Quit to Menu can restore it

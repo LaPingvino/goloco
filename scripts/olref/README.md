@@ -72,6 +72,12 @@ Pause (click 688 592) before a series of shots: numbers and graphs stay put.
   the town labels and things that change with time. OpenLoco can't read every
   .SV5 (DEBUG_AUTO_DUMP.SV5: "Unsupported S5 format").
 
+tours/construction-rail.txt and construction-road.txt are the construction
+window's state on such an autosave of Sandbox Settler (flat desert): hover,
+rotate, first click, build, bulldozer back to the start and once more, the red
+cross, a refused click. One script runs on both games; goloco doesn't take the
+save's view, so the two build at different tiles of the same flat ground.
+
 For one window: `pair.py out.png goloco.png@X,Y,W,H openloco.png@X,Y,W,H 2`.
 
 ## Which source decides

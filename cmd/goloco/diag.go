@@ -155,8 +155,6 @@ func (g *Game) diagOpenWindows() {
 		}
 		if d == "extend" {
 			g.buildMode = buildModeTrack
-			mw, mh := g.w.GetMapSize()
-			g.w.SetConstructionHead(mw/2, mh/2)
 		}
 		if d == "road" {
 			g.buildMode = buildModeRoad
@@ -165,6 +163,13 @@ func (g *Game) diagOpenWindows() {
 			}
 		}
 		g.wins.Show(g.newPortedConstructionWindow())
+		if d == "extend" { // building on from the map's centre
+			mw, mh := g.w.GetMapSize()
+			if t := g.w.TileAt(mw/2, mh/2); t != nil {
+				g.w.Cons.Hover = false
+				g.w.Cons.X, g.w.Cons.Y, g.w.Cons.Z = int32(mw/2)*32, int32(mh/2)*32, int32(t.BaseZ)*4
+			}
+		}
 	}
 	if v := os.Getenv("GOLOCO_DIAG_BUILDVEHICLE"); v != "" && !g.buildVehDiagDone && (!diagNeedsScene[v] || g.w.SceneReady()) &&
 		(v != "cash" || !g.inTitleScreen) { // cash: once a game runs (a scenario loaded by the script resets the company)

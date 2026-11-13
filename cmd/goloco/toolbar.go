@@ -201,7 +201,6 @@ func (g *Game) openConstructionWithFlags(flags uint8) {
 	} else {
 		g.buildMode, g.buildObjID = buildModeTrack, int(flags)
 	}
-	g.consCurve, g.consSlope = 0, 0
 	g.w.Map.SetTrackOptions(flags, g.r.ObjMgr)
 	g.wins.Show(g.newPortedConstructionWindow())
 }

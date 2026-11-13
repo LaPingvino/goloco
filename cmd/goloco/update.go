@@ -5,7 +5,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/LaPingvino/goloco/pkg/construct"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -235,24 +234,20 @@ func (g *Game) updateConstructionTools() {
 	if g.consHasHead() {
 		g.hoverTileX, g.hoverTileY = g.tileUnderCursor(g.mouseX, g.mouseY)
 		// Keyboard shortcuts for build mode
-		if g.inKeyJustPressed(ebiten.KeyR) {
-			// Both track and road drive the shared construction head.
-			g.w.RotateConstructionHead()
+		if g.inKeyJustPressed(ebiten.KeyR) && g.consTab == 0 && g.w.Cons.Hover && g.r.ObjMgr != nil {
+			// Common::rotate: only while hovering; the ghost goes, to stand turned
+			c := g.playerCmd()
+			g.w.ConstructionRotate90(c)
+			g.w.RemoveConstructionGhosts(c)
 		}
-		if g.inKeyJustPressed(ebiten.KeyX) {
-			g.consUndo()
+		if g.inKeyJustPressed(ebiten.KeyX) && g.consTab == 0 {
+			g.consRemove() // removeAtCurrentPos
 		}
 		if g.inKeyJustPressed(ebiten.KeyEscape) {
-			g.buildMode = buildModeNone
-			g.hoverTileX = -1
-			g.hoverTileY = -1
-			g.w.ClearConstructionHead()
+			g.endConstruction()
 		}
 	}
-	g.updateTrackGhost()
-	// updateConstruction's updateConstructionArrow: the track / road window on
-	// its Construction tab with the head placed (not while hovering).
-	g.w.UpdateConstructionArrow(g.consHasHead() && g.consTab == 0 && !g.inTitleScreen && g.w.ConstructionHeadState().Active)
+	g.updateConstruction()
 }
 
 // updateHeld is what follows the mouse without a click: menu and toolbar
@@ -367,40 +362,21 @@ func (g *Game) hudOrMapClick() {
 		g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
 	} else if g.stationToolOn() {
 		g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked, or a dock
-	} else if g.buildMode == buildModeTrack && g.hoverTileX >= 0 && g.r.ObjMgr != nil {
-		// onToolUpSingle + constructionLoop: the first click builds the
-		// selected piece at the tile (the head set there), as the Construct
-		// button would; refused, the error window shows and the rotation turns.
-		g.removeTrackGhost()
-		tx, ty, jh := g.consTarget(false)
-		if p, ok := construct.GetTrackPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation); ok {
-			c := g.playerCmd()
-			if _, built := g.w.BuildTrackAtTile(c, tx, ty, int(p.ID), uint8(g.buildObjID), jh); built {
-				g.errorWin = nil // the loop's WindowManager::close(WindowType::error)
-				if g.consOneShot >= 0 {
-					g.consOneShot, g.consCurve = -1, 0
-				}
-			} else {
-				g.openTrackBuildError(c)
-			}
-		}
-	} else if g.buildMode == buildModeRoad && g.hoverTileX >= 0 && g.r.ObjMgr != nil {
-		// onToolUpSingle + constructionLoop for a road, as for track: the first
-		// click builds the selected piece at the tile (the head set there).
+	} else if g.consHasHead() && g.consTab == 0 && g.w.Cons.Hover && g.hoverTileX >= 0 && g.r.ObjMgr != nil {
+		// onToolUp → onToolUpSingle + constructionLoop: the click starts
+		// building — the selected piece at the tile, as the Construct button
+		// would; refused, the error window shows and the window hovers on.
+		road := g.consIsRoad()
 		c := g.playerCmd()
-		g.w.RemoveRoadGhost(c)
-		tx, ty, jh := g.consTarget(true)
-		if p, ok := construct.GetRoadPieceID(g.consTrackPiece(), consTrackGradient(g.consSlope), g.w.ConstructionHeadState().Rotation); ok {
-			if _, built := g.w.BuildRoadAtTile(c, tx, ty, int(p.ID), uint8(g.buildObjID), jh); built {
-				g.errorWin = nil
-				if g.consOneShot >= 0 {
-					g.consOneShot, g.consCurve = -1, 0
-				}
-			} else {
-				g.openTrackBuildError(c)
-			}
+		tx, ty, jh := g.consTarget(road)
+		if _, built, refused := g.w.ConstructionToolUp(c, tx, ty, jh, road, uint8(g.buildObjID)); built {
+			g.errorWin = nil // the loop's WindowManager::close(WindowType::error)
+		} else if refused {
+			g.openTrackBuildError(c)
 		}
-	} else if g.buildMode == buildModeNone && !g.inTitleScreen {
+	} else if (g.buildMode == buildModeNone || g.consHasHead() && g.consTab == 0) && !g.inTitleScreen {
+		// (while building on from a position the construction window has no
+		// tool on the map — toolCancel — so a click is the viewport's.)
 		// MouseInput.cpp's viewport click without a tool: getItemLeft opens
 		// the vehicle's, town's, station's or industry's window
 		if it, ok := g.w.ItemLeftAt(g.mouseX, g.mouseY); ok {

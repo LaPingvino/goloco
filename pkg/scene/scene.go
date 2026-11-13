@@ -622,7 +622,11 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		tk := t.Tracks[ref.Index]
 		s.CurrentItem = &t.Tracks[ref.Index] // setCurrentItem(element)
 		if to := om.GetTrackObjectByIndex(int(tk.TrackObjectID)); to != nil {
-			s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ, Remap: r.companyRemap(m, tk.Owner),
+			remap := r.companyRemap(m, tk.Owner)
+			if tk.Ghost { // baseTrackImageColour = Gfx::applyGhostToImage(0)
+				remap = r.colourMap(extColourGhost)
+			}
+			s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ, Remap: remap,
 				Tunnel: r.tunnelImage(to.TunnelName), HasBridge: tk.HasBridge, Bridge: tk.BridgeID}, int(to.Image), sprite)
 			var mods [4]paint.TrackMod // trackObj->mods: the track extras, by the element's hasMod bits
 			for i, name := range to.ModNames {
@@ -631,7 +635,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 				}
 			}
 			s.PaintTrackMods(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ,
-				Remap: r.companyRemap(m, tk.Owner)}, mods, sprite)
+				Remap: remap}, mods, sprite)
 		}
 	case scenario.KindRoad:
 		rd := t.Roads[ref.Index]
@@ -641,7 +645,11 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			if !rd.HasLevelCrossing && !rd.HasSignalElement && !rd.HasStationElement {
 				light = rd.LevelCrossingObjectID
 			}
-			s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: r.companyRemap(m, rd.Owner),
+			remap := r.companyRemap(m, rd.Owner)
+			if rd.Ghost { // baseRoadImageColour = Gfx::applyGhostToImage(0)
+				remap = r.colourMap(extColourGhost)
+			}
+			s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: remap,
 				Tunnel: r.tunnelImage(ro.TunnelName), HasBridge: rd.HasBridge, Bridge: rd.BridgeID,
 				Streetlight: light, StreetlightImage: int(om.StreetLightImage), Crossing: r.levelCrossing(rd, v.Ticks),
 				Mods: r.roadMods(ro, rd), AnyRoadTypeCompatible: ro.Flags&(1<<3) != 0}, int(ro.Image), ro.PaintStyle, sprite)

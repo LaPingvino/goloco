@@ -36,11 +36,11 @@ type tile = sim.Tile
 
 // World holds a tile grid for an isometric game world
 type World struct {
-	townScene *scene.Renderer   // the Town window's viewport (townview.go)
-	catchment []uint8           // SetCatchmentDisplay's map (nil: none)
-	selOn     bool              // SetMapSelection: the selection is shown
-	selArea   [4]int            // its tiles: min x, min y, max x, max y
-	consArrow constructionArrow // the construction head's arrow (constructionarrow.go)
+	townScene *scene.Renderer       // the Town window's viewport (townview.go)
+	catchment []uint8               // SetCatchmentDisplay's map (nil: none)
+	selOn     bool                  // SetMapSelection: the selection is shown
+	selArea   [4]int                // its tiles: min x, min y, max x, max y
+	consArrow sim.ConstructionArrow // the arrow last handed to the renderer (constructionarrow.go)
 	// SceneEvery: render the world every n-th frame (≤ 1: every frame); the
 	// game raises it while its UI is open (drawScene).
 	SceneEvery int
@@ -1901,106 +1901,6 @@ func (w *World) drawTrackRoadSprite(screen *ebiten.Image, spriteID int, drawX, d
 	op.GeoM.Translate(
 		drawX+float64(xOff)*scale,
 		drawY+(float64(yOff)-extraHeight)*scale)
-	screen.DrawImage(img, op)
-}
-
-// DrawTrackGhost renders a translucent preview of a track piece at tile (tileX, tileY).
-// Used to show the player where a piece will be placed before clicking.
-// trackID=0 straight, 2=LeftCurveVerySmall, 3=RightCurveVerySmall, etc.
-func (w *World) DrawTrackGhost(screen *ebiten.Image, tileX, tileY, trackID, rotation, objID int) {
-	if w.renderer == nil || w.renderer.ObjMgr == nil {
-		return
-	}
-	t := w.getTile(tileX, tileY)
-	if t == nil {
-		return
-	}
-	trackObj := w.renderer.ObjMgr.GetTrackObjectByIndex(objID)
-	if trackObj == nil || trackObj.Image == 0 {
-		return
-	}
-	if trackID >= len(kTrackParts) || kTrackParts[trackID] == nil || len(kTrackParts[trackID]) == 0 {
-		return
-	}
-	piece := kTrackParts[trackID][0]
-	rot := rotation & 0x03
-	scale := 1.0 / float64(int(1)<<w.zoom)
-	vpX, vpY := w.tileToScreen(tileX, tileY)
-	vpY -= float64(t.BaseZ) * 4.0
-	drawX := math.Round((vpX - w.camX) * scale)
-	drawY := math.Round((vpY - w.camY) * scale)
-
-	for layer := 0; layer < 3; layer++ {
-		offset := piece.img[rot][layer]
-		if piece.nonMergeable && layer > 0 {
-			break
-		}
-		if offset == 0 {
-			continue
-		}
-		spriteID := int(trackObj.Image) + int(offset)
-		img := w.renderer.GetSprite(spriteID)
-		if img == nil {
-			continue
-		}
-		_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
-		if !ok {
-			continue
-		}
-		op := &ebiten.DrawImageOptions{}
-		op.ColorScale.ScaleAlpha(0.5)
-		op.GeoM.Scale(scale, scale)
-		op.GeoM.Translate(drawX+float64(xOff)*scale, drawY+float64(yOff)*scale)
-		screen.DrawImage(img, op)
-	}
-}
-
-// DrawRoadGhost renders a translucent preview of a road piece at tile (tileX, tileY).
-func (w *World) DrawRoadGhost(screen *ebiten.Image, tileX, tileY, roadID, rotation, objID int) {
-	if w.renderer == nil || w.renderer.ObjMgr == nil {
-		return
-	}
-	t := w.getTile(tileX, tileY)
-	if t == nil {
-		return
-	}
-	roadObj := w.renderer.ObjMgr.GetRoadObjectByIndex(objID)
-	if roadObj == nil || roadObj.Image == 0 {
-		return
-	}
-	if roadID >= len(kRoadPartsStyle0) || kRoadPartsStyle0[roadID] == nil || len(kRoadPartsStyle0[roadID]) == 0 {
-		return
-	}
-	rot := rotation & 0x03
-	scale := 1.0 / float64(int(1)<<w.zoom)
-	vpX, vpY := w.tileToScreen(tileX, tileY)
-	vpY -= float64(t.BaseZ) * 4.0
-	drawX := math.Round((vpX - w.camX) * scale)
-	drawY := math.Round((vpY - w.camY) * scale)
-
-	// Road ghost: use the merge sprite for just this piece's exits
-	// Straight (roadID=0): exits 0101 (rot0/2) or 1010 (rot1/3)
-	var exits uint8
-	switch rot {
-	case 0, 2:
-		exits = 0b0101
-	case 1, 3:
-		exits = 0b1010
-	}
-	mergeID := kExitsToMergeId[exits&0x0F]
-	spriteID := int(roadObj.Image) + int(kMergeBaseOffset) + int(mergeID)
-	img := w.renderer.GetSprite(spriteID)
-	if img == nil {
-		return
-	}
-	_, _, xOff, yOff, ok := w.renderer.GetSpriteInfo(spriteID)
-	if !ok {
-		return
-	}
-	op := &ebiten.DrawImageOptions{}
-	op.ColorScale.ScaleAlpha(0.5)
-	op.GeoM.Scale(scale, scale)
-	op.GeoM.Translate(drawX+float64(xOff)*scale, drawY+float64(yOff)*scale)
 	screen.DrawImage(img, op)
 }
 
