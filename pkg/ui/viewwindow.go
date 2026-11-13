@@ -27,8 +27,9 @@ import (
 // The town's Company ratings tab (CompanyRatings::draw, 340×208) lists the
 // local authority's rating of each company with one.
 // A click on the caption renames (OnRename).
+// Resizable (WindowFlags::resizable): each tab's onResize sets its limits.
 // PARTIAL: the
-// editor's buttons, resizing, the viewport's own scrolling, the status's
+// editor's buttons, the viewport's own scrolling, the status's
 // clipping (drawStringLeftClipped).
 type ViewWindow struct {
 	WinBase
@@ -112,6 +113,7 @@ type GraphTab struct {
 // VBottomInset; nothing above ClipTop (clipRenderTarget).
 type GraphLayout struct {
 	W, H                      int
+	MaxH                      int // onResize's kMaxWindowSize height (the width is fixed)
 	GridX, GridW              int
 	BottomInset, Top          int
 	YearY, VTop, VBottomInset int
@@ -122,8 +124,8 @@ type GraphLayout struct {
 // TownWindow.cpp Population::draw (299×172, clipped to y 44 down, its
 // coordinates 44 lower).
 var (
-	IndustryGraphLayout = GraphLayout{W: 299, H: 282, GridX: 41, GridW: 239, BottomInset: 7, Top: 68, YearY: 56, VTop: 67, VBottomInset: 8}
-	TownGraphLayout     = GraphLayout{W: 299, H: 172, GridX: 39, GridW: 241, BottomInset: 13, Top: 58, YearY: 46, VTop: 55, VBottomInset: 12, ClipTop: 44}
+	IndustryGraphLayout = GraphLayout{W: 299, H: 282, MaxH: 337, GridX: 41, GridW: 239, BottomInset: 7, Top: 68, YearY: 56, VTop: 67, VBottomInset: 8}
+	TownGraphLayout     = GraphLayout{W: 299, H: 172, MaxH: 327, GridX: 39, GridW: 241, BottomInset: 13, Top: 58, YearY: 46, VTop: 55, VBottomInset: 12, ClipTop: 44}
 )
 
 // caption is Common::prepareDraw's caption per tab: title_town,
@@ -146,8 +148,8 @@ func (w *ViewWindow) caption() string {
 }
 
 // NewTownWindow is Town::open's window (223×161, three tabs), its status
-// status_town_population "{STRINGID} population {INT32}". Placed as
-// WindowManager's default position (here centred on the screen).
+// status_town_population "{STRINGID} population {INT32}". The
+// window stack places it (createWindow).
 func NewTownWindow(sw, sh int, title, size string, population int, titleColour, colour uint8) *ViewWindow {
 	status := strings.Replace(i18n.Label(i18n.StatusTownPopulation), "{STRINGID}", size, 1)
 	status = strings.Replace(status, "{INT32}", Comma32(int64(population)), 1)
@@ -161,8 +163,41 @@ func NewIndustryWindow(sw, sh int, title, status string, titleColour, colour uin
 }
 
 func newViewWindow(sw, sh, w, h, tabs int, title, status string, titleColour, colour uint8) *ViewWindow {
-	return &ViewWindow{WinBase: WinBase{X: (sw - w) / 2, Y: (sh - h) / 2, W: w, H: h}, Tabs: tabs, Title: title, Status: status,
+	v := &ViewWindow{WinBase: WinBase{X: (sw - w) / 2, Y: (sh - h) / 2, W: w, H: h, WinFlags: WindowFlagResizable}, Tabs: tabs, Title: title, Status: status,
 		TitleColour: titleColour, Colour: colour, baseW: w, baseH: h}
+	v.PrepareDraw()
+	return v
+}
+
+// PrepareDraw is the current tab's onResize: the first tab 192 × its height
+// to 600 × 440 (Town::onResize, Industry::onResize); a graph tab its width,
+// its height to the layout's MaxH (Population 299 × 172–327, Production 299 ×
+// 282–337); Company ratings and Transported their one size.
+func (w *ViewWindow) PrepareDraw() {
+	switch {
+	case w.Tab == 0:
+		w.SetSize(192, w.baseH, 600, 440)
+	case w.Tab == w.CargoTab && w.CargoTab != 0:
+		w.SetFixedSize(transportedW, transportedH)
+	case w.Tab == w.RatingsTab && w.RatingsTab != 0:
+		w.SetFixedSize(ratingsW, ratingsH)
+	default:
+		if w.Graph != nil {
+			if g, ok := w.Graph(w.Tab); ok {
+				w.SetSize(g.Layout.W, g.Layout.H, g.Layout.W, max(g.Layout.MaxH, g.Layout.H))
+			}
+		}
+	}
+}
+
+// GripBlocked: on the first tab the viewport and the status bar reach into
+// the resize corner.
+func (w *ViewWindow) GripBlocked(px, py int) bool {
+	if w.Tab != 0 {
+		return false
+	}
+	_, _, r, b := w.viewport()
+	return gripBlockedStd(&w.WinBase, px, py, r, b)
 }
 
 // viewport is prepareDraw's viewport outside the editor: 3,44 to
@@ -184,24 +219,19 @@ func (w *ViewWindow) HandleClick(px, py int) {
 		return
 	}
 	if i := tabAt(tabLayout(w.Tabs, w.tabDisabled), rx, ry); i >= 0 {
-		var g GraphTab
 		graph := false
 		if w.Graph != nil {
-			g, graph = w.Graph(i)
+			_, graph = w.Graph(i)
 		}
 		cargo, ratings := i == w.CargoTab && w.CargoTab != 0, i == w.RatingsTab && w.RatingsTab != 0
 		if !w.TabDisabled[i] && (i == 0 || cargo || ratings || graph) {
+			// switchTab: setSize(kWindowSize), the tab's onResize,
+			// moveInsideScreenEdges
 			w.Tab = i
-			switch {
-			case i == 0:
-				w.W, w.H = w.baseW, w.baseH
-			case graph:
-				w.W, w.H = g.Layout.W, g.Layout.H
-			case ratings:
-				w.W, w.H = ratingsW, ratingsH
-			default:
-				w.W, w.H = transportedW, transportedH
-			}
+			w.WinFlags &^= WindowFlagMaximised
+			w.SetFixedSize(w.baseW, w.baseH)
+			w.PrepareDraw()
+			w.MoveInsideScreenEdges()
 		}
 		return
 	}
@@ -229,6 +259,7 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, false) // Town/Industry open: no lighterFrame
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
 		gfx8.FillRectInset(rt, 0, 41, w.W-1, w.H-1, gfx8.InsetColour{Map: sec}, 0)
+		drawResizeHandle(rt, &w.WinBase, sec)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}

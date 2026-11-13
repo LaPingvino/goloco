@@ -24,7 +24,9 @@ import (
 // vehicles by name, drawn inline with their status; a row opens the vehicle.
 // The Cargo tab's list scrolls (getScrollSize: 12 a cargo, 10 more with an
 // origin).
-// PARTIAL: resizing, the viewport's rotation, the status bar's tooltip.
+// Resizable (WindowFlags::resizable), each tab within its own limits
+// (onResize: setSize).
+// PARTIAL: the viewport's rotation, the status bar's tooltip.
 const stationWinW, stationWinH = 223, 136 // Station::kWindowSize
 
 type StationWindow struct {
@@ -78,39 +80,54 @@ func (w *StationWindow) stationTabs() []int {
 // vehicleList is the open vehicle tab's list rectangle (3, 44 to width − 4,
 // height − 14) and its rows' height (the type's row height).
 func (w *StationWindow) vehicleList() (l, t, wd, ht, rowH int) {
-	return 3, 44, stationVehiclesW - 4 - 3 + 1, stationVehiclesH - 14 - 44 + 1, vehicleListRowHeights[w.Tab-3]
+	return 3, 44, w.W - 4 - 3 + 1, w.H - 14 - 44 + 1, vehicleListRowHeights[w.Tab-3]
 }
 
-// NewStationWindow places the window centred (createWindow's placement:
-// PARTIAL).
+// NewStationWindow is Station::open's window: kWindowSize, resizable; the
+// stack places it (createWindow).
 func NewStationWindow(sw, sh int, title, status string, titleColour, colour uint8) *StationWindow {
-	return &StationWindow{WinBase: WinBase{WinType: WindowTypeStation, X: (sw - stationWinW) / 2, Y: (sh - stationWinH) / 2, W: stationWinW, H: stationWinH}, Title: title, Status: status,
-		TitleColour: titleColour, Colour: colour, vHover: -1}
+	w := &StationWindow{WinBase: WinBase{WinType: WindowTypeStation, X: (sw - stationWinW) / 2, Y: (sh - stationWinH) / 2, W: stationWinW, H: stationWinH,
+		WinFlags: WindowFlagResizable}, Title: title, Status: status, TitleColour: titleColour, Colour: colour, vHover: -1}
+	w.PrepareDraw()
+	return w
 }
 
-// stationViewport is prepareDraw's: 3,44 to width − 4, height − 14.
-func stationViewport() (l, t, r, b int) { return 3, 44, stationWinW - 4, stationWinH - 14 }
+// viewport is prepareDraw's: 3,44 to width − 4, height − 14.
+func (w *StationWindow) viewport() (l, t, r, b int) { return 3, 44, w.W - 4, w.H - 14 }
 
-// width is the current tab's kWindowSize width (Cargo ratings: 249).
-func (w *StationWindow) width() int {
+// PrepareDraw is the tabs' onResize: setSize — Station kWindowSize (223 ×
+// 136) to 600 × 440, Cargo 192 × 136 to 600 × 440, Cargo ratings 249 × 136 to
+// 249 × 440, the vehicle tabs 400 × 200 to 600 × 800 — and the lists' scroll
+// kept within what they now show.
+func (w *StationWindow) PrepareDraw() {
 	switch {
+	case w.Tab == 0:
+		w.SetSize(stationWinW, stationWinH, 600, 440)
+	case w.Tab == 1:
+		w.SetSize(192, 136, 600, 440)
+		_, _, _, ht, contentH := w.cargoList()
+		w.cScroll = min(w.cScroll, max(contentH-ht, 0))
 	case w.Tab == 2:
-		return 249
-	case w.Tab >= 3:
-		return stationVehiclesW
+		w.SetSize(249, 136, 249, 440)
+	default:
+		w.SetSize(stationVehiclesW, stationVehiclesH, 600, 800)
+		if w.Vehicles != nil {
+			_, _, _, ht, rowH := w.vehicleList()
+			w.vScroll = min(w.vScroll, max(len(w.Vehicles(w.Tab-3))*rowH-ht, 0))
+		}
 	}
-	return stationWinW
 }
 
-func (w *StationWindow) height() int {
-	if w.Tab >= 3 {
-		return stationVehiclesH
+// GripBlocked: the tab's viewport or scroll view (3, 44 to its right edge,
+// height − 14) and the status bar (3, height − 12 to width − 14, height − 3)
+// reach into the resize corner.
+func (w *StationWindow) GripBlocked(px, py int) bool {
+	r := w.W - 4
+	if w.Tab == 1 {
+		r = w.W - 26
 	}
-	return stationWinH
+	return gripBlockedStd(&w.WinBase, px, py, r, w.H-14)
 }
-
-// PrepareDraw is the tabs' onResize (PARTIAL: each tab's kWindowSize, fixed).
-func (w *StationWindow) PrepareDraw() { w.W, w.H = w.width(), w.height() }
 
 // MouseOver is VehiclesStopping's onScrollMouseOver: the row under the mouse.
 func (w *StationWindow) MouseOver(px, py int) {
@@ -148,11 +165,11 @@ func (w *StationWindow) HandleWheel(dy float64) {
 // viewport's bottom-right 24 × 24).
 func (w *StationWindow) HandleClick(px, py int) {
 	rx, ry := px-w.X, py-w.Y
-	if rx >= w.width()-15 && rx < w.width()-2 && ry >= 2 && ry < 15 {
+	if rx >= w.W-15 && rx < w.W-2 && ry >= 2 && ry < 15 {
 		w.Close()
 		return
 	}
-	if rx >= 1 && rx < w.width()-15 && ry >= 1 && ry <= 13 && w.OnRename != nil { // Common::onMouseUp caption
+	if rx >= 1 && rx < w.W-15 && ry >= 1 && ry <= 13 && w.OnRename != nil { // Common::onMouseUp caption
 		w.OnRename()
 		return
 	}
@@ -161,6 +178,8 @@ func (w *StationWindow) HandleClick(px, py int) {
 			w.OnCatchment()
 		}
 		w.Tab, w.vScroll, w.vHover = t, 0, -1
+		w.PrepareDraw() // callOnResize
+		w.MoveInsideScreenEdges()
 		return
 	}
 	if w.Tab >= 3 { // onScrollMouseDown: the vehicle's window; the scrollbar's buttons and track page
@@ -172,14 +191,14 @@ func (w *StationWindow) HandleClick(px, py int) {
 		w.cScroll = w.cHold.Begin(ry-t, py, ht, contentH, w.cScroll)
 		return
 	}
-	if w.Tab == 1 && rx >= stationWinW-25 && rx <= stationWinW-2 && ry >= 44 && ry < 44+24 && w.OnCatchment != nil {
+	if w.Tab == 1 && rx >= w.W-25 && rx <= w.W-2 && ry >= 44 && ry < 44+24 && w.OnCatchment != nil {
 		w.OnCatchment()
 		return
 	}
 	if w.Tab != 0 {
 		return
 	}
-	_, _, r, b := stationViewport()
+	_, _, r, b := w.viewport()
 	if rx >= r-24 && rx <= r-1 && ry >= b-24 && ry <= b-1 && w.OnCentreView != nil {
 		w.OnCentreView()
 	}
@@ -217,12 +236,13 @@ func (w *StationWindow) Draw(screen *ebiten.Image) {
 		return
 	}
 	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
-	l, t, r, b := stationViewport()
-	DrawWindowFrame(screen, w.X, w.Y, stationWinW, stationWinH, w.TitleColour, true)
-	draw8(screen, w.X, w.Y, stationWinW, stationWinH, func(rt *gfx8.RenderTarget) {
-		gfx8.FillRectInset(rt, 0, 41, stationWinW-1, stationWinH-1, gfx8.InsetColour{Map: sec}, 0)
+	l, t, r, b := w.viewport()
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, 0, 41, w.W-1, w.H-1, gfx8.InsetColour{Map: sec}, 0)
+		drawResizeHandle(rt, &w.WinBase, sec)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
-			gfx8.DrawSpriteNoise(rt, sp, stationWinW-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 		w.drawStationTabs(rt, sec, 0)
 		gfx8.FillRectInset(rt, l, t, r, b, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
@@ -234,8 +254,8 @@ func (w *StationWindow) Draw(screen *ebiten.Image) {
 	}
 	// status_bar: black_stringid with the status, left-clipped at (3, height − 12) − 1.
 	black := g1.GetPalette()[paletteBlack0]
-	DrawTextFont(screen, w.Status, G1FontMediumNormal, w.X+3-1, w.Y+stationWinH-12-1, black)
-	DrawWindowCaptionStation(screen, w.X+1, w.Y+1, stationWinW-2, w.Title, w.TitleColour)
+	DrawTextFont(screen, w.Status, G1FontMediumNormal, w.X+3-1, w.Y+w.H-12-1, black)
+	DrawWindowCaptionStation(screen, w.X+1, w.Y+1, w.W-2, w.Title, w.TitleColour)
 }
 
 // drawCargo is Cargo::draw and drawScroll: the scroll view (3, 44 to
@@ -258,20 +278,21 @@ func (w *StationWindow) drawCargo(screen *ebiten.Image) {
 	w.cScroll = min(w.cScroll, max(contentH-lh, 0))
 	var cx, cy, cw, ch int
 	var bar bool
-	DrawWindowFrame(screen, w.X, w.Y, stationWinW, stationWinH, w.TitleColour, true)
-	draw8(screen, w.X, w.Y, stationWinW, stationWinH, func(rt *gfx8.RenderTarget) {
-		gfx8.FillRectInset(rt, 0, 41, stationWinW-1, stationWinH-1, gfx8.InsetColour{Map: sec}, 0)
+	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, 0, 41, w.W-1, w.H-1, gfx8.InsetColour{Map: sec}, 0)
+		drawResizeHandle(rt, &w.WinBase, sec)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
-			gfx8.DrawSpriteNoise(rt, sp, stationWinW-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 		w.drawStationTabs(rt, sec, 1)
 		cx, cy, cw, ch, bar = drawVScrollViewPressed(rt, l, t, lw, lh, gfx8.InsetColour{Map: sec}, contentH, w.cScroll, w.cHold.PressedPart())
 		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 4))
 		if w.Catchment { // activated: the image button drawn pressed
-			gfx8.FillRectInset(rt, stationWinW-25, 44, stationWinW-2, 44+23, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
+			gfx8.FillRectInset(rt, w.W-25, 44, w.W-2, 44+23, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
 		}
 		if sp, err := gfx8.Decode(&g1.Elements[2379]); err == nil { // show_station_catchment at (width − 25, 44)
-			gfx8.DrawSpriteNoise(rt, sp, stationWinW-25, 44, gfx8.OpFor(sp, true, false), sec, nil)
+			gfx8.DrawSpriteNoise(rt, sp, w.W-25, 44, gfx8.OpFor(sp, true, false), sec, nil)
 		}
 		sub := gfx8.NewRenderTarget(cw, ch) // the scroll view's own target (its clip)
 		for yy := range ch {
@@ -314,7 +335,7 @@ func (w *StationWindow) drawCargo(screen *ebiten.Image) {
 	}
 	// The status bar (3, height − 12): accepted_cargo_separator, then the sprites.
 	label := stripCodes(i18n.Str(i18n.AcceptedCargoSeparator))
-	sx, sy := w.X+3, w.Y+stationWinH-12
+	sx, sy := w.X+3, w.Y+w.H-12
 	DrawTextFont(screen, label, G1FontMediumNormal, sx-1, sy-1, black)
 	labelW := MeasureTextFont(label, G1FontMediumNormal)
 	ox := sx + labelW + 2
@@ -327,7 +348,7 @@ func (w *StationWindow) drawCargo(screen *ebiten.Image) {
 			}
 		})
 	}
-	DrawWindowCaptionStation(screen, w.X+1, w.Y+1, stationWinW-2, w.Title, w.TitleColour)
+	DrawWindowCaptionStation(screen, w.X+1, w.Y+1, w.W-2, w.Title, w.TitleColour)
 }
 
 // StationRating is one cargo with an origin (CargoRatings::drawScroll): its
@@ -352,11 +373,12 @@ func (w *StationWindow) drawRatings(screen *ebiten.Image) {
 	prim, _ := g1.GetPaletteMap(int(w.TitleColour))
 	pal := g1.GetPalette()
 	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
-	ww := w.width()
-	l, t, r, b := 3, 44, ww-4, stationWinH-14
-	DrawWindowFrame(screen, w.X, w.Y, ww, stationWinH, w.TitleColour, true)
-	draw8(screen, w.X, w.Y, ww, stationWinH, func(rt *gfx8.RenderTarget) {
-		gfx8.FillRectInset(rt, 0, 41, ww-1, stationWinH-1, gfx8.InsetColour{Map: sec}, 0)
+	ww := w.W
+	l, t, r, b := 3, 44, ww-4, w.H-14
+	DrawWindowFrame(screen, w.X, w.Y, ww, w.H, w.TitleColour, true)
+	draw8(screen, w.X, w.Y, ww, w.H, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, 0, 41, ww-1, w.H-1, gfx8.InsetColour{Map: sec}, 0)
+		drawResizeHandle(rt, &w.WinBase, sec)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, ww-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
@@ -504,7 +526,7 @@ func (w *StationWindow) drawVehicles(screen *ebiten.Image) {
 	if w.Vehicles != nil {
 		rows = w.Vehicles(w.Tab - 3)
 	}
-	W, H := stationVehiclesW, stationVehiclesH
+	W, H := w.W, w.H
 	l, t, wd, ht, rowH := w.vehicleList()
 	w.vScroll = min(w.vScroll, max(len(rows)*rowH-ht, 0))
 	var cx, cy, cw, ch int
@@ -512,6 +534,7 @@ func (w *StationWindow) drawVehicles(screen *ebiten.Image) {
 	DrawWindowFrame(screen, w.X, w.Y, W, H, w.TitleColour, true)
 	draw8(screen, w.X, w.Y, W, H, func(rt *gfx8.RenderTarget) {
 		gfx8.FillRectInset(rt, 0, 41, W-1, H-1, gfx8.InsetColour{Map: sec}, 0)
+		drawResizeHandle(rt, &w.WinBase, sec)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
@@ -594,7 +617,7 @@ func (w *StationWindow) cargoList() (l, t, wd, ht, contentH int) {
 			contentH += 10
 		}
 	}
-	return 3, 44, stationWinW - 26 - 3 + 1, stationWinH - 14 - 44 + 1, contentH
+	return 3, 44, w.W - 26 - 3 + 1, w.H - 14 - 44 + 1, contentH
 }
 
 // cargoBar reports window point (rx, ry) on the Cargo tab's scrollbar (shown
@@ -612,14 +635,14 @@ var stationTabTooltips = [9]int{i18n.TooltipStation, i18n.TooltipStationCargo, i
 // tab, and on the Station tab the centre-view button.
 func (w *StationWindow) WidgetTooltip(px, py int) string {
 	rx, ry := px-w.X, py-w.Y
-	if rx >= w.width()-15 && rx < w.width()-2 && ry >= 2 && ry < 15 {
+	if rx >= w.W-15 && rx < w.W-2 && ry >= 2 && ry < 15 {
 		return i18n.Str(i18n.TooltipCloseWindow)
 	}
 	if i := tabAt(w.stationTabs(), rx, ry); i >= 0 {
 		return i18n.Str(stationTabTooltips[i])
 	}
 	if w.Tab == 0 {
-		if _, _, r, b := stationViewport(); rx >= r-24 && rx <= r-1 && ry >= b-24 && ry <= b-1 {
+		if _, _, r, b := w.viewport(); rx >= r-24 && rx <= r-1 && ry >= b-24 && ry <= b-1 {
 			return i18n.Str(i18n.MoveMainViewToShowThis)
 		}
 	}

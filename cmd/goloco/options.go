@@ -139,7 +139,7 @@ func (g *Game) openOptionsWindow() {
 			g.audioMgr.SetMusicVolume(v)
 		}
 	}
-	g.wins.Show(w)
+	g.showCentred(w)
 }
 
 // useCurrency makes dat the loaded currency object: its slot, then

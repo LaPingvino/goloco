@@ -17,7 +17,8 @@ import (
 // editor, so hidden), the sortable column headers (Name, Type, Population,
 // Stations), a ScrollView of 10 px rows and the "N towns" status. The tabs'
 // images come from TabIcon (drawTabs).
-// PARTIAL: the editor's build tabs, window resizing and the resize handle.
+// Resizable between the limits its opener gives (Resizable; PrepareDraw).
+// PARTIAL: the editor's build tabs.
 
 const (
 	tlW, tlH    = 600, 197
@@ -129,6 +130,44 @@ type TownListWindow struct {
 	// LighterFrame is WindowFlags::lighterFrame: the Station and Vehicle lists
 	// set it, the Town and Industry lists don't.
 	LighterFrame bool
+	// The scroll view's and the status line's distances from the window's
+	// right and bottom, as built: prepareDraw keeps them as it resizes.
+	anchored                         bool
+	listRight, listBottom, statusOff int
+}
+
+// Resizable makes the list resizable between its minimum and maximum size
+// (the lists' open: minWidth … maxHeight, WindowFlags::resizable).
+func (w *TownListWindow) Resizable(minW, minH, maxW, maxH int) *TownListWindow {
+	w.PrepareDraw() // the anchors, from the size it was built at
+	w.WinFlags |= WindowFlagResizable
+	w.MinW, w.MinH, w.MaxW, w.MaxH = minW, minH, maxW, maxH
+	return w
+}
+
+// PrepareDraw is the lists' prepareDraw for the window's size: the scroll
+// view to the frame (right = width − 4, bottom = height − 14 …), the status
+// line with the bottom; the scroll kept within the rows it now shows.
+func (w *TownListWindow) PrepareDraw() {
+	if !w.anchored {
+		w.anchored = true
+		w.listRight, w.listBottom, w.statusOff = w.W-(w.List[0]+w.List[2]), w.H-(w.List[1]+w.List[3]), w.H-w.StatusY
+	}
+	w.List[2], w.List[3] = w.W-w.listRight-w.List[0], w.H-w.listBottom-w.List[1]
+	w.StatusY = w.H - w.statusOff
+	if w.RowHeight > 0 {
+		w.Scroll = min(w.Scroll, max(len(w.Rows)*w.RowHeight-w.List[3], 0))
+	}
+}
+
+// GripBlocked: the scroll view and the status bar (to width − 19) reach
+// into the resize corner.
+func (w *TownListWindow) GripBlocked(px, py int) bool {
+	if w.in(w.List, px, py) {
+		return true
+	}
+	rx, ry := px-w.X, py-w.Y
+	return rx >= 3 && rx <= w.W-ResizeHandleSize-1 && ry >= w.StatusY && ry < w.StatusY+10
 }
 
 // setTableGeometry fills the 600×197 town/station list geometry.
@@ -343,6 +382,7 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, w.LighterFrame)
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
 		gfx8.FillRectInset(rt, 0, 41, w.W-1, w.H-1, gfx8.InsetColour{Map: sec}, 0)
+		drawResizeHandle(rt, &w.WinBase, sec)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}

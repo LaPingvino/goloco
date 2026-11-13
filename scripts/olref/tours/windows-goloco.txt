@@ -1,54 +1,54 @@
-# goloco on the title game: the same windows as windows-openloco.txt, where
-# goloco opens them (screen centre). The station is missing: the player owns
-# none there and a label click opens nothing — see station-goloco.tail.txt.
+# goloco on the title game: the same windows as windows-openloco.txt and at
+# the same places — goloco's window stack places and resizes them as
+# WindowManager does, so the clicks are that tour's (less the pause and the
+# news window, and the station: the player owns none there and a label click
+# opens nothing — see station-goloco.tail.txt).
 #   env -C $SHOTS GOLOCO_SCRIPT=…/windows-goloco.txt goloco ~/Projects/locomotion/Data/title.dat
-wait 12
-press 784 14
-wait 1
-move 760 66
-wait 1
+wait 11
+press 784 14          # towns menu, held
+wait 0.5
+move 760 66           # … Industries
+wait 0.5
 release 760 66
 wait 1
-click 120 152
-wait 1
-move 600 500
+click 120 152         # Chicago Food Processing Plant
+move 400 300
 wait 1
 shot go-industry-1.png
-click 338 258
-wait 1
-move 600 500
+click 49 462          # production tab
+move 400 300
 wait 1
 shot go-industry-2.png
-click 369 258
-wait 1
-move 600 500
+click 80 318          # statistics tab (the window grew upwards)
+move 400 300
 wait 1
 shot go-industry-3.png
-click 90 58
-wait 1
-move 600 500
-wait 2
+click 90 58           # the list's Fund New Industries tab
+move 400 300
+wait 1.5
 shot go-fund.png
+click 611 37          # close it
+click 291 298         # and the industry window
+wait 0.5
 press 784 14
-wait 1
-move 760 42
-wait 1
+wait 0.5
+move 760 42           # … Towns
+wait 0.5
 release 760 42
 wait 1
-click 220 172
-wait 1
-move 600 500
+click 220 172         # Dallas
+move 400 300
 wait 1
 shot go-town-1.png
-click 369 247
-wait 1
+click 206 546         # centre the main view on it
+move 400 300
+wait 2
+shot go-centred.png
+click 80 439          # Dallas: the ratings tab
 move 600 500
 wait 1
 shot go-town-ratings.png
-click 307 247
+click 332 370         # close the town window (wider on this tab)
+wait 0.5
 wait 1
-click 495 354
-wait 1
-move 600 500
-wait 2
 quit

@@ -27,8 +27,9 @@ Xvfb needs the Claude Code sandbox off (it blocks the X socket).
 
 Every coordinate is a game-window pixel, and xt.py's commands are the ones of
 goloco's GOLOCO_SCRIPT (cmd/goloco/script.go): a script written for one game
-mostly runs on the other. Not quite always — the two games open their windows
-in different places (see the tours), and `seed`, `scenario` and `camera` exist
+mostly runs on the other — goloco's window stack opens, stacks and resizes
+windows as OpenLoco's WindowManager does (tours/windowstack.txt; windows-goloco.txt clicks where
+windows-openloco.txt does) — though `seed`, `scenario` and `camera` exist
 in goloco only.
 
 OpenLoco refuses a window that leaves less than 160 px of desktop around it

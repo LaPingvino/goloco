@@ -574,7 +574,7 @@ func (w *CompanyListWindow) rowsByID() []CompanyListRow {
 // window in front, within 100 × 150 of the legend's top left — 320 for the
 // cargo legend; each item 10 high, the first taking 0–10), none while the
 // right button is down. The cargo bit is cut to var_854's 16 bits.
-// PARTIAL: "in front" is the caller's say (the window stack's real order).
+// front: the window is the one under the mouse (WindowManager::findAt).
 func (w *CompanyListWindow) Update(mx, my int, front, rightDown bool) {
 	if w.Tab < 1 || w.Tab > 5 {
 		return
