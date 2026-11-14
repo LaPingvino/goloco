@@ -92,6 +92,7 @@ func (g *Game) rightOverState() world.RightOverState {
 		ConstructionOpen: open,
 		StationTab:       open && g.consTab == 1,
 		SignalTab:        open && g.consTab == 2,
+		RepeatedSignals:  g.consSigRepeat,
 		OverheadTab:      open && g.consTab == 3,
 		ConstructTool:    g.tf.on || g.industryToolOn(),
 		TipTimeout:       g.mapTip.timeout,
@@ -189,8 +190,8 @@ func (g *Game) handleRightReleased(x, y int) {
 		// rightReleasedSignal (0x004A5AA1): the side under the mouse (the
 		// paint struct's mod id: 0 the left signal, 1 the right) — both when
 		// the element has both and the single-direction tool is not chosen.
-		// removeSignalsAuto with step 0 is removeSignal (AutoSignals.h).
-		// PARTIAL: repeatedSignalMode's step (signals along the block).
+		// removeSignalsAuto: with repeated placement step 1 (every signal
+		// along the block), else step 0 (removeSignal).
 		if s, t := item.Signal, item.Track; s != nil && t != nil {
 			left, right := item.ModID == 0, item.ModID != 0
 			if !g.consSigOne && s.Sides[0].HasSignal() && s.Sides[1].HasSignal() {
@@ -199,7 +200,13 @@ func (g *Game) handleRightReleased(x, y int) {
 			g.removeConstructionGhosts()
 			a := sim.SignalRemoval{X: item.X, Y: item.Y, Z: int32(t.BaseZ) * 4, Rotation: t.Rotation, TrackID: t.TrackID,
 				Index: t.SequenceIndex, TrackObjectID: t.TrackObjectID, Left: left, Right: right}
-			g.mapCommand(label(i18n.CantRemoveSignal), func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) { return m.RemoveSignal(c, f, a) })
+			step := uint8(0)
+			if g.consSigRepeat {
+				step = 1
+			}
+			g.mapCommand(label(i18n.CantRemoveSignal), func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
+				return m.RemoveSignalsAuto(c, f, sim.SignalsRemovalAuto{SignalRemoval: a, Step: step})
+			})
 		}
 	case paint.ItemTrainStation: // rightReleasedTrainStation (0x004A5B66)
 		if t := item.Track; item.Station != nil && t != nil {

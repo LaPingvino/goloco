@@ -8,8 +8,8 @@ import (
 
 // Signal auto placement (04e7900) on the title map: a run of track between
 // junctions (its signals taken off first), a signal every 2nd piece both ways
-// from a straight in it (the straight itself included), then the same pattern
-// removed again.
+// from a straight in it (the straight itself included), then all of them
+// removed along the block (step 1, the right click's repeated mode).
 func TestSignalsAuto(t *testing.T) {
 	m, om := loadDataMap(t, "title.dat")
 	count := func() int {
@@ -87,7 +87,8 @@ func TestSignalsAuto(t *testing.T) {
 				if placed < 3 || !tl.Tracks[r.Index].HasSignal {
 					t.Fatalf("at %d,%d: %d signals placed, the clicked straight signalled %v", tx, ty, placed, tl.Tracks[r.Index].HasSignal)
 				}
-				rm := SignalsRemovalAuto{SignalRemoval{X: x, Y: y, Z: z, Rotation: el.Rotation, TrackID: 0, TrackObjectID: el.TrackObjectID, Left: true}, 2}
+				// step 1, as the right click with repeated placement: every piece (one without a signal costs nothing)
+				rm := SignalsRemovalAuto{SignalRemoval{X: x, Y: y, Z: z, Rotation: el.Rotation, TrackID: 0, TrackObjectID: el.TrackObjectID, Left: true}, 1}
 				if _, ok := m.RemoveSignalsAuto(c, CmdApply, rm); !ok || count() != before {
 					t.Fatalf("removal: ok %v, signals %d (were %d)", ok, count(), before)
 				}
