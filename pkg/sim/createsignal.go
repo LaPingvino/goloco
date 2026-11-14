@@ -25,21 +25,26 @@ func (a SignalPlacement) removal() SignalRemoval {
 	return SignalRemoval{X: a.X, Y: a.Y, Z: a.Z, Rotation: a.Rotation, TrackID: a.TrackID, Index: a.Index, TrackObjectID: a.TrackObjectID}
 }
 
-// validateTrackIsSignalCompatible: every tile of the piece is there, none has
-// a station, and no other (non-ghost) track at the same height shares a tile
-// edge with it (a junction).
-func (m *Map) validateTrackIsSignalCompatible(c *Cmd, a SignalPlacement, pieces []PreviewTrack, sx, sy, sz int32) bool {
-	r := a.removal()
-	for _, pc := range pieces {
-		ox, oy := rotOffset(pc.X, pc.Y, a.Rotation)
+// validateTrackIsSignalCompatible is Track::validateTrackIsSignalCompatible
+// (04e7900; shared with the auto placement): every tile of the piece starting
+// at (sx, sy, sz) is there and none has a station (both: StringIds::empty, as
+// upstream's "TODO: need a better error message"), and no other (non-ghost)
+// track at the same height shares a tile edge with it (a junction). ok false
+// with the error text to set.
+func (m *Map) validateTrackIsSignalCompatible(sx, sy, sz int32, rotation, trackID, trackObj uint8) (errText int, ok bool) {
+	if int(trackID) >= len(TrackPieces) {
+		return i18n.Empty, false
+	}
+	r := SignalRemoval{Rotation: rotation, TrackID: trackID, TrackObjectID: trackObj}
+	for _, pc := range TrackPieces[trackID] {
+		ox, oy := rotOffset(pc.X, pc.Y, rotation)
 		t, ti, _ := m.signalTrackAt(r, sx+int32(ox), sy+int32(oy), sz+int32(pc.Z), pc.Index)
 		if t == nil {
-			return false
+			return i18n.Empty, false
 		}
 		el := &t.Tracks[ti]
 		if el.HasStation {
-			c.ErrorText = i18n.SignalsCannotBeBuiltInStations
-			return false
+			return i18n.Empty, false
 		}
 		connect := pc.ConnectFlags[el.Rotation&3]
 		for oi := range t.Tracks {
@@ -48,12 +53,11 @@ func (m *Map) validateTrackIsSignalCompatible(c *Cmd, a SignalPlacement, pieces 
 				continue
 			}
 			if TrackPieces[o.TrackID][o.SequenceIndex].ConnectFlags[o.Rotation&3]&connect != 0 {
-				c.ErrorText = i18n.SignalsCannotBeBuiltOnAJunction
-				return false
+				return i18n.SignalsCannotBeBuiltOnAJunction, false
 			}
 		}
 	}
-	return true
+	return 0, true
 }
 
 // signalCost: per side asked, the signal's inflation-adjusted cost; a side
@@ -161,7 +165,8 @@ func (m *Map) CreateSignal(c *Cmd, flags uint8, a SignalPlacement) (int32, bool)
 	p := pieces[a.Index]
 	dx, dy := rotOffset(p.X, p.Y, a.Rotation)
 	sx, sy, sz := a.X-int32(dx), a.Y-int32(dy), a.Z-int32(p.Z)
-	if !m.validateTrackIsSignalCompatible(c, a, pieces, sx, sy, sz) {
+	if text, ok := m.validateTrackIsSignalCompatible(sx, sy, sz, a.Rotation, a.TrackID, a.TrackObjectID); !ok {
+		c.ErrorText = text
 		return 0, false
 	}
 	total := m.signalCost(c, a, pieces[0], sx, sy, sz)
