@@ -94,14 +94,18 @@ type Game struct {
 	mapTip           mapTipState         // the map tooltip (maptooltip.go)
 
 	// The construction window (construction.go).
-	buildMode   int   // buildModeNone / Track / Road / Dock / Airport
-	buildObjID  int   // index into TrackObjects / RoadObjects
-	consTab     int   // construction window tab: 0 construction, 1 station, 2 signal, 3 overhead
-	consBridge  int   // lastSelectedBridge (slot; -1 = the first available)
-	consSignal  int   // signal tab: lastSelectedSignal (slot; -1 = the first available)
-	consSigOne  bool  // signal tab: single direction chosen (isSignalBothDirections = 0)
-	consStation int   // station tab: lastSelectedStationType (slot; -1 = the first available)
-	consMods    uint8 // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
+	buildMode     int   // buildModeNone / Track / Road / Dock / Airport
+	buildObjID    int   // index into TrackObjects / RoadObjects
+	consTab       int   // construction window tab: 0 construction, 1 station, 2 signal, 3 overhead
+	consBridge    int   // lastSelectedBridge (slot; -1 = the first available)
+	consSignal    int   // signal tab: lastSelectedSignal (slot; -1 = the first available)
+	consSigOne    bool  // signal tab: single direction chosen (isSignalBothDirections = 0)
+	consSigRepeat bool  // signal tab: repeatedSignalMode (04e7900)
+	consSigStep   int   // signal tab: signalPlacementStepSize (1–64)
+	consSigCost   int32 // signal tab: signalCost (−1: failure, not shown)
+	sigToolDown   bool  // the signal tool's press, waiting for its release (onToolUp)
+	consStation   int   // station tab: lastSelectedStationType (slot; -1 = the first available)
+	consMods      uint8 // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
 	// consModSection is lastSelectedTrackModSection (PARTIAL: the Overhead
 	// tab's dropdown doesn't choose it yet: single).
 	consModSection sim.ModSection

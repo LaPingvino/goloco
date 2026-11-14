@@ -137,6 +137,7 @@ func (m *Map) RemoveSignal(c *Cmd, flags uint8, a SignalRemoval) (int32, bool) {
 			sig.Sides[1].SetFrame(0)
 			sig.RightGhost, sig.HasRightSignal, sig.RightFrame = false, false, 0
 		}
+		m.invalidateTile(sx+int32(ox), sy+int32(oy), int32(sig.BaseZ)*smallZStep, int32(sig.BaseZ)*smallZStep+32, ZoomHalf, defaultRadius) // ViewportManager::invalidate
 		sig.Ghost = false // upstream: "Why??"
 		if !sig.Sides[0].HasSignal() && !sig.Sides[1].HasSignal() {
 			pt.Tracks[pti].HasSignal = false

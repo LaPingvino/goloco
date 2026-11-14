@@ -18,6 +18,9 @@ import (
 // ConstructionState is the ported part of Construction's ConstructionState
 // (cState, Ui/Windows/Construction.h).
 type ConstructionState struct {
+	// signalGhost is the signal tab's ghost (GhostVisibilityFlags::signal and
+	// cState.signalGhost…): the placement it was made with.
+	signalGhost   *SignalsPlacementAuto
 	// X, Y, Z are cState.x, y and constructionZ (world units): where the next
 	// piece starts — while hovering, where the ghost under the cursor stands.
 	X, Y, Z int32
@@ -94,6 +97,42 @@ func (s *State) RemoveConstructionGhosts(c *Cmd) {
 	}
 	s.RemoveTrackGhost(c)
 	s.RemoveRoadGhost(c)
+	s.RemoveSignalGhost(c)
+}
+
+// signalGhostFlags are placeSignalGhost's / removeSignalGhost's doCommand flags.
+const signalGhostFlags = CmdApply | CmdPreventBuildingClearing | CmdNoErrorWindow | CmdNoPayment | CmdGhost
+
+// PlaceSignalGhost is SignalTab.cpp placeSignalGhost: the placement as a
+// ghost (auto when its step isn't 0), remembered when made; its cost.
+func (s *State) PlaceSignalGhost(c *Cmd, a SignalsPlacementAuto) (int32, bool) {
+	cost, ok := s.CreateSignalsAuto(c, signalGhostFlags, a)
+	if ok {
+		g := a
+		s.Cons.signalGhost = &g
+	}
+	return cost, ok
+}
+
+// SignalGhostShown is hasGhostVisibilityFlag(GhostVisibilityFlags::signal).
+func (s *State) SignalGhostShown() bool { return s.Cons.signalGhost != nil }
+
+// SignalGhostIs reports whether the signal ghost shown was made with a
+// (onToolUpdate's "same as before": nothing to do).
+func (s *State) SignalGhostIs(a SignalsPlacementAuto) bool {
+	return s.Cons.signalGhost != nil && *s.Cons.signalGhost == a
+}
+
+// RemoveSignalGhost is removeSignalGhost (0x0049FEF6): the ghost's removal
+// along the same walk, then no ghost.
+func (s *State) RemoveSignalGhost(c *Cmd) {
+	g := s.Cons.signalGhost
+	if g == nil {
+		return
+	}
+	s.Cons.signalGhost = nil
+	s.RemoveSignalsAuto(c, signalGhostFlags, SignalsRemovalAuto{SignalRemoval: SignalRemoval{X: g.X, Y: g.Y, Z: g.Z, Rotation: g.Rotation,
+		TrackID: g.TrackID, Index: g.Index, TrackObjectID: g.TrackObjectID, Left: g.Left, Right: g.Right}, Step: g.Step})
 }
 
 // trackPlacement is getTrackPlacementArgs at the state's position: the

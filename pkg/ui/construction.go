@@ -17,6 +17,7 @@ import (
 // road, airport and dock tab sets; the tab contents (ConstructionTab etc.).
 type ConstructionFrame struct {
 	X, Y          int
+	W             int // the tab's width (0: ConstructionW)
 	Title         string
 	CompanyColour uint8
 	SkinColour    uint8 // InterfaceSkin windowConstructionColour
@@ -60,6 +61,14 @@ var signalFrames = [3][]uint8{
 	{1, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 }
 
+// Width is the window's width (the signal tab's is wider).
+func (w *ConstructionFrame) Width() int {
+	if w.W > 0 {
+		return w.W
+	}
+	return ConstructionW
+}
+
 // Height is the window's height (each tab sets its own size).
 func (w *ConstructionFrame) Height() int {
 	if w.H > 0 {
@@ -82,12 +91,12 @@ func (w *ConstructionFrame) Draw(screen *ebiten.Image) {
 	if err != nil {
 		return
 	}
-	h := w.Height()
-	DrawWindowFrame(screen, w.X, w.Y, ConstructionW, h, w.CompanyColour, true)
-	draw8(screen, w.X, w.Y, ConstructionW, h, func(rt *gfx8.RenderTarget) {
-		gfx8.FillRectInset(rt, 0, 41, ConstructionW-1, h-1, gfx8.InsetColour{Map: sec}, 0)
+	h, wd := w.Height(), w.Width()
+	DrawWindowFrame(screen, w.X, w.Y, wd, h, w.CompanyColour, true)
+	draw8(screen, w.X, w.Y, wd, h, func(rt *gfx8.RenderTarget) {
+		gfx8.FillRectInset(rt, 0, 41, wd-1, h-1, gfx8.InsetColour{Map: sec}, 0)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
-			gfx8.DrawSpriteNoise(rt, sp, ConstructionW-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			gfx8.DrawSpriteNoise(rt, sp, wd-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 		// Construction tab: the track image, animated through kTrackPreviewImages
 		// (+0..15, frameNo / 4) while it is the current tab; recoloured to the
@@ -118,7 +127,7 @@ func (w *ConstructionFrame) Draw(screen *ebiten.Image) {
 // holds the caption's fill but not its text (drawn on the screen directly) —
 // drawn before, the title was wiped whenever the copy was usable.
 func (w *ConstructionFrame) DrawCaption(screen *ebiten.Image) {
-	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, ConstructionW-2, w.Title, int(w.CompanyColour))
+	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.Width()-2, w.Title, int(w.CompanyColour))
 }
 
 // TabX is repositionTabs: each tab's x, -1 for a hidden (disabled) one; the
