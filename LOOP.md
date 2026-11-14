@@ -128,8 +128,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [x] N26 Vehicle list filter by actual cargo: "Transports cargo" / "Has cargo order" (af4d69c).
 > - [ ] N27 Options → Controls: toolbarAutoMenu (10c1e49) and the centred top toolbar (2da9f6f, 7ba7099) — config,
 >       checkboxes, the toolbar's centring and shrink.
-> - [ ] N28 Signal auto placement (04e7900, bec1570, 3d6c318): Create/RemoveSignalsAuto, the stepper and repeated
->       placement checkbox, the taller signal tab with its moved buttons.
+> - [ ] N28 Signal auto placement (04e7900, bec1570, 3d6c318). DONE 2026-11-14 the sim: CreateSignalsAuto /
+>       RemoveSignalsAuto, iterateTrackToJunction, validateTrackIsSignalCompatible in upstream's shared form
+>       (pkg/sim/autosignals.go, TestSignalsAuto). LEFT, the UI (after N33 merges): goloco's signal tab has no map
+>       tool at all — SignalTab.cpp's onToolUpdate (ghost, signal cost) / onToolUp (place, the construct sound),
+>       getSide, the 156×222 tab (the frame is fixed at 138 wide now) with the repeated-placement checkbox, step
+>       label and stepper (default 4, 1–64); the right click's repeatedSignalMode (N22).
 > - [ ] N29 Shortcuts buildTracks / buildRoads cycle the track / road types (98de125) → with N33.
 > - [ ] N30 Zoom in to 2× / 4× (9850f2d: negative zoom levels).
 > - [ ] N31 Browse prompt's Home button and folder_path widget (ed2dd0c); landscape generation window leftovers
