@@ -307,6 +307,11 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 	return win
 }
 
+// consToolCancelled: the window's tool was cancelled on the tab it shows
+// (consToolOff; the Construction tab's tool is never off with the window
+// open — cancelled while hovering, the window closes).
+func (g *Game) consToolCancelled() bool { return g.consToolOff && g.consTab != 0 }
+
 // consSwitchTab is a click on one of the construction window's tabs
 // (Common::switchTab): the tab, its tool on the map again.
 func (g *Game) consSwitchTab(tab int) {
@@ -671,7 +676,7 @@ func (g *Game) consHasHead() bool {
 // stationToolOn: a construction window is on its Station tab (every mode has
 // one), so the map takes the station tool.
 func (g *Game) stationToolOn() bool {
-	return g.buildMode != buildModeNone && g.consTab == 1 && !g.inTitleScreen && !g.consToolOff
+	return g.buildMode != buildModeNone && g.consTab == 1 && !g.inTitleScreen && !g.consToolCancelled()
 }
 
 // consSelectedID is the selected piece's track or road id (consPiece), -1 none.

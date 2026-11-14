@@ -87,3 +87,27 @@ func TestEnqueueText(t *testing.T) {
 		}
 	}
 }
+
+// The config file's shortcuts section (upstream's: config name → binding):
+// a named shortcut takes its binding, an empty one is unbound, the others
+// keep their defaults.
+func TestShortcutBindingsFromConfig(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
+	if b := loadShortcutBindings(); b.Get(shortcuts.PauseUnpauseGame).KeyCode != shortcuts.KeyFromName("Pause") {
+		t.Fatalf("no file: pause on %+v", b.Get(shortcuts.PauseUnpauseGame))
+	}
+	if err := setConfigValues([][2]string{{"shortcuts.pauseUnpauseGame", "Left Ctrl+P"}, {"shortcuts.showMap", `""`}}); err != nil {
+		t.Fatal(err)
+	}
+	b := loadShortcutBindings()
+	if got := b.Get(shortcuts.PauseUnpauseGame); got != (shortcuts.Binding{KeyCode: 'p', Modifiers: shortcuts.ModLeftControl}) {
+		t.Errorf("pause: %+v", got)
+	}
+	if got := b.Get(shortcuts.ShowMap); got != shortcuts.Unbound {
+		t.Errorf("showMap: %+v", got)
+	}
+	if got := b.Get(shortcuts.RotateView); got.KeyCode != shortcuts.KeyReturn {
+		t.Errorf("rotateView: %+v", got)
+	}
+}

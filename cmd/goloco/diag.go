@@ -14,7 +14,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-// diag.go — diagnostics for headless checks: the --diag / F12 crop and the
+// diag.go — diagnostics for headless checks: the --diag crop and the
 // GOLOCO_DIAG_* panels.
 
 const diagCropW = 480

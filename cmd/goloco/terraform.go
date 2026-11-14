@@ -165,7 +165,7 @@ func (g *Game) cancelOtherTools() {
 // but building on from a position on the Construction tab (which has no
 // tool — toolCancel).
 func (g *Game) consToolOn() bool {
-	if g.buildMode == buildModeNone || g.consToolOff {
+	if g.buildMode == buildModeNone || g.consToolCancelled() {
 		return false
 	}
 	return !(g.consHasHead() && g.consTab == 0 && !g.w.Cons.Hover)

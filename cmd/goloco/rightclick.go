@@ -308,7 +308,7 @@ func (g *Game) openConstructionAt(road bool, obj, id, seq, rotation uint8, x, y,
 	if road {
 		flags |= 1 << 7
 	}
-	g.consTab, g.consSigOne = 0, false
+	g.consTab, g.consSigOne, g.consToolOff = 0, false, false
 	g.consModSection = sim.ModSectionSingle // lastSelectedTrackModSection = single
 	if hasBridge {
 		g.consBridge = int(bridge)
