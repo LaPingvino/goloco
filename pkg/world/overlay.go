@@ -176,7 +176,7 @@ var kWiggleYOffsets = func() [440]int8 {
 // overlapping effects stack in the misc entity list's order, upstream's in the
 // order paint met them (the string plot list).
 func (w *World) drawMoneyEffects(screen *ebiten.Image) {
-	if len(w.Map.MoneyEffects) == 0 || w.zoom > 1 || w.Map.EntityLists == nil {
+	if w.NoCashPopups || len(w.Map.MoneyEffects) == 0 || w.zoom > 1 || w.Map.EntityLists == nil {
 		return
 	}
 	z := w.zoom

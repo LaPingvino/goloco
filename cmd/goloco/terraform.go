@@ -189,7 +189,7 @@ func (g *Game) terraformEnd() {
 	g.removeTreeGhost()
 	g.removeWallGhost()
 	g.w.SetMapSelection(false, 0, 0, 0, 0)
-	g.w.SetGridlines(false) // Main::hideGridlines (PARTIAL: Config gridlinesOnLandscape keeps them)
+	g.hideGridlines()
 	t.on, t.arrow, t.held, t.win = false, false, false, nil
 }
 

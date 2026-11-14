@@ -95,9 +95,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       dropdown / group-box sizes, combobox not drawn pressed while open); a web track change fetches blocking.
 > - [x] N18 Trees grow: TreeElement.cpp updateTreeElement (seasons, growth, spreading, dying; gPrng1; the element's
 >       unk5h / isDying fields) in the tile loop — planted saplings never grow now.
-> - [ ] N19 News / Terraform leftovers: toggleLastAnnouncement (its key is Space, goloco's pause); the news draws over
->       dropdowns / prompts; tool cursors and construct sounds; the tree / wall lists' tooltips; default tree / wall kept
->       per session only; gridlinesOnLandscape on close; the expanded tree list under the bottom panels.
+> - [ ] N19 News / Terraform leftovers: tool cursors and construct sounds; the tree / wall lists' tooltips; default tree /
+>       wall kept per session only; the expanded tree list under the bottom panels. DONE 2026-11-14: Space is
+>       toggleLastAnnouncement (N33); the menus, text input, prompts and error window now draw over the panels and the
+>       news (they were under them); gridlinesOnLandscape (with Options → Rendering's checkboxes, which were drawn
+>       but did nothing: landscape smoothing, gridlines — a new main view starts with them, hiding leaves them —,
+>       cash pop-ups, the AI's planning as ghosts; all kept in openloco.yml).
 > - [x] N20 The tile loop's road tick: RoadElement.cpp tick (an AI company's town-compatible road, unused, handed to
 >       neutral via a road-removal-and-rebuild as the company) — matters once AI companies build roads. With it TileManager::updateYearly (the roads' unk7_40 → unk7_80).
 > - [x] N21 The map's right click — done 2026-11-14: ViewportInteraction rightOver (pkg/world/rightover.go: every

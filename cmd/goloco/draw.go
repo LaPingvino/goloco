@@ -150,8 +150,13 @@ func (g *Game) drawGameWindows(screen *ebiten.Image) {
 	}
 	g.toolbar.Draw(screen, g.r) // through draw8: the 8-bit screen copy stays in step
 	g.drawWindows(screen)
+}
 
-	// Draw dropdown menu on top of everything else
+// drawTopmost draws what opens over the panels and the news (stickToFront
+// windows made later than they are): the menus, the text input, a
+// confirmation and the error window — before, the panels and the news window
+// were drawn over them.
+func (g *Game) drawTopmost(screen *ebiten.Image) {
 	if g.dropdown != nil && g.dropdown.Visible {
 		g.dropdown.Draw(screen)
 	}
@@ -183,6 +188,7 @@ func (g *Game) drawOverlays(screen *ebiten.Image) {
 	// tooltip (StringIds::tooltip_daymonthyear_challenge), shown on hover.
 	g.drawTimePanel(screen)
 	g.drawNews(screen) // the news window and the ticker: stickToFront, made after the panels and so over them
+	g.drawTopmost(screen)
 	if g.gameWon {
 		msg := "OBJECTIVE ACHIEVED!"
 		mw, _ := ui.MeasureTextBold(msg)
