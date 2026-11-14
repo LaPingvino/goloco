@@ -40,7 +40,8 @@ import (
 //	expect <key> <op> <n>  check the game: key cash, stations, vehicles, placed,
 //	                    delivered, rotation or townwindows (the controlling company's cash, station
 //	                    and vehicle counts, its vehicles on the map, cargo units delivered — this month
-//	                    and the kept history; the view's rotation 0–3; 1 while a Town window is open), op one of
+//	                    and the kept history; the view's rotation 0–3; 1 while a Town window is open; maptip: 1
+//	                    while the map tooltip shows, its text logged), op one of
 //	                    > >= == <= <; a failed check makes the run exit 1
 //	news <type> [a [b [c]]] [date <day>]  post a message of that MessageType
 //	                    with those subjects for the player's company (first
@@ -422,6 +423,11 @@ func (g *Game) scriptExpect() {
 			for _, n := range c.CargoUnitsDeliveredHist {
 				got += int64(n)
 			}
+		}
+	case "maptip": // 1 while the map tooltip shows (its text logged)
+		if t := &g.mapTip; t.open && t.tip.Text != "" {
+			got = 1
+			log.Printf("[Script] map tooltip: %q", strings.NewReplacer("\x05", " / ", string(ui.MapTipColour3), "").Replace(t.tip.Text))
 		}
 	case "terraformwindow": // 1 while the Terraform window is open
 		if g.terraformWin() != nil {

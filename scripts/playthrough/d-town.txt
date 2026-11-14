@@ -1,5 +1,6 @@
 # PL.1 playthrough, stage D: Weatherworld → Towns list → a town (its window and
-# viewport) → centre view moves the main view to it.
+# viewport) → centre view moves the main view to it; the mouse resting on the
+# town's label shows its map tooltip (name, size and population).
 wait 20
 click 289 538
 wait 3
@@ -17,5 +18,9 @@ shot /tmp/goloco-playthrough/pt-d1-townwindow.png
 click 207 545
 wait 2
 shot /tmp/goloco-playthrough/pt-d2-centred.png
+move 400 292
+wait 2
+expect maptip == 1
+shot /tmp/goloco-playthrough/pt-d3-maptip.png
 expect cash == 84300
 quit

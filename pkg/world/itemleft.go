@@ -18,9 +18,9 @@ type LeftItem struct {
 // the labels, then — when that found no vehicle — vehicles, track, road,
 // stations, industries and the labels (getMapCoordinatesFromPos: the topmost
 // element, then the station labels up to stationNamesMinScale, then the town
-// labels, the last match of each winning). Track, road and station elements
-// count as their station (_track / _road / getStationArguments), which a click
-// does not open. ok is false where the click opens nothing, and in the title.
+// labels, the last match of each winning). A track, road or station element
+// of a station counts as that station's label (_track / _road /
+// getStationArguments). ok is false where the click opens nothing, and in the title.
 // A headquarters building gives its company; the nearest vehicle part when
 // nothing was hit (nearestVehicleAt).
 func (w *World) ItemLeftAt(sx, sy int) (LeftItem, bool) {
@@ -53,8 +53,12 @@ func (w *World) ItemLeftAt(sx, sy int) (LeftItem, bool) {
 						}
 					}
 				}
-			default: // track, road, station elements: no window from a click
-				it, found = LeftItem{Kind: ps.Type}, false
+			case paint.ItemTrack, paint.ItemRoad, paint.ItemTrainStation, paint.ItemRoadStation, paint.ItemAirport, paint.ItemDock:
+				// _track / _road / getStationArguments: a station's element counts as its station label
+				it = LeftItem{Kind: ps.Type}
+				if id, ok := w.stationOfElement(ps); ok {
+					it, found = LeftItem{Kind: paint.ItemStationLabel, ID: id}, true
+				}
 			}
 		}
 		// the 1×1 render target's getDrawableRect at this zoom
@@ -147,4 +151,57 @@ func (w *World) nearestVehicleAt(sx, sy int) (LeftItem, bool) {
 		return LeftItem{}, false
 	}
 	return LeftItem{Kind: paint.ItemEntity, ID: int(w.Map.Entities[head].HeadID)}, true
+}
+
+// stationOfElement is _track / _road / getStationArguments(interaction) for
+// the element ps painted: a track with a station element right after it, a
+// road with one after its matching road (same height, rotation, piece and
+// object), or a station element itself — not AI-allocated (the track's and
+// road's station) nor a ghost.
+func (w *World) stationOfElement(ps *paint.Struct) (int, bool) {
+	t := w.Map.TileAt(int(ps.MapX)>>5, int(ps.MapY)>>5)
+	if t == nil {
+		return 0, false
+	}
+	station := func(st *scenario.StationElement, viaTrackOrRoad bool) (int, bool) {
+		if (viaTrackOrRoad && st.AiAllocated) || st.Ghost {
+			return 0, false
+		}
+		return int(st.StationID), true
+	}
+	switch el := ps.Item.(type) {
+	case *scenario.StationElement:
+		return station(el, false)
+	case *scenario.TrackElement:
+		if !el.HasStation {
+			return 0, false
+		}
+		for k, r := range t.Order {
+			if r.Kind == scenario.KindTrack && &t.Tracks[r.Index] == el {
+				if k+1 < len(t.Order) && t.Order[k+1].Kind == scenario.KindStation {
+					return station(&t.Stations[t.Order[k+1].Index], true)
+				}
+				return 0, false
+			}
+		}
+	case *scenario.RoadElement:
+		if !el.HasStationElement {
+			return 0, false
+		}
+		foundRoad := false
+		for _, r := range t.Order {
+			if foundRoad {
+				if r.Kind == scenario.KindStation {
+					return station(&t.Stations[r.Index], true)
+				}
+				continue
+			}
+			if r.Kind == scenario.KindRoad {
+				if o := &t.Roads[r.Index]; o.BaseZ == el.BaseZ && o.Rotation == el.Rotation && o.RoadID == el.RoadID && o.RoadObjectID == el.RoadObjectID {
+					foundRoad = true
+				}
+			}
+		}
+	}
+	return 0, false
 }
