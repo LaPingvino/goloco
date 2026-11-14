@@ -8,6 +8,7 @@ import (
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 	"strconv"
+	"strings"
 )
 
 // Options — a port of Ui/Windows/Options.cpp: the common frame (caption,
@@ -98,6 +99,11 @@ type OptionsWindow struct {
 	// OnControl is called with the index and new value when one is toggled.
 	Controls  [5]bool
 	OnControl func(i int, v bool)
+	// AutosaveFrequency (months, 0 never) and AutosaveAmount (1–24) are the
+	// Miscellaneous tab's Config::autosaveFrequency / autosaveAmount; their
+	// On… callbacks follow a change (Config::write).
+	AutosaveFrequency, AutosaveAmount     int
+	OnAutosaveFrequency, OnAutosaveAmount func(int)
 	// OnCustomiseKeys is the Customise Keys button (openKeyboardShortcuts).
 	OnCustomiseKeys func()
 	// RenderChecks are the Rendering tab's checkboxes — landscapeSmoothing,
@@ -241,6 +247,41 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			}
 		}
 		return
+	}
+	if w.Tab == OptTabMisc {
+		// autosave_frequency_btn: Dropdown::show at the widget, width() − 4 —
+		// never, every month, every 3 / 6 / 12 months; the stepper's − / + (1–24).
+		if w.in([4]int{250, 211, 156, 12}, px, py) && w.OpenDropdown != nil {
+			months := []int{0, 1, 3, 6, 12}
+			items := make([]DropdownItem, len(months))
+			for i, m := range months {
+				items[i] = DropdownItem{Text: autosaveFrequencyText(m), Selected: m == w.AutosaveFrequency, MoveX10: true}
+			}
+			d := NewDropdownShow(w.X+250, w.Y+211, 156-4, 11, w.Colour, items, 1<<20, 1<<20)
+			d.OnSelect = func(i int) {
+				if i >= 0 && i < len(months) && months[i] != w.AutosaveFrequency {
+					w.AutosaveFrequency = months[i]
+					if w.OnAutosaveFrequency != nil {
+						w.OnAutosaveFrequency(months[i])
+					}
+				}
+			}
+			w.OpenDropdown(d)
+			return
+		}
+		step := 0
+		if w.in([4]int{250 + 156 - 26, 227, 13, 10}, px, py) {
+			step = -1
+		} else if w.in([4]int{250 + 156 - 13, 227, 12, 10}, px, py) {
+			step = 1
+		}
+		if n := min(max(w.AutosaveAmount+step, 1), 24); step != 0 && n != w.AutosaveAmount { // changeAutosaveAmount
+			w.AutosaveAmount = n
+			if w.OnAutosaveAmount != nil {
+				w.OnAutosaveAmount(n)
+			}
+			return
+		}
 	}
 	if w.Tab == OptTabRendering {
 		for i := range w.RenderChecks { // the checkboxes at (10, 110 + 16i), 346 × 12
@@ -629,8 +670,8 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		}
 		DrawTextBold(screen, i18n.Label(i18n.AutosaveFrequency), w.X+10, w.Y+211, text)
 		DrawTextBold(screen, i18n.Label(i18n.AutosaveAmount), w.X+10, w.Y+226, text)
-		DrawTextBold(screen, i18n.Label(i18n.AutosaveEveryMonth), w.X+250+1, w.Y+211+1, black) // drawDropdownContent
-		DrawTextBold(screen, "12", w.X+250+1, w.Y+226+1, black)
+		DrawTextBold(screen, autosaveFrequencyText(w.AutosaveFrequency), w.X+250+1, w.Y+211+1, black) // drawDropdownContent
+		DrawTextBold(screen, strconv.Itoa(w.AutosaveAmount), w.X+250+1, w.Y+226+1, black)
 		arrow := string(rune(170))
 		aw, _ := MeasureTextBold(arrow)
 		DrawTextBold(screen, arrow, w.X+250+156-12+(11-1)/2-aw/2, w.Y+211+1, black)
@@ -868,4 +909,15 @@ func (w *OptionsWindow) scale() float64 {
 		return ScaleFactorMin
 	}
 	return w.Scale
+}
+
+// autosaveFrequencyText is Misc::draw's frequency: never, every month, every N months.
+func autosaveFrequencyText(months int) string {
+	switch months {
+	case 0:
+		return i18n.Label(i18n.AutosaveNever)
+	case 1:
+		return i18n.Label(i18n.AutosaveEveryMonth)
+	}
+	return strings.Replace(i18n.Label(i18n.AutosaveEveryXMonths), "{INT32}", strconv.Itoa(months), 1)
 }

@@ -124,6 +124,17 @@ func (g *Game) openOptionsWindow() {
 	// toolbarButtonsCentred — each toggle written to openloco.yml (Config::write).
 	w.Controls = [5]bool{!g.noEdgeScrolling, !g.noZoomToCursor, g.invertRightPan, !g.noAutoMenu, g.toolbar.Centred}
 	w.OnCustomiseKeys = g.openKeyboardShortcuts
+	// Miscellaneous: Config::autosaveFrequency (default every month) and
+	// autosaveAmount (default 12), as the autosave reads them (save.go).
+	w.AutosaveFrequency, w.AutosaveAmount = 1, 12
+	if v, err := strconv.Atoi(configValue("autosave_frequency")); err == nil {
+		w.AutosaveFrequency = v
+	}
+	if v, err := strconv.Atoi(configValue("autosave_amount")); err == nil {
+		w.AutosaveAmount = min(max(v, 1), 24)
+	}
+	w.OnAutosaveFrequency = func(v int) { setConfigValue("autosave_frequency", strconv.Itoa(v)) }
+	w.OnAutosaveAmount = func(v int) { setConfigValue("autosave_amount", strconv.Itoa(v)) }
 	w.OnControl = func(i int, v bool) {
 		key := [5]string{"edgeScrolling", "zoom_to_cursor", "invertRightMouseViewPan", "toolbarAutoMenu", "toolbarButtonsCentred"}[i]
 		switch i {
