@@ -294,6 +294,26 @@ func (m *Map) applySurfaceStyleToMarkedTiles(hm *HeightMap, style uint8, require
 	}
 }
 
+// kCliffTerrainHeightDiff is MapGenerator's: a height step this big is a cliff.
+const kCliffTerrainHeightDiff = 4
+
+// markAroundCliffs is generateTerrainAroundCliffs's marking (fd6db41: it
+// compared a position with itself before): every drawable tile with a cliff
+// to its next row or column marks the tiles within 6.
+func markAroundCliffs(hm *HeightMap) {
+	hm.ResetMarkerFlags()
+	abs := func(v int) int { return max(v, -v) }
+	for y := 1; y <= hm.Height-2; y++ {
+		for x := 1; x <= hm.Width-2; x++ {
+			a := int(hm.GetHeight(x, y))
+			if abs(int(hm.GetHeight(x, y+1))-a) < kCliffTerrainHeightDiff && abs(int(hm.GetHeight(x+1, y))-a) < kCliffTerrainHeightDiff {
+				continue
+			}
+			markAround(hm, x, y, 6)
+		}
+	}
+}
+
 // markWhere marks around every world tile whose height passes test.
 func markWhere(hm *HeightMap, r int, test func(h uint8) bool) {
 	hm.ResetMarkerFlags()
@@ -366,7 +386,7 @@ func (m *Map) GenerateTerrain(hm *HeightMap, patterns [32]uint8, seaLevel uint8,
 				markWhere(hm, 25, func(h uint8) bool { return h <= seaLevel })
 				m.applySurfaceStyleToMarkedTiles(hm, s, false, om)
 			case landNearWater:
-				markWhere(hm, 25, func(h uint8) bool { return h >= seaLevel })
+				markWhere(hm, 25, func(h uint8) bool { return h <= seaLevel }) // fd6db41: the water's tiles
 				m.applySurfaceStyleToMarkedTiles(hm, s, true, om)
 			case landOnMountains:
 				markWhere(hm, 12, func(h uint8) bool { return h > mountainTerrainHeight })
@@ -379,10 +399,7 @@ func (m *Map) GenerateTerrain(hm *HeightMap, patterns [32]uint8, seaLevel uint8,
 			case landLargeRandomAreas:
 				m.generateTerrainInRandomAreas(s, 128, 388, seaLevel, om)
 			case landAroundCliffs:
-				// generateTerrainAroundCliffs compares the same position, (x, y+1),
-				// with itself (A = B, C = D), so it never finds a cliff and marks
-				// nothing — kept as upstream.
-				hm.ResetMarkerFlags()
+				markAroundCliffs(hm)
 				m.applySurfaceStyleToMarkedTiles(hm, s, true, om)
 			}
 		}

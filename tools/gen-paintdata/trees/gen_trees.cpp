@@ -1,7 +1,7 @@
 // Generates pkg/scene/testdata/trees_hashes.txt: upstream's generateTrees, Tree.cpp (getRandomTreeTypeFromSurface,
 // placeRandomTree, placeTreeCluster), CreateTree, TileClearance's canConstructAt checks and TileManager::getHeight
-// (all sed-copied as tt_*.inc by the extraction step) on a stub tile store, over a map dumped from goloco's
-// generator just before the tree step (treein.txt — game-derived, never committed). Run: ./tt treein.txt
+// (copied verbatim as tt_*.inc by extract.sh) on a stub tile store, over a map dumped from goloco's
+// generator just before the tree step (treein.txt — game-derived, never committed). Build and run: extract.sh treein.txt (README.md)
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
@@ -114,7 +114,8 @@ namespace OpenLoco {
       void removeElement(TileElementEntry& el);
     }
   }
-  namespace GameCommands { constexpr uint32_t kFailure = 0x80000000; namespace Flags { constexpr uint8_t apply = 1, ghost = 8; }
+  namespace GameCommands { constexpr uint32_t kFailure = 0x80000000; enum class Flags : uint8_t { none = 0, apply = 1 << 0, noErrorWindow = 1 << 3, ghost = 1 << 6 };
+    constexpr bool hasFlags(Flags a, Flags b) { return (uint8_t(a) & uint8_t(b)) != 0; }
     inline void setExpenditureType(ExpenditureType) {} inline void setPosition(World::Pos3) {} inline void setErrorText(int) {}
     struct TreePlacementArgs { World::Pos2 pos; uint8_t rotation; uint8_t type; World::MapSelectionType quadrant_; struct Q { uint8_t v; Q& operator=(World::MapSelectionType m) { v = uint8_t(m); return *this; } operator uint8_t() const { return v; } } quadrant; Colour colour; bool buildImmediately; bool requiresFullClearance; }; }
   namespace StringIds { constexpr int cant_build_this_underwater = 0, land_type_not_suitable = 0, cannot_build_partly_above_below_water = 0, off_edge_of_map = 0; }
@@ -140,7 +141,7 @@ namespace OpenLoco::GameCommands {
   using namespace OpenLoco::World;
   using Ui::ZoomLevel;
 #include "tt_create.inc"
-  inline uint32_t doCommand(const TreePlacementArgs& a, uint8_t f) { return createTree(a, f); }
+  inline uint32_t doCommand(const TreePlacementArgs& a, Flags f) { return createTree(a, f); }
 }
 namespace OpenLoco::World {
 #include "tt_quad.inc"
