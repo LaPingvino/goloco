@@ -1,4 +1,7 @@
 // Generates pkg/scene/testdata/terrain_styles_hashes.txt: ./tg3 hs1.txt land2.txt — upstream MapGenerator.cpp generateLand … generateTerrain and generateSurfaceVariation (sed-copied) with stub tiles / land objects; hs1.txt and land2.txt are dumped from the game data by a throwaway test (never committed).
+// Build: g++ -std=c++20 -fno-char8_t -DDEBUG=0 <gen.sh's includes> -I$OL/src/Core/include/OpenLoco/Core gen_terrain_styles.cpp $OL/src/Core/src/Prng.cpp
+// The dumps: hs1.txt = "hillCount mountainCount flags" then per image "width height flags n <n bytes>" (G1, Aerophobia's
+// HillShapes); land2.txt = "lastLandOption seaLevel" then 32 "ok numVariations variationLikelihood pattern flags numGrowthStages".
 // Generates the expected hash for pkg/sim TestTerrainHeightMapMatchesUpstream: upstream's
 // OriginalTerrainGenerator.cpp (includes stripped by sed, stubs below) on HS1's height-map images
 // read from a dump (game data, not committed) with a fixed Prng seed.
@@ -571,7 +574,7 @@ namespace OpenLoco::World::MapGenerator {
         {
             return 0;
         }
-        return ((randVal & 0xFF) * landObj->numVariations) >> 8;
+        return ((randVal & 0xFF) * (landObj->numVariations + 1)) >> 8; // upstream 6804cce
     }
 
     static void applySurfaceStyleToMarkedTiles(HeightMap& heightMap, uint8_t surfaceStyle, bool requireMark)
