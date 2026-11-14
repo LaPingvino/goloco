@@ -23,6 +23,16 @@ import (
 
 // Renderer holds the graphics and objects a scene is drawn with, and a cache of
 // decoded sprites.
+// The Rendering options every view paints by (Config, as upstream's
+// Config::get() reads): LandscapeSmoothing is landscapeSmoothing (default
+// on); ShowAiPlanning is showAiPlanningAsGhosts — the AI companies' planned
+// (aiAllocated) track, road and stations drawn as ghosts instead of not at all
+// (showAiPlanningGhosts).
+var (
+	LandscapeSmoothing = true
+	ShowAiPlanning     bool
+)
+
 type Renderer struct {
 	G1      *assets.G1File
 	Objects *objects.ObjectManager
@@ -646,14 +656,14 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		r.paintSurface(s, m, t, x, y)
 	case scenario.KindTrack:
 		tk := t.Tracks[ref.Index]
-		s.CurrentItem = &t.Tracks[ref.Index] // setCurrentItem(element)
-		if tk.AiAllocated {                  // an AI company's planned track: not drawn (showAiPlanningGhosts, a debug option, off)
+		s.CurrentItem = &t.Tracks[ref.Index]   // setCurrentItem(element)
+		if tk.AiAllocated && !ShowAiPlanning { // an AI company's planned track: drawn only with showAiPlanningGhosts
 			return
 		}
-		s.ElGhost = tk.Ghost
+		s.ElGhost = tk.Ghost || tk.AiAllocated
 		if to := om.GetTrackObjectByIndex(int(tk.TrackObjectID)); to != nil {
 			remap := r.companyRemap(m, tk.Owner)
-			if tk.Ghost { // baseTrackImageColour = Gfx::applyGhostToImage(0)
+			if tk.Ghost || tk.AiAllocated { // baseTrackImageColour = Gfx::applyGhostToImage(0)
 				remap = r.colourMap(extColourGhost)
 			}
 			s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ, Remap: remap,
@@ -669,18 +679,18 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		}
 	case scenario.KindRoad:
 		rd := t.Roads[ref.Index]
-		s.CurrentItem = &t.Roads[ref.Index] // setCurrentItem(element)
-		if rd.AiAllocated {                 // paintRoad: as the track's
+		s.CurrentItem = &t.Roads[ref.Index]    // setCurrentItem(element)
+		if rd.AiAllocated && !ShowAiPlanning { // paintRoad: as the track's
 			return
 		}
-		s.ElGhost = rd.Ghost
+		s.ElGhost = rd.Ghost || rd.AiAllocated
 		if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
 			var light uint8 // streetLightStyle shares the level crossing id's bits; only without crossing, signal or station
 			if !rd.HasLevelCrossing && !rd.HasSignalElement && !rd.HasStationElement {
 				light = rd.LevelCrossingObjectID
 			}
 			remap := r.companyRemap(m, rd.Owner)
-			if rd.Ghost { // baseRoadImageColour = Gfx::applyGhostToImage(0)
+			if rd.Ghost || rd.AiAllocated { // baseRoadImageColour = Gfx::applyGhostToImage(0)
 				remap = r.colourMap(extColourGhost)
 			}
 			s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: remap,
@@ -702,11 +712,11 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			paint.SignalSide{Has: sg.HasRightSignal, Object: int(sg.RightSignalObjectID), Frame: sg.Sides[1].Frame(), Ghost: sg.Ghost || sg.RightGhost},
 			r.signalObj, sprite)
 	case scenario.KindStation:
-		s.CurrentItem = &t.Stations[ref.Index] // setCurrentItem(element)
-		if t.Stations[ref.Index].AiAllocated { // paintStation: as the track's
+		s.CurrentItem = &t.Stations[ref.Index]                    // setCurrentItem(element)
+		if t.Stations[ref.Index].AiAllocated && !ShowAiPlanning { // paintStation: as the track's
 			return
 		}
-		s.ElGhost = t.Stations[ref.Index].Ghost
+		s.ElGhost = t.Stations[ref.Index].Ghost // paintTrainStation: isGhost only (an AI-allocated one is drawn as it is)
 		r.paintStation(s, m, t, t.Stations[ref.Index], prev, x, y, ticks)
 	case scenario.KindBuilding:
 		b := t.Buildings[ref.Index]
@@ -953,7 +963,7 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 		s.AttachToPrevious(*snowAttach, 0, 0)
 	}
 	// Landscape smoothing (zoom 0, not underground; Config::landscapeSmoothing, default on).
-	if s.Zoom == 0 && !underground {
+	if s.Zoom == 0 && !underground && LandscapeSmoothing {
 		desc := func(tt *sim.Tile) paint.SmoothTile {
 			sl := rotatedSlope(tt.Slope, rot)
 			d := paint.SmoothTile{Surface: paint.Surface{BaseZ: tt.BaseZ, Slope: sl, Water: tt.WaterLevel}, Present: true,

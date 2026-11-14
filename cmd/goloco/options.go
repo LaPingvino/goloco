@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/scene"
+	"github.com/LaPingvino/goloco/pkg/world"
 	"log"
 	"strconv"
 
@@ -142,6 +144,27 @@ func (g *Game) openOptionsWindow() {
 	w.OnScale = func(s float64) { // setWindowScaling: Config::write, then the resize (Layout)
 		g.scale = s
 		setConfigValue("scaleFactor", strconv.FormatFloat(s, 'f', 2, 64))
+	}
+	// Rendering tab: Config::landscapeSmoothing, gridlinesOnLandscape,
+	// cashPopupRendering and showAiPlanningAsGhosts, each written on its toggle
+	// and the view redrawn (Gfx::invalidateScreen); gridlines also switch the
+	// main view's flag at once.
+	w.RenderChecks = [4]bool{scene.LandscapeSmoothing, world.GridlinesOnLandscape, !g.w.NoCashPopups, scene.ShowAiPlanning}
+	w.OnRenderCheck = func(i int, v bool) {
+		key := [4]string{"landscapeSmoothing", "gridlinesOnLandscape", "cashPopupRendering", "showAiPlanningAsGhosts"}[i]
+		switch i {
+		case 0:
+			scene.LandscapeSmoothing = v
+		case 1:
+			world.GridlinesOnLandscape = v
+			g.w.SetGridlines(v)
+		case 2:
+			g.w.NoCashPopups = !v
+		case 3:
+			scene.ShowAiPlanning = v
+		}
+		setConfigValue(key, strconv.FormatBool(v))
+		g.w.InvalidateView()
 	}
 	w.ShowFPS = g.showFPS
 	w.OnShowFPS = func(on bool) {

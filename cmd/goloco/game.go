@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/LaPingvino/goloco/pkg/scene"
 	"log"
 	"os"
 	"path/filepath"
@@ -233,6 +234,7 @@ type Game struct {
 }
 
 func NewGame() *Game {
+	readRenderingConfig()
 	if v := os.Getenv("GOLOCO_DIAG_PAINT_AT"); v != "" { // diagnostic: the painters of one viewport pixel
 		var at [2]int
 		if _, err := fmt.Sscanf(v, "%d,%d", &at[0], &at[1]); err == nil {
@@ -371,6 +373,7 @@ func NewGame() *Game {
 	g.initMusic()
 	g.newsSettings, g.playNewsSounds = loadNewsConfig()
 	g.startTitleMusic() // Title::start
+	g.applyRenderingConfig()
 	return g
 }
 
@@ -706,4 +709,23 @@ func (g *Game) tileUnderCursor(sx, sy int) (int, int) {
 		return -1, -1
 	}
 	return int(px) >> 5, int(py) >> 5
+}
+
+// applyRenderingConfig reads Options → Rendering's checkboxes from
+// openloco.yml (Config.cpp defaults: smoothing and cash pop-ups on, gridlines
+// and the AI's planning off) into the renderers and the world; a world made
+// later (a game loaded) gets them again.
+func (g *Game) applyRenderingConfig() {
+	g.w.NoCashPopups = configValue("cashPopupRendering") == "false"
+	if world.GridlinesOnLandscape { // ViewportManager::create: the main view starts with them
+		g.w.SetGridlines(true)
+	}
+}
+
+// readRenderingConfig is Config::read's rendering options (before any world
+// or view is made).
+func readRenderingConfig() {
+	world.GridlinesOnLandscape = configValue("gridlinesOnLandscape") == "true"
+	scene.LandscapeSmoothing = configValue("landscapeSmoothing") != "false"
+	scene.ShowAiPlanning = configValue("showAiPlanningAsGhosts") == "true"
 }

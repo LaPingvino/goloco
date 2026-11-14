@@ -82,15 +82,22 @@ func (g *Game) syncHeightMarkerOffset() {
 // consResetView its onClose: WindowManager::viewportSetVisibility(reset) —
 // the underground view, the see-through modes and the height marks off —
 // then hideDirectionArrows and hideGridlines.
-// PARTIAL: Config::gridlinesOnLandscape (the Options checkbox) keeping the
-// gridlines on.
 func (g *Game) consShowView() {
 	g.w.SetViewFlags(paint.ViewOneWayDirectionArrows|paint.ViewGridlines, true)
 }
 
 func (g *Game) consResetView() {
 	g.w.ViewportSetVisibility(world.VisibilityReset)
-	g.w.SetViewFlags(paint.ViewOneWayDirectionArrows|paint.ViewGridlines, false)
+	g.w.SetViewFlags(paint.ViewOneWayDirectionArrows, false)
+	g.hideGridlines()
+}
+
+// hideGridlines is Main::hideGridlines: off, unless Config::gridlinesOnLandscape
+// keeps them.
+func (g *Game) hideGridlines() {
+	if !world.GridlinesOnLandscape {
+		g.w.SetGridlines(false)
+	}
 }
 
 // consOverground is viewportSetVisibility(overgroundView): the construction

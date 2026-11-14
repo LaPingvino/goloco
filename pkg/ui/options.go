@@ -98,6 +98,11 @@ type OptionsWindow struct {
 	// OnControl is called with the index and new value when one is toggled.
 	Controls  [5]bool
 	OnControl func(i int, v bool)
+	// RenderChecks are the Rendering tab's checkboxes — landscapeSmoothing,
+	// gridlinesOnLandscape, cashPopupRendering, showAiPlanningAsGhosts —
+	// and OnRenderCheck their toggle.
+	RenderChecks  [4]bool
+	OnRenderCheck func(i int, v bool)
 
 	// Regional tab: the current game's currency name and the preferred one;
 	// TitleMode disables the current-currency dropdown (prepareDraw).
@@ -232,6 +237,15 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		return
 	}
 	if w.Tab == OptTabRendering {
+		for i := range w.RenderChecks { // the checkboxes at (10, 110 + 16i), 346 × 12
+			if w.in([4]int{10, 110 + 16*i, 346, 12}, px, py) {
+				w.RenderChecks[i] = !w.RenderChecks[i]
+				if w.OnRenderCheck != nil {
+					w.OnRenderCheck(i, w.RenderChecks[i])
+				}
+				return
+			}
+		}
 		// vehicleZoomMouseDown, stationNamesScaleMouseDown,
 		// constructionMarkerMouseDown: Dropdown::show at the combobox, width() − 4.
 		for _, c := range []struct {
@@ -642,8 +656,8 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			y     int
 			label string
 			on    bool
-		}{{110, i18n.Label(i18n.LandscapeSmoothing), true}, {126, i18n.Label(i18n.GridlinesOnLandscape), false},
-			{142, i18n.Label(i18n.CashPopupRendering), true}, {158, i18n.Label(i18n.ShowCompanyAiPlanning), false}} {
+		}{{110, i18n.Label(i18n.LandscapeSmoothing), w.RenderChecks[0]}, {126, i18n.Label(i18n.GridlinesOnLandscape), w.RenderChecks[1]},
+			{142, i18n.Label(i18n.CashPopupRendering), w.RenderChecks[2]}, {158, i18n.Label(i18n.ShowCompanyAiPlanning), w.RenderChecks[3]}} {
 			if c.on {
 				DrawTextBold(screen, tick, w.X+10, w.Y+c.y, text)
 			}

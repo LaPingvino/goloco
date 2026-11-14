@@ -101,6 +101,7 @@ func (g *Game) loadScenario(filePath string) error {
 		gameW.SetSavedView(int(sc.SavedViewX), int(sc.SavedViewY), min(sc.SavedViewZoom, 3), sc.SavedViewRotation)
 	}
 	g.w = gameW
+	g.applyRenderingConfig()
 	g.currentScenarioPath = filePath
 	g.inTitleScreen = false
 

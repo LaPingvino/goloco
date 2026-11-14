@@ -64,6 +64,10 @@ func (w *World) ghostVisibility(underground, sloped bool) {
 	}
 }
 
+// GridlinesOnLandscape is Config::gridlinesOnLandscape (Options → Rendering):
+// a new main view starts with the gridlines, and hiding them leaves them on.
+var GridlinesOnLandscape bool
+
 // SetGridlines is Main::showGridlines / hideGridlines: the main view's
 // gridlines_on_landscape flag.
 func (w *World) SetGridlines(on bool) { w.SetViewFlags(paint.ViewGridlines, on) }

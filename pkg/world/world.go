@@ -37,14 +37,16 @@ type tile = sim.Tile
 
 // World holds a tile grid for an isometric game world
 type World struct {
-	viewFlags paint.ViewFlags       // the main viewport's flags (viewflags.go)
-	townScene *scene.Renderer       // the Town window's viewport (townview.go)
-	newsScene [2]*scene.Renderer    // the news window's two viewports (newsview.go)
-	catchment []uint8               // SetCatchmentDisplay's map (nil: none)
-	selOn     bool                  // SetMapSelection: the selection is shown
-	selArea   [4]int                // its tiles: min x, min y, max x, max y
-	selType   uint8                 // its type (scene.SelFull …)
-	consArrow sim.ConstructionArrow // the arrow last handed to the renderer (constructionarrow.go)
+	// NoCashPopups is Config::cashPopupRendering off (paintMoneyEffect).
+	NoCashPopups bool
+	viewFlags    paint.ViewFlags       // the main viewport's flags (viewflags.go)
+	townScene    *scene.Renderer       // the Town window's viewport (townview.go)
+	newsScene    [2]*scene.Renderer    // the news window's two viewports (newsview.go)
+	catchment    []uint8               // SetCatchmentDisplay's map (nil: none)
+	selOn        bool                  // SetMapSelection: the selection is shown
+	selArea      [4]int                // its tiles: min x, min y, max x, max y
+	selType      uint8                 // its type (scene.SelFull …)
+	consArrow    sim.ConstructionArrow // the arrow last handed to the renderer (constructionarrow.go)
 	// savedCentre: a saved view's centre still to be placed (SetSavedView
 	// before the first Draw gave the view its size).
 	savedCentre *[2]int
@@ -204,8 +206,12 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 	}
 	w.Map.LoadScenario(sc)
 	// Gui::init opens a new main window for the game loaded: its viewport's
-	// flags start clear (ViewportManager::create).
+	// flags start clear, but for the gridlines with Config::gridlinesOnLandscape
+	// (ViewportManager::create).
 	w.viewFlags = 0
+	if GridlinesOnLandscape {
+		w.viewFlags = paint.ViewGridlines
+	}
 	w.InvalidateView()
 	totalBuildings := 0
 	for y := range w.Tiles {
@@ -908,7 +914,7 @@ var cornerHeightsTable = [32][4]uint8{
 var smoothNeighbourOffsets = [4][2]int{{1, 0}, {0, 1}, {0, -1}, {-1, 0}}
 
 func (w *World) paintSurfaceSmoothing(dst *ebiten.Image, x, y int, t *tile, land *objects.LandObject, drawX, drawY, scale float64) {
-	if os.Getenv("GOLOCO_NO_SMOOTH") == "1" {
+	if !scene.LandscapeSmoothing || os.Getenv("GOLOCO_NO_SMOOTH") == "1" {
 		return
 	}
 	if t.IsIndustrial {
