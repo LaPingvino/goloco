@@ -126,86 +126,70 @@ func quadrantFromPos(px, py int32) uint8 {
 	return 2
 }
 
-// CreateTree is the CreateTree game command (apply, built immediately, no
-// ghost) as the map generator uses it: on the tile at (px, py) — already
-// tile-aligned — in the quadrant, unless underwater, on no-trees land or
-// without clearance (full clearance when requiresFullClearance). PARTIAL:
-// TownManager::updateTownInfo (the tree's rating effect on a town), the
-// command's cost, error texts and the free-elements check.
+// CreateTree is the createTree game command as the map generator runs it
+// (the neutral company; applied, built immediately, no ghost): true when the
+// tree was placed. The command itself: CreateTreeCmd.
 func (m *Map) CreateTree(px, py int32, quadrant, rotation, treeType, colour uint8, requiresFullClearance bool, om *objects.ObjectManager) bool {
-	if px < 0 || py < 0 || px >= int32(m.Width*tileSize) || py >= int32(m.Height*tileSize) {
-		return false
-	}
-	if int(treeType) >= len(om.TreeObjects) || om.TreeObjects[treeType] == nil {
-		return false
-	}
-	to := om.TreeObjects[treeType]
-	qLand, _ := m.GetHeight(px+quadrantCentreOffsets[quadrant][0]-1, py+quadrantCentreOffsets[quadrant][1]-1)
-	t := m.TileAt(int(px/tileSize), int(py/tileSize))
-	if t.WaterLevel&0x1F != 0 && int16(t.WaterLevel&0x1F)*microZStep-1 > qLand {
-		return false // cant_build_this_underwater
-	}
-	if int(t.TerrainIndex) < len(om.LandObjects) && om.LandObjects[t.TerrainIndex] != nil && om.LandObjects[t.TerrainIndex].Flags&objects.LandFlagNoTrees != 0 {
-		return false
-	}
-	baseZ := uint8(qLand / smallZStep)
-	clearZ := baseZ + to.InitialHeight/smallZStep
-	if requiresFullClearance {
-		clearZ = 0xFF
-	}
-	baseQuarter := uint8(1) << (quadrant ^ 2)
-	if !m.CanConstructAt(px, py, baseZ, clearZ, baseQuarter, 0x0F) {
-		return false
-	}
-	el := scenario.TreeElement{TreeObjectID: treeType, Rotation: rotation, Quadrant: quadrant, Colour: colour,
-		Season: to.CurrentSeason, Unk7l: 7, BaseZ: baseZ}
-	el.Growth = to.Growth - 1 // buildImmediately
-	el.ClearZ = to.Height/smallZStep + baseZ
-	if int(baseZ)-4 > int(m.CurrentSnowLine) && uint16(to.Flags)&treeHasSnowVariation != 0 {
-		el.HasSnow = true
-	}
-	if kMaxElements-m.EntriesEnd <= kMaxElementsOnOneTile { // checkFreeElementsAndReorganise
-		m.EntriesEnd = m.countElements() // its full reorganise (the periodic defrags first: PARTIAL)
-	}
-	m.EntriesEnd += len(t.Order) + 1 // insertElement copies the tile to the end of the entries
-	t.Trees = append(t.Trees, el)
-	t.insertRef(scenario.KindTree, len(t.Trees)-1, baseZ)
-	for i := range t.Order { // the new ref carries the occupied quarter
-		if t.Order[i].Kind == scenario.KindTree && int(t.Order[i].Index) == len(t.Trees)-1 {
-			t.Order[i].Flags = baseQuarter
-		}
-	}
-	return true
+	c := &Cmd{Company: CompanyNeutral, Objects: om}
+	_, _, ok := m.CreateTreeCmd(c, CmdApply, TreePlacement{X: px, Y: py, Quadrant: quadrant, Rotation: rotation, Type: treeType,
+		Colour: colour, BuildImmediately: true, RequiresFullClearance: requiresFullClearance})
+	return ok
 }
 
-// PlaceRandomTree is placeRandomTree: a tree at a world point — its quadrant
-// from the point, a random rotation, a type for the surface unless given —
-// placed if CreateTree allows (with full clearance).
+// PlaceRandomTree is placeRandomTree for the generator: see placeRandomTree.
 func (m *Map) PlaceRandomTree(px, py int32, treeType int, om *objects.ObjectManager) bool {
+	return m.placeRandomTree(&Cmd{Company: CompanyNeutral, Objects: om}, px, py, treeType)
+}
+
+// placeRandomTree is placeRandomTree: a tree at a world point — its quadrant
+// from the point, a random rotation, a type for the surface unless given —
+// built immediately with full clearance: the createTree command asked first,
+// then run, each as a command of the updating company (which pays; the
+// neutral one, the generator's, pays nothing).
+func (m *Map) placeRandomTree(c *Cmd, px, py int32, treeType int) bool {
 	quadrant := quadrantFromPos(px, py)
 	ax, ay := px&0xFFE0, py&0xFFE0
 	rotation := uint8(m.Rng1.RandNextBound(3))
 	tt := uint8(treeType)
 	if treeType < 0 {
 		var ok bool
-		if tt, ok = m.RandomTreeTypeFromSurface(int(ax/tileSize), int(ay/tileSize), false, om); !ok {
+		if tt, ok = m.RandomTreeTypeFromSurface(int(ax/tileSize), int(ay/tileSize), false, c.Objects); !ok {
 			return false
 		}
 	}
-	return m.CreateTree(ax, ay, quadrant, rotation, tt, 0, true, om)
+	a := TreePlacement{X: ax, Y: ay, Quadrant: quadrant, Rotation: rotation, Type: tt, BuildImmediately: true, RequiresFullClearance: true}
+	if c.Company == CompanyNeutral {
+		_, _, ok := m.CreateTreeCmd(c, CmdApply, a)
+		return ok
+	}
+	run := func(f uint8) (int32, bool) {
+		cost, _, ok := m.CreateTreeCmd(c, f, a)
+		return cost, ok
+	}
+	if _, ok := m.DoCommandFor(c, 0, ExpenditureConstruction, run); !ok {
+		return false
+	}
+	m.DoCommandFor(c, CmdApply, ExpenditureConstruction, run)
+	return true
 }
 
-// PlaceTreeCluster is placeTreeCluster: range² × density / 8192 trees at
-// random points within range of the tile's corner (gPrng1, the high-precision
-// sine / cosine); true when any was placed.
+// PlaceTreeCluster is placeTreeCluster for the generator (the neutral company).
 func (m *Map) PlaceTreeCluster(tx, ty int, rng, density uint16, treeType int, om *objects.ObjectManager) bool {
+	return m.PlaceTreeClusterFor(&Cmd{Company: CompanyNeutral, Objects: om}, tx, ty, rng, density, treeType)
+}
+
+// PlaceTreeClusterFor is placeTreeCluster: range² × density / 8192 trees at
+// random points within range of the tile's corner (gPrng1, the high-precision
+// sine / cosine), each a placeRandomTree of the command's company; true when
+// any was placed.
+func (m *Map) PlaceTreeClusterFor(c *Cmd, tx, ty int, rng, density uint16, treeType int) bool {
 	n := int(rng) * int(rng) * int(density) / 8192
 	errors := 0
 	for range n {
 		mag := m.Rng1.RandNextBound(0xFFFF) * int32(rng) / 65536
 		dir := uint16(m.Rng1.RandNextBound(0x4000 - 1))
 		ox, oy := IntegerSinePrecisionHigh(dir, mag), IntegerCosinePrecisionHigh(dir, mag)
-		if !m.PlaceRandomTree(ox+int32(tx*tileSize), oy+int32(ty*tileSize), treeType, om) {
+		if !m.placeRandomTree(c, ox+int32(tx*tileSize), oy+int32(ty*tileSize), treeType) {
 			errors++
 		}
 	}
