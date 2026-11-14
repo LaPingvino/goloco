@@ -21,7 +21,6 @@ import (
 //
 // OpenLoco reference: station/town name plaques are drawn from
 // src/OpenLoco/src/Ui/Windows/Main.cpp (drawStationNames / drawTownNames);
-// (Money: upstream's MoneyEffect entity is unported — LOOP item ME.)
 
 // drawOverlay renders station plaques, town labels and money floats over the
 // composited world. Gated to zoom 0-1 (labels are illegible when zoomed out).
@@ -172,8 +171,10 @@ var kWiggleYOffsets = func() [440]int8 {
 // company's colour (WINDOW_1: shade 7, outlined), centred on its position
 // (offsetX: minus half the medium bold width), each glyph raised by
 // kWiggleYOffsets from the effect's wiggle; medium bold at zoom 0, small at 1.
+// Like upstream (Viewport::paint) they come after the station and town names.
 // PARTIAL: the redGreen subtype (made by nothing in OpenLoco) is not painted;
-// drawn after the town names rather than interleaved with the scene's paint.
+// overlapping effects stack in the misc entity list's order, upstream's in the
+// order paint met them (the string plot list).
 func (w *World) drawMoneyEffects(screen *ebiten.Image) {
 	if len(w.Map.MoneyEffects) == 0 || w.zoom > 1 || w.Map.EntityLists == nil {
 		return
