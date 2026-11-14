@@ -128,7 +128,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       checkboxes, the toolbar's centring and shrink.
 > - [ ] N28 Signal auto placement (04e7900, bec1570, 3d6c318): Create/RemoveSignalsAuto, the stepper and repeated
 >       placement checkbox, the taller signal tab with its moved buttons.
-> - [ ] N29 Shortcuts buildTracks / buildRoads cycle the track / road types (98de125).
+> - [ ] N29 Shortcuts buildTracks / buildRoads cycle the track / road types (98de125) → with N33.
 > - [ ] N30 Zoom in to 2× / 4× (9850f2d: negative zoom levels).
 > - [ ] N31 Browse prompt's Home button and folder_path widget (ed2dd0c); landscape generation window leftovers
 >       (d9cb11a disabled options + flatLand rivers return, 9b99b3b kMinBaseLandHeight, 9fb9e37 PNG heightmap) — with
@@ -150,6 +150,9 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       lights (hasLights red / green children); paintSurfaceCliffEdge's hideTopSection
 >       (isCliffEdgeTopCoveredByBridge); drawStruct's entity position floored to the zoom; the Vehicle window's
 >       viewport centres on the entity's z, upstream on z + 12.
+> - [ ] N33 The keyboard: Input/Keyboard.cpp (normalKey's dispatch order, keyScroll with the arrow keys, the
+>       cheat buffer) and Shortcuts.cpp's table with its default keys replace goloco's invented ones (WASD / Q / E pan
+>       and zoom, Space pause, R rotate, F3–F6 speed …); every shortcut wired (toggleLastAnnouncement on Space).
 > - [ ] N14 (PAUSED until an editor exists) the town list's editor build tabs; updateBuilding's isEditorMode return;
 >       the tileManagerLoaded gate.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).
