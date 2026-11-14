@@ -479,6 +479,8 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					BaseZ:        baseZ,
 					ClearZ:       elem[3],
 					Unk7l:        elem[7] & 0x07,
+					Unk5h:        elem[5] >> 4,
+					IsDying:      elem[6]&0x80 != 0,
 				}
 				sc.Tiles[y][x].Order = append(sc.Tiles[y][x].Order, ElemRef{Kind: elementTypeTree, Flags: flagsByte, Index: uint16(len(sc.Tiles[y][x].Trees))})
 				sc.Tiles[y][x].Trees = append(sc.Tiles[y][x].Trees, te)

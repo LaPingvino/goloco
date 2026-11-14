@@ -107,11 +107,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [ ] N17 Music leftovers: Music Selection opens under the Jukebox (OpenLoco: beside the player panel — a window
 >       goloco doesn't model blocks the spot?); 1 px gaps in shared widgets against 09d74ee (scroll thumb, old
 >       dropdown / group-box sizes, combobox not drawn pressed while open); a web track change fetches blocking.
-> - [ ] N18 Trees grow: TreeElement.cpp updateTreeElement (seasons, growth, spreading, dying; gPrng1; the element's
+> - [x] N18 Trees grow: TreeElement.cpp updateTreeElement (seasons, growth, spreading, dying; gPrng1; the element's
 >       unk5h / isDying fields) in the tile loop — planted saplings never grow now.
 > - [ ] N19 News / Terraform leftovers: toggleLastAnnouncement (its key is Space, goloco's pause); the news draws over
 >       dropdowns / prompts; tool cursors and construct sounds; the tree / wall lists' tooltips; default tree / wall kept
 >       per session only; gridlinesOnLandscape on close; the expanded tree list under the bottom panels.
+> - [ ] N20 The tile loop's road tick: RoadElement.cpp tick (an AI company's town-compatible road, unused, handed to
+>       neutral via a road-removal-and-rebuild as the company) — matters once AI companies build roads.
 > - [ ] N14 (PAUSED until an editor exists) the town list's editor build tabs; updateBuilding's isEditorMode return;
 >       the tileManagerLoaded gate.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).
