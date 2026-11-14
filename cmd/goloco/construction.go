@@ -215,6 +215,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 	// Every construction window opens hovering in rotation 0, straight and
 	// level (Common's open, then trackWindow's rotate_90).
 	g.closeTerraform() // the construction tool's toolSet
+	g.consToolOff = false
 	if g.consWin() != nil {
 		g.consResetView() // the window it replaces closes first (its onClose)
 	}
@@ -267,13 +268,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 	win.OnWindowClick = func(rx, ry int) {
 		f, st := g.constructionFrame(win.X, win.Y)
 		if tab := f.TabAt(rx, ry); tab >= 0 || (ry >= 15 && ry < 42) { // tabs
-			switch tab {
-			case 1:
-				g.consTab = 1 // switchTab; tabReset turns the placing tool on (the Station tab's tool builds, through createTrainStation)
-			case 0, 2, 3:
-				g.consTab = tab // switchTab; tabReset picks the both-directions tool
-				g.consSigOne = false
-			}
+			g.consSwitchTab(tab)
 			return
 		}
 		if g.consTab == 3 {
@@ -283,8 +278,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 			return
 		}
 		if g.consTab == 1 && g.buildMode == buildModeAirport && inRect(rx, ry, 112, 104, 24, 24) {
-			g.airportRotation = (g.airportRotation + 1) & 3 // widx::rotate: constructionRotation++, stationCost = failure
-			g.stationGhostCost = 0
+			g.consStationRotate()
 			return
 		}
 		if g.consTab == 1 && inRect(rx, ry, 3, 45, 132, 12) {
@@ -304,42 +298,73 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 			return
 		}
 		hit := ui.ConstructionHit(rx, ry, st)
-		if !g.consIsRoad() && consUnusedAtRotation(hit, g.w.Cons.Rotation) {
-			return // a disabled widget (PARTIAL: it isn't drawn greyed yet)
-		}
-		switch hit {
-		case "":
-		case "construct":
-			g.consConstruct()
-		case "bridge":
+		if hit == "bridge" {
 			g.openBridgeDropdown(win.X, win.Y, f.SkinColour, f.CompanyColour)
-		case "rotate": // rotate_90: the rotate arrows while hovering, the red cross while building
-			if !g.w.Cons.Hover { // back to a new position: the overground view (viewportSetVisibility)
-				g.consOverground()
-			}
-			g.w.ConstructionRotate90(g.playerCmd())
-		case "remove":
-			g.consRemove()
-		case "copy", "paste": // PARTIAL: blueprints not ported
-		case "s_bend_dual_track_left", "s_bend_dual_track_right", "turnaround":
-			piece := uint8(construct.Turnaround) // the road's turnaround button
-			if !g.consIsRoad() {
-				piece = consDualTrackPiece(hit == "s_bend_dual_track_right", g.w.Cons.Rotation)
-			}
-			g.w.ChangeTrackPiece(g.playerCmd(), piece, false)
-		default:
-			// changeTrackPiece: piece and gradient are separate choices; a
-			// combination that can't be built gives no piece.
-			if v, ok := consPieceWidget[hit]; ok {
-				if !g.consIsRoad() || v < construct.SBendLeft { // roads have no s-bends
-					g.w.ChangeTrackPiece(g.playerCmd(), v, false)
-				}
-			} else if v, ok := consGradientWidget[hit]; ok {
-				g.w.ChangeTrackPiece(g.playerCmd(), v, true)
-			}
+			return
 		}
+		g.consWidget(hit)
 	}
 	return win
+}
+
+// consSwitchTab is a click on one of the construction window's tabs
+// (Common::switchTab): the tab, its tool on the map again.
+func (g *Game) consSwitchTab(tab int) {
+	switch tab {
+	case 1:
+		g.consTab = 1 // switchTab; tabReset turns the placing tool on (the Station tab's tool builds, through createTrainStation)
+	case 0, 2, 3:
+		g.consTab = tab // switchTab; tabReset picks the both-directions tool
+		g.consSigOne = false
+	default:
+		return
+	}
+	g.consToolOff = false
+}
+
+// consStationRotate is the Station tab's rotate button (the airport's):
+// constructionRotation++, stationCost = failure.
+func (g *Game) consStationRotate() {
+	g.airportRotation = (g.airportRotation + 1) & 3
+	g.stationGhostCost = 0
+}
+
+// consWidget is the Construction tab's onMouseUp / onMouseDown for a widget
+// by its name (ui.ConstructionHit's; the keyboard's construction shortcuts
+// call the same): a disabled widget does nothing.
+func (g *Game) consWidget(hit string) {
+	if !g.consIsRoad() && consUnusedAtRotation(hit, g.w.Cons.Rotation) {
+		return // a disabled widget (PARTIAL: it isn't drawn greyed yet)
+	}
+	switch hit {
+	case "":
+	case "construct":
+		g.consConstruct()
+	case "rotate": // rotate_90: the rotate arrows while hovering, the red cross while building
+		if !g.w.Cons.Hover { // back to a new position: the overground view (viewportSetVisibility)
+			g.consOverground()
+		}
+		g.w.ConstructionRotate90(g.playerCmd())
+	case "remove":
+		g.consRemove()
+	case "copy", "paste": // PARTIAL: blueprints not ported
+	case "s_bend_dual_track_left", "s_bend_dual_track_right", "turnaround":
+		piece := uint8(construct.Turnaround) // the road's turnaround button
+		if !g.consIsRoad() {
+			piece = consDualTrackPiece(hit == "s_bend_dual_track_right", g.w.Cons.Rotation)
+		}
+		g.w.ChangeTrackPiece(g.playerCmd(), piece, false)
+	default:
+		// changeTrackPiece: piece and gradient are separate choices; a
+		// combination that can't be built gives no piece.
+		if v, ok := consPieceWidget[hit]; ok {
+			if !g.consIsRoad() || v < construct.SBendLeft { // roads have no s-bends
+				g.w.ChangeTrackPiece(g.playerCmd(), v, false)
+			}
+		} else if v, ok := consGradientWidget[hit]; ok {
+			g.w.ChangeTrackPiece(g.playerCmd(), v, true)
+		}
+	}
 }
 
 // signalTabState is the signal tab for the track being built: the selected
@@ -646,7 +671,7 @@ func (g *Game) consHasHead() bool {
 // stationToolOn: a construction window is on its Station tab (every mode has
 // one), so the map takes the station tool.
 func (g *Game) stationToolOn() bool {
-	return g.buildMode != buildModeNone && g.consTab == 1 && !g.inTitleScreen
+	return g.buildMode != buildModeNone && g.consTab == 1 && !g.inTitleScreen && !g.consToolOff
 }
 
 // consSelectedID is the selected piece's track or road id (consPiece), -1 none.

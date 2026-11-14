@@ -87,12 +87,20 @@ func configFind(lines []string, path []string) (line, depth, indent int) {
 
 // configValue is a key's value ("" when unset).
 func configValue(key string) string {
+	v, _ := configLookup(key)
+	return v
+}
+
+// configLookup is a key's value, and whether the file has the key (a
+// shortcut set to "" is unbound; one the file doesn't name is on its
+// default).
+func configLookup(key string) (string, bool) {
 	lines, path := configLines(), strings.Split(key, ".")
 	if i, depth, _ := configFind(lines, path); depth == len(path) {
 		_, _, v, _ := configKey(lines[i])
-		return v
+		return v, true
 	}
-	return ""
+	return "", false
 }
 
 // setConfigValue is Config::write for one key: replaced in place, or added.

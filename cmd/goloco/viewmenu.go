@@ -6,7 +6,6 @@ import (
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/LaPingvino/goloco/pkg/world"
-	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // The View menu and its shortcuts: the main viewport's flags (pkg/world
@@ -18,29 +17,27 @@ import (
 
 // viewMenuEntry is one of the menu's entries: its text, the flag it toggles,
 // whether the tick shows the flag clear (the two "names displayed" entries
-// toggle a hide flag), and its shortcut's default key (Shortcuts.cpp: "1" …
-// "0"; none for the names).
+// toggle a hide flag). The flags' shortcuts: shortcut_actions.go.
 type viewMenuEntry struct {
 	label    int
 	flag     paint.ViewFlags
 	inverted bool
-	key      ebiten.Key
 	sepAfter bool
 }
 
 var viewMenuEntries = [...]viewMenuEntry{
-	{label: i18n.MenuUndergroundView, flag: paint.ViewUnderground, key: ebiten.KeyDigit1},
-	{label: i18n.MenuSeeThroughTracks, flag: paint.ViewSeeThroughTracks, key: ebiten.KeyDigit2},
-	{label: i18n.MenuSeeThroughRoads, flag: paint.ViewSeeThroughRoads, key: ebiten.KeyDigit3},
-	{label: i18n.MenuSeeThroughTrees, flag: paint.ViewSeeThroughTrees, key: ebiten.KeyDigit4},
-	{label: i18n.MenuSeeThroughBuildings, flag: paint.ViewSeeThroughBuildings, key: ebiten.KeyDigit5},
-	{label: i18n.MenuSeeThroughScenery, flag: paint.ViewSeeThroughScenery, key: ebiten.KeyDigit7},
-	{label: i18n.MenuSeeThroughBridges, flag: paint.ViewSeeThroughBridges, key: ebiten.KeyDigit6, sepAfter: true},
-	{label: i18n.MenuHeightMarksOnLand, flag: paint.ViewHeightMarksOnLand, key: ebiten.KeyDigit8},
-	{label: i18n.MenuHeightMarksOnTracksRoads, flag: paint.ViewHeightMarksOnTracks, key: ebiten.KeyDigit9},
-	{label: i18n.MenuOneWayDirectionArrows, flag: paint.ViewOneWayDirectionArrows, key: ebiten.KeyDigit0, sepAfter: true},
-	{label: i18n.MenuTownNamesDisplayed, flag: paint.ViewHideTownNames, inverted: true, key: -1},
-	{label: i18n.MenuStationNamesDisplayed, flag: paint.ViewHideStationNames, inverted: true, key: -1},
+	{label: i18n.MenuUndergroundView, flag: paint.ViewUnderground},
+	{label: i18n.MenuSeeThroughTracks, flag: paint.ViewSeeThroughTracks},
+	{label: i18n.MenuSeeThroughRoads, flag: paint.ViewSeeThroughRoads},
+	{label: i18n.MenuSeeThroughTrees, flag: paint.ViewSeeThroughTrees},
+	{label: i18n.MenuSeeThroughBuildings, flag: paint.ViewSeeThroughBuildings},
+	{label: i18n.MenuSeeThroughScenery, flag: paint.ViewSeeThroughScenery},
+	{label: i18n.MenuSeeThroughBridges, flag: paint.ViewSeeThroughBridges, sepAfter: true},
+	{label: i18n.MenuHeightMarksOnLand, flag: paint.ViewHeightMarksOnLand},
+	{label: i18n.MenuHeightMarksOnTracksRoads, flag: paint.ViewHeightMarksOnTracks},
+	{label: i18n.MenuOneWayDirectionArrows, flag: paint.ViewOneWayDirectionArrows, sepAfter: true},
+	{label: i18n.MenuTownNamesDisplayed, flag: paint.ViewHideTownNames, inverted: true},
+	{label: i18n.MenuStationNamesDisplayed, flag: paint.ViewHideStationNames, inverted: true},
 }
 
 // viewMenu is viewMenuMouseDown: the twelve entries in their three groups,
@@ -60,20 +57,6 @@ func (g *Game) viewMenu(btn *ui.ToolbarButton) {
 	d := g.toolbarDropdown(btn, items)
 	d.Highlighted = 0
 	g.dropdown = d
-}
-
-// updateViewShortcuts takes the view toggles' keys (their Shortcuts.cpp
-// defaults, 1 … 0). PARTIAL: the keys are fixed (no keyboard shortcuts
-// window yet).
-func (g *Game) updateViewShortcuts() {
-	if b := g.browseWin(); b != nil && b.Save { // the focused text box takes the keys
-		return
-	}
-	for _, e := range viewMenuEntries {
-		if e.key >= 0 && g.inKeyJustPressed(e.key) {
-			g.w.ToggleViewFlags(e.flag)
-		}
-	}
 }
 
 // syncHeightMarkerOffset keeps Config::heightMarkerOffset by the Options

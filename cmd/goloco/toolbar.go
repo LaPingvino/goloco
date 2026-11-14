@@ -74,12 +74,7 @@ func (g *Game) handleToolbarButton(idx int) {
 			{Text: i18n.Label(i18n.MenuLoadGame), Action: func() { g.openLoadGameWindow() }},
 			{Text: i18n.Label(i18n.MenuSaveGame), Action: func() { g.openSaveWindow() }},
 			{Separator: true},
-			{Text: i18n.Label(i18n.MenuScreenshot), Action: func() {
-				g.diagPending = true
-				g.diagQuit = false
-				g.diagTileX = -1
-				g.diagTileY = -1
-			}},
+			{Text: i18n.Label(i18n.MenuScreenshot), Action: func() { g.triggerScreenshotCountdown(10) }}, // loadsaveMenuDropdown
 			{Separator: true},
 			{Text: i18n.Label(i18n.MenuAbout), Action: func() { log.Println("[Game] About selected") }},
 			{Text: i18n.Label(i18n.Options), Action: func() { g.openOptionsWindow() }},
