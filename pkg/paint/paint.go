@@ -834,7 +834,12 @@ func (s *Session) hits(img Image, x, y int) bool {
 	if img.Op&gfx8.OpDst != 0 {
 		// A blended image changes what is under it, which here is nothing:
 		// upstream tests the sprite's pixel, not what it drew (the underground
-		// view's translucent surface is still the ground under the cursor).
+		// view's translucent surface is still the ground under the cursor) —
+		// an RLE sprite's runs (isPixelPresentRLE), a bitmap's pixel when it
+		// has transparency (isPixelPresentBMP: one without never counts).
+		if !img.Sprite.RLE && !img.Sprite.HasTransparency {
+			return false
+		}
 		img.Op, img.PalMap, img.Noise = gfx8.OpTransparent, nil, nil
 	}
 	rt := gfx8.NewRenderTarget(1, 1)

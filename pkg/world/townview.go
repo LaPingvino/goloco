@@ -98,6 +98,7 @@ func (w *World) CentreOnTown(idx int) bool {
 	t := &m.Towns[idx]
 	w.SetCamera(float64(t.X)/32, float64(t.Y)/32)
 	w.externalCamera = false
+	w.SetViewFlags(paint.ViewUnderground, false) // viewportCentreOnTile: a place on the ground ends the underground view
 	return true
 }
 
@@ -110,6 +111,7 @@ func (w *World) CentreOnIndustry(idx int) bool {
 	in := &w.Map.Industries[idx]
 	w.SetCamera(float64(in.X)/32, float64(in.Y)/32)
 	w.externalCamera = false
+	w.SetViewFlags(paint.ViewUnderground, false) // viewportCentreOnTile, as the town's
 	return true
 }
 
@@ -152,5 +154,6 @@ func (w *World) CentreOnStation(id int) bool {
 	s := &m.StationNames[id]
 	w.SetCamera(float64(s.X)/32, float64(s.Y)/32)
 	w.externalCamera = false
+	w.centreUnderground(int32(s.X), int32(s.Y), int32(s.Z)) // viewportCentreOnTile(station->x, y, z)
 	return true
 }

@@ -203,6 +203,10 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 		return
 	}
 	w.Map.LoadScenario(sc)
+	// Gui::init opens a new main window for the game loaded: its viewport's
+	// flags start clear (ViewportManager::create).
+	w.viewFlags = 0
+	w.InvalidateView()
 	totalBuildings := 0
 	for y := range w.Tiles {
 		for x := range w.Tiles[y] {

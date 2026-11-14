@@ -76,7 +76,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [ ] N7 Construction leftovers: disabled buttons drawn greyed, gradient-based disabling, a refused road's reason
 >       line, constructRoad's alternate-road retry, the bridge retry, shift's downward search, byte_113607E, the
 >       selected-tile outline, the preview's arrow, the error window at the cursor.
-> - [ ] N8 One-way road arrows → N23.
+> - [x] N8 One-way road arrows — done with N23.
 > - [ ] N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks).
 > - [ ] N10 Gfx::recolour exactness (the 5P.g note).
 > - [x] N11 a-newgame has no expect (now window:scenarioSelect): a key for open windows (expect window scenarioSelect == 1).
@@ -105,17 +105,21 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       (scripts/olref/tours/rightclick.txt); playthrough L. LEFT → N22.
 > - [ ] N22 Right-click leftovers: the hidden cursor held in place while panning (startCursorDrag — pointer lock);
 >       invertRightMouseViewPan kept in openloco.yml; the right drag in scroll views (scrollRight); map tooltips and
->       right clicks in other viewports (town / station windows); the hovered station's highlight; the see-through
->       view flags (nothing sets them yet); the demolish sound; repeatedSignalMode ("Signals block", removal along the
+>       right clicks in other viewports (town / station windows); the hovered station's highlight; the demolish sound; repeatedSignalMode ("Signals block", removal along the
 >       block); the Overhead tab's mod section (single only); the Signal and Overhead tabs have no map tool yet, so
 >       their right-click removals are only reachable on existing signals / mods; openAtTrack's remembered signal /
 >       station / bridge per track type (Scenario::getConstruction); the construction arrow in the window's piece
 >       preview (OpenLoco draws it there too).
-> - [ ] N23 The View menu (ToolbarTop.cpp viewMenuMouseDown / viewMenuDropdown) is a stub of two logging entries:
->       underground view, see-through tracks / roads / trees / buildings / scenery / bridges, height marks on land and
->       on track / road, one-way direction arrows (road and signal; the construction window shows / hides them), town
->       and station names — the main viewport's flags, what paint does with each (PaintTileDecorations.cpp's tables,
->       getHeightMarkerImage; PaintSurface's land marks), and the shortcuts (Shortcuts.cpp toggle…).
+> - [x] N23 The View menu — done 2026-11-14: the main viewport's flags (pkg/paint viewflags.go: Ui::ViewportFlags on
+>       the paint session; pkg/world viewflags.go; cmd/goloco viewmenu.go) — the menu's twelve ticked entries and the
+>       keys 1 … 0; the underground view, the six see-through modes (drawStructs' cull), the height marks on land and
+>       on track / road, the one-way arrows (one-way roads; a track's signal-less side), the names hidden; the
+>       construction window's hold on the view (arrows and gridlines shown, the ghost's underground / overground view
+>       and height marks, the reset on close); centring on a train in a tunnel goes underground. Tables generated
+>       (tools/gen-paintdata gen_decorations / gen_roadarrows / gen_signalarrows, gen_surface). Checked against
+>       OpenLoco on the title game (scripts/olref/tours/viewmenu.txt, viewmenu-oneway.txt): the map's pixels agree in
+>       every mode, zoom 0 and 1. Playthrough M. With it: the toolbar's zoom / rotate / view buttons were 30 px right
+>       of OpenLoco's; a toolbar menu released off the menu stayed open. LEFT → N32.
 > - [ ] N24 Town window's 4th tab, transported cargo (dbab545: town_not_served / town_no_deliveries,
 >       MonthlyCargoDelivered is simulated but never shown).
 > - [ ] N25 Industry window's cargo awaiting processing / transport (4d72607; the Transported tab's new height).
@@ -129,6 +133,23 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [ ] N31 Browse prompt's Home button and folder_path widget (ed2dd0c); landscape generation window leftovers
 >       (d9cb11a disabled options + flatLand rivers return, 9b99b3b kMinBaseLandHeight, 9fb9e37 PNG heightmap) — with
 >       the editor (N14).
+> - [ ] N32 View leftovers: the shortcut keys are fixed (no keyboard shortcuts window); Config gridlinesOnLandscape
+>       (the Options checkbox: gridlines kept after a window closes, and in the town / station / vehicle viewports);
+>       the copy / paste tools' overground view (no such tools); the placeTrackGhost bridge retry; in the underground
+>       view at 186,143 (title game) OpenLoco draws a dark face over the tunnel's road at screen 410–428, 396–414
+>       that goloco doesn't (unexplained: paintSurfaceCliffEdgeImpl's underground image is attached some 500 px below
+>       its tile at that height, as upstream's yOffset reads); not checked against OpenLoco: a ghost under the ground
+>       (the underground view by itself), centring on a train in a tunnel, the Vehicle window's underground view,
+>       see-through airports and docks, zoom 2 and 3. Seen on the way,
+>       not the View menu's: the toolbar menus' translucent colour differs from OpenLoco's (the title game: goloco
+>       grey-green over the map, OpenLoco the company's green); goloco draws a dark strip across the whole top
+>       toolbar, OpenLoco only the buttons; after a curve is built the construction window's preview goes back to
+>       the straight (OpenLoco keeps the curve, with the bridge dropdown) and the ghost's arrow is missing; the
+>       station tab's image is blank on a one-way road; snow and farm fields differ from OpenLoco some seconds into
+>       the title game (snow coverage under the bridges at 82,182; haystacks at 105,127); paintSignalSide draws no
+>       lights (hasLights red / green children); paintSurfaceCliffEdge's hideTopSection
+>       (isCliffEdgeTopCoveredByBridge); drawStruct's entity position floored to the zoom; the Vehicle window's
+>       viewport centres on the entity's z, upstream on z + 12.
 > - [ ] N14 (PAUSED until an editor exists) the town list's editor build tabs; updateBuilding's isEditorMode return;
 >       the tileManagerLoaded gate.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).

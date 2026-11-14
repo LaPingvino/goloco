@@ -35,7 +35,7 @@ import (
 //	press <x> <y>       move + left press, held until release
 //	release <x> <y>     move + left release (after press)
 //	drag <x1> <y1> <x2> <y2>  press, five moves, release (a window by its title)
-//	key <name>          tap a key: R X ESC Q E ENTER SPACE ...
+//	key <name>          tap a key: R X ESC Q E ENTER SPACE 0 … 9 ...
 //	type <text>         type the rest of the line (into a text input)
 //	wheel <dy>          mouse wheel step at current cursor
 //	shot <file.png>     save a full-frame screenshot

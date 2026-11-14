@@ -133,6 +133,19 @@ script command `news TYPE [subjects] [date DAY]` posts a message — for the
 advice panel, a new vehicle and the pre-1945 newspaper, which the title game
 doesn't bring up.
 
+tours/viewmenu.txt is the View menu and its shortcut keys (1 … 0) on the
+title save opened at 331,295 (a town, a station, bridges), 105,127 (snow,
+farms), 82,182 (one-sided signals: the direction arrows) and 186,143 (a road
+tunnel under a railway): every toggle on,
+shot, off; the menu with its ticks; the names hidden; everything see-through
+at once, also underground. The game is paused first, so what differs between
+the two games in the first shot (trains, by the seconds each ran) stays put:
+a pixel that differs in a later shot and not in the first is the mode's.
+tours/viewmenu-oneway.txt builds a one-way road in both (the Road menu's
+third entry there) for its arrows: shown with the construction window, hidden
+when it closes, back with the 0 key. The View button is at 131–160 in both
+(toolbar x = 71 + 30·n for zoom, rotate, view).
+
 tours/rightclick.txt is the map's right click on the title save opened at
 tile 331,295 (setview): the map tooltips (a house, another company's track,
 a road, a tree with and without the construction window), what a right click
