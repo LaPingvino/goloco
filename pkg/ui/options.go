@@ -98,6 +98,8 @@ type OptionsWindow struct {
 	// OnControl is called with the index and new value when one is toggled.
 	Controls  [5]bool
 	OnControl func(i int, v bool)
+	// OnCustomiseKeys is the Customise Keys button (openKeyboardShortcuts).
+	OnCustomiseKeys func()
 	// RenderChecks are the Rendering tab's checkboxes — landscapeSmoothing,
 	// gridlinesOnLandscape, cashPopupRendering, showAiPlanningAsGhosts —
 	// and OnRenderCheck their toggle.
@@ -225,6 +227,10 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		}
 	}
 	if w.Tab == OptTabControls {
+		if w.in([4]int{26, 124, 160, 12}, px, py) && w.OnCustomiseKeys != nil {
+			w.OnCustomiseKeys()
+			return
+		}
 		for i := range w.Controls {
 			if w.in([4]int{10, 49 + 15*i, 346, 12}, px, py) {
 				w.Controls[i] = !w.Controls[i]

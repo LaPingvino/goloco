@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/shortcuts"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/uilayout"
@@ -186,6 +187,8 @@ func (g *Game) routeWheelToWindows() bool {
 		w.HandleWheel(dy)
 	case *ui.MusicSelectionWindow:
 		w.HandleWheel(dy)
+	case *ui.KeyboardShortcutsWindow:
+		w.HandleWheel(dy)
 	case *ui.MessagesWindow:
 		w.HandleWheel(dy)
 	}
@@ -247,6 +250,11 @@ func (g *Game) updateWindows() {
 		case *ui.MessagesWindow:
 			w.MouseOver(hx, hy) // scrollMouseOver: the message under the mouse
 			w.Drag(mx, my, left)
+		case *ui.KeyboardShortcutsWindow:
+			w.MouseOver(hx, hy) // onScrollMouseOver
+			w.Drag(mx, my, left)
+		case *ui.EditShortcutWindow: // onUpdate: the modifiers held
+			w.Modifiers = shortcuts.ModifierText(g.kb.modifier &^ shortcuts.ModCheat)
 		case *ui.MusicSelectionWindow:
 			if g.jukeboxWin() == nil { // onUpdate: it goes with the jukebox window
 				w.Close()
