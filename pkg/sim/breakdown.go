@@ -9,7 +9,7 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // (the sound's gPrng1 draw is made, so the random sequence stays upstream's);
 // updateDaily's countdowns (a breakdown ending after breakdownTimeout days, a
 // new one falling due after timeoutToBreakdown days, sub_4BA873) wait for a
-// day tick; Config breakdownsDisabled is taken as off (upstream's default).
+// day tick; with Config breakdownsDisabled a pending breakdown never begins.
 
 const (
 	BreakdownPending  uint8 = 1 << 1
@@ -31,7 +31,7 @@ func (m *Map) updateBreakdown(tr Train, om *objects.ObjectManager) {
 	for _, car := range tr.Cars {
 		front := &m.Entities[car[0].Front]
 		// brokenDown: Smoke::create every 4th scenario tick — PARTIAL
-		if front.BreakdownFlags&BreakdownPending != 0 && !m.TitleMode {
+		if front.BreakdownFlags&BreakdownPending != 0 && !m.TitleMode && !Config.BreakdownsDisabled {
 			front.BreakdownFlags &^= BreakdownPending
 			front.BreakdownFlags |= BreakdownBrokenDn
 			front.BreakdownTimeout = 5

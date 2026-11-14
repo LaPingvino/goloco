@@ -14,9 +14,12 @@ const (
 func chebyshev(ax, ay, bx, by int32) int32 { return max(abs32(ax-bx), abs32(ay-by)) }
 
 // exceedsStationSize is StationManager::exceedsStationSize: the tile's
-// centre more than 8 tiles from the station's (disableStationSizeLimit is
-// off by default).
+// centre more than 8 tiles from the station's (never, with Config
+// disableStationSizeLimit).
 func (m *Map) exceedsStationSize(st *scenario.StationName, x, y int32) bool {
+	if Config.StationSizeLimitOff {
+		return false
+	}
 	return chebyshev(x+TileSize/2, y+TileSize/2, int32(st.X), int32(st.Y)) > kStationDistanceLimit
 }
 

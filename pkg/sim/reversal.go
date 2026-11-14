@@ -404,7 +404,9 @@ func (m *Map) OpposingTrainAtSignal(tr Train) bool {
 }
 
 // trainNormalMovementUpdate's signal branches (al 3: waiting; al 2: no
-// route) — trainsReverseAtSignals is on (upstream's default).
+// route). Without Config trainsReverseAtSignals (off by default) a train at
+// a red signal only waits; with it, it waits its timeout, then passes or
+// reverses.
 func (m *Map) trainSignalUpdate(tr Train, r Sub4ACEE7Result, om *objects.ObjectManager) {
 	head, v1, v2 := &m.Entities[tr.Head], &m.Entities[tr.Veh1], &m.Entities[tr.Veh2]
 	if r.Al != 3 {
@@ -421,6 +423,9 @@ func (m *Map) trainSignalUpdate(tr Train, r Sub4ACEE7Result, om *objects.ObjectM
 		return
 	}
 	head.Status = StatusWaitingAtSignal
+	if !Config.TrainsReverseAtSignals { // off by default: the train waits
+		return
+	}
 	v1.TimeAtSignal++
 	pass := func() { head.Var5C = 2; v1.Var48 |= flags48PassSignal }
 	if head.VehicleFlags&VehicleFlagManualControl != 0 {

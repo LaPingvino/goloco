@@ -102,7 +102,12 @@ type OptionsWindow struct {
 	// AutosaveFrequency (months, 0 never) and AutosaveAmount (1–24) are the
 	// Miscellaneous tab's Config::autosaveFrequency / autosaveAmount; their
 	// On… callbacks follow a change (Config::write).
-	AutosaveFrequency, AutosaveAmount     int
+	AutosaveFrequency, AutosaveAmount int
+	// MiscChecks are the Miscellaneous tab's seven checkboxes, in their order
+	// (cheats menu, AI off, town growth off, breakdowns off, load penalty off,
+	// station size limit off, trains reverse at signals); OnMiscCheck their toggle.
+	MiscChecks                            [7]bool
+	OnMiscCheck                           func(i int, v bool)
 	OnAutosaveFrequency, OnAutosaveAmount func(int)
 	// OnCustomiseKeys is the Customise Keys button (openKeyboardShortcuts).
 	OnCustomiseKeys func()
@@ -249,6 +254,15 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		return
 	}
 	if w.Tab == OptTabMisc {
+		for i, y := range []int{64, 79, 94, 130, 145, 160, 175} { // the Checkboxes, 400 × 12
+			if w.in([4]int{10, y, 400, 12}, px, py) {
+				w.MiscChecks[i] = !w.MiscChecks[i]
+				if w.OnMiscCheck != nil {
+					w.OnMiscCheck(i, w.MiscChecks[i])
+				}
+				return
+			}
+		}
 		// autosave_frequency_btn: Dropdown::show at the widget, width() − 4 —
 		// never, every month, every 3 / 6 / 12 months; the stepper's − / + (1–24).
 		if w.in([4]int{250, 211, 156, 12}, px, py) && w.OpenDropdown != nil {
@@ -667,6 +681,11 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			{130, i18n.Label(i18n.DisableVehicleBreakdowns)}, {145, i18n.Label(i18n.DisableVehicleLoadingPenalty)},
 			{160, i18n.Label(i18n.DisableStationSizeLimitLabel)}, {175, i18n.Label(i18n.TrainsReverseAtSignals)}} {
 			DrawTextBold(screen, c.label, w.X+10+10+4, w.Y+c.y, text)
+		}
+		for i, y := range []int{64, 79, 94, 130, 145, 160, 175} {
+			if w.MiscChecks[i] {
+				DrawTextBold(screen, string(rune(0xAC)), w.X+10, w.Y+y, text)
+			}
 		}
 		DrawTextBold(screen, i18n.Label(i18n.AutosaveFrequency), w.X+10, w.Y+211, text)
 		DrawTextBold(screen, i18n.Label(i18n.AutosaveAmount), w.X+10, w.Y+226, text)

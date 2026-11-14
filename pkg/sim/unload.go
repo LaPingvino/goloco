@@ -28,13 +28,17 @@ const (
 // loadingModifier is getLoadingModifier: a car standing past the station
 // loads 12× (rail) / 2× (road) slower; a road stop that is not a road end
 // sets awaitingCargoTransfer on the head. (Upstream's switch `break`s land
-// on the final return: 1.) disableVehicleLoadPenaltyCheat is off.
+// on the final return: 1.) With Config disableVehicleLoadPenaltyCheat the
+// penalty is the minimum (1).
 func (m *Map) loadingModifier(head *scenario.VehicleEntity, bogie *scenario.VehicleEntity, om *objects.ObjectManager) int32 {
 	t := m.TileAt(int(bogie.TileX)>>5, int(bogie.TileY)>>5)
 	tad := bogie.TrackAndDirection
 	switch head.Mode {
 	case 0:
 		mod := int32(railPastStationPenalty)
+		if Config.LoadPenaltyDisabled { // disableVehicleLoadPenaltyCheat
+			mod = minPastStationPenalty
+		}
 		if t == nil {
 			return mod
 		}
@@ -47,6 +51,9 @@ func (m *Map) loadingModifier(head *scenario.VehicleEntity, bogie *scenario.Vehi
 		return mod
 	case 1:
 		mod := int32(roadPastStationPenalty)
+		if Config.LoadPenaltyDisabled {
+			mod = minPastStationPenalty
+		}
 		if t == nil {
 			return mod
 		}

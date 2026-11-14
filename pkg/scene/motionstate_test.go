@@ -1659,10 +1659,13 @@ func TestReverseSavedVehicles(t *testing.T) {
 	}
 }
 
-// A saved train waiting at a signal does not wait for ever: within 2500
-// ticks it gets through or turns round (the one-way timeout is 1920 ticks,
-// the two-way one 640).
+// With Config trainsReverseAtSignals (off by default, as upstream's) a saved
+// train waiting at a signal does not wait for ever: within 2500 ticks it gets
+// through or turns round (the one-way timeout is 1920 ticks, the two-way one
+// 640).
 func TestSavedTrainLeavesSignal(t *testing.T) {
+	sim.Config.TrainsReverseAtSignals = true
+	defer func() { sim.Config.TrainsReverseAtSignals = false }()
 	r, m, _ := titleView(t)
 	trains, err := m.Trains()
 	if err != nil {
