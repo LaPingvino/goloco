@@ -192,15 +192,28 @@ func (w *World) TrainStationPlacementAt(sx, sy int, stationType uint8) (sim.Trai
 	}
 	tk, _ := ps.Item.(*scenario.TrackElement)
 	if tk == nil { // "Deliberately always passing track and not station element": the tile's first track
-		if t := m.TileAt(ps.MapX/32, ps.MapY/32); t != nil && len(t.Tracks) > 0 {
-			tk = &t.Tracks[0]
-		}
-	}
-	if tk == nil {
-		return sim.TrainStationPlacement{}, false
+		return w.TrainStationPlacementAtTile(int32(ps.MapX/32*32), int32(ps.MapY/32*32), stationType)
 	}
 	return sim.TrainStationPlacement{X: int32(ps.MapX / 32 * 32), Y: int32(ps.MapY / 32 * 32), Z: int32(tk.BaseZ) * 4,
 		Rotation: tk.Rotation, TrackID: tk.TrackID, Index: tk.SequenceIndex, TrackObjectID: tk.TrackObjectID, Type: stationType}, true
+}
+
+// TrainStationPlacementAtTile is getTrainStationPlacementArgs(pos, nullptr):
+// the tile's first track element (in tile order), as a placement of
+// stationType at the tile's world x, y.
+func (w *World) TrainStationPlacementAtTile(x, y int32, stationType uint8) (sim.TrainStationPlacement, bool) {
+	t := w.Map.TileAt(int(x)>>5, int(y)>>5)
+	if t == nil {
+		return sim.TrainStationPlacement{}, false
+	}
+	for _, r := range t.Order {
+		if r.Kind == scenario.KindTrack && int(r.Index) < len(t.Tracks) {
+			tk := &t.Tracks[r.Index]
+			return sim.TrainStationPlacement{X: x &^ 31, Y: y &^ 31, Z: int32(tk.BaseZ) * 4,
+				Rotation: tk.Rotation, TrackID: tk.TrackID, Index: tk.SequenceIndex, TrackObjectID: tk.TrackObjectID, Type: stationType}, true
+		}
+	}
+	return sim.TrainStationPlacement{}, false
 }
 
 // RoadStationPlacementAt is StationTab's getRoadStationPlacementArgsFromCursor:
@@ -225,20 +238,28 @@ func (w *World) RoadStationPlacementAt(sx, sy int, stationType uint8) (sim.RoadS
 	}
 	rd, _ := ps.Item.(*scenario.RoadElement)
 	if rd == nil { // getRoadStationPlacementArgs(pos, nullptr): the tile's first road
-		if t := m.TileAt(ps.MapX/32, ps.MapY/32); t != nil {
-			for _, r := range t.Order {
-				if r.Kind == scenario.KindRoad && int(r.Index) < len(t.Roads) {
-					rd = &t.Roads[r.Index]
-					break
-				}
-			}
-		}
-	}
-	if rd == nil {
-		return sim.RoadStationPlacement{}, false
+		return w.RoadStationPlacementAtTile(int32(ps.MapX/32*32), int32(ps.MapY/32*32), stationType)
 	}
 	return sim.RoadStationPlacement{X: int32(ps.MapX / 32 * 32), Y: int32(ps.MapY / 32 * 32), Z: int32(rd.BaseZ) * 4,
 		Rotation: rd.Rotation, RoadID: rd.RoadID, Index: rd.SequenceIndex, RoadObjectID: rd.RoadObjectID, Type: stationType}, true
+}
+
+// RoadStationPlacementAtTile is getRoadStationPlacementArgs(pos, nullptr):
+// the tile's first road element (in tile order), as a placement of
+// stationType at the tile's world x, y.
+func (w *World) RoadStationPlacementAtTile(x, y int32, stationType uint8) (sim.RoadStationPlacement, bool) {
+	t := w.Map.TileAt(int(x)>>5, int(y)>>5)
+	if t == nil {
+		return sim.RoadStationPlacement{}, false
+	}
+	for _, r := range t.Order {
+		if r.Kind == scenario.KindRoad && int(r.Index) < len(t.Roads) {
+			rd := &t.Roads[r.Index]
+			return sim.RoadStationPlacement{X: x &^ 31, Y: y &^ 31, Z: int32(rd.BaseZ) * 4,
+				Rotation: rd.Rotation, RoadID: rd.RoadID, Index: rd.SequenceIndex, RoadObjectID: rd.RoadObjectID, Type: stationType}, true
+		}
+	}
+	return sim.RoadStationPlacement{}, false
 }
 
 // ensureScene makes the scene renderer the hit tests paint with, as

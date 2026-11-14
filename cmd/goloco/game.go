@@ -170,6 +170,8 @@ type Game struct {
 	// viewportLeft is Input::State::viewportLeft: a left press on the main view
 	// without a tool, waiting for its release (viewportLeftRelease).
 	viewportLeft bool
+	// stDrag is the Station tab tool's press / drag (stationdrag.go).
+	stDrag stationDrag
 
 	// --shots mode: periodic full-frame captures (shot_NN.png), then quit.
 	shotsEvery time.Duration // wall-clock interval between captures

@@ -1,0 +1,60 @@
+# PL.1 playthrough, stage K: a station dragged along a line (StationTab onToolDown /
+# onToolDrag / onToolUpMultiple): stage G's line, the Station tab, a press on the
+# track at 302,395 dragged to 380,358 (the area shown as the map selection),
+# released: a platform on every track tile of the area, one station.
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+move 592 14
+wait 1
+click 620 42
+wait 1
+move 400 300
+wait 2
+move 250 420
+wait 1
+click 250 420
+wait 2
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+wait 1
+shot /tmp/goloco-playthrough/pt-g-l1.png
+click 51 57
+wait 2
+move 302 395
+wait 1
+press 302 395
+wait 1
+move 340 377
+wait 1
+move 380 358
+wait 1
+shot /tmp/goloco-playthrough/pt-k-drag.png
+release 380 358
+wait 2
+move 700 500
+wait 2
+shot /tmp/goloco-playthrough/pt-k-station.png
+expect stations >= 1
+quit

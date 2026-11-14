@@ -170,6 +170,9 @@ func (g *Game) updateGame() {
 		if g.viewportLeft {
 			g.viewportLeftRelease()
 		}
+		if g.stDrag.pressed && g.stationToolOn() {
+			g.stationToolRelease(g.mouseX, g.mouseY) // onToolUp: single or the dragged area
+		}
 	}
 
 	g.updateCamera()
@@ -231,7 +234,12 @@ func (g *Game) updateConstructionTools() {
 	if g.diagHoldGhost {
 		// DIAGNOSTIC ONLY: the ghost stays for the screenshot
 	} else if g.stationToolOn() {
-		g.stationToolUpdate(g.mouseX, g.mouseY)
+		if g.stDrag.pressed && g.inMousePressed(ebiten.MouseButtonLeft) {
+			g.stationToolDrag(g.mouseX, g.mouseY) // onToolDrag
+		}
+		if !g.stDrag.dragging { // onToolUpdate: no ghost while dragging
+			g.stationToolUpdate(g.mouseX, g.mouseY)
+		}
 	} else if g.stationGhost != nil || g.roadStationGhost != nil || g.dockGhost != nil || g.airportGhost != nil {
 		g.removeStationGhost()
 	}
@@ -368,7 +376,7 @@ func (g *Game) hudOrMapClick() {
 	} else if g.routeTool && g.vehicleWin(g.routeHead) != nil && !g.inTitleScreen {
 		g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
 	} else if g.stationToolOn() {
-		g.stationToolUp(g.mouseX, g.mouseY) // the Station tab's tool: a station on the track or road clicked, or a dock
+		g.stationToolDown(g.mouseX, g.mouseY) // the Station tab's tool: onToolDown (the build comes with the release, stationdrag.go)
 	} else if g.consHasHead() && g.consTab == 0 && g.w.Cons.Hover && g.hoverTileX >= 0 && g.r.ObjMgr != nil {
 		// onToolUp → onToolUpSingle + constructionLoop: the click starts
 		// building — the selected piece at the tile, as the Construct button
