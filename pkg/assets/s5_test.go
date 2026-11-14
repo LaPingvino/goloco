@@ -70,17 +70,6 @@ func TestDecodeRotate_known_vector(t *testing.T) {
 	}
 }
 
-// encodeRotate is the inverse used only in tests (matches OpenLoco encodeRotate)
-func encodeRotate(data []byte) []byte {
-	out := make([]byte, len(data))
-	code := uint(1)
-	for i, b := range data {
-		out[i] = (b << code) | (b >> (8 - code))
-		code = (code + 2) & 7
-	}
-	return out
-}
-
 // ---------------------------------------------------------------------------
 // decodeRunLengthSingle
 // ---------------------------------------------------------------------------

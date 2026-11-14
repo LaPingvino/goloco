@@ -9,6 +9,15 @@ import (
 // in the scenario (OpenLoco: Map/TileManager for tiles, Towns/TownManager,
 // Entities/EntityManager — state only, no drawing).
 type Map struct {
+	// Raw is the loaded file's chunks (scenario.Raw): the save writes what
+	// the map models over them (s5export.go).
+	Raw *scenario.Raw
+	// ScenarioFileName / Name / Details are GameState scenarioFileName,
+	// scenarioName, scenarioDetails (Scenario::loadAndStart / start set them).
+	ScenarioFileName, ScenarioName, ScenarioDetails string
+	// OtherEffects are the save's effect entities goloco doesn't model
+	// (fireball, explosion smoke, smoke): kept, by id, to be saved as they were.
+	OtherEffects map[uint16]scenario.MiscEntity
 	// Animations is the AnimationManager list (animation.go).
 	Animations []scenario.Animation
 	// InvalidateEntity: see entitymove.go (EntityBase::invalidateSprite).
@@ -34,6 +43,9 @@ type Map struct {
 	// activeMessageIndex (messages.go; 0xFFFF none).
 	Messages           []Message
 	ActiveMessageIndex uint16
+	// AutosaveCheck is tickDate's autosaveCheck, at the end of every month
+	// (nil: none — the title, the tests).
+	AutosaveCheck func()
 	// CloseNewsWindow is clearActiveMessage's WindowManager::close(
 	// WindowType::news): the game's (nil: no interface).
 	CloseNewsWindow       func()
@@ -156,6 +168,10 @@ func (m *Map) AddRoad(x, y int, re scenario.RoadElement) bool {
 // LoadScenario fills the map from a loaded scenario or save: size, every
 // tile's surface and elements, towns and the saved vehicle entities.
 func (m *Map) LoadScenario(sc *scenario.Scenario) {
+	m.Raw = sc.Raw
+	m.ScenarioFileName, m.ScenarioName, m.ScenarioDetails = sc.ScenarioFileName, sc.ScenarioName, sc.ScenarioDetails
+	m.ObjectiveCompletedInMonths = sc.ObjectiveCompletedInMonths
+	m.loadEffects(sc.MiscEntities)
 	m.Messages, m.ActiveMessageIndex = nil, sc.ActiveMessageIndex
 	for _, r := range sc.Messages { // the save's messages (their stored, already formatted text)
 		m.Messages = append(m.Messages, Message{Type: MessageType(r.Type), Text: string(r.Text), CompanyID: r.CompanyID, TimeActive: r.TimeActive, Subjects: r.Subjects, Date: r.Date})
@@ -191,6 +207,8 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 				Signals:      st.Signals,
 				Industries:   st.Industries,
 				Order:        st.Order,
+				// SurfaceElement flag_6: a wave runs on the tile (wave.go).
+				WaveFlag: surfaceFlags(st.Order)&surfaceFlagWave != 0,
 			}
 		}
 	}

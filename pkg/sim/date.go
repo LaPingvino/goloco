@@ -95,7 +95,9 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 			m.updateYearly2(om)
 			m.tilesUpdateYearly() // TileManager::updateYearly
 		}
-		// autosave: not ported
+		if m.AutosaveCheck != nil { // GameScene's autosaveCheck: the game's (cmd/goloco autosave.go)
+			m.AutosaveCheck()
+		}
 	}
 	m.companiesUpdateDaily(om)
 }

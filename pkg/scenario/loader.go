@@ -127,6 +127,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		FilePath:  filePath,
 		MapWidth:  DefaultMapSize,
 		MapHeight: DefaultMapSize,
+		Raw:       &Raw{Header: header},
 	}
 
 	// --- Chunk 2: SaveDetails or ScenarioOptions ---
@@ -138,6 +139,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 			return sc, fmt.Errorf("failed to read SaveDetails chunk: %w", err)
 		}
 		log.Println("[Scenario] Read SaveDetails,", len(saveDetails), "bytes")
+		sc.Raw.SaveDetails = saveDetails
 	}
 	if header.Type == assets.S5TypeScenario || header.Type == assets.S5TypeLandscape {
 		scenarioOpts, err := reader.ReadChunk()
@@ -146,6 +148,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		}
 		log.Printf("[Scenario] Read ScenarioOptions, %d bytes", len(scenarioOpts))
 		sc.Options = parseScenarioOptions(scenarioOpts)
+		sc.Raw.Options = scenarioOpts
 	}
 
 	// --- Packed objects (raw ObjectHeader + data chunk per object) ---
@@ -182,6 +185,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		return sc, fmt.Errorf("failed to read RequiredObjects chunk: %w", err)
 	}
 	log.Println("[Scenario] Read RequiredObjects,", len(reqObjBytes), "bytes")
+	sc.Raw.RequiredObjects = reqObjBytes
 	sc.LandObjectOrder = parseLandObjectOrder(reqObjBytes)
 	sc.CargoObjectOrder = parseObjectOrder(reqObjBytes, cargoSlotStart, cargoSlotCount, objectTypeCargo)
 	sc.TownNamesObjectOrder = parseObjectOrder(reqObjBytes, 203, 1, 7)    // ObjectType::townNames (slot start from the compiler)
@@ -281,19 +285,21 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		// user strings too (S5GameState.h: animations 0x4268C4, userStrings
 		// 0x432A44) — where a scenario's town names are.
 		sc.UserStrings = parseUserStringsAt(animations, userStringsOffset-animationsOffset)
+		sc.Raw.GameState = gameStateFromScenarioChunks(generalState, towns, animations)
+		sc.Waves = parseWaves(sc.Raw.GameState)
 	} else {
 		gameState, err := reader.ReadChunk()
 		if err != nil {
 			return sc, fmt.Errorf("failed to read GameState chunk: %w", err)
 		}
 		log.Println("[Scenario] Read GameState,", len(gameState), "bytes")
+		// One layout from here on: a GameStateType2 converted as loadSave does.
+		gameState = gameStateFromSaveChunk(gameState)
+		sc.Raw.GameState = gameState
 		generalStateFlags = readGeneralStateFlags(gameState)
 		parseObjective(gameState)
 		parseGeneralState(sc, gameState)
 		off := 0x4268C4 // GameState::animations (type 2: 0x424CA4)
-		if len(gameState) == GameStateSizeType2 {
-			off = 0x424CA4
-		}
 		if len(gameState) > 0x156 && len(gameState) >= off {
 			sc.Animations = parseAnimations(gameState[off:], int(binary.LittleEndian.Uint16(gameState[0x154:])))
 		}
@@ -306,6 +312,8 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.EntityLists = ParseEntityLists(gameState)
 		sc.VehicleList = ParseVehicleListEntries(gameState)
 		sc.Orders = ParseOrders(gameState)
+		sc.MiscEntities = ParseMiscEntities(gameState)
+		sc.Waves = parseWaves(gameState)
 		sc.Routings = ParseRoutings(gameState)
 		sc.Companies = parseCompanyEconomy(gameState)
 		sc.Industries = parseIndustries(gameState)
@@ -340,6 +348,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 			return sc, nil
 		}
 		log.Println("[Scenario] Read TileElements,", len(tileData), "bytes (", len(tileData)/tileElementSize, "elements)")
+		sc.Raw.TileElements = tileData
 		sc.parseTileElements(tileData)
 	} else {
 		// No tile elements in file. For "randomly generated" scenarios
@@ -455,6 +464,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					IsIndustrial: typeByte&0x80 != 0,
 					Type6Flag:    typeByte&0x40 != 0,
 					Slope:        slopeByte,
+					ClearZ:       elem[3],
 					Trees:        existing.Trees,
 					Buildings:    existing.Buildings,
 					Walls:        existing.Walls,
@@ -511,6 +521,7 @@ func (sc *Scenario) parseTileElements(data []byte) {
 					Rotation:        typeByte & 0x03,
 					EdgeSlope:       (typeByte >> 6) & 0x03,
 					PrimaryColour:   elem[6] & 0x1F,
+					TertiaryColour:  elem[5],
 					SecondaryColour: (elem[6]>>5)&0x7 | (elem[1]>>2)&0x18,
 					BaseZ:           baseZ,
 					ClearZ:          elem[3],
@@ -1119,8 +1130,7 @@ const (
 
 	// Offsets of the towns array inside a decompressed GameState chunk.
 	// OpenLoco reference: include/OpenLoco/S5/S5GameState.h GameState::towns.
-	townsGameStateOffset      = 0x092444
-	townsGameStateOffsetType2 = 0x090824
+	townsGameStateOffset = 0x092444
 )
 
 // parseTowns reads up to kMaxTowns Town records from the start of buf, skipping
@@ -1177,9 +1187,6 @@ func parseTowns(buf []byte) []Town {
 // GameState chunk (saved games), choosing the array offset by chunk variant.
 func parseTownsFromGameState(gs []byte) []Town {
 	off := townsGameStateOffset
-	if len(gs) == GameStateSizeType2 {
-		off = townsGameStateOffsetType2
-	}
 	if len(gs) < off+townMaxCount*townRecordSize {
 		return nil
 	}
@@ -1242,11 +1249,10 @@ func (sc *Scenario) IsTitleSequence() bool {
 // GameStateType2::industries at 0x9CB24; kMaxIndustries 128; sizeof(Industry)
 // 1107 with objectId at byte 16.
 const (
-	industriesGameStateOffset      = 0x9E744
-	industriesGameStateOffsetType2 = 0x9CB24
-	industryMaxCount               = 128
-	industryRecordSize             = 1107
-	industryObjectIDOffset         = 16
+	industriesGameStateOffset = 0x9E744
+	industryMaxCount          = 128
+	industryRecordSize        = 1107
+	industryObjectIDOffset    = 16
 )
 
 // Companies in the GameState (S5/S5GameState.h, S5/S5Company.h; offsetof and
@@ -1257,7 +1263,6 @@ const (
 	companiesGameStateOffset = 0xB96C
 	companyMaxCount          = 15
 	companyRecordSize        = 36776
-	companyRecordSizeType2   = 36296
 	companyMainColoursOffset = 0x1A
 	companyNeutral           = 15
 	colourGrey               = 1
@@ -1266,9 +1271,6 @@ const (
 // parseCompanyNames returns every company slot's name StringId (Company 0x00).
 func parseCompanyNames(gs []byte) []uint16 {
 	size := companyRecordSize
-	if len(gs) == GameStateSizeType2 {
-		size = companyRecordSizeType2
-	}
 	if len(gs) < companiesGameStateOffset+companyMaxCount*size {
 		return nil
 	}
@@ -1293,9 +1295,6 @@ type CompanyFace struct {
 // parseCompanyFaces returns every company slot's CompanyFace.
 func parseCompanyFaces(gs []byte) []CompanyFace {
 	size := companyRecordSize
-	if len(gs) == GameStateSizeType2 {
-		size = companyRecordSizeType2
-	}
 	if len(gs) < companiesGameStateOffset+companyMaxCount*size {
 		return nil
 	}
@@ -1312,9 +1311,6 @@ func parseCompanyFaces(gs []byte) []CompanyFace {
 // (S5::Company 0x34, uint32_t[7]: one bit per vehicle object slot).
 func parseUnlockedVehicles(gs []byte) [][7]uint32 {
 	size := companyRecordSize
-	if len(gs) == GameStateSizeType2 {
-		size = companyRecordSizeType2
-	}
 	if len(gs) < companiesGameStateOffset+companyMaxCount*size {
 		return nil
 	}
@@ -1344,9 +1340,6 @@ func parseControllingCompany(gs []byte) uint8 {
 // mainColours.primary, then neutral = grey. nil if the chunk is too short.
 func parseCompanyColours(gs []byte) []uint8 {
 	size := companyRecordSize
-	if len(gs) == GameStateSizeType2 {
-		size = companyRecordSizeType2
-	}
 	if len(gs) < companiesGameStateOffset+companyMaxCount*size {
 		return nil
 	}
@@ -1362,10 +1355,9 @@ func parseCompanyColours(gs []byte) []uint8 {
 // GameState's userStrings table — 2048 × 32 bytes at 0x432A44 (GameStateType2:
 // 0x430E24), offsets from the compiler. Town names live here.
 const (
-	userStringsOffset      = 0x432A44
-	userStringsOffsetType2 = 0x430E24
-	userStringsCount       = 2048
-	userStringSize         = 32
+	userStringsOffset = 0x432A44
+	userStringsCount  = 2048
+	userStringSize    = 32
 	// UserStringsStart is StringManager::kUserStringsStart.
 	UserStringsStart = 0x8000
 )
@@ -1374,9 +1366,6 @@ const (
 // game stores them). nil if the chunk is too short.
 func parseUserStrings(gs []byte) []string {
 	off := userStringsOffset
-	if len(gs) == GameStateSizeType2 {
-		off = userStringsOffsetType2
-	}
 	return parseUserStringsAt(gs, off)
 }
 
@@ -1417,20 +1406,16 @@ func (sc *Scenario) UserString(id uint16) (string, bool) {
 // Stations in the GameState (S5/S5Station.h; from the compiler): stations at
 // 0xC10C4 (GameStateType2: 0xBF4A4), 1024 records of 978 bytes, owner at 0x28.
 const (
-	stationsGameStateOffset      = 0xC10C4
-	stationsGameStateOffsetType2 = 0xBF4A4
-	stationMaxCount              = 1024
-	stationRecordSize            = 978
-	stationOwnerOffset           = 0x28
+	stationsGameStateOffset = 0xC10C4
+	stationMaxCount         = 1024
+	stationRecordSize       = 978
+	stationOwnerOffset      = 0x28
 )
 
 // parseStationOwners returns, per station id, its owner (Station::owner). nil if
 // the chunk is too short.
 func parseStationOwners(gs []byte) []uint8 {
 	off := stationsGameStateOffset
-	if len(gs) == GameStateSizeType2 {
-		off = stationsGameStateOffsetType2
-	}
 	if len(gs) < off+stationMaxCount*stationRecordSize {
 		return nil
 	}
@@ -1485,9 +1470,6 @@ type StationCargo struct {
 // parseStationNames returns, per station id, its name and town. nil if short.
 func parseStationNames(gs []byte) []StationName {
 	off := stationsGameStateOffset
-	if len(gs) == GameStateSizeType2 {
-		off = stationsGameStateOffsetType2
-	}
 	if len(gs) < off+stationMaxCount*stationRecordSize {
 		return nil
 	}
@@ -1550,9 +1532,6 @@ type CompanyEconomy struct {
 // parseCompanyEconomy reads every company slot's CompanyEconomy.
 func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 	size := companyRecordSize
-	if len(gs) == GameStateSizeType2 {
-		size = companyRecordSizeType2
-	}
 	if len(gs) < companiesGameStateOffset+companyMaxCount*size {
 		return nil
 	}
@@ -1567,15 +1546,7 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 		c.HeadquartersX = int16(binary.LittleEndian.Uint16(r[0x257A:]))
 		c.HeadquartersY = int16(binary.LittleEndian.Uint16(r[0x257C:]))
 		c.HeadquartersZ = r[0x2579]
-		// jailStatus: 0x8E34, or 0x8C54 in a CompanyType2 (which has no
-		// cargoUnitsDistanceHistory before it — S5Company.h).
-		jail := 0x8E34
-		if size == companyRecordSizeType2 {
-			jail = 0x8C54
-		}
-		if len(r) > jail+1 {
-			c.JailStatus = binary.LittleEndian.Uint16(r[jail:])
-		}
+		c.JailStatus = binary.LittleEndian.Uint16(r[0x8E34:])
 		c.AvailableVehicles = binary.LittleEndian.Uint16(r[0x50:])
 		for k := range c.TransportTypeCount {
 			c.TransportTypeCount[k] = binary.LittleEndian.Uint16(r[0x8BA4+2*k:])
@@ -1612,9 +1583,6 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 // is StringIds::null).
 func parseIndustries(gs []byte) []Industry {
 	off := industriesGameStateOffset
-	if len(gs) == GameStateSizeType2 {
-		off = industriesGameStateOffsetType2
-	}
 	return parseIndustriesAt(gs, off)
 }
 
@@ -1715,6 +1683,10 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 		}
 	}
 	sc.NumberOfIndustries = gs[0x415] // numberOfIndustries: 0 low, 1 medium, 2 high
+	sc.ObjectiveCompletedInMonths = binary.LittleEndian.Uint16(gs[0x42D:])
+	sc.ScenarioFileName = cString(gs[0x1BC : 0x1BC+256])
+	sc.ScenarioName = cString(gs[0x2BC : 0x2BC+64])
+	sc.ScenarioDetails = cString(gs[0x2FC : 0x2FC+256])
 	sc.Messages, sc.ActiveMessageIndex = parseMessages(gs)
 	if len(gs) > GeneralCurrentYearOffset+1 { // general.currentYear (from the compiler: 0x1A)
 		sc.CurrentYear = binary.LittleEndian.Uint16(gs[GeneralCurrentYearOffset:])
@@ -1762,9 +1734,6 @@ type CompanyColourScheme struct {
 // parseCompanyColourSchemes reads every company slot's colour scheme.
 func parseCompanyColourSchemes(gs []byte) []CompanyColourScheme {
 	size := companyRecordSize
-	if len(gs) == GameStateSizeType2 {
-		size = companyRecordSizeType2
-	}
 	if len(gs) < companiesGameStateOffset+companyMaxCount*size {
 		return nil
 	}
@@ -1826,4 +1795,29 @@ func indexByte(b []byte, c byte) int {
 		}
 	}
 	return -1
+}
+
+// wavesOffset is GameState waves (S5GameState.h 0x4328C4).
+const wavesOffset = 0x4328C4
+
+// parseWaves reads GameState waves[kMaxWaves].
+func parseWaves(gs []byte) (w [MaxWaves]Wave) {
+	for i := range w {
+		r := gs[wavesOffset+6*i:]
+		w[i] = Wave{X: int16(binary.LittleEndian.Uint16(r)), Y: int16(binary.LittleEndian.Uint16(r[2:])), Frame: binary.LittleEndian.Uint16(r[4:])}
+	}
+	return w
+}
+
+// cString is a NUL-terminated Latin-1 string field.
+func cString(b []byte) string {
+	n := 0
+	for n < len(b) && b[n] != 0 {
+		n++
+	}
+	r := make([]rune, n)
+	for i := range r {
+		r[i] = rune(b[i])
+	}
+	return string(r)
 }
