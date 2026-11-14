@@ -200,7 +200,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
        and a started scenario with vehicles bought, played, saved, loaded, played on — the same state), playthrough
        p-save (expect saved: the loaded game is the save byte for byte), OpenLoco loads goloco's saves
        (scripts/olref/gosave; README). The loader now also reads waves, effect entities, scenario name / details,
-       a wall's tertiary colour, the surface's clearZ and wave flag. PARTIAL: what goloco doesn't model of a
+       a wall's tertiary colour, the surface's clearZ and wave flag. cfb9495: a game through the map and back is the
+       file (TestSaveIdentity_throughMap: title, an OpenLoco autosave with AI companies) — the surface's clearZ is
+       now kept as upstream does (clearance reads it), TileManager::initialise sets tileManagerLoaded (a generated
+       landscape's save had no map), a new game's routing / order tables written reset, entriesEnd on load / save;
+       the web build keeps saves out of localStorage (they last until the page closes). PARTIAL: what goloco doesn't model of a
        record made in play (a town / industry / station takes its slot's old bytes; a company gets createCompany's
        non-zero defaults, a vehicle createHead's / createVehicle2's, else zero); padding kept, not zeroed as
        upstream's field-by-field export does; nextQuadrantId not recomputed (upstream recomputes it on load);
