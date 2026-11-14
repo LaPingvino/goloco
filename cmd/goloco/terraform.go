@@ -420,7 +420,7 @@ func (g *Game) updateTerraform() {
 		return
 	}
 	mx, my := g.mouseX, g.mouseY
-	onMap := !g.overWindow(mx, my) && !(g.dropdown != nil && g.dropdown.Visible)
+	onMap := !g.overWindow(mx, my) && !(g.dropdown != nil && g.dropdown.Visible) && !(g.colourDropdown != nil && g.colourDropdown.Visible)
 	g.terraformToolUpdate(mx, my, onMap)
 	if t.held {
 		if g.inMousePressed(ebiten.MouseButtonLeft) {

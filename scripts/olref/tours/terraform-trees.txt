@@ -9,6 +9,7 @@ wait 0.5
 move 580 116
 wait 0.5
 release 580 116
+wait 0.3
 move 100 300
 wait 1
 move 450 330
