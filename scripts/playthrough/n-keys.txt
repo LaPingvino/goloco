@@ -1,0 +1,245 @@
+# Playthrough N: the keyboard (Input/Keyboard.cpp, Input/Shortcuts.cpp). As L
+# (seed 1950, Weatherworld, the fixed view by Cloudburst). goloco's old keys do
+# nothing of what they did (E no zoom, F4 no speed, Space no pause — the last
+# two are no shortcut at all, E neither); the shortcuts on their default keys:
+# Pause, PageUp / PageDown (zoom out / in), Return (rotate), the arrow keys
+# held (keyScroll), L / W / P / X (the Terraform window's tabs) and Escape
+# (its tool cancelled, it closes), the list windows' keys, Backspace (the
+# front window closed) and Left Shift+Backspace (all of them), T and R (the
+# construction window; pressed again, the company's next track / road type —
+# upstream 98de125), Z (the piece turned while hovering), Escape (hovering:
+# the window closes; on the dock's Station tab: the tool goes, the window
+# stays), Space (the last news shown again, and closed), a rename's text
+# input (it takes every key: no shortcut runs, Escape does not close it,
+# Return is OK), the cheat words typed while Insert is held.
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+expect zoom == 0
+expect paused == 0
+expect speed == 1
+expect windows == 0
+key E
+key F4
+key Space
+wait 1
+expect zoom == 0
+expect paused == 0
+expect speed == 1
+expect window:news == 0
+# pause, zoom, rotate
+key Pause
+wait 0.5
+expect paused == 1
+key Pause
+wait 0.5
+expect paused == 0
+key PageUp
+wait 0.5
+expect zoom == 1
+key PageUp
+wait 0.5
+expect zoom == 2
+key PageDown
+key PageDown
+wait 0.5
+expect zoom == 0
+key ENTER
+wait 0.5
+expect rotation == 1
+key Keypad Enter
+wait 0.5
+expect rotation == 1
+key ENTER
+key ENTER
+key ENTER
+wait 0.5
+expect rotation == 0
+# the arrow keys held scroll the view
+camera 60 250
+wait 1
+expect camx == 5680
+expect camy == 4532
+keydown Right
+wait 1
+keyup Right
+wait 0.5
+expect camx > 5680
+expect camy == 4532
+keydown Up
+wait 1
+keyup Up
+wait 0.5
+expect camy < 4532
+camera 60 250
+wait 1
+# the Terraform window's tabs by their keys; Escape cancels its tool
+key L
+wait 1
+expect terraformtab == 1
+key W
+wait 1
+expect terraformtab == 2
+key P
+wait 1
+expect terraformtab == 3
+key X
+wait 1
+expect terraformtab == 0
+shot /tmp/goloco-playthrough/pt-n1-terraform.png
+key ESC
+wait 1
+expect terraformwindow == 0
+# the windows
+key V
+wait 1
+expect vehiclelist == 1
+key S
+wait 1
+expect stationlist == 1
+key U
+wait 1
+expect townlist == 1
+key I
+wait 1
+expect industrylist == 1
+key C
+wait 1
+expect window:companyList == 1
+key Q
+wait 1
+expect companywindow == 1
+key Tab
+wait 1
+expect window:messages == 1
+key N
+wait 1
+expect window:buildVehicle == 1
+expect windows == 8
+shot /tmp/goloco-playthrough/pt-n2-windows.png
+# Shift held: no plain key's shortcut
+key Left Shift+V
+wait 0.5
+expect windows == 8
+key Backspace
+wait 1
+expect window:buildVehicle == 0
+expect windows == 7
+key Left Shift+Backspace
+wait 1
+expect windows == 0
+# the construction window: T, and T again for the next track type
+key T
+wait 1
+expect conswindow == 1
+expect constype < 128
+shot /tmp/goloco-playthrough/pt-n3-track.png
+expect constype == 0
+key T
+wait 1
+expect constype >= 128
+shot /tmp/goloco-playthrough/pt-n4-track2.png
+move 400 300
+wait 1
+expect consrotation == 0
+key Z
+wait 1
+expect consrotation == 1
+key ESC
+wait 1
+expect conswindow == 0
+key R
+wait 1
+expect conswindow == 1
+expect constype >= 128
+shot /tmp/goloco-playthrough/pt-n5-road.png
+expect constype == 129
+key R
+wait 1
+expect constype == 128
+shot /tmp/goloco-playthrough/pt-n6-road2.png
+key Backspace
+wait 1
+expect conswindow == 0
+# the dock window's tool cancelled: the window stays
+key D
+wait 1
+expect conswindow == 1
+expect constab == 1
+key ESC
+wait 1
+expect conswindow == 1
+shot /tmp/goloco-playthrough/pt-n7-dock.png
+key Backspace
+wait 1
+expect conswindow == 0
+# the last news again
+news 15 5
+wait 1
+expect window:news == 1
+key Space
+wait 1
+expect window:news == 0
+key Space
+wait 1
+expect window:news == 1
+shot /tmp/goloco-playthrough/pt-n8-news.png
+key Space
+wait 1
+expect window:news == 0
+# the cheat words
+expect drivercheat == 0
+keydown Insert
+wait 0.5
+type driver
+wait 0.5
+expect windows == 0
+keyup Insert
+wait 0.5
+expect drivercheat == 1
+expect jailed == 0
+keydown Insert
+wait 0.5
+type FREECASH
+wait 0.5
+keyup Insert
+wait 0.5
+expect jailed == 30
+expect window:news == 1
+key Space
+wait 1
+expect window:news == 0
+key U
+wait 1
+click 230 140
+wait 2
+expect townwindows == 1
+# its name's text input takes every key
+click 110 417
+wait 1
+expect textinput == 1
+key S
+key V
+type xy
+wait 0.5
+key ESC
+wait 0.5
+expect textinput == 1
+expect stationlist == 0
+expect vehiclelist == 0
+expect windows == 2
+shot /tmp/goloco-playthrough/pt-n9-rename.png
+key Backspace
+wait 0.5
+expect windows == 2
+key ENTER
+wait 1
+expect textinput == 0
+expect rotation == 0
+move 400 300
+wait 1
+shot /tmp/goloco-playthrough/pt-n10-renamed.png
+quit

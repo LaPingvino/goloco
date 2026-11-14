@@ -32,10 +32,17 @@ placeholders without it).
 
 ## Controls
 
-- **Arrow keys / WASD:** pan camera
-- **Q / E** or **mouse wheel:** zoom
+The original's keys (OpenLoco's Shortcuts.cpp defaults; the `shortcuts:`
+section of goloco's openloco.yml rebinds them, in OpenLoco's own format):
+
+- **Arrow keys:** scroll the view; **PageUp / PageDown** or **mouse wheel:** zoom out / in
+- **Return:** rotate the view; **Z:** rotate what is being built
+- **Pause:** pause; **Esc:** cancel the tool; **Backspace:** close the front window (**Shift+Backspace:** all)
+- **T / R / A / D:** build tracks / roads / airports / ship ports (T or R again: the next type)
+- **L / W / P / X:** adjust land / water, plant trees, clear an area; **N:** build vehicles
+- **V / S / U / I / C / Q / F / Tab:** vehicles, stations, towns, industries, companies, company, finances, messages
+- **1 … 0:** the View menu's toggles; **Space:** the last news; **Left Ctrl+S:** screenshot
 - **Mouse:** drag windows by title bar, click widgets
-- **Esc:** quit
 
 ## Layout
 

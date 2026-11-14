@@ -322,16 +322,20 @@ func (g *Game) buildNewVehicles() {
 	}
 }
 
-// toggleLastAnnouncement is 0x004BF3B3: the news window closed, or — none
-// open — the last message shown again (NewsWindow::openLastMessage
+// toggleLastAnnouncement is 0x004BF3B3: the news window closed (the ticker
+// stays), or — none open — the last message shown again (NewsWindow::openLastMessage
 // 0x0042AC27).
 func (g *Game) toggleLastAnnouncement() {
-	if g.newsWin() != nil {
-		g.closeNews()
-		return
-	}
 	m := &g.w.Map
 	m.CloseNewsWindow = g.closeNews
+	if w := g.newsWin(); w != nil {
+		// NewsWindow::close: the close button's onMouseUp — the active
+		// message cleared, the window with it; the ticker has no such button.
+		if _, paper := w.(*ui.NewsWindow); paper {
+			m.ClearActiveMessage()
+		}
+		return
+	}
 	last := len(m.Messages) - 1
 	g.closeNews()
 	if m.SelectMessage(uint16(max(last, 0))); last >= 0 {

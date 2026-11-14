@@ -12,7 +12,6 @@ import (
 
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/paint"
-	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -134,5 +133,5 @@ func (g *Game) saveScreenshot(screen *ebiten.Image) {
 		return
 	}
 	log.Printf("[Game] screenshot saved as %s", filepath.Join(dir, file))
-	g.openError(ui.FormatErrorArgs(i18n.Label(i18n.ScreenshotSavedAs), file), "") // Error::openQuiet
+	g.openError(strings.Replace(i18n.Label(i18n.ScreenshotSavedAs), "{STRING}", file, 1), "") // Error::openQuiet
 }

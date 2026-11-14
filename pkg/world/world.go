@@ -840,7 +840,7 @@ func abs(x int) int {
 }
 
 // PanCamera moves the camera by (dx, dy) pixels in world-space.
-// Called each frame when WASD/arrow keys are held.
+// (The arrow keys held, the cursor on the screen's edge, a right drag.)
 func (w *World) PanCamera(dx, dy float64) {
 	w.following = false      // moving the view ends a focus (viewportUnfocusFromEntity)
 	w.externalCamera = false // user is now driving the camera

@@ -94,6 +94,13 @@ var ebitenKeyCodes, keyCodeEbiten = func() (map[ebiten.Key]uint32, map[uint32]eb
 // key press, and the system's key repeat brings both again).
 func isPrintableKey(code uint32) bool { return code >= 0x20 && code < 0x7F }
 
+// isKeypadTextKey: a keypad key that types a character with NumLock on
+// (Keypad / … Keypad ., Keypad =; not Keypad Enter).
+func isKeypadTextKey(code uint32) bool {
+	const kpDivide, kpEnter, kpPeriod, kpEquals = 1<<30 | 84, 1<<30 | 88, 1<<30 | 99, 1<<30 | 103
+	return code >= kpDivide && code <= kpPeriod && code != kpEnter || code == kpEquals
+}
+
 func isModifierKey(code uint32) bool {
 	switch code {
 	case shortcuts.KeyLShift, shortcuts.KeyRShift, shortcuts.KeyLCtrl, shortcuts.KeyRCtrl, shortcuts.KeyLAlt, shortcuts.KeyRAlt:
@@ -141,7 +148,7 @@ func (g *Game) readKeys() {
 		}
 	}
 	for k, code := range ebitenKeyCodes {
-		if d := inpututil.KeyPressDuration(k); !isPrintableKey(code) && !isModifierKey(code) && d > 30 && d%3 == 0 {
+		if d := inpututil.KeyPressDuration(k); !isPrintableKey(code) && !isKeypadTextKey(code) && !isModifierKey(code) && d > 30 && d%3 == 0 {
 			g.enqueueKey(code)
 		}
 	}
@@ -154,13 +161,15 @@ func (g *Game) readKeys() {
 }
 
 // enqueueText gives a typed character to the key press it came with — a
-// printable key of this frame still without one, the character's own first —
-// or queues it as that key pressed again (the key repeat).
+// printable or keypad key of this frame still without one, the character's
+// own first — or queues it as its key pressed again (the key repeat): a
+// keypad key's while one is held (its character is not its key: a keypad 1
+// is no "1" shortcut), else the character's own.
 func (g *Game) enqueueText(first int, r rune) {
 	own := keyOfChar(r)
 	at := -1
 	for i := first; i < len(g.kb.queue); i++ {
-		if e := g.kb.queue[i]; e.charCode == 0 && isPrintableKey(e.keyCode) && (at < 0 || e.keyCode == own) {
+		if e := g.kb.queue[i]; e.charCode == 0 && (isPrintableKey(e.keyCode) || isKeypadTextKey(e.keyCode)) && (at < 0 || e.keyCode == own) {
 			at = i
 			if e.keyCode == own {
 				break
@@ -170,6 +179,12 @@ func (g *Game) enqueueText(first int, r rune) {
 	if at >= 0 {
 		g.kb.queue[at].charCode = r
 		return
+	}
+	for k, code := range ebitenKeyCodes {
+		if isKeypadTextKey(code) && ebiten.IsKeyPressed(k) {
+			own = code
+			break
+		}
 	}
 	g.kb.queue = append(g.kb.queue, keyEvent{own, r})
 }
