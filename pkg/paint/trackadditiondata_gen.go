@@ -199,8 +199,8 @@ var TrackAdditionParts1 = [26][]TrackAdditionPiece{
 	// trackId 1
 	{
 		{ImageIDs: [4]uint32{23, 24, 25, 22}, BBOffsets: [4]Pos3{{2, 2, 26}, {2, 2, 26}, {2, 2, 26}, {2, 2, 26}}, BBSizes: [4]Pos3{{28, 28, 1}, {28, 28, 1}, {28, 28, 1}, {28, 28, 1}}, IsMergeable: true},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{25, 22, 23, 24}, BBOffsets: [4]Pos3{{2, 2, 26}, {2, 2, 26}, {2, 2, 26}, {2, 2, 26}}, BBSizes: [4]Pos3{{28, 28, 1}, {28, 28, 1}, {28, 28, 1}, {28, 28, 1}}, IsMergeable: true},
 	},
 	// trackId 2
@@ -214,15 +214,15 @@ var TrackAdditionParts1 = [26][]TrackAdditionPiece{
 	// trackId 4
 	{
 		{ImageIDs: [4]uint32{9, 11, 13, 7}, BBOffsets: [4]Pos3{{2, 6, 26}, {6, 2, 26}, {2, 6, 26}, {6, 2, 26}}, BBSizes: [4]Pos3{{28, 20, 1}, {20, 28, 1}, {28, 20, 1}, {20, 28, 1}}, IsMergeable: true, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{96, 97}, {98, 99}, {100, 101}, {94, 95}}, Height: 0, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{256, 128, 32, 64}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{8, 10, 12, 6}, BBOffsets: [4]Pos3{{6, 2, 26}, {2, 6, 26}, {6, 2, 26}, {2, 6, 26}}, BBSizes: [4]Pos3{{20, 28, 1}, {28, 20, 1}, {20, 28, 1}, {28, 20, 1}}, IsMergeable: true, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{94, 95}, {96, 97}, {98, 99}, {100, 101}}, Height: 0, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{64, 256, 128, 32}}},
 	},
 	// trackId 5
 	{
 		{ImageIDs: [4]uint32{6, 8, 10, 12}, BBOffsets: [4]Pos3{{2, 6, 26}, {6, 2, 26}, {2, 6, 26}, {6, 2, 26}}, BBSizes: [4]Pos3{{28, 20, 1}, {20, 28, 1}, {28, 20, 1}, {20, 28, 1}}, IsMergeable: true, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{100, 101}, {94, 95}, {96, 97}, {98, 99}}, Height: 0, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{32, 64, 256, 128}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{7, 9, 11, 13}, BBOffsets: [4]Pos3{{6, 2, 26}, {2, 6, 26}, {6, 2, 26}, {2, 6, 26}}, BBSizes: [4]Pos3{{20, 28, 1}, {28, 20, 1}, {20, 28, 1}, {28, 20, 1}}, IsMergeable: true, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{94, 95}, {96, 97}, {98, 99}, {100, 101}}, Height: 0, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{64, 256, 128, 32}}},
 	},
 	// trackId 6
@@ -245,31 +245,31 @@ var TrackAdditionParts1 = [26][]TrackAdditionPiece{
 	{
 		{ImageIDs: [4]uint32{0, 1, 0, 1}, BBOffsets: [4]Pos3{{2, 3, 26}, {3, 2, 26}, {2, 3, 26}, {3, 2, 26}}, BBSizes: [4]Pos3{{28, 26, 1}, {26, 28, 1}, {28, 26, 1}, {26, 28, 1}}, IsMergeable: true},
 		{ImageIDs: [4]uint32{9, 11, 13, 7}, BBOffsets: [4]Pos3{{2, 2, 26}, {2, 2, 26}, {2, 16, 26}, {16, 2, 26}}, BBSizes: [4]Pos3{{28, 14, 1}, {14, 28, 1}, {28, 14, 1}, {14, 28, 1}}, IsMergeable: true, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{96, 97}, {98, 99}, {100, 101}, {94, 95}}, Height: 0, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{256, 128, 32, 64}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{24, 25, 22, 23}, BBOffsets: [4]Pos3{{2, 2, 26}, {2, 2, 26}, {2, 2, 26}, {2, 2, 26}}, BBSizes: [4]Pos3{{28, 28, 1}, {28, 28, 1}, {28, 28, 1}, {28, 28, 1}}, IsMergeable: true},
 	},
 	// trackId 9
 	{
 		{ImageIDs: [4]uint32{0, 1, 0, 1}, BBOffsets: [4]Pos3{{2, 3, 26}, {3, 2, 26}, {2, 3, 26}, {3, 2, 26}}, BBSizes: [4]Pos3{{28, 26, 1}, {26, 28, 1}, {28, 26, 1}, {26, 28, 1}}, IsMergeable: true},
 		{ImageIDs: [4]uint32{6, 8, 10, 12}, BBOffsets: [4]Pos3{{2, 16, 26}, {16, 2, 26}, {2, 2, 26}, {2, 2, 26}}, BBSizes: [4]Pos3{{28, 14, 1}, {14, 28, 1}, {28, 14, 1}, {14, 28, 1}}, IsMergeable: true, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{100, 101}, {94, 95}, {96, 97}, {98, 99}}, Height: 0, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{32, 64, 256, 128}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{25, 22, 23, 24}, BBOffsets: [4]Pos3{{2, 2, 26}, {2, 2, 26}, {2, 2, 26}, {2, 2, 26}}, BBSizes: [4]Pos3{{28, 28, 1}, {28, 28, 1}, {28, 28, 1}, {28, 28, 1}}, IsMergeable: true},
 	},
 	// trackId 10
 	{
 		{ImageIDs: [4]uint32{23, 24, 25, 22}, BBOffsets: [4]Pos3{{2, 2, 26}, {2, 2, 26}, {2, 2, 26}, {2, 2, 26}}, BBSizes: [4]Pos3{{28, 28, 1}, {28, 28, 1}, {28, 28, 1}, {28, 28, 1}}, IsMergeable: true},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{10, 12, 6, 8}, BBOffsets: [4]Pos3{{2, 2, 26}, {2, 2, 26}, {2, 16, 26}, {16, 2, 26}}, BBSizes: [4]Pos3{{28, 14, 1}, {14, 28, 1}, {28, 14, 1}, {14, 28, 1}}, IsMergeable: true, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{96, 97}, {98, 99}, {100, 101}, {94, 95}}, Height: 0, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{256, 128, 32, 64}}},
 		{ImageIDs: [4]uint32{0, 1, 0, 1}, BBOffsets: [4]Pos3{{2, 3, 26}, {3, 2, 26}, {2, 3, 26}, {3, 2, 26}}, BBSizes: [4]Pos3{{28, 26, 1}, {26, 28, 1}, {28, 26, 1}, {26, 28, 1}}, IsMergeable: true},
 	},
 	// trackId 11
 	{
 		{ImageIDs: [4]uint32{23, 24, 25, 22}, BBOffsets: [4]Pos3{{2, 2, 26}, {2, 2, 26}, {2, 2, 26}, {2, 2, 26}}, BBSizes: [4]Pos3{{28, 28, 1}, {28, 28, 1}, {28, 28, 1}, {28, 28, 1}}, IsMergeable: true},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{7, 9, 11, 13}, BBOffsets: [4]Pos3{{16, 2, 26}, {2, 2, 26}, {2, 2, 26}, {2, 16, 26}}, BBSizes: [4]Pos3{{14, 28, 1}, {28, 14, 1}, {14, 28, 1}, {28, 14, 1}}, IsMergeable: true, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{94, 95}, {96, 97}, {98, 99}, {100, 101}}, Height: 0, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{64, 256, 128, 32}}},
 		{ImageIDs: [4]uint32{1, 0, 1, 0}, BBOffsets: [4]Pos3{{3, 2, 26}, {2, 3, 26}, {3, 2, 26}, {2, 3, 26}}, BBSizes: [4]Pos3{{26, 28, 1}, {28, 26, 1}, {26, 28, 1}, {28, 26, 1}}, IsMergeable: true},
 	},
@@ -308,57 +308,57 @@ var TrackAdditionParts1 = [26][]TrackAdditionPiece{
 	// trackId 18
 	{
 		{ImageIDs: [4]uint32{73, 75, 77, 71}, BBOffsets: [4]Pos3{{2, 6, 34}, {6, 2, 34}, {2, 6, 34}, {6, 2, 34}}, BBSizes: [4]Pos3{{28, 20, 1}, {20, 28, 1}, {28, 20, 1}, {20, 28, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{96, 97}, {98, 99}, {100, 101}, {94, 95}}, Height: 4, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{256, 128, 32, 64}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{72, 74, 76, 70}, BBOffsets: [4]Pos3{{6, 2, 34}, {2, 6, 34}, {6, 2, 34}, {2, 6, 34}}, BBSizes: [4]Pos3{{20, 28, 1}, {28, 20, 1}, {20, 28, 1}, {28, 20, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{94, 95}, {96, 97}, {98, 99}, {100, 101}}, Height: 12, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{64, 256, 128, 32}}},
 	},
 	// trackId 19
 	{
 		{ImageIDs: [4]uint32{62, 64, 66, 68}, BBOffsets: [4]Pos3{{2, 6, 34}, {6, 2, 34}, {2, 6, 34}, {6, 2, 34}}, BBSizes: [4]Pos3{{28, 20, 1}, {20, 28, 1}, {28, 20, 1}, {20, 28, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{100, 101}, {94, 95}, {96, 97}, {98, 99}}, Height: 4, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{32, 64, 256, 128}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{63, 65, 67, 69}, BBOffsets: [4]Pos3{{6, 2, 34}, {2, 6, 34}, {6, 2, 34}, {2, 6, 34}}, BBSizes: [4]Pos3{{20, 28, 1}, {28, 20, 1}, {20, 28, 1}, {28, 20, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{94, 95}, {96, 97}, {98, 99}, {100, 101}}, Height: 12, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{64, 256, 128, 32}}},
 	},
 	// trackId 20
 	{
 		{ImageIDs: [4]uint32{65, 67, 69, 63}, BBOffsets: [4]Pos3{{2, 6, 34}, {6, 2, 34}, {2, 6, 34}, {6, 2, 34}}, BBSizes: [4]Pos3{{28, 20, 1}, {20, 28, 1}, {28, 20, 1}, {20, 28, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{96, 97}, {98, 99}, {100, 101}, {94, 95}}, Height: 12, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{256, 128, 32, 64}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{64, 66, 68, 62}, BBOffsets: [4]Pos3{{6, 2, 34}, {2, 6, 34}, {6, 2, 34}, {2, 6, 34}}, BBSizes: [4]Pos3{{20, 28, 1}, {28, 20, 1}, {20, 28, 1}, {28, 20, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{94, 95}, {96, 97}, {98, 99}, {100, 101}}, Height: 4, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{64, 256, 128, 32}}},
 	},
 	// trackId 21
 	{
 		{ImageIDs: [4]uint32{70, 72, 74, 76}, BBOffsets: [4]Pos3{{2, 6, 34}, {6, 2, 34}, {2, 6, 34}, {6, 2, 34}}, BBSizes: [4]Pos3{{28, 20, 1}, {20, 28, 1}, {28, 20, 1}, {20, 28, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{100, 101}, {94, 95}, {96, 97}, {98, 99}}, Height: 12, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{32, 64, 256, 128}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{71, 73, 75, 77}, BBOffsets: [4]Pos3{{6, 2, 34}, {2, 6, 34}, {6, 2, 34}, {2, 6, 34}}, BBSizes: [4]Pos3{{20, 28, 1}, {28, 20, 1}, {20, 28, 1}, {28, 20, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{94, 95}, {96, 97}, {98, 99}, {100, 101}}, Height: 4, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{64, 256, 128, 32}}},
 	},
 	// trackId 22
 	{
 		{ImageIDs: [4]uint32{89, 91, 93, 87}, BBOffsets: [4]Pos3{{2, 6, 34}, {6, 2, 34}, {2, 6, 34}, {6, 2, 34}}, BBSizes: [4]Pos3{{28, 20, 1}, {20, 28, 1}, {28, 20, 1}, {20, 28, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{96, 97}, {98, 99}, {100, 101}, {94, 95}}, Height: 8, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{256, 128, 32, 64}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{88, 90, 92, 86}, BBOffsets: [4]Pos3{{6, 2, 34}, {2, 6, 34}, {6, 2, 34}, {2, 6, 34}}, BBSizes: [4]Pos3{{20, 28, 1}, {28, 20, 1}, {20, 28, 1}, {28, 20, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{94, 95}, {96, 97}, {98, 99}, {100, 101}}, Height: 8, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{64, 256, 128, 32}}},
 	},
 	// trackId 23
 	{
 		{ImageIDs: [4]uint32{78, 80, 82, 84}, BBOffsets: [4]Pos3{{2, 6, 34}, {6, 2, 34}, {2, 6, 34}, {6, 2, 34}}, BBSizes: [4]Pos3{{28, 20, 1}, {20, 28, 1}, {28, 20, 1}, {20, 28, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{100, 101}, {94, 95}, {96, 97}, {98, 99}}, Height: 8, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{32, 64, 256, 128}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{79, 81, 83, 85}, BBOffsets: [4]Pos3{{6, 2, 34}, {2, 6, 34}, {6, 2, 34}, {2, 6, 34}}, BBSizes: [4]Pos3{{20, 28, 1}, {28, 20, 1}, {20, 28, 1}, {28, 20, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{94, 95}, {96, 97}, {98, 99}, {100, 101}}, Height: 8, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{64, 256, 128, 32}}},
 	},
 	// trackId 24
 	{
 		{ImageIDs: [4]uint32{81, 83, 85, 79}, BBOffsets: [4]Pos3{{2, 6, 34}, {6, 2, 34}, {2, 6, 34}, {6, 2, 34}}, BBSizes: [4]Pos3{{28, 20, 1}, {20, 28, 1}, {28, 20, 1}, {20, 28, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{96, 97}, {98, 99}, {100, 101}, {94, 95}}, Height: 8, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{256, 128, 32, 64}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{80, 82, 84, 78}, BBOffsets: [4]Pos3{{6, 2, 34}, {2, 6, 34}, {6, 2, 34}, {2, 6, 34}}, BBSizes: [4]Pos3{{20, 28, 1}, {28, 20, 1}, {20, 28, 1}, {28, 20, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{94, 95}, {96, 97}, {98, 99}, {100, 101}}, Height: 8, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{64, 256, 128, 32}}},
 	},
 	// trackId 25
 	{
 		{ImageIDs: [4]uint32{86, 88, 90, 92}, BBOffsets: [4]Pos3{{2, 6, 34}, {6, 2, 34}, {2, 6, 34}, {6, 2, 34}}, BBSizes: [4]Pos3{{28, 20, 1}, {20, 28, 1}, {28, 20, 1}, {20, 28, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{100, 101}, {94, 95}, {96, 97}, {98, 99}}, Height: 8, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{32, 64, 256, 128}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{87, 89, 91, 93}, BBOffsets: [4]Pos3{{6, 2, 34}, {2, 6, 34}, {6, 2, 34}, {2, 6, 34}}, BBSizes: [4]Pos3{{20, 28, 1}, {28, 20, 1}, {20, 28, 1}, {28, 20, 1}}, IsMergeable: false, Supports: &TrackAdditionSupport{ImageIDs: [4][2]uint32{{94, 95}, {96, 97}, {98, 99}, {100, 101}}, Height: 8, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{64, 256, 128, 32}}},
 	},
 }

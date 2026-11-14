@@ -115,7 +115,7 @@ func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint
 	}
 	rotation := (s.Rotation + el.Rotation) & 3
 	baseHeight := int(el.BaseZ) * 4
-	bbz := min(int(el.ClearZ)*4-baseHeight, 128) - 2
+	bbz := int(el.ClearZ)*4 - baseHeight - 2 // 66ca922: no vanilla 128 clamp
 	imgOff, bbOff, bbSz := bldImgOff1x1, bldBBOff1x1, bldBBSz1x1
 	if obj.LargeTile {
 		imgOff, bbOff, bbSz = bldImgOff2x2, bldBBOff2x2, bldBBSz2x2

@@ -41,7 +41,7 @@ func (s *Session) PaintIndustry(el IndustryEl, obj IndustryObj, colourMap []uint
 	}
 	rotation := (s.Rotation + el.Rotation) & 3
 	baseHeight := int(el.BaseZ) * 4
-	bbz := min(int(el.ClearZ)*4-baseHeight, 128) - 2
+	bbz := int(el.ClearZ)*4 - baseHeight - 2 // 66ca922: no vanilla 128 clamp
 	imgOff, bbOff, bbSz := bldImgOff1x1, bldBBOff1x1, bldBBSz1x1
 	if obj.LargeTile {
 		imgOff, bbOff, bbSz = bldImgOff2x2, bldBBOff2x2, bldBBSz2x2
@@ -154,7 +154,7 @@ func (s *Session) PaintAirport(rotationEl, sequenceIndex, baseZ uint8, obj Airpo
 		}
 	}
 	clearHeight = (clearHeight + 3) &^ 3
-	bbz := min(clearHeight, 128) - 2
+	bbz := clearHeight - 2 // 66ca922: no vanilla 128 clamp
 	baseHeight := int(baseZ) * 4
 	imgOff, bbOff, bbSz := bldImgOff1x1, bldBBOff1x1, bldBBSz1x1
 	if obj.LargeTile {
@@ -204,7 +204,7 @@ func (s *Session) PaintDocks(rotationEl, sequenceIndex, baseZ, clearZ uint8, obj
 	s.ItemType = ItemDock // setItemType (PaintDocks.cpp:55; the inner noInteraction resets not yet ported)
 	rotation := (s.Rotation + rotationEl) & 3
 	baseHeight := int(baseZ) * 4
-	bbz := min(int(clearZ)*4-baseHeight, 128) - 2
+	bbz := int(clearZ)*4 - baseHeight - 2 // 66ca922: no vanilla 128 clamp
 	imgOff, bbOff, bbSz := bldImgOff2x2, bldBBOff2x2, bldBBSz2x2
 	imgOff.Z += baseHeight
 	bbOff.Z += baseHeight

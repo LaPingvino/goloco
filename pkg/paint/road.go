@@ -109,8 +109,8 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 		s.paintLevelCrossing(el, rot, sprite)
 	}
 	// The road extras (zoom 0, not for anyRoadTypeCompatible roads): each mod
-	// the element has, AdditionStyle1's piece (the null piece — image 3 = 0 —
-	// skipped) — mergeable into track/road addition priority 0, else as a
+	// the element has, AdditionStyle1's piece (the null piece — image 0 the
+	// sentinel — skipped) — mergeable into track/road addition priority 0, else as a
 	// parent (addToPlotList4FD150); a piece's supports via setAdditionSupport
 	// (drawn by paintSupports). PARTIAL: ghost mods.
 	if s.Zoom > 0 || el.AnyRoadTypeCompatible {
@@ -123,7 +123,7 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 			continue
 		}
 		p := RoadAdditionParts[rid][seq]
-		if p.ImageIDs[3] == 0 {
+		if p.ImageIDs[0] == nullAdditionImage { // kNullRoadPaintAdditionPiece (d739914; vanilla tested image 3 = 0)
 			continue
 		}
 		sp := sprite(m.Image + int(p.ImageIDs[rot]))
