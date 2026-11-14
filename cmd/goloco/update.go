@@ -169,6 +169,12 @@ func (g *Game) updateGame() {
 		if g.stDrag.pressed && g.stationToolOn() {
 			g.stationToolRelease(g.mouseX, g.mouseY) // onToolUp: single or the dragged area
 		}
+		if g.sigToolDown {
+			g.sigToolDown = false
+			if g.signalToolOn() && !g.overWindow(g.mouseX, g.mouseY) {
+				g.signalToolUp(g.mouseX, g.mouseY)
+			}
+		}
 	}
 
 	g.updateCamera()
@@ -222,6 +228,12 @@ func (g *Game) updateConstructionTools() {
 		}
 	} else if g.stationGhost != nil || g.roadStationGhost != nil || g.dockGhost != nil || g.airportGhost != nil {
 		g.removeStationGhost()
+	}
+	if g.signalToolOn() { // the Signal tab's ghost (onToolUpdate)
+		g.signalToolUpdate(g.mouseX, g.mouseY)
+	} else if g.w.SignalGhostShown() {
+		g.w.RemoveSignalGhost(g.playerCmd())
+		g.consSigCost = -1
 	}
 
 	// Build mode: update hover tile every frame (track and road; the dock
@@ -354,6 +366,8 @@ func (g *Game) hudOrMapClick() {
 		g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
 	} else if g.stationToolOn() {
 		g.stationToolDown(g.mouseX, g.mouseY) // the Station tab's tool: onToolDown (the build comes with the release, stationdrag.go)
+	} else if g.signalToolOn() {
+		g.sigToolDown = true // the Signal tab's tool acts on the release (onToolUp)
 	} else if g.consHasHead() && g.consTab == 0 && g.w.Cons.Hover && g.hoverTileX >= 0 && g.r.ObjMgr != nil {
 		// onToolUp → onToolUpSingle + constructionLoop: the click starts
 		// building — the selected piece at the tile, as the Construct button

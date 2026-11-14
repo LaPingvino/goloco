@@ -400,6 +400,17 @@ func (g *Game) scriptExpect() {
 	switch req[0] {
 	case "cash":
 		got, _ = g.w.ControllingCompanyCash()
+	case "signals": // the signal elements on the map (ghosts not counted)
+		for y := range g.w.Map.Tiles {
+			for x := range g.w.Map.Tiles[y] {
+				t := &g.w.Map.Tiles[y][x]
+				for _, r := range t.Order {
+					if r.Kind == scenario.KindSignal && r.Flags&0x10 == 0 {
+						got++
+					}
+				}
+			}
+		}
 	case "stations":
 		for _, s := range g.w.StationList() {
 			if s.Owner == company && s.Flags&(1<<5) == 0 {

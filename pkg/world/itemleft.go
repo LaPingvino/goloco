@@ -239,3 +239,21 @@ func (w *World) stationOfElement(ps *paint.Struct) (int, bool) {
 	}
 	return 0, false
 }
+
+// TrackUnder is getMapCoordinatesFromPos for tracks only (SignalTab.cpp
+// getSignalPlacementArgsFromCursor): the track element at screen point
+// (sx, sy) and its tile (world units); ok false where there is none.
+func (w *World) TrackUnder(sx, sy int) (el scenario.TrackElement, x, y int32, ok bool) {
+	if w.TitleMode || !w.ensureScene() {
+		return el, 0, 0, false
+	}
+	in := w.mapCoordinatesAt(sx, sy, func(i paint.InteractionItem) bool { return i == paint.ItemTrack })
+	if in.Type != paint.ItemTrack || in.ps == nil {
+		return el, 0, 0, false
+	}
+	e, isTrack := in.ps.Item.(*scenario.TrackElement)
+	if !isTrack {
+		return el, 0, 0, false
+	}
+	return *e, int32(in.ps.MapX), int32(in.ps.MapY), true
+}

@@ -1,0 +1,65 @@
+# Playthrough O: signals (Construction/SignalTab.cpp, 04e7900). As G, the line
+# of eleven straights from 250,420; then the construction window's Signal tab:
+# one signal on both sides of a straight (its ghost first, under the cursor),
+# then repeated placement (step 4 by default, 3 after one click on −): a
+# signal every 3rd piece both ways to the line's ends.
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+move 592 14
+wait 1
+click 620 42
+wait 1
+move 400 300
+wait 2
+move 250 420
+wait 1
+click 250 420
+wait 2
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+
+click 80 57
+wait 2
+expect signals == 0
+move 400 345
+wait 2
+shot /tmp/goloco-playthrough/pt-o1-ghost.png
+expect signals == 0
+click 400 345
+wait 2
+expect signals >= 1
+click 10 200
+wait 1
+click 132 218
+wait 1
+move 470 310
+wait 2
+shot /tmp/goloco-playthrough/pt-o2-repeat-ghost.png
+click 470 310
+wait 2
+expect signals >= 3
+move 700 500
+wait 2
+shot /tmp/goloco-playthrough/pt-o3-signals.png
+quit

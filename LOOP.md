@@ -128,12 +128,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [x] N26 Vehicle list filter by actual cargo: "Transports cargo" / "Has cargo order" (af4d69c).
 > - [ ] N27 Options → Controls: toolbarAutoMenu (10c1e49) and the centred top toolbar (2da9f6f, 7ba7099) — config,
 >       checkboxes, the toolbar's centring and shrink.
-> - [ ] N28 Signal auto placement (04e7900, bec1570, 3d6c318). DONE 2026-11-14 the sim: CreateSignalsAuto /
->       RemoveSignalsAuto, iterateTrackToJunction, validateTrackIsSignalCompatible in upstream's shared form
->       (pkg/sim/autosignals.go, TestSignalsAuto). LEFT, the UI (N33 merged): goloco's signal tab has no map
->       tool at all — SignalTab.cpp's onToolUpdate (ghost, signal cost) / onToolUp (place, the construct sound),
->       getSide, the 156×222 tab (the frame is fixed at 138 wide now) with the repeated-placement checkbox, step
->       label and stepper (default 4, 1–64); the right click's repeatedSignalMode (N22).
+> - [x] N28 Signal auto placement (04e7900, bec1570, 3d6c318) — done 2026-11-14: the commands (pkg/sim/autosignals.go)
+>       and the Signal tab's tool, which goloco lacked altogether (cmd/goloco/signaltool.go: the ghost and its cost
+>       under the cursor, the build on release, getSide), the 156×222 tab with Repeated placement and the step
+>       stepper; the signal commands now invalidate their tiles (upstream's ViewportManager::invalidate — placed
+>       signals showed only after something else redrew there). Playthrough O. LEFT (N22): the right click's
+>       repeatedSignalMode ("Signals block", removal along the block).
 > - [x] N29 Shortcuts buildTracks / buildRoads cycle the track / road types (98de125). DONE 2026-11-14 with N33
 >       (shortcut_actions.go buildTracksOrRoads; on OpenLoco 26.09's title game T, T goes Railway Track → Tram
 >       Track, as goloco's does on Weatherworld).

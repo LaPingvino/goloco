@@ -223,6 +223,7 @@ func (m *Map) CreateSignal(c *Cmd, flags uint8, a SignalPlacement) (int32, bool)
 		if !ghost {
 			m.CreateAnimation(0, x, y, sig.BaseZ)
 		}
+		m.invalidateTile(x, y, int32(sig.BaseZ)*smallZStep, int32(sig.BaseZ)*smallZStep+32, ZoomHalf, defaultRadius) // ViewportManager::invalidate
 	}
 	if flags&CmdApply != 0 && flags&(CmdAiAllocated|CmdGhost) == 0 {
 		tad := uint16(a.Rotation&3) | uint16(a.TrackID)<<3

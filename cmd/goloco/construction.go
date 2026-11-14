@@ -84,7 +84,7 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 	case 1:
 		f.H = ui.StationTabHeight(g.stationTabState(0))
 	case 2:
-		f.H = ui.SignalTabH
+		f.W, f.H = ui.SignalTabW, ui.SignalTabH
 	case 3:
 		f.H = ui.OverheadTabH
 	}
@@ -224,6 +224,8 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		g.w.EndConstruction(g.playerCmd())
 	}
 	g.w.ResetConstruction()
+	// trackWindow's init: signalPlacementStepSize = kDefaultSignalPlacementStepSize, repeatedSignalMode off.
+	g.consSigStep, g.consSigRepeat, g.consSigCost = 4, false, -1
 	x, y := g.consWindowOrigin()
 	win := ui.NewSimpleWindow(ui.WindowTypeConstruction, x, y, ui.ConstructionW, ui.ConstructionH)
 	win.WinFlags = ui.WindowFlagNoAutoClose // createConstructionWindow: lighterFrame | noAutoClose
@@ -237,7 +239,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 			g.consTab = 0
 			f, st = g.constructionFrame(x, y)
 		}
-		win.H = f.Height()
+		win.W, win.H = f.Width(), f.Height()
 		f.Draw(screen)
 		defer f.DrawCaption(screen) // after the tab (its draw8 rewrites the window's pixels)
 		switch g.consTab {
@@ -293,7 +295,16 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 				g.consSigOne = false
 			case "single":
 				g.consSigOne = true
-				// PARTIAL: placing signals (the tool, CreateSignal), the dropdown list
+			case "repeat": // onMouseUp auto_mode
+				g.consSigRepeat = !g.consSigRepeat
+			case "stepdec":
+				if g.consSigRepeat { // disabled without repeated placement
+					g.consSigStep = max(1, g.consSigStep-1)
+				}
+			case "stepinc":
+				if g.consSigRepeat {
+					g.consSigStep = min(64, g.consSigStep+1) // kMaxSignalPlacementStepSize
+				}
 			}
 			return
 		}
@@ -376,7 +387,7 @@ func (g *Game) consWidget(hit string) {
 // signal is the first available one (lastSelectedSignal; PARTIAL: the
 // scenario's remembered choice, Scenario::getConstruction().signals).
 func (g *Game) signalTabState() ui.SignalTabState {
-	st := ui.SignalTabState{Both: !g.consSigOne, Image: -1}
+	st := ui.SignalTabState{Both: !g.consSigOne, Image: -1, Repeated: g.consSigRepeat, Step: g.consSigStep, Cost: g.consSigCost}
 	if g.r.ObjMgr == nil {
 		return st
 	}
