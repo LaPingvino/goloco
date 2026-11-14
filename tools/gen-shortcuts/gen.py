@@ -12,6 +12,8 @@ up = sys.argv[1]
 here = os.path.dirname(os.path.abspath(__file__))
 hdr = open(os.path.join(up, "src/OpenLoco/include/OpenLoco/Input/Shortcuts.h")).read()
 cpp = open(os.path.join(up, "src/OpenLoco/src/Input/Shortcuts.cpp")).read()
+sids = dict((m.group(1), int(m.group(2))) for m in re.finditer(r"constexpr StringId (\w+) = (\d+);",
+    open(os.path.join(up, "src/OpenLoco/include/OpenLoco/Localisation/StringIds.h")).read()))
 
 enum = re.search(r"enum class Shortcut : uint32_t\s*\{(.*?)\};", hdr, re.S).group(1)
 ids = [n.strip() for n in enum.split(",") if n.strip()]
@@ -46,11 +48,11 @@ print("\tCount")
 print(")")
 print()
 print("// Defs is ShortcutManager::getList() after Shortcuts::initialize: each")
-print("// shortcut's display string (StringIds), config name and default binding.")
+print("// shortcut's display string (StringIds: its name and id), config name and default binding.")
 print("var Defs = [Count]Def{")
 for n in ids:
     sid, cfg, default = adds[n]
-    print("\t{%s, %s, %s, %s}," % (ident(n), go(sid), go(cfg), go(default)))
+    print("\t{%s, %s, %d, %s, %s}," % (ident(n), go(sid), sids[sid], go(cfg), go(default)))
 print("}")
 print()
 print("// sdlKeys: SDL3's keycode of each scancode (no modifiers) with")

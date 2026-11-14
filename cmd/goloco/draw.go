@@ -190,7 +190,6 @@ func (g *Game) drawOverlays(screen *ebiten.Image) {
 	g.drawNews(screen) // the news window and the ticker: stickToFront, made after the panels and so over them
 	g.drawTopmost(screen)
 
-
 	// Transient save confirmation overlay
 	if g.saveMsgFrames > 0 {
 		alpha := uint8(255)

@@ -415,6 +415,10 @@ func (g *Game) callKeyUp(key keyEvent) bool {
 		}
 		return true
 	}
+	if e := g.editShortcutWin(); e != nil { // EditKeyboardShortcut keyUp: every key is the new binding
+		g.editShortcutKey(e, key)
+		return true
+	}
 	if t := g.textInput; t != nil {
 		g.textInputKeyUp(t, key)
 		if t.Closed && g.textInput == t {

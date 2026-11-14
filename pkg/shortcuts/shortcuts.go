@@ -22,6 +22,7 @@ type Shortcut uint32
 type Def struct {
 	ID             Shortcut
 	DisplayName    string // the StringIds name of the shortcut's description
+	DisplayID      int    // its StringIds id (the KeyboardShortcuts window's text)
 	ConfigName     string
 	DefaultBinding string
 }

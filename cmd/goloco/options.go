@@ -123,6 +123,7 @@ func (g *Game) openOptionsWindow() {
 	// invertRightMouseViewPan (rightclick.go), toolbarAutoMenu and
 	// toolbarButtonsCentred — each toggle written to openloco.yml (Config::write).
 	w.Controls = [5]bool{!g.noEdgeScrolling, !g.noZoomToCursor, g.invertRightPan, !g.noAutoMenu, g.toolbar.Centred}
+	w.OnCustomiseKeys = g.openKeyboardShortcuts
 	w.OnControl = func(i int, v bool) {
 		key := [5]string{"edgeScrolling", "zoom_to_cursor", "invertRightMouseViewPan", "toolbarAutoMenu", "toolbarButtonsCentred"}[i]
 		switch i {

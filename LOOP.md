@@ -180,9 +180,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       every key and Escape does not close it). Playthrough N. Scripts: `key <binding>`, `keydown` / `keyup`,
 >       `type` through the queue. The Load/Save menu's Screenshot and Left Ctrl+S save the frame to
 >       ~/.goloco/screenshots (it was the diagnostic crop). LEFT → N34.
-> - [ ] N34 Keyboard leftovers: the keyboard shortcuts window and its edit prompt (KeyboardShortcuts.cpp,
->       EditKeyboardShortcut.cpp, Options → Controls' button: Bindings.Set / Reset are ready, nothing writes the
->       config yet); showMap (no map window), openDebugWindow (no debug window), sendMessage (no network) do
+> - [ ] N34 Keyboard leftovers (the shortcuts window, its edit prompt and Customise Keys DONE 2026-11-14: rebinding
+>       writes openloco.yml's shortcuts section); showMap (no map window), openDebugWindow (no debug window), sendMessage (no network) do
 >       nothing; rotateConstructionObject's TownList (editor) and CompanyWindow (headquarters ghost) parts; no
 >       editor mode gates; keys are read as SDL's default (US) layout by their place on the keyboard; the key
 >       repeat of non-character keys is goloco's own timing (SDL's is the system's); the Build Vehicle search
@@ -192,7 +191,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       screenshot. Seen on the way: a Town window opened while the news window shows is placed right under it
 >       (220,439 under the news at 220,441 — hidden; not compared with OpenLoco); the FREECASH news names the
 >       company "Unnamed" in a new Weatherworld game.
-> - [ ] N35 Saving a game: goloco's save writes a JSON file with only the scenario's path ("Game saved!" in an
+> - [ ] N35 (a Fable job: its first agent hit the Fable limit on 2026-11-14 before starting) Saving a game: goloco's save writes a JSON file with only the scenario's path ("Game saved!" in an
 >       invented overlay) — every bit of progress is lost. Upstream: S5.cpp exportGameStateToFile (the S5 writer: the
 >       header, the game state, the tile elements, the entities, the objects list; compressed chunks), SaveGame
 >       prompt, autosave (dateTick's monthly), "saved as" message. goloco's loader (pkg/scenario) must round-trip.

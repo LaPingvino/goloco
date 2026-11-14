@@ -53,6 +53,8 @@ const (
 	WindowTypeMessages
 	WindowTypeNews
 	WindowTypeTerraform
+	WindowTypeKeyboardShortcuts
+	WindowTypeEditKeyboardShortcut
 )
 
 // WindowTypeNames are the types by their upstream WindowType names (a
@@ -65,7 +67,8 @@ var WindowTypeNames = map[string]WindowType{
 	"options": WindowTypeOptions, "scenarioSelect": WindowTypeScenarioSelect,
 	"fileBrowserPrompt": WindowTypeFileBrowserPrompt, "musicJukebox": WindowTypeMusicJukebox,
 	"musicSelection": WindowTypeMusicSelection, "messages": WindowTypeMessages, "news": WindowTypeNews,
-	"terraform": WindowTypeTerraform,
+	"terraform": WindowTypeTerraform, "keyboardShortcuts": WindowTypeKeyboardShortcuts,
+	"editKeyboardShortcut": WindowTypeEditKeyboardShortcut,
 }
 
 // WindowFlags are Ui::WindowFlags, those the stack acts on.

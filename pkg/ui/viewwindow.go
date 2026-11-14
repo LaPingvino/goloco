@@ -73,8 +73,8 @@ type ViewWindow struct {
 	// for none (town_no_deliveries).
 	DeliveredTab int
 	Delivered    func() (lines []string, none string)
-	baseW      int // the first tab's size (switchTab: kWindowSize)
-	baseH      int
+	baseW        int // the first tab's size (switchTab: kWindowSize)
+	baseH        int
 }
 
 // The CargoMonthLine kinds (sim's CargoReceived …).
@@ -88,10 +88,10 @@ const (
 // CargoMonthLine is a Transported tab line: a cargo's unit name, how much,
 // and, produced, the percent transported.
 type CargoMonthLine struct {
-	Kind     int // sim.CargoReceived, CargoProduced, CargoAwaitingProcessing, CargoAwaitingTransport
-	Unit     string
-	Qty      uint32
-	Percent  uint8
+	Kind    int // sim.CargoReceived, CargoProduced, CargoAwaitingProcessing, CargoAwaitingTransport
+	Unit    string
+	Qty     uint32
+	Percent uint8
 }
 
 // Transported tab: kWindowSize (onResize sets it); the Company ratings tab's.
