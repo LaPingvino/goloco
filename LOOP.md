@@ -66,11 +66,9 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [x] N0g DONE 88dbb44 (Fable): the terraform menu and window, five tabs and tools, costs matching OpenLoco to the dollar; playthrough k-terraform.
 > - [x] N0h DONE b8597f7: drag to build stations (onToolDown / onToolDrag / onToolUpMultiple); playthrough k-station-drag.
 > - [x] N1 DONE 16b61bb..4e8ed7b (Fable): the ticker, the news window (rotation-aware viewports), the Messages window, MessageManager's update, placement through upstream's window list.
-> - [ ] N2 Company HQ click → Company window: the HQ building's interaction isn't painted (getItemLeft's
->       headquarterBuilding).
-> - [ ] N3 Viewport clicks on the release of an undragged click (MouseInput.cpp stateViewportLeft), and
->       getItemLeft's fallback into a window's viewport.
-> - [ ] N4 Name plates follow towns and stations: Town::updateLabel, Station::updateLabel (frames are the save's).
+> - [x] N2 Company HQ click → Company window (done in 4a31dad).
+> - [x] N3 Viewport clicks on the release (4a31dad); a window's viewport → N22.
+> - [x] N4 Name plates follow towns and stations: every upstream updateLabel caller is ported (the station rename's last).
 > - [ ] N5 The porting gap b93e074..09d74ee (161 upstream commits): triage — list what changes behaviour or
 >       looks goloco already ports (Town window 4th tab, industry "Cargo awaiting", white station captions,
 >       toolbarAutoMenu, map tooltips …), then port them as items here.
