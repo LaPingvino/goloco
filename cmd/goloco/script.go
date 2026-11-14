@@ -35,8 +35,13 @@ import (
 //	press <x> <y>       move + left press, held until release
 //	release <x> <y>     move + left release (after press)
 //	drag <x1> <y1> <x2> <y2>  press, five moves, release (a window by its title)
-//	key <name>          tap a key: R X ESC Q E ENTER SPACE 0 … 9 ...
-//	type <text>         type the rest of the line (into a text input)
+//	key <binding>       tap a key, as the config file names a shortcut's: Z, 1, PageUp, Space,
+//	                    Left Ctrl+S, Left Shift+Backspace (SDL's key names, any case; ESC and
+//	                    ENTER are Escape and Return)
+//	keydown <key>       hold a key (the arrow keys' scrolling, Insert for a cheat word) until
+//	keyup <key>         lets it go
+//	type <text>         type the rest of the line: each character its key pressed (into a
+//	                    text input; a cheat word while Insert is held)
 //	wheel <dy>          mouse wheel step at current cursor
 //	shot <file.png>     save a full-frame screenshot
 //	expect <key> <op> <n>  check the game: key cash, stations, vehicles, placed,
@@ -46,7 +51,9 @@ import (
 //	                    while the map tooltip shows, its text logged; conswindow, consbuilding, constab: the
 //	                    construction window open, building on from a position, its tab; camx, camy: the view's
 //	                    position; townlist, stationlist, vehiclelist, industrylist, companywindow: 1 while one
-//	                    is open; viewflags: the main viewport's flags (ViewportFlags' bits); maptip~TEXT: 1 while the map tooltip shows text holding TEXT, _ for a space),
+//	                    is open; terraformwindow, terraformtab, paused, speed, zoom, constype, conspiece,
+//	                    consgradient, consrotation, drivercheat, jailed, windows, textinput (script.go
+//	                    scriptExpect says what each is); window:NAME: 1 while a window of that type is open; viewflags: the main viewport's flags (ViewportFlags' bits); maptip~TEXT: 1 while the map tooltip shows text holding TEXT, _ for a space),
 //	                    op one of
 //	                    > >= == <= <; a failed check makes the run exit 1
 //	news <type> [a [b [c]]] [date <day>]  post a message of that MessageType
@@ -71,8 +78,9 @@ type inputScript struct {
 	rightReleaseNext bool
 	rightJustRel     bool
 	wheelDY          float64
-	typed            []rune // "type": characters for this frame
-	keysJust         map[ebiten.Key]bool
+	keyTaps          []keyEvent      // "key", "type": this frame's key presses (keyboard.go readKeys)
+	tapHeld          map[uint32]bool // the modifier keys held with this frame's "key"
+	keysHeld         map[uint32]bool // "keydown" … "keyup"
 
 	shotRequest string
 	// cameraReq: "camera X Y [ZOOM [ROTATION]]" — the main view centred on
@@ -95,16 +103,6 @@ type inputScript struct {
 	quit      bool
 }
 
-var scriptKeyNames = map[string]ebiten.Key{
-	"R": ebiten.KeyR, "X": ebiten.KeyX, "Q": ebiten.KeyQ, "E": ebiten.KeyE,
-	"ESC": ebiten.KeyEscape, "ESCAPE": ebiten.KeyEscape,
-	"ENTER": ebiten.KeyEnter, "SPACE": ebiten.KeySpace, "BACKSPACE": ebiten.KeyBackspace,
-	"W": ebiten.KeyW, "A": ebiten.KeyA, "S": ebiten.KeyS, "D": ebiten.KeyD,
-	"F12": ebiten.KeyF12,
-	"0":   ebiten.KeyDigit0, "1": ebiten.KeyDigit1, "2": ebiten.KeyDigit2, "3": ebiten.KeyDigit3, "4": ebiten.KeyDigit4,
-	"5": ebiten.KeyDigit5, "6": ebiten.KeyDigit6, "7": ebiten.KeyDigit7, "8": ebiten.KeyDigit8, "9": ebiten.KeyDigit9,
-}
-
 func loadInputScript(path string) *inputScript {
 	f, err := os.Open(path)
 	if err != nil {
@@ -112,7 +110,7 @@ func loadInputScript(path string) *inputScript {
 		return nil
 	}
 	defer f.Close()
-	s := &inputScript{keysJust: map[ebiten.Key]bool{}}
+	s := &inputScript{tapHeld: map[uint32]bool{}, keysHeld: map[uint32]bool{}}
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
@@ -136,12 +134,10 @@ func (s *inputScript) step() {
 	s.leftJust = false
 	s.rightJust = false
 	s.wheelDY = 0
-	s.typed = nil
+	s.keyTaps = nil
 	// shotRequest is NOT cleared here: multiple Updates can run between two
 	// Draws at low FPS; only scriptShotName (called from Draw) consumes it.
-	for k := range s.keysJust {
-		delete(s.keysJust, k)
-	}
+	clear(s.tapHeld)
 
 	if gameNow().Before(s.waitUntil) {
 		return
@@ -190,12 +186,26 @@ func (s *inputScript) step() {
 		s.rightHeld = false
 		s.rightReleaseNext = true
 	case "type":
-		s.typed = []rune(strings.TrimPrefix(strings.TrimSpace(line), fields[0]+" "))
-	case "key":
-		if k, ok := scriptKeyNames[strings.ToUpper(fields[1])]; ok {
-			s.keysJust[k] = true
-		} else {
-			log.Printf("[Script] unknown key %q", fields[1])
+		for _, r := range strings.TrimPrefix(strings.TrimSpace(line), fields[0]+" ") {
+			s.keyTaps = append(s.keyTaps, keyEvent{keyOfChar(r), r})
+		}
+	case "key", "keydown", "keyup":
+		name, _, _ := strings.Cut(strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), fields[0])), " #")
+		ev, held, ok := scriptKey(strings.TrimSpace(name))
+		switch {
+		case !ok:
+			log.Printf("[Script] unknown key %q", name)
+			s.failed = true
+		case strings.EqualFold(fields[0], "keydown"):
+			s.keysHeld[ev.keyCode] = true
+			s.keyTaps = append(s.keyTaps, ev) // the press itself
+		case strings.EqualFold(fields[0], "keyup"):
+			delete(s.keysHeld, ev.keyCode)
+		default:
+			s.keyTaps = append(s.keyTaps, ev)
+			for _, h := range held {
+				s.tapHeld[h] = true
+			}
 		}
 	case "wheel":
 		dy, _ := strconv.ParseFloat(fields[1], 64)
@@ -276,22 +286,6 @@ func (g *Game) inMouseJustReleased(btn ebiten.MouseButton) bool {
 		}
 	}
 	return inpututil.IsMouseButtonJustReleased(btn)
-}
-
-// inChars is ebiten.AppendInputChars with a script's typed text.
-func (g *Game) inChars() []rune {
-	r := ebiten.AppendInputChars(nil)
-	if g.script != nil {
-		r = append(r, g.script.typed...)
-	}
-	return r
-}
-
-func (g *Game) inKeyJustPressed(k ebiten.Key) bool {
-	if g.script != nil && g.script.keysJust[k] {
-		return true
-	}
-	return inpututil.IsKeyJustPressed(k)
 }
 
 func (g *Game) inWheel() (float64, float64) {
@@ -471,6 +465,49 @@ func (g *Game) scriptExpect() {
 		got = int64(g.w.ViewFlags())
 	case "terraformwindow": // 1 while the Terraform window is open
 		if g.terraformWin() != nil {
+			got = 1
+		}
+	case "terraformtab": // the Terraform window's tab (0 clear, 1 land, 2 water, 3 trees, 4 walls; -1 closed)
+		got = -1
+		if w := g.terraformWin(); w != nil {
+			got = int64(w.Tab)
+		}
+	case "paused": // 1 while the game is paused
+		if g.isPaused {
+			got = 1
+		}
+	case "speed": // the game speed's multiplier (1, 2, 4)
+		got = int64(g.speedMult)
+	case "zoom": // the main view's zoom (0 closest … 3)
+		got = int64(g.w.GetZoom())
+	case "constype": // the construction window's track type (a road's with bit 7; -1: no track or road window)
+		got = -1
+		if t, ok := g.consCurrentTrackType(); ok && g.consHasHead() {
+			got = int64(t)
+		}
+	case "conspiece", "consgradient": // the construction state's selected piece / gradient
+		got = int64(g.w.Cons.Piece)
+		if req[0] == "consgradient" {
+			got = int64(g.w.Cons.Gradient)
+		}
+	case "consrotation": // the construction state's rotation
+		got = int64(g.w.Cons.Rotation)
+	case "drivercheat": // 1 once the DRIVER cheat is on
+		if g.driverCheat {
+			got = 1
+		}
+	case "jailed": // the controlling company's days in jail (the FREECASH cheat: 30)
+		if company < len(g.w.Map.Companies) {
+			got = int64(g.w.Map.Companies[company].JailStatus)
+		}
+	case "windows": // how many windows are open that a close-all closes (not the news or other sticky ones)
+		for _, w := range g.wins.Windows {
+			if !w.Base().HasFlags(ui.WindowFlagStickToBack | ui.WindowFlagStickToFront) {
+				got++
+			}
+		}
+	case "textinput": // 1 while a text input (a rename) is open
+		if g.textInput != nil {
 			got = 1
 		}
 	default:

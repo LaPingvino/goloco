@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/LaPingvino/goloco/pkg/paint"
+	"github.com/LaPingvino/goloco/pkg/shortcuts"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/world"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -103,8 +104,8 @@ func (g *Game) mapTipOpen() {
 			t.timeout = 0
 		}
 		t.x, t.y = mx, my
-		if t.timeout < 25 || t.tip.Text == "" || right || ebiten.IsKeyPressed(ebiten.KeyControl) ||
-			ebiten.IsKeyPressed(ebiten.KeyShift) || g.errorWin != nil {
+		if t.timeout < 25 || t.tip.Text == "" || right || g.hasKeyModifier(shortcuts.ModControl) ||
+			g.hasKeyModifier(shortcuts.ModShift) || g.errorWin != nil {
 			t.open = false
 			return
 		}

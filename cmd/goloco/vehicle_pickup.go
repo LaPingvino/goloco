@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
+	"github.com/LaPingvino/goloco/pkg/shortcuts"
 	"github.com/LaPingvino/goloco/pkg/sim"
-	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // vehicle_pickup.go — the Vehicle window's pickup tool: lifting a vehicle and
@@ -83,7 +83,7 @@ func (g *Game) pickupToolDown(sx, sy int) bool {
 // pickupPlaced is pickupToolPlacementCommandCallback: shift starts the placed
 // vehicle, the tool is cancelled, the window shown again on Main.
 func (g *Game) pickupPlaced(c *sim.Cmd, head uint16) {
-	if ebiten.IsKeyPressed(ebiten.KeyShift) {
+	if g.hasKeyModifier(shortcuts.ModShift) {
 		g.w.Map.VehicleChangeRunningMode(c, sim.CmdApply, head, sim.RunningModeStart)
 	}
 	g.pickupOn = false

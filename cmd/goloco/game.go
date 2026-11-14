@@ -177,6 +177,14 @@ type Game struct {
 	prewarmPos       int
 	firstFrameLogged bool // the start-to-first-world-frame time has been logged
 
+	// The keyboard (keyboard.go): the key queue, the modifiers, the cheat
+	// word, the shortcuts' bindings.
+	kb keyboardState
+	// consToolOff: the construction window's tool was cancelled (Escape on
+	// its Station, Signal or Overhead tab: ToolManager::toolCancel — the
+	// window stays, without a tool on the map) until a tab is chosen.
+	consToolOff bool
+
 	// scripted input playback (GOLOCO_SCRIPT)
 	script *inputScript
 	// viewportLeft is Input::State::viewportLeft: a left press on the main view
@@ -194,7 +202,7 @@ type Game struct {
 	quitAfterSave bool
 
 	// Diagnostic crop: when set, save a 480×360 PNG centred on diagTileX/Y after the next Draw.
-	// diagQuit=true means quit afterwards (CLI --diag mode); false keeps the game running (F12).
+	// diagQuit=true means quit afterwards (CLI --diag mode).
 	diagPending bool
 	diagQuit    bool
 	diagTileX   int
@@ -337,6 +345,7 @@ func NewGame() *Game {
 		sw:                 defaultWidth,
 		sh:                 defaultHeight,
 		speedMult:          1,
+		kb:                 keyboardState{bindings: loadShortcutBindings()},
 		hoverTileX:         -1,
 		hoverTileY:         -1,
 		// Warm the title's sprites in the background (prewarmTick); the title

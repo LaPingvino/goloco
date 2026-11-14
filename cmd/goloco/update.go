@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/LaPingvino/goloco/pkg/paint"
 	"log"
 	"time"
+
+	"github.com/LaPingvino/goloco/pkg/paint"
 
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/uilayout"
@@ -43,6 +44,7 @@ func (g *Game) Update() error {
 	if g.script != nil && g.script.hasMouse {
 		g.mouseX, g.mouseY = g.script.mouseX, g.script.mouseY
 	}
+	g.updateKeyboard() // every key: the windows that take keys, then the shortcuts (keyboard.go)
 	if g.updateModal() {
 		return nil
 	}
@@ -58,9 +60,7 @@ func (g *Game) Update() error {
 	}
 	if browse != nil { // PromptBrowse: mouse-over row, typed filename, Enter/Escape
 		browse.HandleHover(g.mouseX, g.mouseY)
-		browse.HandleText(ebiten.AppendInputChars(nil), inpututil.IsKeyJustPressed(ebiten.KeyBackspace),
-			inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter),
-			inpututil.IsKeyJustPressed(ebiten.KeyEscape))
+		browse.HandleText(nil, false, false, false) // the caret's blink (its keys: keyboard.go browseKeyUp)
 	}
 
 	if g.inTitleScreen {
@@ -71,24 +71,15 @@ func (g *Game) Update() error {
 	return nil
 }
 
-// updateModal gives the frame's input to an open text input or confirmation,
-// and reports that one took it.
+// updateModal gives the frame's mouse to an open text input or confirmation,
+// and reports that one took it (their keys: keyboard.go callKeyUp).
 func (g *Game) updateModal() bool {
-	if g.textInput != nil { // TextInputWindow: keyUp (typed characters, editing keys, Enter / Escape), onMouseUp, onUpdate
+	if g.textInput != nil { // TextInputWindow: onMouseUp, onUpdate
 		t := g.textInput
 		t.Update()
 		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 			t.HandleClick(g.mouseX, g.mouseY)
 		}
-		var keys []int
-		for k, code := range map[ebiten.Key]int{ebiten.KeyBackspace: ui.KeyBackspace, ebiten.KeyDelete: ui.KeyDelete, ebiten.KeyHome: ui.KeyHome,
-			ebiten.KeyEnd: ui.KeyEnd, ebiten.KeyArrowLeft: ui.KeyLeft, ebiten.KeyArrowRight: ui.KeyRight} {
-			if inpututil.IsKeyJustPressed(k) || inpututil.KeyPressDuration(k) > 30 && inpututil.KeyPressDuration(k)%3 == 0 { // key repeat
-				keys = append(keys, code)
-			}
-		}
-		t.Keys(g.inChars(), keys, g.inKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter),
-			g.inKeyJustPressed(ebiten.KeyEscape))
 		if t.Closed && g.textInput == t {
 			g.textInput = nil
 		}
@@ -99,8 +90,6 @@ func (g *Game) updateModal() bool {
 			mx, my := ebiten.CursorPosition()
 			g.prompt.HandleClick(mx, my)
 		}
-		g.prompt.Key(inpututil.IsKeyJustPressed(ebiten.KeyEscape),
-			inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadEnter))
 		if g.prompt.Closed {
 			g.prompt = nil
 		}
@@ -150,7 +139,6 @@ func (g *Game) updateTitle() {
 // updateGame is a frame of a running game.
 func (g *Game) updateGame() {
 	g.syncScreen() // the fixed windows known to the stack before a press reorders it
-	g.updateToolCancel()
 	g.diagKeepMoneyEffect()
 	g.updateConstructionTools()
 	g.updateHeld()
@@ -184,8 +172,6 @@ func (g *Game) updateGame() {
 	}
 
 	g.updateCamera()
-	g.updateSpeedKeys()
-	g.updateViewShortcuts()
 	g.syncHeightMarkerOffset()
 	g.updateMusic()
 	// Update world (skipped when paused; repeated per speed multiplier)
@@ -205,30 +191,6 @@ func (g *Game) updateGame() {
 	}
 }
 
-// updateToolCancel: Escape ends the Vehicle window's tools.
-func (g *Game) updateToolCancel() {
-	// Escape cancels the Route tab's tool (toolCancel).
-	if g.routeTool && !g.pickupOn && g.inKeyJustPressed(ebiten.KeyEscape) {
-		g.routeTool = false
-	}
-	if g.industryToolOn() && g.inKeyJustPressed(ebiten.KeyEscape) { // toolCancel → onToolAbort
-		g.industryToolAbort()
-	}
-	if g.tf.on && g.inKeyJustPressed(ebiten.KeyEscape) { // toolCancel: the Terraform window closes with its tool
-		g.closeTerraform()
-	}
-	if g.tf.on && g.tf.win != nil && g.inKeyJustPressed(ebiten.KeyR) { // Shortcuts.cpp rotateConstructionObject → Terraform::rotate
-		g.tf.win.Rotate()
-	}
-	// Escape cancels the pickup tool (pickupToolAbort: no ghost to remove yet).
-	if g.pickupOn && g.inKeyJustPressed(ebiten.KeyEscape) {
-		head := g.pickupHead
-		g.pickupToolAbort()
-		g.pickupOn = false
-		g.refreshVehicleWindow(head, 1)
-	}
-}
-
 // diagKeepMoneyEffect is GOLOCO_DIAG_BUILDVEHICLE=moneyeffect's every frame.
 func (g *Game) diagKeepMoneyEffect() {
 	if g.diagMoney && len(g.w.Map.MoneyEffects) == 0 { // DIAGNOSTIC ONLY (moneyeffect)
@@ -245,7 +207,7 @@ func (g *Game) diagKeepMoneyEffect() {
 
 // updateConstructionTools moves what the construction window's tools show on
 // the map with the cursor — the Station tab's ghost, the hover tile, the
-// track ghost, the head's arrow — and takes build mode's keys.
+// track ghost, the head's arrow.
 func (g *Game) updateConstructionTools() {
 	// The station tab's ghost follows the cursor (onToolUpdateTrainStation),
 	// and goes once the tab or the mode does.
@@ -266,19 +228,6 @@ func (g *Game) updateConstructionTools() {
 	// window has no construction head)
 	if g.consHasHead() {
 		g.hoverTileX, g.hoverTileY = g.tileUnderCursor(g.mouseX, g.mouseY)
-		// Keyboard shortcuts for build mode
-		if g.inKeyJustPressed(ebiten.KeyR) && g.consTab == 0 && g.w.Cons.Hover && g.r.ObjMgr != nil {
-			// Common::rotate: only while hovering; the ghost goes, to stand turned
-			c := g.playerCmd()
-			g.w.ConstructionRotate90(c)
-			g.w.RemoveConstructionGhosts(c)
-		}
-		if g.inKeyJustPressed(ebiten.KeyX) && g.consTab == 0 {
-			g.consRemove() // removeAtCurrentPos
-		}
-		if g.inKeyJustPressed(ebiten.KeyEscape) {
-			g.endConstruction()
-		}
 	}
 	g.updateConstruction()
 }
@@ -451,47 +400,12 @@ func (g *Game) viewportLeftRelease() {
 	}
 }
 
-// updateCamera moves the main view: right-drag, the pan and zoom keys, the
-// wheel (unless a window takes it), and edge scrolling.
+// updateCamera moves the main view by the mouse: right-drag and the wheel
+// (unless a window takes it). The keys' and the screen edge's scrolling:
+// keyboard.go keyScroll, edgeScroll.
 func (g *Game) updateCamera() {
 	g.updateViewportRight() // the right button: a drag pans, a click acts (rightclick.go)
 
-	// Camera panning: WASD or arrow keys (smooth, pixels per frame)
-	const panSpeed = 4.0
-	var panX, panY float64
-	browse := g.browseWin()
-	typing := browse != nil && browse.Save // the focused text box takes the keys
-	if ebiten.IsKeyPressed(ebiten.KeyW) || ebiten.IsKeyPressed(ebiten.KeyUp) {
-		panY -= panSpeed
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyS) || ebiten.IsKeyPressed(ebiten.KeyDown) {
-		panY += panSpeed
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyA) || ebiten.IsKeyPressed(ebiten.KeyLeft) {
-		panX -= panSpeed
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyD) || ebiten.IsKeyPressed(ebiten.KeyRight) {
-		panX += panSpeed
-	}
-	if typing {
-		panX, panY = 0, 0
-	}
-	if panX != 0 || panY != 0 {
-		g.w.PanCamera(panX, panY)
-	}
-
-	// Zoom: keyboard Q/E, +/-, and mouse scroll wheel
-	if !typing && (g.inKeyJustPressed(ebiten.KeyQ) || g.inKeyJustPressed(ebiten.KeyEqual) || g.inKeyJustPressed(ebiten.KeyKPAdd)) {
-		g.w.ZoomInAt(g.sw/2, g.sh/2)
-	}
-	if !typing && (g.inKeyJustPressed(ebiten.KeyE) || g.inKeyJustPressed(ebiten.KeyMinus) || g.inKeyJustPressed(ebiten.KeyKPSubtract)) {
-		g.w.ZoomOutAt(g.sw/2, g.sh/2)
-	}
-	// Shortcuts.cpp rotateView (default "Return"): viewportRotateRight — not
-	// while the load / save browser is open, whose Enter opens the file.
-	if browse == nil && g.inKeyJustPressed(ebiten.KeyEnter) {
-		g.w.RotateView(true)
-	}
 	if _, dy := g.inWheel(); dy != 0 {
 		if g.inMousePressed(ebiten.MouseButtonRight) {
 			// MouseInput.cpp processMouseWheel: with the right button held the
@@ -508,63 +422,11 @@ func (g *Game) updateCamera() {
 		}
 	}
 
-	// Keyboard.cpp edgeScroll: the cursor on the screen's very edge (x == 0,
-	// x >= width − 1, likewise y) moves the main view by edgeScrollingSpeed
-	// (Config default 12) << zoom — not on the title screen, not with Shift
-	// or Ctrl held, only in the normal input state (not while dragging the
-	// view or moving a window). It was a 20-px zone at 8 px: the view crept
-	// while a toolbar button near the top was clicked.
-	shiftCtrl := ebiten.IsKeyPressed(ebiten.KeyShift) || ebiten.IsKeyPressed(ebiten.KeyControl)
-	positioning := g.wins.Dragging()
-	if ebiten.IsFocused() && !g.vpRight.on && !g.noEdgeScrolling && !g.inTitleScreen && !shiftCtrl && !positioning {
-		edgeSpeed := float64(int(edgeScrollingSpeed) << g.w.GetZoom())
-		if g.mouseX == 0 {
-			g.w.PanCamera(-edgeSpeed, 0)
-		}
-		if g.mouseX >= g.sw-1 {
-			g.w.PanCamera(edgeSpeed, 0)
-		}
-		if g.mouseY == 0 {
-			g.w.PanCamera(0, -edgeSpeed)
-		}
-		if g.mouseY >= g.sh-1 {
-			g.w.PanCamera(0, edgeSpeed)
-		}
-	}
 }
 
 // setSpeed runs the game at mult ticks per tick, unpaused.
 func (g *Game) setSpeed(mult int) {
 	g.speedMult, g.isPaused = mult, false
-}
-
-// updateSpeedKeys takes the game speed keys and F12's diagnostic crop.
-func (g *Game) updateSpeedKeys() {
-	// Speed controls: Space=pause, F3=×1, F4=×2, F5=×4, F6=×8
-	if g.inKeyJustPressed(ebiten.KeySpace) {
-		g.isPaused = !g.isPaused
-	}
-	if g.inKeyJustPressed(ebiten.KeyF3) {
-		g.setSpeed(1)
-	}
-	if g.inKeyJustPressed(ebiten.KeyF4) {
-		g.setSpeed(2)
-	}
-	if g.inKeyJustPressed(ebiten.KeyF5) {
-		g.setSpeed(4)
-	}
-	if g.inKeyJustPressed(ebiten.KeyF6) {
-		g.setSpeed(8)
-	}
-	// Shortcuts.cpp showAnnouncementsList (Tab by default): MessageWindow::open.
-	if g.inKeyJustPressed(ebiten.KeyTab) && g.browseWin() == nil {
-		g.openMessagesWindow()
-	}
-	if g.inKeyJustPressed(ebiten.KeyF12) {
-		g.diagPending = true
-		g.diagTileX = -1
-		g.diagTileY = -1
-	}
 }
 
 // diagTrackShip is the shipsail / planefly diagnostics' every frame: the view
