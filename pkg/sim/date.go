@@ -77,7 +77,8 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 	m.UpdateMessagesDaily()     // MessageManager::updateDaily (messages.go)
 	yesterday, today := CalcDate(m.CurrentDay-1), CalcDate(m.CurrentDay)
 	m.CurrentYear, m.CurrentMonth, m.CurrentDayOfMonth = uint16(today.Year), uint8(today.Month), uint8(today.Day)
-	if today.Month != yesterday.Month { // end of every month
+	m.updateSnowLine(today.DayOfYear, om) // Scenario::updateSnowLine
+	if today.Month != yesterday.Month {   // end of every month
 		m.ObjectiveMonthsInChallenge++
 		// TownManager::updateMonthly: PARTIAL
 		m.industriesUpdateMonthly(om) // IndustryManager::updateMonthly (industryprod.go)
