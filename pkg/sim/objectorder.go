@@ -1,6 +1,8 @@
 package sim
 
 import (
+	"encoding/binary"
+
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -42,4 +44,54 @@ func ReorderObjectsForScenario(m *objects.ObjectManager, sc *scenario.Scenario) 
 	}
 	m.TrackExtraOrder = sc.TrackExtraOrder
 	m.RoadExtraOrder = sc.RoadExtraOrder
+}
+
+// Object list slots the game changes after the load (ObjectManager.h's
+// slot order): the currency (one slot at 129: loadPreferredCurrency), the
+// competitors (32 from 826: createCompany's selectNewCompetitor loads one).
+const (
+	objSlotCurrency    = 129
+	objSlotCompetitors = 826
+	objHeaderSize      = 16
+)
+
+// RequiredObjects is ObjectManager::getHeaders for a save: the loaded file's
+// object list (base) with the slots the game has changed since — the
+// currency in use and every competitor slot — as the objects now loaded.
+func RequiredObjects(base []byte, om *objects.ObjectManager) []byte {
+	req := append([]byte(nil), base...)
+	if om == nil {
+		return req
+	}
+	put := func(slot int, lo *objects.LoadedObject) {
+		if (slot+1)*objHeaderSize > len(req) {
+			return
+		}
+		h := req[slot*objHeaderSize : (slot+1)*objHeaderSize]
+		if lo == nil || lo.Header == nil {
+			return // nothing goloco loaded there: the file's own entry stays
+		}
+		binary.LittleEndian.PutUint32(h[0:], lo.Header.Flags)
+		copy(h[4:12], lo.Header.Name[:])
+		binary.LittleEndian.PutUint32(h[12:], lo.Header.Checksum)
+	}
+	if om.CurrencySlot != "" {
+		if lo := om.GetObject(om.CurrencySlot); lo != nil {
+			put(objSlotCurrency, lo)
+		}
+	}
+	byObject := map[any]*objects.LoadedObject{}
+	for _, lo := range om.Objects {
+		if c, ok := lo.Object.(*objects.CompetitorObject); ok {
+			byObject[c] = lo
+		}
+	}
+	for i := range 32 {
+		var lo *objects.LoadedObject
+		if i < len(om.CompetitorObjects) && om.CompetitorObjects[i] != nil {
+			lo = byObject[om.CompetitorObjects[i]]
+		}
+		put(objSlotCompetitors+i, lo)
+	}
+	return req
 }

@@ -192,9 +192,6 @@ func (g *Game) updateGame() {
 			}
 		}
 	}
-	if g.saveMsgFrames > 0 {
-		g.saveMsgFrames--
-	}
 }
 
 // diagKeepMoneyEffect is GOLOCO_DIAG_BUILDVEHICLE=moneyeffect's every frame.

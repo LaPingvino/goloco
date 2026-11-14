@@ -77,10 +77,16 @@ type Game struct {
 	hasObjective        bool
 	gameWon             bool
 	progress            *progressFile
-	isPaused            bool   // speed controls
-	speedMult           int    // 1, 2, 4, or 8
-	saveMsg             string // transient "Game Saved!" status overlay
-	saveMsgFrames       int    // frames remaining to show saveMsg
+	isPaused            bool // speed controls
+	speedMult           int  // 1, 2, 4, or 8
+	// activeSavePath is Game's _activeSavePath: where the Save Game prompt
+	// opens (the file loaded, or the saves folder / the scenario's name).
+	activeSavePath string
+	// packedObjects are the loaded file's packed (custom) objects, packed
+	// into its saves again (save.go).
+	packedObjects []scenario.PackedObjectRaw
+	// monthsSinceAutosave is GameScene's _monthsSinceLastAutosave.
+	monthsSinceAutosave int
 
 	// The toolbar and the windows, each nil unless open.
 	toolbar          *ui.Toolbar

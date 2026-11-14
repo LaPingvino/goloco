@@ -152,3 +152,39 @@ func (w *World) placeSavedCentre() {
 	sw, sh := w.viewSize()
 	w.camX, w.camY = float64(w.savedCentre[0]-(sw<<w.zoom)/2), float64(w.savedCentre[1]-(sh<<w.zoom)/2)
 }
+
+// SavedView is Viewport::toSavedView for the main view: its centre in
+// viewport coordinates, zoom and rotation (S5.cpp prepareGameState writes
+// them into the save).
+func (w *World) SavedView() (x, y int16, zoom, rotation uint8) {
+	if w.savedCentre != nil { // not drawn yet: the centre as it was given
+		return int16(w.savedCentre[0]), int16(w.savedCentre[1]), uint8(w.zoom), w.Rotation()
+	}
+	sw, sh := w.viewSize()
+	return int16(int(w.camX) + (sw<<w.zoom)/2), int16(int(w.camY) + (sh<<w.zoom)/2), uint8(w.zoom), w.Rotation()
+}
+
+// SavePreview is Scenario::drawSavePreviewImage: the main view's centre
+// map position (at its land height) rendered width × height at zoom half
+// with the town and station names hidden — the saved game's preview, palette
+// indices.
+func (w *World) SavePreview(width, height int) []byte {
+	if w.renderer == nil || w.renderer.G1 == nil || w.renderer.ObjMgr == nil {
+		return make([]byte, width*height)
+	}
+	x, y := w.centreMapPosition()
+	land, _ := w.Map.GetHeight(x, y)
+	const zoom = 1 // ZoomLevel::half
+	vx, vy := w.gameToView(int(x), int(y), int(land))
+	v := scene.View{X: vx - (width<<zoom)/2, Y: vy - (height<<zoom)/2, W: width, H: height, Zoom: zoom,
+		Flags: paint.ViewHideTownNames | paint.ViewHideStationNames, Ticks: w.Map.ScenarioTicks}
+	if w.townScene == nil {
+		w.townScene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
+	}
+	rt := w.townScene.Render(&w.Map, v)
+	out := make([]byte, width*height)
+	if rt != nil && rt.Width == width {
+		copy(out, rt.Bits)
+	}
+	return out
+}

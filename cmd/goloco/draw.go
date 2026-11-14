@@ -178,10 +178,8 @@ func (g *Game) drawTopmost(screen *ebiten.Image) {
 	}
 }
 
-// drawOverlays draws the bottom panels and what lies over the game: the
-// objective banner, the save message.
+// drawOverlays draws the bottom panels and what lies over the game.
 func (g *Game) drawOverlays(screen *ebiten.Image) {
-	statusY := g.sh - 20
 	// Bottom bar: the ported PlayerInfoPanel (left) and TimePanel (right).
 	g.drawPlayerPanel(screen)
 	// The objective is not an overlay upstream: it is the time panel's date
@@ -189,19 +187,6 @@ func (g *Game) drawOverlays(screen *ebiten.Image) {
 	g.drawTimePanel(screen)
 	g.drawNews(screen) // the news window and the ticker: stickToFront, made after the panels and so over them
 	g.drawTopmost(screen)
-
-	// Transient save confirmation overlay
-	if g.saveMsgFrames > 0 {
-		alpha := uint8(255)
-		if g.saveMsgFrames < 30 {
-			alpha = uint8(g.saveMsgFrames * 8)
-		}
-		msgW, _ := ui.MeasureText(g.saveMsg)
-		mx := (g.sw - msgW) / 2
-		fillRect(screen, float64(mx-8), float64(statusY-30), float64(msgW+16), 24,
-			color.RGBA{0, 0, 0, alpha / 2})
-		ui.DrawText(screen, g.saveMsg, mx, statusY-12, color.RGBA{100, 255, 100, alpha})
-	}
 
 	g.drawInlineDiag(screen)
 }

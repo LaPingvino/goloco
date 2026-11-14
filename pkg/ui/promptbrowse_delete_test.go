@@ -9,11 +9,11 @@ import (
 // A right click on a file asks; only OK deletes it, and the list refreshes.
 func TestPromptBrowseDeleteAsks(t *testing.T) {
 	dir := t.TempDir()
-	f := filepath.Join(dir, "old.goloco")
+	f := filepath.Join(dir, "old.sv5")
 	if err := os.WriteFile(f, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	w := NewPromptBrowse("Load Game", dir, []string{".goloco"}, 1024, 768)
+	w := NewPromptBrowse("Load Game", dir, []string{".sv5"}, 1024, 768)
 	var asked string
 	var then func()
 	w.Confirm = func(caption, text, ok string, f func()) { asked, then = text, f }

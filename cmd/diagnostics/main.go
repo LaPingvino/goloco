@@ -606,9 +606,9 @@ func catalogue() []Category {
 					Confidence: conf(sigBonus("cmd/goloco/scenario.go", "openLoadGameWindow")),
 				},
 				{
-					Name:       "Save game (.goloco JSON)",
-					Detect:     func(r string) bool { return hasPattern(r, "cmd/goloco/scenario.go", `saveGame|GoLocoSave`) },
-					Confidence: conf(sigBonus("cmd/goloco/scenario.go", "GoLocoSave")),
+					Name:       "Save game (S5 saved game, autosave)",
+					Detect:     func(r string) bool { return hasPattern(r, "cmd/goloco/save.go", `saveGameTo`) },
+					Confidence: conf(sigBonus("cmd/goloco/save.go", "autosaveCheck")),
 				},
 				{
 					Name:       "Options dialog (sound/music)",
