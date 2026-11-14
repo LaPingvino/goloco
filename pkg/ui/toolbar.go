@@ -105,9 +105,11 @@ func NewToolbar(screenWidth int) *Toolbar {
 		{"", 60, 0, true}, // Reserved slot (cheats in game mode)
 
 		// SECONDARY COLOR GROUP (WindowColour::secondary)
-		{"Zoom", 104, 1, false},
-		{"Rotate", 134, 1, false},
-		{"View", 164, 1, false},
+		// prepareDraw's leftAlignButtons: the hidden cheats slot takes no
+		// room — the group starts 11 px after the audio button (justifyToolbar).
+		{"Zoom", 71, 1, false},
+		{"Rotate", 101, 1, false},
+		{"View", 131, 1, false},
 
 		// TERTIARY COLOR GROUP (WindowColour::tertiary)
 		// These will be right-aligned; X positions are placeholders

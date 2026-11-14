@@ -4,7 +4,6 @@ import (
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/paint"
 	"github.com/LaPingvino/goloco/pkg/scenario"
-	"github.com/LaPingvino/goloco/pkg/scene"
 	"github.com/LaPingvino/goloco/pkg/sim"
 )
 
@@ -17,7 +16,7 @@ func (w *World) RailPlacementAt(head uint16, sx, sy int) (sim.VehiclePlacement, 
 	if w.scene == nil {
 		return sim.VehiclePlacement{}, false
 	}
-	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	v := w.mainView()
 	ps := w.scene.InteractionAt(&w.Map, v, sx, sy, func(it paint.InteractionItem) bool { return it == paint.ItemTrack })
 	if ps == nil {
 		return sim.VehiclePlacement{}, false
@@ -41,7 +40,7 @@ func (w *World) RoadPlacementAt(head uint16, sx, sy int) (sim.VehiclePlacement, 
 	if w.scene == nil {
 		return sim.VehiclePlacement{}, false
 	}
-	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	v := w.mainView()
 	ps := w.scene.InteractionAt(&w.Map, v, sx, sy, func(it paint.InteractionItem) bool { return it == paint.ItemRoad })
 	if ps == nil {
 		return sim.VehiclePlacement{}, false
@@ -145,7 +144,7 @@ func (w *World) AirPlacementAt(head uint16, sx, sy int) (sim.VehicleAirPlacement
 		return sim.VehicleAirPlacement{}, false
 	}
 	om := w.renderer.ObjMgr
-	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	v := w.mainView()
 	var el *scenario.StationElement
 	if ps := w.scene.InteractionAt(&w.Map, v, sx, sy, func(it paint.InteractionItem) bool { return it == paint.ItemAirport }); ps != nil {
 		el, _ = ps.Item.(*scenario.StationElement)
@@ -223,7 +222,7 @@ func (w *World) JunctionAt(sx, sy int, road bool) (tx, ty int, h int32, ok bool)
 	if w.scene == nil {
 		return 0, 0, 0, false
 	}
-	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	v := w.mainView()
 	want := paint.ItemTrack
 	if road {
 		want = paint.ItemRoad

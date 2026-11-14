@@ -2,6 +2,7 @@ package world
 
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/paint"
 	"github.com/LaPingvino/goloco/pkg/scene"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -24,7 +25,7 @@ func (w *World) townView(idx, width, height int) (scene.View, bool) {
 // TownViewLabels draws the Town window viewport's names (station and town:
 // its viewport hides neither) on dst, the screen clipped to the viewport.
 func (w *World) TownViewLabels(idx int, dst *ebiten.Image) {
-	w.viewLabels(dst, true, func(width, height int) (scene.View, bool) { return w.townView(idx, width, height) })
+	w.viewLabels(dst, func(width, height int) (scene.View, bool) { return w.townView(idx, width, height) })
 }
 
 // IndustryView is the Industry window's viewport (IndustryWindow.cpp
@@ -43,7 +44,7 @@ func (w *World) industryView(idx, width, height int) (scene.View, bool) {
 
 // IndustryViewLabels draws the Industry window viewport's names (both kinds).
 func (w *World) IndustryViewLabels(idx int, dst *ebiten.Image) {
-	w.viewLabels(dst, true, func(width, height int) (scene.View, bool) { return w.industryView(idx, width, height) })
+	w.viewLabels(dst, func(width, height int) (scene.View, bool) { return w.industryView(idx, width, height) })
 }
 
 // renderView renders a window's view with the windows' own scene renderer
@@ -59,16 +60,16 @@ func (w *World) renderView(v scene.View, ok bool) *gfx8.RenderTarget {
 }
 
 // viewLabels draws the names of the window view that view gives for dst's
-// size on dst (Viewport::paint's station / town names; stations false:
-// hideStationNames), the view origin on the zoom's grid as the render's.
-func (w *World) viewLabels(dst *ebiten.Image, stations bool, view func(width, height int) (scene.View, bool)) {
+// size on dst (Viewport::paint's station / town names, by the view's flags),
+// the view origin on the zoom's grid as the render's.
+func (w *World) viewLabels(dst *ebiten.Image, view func(width, height int) (scene.View, bool)) {
 	b := dst.Bounds()
 	v, ok := view(b.Dx(), b.Dy())
 	if !ok || w.TitleMode {
 		return
 	}
 	z := max(0, min(3, v.Zoom))
-	w.drawNames(dst, v.X>>z, v.Y>>z, z, stations)
+	w.drawNames(dst, v.X>>z, v.Y>>z, z, v.Flags)
 }
 
 // placeView renders width × height screen pixels centred on x, y at the
@@ -122,7 +123,7 @@ func (w *World) StationView(id, width, height int) *gfx8.RenderTarget {
 // StationViewLabels draws the Station window viewport's town names (its
 // viewport hides the station names: hideStationNames).
 func (w *World) StationViewLabels(id int, dst *ebiten.Image) {
-	w.viewLabels(dst, false, func(width, height int) (scene.View, bool) { return w.stationView(id, width, height) })
+	w.viewLabels(dst, func(width, height int) (scene.View, bool) { return w.stationView(id, width, height) })
 }
 
 func (w *World) stationView(id, width, height int) (scene.View, bool) {
@@ -137,7 +138,8 @@ func (w *World) stationView(id, width, height int) (scene.View, bool) {
 	x, y, z := int(s.X), int(s.Y), int(s.Z)
 	const zoom = 1
 	vx, vy := w.gameToView(x, y, z)
-	return scene.View{X: vx - (width<<zoom)/2, Y: vy - (height<<zoom)/2, W: width, H: height, Zoom: zoom, Ticks: m.ScenarioTicks}, true
+	// "Remove station names from viewport" (StationWindow.cpp)
+	return scene.View{X: vx - (width<<zoom)/2, Y: vy - (height<<zoom)/2, W: width, H: height, Zoom: zoom, Ticks: m.ScenarioTicks, Flags: paint.ViewHideStationNames}, true
 }
 
 // CentreOnStation is the Station window's centre_on_viewport

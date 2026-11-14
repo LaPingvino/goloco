@@ -326,6 +326,7 @@ const roadObjFlagUnk02 = 1 << 2
 // placement sound.
 func (m *Map) createRoad(c *Cmd, a roadPlacementArgs, flags uint8) (int32, bool) {
 	r, ok := m.createRoadCheck(c, a, flags)
+	c.PosFlags = r.State.PosFlags
 	if !ok || !m.createRoadApply(c, a, flags, &r) {
 		return 0, false
 	}

@@ -259,6 +259,7 @@ func (m *Map) createTrackApply(c *Cmd, a trackPlacementArgs, flags uint8, r *cre
 // upstream returns kFailure.
 func (m *Map) createTrack(c *Cmd, a trackPlacementArgs, flags uint8) (int32, bool) {
 	r, ok := m.createTrackCheck(c, a, flags)
+	c.PosFlags = r.State.PosFlags
 	if !ok || !m.createTrackApply(c, a, flags, &r) {
 		return 0, false
 	}

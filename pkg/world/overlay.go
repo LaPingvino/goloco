@@ -28,7 +28,7 @@ import (
 func (w *World) drawOverlay(screen *ebiten.Image) {
 	if !w.TitleMode {
 		z := max(0, min(3, w.zoom))
-		w.drawNames(screen, int(w.camX)>>z, int(w.camY)>>z, z, true)
+		w.drawNames(screen, int(w.camX)>>z, int(w.camY)>>z, z, w.viewFlags)
 	}
 	w.drawMoneyEffects(screen)
 }
@@ -36,12 +36,15 @@ func (w *World) drawOverlay(screen *ebiten.Image) {
 // drawNames is Viewport::paint's names for a view whose top-left is (ox, oy)
 // in the zoom's unzoomed pixels, drawn on dst (its Bounds: the view's screen
 // rectangle, which clips them): the station names up to stationNamesMinScale
-// unless hidden (ViewportFlags::hideStationNames), then the town names.
-func (w *World) drawNames(dst *ebiten.Image, ox, oy, z int, stations bool) {
-	if stations && z <= stationNamesMinScale {
+// unless hidden (ViewportFlags::hideStationNames), then the town names unless
+// hidden (hideTownNames) — flags are the viewport's.
+func (w *World) drawNames(dst *ebiten.Image, ox, oy, z int, flags paint.ViewFlags) {
+	if !flags.Has(paint.ViewHideStationNames) && z <= stationNamesMinScale {
 		w.drawStationNames(dst, ox, oy, z)
 	}
-	w.drawTownNames(dst, ox, oy, z)
+	if !flags.Has(paint.ViewHideTownNames) {
+		w.drawTownNames(dst, ox, oy, z)
+	}
 }
 
 // kZoomToTownFonts (Town.cpp): medium bold at zoom 0 and 1, medium normal at

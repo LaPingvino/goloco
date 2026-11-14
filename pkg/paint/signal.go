@@ -39,8 +39,30 @@ var (
 	}
 )
 
-func (s *Session) paintSignalSide(side SignalSide, obj SignalObj, isRight bool, trackID, rotation int, height int, sprite func(int) *gfx8.Sprite) {
+func (s *Session) paintSignalSide(side SignalSide, objOf func(int) (SignalObj, bool), isRight bool, trackID, rotation int, height int, sprite func(int) *gfx8.Sprite) {
 	if !side.Has {
+		// A side without a signal is the way trains may not pass: with the
+		// one-way direction arrows shown (full zoom), getOneWayArrowImage's
+		// arrow — by the other end's track rotation — in mutedAvocadoGreen.
+		if !s.ViewFlags.Has(ViewOneWayDirectionArrows) || s.Zoom != 0 {
+			return
+		}
+		dir := trackID<<3 | rotation
+		if dir >= len(sim.TrackCoordinates) || trackID >= len(TrackDecorationHeightOffsets) {
+			return
+		}
+		s.ItemType = ItemNoInteraction
+		// getOneWayArrowImage(!isRight, …)
+		img := SignalOneWayArrowLeft[sim.TrackCoordinates[dir].RotEnd&15]
+		if !isRight {
+			img = SignalOneWayArrowRight[sim.TrackCoordinates[dir].RotBegin&15]
+		}
+		z := height + int(decorationOffset(TrackDecorationHeightOffsets[trackID], !isRight)) + 2
+		s.decoration(int(img), colourMutedAvocadoGreen, Pos3{0, 0, z}, Pos3{15, 15, z + 16}, Pos3{1, 1, 0}, sprite)
+		return
+	}
+	obj, ok := objOf(side.Object)
+	if !ok {
 		return
 	}
 	s.ItemType = ItemSignal // setItemType, setTrackModId(isRight ? 1 : 0) (PaintSignal.cpp:149)
@@ -94,14 +116,10 @@ func (s *Session) PaintSignal(rotation uint8, baseZ uint8, trackID, trackSeq int
 	rot := int((s.Rotation + rotation) & 3)
 	height := int(baseZ) * 4
 	if trackSeq == 0 {
-		if o, ok := objOf(left.Object); ok {
-			s.paintSignalSide(left, o, false, trackID, rot, height, sprite)
-		}
+		s.paintSignalSide(left, objOf, false, trackID, rot, height, sprite)
 	}
 	if !trackIsLast {
 		return
 	}
-	if o, ok := objOf(right.Object); ok {
-		s.paintSignalSide(right, o, true, trackID, rot, height, sprite)
-	}
+	s.paintSignalSide(right, objOf, true, trackID, rot, height, sprite)
 }

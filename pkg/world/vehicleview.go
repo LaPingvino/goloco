@@ -27,7 +27,7 @@ func (w *World) VehicleView(headID uint16, width, height int) *gfx8.RenderTarget
 // VehicleViewLabels draws the Vehicle window viewport's station and town
 // names on dst, the screen clipped to the viewport.
 func (w *World) VehicleViewLabels(headID uint16, dst *ebiten.Image) {
-	w.viewLabels(dst, true, func(width, height int) (scene.View, bool) { return w.vehicleView(headID, width, height) })
+	w.viewLabels(dst, func(width, height int) (scene.View, bool) { return w.vehicleView(headID, width, height) })
 }
 
 func (w *World) vehicleView(headID uint16, width, height int) (scene.View, bool) {

@@ -215,6 +215,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 	// Every construction window opens hovering in rotation 0, straight and
 	// level (Common's open, then trackWindow's rotate_90).
 	g.closeTerraform() // the construction tool's toolSet
+	g.consShowView()
 	if g.r.ObjMgr != nil {
 		g.w.EndConstruction(g.playerCmd())
 	}
@@ -310,6 +311,9 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		case "bridge":
 			g.openBridgeDropdown(win.X, win.Y, f.SkinColour, f.CompanyColour)
 		case "rotate": // rotate_90: the rotate arrows while hovering, the red cross while building
+			if !g.w.Cons.Hover { // back to a new position: the overground view (viewportSetVisibility)
+				g.consOverground()
+			}
 			g.w.ConstructionRotate90(g.playerCmd())
 		case "remove":
 			g.consRemove()
@@ -602,6 +606,7 @@ func (g *Game) endConstruction() {
 	}
 	g.w.ResetConstruction()
 	g.w.SyncConstructionArrow(false)
+	g.consResetView()
 	g.buildMode = buildModeNone
 	g.hoverTileX, g.hoverTileY = -1, -1
 }

@@ -33,6 +33,8 @@ func main() {
 	rotation := flag.Int("rotation", 0, "view rotation 0-3")
 	zoom := flag.Int("zoom", 0, "zoom 0-3")
 	window := flag.Int("window", 0, "only tiles within this many of the centre (0 = all that reach the view)")
+	at := flag.String("at", "", "log the paint structs over this image pixel x,y, in drawing order (paint.DiagAt)")
+	flags := flag.Uint("flags", 0, "the viewport's flags (Ui::ViewportFlags' bits: 1 underground, 2 see-through tracks, 4 height marks on land, …)")
 	flag.Parse()
 
 	var tx, ty int
@@ -93,7 +95,14 @@ func main() {
 	m.UpdateSpatialIndex() // the entities' sprite bounds at this rotation
 	cx, cy := paint.GameToScreen(paint.Pos3{X: tx*32 + 16, Y: ty*32 + 16, Z: cz}, m.CurrentRotation)
 	r := scene.New(g1, om)
-	view := scene.View{X: cx - (*w<<*zoom)/2, Y: cy - (*h<<*zoom)/2, W: *w, H: *h, Zoom: *zoom}
+	view := scene.View{X: cx - (*w<<*zoom)/2, Y: cy - (*h<<*zoom)/2, W: *w, H: *h, Zoom: *zoom, Flags: paint.ViewFlags(*flags)}
+	if *at != "" {
+		var ax, ay int
+		if _, err := fmt.Sscanf(*at, "%d,%d", &ax, &ay); err != nil {
+			log.Fatalf("render8: -at: %v", err)
+		}
+		paint.DiagAt = &[2]int{view.X + ax<<*zoom, view.Y + ay<<*zoom}
+	}
 	if *window > 0 {
 		view.Tiles = image.Rect(tx-*window, ty-*window, tx+*window, ty+*window)
 	}

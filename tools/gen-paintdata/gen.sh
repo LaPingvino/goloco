@@ -237,6 +237,13 @@ gofmt -w "$repo/pkg/paint/bridgeids_gen.go"
 g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" -O1 -ffunction-sections -fdata-sections -Wl,--gc-sections -o "$tmp/gen_surface" "$here/gen_surface.cpp"
 "$tmp/gen_surface" > "$repo/pkg/paint/surfacesupport_gen.go"
 gofmt -w "$repo/pkg/paint/surfacesupport_gen.go"
+# The view flags' decorations: height markers, decoration height offsets, one-way arrows.
+gc=(-O1 -ffunction-sections -fdata-sections -Wl,--gc-sections)
+for g in gen_decorations gen_roadarrows gen_signalarrows; do
+  g++ -std=c++20 -fno-char8_t -DDEBUG=0 "${inc[@]}" "${gc[@]}" -o "$tmp/$g" "$here/$g.cpp"
+done
+{ "$tmp/gen_decorations"; "$tmp/gen_roadarrows"; "$tmp/gen_signalarrows"; } > "$repo/pkg/paint/decorationdata_gen.go"
+gofmt -w "$repo/pkg/paint/decorationdata_gen.go"
 # PaletteIndex::primaryRemap0..B (getShade reads a colour's palette map at these).
 cat > "$tmp/pi.cpp" <<'CPP'
 #include "Graphics/Colour.h"

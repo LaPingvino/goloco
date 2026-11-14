@@ -1,0 +1,44 @@
+# The one-way direction arrows on a one-way road (PaintRoad.cpp
+# kOneWayArrowImageIndexs) on the title game opened at tile 331,295 (as
+# viewmenu.txt), one script for both games: the Road menu's third entry
+# (One-Way Road Construction), three straights and a curve built on the
+# desert; the construction window shows the arrows (Main::showDirectionArrows)
+# and hides them when it closes; the 0 key shows them again, 9 adds the
+# height marks. The click at 571,451 closes the news window.
+# Shots are named SHOTS/…: sed that to a scratch directory per game.
+# 2026-11-14, OpenLoco 09d74ee.
+wait 12
+click 571 451
+wait 0.5
+press 623 14
+wait 0.5
+move 680 92
+wait 0.5
+release 680 92
+wait 2
+move 150 300
+wait 2
+click 150 300
+wait 2
+move 300 520
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 100 90
+wait 1
+click 67 225
+wait 2
+shot SHOTS/ow-01-built.png
+click 128 38
+wait 2
+shot SHOTS/ow-02-closed.png
+key 0
+wait 1
+shot SHOTS/ow-03-arrows.png
+key 9
+wait 1
+shot SHOTS/ow-04-marks.png

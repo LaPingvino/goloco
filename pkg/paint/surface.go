@@ -52,9 +52,6 @@ var (
 	edgeFactorOffset = [4]int{0, 16, 16, 0}
 	edgeImageOffset  = [4]Pos3{{30, 0, 0}, {0, 30, 0}, {0, -2, 1}, {-2, 0, 1}}
 	edgeBBoxSize     = [4]Pos3{{0, 30, 15}, {30, 0, 15}, {30, 0, 15}, {0, 30, 15}}
-	// kEdgeMaskImageFromSlope[not underground]: cliffEdge0MaskSlope0 = 3726,
-	// cliffEdge1MaskSlope0 = 3731 (ImageIds.h, disc layout) + 0..4.
-	edgeMaskBase = [4]int{3726, 3731, 3731, 3726}
 )
 
 // edgeHeight is EdgeHeight (MicroZ).
@@ -97,12 +94,25 @@ var cliffEdgeToTunnelEdge = [4]int{2, 1, 3, 0}
 
 // paintCliffEdgeImpl is paintSurfaceCliffEdgeImpl, including the tunnel portals
 // (tunnels inserted by the track/road elements painted before the surface).
-func (s *Session) paintCliffEdgeImpl(sprite func(int) *gfx8.Sprite, edge int, eh edgeHeight, cliffBase int) {
+// baseHeight is the surface's (or the water's) height the edge is painted
+// from. In the underground view the far edges (2 and 3) first attach the
+// cliff's underground image — the ground's cut face seen from inside — to the
+// previous struct, and every section takes the underground masks.
+func (s *Session) paintCliffEdgeImpl(sprite func(int) *gfx8.Sprite, edge, baseHeight int, eh edgeHeight, cliffBase int) {
 	if eh.self0 <= eh.neighbour0 && eh.self1 <= eh.neighbour1 {
 		return
 	}
+	underground := s.ViewFlags.Has(ViewUnderground)
 	factor := ((s.spriteX ^ s.spriteY) & 0x20) + edgeFactorOffset[edge]
-	mask := func(i int) int { return edgeMaskBase[edge] + i }
+	if uo := EdgeUndergroundOffset[edge]; uo != 0 && underground {
+		offset := eh.self1 - eh.self0 + 1
+		yOffset := (eh.self0-baseHeight/microToSmallZStep)*microZStep + 1
+		if sp := sprite(cliffBase + offset + uo); sp != nil {
+			s.AttachToPrevious(Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, 0, -yOffset)
+		}
+	}
+	masks := &EdgeMaskImageFromSlope[b2i(underground)][edge]
+	mask := func(i int) int { return int(masks[i]) }
 	h := eh.neighbour1
 	if h != eh.neighbour0 {
 		unk := 3
@@ -164,7 +174,7 @@ func (s *Session) PaintCliffEdges(self Surface, neighbours [4]*Surface, cliffBas
 		if nb == nil {
 			continue
 		}
-		s.paintCliffEdgeImpl(sprite, edge, edgeHeightFor(sc, *nb, edge), cliffBase)
+		s.paintCliffEdgeImpl(sprite, edge, int(self.BaseZ)*microToSmallZStep, edgeHeightFor(sc, *nb, edge), cliffBase)
 	}
 }
 
@@ -217,7 +227,7 @@ func (s *Session) PaintWater(self Surface, neighbours [4]*Surface, w WaterImages
 		}
 		eh := edgeHeightFor(sc, *nb, edge)
 		wz := waterHeight / microZStep
-		s.paintCliffEdgeImpl(sprite, edge, edgeHeight{wz, eh.neighbour0, wz, eh.neighbour1}, cliffBase)
+		s.paintCliffEdgeImpl(sprite, edge, waterHeight, edgeHeight{wz, eh.neighbour0, wz, eh.neighbour1}, cliffBase)
 	}
 }
 

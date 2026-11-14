@@ -59,9 +59,9 @@ func (g *Game) setToolbarColour(d *ui.DropdownMenu, btn *ui.ToolbarButton) {
 // clickable(ToolbarTop.cpp): railroad_menu
 // clickable(ToolbarTopCommon.cpp): zoom_menu towns_menu
 // clickable-partial(ToolbarTop.cpp): loadsave_menu
-// clickable(ToolbarTop.cpp): audio_menu
+// clickable(ToolbarTop.cpp): audio_menu view_menu
 // clickable(ToolbarTopCommon.cpp): railroad_menu road_menu
-// (not yet: view_menu only logs; cheats_menu nothing)
+// (not yet: cheats_menu nothing)
 func (g *Game) handleToolbarButton(idx int) {
 	btn := &g.toolbar.Buttons[idx]
 	tooltip := btn.Tooltip
@@ -122,11 +122,7 @@ func (g *Game) handleToolbarButton(idx int) {
 		g.dropdown = g.toolbarDropdown(btn, items)
 
 	case "View":
-		items := []ui.DropdownItem{
-			{Text: i18n.Label(i18n.MenuUndergroundView), Action: func() { log.Println("[Game] Underground view") }},
-			{Text: "See Through Tracks", Action: func() { log.Println("[Game] See through tracks") }},
-		}
-		g.dropdown = g.toolbarDropdown(btn, items)
+		g.viewMenu(btn) // the main viewport's flags (ToolbarTop.cpp viewMenuMouseDown; viewmenu.go)
 	case "Terraform":
 		g.terraformMenu(btn) // clear area, adjust land / water, plant trees, build walls (ToolbarTop.cpp terraformMenuMouseDown)
 	case "Railroad":

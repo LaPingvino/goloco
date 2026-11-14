@@ -1,0 +1,105 @@
+# The View menu (ToolbarTop.cpp viewMenuMouseDown / viewMenuDropdown) and its
+# shortcuts (Shortcuts.cpp: 1 … 0) on the title game (untitle.py, then
+# `go run ./scripts/olref/setview -tile X,Y title.SV5 vm.SV5`), one script for
+# both games, the game paused: each toggle on, shot, off again — the
+# underground view, see-through tracks / roads / trees / buildings / bridges /
+# scenery, the height marks on land and on tracks, the direction arrows — then
+# the menu itself (a press on its button; released there it takes the
+# highlighted first entry), the names hidden through it, and every see-through
+# mode at once. Places: 331,295 (a town, a station, bridges), 105,127 (the
+# spiral's tunnels), 82,182 (one-sided signals).
+# The click at 571,451 closes the news window the title game opens with.
+# Shots are named SHOTS/…: sed that to a scratch directory per game.
+# 2026-11-14, OpenLoco 09d74ee.
+wait 12
+click 688 592
+wait 0.5
+click 571 451
+wait 0.5
+move 400 300
+wait 1
+shot SHOTS/vm-00-base.png
+key 1
+wait 1
+shot SHOTS/vm-01-underground.png
+key 1
+key 2
+wait 1
+shot SHOTS/vm-02-tracks.png
+key 2
+key 3
+wait 1
+shot SHOTS/vm-03-roads.png
+key 3
+key 4
+wait 1
+shot SHOTS/vm-04-trees.png
+key 4
+key 5
+wait 1
+shot SHOTS/vm-05-buildings.png
+key 5
+key 6
+wait 1
+shot SHOTS/vm-06-bridges.png
+key 6
+key 7
+wait 1
+shot SHOTS/vm-07-scenery.png
+key 7
+key 8
+wait 1
+shot SHOTS/vm-08-landmarks.png
+key 8
+key 9
+wait 1
+shot SHOTS/vm-09-trackmarks.png
+key 9
+key 0
+wait 1
+shot SHOTS/vm-10-arrows.png
+key 0
+wait 1
+shot SHOTS/vm-11-base-again.png
+press 147 14
+wait 1
+shot SHOTS/vm-12-menu.png
+release 147 14
+wait 1
+press 147 14
+wait 1
+shot SHOTS/vm-13-menu-underground.png
+release 147 14
+wait 1
+press 147 14
+wait 0.5
+move 160 154
+wait 0.5
+release 160 154
+wait 0.5
+press 147 14
+wait 0.5
+move 160 164
+wait 0.5
+release 160 164
+wait 1
+move 400 300
+wait 1
+shot SHOTS/vm-14-no-names.png
+press 147 14
+wait 1
+shot SHOTS/vm-15-menu-no-names.png
+move 400 300
+wait 0.3
+release 400 300
+key 2
+key 3
+key 4
+key 5
+key 6
+key 7
+wait 1
+shot SHOTS/vm-16-all-see-through.png
+key 1
+wait 1
+shot SHOTS/vm-17-all-underground.png

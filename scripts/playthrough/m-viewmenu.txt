@@ -1,0 +1,128 @@
+# Playthrough M: the View menu (ToolbarTop.cpp viewMenuMouseDown /
+# viewMenuDropdown) and its shortcuts (Shortcuts.cpp, 1 … 0): the main
+# viewport's flags (expect viewflags: Ui::ViewportFlags' bits — 1 underground,
+# 2 see-through tracks, 4 / 8 height marks on land / tracks, 16 direction
+# arrows, 32 gridlines, 64 see-through scenery, 512 / 1024 town / station
+# names hidden, 2048 / 4096 / 8192 / 16384 see-through roads / buildings /
+# trees / bridges). As L (seed 1950, Weatherworld, the fixed view by
+# Cloudburst). A key toggles its flag; the menu's entries do (a release on the
+# menu's button takes the first, the underground view); a see-through house is
+# not found by the map tooltip; the construction window shows the direction
+# arrows and the gridlines, its red cross and its ghost above the ground end
+# the underground view, and closing it resets the view (underground, see-through and height
+# marks off, the arrows and gridlines hidden; the hidden names stay hidden).
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+expect viewflags == 0
+shot /tmp/goloco-playthrough/pt-m0-base.png
+key 1
+wait 1
+expect viewflags == 1
+shot /tmp/goloco-playthrough/pt-m1-underground.png
+key 1
+wait 1
+expect viewflags == 0
+# the menu: see-through trees (the fourth entry), then the town names off
+press 146 14
+wait 0.5
+shot /tmp/goloco-playthrough/pt-m2-menu.png
+move 160 65
+wait 0.5
+release 160 65
+wait 1
+expect viewflags == 8192
+press 146 14
+wait 0.5
+move 160 155
+wait 0.5
+release 160 155
+wait 1
+expect viewflags == 8704
+shot /tmp/goloco-playthrough/pt-m3-trees-no-town-names.png
+# released on its button the menu takes its first entry
+press 146 14
+wait 0.5
+release 146 14
+wait 1
+expect viewflags == 8705
+press 146 14
+wait 0.5
+shot /tmp/goloco-playthrough/pt-m4-menu-ticks.png
+release 146 14
+wait 1
+expect viewflags == 8704
+# released off the menu it closes and nothing is taken
+press 146 14
+wait 0.5
+move 400 300
+wait 0.5
+release 400 300
+wait 1
+expect viewflags == 8704
+# a see-through house is not under the cursor
+key 5
+wait 0.5
+expect viewflags == 12800
+move 405 430
+wait 3
+expect maptip~Produces_Passengers == 0
+shot /tmp/goloco-playthrough/pt-m5-see-through-buildings.png
+key 5
+move 400 425
+wait 0.5
+move 405 430
+wait 3
+expect maptip~Produces_Passengers == 1
+# the marks and the arrows
+key 8
+key 9
+key 0
+wait 1
+expect viewflags == 8732
+shot /tmp/goloco-playthrough/pt-m6-marks.png
+# the construction window: in the underground view the road is still found;
+# the window shows the gridlines (the arrows are on already). Building on
+# from the town's road no ghost can stand (the road goes on): the view stays.
+# The red cross (a new position) is the overground view; under the ground
+# again by the key, the hovering ghost placed on the land ends it once more.
+key 1
+wait 1
+expect viewflags == 8733
+rightclick 430 490
+wait 2
+expect conswindow == 1
+expect consbuilding == 1
+expect viewflags == 8765
+click 122 290
+wait 1
+expect consbuilding == 0
+expect viewflags == 8764
+key 1
+wait 0.5
+expect viewflags == 8765
+move 300 250
+wait 1
+move 330 265
+wait 1
+expect viewflags == 8764
+shot /tmp/goloco-playthrough/pt-m7-construction.png
+# closed, it resets the view: only the hidden town names are left
+key ESC
+wait 1
+expect conswindow == 0
+expect viewflags == 512
+shot /tmp/goloco-playthrough/pt-m8-reset.png
+# the other see-through modes, by their keys
+key 2
+key 3
+key 6
+key 7
+wait 1
+expect viewflags == 19010
+shot /tmp/goloco-playthrough/pt-m9-see-through.png
+wait 1
+quit

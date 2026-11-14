@@ -41,9 +41,6 @@ type Renderer struct {
 	// getMapSelectionCorner (MapSelectionType: SelCorner0 … SelEdge3).
 	Selection     func(tileX, tileY int) bool
 	SelectionType uint8
-	// Gridlines is ViewportFlags::gridlines_on_landscape (Main::showGridlines:
-	// while a terraform or construction window is open).
-	Gridlines bool
 	// ConstructionArrow is World::getConstructionArrow with
 	// MapSelectionFlags::enableConstructionArrow as Visible.
 	ConstructionArrow ConstructionArrow
@@ -64,7 +61,9 @@ type Renderer struct {
 	colRT *gfx8.RenderTarget // one column's target (RenderColumns)
 	// spriteFor is r.Sprite as a func value, kept for the paint sessions.
 	spriteFor func(int) *gfx8.Sprite
-	rgba      *image.RGBA
+	// colourMapFn is r.colourMap as a func value, kept likewise.
+	colourMapFn func(int) []uint8
+	rgba        *image.RGBA
 
 	colourMaps map[int][]uint8 // GetPaletteMap(colour), which copies, cached
 	// Per-frame scratch kept for a frame without allocations: vehicle
@@ -242,7 +241,6 @@ func (r *Renderer) worker(i int) *Renderer {
 	r.workers[i].Catchment = r.Catchment
 	r.workers[i].Selection = r.Selection
 	r.workers[i].SelectionType = r.SelectionType
-	r.workers[i].Gridlines = r.Gridlines
 	r.workers[i].ConstructionArrow = r.ConstructionArrow
 	return r.workers[i]
 }
@@ -263,6 +261,10 @@ type View struct {
 	// Tiles optionally restricts the tile walk to a window (minX, minY, maxX,
 	// maxY inclusive); empty = every tile that can reach the view.
 	Tiles image.Rectangle
+	// Flags are the viewport's flags (Viewport::flags → SessionOptions::
+	// viewFlags): the View menu's see-through modes, marks and arrows, the
+	// underground view, the gridlines.
+	Flags paint.ViewFlags
 }
 
 // MapSelectionType (Map/MapSelection.h).
@@ -289,7 +291,6 @@ const (
 	constructionCatchmentSlope0        = 341
 	constructionSelectionCornersSlope0 = 322
 	constructionSelectionEdgesSlope0   = 360
-	gridlinesSlope0                    = 379
 	constructionSelectionQuadsSlope0   = 398
 )
 
@@ -478,10 +479,14 @@ func (r *Renderer) renderRect(m *sim.Map, v View) *gfx8.RenderTarget {
 	} else {
 		r.colRT.Width, r.colRT.Height, r.colRT.Bits = v.W, v.H, r.colRT.Bits[:v.W*v.H]
 	}
-	// Viewport::paint clears each column to PaletteIndex::brown2 (black0 in
-	// the underground view, which the port doesn't have).
+	// Viewport::paint clears each column to PaletteIndex::brown2, to black0
+	// in the underground view.
+	fill := uint8(brown2)
+	if v.Flags.Has(paint.ViewUnderground) {
+		fill = black0
+	}
 	for i := range r.colRT.Bits {
-		r.colRT.Bits[i] = brown2
+		r.colRT.Bits[i] = fill
 	}
 	rt := r.colRT
 	s.Draw(rt)
@@ -515,7 +520,11 @@ func (r *Renderer) paintRect(m *sim.Map, v View) *paint.Session {
 	if r.spriteFor == nil {
 		r.spriteFor = r.Sprite // a method value allocates: taken once, not per column
 	}
+	if r.colourMapFn == nil {
+		r.colourMapFn = r.colourMap
+	}
 	s.Zoom, s.SpriteFor = v.Zoom, r.spriteFor
+	s.ViewFlags, s.ColourMap, s.SeaLevel = v.Flags, r.colourMapFn, int(m.SeaLevel) // SessionOptions::viewFlags; after Reset, which clears them
 	var x0, y0, x1, y1 int
 	if !v.Tiles.Empty() {
 		x0, y0, x1, y1 = max(v.Tiles.Min.X, 0), max(v.Tiles.Min.Y, 0), min(v.Tiles.Max.X, m.Width-1), min(v.Tiles.Max.Y, m.Height-1)
@@ -648,7 +657,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 				remap = r.colourMap(extColourGhost)
 			}
 			s.PaintTrack(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ, Remap: remap,
-				Tunnel: r.tunnelImage(to.TunnelName), HasBridge: tk.HasBridge, Bridge: tk.BridgeID}, int(to.Image), sprite)
+				Tunnel: r.tunnelImage(to.TunnelName), HasBridge: tk.HasBridge, Bridge: tk.BridgeID, IsLast: tk.IsLast}, int(to.Image), sprite)
 			var mods [4]paint.TrackMod // trackObj->mods: the track extras, by the element's hasMod bits
 			for i, name := range to.ModNames {
 				if ex := om.Extra(name); i < 4 && ex != nil && ex.Image != 0 {
@@ -676,6 +685,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			}
 			s.PaintRoad(paint.RoadEl{RoadID: rd.RoadID, SequenceIndex: rd.SequenceIndex, Rotation: rd.Rotation, BaseZ: rd.BaseZ, Remap: remap,
 				Tunnel: r.tunnelImage(ro.TunnelName), HasBridge: rd.HasBridge, Bridge: rd.BridgeID,
+				IsLast: rd.IsLast, OneWay: ro.Flags&1 != 0, // RoadObjectFlags::isOneWay
 				Streetlight: light, StreetlightImage: int(om.StreetLightImage), Crossing: r.levelCrossing(rd, v.Ticks),
 				Mods: r.roadMods(ro, rd), AnyRoadTypeCompatible: ro.Flags&(1<<3) != 0}, int(ro.Image), ro.PaintStyle, sprite)
 		}
@@ -804,12 +814,20 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 		return
 	}
 	ds := slopeToDisplay[slope]
+	// The land's height mark (height_marks_on_land): TileManager::getHeight
+	// at the tile's middle.
+	if s.ViewFlags.Has(paint.ViewHeightMarksOnLand) {
+		lh, _ := m.GetHeight(int32(x)*32+16, int32(y)*32+16)
+		s.PaintLandHeightMarker(int(lh), sprite)
+	}
+	underground := s.ViewFlags.Has(paint.ViewUnderground)
 	growth := int(t.GrowthStage)
 	if t.IsIndustrial || growth >= int(land.NumGrowthStages) {
 		growth = 0
 	}
 	// variation: the growth stage's images, and the image angle the rotation picks
 	idx := int(land.ImageOffset) + land.GetFlatTerrainSpriteIndex() + growth*int(land.NumImagesPerGrowthStage) + ((int(land.NumImageAngles)-1)&int(rot))*25 + ds
+	groundIdx := idx // the underground view's image: without the flat tile's variation
 	if !t.IsIndustrial && t.Variation != 0 && s.Zoom == 0 && ds == 0 && t.WaterLevel == 0 && land.NumGrowthStages > 0 && t.GrowthStage == land.NumGrowthStages-1 {
 		idx = int(land.MapPixelImage) + 3 + int(t.Variation)
 	}
@@ -822,10 +840,19 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 		if io := m.IndustryObjectByID(t.Variation, om); io != nil && io.FieldImageIDs != 0 {
 			variation := int(io.NumImagesPerFieldGrowthStage)*int(t.GrowthStage) + ((int(io.FarmTileNumImageAngles)-1)&int(rot))*21
 			th := z + int(paint.SurfaceTreeHeight[ds])
-			if tree := sprite(int(io.FieldImageIDs) + variation + 19); tree != nil {
+			// the field's trees: image 19, under snow 20; an industryTree to
+			// the interaction and the see-through trees
+			treeImg := 19
+			if t.Slope>>5 != 0 {
+				treeImg = 20
+			}
+			if tree := sprite(int(io.FieldImageIDs) + variation + treeImg); tree != nil {
+				s.ItemType = paint.ItemIndustryTree
 				s.AddAsParent(paint.Image{Sprite: tree, Op: gfx8.OpFor(tree, false, false)}, paint.Pos3{Z: th}, paint.Pos3{X: 14, Y: 14, Z: th + 4}, paint.Pos3{X: 4, Y: 4, Z: 14})
+				s.ItemType = paint.ItemSurface
 			}
 			idx = int(io.FieldImageIDs) + variation + ds
+			groundIdx = idx
 			fieldSnow = !(s.Zoom == 0 && io.Flags&objects.IndustryFlagFarmTilesDrawAboveSnow != 0) && t.Slope>>5 != 0
 		}
 	}
@@ -843,14 +870,19 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 			if full := sprite(snowImg); full != nil {
 				sp = full
 			}
-		} else if cov <= 4 {
+		} else if cov <= 4 && !underground { // no partial snow image in the underground view
 			if si, mk := sprite(snowImg), sprite(int(paint.SnowCoverageSlopeToMask[cov-1][ds])); si != nil && mk != nil {
 				snowAttach = &paint.Image{Sprite: si, Mask: mk}
 			}
 		}
 	}
-	// PaintSurface.cpp paintMainSurface: offset (0,0,baseHeight), bbox (32,32,-1).
-	s.AddAsParent(paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, paint.Pos3{Z: z}, paint.Pos3{Z: z}, paint.Pos3{X: 32, Y: 32, Z: -1})
+	// PaintSurface.cpp paintMainSurface: offset (0,0,baseHeight), bbox
+	// (32,32,-1); translucent (ExtColour::unk30) in the underground view.
+	main := paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}
+	if underground {
+		main = paint.Image{Sprite: sp, Op: gfx8.OpTransparent | gfx8.OpDst, PalMap: r.colourMap(0x30)}
+	}
+	s.AddAsParent(main, paint.Pos3{Z: z}, paint.Pos3{Z: z}, paint.Pos3{X: 32, Y: 32, Z: -1})
 	// paintSurfaceSelection: the selection box by the display slope, attached
 	// to the surface — a corner's (kCornerSelectionBoxFromSlope in
 	// kCornerColours, ExtColour::unk21 …), the whole tile's (the same image in
@@ -873,19 +905,55 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 			s.AttachToPrevious(paint.Image{Sprite: sel, Op: gfx8.OpFor(sel, pm != nil, false), PalMap: pm}, 0, 0)
 		}
 	}
-	// The gridlines (gridlines_on_landscape, up to zoom 2): kGridlinesBoxFromSlope
-	// translucent in ExtColour::unk30. PARTIAL: upstream attaches them after
-	// the water selection and the catchment area's parents.
-	if r.Gridlines && s.Zoom <= 2 {
-		if gl := sprite(gridlinesSlope0 + ds); gl != nil {
+	// The catchment area (PaintSurface.cpp): constructionCatchmentSlope by the
+	// water surface's display slope (getWaterSurface), dark blue, as a parent
+	// at its height, bbox (32,32,1); after the selection box, as upstream.
+	// Both parents leave the last struct (what the attachments below attach
+	// to) the surface's: getLastPS / setLastPS around them.
+	waterSurface := func() (int, uint8) { // getWaterSurface(elSurface, selfDescriptor.slope)
+		h, slope := z, slope
+		if wh := int(t.WaterLevel) * 16; wh > h {
+			h += 16 // kMicroZStep
+			if wh != h || t.Slope&0x10 == 0 {
+				slope, h = 0, wh
+			} else {
+				sl := (slope & 0xF) ^ 0xF // rotl4bit(…, 2)
+				slope = (sl<<2 | sl>>2) & 0xF
+			}
+		}
+		return h, slope
+	}
+	// paintSurfaceFullWaterTileSelection: the selection box by the water
+	// surface's display slope in ExtColour::unk26, a parent at its height.
+	if selected && r.SelectionType == SelFullWater {
+		h, slope := waterSurface()
+		if sel := sprite(constructionSelectionCornersSlope0 + slopeToDisplay[slope&0x1F]); sel != nil {
+			pm := r.colourMap(0x26)
+			last := s.LastPS()
+			s.AddAsParent(paint.Image{Sprite: sel, Op: gfx8.OpFor(sel, pm != nil, false), PalMap: pm}, paint.Pos3{Z: h}, paint.Pos3{Z: h}, paint.Pos3{X: 32, Y: 32, Z: 1})
+			s.SetLastPS(last)
+		}
+	}
+	if r.Catchment != nil && r.Catchment(x, y) {
+		h, slope := waterSurface()
+		if cs := sprite(constructionCatchmentSlope0 + slopeToDisplay[slope&0x1F]); cs != nil && r.catchmentMap != nil {
+			last := s.LastPS()
+			s.AddAsParent(paint.Image{Sprite: cs, Op: gfx8.OpFor(cs, true, false), PalMap: r.catchmentMap}, paint.Pos3{Z: h}, paint.Pos3{Z: h}, paint.Pos3{X: 32, Y: 32, Z: 1})
+			s.SetLastPS(last)
+		}
+	}
+	// The gridlines (gridlines_on_landscape, up to zoom 2, not underground):
+	// kGridlinesBoxFromSlope translucent in ExtColour::unk30.
+	if s.ViewFlags.Has(paint.ViewGridlines) && s.Zoom <= 2 && !underground {
+		if gl := sprite(int(paint.GridlinesBoxFromSlope[ds])); gl != nil {
 			s.AttachToPrevious(paint.Image{Sprite: gl, Op: gfx8.OpTransparent | gfx8.OpDst, PalMap: r.colourMap(0x30)}, 0, 0)
 		}
 	}
 	if snowAttach != nil && s.Zoom <= 2 { // the partial snow image only up to zoom 2
 		s.AttachToPrevious(*snowAttach, 0, 0)
 	}
-	// Landscape smoothing (zoom 0; Config::landscapeSmoothing, default on).
-	if s.Zoom == 0 {
+	// Landscape smoothing (zoom 0, not underground; Config::landscapeSmoothing, default on).
+	if s.Zoom == 0 && !underground {
 		desc := func(tt *sim.Tile) paint.SmoothTile {
 			sl := rotatedSlope(tt.Slope, rot)
 			d := paint.SmoothTile{Surface: paint.Surface{BaseZ: tt.BaseZ, Slope: sl, Water: tt.WaterLevel}, Present: true,
@@ -907,35 +975,46 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 		}
 		s.PaintSurfaceSmoothing(desc(t), nbd, r.smoothLand, snowImage, sprite)
 	}
-	// The catchment area (PaintSurface.cpp): constructionCatchmentSlope by the
-	// water surface's display slope (getWaterSurface), dark blue, as a parent
-	// at its height, bbox (32,32,1); after the selection box, as upstream.
-	waterSurface := func() (int, uint8) { // getWaterSurface(elSurface, selfDescriptor.slope)
-		h, slope := z, slope
-		if wh := int(t.WaterLevel) * 16; wh > h {
-			h += 16 // kMicroZStep
-			if wh != h || t.Slope&0x10 == 0 {
-				slope, h = 0, wh
-			} else {
-				sl := (slope & 0xF) ^ 0xF // rotl4bit(…, 2)
-				slope = (sl<<2 | sl>>2) & 0xF
+	// The underground view (PaintSurface.cpp, underground_view): the land's
+	// image again, attached to the surface through the gridlines box as its
+	// mask (paintMainUndergroundSurface) — the tile's outline in its own
+	// colours over the translucent ground. Under full snow the snow's
+	// outline image instead; under part snow that image first, through the
+	// noise mask of the coverage, then the land's.
+	if underground {
+		mainUnderground := func() {
+			if img, mk := sprite(groundIdx), sprite(int(paint.GridlinesBoxFromSlope[ds])); img != nil && mk != nil {
+				s.AttachToPrevious(paint.Image{Sprite: img, Mask: mk}, 0, 0)
 			}
 		}
-		return h, slope
-	}
-	// paintSurfaceFullWaterTileSelection: the selection box by the water
-	// surface's display slope in ExtColour::unk26, a parent at its height.
-	if selected && r.SelectionType == SelFullWater {
-		h, slope := waterSurface()
-		if sel := sprite(constructionSelectionCornersSlope0 + slopeToDisplay[slope&0x1F]); sel != nil {
-			pm := r.colourMap(0x26)
-			s.AddAsParent(paint.Image{Sprite: sel, Op: gfx8.OpFor(sel, pm != nil, false), PalMap: pm}, paint.Pos3{Z: h}, paint.Pos3{Z: h}, paint.Pos3{X: 32, Y: 32, Z: 1})
+		cov := int(t.Slope >> 5)
+		aboveSnow := false
+		if t.IsIndustrial {
+			io := m.IndustryObjectByID(t.Variation, om)
+			aboveSnow = s.Zoom == 0 && io != nil && io.Flags&objects.IndustryFlagFarmTilesDrawAboveSnow != 0
 		}
-	}
-	if r.Catchment != nil && r.Catchment(x, y) {
-		h, slope := waterSurface()
-		if cs := sprite(constructionCatchmentSlope0 + slopeToDisplay[slope&0x1F]); cs != nil && r.catchmentMap != nil {
-			s.AddAsParent(paint.Image{Sprite: cs, Op: gfx8.OpFor(cs, true, false), PalMap: r.catchmentMap}, paint.Pos3{Z: h}, paint.Pos3{Z: h}, paint.Pos3{X: 32, Y: 32, Z: 1})
+		snowOutline := func(noise int) {
+			if om.SnowObj == nil {
+				return
+			}
+			if so := sprite(int(om.SnowObj.ImageOffset) + paint.SnowSurfaceFullZoom + 19 + ds); so != nil {
+				img := paint.Image{Sprite: so, Op: gfx8.OpFor(so, false, false)}
+				if noise != 0 {
+					img.Noise = sprite(3478 + noise) // _noiseMaskImages[noise]
+				}
+				s.AttachToPrevious(img, 0, 0)
+			}
+		}
+		switch {
+		case aboveSnow || cov == 0:
+			mainUnderground()
+		case cov == 5:
+			snowOutline(0)
+		default:
+			if n := int(paint.UndergroundViewSnowNoise[cov&7]); n != 0 {
+				snowOutline(n)
+			}
+			mainUnderground()
 		}
 	}
 
@@ -1427,6 +1506,9 @@ var kUnkOffsets = [4][2]int{{0, 0}, {32, 0}, {32, 32}, {0, 32}}
 
 // brown2 is PaletteIndex::brown2 (Colour.h), the viewport's clear colour.
 const brown2 = 0xD8
+
+// black0 is PaletteIndex::black0, the underground view's clear colour.
+const black0 = 0x0A
 
 // floor2 is Numerics::floor2: x rounded down to a multiple of n (a power of 2).
 func floor2(x, n int) int { return x &^ (n - 1) }

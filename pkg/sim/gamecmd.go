@@ -44,6 +44,11 @@ type Cmd struct {
 	// ErrorCost is the amount ErrorText's {CURRENCY32} shows
 	// (FormatArguments::common(payment)).
 	ErrorCost int32
+	// PosFlags is getLegacyReturnState().flags_1136072 after createTrack /
+	// createRoad: the ElementPositionFlags of what was placed (PosUnderground:
+	// some of it under the ground) — what the construction ghost sets the
+	// view's underground mode by.
+	PosFlags uint8
 }
 
 func (c *Cmd) isPlayer(company uint8) bool { return c.Players != nil && c.Players(company) }
