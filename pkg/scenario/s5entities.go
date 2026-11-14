@@ -36,19 +36,6 @@ const (
 	//   static_assert(sizeof(GameState) == 0x4A0644)
 	EntityTableOffset = 0x1B58C4
 
-	// EntityTableOffsetType2 is the entity table offset for GameStateType2.
-	// GameStateType2 uses a smaller Company struct, shifting all subsequent
-	// arrays down by 0x1C20 bytes relative to GameState.
-	// OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h
-	//   struct GameStateType2 { Entity entities[...]; // 0x1B3CA4 }
-	//   static_assert(sizeof(GameStateType2) == 0x49EA24)
-	EntityTableOffsetType2 = 0x1B3CA4
-
-	// GameStateSizeType2 is the decompressed size of a GameStateType2 chunk.
-	// When the GameState chunk decompresses to exactly this size, use
-	// EntityTableOffsetType2 instead of EntityTableOffset.
-	GameStateSizeType2 = 0x49EA24
-
 	// EntitySize is the size of a single entity slot in bytes.
 	// OpenLoco reference: static_assert(sizeof(Entity) == 0x80)
 	EntitySize = 0x80
@@ -212,6 +199,9 @@ const (
 //
 // OpenLoco reference: src/OpenLoco/src/S5/S5Entity.h
 type VehicleEntity struct {
+	// Raw is the slot as read (nil for a component made in play): the save
+	// writes the modelled fields over it (putVehicle).
+	Raw []byte
 	// ---- EntityBase ----
 	ID          uint16 // ebID (0x0A) — slot index in the entity array
 	EntityType  uint8  // ebType (0x01) — VehicleType* constant
@@ -330,12 +320,8 @@ type VehicleEntity struct {
 // ParseVehicleEntities extracts VehicleHead and VehicleBody entities from a
 // decompressed GameState chunk (as read from an .SV5 saved-game file).
 //
-// Detects GameStateType2 vs GameState by decompressed chunk size and chooses
-// the correct entity table offset automatically.
-//
-// IMPORTANT: In GameStateType2 files (including title.dat), TileX and TileY
-// are stored in sub-tile world units (same as PosX/PosY), NOT tile indices.
-// Convert to tile index with TileX/32 or TileY/32.
+// TileX and TileY are stored in world units (as PosX/PosY), not tile
+// indices: the tile is TileX/32, TileY/32.
 //
 // Returns nil without error when the chunk is too small to contain the entity
 // table — this is expected for .SC5 scenario files, which only write a
@@ -343,13 +329,7 @@ type VehicleEntity struct {
 //
 // OpenLoco reference: src/OpenLoco/src/S5/S5GameState.h  GameState::entities
 func ParseVehicleEntities(gameState []byte) []VehicleEntity {
-	// Choose the entity table offset based on the GameState variant.
-	// GameStateType2 (sizeof==0x49EA24) uses offset 0x1B3CA4.
-	// GameState       (sizeof==0x4A0644) uses offset 0x1B58C4.
 	tableOffset := EntityTableOffset
-	if len(gameState) == GameStateSizeType2 {
-		tableOffset = EntityTableOffsetType2
-	}
 
 	minSize := tableOffset + MaxEntities*EntitySize
 	if len(gameState) < minSize {
@@ -458,6 +438,7 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			MaxSpeed:            int16(binary.LittleEndian.Uint16(e[0x54:])),
 			RackRailMaxSpeed:    int16(binary.LittleEndian.Uint16(e[0x5C:])),
 
+			Raw:              append([]byte(nil), e...),
 			ObjectID:         uint16(e[vbObjectId]) | uint16(e[vbObjectId+1])<<8,
 			ObjectSpriteType: e[vbObjectSpriteType],
 			ColourPrimary:    e[vbColourPrimary],
@@ -508,9 +489,6 @@ type EntityLists struct {
 // ParseEntityLists reads the entity lists from a saved game's GameState.
 func ParseEntityLists(gameState []byte) *EntityLists {
 	tableOffset := EntityTableOffset
-	if len(gameState) == GameStateSizeType2 {
-		tableOffset = EntityTableOffsetType2
-	}
 	if len(gameState) < tableOffset+MaxEntities*EntitySize {
 		return nil
 	}
@@ -548,4 +526,267 @@ func parseIncomeStats(b []byte) IncomeStats {
 		s.CargoProfits[i] = int32(binary.LittleEndian.Uint32(b[0x1C+4*i:]))
 	}
 	return s
+}
+
+// MiscEntity is an entity of the misc list (EntityBaseType::effect): the
+// effects of S5Entity.h, every subtype's fields in one struct (each subtype
+// reads its own). Raw is the slot as read (nil for one made in play).
+type MiscEntity struct {
+	ID                                            uint16
+	SubType                                       uint8 // EffectType
+	X, Y, Z                                       int16
+	SpriteWidth, SpriteHeightNeg, SpriteHeightPos uint8
+	Field26, Field28                              uint16 // exhaust frameNum / money frame·moveDelay / particle timeToLive; frame (numMovements, stationaryProgress)
+	WindProgress                                  uint16 // exhaust 0x32
+	ObjectID                                      uint8  // exhaust 0x49
+	Amount                                        int32  // money 0x2A
+	Var2E                                         uint8  // money company / particle colour primary
+	Colour2                                       uint8  // particle colour secondary (0x2F)
+	CrashedSpriteBase                             uint16 // particle 0x30
+	Velocity                                      [3]int16
+	Acceleration                                  [3]int32
+	Wiggle                                        uint16 // money 0x46
+	Raw                                           []byte
+}
+
+// Effect subtypes (EffectType).
+const (
+	EffectExhaust              = 0
+	EffectRedGreenCurrency     = 1
+	EffectWindowCurrency       = 2
+	EffectVehicleCrashParticle = 3
+	EffectExplosionCloud       = 4
+	EffectSplash               = 5
+	EffectFireball             = 6
+	EffectExplosionSmoke       = 7
+	EffectSmoke                = 8
+)
+
+// ParseMiscEntities reads every effect entity of a saved game.
+func ParseMiscEntities(gs []byte) []MiscEntity {
+	if len(gs) < EntityTableOffset+MaxEntities*EntitySize {
+		return nil
+	}
+	var out []MiscEntity
+	for i := range MaxEntities {
+		e := gs[EntityTableOffset+i*EntitySize : EntityTableOffset+(i+1)*EntitySize]
+		if e[ebBaseType] != EntityBaseTypeEffect {
+			continue
+		}
+		u16 := func(o int) uint16 { return binary.LittleEndian.Uint16(e[o:]) }
+		m := MiscEntity{ID: u16(ebID), SubType: e[ebType],
+			X: int16(u16(ebPosX)), Y: int16(u16(ebPosY)), Z: int16(u16(ebPosZ)),
+			SpriteWidth: e[ebSpriteWidth], SpriteHeightNeg: e[ebSpriteHeightNeg], SpriteHeightPos: e[ebSpriteHeightPos],
+			Field26: u16(0x26), Field28: u16(0x28), WindProgress: u16(0x32), ObjectID: e[0x49],
+			Amount: int32(binary.LittleEndian.Uint32(e[0x2A:])), Var2E: e[0x2E], Colour2: e[0x2F],
+			CrashedSpriteBase: u16(0x30), Wiggle: u16(0x46),
+			Raw: append([]byte(nil), e...)}
+		for k := range 3 {
+			m.Velocity[k] = int16(u16(0x32 + 2*k))
+			m.Acceleration[k] = int32(binary.LittleEndian.Uint32(e[0x38+4*k:]))
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+// putEntityBase is exportEntityBase: the base fields (the list links are the
+// caller's), the sprite bounds Location::null.
+func putEntityBase(e []byte, typ uint8, id uint16, x, y, z int16, w, hNeg, hPos uint8) {
+	e[ebType] = typ
+	e[ebSpriteHeightNeg] = hNeg
+	put16(e, ebID, id)
+	put16(e, ebPosX, uint16(x))
+	put16(e, ebPosY, uint16(y))
+	put16(e, ebPosZ, uint16(z))
+	e[ebSpriteWidth], e[ebSpriteHeightPos] = w, hPos
+	for _, o := range []int{ebSpriteLeft, ebSpriteTop, ebSpriteRight, ebSpriteBottom} {
+		put16(e, o, 0x8000)
+	}
+}
+
+// putMiscEntity is exportEntity for an effect, by subtype.
+func putMiscEntity(e []byte, m *MiscEntity) {
+	putEntityBase(e, m.SubType, m.ID, m.X, m.Y, m.Z, m.SpriteWidth, m.SpriteHeightNeg, m.SpriteHeightPos)
+	switch m.SubType {
+	case EffectExhaust:
+		put16(e, 0x26, m.Field26)
+		put16(e, 0x28, m.Field28)
+		put16(e, 0x32, m.WindProgress)
+		e[0x49] = m.ObjectID
+	case EffectRedGreenCurrency, EffectWindowCurrency:
+		put16(e, 0x26, m.Field26)
+		put16(e, 0x28, m.Field28)
+		put32(e, 0x2A, uint32(m.Amount))
+		e[0x2E] = m.Var2E
+		put16(e, 0x46, m.Wiggle)
+	case EffectVehicleCrashParticle:
+		put16(e, 0x26, m.Field26)
+		put16(e, 0x28, m.Field28)
+		e[0x2E], e[0x2F] = m.Var2E, m.Colour2
+		put16(e, 0x30, m.CrashedSpriteBase)
+		for k := range 3 {
+			put16(e, 0x32+2*k, uint16(m.Velocity[k]))
+			put32(e, 0x38+4*k, uint32(m.Acceleration[k]))
+		}
+	default: // the cloud, splash, fireball, smokes: their frame
+		put16(e, 0x28, m.Field28)
+	}
+}
+
+// putVehicle is exportEntity for a vehicle component: the base and the
+// fields every vehicle has, then its type's own (S5Entity.h's VehicleHead …
+// VehicleTail: one offset means another field in each).
+func putVehicle(e []byte, v *VehicleEntity) {
+	putEntityBase(e, v.EntityType, v.ID, int16(v.PosX), int16(v.PosY), v.PosZ, v.SpriteWidth, v.SpriteHeightNegative, v.SpriteHeightPositive)
+	put16(e, ebVehicleFlags, v.VehicleFlags)
+	e[ebSpriteYaw], e[ebSpritePitch], e[ebOwner] = v.SpriteYaw, v.SpritePitch, v.Owner
+	put16(e, ebName, v.Name)
+	e[vbColourPrimary], e[vbColourSecondary] = v.ColourPrimary, v.ColourSecondary
+	put16(e, vhCommonHead, v.HeadID)
+	put32(e, vhCommonRemainingDist, uint32(v.RemainingDistance))
+	put16(e, vhCommonTrackAndDir, v.TrackAndDirection)
+	put16(e, vhCommonSubPosition, v.SubPosition)
+	put16(e, vhCommonTileX, uint16(v.TileX))
+	put16(e, vhCommonTileY, uint16(v.TileY))
+	e[vhCommonTileBaseZ], e[vhCommonTrackType] = v.TileBaseZ, v.TrackType
+	put16(e, vhCommonRoutingHandle, v.RoutingHandle)
+	e[vbFlags38], e[vbObjectSpriteType] = v.Flags38, v.ObjectSpriteType
+	put16(e, vhCommonNextCarId, v.NextCarID)
+	put32(e, 0x3C, uint32(v.Var3C))
+	put16(e, vbObjectId, v.ObjectID)
+	e[vhCommonMode] = v.Mode
+	switch v.EntityType {
+	case VehicleTypeHead:
+		put16(e, 0x44, uint16(v.OrdinalNumber))
+		put32(e, 0x46, v.OrderTableOffset)
+		put16(e, 0x4A, v.CurrentOrder)
+		put16(e, 0x4C, v.SizeOfOrderTable)
+		put32(e, 0x4E, v.TrainAcceptedCargoTypes)
+		e[0x52], e[0x53] = v.HeadVar52, v.HeadVar53
+		put16(e, 0x54, v.StationID)
+		put16(e, 0x56, v.CargoTransferTimeout)
+		put32(e, 0x58, v.Var58)
+		e[0x5C], e[vHeadStatus], e[vHeadVehicleType], e[0x5F] = v.Var5C, v.Status, v.VehicleType, v.BreakdownFlags
+		e[0x68] = v.AirportMovementEdge
+		put32(e, 0x69, v.TotalRefundCost)
+		e[0x6D], e[0x6E] = v.CrashedTimeout, uint8(v.ManualPower)
+		put16(e, 0x6F, uint16(v.JourneyStartX))
+		put16(e, 0x71, uint16(v.JourneyStartY))
+		put32(e, 0x73, v.JourneyStartTicks)
+		put16(e, 0x77, uint16(v.LastAverageSpeed))
+	case VehicleTypeVeh1:
+		put16(e, 0x44, uint16(v.TargetSpeed))
+		put16(e, 0x46, v.TimeAtSignal)
+		e[0x48], e[0x49] = v.Var48, v.Var49
+		put32(e, 0x4A, v.DayCreated)
+		put32(e, 0x4E, v.TrainAcceptedCargoTypes) // var_4E, var_50: a boat's sub-pixel position (sim watermotion.go)
+		e[0x52] = v.HeadVar52
+		s := v.LastIncome
+		put32(e, 0x53, uint32(s.Day))
+		for k := range 4 {
+			e[0x57+k] = s.CargoTypes[k]
+			put16(e, 0x5B+2*k, s.CargoQtys[k])
+			put16(e, 0x63+2*k, s.CargoDistances[k])
+			e[0x6B+k] = s.CargoAges[k]
+			put32(e, 0x6F+4*k, uint32(s.CargoProfits[k]))
+		}
+	case VehicleTypeVeh2:
+		e[0x4F] = uint8(v.Var4F)
+		put16(e, 0x50, v.TotalPower)
+		put16(e, 0x52, v.TotalWeight)
+		put16(e, 0x54, uint16(v.MaxSpeed))
+		put32(e, 0x56, uint32(v.CurrentSpeed))
+		e[0x5A], e[v2BrakeLightTimeout] = v.MotorState, v.BrakeLightTimeout
+		put16(e, 0x5C, uint16(v.RackRailMaxSpeed))
+		put32(e, 0x5E, uint32(v.CurMonthRevenue))
+		for k, p := range v.Profit {
+			put32(e, 0x62+4*k, uint32(p))
+		}
+		e[0x72], e[0x73] = v.Veh2Reliability, v.Var73
+	case VehicleTypeBogie, VehicleTypeBodyStart, VehicleTypeBodyContinued:
+		put16(e, 0x44, v.Var44)
+		e[vbAnimation], e[vbCargoFrame] = v.Animation, v.CargoFrame
+		c := v.Cargo
+		put32(e, 0x48, c.AcceptedTypes)
+		e[0x4C], e[0x4D] = c.Type, c.MaxQty
+		put16(e, 0x4E, c.TownFrom)
+		e[0x50], e[0x51] = c.NumDays, c.Qty
+		e[vbBodyIndex], e[vbBodyIndex+1] = v.BodyIndex, v.ChuffSoundIndex
+		put32(e, 0x56, v.CreationDay)
+		put32(e, 0x5A, v.Var5A)
+		e[0x5E], e[0x5F] = v.WheelSlipping, v.BreakdownFlags
+		put32(e, 0x62, v.RefundCost)
+		e[0x6A] = v.BreakdownTimeout
+		if v.EntityType == VehicleTypeBogie {
+			put16(e, 0x52, v.TotalWeight)
+			put16(e, 0x66, v.Reliability)
+			put16(e, 0x68, v.TimeoutToBreakdown)
+		}
+	}
+}
+
+// initCreatedVehicle: the fields of a component made in play that goloco
+// doesn't model, as CreateVehicle.cpp sets them (createHead: aiThoughtId
+// 0xFF, aiPlacementPos.x −1; createVehicle2 / createVehicleTail: the sound's
+// drivingSoundId null and objectId 0xFFFF).
+func initCreatedVehicle(e []byte, typ uint8) {
+	switch typ {
+	case VehicleTypeHead:
+		e[0x60] = 0xFF
+		put16(e, 0x61, 0xFFFF)
+	case VehicleTypeVeh2, VehicleTypeTail:
+		e[0x44] = 0xFF
+		put16(e, 0x48, 0xFFFF)
+	}
+}
+
+func (sc *Scenario) putEntities(gs []byte) {
+	l := sc.EntityLists
+	if l == nil {
+		return // no entities modelled: the table as read
+	}
+	for i := range NumEntityLists {
+		put16(gs, GeneralEntityListHeadsOffset+2*i, l.Heads[i])
+		put16(gs, GeneralEntityListCountsOffset+2*i, l.Counts[i])
+	}
+	vehicles := make(map[uint16]*VehicleEntity, len(sc.Entities))
+	for i := range sc.Entities {
+		vehicles[sc.Entities[i].ID] = &sc.Entities[i]
+	}
+	misc := make(map[uint16]*MiscEntity, len(sc.MiscEntities))
+	for i := range sc.MiscEntities {
+		misc[sc.MiscEntities[i].ID] = &sc.MiscEntities[i]
+	}
+	for id := range MaxEntities {
+		e := gs[EntityTableOffset+id*EntitySize : EntityTableOffset+(id+1)*EntitySize]
+		ln := l.Links[id]
+		switch {
+		case ln.BaseType == EntityBaseTypeVehicle && vehicles[uint16(id)] != nil:
+			v := vehicles[uint16(id)]
+			if v.Raw != nil {
+				copy(e, v.Raw)
+			} else {
+				clear(e) // createEntity: zeroEntity
+				initCreatedVehicle(e, v.EntityType)
+			}
+			putVehicle(e, v)
+		case ln.BaseType == EntityBaseTypeEffect && misc[uint16(id)] != nil:
+			m := misc[uint16(id)]
+			if m.Raw != nil {
+				copy(e, m.Raw)
+			} else {
+				clear(e)
+			}
+			putMiscEntity(e, m)
+		case ln.BaseType == EntityBaseTypeFree:
+			clear(e) // EntityManager::zeroUnused (zeroEntity)
+			put16(e, ebID, uint16(id))
+		}
+		// else: an entity goloco doesn't model — its slot as read.
+		e[ebBaseType] = ln.BaseType
+		put16(e, ebNextEntityId, ln.Next)
+		put16(e, ebLLPreviousId, ln.Prev)
+		e[ebLinkedListOffset] = ln.ListOffset
+	}
 }

@@ -227,7 +227,7 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 	w.camX = cx - 400
 	w.camY = cy - 300
 
-	w.ResetWaves()
+	w.LoadWaves(sc.Waves) // importGameState: the file's waves (their tiles carry flag_6)
 }
 
 // LoadGenerated takes a generated map (the open build's title, item O) as

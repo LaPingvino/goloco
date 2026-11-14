@@ -52,6 +52,9 @@ type Effect struct {
 	ObjectID   uint8
 	Stationary uint8
 	Wind       uint16
+	// Raw is the entity slot as a save held it (nil for one made in play):
+	// the save writes the fields over it (s5export.go).
+	Raw []byte
 }
 
 // createEntityMisc is EntityManager::createEntityMisc: none past

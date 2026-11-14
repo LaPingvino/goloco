@@ -13,10 +13,31 @@ type Animation struct {
 	X, Y        int16
 }
 
+// MaxWaves is S5::Limits::kMaxWaves.
+const MaxWaves = 64
+
+// Wave is S5::Wave: a water tile's wave (loc, world units; X Location::null
+// an empty slot) and its frame.
+type Wave struct {
+	X, Y  int16
+	Frame uint16
+}
+
 type Scenario struct {
 	// Animations is the map's animation list (GameState animations, the first
 	// numMapAnimations).
 	Animations []Animation
+	// Raw is the file's chunks as read (raw.go): the save's base.
+	Raw *Raw
+	// Waves is GameState waves (WaveManager's table).
+	Waves [MaxWaves]Wave
+	// MiscEntities are the saved game's effect entities.
+	MiscEntities []MiscEntity
+	// ScenarioFileName, ScenarioName, ScenarioDetails are GameState
+	// scenarioFileName (0x1BC), scenarioName (0x2BC), scenarioDetails (0x2FC).
+	ScenarioFileName, ScenarioName, ScenarioDetails string
+	// ObjectiveCompletedInMonths is scenarioObjectiveProgress.completedChallengeInMonths (0x42D).
+	ObjectiveCompletedInMonths uint16
 	// Header information
 	Header   assets.S5Header
 	FilePath string
@@ -303,6 +324,7 @@ type Tile struct {
 	IsIndustrial bool  // type byte bit 7 — surface belongs to an industry (farm fields etc.)
 	Type6Flag    bool  // type byte bit 6 (hasType6Flag) — water a ship route needs
 	Slope        uint8 // slope byte from surface element byte 4
+	ClearZ       uint8 // the surface's clearZ (byte 3)
 	Ownership    uint8
 	BuildingID   uint16
 	TrackType    uint8
@@ -369,6 +391,8 @@ type WallElement struct {
 	Rotation      uint8 // byte 0 bits [1:0]
 	EdgeSlope     uint8 // byte 0 bits [7:6]: 0=none, 1=upwards, 2=downwards
 	PrimaryColour uint8 // byte 6 bits [4:0]
+	// TertiaryColour is getTertiaryColour (byte 5).
+	TertiaryColour uint8
 	// SecondaryColour is getSecondaryColour: byte 6 bits 7:5 | byte 1 (_flags) bits 6:5 << 3.
 	SecondaryColour uint8
 	BaseZ           uint8 // byte 2: height in SmallZ

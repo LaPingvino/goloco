@@ -20,7 +20,6 @@ const (
 	vVeh2CurrentSpeed     = 0x56 // int32 Speed32 (16.16 mph)
 	vVeh2Flags73          = 0x73 // uint8 bit 0 isBrokenDown
 	gameStateOrders       = 0x461E44
-	gameStateOrdersType2  = 0x460224
 	maxOrders             = 256000
 )
 
@@ -29,19 +28,15 @@ const (
 // after userStrings, so 0x442A44 (GameStateType2: 0x440E24, the same 0x1C20
 // shift as userStrings and orders).
 const (
-	gameStateRoutings      = 0x442A44
-	gameStateRoutingsType2 = 0x440E24
-	MaxRoutingVehicles     = 1000
-	RoutingsPerVehicle     = 64
+	gameStateRoutings  = 0x442A44
+	MaxRoutingVehicles = 1000
+	RoutingsPerVehicle = 64
 )
 
 // ParseRoutings reads the routing table (RoutingManager), flat:
 // [vehicleRef*64 + index] — i.e. indexed by a RoutingHandle's _data.
 func ParseRoutings(gs []byte) []uint16 {
 	off := gameStateRoutings
-	if len(gs) == GameStateSizeType2 {
-		off = gameStateRoutingsType2
-	}
 	n := MaxRoutingVehicles * RoutingsPerVehicle
 	if len(gs) < off+2*n {
 		return nil
@@ -55,9 +50,6 @@ func ParseRoutings(gs []byte) []uint16 {
 
 func ParseOrders(gs []byte) []byte {
 	off := gameStateOrders
-	if len(gs) == GameStateSizeType2 {
-		off = gameStateOrdersType2
-	}
 	if len(gs) < off+maxOrders {
 		return nil
 	}
@@ -102,9 +94,6 @@ func ParseCurrentDay(gs []byte) uint32 {
 // in entity-slot order.
 func ParseVehicleListEntries(gs []byte) []VehicleListEntry {
 	tableOffset := EntityTableOffset
-	if len(gs) == GameStateSizeType2 {
-		tableOffset = EntityTableOffsetType2
-	}
 	if len(gs) < tableOffset+MaxEntities*EntitySize {
 		return nil
 	}

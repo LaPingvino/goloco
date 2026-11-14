@@ -30,6 +30,7 @@ type MoneyEffect struct {
 	NumMovements uint16
 	MoveDelay    uint8
 	Wiggle       uint8
+	Raw          []byte // the entity slot as a save held it (nil: made in play)
 }
 
 // moneyWiggle is _wiggleAmounts (0x004FADD0): the drift per viewport

@@ -41,9 +41,10 @@ func (m *Map) ensureCompanySlots() {
 	for len(m.CompanyColourSchemes) < companyMaxCount {
 		m.CompanyColourSchemes = append(m.CompanyColourSchemes, scenario.CompanyColourScheme{})
 	}
-	for len(m.CompanyColours) < companyMaxCount {
+	for len(m.CompanyColours) < companyMaxCount+1 { // updateColours: every company's, then the neutral owner's (15) grey
 		m.CompanyColours = append(m.CompanyColours, 0)
 	}
+	m.CompanyColours[companyMaxCount] = colourGrey
 	for len(m.UnlockedVehicles) < companyMaxCount {
 		m.UnlockedVehicles = append(m.UnlockedVehicles, [7]uint32{})
 	}

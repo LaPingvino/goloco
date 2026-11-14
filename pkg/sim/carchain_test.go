@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/LaPingvino/goloco/pkg/scenario"
@@ -77,7 +78,7 @@ func TestFlipCarMultiComponent(t *testing.T) {
 	}
 	m.Entities[11].Cargo.TownFrom = saved[11].Cargo.TownFrom
 	for i := range m.Entities {
-		if m.Entities[i] != saved[i] {
+		if !reflect.DeepEqual(m.Entities[i], saved[i]) {
 			t.Fatalf("entity %d differs after two flips: %+v vs %+v", m.Entities[i].ID, m.Entities[i], saved[i])
 		}
 	}

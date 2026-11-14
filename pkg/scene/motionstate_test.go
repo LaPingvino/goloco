@@ -5,6 +5,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/core"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -1567,7 +1568,7 @@ func TestFlipCarRoundTrip(t *testing.T) {
 			}
 			m.FlipCar(tr1, nf)
 			for i := range m.Entities {
-				if m.Entities[i] != saved[i] {
+				if !reflect.DeepEqual(m.Entities[i], saved[i]) {
 					t.Fatalf("head %d: entity %d differs after two flips", m.Entities[tr.Head].ID, m.Entities[i].ID)
 				}
 			}
