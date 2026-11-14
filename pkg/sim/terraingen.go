@@ -395,6 +395,20 @@ const (
 	seasonWinter = 1
 )
 
+// updateSeason is Scenario::updateSeason: the climate's season for a day of
+// the year (its firstSeason, then one on after each season's length).
+func (m *Map) updateSeason(dayOfYear int, c *objects.ClimateObject) {
+	season := c.FirstSeason
+	for _, l := range c.SeasonLength {
+		dayOfYear -= int(l)
+		if dayOfYear < 0 {
+			break
+		}
+		season = (season + 1) % 4 // nextSeason: autumn → winter → spring → summer → autumn
+	}
+	m.CurrentSeason = season
+}
+
 // InitialiseSnowLine is initialiseSnowLine: the season for today's day of
 // the year from the climate (updateSeason), and that season's snow line.
 func (m *Map) InitialiseSnowLine(om *objects.ObjectManager) {
@@ -402,20 +416,28 @@ func (m *Map) InitialiseSnowLine(om *objects.ObjectManager) {
 	if c == nil {
 		return
 	}
-	day := CalcDate(m.CurrentDay).DayOfYear
-	season := c.FirstSeason
-	for _, l := range c.SeasonLength {
-		day -= int(l)
-		if day < 0 {
-			break
-		}
-		season = (season + 1) % 4 // nextSeason: autumn → winter → spring → summer → autumn
-	}
-	m.CurrentSeason = season
-	if season == seasonWinter {
+	m.updateSeason(CalcDate(m.CurrentDay).DayOfYear, c)
+	if m.CurrentSeason == seasonWinter {
 		m.CurrentSnowLine = c.WinterSnowLine
 	} else {
 		m.CurrentSnowLine = c.SummerSnowLine
+	}
+}
+
+// updateSnowLine is Scenario::updateSnowLine (tickDate, daily): the season
+// for the day, the snow line a step towards that season's.
+func (m *Map) updateSnowLine(dayOfYear int, om *objects.ObjectManager) {
+	if om == nil || om.Climate == nil {
+		return
+	}
+	c := om.Climate
+	m.updateSeason(dayOfYear, c)
+	if m.CurrentSeason == seasonWinter {
+		if m.CurrentSnowLine != c.WinterSnowLine {
+			m.CurrentSnowLine--
+		}
+	} else if m.CurrentSnowLine != c.SummerSnowLine {
+		m.CurrentSnowLine++
 	}
 }
 
