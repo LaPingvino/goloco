@@ -56,10 +56,10 @@ func (m *Map) UpdateTownLabel(i int, g1 G1Raw) {
 	}
 }
 
-// stationIcons is getTransportIconsFromStationFlags's text: the transport
+// StationIcons is getTransportIconsFromStationFlags's text: the transport
 // glyphs of the modes the station serves, rail, road, air, water in order
 // (the label_icons_* strings).
-func stationIcons(flags uint16) string {
+func StationIcons(flags uint16) string {
 	s := ""
 	for i, c := range [4]rune{177, 182, 183, 184} {
 		if flags&(1<<i) != 0 {
@@ -75,7 +75,7 @@ func stationIcons(flags uint16) string {
 // in that zoom's (>> zoom).
 func (m *Map) UpdateStationLabel(id int, g1 G1Raw) {
 	st := &m.StationNames[id]
-	text := m.StationName(id) + " " + stationIcons(st.Flags)
+	text := m.StationName(id) + " " + StationIcons(st.Flags)
 	gx, gy := m.GameToScreen(int32(st.X), int32(st.Y), int32(st.Z))
 	vx, vy := int(gx), int(gy)
 	for z := 0; z < 4; z++ {

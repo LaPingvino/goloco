@@ -315,6 +315,7 @@ func (g *Game) updateHeld() {
 	}
 	g.updateWindows()
 	g.updateTooltip()                           // a window's tooltip under the resting mouse
+	g.updateMapTip()                            // processMouseOver's map tooltip and MapToolTip::open
 	if g.industryToolOn() && !g.inTitleScreen { // the Fund New Industries tool: its ghost under the cursor
 		if g.overWindow(g.mouseX, g.mouseY) {
 			g.w.SetMapSelection(false, 0, 0, 0, 0)

@@ -14,9 +14,9 @@ import (
 // carries a tile coordinate so the caller can centre the camera on it via
 // World.SetCamera.
 
-// townSizeNames maps the S5 TownSize enum to a display label.
+// TownSizeNames maps the S5 TownSize enum to a display label.
 // OpenLoco reference: include/OpenLoco/World/Town.h enum class TownSize.
-var townSizeNames = [...]string{"Hamlet", "Village", "Town", "City", "Metropolis"}
+var TownSizeNames = [...]string{"Hamlet", "Village", "Town", "City", "Metropolis"}
 
 // TownInfo is one row of the Towns list window.
 type TownInfo struct {
@@ -36,8 +36,8 @@ func (w *Map) TownList() []TownInfo {
 	out := make([]TownInfo, 0, len(w.Towns))
 	for i, t := range w.Towns {
 		size := ""
-		if int(t.Size) < len(townSizeNames) {
-			size = townSizeNames[t.Size]
+		if int(t.Size) < len(TownSizeNames) {
+			size = TownSizeNames[t.Size]
 		}
 		out = append(out, TownInfo{
 			Name:         w.TownName(t.Name, i),
@@ -253,28 +253,44 @@ func (w *Map) LiveVehicleList() []scenario.VehicleListEntry {
 	idx := w.entityIndex()
 	var out []scenario.VehicleListEntry
 	for i := range w.Entities {
-		h := &w.Entities[i]
-		if h.EntityType != scenario.VehicleTypeHead {
-			continue
+		if v, ok := w.liveVehicle(i, idx); ok {
+			out = append(out, v)
 		}
-		tr, err := w.trainOf(h.ID, idx)
-		if err != nil {
-			continue
-		}
-		v1, v2 := &w.Entities[tr.Veh1], &w.Entities[tr.Veh2]
-		var sum int32
-		for _, p := range v2.Profit {
-			sum += p
-		}
-		out = append(out, scenario.VehicleListEntry{
-			HeadID: h.ID, Owner: h.Owner, VehicleType: h.VehicleType, Name: h.Name, Ordinal: h.OrdinalNumber, Status: h.Status,
-			DayCreated: v1.DayCreated, RecentProfit: sum, Reliability: v2.Veh2Reliability,
-			TileX: int16(h.TileX), VehicleFlags: h.VehicleFlags, OrderTableOffset: h.OrderTableOffset, CurrentOrder: h.CurrentOrder,
-			SizeOfOrderTable: h.SizeOfOrderTable, StationID: h.StationID, ManualPower: h.ManualPower,
-			BrokenDown: v2.Var73&1 != 0, CurrentSpeed: v2.CurrentSpeed,
-		})
 	}
 	return out
+}
+
+// LiveVehicle is LiveVehicleList's entry of one head (by entity id).
+func (w *Map) LiveVehicle(head uint16) (scenario.VehicleListEntry, bool) {
+	idx := w.entityIndex()
+	i, ok := idx[head]
+	if !ok {
+		return scenario.VehicleListEntry{}, false
+	}
+	return w.liveVehicle(i, idx)
+}
+
+func (w *Map) liveVehicle(i int, idx map[uint16]int) (scenario.VehicleListEntry, bool) {
+	h := &w.Entities[i]
+	if h.EntityType != scenario.VehicleTypeHead {
+		return scenario.VehicleListEntry{}, false
+	}
+	tr, err := w.trainOf(h.ID, idx)
+	if err != nil {
+		return scenario.VehicleListEntry{}, false
+	}
+	v1, v2 := &w.Entities[tr.Veh1], &w.Entities[tr.Veh2]
+	var sum int32
+	for _, p := range v2.Profit {
+		sum += p
+	}
+	return scenario.VehicleListEntry{
+		HeadID: h.ID, Owner: h.Owner, VehicleType: h.VehicleType, Name: h.Name, Ordinal: h.OrdinalNumber, Status: h.Status,
+		DayCreated: v1.DayCreated, RecentProfit: sum, Reliability: v2.Veh2Reliability,
+		TileX: int16(h.TileX), VehicleFlags: h.VehicleFlags, OrderTableOffset: h.OrderTableOffset, CurrentOrder: h.CurrentOrder,
+		SizeOfOrderTable: h.SizeOfOrderTable, StationID: h.StationID, ManualPower: h.ManualPower,
+		BrokenDown: v2.Var73&1 != 0, CurrentSpeed: v2.CurrentSpeed,
+	}, true
 }
 
 // VehicleName formats a head's name (formatString(name, ordinalNumber)): a
@@ -311,4 +327,11 @@ func (w *Map) OwnerName(id int, om *objects.ObjectManager) string {
 		return strings.ReplaceAll(om.CompetitorObjects[f.Competitor].Name, "\x88", "")
 	}
 	return ""
+}
+
+// StationCargoText is Station::getStatusString and the accepted cargoes'
+// names (", " between them, cargo order).
+func (w *Map) StationCargoText(id int, cargos []*objects.CargoObject) (status, accepts string) {
+	status, _, accepts = w.stationCargoText(id, cargos)
+	return status, accepts
 }

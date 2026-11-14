@@ -150,14 +150,14 @@ type BuildVehicleWindow struct {
 	// drawTrackTypeTabs' images for a tab (the active one animated by the
 	// caller) and their colour (-1: none).
 	TabIcon, TrackTabIcon func(i int) (img, colour int)
-	Rows                []BVRow
-	Hover               int // a row index, or -1
-	Scroll              int
-	hold                uilayout.VScrollHold // a press on the list\'s scrollbar held (stateScrollLeft)
-	Primary, Secondary  uint8                // the controlling company's colours for the vehicles
-	Message             string
-	OnTab               func(int)       // a vehicle-type tab
-	OnBuy               func(id uint16) // a row clicked (onScrollMouseDown): buy that vehicle
+	Rows                  []BVRow
+	Hover                 int // a row index, or -1
+	Scroll                int
+	hold                  uilayout.VScrollHold // a press on the list\'s scrollbar held (stateScrollLeft)
+	Primary, Secondary    uint8                // the controlling company's colours for the vehicles
+	Message               string
+	OnTab                 func(int)       // a vehicle-type tab
+	OnBuy                 func(id uint16) // a row clicked (onScrollMouseDown): buy that vehicle
 }
 
 // Draw is draw + drawScroll(vehicle_selection).

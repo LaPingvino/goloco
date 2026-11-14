@@ -92,6 +92,7 @@ type Game struct {
 	prompt           *ui.PromptOkCancel  // an open confirmation (modal: it takes all input)
 	textInput        *ui.TextInputWindow // an open text input (renaming); PARTIAL: takes all input, upstream's is not modal
 	errorWin         *ui.ErrorWindow     // WindowType::error (one at a time)
+	mapTip           mapTipState         // the map tooltip (maptooltip.go)
 
 	// The construction window (construction.go).
 	buildMode   int   // buildModeNone / Track / Road / Dock / Airport
