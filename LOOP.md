@@ -113,7 +113,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [ ] N19 News / Terraform leftovers: toggleLastAnnouncement (its key is Space, goloco's pause); the news draws over
 >       dropdowns / prompts; tool cursors and construct sounds; the tree / wall lists' tooltips; default tree / wall kept
 >       per session only; gridlinesOnLandscape on close; the expanded tree list under the bottom panels.
-> - [ ] N20 The tile loop's road tick: RoadElement.cpp tick (an AI company's town-compatible road, unused, handed to
+> - [x] N20 The tile loop's road tick: RoadElement.cpp tick (an AI company's town-compatible road, unused, handed to
 >       neutral via a road-removal-and-rebuild as the company) — matters once AI companies build roads. With it TileManager::updateYearly (the roads' unk7_40 → unk7_80).
 > - [ ] N21 The map's right click: ViewportInteraction rightOver (the track / road "Right-Click to Modify" texts,
 >       "Owned by", the remove texts of signals, stations, trees, walls, extras; buildings' produces / accepts) and
