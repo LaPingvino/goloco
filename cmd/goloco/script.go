@@ -29,7 +29,9 @@ import (
 //	click <x> <y>       move + left press (release follows next frame, with
 //	                    the next command: put a wait after a click whose
 //	                    release must land where it pressed, e.g. a caption)
-//	rightclick <x> <y>  move + right press
+//	rightclick <x> <y>  move + right press (release follows next frame)
+//	rightpress <x> <y>  move + right press, held until rightrelease
+//	rightrelease <x> <y>  move + right release (after rightpress)
 //	press <x> <y>       move + left press, held until release
 //	release <x> <y>     move + left release (after press)
 //	drag <x1> <y1> <x2> <y2>  press, five moves, release (a window by its title)
@@ -41,7 +43,11 @@ import (
 //	                    delivered, rotation or townwindows (the controlling company's cash, station
 //	                    and vehicle counts, its vehicles on the map, cargo units delivered — this month
 //	                    and the kept history; the view's rotation 0–3; 1 while a Town window is open; maptip: 1
-//	                    while the map tooltip shows, its text logged), op one of
+//	                    while the map tooltip shows, its text logged; conswindow, consbuilding, constab: the
+//	                    construction window open, building on from a position, its tab; camx, camy: the view's
+//	                    position; townlist, stationlist, vehiclelist, industrylist, companywindow: 1 while one
+//	                    is open; maptip~TEXT: 1 while the map tooltip shows text holding TEXT, _ for a space),
+//	                    op one of
 //	                    > >= == <= <; a failed check makes the run exit 1
 //	news <type> [a [b [c]]] [date <day>]  post a message of that MessageType
 //	                    with those subjects for the player's company (first
@@ -61,6 +67,7 @@ type inputScript struct {
 	leftJustReleased bool
 	leftHeld         bool // between press and release
 	rightJust        bool
+	rightHeld        bool // between rightpress and rightrelease
 	rightReleaseNext bool
 	rightJustRel     bool
 	wheelDY          float64
@@ -173,6 +180,13 @@ func (s *inputScript) step() {
 		s.mouseX, s.mouseY, s.hasMouse = arg(1), arg(2), true
 		s.rightJust = true
 		s.rightReleaseNext = true
+	case "rightpress":
+		s.mouseX, s.mouseY, s.hasMouse = arg(1), arg(2), true
+		s.rightJust, s.rightHeld = true, true
+	case "rightrelease":
+		s.mouseX, s.mouseY, s.hasMouse = arg(1), arg(2), true
+		s.rightHeld = false
+		s.rightReleaseNext = true
 	case "type":
 		s.typed = []rune(strings.TrimPrefix(strings.TrimSpace(line), fields[0]+" "))
 	case "key":
@@ -240,7 +254,7 @@ func (g *Game) inMouseJustPressed(btn ebiten.MouseButton) bool {
 
 // inMousePressed is ebiten.IsMouseButtonPressed with a script's held press.
 func (g *Game) inMousePressed(btn ebiten.MouseButton) bool {
-	if g.script != nil && btn == ebiten.MouseButtonLeft && g.script.leftHeld {
+	if g.script != nil && (btn == ebiten.MouseButtonLeft && g.script.leftHeld || btn == ebiten.MouseButtonRight && g.script.rightHeld) {
 		return true
 	}
 	return ebiten.IsMouseButtonPressed(btn)
@@ -429,11 +443,39 @@ func (g *Game) scriptExpect() {
 			got = 1
 			log.Printf("[Script] map tooltip: %q", strings.NewReplacer("\x05", " / ", string(ui.MapTipColour3), "").Replace(t.tip.Text))
 		}
+	case "conswindow": // 1 while the construction window is open
+		if g.buildMode != buildModeNone && g.consWin() != nil {
+			got = 1
+		}
+	case "consbuilding": // 1 while the construction window builds on from a position (not hovering)
+		if g.consHasHead() && g.consWin() != nil && !g.w.Cons.Hover {
+			got = 1
+		}
+	case "constab": // the construction window's tab (0 construction, 1 station, 2 signal, 3 overhead)
+		got = int64(g.consTab)
+	case "camx", "camy": // the main view's position (viewport pixels)
+		cx, cy := g.w.CameraPos()
+		got = int64(cx)
+		if req[0] == "camy" {
+			got = int64(cy)
+		}
+	case "townlist", "stationlist", "vehiclelist", "industrylist", "companywindow": // 1 while such a window is open
+		typ := map[string]ui.WindowType{"townlist": ui.WindowTypeTownList, "stationlist": ui.WindowTypeStationList,
+			"vehiclelist": ui.WindowTypeVehicleList, "industrylist": ui.WindowTypeIndustryList, "companywindow": ui.WindowTypeCompany}[req[0]]
+		if g.wins.Find(typ, ui.AnyNumber) != nil {
+			got = 1
+		}
 	case "terraformwindow": // 1 while the Terraform window is open
 		if g.terraformWin() != nil {
 			got = 1
 		}
 	default:
+		if sub, ok := strings.CutPrefix(req[0], "maptip~"); ok { // 1 while the map tooltip shows text holding this (_ for a space)
+			if t := &g.mapTip; t.open && strings.Contains(t.tip.Text, strings.ReplaceAll(sub, "_", " ")) {
+				got = 1
+			}
+			break
+		}
 		// KEY@X,Y: a tile's surface height (baseZ, in SmallZ), its slope bits,
 		// its water level, its trees and walls (ghosts not counted).
 		key, at, _ := strings.Cut(req[0], "@")

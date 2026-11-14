@@ -117,12 +117,16 @@ func (g *Game) openOptionsWindow() {
 		}
 		w.OnCurrency = func(dat string) { useCurrency(g.r.ObjMgr, dat) } // currencyDropdown
 	}
-	// Controls tab: Config::edgeScrolling (default on). zoomToCursor and
-	// invertRightMouseViewPan are kept in the window only: goloco has neither yet.
-	w.Controls[0] = !g.noEdgeScrolling
+	// Controls tab: Config::edgeScrolling (default on) and
+	// invertRightMouseViewPan (rightclick.go). zoomToCursor is kept in the
+	// window only: goloco always zooms to the cursor.
+	w.Controls[0], w.Controls[2] = !g.noEdgeScrolling, g.invertRightPan
 	w.OnControl = func(i int, v bool) {
-		if i == 0 {
+		switch i {
+		case 0:
 			g.noEdgeScrolling = !v
+		case 2:
+			g.invertRightPan = v
 		}
 	}
 	w.Scale = g.scale

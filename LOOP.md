@@ -115,10 +115,19 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       per session only; gridlinesOnLandscape on close; the expanded tree list under the bottom panels.
 > - [x] N20 The tile loop's road tick: RoadElement.cpp tick (an AI company's town-compatible road, unused, handed to
 >       neutral via a road-removal-and-rebuild as the company) — matters once AI companies build roads. With it TileManager::updateYearly (the roads' unk7_40 → unk7_80).
-> - [ ] N21 The map's right click: ViewportInteraction rightOver (the track / road "Right-Click to Modify" texts,
->       "Owned by", the remove texts of signals, stations, trees, walls, extras; buildings' produces / accepts) and
->       the rightReleased actions (modify opens construction on the piece, remove signal / station / tree / wall …).
->       Also: map tooltips in other viewports (town / station windows), the hovered station's highlight.
+> - [x] N21 The map's right click — done 2026-11-14: ViewportInteraction rightOver (pkg/world/rightover.go: every
+>       text) and handleRightReleased with MouseInput's viewportRight (cmd/goloco/rightclick.go: a click acts, a drag
+>       pans upstream's way — the view goes with the mouse, twice as far, cursor hidden; Options' invert checkbox turns
+>       it round); the paint structs' modId and the ghosts' noInteraction. Checked against OpenLoco on the title game
+>       (scripts/olref/tours/rightclick.txt); playthrough L. LEFT → N22.
+> - [ ] N22 Right-click leftovers: the hidden cursor held in place while panning (startCursorDrag — pointer lock);
+>       invertRightMouseViewPan kept in openloco.yml; the right drag in scroll views (scrollRight); map tooltips and
+>       right clicks in other viewports (town / station windows); the hovered station's highlight; the see-through
+>       view flags (nothing sets them yet); the demolish sound; repeatedSignalMode ("Signals block", removal along the
+>       block); the Overhead tab's mod section (single only); the Signal and Overhead tabs have no map tool yet, so
+>       their right-click removals are only reachable on existing signals / mods; openAtTrack's remembered signal /
+>       station / bridge per track type (Scenario::getConstruction); the construction arrow in the window's piece
+>       preview (OpenLoco draws it there too).
 > - [ ] N14 (PAUSED until an editor exists) the town list's editor build tabs; updateBuilding's isEditorMode return;
 >       the tileManagerLoaded gate.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).

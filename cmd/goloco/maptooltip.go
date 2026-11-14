@@ -18,9 +18,10 @@ import (
 // the mouse has rested 25 ticks (within 5 px; a right press restarts the
 // count) — the selection's size at once — and not with ctrl or shift held,
 // the right button down or an error window open.
-// PARTIAL: rightOver (the track, road, building, tree … texts), viewports
-// other than the main view's, a tool's cursor hiding the item (onToolCursor's
-// out), the hovered station's highlight.
+// Then rightOver's text (pkg/world/rightover.go): the track or road to
+// modify, the signal, station, tree, wall … to remove, a building's cargo.
+// PARTIAL: viewports other than the main view's, a tool's cursor hiding the
+// item (onToolCursor's out), the hovered station's highlight.
 
 // mapTipTick is a tick of upstream's 40 Hz loop (Engine::UpdateRateInMs).
 const mapTipTick = 25 * time.Millisecond
@@ -59,7 +60,7 @@ func (g *Game) updateMapTip() {
 }
 
 // mapTipMouseOver is processMouseOver's part for the tooltip: reset, then
-// the item under the mouse or the selection's size.
+// the item under the mouse, or the selection's size and rightOver's text.
 func (g *Game) mapTipMouseOver() {
 	t := &g.mapTip
 	t.tip = world.MapTip{Owner: -1} // MapToolTip::reset
@@ -81,6 +82,13 @@ func (g *Game) mapTipMouseOver() {
 	if on, _, a := g.w.MapSelection(); on {
 		l, d := abs(a[0]-a[2])+1, abs(a[1]-a[3])+1
 		t.tip.Text = itoa(l) + " x " + itoa(d)
+	}
+	// ViewportInteraction::rightOver: what a right click would act on gives
+	// its text (over a window there is no viewport under the mouse).
+	if !g.overWindow(mx, my) && g.r.ObjMgr != nil {
+		if _, tip, hasTip, ok := g.w.RightOver(mx, my, g.rightOverState()); ok && hasTip {
+			t.tip = tip
+		}
 	}
 }
 

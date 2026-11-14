@@ -1,0 +1,69 @@
+# The map's right click (ViewportInteraction rightOver / handleRightReleased,
+# MouseInput's viewportRight) on the title game opened at tile 331,295
+# (untitle.py, then `go run ./scripts/olref/setview -tile 331,295 title.SV5
+# rc.SV5`), one script for both games: the map tooltips over a house, another
+# company's track, its station, a town road and a tree (none); a right click
+# on the road (the construction window, building on from the piece); with
+# that window up, the tree's and the house's "Right-Click to Remove", and the
+# tree removed; a right click on the track (the owner's Company window) and
+# on the station (its owner's station list). Last a right drag, which pans
+# and opens nothing (OpenLoco holds the cursor and pans twice the way;
+# goloco's map follows the mouse).
+# The click at 571,451 closes the news window the title game opens with.
+# goloco: shots land in the working directory — sed the names to a scratch
+# directory, the game has to start in the repository.
+# 2026-11-14, OpenLoco 09d74ee: the texts, the owner's face, and what each
+# click opens agree.
+wait 12
+click 688 592
+wait 0.5
+click 571 451
+wait 0.5
+move 400 365
+wait 3
+shot rc-01-house.png
+move 590 260
+wait 3
+shot rc-02-track.png
+move 320 310
+wait 3
+shot rc-03-station.png
+move 440 385
+wait 3
+shot rc-04-road.png
+move 204 262
+wait 3
+shot rc-05-tree.png
+rightclick 440 385
+wait 1
+move 500 520
+wait 1
+shot rc-06-construction.png
+move 204 262
+wait 3
+shot rc-07-tree-remove.png
+move 400 365
+wait 3
+shot rc-08-house-remove.png
+rightclick 204 262
+wait 1
+move 500 520
+wait 1
+shot rc-09-tree-gone.png
+rightclick 590 260
+wait 1
+move 500 520
+wait 1
+shot rc-10-company.png
+rightclick 320 310
+wait 1
+move 500 560
+wait 1
+shot rc-11-stationlist.png
+rightpress 600 300
+wait 0.3
+move 620 310
+wait 0.3
+rightrelease 620 310
+wait 1
+shot rc-12-panned.png

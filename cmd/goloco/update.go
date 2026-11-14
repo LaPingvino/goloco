@@ -452,23 +452,7 @@ func (g *Game) viewportLeftRelease() {
 // updateCamera moves the main view: right-drag, the pan and zoom keys, the
 // wheel (unless a window takes it), and edge scrolling.
 func (g *Game) updateCamera() {
-	// Right-click drag to pan the map.
-	// OpenLoco reference: src/OpenLoco/src/Input/MouseInput.cpp stateViewportRight()
-	// dragOffset is scaled by (1 << zoom) to convert screen pixels → world pixels.
-	if g.inMouseJustPressed(ebiten.MouseButtonRight) {
-		g.rightDragging = true
-		g.dragLastX, g.dragLastY = g.mouseX, g.mouseY
-	}
-	if g.inMouseJustReleased(ebiten.MouseButtonRight) {
-		g.rightDragging = false
-	}
-	if g.rightDragging && ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight) {
-		worldScale := float64(int(1) << g.w.GetZoom())
-		dx := float64(g.mouseX-g.dragLastX) * worldScale
-		dy := float64(g.mouseY-g.dragLastY) * worldScale
-		g.w.PanCamera(-dx, -dy) // negative: drag right moves camera left
-		g.dragLastX, g.dragLastY = g.mouseX, g.mouseY
-	}
+	g.updateViewportRight() // the right button: a drag pans, a click acts (rightclick.go)
 
 	// Camera panning: WASD or arrow keys (smooth, pixels per frame)
 	const panSpeed = 4.0
@@ -530,7 +514,7 @@ func (g *Game) updateCamera() {
 	// while a toolbar button near the top was clicked.
 	shiftCtrl := ebiten.IsKeyPressed(ebiten.KeyShift) || ebiten.IsKeyPressed(ebiten.KeyControl)
 	positioning := g.wins.Dragging()
-	if ebiten.IsFocused() && !g.rightDragging && !g.noEdgeScrolling && !g.inTitleScreen && !shiftCtrl && !positioning {
+	if ebiten.IsFocused() && !g.vpRight.on && !g.noEdgeScrolling && !g.inTitleScreen && !shiftCtrl && !positioning {
 		edgeSpeed := float64(int(edgeScrollingSpeed) << g.w.GetZoom())
 		if g.mouseX == 0 {
 			g.w.PanCamera(-edgeSpeed, 0)
