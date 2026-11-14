@@ -629,7 +629,7 @@ func tileElemZ(t *sim.Tile, ref scenario.ElemRef) uint8 {
 
 // paintElement is the switch in paintTileElements.
 func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref scenario.ElemRef, prev *scenario.ElemRef, x, y int, ticks uint32) {
-	s.CurrentItem = nil // setCurrentItem: the element painted now (set below for the kinds diagnosed so far)
+	s.CurrentItem, s.ElGhost = nil, false // setCurrentItem: the element painted now; its ghost flag for the painters
 	om, sprite, v := r.Objects, r.Sprite, struct{ Ticks uint32 }{ticks}
 	_ = v
 	switch ref.Kind {
@@ -641,6 +641,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		if tk.AiAllocated {                  // an AI company's planned track: not drawn (showAiPlanningGhosts, a debug option, off)
 			return
 		}
+		s.ElGhost = tk.Ghost
 		if to := om.GetTrackObjectByIndex(int(tk.TrackObjectID)); to != nil {
 			remap := r.companyRemap(m, tk.Owner)
 			if tk.Ghost { // baseTrackImageColour = Gfx::applyGhostToImage(0)
@@ -663,6 +664,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		if rd.AiAllocated {                 // paintRoad: as the track's
 			return
 		}
+		s.ElGhost = rd.Ghost
 		if ro := om.GetRoadObjectByIndex(int(rd.RoadObjectID)); ro != nil {
 			var light uint8 // streetLightStyle shares the level crossing id's bits; only without crossing, signal or station
 			if !rd.HasLevelCrossing && !rd.HasSignalElement && !rd.HasStationElement {
@@ -684,15 +686,17 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			return
 		}
 		tk := t.Tracks[prev.Index]
+		s.CurrentItem = &t.Signals[ref.Index] // setCurrentItem(element)
 		s.PaintSignal(sg.Rotation, sg.BaseZ, int(tk.TrackID), int(tk.SequenceIndex), tk.IsLast,
-			paint.SignalSide{Has: sg.HasLeftSignal, Object: int(sg.SignalObjectID), Frame: sg.Sides[0].Frame()}, // the live frame (updateSignalAnimation steps it)
-			paint.SignalSide{Has: sg.HasRightSignal, Object: int(sg.RightSignalObjectID), Frame: sg.Sides[1].Frame()},
+			paint.SignalSide{Has: sg.HasLeftSignal, Object: int(sg.SignalObjectID), Frame: sg.Sides[0].Frame(), Ghost: sg.Ghost || sg.LeftGhost}, // the live frame (updateSignalAnimation steps it)
+			paint.SignalSide{Has: sg.HasRightSignal, Object: int(sg.RightSignalObjectID), Frame: sg.Sides[1].Frame(), Ghost: sg.Ghost || sg.RightGhost},
 			r.signalObj, sprite)
 	case scenario.KindStation:
 		s.CurrentItem = &t.Stations[ref.Index] // setCurrentItem(element)
 		if t.Stations[ref.Index].AiAllocated { // paintStation: as the track's
 			return
 		}
+		s.ElGhost = t.Stations[ref.Index].Ghost
 		r.paintStation(s, m, t, t.Stations[ref.Index], prev, x, y, ticks)
 	case scenario.KindBuilding:
 		b := t.Buildings[ref.Index]
@@ -733,6 +737,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			cmap, x, y, v.Ticks, sprite)
 	case scenario.KindWall:
 		wl := t.Walls[ref.Index]
+		s.CurrentItem = &t.Walls[ref.Index] // setCurrentItem(element)
 		wo := om.GetWallObjectByIndex(int(wl.WallObjectID))
 		if wo == nil {
 			return
@@ -759,6 +764,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			cmap, sprite)
 	case scenario.KindTree:
 		tr := t.Trees[ref.Index]
+		s.CurrentItem = &t.Trees[ref.Index] // setCurrentItem(element)
 		to := om.GetTreeObjectByIndex(int(tr.TreeObjectID))
 		if to == nil {
 			return

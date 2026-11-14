@@ -428,3 +428,58 @@ func (s *State) EndConstruction(c *Cmd) {
 	s.RemoveConstructionGhosts(c)
 	s.ConsArrow.On = false
 }
+
+// ConstructionEnd is one end of a piece as the construction state takes it
+// (cState.nextTile / previousTile with their rotations).
+type ConstructionEnd struct {
+	X, Y, Z  int32
+	Rotation uint8
+}
+
+// NextAndPreviousTile is Common::setNextAndPreviousTrackTile /
+// setNextAndPreviousRoadTile (Construction/Common.cpp): for the track or road
+// element (its id, sequence index and rotation) at world (x, y, z), where
+// construction continues after the piece's end (next) and before its start
+// (previous: the start itself turned round, a step back unless diagonal).
+func NextAndPreviousTile(road bool, id, seq, rotation uint8, x, y, z int32) (next, previous ConstructionEnd, ok bool) {
+	var pieces []PreviewTrack
+	var size TrackCoord
+	if road {
+		if int(id) >= len(RoadPieces) {
+			return next, previous, false
+		}
+		pieces, size = RoadPieces[id], RoadCoordinates[int(id)<<3|int(rotation&3)]
+	} else {
+		if int(id) >= len(TrackPieces) {
+			return next, previous, false
+		}
+		pieces, size = TrackPieces[id], TrackCoordinates[int(id)<<3|int(rotation&3)]
+	}
+	if int(seq) >= len(pieces) {
+		return next, previous, false
+	}
+	p := pieces[seq]
+	dx, dy := rotOffset(p.X, p.Y, rotation)
+	fx, fy, fz := x-int32(dx), y-int32(dy), z-int32(p.Z)
+	next = ConstructionEnd{fx + int32(size.DX), fy + int32(size.DY), fz + int32(size.DZ), size.RotEnd}
+	unk := ReverseRotation[size.RotBegin]
+	previous = ConstructionEnd{fx, fy, fz, unk}
+	if unk < 12 {
+		previous.X += kRotationOffset[unk][0]
+		previous.Y += kRotationOffset[unk][1]
+	}
+	return next, previous, true
+}
+
+// ConstructionOpenAt is openAtTrack / openAtRoad's state (Common.cpp
+// 0x004A0EAD, 0x004A147F): building on from end, straight and level, with
+// the element's mods.
+func (s *State) ConstructionOpenAt(end ConstructionEnd, mods uint8) {
+	cs := &s.Cons
+	cs.Hover = false
+	cs.X, cs.Y, cs.Z, cs.Rotation = end.X, end.Y, end.Z, end.Rotation
+	cs.Piece, cs.Gradient = 0, 0
+	cs.Mods = mods
+	cs.Cost = 0
+	cs.arrowBlink, cs.arrowFrame = false, 0
+}

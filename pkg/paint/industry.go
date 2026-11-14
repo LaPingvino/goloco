@@ -143,7 +143,10 @@ type AirportObj struct {
 // PaintAirport — a port of Paint/PaintAirport.cpp paintAirport and
 // paintAirportBuilding, with shadows and the company colour. PARTIAL: ghosts.
 func (s *Session) PaintAirport(rotationEl, sequenceIndex, baseZ uint8, obj AirportObj, tileX, tileY int, ticks uint32, sprite func(int) *gfx8.Sprite) {
-	s.ItemType = ItemAirport // setItemType (PaintAirport.cpp:60; the inner noInteraction resets not yet ported)
+	s.ItemType = ItemAirport // setItemType (PaintAirport.cpp:60)
+	if s.ElGhost {           // elStation.isGhost()
+		s.ItemType = ItemNoInteraction
+	}
 	rotation := (s.Rotation + rotationEl) & 3
 	// "Odd... different to industry, building, dock": the clear height is the
 	// sum of the variation's part heights, rounded up to 4.
@@ -201,7 +204,10 @@ func (s *Session) paintStationBuilding(obj AirportObj, off, bbOff, bbSz Pos3, ro
 // height from the element's clear height), with shadows and the company
 // colour. PARTIAL: ghosts.
 func (s *Session) PaintDocks(rotationEl, sequenceIndex, baseZ, clearZ uint8, obj AirportObj, tileX, tileY int, ticks uint32, sprite func(int) *gfx8.Sprite) {
-	s.ItemType = ItemDock // setItemType (PaintDocks.cpp:55; the inner noInteraction resets not yet ported)
+	s.ItemType = ItemDock // setItemType (PaintDocks.cpp:55)
+	if s.ElGhost {        // elStation.isGhost()
+		s.ItemType = ItemNoInteraction
+	}
 	rotation := (s.Rotation + rotationEl) & 3
 	baseHeight := int(baseZ) * 4
 	bbz := int(clearZ)*4 - baseHeight - 2 // 66ca922: no vanilla 128 clamp

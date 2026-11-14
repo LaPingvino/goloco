@@ -14,11 +14,67 @@ type LeftItem struct {
 	ID   int                   // the head's entity id, the town, station, industry or company
 }
 
+// interaction is an InteractionArg as getMapCoordinatesFromPos returns it:
+// the paint struct hit (nil for a label) or the label's town / station.
+type interaction struct {
+	Type paint.InteractionItem
+	ps   *paint.Struct
+	ID   int
+}
+
+// mapCoordinatesAt is ViewportInteraction::getMapCoordinatesFromPos for the
+// main view at screen point (sx, sy): the topmost element accept takes
+// (getNormalInteractionInfo), then the station labels up to
+// stationNamesMinScale, then the town labels, the last match of each winning
+// (the labels too only when accept takes them).
+func (w *World) mapCoordinatesAt(sx, sy int, accept func(paint.InteractionItem) bool) interaction {
+	var in interaction
+	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	if ps := w.scene.InteractionAt(&w.Map, v, sx, sy, accept); ps != nil {
+		in = interaction{Type: ps.Type, ps: ps}
+	}
+	// the 1×1 render target's getDrawableRect at this zoom
+	z := max(0, min(3, w.zoom))
+	mask := ^0 << z
+	x, y := (int(w.camX)+sx<<z)&mask, (int(w.camY)+sy<<z)&mask
+	l, t := x>>z, y>>z
+	r, b := l+(1>>z), t+(1>>z)
+	if w.zoom <= stationNamesMinScale && accept(paint.ItemStationLabel) { // getStationNameInteractionInfo
+		for id := range w.Map.StationNames {
+			st := &w.Map.StationNames[id]
+			if st.Name == 0xFFFF || st.Flags&(1<<5) != 0 || !st.LabelFrame.Contains(l, t, r, b, z) {
+				continue
+			}
+			in = interaction{Type: paint.ItemStationLabel, ID: id}
+		}
+	}
+	if accept(paint.ItemTownLabel) {
+		for i := range w.Map.Towns { // getTownNameInteractionInfo
+			if tn := &w.Map.Towns[i]; tn.Name != 0xFFFF && tn.LabelFrame.Contains(l, t, r, b, z) {
+				in = interaction{Type: paint.ItemTownLabel, ID: i}
+			}
+		}
+	}
+	return in
+}
+
+// headquartersCompany is the company whose headquarters' first tile the
+// building element painted at (mapX, mapY) belongs to (getHeadquarterArguments,
+// rightOverHeadquarters).
+func (w *World) headquartersCompany(el *scenario.BuildingElement, mapX, mapY int) (int, bool) {
+	off := [4][2]int{{0, 0}, {0, 32}, {32, 32}, {32, 0}}[el.SequenceIndex&3] // World::kOffsets
+	fx, fy := int16(mapX-off[0]), int16(mapY-off[1])
+	for id := range w.Map.Companies {
+		if co := &w.Map.Companies[id]; co.HeadquartersX == fx && co.HeadquartersY == fy && co.HeadquartersZ == el.BaseZ {
+			return id, true
+		}
+	}
+	return 0, false
+}
+
 // ItemLeftAt is getItemLeft at screen point (sx, sy): first only vehicles and
 // the labels, then — when that found no vehicle — vehicles, track, road,
-// stations, industries and the labels (getMapCoordinatesFromPos: the topmost
-// element, then the station labels up to stationNamesMinScale, then the town
-// labels, the last match of each winning). A track, road or station element
+// stations, industries and the labels (mapCoordinatesAt). A track, road or station element
 // of a station counts as that station's label (_track / _road /
 // getStationArguments). ok is false where the click opens nothing, and in the title.
 // A headquarters building gives its company; the nearest vehicle part when
@@ -30,67 +86,45 @@ func (w *World) ItemLeftAt(sx, sy int) (LeftItem, bool) {
 	pass := func(accept func(paint.InteractionItem) bool, industries bool) (LeftItem, bool) {
 		var it LeftItem
 		found := false
-		v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
-		if ps := w.scene.InteractionAt(&w.Map, v, sx, sy, accept); ps != nil {
-			switch ps.Type {
-			case paint.ItemEntity:
-				it = LeftItem{Kind: paint.ItemEntity, ID: -1} // an effect: getVehicleArguments fails
-				if e, ok := ps.Item.(*scenario.VehicleEntity); ok {
-					it, found = LeftItem{Kind: paint.ItemEntity, ID: int(e.HeadID)}, true
-				}
-			case paint.ItemIndustry:
-				if el, ok := ps.Item.(*scenario.IndustryElement); ok && industries { // ghosts paint as noInteraction
-					it, found = LeftItem{Kind: paint.ItemIndustry, ID: int(el.IndustryID)}, true
-				}
-			case paint.ItemHeadquarterBuilding: // the company whose headquarters' first tile it is
-				if el, ok := ps.Item.(*scenario.BuildingElement); ok {
-					off := [4][2]int{{0, 0}, {0, 32}, {32, 32}, {32, 0}}[el.SequenceIndex&3] // World::kOffsets
-					fx, fy := int16(ps.MapX-off[0]), int16(ps.MapY-off[1])
-					for id := range w.Map.Companies {
-						if co := &w.Map.Companies[id]; co.HeadquartersX == fx && co.HeadquartersY == fy && co.HeadquartersZ == el.BaseZ {
-							it, found = LeftItem{Kind: paint.ItemHeadquarterBuilding, ID: id}, true
-							break
-						}
-					}
-				}
-			case paint.ItemTrack, paint.ItemRoad, paint.ItemTrainStation, paint.ItemRoadStation, paint.ItemAirport, paint.ItemDock:
-				// _track / _road / getStationArguments: a station's element counts as its station label
-				it = LeftItem{Kind: ps.Type}
-				if id, ok := w.stationOfElement(ps); ok {
-					it, found = LeftItem{Kind: paint.ItemStationLabel, ID: id}, true
+		in := w.mapCoordinatesAt(sx, sy, accept)
+		ps := in.ps
+		switch in.Type {
+		case paint.ItemStationLabel, paint.ItemTownLabel:
+			it, found = LeftItem{Kind: in.Type, ID: in.ID}, true
+		case paint.ItemEntity:
+			it = LeftItem{Kind: paint.ItemEntity, ID: -1} // an effect: getVehicleArguments fails
+			if e, ok := ps.Item.(*scenario.VehicleEntity); ok {
+				it, found = LeftItem{Kind: paint.ItemEntity, ID: int(e.HeadID)}, true
+			}
+		case paint.ItemIndustry:
+			if el, ok := ps.Item.(*scenario.IndustryElement); ok && industries { // ghosts paint as noInteraction
+				it, found = LeftItem{Kind: paint.ItemIndustry, ID: int(el.IndustryID)}, true
+			}
+		case paint.ItemHeadquarterBuilding: // the company whose headquarters' first tile it is
+			if el, ok := ps.Item.(*scenario.BuildingElement); ok {
+				if id, ok := w.headquartersCompany(el, ps.MapX, ps.MapY); ok {
+					it, found = LeftItem{Kind: paint.ItemHeadquarterBuilding, ID: id}, true
 				}
 			}
-		}
-		// the 1×1 render target's getDrawableRect at this zoom
-		z := max(0, min(3, w.zoom))
-		mask := ^0 << z
-		x, y := (int(w.camX)+sx<<z)&mask, (int(w.camY)+sy<<z)&mask
-		l, t := x>>z, y>>z
-		r, b := l+(1>>z), t+(1>>z)
-		if w.zoom <= stationNamesMinScale { // getStationNameInteractionInfo
-			for id := range w.Map.StationNames {
-				st := &w.Map.StationNames[id]
-				if st.Name == 0xFFFF || st.Flags&(1<<5) != 0 || !st.LabelFrame.Contains(l, t, r, b, z) {
-					continue
-				}
+		case paint.ItemTrack, paint.ItemRoad, paint.ItemTrainStation, paint.ItemRoadStation, paint.ItemAirport, paint.ItemDock:
+			// _track / _road / getStationArguments: a station's element counts as its station label
+			it = LeftItem{Kind: ps.Type}
+			if id, ok := w.stationOfElement(ps); ok {
 				it, found = LeftItem{Kind: paint.ItemStationLabel, ID: id}, true
-			}
-		}
-		for i := range w.Map.Towns { // getTownNameInteractionInfo
-			if tn := &w.Map.Towns[i]; tn.Name != 0xFFFF && tn.LabelFrame.Contains(l, t, r, b, z) {
-				it, found = LeftItem{Kind: paint.ItemTownLabel, ID: i}, true
 			}
 		}
 		return it, found
 	}
 	// the first pass's result stands when it is an entity (a vehicle or not)
-	if it, ok := pass(func(i paint.InteractionItem) bool { return i == paint.ItemEntity }, false); it.Kind == paint.ItemEntity {
+	if it, ok := pass(func(i paint.InteractionItem) bool {
+		return i == paint.ItemEntity || i == paint.ItemTownLabel || i == paint.ItemStationLabel
+	}, false); it.Kind == paint.ItemEntity {
 		return it, ok
 	}
 	if it, ok := pass(func(i paint.InteractionItem) bool {
 		switch i {
 		case paint.ItemEntity, paint.ItemTrack, paint.ItemRoad, paint.ItemTrainStation, paint.ItemRoadStation,
-			paint.ItemAirport, paint.ItemDock, paint.ItemIndustry, paint.ItemHeadquarterBuilding:
+			paint.ItemAirport, paint.ItemDock, paint.ItemIndustry, paint.ItemHeadquarterBuilding, paint.ItemTownLabel, paint.ItemStationLabel:
 			return true
 		}
 		return false

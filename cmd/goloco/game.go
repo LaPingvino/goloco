@@ -58,10 +58,9 @@ type Game struct {
 	sw, sh                         int     // current logical screen dimensions (updated by Layout each frame)
 	scale                          float64 // Config::scaleFactor: the game drawn at window ÷ scale, scaled up
 	mouseX, mouseY                 int
-	lastTickMouseX, lastTickMouseY int  // the cursor at the last GameTicks (mouseMoved)
-	rightDragging                  bool // right-click drag pan state
-	dragLastX, dragLastY           int
-	windowFrame                    int // counts Updates: the windows' frameNo (onUpdate's frameNo += 1)
+	lastTickMouseX, lastTickMouseY int                // the cursor at the last GameTicks (mouseMoved)
+	vpRight                        viewportRightState // the right button on the main view (rightclick.go)
+	windowFrame                    int                // counts Updates: the windows' frameNo (onUpdate's frameNo += 1)
 
 	// The title screen.
 	inTitleScreen bool
@@ -103,8 +102,11 @@ type Game struct {
 	consSigOne  bool  // signal tab: single direction chosen (isSignalBothDirections = 0)
 	consStation int   // station tab: lastSelectedStationType (slot; -1 = the first available)
 	consMods    uint8 // overhead tab: lastSelectedMods (PARTIAL: not from the scenario's trackMods/roadMods)
-	hoverTileX  int   // tile under cursor in build mode (-1 if invalid)
-	hoverTileY  int
+	// consModSection is lastSelectedTrackModSection (PARTIAL: the Overhead
+	// tab's dropdown doesn't choose it yet: single).
+	consModSection sim.ModSection
+	hoverTileX     int // tile under cursor in build mode (-1 if invalid)
+	hoverTileY     int
 
 	// The Station tab's ghosts (stationtool.go).
 	stationGhost         *sim.TrainStationPlacement // the station tab's ghost (cState.stationGhost*), nil none
@@ -138,6 +140,7 @@ type Game struct {
 
 	// Options (options.go; Config).
 	noEdgeScrolling bool // Options > Controls: edge scrolling off (Config::edgeScrolling)
+	invertRightPan  bool // Options > Controls: Config::invertRightMouseViewPan (PARTIAL: not kept in openloco.yml)
 
 	// The music (music.go): the jukebox on the config's audio settings,
 	// Audio's mute, and a track passing in silence (no sound device).

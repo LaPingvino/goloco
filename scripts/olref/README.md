@@ -133,6 +133,16 @@ script command `news TYPE [subjects] [date DAY]` posts a message — for the
 advice panel, a new vehicle and the pre-1945 newspaper, which the title game
 doesn't bring up.
 
+tours/rightclick.txt is the map's right click on the title save opened at
+tile 331,295 (setview): the map tooltips (a house, another company's track,
+a road, a tree with and without the construction window), what a right click
+opens or removes, and a right drag. xt.py's `rightpress` / `rightrelease`
+hold the button (goloco's script has the same two). While it drags, OpenLoco
+puts the pointer back on the press point every frame (Input.cpp
+getNextDragOffset), so xt.py's absolute moves each count from there: `move`
+20 px off and `rightrelease` at the same place are two steps of 20 — the
+view goes 80 px (2 × 40), where goloco, whose pointer runs free, goes 40.
+
 For one window: `pair.py out.png goloco.png@X,Y,W,H openloco.png@X,Y,W,H 2`.
 
 ## Which source decides

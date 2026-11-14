@@ -1,6 +1,7 @@
 """Mouse and keyboard for the real OpenLoco, through X11's XTest extension.
 
     xt.py move X Y | click X Y | rightclick X Y | press X Y | release X Y
+    xt.py rightpress X Y | rightrelease X Y
     xt.py drag X1 Y1 X2 Y2 | wheel DY | key NAME | type TEXT | wait SECONDS
     xt.py shot FILE.png | state
     xt.py run SCRIPT.txt
@@ -112,6 +113,12 @@ def do(cmd, args):
     elif cmd == "release":
         move(n(0), n(1))
         button(1, False)
+    elif cmd == "rightpress":
+        move(n(0), n(1))
+        button(3, True)
+    elif cmd == "rightrelease":
+        move(n(0), n(1))
+        button(3, False)
     elif cmd == "drag":
         x1, y1, x2, y2 = n(0), n(1), n(2), n(3)
         move(x1, y1)

@@ -98,7 +98,10 @@ var (
 // PaintRoad paints one road element at the current sprite position. image is
 // the road object's image base, paintStyle its paint style (0, 1, 2).
 func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(int) *gfx8.Sprite) {
-	s.ItemType = ItemRoad // setItemType (PaintRoad.cpp:492; the inner noInteraction resets not yet ported)
+	s.ItemType = ItemRoad // setItemType (PaintRoad.cpp:492)
+	if s.ElGhost {        // elRoad.isGhost() || isAiAllocated()
+		s.ItemType = ItemNoInteraction
+	}
 	s.paintRoadPiece(el, image, paintStyle, sprite)
 	// paintRoad, after the piece: beyond zoom 1 nothing more; the level crossing.
 	if s.Zoom > 1 {
@@ -118,7 +121,9 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 	}
 	rid, seq := int(el.RoadID), int(el.SequenceIndex)
 	h := Pos3{0, 0, int(el.BaseZ) * 4}
-	for _, m := range el.Mods {
+	s.ItemType = ItemRoadExtra // setItemType (PaintRoad.cpp:557: a ghost's extras too)
+	for i, m := range el.Mods {
+		s.TrackModID = uint8(i) // setTrackModId(mod)
 		if !m.Has || m.PaintStyle != 1 || rid >= len(RoadAdditionParts) || seq >= len(RoadAdditionParts[rid]) {
 			continue
 		}

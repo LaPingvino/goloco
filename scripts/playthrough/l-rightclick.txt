@@ -1,0 +1,138 @@
+# Playthrough L: the map's right click (ViewportInteraction rightOver /
+# handleRightReleased, MouseInput's viewportRight). As G (seed 1950,
+# Weatherworld, the fixed view by Cloudburst). Without a construction window:
+# a house's tooltip says what it produces and accepts, the town's road is
+# "Right-Click to Modify", a tree has no text; a right click on the house
+# does nothing, on the town's label it opens the town list. A right drag pans
+# the view (twice the mouse's way) and opens nothing. A right click on the
+# road opens the construction window building on from that piece; with it
+# open the tree and the house are "Right-Click to Remove", and the click
+# removes the tree at a cost. Then G's line and stations: on the Station tab
+# a platform is "Right-Click to Remove" and the click removes it;
+# a right click on the track puts the window back on its Construction tab,
+# building on from the piece.
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+move 405 430
+wait 3
+expect maptip~Produces_Passengers == 1
+expect maptip~Accepts_1/4_Passengers == 1
+shot /tmp/goloco-playthrough/pt-l1-house.png
+move 430 490
+wait 3
+expect maptip~Road == 1
+expect maptip~Right-Click_to_Modify == 1
+shot /tmp/goloco-playthrough/pt-l2-road.png
+move 700 230
+wait 3
+expect maptip == 0
+rightclick 405 430
+wait 1
+expect conswindow == 0
+rightclick 625 541
+wait 1
+expect townlist == 1
+shot /tmp/goloco-playthrough/pt-l3-townlist.png
+expect camx == 5680
+rightpress 300 300
+wait 0.2
+move 310 305
+wait 0.2
+rightrelease 310 305
+wait 1
+expect camx == 5700
+expect conswindow == 0
+rightpress 310 305
+wait 0.2
+move 300 300
+wait 0.2
+rightrelease 300 300
+wait 1
+expect camx == 5680
+rightclick 430 490
+wait 1
+expect conswindow == 1
+expect consbuilding == 1
+shot /tmp/goloco-playthrough/pt-l4-road-construction.png
+move 700 230
+wait 2
+expect maptip~Right-Click_to_Remove == 1
+shot /tmp/goloco-playthrough/pt-l5-tree.png
+expect trees@53,252 == 1
+rightclick 700 230
+wait 1
+expect trees@53,252 == 0
+expect cash < 84300
+move 405 430
+wait 2
+expect maptip~House == 1
+expect maptip~Right-Click_to_Remove == 1
+# G's line: the railway window from the toolbar, eleven straights from
+# 250,420, a station at each end (the window stays on its Station tab)
+move 592 14
+wait 1
+click 620 42
+wait 1
+move 400 300
+wait 2
+move 250 420
+wait 1
+click 250 420
+wait 2
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 51 57
+wait 2
+move 302 395
+wait 1
+click 302 395
+wait 2
+move 497 302
+wait 1
+click 497 302
+wait 2
+expect stations == 2
+expect constab == 1
+move 302 395
+wait 3
+expect maptip~station_platform == 1
+expect maptip~Right-Click_to_Remove == 1
+shot /tmp/goloco-playthrough/pt-l6-station.png
+expect cash < 79500
+rightclick 302 395
+wait 1
+# the platform is gone and refunded (the station itself goes with a later update)
+expect cash > 79900
+move 400 348
+wait 3
+expect maptip~Right-Click_to_Modify == 1
+shot /tmp/goloco-playthrough/pt-l7-track.png
+rightclick 400 348
+wait 1
+expect conswindow == 1
+expect constab == 0
+expect consbuilding == 1
+shot /tmp/goloco-playthrough/pt-l8-track-construction.png
+quit

@@ -46,6 +46,7 @@ type Image struct {
 type Struct struct {
 	Type       InteractionItem // ps->type: the session's item type when it was made
 	Item       any             // ps->tileElement / entity: the session's current item (setCurrentItem)
+	ModID      uint8           // ps->modId: the session's track mod id (setTrackModId) when made
 	MapX, MapY int             // ps->mapPos: the session's map position (the tile's world x / y) when made
 	Img        Image
 	VpX, VpY   int
@@ -126,7 +127,15 @@ type Session struct {
 	ItemType InteractionItem
 	// CurrentItem is _currentItem (setCurrentItem): the tile element or entity
 	// being painted, copied into each struct (a pointer: no cost per frame).
-	CurrentItem        any
+	CurrentItem any
+	// ElGhost: the element painted now is a ghost (or AI-allocated) — what
+	// the painters' isGhost() tests read to switch the item type to
+	// noInteraction; set with CurrentItem.
+	ElGhost bool
+	// TrackModID is _trackModId (setTrackModId): the track / road mod being
+	// painted, or a signal's side (0 left, 1 right); copied into each struct
+	// and, as upstream, never reset.
+	TrackModID         uint8
 	arrangeHead        Struct // Arrange's list head
 	Rotation           uint8
 	spriteX, spriteY   int // world position the painters' offsets are relative to (the tile's corner by rotation; an entity's position)
@@ -430,7 +439,7 @@ func (s *Session) create(img Image, off, bbOff, bbSize Pos3) *Struct {
 	rs := rotateBoundBoxSize(bbSize, s.Rotation)
 	mins := Pos3{bx + s.spriteX, by + s.spriteY, bbOff.Z}
 	ps := s.newStruct()
-	ps.Type, ps.Item = s.ItemType, s.CurrentItem
+	ps.Type, ps.Item, ps.ModID = s.ItemType, s.CurrentItem, s.TrackModID
 	ps.MapX, ps.MapY = s.mapX, s.mapY
 	ps.Img, ps.VpX, ps.VpY, ps.Mins = img, vpX, vpY, mins
 	ps.Maxs = Pos3{mins.X + rs.X, mins.Y + rs.Y, mins.Z + rs.Z}
