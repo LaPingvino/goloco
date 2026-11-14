@@ -210,7 +210,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
        upstream's field-by-field export does; nextQuadrantId not recomputed (upstream recomputes it on load);
        only the loaded file's own packed objects are packed again (not every custom object loaded);
        last_save_path read, not written; no progress bar; Load Game in play doesn't ask "Save this before
-       loading?"; Options' autosave widgets still static (the config keys work); landscape / scenario saving
+       loading?"; Options' autosave widgets read and write the config (done 2026-11-14); landscape / scenario saving
        (the editor) not ported.
 > - [ ] N14 (PAUSED until an editor exists) the town list's editor build tabs; updateBuilding's isEditorMode return;
 >       the tileManagerLoaded gate.

@@ -99,7 +99,7 @@ Order of work:
 - **N35 save leftovers:**
   - write last_save_path;
   - "Save this before loading?" when loading during play;
-  - the Options autosave widgets read the config;
+  - ~~the Options autosave widgets read the config~~ (done 2026-11-14);
   - re-pack every custom object, not only the loaded file's.
 - **N7:** a refused road's reason line, the bridge and alternate-road retries, shift's downward search.
 - **N6:** toolbar and panels as stack windows; drag by frame; vehicle list column widths.
