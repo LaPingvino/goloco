@@ -200,7 +200,7 @@ func (g *Game) diagOpenWindows() {
 		switch os.Getenv("GOLOCO_DIAG_OPTIONS") {
 		case "controls":
 			o.Tab = ui.OptTabControls
-			o.Controls = [3]bool{true, false, true}
+			o.Controls = [5]bool{true, false, true, true, false}
 		case "regional":
 			o.Tab = ui.OptTabRegional
 		case "framesolid":
