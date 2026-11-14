@@ -8,9 +8,9 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // generated (generateNewStationName); else a unique user string is
 // allocated (refused when none is free; the query frees it again) and,
 // applied, the station takes it; the old name's string is freed either way
-// it changes. PARTIAL: station->updateLabel and the screen invalidation (the
-// label is drawn from the name each frame here).
-func (m *Map) RenameStation(c *Cmd, flags uint8, id int, name string, om *objects.ObjectManager) (int32, bool) {
+// it changes, and the station's label is recomputed (updateLabel: its frame
+// sized for the new name). PARTIAL: the screen invalidation (goloco redraws).
+func (m *Map) RenameStation(c *Cmd, flags uint8, id int, name string, om *objects.ObjectManager, g1 G1Raw) (int32, bool) {
 	if len(name) > 36 {
 		name = name[:36]
 	}
@@ -39,5 +39,6 @@ func (m *Map) RenameStation(c *Cmd, flags uint8, id int, name string, om *object
 		st.Name = nid
 	}
 	m.emptyUserString(old)
+	m.UpdateStationLabel(id, g1)
 	return 0, true
 }
