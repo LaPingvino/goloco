@@ -1,3 +1,4 @@
+// (fd6db41's near-water / around-cliffs fixes re-copied 2026-11-14.)
 // Generates pkg/scene/testdata/terrain_styles_hashes.txt: ./tg3 hs1.txt land2.txt — upstream MapGenerator.cpp generateLand … generateTerrain and generateSurfaceVariation (sed-copied) with stub tiles / land objects; hs1.txt and land2.txt are dumped from the game data by a throwaway test (never committed).
 // Build: g++ -std=c++20 -fno-char8_t -DDEBUG=0 <gen.sh's includes> -I$OL/src/Core/include/OpenLoco/Core gen_terrain_styles.cpp $OL/src/Core/src/Prng.cpp
 // The dumps: hs1.txt = "hillCount mountainCount flags" then per image "width height flags n <n bytes>" (G1, Aerophobia's
@@ -638,7 +639,7 @@ namespace OpenLoco::World::MapGenerator {
         for (auto pos : getWorldRange())
         {
             auto height = heightMap.getHeight({ pos.x, pos.y });
-            if (height < seaLevel)
+            if (height > seaLevel)
             {
                 continue;
             }
@@ -764,14 +765,14 @@ namespace OpenLoco::World::MapGenerator {
         // Mark tiles with sudden height changes in the next row
         for (auto pos : getDrawableTileRange())
         {
-            auto heightA = heightMap.getHeight({ pos + TilePos2{ 0, 1 } });
+            auto heightA = heightMap.getHeight({ pos + TilePos2{ 0, 0 } });
             auto heightB = heightMap.getHeight({ pos + TilePos2{ 0, 1 } });
 
             // Find no cliff between A and B?
             if (std::abs(heightB - heightA) < kCliffTerrainHeightDiff)
             {
-                auto heightC = heightMap.getHeight({ pos + TilePos2{ 0, 1 } });
-                auto heightD = heightMap.getHeight({ pos + TilePos2{ 0, 1 } });
+                auto heightC = heightMap.getHeight({ pos + TilePos2{ 0, 0 } });
+                auto heightD = heightMap.getHeight({ pos + TilePos2{ 1, 0 } });
 
                 // Find no cliff between C and D?
                 if (std::abs(heightD - heightC) < kCliffTerrainHeightDiff)
