@@ -37,3 +37,18 @@ var SlopeToSegmentsSupportHeights = [32][9]SupportHeight{
 	{{28, 30}, {16, 30}, {16, 30}, {4, 30}, {16, 30}, {22, 30}, {22, 30}, {10, 30}, {10, 30}},
 	{{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
 }
+
+// UndergroundViewSnowNoise is kUndergroundViewSnowNoise, by snow coverage.
+var UndergroundViewSnowNoise = [8]uint8{0, 0, 0, 3, 6, 0, 0, 0}
+
+// EdgeUndergroundOffset is kEdgeUndergroundOffset, by edge.
+var EdgeUndergroundOffset = [4]int{0, 0, 67, 64}
+
+// EdgeMaskImageFromSlope is kEdgeMaskImageFromSlope [isUnderground][edge][section].
+var EdgeMaskImageFromSlope = [2][4][5]uint32{
+	{{3726, 3727, 3728, 3729, 3730}, {3731, 3732, 3733, 3734, 3735}, {3731, 3732, 3733, 3734, 3735}, {3726, 3727, 3728, 3729, 3730}},
+	{{3736, 3737, 3738, 3739, 3740}, {3741, 3742, 3743, 3744, 3745}, {3741, 3742, 3743, 3744, 3745}, {3736, 3737, 3738, 3739, 3740}},
+}
+
+// GridlinesBoxFromSlope is kGridlinesBoxFromSlope, by display slope.
+var GridlinesBoxFromSlope = [19]uint32{379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 397}

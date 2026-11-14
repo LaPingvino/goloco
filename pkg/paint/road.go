@@ -11,6 +11,10 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 
 // RoadEl is what paintRoad reads from a road element.
 type RoadEl struct {
+	// IsLast is elRoad.isFlag6() (the piece's last tile); OneWay the road
+	// object's RoadObjectFlags::isOneWay — for the height marks and the
+	// one-way direction arrows.
+	IsLast, OneWay                  bool
 	RoadID, SequenceIndex, Rotation uint8
 	BaseZ                           uint8   // SmallZ
 	Remap                           []uint8 // company colour of elRoad.owner() (nil: none)
@@ -98,6 +102,20 @@ var (
 // PaintRoad paints one road element at the current sprite position. image is
 // the road object's image base, paintStyle its paint style (0, 1, 2).
 func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(int) *gfx8.Sprite) {
+	if rid := int(el.RoadID); rid < len(RoadDecorationHeightOffsets) {
+		first, height := el.SequenceIndex == 0, int(el.BaseZ)*4
+		s.paintTrackRoadHeightMarker(height, RoadDecorationHeightOffsets[rid], first, el.IsLast, sprite)
+		// The one-way direction arrows (one_way_direction_arrows at full
+		// zoom): on a one-way road's first and last tile, not a ghost's —
+		// kOneWayArrowImageIndexs by the piece, the end and the rotation, in
+		// mutedAvocadoGreen at the marker's height.
+		if s.ViewFlags.Has(ViewOneWayDirectionArrows) && s.Zoom == 0 && !s.ElGhost && el.OneWay && (first || el.IsLast) {
+			s.ItemType = ItemNoInteraction
+			h := height + int(decorationOffset(RoadDecorationHeightOffsets[rid], first)) + 8
+			rot := (s.Rotation + el.Rotation) & 3
+			s.decoration(int(RoadOneWayArrowImages[rid][b2i(el.IsLast)][rot]), colourMutedAvocadoGreen, Pos3{0, 0, h}, Pos3{15, 15, 16 + h}, Pos3{1, 1, 0}, sprite)
+		}
+	}
 	s.ItemType = ItemRoad // setItemType (PaintRoad.cpp:492)
 	if s.ElGhost {        // elRoad.isGhost() || isAiAllocated()
 		s.ItemType = ItemNoInteraction

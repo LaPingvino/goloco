@@ -3,7 +3,6 @@ package world
 import (
 	"github.com/LaPingvino/goloco/pkg/paint"
 	"github.com/LaPingvino/goloco/pkg/scenario"
-	"github.com/LaPingvino/goloco/pkg/scene"
 )
 
 // LeftItem is what a left click on the main view points at
@@ -29,7 +28,7 @@ type interaction struct {
 // (the labels too only when accept takes them).
 func (w *World) mapCoordinatesAt(sx, sy int, accept func(paint.InteractionItem) bool) interaction {
 	var in interaction
-	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	v := w.mainView()
 	if ps := w.scene.InteractionAt(&w.Map, v, sx, sy, accept); ps != nil {
 		in = interaction{Type: ps.Type, ps: ps}
 	}
@@ -39,7 +38,8 @@ func (w *World) mapCoordinatesAt(sx, sy int, accept func(paint.InteractionItem) 
 	x, y := (int(w.camX)+sx<<z)&mask, (int(w.camY)+sy<<z)&mask
 	l, t := x>>z, y>>z
 	r, b := l+(1>>z), t+(1>>z)
-	if w.zoom <= stationNamesMinScale && accept(paint.ItemStationLabel) { // getStationNameInteractionInfo
+	// the labels a viewport hides (hideStationNames / hideTownNames) aren't found
+	if !w.viewFlags.Has(paint.ViewHideStationNames) && w.zoom <= stationNamesMinScale && accept(paint.ItemStationLabel) { // getStationNameInteractionInfo
 		for id := range w.Map.StationNames {
 			st := &w.Map.StationNames[id]
 			if st.Name == 0xFFFF || st.Flags&(1<<5) != 0 || !st.LabelFrame.Contains(l, t, r, b, z) {
@@ -48,7 +48,7 @@ func (w *World) mapCoordinatesAt(sx, sy int, accept func(paint.InteractionItem) 
 			in = interaction{Type: paint.ItemStationLabel, ID: id}
 		}
 	}
-	if accept(paint.ItemTownLabel) {
+	if !w.viewFlags.Has(paint.ViewHideTownNames) && accept(paint.ItemTownLabel) {
 		for i := range w.Map.Towns { // getTownNameInteractionInfo
 			if tn := &w.Map.Towns[i]; tn.Name != 0xFFFF && tn.LabelFrame.Contains(l, t, r, b, z) {
 				in = interaction{Type: paint.ItemTownLabel, ID: i}

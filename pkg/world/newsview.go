@@ -30,7 +30,7 @@ func (w *World) NewsView(slot int, argType uint8, id uint16, width, height int) 
 
 // NewsViewLabels draws the viewport's station and town names on dst.
 func (w *World) NewsViewLabels(argType uint8, id uint16, dst *ebiten.Image) {
-	w.viewLabels(dst, true, func(width, height int) (scene.View, bool) { return w.newsView(argType, id, width, height) })
+	w.viewLabels(dst, func(width, height int) (scene.View, bool) { return w.newsView(argType, id, width, height) })
 }
 
 // HasNewsView reports that the item has a viewport (getView's view not empty).

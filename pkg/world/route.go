@@ -46,7 +46,7 @@ func (w *World) RouteAt(sx, sy int, mode uint8) (RouteHit, bool) {
 		return RouteHit{}, false
 	}
 	m := &w.Map
-	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	v := w.mainView()
 	ps := w.scene.InteractionAt(m, v, sx, sy, func(it paint.InteractionItem) bool {
 		switch it {
 		case paint.ItemTrack, paint.ItemRoad, paint.ItemTrainStation, paint.ItemRoadStation, paint.ItemAirport, paint.ItemDock:
@@ -183,7 +183,7 @@ func (w *World) TrainStationPlacementAt(sx, sy int, stationType uint8) (sim.Trai
 		return sim.TrainStationPlacement{}, false
 	}
 	m := &w.Map
-	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	v := w.mainView()
 	ps := w.scene.InteractionAt(m, v, sx, sy, func(it paint.InteractionItem) bool {
 		return it == paint.ItemTrack || it == paint.ItemTrainStation
 	})
@@ -229,7 +229,7 @@ func (w *World) RoadStationPlacementAt(sx, sy int, stationType uint8) (sim.RoadS
 		return sim.RoadStationPlacement{}, false
 	}
 	m := &w.Map
-	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	v := w.mainView()
 	ps := w.scene.InteractionAt(m, v, sx, sy, func(it paint.InteractionItem) bool {
 		return it == paint.ItemRoad || it == paint.ItemRoadStation
 	})

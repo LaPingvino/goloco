@@ -5,7 +5,7 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 // Tracks — a port of Paint/PaintTrack.cpp paintTrack / paintTrackPP with the
 // table generated from upstream (trackdata_gen.go). PARTIAL: company colour
 // remap only via TrackEl.Remap (the owner's colour, from the scenario), bridges and tunnels (BridgeEntry,
-// insertTunnels), track extras (mods), height markers and ghosts.
+// insertTunnels), track extras (mods) and ghosts.
 
 // TrackEl is what paintTrack reads from a track element.
 type TrackEl struct {
@@ -15,11 +15,15 @@ type TrackEl struct {
 	Tunnel                           int     // trackObj->tunnel's image base (-1: none)
 	HasBridge                        bool
 	Bridge                           uint8 // elTrack.bridge(): bridge object slot
+	IsLast                           bool  // elTrack.isFlag6(): the piece's last tile
 }
 
 // PaintTrack paints one track element at the current sprite position; image
 // is the track object's image base.
 func (s *Session) PaintTrack(el TrackEl, image int, sprite func(int) *gfx8.Sprite) {
+	if int(el.TrackID) < len(TrackDecorationHeightOffsets) {
+		s.paintTrackRoadHeightMarker(int(el.BaseZ)*4, TrackDecorationHeightOffsets[el.TrackID], el.SequenceIndex == 0, el.IsLast, sprite)
+	}
 	s.ItemType = ItemTrack // setItemType (PaintTrack.cpp:270)
 	if s.ElGhost {         // elTrack.isGhost() || isAiAllocated()
 		s.ItemType = ItemNoInteraction

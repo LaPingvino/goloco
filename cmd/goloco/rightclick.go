@@ -84,7 +84,11 @@ func (g *Game) updateViewportRight() {
 // tool, the Construction tab's — the last always with the window).
 func (g *Game) rightOverState() world.RightOverState {
 	open := g.buildMode != buildModeNone && g.consWin() != nil
+	vf := g.w.ViewFlags() // the viewport's see-through flags: what they hide is not found
 	return world.RightOverState{
+		SeeThroughBuildings: vf.Has(paint.ViewSeeThroughBuildings), SeeThroughTrees: vf.Has(paint.ViewSeeThroughTrees),
+		SeeThroughScenery: vf.Has(paint.ViewSeeThroughScenery), SeeThroughTracks: vf.Has(paint.ViewSeeThroughTracks),
+		SeeThroughRoads:  vf.Has(paint.ViewSeeThroughRoads),
 		ConstructionOpen: open,
 		StationTab:       open && g.consTab == 1,
 		SignalTab:        open && g.consTab == 2,

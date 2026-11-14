@@ -77,9 +77,11 @@ func (d *DropdownMenu) PressOnOrigin(x, y int) bool {
 }
 
 // HandleOpeningRelease handles the release of the press that opened the
-// dropdown: over the origin, the highlighted item's action (none
-// highlighted: nothing, the menu stays open); over an item, that item; else
-// the menu stays open for a click. It reports whether the dropdown closed.
+// dropdown (MouseInput.cpp stateWidgetPressed, leftReleased at 0x4C7BC7):
+// over the origin, the highlighted item's action (none highlighted: nothing,
+// the menu stays open); over an item, that item; anywhere else — a
+// separator, the map, another window — nothing is chosen and the menu closes
+// (0x4C7DA0). It reports whether the dropdown closed.
 func (d *DropdownMenu) HandleOpeningRelease(x, y int) bool {
 	if !d.Visible || !d.pressActive {
 		return false
@@ -104,9 +106,9 @@ func (d *DropdownMenu) HandleOpeningRelease(x, y int) bool {
 	}
 	if x >= d.X && x < d.X+d.Width && y >= d.Y && y < d.Y+d.Height {
 		d.HandleClick(x, y)
-		return !d.Visible
 	}
-	return false
+	d.Visible = false
+	return true
 }
 
 // DropdownItem represents a single item in a dropdown menu

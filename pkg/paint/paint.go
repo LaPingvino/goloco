@@ -143,8 +143,16 @@ type Session struct {
 	rtX, rtY, rtW, rtH int // render target in viewport coordinates
 	// Zoom is the render target's zoomLevel (0-3); SpriteFor looks an image
 	// up for the hasZoomSprites recursion (needed when Zoom > 0).
-	Zoom        int
-	SpriteFor   func(id int) *gfx8.Sprite
+	Zoom      int
+	SpriteFor func(id int) *gfx8.Sprite
+	// ViewFlags is SessionOptions::viewFlags: the viewport's flags the
+	// painters and Draw read. ColourMap is PaletteMap::getForColour (a Colour
+	// or ExtColour's palette map): what Draw makes a see-through struct
+	// translucent with, and the decorations' colours. SeaLevel is
+	// getGameState().seaLevel, for the height markers.
+	ViewFlags   ViewFlags
+	ColourMap   func(colour int) []uint8
+	SeaLevel    int
 	quadrants   [MaxQuadrants]*Struct
 	back, front int
 	last        *Struct
@@ -202,8 +210,8 @@ func Colour(sp *gfx8.Sprite, remap []uint8) Image {
 // struct and attachment slabs) so a frame allocates nothing in steady state.
 func (s *Session) Reset(rotation uint8, x, y, w, h int) {
 	structs, attached, tunnels := s.structs[:0], s.attachedSlab[:0], s.tunnels
-	zoom, spriteFor := s.Zoom, s.SpriteFor
-	*s = Session{Rotation: rotation, rtX: x, rtY: y, rtW: w, rtH: h, back: noBackIndex, Zoom: zoom, SpriteFor: spriteFor,
+	zoom, spriteFor, colourMap := s.Zoom, s.SpriteFor, s.ColourMap
+	*s = Session{Rotation: rotation, rtX: x, rtY: y, rtW: w, rtH: h, back: noBackIndex, Zoom: zoom, SpriteFor: spriteFor, ColourMap: colourMap,
 		structs: structs, attachedSlab: attached, tunnels: tunnels, bridge: BridgeEntry{Height: -1}}
 	s.ResetTunnels()
 }
@@ -499,6 +507,11 @@ func (s *Session) AddAsChild(img Image, off, bbOff, bbSize Pos3) *Struct {
 	return ps
 }
 
+// LastPS / SetLastPS are getLastPS / setLastPS: the struct attachToPrevious
+// attaches to, which a painter saves around a parent of its own.
+func (s *Session) LastPS() *Struct      { return s.last }
+func (s *Session) SetLastPS(ps *Struct) { s.last = ps }
+
 // AttachToPrevious is attachToPrevious.
 func (s *Session) AttachToPrevious(img Image, x, y int) *Attached {
 	if s.last == nil {
@@ -632,7 +645,9 @@ func (s *Session) Order() []*Struct {
 }
 
 // Draw is drawStructs: each struct, its child chain (with their attachments),
-// then its own attachments. rt's (0,0) is viewport (s.rtX, s.rtY).
+// then its own attachments. rt's (0,0) is viewport (s.rtX, s.rtY). What the
+// view's see-through flags name is drawn translucent or not at all (culled):
+// a struct and a child by their own type, an attachment by its parent's.
 func (s *Session) Draw(rt *gfx8.RenderTarget) {
 	draw := func(img Image, x, y int) { s.drawImage(rt, img, x, y) }
 	diag := DiagAt != nil && DiagAt[0] >= s.rtX && DiagAt[0] < s.rtX+s.rtW && DiagAt[1] >= s.rtY && DiagAt[1] < s.rtY+s.rtH
@@ -654,12 +669,16 @@ func (s *Session) Draw(rt *gfx8.RenderTarget) {
 	}
 	attached := func(ps *Struct) {
 		for a := ps.attached; a != nil; a = a.next {
+			img, ok := s.culled(ps.Type, a.Img)
+			if !ok {
+				continue
+			}
 			x, y := ps.VpX+a.X, ps.VpY+a.Y
 			if s.Zoom != 0 { // drawAttachStruct: floor2(pos, 2) when zoomed out
 				x, y = x&^1, y&^1
 			}
-			note("attached", a.Img, x, y, ps)
-			draw(a.Img, x, y)
+			note("attached", img, x, y, ps)
+			draw(img, x, y)
 		}
 	}
 	if Dump != nil {
@@ -680,11 +699,19 @@ func (s *Session) Draw(rt *gfx8.RenderTarget) {
 		dumpMu.Unlock()
 	}
 	for ps := s.head; ps != nil; ps = ps.next {
-		note("struct", ps.Img, ps.VpX, ps.VpY, ps)
-		draw(ps.Img, ps.VpX, ps.VpY)
+		img, ok := s.culled(ps.Type, ps.Img)
+		if !ok {
+			continue // a culled struct takes its children and attachments with it
+		}
+		note("struct", img, ps.VpX, ps.VpY, ps)
+		draw(img, ps.VpX, ps.VpY)
 		for c := ps.children; c != nil; c = c.children {
-			note("child", c.Img, c.VpX, c.VpY, c)
-			draw(c.Img, c.VpX, c.VpY)
+			img, ok := s.culled(c.Type, c.Img)
+			if !ok {
+				continue
+			}
+			note("child", img, c.VpX, c.VpY, c)
+			draw(img, c.VpX, c.VpY)
 			attached(c)
 		}
 		attached(ps)
@@ -804,6 +831,12 @@ func (s *Session) hits(img Image, x, y int) bool {
 	if img.Sprite == nil {
 		return false
 	}
+	if img.Op&gfx8.OpDst != 0 {
+		// A blended image changes what is under it, which here is nothing:
+		// upstream tests the sprite's pixel, not what it drew (the underground
+		// view's translucent surface is still the ground under the cursor).
+		img.Op, img.PalMap, img.Noise = gfx8.OpTransparent, nil, nil
+	}
 	rt := gfx8.NewRenderTarget(1, 1)
 	s.drawImage(rt, img, x, y)
 	return rt.Bits[0] != 0
@@ -812,9 +845,15 @@ func (s *Session) hits(img Image, x, y int) bool {
 // Interaction is PaintSession::getNormalInteractionInfo after Arrange: in
 // drawing order, the last struct (or child) whose image covers the target's
 // pixel and whose type accept takes — an attachment counting for its parent;
-// noInteraction and bridge never count (isPSSpriteTypeInFilter). nil: none.
+// noInteraction and bridge never count, and accept is asked about an
+// industryTree as the surface (isPSSpriteTypeInFilter). nil: none.
 func (s *Session) Interaction(accept func(InteractionItem) bool) *Struct {
-	ok := func(t InteractionItem) bool { return t != ItemNoInteraction && t != ItemBridge && accept(t) }
+	ok := func(t InteractionItem) bool {
+		if t == ItemIndustryTree { // interactionItemToFilter: an industry field's trees count as the surface
+			t = ItemSurface
+		}
+		return t != ItemNoInteraction && t != ItemBridge && accept(t)
+	}
 	attachedHit := func(ps *Struct) bool {
 		for a := ps.attached; a != nil; a = a.next {
 			if s.hits(a.Img, ps.VpX+a.X, ps.VpY+a.Y) && ok(ps.Type) {

@@ -185,6 +185,8 @@ func (g *Game) updateGame() {
 
 	g.updateCamera()
 	g.updateSpeedKeys()
+	g.updateViewShortcuts()
+	g.syncHeightMarkerOffset()
 	g.updateMusic()
 	// Update world (skipped when paused; repeated per speed multiplier)
 	n := g.w.GameTicks(g.mouseMoved())

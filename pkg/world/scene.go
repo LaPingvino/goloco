@@ -54,8 +54,8 @@ func (w *World) drawScene(screen *ebiten.Image) {
 	// responsiveness"): while a window or menu is open the world's columns
 	// are repainted a part a frame (SceneEvery parts), so no frame waits for
 	// a whole world render; a moved camera, zoom or size repaints all of it.
-	view := scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: w.Map.ScenarioTicks} // ScenarioManager::getScenarioTicks(): what upstream's paint animates by (not the frame count)
-	if diagScreen != nil {                                                                                     // GOLOCO_DIAG_PAINT_SCREEN: the paint diagnostic's pixel, as a screen pixel at this view's zoom
+	view := scene.View{X: int(w.camX), Y: int(w.camY), W: sw, H: sh, Zoom: w.zoom, Ticks: w.Map.ScenarioTicks, Flags: w.viewFlags} // ScenarioManager::getScenarioTicks(): what upstream's paint animates by (not the frame count)
+	if diagScreen != nil {                                                                                                         // GOLOCO_DIAG_PAINT_SCREEN: the paint diagnostic's pixel, as a screen pixel at this view's zoom
 		bm := ^0 << view.Zoom
 		paint.DiagAt = &[2]int{view.X&bm + diagScreen[0]<<view.Zoom, view.Y&bm + diagScreen[1]<<view.Zoom}
 	}
@@ -407,20 +407,12 @@ func (w *World) MapSelection() (on bool, typ uint8, area [4]int) {
 	return w.selOn, w.selType, w.selArea
 }
 
-// SetGridlines is Main::showGridlines / hideGridlines: the main view's
-// gridlines_on_landscape flag, the view redrawn when it changes.
-func (w *World) SetGridlines(on bool) {
-	if w.scene == nil || w.scene.Gridlines == on {
-		return
-	}
-	w.scene.Gridlines = on
-	w.InvalidateView()
-}
-
-// InvalidateView is the main window's invalidate(): the whole view redrawn.
+// InvalidateView is the main window's invalidate(): the whole view redrawn
+// (the dirty grid's every cell; without dirty regions, the next frame whole).
 func (w *World) InvalidateView() {
 	v := w.dirtyView
 	w.dirtyGrid.Invalidate(0, 0, v.W, v.H)
+	w.lastView = scene.View{}
 }
 
 // SurfaceAt is ViewportInteraction::getSurfaceLocFromUi (main view): the map

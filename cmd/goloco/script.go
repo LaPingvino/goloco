@@ -46,7 +46,7 @@ import (
 //	                    while the map tooltip shows, its text logged; conswindow, consbuilding, constab: the
 //	                    construction window open, building on from a position, its tab; camx, camy: the view's
 //	                    position; townlist, stationlist, vehiclelist, industrylist, companywindow: 1 while one
-//	                    is open; maptip~TEXT: 1 while the map tooltip shows text holding TEXT, _ for a space),
+//	                    is open; viewflags: the main viewport's flags (ViewportFlags' bits); maptip~TEXT: 1 while the map tooltip shows text holding TEXT, _ for a space),
 //	                    op one of
 //	                    > >= == <= <; a failed check makes the run exit 1
 //	news <type> [a [b [c]]] [date <day>]  post a message of that MessageType
@@ -101,6 +101,8 @@ var scriptKeyNames = map[string]ebiten.Key{
 	"ENTER": ebiten.KeyEnter, "SPACE": ebiten.KeySpace, "BACKSPACE": ebiten.KeyBackspace,
 	"W": ebiten.KeyW, "A": ebiten.KeyA, "S": ebiten.KeyS, "D": ebiten.KeyD,
 	"F12": ebiten.KeyF12,
+	"0":   ebiten.KeyDigit0, "1": ebiten.KeyDigit1, "2": ebiten.KeyDigit2, "3": ebiten.KeyDigit3, "4": ebiten.KeyDigit4,
+	"5": ebiten.KeyDigit5, "6": ebiten.KeyDigit6, "7": ebiten.KeyDigit7, "8": ebiten.KeyDigit8, "9": ebiten.KeyDigit9,
 }
 
 func loadInputScript(path string) *inputScript {
@@ -465,6 +467,8 @@ func (g *Game) scriptExpect() {
 		if g.wins.Find(typ, ui.AnyNumber) != nil {
 			got = 1
 		}
+	case "viewflags": // the main viewport's flags (Ui::ViewportFlags' bits)
+		got = int64(g.w.ViewFlags())
 	case "terraformwindow": // 1 while the Terraform window is open
 		if g.terraformWin() != nil {
 			got = 1

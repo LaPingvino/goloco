@@ -47,7 +47,7 @@ func (w *World) surfaceLocAt(sx, sy int, water bool) (int32, int32, bool) {
 	if w.scene == nil {
 		return 0, 0, false
 	}
-	v := scene.View{X: int(w.camX), Y: int(w.camY), Zoom: w.zoom}
+	v := w.mainView()
 	ps := w.scene.InteractionAt(&w.Map, v, sx, sy, func(it paint.InteractionItem) bool {
 		return it == paint.ItemSurface || water && it == paint.ItemWater
 	})

@@ -77,9 +77,9 @@ func (s *State) RemoveRoadGhost(c *Cmd) {
 // placeTrackGhost is placeTrackGhost: the old ghost removed, then
 // createTrack with apply, prevent building clearing, no error window, no
 // payment and ghost; placed, it is remembered for removal and its cost is
-// the state's (trackCost). PARTIAL: the
-// bridge retry (bridge_type_unsuitable…: the next bridge in the list) and
-// the viewport's underground view.
+// the state's (trackCost), and the main view follows it
+// (ghostVisibility). PARTIAL: the bridge retry (bridge_type_unsuitable…: the
+// next bridge in the list).
 func (s *State) placeTrackGhost(c *Cmd, a trackPlacementArgs) (int32, bool) {
 	s.RemoveTrackGhost(c)
 	cost, ok := s.DoCommandFor(c, CmdApply|CmdPreventBuildingClearing|CmdNoErrorWindow|CmdNoPayment|CmdGhost, ExpenditureConstruction, func(f uint8) (int32, bool) {
@@ -89,8 +89,20 @@ func (s *State) placeTrackGhost(c *Cmd, a trackPlacementArgs) (int32, bool) {
 	if ok {
 		s.Cons.Cost = cost
 		s.TrackGhost = &TrackGhost{X: a.X, Y: a.Y, Z: a.Z, Rotation: a.Rotation, TrackID: a.TrackID, TrackObjectID: a.TrackObjectID}
+		s.ghostVisibility(c)
 	}
 	return cost, ok
+}
+
+// ghostVisibility is what placeTrackGhost / placeRoadGhost do to the main
+// view once the ghost is placed (WindowManager::viewportSetVisibility): the
+// underground view while some of the ghost is under the ground
+// (flags_1136072's underground), the overground view otherwise; the height
+// marks on tracks with a gradient selected.
+func (s *State) ghostVisibility(c *Cmd) {
+	if s.GhostVisibility != nil {
+		s.GhostVisibility(c.PosFlags&PosUnderground != 0, s.Cons.Gradient != 0)
+	}
 }
 
 // placeRoadGhost is placeRoadGhost, as placeTrackGhost through createRoad.
@@ -103,6 +115,7 @@ func (s *State) placeRoadGhost(c *Cmd, a roadPlacementArgs) (int32, bool) {
 	if ok {
 		s.Cons.Cost = cost
 		s.RoadGhost = &RoadGhost{X: a.X, Y: a.Y, Z: a.Z, Rotation: a.Rotation, RoadID: a.RoadID, RoadObjectID: a.RoadObjectID}
+		s.ghostVisibility(c)
 	}
 	return cost, ok
 }

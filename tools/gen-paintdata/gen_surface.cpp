@@ -16,4 +16,23 @@ int main()
         std::printf("},\n");
     }
     std::printf("}\n");
+    // The underground view's tables.
+    std::printf("\n// UndergroundViewSnowNoise is kUndergroundViewSnowNoise, by snow coverage.\nvar UndergroundViewSnowNoise = [8]uint8{");
+    for (auto v : kUndergroundViewSnowNoise)
+        std::printf("%u, ", (unsigned)v);
+    std::printf("}\n\n// EdgeUndergroundOffset is kEdgeUndergroundOffset, by edge.\nvar EdgeUndergroundOffset = [4]int{");
+    for (auto v : kEdgeUndergroundOffset)
+        std::printf("%u, ", (unsigned)v);
+    std::printf("}\n\n// EdgeMaskImageFromSlope is kEdgeMaskImageFromSlope [isUnderground][edge][section].\nvar EdgeMaskImageFromSlope = [2][4][5]uint32{\n");
+    for (auto& u : kEdgeMaskImageFromSlope)
+    {
+        std::printf("\t{");
+        for (auto& e : u)
+            std::printf("{%u, %u, %u, %u, %u}, ", (unsigned)e[0], (unsigned)e[1], (unsigned)e[2], (unsigned)e[3], (unsigned)e[4]);
+        std::printf("},\n");
+    }
+    std::printf("}\n\n// GridlinesBoxFromSlope is kGridlinesBoxFromSlope, by display slope.\nvar GridlinesBoxFromSlope = [%zu]uint32{", kGridlinesBoxFromSlope.size());
+    for (auto v : kGridlinesBoxFromSlope)
+        std::printf("%u, ", (unsigned)v);
+    std::printf("}\n");
 }

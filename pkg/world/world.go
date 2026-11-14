@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/LaPingvino/goloco/pkg/paint"
 	"github.com/LaPingvino/goloco/pkg/palblend"
 	"github.com/LaPingvino/goloco/pkg/scene"
 	"github.com/LaPingvino/goloco/pkg/sim"
@@ -36,6 +37,7 @@ type tile = sim.Tile
 
 // World holds a tile grid for an isometric game world
 type World struct {
+	viewFlags paint.ViewFlags       // the main viewport's flags (viewflags.go)
 	townScene *scene.Renderer       // the Town window's viewport (townview.go)
 	newsScene [2]*scene.Renderer    // the news window's two viewports (newsview.go)
 	catchment []uint8               // SetCatchmentDisplay's map (nil: none)
@@ -181,6 +183,7 @@ func NewWorld(r *render.Renderer) *World {
 	w.camX = cx - 400 // half screen width
 	w.camY = cy - 300 // half screen height
 	w.ResetWaves()
+	w.GhostVisibility = w.ghostVisibility
 	return w
 }
 
