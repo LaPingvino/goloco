@@ -3,8 +3,8 @@ package paint
 import "github.com/LaPingvino/goloco/pkg/gfx8"
 
 // Walls — a port of Paint/PaintWall.cpp paintWall (0x004C3D7C), with the
-// primary and secondary colours and the glass layer. PARTIAL: ghost walls are
-// not ported.
+// primary and secondary colours and the glass layer; a ghost in the ghost
+// colour, without glass or interaction.
 
 // WallEl is what paintWall reads from a wall element.
 type WallEl struct {
@@ -12,6 +12,7 @@ type WallEl struct {
 	EdgeSlope     uint8 // EdgeSlope flags: 1 upwards, 2 downwards
 	PrimaryColour uint8
 	BaseZ         uint8 // SmallZ
+	Ghost         bool  // isGhost: colourMap is then applyGhostToImage's
 }
 
 // WallObj is what paintWall reads from a wall object.
@@ -58,7 +59,10 @@ func slopeFlagsToIndex(f uint8) int {
 // PaintWall paints one wall element at the current sprite position. colourMap
 // is the remap for the primary colour (used when the object has one).
 func (s *Session) PaintWall(el WallEl, obj WallObj, colourMap []uint8, sprite func(int) *gfx8.Sprite) {
-	s.ItemType = ItemWall // setItemType (PaintWall.cpp:115 (ghosts: noInteraction — no ghosts here); the inner noInteraction resets not yet ported)
+	s.ItemType = ItemWall // setItemType (PaintWall.cpp:115; the inner noInteraction resets not yet ported)
+	if el.Ghost {
+		s.ItemType = ItemNoInteraction
+	}
 	rot := int((s.Rotation + el.Rotation) & 3)
 	h := int(el.BaseZ) * 4
 	off, bbOff, bbLen := wallOffsets[rot], wallBBOffsets[rot], wallBBLengths[rot]
@@ -79,7 +83,7 @@ func (s *Session) PaintWall(el WallEl, obj WallObj, colourMap []uint8, sprite fu
 	}
 	s.AddAsParent(img, off, bbOff, bbLen)
 	// A glass wall: the glass image as a child, blended in getGlass(primary).
-	if obj.HasGlass && obj.GlassPal != nil {
+	if obj.HasGlass && obj.GlassPal != nil && !el.Ghost {
 		if gl := sprite(obj.Sprite + wallGlassOffsets[rot][slopeFlagsToIndex(el.EdgeSlope)]); gl != nil {
 			s.AddAsChild(Image{Sprite: gl, Op: gfx8.OpFor(gl, false, true), PalMap: obj.GlassPal}, off, bbOff, bbLen)
 		}

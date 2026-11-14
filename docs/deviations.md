@@ -71,7 +71,7 @@ commit, after `go build ./... && go vet ./...` confirm nothing used it.
 
 ## E. Not implemented at all
 
-Tutorial, Scenario Editor, Terraform, Ports/Airports, Build Vehicles (port queued as LOOP item 5b), per-frame
+Tutorial, Scenario Editor, Ports/Airports, Build Vehicles (port queued as LOOP item 5b), per-frame
 audio (pkg/audio/audio.go:158–174), music while the data lacks it.
 
 ## Fix order (feeds LOOP.md)

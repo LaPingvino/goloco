@@ -94,6 +94,7 @@ func (m *Map) adjustSurfaceHeight(c *Cmd, px, py int32, targetBaseZ int, slopeFl
 	clear := func(tt *Tile, k int) ClearResult {
 		return m.tileClearFunction(c, tt, k, px, py, removed, flags, &cost, true)
 	}
+	m.LastCollision = nil
 	if ok, _ := m.ApplyClearAtAllHeights(px, py, uint8(targetBaseZ), uint8(targetClearZ), 0xF, 0, clear); !ok {
 		c.setCollisionError(m)
 		return 0, false

@@ -55,13 +55,13 @@ func (g *Game) setToolbarColour(d *ui.DropdownMenu, btn *ui.ToolbarButton) {
 //	6: Terraform, 7: Railroad, 8: Road, 9: Port/Airport, 10: Build Vehicles
 //	11: Vehicles, 12: Stations, 13: Towns
 //
-// clickable(ToolbarTop.cpp): build_vehicles_menu port_menu vehicles_menu stations_menu
+// clickable(ToolbarTop.cpp): build_vehicles_menu port_menu vehicles_menu stations_menu terraform_menu
 // clickable(ToolbarTop.cpp): railroad_menu
 // clickable(ToolbarTopCommon.cpp): zoom_menu towns_menu
 // clickable-partial(ToolbarTop.cpp): loadsave_menu
 // clickable(ToolbarTop.cpp): audio_menu
 // clickable(ToolbarTopCommon.cpp): railroad_menu road_menu
-// (not yet: view_menu only logs; terraform_menu, port_menu, cheats_menu nothing)
+// (not yet: view_menu only logs; cheats_menu nothing)
 func (g *Game) handleToolbarButton(idx int) {
 	btn := &g.toolbar.Buttons[idx]
 	tooltip := btn.Tooltip
@@ -128,7 +128,7 @@ func (g *Game) handleToolbarButton(idx int) {
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
 	case "Terraform":
-		log.Println("[Game] Terraform menu (not yet implemented)")
+		g.terraformMenu(btn) // clear area, adjust land / water, plant trees, build walls (ToolbarTop.cpp terraformMenuMouseDown)
 	case "Railroad":
 		g.constructionMenu(btn, true) // the company's track types, the last one highlighted
 

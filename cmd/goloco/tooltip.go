@@ -52,6 +52,8 @@ func (g *Game) windowTooltip() string {
 		return w.WidgetTooltip(mx, my)
 	case *ui.MessagesWindow:
 		return w.WidgetTooltip(mx, my)
+	case *ui.TerraformWindow:
+		return w.WidgetTooltip(mx, my)
 	case *ui.MusicSelectionWindow:
 		return w.WidgetTooltip(mx, my)
 	}

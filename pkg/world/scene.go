@@ -346,9 +346,33 @@ func (w *World) SetCatchmentDisplay(cm []uint8) {
 // or clears it (on false: resetMapSelectionFlag(enable)); the old and new
 // areas are invalidated (mapInvalidateSelectionRect).
 func (w *World) SetMapSelection(on bool, ax, ay, bx, by int) {
+	w.SetMapSelectionType(on, scene.SelFull, ax, ay, bx, by)
+}
+
+// SetMapSelectionType is SetMapSelection with the selection's type
+// (setMapSelectionCorner: a corner, the whole tile, the water's surface, a
+// quarter or an edge — scene.SelCorner0 …). It returns how many of the
+// flag, the type and the area's four coordinates changed (the count
+// setMapSelectionTiles / setMapSelectionSingleTile return: 0, nothing did).
+func (w *World) SetMapSelectionType(on bool, typ uint8, ax, ay, bx, by int) int {
 	area := [4]int{ax, ay, bx, by}
-	if on == w.selOn && (!on || area == w.selArea) {
-		return
+	if !on {
+		area, typ = w.selArea, w.selType // resetMapSelectionFlag keeps the area and type
+	}
+	count := 0
+	if on != w.selOn {
+		count++
+	}
+	if typ != w.selType {
+		count++
+	}
+	for i := range area {
+		if area[i] != w.selArea[i] {
+			count++
+		}
+	}
+	if count == 0 {
+		return 0
 	}
 	inval := func(a [4]int) {
 		for ty := a[1]; ty <= a[3]; ty++ {
@@ -360,17 +384,48 @@ func (w *World) SetMapSelection(on bool, ax, ay, bx, by int) {
 	if w.selOn {
 		inval(w.selArea)
 	}
-	w.selOn, w.selArea = on, area
+	w.selOn, w.selArea, w.selType = on, area, typ
 	if w.scene == nil {
-		return
+		return count
 	}
 	if !on {
 		w.scene.Selection = nil
-		return
+		return count
 	}
 	inval(area)
+	w.scene.SelectionType = typ
 	w.scene.Selection = func(tx, ty int) bool {
 		a := w.selArea
 		return tx >= a[0] && tx <= a[2] && ty >= a[1] && ty <= a[3]
 	}
+	return count
+}
+
+// MapSelection is hasMapSelectionFlag(enable), getMapSelectionCorner and
+// getMapSelectionArea (tiles: min x, min y, max x, max y).
+func (w *World) MapSelection() (on bool, typ uint8, area [4]int) {
+	return w.selOn, w.selType, w.selArea
+}
+
+// SetGridlines is Main::showGridlines / hideGridlines: the main view's
+// gridlines_on_landscape flag, the view redrawn when it changes.
+func (w *World) SetGridlines(on bool) {
+	if w.scene == nil || w.scene.Gridlines == on {
+		return
+	}
+	w.scene.Gridlines = on
+	w.InvalidateView()
+}
+
+// InvalidateView is the main window's invalidate(): the whole view redrawn.
+func (w *World) InvalidateView() {
+	v := w.dirtyView
+	w.dirtyGrid.Invalidate(0, 0, v.W, v.H)
+}
+
+// SurfaceAt is ViewportInteraction::getSurfaceLocFromUi (main view): the map
+// position (world units, not snapped to the tile) on the surface under the
+// screen point; false when no surface is there.
+func (w *World) SurfaceAt(sx, sy int) (int32, int32, bool) {
+	return w.surfaceLocAt(sx, sy, false)
 }

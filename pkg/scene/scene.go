@@ -37,9 +37,13 @@ type Renderer struct {
 	Catchment func(tileX, tileY int) bool
 	// Selection is the map selection (MapSelectionFlags::enable with
 	// getMapSelectionArea, MapSelectionType::full): a tile in it gets the
-	// selection box on its surface. nil: none. PARTIAL: the corner, quarter,
-	// edge and water selection types.
-	Selection func(tileX, tileY int) bool
+	// selection box on its surface. nil: none. SelectionType is
+	// getMapSelectionCorner (MapSelectionType: SelCorner0 … SelEdge3).
+	Selection     func(tileX, tileY int) bool
+	SelectionType uint8
+	// Gridlines is ViewportFlags::gridlines_on_landscape (Main::showGridlines:
+	// while a terraform or construction window is open).
+	Gridlines bool
 	// ConstructionArrow is World::getConstructionArrow with
 	// MapSelectionFlags::enableConstructionArrow as Visible.
 	ConstructionArrow ConstructionArrow
@@ -237,6 +241,8 @@ func (r *Renderer) worker(i int) *Renderer {
 	r.workers[i].WaveFrame = r.WaveFrame // set after the workers may exist: passed on each time
 	r.workers[i].Catchment = r.Catchment
 	r.workers[i].Selection = r.Selection
+	r.workers[i].SelectionType = r.SelectionType
+	r.workers[i].Gridlines = r.Gridlines
 	r.workers[i].ConstructionArrow = r.ConstructionArrow
 	return r.workers[i]
 }
@@ -259,11 +265,32 @@ type View struct {
 	Tiles image.Rectangle
 }
 
+// MapSelectionType (Map/MapSelection.h).
+const (
+	SelCorner0 uint8 = iota
+	SelCorner1
+	SelCorner2
+	SelCorner3
+	SelFull
+	SelFullWater
+	SelQuarter0
+	SelQuarter1
+	SelQuarter2
+	SelQuarter3
+	SelEdge0
+	SelEdge1
+	SelEdge2
+	SelEdge3
+)
+
 // constructionCatchmentSlope0 / constructionSelectionCornersSlope0 are
 // ImageIds' catchment and selection boxes (+ display slope).
 const (
 	constructionCatchmentSlope0        = 341
 	constructionSelectionCornersSlope0 = 322
+	constructionSelectionEdgesSlope0   = 360
+	gridlinesSlope0                    = 379
+	constructionSelectionQuadsSlope0   = 398
 )
 
 var slopeToDisplay = [32]int{0, 2, 1, 3, 8, 10, 9, 11, 4, 6, 5, 7, 12, 14, 13, 15, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 16, 0, 18, 15, 0}
@@ -721,7 +748,11 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		if wo.Flags&objects.WallFlagHasSecondaryColour != 0 {
 			cmap = r.palette2()(primary, wl.SecondaryColour)
 		}
-		s.PaintWall(paint.WallEl{Rotation: wl.Rotation, EdgeSlope: wl.EdgeSlope, PrimaryColour: wl.PrimaryColour, BaseZ: wl.BaseZ},
+		ghost := ref.Flags&(1<<4) != 0
+		if ghost { // getWallImageId: Gfx::applyGhostToImage
+			cmap = r.colourMap(extColourGhost)
+		}
+		s.PaintWall(paint.WallEl{Rotation: wl.Rotation, EdgeSlope: wl.EdgeSlope, PrimaryColour: wl.PrimaryColour, BaseZ: wl.BaseZ, Ghost: ghost},
 			paint.WallObj{Sprite: int(wo.Sprite), Height: wo.Height, TwoSided: wo.Flags&objects.WallFlagTwoSided != 0,
 				HasPrimary: wo.Flags&objects.WallFlagHasPrimaryColour != 0, HasGlass: wo.Flags&objects.WallFlagHasGlass != 0,
 				GlassPal: r.colourMap(int(primary) + 0x74)},
@@ -733,9 +764,10 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			return
 		}
 		s.PaintTree(paint.TreeEl{Rotation: tr.Rotation, Quadrant: tr.Quadrant, Growth: tr.Growth, Season: tr.Season,
-			Unk7l: tr.Unk7l, HasSnow: tr.HasSnow, BaseZ: tr.BaseZ, ClearZ: tr.ClearZ},
+			Unk7l: tr.Unk7l, HasSnow: tr.HasSnow, BaseZ: tr.BaseZ, ClearZ: tr.ClearZ, Ghost: ref.Flags&(1<<4) != 0, Colour: tr.Colour},
 			paint.TreeObj{NumRotations: to.NumRotations, Sprites: to.Sprites, SnowSprites: to.SnowSprites,
-				ShadowImageOffset: uint32(to.ShadowImageOffset), HasShadow: to.Flags&objects.TreeFlagHasShadow != 0},
+				ShadowImageOffset: uint32(to.ShadowImageOffset), HasShadow: to.Flags&objects.TreeFlagHasShadow != 0,
+				GhostMap: r.colourMap(extColourGhost), ColourMap: r.treeColourMap(to, tr.Colour)},
 			sprite, r.shadowMap)
 	}
 }
@@ -813,12 +845,34 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	}
 	// PaintSurface.cpp paintMainSurface: offset (0,0,baseHeight), bbox (32,32,-1).
 	s.AddAsParent(paint.Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, paint.Pos3{Z: z}, paint.Pos3{Z: z}, paint.Pos3{X: 32, Y: 32, Z: -1})
-	// paintSurfaceFullTileSelection: kCornerSelectionBoxFromSlope by the
-	// display slope in ExtColour::unk25, attached to the surface.
-	if r.Selection != nil && r.Selection(x, y) {
-		if sel := sprite(constructionSelectionCornersSlope0 + ds); sel != nil {
-			pm := r.colourMap(0x25)
+	// paintSurfaceSelection: the selection box by the display slope, attached
+	// to the surface — a corner's (kCornerSelectionBoxFromSlope in
+	// kCornerColours, ExtColour::unk21 …), the whole tile's (the same image in
+	// unk25), a quarter's (kQuadSelectionBoxFromSlope, unk27 …) or an edge's
+	// (kEdgeSelectionBoxFromSlope, unk22 …), the corner / quarter / edge turned
+	// with the view. The water selection is a parent of its own (below).
+	selected := r.Selection != nil && r.Selection(x, y)
+	if selected && r.SelectionType != SelFullWater {
+		img, colour := constructionSelectionCornersSlope0, 0x25
+		switch typ := r.SelectionType; {
+		case typ <= SelCorner3:
+			colour = 0x21 + int(typ+rot)&3
+		case typ >= SelQuarter0 && typ <= SelQuarter3:
+			img, colour = constructionSelectionQuadsSlope0, 0x27+int(typ-SelQuarter0+rot)&3
+		case typ >= SelEdge0 && typ <= SelEdge3:
+			img, colour = constructionSelectionEdgesSlope0, 0x22+int(typ-SelEdge0+rot)&3
+		}
+		if sel := sprite(img + ds); sel != nil {
+			pm := r.colourMap(colour)
 			s.AttachToPrevious(paint.Image{Sprite: sel, Op: gfx8.OpFor(sel, pm != nil, false), PalMap: pm}, 0, 0)
+		}
+	}
+	// The gridlines (gridlines_on_landscape, up to zoom 2): kGridlinesBoxFromSlope
+	// translucent in ExtColour::unk30. PARTIAL: upstream attaches them after
+	// the water selection and the catchment area's parents.
+	if r.Gridlines && s.Zoom <= 2 {
+		if gl := sprite(gridlinesSlope0 + ds); gl != nil {
+			s.AttachToPrevious(paint.Image{Sprite: gl, Op: gfx8.OpTransparent | gfx8.OpDst, PalMap: r.colourMap(0x30)}, 0, 0)
 		}
 	}
 	if snowAttach != nil && s.Zoom <= 2 { // the partial snow image only up to zoom 2
@@ -850,8 +904,8 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 	// The catchment area (PaintSurface.cpp): constructionCatchmentSlope by the
 	// water surface's display slope (getWaterSurface), dark blue, as a parent
 	// at its height, bbox (32,32,1); after the selection box, as upstream.
-	if r.Catchment != nil && r.Catchment(x, y) {
-		h, slope := z, slope // getWaterSurface(elSurface, selfDescriptor.slope)
+	waterSurface := func() (int, uint8) { // getWaterSurface(elSurface, selfDescriptor.slope)
+		h, slope := z, slope
 		if wh := int(t.WaterLevel) * 16; wh > h {
 			h += 16 // kMicroZStep
 			if wh != h || t.Slope&0x10 == 0 {
@@ -861,6 +915,19 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 				slope = (sl<<2 | sl>>2) & 0xF
 			}
 		}
+		return h, slope
+	}
+	// paintSurfaceFullWaterTileSelection: the selection box by the water
+	// surface's display slope in ExtColour::unk26, a parent at its height.
+	if selected && r.SelectionType == SelFullWater {
+		h, slope := waterSurface()
+		if sel := sprite(constructionSelectionCornersSlope0 + slopeToDisplay[slope&0x1F]); sel != nil {
+			pm := r.colourMap(0x26)
+			s.AddAsParent(paint.Image{Sprite: sel, Op: gfx8.OpFor(sel, pm != nil, false), PalMap: pm}, paint.Pos3{Z: h}, paint.Pos3{Z: h}, paint.Pos3{X: 32, Y: 32, Z: 1})
+		}
+	}
+	if r.Catchment != nil && r.Catchment(x, y) {
+		h, slope := waterSurface()
 		if cs := sprite(constructionCatchmentSlope0 + slopeToDisplay[slope&0x1F]); cs != nil && r.catchmentMap != nil {
 			s.AddAsParent(paint.Image{Sprite: cs, Op: gfx8.OpFor(cs, true, false), PalMap: r.catchmentMap}, paint.Pos3{Z: h}, paint.Pos3{Z: h}, paint.Pos3{X: 32, Y: 32, Z: 1})
 		}
@@ -1510,4 +1577,13 @@ func (r *Renderer) paintTileEntities(s *paint.Session, m *sim.Map, x, y int, ent
 // mode (vhCommonMode) is air or water.
 func (r *Renderer) flyingOrFloating(m *sim.Map, e *scenario.VehicleEntity) bool {
 	return e.Mode == 2 || e.Mode == 3
+}
+
+// treeColourMap is paintTree's ImageId{image, colour} for a tree object with
+// colour options (no vanilla object has any): the element's colour's map.
+func (r *Renderer) treeColourMap(to *objects.TreeObject, colour uint8) []uint8 {
+	if to.Colours == 0 {
+		return nil
+	}
+	return r.colourMap(int(colour))
 }

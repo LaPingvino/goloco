@@ -1,0 +1,110 @@
+# Playthrough K: the landscaping tools (the toolbar's terraform menu and the
+# Terraform window, TerraForm.cpp). As G (seed 1950, Weatherworld, the fixed
+# view by Cloudburst). Adjust Land from the menu: the tile under 300,400
+# (64,251, flat at height 32) is raised a step by dragging up 16 px with the
+# button held, and lowered again by dragging down — each at a cost. Plant
+# Trees: a click plants the chosen tree there (a sapling; a second click on
+# the same quarter is refused: the error window). Clear Area takes it away.
+# Adjust Water raises water on the tile, Build Walls fences an edge. Escape
+# ends the tool and the window with it.
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+expect terraformwindow == 0
+expect height@64,251 == 32
+expect cash == 84300
+move 562 14
+wait 1
+shot /tmp/goloco-playthrough/pt-k1-menu.png
+click 580 66
+wait 1
+expect terraformwindow == 1
+move 300 400
+wait 1
+shot /tmp/goloco-playthrough/pt-k2-land-hover.png
+press 300 400
+wait 1
+move 300 383
+wait 1
+shot /tmp/goloco-playthrough/pt-k3-raised.png
+release 300 383
+wait 1
+expect height@64,251 == 36
+expect slope@64,251 == 0
+expect cash < 84300
+move 300 384
+wait 1
+press 300 384
+wait 1
+move 300 401
+wait 1
+release 300 401
+wait 1
+expect height@64,251 == 32
+expect slope@64,251 == 0
+# Plant Trees (the fourth tab): the list grows while the mouse rests on it
+# and shrinks when it leaves.
+click 277 58
+wait 1
+move 100 300
+wait 1
+move 300 400
+wait 1
+shot /tmp/goloco-playthrough/pt-k4-tree-ghost.png
+expect trees@64,251 == 0
+click 300 400
+wait 1
+expect trees@64,251 == 1
+click 300 400
+wait 1
+shot /tmp/goloco-playthrough/pt-k5-tree-refused.png
+expect trees@64,251 == 1
+# Clear Area (the first tab; a 2 × 2 area)
+click 184 58
+wait 1
+move 300 400
+wait 1
+click 300 400
+wait 1
+expect trees@64,251 == 0
+# Adjust Water (the third tab): a step of water on the tile
+click 246 58
+wait 1
+move 300 400
+wait 1
+expect water@64,251 == 0
+press 300 400
+wait 1
+move 300 383
+wait 1
+release 300 383
+wait 1
+shot /tmp/goloco-playthrough/pt-k6-water.png
+expect water@64,251 > 0
+press 300 384
+wait 1
+move 300 401
+wait 1
+release 300 401
+wait 1
+expect water@64,251 == 0
+# Build Walls (the fifth tab)
+click 308 58
+wait 1
+move 100 300
+wait 1
+move 300 400
+wait 1
+expect walls@64,251 == 0
+click 300 400
+wait 1
+shot /tmp/goloco-playthrough/pt-k7-wall.png
+expect walls@64,251 == 1
+key ESCAPE
+wait 1
+expect terraformwindow == 0
+expect walls@64,251 == 1
+quit

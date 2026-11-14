@@ -423,9 +423,46 @@ func (g *Game) scriptExpect() {
 				got += int64(n)
 			}
 		}
+	case "terraformwindow": // 1 while the Terraform window is open
+		if g.terraformWin() != nil {
+			got = 1
+		}
 	default:
-		fail("unknown key")
-		return
+		// KEY@X,Y: a tile's surface height (baseZ, in SmallZ), its slope bits,
+		// its water level, its trees and walls (ghosts not counted).
+		key, at, _ := strings.Cut(req[0], "@")
+		var tx, ty int
+		t := (*sim.Tile)(nil)
+		if n, _ := fmt.Sscanf(at, "%d,%d", &tx, &ty); n == 2 {
+			t = g.w.Map.TileAt(tx, ty)
+		}
+		if t == nil {
+			fail("unknown key")
+			return
+		}
+		count := func(kind uint8) (n int64) {
+			for _, r := range t.Order {
+				if r.Kind == kind && r.Flags&(1<<4) == 0 {
+					n++
+				}
+			}
+			return n
+		}
+		switch key {
+		case "height":
+			got = int64(t.BaseZ)
+		case "slope":
+			got = int64(t.Slope & 0x1F)
+		case "water":
+			got = int64(t.WaterLevel)
+		case "trees":
+			got = count(scenario.KindTree)
+		case "walls":
+			got = count(scenario.KindWall)
+		default:
+			fail("unknown key")
+			return
+		}
 	}
 	ok := map[string]bool{">": got > want, ">=": got >= want, "==": got == want, "<=": got <= want, "<": got < want}
 	res, known := ok[req[1]]

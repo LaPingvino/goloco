@@ -10,7 +10,7 @@ import (
 // The tree commands on the title map: a ghost sapling placed on a free flat
 // tile (free, marked ghost, growth 0), removed by the ghost removal; then a
 // real one at a cost, a second on the same quarter refused (object in the
-// way), removed for its clear cost.
+// way: named), removed for its clear cost.
 func TestCreateRemoveTreeCmd(t *testing.T) {
 	m, om := loadDataMap(t, "title.dat")
 	c := &Cmd{Company: CompanyNeutral, Objects: om}
@@ -55,7 +55,7 @@ func TestCreateRemoveTreeCmd(t *testing.T) {
 				}
 			}
 			c.ErrorText = 0
-			if _, _, ok := m.CreateTreeCmd(c, 0, a); ok || c.ErrorText != i18n.ObjectInTheWay {
+			if _, _, ok := m.CreateTreeCmd(c, 0, a); ok || c.ErrorText != i18n.StringIdInTheWay || c.ErrorArg == "" {
 				t.Errorf("a second tree on the quarter: ok %v, error %d", ok, c.ErrorText)
 			}
 			if rc, ok := m.RemoveTree(c, CmdApply, rm); !ok || len(tl.Trees) != 0 {

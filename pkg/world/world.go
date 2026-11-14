@@ -41,6 +41,7 @@ type World struct {
 	catchment []uint8               // SetCatchmentDisplay's map (nil: none)
 	selOn     bool                  // SetMapSelection: the selection is shown
 	selArea   [4]int                // its tiles: min x, min y, max x, max y
+	selType   uint8                 // its type (scene.SelFull …)
 	consArrow sim.ConstructionArrow // the arrow last handed to the renderer (constructionarrow.go)
 	// savedCentre: a saved view's centre still to be placed (SetSavedView
 	// before the first Draw gave the view its size).

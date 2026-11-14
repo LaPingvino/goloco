@@ -40,6 +40,7 @@ func (g *Game) industryToolOn() bool {
 // (gPrng2().randNext(); _placementPrng = gPrng2()).
 func (g *Game) industryToolStart(win *ui.TownListWindow) {
 	g.industryToolAbort()
+	g.closeTerraform() // toolSet: the tool is this window's now
 	g.w.Rng2.RandNext()
 	g.indTool = industryTool{on: true, prng: g.w.Rng2, win: win}
 }

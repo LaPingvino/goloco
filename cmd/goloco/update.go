@@ -165,6 +165,12 @@ func (g *Game) updateGame() {
 			g.dropdown = nil
 		}
 	}
+	if g.inMouseJustReleased(ebiten.MouseButtonLeft) && g.colourDropdown != nil && g.colourDropdown.Visible {
+		// held from the widget to an item and released there: the item is taken
+		if g.colourDropdown.HandleRelease(g.mouseX, g.mouseY) {
+			g.colourDropdown = nil
+		}
+	}
 	if g.inMouseJustReleased(ebiten.MouseButtonLeft) {
 		for i := range g.toolbar.Buttons {
 			g.toolbar.Buttons[i].Pressed = false
@@ -205,6 +211,12 @@ func (g *Game) updateToolCancel() {
 	}
 	if g.industryToolOn() && g.inKeyJustPressed(ebiten.KeyEscape) { // toolCancel → onToolAbort
 		g.industryToolAbort()
+	}
+	if g.tf.on && g.inKeyJustPressed(ebiten.KeyEscape) { // toolCancel: the Terraform window closes with its tool
+		g.closeTerraform()
+	}
+	if g.tf.on && g.tf.win != nil && g.inKeyJustPressed(ebiten.KeyR) { // Shortcuts.cpp rotateConstructionObject → Terraform::rotate
+		g.tf.win.Rotate()
 	}
 	// Escape cancels the pickup tool (pickupToolAbort: no ghost to remove yet).
 	if g.pickupOn && g.inKeyJustPressed(ebiten.KeyEscape) {
@@ -311,6 +323,7 @@ func (g *Game) updateHeld() {
 			g.industryToolUpdate(g.mouseX, g.mouseY)
 		}
 	}
+	g.updateTerraform()                 // the Terraform window's tool: selection, ghost, costs, drag
 	if g.pickupOn && !g.inTitleScreen { // pickupToolUpdate: the ghost under the cursor
 		if g.overWindow(g.mouseX, g.mouseY) {
 			g.pickupToolAbort() // no ghost under a window, whatever the vehicle
@@ -379,6 +392,8 @@ func (g *Game) hudOrMapClick() {
 	} else if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
 		g.toolbar.Buttons[btnIdx].Pressed = true
 		g.handleToolbarButton(btnIdx)
+	} else if g.tf.on && !g.inTitleScreen {
+		g.terraformToolDown(g.mouseX, g.mouseY) // the Terraform window's tool
 	} else if g.industryToolOn() && !g.inTitleScreen {
 		g.industryToolDown(g.mouseX, g.mouseY) // the Fund New Industries tool
 	} else if g.pickupOn && !g.inTitleScreen {
