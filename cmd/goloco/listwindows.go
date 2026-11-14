@@ -49,7 +49,7 @@ func (g *Game) newVehicleList(company, tab int) *ui.TownListWindow {
 				cars = append(cars, ui.TrainCarDraw(c))
 			}
 			rows = append(rows, ui.VehicleRow{Name: v.Name, Profit: v.Profit, AgeYears: v.AgeYears, Reliability: v.Reliability,
-				RecentProfit: v.RecentProfit, DayCreated: v.DayCreated, Cars: cars, Status: v.Status, StatusRed: v.StatusRed, Cargos: v.Cargos})
+				RecentProfit: v.RecentProfit, DayCreated: v.DayCreated, Cars: cars, Status: v.Status, StatusRed: v.StatusRed, Cargos: v.Cargos, Carried: v.Carried})
 		}
 	}
 	tc, wc := g.windowColours(true)

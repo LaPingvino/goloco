@@ -69,23 +69,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [x] N2 Company HQ click → Company window (done in 4a31dad).
 > - [x] N3 Viewport clicks on the release (4a31dad); a window's viewport → N22.
 > - [x] N4 Name plates follow towns and stations: every upstream updateLabel caller is ported (the station rename's last).
-> - [ ] N5 The porting gap b93e074..09d74ee (161 upstream commits): triage — list what changes behaviour or
->       looks goloco already ports (Town window 4th tab, industry "Cargo awaiting", white station captions,
->       toolbarAutoMenu, map tooltips …), then port them as items here.
->       Triage (2026-11-13; source and binary now at 09d74ee, so ports read the new code by themselves):
->       sim / divergence — b8e249a vehicle cost divisor · e71abfb vanilla divergence fixes · 5af1821 + fbe841d
->       industry divergence · 91c200d acquiring road stations · 61967bd cancel journey on pickup · 37d7c01 challenge
->       time limit · 982c51d removing stations of other rotations · 694c1ae walls / trees above 127 · bec1570 signals
->       on index != 0 · 6804cce last land variation sprite · 66ca922 no 128 clamp on paint boxes · 266077d road gap on
->       cliffs · d739914 track additions on curves · a99386d population chart overflow · fe47813 list scroll click
->       off-by-one · 1bb6044 + af4d69c vehicle list cargo filter.
->       UI / features — dbab545 Town window's transported-cargo tab (the 4th tab) · 4d72607 industry "cargo awaiting"
->       stats · 2e260ea company window rework · 7ba7099 + 2da9f6f toolbar shrunk / centred · 10c1e49 toolbarAutoMenu
->       option · 2854a10 drag-dimensions tooltip · 04e7900 signal auto placement · 3d6c318 signal buttons · 98de125
->       cycle track / road types by shortcut · 9850f2d double / quadruple zoom · a67dca0 + bc6d95e window resizing /
->       resize handle · ed2dd0c browse "Home" button · 638938c speed records "none yet" · af445f8 construction options
->       flash · landscape generation (d9cb11a, 9cf0c22, fd6db41, 9b99b3b, 9fb9e37). Music (e354d2f, c43d1f9, 9854f1f)
->       → N0c; news (d888eb6, 0fab369, 9cd7177) → N1.
+> - [x] N5 The porting gap b93e074..09d74ee: audited 2026-11-14 (most already ported; fd6db41's land patterns fixed
+>       now). What's missing became N24–N31.
 > - [ ] N6 Window stack leftovers: toolbar / panels as stack windows (a dragged window covers the toolbar), drag by
 >       frame, BuildVehicle / CompanyList / Company status resize, vehicle list column widths, open flash/sound.
 > - [ ] N7 Construction leftovers: disabled buttons drawn greyed, gradient-based disabling, a refused road's reason
@@ -131,6 +116,19 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       on track / road, one-way direction arrows (road and signal; the construction window shows / hides them), town
 >       and station names — the main viewport's flags, what paint does with each (PaintTileDecorations.cpp's tables,
 >       getHeightMarkerImage; PaintSurface's land marks), and the shortcuts (Shortcuts.cpp toggle…).
+> - [ ] N24 Town window's 4th tab, transported cargo (dbab545: town_not_served / town_no_deliveries,
+>       MonthlyCargoDelivered is simulated but never shown).
+> - [ ] N25 Industry window's cargo awaiting processing / transport (4d72607; the Transported tab's new height).
+> - [x] N26 Vehicle list filter by actual cargo: "Transports cargo" / "Has cargo order" (af4d69c).
+> - [ ] N27 Options → Controls: toolbarAutoMenu (10c1e49) and the centred top toolbar (2da9f6f, 7ba7099) — config,
+>       checkboxes, the toolbar's centring and shrink.
+> - [ ] N28 Signal auto placement (04e7900, bec1570, 3d6c318): Create/RemoveSignalsAuto, the stepper and repeated
+>       placement checkbox, the taller signal tab with its moved buttons.
+> - [ ] N29 Shortcuts buildTracks / buildRoads cycle the track / road types (98de125).
+> - [ ] N30 Zoom in to 2× / 4× (9850f2d: negative zoom levels).
+> - [ ] N31 Browse prompt's Home button and folder_path widget (ed2dd0c); landscape generation window leftovers
+>       (d9cb11a disabled options + flatLand rivers return, 9b99b3b kMinBaseLandHeight, 9fb9e37 PNG heightmap) — with
+>       the editor (N14).
 > - [ ] N14 (PAUSED until an editor exists) the town list's editor build tabs; updateBuilding's isEditorMode return;
 >       the tileManagerLoaded gate.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).

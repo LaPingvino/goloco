@@ -1,9 +1,11 @@
 package ui
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -44,26 +46,40 @@ func vlBoxes(w *TownListWindow) (filter, cargo [4]int, shown bool) {
 }
 
 // addVehicleListFilters adds VehicleList's filter type and cargo type
-// dropdowns: "All vehicles" / "Transporting cargo" (var_850); with the
-// latter, the cargo dropdown (var_852, none at first: "No cargo type
-// selected") lists every cargo as "Carrying {cargo} {sprite}", and only
-// vehicles with an UnloadAll / WaitFor order for that cargo stay
-// (populateVehicleList). The rows are refiltered and sorted again.
+// dropdowns: "All vehicles" / "Transports cargo" / "Has cargo order"
+// (var_850, af4d69c); with either of the latter, the cargo dropdown (var_852,
+// none at first: "No cargo type selected") lists every cargo as "Carrying
+// {cargo} {sprite}", and only the vehicles whose cars carry that cargo
+// (vehicleTransportsCargo) or with an UnloadAll / WaitFor order for it
+// (vehicleHasCargoOrder) stay (populateVehicleList). The rows are refiltered
+// and sorted again.
+// vlFilterModes are the filter types' texts: all_vehicles, transports_cargo,
+// has_cargo_order.
+func vlFilterMode(i int) string {
+	return i18n.Str([3]int{i18n.AllVehicles, i18n.TransportsCargo, i18n.HasCargoOrder}[i])
+}
+
+// vlKeeps is populateVehicleList's filter: every vehicle for all vehicles or
+// no cargo chosen; else its cars' cargo (transports cargo) or its orders'
+// (has cargo order) must hold the cargo.
+func vlKeeps(v VehicleRow, mode, cargo int) bool {
+	if mode == 0 || cargo < 0 {
+		return true
+	}
+	list := v.Carried
+	if mode == 2 {
+		list = v.Cargos
+	}
+	return slices.Contains(list, cargo)
+}
+
 func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, all []VehicleRow, cells func(VehicleRow) []string, cargos []VehicleListCargo) {
 	mode, cargo := 0, -1 // var_850, var_852 (0xFFFF = -1)
 	refilter := func() {
 		var out []VehicleRow
 		for _, v := range all {
-			if mode == 1 && cargo >= 0 { // isCargoFilterActive
-				ok := false
-				for _, c := range v.Cargos {
-					if c == cargo {
-						ok = true
-					}
-				}
-				if !ok {
-					continue
-				}
+			if !vlKeeps(v, mode, cargo) {
+				continue
 			}
 			out = append(out, v)
 		}
@@ -91,7 +107,7 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 		}
 		optDropdown(rt, vlFilterBox[0], vlFilterBox[1], vlFilterBox[2], sec)
 		optDropdown(rt, vlCargoBox[0], vlCargoBox[1], vlCargoBox[2], sec)
-		if mode == 1 && cargo >= 0 { // the cargo's inline sprite after its text
+		if mode != 0 && cargo >= 0 { // the cargo's inline sprite after its text
 			if t, sp := cargoName(); sp > 0 {
 				tw, _ := MeasureTextBold(t)
 				drawG1At(rt, sp, vlCargoBox[0]+1+10+tw, vlCargoBox[1]+1)
@@ -109,12 +125,12 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 		black, win2 := pal[paletteBlack0], pal[gfx8.Shade(cmap, 9)]
 		arrow := string(rune(170))
 		aw, _ := MeasureTextBold(arrow)
-		label := [2]string{"All vehicles", "Transporting cargo"}[mode]
+		label := vlFilterMode(mode)
 		DrawTextBold(screen, label, w.X+vlFilterBox[0]+1, w.Y+vlFilterBox[1]+1, win2) // wcolour2_stringid
 		bx := vlFilterBox[0] + vlFilterBox[2] - 12
 		DrawTextBold(screen, arrow, w.X+bx+(11-1)/2-aw/2, w.Y+vlFilterBox[1]+1, black)
 		bx = vlCargoBox[0] + vlCargoBox[2] - 12
-		if mode != 1 { // disabled (prepareDraw): no text, the button inset
+		if mode == 0 { // disabled (prepareDraw): no text, the button inset
 			c6, c4 := pal[gfx8.Shade(cmap, 6)], pal[gfx8.Shade(cmap, 4)]
 			DrawTextBold(screen, arrow, w.X+bx+(11-1)/2-aw/2+1, w.Y+vlCargoBox[1]+2, c4)
 			DrawTextBold(screen, arrow, w.X+bx+(11-1)/2-aw/2, w.Y+vlCargoBox[1]+1, c6)
@@ -136,7 +152,8 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 		// filter_type_btn: Dropdown::show at the widget, width() − 4.
 		if w.in(vlFilterBox, px, py) {
 			d := NewDropdownShow(w.X+vlFilterBox[0], w.Y+vlFilterBox[1], vlFilterBox[2]-4, 11, w.Colour,
-				[]DropdownItem{{Text: "All vehicles", Selected: mode == 0, MoveX10: true}, {Text: "Transporting cargo", Selected: mode == 1, MoveX10: true}}, 1<<20, 1<<20)
+				[]DropdownItem{{Text: vlFilterMode(0), Selected: mode == 0, MoveX10: true}, {Text: vlFilterMode(1), Selected: mode == 1, MoveX10: true},
+					{Text: vlFilterMode(2), Selected: mode == 2, MoveX10: true}}, 1<<20, 1<<20)
 			d.OnSelect = func(i int) {
 				if i >= 0 && i != mode {
 					mode, cargo = i, -1
@@ -146,10 +163,10 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 			w.OpenDropdown(d)
 			return true
 		}
-		// cargo_type_btn (enabled with transporting cargo): Dropdown::showText,
+		// cargo_type_btn (enabled but for all vehicles): Dropdown::showText,
 		// every cargo "Carrying {name} {sprite}"; the selected test compares
 		// the item index with var_852 (the cargo id) as upstream does.
-		if mode == 1 && w.in(vlCargoBox, px, py) && len(cargos) > 0 {
+		if mode != 0 && w.in(vlCargoBox, px, py) && len(cargos) > 0 {
 			items := make([]DropdownItem, len(cargos))
 			for i, c := range cargos {
 				items[i] = DropdownItem{Text: "Carrying " + c.Name + " ", MoveX10: true, TrailSprite: c.Sprite, Selected: i == cargo}

@@ -545,8 +545,9 @@ type VehicleRow struct {
 	Status    string
 	StatusRed bool
 	// Cargos are the cargo ids of its UnloadAll / WaitFor orders
-	// (vehicleIsTransportingCargo).
-	Cargos []int
+	// (vehicleHasCargoOrder); Carried those its cars carry
+	// (vehicleTransportsCargo).
+	Cargos, Carried []int
 }
 
 // vehicleOrder is VehicleList.cpp getOrder: name (strlogicalcmp, default), profit

@@ -172,3 +172,25 @@ func (w *Map) VehicleCargos(v scenario.VehicleListEntry) []int {
 	}
 	return out
 }
+
+// VehicleCarriedCargos are the cargo types a vehicle's cars carry
+// (VehicleList.cpp vehicleTransportsCargo, af4d69c): each car's body's
+// primary cargo and its bogies' secondary cargo.
+func (w *Map) VehicleCarriedCargos(head uint16) []int {
+	tr, err := w.TrainOf(head)
+	if err != nil {
+		return nil
+	}
+	var out []int
+	for _, car := range tr.Cars {
+		if len(car) == 0 {
+			continue
+		}
+		for _, i := range []int{car[0].Body, car[0].Front, car[0].Back} {
+			if t := w.Entities[i].Cargo.Type; t != 0xFF {
+				out = append(out, int(t))
+			}
+		}
+	}
+	return out
+}

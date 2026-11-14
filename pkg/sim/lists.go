@@ -209,7 +209,8 @@ type VehicleListRow struct {
 	// Status is getStatus's text; StatusRed its {COLOUR RED}.
 	Status    string
 	StatusRed bool
-	Cargos    []int // VehicleCargos
+	Cargos    []int // VehicleCargos: its cargo orders' cargo
+	Carried   []int // VehicleCarriedCargos: its cars' cargo
 }
 
 // VehicleListRows returns the saved vehicles' list data: name (the head's
@@ -227,6 +228,7 @@ func (w *Map) VehicleListRows() []VehicleListRow {
 			AgeYears: age, Reliability: int(v.Reliability), RecentProfit: int64(v.RecentProfit), DayCreated: v.DayCreated, HeadID: v.HeadID})
 		out[len(out)-1].Status, out[len(out)-1].StatusRed = w.VehicleStatus(v)
 		out[len(out)-1].Cargos = w.VehicleCargos(v)
+		out[len(out)-1].Carried = w.VehicleCarriedCargos(v.HeadID)
 	}
 	return out
 }
