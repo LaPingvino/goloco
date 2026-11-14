@@ -127,7 +127,9 @@ var vehicleFields = func() map[uint8]map[string]bool {
 		"SpriteWidth", "SpriteHeightNegative", "SpriteHeightPositive", "TileX", "TileY", "TileBaseZ", "NextCarID",
 		"RemainingDistance", "TrackAndDirection", "SubPosition", "TrackType", "RoutingHandle", "Mode", "VehicleFlags",
 		"Flags38", "Var3C", "SpriteLeft", "SpriteTop", "SpriteRight", "SpriteBottom"}
-	with := func(extra ...string) map[string]bool { return set(append(append([]string(nil), common...), extra...)...) }
+	with := func(extra ...string) map[string]bool {
+		return set(append(append([]string(nil), common...), extra...)...)
+	}
 	body := []string{"ColourPrimary", "ColourSecondary", "ObjectSpriteType", "ObjectID", "Var44", "Animation", "CargoFrame", "Cargo",
 		"BodyIndex", "CreationDay", "Var5A", "WheelSlipping", "BreakdownFlags", "RefundCost", "BreakdownTimeout"}
 	return map[uint8]map[string]bool{
