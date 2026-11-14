@@ -1,8 +1,10 @@
 # PL.1 playthrough, stage A: the title's New Game opens the scenario list.
 # Run: GOLOCO_SCRIPT=scripts/playthrough/a-newgame.txt under xvfb (800x600 window).
 wait 20
+expect window:scenarioSelect == 0
 shot /tmp/goloco-playthrough/pt-a1-title.png
 click 289 538
 wait 3
+expect window:scenarioSelect == 1
 shot /tmp/goloco-playthrough/pt-a2-newgame.png
 quit

@@ -470,6 +470,17 @@ func (g *Game) scriptExpect() {
 			got = 1
 		}
 	default:
+		if name, ok := strings.CutPrefix(req[0], "window:"); ok { // 1 while a window of that WindowType is open
+			typ, known := ui.WindowTypeNames[name]
+			if !known {
+				fail("no window type " + name)
+				return
+			}
+			if g.wins.Find(typ, ui.AnyNumber) != nil {
+				got = 1
+			}
+			break
+		}
 		if sub, ok := strings.CutPrefix(req[0], "maptip~"); ok { // 1 while the map tooltip shows text holding this (_ for a space)
 			if t := &g.mapTip; t.open && strings.Contains(t.tip.Text, strings.ReplaceAll(sub, "_", " ")) {
 				got = 1
