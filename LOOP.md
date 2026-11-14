@@ -80,7 +80,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [ ] N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks).
 > - [ ] N10 Gfx::recolour exactness (the 5P.g note).
 > - [x] N11 a-newgame has no expect (now window:scenarioSelect): a key for open windows (expect window scenarioSelect == 1).
-> - [ ] N12 Money pop-ups drawn after the names, not in paint order (drawStringStructs).
+> - [x] N12 Money pop-ups: after the names as upstream (Viewport::paint); only overlapping ones stack in entity-list
+>       order, not paint order (noted PARTIAL in overlay.go).
 > - [x] N13 Explained, nothing to fix: the Claude Code sandbox bind-mounts .git/config read-only (by design), so
 >       git can't rewrite it inside the sandbox; branch deletes leave no stale sections (none had any).
 > - [x] N15 Map tooltips: the MapToolTip window (25-tick rest, outlined, skin colours, the owner's face) with
