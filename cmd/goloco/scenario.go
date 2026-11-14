@@ -151,19 +151,23 @@ func (g *Game) quitToMenu() {
 	g.startTitleMusic() // Title::start
 }
 
-// checkObjective reports the scenario won once the sim has marked the player
-// company's challenge completed (Company::evaluateChallengeProgress).
-// OpenLoco reference: src/OpenLoco/src/Scenario/ScenarioObjective.cpp
+// checkObjective is Company::evaluateChallengeProgress's UI side, once the
+// sim has marked the player company's challenge completed or beaten (its
+// news message the sim posts itself): the Company window opens on its
+// Challenge tab (CompanyWindow::openChallenge) and, completed, the score is
+// kept (ScenarioManager::saveNewScore).
+// OpenLoco reference: src/OpenLoco/src/World/Company.cpp evaluateChallengeProgress
 func (g *Game) checkObjective() {
 	if !g.hasObjective || g.gameWon || !g.inGame {
 		return
 	}
-	// The player company's challengeCompleted flag (set by the sim's daily
-	// evaluateChallengeProgress).
-	if completed, _, _, _ := g.w.Map.ChallengeStatus(); completed {
-		g.gameWon = true
+	completed, _, beaten, _ := g.w.Map.ChallengeStatus()
+	if !completed && !beaten {
+		return
 	}
-	if g.gameWon {
+	g.gameWon = true // done: this check runs once per game
+	g.openCompanyChallenge(int(g.w.Map.ControllingCompany))
+	if completed {
 		log.Printf("[Game] OBJECTIVE ACHIEVED: %s", g.objective.Describe())
 		if g.progress != nil && g.currentScenarioPath != "" {
 			score := uint32(0)
