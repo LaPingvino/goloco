@@ -730,7 +730,17 @@ func (g *Game) applyRenderingConfig() {
 
 // readRenderingConfig is Config::read's rendering options (before any world
 // or view is made).
+// miscConfigKeys are the Miscellaneous checkboxes' openloco.yml keys.
+var miscConfigKeys = [7]string{"cheats_menu_enabled", "companyAIDisabled", "townGrowthDisabled", "breakdowns_disabled",
+	"disableVehicleLoadPenaltyCheat", "disableStationSizeLimit", "trainsReverseAtSignals"}
+
 func readRenderingConfig() {
+	c := &sim.Config // Config::read's gameplay settings (all off by default)
+	for i, p := range [7]*bool{nil, &c.CompanyAIDisabled, &c.TownGrowthDisabled, &c.BreakdownsDisabled, &c.LoadPenaltyDisabled, &c.StationSizeLimitOff, &c.TrainsReverseAtSignals} {
+		if p != nil {
+			*p = configValue(miscConfigKeys[i]) == "true"
+		}
+	}
 	world.GridlinesOnLandscape = configValue("gridlinesOnLandscape") == "true"
 	scene.LandscapeSmoothing = configValue("landscapeSmoothing") != "false"
 	scene.ShowAiPlanning = configValue("showAiPlanningAsGhosts") == "true"

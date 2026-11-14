@@ -413,8 +413,8 @@ var buildSpeedToGrowthPerTick = [12]uint8{0, 1, 3, 5, 7, 9, 12, 16, 22, 0, 0, 0}
 // UpdateTowns is TownManager::update (0x00496B6D), from the game tick after
 // dateTick as upstream's tickLogic: every 8 scenario ticks the town
 // (ticks / 8) % 0x7F, when it exists, runs Town::update (updateTown).
-// PARTIAL: Config townGrowthDisabled (no such option in goloco yet: growth
-// always on); the editor never ticks here.
+// (Config townGrowthDisabled stops the growth in updateTown.) The editor
+// never ticks here.
 func (m *Map) UpdateTowns(om *objects.ObjectManager) {
 	if om == nil || m.ScenarioTicks%8 != 0 {
 		return
@@ -432,6 +432,9 @@ func (m *Map) UpdateTowns(om *objects.ObjectManager) {
 // that many full grows (roads extended and branched, buildings built).
 func (m *Map) updateTown(om *objects.ObjectManager, id int) {
 	m.RecalculateTownSize(id)
+	if Config.TownGrowthDisabled {
+		return
+	}
 	growth := buildSpeedToGrowthPerTick[m.Towns[id].BuildSpeed%12]
 	if growth == 0 || growth == 1 && m.Rng1.RandNext()&7 != 0 {
 		m.GrowTown(om, id, TownGrowBuildInitialRoad|TownGrowRoadUpdate|TownGrowNeutralRoadTakeover)

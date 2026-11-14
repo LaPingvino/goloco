@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/LaPingvino/goloco/pkg/scene"
+	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/world"
 	"log"
 	"strconv"
@@ -132,6 +133,20 @@ func (g *Game) openOptionsWindow() {
 	}
 	if v, err := strconv.Atoi(configValue("autosave_amount")); err == nil {
 		w.AutosaveAmount = min(max(v, 1), 24)
+	}
+	// Miscellaneous checkboxes: Config's cheats menu (PARTIAL: no cheats
+	// window), companyAIDisabled, townGrowthDisabled, breakdowns_disabled,
+	// disableVehicleLoadPenaltyCheat, disableStationSizeLimit,
+	// trainsReverseAtSignals — the sim's sim.Config, kept in openloco.yml.
+	c := &sim.Config
+	w.MiscChecks = [7]bool{configValue("cheats_menu_enabled") == "true", c.CompanyAIDisabled, c.TownGrowthDisabled, c.BreakdownsDisabled,
+		c.LoadPenaltyDisabled, c.StationSizeLimitOff, c.TrainsReverseAtSignals}
+	w.OnMiscCheck = func(i int, v bool) {
+		ptrs := [7]*bool{nil, &c.CompanyAIDisabled, &c.TownGrowthDisabled, &c.BreakdownsDisabled, &c.LoadPenaltyDisabled, &c.StationSizeLimitOff, &c.TrainsReverseAtSignals}
+		if p := ptrs[i]; p != nil {
+			*p = v
+		}
+		setConfigValue(miscConfigKeys[i], strconv.FormatBool(v))
 	}
 	w.OnAutosaveFrequency = func(v int) { setConfigValue("autosave_frequency", strconv.Itoa(v)) }
 	w.OnAutosaveAmount = func(v int) { setConfigValue("autosave_amount", strconv.Itoa(v)) }
