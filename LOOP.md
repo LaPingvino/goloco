@@ -73,7 +73,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       now). What's missing became N24–N31.
 > - [ ] N6 Window stack leftovers: toolbar / panels as stack windows (a dragged window covers the toolbar), drag by
 >       frame, BuildVehicle / CompanyList / Company status resize, vehicle list column widths, open flash/sound.
-> - [ ] N7 Construction leftovers: disabled buttons drawn greyed, gradient-based disabling, a refused road's reason
+> - [ ] N7 Construction leftovers (disabled buttons greyed and the whole setDisabledWidgets — gradient, piece, traits,
+>       roads too — DONE 2026-11-14): a refused road's reason
 >       line, constructRoad's alternate-road retry, the bridge retry, shift's downward search, byte_113607E, the
 >       selected-tile outline, the preview's arrow, the error window at the cursor.
 > - [x] N8 One-way road arrows — done with N23.
@@ -108,11 +109,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       pans upstream's way — the view goes with the mouse, twice as far, cursor hidden; Options' invert checkbox turns
 >       it round); the paint structs' modId and the ghosts' noInteraction. Checked against OpenLoco on the title game
 >       (scripts/olref/tours/rightclick.txt); playthrough L. LEFT → N22.
-> - [ ] N22 Right-click leftovers: the hidden cursor held in place while panning (startCursorDrag — pointer lock);
->       invertRightMouseViewPan kept in openloco.yml; the right drag in scroll views (scrollRight); map tooltips and
->       right clicks in other viewports (town / station windows); the hovered station's highlight; the demolish sound; repeatedSignalMode ("Signals block", removal along the
->       block); the Overhead tab's mod section (single only); the Signal and Overhead tabs have no map tool yet, so
->       their right-click removals are only reachable on existing signals / mods; openAtTrack's remembered signal /
+> - [ ] N22 Right-click leftovers (the cursor held in place while panning — captured — and the kept
+>       invertRightMouseViewPan DONE 2026-11-14): the right drag in scroll views (scrollRight); map tooltips and
+>       right clicks in other viewports (town / station windows); the hovered station's highlight; the demolish sound; the Overhead tab's mod section (single only); the Overhead tab has no
+>       map tool yet; openAtTrack's remembered signal /
 >       station / bridge per track type (Scenario::getConstruction); the construction arrow in the window's piece
 >       preview (OpenLoco draws it there too).
 > - [x] N23 The View menu — done 2026-11-14: the main viewport's flags (pkg/paint viewflags.go: Ui::ViewportFlags on

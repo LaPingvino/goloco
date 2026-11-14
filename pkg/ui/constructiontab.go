@@ -17,6 +17,7 @@ const (
 	TraitSlope          = 1 << 5
 	TraitSteepSlope     = 1 << 6
 	TraitOneSided       = 1 << 7
+	TraitSlopedCurve    = 1 << 8 // TrackTraitFlags::slopedCurve
 )
 
 // ConstructionButton is one of the construction tab's image buttons
@@ -122,10 +123,70 @@ type ConstructionTabState struct {
 	Rotation          uint8  // constructionRotation (the dual-track buttons' images)
 	// Cost is trackCost/roadCost for the piece at the head (0: none drawn).
 	Cost int64
+	// PieceUnbuildable: getTrackPieceId / getRoadPieceId finds no piece for
+	// the piece, gradient and rotation chosen (the Construct button disabled).
+	PieceUnbuildable bool
 	// BridgeImage is lastSelectedBridge's image (BridgeObject::image), -1
 	// for none; Company the player's primary colour (it is recoloured).
 	BridgeImage int
 	Company     uint8
+}
+
+// Disabled is ConstructionTab's setDisabledWidgets (0x0049DAA5) for the piece
+// and gradient buttons: getUnusedPiecesRotation (beside a dual track's other
+// track no curves, one s-bend and no plain slopes; diagonal no curves, s-bends
+// or slopes); on a slope no curves or s-bends (small curves stay for a track
+// with sloped curves); and the slopes by the piece chosen — a road's very
+// small and small curves and its turnaround none, a track's straight and
+// turnaround all, its small curves those its traits allow, any other piece
+// none.
+func (st ConstructionTabState) Disabled() map[string]bool {
+	d := map[string]bool{}
+	set := func(names ...string) {
+		for _, n := range names {
+			d[n] = true
+		}
+	}
+	slopes := []string{"steep_slope_down", "slope_down", "slope_up", "steep_slope_up"}
+	switch r := st.Rotation; {
+	case r >= 12:
+		set("left_hand_curve_very_small", "left_hand_curve_small", "left_hand_curve", "right_hand_curve", "right_hand_curve_very_small",
+			"right_hand_curve_small", "s_bend_dual_track_left", "s_bend_left", "s_bend_right", "s_bend_dual_track_right")
+		set(slopes...)
+	case r >= 8:
+		set("left_hand_curve_small", "left_hand_curve", "left_hand_curve_large", "right_hand_curve_large", "right_hand_curve",
+			"right_hand_curve_small", "s_bend_right", "slope_down", "slope_up")
+	case r >= 4:
+		set("left_hand_curve_small", "left_hand_curve", "left_hand_curve_large", "right_hand_curve_large", "right_hand_curve",
+			"right_hand_curve_small", "s_bend_left", "slope_down", "slope_up")
+	}
+	if st.Gradient != "level" && st.Gradient != "" { // getUnusedTrackPieces / getUnusedRoadPieces
+		set("left_hand_curve_very_small", "left_hand_curve", "left_hand_curve_large", "right_hand_curve_large", "right_hand_curve",
+			"right_hand_curve_very_small", "s_bend_dual_track_left", "s_bend_left", "s_bend_right", "s_bend_dual_track_right")
+		if st.IsRoad || st.Traits&TraitSlopedCurve == 0 {
+			set("left_hand_curve_small", "right_hand_curve_small")
+		}
+	}
+	if st.IsRoad {
+		switch st.Piece {
+		case "left_hand_curve_very_small", "right_hand_curve_very_small", "left_hand_curve_small", "right_hand_curve_small", "turnaround":
+			set(slopes...)
+		}
+	} else {
+		switch st.Piece {
+		case "straight", "turnaround", "":
+		case "left_hand_curve_small", "right_hand_curve_small": // getUnusedTrackSlopes
+			if st.Traits&(TraitSlope|TraitSlopedCurve) == 0 {
+				set("slope_down", "slope_up")
+			}
+			if st.Traits&(TraitSteepSlope|TraitSlopedCurve) == 0 {
+				set("steep_slope_down", "steep_slope_up")
+			}
+		default:
+			set(slopes...)
+		}
+	}
+	return d
 }
 
 // TrackButtons is activateSelectedTrackWidgets' layout for a track: the
@@ -227,12 +288,17 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 				}
 			}
 		}
+		disabled := st.Disabled()
 		for _, b := range st.Buttons() {
 			if b.Name == st.Piece || b.Name == st.Gradient {
 				gfx8.FillRectInset(rt, b.X, b.Y, b.X+b.W-1, b.Y+b.H-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset)
 			}
 			if sp, err := gfx8.Decode(&g1.Elements[b.Image]); err == nil {
-				gfx8.DrawSpriteNoise(rt, sp, b.X, b.Y, gfx8.OpFor(sp, true, false), sec, nil)
+				if disabled[b.Name] { // ImageButton's disabled image: solid, shade 6 at (1, 1) under shade 4
+					drawDisabledImage(rt, sp, b.X, b.Y, sec)
+				} else {
+					gfx8.DrawSpriteNoise(rt, sp, b.X, b.Y, gfx8.OpFor(sp, true, false), sec, nil)
+				}
 			}
 		}
 	})

@@ -392,7 +392,7 @@ func (g *Game) consStepWidget(gradient bool, dir int) {
 		}
 		if b.Name == active {
 			at = len(names)
-		} else if !g.consIsRoad() && consUnusedAtRotation(b.Name, g.w.Cons.Rotation) {
+		} else if st.Disabled()[b.Name] {
 			continue
 		}
 		names = append(names, b.Name)

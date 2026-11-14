@@ -39,34 +39,11 @@ var (
 	}
 )
 
-// consUnusedAtRotation is getUnusedPiecesRotation (0x0049DB71): the piece
-// and gradient widgets a track's construction rotation disables — beside a
-// dual track's other track (4–7, 8–11) the curves but the very small ones,
-// one s-bend and the slopes; on the diagonal (12–15) every curve but the
-// large ones, the s-bends and every gradient.
-func consUnusedAtRotation(widget string, rotation uint8) bool {
-	in := func(names ...string) bool {
-		for _, n := range names {
-			if n == widget {
-				return true
-			}
-		}
-		return false
-	}
-	switch {
-	case rotation >= 12:
-		return in("left_hand_curve_very_small", "left_hand_curve_small", "left_hand_curve", "right_hand_curve",
-			"right_hand_curve_very_small", "right_hand_curve_small", "s_bend_dual_track_left", "s_bend_left",
-			"s_bend_right", "s_bend_dual_track_right", "steep_slope_down", "slope_down", "slope_up", "steep_slope_up")
-	case rotation >= 4:
-		sBend := "s_bend_left"
-		if rotation >= 8 {
-			sBend = "s_bend_right"
-		}
-		return in("left_hand_curve_small", "left_hand_curve", "left_hand_curve_large", "right_hand_curve_large",
-			"right_hand_curve", "right_hand_curve_small", sBend, "slope_down", "slope_up")
-	}
-	return false
+// consDisabled is the Construction tab's disabledWidgets (setDisabledWidgets,
+// ui.ConstructionTabState.Disabled) for a widget by name.
+func (g *Game) consDisabled(name string) bool {
+	_, st := g.constructionFrame(0, 0)
+	return st.Disabled()[name]
 }
 
 func nameFor(m map[string]uint8, v uint8) string {
@@ -349,8 +326,8 @@ func (g *Game) consStationRotate() {
 // by its name (ui.ConstructionHit's; the keyboard's construction shortcuts
 // call the same): a disabled widget does nothing.
 func (g *Game) consWidget(hit string) {
-	if !g.consIsRoad() && consUnusedAtRotation(hit, g.w.Cons.Rotation) {
-		return // a disabled widget (PARTIAL: it isn't drawn greyed yet)
+	if g.consDisabled(hit) {
+		return // a disabled widget (setDisabledWidgets)
 	}
 	switch hit {
 	case "":

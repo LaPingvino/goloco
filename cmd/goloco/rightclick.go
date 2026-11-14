@@ -24,10 +24,7 @@ import (
 // hidden meanwhile (Ui::hideCursor); Options → Controls' "invert right mouse
 // dragging" turns it round — the map then follows the mouse, as goloco's pan
 // did before this port (at half the speed).
-// PARTIAL: upstream also holds the hidden cursor where it was pressed
-// (startCursorDrag) — goloco's moves on unseen and comes back where the
-// mouse went, and stops panning at the screen's edge; a view following a
-// vehicle is not let go (viewportUnfocusFromEntity); viewports of other
+// PARTIAL: a view following a vehicle is not let go (viewportUnfocusFromEntity); viewports of other
 // windows; the right drag in scroll views (State::scrollRight).
 
 // viewportRightState is Input's state for State::viewportRight.
@@ -48,7 +45,10 @@ func (g *Game) updateViewportRight() {
 		dropdown := (g.dropdown != nil && g.dropdown.Visible) || (g.colourDropdown != nil && g.colourDropdown.Visible)
 		if !g.inTitleScreen && !dropdown && !g.overWindow(g.mouseX, g.mouseY) {
 			*r = viewportRightState{on: true, last: gameNow(), pressX: g.mouseX, pressY: g.mouseY, lastX: g.mouseX, lastY: g.mouseY}
-			ebiten.SetCursorMode(ebiten.CursorModeHidden) // Ui::hideCursor
+			// Ui::hideCursor + startCursorDrag: the cursor hidden and held where it
+			// was pressed (captured: the mouse still moves the pan, unbounded by
+			// the screen's edge, and the cursor comes back at the press point).
+			ebiten.SetCursorMode(ebiten.CursorModeCaptured)
 		}
 	}
 	if !r.on {
