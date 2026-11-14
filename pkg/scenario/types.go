@@ -339,6 +339,8 @@ type TreeElement struct {
 	BaseZ        uint8 // byte 2: height in SmallZ
 	ClearZ       uint8 // byte 3: clear height
 	Unk7l        uint8 // byte 7 bits [2:0]: seasonal transition state
+	Unk5h        uint8 // byte 5 bits [7:4]: the growth timer (a step when it wraps)
+	IsDying      bool  // byte 6 bit 7
 }
 
 // BuildingElement represents a building on a tile.

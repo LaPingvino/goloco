@@ -117,7 +117,7 @@ func (s *State) UpdateTiles(visible func(tileX, tileY int) bool, om *objects.Obj
 				continue
 			}
 		elements:
-			for _, r := range t.Order {
+			for k, r := range t.Order {
 				if r.Flags&0x10 != 0 { // ghost
 					continue
 				}
@@ -133,6 +133,10 @@ func (s *State) UpdateTiles(visible func(tileX, tileY int) bool, om *objects.Obj
 				case scenario.KindIndustry:
 					if int(r.Index) < len(t.Industries) {
 						s.industryElementUpdate(&t.Industries[r.Index], int32(tx)*32, int32(ty)*32, om)
+					}
+				case scenario.KindTree:
+					if !s.updateTreeElement(t, k, int32(tx)*32, int32(ty)*32, om) {
+						break elements // the tile's elements changed
 					}
 				}
 			}

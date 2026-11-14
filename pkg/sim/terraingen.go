@@ -390,7 +390,10 @@ func (m *Map) GenerateTerrain(hm *HeightMap, patterns [32]uint8, seaLevel uint8,
 }
 
 // Seasons (Scenario::Season): autumn, winter, spring, summer.
-const seasonWinter = 1
+const (
+	seasonAutumn = 0
+	seasonWinter = 1
+)
 
 // InitialiseSnowLine is initialiseSnowLine: the season for today's day of
 // the year from the climate (updateSeason), and that season's snow line.

@@ -70,6 +70,10 @@ type IndustryObject struct {
 // IndustryFlagHasShadows is IndustryObjectFlags::hasShadows.
 const IndustryFlagHasShadows = 1 << 21
 
+// IndustryFlagKillsTrees is IndustryObjectFlags::killsTrees: trees on its
+// surfaces die (TreeElement.cpp updateTreeElement).
+const IndustryFlagKillsTrees = 1 << 22
+
 // IndustryFlagFarmTilesDrawAboveSnow is IndustryObjectFlags::farmTilesDrawAboveSnow
 // (ski slopes; other farm tiles draw below snow).
 const IndustryFlagFarmTilesDrawAboveSnow = 1 << 26
