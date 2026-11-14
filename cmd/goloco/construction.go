@@ -215,6 +215,9 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 	// Every construction window opens hovering in rotation 0, straight and
 	// level (Common's open, then trackWindow's rotate_90).
 	g.closeTerraform() // the construction tool's toolSet
+	if g.consWin() != nil {
+		g.consResetView() // the window it replaces closes first (its onClose)
+	}
 	g.consShowView()
 	if g.r.ObjMgr != nil {
 		g.w.EndConstruction(g.playerCmd())

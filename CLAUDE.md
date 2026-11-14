@@ -85,7 +85,8 @@ Build: `go build -o goloco ./cmd/goloco`. Always verify visually:
   `World.RotateView` / Enter / the rotate menu. Project with `sim.GameToScreen` / `Map.GameToScreen`, never an
   inline `y - x`. A save opens on its saved view in both games: `go run ./scripts/olref/setview -tile X,Y
   -rotation R in.SV5 out.SV5` makes one that opens anywhere, for pixel comparisons (scripts/olref/README.md).
-  `go run ./cmd/render8 -rotation R -zoom Z` renders a rotated view without a display.
+  `go run ./cmd/render8 -rotation R -zoom Z [-flags F] [-at X,Y]` renders a rotated view without a display
+  (-flags: the View menu's viewport flags, pkg/paint viewflags.go; -at: the paint structs over a pixel).
 - ALWAYS run long headless sessions under Xvfb so the desktop/screen-lock
   cannot freeze the loop: `Xvfb :99 -screen 0 800x600x24 &` then
   `DISPLAY=:99 WAYLAND_DISPLAY= ./goloco …` (xorg-server-xvfb installed).

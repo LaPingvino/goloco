@@ -6,8 +6,8 @@
 # scenery, the height marks on land and on tracks, the direction arrows — then
 # the menu itself (a press on its button; released there it takes the
 # highlighted first entry), the names hidden through it, and every see-through
-# mode at once. Places: 331,295 (a town, a station, bridges), 105,127 (the
-# spiral's tunnels), 82,182 (one-sided signals).
+# mode at once. Places: 331,295 (a town, a station, bridges), 105,127 (farms,
+# snow), 82,182 (one-sided signals), 186,143 (a road tunnel under a railway).
 # The click at 571,451 closes the news window the title game opens with.
 # Shots are named SHOTS/…: sed that to a scratch directory per game.
 # 2026-11-14, OpenLoco 09d74ee.

@@ -42,6 +42,15 @@ func (w *World) SetViewFlags(flags paint.ViewFlags, on bool) {
 	w.InvalidateView()
 }
 
+// centreUnderground is Window::viewportCentreOnTile's hold on the view's
+// underground flag: centred on a position more than 16 below the land there
+// (a train in a tunnel) the main view goes underground; centred on anything
+// else it comes back up.
+func (w *World) centreUnderground(x, y, z int32) {
+	land, _ := w.Map.GetHeight(x, y)
+	w.SetViewFlags(paint.ViewUnderground, z < int32(land)-16)
+}
+
 // ghostVisibility is placeTrackGhost's / placeRoadGhost's
 // viewportSetVisibility calls (sim.State.GhostVisibility).
 func (w *World) ghostVisibility(underground, sloped bool) {
