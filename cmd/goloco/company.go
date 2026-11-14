@@ -96,6 +96,15 @@ func (g *Game) openCompanyWindow(company int) {
 	}
 }
 
+// openCompanyChallenge is CompanyWindow::openChallenge: the Company window on
+// its Challenge tab.
+func (g *Game) openCompanyChallenge(company int) {
+	if cw := g.newCompanyWindow(company); cw != nil {
+		cw.SwitchTab(ui.CompanyTabChallenge)
+		g.showAuto(cw, 0, 0)
+	}
+}
+
 // openCompanyFinances is CompanyWindow::openFinances: the Company window on
 // its Finances tab (636 × 319), the owner's colours.
 func (g *Game) openCompanyFinances(company int) {

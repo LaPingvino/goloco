@@ -189,12 +189,7 @@ func (g *Game) drawOverlays(screen *ebiten.Image) {
 	g.drawTimePanel(screen)
 	g.drawNews(screen) // the news window and the ticker: stickToFront, made after the panels and so over them
 	g.drawTopmost(screen)
-	if g.gameWon {
-		msg := "OBJECTIVE ACHIEVED!"
-		mw, _ := ui.MeasureTextBold(msg)
-		fillRect(screen, float64(g.sw/2-mw), float64(g.sh/2-30), float64(mw*2), 60, color.RGBA{0, 80, 0, 200})
-		ui.DrawTextBoldScaled(screen, msg, g.sw/2-mw, g.sh/2-10, 2.0, color.RGBA{255, 255, 160, 255})
-	}
+
 
 	// Transient save confirmation overlay
 	if g.saveMsgFrames > 0 {
