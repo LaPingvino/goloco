@@ -84,10 +84,17 @@ func TestTrainCrash(t *testing.T) {
 	}
 	before := len(m.Messages)
 	misc := m.EntityLists.Counts[EntityListMisc]
+	saved := map[uint16]bool{} // the save's own effects (smoke, exhausts …), loaded with it
+	for id := range m.Effects {
+		saved[id] = true
+	}
 	m.BogieCollision(a, bogie, m.Entities[hit].ID)
 	// explodeComponent: a cloud per exploding part, crash particles in its colours
 	clouds, particles := 0, 0
-	for _, e := range m.Effects {
+	for id, e := range m.Effects {
+		if saved[id] {
+			continue
+		}
 		switch e.SubType {
 		case effectTypeExplosionCloud:
 			clouds++
@@ -98,7 +105,7 @@ func TestTrainCrash(t *testing.T) {
 			}
 		}
 	}
-	if clouds < 2 || particles == 0 || int(m.EntityLists.Counts[EntityListMisc]) != int(misc)+len(m.Effects) {
+	if clouds < 2 || particles == 0 || int(m.EntityLists.Counts[EntityListMisc]) != int(misc)+len(m.Effects)-len(saved) {
 		t.Errorf("explosion: %d clouds, %d particles, misc %d → %d", clouds, particles, misc, m.EntityLists.Counts[EntityListMisc])
 	}
 	ha, hb := m.Entities[a.Head], m.Entities[b.Head]
@@ -123,8 +130,16 @@ func TestTrainCrash(t *testing.T) {
 		m.updateTrain(a, om)
 		m.UpdateEffects(om, 0)
 	}
-	if len(m.Effects) != 0 || m.EntityLists.Counts[EntityListMisc] != misc {
-		t.Errorf("%d effects outlived 400 ticks (misc %d, was %d)", len(m.Effects), m.EntityLists.Counts[EntityListMisc], misc)
+	outlived := 0
+	for id := range m.Effects {
+		if !saved[id] {
+			outlived++
+		}
+	}
+	// every misc entity is one the sim keeps (an effect, a money effect, or a
+	// saved one it doesn't model)
+	if all := len(m.Effects) + len(m.MoneyEffects) + len(m.OtherEffects); outlived != 0 || int(m.EntityLists.Counts[EntityListMisc]) != all {
+		t.Errorf("%d effects outlived 400 ticks (misc %d, kept %d)", outlived, m.EntityLists.Counts[EntityListMisc], all)
 	}
 	for _, car := range a.Cars {
 		for _, cc := range car {

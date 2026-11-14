@@ -191,12 +191,23 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       screenshot. Seen on the way: a Town window opened while the news window shows is placed right under it
 >       (220,439 under the news at 220,441 — hidden; not compared with OpenLoco); the FREECASH news names the
 >       company "Unnamed" in a new Weatherworld game.
-> - [ ] N35 (a Fable job: its first agent hit the Fable limit on 2026-11-14 before starting) Saving a game: goloco's save writes a JSON file with only the scenario's path ("Game saved!" in an
->       invented overlay) — every bit of progress is lost. Upstream: S5.cpp exportGameStateToFile (the S5 writer: the
->       header, the game state, the tile elements, the entities, the objects list; compressed chunks), SaveGame
->       prompt, autosave (dateTick's monthly), "saved as" message. goloco's loader (pkg/scenario) must round-trip.
->       Also fixed with it 2026-11-14: the invented "OBJECTIVE ACHIEVED!" banner — now the Company window's
->       Challenge tab opens (CompanyWindow::openChallenge), as upstream on completion or being beaten.
+> - [x] N35 DONE 5cd89e9 + 6eb50d4: saving a game. pkg/scenario keeps the file's chunks (Raw: one S5::GameState,
+       a GameStateType2 converted as importGameStateType2) and writes every modelled field back over them
+       (EncodeGameState, EncodeTileElements = toSaveElement; byte-identical to the file on title.dat and all 45
+       scenarios); sim.State.ExportScenario is LoadScenario's inverse; Save Game / Load Game on the saves folder,
+       the monthly autosave (save/autosave, autosave_frequency / autosave_amount), error_game_save_failed — no
+       "saved as" message: upstream has none for games. Round-trip tests (pkg/sim s5export_test.go: the title game
+       and a started scenario with vehicles bought, played, saved, loaded, played on — the same state), playthrough
+       p-save (expect saved: the loaded game is the save byte for byte), OpenLoco loads goloco's saves
+       (scripts/olref/gosave; README). The loader now also reads waves, effect entities, scenario name / details,
+       a wall's tertiary colour, the surface's clearZ and wave flag. PARTIAL: what goloco doesn't model of a
+       record made in play (a town / industry / station takes its slot's old bytes; a company gets createCompany's
+       non-zero defaults, a vehicle createHead's / createVehicle2's, else zero); padding kept, not zeroed as
+       upstream's field-by-field export does; nextQuadrantId not recomputed (upstream recomputes it on load);
+       only the loaded file's own packed objects are packed again (not every custom object loaded);
+       last_save_path read, not written; no progress bar; Load Game in play doesn't ask "Save this before
+       loading?"; Options' autosave widgets still static (the config keys work); landscape / scenario saving
+       (the editor) not ported.
 > - [ ] N14 (PAUSED until an editor exists) the town list's editor build tabs; updateBuilding's isEditorMode return;
 >       the tileManagerLoaded gate.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).
