@@ -78,7 +78,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       line, constructRoad's alternate-road retry, the bridge retry, shift's downward search, byte_113607E, the
 >       selected-tile outline, the preview's arrow, the error window at the cursor.
 > - [x] N8 One-way road arrows — done with N23.
-> - [ ] N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks).
+> - [ ] (plan: docs/PORT-PLANS.md B) N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks).
 > - [x] N10 Gfx::recolour exactness: already exact (Vehicle.cpp Main::draw redraws the pickup image in the company
 >       colour over the secondary-colour one; goloco draws that) — the PARTIAL note was stale.
 > - [x] N11 a-newgame has no expect (now window:scenarioSelect): a key for open windows (expect window scenarioSelect == 1).
@@ -146,7 +146,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [x] N29 Shortcuts buildTracks / buildRoads cycle the track / road types (98de125). DONE 2026-11-14 with N33
 >       (shortcut_actions.go buildTracksOrRoads; on OpenLoco 26.09's title game T, T goes Railway Track → Tram
 >       Track, as goloco's does on Weatherworld).
-> - [ ] N30 Zoom in to 2× / 4× (9850f2d: negative zoom levels).
+> - [ ] (plan: docs/PORT-PLANS.md C) N30 Zoom in to 2× / 4× (9850f2d: negative zoom levels).
 > - [ ] N31 Browse prompt's Home button and folder_path widget (ed2dd0c); landscape generation window leftovers
 >       (d9cb11a disabled options + flatLand rivers return, 9b99b3b kMinBaseLandHeight, 9fb9e37 PNG heightmap) — with
 >       the editor (N14).
@@ -180,7 +180,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       every key and Escape does not close it). Playthrough N. Scripts: `key <binding>`, `keydown` / `keyup`,
 >       `type` through the queue. The Load/Save menu's Screenshot and Left Ctrl+S save the frame to
 >       ~/.goloco/screenshots (it was the diagnostic crop). LEFT → N34.
-> - [ ] N34 Keyboard leftovers (the shortcuts window, its edit prompt and Customise Keys DONE 2026-11-14: rebinding
+> - [ ] (plan: docs/PORT-PLANS.md A (the map window)) N34 Keyboard leftovers (the shortcuts window, its edit prompt and Customise Keys DONE 2026-11-14: rebinding
 >       writes openloco.yml's shortcuts section); showMap (no map window), openDebugWindow (no debug window), sendMessage (no network) do
 >       nothing; rotateConstructionObject's TownList (editor) and CompanyWindow (headquarters ghost) parts; no
 >       editor mode gates; keys are read as SDL's default (US) layout by their place on the keyboard; the key
