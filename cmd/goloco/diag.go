@@ -262,7 +262,8 @@ func (g *Game) diagOpenWindows() {
 					img[i] = byte(10 + (i%250)/25*10 + (i/250)/50) // bands of palette colours
 				}
 				g.browseWin().Preview = &scenario.SaveDetails{Company: "Joop's Railways", Owner: "Joop", Date: 55000, ChallengeProgress: 42, Image: img}
-				g.browseWin().ChangeDir(filepath.Join(g.browseWin().Dir, "Scenarios"))
+				g.browseWin().Exts = append(g.browseWin().Exts, ".sc5") // the scenarios, as files to show the synthetic preview on
+				g.browseWin().ChangeDir(filepath.Join(filepath.Dir(g.dataDir), "Scenarios"))
 				g.browseWin().SelectFirstFile()
 			}
 		} else if os.Getenv("GOLOCO_DIAG_BROWSE") == "save" {

@@ -247,8 +247,9 @@ func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectM
 // limit and month count.
 //
 // PARTIAL: the season,
-// initialiseDefaultTrackRoadMods, the scenario name / details copy, labels
-// and the windows / viewport / music resets (cmd/goloco's side).
+// initialiseDefaultTrackRoadMods, lastMapWindowAttributes' flags. The
+// scenario name / details / file name copy, the labels and the windows /
+// viewport / music resets are cmd/goloco's side.
 func (m *Map) StartScenario(startYear uint16, om *objects.ObjectManager) {
 	m.StartScenarioGenerating(startYear, nil, nil, om)
 }

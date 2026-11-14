@@ -1,0 +1,100 @@
+// Command gosave writes goloco's own saved game of a game, headless: the file
+// loaded into goloco's map (a .SC5 started as a new game, as the New Game
+// list does), played -ticks game ticks, and saved through goloco's S5 writer
+// (pkg/scenario S5File, sim.State.ExportScenario) — for loading goloco's
+// saves in the real OpenLoco (scripts/olref) and in goloco.
+//
+//	go run ./scripts/olref/gosave [-ticks N] [-seed S] ../locomotion/Data/title.dat $SCRATCH/title-goloco.SV5
+//
+// No preview image (the save details' 250×200 picture is blank: there is no
+// renderer here). The save is game
+// data: keep it out of git.
+package main
+
+import (
+	"bytes"
+	"flag"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/LaPingvino/goloco/pkg/assets"
+	"github.com/LaPingvino/goloco/pkg/core"
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+	"github.com/LaPingvino/goloco/pkg/sim"
+)
+
+func main() {
+	ticks := flag.Int("ticks", 0, "game ticks to play before saving")
+	seed := flag.Uint("seed", 1950, "a .SC5's new-game rng seed (the script's \"seed N\")")
+	data := flag.String("data", "../locomotion", "the Locomotion folder")
+	flag.Parse()
+	if flag.NArg() != 2 {
+		log.Fatal("usage: gosave [-ticks N] [-seed S] [-data DIR] in.(SV5|SC5|dat) out.SV5")
+	}
+	in, out := flag.Arg(0), flag.Arg(1)
+	g1, err := assets.LoadG1(filepath.Join(*data, "Data", "g1.DAT"))
+	must(err)
+	om := objects.NewObjectManager(filepath.Join(*data, "ObjData"))
+	om.SetBaseSpriteIndex(uint32(g1.GetSpriteCount()))
+	om.G1File = g1
+	must(om.LoadAllObjects())
+	sc, err := scenario.LoadScenarioData(in)
+	must(err)
+	for _, po := range sc.PackedObjectsRaw {
+		_, _ = om.LoadObjectFromHeaderAndData(po.HeaderBytes, po.Data)
+	}
+	sim.ReorderObjectsForScenario(om, sc)
+	s := &sim.State{}
+	s.LoadScenario(sc)
+	s.LoadWaves(sc.Waves)
+	if strings.EqualFold(filepath.Ext(in), ".sc5") {
+		s.Rng1 = *core.NewPrngSeed(uint32(*seed), uint32(*seed)^0x5EED)
+		var gen *sim.TerrainOptions
+		if sc.LandscapeToGenerate {
+			o := sc.Options
+			gen = &sim.TerrainOptions{MinLandHeight: o.MinLandHeight, TopographyStyle: o.TopographyStyle, HillDensity: o.HillDensity,
+				HillsEdgeOfMap: o.Flags&2 != 0, SeaLevel: sc.SeaLevel, NumRiverbeds: o.NumRiverbeds, MinRiverWidth: o.MinRiverWidth,
+				MaxRiverWidth: o.MaxRiverWidth, RiverbankWidth: o.RiverbankWidth, RiverMeanderRate: o.RiverMeanderRate,
+				LandDistributionPatterns: o.LandDistributionPatterns, NumberOfForests: o.NumberOfForests, NumberRandomTrees: o.NumberRandomTrees,
+				MinForestRadius: o.MinForestRadius, MaxForestRadius: o.MaxForestRadius, MinForestDensity: o.MinForestDensity,
+				MaxForestDensity: o.MaxForestDensity, MinAltitudeForTrees: o.MinAltitudeForTrees, MaxAltitudeForTrees: o.MaxAltitudeForTrees,
+				NumberOfTowns: o.NumberOfTowns, MaxTownSize: o.MaxTownSize, NumberOfIndustries: o.OptNumberOfIndustries}
+		}
+		var raw sim.G1Raw
+		if r, ok := om.G1File.(sim.G1Raw); ok {
+			raw = r
+		}
+		s.StartScenarioGenerating(sc.Options.StartYear, gen, raw, om)
+		s.ScenarioFileName, s.ScenarioName, s.ScenarioDetails = in, sc.Options.Name, sc.Options.Description
+	}
+	for range *ticks {
+		s.Tick(nil, om)
+	}
+	s.PrepareSave()
+	ex := s.ExportScenario()
+	ex.SavedViewX, ex.SavedViewY, ex.SavedViewZoom, ex.SavedViewRotation = sc.SavedViewX, sc.SavedViewY, sc.SavedViewZoom, sc.SavedViewRotation
+	id := int(s.PlayerCompanies[0])
+	d := scenario.SaveDetails{Date: s.CurrentDay, Image: make([]byte, 250*200)}
+	var perf uint16
+	if id < len(s.CompanyNames) {
+		d.Company, d.Owner = s.CompanyName(id), s.OwnerName(id, om)
+		perf, d.ChallengeFlags = uint16(s.CompanyFaces[id].Performance), s.CompanyFaces[id].ChallengeFlags
+		d.ChallengeProgress = s.Companies[id].ChallengeProgress
+	}
+	f := &scenario.S5File{Header: scenario.SavedGameHeader(len(sc.PackedObjectsRaw)), SaveDetails: scenario.EncodeSaveDetails(d, perf, s.ScenarioName),
+		PackedObjects: sc.PackedObjectsRaw, RequiredObjects: sim.RequiredObjects(sc.Raw.RequiredObjects, om),
+		GameState: ex.EncodeGameState(), TileElements: scenario.EncodeTileElements(ex.Tiles)}
+	var buf bytes.Buffer
+	must(f.Write(&buf))
+	must(os.WriteFile(out, buf.Bytes(), 0o644))
+	log.Printf("gosave: %s, %d ticks → %s (%d bytes)", in, *ticks, out, buf.Len())
+}
+
+func must(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}

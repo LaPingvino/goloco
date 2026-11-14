@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/LaPingvino/goloco/pkg/core"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 	"github.com/LaPingvino/goloco/pkg/sim"
@@ -22,22 +23,9 @@ import (
 // into a fresh world, the New Game, Load and Save windows, the objective, and
 // back to the title.
 
-// loadScenario loads a scenario or GoLoco save file into the world.
-// Supports .SC5, .SV5 (Locomotion native) and .goloco (GoLoco JSON saves).
+// loadScenario loads a scenario (.SC5: a new game) or a saved game (.SV5,
+// the title's .dat) into the world.
 func (g *Game) loadScenario(filePath string) error {
-	// If it is a GoLoco JSON save, extract the referenced scenario path.
-	if strings.EqualFold(filepath.Ext(filePath), ".goloco") {
-		data, err := os.ReadFile(filePath)
-		if err != nil {
-			return fmt.Errorf("reading save file: %w", err)
-		}
-		var save GoLocoSave
-		if err := json.Unmarshal(data, &save); err != nil {
-			return fmt.Errorf("parsing save file: %w", err)
-		}
-		filePath = save.ScenarioPath
-	}
-
 	sc, err := scenario.LoadScenarioData(filePath)
 	if err != nil {
 		return fmt.Errorf("loading scenario: %w", err)
@@ -99,6 +87,23 @@ func (g *Game) loadScenario(filePath string) error {
 	// unrotated on the map's centre.
 	if sc.HasSavedView && !sc.LandscapeToGenerate {
 		gameW.SetSavedView(int(sc.SavedViewX), int(sc.SavedViewY), min(sc.SavedViewZoom, 3), sc.SavedViewRotation)
+	}
+	gameW.Map.AutosaveCheck = g.autosaveCheck
+	g.packedObjects = sc.PackedObjectsRaw
+	if strings.EqualFold(filepath.Ext(filePath), ".sc5") {
+		// Scenario::loadAndStart / start: the file's path, the options'
+		// name and details into the game state; the save path the saves
+		// folder and the scenario's name.
+		gameW.Map.ScenarioFileName = filePath
+		gameW.Map.ScenarioName, gameW.Map.ScenarioDetails = sc.Options.Name, g.scenarioDetails
+		g.activeSavePath = newGameSavePath(sc.Options.Name)
+	} else if strings.EqualFold(filepath.Ext(filePath), ".sv5") {
+		g.activeSavePath = filePath
+	} else { // the title game (.dat): a save of it goes to the saves folder
+		g.activeSavePath = newGameSavePath(strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath)))
+	}
+	if g.script != nil && g.script.lastSave != nil { // "expect saved": the state as loaded, before anything runs
+		g.script.loadedSave = bytes.Equal(saveStateBytes(gameW), g.script.lastSave)
 	}
 	g.w = gameW
 	g.applyRenderingConfig()
@@ -237,18 +242,10 @@ func (g *Game) openNewGameWindow() {
 	g.wins.Show(w)
 }
 
-// openLoadGameWindow opens the file browser (PromptBrowse, load mode) for all
-// supported file types.
+// openLoadGameWindow is Game::loadSaveGameOpen: the file browser (PromptBrowse,
+// load mode) on the saves folder, saved games only.
 func (g *Game) openLoadGameWindow() {
-	// The ported PromptBrowse window (pkg/ui/promptbrowse.go), load mode.
-	startDir := ""
-	if home, err := os.UserHomeDir(); err == nil {
-		startDir = home
-	}
-	if g.dataDir != "" {
-		startDir = filepath.Dir(g.dataDir) // one level up from "Data/"
-	}
-	w := ui.NewPromptBrowse("Load Game", startDir, []string{".sv5", ".sc5", ".goloco"}, g.sw, g.sh)
+	w := ui.NewPromptBrowse(i18n.Label(i18n.TitlePromptLoadGame), savesDir(), []string{".sv5"}, g.sw, g.sh)
 	w.Confirm = func(caption, text, ok string, then func()) { // right-click delete asks first
 		g.prompt = ui.NewPromptOkCancel(caption, text, ok, g.sw, g.sh, then)
 	}
@@ -259,60 +256,4 @@ func (g *Game) openLoadGameWindow() {
 		}
 	}
 	g.showCentred(w)
-}
-
-// GoLocoSave is the JSON format for GoLoco native save files (.goloco).
-type GoLocoSave struct {
-	Version      int    `json:"version"`
-	ScenarioPath string `json:"scenarioPath"`
-}
-
-// goLocoSavesDir returns (and creates) the directory for .goloco save files.
-func goLocoSavesDir() string {
-	home, _ := os.UserHomeDir()
-	dir := filepath.Join(home, ".goloco", "saves")
-	_ = os.MkdirAll(dir, 0o755)
-	return dir
-}
-
-// openSaveWindow is the Save Game prompt (PromptBrowse, save mode) in the
-// saves folder, named after the current game.
-// DEVIATION (existing): goloco writes its .goloco JSON save (the scenario path),
-// not an S5 saved game — the S5 writer isn't ported.
-func (g *Game) openSaveWindow() {
-	name := ""
-	if g.currentScenarioPath != "" {
-		name = strings.TrimSuffix(filepath.Base(g.currentScenarioPath), filepath.Ext(g.currentScenarioPath))
-	}
-	w := ui.NewPromptBrowseSave("Save Game", goLocoSavesDir(), name, ".goloco", g.sw, g.sh)
-	w.Confirm = func(caption, text, ok string, then func()) {
-		g.prompt = ui.NewPromptOkCancel(caption, text, ok, g.sw, g.sh, then)
-	}
-	w.OnSave = func(path string) {
-		w.Close()
-		if err := g.saveGameTo(path); err != nil {
-			log.Printf("[Game] Save error: %v", err)
-		}
-	}
-	g.showCentred(w)
-}
-
-// saveGameTo writes the current scenario path to a .goloco JSON save file.
-func (g *Game) saveGameTo(path string) error {
-	if g.currentScenarioPath == "" {
-		g.saveMsg = "Nothing to save"
-		g.saveMsgFrames = 120
-		return nil
-	}
-	data, err := json.Marshal(GoLocoSave{Version: 1, ScenarioPath: g.currentScenarioPath})
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(path, data, 0o644); err != nil {
-		return err
-	}
-	g.saveMsg = "Game saved!"
-	g.saveMsgFrames = 120
-	log.Printf("[Game] Saved to: %s", path)
-	return nil
 }

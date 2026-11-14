@@ -79,7 +79,7 @@ type PromptBrowseWindow struct {
 
 // NewPromptBrowseSave opens the window in save mode with name in the text box.
 func NewPromptBrowseSave(title, dir, name, ext string, sw, sh int) *PromptBrowseWindow {
-	w := NewPromptBrowse(title, dir, []string{ext}, sw, sh)
+	w := NewPromptBrowse(title, dir, []string{strings.ToLower(ext)}, sw, sh)
 	w.Save, w.Input, w.SaveExt = true, []rune(name), ext
 	return w
 }

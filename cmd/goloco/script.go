@@ -96,6 +96,12 @@ type inputScript struct {
 	// seed: "seed N" — the time loadAndStart mixes into the new game's rng,
 	// fixed (a generated landscape, the company … the same every run).
 	seed *uint32
+	// lastSave is the game state and tile elements of the last save made
+	// under the script; loadedSave whether the game loaded since was that
+	// state as it loaded, before a tick or an interface update ("expect
+	// saved"; save.go, scenario.go).
+	lastSave   []byte
+	loadedSave bool
 	// expectReq: "expect KEY OP N" — a check of the game's state, run by the
 	// game (scriptExpect); failed: a failed check, the run exits non-zero.
 	expectReq []string
@@ -482,6 +488,10 @@ func (g *Game) scriptExpect() {
 		got = -1
 		if w := g.terraformWin(); w != nil {
 			got = int64(w.Tab)
+		}
+	case "saved": // 1 when the game loaded last was, as loaded, the last save's state byte for byte
+		if g.script.loadedSave {
+			got = 1
 		}
 	case "paused": // 1 while the game is paused
 		if g.isPaused {

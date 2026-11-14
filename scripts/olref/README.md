@@ -24,7 +24,22 @@ one running at the same time needs its own OLREF_DISPLAY (and OLREF_HOME).
 | pair.py | goloco crop, OpenLoco crop, and their differing pixels, side by side |
 | match.py | two map views of one save: find the offset, then diff |
 | setview/ | `go run ./scripts/olref/setview -tile X,Y [-zoom Z] [-rotation R] in.SV5 out.SV5`: a copy of a save that opens on that view |
+| gosave/ | `go run ./scripts/olref/gosave [-ticks N] in.(dat\|SC5\|SV5) out.SV5`: goloco's own save of a game (a .SC5 started as a new game), played N ticks — for loading goloco's saves in OpenLoco |
 | tours/ | the input scripts of past comparisons |
+
+## goloco's saves in OpenLoco
+
+goloco writes saved games OpenLoco loads (cmd/goloco save.go; pkg/scenario
+s5save.go). `gosave` makes one without a display; a playthrough's save
+(scripts/playthrough/p-save.txt) is in its scratch config folder's
+goloco/save/. `ol.sh start that.SV5`, then check $OLREF_HOME/.olref/openloco.log
+and that openloco still runs (a crash leaves no line: run the binary under
+`gdb -batch -ex run -ex bt` for where). 2026-11-14: the title game (no
+untitle.py needed: the save is an ordinary saved game), Mixing Muscle started
+and played 20 000 ticks, and p-save's Weatherworld with Train 1 running all
+load and play on. What made OpenLoco crash on the first try: the save's object
+list lacked the player's competitor (selectNewCompetitor loads one; its slot
+must be in the list — sim.RequiredObjects).
 
 ## Coordinates and scripts
 
