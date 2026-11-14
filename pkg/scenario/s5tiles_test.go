@@ -61,17 +61,3 @@ func TestEncodeTileElements_bytes(t *testing.T) {
 		t.Skip("no game data")
 	}
 }
-
-// upstreamDrops: bits upstream's load (loadTileElements) or save
-// (toSaveElement) doesn't carry.
-func upstreamDrops(kind uint8, b int, x uint8) bool {
-	switch {
-	case kind == KindSurface && b == 0:
-		return x&^0x03 == 0
-	case kind == KindStation && b == 4:
-		return x&^0xF0 == 0
-	case kind == KindWall && b == 7:
-		return true
-	}
-	return false
-}

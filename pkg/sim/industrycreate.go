@@ -250,7 +250,7 @@ func (m *Map) placeIndustryBuilding(c *Cmd, id uint8, x, y int32, direction, bui
 				}
 			}
 			if flags&CmdApply != 0 {
-				t.BaseZ = highest // setBaseZ / setClearZ (the sim tile keeps one height)
+				t.BaseZ, t.ClearZ = highest, highest // setBaseZ / setClearZ
 				t.Slope = 0       // the slope and the snow coverage (its top bits)
 				t.GrowthStage = 0
 			}

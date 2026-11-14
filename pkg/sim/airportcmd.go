@@ -157,7 +157,7 @@ func (m *Map) airportBuilding(c *Cmd, stationID int, tx, ty int, baseHeight int3
 			total += m.InflationAdjustedCost(lo.CostFactor, lo.CostIndex, 10) * diff
 		}
 		if flags&CmdGhost == 0 && flags&CmdApply != 0 && (t.Slope&0x1F != 0 || baseHeight != int32(t.BaseZ)*4) && flags&CmdAiAllocated == 0 {
-			t.BaseZ = argBaseZ
+			t.BaseZ, t.ClearZ = argBaseZ, argBaseZ // setBaseZ / setClearZ
 			t.Slope = 0
 			t.GrowthStage = 0
 			m.mapInvalidateTileFull(px, py) // shouldInvalidateTile: not AI-allocated here

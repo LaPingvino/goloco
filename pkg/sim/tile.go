@@ -13,6 +13,11 @@ import "github.com/LaPingvino/goloco/pkg/scenario"
 type Tile struct {
 	TerrainIndex uint8 // raw LandObject slot index from the scenario
 	BaseZ        uint8 // height in SmallZ units (OpenLoco: 1 unit = 4px)
+	// ClearZ is the surface element's clearZ, as kept: generateLand sets it
+	// from the slope, the commands that level a tile (adjustSurfaceHeight,
+	// createBuilding / Industry / Airport / Port) to the new baseZ,
+	// resetSurfaceClearance to baseZ on a flat tile at every load.
+	ClearZ uint8
 	Slope        uint8 // slope corners and flags from byte 4 of surface element
 	WaterLevel   uint8 // water level from surface element byte 5 bits [4:0]; 0 = no water
 	UpdateTimer  uint8 // byte 5 bits [7:5]: an industrial field's update timer (getUpdateTimer)

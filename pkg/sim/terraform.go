@@ -138,7 +138,7 @@ func (m *Map) adjustSurfaceHeight(c *Cmd, px, py int32, targetBaseZ int, slopeFl
 	if !c.Editor {
 		t.GrowthStage = 0
 	}
-	t.BaseZ = uint8(targetBaseZ)
+	t.BaseZ, t.ClearZ = uint8(targetBaseZ), uint8(targetBaseZ) // setBaseZ / setClearZ
 	t.Slope = slopeFlags // setSlope: the whole byte, the snow bits with it
 	if !c.Editor && c.Objects != nil && int(t.TerrainIndex) < len(c.Objects.LandObjects) {
 		if lo := c.Objects.LandObjects[t.TerrainIndex]; lo != nil && lo.Flags&objects.LandFlagHasReplacementLandHeader != 0 {

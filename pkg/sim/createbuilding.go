@@ -149,7 +149,7 @@ func (m *Map) CreateBuilding(c *Cmd, flags uint8, a BuildingPlacement) (int32, b
 			}
 			if flags&CmdApply != 0 {
 				m.mapInvalidateTileFull(px, py)
-				t.BaseZ = uint8(a.Z / smallZStep) // setBaseZ / setClearZ (the sim tile keeps one height)
+				t.BaseZ, t.ClearZ = uint8(a.Z/smallZStep), uint8(a.Z/smallZStep) // setBaseZ / setClearZ
 				t.Slope = 0                       // the slope and the snow coverage (its top bits)
 				t.GrowthStage = 0
 			}
