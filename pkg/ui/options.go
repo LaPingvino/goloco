@@ -61,7 +61,7 @@ const (
 // optTabSize is each tab namespace's kWindowSize; optTabCaption() its caption
 // (en-GB).
 var (
-	optTabSize = [7][2]int{{400, 151}, {400, 218}, {optW, optH}, {366, 167}, {366, 114}, {420, 187}, {420, 266}}
+	optTabSize = [7][2]int{{400, 151}, {400, 218}, {optW, optH}, {366, 167}, {366, 144}, {420, 187}, {420, 266}}
 
 	// Controls tab checkboxes (Controls::_widgets) and the Customize Keys button.
 
@@ -93,9 +93,10 @@ type OptionsWindow struct {
 
 	// Tab is the current tab (Common::tab); the window takes that tab's size.
 	Tab int
-	// Controls holds edgeScrolling, zoomToCursor, invertRightMouseViewPan;
+	// Controls holds edgeScrolling, zoomToCursor, invertRightMouseViewPan,
+	// toolbarAutoMenu (10c1e49) and toolbarButtonsCentred (2da9f6f);
 	// OnControl is called with the index and new value when one is toggled.
-	Controls  [3]bool
+	Controls  [5]bool
 	OnControl func(i int, v bool)
 
 	// Regional tab: the current game's currency name and the preferred one;
@@ -484,8 +485,8 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 				y := 49 + 15*i
 				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 			}
-			// Button({26, 94}, {160, 12}): fillRectInset with the window colour, raised.
-			gfx8.FillRectInset(rt, 26, 94, 26+160-1, 94+12-1, gfx8.InsetColour{Map: sec}, 0)
+			// Button({26, 124}, {160, 12}): fillRectInset with the window colour, raised.
+			gfx8.FillRectInset(rt, 26, 124, 26+160-1, 124+12-1, gfx8.InsetColour{Map: sec}, 0)
 			return
 		}
 		if w.Tab == OptTabMisc {
@@ -587,7 +588,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		// Label::draw centred: x + (w - 1) / 2, y + max(0, (12 - 10) / 2 - 1).
 		label := i18n.Label(i18n.CustomiseKeys)
 		lw, _ := MeasureTextBold(label)
-		DrawTextBold(screen, label, w.X+26+(160-1)/2-lw/2, w.Y+94, text)
+		DrawTextBold(screen, label, w.X+26+(160-1)/2-lw/2, w.Y+124, text)
 		return
 	}
 	inset := func(t string, x, y int) { DrawTextInset(screen, t, x, y, sec) } // colour.inset()
@@ -829,8 +830,9 @@ func optTabCaption() [7]string {
 	return [7]string{i18n.Label(i18n.OptionsTitleDisplay), i18n.Label(i18n.TitleOptionsRendering), i18n.Label(i18n.OptionsTitleAudio), i18n.Label(i18n.OptionsTitleRegional), i18n.Label(i18n.OptionsTitleControls), i18n.Label(i18n.OptionsTitleCompany), i18n.Label(i18n.OptionsTitleMiscellaneous)}
 }
 
-func optControlLabels() [3]string {
-	return [3]string{i18n.Label(i18n.ScrollScreenEdge), i18n.Label(i18n.ZoomToCursor), i18n.Label(i18n.InvertRightMouseDragging)}
+func optControlLabels() [5]string {
+	return [5]string{i18n.Label(i18n.ScrollScreenEdge), i18n.Label(i18n.ZoomToCursor), i18n.Label(i18n.InvertRightMouseDragging),
+		i18n.Label(i18n.ToolbarAutoMenu), i18n.Label(i18n.ToolbarButtonsCentred)}
 }
 
 // Ui::ScaleFactor (Ui.h): the window scale's range and step.

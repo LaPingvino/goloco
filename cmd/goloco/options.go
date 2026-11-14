@@ -117,17 +117,26 @@ func (g *Game) openOptionsWindow() {
 		}
 		w.OnCurrency = func(dat string) { useCurrency(g.r.ObjMgr, dat) } // currencyDropdown
 	}
-	// Controls tab: Config::edgeScrolling (default on) and
-	// invertRightMouseViewPan (rightclick.go). zoomToCursor is kept in the
-	// window only: goloco always zooms to the cursor.
-	w.Controls[0], w.Controls[2] = !g.noEdgeScrolling, g.invertRightPan
+	// Controls tab: Config::edgeScrolling, zoomToCursor,
+	// invertRightMouseViewPan (rightclick.go), toolbarAutoMenu and
+	// toolbarButtonsCentred — each toggle written to openloco.yml (Config::write).
+	w.Controls = [5]bool{!g.noEdgeScrolling, !g.noZoomToCursor, g.invertRightPan, !g.noAutoMenu, g.toolbar.Centred}
 	w.OnControl = func(i int, v bool) {
+		key := [5]string{"edgeScrolling", "zoom_to_cursor", "invertRightMouseViewPan", "toolbarAutoMenu", "toolbarButtonsCentred"}[i]
 		switch i {
 		case 0:
 			g.noEdgeScrolling = !v
+		case 1:
+			g.noZoomToCursor = !v
 		case 2:
 			g.invertRightPan = v
+		case 3:
+			g.noAutoMenu = !v
+		case 4:
+			g.toolbar.Centred = v
+			g.toolbar.Layout(g.sw, v)
 		}
+		setConfigValue(key, strconv.FormatBool(v))
 	}
 	w.Scale = g.scale
 	w.OnScale = func(s float64) { // setWindowScaling: Config::write, then the resize (Layout)

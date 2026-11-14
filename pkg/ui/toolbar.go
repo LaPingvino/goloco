@@ -1,9 +1,7 @@
 package ui
 
 import (
-	"image/color"
-
-	"github.com/LaPingvino/goloco/pkg/graphics"
+	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/render"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -59,6 +57,11 @@ type Toolbar struct {
 	// AudioMuted is !Audio::isAudioEnabled: the Audio button shows its
 	// inactive image (prepareDraw).
 	AudioMuted bool
+	// Centred is Config::toolbarButtonsCentred (Options → Controls): Layout's mode.
+	Centred bool
+	// Colours are the window's four colours (ToolbarTop open: the interface
+	// skin's topToolbarPrimary … QuaternaryColour), by ColorGroup.
+	Colours [4]uint8
 }
 
 // vehicleButtonFaces is ToolbarTop.cpp draw's button_face_image_ids and
@@ -144,229 +147,154 @@ func NewToolbar(screenWidth int) *Toolbar {
 	return t
 }
 
-// RightAlignButtons repositions tertiary and quaternary buttons to the right side
-// of the toolbar, matching OpenLoco's dynamic positioning logic.
-//
-// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTop.cpp
-//
-//	prepareDraw() lines 977-997
-//
-// RightAlignButtons repositions the right-aligned toolbar buttons for the
-// given screen width. Called on creation and again whenever the window resizes.
-func (t *Toolbar) RightAlignButtons(screenWidth int) {
-	// Start from the right edge (match OpenLoco: max(640, width) - 1)
-	x := screenWidth - 1
-
-	// Right-align quaternary buttons (Towns, Stations, Vehicles)
-	// Work backwards so they appear right-to-left in reverse order
-	for i := len(t.Buttons) - 1; i >= 0; i-- {
-		if t.Buttons[i].ColorGroup == 3 && !t.Buttons[i].Hidden {
-			x -= t.Buttons[i].Width
-			t.Buttons[i].X = x
+// Layout is ToolbarTop's prepareDraw placement (ToolbarTopCommon.cpp
+// justifyToolbar / centreToolbar, 2da9f6f + 7ba7099): justified — the
+// load/save, audio (and cheats) and the zoom, rotate, view groups from the
+// left, 11 apart; the construction and the list groups from the right
+// (max(640, width) − 1), 11 apart; the toolbar the screen's width. Centred
+// (Config::toolbarButtonsCentred) — every group side by side from the left,
+// 11 apart, and the toolbar shrunk to them (n × 30 + 3 × 11) in the middle of
+// the screen. Hidden buttons take no room.
+func (t *Toolbar) Layout(screenWidth int, centred bool) {
+	group := func(g int) []int {
+		var out []int
+		for i := range t.Buttons {
+			if t.Buttons[i].ColorGroup == g && !t.Buttons[i].Hidden {
+				out = append(out, i)
+			}
 		}
+		return out
 	}
-
-	// 11 pixel gap before build vehicles (OpenLoco: x -= 11)
-	x -= 11
-
-	// Right-align tertiary buttons (Build Vehicles, Port, Road, Railroad, Terraform)
-	// Work backwards through tertiary buttons
-	for i := len(t.Buttons) - 1; i >= 0; i-- {
-		if t.Buttons[i].ColorGroup == 2 && !t.Buttons[i].Hidden {
-			x -= t.Buttons[i].Width
-			t.Buttons[i].X = x
+	left := func(x int, g int) int { // leftAlignButtons: left = x, right = x + 29, x += 30
+		for _, i := range group(g) {
+			t.Buttons[i].X = t.X + x
+			x += 30
 		}
+		return x
 	}
-}
-
-// Draw renders the toolbar
-func (t *Toolbar) Draw(screen *ebiten.Image, renderer *render.Renderer) {
-	if !t.Visible {
+	if centred {
+		n := 0
+		for i := range t.Buttons {
+			if !t.Buttons[i].Hidden {
+				n++
+			}
+		}
+		total := n*30 + 3*11
+		t.X, t.Width = max(0, (screenWidth-total)/2), total
+		x := left(0, 0) + 11
+		x = left(x, 1) + 11
+		x = left(x, 2) + 11
+		left(x, 3)
 		return
 	}
-
-	// Use a drawing context so palette indices can be used consistently.
-	dc := graphics.NewDrawingContext(screen)
-
-	// Background: prefer palette-aware fill; fallback to gradient when no palette.
-	if graphics.IsGlobalPaletteLoaded() {
-		target := color.RGBA{70, 70, 70, 255}
-		idx := graphics.MatchPaletteIndex(target)
-		_ = dc.FillRect(int16(t.X), int16(t.Y), int16(t.Width), int16(t.Height), idx)
-
-		// Border line at bottom
-		borderIdx := graphics.MatchPaletteIndex(color.RGBA{40, 40, 40, 255})
-		_ = dc.FillRect(int16(t.X), int16(t.Y+t.Height-1), int16(t.Width), 1, borderIdx)
-	} else {
-		// Fallback: slight gradient effect for development without real palette
-		for y := t.Y; y < t.Y+t.Height; y++ {
-			shade := uint8(70 - (y-t.Y)/2)
-			bgColor := color.RGBA{shade, shade, shade, 245}
-			for x := t.X; x < t.X+t.Width; x++ {
-				screen.Set(x, y, bgColor)
-			}
+	t.X, t.Width = 0, screenWidth
+	left(left(0, 0)+11, 1)
+	right := func(x int, g int) int { // rightAlignButtons: right = x, left = x − 29, x −= 30 (the group's last first)
+		ids := group(g)
+		for k := len(ids) - 1; k >= 0; k-- {
+			t.Buttons[ids[k]].X = x - 29
+			x -= 30
 		}
-		// fallback bottom border
-		borderColor := color.RGBA{40, 40, 40, 255}
-		for x := t.X; x < t.X+t.Width; x++ {
-			screen.Set(x, t.Y+t.Height-1, borderColor)
-		}
+		return x
 	}
-
-	// Draw buttons (no tooltips: ToolbarTop's widgets have none)
-	for i := range t.Buttons {
-		if !t.Buttons[i].Hidden {
-			t.drawButton(screen, &t.Buttons[i], renderer)
-		}
-	}
+	x := max(640, screenWidth) - 1
+	x = right(x, 3) - 11
+	right(x, 2)
 }
 
-func (t *Toolbar) drawButton(screen *ebiten.Image, btn *ToolbarButton, renderer *render.Renderer) {
-	// Create a drawing context for palette-aware fills
-	dc := graphics.NewDrawingContext(screen)
+// RightAlignButtons is Layout justified (the screen's width changed).
+func (t *Toolbar) RightAlignButtons(screenWidth int) { t.Layout(screenWidth, t.Centred) }
 
-	// Button background colors vary by color group
-	// For now, use a simple scheme; real colors come from InterfaceSkinObject
-	var normalTarget, hoverTarget, pressedTarget color.RGBA
-
-	switch btn.ColorGroup {
-	case 0: // PRIMARY
-		normalTarget = color.RGBA{60, 60, 80, 255}
-		hoverTarget = color.RGBA{80, 80, 110, 255}
-		pressedTarget = color.RGBA{70, 70, 90, 255}
-	case 1: // SECONDARY
-		normalTarget = color.RGBA{70, 80, 70, 255}
-		hoverTarget = color.RGBA{90, 110, 90, 255}
-		pressedTarget = color.RGBA{80, 90, 80, 255}
-	case 2: // TERTIARY
-		normalTarget = color.RGBA{80, 70, 60, 255}
-		hoverTarget = color.RGBA{110, 90, 80, 255}
-		pressedTarget = color.RGBA{90, 80, 70, 255}
-	case 3: // QUATERNARY
-		normalTarget = color.RGBA{70, 70, 70, 255}
-		hoverTarget = color.RGBA{100, 100, 100, 255}
-		pressedTarget = color.RGBA{80, 80, 80, 255}
-	default:
-		normalTarget = color.RGBA{70, 70, 70, 255}
-		hoverTarget = color.RGBA{100, 100, 100, 255}
-		pressedTarget = color.RGBA{80, 80, 80, 255}
+// Draw is ToolbarTop's window draw (transparent, no background: the map
+// shows between the buttons) — each button's ImageButtonAlt::draw: its skin
+// image recoloured to its group's colour (Colours: topToolbarPrimary …
+// QuaternaryColour), the next image while its menu is open (activated) —
+// then drawTabs (0x00439DE4): the Railroad and Road buttons' face (the last
+// option's track or road image in the player's colour, a pixel higher unless
+// the menu is open) under the empty transparent frame, the Vehicles button's
+// face (the last vehicle type's), the Build Vehicles button's face (the last
+// type's, the next image while open).
+func (t *Toolbar) Draw(screen *ebiten.Image, renderer *render.Renderer) {
+	if !t.Visible || globalG1Font == nil || renderer == nil || renderer.ObjMgr == nil || renderer.ObjMgr.InterfaceSkin == nil {
+		return
 	}
-
-	// Map targets to palette indices
-	normalIdx := graphics.MatchPaletteIndex(normalTarget)
-	hoverIdx := graphics.MatchPaletteIndex(hoverTarget)
-	pressedIdx := graphics.MatchPaletteIndex(pressedTarget)
-
-	var bgIdx uint8
-	if btn.Pressed {
-		bgIdx = pressedIdx
-	} else if btn.Hovered {
-		bgIdx = hoverIdx
-	} else {
-		bgIdx = normalIdx
-	}
-
-	// Fill the button background using palette index
-	_ = dc.FillRect(int16(btn.X), int16(btn.Y), int16(btn.Width), int16(btn.Height), bgIdx)
-
-	// Try to draw the InterfaceSkin sprite if available
-	drewSprite := false
-	if imageIDs, ok := buttonImageIDs[btn.Tooltip]; ok {
-		if btn.Tooltip == "Audio" && t.AudioMuted { // prepareDraw: toolbar_audio_inactive without sound
-			imageIDs = [2]uint32{objects.ISToolbarAudioInactive, objects.ISToolbarAudioInactiveHover}
-		}
-		imageID := imageIDs[0] // normal
-		if btn.Hovered || btn.Pressed {
-			imageID = imageIDs[1] // hover
-		}
-
-		sprite := renderer.GetInterfaceSkinSprite(imageID)
-		if sprite != nil {
-			// Draw sprite centered in button
-			spriteW := sprite.Bounds().Dx()
-			spriteH := sprite.Bounds().Dy()
-			drawX := btn.X + (btn.Width-spriteW)/2
-			drawY := btn.Y + (btn.Height-spriteH)/2
-
-			opts := &ebiten.DrawImageOptions{}
-			opts.GeoM.Translate(float64(drawX), float64(drawY))
-			screen.DrawImage(sprite, opts)
-			drewSprite = true
-		}
-	}
-
-	// Railroad / Road: the last option's preview on the button face
-	// (ToolbarTop.cpp draw 0x00439DE4, ToolbarTopCommon.cpp draw): a road
-	// object's image, or a track object's + kUiPreviewImage0 (0), recoloured
-	// to the player's colour; the road button only once there is a road option.
-	if !drewSprite || btn.Tooltip == "Railroad" || btn.Tooltip == "Road" || btn.Tooltip == "Vehicles" || btn.Tooltip == "Build Vehicles" {
-		previewSpriteID := -1
-		if sk := renderer.ObjMgr; sk != nil && sk.InterfaceSkin != nil {
-			// the Vehicles / Build Vehicles faces (ToolbarTop.cpp draw)
-			switch {
-			case btn.Tooltip == "Vehicles" && int(t.LastVehicleType) < len(vehicleButtonFaces):
-				previewSpriteID = int(sk.InterfaceSkin.ImageOffset) + vehicleButtonFaces[t.LastVehicleType]
-			case btn.Tooltip == "Build Vehicles" && int(t.LastBuildVehiclesOption) < len(buildVehicleButtonFaces):
-				previewSpriteID = int(sk.InterfaceSkin.ImageOffset) + buildVehicleButtonFaces[t.LastBuildVehiclesOption]
+	g1 := globalG1Font.g1
+	om := renderer.ObjMgr
+	skin := int(om.InterfaceSkin.ImageOffset)
+	draw8(screen, t.X, t.Y, t.Width, t.Height, func(rt *gfx8.RenderTarget) {
+		img := func(id, x, y int, colour uint8) {
+			if id < 0 || id >= len(g1.Elements) {
+				return
 			}
+			sp, err := gfx8.Decode(&g1.Elements[id])
+			if err != nil {
+				return
+			}
+			m, _ := g1.GetPaletteMap(int(colour))
+			gfx8.DrawSpriteNoise(rt, sp, x-t.X, y-t.Y, gfx8.OpFor(sp, m != nil, false), m, nil)
 		}
-		opt := uint8(0xFF)
-		switch btn.Tooltip {
-		case "Railroad":
-			opt = t.LastRailroadOption
-		case "Road":
-			opt = t.LastRoadOption
+		for i := range t.Buttons {
+			b := &t.Buttons[i]
+			ids, ok := buttonImageIDs[b.Tooltip]
+			if b.Hidden || !ok || b.ColorGroup < 0 || b.ColorGroup > 3 {
+				continue
+			}
+			if b.Tooltip == "Audio" && t.AudioMuted { // prepareDraw: toolbar_audio_inactive without sound
+				ids = [2]uint32{objects.ISToolbarAudioInactive, objects.ISToolbarAudioInactiveHover}
+			}
+			id := ids[0]
+			if b.Pressed {
+				id = ids[1] // withIndexOffset(1)
+			}
+			img(skin+int(id), b.X, b.Y, t.Colours[b.ColorGroup])
 		}
-		if om := renderer.ObjMgr; om != nil && opt != 0xFF {
-			if opt&(1<<7) != 0 {
-				if ro := om.GetRoadObjectByIndex(int(opt &^ (1 << 7))); ro != nil {
-					previewSpriteID = int(ro.Image)
+		for i := range t.Buttons {
+			b := &t.Buttons[i]
+			if b.Hidden {
+				continue
+			}
+			faceUnderFrame := func(face int) {
+				y := b.Y - 1
+				frame := skin + objects.ISToolbarEmptyTransparent
+				if b.Pressed {
+					y, frame = y+1, frame+1
 				}
-			} else if tr := om.GetTrackObjectByIndex(int(opt)); tr != nil {
-				previewSpriteID = int(tr.Image)
+				img(face, b.X, y, t.CompanyColour)
+				img(frame, b.X, b.Y, t.Colours[b.ColorGroup])
+			}
+			switch b.Tooltip {
+			case "Railroad", "Road":
+				opt := t.LastRailroadOption
+				if b.Tooltip == "Road" {
+					opt = t.LastRoadOption
+				}
+				if opt == 0xFF {
+					continue
+				}
+				face := -1
+				if opt&(1<<7) != 0 {
+					if ro := om.GetRoadObjectByIndex(int(opt &^ (1 << 7))); ro != nil {
+						face = int(ro.Image)
+					}
+				} else if tr := om.GetTrackObjectByIndex(int(opt)); tr != nil {
+					face = int(tr.Image) // + kUiPreviewImage0 (0)
+				}
+				faceUnderFrame(face)
+			case "Vehicles":
+				if int(t.LastVehicleType) < len(vehicleButtonFaces) {
+					faceUnderFrame(skin + vehicleButtonFaces[t.LastVehicleType])
+				}
+			case "Build Vehicles":
+				if int(t.LastBuildVehiclesOption) < len(buildVehicleButtonFaces) {
+					face := skin + buildVehicleButtonFaces[t.LastBuildVehiclesOption]
+					if b.Pressed {
+						face++
+					}
+					img(face, b.X, b.Y, t.CompanyColour)
+				}
 			}
 		}
-		if previewSpriteID >= 0 {
-			img := renderer.GetSpriteColoured(previewSpriteID, int(t.CompanyColour))
-			if img == nil {
-				img = renderer.GetSprite(previewSpriteID)
-			}
-			if img != nil {
-				spriteW := img.Bounds().Dx()
-				spriteH := img.Bounds().Dy()
-				drawX := btn.X + (btn.Width-spriteW)/2
-				drawY := btn.Y + (btn.Height-spriteH)/2
-				opts := &ebiten.DrawImageOptions{}
-				opts.GeoM.Translate(float64(drawX), float64(drawY))
-				screen.DrawImage(img, opts)
-				drewSprite = true
-			}
-		}
-	}
-
-	// Fallback: abbreviated text label
-	if !drewSprite && btn.Tooltip != "" {
-		label := btn.Tooltip
-		if len(label) > 4 {
-			label = label[:4]
-		}
-		labelW, _ := MeasureText(label)
-		labelX := btn.X + (btn.Width-labelW)/2
-		labelY := btn.Y + btn.Height/2 + 4
-		DrawText(screen, label, labelX, labelY, color.White)
-	}
-
-	// Draw button border using palette indices for light/dark edges
-	borderLightIdx := graphics.MatchPaletteIndex(color.RGBA{120, 120, 120, 255})
-	borderDarkIdx := graphics.MatchPaletteIndex(color.RGBA{40, 40, 40, 255})
-
-	// Top and left (light)
-	_ = dc.FillRect(int16(btn.X), int16(btn.Y), int16(btn.Width), 1, borderLightIdx)
-	_ = dc.FillRect(int16(btn.X), int16(btn.Y), 1, int16(btn.Height), borderLightIdx)
-
-	// Bottom and right (dark)
-	_ = dc.FillRect(int16(btn.X), int16(btn.Y+btn.Height-1), int16(btn.Width), 1, borderDarkIdx)
-	_ = dc.FillRect(int16(btn.X+btn.Width-1), int16(btn.Y), 1, int16(btn.Height), borderDarkIdx)
+	})
 }
 
 // HandleClick checks if a click hit any button and returns the index, or -1

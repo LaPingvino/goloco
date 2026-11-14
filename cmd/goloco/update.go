@@ -261,9 +261,10 @@ func (g *Game) updateHeld() {
 		g.colourDropdown.UpdateHover(g.mouseX, g.mouseY)
 	} else {
 		g.toolbar.UpdateHover(g.mouseX, g.mouseY)
-		// ToolbarTop.cpp: onMouseHover = onMouseDown — in the normal input state
-		// (no menu open) a button under the mouse opens its menu.
-		if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 && !g.inTitleScreen &&
+		// ToolbarTop.cpp onMouseHover: with Config::toolbarAutoMenu (10c1e49) —
+		// in the normal input state (no menu open) a button under the mouse
+		// opens its menu.
+		if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 && !g.inTitleScreen && !g.noAutoMenu &&
 			g.textInput == nil && g.prompt == nil && !g.inMousePressed(ebiten.MouseButtonLeft) {
 			g.toolbar.Buttons[btnIdx].Pressed = true
 			g.handleToolbarButton(btnIdx)
@@ -429,9 +430,9 @@ func (g *Game) updateCamera() {
 			g.w.RotateView(dy < 0)
 		} else if !g.routeWheelToWindows() {
 			if dy > 0 {
-				g.w.ZoomInAt(g.mouseX, g.mouseY)
+				g.w.ZoomInAt(g.zoomAnchor())
 			} else {
-				g.w.ZoomOutAt(g.mouseX, g.mouseY)
+				g.w.ZoomOutAt(g.zoomAnchor())
 			}
 		}
 	}
@@ -458,4 +459,13 @@ func (g *Game) diagTrackShip() {
 			}
 		}
 	}
+}
+
+// zoomAnchor is where the wheel zooms: the cursor (Config::zoomToCursor), else
+// the view's centre.
+func (g *Game) zoomAnchor() (int, int) {
+	if g.noZoomToCursor {
+		return g.sw / 2, g.sh / 2
+	}
+	return g.mouseX, g.mouseY
 }

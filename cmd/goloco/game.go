@@ -144,7 +144,9 @@ type Game struct {
 
 	// Options (options.go; Config).
 	noEdgeScrolling bool // Options > Controls: edge scrolling off (Config::edgeScrolling)
-	invertRightPan  bool // Options > Controls: Config::invertRightMouseViewPan (PARTIAL: not kept in openloco.yml)
+	invertRightPan  bool // Options > Controls: Config::invertRightMouseViewPan
+	noZoomToCursor  bool // Options > Controls: Config::zoomToCursor off (the wheel zooms on the view's centre)
+	noAutoMenu      bool // Options > Controls: Config::toolbarAutoMenu off (10c1e49: a toolbar menu opens on a press only)
 
 	// The music (music.go): the jukebox on the config's audio settings,
 	// Audio's mute, and a track passing in silence (no sound device).
@@ -291,6 +293,8 @@ func NewGame() *Game {
 
 	w := world.NewWorld(r)
 	toolbar := ui.NewToolbar(defaultWidth)
+	toolbar.Centred = configValue("toolbarButtonsCentred") == "true" // Config::toolbarButtonsCentred (2da9f6f)
+	toolbar.Layout(defaultWidth, toolbar.Centred)
 
 	// Try to load the title scenario
 	if dataDir != "" {
@@ -338,20 +342,27 @@ func NewGame() *Game {
 		w:                  w,
 		consSignal:         -1,
 		consBridge:         -1,
-		consStation:        -1,
-		titleWorld:         w, // keep a reference so Quit to Menu can restore it
-		r:                  r,
-		toolbar:            toolbar,
-		audioMgr:           audioMgr,
-		titleSeq:           titleSeq,
-		dataDir:            dataDir,
-		inTitleScreen:      true,
-		sw:                 defaultWidth,
-		sh:                 defaultHeight,
-		speedMult:          1,
-		kb:                 keyboardState{bindings: loadShortcutBindings()},
-		hoverTileX:         -1,
-		hoverTileY:         -1,
+		// Options → Controls (Config.cpp defaults: edge scrolling, zoom to the
+		// cursor and toolbar auto menus on; inverted panning and the centred
+		// toolbar off).
+		noEdgeScrolling: configValue("edgeScrolling") == "false",
+		noZoomToCursor:  configValue("zoom_to_cursor") == "false",
+		invertRightPan:  configValue("invertRightMouseViewPan") == "true",
+		noAutoMenu:      configValue("toolbarAutoMenu") == "false",
+		consStation:     -1,
+		titleWorld:      w, // keep a reference so Quit to Menu can restore it
+		r:               r,
+		toolbar:         toolbar,
+		audioMgr:        audioMgr,
+		titleSeq:        titleSeq,
+		dataDir:         dataDir,
+		inTitleScreen:   true,
+		sw:              defaultWidth,
+		sh:              defaultHeight,
+		speedMult:       1,
+		kb:              keyboardState{bindings: loadShortcutBindings()},
+		hoverTileX:      -1,
+		hoverTileY:      -1,
 		// Warm the title's sprites in the background (prewarmTick); the title
 		// draws at once and decodes anything it needs first on use, as upstream
 		// draws g1 sprites directly with no preload phase.

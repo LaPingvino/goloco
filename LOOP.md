@@ -126,8 +126,14 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       MonthlyCargoDelivered is simulated but never shown).
 > - [x] N25 Industry window's cargo awaiting processing / transport (4d72607; the Transported tab's new height).
 > - [x] N26 Vehicle list filter by actual cargo: "Transports cargo" / "Has cargo order" (af4d69c).
-> - [ ] N27 Options → Controls: toolbarAutoMenu (10c1e49) and the centred top toolbar (2da9f6f, 7ba7099) — config,
->       checkboxes, the toolbar's centring and shrink.
+> - [x] N27 Options → Controls — done 2026-11-14: toolbarAutoMenu (10c1e49: without it a toolbar menu opens on a
+>       press only) and toolbarButtonsCentred (2da9f6f + 7ba7099: the toolbar shrunk to its buttons in the middle,
+>       the FPS counter top left), the Controls tab's five checkboxes all kept in openloco.yml (edge scrolling, zoom
+>       to cursor — now honoured: off, the wheel zooms on the view's centre —, inverted right drag too). With it the
+>       toolbar's drawing is upstream's (ImageButtonAlt: each skin image recoloured to its group's colour, the next
+>       one while its menu is open; drawTabs' faces; no background): goloco drew invented flat colours, bevels and
+>       a dark strip over the map; the right groups also sat 1 px left. Now against OpenLoco's title game: the
+>       left groups match to the pixel, 25 px differ in the rest.
 > - [x] N28 Signal auto placement (04e7900, bec1570, 3d6c318) — done 2026-11-14: the commands (pkg/sim/autosignals.go)
 >       and the Signal tab's tool, which goloco lacked altogether (cmd/goloco/signaltool.go: the ghost and its cost
 >       under the cursor, the build on release, getSide), the 156×222 tab with Repeated placement and the step

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"image"
 	"image/color"
 	"log"
 	"os"
@@ -146,8 +145,10 @@ func (g *Game) drawGameWindows(screen *ebiten.Image) {
 	g.toolbar.LastVehicleType, g.toolbar.LastBuildVehiclesOption = m.LastVehicleType, m.LastBuildVehiclesOption
 	g.toolbar.AudioMuted = !g.isAudioEnabled()
 	g.toolbar.CompanyColour = g.companyColours(ctrl).Main[0]
-	g.toolbar.Draw(screen, g.r)
-	ui.MarkForeign(image.Rect(g.toolbar.X, g.toolbar.Y, g.toolbar.X+g.toolbar.Width, g.toolbar.Y+g.toolbar.Height))
+	if sk := g.skin(); sk != nil { // ToolbarTop open: the window's colours
+		g.toolbar.Colours = [4]uint8{sk.TopToolbarPrimaryColour, sk.TopToolbarSecondaryColour, sk.TopToolbarTertiaryColour, sk.TopToolbarQuaternaryColour}
+	}
+	g.toolbar.Draw(screen, g.r) // through draw8: the 8-bit screen copy stays in step
 	g.drawWindows(screen)
 
 	// Draw dropdown menu on top of everything else
@@ -326,7 +327,11 @@ func (g *Game) drawFPS(screen *ebiten.Image) {
 	str := fmt.Sprintf(format, g.fpsCurrent)
 	w, _ := ui.MeasureTextBold(str)
 	wc, oc := ui.TextColours(2)
-	ui.DrawTextOutlined(screen, str, g.sw/2-w/2, 2, wc, oc)
+	x, y := g.sw/2-w/2, 2 // FPSCounter.cpp (2da9f6f): beside a centred toolbar, top left
+	if g.toolbar.Centred {
+		x, y = 4, 4
+	}
+	ui.DrawTextOutlined(screen, str, x, y, wc, oc)
 }
 
 // fillRect is a thin wrapper around vector.FillRect using float64 args (no anti-aliasing).
