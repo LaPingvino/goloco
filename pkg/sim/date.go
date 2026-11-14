@@ -93,7 +93,7 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 			m.companiesUpdateYearly()
 			m.UpdateDefaultLevelCrossingType(om)
 			m.updateYearly2(om)
-			// TileManager::updateYearly: PARTIAL
+			m.tilesUpdateYearly() // TileManager::updateYearly
 		}
 		// autosave: not ported
 	}

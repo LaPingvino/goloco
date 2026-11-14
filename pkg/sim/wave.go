@@ -134,6 +134,10 @@ func (s *State) UpdateTiles(visible func(tileX, tileY int) bool, om *objects.Obj
 					if int(r.Index) < len(t.Industries) {
 						s.industryElementUpdate(&t.Industries[r.Index], int32(tx)*32, int32(ty)*32, om)
 					}
+				case scenario.KindRoad:
+					if !s.updateRoadElement(t, k, int32(tx)*32, int32(ty)*32, om) {
+						break elements // the tile's elements changed
+					}
 				case scenario.KindTree:
 					if !s.updateTreeElement(t, k, int32(tx)*32, int32(ty)*32, om) {
 						break elements // the tile's elements changed
