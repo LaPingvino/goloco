@@ -41,6 +41,7 @@ type TreeObject struct {
 	CurrentSeason           uint8           // 0x3E
 	Rating                  int16           // 0x48 (town rating effect)
 	CostIndex               uint8           // 0x3F
+	BuildCostFactor         int16           // 0x40
 	ClearCostFactor         int16           // 0x42
 	DemolishRatingReduction int16           // 0x4A
 	Colours                 uint32          // 0x44
@@ -80,6 +81,7 @@ func ParseTreeObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*Tre
 		CurrentSeason:           data[0x3E],
 		Rating:                  int16(binary.LittleEndian.Uint16(data[0x48:])),
 		CostIndex:               data[0x3F],
+		BuildCostFactor:         int16(binary.LittleEndian.Uint16(data[0x40:])),
 		ClearCostFactor:         int16(binary.LittleEndian.Uint16(data[0x42:])),
 		DemolishRatingReduction: int16(binary.LittleEndian.Uint16(data[0x4A:])),
 		Colours:                 binary.LittleEndian.Uint32(data[0x44:0x48]),

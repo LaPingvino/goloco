@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -8,8 +9,8 @@ import (
 // Raising and lowering land: GameCommands/Terraform/RaiseLand.cpp and
 // LowerLand.cpp on TileManager::adjustSurfaceHeight (TileManager.cpp 1499),
 // item 5.9f3t. Town road growth uses them on one whole tile.
-// PARTIAL: the error texts, the construction sound, madeAnyChanges, the
-// expenditure type / position, viewport invalidation.
+// The commands with their centre: terraformcmds.go. PARTIAL: the
+// construction sound, madeAnyChanges.
 
 // mapSelectionFull is MapSelectionType::full (the whole tile).
 const mapSelectionFull = 4
@@ -52,10 +53,16 @@ func (t *Tile) removeAllWallsAbove(baseZ uint8) {
 // set, its land swapped for its replacement outside the editor, water under
 // the new ground dropped. The cost, false where upstream fails.
 func (m *Map) adjustSurfaceHeight(c *Cmd, px, py int32, targetBaseZ int, slopeFlags uint8, removed RemovedBuildings, flags uint8) (int32, bool) {
-	if !m.validCoords(px, py) || targetBaseZ < 4 { // off the map / too low
+	if !m.validCoords(px, py) {
+		c.ErrorText = i18n.OffEdgeOfMap
 		return 0, false
 	}
-	if targetBaseZ > 160 || targetBaseZ == 160 && slopeFlags&0x1F != 0 || targetBaseZ == 156 && slopeFlags&0x10 != 0 { // too high
+	if targetBaseZ < 4 {
+		c.ErrorText = i18n.ErrorTooLow
+		return 0, false
+	}
+	if targetBaseZ > 160 || targetBaseZ == 160 && slopeFlags&0x1F != 0 || targetBaseZ == 156 && slopeFlags&0x10 != 0 {
+		c.ErrorText = i18n.ErrorTooHigh
 		return 0, false
 	}
 	t := m.TileAt(int(px/tileSize), int(py/tileSize))
@@ -81,12 +88,14 @@ func (m *Map) adjustSurfaceHeight(c *Cmd, px, py int32, targetBaseZ int, slopeFl
 		targetClearZ += smallZStep
 	}
 	if t.Type6Flag && t.WaterLevel > 0 && (int(t.WaterLevel)-1)*microToSmallZStep < targetClearZ { // water a ship route needs
+		c.ErrorText = i18n.WaterChannelCurrentlyNeededByShips
 		return 0, false
 	}
 	clear := func(tt *Tile, k int) ClearResult {
 		return m.tileClearFunction(c, tt, k, px, py, removed, flags, &cost, true)
 	}
 	if ok, _ := m.ApplyClearAtAllHeights(px, py, uint8(targetBaseZ), uint8(targetClearZ), 0xF, 0, clear); !ok {
+		c.setCollisionError(m)
 		return 0, false
 	}
 	for _, r := range t.Order { // a track or road above: within its bridge's reach
@@ -113,10 +122,12 @@ func (m *Map) adjustSurfaceHeight(c *Cmd, px, py int32, targetBaseZ int, slopeFl
 		if height < 0 {
 			continue
 		}
-		if !hasBridge { // '… requires a bridge'
+		if !hasBridge { // '… requires a bridge' (the track's or road's name)
+			c.ErrorText, c.ErrorArg = i18n.StringidRequiresABridge, m.wayName(c, t, r)
 			return 0, false
 		}
-		if b := c.bridge(bridge); b != nil && height > int(b.MaxHeight)*microToSmallZStep { // bridge already at maximum height
+		if b := c.bridge(bridge); b != nil && height > int(b.MaxHeight)*microToSmallZStep {
+			c.ErrorText = i18n.BridgeAlreadyAtMaximumHeight
 			return 0, false
 		}
 	}
@@ -225,4 +236,23 @@ func (m *Map) lowerLandWith(c *Cmd, ax, ay, bx, by int, corner uint8, flags uint
 		}
 	}
 	return total, true
+}
+
+// wayName is the name of the track or road object of the element at r (the
+// {STRINGID} of stringid_requires_a_bridge).
+func (m *Map) wayName(c *Cmd, t *Tile, r scenario.ElemRef) string {
+	if c.Objects == nil {
+		return ""
+	}
+	switch r.Kind {
+	case scenario.KindTrack:
+		if o := c.Objects.GetTrackObjectByIndex(int(t.Tracks[r.Index].TrackObjectID)); o != nil {
+			return o.Name
+		}
+	case scenario.KindRoad:
+		if o := c.Objects.GetRoadObjectByIndex(int(t.Roads[r.Index].RoadObjectID)); o != nil {
+			return o.Name
+		}
+	}
+	return ""
 }

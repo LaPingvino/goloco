@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -8,8 +9,8 @@ import (
 // Walls placed (for the industries' fences, CR): the createWall game
 // command (GameCommands/Terraform/CreateWall.cpp 0x004C436C) with
 // canConstructWall (0x004C4A3B) and edgeWallMapping. PARTIAL: the tertiary
-// colour (unused in Locomotion — only two remaps work), the viewport
-// invalidation, checkFreeElementsAndReorganise.
+// colour (unused in Locomotion — only two remaps work),
+// checkFreeElementsAndReorganise.
 
 // WallPlacement is WallPlacementArgs: the tile (z 0: on the ground, the
 // edge's slope deciding), its edge (rotation), the wall object and colours.
@@ -74,6 +75,13 @@ func (m *Map) CreateWall(c *Cmd, flags uint8, a WallPlacement) (int32, bool) {
 		return 0, false
 	}
 	t := m.TileAt(tx, ty)
+	m.LastPlacedWallBaseZ = 0 // getLegacyReturnState().lastPlacedWall = nullptr
+	posZ := a.Z
+	if posZ == 0 {
+		land, _ := m.GetHeight(a.X, a.Y)
+		posZ = int32(land)
+	}
+	c.Pos = &[3]int32{a.X + tileSize/2, a.Y + tileSize/2, posZ}
 	var slope uint8
 	target := a.Z
 	if target == 0 {
@@ -86,10 +94,12 @@ func (m *Map) CreateWall(c *Cmd, flags uint8, a WallPlacement) (int32, bool) {
 	}
 	baseZ := uint8(target / 4)
 	if t.WaterLevel != 0 && baseZ < t.WaterLevel*4 {
-		return 0, false // cant_build_this_underwater
+		c.ErrorText = i18n.CantBuildThisUnderwater
+		return 0, false
 	}
 	if baseZ < t.BaseZ {
-		return 0, false // error_can_only_build_above_ground
+		c.ErrorText = i18n.ErrorCanOnlyBuildAboveGround
+		return 0, false
 	}
 	if slope&(edgeSlopeUpwards|edgeSlopeDownwards) == 0 {
 		test := t.BaseZ + 4
@@ -99,6 +109,7 @@ func (m *Map) CreateWall(c *Cmd, flags uint8, a WallPlacement) (int32, bool) {
 				continue
 			}
 			if baseZ < test {
+				c.ErrorText = i18n.ErrorCanOnlyBuildAboveGround
 				return 0, false
 			}
 			if t.Slope&0x10 != 0 { // isSlopeDoubleHeight
@@ -106,6 +117,7 @@ func (m *Map) CreateWall(c *Cmd, flags uint8, a WallPlacement) (int32, bool) {
 				if t.Slope&(1<<e) != 0 {
 					e = (e + 2) & 3
 					if t.Slope&(1<<e) != 0 && baseZ < test+4 {
+						c.ErrorText = i18n.ErrorCanOnlyBuildAboveGround
 						return 0, false
 					}
 				}
@@ -116,12 +128,14 @@ func (m *Map) CreateWall(c *Cmd, flags uint8, a WallPlacement) (int32, bool) {
 	clearZ := baseZ
 	if slope&(edgeSlopeUpwards|edgeSlopeDownwards) != 0 {
 		if w.Flags&objects.WallFlagOnlyOnLevelLand != 0 {
-			return 0, false // can_only_build_this_on_level_land
+			c.ErrorText = i18n.CanOnlyBuildThisOnLevelLand
+			return 0, false
 		}
 		clearZ += 4
 	}
 	clearZ += w.Height
 	if !m.canConstructWall(a.X, a.Y, baseZ, clearZ, a.Rotation) {
+		c.setCollisionError(m) // canConstructWall: off_edge_of_map, or what is in the way
 		return 0, false
 	}
 	if flags&CmdApply == 0 {
@@ -137,6 +151,8 @@ func (m *Map) CreateWall(c *Cmd, flags uint8, a WallPlacement) (int32, bool) {
 			}
 		}
 	}
+	m.LastPlacedWallBaseZ = baseZ // lastPlacedWall
+	m.invalidateTile(a.X, a.Y, int32(baseZ)*4, int32(baseZ)*4+72, ZoomHalf, defaultRadius)
 	return 0, true
 }
 

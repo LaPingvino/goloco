@@ -95,7 +95,10 @@ type Map struct {
 
 	// LastCollision: what applyClearAtStandardHeight last collided with (for
 	// the command's error text; clearance.go).
-	LastCollision        *CollisionAt
+	LastCollision *CollisionAt
+	// LastPlacedWallBaseZ is getLegacyReturnState().lastPlacedWall's baseZ: the
+	// wall the last createWall placed (0: none).
+	LastPlacedWallBaseZ  uint8
 	CompanyColours       []uint8                        // owner → main colour (CompanyManager::updateColours); nil if none
 	CompanyColourSchemes []scenario.CompanyColourScheme // company slot → main / vehicle colours, custom set
 	UserStrings          []string                       // GameState userStrings (StringIds 0x8000+); town names

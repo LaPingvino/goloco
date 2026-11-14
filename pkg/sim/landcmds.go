@@ -56,7 +56,7 @@ func (m *Map) ClearLand(c *Cmd, flags uint8, cx, cy int32, ax, ay, bx, by int) (
 // RemoveWall is the removeWall game command (0x004C466C): the first wall on
 // the tile at this height (world z) and rotation — a ghost only by a ghost
 // removal — goes when applying. Always succeeds, costs nothing.
-// PARTIAL: madeAnyChanges; the invalidation (goloco redraws).
+// PARTIAL: madeAnyChanges.
 func (m *Map) RemoveWall(c *Cmd, flags uint8, x, y, z int32, rotation uint8) (int32, bool) {
 	c.Pos = &[3]int32{x + tileSize/2, y + tileSize/2, z}
 	t := m.TileAt(int(x/tileSize), int(y/tileSize))
@@ -78,6 +78,7 @@ func (m *Map) RemoveWall(c *Cmd, flags uint8, x, y, z int32, rotation uint8) (in
 			return 0, true
 		}
 		i := int(r.Index)
+		m.invalidateTile(x, y, int32(w.BaseZ)*4, int32(w.BaseZ)*4+48, ZoomHalf, defaultRadius)
 		t.Walls = append(t.Walls[:i], t.Walls[i+1:]...)
 		t.removeRef(scenario.KindWall, i)
 		return 0, true
