@@ -263,7 +263,7 @@ func (m *Map) randomTerrainVariation(t *Tile, om *objects.ObjectManager) (uint8,
 	if uint16(lo.VariationLikelihood) <= r>>8 {
 		return 0, true
 	}
-	return uint8(uint32(r&0xFF) * uint32(lo.NumVariations) >> 8), true
+	return uint8(uint32(r&0xFF) * (uint32(lo.NumVariations) + 1) >> 8), true // 6804cce: the last variation too
 }
 
 func (m *Map) setTerrainWithVariation(t *Tile, style uint8, om *objects.ObjectManager) {

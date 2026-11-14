@@ -35,15 +35,15 @@ var RoadAdditionParts = [10][]RoadAdditionPiece{
 	// roadId 3
 	{
 		{ImageIDs: [4]uint32{5, 7, 9, 3}, BBOffsets: [4]Pos3{{2, 6, 26}, {6, 2, 26}, {2, 6, 26}, {6, 2, 26}}, BBSizes: [4]Pos3{{28, 20, 1}, {20, 28, 1}, {28, 20, 1}, {20, 28, 1}}, IsMergeable: true, Supports: &RoadAdditionSupport{ImageIDs: [4][4]uint32{{36, 37, 32, 33}, {30, 31, 34, 35}, {36, 37, 32, 33}, {30, 31, 34, 35}}, Height: 0, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{288, 192, 288, 192}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{4, 6, 8, 2}, BBOffsets: [4]Pos3{{6, 2, 26}, {2, 6, 26}, {6, 2, 26}, {2, 6, 26}}, BBSizes: [4]Pos3{{20, 28, 1}, {28, 20, 1}, {20, 28, 1}, {28, 20, 1}}, IsMergeable: true, Supports: &RoadAdditionSupport{ImageIDs: [4][4]uint32{{30, 31, 34, 35}, {36, 37, 32, 33}, {30, 31, 34, 35}, {36, 37, 32, 33}}, Height: 0, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{192, 288, 192, 288}}},
 	},
 	// roadId 4
 	{
 		{ImageIDs: [4]uint32{2, 4, 6, 8}, BBOffsets: [4]Pos3{{2, 6, 26}, {6, 2, 26}, {2, 6, 26}, {6, 2, 26}}, BBSizes: [4]Pos3{{28, 20, 1}, {20, 28, 1}, {28, 20, 1}, {20, 28, 1}}, IsMergeable: true, Supports: &RoadAdditionSupport{ImageIDs: [4][4]uint32{{36, 37, 32, 33}, {30, 31, 34, 35}, {36, 37, 32, 33}, {30, 31, 34, 35}}, Height: 0, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{288, 192, 288, 192}}},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
-		{ImageIDs: [4]uint32{0, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
+		{ImageIDs: [4]uint32{4294967295, 0, 0, 0}, BBOffsets: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, BBSizes: [4]Pos3{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, IsMergeable: false},
 		{ImageIDs: [4]uint32{3, 5, 7, 9}, BBOffsets: [4]Pos3{{6, 2, 26}, {2, 6, 26}, {6, 2, 26}, {2, 6, 26}}, BBSizes: [4]Pos3{{20, 28, 1}, {28, 20, 1}, {20, 28, 1}, {28, 20, 1}}, IsMergeable: true, Supports: &RoadAdditionSupport{ImageIDs: [4][4]uint32{{30, 31, 34, 35}, {36, 37, 32, 33}, {30, 31, 34, 35}, {36, 37, 32, 33}}, Height: 0, Frequencies: [4]uint8{0, 0, 0, 0}, Segments: [4]uint16{192, 288, 192, 288}}},
 	},
 	// roadId 5

@@ -95,6 +95,9 @@ func (s *Session) PaintTrackMods(el TrackEl, mods [4]TrackMod, sprite func(int) 
 			continue
 		}
 		p := parts[tid][seq]
+		if p.ImageIDs[0] == nullAdditionImage { // kNullTrackPaintAdditionPiece (d739914)
+			continue
+		}
 		sp := sprite(m.Image + int(p.ImageIDs[rot]))
 		if sp == nil {
 			continue
@@ -111,3 +114,9 @@ func (s *Session) PaintTrackMods(el TrackEl, mods [4]TrackMod, sprite func(int) 
 		}
 	}
 }
+
+// nullAdditionImage is the null addition pieces' first image
+// (kNullTrackPaintAdditionPiece / kNullRoadPaintAdditionPiece: uint32 max,
+// upstream d739914 — vanilla marked them by image 3 = 0, which some real
+// pieces have, so they weren't drawn on some curves).
+const nullAdditionImage = ^uint32(0)
