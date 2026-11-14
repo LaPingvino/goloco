@@ -78,7 +78,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       selected-tile outline, the preview's arrow, the error window at the cursor.
 > - [x] N8 One-way road arrows — done with N23.
 > - [ ] N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks).
-> - [ ] N10 Gfx::recolour exactness (the 5P.g note).
+> - [x] N10 Gfx::recolour exactness: already exact (Vehicle.cpp Main::draw redraws the pickup image in the company
+>       colour over the secondary-colour one; goloco draws that) — the PARTIAL note was stale.
 > - [x] N11 a-newgame has no expect (now window:scenarioSelect): a key for open windows (expect window scenarioSelect == 1).
 > - [x] N12 Money pop-ups: after the names as upstream (Viewport::paint); only overlapping ones stack in entity-list
 >       order, not paint order (noted PARTIAL in overlay.go).

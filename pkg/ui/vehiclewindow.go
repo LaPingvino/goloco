@@ -425,8 +425,9 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 		}
 		w.drawVehicleTabs(rt, lw[:], vwTabDetails, sec, prim)
 		// The right bar's ImageButtons (ImageButton::draw): the frame (buttonFrame),
-		// then the image — disabled, solid (drawDisabledImage). PARTIAL:
-		// Gfx::recolour's exact colouring (the company colour here).
+		// then the image — disabled, solid (drawDisabledImage); enabled, in the
+		// company colour (Main::draw draws Gfx::recolour(image, companyColour)
+		// over the widget's secondary-colour image, so that is what shows).
 		if b := lw[vdPickup]; !b.Hidden && w.PickupImage > 0 && w.PickupImage < len(g1.Elements) && pickupDisabled {
 			if sp, err := gfx8.Decode(&g1.Elements[w.PickupImage]); err == nil {
 				drawDisabledImage(rt, sp, b.L, b.T, sec)
