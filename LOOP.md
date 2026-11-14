@@ -91,10 +91,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [ ] N7 Construction leftovers: disabled buttons drawn greyed, gradient-based disabling, a refused road's reason
 >       line, constructRoad's alternate-road retry, the bridge retry, shift's downward search, byte_113607E, the
 >       selected-tile outline, the preview's arrow, the error window at the cursor.
-> - [ ] N8 One-way road arrows (PaintRoad.cpp: one_way_direction_arrows view flag).
+> - [ ] N8 One-way road arrows → N23.
 > - [ ] N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks).
 > - [ ] N10 Gfx::recolour exactness (the 5P.g note).
-> - [ ] N11 a-newgame has no expect: a key for open windows (expect window scenarioSelect == 1).
+> - [x] N11 a-newgame has no expect (now window:scenarioSelect): a key for open windows (expect window scenarioSelect == 1).
 > - [ ] N12 Money pop-ups drawn after the names, not in paint order (drawStringStructs).
 > - [x] N13 Explained, nothing to fix: the Claude Code sandbox bind-mounts .git/config read-only (by design), so
 >       git can't rewrite it inside the sandbox; branch deletes leave no stale sections (none had any).
@@ -126,6 +126,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       their right-click removals are only reachable on existing signals / mods; openAtTrack's remembered signal /
 >       station / bridge per track type (Scenario::getConstruction); the construction arrow in the window's piece
 >       preview (OpenLoco draws it there too).
+> - [ ] N23 The View menu (ToolbarTop.cpp viewMenuMouseDown / viewMenuDropdown) is a stub of two logging entries:
+>       underground view, see-through tracks / roads / trees / buildings / scenery / bridges, height marks on land and
+>       on track / road, one-way direction arrows (road and signal; the construction window shows / hides them), town
+>       and station names — the main viewport's flags, what paint does with each (PaintTileDecorations.cpp's tables,
+>       getHeightMarkerImage; PaintSurface's land marks), and the shortcuts (Shortcuts.cpp toggle…).
 > - [ ] N14 (PAUSED until an editor exists) the town list's editor build tabs; updateBuilding's isEditorMode return;
 >       the tileManagerLoaded gate.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).

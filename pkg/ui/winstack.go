@@ -55,6 +55,19 @@ const (
 	WindowTypeTerraform
 )
 
+// WindowTypeNames are the types by their upstream WindowType names (a
+// script's "expect window:NAME").
+var WindowTypeNames = map[string]WindowType{
+	"construction": WindowTypeConstruction, "town": WindowTypeTown, "industry": WindowTypeIndustry,
+	"station": WindowTypeStation, "townList": WindowTypeTownList, "industryList": WindowTypeIndustryList,
+	"stationList": WindowTypeStationList, "vehicleList": WindowTypeVehicleList, "vehicle": WindowTypeVehicle,
+	"buildVehicle": WindowTypeBuildVehicle, "company": WindowTypeCompany, "companyList": WindowTypeCompanyList,
+	"options": WindowTypeOptions, "scenarioSelect": WindowTypeScenarioSelect,
+	"fileBrowserPrompt": WindowTypeFileBrowserPrompt, "musicJukebox": WindowTypeMusicJukebox,
+	"musicSelection": WindowTypeMusicSelection, "messages": WindowTypeMessages, "news": WindowTypeNews,
+	"terraform": WindowTypeTerraform,
+}
+
 // WindowFlags are Ui::WindowFlags, those the stack acts on.
 type WindowFlags uint32
 
