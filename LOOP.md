@@ -138,8 +138,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       and the Signal tab's tool, which goloco lacked altogether (cmd/goloco/signaltool.go: the ghost and its cost
 >       under the cursor, the build on release, getSide), the 156×222 tab with Repeated placement and the step
 >       stepper; the signal commands now invalidate their tiles (upstream's ViewportManager::invalidate — placed
->       signals showed only after something else redrew there). Playthrough O. LEFT (N22): the right click's
->       repeatedSignalMode ("Signals block", removal along the block).
+>       signals showed only after something else redrew there). Playthrough O. The right click's repeatedSignalMode
+>       ("Signals block", removal along the block, N22's) done too.
 > - [x] N29 Shortcuts buildTracks / buildRoads cycle the track / road types (98de125). DONE 2026-11-14 with N33
 >       (shortcut_actions.go buildTracksOrRoads; on OpenLoco 26.09's title game T, T goes Railway Track → Tram
 >       Track, as goloco's does on Weatherworld).

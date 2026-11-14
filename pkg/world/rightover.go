@@ -47,6 +47,9 @@ type RightOverState struct {
 	// isOverheadTabOpen.
 	ConstructionOpen                   bool
 	StationTab, SignalTab, OverheadTab bool
+	// RepeatedSignals is cState.repeatedSignalMode (the Signal tab's
+	// Repeated placement): the signal's text says "Signals block".
+	RepeatedSignals bool
 	// ConstructTool is Input's toolActive with flag6: a tool that builds
 	// (the terraform tools, the industry tool, the Construction tab's).
 	ConstructTool bool
@@ -117,8 +120,7 @@ func prevTrackRoad(t *sim.Tile, item any) (*scenario.TrackElement, *scenario.Roa
 // item a right click would act on (ok false: none — InteractionArg{}), and,
 // when hasTip, the map tooltip it sets (FormatArguments::mapToolTip, with
 // setOwner's company; otherwise the tooltip stays as it was).
-// PARTIAL: viewports other than the main view's; repeatedSignalMode's
-// "Signals block" text (goloco has no repeated signal mode).
+// PARTIAL: viewports other than the main view's.
 func (w *World) RightOver(sx, sy int, st RightOverState) (item RightItem, tip MapTip, hasTip, ok bool) {
 	if w.TitleMode || !w.ensureScene() {
 		return RightItem{}, MapTip{}, false, false
@@ -299,7 +301,11 @@ func (r *rightOver) signal() bool {
 	if int(t.Owner) != r.controlling() {
 		return false
 	}
-	r.set(tipFormat(i18n.StringidRightClickToRemove, i18n.Str(i18n.CaptSignal)), -1)
+	caption := i18n.CaptSignal
+	if r.st.RepeatedSignals {
+		caption = i18n.CaptSignalsBlock
+	}
+	r.set(tipFormat(i18n.StringidRightClickToRemove, i18n.Str(caption)), -1)
 	return true
 }
 
