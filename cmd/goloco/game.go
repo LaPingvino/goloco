@@ -117,15 +117,16 @@ type Game struct {
 	airportRotation      uint8                      // cState.constructionRotation in the airport window
 
 	// The Vehicle window's tools (vehicle_pickup.go, vehicle_route.go).
-	pickupOn           bool         // the Vehicle window's pickup (placing) tool is active
-	pickupHead         uint16       // the vehicle head it places
-	driverCheat        bool         // SceneManager driverCheatEnabled (the Cheats window's; off)
-	lastTownOption     int          // ToolbarTopCommon.cpp _lastTownOption: the Towns menu's last item (0 towns, 1 industries)
-	lastIndustryOption int          // GameState lastIndustryOption: the industry last chosen to fund (PARTIAL: not from the save; -1 none)
-	indTool            industryTool // the Fund New Industries tab's tool (industrytool.go)
-	tip                tooltipState // the window tooltip's timing (tooltip.go)
-	routeTool          bool         // the Route tab's tool (adding stops by clicking the map) is active
-	routeHead          uint16       // the vehicle (window) whose tool that is
+	pickupOn           bool          // the Vehicle window's pickup (placing) tool is active
+	pickupHead         uint16        // the vehicle head it places
+	driverCheat        bool          // SceneManager driverCheatEnabled (the Cheats window's; off)
+	lastTownOption     int           // ToolbarTopCommon.cpp _lastTownOption: the Towns menu's last item (0 towns, 1 industries)
+	lastIndustryOption int           // GameState lastIndustryOption: the industry last chosen to fund (PARTIAL: not from the save; -1 none)
+	indTool            industryTool  // the Fund New Industries tab's tool (industrytool.go)
+	tf                 terraformTool // the Terraform window's tools (terraform.go)
+	tip                tooltipState  // the window tooltip's timing (tooltip.go)
+	routeTool          bool          // the Route tab's tool (adding stops by clicking the map) is active
+	routeHead          uint16        // the vehicle (window) whose tool that is
 	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,
 	// _ghostTrackProgress; ghostProgress -1: none).
 	ghostPlace      sim.VehiclePlacement

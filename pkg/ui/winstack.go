@@ -52,6 +52,7 @@ const (
 	WindowTypeMusicSelection
 	WindowTypeMessages
 	WindowTypeNews
+	WindowTypeTerraform
 )
 
 // WindowFlags are Ui::WindowFlags, those the stack acts on.

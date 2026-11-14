@@ -90,6 +90,7 @@ func (m *Map) CreateTreeCmd(c *Cmd, flags uint8, a TreePlacement) (cost int32, b
 		clearZ = 0xFF
 	}
 	baseQuarter := uint8(1) << (q ^ 2)
+	m.LastCollision = nil
 	if !m.CanConstructAt(a.X, a.Y, baseZ, clearZ, baseQuarter, 0x0F) {
 		c.setCollisionError(m)
 		return 0, 0, false
@@ -128,13 +129,17 @@ func (m *Map) CreateTreeCmd(c *Cmd, flags uint8, a TreePlacement) (cost int32, b
 	return cost, baseZ, true
 }
 
-// setCollisionError is TileClearance's setCollisionErrorMessage, as far as
-// the sim names what is in the way: object_in_the_way unless the clear
-// function set a text of its own.
+// setCollisionError is TileClearance's setCollisionErrorMessage after a
+// refused clearance: what the clear function said, else what was in the way
+// (collisionMessage), else object_in_the_way.
 func (c *Cmd) setCollisionError(m *Map) {
+	if c.ErrorText == 0 {
+		c.ErrorText, c.ErrorArg = m.collisionMessage(c)
+	}
 	if c.ErrorText == 0 {
 		c.ErrorText = i18n.ObjectInTheWay
 	}
+	m.LastCollision = nil
 }
 
 // TreeRemoval is TreeRemovalArgs: the tile and height (world units), the

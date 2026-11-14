@@ -2,8 +2,9 @@ package paint
 
 import "github.com/LaPingvino/goloco/pkg/gfx8"
 
-// Trees — a port of Paint/PaintTree.cpp paintTree (0x004BAEDA). PARTIAL: ghost
-// trees and coloured trees (no vanilla object uses colours) are not ported.
+// Trees — a port of Paint/PaintTree.cpp paintTree (0x004BAEDA): ghosts in the
+// ghost colour (Gfx::applyGhostToImage), coloured trees (no vanilla object
+// uses colours) in the element's.
 // The second (season-transition) image carries a noise mask: noise image
 // 3478+n (ImageIds::noise_mask_1 = 3479), applied by gfx8 to non-RLE sprites.
 
@@ -12,6 +13,8 @@ type TreeEl struct {
 	Rotation, Quadrant, Growth, Season, Unk7l uint8
 	HasSnow                                   bool
 	BaseZ, ClearZ                             uint8
+	Ghost                                     bool  // isGhost
+	Colour                                    uint8 // colour()
 }
 
 // TreeObj is what paintTree reads from a tree object.
@@ -21,6 +24,9 @@ type TreeObj struct {
 	SnowSprites       [6]uint32
 	ShadowImageOffset uint32
 	HasShadow         bool
+	// GhostMap is applyGhostToImage's remap (ExtColour::unk2C); ColourMap the
+	// element's colour's, for an object with colour options (else nil).
+	GhostMap, ColourMap []uint8
 }
 
 var (
@@ -65,22 +71,29 @@ func (s *Session) PaintTree(el TreeEl, obj TreeObj, sprite func(int) *gfx8.Sprit
 	off := Pos3{treeQuadrantOffs[q][0], treeQuadrantOffs[q][1], int(el.BaseZ) * 4}
 	bbz := min(int(el.ClearZ)-int(el.BaseZ), 32)*4 - 3
 
-	if obj.HasShadow && shadowMap != nil {
+	// imageId1 / imageId2: a ghost's in the ghost colour (and no interaction,
+	// no noise mask), a coloured tree's in its colour.
+	remap := obj.ColourMap
+	if el.Ghost {
+		s.ItemType = ItemNoInteraction
+		remap = obj.GhostMap
+	}
+	if obj.HasShadow && shadowMap != nil && s.Zoom <= 1 {
 		if sp := sprite(int(obj.ShadowImageOffset + frame + seasonBase)); sp != nil {
 			s.AddAsParent(Image{Sprite: sp, Op: gfx8.OpTransparent | gfx8.OpDst, PalMap: shadowMap}, off, off, Pos3{18, 18, 1})
 		}
 	}
 	bbOff := Pos3{off.X, off.Y, off.Z + 2}
 	if sp := sprite(int(frame + seasonBase)); sp != nil {
-		s.AddAsParent(Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false)}, off, bbOff, Pos3{2, 2, bbz})
+		s.AddAsParent(Image{Sprite: sp, Op: gfx8.OpFor(sp, remap != nil, false), PalMap: remap}, off, bbOff, Pos3{2, 2, bbz})
 	}
 	if hasImage2 {
 		if sp := sprite(int(image2)); sp != nil {
 			var noise *gfx8.Sprite
-			if noiseMask > 0 {
+			if noiseMask > 0 && !el.Ghost {
 				noise = sprite(3478 + noiseMask) // _noiseMaskImages[noiseMask]
 			}
-			s.AddAsChild(Image{Sprite: sp, Op: gfx8.OpFor(sp, false, false), Noise: noise}, off, bbOff, Pos3{2, 2, bbz})
+			s.AddAsChild(Image{Sprite: sp, Op: gfx8.OpFor(sp, remap != nil, false), PalMap: remap, Noise: noise}, off, bbOff, Pos3{2, 2, bbz})
 		}
 	}
 }

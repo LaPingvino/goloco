@@ -134,6 +134,7 @@ func (m *Map) CreateWall(c *Cmd, flags uint8, a WallPlacement) (int32, bool) {
 		clearZ += 4
 	}
 	clearZ += w.Height
+	m.LastCollision = nil
 	if !m.canConstructWall(a.X, a.Y, baseZ, clearZ, a.Rotation) {
 		c.setCollisionError(m) // canConstructWall: off_edge_of_map, or what is in the way
 		return 0, false

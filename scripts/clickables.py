@@ -38,6 +38,7 @@ PORTED = {
     "PlayerInfoPanel.cpp": ["pkg/ui/playerpanel.go", "cmd/goloco/draw.go", "cmd/goloco/update.go"],
     "CompanyFaceSelection.cpp": ["pkg/ui/companyselect.go"],
     "ProgressBar.cpp": ["pkg/ui/progressbar.go"],
+    "TerraForm.cpp": ["pkg/ui/terraformwindow.go", "cmd/goloco/terraform.go"],
     "MusicJukebox.cpp": ["pkg/ui/musicjukebox.go", "cmd/goloco/music.go"],
     "MusicSelection.cpp": ["pkg/ui/musicselection.go", "cmd/goloco/music.go"],
     "Construction": ["pkg/ui/construction.go", "pkg/ui/constructionoverhead.go", "pkg/ui/constructionsignal.go",

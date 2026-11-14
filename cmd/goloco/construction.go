@@ -214,6 +214,7 @@ func (g *Game) consWindowOrigin() (int, int) {
 func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 	// Every construction window opens hovering in rotation 0, straight and
 	// level (Common's open, then trackWindow's rotate_90).
+	g.closeTerraform() // the construction tool's toolSet
 	if g.r.ObjMgr != nil {
 		g.w.EndConstruction(g.playerCmd())
 	}

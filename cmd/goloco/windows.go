@@ -182,6 +182,8 @@ func (g *Game) routeWheelToWindows() bool {
 		}
 	case *ui.BuildVehicleWindow:
 		w.HandleWheel(g.mouseX, g.mouseY, dy)
+	case *ui.TerraformWindow:
+		w.HandleWheel(dy)
 	case *ui.MusicSelectionWindow:
 		w.HandleWheel(dy)
 	case *ui.MessagesWindow:
@@ -236,6 +238,8 @@ func (g *Game) updateWindows() {
 			w.Update(mx, my, win == top, ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight)) // findAt: the window under the mouse
 		case *ui.BuildVehicleWindow:
 			w.Drag(mx, my, left)
+		case *ui.TerraformWindow:
+			w.Update(mx, my, win == top, left, ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight), g.sh)
 		case *ui.MusicJukeboxWindow:
 			w.MouseOver(hx, hy) // the control button under the mouse
 		case *ui.NewsWindow:
@@ -298,6 +302,8 @@ func (g *Game) prepareWindow(win ui.Win) {
 		}
 	case *ui.MusicJukeboxWindow:
 		w.State = g.musicJukeboxState()
+	case *ui.TerraformWindow:
+		g.prepareTerraformWindow(w)
 	case *ui.OptionsWindow:
 		w.TitleMusic, w.GameMusic = g.playTitleMusic, g.audioCfg.PlayJukeboxMusic // the Audio menu changes them too
 	case *ui.VehicleWindow:
@@ -369,8 +375,7 @@ func (g *Game) fixedWindows() []ui.WinRect {
 
 // openError is Error::open at the mouse.
 func (g *Game) openError(title, message string) {
-	mx, my := ebiten.CursorPosition()
-	g.errorWin = ui.OpenError(title, message, mx, my, g.sw, g.sh)
+	g.errorWin = ui.OpenError(title, message, g.mouseX, g.mouseY, g.sw, g.sh) // the frame's mouse (a script's, when one plays)
 }
 
 // cmdErrorText is the error window's second line: the command's reason

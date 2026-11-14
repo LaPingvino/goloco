@@ -1,0 +1,60 @@
+# As terraform.txt, the trees and walls again clear of the news window: a
+# ghost, a sapling planted, a second on its quarter refused ("… in the way"),
+# a random cluster, a cluster of the chosen tree, a fence built and refused.
+wait 12
+click 571 451
+wait 0.5
+press 562 14
+wait 0.5
+move 580 116
+wait 0.5
+release 580 116
+move 100 300
+wait 1
+move 450 330
+wait 1.5
+shot t3-1-ghost.png
+click 450 330
+wait 1
+move 470 380
+wait 1
+shot t3-2-planted.png
+click 470 380
+wait 0.5
+click 470 380
+wait 1
+shot t3-3-error.png
+move 100 300
+wait 1
+click 778 136
+move 100 300
+wait 1
+move 300 400
+wait 1
+click 300 400
+wait 1
+move 100 300
+wait 1
+shot t3-4-random.png
+click 778 112
+move 100 300
+wait 1
+click 600 380
+wait 1
+move 100 300
+wait 1
+shot t3-5-selected.png
+click 308 58
+move 100 300
+wait 1
+move 560 300
+wait 1
+click 560 300
+wait 0.5
+move 548 294
+wait 1
+click 548 294
+wait 0.5
+click 548 294
+wait 1
+shot t3-6-walls.png

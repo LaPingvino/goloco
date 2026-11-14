@@ -23,6 +23,7 @@ func (g *Game) onPickup(headID uint16) {
 	}
 	h := m.Entities[tr.Head]
 	if h.TileX == -1 {
+		g.closeTerraform()                                           // toolSet: the tool is this window's now
 		g.pickupOn, g.pickupHead, g.ghostProgress = true, headID, -1 // toolSet; _ghostTrackProgress = -1
 		g.ghostAirStation = 0xFFFF                                   // _ghostAirportStationId = null
 		g.openVehicleDetails(headID)

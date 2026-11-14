@@ -102,6 +102,11 @@ rotate, first click, build, bulldozer back to the start and once more, the red
 cross, a refused click. One script runs on both games; goloco doesn't take the
 save's view, so the two build at different tiles of the same flat ground.
 
+tours/terraform.txt and terraform-trees.txt walk both games through the
+Terraform window's five tabs on the title save opened at tile 294,370
+(setview): every step's shot is taken under the same name in each game's
+directory, to put side by side.
+
 tours/music.txt (the Audio menu, the Jukebox, Music Selection, Options' Audio
 tab, on the title game) and music-title.txt (the Jukebox on the title screen)
 start both games from the same audio settings — OpenLoco picks its track with

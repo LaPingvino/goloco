@@ -19,6 +19,27 @@ type ColourDropdown struct {
 	Highlighted int
 	OnSelect    func(colour uint8)
 	Visible     bool
+	// Images makes it Dropdown::showImage with one image per item (Colours
+	// then holds the items' arguments): Cell × Cell cells, the image at the
+	// cell's corner, the highlighted cell under the same translucent fill.
+	Images []int
+	Cell   int
+}
+
+// NewImageDropdown is Dropdown::showImage for a widget at (wx, wy) of height
+// wh: an item per image in cell × cell cells, args their arguments (what
+// OnSelect is given), the highlighted item's index (−1 none).
+func NewImageDropdown(wx, wy, wh, cell int, images []int, args []uint8, highlighted int, colour uint8, sw, sh int) *ColourDropdown {
+	d := &ColourDropdown{Colour: colour, Highlighted: highlighted, Visible: true, Colours: args, Images: images, Cell: cell}
+	d.place(wx, wy, wh, sw, sh)
+	return d
+}
+
+func (d *ColourDropdown) cell() int {
+	if d.Cell > 0 {
+		return d.Cell
+	}
+	return colourDropdownCell
 }
 
 const (
@@ -43,14 +64,20 @@ func NewColourDropdown(wx, wy, wh int, available uint32, selected, colour uint8,
 			d.Colours = append(d.Colours, uint8(i))
 		}
 	}
+	d.place(wx, wy, wh, sw, sh)
+	return d
+}
+
+// place is showImage's size and placement.
+func (d *ColourDropdown) place(wx, wy, wh, sw, sh int) {
 	n := len(d.Colours)
 	d.Columns = imageDropdownItemsPerRow[min(n, 32)]
 	rows := n / d.Columns
 	if n%d.Columns != 0 {
 		rows++
 	}
-	d.W = colourDropdownCell*d.Columns + 3 + 1
-	d.H = colourDropdownCell*rows + 3 + 1
+	d.W = d.cell()*d.Columns + 3 + 1
+	d.H = d.cell()*rows + 3 + 1
 	heightOffset := wh + 1
 	x, y := wx, wy+heightOffset
 	if y+d.H > sh || y < 0 {
@@ -67,7 +94,6 @@ func NewColourDropdown(wx, wy, wh int, available uint32, selected, colour uint8,
 	x = max(x, 0)
 	x = min(x+d.W, sw) - d.W
 	d.X, d.Y = x, y
-	return d
 }
 
 // indexAt is dropdownIndexFromPoint: the cell under a point, −1 none.
@@ -80,7 +106,7 @@ func (d *ColourDropdown) indexAt(x, y int) int {
 	if left < 0 {
 		return -1
 	}
-	col, row := left/colourDropdownCell, top/colourDropdownCell
+	col, row := left/d.cell(), top/d.cell()
 	if col >= d.Columns {
 		return -1
 	}
@@ -113,6 +139,16 @@ func (d *ColourDropdown) HandleClick(x, y int) bool {
 	return true
 }
 
+// HandleRelease is the release of the press that opened the dropdown
+// (State::dropdownActive): over an item it picks it, as a click would
+// (true); anywhere else the dropdown stays open.
+func (d *ColourDropdown) HandleRelease(x, y int) bool {
+	if !d.Visible || d.indexAt(x, y) < 0 {
+		return false
+	}
+	return d.HandleClick(x, y)
+}
+
 // Draw draws the panel and the swatches.
 func (d *ColourDropdown) Draw(screen *ebiten.Image) {
 	if !d.Visible || globalG1Font == nil {
@@ -127,13 +163,22 @@ func (d *ColourDropdown) Draw(screen *ebiten.Image) {
 	draw8(screen, d.X, d.Y, d.W, d.H, func(rt *gfx8.RenderTarget) {
 		gfx8.FillRectInset(rt, 0, 0, d.W-1, d.H-1, gfx8.InsetColour{Map: cmap}, 0) // the Wt3 panel
 		for i, c := range d.Colours {
-			cx, cy := (i%d.Columns)*colourDropdownCell+2, (i/d.Columns)*colourDropdownCell+2
+			cell := d.cell()
+			cx, cy := (i%d.Columns)*cell+2, (i/d.Columns)*cell+2
 			img := imgColourSwatchRaised
 			if i == d.Highlighted {
 				if highlight != nil {
-					gfx8.FillRectTranslucent(rt, cx, cy, cx+colourDropdownCell-1, cy+colourDropdownCell-1, highlight)
+					gfx8.FillRectTranslucent(rt, cx, cy, cx+cell-1, cy+cell-1, highlight)
 				}
 				img++ // the pressed swatch
+			}
+			if d.Images != nil { // showImage: the item's image, uncoloured
+				if id := d.Images[i]; id > 0 && id < len(g1.Elements) {
+					if sp, err := gfx8.Decode(&g1.Elements[id]); err == nil {
+						gfx8.DrawSpriteNoise(rt, sp, cx, cy, gfx8.OpFor(sp, false, false), nil, nil)
+					}
+				}
+				continue
 			}
 			if img < len(g1.Elements) {
 				if sp, err := gfx8.Decode(&g1.Elements[img]); err == nil {
