@@ -120,9 +120,9 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       OpenLoco on the title game (scripts/olref/tours/viewmenu.txt, viewmenu-oneway.txt): the map's pixels agree in
 >       every mode, zoom 0 and 1. Playthrough M. With it: the toolbar's zoom / rotate / view buttons were 30 px right
 >       of OpenLoco's; a toolbar menu released off the menu stayed open. LEFT → N32.
-> - [ ] N24 Town window's 4th tab, transported cargo (dbab545: town_not_served / town_no_deliveries,
+> - [x] N24 Town window's 4th tab, transported cargo (dbab545: town_not_served / town_no_deliveries,
 >       MonthlyCargoDelivered is simulated but never shown).
-> - [ ] N25 Industry window's cargo awaiting processing / transport (4d72607; the Transported tab's new height).
+> - [x] N25 Industry window's cargo awaiting processing / transport (4d72607; the Transported tab's new height).
 > - [x] N26 Vehicle list filter by actual cargo: "Transports cargo" / "Has cargo order" (af4d69c).
 > - [ ] N27 Options → Controls: toolbarAutoMenu (10c1e49) and the centred top toolbar (2da9f6f, 7ba7099) — config,
 >       checkboxes, the toolbar's centring and shrink.

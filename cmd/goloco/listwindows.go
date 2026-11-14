@@ -218,7 +218,19 @@ func (g *Game) openTownWindow(id int) {
 	w.Labels = func(dst *ebiten.Image) { g.w.TownViewLabels(id, dst) }
 	w.OnCentreView = func() { g.w.CentreOnTown(id) }
 	w.OnRename = func() { g.renameTown(id, w) }
-	w.TabTooltips = labels(i18n.TooltipTown, i18n.TooltipPopulationGraph, i18n.TooltipTownRatingsEachCompany)
+	w.TabTooltips = labels(i18n.TooltipTown, i18n.TooltipPopulationGraph, i18n.TooltipTownRatingsEachCompany, i18n.TooltipStatistics)
+	sizeName := func() string { // Common::getTownSizeName
+		if id < len(g.w.Map.Towns) && int(g.w.Map.Towns[id].Size) < len(sim.TownSizeNames) {
+			return sim.TownSizeNames[g.w.Map.Towns[id].Size]
+		}
+		return ""
+	}
+	w.NotServed = func() string { return strings.Replace(i18n.Label(i18n.TownNotServed), "{STRINGID}", sizeName(), 1) }
+	w.DeliveredTab = 3 // tab_transported (dbab545): the cargo received last month
+	w.Delivered = func() ([]string, string) {
+		return g.w.Map.TownDeliveredCargo(id, g.r.ObjMgr.CargoObjects),
+			strings.Replace(i18n.Label(i18n.TownNoDeliveries), "{STRINGID}", sizeName(), 1)
+	}
 	w.RatingsTab = 2 // tab_company_ratings: each company the town rates
 	w.Ratings = func() []ui.RatingLine {
 		if id >= len(g.w.Map.Towns) {
@@ -275,6 +287,9 @@ func (g *Game) openTownWindow(id int) {
 			return base + 189, -1, -1
 		case 1:
 			return base + 57 + anim(8), int(wc), -1
+		}
+		if i == 3 { // tab_transported_frame0 … 6
+			return base + 161 + anim(7), -1, -1
 		}
 		return base + 145 + anim(16), -1, -1
 	}
@@ -400,7 +415,7 @@ func (g *Game) openIndustryWindow(id int) {
 		rec, prod, months := g.w.Map.IndustryCargoMonths(idx, g.r.ObjMgr)
 		lines := make([]ui.CargoMonthLine, len(months))
 		for k, c := range months {
-			lines[k] = ui.CargoMonthLine{Produced: c.Produced, Unit: c.Unit, Qty: c.Qty, Percent: c.Percent}
+			lines[k] = ui.CargoMonthLine{Kind: c.Kind, Unit: c.Unit, Qty: c.Qty, Percent: c.Percent}
 		}
 		return rec, prod, lines
 	}

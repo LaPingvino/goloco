@@ -130,16 +130,28 @@ func (m *Map) IndustryList(om *objects.ObjectManager) []IndustryRow {
 // singular for exactly one, as upstream), and of produced cargo the percent
 // transported.
 type IndustryCargoMonth struct {
-	Produced bool
+	Kind     int // CargoReceived, CargoProduced, CargoAwaitingProcessing, CargoAwaitingTransport
 	Unit     string
 	Qty      uint32
 	Percent  uint8
 }
 
+// The Transported tab's line kinds.
+const (
+	CargoReceived = iota
+	CargoProduced
+	CargoAwaitingProcessing // 4d72607: receivedCargoQuantityDailyTotal
+	CargoAwaitingTransport  // 4d72607: outputBuffer
+)
+
 // IndustryCargoMonths is the Transported tab's data (IndustryWindow.cpp
-// Transported::draw): the required cargoes' receivedCargoQuantityPreviousMonth
-// when it can receive, then the produced cargoes' producedCargoQuantityPreviousMonth
-// and producedCargoPercentTransportedPreviousMonth when it can produce.
+// Transported::draw): when it can receive, the required cargoes'
+// receivedCargoQuantityPreviousMonth and then what awaits processing
+// (receivedCargoQuantityDailyTotal); when it can produce, the produced cargoes'
+// producedCargoQuantityPreviousMonth with producedCargoPercentTransportedPreviousMonth
+// and then what awaits transport (outputBuffer). Both awaiting lists take the
+// singular or plural by receivedCargoQuantityPreviousMonth of the same slot,
+// as upstream does.
 func (m *Map) IndustryCargoMonths(i int, om *objects.ObjectManager) (receives, produces bool, lines []IndustryCargoMonth) {
 	ind := &m.Industries[i]
 	obj := om.GetIndustryObjectByIndex(int(ind.ObjectID))
@@ -160,14 +172,24 @@ func (m *Map) IndustryCargoMonths(i int, om *objects.ObjectManager) (receives, p
 		if c != 0xFF {
 			receives = true
 			q := uint32(ind.ReceivedPrevMonth[k])
-			lines = append(lines, IndustryCargoMonth{Unit: unit(c, q), Qty: q})
+			lines = append(lines, IndustryCargoMonth{Kind: CargoReceived, Unit: unit(c, q), Qty: q})
+		}
+	}
+	for k, c := range required {
+		if c != 0xFF {
+			lines = append(lines, IndustryCargoMonth{Kind: CargoAwaitingProcessing, Unit: unit(c, uint32(ind.ReceivedPrevMonth[k])), Qty: uint32(ind.ReceivedDailyTotal[k])})
 		}
 	}
 	for k, c := range produced {
 		if c != 0xFF {
 			produces = true
 			q := uint32(ind.ProducedPrevMonth[k])
-			lines = append(lines, IndustryCargoMonth{Produced: true, Unit: unit(c, q), Qty: q, Percent: ind.PercentTransported[k]})
+			lines = append(lines, IndustryCargoMonth{Kind: CargoProduced, Unit: unit(c, q), Qty: q, Percent: ind.PercentTransported[k]})
+		}
+	}
+	for k, c := range produced {
+		if c != 0xFF {
+			lines = append(lines, IndustryCargoMonth{Kind: CargoAwaitingTransport, Unit: unit(c, uint32(ind.ReceivedPrevMonth[k])), Qty: uint32(ind.OutputBuffer[k])})
 		}
 	}
 	return receives, produces, lines

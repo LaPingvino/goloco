@@ -337,3 +337,29 @@ func (w *Map) StationCargoText(id int, cargos []*objects.CargoObject) (status, a
 	status, _, accepts = w.stationCargoText(id, cargos)
 	return status, accepts
 }
+
+// TownDeliveredCargo is the Town window's Transported tab's lines (dbab545):
+// each cargo the town received last month (monthlyCargoDelivered), or that
+// influences its growth though none came, as its unit name with the amount
+// (singular for 1), in cargo order.
+func (w *Map) TownDeliveredCargo(id int, cargos []*objects.CargoObject) []string {
+	if id < 0 || id >= len(w.Towns) {
+		return nil
+	}
+	t := &w.Towns[id]
+	var out []string
+	for c, n := range t.MonthlyCargoDelivered {
+		if c >= len(cargos) || cargos[c] == nil {
+			continue
+		}
+		unit := cargos[c].UnitNamePlural
+		switch {
+		case n == 1:
+			unit = cargos[c].UnitNameSingular
+		case n == 0 && t.CargoInfluenceFlags&(1<<c) == 0:
+			continue
+		}
+		out = append(out, formatCount(unit, int(n)))
+	}
+	return out
+}

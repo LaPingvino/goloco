@@ -65,14 +65,30 @@ type ViewWindow struct {
 	// its lines, read each draw.
 	RatingsTab int
 	Ratings    func() []RatingLine
+	// NotServed is the ratings tab's line when no company has a rating
+	// (town_not_served).
+	NotServed func() string
+	// DeliveredTab is the Town window's Transported tab's index (0: none,
+	// dbab545); Delivered gives its lines (TownDeliveredCargo) and the line
+	// for none (town_no_deliveries).
+	DeliveredTab int
+	Delivered    func() (lines []string, none string)
 	baseW      int // the first tab's size (switchTab: kWindowSize)
 	baseH      int
 }
 
+// The CargoMonthLine kinds (sim's CargoReceived …).
+const (
+	cargoLineReceived = iota
+	cargoLineProduced
+	cargoLineAwaitingProcessing
+	cargoLineAwaitingTransport
+)
+
 // CargoMonthLine is a Transported tab line: a cargo's unit name, how much,
 // and, produced, the percent transported.
 type CargoMonthLine struct {
-	Produced bool
+	Kind     int // sim.CargoReceived, CargoProduced, CargoAwaitingProcessing, CargoAwaitingTransport
 	Unit     string
 	Qty      uint32
 	Percent  uint8
@@ -80,8 +96,9 @@ type CargoMonthLine struct {
 
 // Transported tab: kWindowSize (onResize sets it); the Company ratings tab's.
 const (
-	transportedW, transportedH = 300, 127
+	transportedW, transportedH = 300, 196 // 4d72607: room for the awaiting cargo
 	ratingsW, ratingsH         = 340, 208
+	deliveredW, deliveredH     = 340, 228 // the Town window's Transported::kWindowSize
 )
 
 // RatingLine is a company's line on the Company ratings tab: its name, the
@@ -138,7 +155,7 @@ func (w *ViewWindow) caption() string {
 	switch {
 	case w.Tab == 0:
 		return w.Title
-	case w.Tab == w.CargoTab && w.CargoTab != 0:
+	case w.Tab == w.CargoTab && w.CargoTab != 0, w.Tab == w.DeliveredTab && w.DeliveredTab != 0:
 		return strings.Replace(i18n.Label(i18n.TitleStatistics), "{STRINGID}", w.Title, 1)
 	case w.Tab == w.RatingsTab && w.RatingsTab != 0:
 		return strings.Replace(i18n.Label(i18n.TitleTownLocalAuthority), "{STRINGID}", w.Title, 1)
@@ -151,13 +168,13 @@ func (w *ViewWindow) caption() string {
 	return w.Title
 }
 
-// NewTownWindow is Town::open's window (223×161, three tabs), its status
+// NewTownWindow is Town::open's window (223×161, four tabs), its status
 // status_town_population "{STRINGID} population {INT32}". The
 // window stack places it (createWindow).
 func NewTownWindow(sw, sh int, title, size string, population int, titleColour, colour uint8) *ViewWindow {
 	status := strings.Replace(i18n.Label(i18n.StatusTownPopulation), "{STRINGID}", size, 1)
 	status = strings.Replace(status, "{INT32}", Comma32(int64(population)), 1)
-	return newViewWindow(sw, sh, 223, 161, 3, title, status, titleColour, colour)
+	return newViewWindow(sw, sh, 223, 161, 4, title, status, titleColour, colour)
 }
 
 // NewIndustryWindow is IndustryWindow open's window (223×137, four tabs), its
@@ -185,6 +202,8 @@ func (w *ViewWindow) PrepareDraw() {
 		w.SetFixedSize(transportedW, transportedH)
 	case w.Tab == w.RatingsTab && w.RatingsTab != 0:
 		w.SetFixedSize(ratingsW, ratingsH)
+	case w.Tab == w.DeliveredTab && w.DeliveredTab != 0:
+		w.SetFixedSize(deliveredW, deliveredH)
 	default:
 		if w.Graph != nil {
 			if g, ok := w.Graph(w.Tab); ok {
@@ -228,7 +247,8 @@ func (w *ViewWindow) HandleClick(px, py int) {
 			_, graph = w.Graph(i)
 		}
 		cargo, ratings := i == w.CargoTab && w.CargoTab != 0, i == w.RatingsTab && w.RatingsTab != 0
-		if !w.TabDisabled[i] && (i == 0 || cargo || ratings || graph) {
+		delivered := i == w.DeliveredTab && w.DeliveredTab != 0
+		if !w.TabDisabled[i] && (i == 0 || cargo || ratings || delivered || graph) {
 			// switchTab: setSize(kWindowSize), the tab's onResize,
 			// moveInsideScreenEdges
 			w.Tab = i
@@ -298,6 +318,8 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 			w.drawCargo(screen, win2, black)
 		} else if w.Tab == w.RatingsTab && w.RatingsTab != 0 {
 			w.drawRatings(screen, win2, black)
+		} else if w.Tab == w.DeliveredTab && w.DeliveredTab != 0 {
+			w.drawDelivered(screen, win2, black)
 		} else if w.Graph != nil {
 			if g, ok := w.Graph(w.Tab); ok {
 				w.drawGraph(screen, sec, g1.GetPalette()[paletteBlack0], g)
@@ -320,24 +342,26 @@ func (w *ViewWindow) Draw(screen *ebiten.Image) {
 }
 
 // drawCargo is Transported::draw: from (3, 45), "Received last month:" in
-// WINDOW_2 and each required cargo's amount 4 in, wrapped at 290; 4 below,
+// WINDOW_2 and each required cargo's amount 4 in, wrapped at 290, then
+// "Cargo awaiting processing:" and what waits of each (4d72607); 4 below,
 // "Produced last month:" and each produced cargo's amount with its percent
-// transported.
+// transported, then "Cargo awaiting transport:" and each output buffer. Each
+// list ends 4 lower and back 4 to the left.
 func (w *ViewWindow) drawCargo(screen *ebiten.Image, win2, black color.Color) {
 	if w.Cargo == nil {
 		return
 	}
 	receives, produces, lines := w.Cargo()
 	x, y := w.X+3, w.Y+45
-	block := func(heading int, produced bool) {
+	block := func(heading, kind int) {
 		DrawTextBold(screen, i18n.Label(heading), x, y, win2)
 		x, y = x+4, y+10
 		for _, l := range lines {
-			if l.Produced != produced {
+			if l.Kind != kind {
 				continue
 			}
 			text := FillArgs(ObjectString(l.Unit), Comma32(int64(l.Qty)))
-			if produced { // transported_cargo "{STRINGID} ({INT16}% transported)"
+			if kind == cargoLineProduced { // transported_cargo "{STRINGID} ({INT16}% transported)"
 				text = strings.Replace(strings.Replace(i18n.Label(i18n.TransportedCargo), "{STRINGID}", text, 1), "{INT16}", strconv.Itoa(int(l.Percent)), 1)
 			}
 			for _, part := range WrapTextBold(text, 290) {
@@ -345,13 +369,15 @@ func (w *ViewWindow) drawCargo(screen *ebiten.Image, win2, black color.Color) {
 				y += 10
 			}
 		}
-	}
-	if receives {
-		block(i18n.ReceivedCargo, false)
 		x, y = x-4, y+4
 	}
+	if receives {
+		block(i18n.ReceivedCargo, cargoLineReceived)
+		block(i18n.CargoAwaitingProcessing, cargoLineAwaitingProcessing)
+	}
 	if produces {
-		block(i18n.ProducedCargo, true)
+		block(i18n.ProducedCargo, cargoLineProduced)
+		block(i18n.CargoAwaitingTransport, cargoLineAwaitingTransport)
 	}
 }
 
@@ -435,12 +461,44 @@ func (w *ViewWindow) drawRatings(screen *ebiten.Image, win2, black color.Color) 
 	if w.Ratings == nil {
 		return
 	}
-	for _, r := range w.Ratings() {
+	lines := w.Ratings()
+	for _, r := range lines {
 		name := r.Name + ": "
 		nw, _ := MeasureTextBold(name)
 		DrawTextBold(screen, name, x, y, win2)
 		DrawTextBold(screen, strconv.Itoa(r.Percent)+"% ("+r.Rank+")", x+nw, y, black)
 		y += 10
+	}
+	if len(lines) == 0 && w.NotServed != nil { // companiesServingTown == 0: black_stringid, clipped at width − 12
+		DrawTextBold(screen, ClipString(w.NotServed(), G1FontMediumBold, w.W-12), x, y, black)
+	}
+}
+
+// drawDelivered is the Town window's Transported::draw (dbab545): at (4, 46)
+// "Received last month:" in WINDOW_2, then 4 in and 14 down a line per cargo
+// in black, 10 apart, clipped at width − 12; past 16 rows a new column 160
+// to the right (the row count restarting at 0, as upstream's does); none:
+// town_no_deliveries.
+func (w *ViewWindow) drawDelivered(screen *ebiten.Image, win2, black color.Color) {
+	x, y := w.X+4, w.Y+46
+	DrawTextBold(screen, i18n.Label(i18n.ReceivedCargo), x, y, win2)
+	x, y = x+4, y+14
+	if w.Delivered == nil {
+		return
+	}
+	lines, none := w.Delivered()
+	sx, sy, row := x, y, 0
+	for _, l := range lines {
+		if row++; row > 16 { // kNumRows
+			row = 0
+			sx += 160 // kColumnSpacing
+			x, y = sx, sy
+		}
+		DrawTextBold(screen, ClipString(l, G1FontMediumBold, w.W-12), x, y, black)
+		y += 10
+	}
+	if len(lines) == 0 {
+		DrawTextBold(screen, ClipString(none, G1FontMediumBold, w.W-12), x, y, black)
 	}
 }
 
