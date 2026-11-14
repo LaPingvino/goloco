@@ -191,6 +191,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 			m.Tiles[y][x] = Tile{
 				TerrainIndex: st.TerrainIndex,
 				BaseZ:        st.Height,
+				ClearZ:       st.ClearZ,
 				Slope:        st.Slope,
 				WaterLevel:   st.Water,
 				UpdateTimer:  st.UpdateTimer,
@@ -210,6 +211,13 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 				// SurfaceElement flag_6: a wave runs on the tile (wave.go).
 				WaveFlag: surfaceFlags(st.Order)&surfaceFlagWave != 0,
 			}
+		}
+	}
+	m.resetSurfaceClearance()
+	m.EntriesEnd = 0 // loadTileElements: entriesEnd the file's element count
+	for y := range m.Tiles {
+		for x := range m.Tiles[y] {
+			m.EntriesEnd += len(m.Tiles[y][x].Order)
 		}
 	}
 	m.Towns = sc.Towns

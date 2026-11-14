@@ -78,9 +78,12 @@
 	// The game's config (HOME=/w: os.UserConfigDir is /w/.config) is kept in
 	// the browser's localStorage, so a setting chosen in the game (the
 	// language …) survives a reload. Each file is one key, base64.
-	const KEEP = "/w/.config/", KEEP_KEY = "goloco-fs:";
+	// Not the saved games (/w/.config/goloco/save/: megabytes each, the
+	// monthly autosaves among them): they would fill the storage and stop the
+	// settings being kept; they last until the page closes.
+	const KEEP = "/w/.config/", KEEP_KEY = "goloco-fs:", NOT_KEPT = "/w/.config/goloco/save/";
 	const keep = (path) => {
-		if (!path.startsWith(KEEP) || !files.has(path)) return;
+		if (!path.startsWith(KEEP) || path.startsWith(NOT_KEPT) || !files.has(path)) return;
 		try {
 			let bin = "";
 			for (const b of files.get(path)) bin += String.fromCharCode(b);

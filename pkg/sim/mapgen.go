@@ -52,10 +52,13 @@ func (hm *HeightMap) ResetMarkerFlags() {
 	}
 }
 
-// SurfaceClearZ is a surface's clearZ as generateLand (and the terraform
-// commands) set it: baseZ, one step up for any raised corner, one more when
-// double height.
-func (t *Tile) SurfaceClearZ() uint8 {
+// SurfaceClearZ is SurfaceElement::clearZ (the kept one, Tile.ClearZ).
+func (t *Tile) SurfaceClearZ() uint8 { return t.ClearZ }
+
+// slopeClearZ is a surface's clearZ as generateLand sets it — and its top
+// as getSurfaceCornerHeight reads it: baseZ, one step up for any raised
+// corner, one more when double height.
+func (t *Tile) slopeClearZ() uint8 {
 	z := t.BaseZ
 	if t.Slope&slopeCornersAll != 0 {
 		z += smallZStep
@@ -102,14 +105,17 @@ func (m *Map) GenerateLand(hm *HeightMap) {
 				slope |= slopeDoubleHeight
 			}
 			t.Slope = slope
+			t.ClearZ = t.slopeClearZ()
 		}
 	}
 }
 
 // InitialiseTiles is TileManager::initialise: the tile loop back at its
 // start, every tile a single surface of the last land option (else land
-// object 0) at baseZ 4.
+// object 0) at baseZ 4; the game state's tileManagerLoaded flag set (a save
+// then carries the map: S5 writes the tile elements, loadSave reads them).
 func (m *Map) InitialiseTiles() {
+	m.GameStateFlags |= gameStateFlagTileManagerLoaded
 	m.tileUpdateX, m.tileUpdateY = 0, 0
 	land := m.LastLandOption
 	if land == 0xFF {
@@ -299,3 +305,6 @@ func NewGeneratedMap(seed0, seed1 uint32, startYear uint16, o TerrainOptions, g1
 	m.GenerateLandscape(startYear, o, g1, om)
 	return m
 }
+
+// gameStateFlagTileManagerLoaded is GameStateFlags::tileManagerLoaded.
+const gameStateFlagTileManagerLoaded = 1

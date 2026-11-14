@@ -126,7 +126,7 @@ func (t *Tile) exportTile() scenario.Tile {
 			order[i].Flags = order[i].Flags&^surfaceFlagWave | boolU8(t.WaveFlag)*surfaceFlagWave
 		}
 	}
-	return scenario.Tile{Height: t.BaseZ, ClearZ: t.SurfaceClearZ(), Slope: t.Slope, Water: t.WaterLevel,
+	return scenario.Tile{Height: t.BaseZ, ClearZ: t.ClearZ, Slope: t.Slope, Water: t.WaterLevel,
 		UpdateTimer: t.UpdateTimer, TerrainIndex: t.TerrainIndex, GrowthStage: t.GrowthStage, Variation: t.Variation,
 		IsIndustrial: t.IsIndustrial, Type6Flag: t.Type6Flag,
 		Trees: t.Trees, Buildings: t.Buildings, Walls: t.Walls, Tracks: t.Tracks, Roads: t.Roads,
@@ -164,6 +164,12 @@ func (s *State) ExportScenario() *scenario.Scenario {
 	}
 	sc.MiscEntities = m.exportEffects()
 	sc.Orders, sc.OrderTableLength, sc.Routings = m.Orders, m.OrderTableLength, m.Routings
+	if len(sc.Routings) == 0 { // none allocated yet: the table as resetRoutingTable leaves it
+		sc.Routings = make([]uint16, scenario.MaxRoutingVehicles*scenario.RoutingsPerVehicle)
+		for i := range sc.Routings {
+			sc.Routings[i] = RoutingNull
+		}
+	}
 	sc.RoadAnyTypeCompatible, sc.RoadUsableByAll = m.RoadAnyTypeCompatible, m.RoadUsableByAll
 	sc.Rng = [2]uint32{m.Rng1.Srand0(), m.Rng1.Srand1()}
 	sc.UnkRng = [2]uint32{m.Rng2.Srand0(), m.Rng2.Srand1()}
@@ -208,11 +214,12 @@ func (s *State) ExportScenario() *scenario.Scenario {
 // PrepareSave is what exportGameStateToFile does to the live game before it
 // writes it: StationManager::zeroUnused (an empty station's record reset —
 // name null, every cargo's origin null — and every station's tiles past its
-// count zeroed) and OrderManager::zeroUnusedOrderTable. (TileManager::
-// reorganise, EntityManager::resetSpatialIndex and zeroUnused touch nothing
-// goloco keeps: its tiles have no element pool, the entity slots it doesn't
-// model are written zeroed.)
+// count zeroed), OrderManager::zeroUnusedOrderTable and TileManager::
+// reorganise (entriesEnd the element count). (EntityManager::
+// resetSpatialIndex and zeroUnused touch nothing goloco keeps: the entity
+// slots it doesn't model are written zeroed.)
 func (m *Map) PrepareSave() {
+	m.EntriesEnd = m.countElements() // TileManager::reorganise: the entries packed
 	for i := range m.StationNames {
 		s := &m.StationNames[i]
 		if s.Name == stationNameNull {
@@ -228,5 +235,17 @@ func (m *Map) PrepareSave() {
 	}
 	if int(m.OrderTableLength) < len(m.Orders) {
 		clear(m.Orders[m.OrderTableLength:])
+	}
+}
+
+// resetSurfaceClearance is TileManager::resetSurfaceClearance (every load,
+// S5::importSaveToGameState): a flat surface's clearZ its baseZ.
+func (m *Map) resetSurfaceClearance() {
+	for y := range m.Tiles {
+		for x := range m.Tiles[y] {
+			if t := &m.Tiles[y][x]; t.Slope&0x1F == 0 {
+				t.ClearZ = t.BaseZ
+			}
+		}
 	}
 }

@@ -338,7 +338,7 @@ func (m *Map) generateTerrainInRandomAreas(style uint8, minTiles, maxTiles int32
 		for range steps {
 			if px >= 0 && px < int32(m.Width*32) && py >= 0 && py < int32(m.Height*32) {
 				t := m.TileAt(int(px/32), int(py/32))
-				if t != nil && t.SurfaceClearZ()/microToSmallZStep > seaLevel { // getSurfaceCornerHeight / 4
+				if t != nil && t.slopeClearZ()/microToSmallZStep > seaLevel { // getSurfaceCornerHeight / 4
 					m.setTerrainWithVariation(t, style, om)
 				}
 			}

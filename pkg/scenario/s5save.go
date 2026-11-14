@@ -478,12 +478,10 @@ func (sc *Scenario) putUserStrings(gs []byte) {
 }
 
 func (sc *Scenario) putOrdersAndRoutings(gs []byte) {
-	if sc.Orders != nil {
-		o := gs[gameStateOrders : gameStateOrders+maxOrders]
-		copy(o, sc.Orders)
-		if int(sc.OrderTableLength) < len(o) {
-			clear(o[sc.OrderTableLength:]) // OrderManager::zeroUnusedOrderTable
-		}
+	o := gs[gameStateOrders : gameStateOrders+maxOrders]
+	copy(o, sc.Orders)
+	if int(sc.OrderTableLength) < len(o) {
+		clear(o[sc.OrderTableLength:]) // OrderManager::zeroUnusedOrderTable
 	}
 	for i, r := range sc.Routings {
 		if i >= MaxRoutingVehicles*RoutingsPerVehicle {

@@ -186,7 +186,7 @@ func (m *Map) portBuilding(c *Cmd, stationID int, a PortPlacement, flags uint8, 
 			}
 			if flags&CmdGhost == 0 && flags&CmdApply != 0 && (t.Slope&0x1F != 0 || a.Z != int32(t.BaseZ)*4) {
 				if flags&CmdAiAllocated == 0 {
-					t.BaseZ = argBaseZ // base and clear height (the sim tile keeps one)
+					t.BaseZ, t.ClearZ = argBaseZ, argBaseZ // setBaseZ / setClearZ
 					t.Slope = 0        // the slope and the snow coverage (its top bits)
 					t.GrowthStage = 0
 				}

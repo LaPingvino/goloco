@@ -3,6 +3,8 @@ package sim
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -16,6 +18,7 @@ import (
 func saveAndLoad(t *testing.T, s *State) (*State, []byte) {
 	t.Helper()
 	s.PrepareSave()
+	defer s.resetSurfaceClearance() // as the load will (resetSurfaceClearance): the original made comparable
 	sc := s.ExportScenario()
 	var buf bytes.Buffer
 	if err := sc.SavedGameFile(make([]byte, scenario.SaveDetailsSize), s.Raw.RequiredObjects).Write(&buf); err != nil {
@@ -74,7 +77,7 @@ func stateDiff(a, b *State, max int) []string {
 				walk(path+"."+f.Name, x.Field(i), y.Field(i))
 			}
 		case reflect.Slice, reflect.Array:
-			if x.Kind() == reflect.Slice && x.Len() != y.Len() {
+			if x.Kind() == reflect.Slice && x.Len() != y.Len() && !(zeroSlice(x) && zeroSlice(y)) { // nil or all zero: the same table
 				out = append(out, fmt.Sprintf("%s: len %d vs %d", path, x.Len(), y.Len()))
 				return
 			}
@@ -102,6 +105,8 @@ func stateDiff(a, b *State, max int) []string {
 	}
 	ca, cb := *a, *b
 	ca.Entities, cb.Entities = canonicalVehicles(a.Entities), canonicalVehicles(b.Entities)
+	ca.ensureRoutings() // none allocated yet (nil) is the reset table
+	cb.ensureRoutings()
 	walk("State", reflect.ValueOf(&ca).Elem(), reflect.ValueOf(&cb).Elem())
 	return out
 }
@@ -236,4 +241,69 @@ func TestSaveRoundTrip_scenario(t *testing.T) {
 	for _, d := range stateDiff(s, s2, 40) {
 		t.Error("played on:", d)
 	}
+}
+
+// TestSaveIdentity_throughMap: a game loaded into the map and written back
+// at once is the file — byte for byte, but for upstream's save
+// normalisations — whatever of it goloco models or not: the title game, and
+// GOLOCO_TEST_SV5 (say an OpenLoco autosave, with AI companies) when set.
+func TestSaveIdentity_throughMap(t *testing.T) {
+	files := []string{"../../../locomotion/Data/title.dat"}
+	if f := os.Getenv("GOLOCO_TEST_SV5"); f != "" {
+		files = append(files, f)
+	}
+	for _, f := range files {
+		sc, err := scenario.LoadScenarioData(f)
+		if err != nil {
+			t.Logf("%s: %v", f, err)
+			continue
+		}
+		s := &State{}
+		s.LoadScenario(sc)
+		s.LoadWaves(sc.Waves)
+		s.PrepareSave()
+		ex := s.ExportScenario()
+		ex.SavedViewX, ex.SavedViewY, ex.SavedViewZoom, ex.SavedViewRotation = sc.SavedViewX, sc.SavedViewY, sc.SavedViewZoom, sc.SavedViewRotation
+		for _, d := range sc.DiffFromFile(ex.EncodeGameState(), scenario.EncodeTileElements(ex.Tiles), 40, true) {
+			t.Errorf("%s: %s", filepath.Base(f), d)
+		}
+	}
+}
+
+// TestSaveRoundTrip_generated: a scenario whose landscape the game generates
+// (no map in the file: TileManager::initialise sets tileManagerLoaded) saves
+// with its map and loads back the same.
+func TestSaveRoundTrip_generated(t *testing.T) {
+	const file = "../Scenarios/Sandbox Settler.SC5"
+	m, om := loadDataMap(t, file)
+	sc, _ := scenario.LoadScenarioData("../../../locomotion/Data/" + file)
+	g1, ok := om.G1File.(G1Raw)
+	if !sc.LandscapeToGenerate || !ok {
+		t.Skip("not a generated landscape, or no g1")
+	}
+	s := &State{Map: *m}
+	s.ResetWaves()
+	o := sc.Options
+	s.StartScenarioGenerating(o.StartYear, &TerrainOptions{MinLandHeight: o.MinLandHeight, TopographyStyle: o.TopographyStyle,
+		HillDensity: o.HillDensity, HillsEdgeOfMap: o.Flags&2 != 0, SeaLevel: sc.SeaLevel, NumRiverbeds: o.NumRiverbeds,
+		MinRiverWidth: o.MinRiverWidth, MaxRiverWidth: o.MaxRiverWidth, RiverbankWidth: o.RiverbankWidth, RiverMeanderRate: o.RiverMeanderRate,
+		LandDistributionPatterns: o.LandDistributionPatterns, NumberOfForests: o.NumberOfForests, NumberRandomTrees: o.NumberRandomTrees,
+		MinForestRadius: o.MinForestRadius, MaxForestRadius: o.MaxForestRadius, MinForestDensity: o.MinForestDensity,
+		MaxForestDensity: o.MaxForestDensity, MinAltitudeForTrees: o.MinAltitudeForTrees, MaxAltitudeForTrees: o.MaxAltitudeForTrees,
+		NumberOfTowns: o.NumberOfTowns, MaxTownSize: o.MaxTownSize, NumberOfIndustries: o.OptNumberOfIndustries}, g1, om)
+	tickN(s, om, 2000)
+	s2, _ := saveAndLoad(t, s)
+	for _, d := range stateDiff(s, s2, 40) {
+		t.Error("after the load:", d)
+	}
+}
+
+// zeroSlice: a slice with nothing but zero values (nil included).
+func zeroSlice(v reflect.Value) bool {
+	for i := 0; i < v.Len(); i++ {
+		if !v.Index(i).IsZero() {
+			return false
+		}
+	}
+	return true
 }
