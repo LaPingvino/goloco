@@ -293,6 +293,9 @@ func (m *Map) CreateAirport(c *Cmd, flags uint8, a AirportPlacement, g1 G1Raw) (
 		}
 		m.UpdateStationCanopies(stationID, om)
 	}
+	if flags&CmdApply != 0 && flags&(CmdGhost|CmdAiAllocated) == 0 {
+		m.playConstructionPlacementSound(c, a.X, a.Y, a.Z) // args.pos
+	}
 	return total, true
 }
 
