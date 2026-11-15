@@ -16,7 +16,7 @@ import (
 // it stops or runs out of track. Each body follows its bogies and explodes
 // when one of them has.
 //
-// PARTIAL: explodeComponent's sound and effect entities, the splash, and the
+// explodeComponent plays the crash sound (effect.go). PARTIAL: the splash, and the
 // body's sub_4AAB0B (animation; not ported for land at all).
 
 // bogieRoll is the bogie's roll state, as its normal update reads it.
