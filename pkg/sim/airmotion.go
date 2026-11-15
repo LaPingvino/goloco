@@ -23,11 +23,13 @@ const (
 // updateAircraft is VehicleHead::update for an aircraft.
 func (m *Map) updateAircraft(tr Train, om *objects.ObjectManager) {
 	head := &m.Entities[tr.Head]
+	initialStatus := head.Status // VehicleHead::update: for tryCreateInitialMovementSound
 	if head.Var5C != 0 {
 		head.Var5C--
 	}
 	m.updateBreakdown(tr, om)
 	m.updateAir(tr, om)
+	m.tryCreateInitialMovementSound(tr, initialStatus, om)
 	m.bodiesAnimate(tr, om) // the bodies' update: animationUpdate
 }
 

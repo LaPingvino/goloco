@@ -16,6 +16,11 @@ type VehicleObject struct {
 	ExtraNames   []string
 	CompatNames  []string // the compatible vehicles' object names (headers)
 	RackRailName string
+	// NumStartSounds (0x15A) is the start-sound count (low 7 bits) and, in
+	// bit 7, kHasCrossingWhistle (the last one is the crossing whistle);
+	// StartSoundNames are those sound objects' DAT names.
+	NumStartSounds  uint8
+	StartSoundNames []string
 	// ShipWakeSpacing (0x113) is the distance between a ship's two wakes
 	// (0: one wake).
 	ShipWakeSpacing uint8
@@ -643,9 +648,14 @@ func walkVariableSections(v *VehicleObject, data []byte) int {
 	}
 
 	// 9. Start-sound headers (count at 0x15A, low 7 bits, max 3).
+	v.NumStartSounds = data[0x15A]
 	numStartSounds := int(data[0x15A] & 0x7F)
 	if numStartSounds > 3 {
 		numStartSounds = 3
+	}
+	v.StartSoundNames = v.StartSoundNames[:0]
+	for i := 0; i < numStartSounds; i++ {
+		v.StartSoundNames = append(v.StartSoundNames, headerName(data, offset+i*HeaderSize))
 	}
 	offset += numStartSounds * HeaderSize
 

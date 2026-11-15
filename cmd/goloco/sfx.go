@@ -68,6 +68,9 @@ func (g *Game) playCommandSound(id audio.SoundId, c *sim.Cmd) {
 // frame (sim.Map.TakeSounds: a breakdown …) at their world positions.
 func (g *Game) playSimSounds() {
 	for _, s := range g.w.Map.TakeSounds() {
+		if s.Object != "" { // an object sound: not in the mixer yet (PORT-PLANS B step 3)
+			continue
+		}
 		vol, sx, ok := g.w.SoundAt(s.X, s.Y, s.Z)
 		if !ok {
 			continue

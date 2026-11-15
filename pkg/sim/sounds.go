@@ -1,5 +1,7 @@
 package sim
 
+import "github.com/LaPingvino/goloco/pkg/objects"
+
 // SoundEvent is a sound the simulation asks for (Audio::playSound with a
 // world position): the game plays it after the tick, panned and attenuated
 // by the main view (world.SoundAt). ID is Audio::SoundId; Channel is
@@ -11,6 +13,10 @@ type SoundEvent struct {
 	// Volume is added to the sound's own (hundredths of a dB, ≤ 0);
 	// Frequency is playSound's frequency (0: the usual 22050).
 	Volume, Frequency int32
+	// Object, when set, is the DAT name of a sound object to play instead
+	// of ID (Audio::makeObjectSoundId); the mixer has no object sounds yet
+	// (PORT-PLANS B step 3), so the game skips these.
+	Object string
 }
 
 // Audio::ChannelId values the sim uses.
@@ -102,4 +108,41 @@ func (m *Map) TakeSounds() []SoundEvent {
 	s := m.Sounds
 	m.Sounds = nil
 	return s
+}
+
+// tryCreateInitialMovementSound is VehicleHead::tryCreateInitialMovementSound
+// (0x004AC0A3): a train that was stopped or waiting at a signal and now
+// travels plays one of its first car's start sounds (a random one from
+// gPrng1, never the crossing whistle) at Vehicle2 + 22 up, 15 dB down when
+// below ground.
+func (m *Map) tryCreateInitialMovementSound(tr Train, initialStatus uint8, om *objects.ObjectManager) {
+	if m.Entities[tr.Head].Status != StatusTravelling {
+		return
+	}
+	if initialStatus != StatusStopped && initialStatus != StatusWaitingAtSignal {
+		return
+	}
+	if len(tr.Cars) == 0 || len(tr.Cars[0]) == 0 {
+		return
+	}
+	obj := vehicleObject(om, m.Entities[tr.Cars[0][0].Body].ObjectID)
+	if obj == nil || obj.NumStartSounds == 0 {
+		return
+	}
+	numSounds := int32(obj.NumStartSounds & 0x7F)
+	if obj.NumStartSounds&0x80 != 0 { // kHasCrossingWhistle
+		numSounds = max(numSounds-1, 1)
+	}
+	i := m.Rng1.RandNextBound(numSounds - 1)
+	v2 := &m.Entities[tr.Veh2]
+	volume := int32(0)
+	if land, _ := m.GetHeight(int32(v2.PosX), int32(v2.PosY)); v2.PosZ < land {
+		volume = -1500
+	}
+	name := ""
+	if int(i) < len(obj.StartSoundNames) {
+		name = obj.StartSoundNames[i]
+	}
+	m.Sounds = append(m.Sounds, SoundEvent{Object: name, Channel: ChannelVehicles,
+		X: int32(v2.PosX), Y: int32(v2.PosY), Z: int32(v2.PosZ) + 22, Volume: volume, Frequency: 22050})
 }
