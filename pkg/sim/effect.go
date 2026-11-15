@@ -121,6 +121,7 @@ func (m *Map) freeEffect(id uint16) {
 func (m *Map) explodeComponent(i int) {
 	e := &m.Entities[i]
 	x, y, z := int32(e.PosX), int32(e.PosY), int32(e.PosZ)+22
+	m.playSound(soundCrash, ChannelVehicles, x, y, z)
 	m.newEffect(Effect{X: x, Y: y, Z: z, SubType: effectTypeExplosionCloud, Width: 44, HeightNeg: 32, HeightPos: 34}) // ExplosionCloud::create
 	for range min(int(e.SpriteWidth)/4, 7) {
 		m.createCrashParticle(x, y, z, [2]uint8{e.ColourPrimary, e.ColourSecondary})
