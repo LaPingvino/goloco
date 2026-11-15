@@ -53,6 +53,7 @@ type Game struct {
 	titleWorld *world.World // preserved title-screen world; restored on Quit to Menu
 	r          *render.Renderer
 	audioMgr   *audio.Manager
+	sfx        *audio.Effects // the sound effects (sfx.go)
 	dataDir    string
 
 	// The screen and the mouse.
@@ -362,6 +363,7 @@ func NewGame() *Game {
 		r:               r,
 		toolbar:         toolbar,
 		audioMgr:        audioMgr,
+		sfx:             newEffects(audioMgr, dataDir),
 		titleSeq:        titleSeq,
 		dataDir:         dataDir,
 		inTitleScreen:   true,
