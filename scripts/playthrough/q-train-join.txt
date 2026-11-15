@@ -1,0 +1,99 @@
+# q-train-join: Joop's flow (2026-11-15: "wagons always build as separate
+# instead of joining the last open train and the train doesn't want to place
+# on the rails"). Stage G's line, Build Trains → 3F 'Jinty' (Train 1, its
+# Details window opens), then two Flatbed Wagons clicked in the same Build
+# Trains window: they join Train 1 (sub_4B92A5: the front-most Details window
+# is the build target), one vehicle. The Build window closed, the pickup
+# button, Train 1 placed in the middle of the line (415,336): on the map.
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+move 592 14
+wait 1
+click 620 42
+wait 1
+move 400 300
+wait 2
+move 250 420
+wait 1
+click 250 420
+wait 2
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+wait 1
+shot /tmp/goloco-playthrough/pt-q-pt-g-l1.png
+click 51 57
+wait 2
+move 302 395
+wait 1
+click 302 395
+wait 2
+move 497 302
+wait 1
+click 497 302
+wait 2
+move 700 500
+wait 2
+shot /tmp/goloco-playthrough/pt-q-pt-g-l2.png
+move 682 14
+wait 1
+click 720 42
+move 550 230
+wait 2
+move 550 230
+wait 2
+shot /tmp/goloco-playthrough/pt-q-pt-h-h2.png
+move 370 165
+wait 1
+click 370 165
+move 133 482
+wait 2
+shot /tmp/goloco-playthrough/pt-q-pt-h-h3.png
+move 360 341
+wait 1
+click 360 341
+wait 1
+click 360 341
+wait 1
+move 700 520
+wait 2
+shot /tmp/goloco-playthrough/pt-q-join.png
+expect vehicles == 1
+move 791 37
+wait 1
+click 791 37
+wait 1
+move 251 470
+wait 1
+click 251 470
+wait 1
+move 415 336
+wait 2
+shot /tmp/goloco-playthrough/pt-q-place1.png
+click 415 336
+move 700 520
+wait 3
+shot /tmp/goloco-playthrough/pt-q-place2.png
+expect placed == 1
+quit

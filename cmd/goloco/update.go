@@ -20,6 +20,7 @@ func (g *Game) Update() error {
 	advanceClock()
 	g.windowFrame++
 	g.sfx.Update()
+	g.updateBuildVehicle()
 	g.diagTrackShip()
 	g.w.TitleMode = g.inTitleScreen // SceneManager::isTitleMode() for the viewport's names
 	if fstats.on {

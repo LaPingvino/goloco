@@ -45,6 +45,16 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 
 ## Queue (top = next)
 
+> GOAL (Joop 2026-11-15: "After that it's probably good to try to play and win a first scenario, and fix any
+> blockers for that first. I think we're getting so close that this is likely a viable strategy..."): play a first
+> scenario through to its objective — a playthrough that wins it — and fix every blocker met on the way first
+> (each blocker a line here, ported as upstream). Before that, from the same day:
+> - [x] wagons bought in the Build window join the train whose Details window is in front (sub_4B92A5), and a
+>   refused placement shows "Can't place … here" (pickupToolError) — playthrough q-train-join.
+> - [x] a proper go-to sequence: checked 2026-11-15 on h2-paying-route's line run for four game months (Feb–May
+>   1950): Train 1 shuttles between both stations, fares at both ends, 76 passengers delivered. (Cash drifts down on
+>   that short line: running costs above its fares — not yet compared with OpenLoco.)
+
 > NOW (Joop 2026-11-13: "collect new issues when you encounter them and work through the list until it's done").
 > This list first, top down; an issue found while working goes at its bottom (one line, where it was seen, the
 > upstream reference). Each item: ported as upstream, checked against the real OpenLoco (scripts/olref — the binary
@@ -78,7 +88,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       line, constructRoad's alternate-road retry, the bridge retry, shift's downward search, byte_113607E, the
 >       selected-tile outline, the preview's arrow, the error window at the cursor.
 > - [x] N8 One-way road arrows — done with N23.
-> - [ ] (plan: docs/PORT-PLANS.md B) N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks). Step 1 done 2026-11-15: SoundObject loader + css1.dat reader; step 2 begun: the Effects mixer (pkg/audio/effects.go); wired in cmd/goloco sfx.go with the error sound; next the other call sites (PARTIAL "sound" notes).
+> - [ ] (plan: docs/PORT-PLANS.md B) N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks). Step 1 done 2026-11-15: SoundObject loader + css1.dat reader; step 2 begun: the Effects mixer (pkg/audio/effects.go); wired in cmd/goloco sfx.go with the error sound and the demolish sound; next the other call sites (PARTIAL "sound" notes).
 > - [ ] (plan: docs/PORT-PLANS.md E, docs/GAMEPAD.md) N37 Gamepad and focus navigation: six steps, start with step 1 (pad input + free cursor).
 > - [x] N10 Gfx::recolour exactness: already exact (Vehicle.cpp Main::draw redraws the pickup image in the company
 >       colour over the secondary-colour one; goloco draws that) — the PARTIAL note was stale.
