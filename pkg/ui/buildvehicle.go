@@ -298,7 +298,7 @@ func (w *BuildVehicleWindow) HandleClick(x, y int) {
 		}
 	}
 	// onScrollMouseDown: the row under the pointer in the list's scroll view
-	// (y / rowHeight over the scrolled content). PARTIAL: the clickDown sound.
+	// (y / rowHeight over the scrolled content). The clickDown sound is the caller's (buyVehicle).
 	list := lw[bvList]
 	if w.onBar(x, y) { // scrollLeftBegin on the bar
 		w.Scroll = w.hold.Begin(y-(w.Y+list.T), y, list.B-list.T+1, len(w.Rows)*sim.BuildVehicleRowHeight[w.Tab], w.Scroll)
