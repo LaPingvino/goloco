@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/audio"
 	"log"
 	"strings"
 	"unicode/utf8"
@@ -120,7 +121,9 @@ func (g *Game) updateNews(n int) {
 		case *ui.NewsWindow:
 			w.Update(g.sw, g.sh)
 		case *ui.NewsTicker:
-			w.Update(g.sw, g.sh, g.wins.FindAtAlt(g.mouseX, g.mouseY) == ui.Win(w), g.isPaused)
+			if w.Update(g.sw, g.sh, g.wins.FindAtAlt(g.mouseX, g.mouseY) == ui.Win(w), g.isPaused) {
+				g.playSound(audio.SoundTicker, audio.ChannelUI, g.sw) // Ticker.cpp: panned to Ui::width()
+			}
 			if m.ActiveMessageIndex == sim.MessageIDNull { // Ticker::onUpdate: it goes with its message
 				g.wins.Close(w)
 			}
