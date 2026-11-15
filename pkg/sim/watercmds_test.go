@@ -34,13 +34,21 @@ func TestRaiseLowerWater(t *testing.T) {
 	c := &Cmd{Company: CompanyNeutral, Objects: om}
 	x, y := findDryPatch(t, m)
 	z := m.TileAt(x, y).BaseZ
+	m.TakeSounds()
 	dry, ok := m.RaiseWater(c, 0, x, y, x+1, y+1)
 	if !ok || dry <= 0 || m.TileAt(x, y).WaterLevel != 0 {
 		t.Fatalf("dry run: ok %v cost %d", ok, dry)
 	}
+	if s := m.TakeSounds(); len(s) != 0 {
+		t.Errorf("a dry run's sound: %+v", s)
+	}
 	cost, ok := m.RaiseWater(c, CmdApply, x, y, x+1, y+1)
 	if !ok || cost != dry {
 		t.Fatalf("raise: ok %v cost %d (dry %d)", ok, cost, dry)
+	}
+	// the water sound at the range's centre (raiseWater, applied and paid)
+	if s := m.TakeSounds(); len(s) != 1 || s[0].ID != soundWater || s[0].X != int32((2*x+1)*tileSize/2) || s[0].Y != int32((2*y+1)*tileSize/2) {
+		t.Errorf("raise's sound: %+v", s)
 	}
 	one := m.InflationAdjustedCost(om.WaterObj.CostFactor, om.WaterObj.CostIndex, 10)
 	if cost != 4*one {
@@ -55,6 +63,9 @@ func TestRaiseLowerWater(t *testing.T) {
 	}
 	if _, ok := m.LowerWater(c, CmdApply, x, y, x+1, y+1); !ok {
 		t.Fatal("lower refused")
+	}
+	if s := m.TakeSounds(); len(s) != 1 || s[0].ID != soundWater || c.Pos == nil || c.Pos[0] != s[0].X+tileSize/2 {
+		t.Errorf("lower's sound %+v, position %v", s, c.Pos)
 	}
 	for dy := range 2 {
 		for dx := range 2 {

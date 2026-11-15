@@ -106,7 +106,7 @@ func (m *Map) adjustWaterHeight(c *Cmd, px, py int32, target int, removed Remove
 // below it get water a step higher (dry ones a step above their land).
 // Upstream's first pass takes a wet tile's waterHeight() — world units
 // (water × kMicroZStep) — against the dry tiles' SmallZ baseZ; ported as is.
-// The cost. PARTIAL: madeAnyChanges, the water sound.
+// The cost; applied, the water sound. PARTIAL: madeAnyChanges.
 func (m *Map) RaiseWater(c *Cmd, flags uint8, ax, ay, bx, by int) (int32, bool) {
 	x0, y0, x1, y1 := m.tileRange(ax, ay, bx, by)
 	lowest := 255
@@ -143,12 +143,13 @@ func (m *Map) RaiseWater(c *Cmd, flags uint8, ax, ay, bx, by int) (int32, bool) 
 			total += cost
 		}
 	}
+	m.waterSound(c, flags, total, ax, ay, bx, by, false)
 	return total, true
 }
 
 // LowerWater is the lowerWater game command (0x004C5126) over tiles a..b:
 // the range's highest water is found and the tiles at it lowered a step.
-// The cost. PARTIAL: madeAnyChanges, the water sound (and its position).
+// The cost; applied, the water sound and its position. PARTIAL: madeAnyChanges.
 func (m *Map) LowerWater(c *Cmd, flags uint8, ax, ay, bx, by int) (int32, bool) {
 	x0, y0, x1, y1 := m.tileRange(ax, ay, bx, by)
 	highest := 0
@@ -176,5 +177,24 @@ func (m *Map) LowerWater(c *Cmd, flags uint8, ax, ay, bx, by int) (int32, bool) 
 			}
 		}
 	}
+	m.waterSound(c, flags, total, ax, ay, bx, by, true)
 	return total, true
 }
+
+// waterSound is raiseWater's and lowerWater's end: applied and something
+// paid for, the water sound at the range's centre (world units) and its
+// water height; lowerWater also sets the command's position there, a half
+// tile in (setPosition).
+func (m *Map) waterSound(c *Cmd, flags uint8, total int32, ax, ay, bx, by int, setPos bool) {
+	if flags&CmdApply == 0 || total <= 0 {
+		return
+	}
+	cx, cy := int32((ax+bx)*tileSize/2), int32((ay+by)*tileSize/2)
+	_, water := m.GetHeight(cx, cy)
+	if setPos {
+		c.Pos = &[3]int32{cx + tileSize/2, cy + tileSize/2, int32(water)}
+	}
+	m.playSound(soundWater, ChannelEffects, cx, cy, int32(water))
+}
+
+const soundWater = 7 // Audio::SoundId::water
