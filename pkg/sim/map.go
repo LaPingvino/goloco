@@ -9,6 +9,9 @@ import (
 // in the scenario (OpenLoco: Map/TileManager for tiles, Towns/TownManager,
 // Entities/EntityManager — state only, no drawing).
 type Map struct {
+	// Sounds are the sounds asked for since the game last took them (sounds.go).
+	Sounds []SoundEvent
+
 	// Raw is the loaded file's chunks (scenario.Raw): the save writes what
 	// the map models over them (s5export.go).
 	Raw *scenario.Raw

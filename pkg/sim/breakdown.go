@@ -5,8 +5,8 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // Breakdowns — VehicleHead::updateBreakdown (every tick) and
 // applyBreakdownToTrain.
 //
-// PARTIAL: the smoke puffs and the breakdown sound are not drawn / played
-// (the sound's gPrng1 draw is made, so the random sequence stays upstream's);
+// The breakdown sound is queued (sounds.go). PARTIAL: the smoke puffs are
+// not drawn;
 // updateDaily's countdowns (a breakdown ending after breakdownTimeout days, a
 // new one falling due after timeoutToBreakdown days, sub_4BA873) wait for a
 // day tick; with Config breakdownsDisabled a pending breakdown never begins.
@@ -36,7 +36,9 @@ func (m *Map) updateBreakdown(tr Train, om *objects.ObjectManager) {
 			front.BreakdownFlags |= BreakdownBrokenDn
 			front.BreakdownTimeout = 5
 			m.ApplyBreakdownToTrain(tr, om)
-			m.Rng1.RandNextRange(26, 26+5) // the breakdown sound — PARTIAL (not played)
+			snd := m.Rng1.RandNextRange(26, 26+5) // a breakdown sound, at the body + 22 up
+			body := &m.Entities[car[0].Body]
+			m.playSound(uint16(snd), ChannelVehicles, int32(body.PosX), int32(body.PosY), int32(body.PosZ)+22)
 		}
 	}
 }
