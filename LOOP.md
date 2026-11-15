@@ -58,7 +58,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    for all ten companies (cash, loan, value, deliveries, performance); by 1973-02-01 goloco delivered slightly less
 >    (company 1: 25489 vs 25564, company 5: 3505 vs 3541) and towns have ~280 fewer people (34297 vs 34581) — the core
 >    economy parts within January 1973 by about 1%. Next: dump both 1973-02-01 saves per town, station (cargo waiting,
->    ratings) and industry (production) to find the first thing that differs.
+>    ratings) and industry (production) to find the first thing that differs. FOUND and fixed 2026-11-15:
+>    TownManager::updateMonthly was not ported — buildSpeed never recomputed, monthlyCargoDelivered never cleared,
+>    the population history not scrolled (pkg/sim/townmonthly.go); towns now track OpenLoco within ~0.1–0.5% (they ran
+>    +787 ahead by May). gosave -monthly now saves at the AutosaveCheck hook (inside the tick, as OpenLoco). Left:
+>    small deltas in deliveries/cash (a few units a month) and company 7 by 1973-05-01: vehicle profit 17386 vs 39267,
+>    perf 75 vs 191 — something of company 7's runs wrong (a stuck vehicle / route?): next lead. Also
+>    recordTickStartPrng and var_014A are never updated (harmless for play).
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)
