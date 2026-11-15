@@ -58,8 +58,13 @@ world-position form (world.SoundAt: calculateVolumeFromViewport and the pan, the
 removals' demolish sound (the remove commands now set their position, as upstream's setPosition). The construct sound for
 signals, train stations and road stations (not airports or docks: upstream plays none there). A sim sound queue (pkg/sim/sounds.go: Map.playSound →
 TakeSounds, played by cmd/goloco playSimSounds at the world position) carries the simulation's sounds; first the
-breakdown sound. Also done: the industry, tree, waypoint, news and ticker sounds. Left in step 2: the widget clicks,
-the water/terraform sounds, splash and crash (through the queue).
+breakdown sound. Also done (2026-11-15): the industry, tree, waypoint, news, ticker, water, land/mountain, HQ,
+crash, splash, income, vehicle pickup/place (land, air, water — with playSound's volume and frequency: the mixer
+resamples for the pitch), track/road construct and demolish, airport/dock placement sounds; the toolbar's and a
+dropdown's clicks and the Build Vehicle list's. The gPrng2 draws these sounds make are now made, so gPrng2 follows
+upstream. Left in step 2: the widget clicks window by window (MouseInput clickDown/clickUp/clickPress need a press
+to know it hit a button), the cheat words' click, the town tools' construct sounds (the tools aren't ported).
+Next steps: 3 vehicle audio channels, 4 ambient audio.
 
 Upstream's structure:
 - **Samples:** `css1.dat` (Environment::PathId::css1) holds the UI samples, read by `loadSoundsFromCSS`
