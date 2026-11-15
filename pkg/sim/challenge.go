@@ -5,9 +5,8 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // The scenario challenge — Company::getNewChallengeProgress and
 // applyBeTopProgressModifiers (World/Company.cpp).
 //
-// PARTIAL: evaluateChallengeProgress (completed / failed flags, messages,
-// the challenge window, saveNewScore) and the daily call that stores the
-// result in challengeProgress wait for the day tick.
+// The daily updateDailyPlayer and evaluateChallengeProgress are in date.go;
+// cmd/goloco checkObjective opens the Challenge tab and keeps the score.
 
 const (
 	companyFlagUnk2               = 1 << 2

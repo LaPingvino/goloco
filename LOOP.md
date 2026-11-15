@@ -51,6 +51,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > (each blocker a line here, ported as upstream). Before that, from the same day:
 > - [x] wagons bought in the Build window join the train whose Details window is in front (sub_4B92A5), and a
 >   refused placement shows "Can't place … here" (pickupToolError) — playthrough q-train-join.
+> - Win path checked 2026-11-15: updateDailyPlayer → getNewChallengeProgress → evaluateChallengeProgress (date.go)
+>   → congratulations news, cmd/goloco checkObjective opens the Challenge tab and keeps the score. Nothing missing
+>   there but the owner's emotions. Easiest first targets (objectives read from the SC5s): Weatherworld "deliver 500
+>   units of cargo 11" (the playthroughs' map), Boulder Breakers / Sandbox Settler "performance index 10%", Desert
+>   Delirium "£5000 monthly vehicle profit". Next: a fast way to play months — a headless sim run (commands, no
+>   drawing) or the game at top speed — on Weatherworld until the objective, each blocker met a line here. Small:
+>   Objective.Describe says "cargo type 11" (logs and progress file only; upstream names the cargo).
 > - [x] a proper go-to sequence: checked 2026-11-15 on h2-paying-route's line run for four game months (Feb–May
 >   1950): Train 1 shuttles between both stations, fares at both ends, 76 passengers delivered. (Cash drifts down on
 >   that short line: running costs above its fares — not yet compared with OpenLoco.)
