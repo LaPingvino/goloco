@@ -120,7 +120,7 @@ Design agreed in outline by Joop 2026-11-15 (shoulders tab through windows, butt
 ## D. Smaller follow-ups ready to pick up
 
 - **N35 save leftovers:**
-  - write last_save_path;
+  - ~~write last_save_path~~ (done 2026-11-15: the load and save browsers write it);
   - "Save this before loading?" when loading during play;
   - ~~the Options autosave widgets read the config~~ (done 2026-11-14);
   - re-pack every custom object, not only the loaded file's.

@@ -74,6 +74,7 @@ func (g *Game) openSaveWindow() {
 	}
 	w.OnSave = func(path string) {
 		w.Close()
+		rememberSavePath(w.Dir)
 		path = strings.TrimSuffix(path, filepath.Ext(path)) + ".SV5" // replace_extension(extensionSV5)
 		g.activeSavePath = path
 		if err := g.saveGameTo(path, false); err != nil {
@@ -224,5 +225,17 @@ func (g *Game) autosaveClean() {
 	for _, n := range files[:len(files)-keep] {
 		log.Printf("[Game] Deleting old autosave: %s", n)
 		_ = os.Remove(filepath.Join(autosaveDir(), n))
+	}
+}
+
+// rememberSavePath is processFileForLoadSave for a saved game: the browser's
+// folder becomes Config::lastSavePath, written to openloco.yml (so the next
+// browser opens there: savesDir).
+func rememberSavePath(dir string) {
+	if dir == "" {
+		return
+	}
+	if err := setConfigValue("last_save_path", dir); err != nil {
+		log.Printf("[Game] saving last_save_path: %v", err)
 	}
 }
