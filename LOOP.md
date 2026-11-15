@@ -88,7 +88,14 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    FIXED 2026-11-15: the tail's move was written back to its entity only after TailUpdate's release, so the block
 >    search (which reads the entities) still found the tail on the piece it had just left: every block a train left
 >    stayed occupied, and the next train waited at that signal for good. Now stored before the release (tail.go,
->    vehicletick.go). Company 7's trains match OpenLoco on 1973-01-01 and 02-01. Left: towns 34422 vs 34581 on 02-01.
+>    vehicletick.go). Company 7's trains match OpenLoco on 1973-01-01 and 02-01. Left: towns 34422 vs 34581 on 02-01
+>    (six towns one small building fewer, town 14 one large, town 28 one more) — the rng already differs on 01-01.
+>    TICK-EXACT TOOL (2026-11-15): scripts/olref/simcmp.sh in.SV5 N — OpenLoco's `simulate IN N CMP` plays N ticks
+>    headless and its GameSaveCompare lists every divergence from goloco's gosave after N ticks. After ONE tick on
+>    the title save the main rng still matches; diverging: unkRng (gPrng2 — not exported, or drawn differently),
+>    scenarioTicks2 (goloco doesn't count it), tickStartPrngState, var_014A, one vehicle entity (1530 bytes),
+>    animations (9663 bytes), waves[41]. Next: work through these one by one (export first: what goloco doesn't
+>    save is noise), then raise N and bisect the first tick the main rng parts.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)
