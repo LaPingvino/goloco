@@ -51,8 +51,12 @@ func (m *Map) VehiclePlaceWater(c *Cmd, flags uint8, a VehicleWaterPlacement) (i
 	if !a.ConvertGhost && (head.TileX != -1 || len(tr.Cars) == 0) {
 		return 0, false
 	}
+	c.Pos = &[3]int32{a.X + 32, a.Y + 32, a.Z} // setPosition(args.pos + (32, 32, 0))
 	if a.ConvertGhost {
 		m.eachComponent(tr, func(i int) { m.Entities[i].Flags38 &^= flags38IsGhost })
+		if flags&CmdApply != 0 && flags&CmdGhost == 0 {
+			m.playWaterPlacedownSound(c)
+		}
 		return 0, true
 	}
 	el := m.dockAt(a.X, a.Y, a.Z)
@@ -92,6 +96,8 @@ func (m *Map) VehiclePlaceWater(c *Cmd, flags uint8, a VehicleWaterPlacement) (i
 	m.Entities[tr.Veh1].Var48 |= flags48Flag2
 	if flags&CmdGhost != 0 {
 		m.eachComponent(tr, func(i int) { m.Entities[i].Flags38 |= flags38IsGhost })
+	} else {
+		m.playWaterPlacedownSound(c)
 	}
 	return 0, true
 }
@@ -128,6 +134,9 @@ func (m *Map) VehiclePickupWater(c *Cmd, flags uint8, headID uint16) (int32, boo
 	}
 	if flags&CmdApply == 0 {
 		return 0, true
+	}
+	if flags&CmdGhost == 0 {
+		m.playPickupSound(c, tr)
 	}
 	if head.StationID != stationIDNull {
 		if t := m.TileAt(int(head.TileX)>>5, int(head.TileY)>>5); t != nil { // getTrackLoc
