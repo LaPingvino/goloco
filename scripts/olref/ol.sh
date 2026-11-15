@@ -56,6 +56,9 @@ configure() {
     # A pointer left at the frame's edge would scroll the map between shots.
     set_key edgeScrolling false
     set_key autosave_frequency 1
+    # OLREF_NOAI=true switches the AI companies off (Options' companyAIDisabled):
+    # the economy compared without them (scripts/olref/econ).
+    set_key companyAIDisabled "${OLREF_NOAI:-false}"
 }
 
 case ${1:-} in
