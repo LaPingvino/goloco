@@ -59,6 +59,9 @@ func (g *Game) loadScenario(filePath string) error {
 			gameW.Map.Rng1 = *core.NewPrngSeed(*g.script.seed, *g.script.seed^0x5EED)
 		}
 		g.scenarioDetails = sc.Options.Description // GameState scenarioDetails (Scenario::start copies the options')
+		if _, details, ok := g.scenarioText(sc.Options.ScenarioTextName); ok {
+			g.scenarioDetails = details // the scenario text object's details replace them
+		}
 		var gen *sim.TerrainOptions
 		if sc.LandscapeToGenerate {
 			gen = &sim.TerrainOptions{MinLandHeight: sc.Options.MinLandHeight, TopographyStyle: sc.Options.TopographyStyle,
@@ -204,6 +207,24 @@ func (g *Game) scenarioObjectiveText(m *scenario.ScenarioMeta) string {
 	return stripCodesKeepText(ui.ChallengeObjectiveText(co))
 }
 
+// scenarioText is a scenario text object's name and details (formatString
+// of its strings), looked up by its DAT name as loadTemporaryObject loads
+// it; ok false when the scenario names none or it isn't installed.
+func (g *Game) scenarioText(datName string) (name, details string, ok bool) {
+	if datName == "" || g.r.ObjMgr == nil {
+		return "", "", false
+	}
+	lo := g.r.ObjMgr.GetObject(datName)
+	if lo == nil {
+		return "", "", false
+	}
+	st, ok := lo.Object.(*objects.ScenarioTextObject)
+	if !ok {
+		return "", "", false
+	}
+	return st.Name, st.Details, true
+}
+
 // stripCodesKeepText drops the {…} codes left in a formatted string (the
 // list wraps plain text).
 func stripCodesKeepText(s string) string {
@@ -230,6 +251,11 @@ func (g *Game) openNewGameWindow() {
 	metas, _ := scenario.ScanScenarios(g.dataDir + "/../Scenarios")
 	if len(metas) == 0 {
 		metas, _ = scenario.ScanScenarios(g.dataDir)
+	}
+	for _, m := range metas { // loadScenarioDetails: the scenario text object's name and details
+		if name, details, ok := g.scenarioText(m.ScenarioTextName); ok {
+			m.Name, m.Description = name, details
+		}
 	}
 	w := ui.NewScenarioSelect(metas, g.sw, g.sh)
 	w.ObjectiveText = g.scenarioObjectiveText

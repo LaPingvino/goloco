@@ -659,6 +659,9 @@ type Options struct {
 	Objective          Objective
 	HasObjective       bool
 	ObjectiveCargoName string // DAT name of the delivery cargo (e.g. PASS)
+	// ScenarioTextName is options.scenarioText's DAT name (0x16A; "" when
+	// its flags byte is 0xFF: the name and details above are the text).
+	ScenarioTextName string
 
 	// Generation parameters (used when landscapeGenerationDone is clear)
 	MinLandHeight   uint8 // base height (0-15)
