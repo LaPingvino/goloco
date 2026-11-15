@@ -10,8 +10,8 @@ import (
 // VehicleBase::explodeComponent (Vehicle.cpp 0x004AA5D4) and a crashed bogie
 // landing in water. Entities of the misc list, as upstream; goloco keeps their
 // fields by id beside the money effects (moneyeffect.go), and the scene paints
-// them (PaintEffectEntity.cpp). PARTIAL: the crash and splash2 sounds (the sim
-// has no sound queue).
+// them (PaintEffectEntity.cpp). The crash and splash2 sounds go through the
+// sim's sound queue (sounds.go).
 
 const (
 	effectTypeVehicleCrashParticle = 3 // EffectType::vehicleCrashParticle
@@ -195,6 +195,7 @@ func (m *Map) updateCrashParticle(id uint16, e *Effect) {
 	e.VelX, e.VelY, e.VelZ = int16(vx), int16(vy), int16(vz)
 	land, water := m.GetHeight(nx, ny)
 	if water != 0 && e.Z >= int32(water) && nz <= int32(water) {
+		m.playSound(soundSplash2, ChannelVehicles, e.X, e.Y, int32(water))
 		m.createSplash(e.X, e.Y, int32(water))
 		m.freeEffect(id)
 		return
