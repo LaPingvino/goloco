@@ -121,7 +121,8 @@ Design agreed in outline by Joop 2026-11-15 (shoulders tab through windows, butt
 
 - **N35 save leftovers:**
   - ~~write last_save_path~~ (done 2026-11-15: the load and save browsers write it);
-  - "Save this before loading?" when loading during play;
+  - ~~"Save this before loading?" when loading during play~~ (done 2026-11-15: PromptSaveWindow, for loading,
+    quitting to the title and quitting);
   - ~~the Options autosave widgets read the config~~ (done 2026-11-14);
   - re-pack every custom object, not only the loaded file's.
 - **N7:** a refused road's reason line, the bridge and alternate-road retries, shift's downward search.

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/LaPingvino/goloco/pkg/audio"
 	"log"
 	"os"
 	"path/filepath"
@@ -58,7 +59,11 @@ func newGameSavePath(scenarioName string) string {
 // openSaveWindow is ToolbarTop's saveGame: the Save Game prompt on the active
 // save path (its folder, its name), then the save as .SV5; a failure opens
 // the error window (error_game_save_failed).
-func (g *Game) openSaveWindow() {
+func (g *Game) openSaveWindow() { g.openSaveWindowThen(nil) }
+
+// openSaveWindowThen is openSaveWindow with what follows a successful save
+// (confirmSaveGame's LoadSaveQuit, dontSave); nil: nothing.
+func (g *Game) openSaveWindowThen(after func()) {
 	if !g.inGame || g.inTitleScreen {
 		return
 	}
@@ -80,6 +85,8 @@ func (g *Game) openSaveWindow() {
 		if err := g.saveGameTo(path, false); err != nil {
 			log.Printf("[Game] Save error: %v", err)
 			g.openError(i18n.Label(i18n.ErrorGameSaveFailed), "")
+		} else if after != nil {
+			after()
 		}
 	}
 	g.showCentred(w)
@@ -237,5 +244,35 @@ func rememberSavePath(dir string) {
 	}
 	if err := setConfigValue("last_save_path", dir); err != nil {
 		log.Printf("[Game] saving last_save_path: %v", err)
+	}
+}
+
+// loadSaveQuit is the LoadSaveQuitGame command with promptSave: in a game
+// played a while (scene age 0xF00 or more) the Save prompt opens, with the
+// open-window sound; otherwise the action happens at once.
+func (g *Game) loadSaveQuit(mode ui.LoadOrQuitMode) {
+	if g.inTitleScreen || g.sceneAge < 0xF00 {
+		g.loadOrQuit(mode)
+		return
+	}
+	p := ui.NewPromptSave(mode, g.sw, g.sh)
+	// confirmSaveGame: the save, then LoadSaveQuit with loadGamePrompt and
+	// dontSave — always loadGamePrompt, whatever the prompt asked (as upstream)
+	p.OnSave = func() { g.openSaveWindowThen(func() { g.loadOrQuit(ui.LoadGamePrompt) }) }
+	p.OnDontSave = func() { g.loadOrQuit(mode) }
+	g.savePrompt = p
+	g.playSound(audio.SoundOpenWindow, audio.ChannelUI, p.X+p.W()/2)
+}
+
+// loadOrQuit is LoadSaveQuit's 0x0043BFE3: Game::loadGame, returnToTitle or
+// quitGame.
+func (g *Game) loadOrQuit(mode ui.LoadOrQuitMode) {
+	switch mode {
+	case ui.LoadGamePrompt:
+		g.openLoadGameWindow()
+	case ui.ReturnToTitlePrompt:
+		g.quitToMenu()
+	case ui.QuitGamePrompt:
+		os.Exit(0)
 	}
 }

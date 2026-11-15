@@ -89,6 +89,16 @@ func (g *Game) updateModal() bool {
 		}
 		return true
 	}
+	if g.savePrompt != nil { // PARTIAL: upstream's isn't modal (stickToFront, the game paused: PauseFlags::promptSave)
+		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
+			p := g.savePrompt
+			p.HandleClick(g.mouseX, g.mouseY) // the frame's mouse (a script's, when one plays)
+			if p.Closed && g.savePrompt == p {
+				g.savePrompt = nil
+			}
+		}
+		return true
+	}
 	if g.prompt != nil { // the modal confirmation takes all input (setCurrentModalType)
 		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 			mx, my := ebiten.CursorPosition()

@@ -3,7 +3,6 @@ package main
 import (
 	"image"
 	"log"
-	"os"
 
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -71,7 +70,7 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Load/Save":
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTop.cpp:117-154
 		items := []ui.DropdownItem{
-			{Text: i18n.Label(i18n.MenuLoadGame), Action: func() { g.openLoadGameWindow() }},
+			{Text: i18n.Label(i18n.MenuLoadGame), Action: func() { g.loadSaveQuit(ui.LoadGamePrompt) }},
 			{Text: i18n.Label(i18n.MenuSaveGame), Action: func() { g.openSaveWindow() }},
 			{Separator: true},
 			{Text: i18n.Label(i18n.MenuScreenshot), Action: func() { g.triggerScreenshotCountdown(10) }}, // loadsaveMenuDropdown
@@ -79,8 +78,8 @@ func (g *Game) handleToolbarButton(idx int) {
 			{Text: i18n.Label(i18n.MenuAbout), Action: func() { log.Println("[Game] About selected") }},
 			{Text: i18n.Label(i18n.Options), Action: func() { g.openOptionsWindow() }},
 			{Separator: true},
-			{Text: i18n.Label(i18n.MenuQuitToMenu), Action: func() { g.quitToMenu() }},
-			{Text: i18n.Label(i18n.MenuExitOpenloco), Action: func() { os.Exit(0) }},
+			{Text: i18n.Label(i18n.MenuQuitToMenu), Action: func() { g.loadSaveQuit(ui.ReturnToTitlePrompt) }},
+			{Text: i18n.Label(i18n.MenuExitOpenloco), Action: func() { g.loadSaveQuit(ui.QuitGamePrompt) }},
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
 
