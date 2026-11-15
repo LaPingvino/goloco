@@ -23,6 +23,8 @@ import (
 	"github.com/LaPingvino/goloco/pkg/sim"
 )
 
+var company = flag.Int("company", -1, "also list this company's vehicles (status, place, speed, orders, profit)")
+
 func main() {
 	flag.Parse()
 	if flag.NArg() == 0 {
@@ -70,6 +72,32 @@ func describe(name string, m *sim.Map) string {
 		}
 		out += fmt.Sprintf("\n  company %d: cash %d loan %d value %d vehicleProfit %d delivered %d (total %d) perf %d progress %d",
 			i, c.Cash, c.CurrentLoan, c.CompanyValueHistory[0], c.VehicleProfit, c.CargoUnitsTotalDelivered, total, perf, c.ChallengeProgress)
+	}
+	if *company >= 0 {
+		out += trains(m, *company)
+	}
+	return out
+}
+
+// trains is a company's vehicles: head id, status, tile, station, the
+// current order, Vehicle2's speed and motor state, breakdowns, this month's
+// revenue and last income.
+func trains(m *sim.Map, company int) string {
+	out := ""
+	list, err := m.Trains()
+	if err != nil {
+		return "\n  (trains: " + err.Error() + ")"
+	}
+	for _, tr := range list {
+		h := &m.Entities[tr.Head]
+		if int(h.Owner) != company {
+			continue
+		}
+		v2 := &m.Entities[tr.Veh2]
+		v1 := &m.Entities[tr.Veh1]
+		out += fmt.Sprintf("\n    head %d: status %d tile %d,%d station %d order %d/%d speed %d motor %d breakdown 0x%02x revenue %d lastIncome %d",
+			tr.Head, h.Status, h.TileX>>5, h.TileY>>5, h.StationID, h.CurrentOrder, h.SizeOfOrderTable, v2.CurrentSpeed, v2.MotorState,
+			h.BreakdownFlags, v2.CurMonthRevenue, v1.LastIncome)
 	}
 	return out
 }
