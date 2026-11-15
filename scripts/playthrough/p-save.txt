@@ -2,7 +2,8 @@
 # line, Train 1 bought, placed and running between Cloudburst North and
 # Cloudburst — paused, saved through the Load/Save menu's Save Game (the
 # prompt on the saves folder, the name typed, Enter), then loaded back
-# through Load Game: the loaded game is the saved one byte for byte (expect
+# through Load Game — past the Save prompt (PromptSaveWindow, the scene aged
+# to 4000 so that it shows; Don't Save) —: the loaded game is the saved one byte for byte (expect
 # saved: its game state and tile elements as the save wrote them), the train
 # still on the map, and it plays on. (S5.cpp exportGameStateToFile,
 # ToolbarTop.cpp saveGame, Game::saveSaveGameOpen / loadSaveGameOpen.)
@@ -178,12 +179,20 @@ wait 1
 key Return
 wait 3
 expect window:fileBrowserPrompt == 0
+sceneage 4000
 press 14 14
 wait 1
 move 40 36
 wait 1
 release 40 36
 wait 2
+expect saveprompt == 1
+shot /tmp/goloco-playthrough/pt-p-prompt.png
+move 400 315
+wait 1
+click 400 315
+wait 2
+expect saveprompt == 0
 expect window:fileBrowserPrompt == 1
 shot /tmp/goloco-playthrough/pt-p-load1.png
 move 200 172

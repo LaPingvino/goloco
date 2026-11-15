@@ -167,6 +167,7 @@ type Game struct {
 	newsSettings      [sim.MessageCriticalityCount]sim.NewsType
 	playNewsSounds    bool
 	sceneAge          int
+	savePrompt        *ui.PromptSave // PromptSaveWindow (save.go loadSaveQuit)
 	previewFrame      int
 	audioMuted        bool // !Audio::isAudioEnabled
 	silentTrack       bool

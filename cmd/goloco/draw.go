@@ -169,6 +169,9 @@ func (g *Game) drawTopmost(screen *ebiten.Image) {
 	if g.prompt != nil { // a confirmation, on top of everything
 		g.prompt.Draw(screen)
 	}
+	if g.savePrompt != nil { // PromptSaveWindow: stickToFront
+		g.savePrompt.Draw(screen)
+	}
 	if g.errorWin != nil { // Error.cpp: stickToFront
 		if g.errorWin.Expired() {
 			g.errorWin = nil

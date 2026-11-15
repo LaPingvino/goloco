@@ -88,6 +88,9 @@ type inputScript struct {
 	// starts where it means to whatever the scenario's saved view (its place,
 	// zoom and rotation) or the time passed (scripted runs only).
 	cameraReq *[4]float64
+	// sceneAgeReq: "sceneage N" — SceneManager's scene age set to N (the
+	// Save prompt shows only at 0xF00 and more: a playthrough fixes it).
+	sceneAgeReq *int
 	// newsReq: "news TYPE …" — a message posted (scriptNews).
 	newsReq []string
 	// scenarioReq: "scenario NAME" — that scenario started (as the New Game
@@ -216,6 +219,12 @@ func (s *inputScript) step() {
 	case "wheel":
 		dy, _ := strconv.ParseFloat(fields[1], 64)
 		s.wheelDY = dy
+	case "sceneage":
+		if len(fields) >= 2 {
+			if n, err := strconv.Atoi(fields[1]); err == nil {
+				s.sceneAgeReq = &n
+			}
+		}
 	case "seed":
 		if len(fields) >= 2 {
 			if n, err := strconv.ParseUint(fields[1], 10, 32); err == nil {
@@ -344,6 +353,9 @@ func (g *Game) scriptNews() {
 
 // scriptCamera applies a script's "camera X Y [ZOOM [ROTATION]]" (once).
 func (g *Game) scriptCamera() {
+	if g.script != nil && g.script.sceneAgeReq != nil {
+		g.sceneAge, g.script.sceneAgeReq = *g.script.sceneAgeReq, nil
+	}
 	if g.script == nil || g.script.cameraReq == nil {
 		return
 	}
@@ -463,6 +475,10 @@ func (g *Game) scriptExpect() {
 		if t := &g.mapTip; t.open && t.tip.Text != "" {
 			got = 1
 			log.Printf("[Script] map tooltip: %q", strings.NewReplacer("\x05", " / ", string(ui.MapTipColour3), "").Replace(t.tip.Text))
+		}
+	case "saveprompt": // 1 while the Save prompt (PromptSaveWindow) is open
+		if g.savePrompt != nil {
+			got = 1
 		}
 	case "conswindow": // 1 while the construction window is open
 		if g.buildMode != buildModeNone && g.consWin() != nil {
