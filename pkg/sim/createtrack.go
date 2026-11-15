@@ -255,13 +255,18 @@ func (m *Map) createTrackApply(c *Cmd, a trackPlacementArgs, flags uint8, r *cre
 }
 
 // createTrack is the game command (CreateTrack.cpp 321–585): the checks and
-// costs (createTrackCheck), then the pieces placed. The cost, and false where
-// upstream returns kFailure.
+// costs (createTrackCheck), then the pieces placed; applied (not for the AI's
+// plans or a ghost), the placement sound. The cost, and false where upstream
+// returns kFailure.
 func (m *Map) createTrack(c *Cmd, a trackPlacementArgs, flags uint8) (int32, bool) {
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0))
 	r, ok := m.createTrackCheck(c, a, flags)
 	c.PosFlags = r.State.PosFlags
 	if !ok || !m.createTrackApply(c, a, flags, &r) {
 		return 0, false
+	}
+	if flags&CmdApply != 0 && flags&(CmdAiAllocated|CmdGhost) == 0 {
+		m.playConstructionPlacementSound(c, c.Pos[0], c.Pos[1], c.Pos[2])
 	}
 	return r.Cost, true
 }
