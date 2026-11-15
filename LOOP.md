@@ -46,7 +46,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 ## Queue (top = next)
 
 > PRIORITY (Joop 2026-11-15: "fix playability first, the rest can make do"). Ticks take from this order, top down:
-> 1. Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
+> 1. (step 1 done 2026-11-15: scripts/olref/econ prints a save's economy — compare OpenLoco's monthly autosaves of a
+>    save played on with goloco's (gosave -ticks N / its autosaves); next: run both from p-save's Weatherworld save,
+>    diff month by month. Suspect seen: company value 0 in goloco's 1953-01-01 autosave.)
+>    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)
 > 2. The map window (PORT-PLANS A): function first (finding towns/industries, centring the view), pixels later.
