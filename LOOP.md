@@ -78,7 +78,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       line, constructRoad's alternate-road retry, the bridge retry, shift's downward search, byte_113607E, the
 >       selected-tile outline, the preview's arrow, the error window at the cursor.
 > - [x] N8 One-way road arrows — done with N23.
-> - [ ] (plan: docs/PORT-PLANS.md B) N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks). Step 1 done 2026-11-15: SoundObject loader + css1.dat reader; next the mixer (plan B step 2).
+> - [ ] (plan: docs/PORT-PLANS.md B) N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks). Step 1 done 2026-11-15: SoundObject loader + css1.dat reader; step 2 begun: the Effects mixer (pkg/audio/effects.go); next wire it in cmd/goloco and the click call sites.
 > - [ ] (plan: docs/PORT-PLANS.md E, docs/GAMEPAD.md) N37 Gamepad and focus navigation: six steps, start with step 1 (pad input + free cursor).
 > - [x] N10 Gfx::recolour exactness: already exact (Vehicle.cpp Main::draw redraws the pickup image in the company
 >       colour over the secondary-colour one; goloco draws that) — the PARTIAL note was stale.

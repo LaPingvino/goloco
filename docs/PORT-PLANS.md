@@ -48,7 +48,9 @@ Reuse:
 goloco plays only music: pkg/audio Manager (Ebitengine audio context, music, volume, sfx volume) and pkg/jukebox.
 There are no sound effects yet. Step 1 is done (2026-11-15): pkg/objects/sound.go `ParseSoundObject` (the 42
 SND*.DAT objects: 22050 Hz 16-bit mono PCM) and pkg/audio/css.go `ReadCSS` (css1.dat: 32 samples, SoundId
-clickDown…breakdown6). Next: step 2, the mixer.
+clickDown…breakdown6). Step 2 begun (2026-11-15): pkg/audio/effects.go `Effects` — channel volumes,
+kSoundVolumeTable, percentToDb, volumeToGain, calculatePan, one-shot players, a `Record`/`Played` test hook. Next:
+create it in cmd/goloco from css1.dat with the config's volumes, then the call sites (clicks first).
 
 Upstream's structure:
 - **Samples:** `css1.dat` (Environment::PathId::css1) holds the UI samples, read by `loadSoundsFromCSS`
