@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/audio"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"log"
 
@@ -159,6 +160,10 @@ func (g *Game) newBuildVehicleWindow(tab int, target uint16) *ui.BuildVehicleWin
 func (g *Game) buyVehicle(tab int, id, target uint16) {
 	if g.r.ObjMgr == nil {
 		return
+	}
+	company, _ := g.w.ControllingCompany()
+	if bw, ok := g.wins.Find(ui.WindowTypeBuildVehicle, company).(*ui.BuildVehicleWindow); ok {
+		g.playSound(audio.SoundClickDown, audio.ChannelUI, bw.W/2+bw.X) // onScrollMouseDown: the window's middle
 	}
 	m := &g.w.Map
 	c := g.playerCmd()
