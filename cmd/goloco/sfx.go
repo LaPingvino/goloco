@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/LaPingvino/goloco/pkg/audio"
+	"github.com/LaPingvino/goloco/pkg/sim"
 )
 
 // newEffects is the effects half of Audio.cpp initialiseDSound: css1.dat's
@@ -42,4 +43,23 @@ func newEffects(m *audio.Manager, dataDir string) *audio.Effects {
 func (g *Game) playSound(id audio.SoundId, ch audio.ChannelId, pan int) {
 	g.sfx.ScreenW = int32(g.sw)
 	g.sfx.PlaySound(id, ch, int32(pan))
+}
+
+// playSoundAt is Audio::playSound(id, channel, loc): a world position, heard
+// only where the main view shows it.
+func (g *Game) playSoundAt(id audio.SoundId, ch audio.ChannelId, x, y, z int32) {
+	vol, sx, ok := g.w.SoundAt(x, y, z)
+	if !ok {
+		return
+	}
+	g.sfx.ScreenW = int32(g.sw)
+	g.sfx.PlaySoundAt(id, ch, vol, int32(sx))
+}
+
+// playCommandSound is playSound(id, effects, GameCommands::getPosition()):
+// the last command's position, nothing when it set none.
+func (g *Game) playCommandSound(id audio.SoundId, c *sim.Cmd) {
+	if c != nil && c.Pos != nil {
+		g.playSoundAt(id, audio.ChannelEffects, c.Pos[0], c.Pos[1], c.Pos[2])
+	}
 }

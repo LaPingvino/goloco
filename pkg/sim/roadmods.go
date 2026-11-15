@@ -214,6 +214,7 @@ func (m *Map) CreateRoadMod(c *Cmd, flags uint8, a RoadModsPlacement) (int32, bo
 
 // RemoveRoadMod is the removeRoadMod game command (0x0047A42F): the refund.
 func (m *Map) RemoveRoadMod(c *Cmd, flags uint8, a RoadModsPlacement) (int32, bool) {
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0))
 	x, y, z, rad, owner, ok := m.roadModsTarget(c, a)
 	if !ok {
 		return 0, false

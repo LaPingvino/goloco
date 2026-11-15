@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/audio"
 	"log"
 	"time"
 
@@ -101,15 +102,18 @@ func (g *Game) rightOverState() world.RightOverState {
 
 // mapCommand runs a removal from the map as the player (doCommand with
 // Flags::apply): refused, the error window under title; done, upstream plays
-// the demolish sound for the track-side removals. Every one of them unpauses
-// the game and is booked as construction.
-// PARTIAL: Audio::playSound(SoundId::demolish) (no effect sounds yet).
-func (g *Game) mapCommand(title string, run func(c *sim.Cmd, g1 sim.G1Raw, f uint8) (int32, bool)) bool {
+// the demolish sound at the command's position for the track-side removals
+// (demolish: signals, stations, airports, docks, track and road extras; not
+// trees, buildings, walls or headquarters). Every one of them unpauses the
+// game and is booked as construction.
+func (g *Game) mapCommand(title string, demolish bool, run func(c *sim.Cmd, g1 sim.G1Raw, f uint8) (int32, bool)) bool {
 	c, g1 := g.stationCmd()
 	g.unpauseForCommand(sim.CmdApply)
 	_, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return run(c, g1, f) })
 	if !ok {
 		g.openError(title, cmdErrorText(c))
+	} else if demolish {
+		g.playCommandSound(audio.SoundDemolish, c)
 	}
 	return ok
 }
@@ -169,7 +173,7 @@ func (g *Game) handleRightReleased(x, y int) {
 			}
 			a := sim.TrackModsPlacement{X: item.X, Y: item.Y, Z: int32(t.BaseZ) * 4, Rotation: t.Rotation, TrackID: t.TrackID,
 				Index: t.SequenceIndex, Type: 1 << item.ModID, TrackObjectID: t.TrackObjectID, Section: g.consModSection}
-			g.mapCommand(ui.FormatErrorArgs(label(i18n.CantRemovePop3String), name), func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
+			g.mapCommand(ui.FormatErrorArgs(label(i18n.CantRemovePop3String), name), true, func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
 				return m.RemoveTrackMod(c, f, a)
 			})
 		}
@@ -182,7 +186,7 @@ func (g *Game) handleRightReleased(x, y int) {
 			}
 			a := sim.RoadModsPlacement{X: item.X, Y: item.Y, Z: int32(rd.BaseZ) * 4, Rotation: rd.Rotation, RoadID: rd.RoadID,
 				Index: rd.SequenceIndex, Type: 1 << item.ModID, RoadObjectID: rd.RoadObjectID, Section: g.consModSection}
-			g.mapCommand(ui.FormatErrorArgs(label(i18n.CantRemovePop3String), name), func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
+			g.mapCommand(ui.FormatErrorArgs(label(i18n.CantRemovePop3String), name), true, func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
 				return m.RemoveRoadMod(c, f, a)
 			})
 		}
@@ -204,7 +208,7 @@ func (g *Game) handleRightReleased(x, y int) {
 			if g.consSigRepeat {
 				step = 1
 			}
-			g.mapCommand(label(i18n.CantRemoveSignal), func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
+			g.mapCommand(label(i18n.CantRemoveSignal), true, func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
 				return m.RemoveSignalsAuto(c, f, sim.SignalsRemovalAuto{SignalRemoval: a, Step: step})
 			})
 		}
@@ -212,7 +216,7 @@ func (g *Game) handleRightReleased(x, y int) {
 		if t := item.Track; item.Station != nil && t != nil {
 			a := sim.TrainStationRemoval{X: item.X, Y: item.Y, Z: int32(t.BaseZ) * 4, Rotation: t.Rotation, TrackID: t.TrackID,
 				Index: t.SequenceIndex, TrackObjectID: t.TrackObjectID}
-			g.mapCommand(label(i18n.CantRemoveStation), func(c *sim.Cmd, g1 sim.G1Raw, f uint8) (int32, bool) {
+			g.mapCommand(label(i18n.CantRemoveStation), true, func(c *sim.Cmd, g1 sim.G1Raw, f uint8) (int32, bool) {
 				return m.RemoveTrainStation(c, f, a, g1)
 			})
 		}
@@ -220,7 +224,7 @@ func (g *Game) handleRightReleased(x, y int) {
 		if rd := item.Road; item.Station != nil && rd != nil {
 			a := sim.RoadStationRemoval{X: item.X, Y: item.Y, Z: int32(rd.BaseZ) * 4, Rotation: rd.Rotation, RoadID: rd.RoadID,
 				Index: rd.SequenceIndex, RoadObjectID: rd.RoadObjectID}
-			g.mapCommand(label(i18n.CantRemoveStation), func(c *sim.Cmd, g1 sim.G1Raw, f uint8) (int32, bool) {
+			g.mapCommand(label(i18n.CantRemoveStation), true, func(c *sim.Cmd, g1 sim.G1Raw, f uint8) (int32, bool) {
 				return m.RemoveRoadStation(c, f, a, g1)
 			})
 		}
@@ -231,7 +235,7 @@ func (g *Game) handleRightReleased(x, y int) {
 				return
 			}
 			a := sim.AirportRemoval{X: item.X, Y: item.Y, Z: int32(s.BaseZ) * 4}
-			g.mapCommand(label(i18n.CantRemoveAirport), func(c *sim.Cmd, g1 sim.G1Raw, f uint8) (int32, bool) { return m.RemoveAirport(c, f, a, g1) })
+			g.mapCommand(label(i18n.CantRemoveAirport), true, func(c *sim.Cmd, g1 sim.G1Raw, f uint8) (int32, bool) { return m.RemoveAirport(c, f, a, g1) })
 		}
 	case paint.ItemDock: // rightReleasedDock (0x004A5CC5): from the dock's first tile
 		if s := item.Station; s != nil {
@@ -241,30 +245,30 @@ func (g *Game) handleRightReleased(x, y int) {
 			}
 			fx, fy := firstTile(item.X, item.Y, s.SequenceIndex)
 			a := sim.PortRemoval{X: fx, Y: fy, Z: int32(s.BaseZ) * 4}
-			g.mapCommand(label(i18n.CantRemoveShipPort), func(c *sim.Cmd, g1 sim.G1Raw, f uint8) (int32, bool) { return m.RemovePort(c, f, a, g1) })
+			g.mapCommand(label(i18n.CantRemoveShipPort), true, func(c *sim.Cmd, g1 sim.G1Raw, f uint8) (int32, bool) { return m.RemovePort(c, f, a, g1) })
 		}
 	case paint.ItemTree: // rightReleasedTree (0x004BB116)
 		if t := item.Tree; t != nil {
 			a := sim.TreeRemoval{X: item.X, Y: item.Y, Z: int32(t.BaseZ) * 4, Type: t.TreeObjectID, Quadrant: t.Quadrant, Rotation: t.Rotation}
-			g.mapCommand(label(i18n.ErrorCantRemoveThis), func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) { return m.RemoveTree(c, f, a) })
+			g.mapCommand(label(i18n.ErrorCantRemoveThis), false, func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) { return m.RemoveTree(c, f, a) })
 		}
 	case paint.ItemBuilding: // rightReleasedBuilding (0x0042D9BF): from its first tile
 		if b := item.Building; b != nil {
 			fx, fy := firstTile(item.X, item.Y, b.SequenceIndex)
-			g.mapCommand(label(i18n.ErrorCantRemoveThis), func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
+			g.mapCommand(label(i18n.ErrorCantRemoveThis), false, func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
 				return m.RemoveBuilding(c, fx, fy, int32(b.BaseZ)*4, f)
 			})
 		}
 	case paint.ItemWall: // rightReleasedWall (0x004C4809)
 		if wl := item.Wall; wl != nil {
-			g.mapCommand(label(i18n.ErrorCantRemoveThis), func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
+			g.mapCommand(label(i18n.ErrorCantRemoveThis), false, func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
 				return m.RemoveWall(c, f, item.X, item.Y, int32(wl.BaseZ)*4, wl.Rotation)
 			})
 		}
 	case paint.ItemHeadquarterBuilding: // rightReleasedHeadquarter (0x0042F007)
 		if b := item.Building; b != nil {
 			fx, fy := firstTile(item.X, item.Y, b.SequenceIndex)
-			g.mapCommand(label(i18n.ErrorCantRemoveThis), func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
+			g.mapCommand(label(i18n.ErrorCantRemoveThis), false, func(c *sim.Cmd, _ sim.G1Raw, f uint8) (int32, bool) {
 				return m.RemoveCompanyHeadquarters(c, f, fx, fy, int32(b.BaseZ)*4)
 			})
 		}

@@ -53,7 +53,9 @@ kSoundVolumeTable, percentToDb, volumeToGain, calculatePan, one-shot players, a 
 sfx.go creates it from css1.dat with the config's channel volumes (`g.playSound`); the first call site is the error
 window's error sound. Next: the other call sites. The widget clicks (MouseInput clickDown/clickUp/clickPress) need
 the press to know the widget is a button, and goloco's windows take clicks by position, so they come window by
-window; the tools' construct and demolish sounds (the PARTIAL notes) are one line each.
+window; the tools' construct and demolish sounds (the PARTIAL notes) are one line each. Done 2026-11-15: the
+world-position form (world.SoundAt: calculateVolumeFromViewport and the pan, the main view only) and the right-click
+removals' demolish sound (the remove commands now set their position, as upstream's setPosition).
 
 Upstream's structure:
 - **Samples:** `css1.dat` (Environment::PathId::css1) holds the UI samples, read by `loadSoundsFromCSS`
