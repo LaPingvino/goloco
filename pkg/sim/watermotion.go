@@ -12,7 +12,7 @@ import (
 // the bodies only animationUpdate (exhaust.go bodiesAnimate), so a boat's
 // tick is the head's: var_5C, the breakdown, updateWater, then that.
 // PARTIAL: the body's sub_4AAB0B (animation; not ported for land either),
-// produceLeavingDockSound, the driving sounds.
+// the driving sounds.
 
 const (
 	waterStopping    = 1 << 0 // WaterMotionFlags::isStopping
@@ -79,6 +79,7 @@ func (m *Map) updateWater(tr Train, om *objects.ObjectManager) {
 		m.AdvanceToNextRoutableOrder(head.OrderTableOffset, &head.CurrentOrder, head.SizeOfOrderTable)
 		head.Status = m.sub427BF2(tr)
 		m.updateWaterMotion(tr, waterLeavingDock, om)
+		m.produceStartSound(tr, om) // produceLeavingDockSound
 	default:
 		head.Status = m.sub427BF2(tr)
 		m.AdvanceToNextRoutableOrder(head.OrderTableOffset, &head.CurrentOrder, head.SizeOfOrderTable)

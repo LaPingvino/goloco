@@ -146,3 +146,25 @@ func (m *Map) tryCreateInitialMovementSound(tr Train, initialStatus uint8, om *o
 	m.Sounds = append(m.Sounds, SoundEvent{Object: name, Channel: ChannelVehicles,
 		X: int32(v2.PosX), Y: int32(v2.PosY), Z: int32(v2.PosZ) + 22, Volume: volume, Frequency: 22050})
 }
+
+// produceStartSound is VehicleHead::produceTouchdownAirportSound (on an
+// edge whose target is a touchdown node) and produceLeavingDockSound (a ship
+// done loading), the same code: one of the first car's start sounds, picked
+// from gPrng1, at Vehicle2 + 22 up.
+func (m *Map) produceStartSound(tr Train, om *objects.ObjectManager) {
+	if len(tr.Cars) == 0 || len(tr.Cars[0]) == 0 {
+		return
+	}
+	obj := vehicleObject(om, m.Entities[tr.Cars[0][0].Body].ObjectID)
+	if obj == nil || obj.NumStartSounds == 0 {
+		return
+	}
+	i := m.Rng1.RandNextBound(int32(obj.NumStartSounds&0x7F) - 1)
+	name := ""
+	if int(i) < len(obj.StartSoundNames) {
+		name = obj.StartSoundNames[i]
+	}
+	v2 := &m.Entities[tr.Veh2]
+	m.Sounds = append(m.Sounds, SoundEvent{Object: name, Channel: ChannelVehicles,
+		X: int32(v2.PosX), Y: int32(v2.PosY), Z: int32(v2.PosZ) + 22, Frequency: 22050})
+}
