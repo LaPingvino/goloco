@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/audio"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/sim"
 )
@@ -11,7 +12,7 @@ import (
 // ghost every step pieces both ways to the next junction) and the tab shows
 // its cost; the release builds it. One side — the side of the piece nearer the
 // cursor's end of it (getSide) — or both, as the tab's buttons choose.
-// PARTIAL: the construct sound; the signal's "wrong type" check is against
+// PARTIAL: the signal's "wrong type" check is against
 // the window's track type only.
 
 // signalToolOn is the Signal tab's tool on the map (a track window — roads
@@ -101,5 +102,7 @@ func (g *Game) signalToolUp(sx, sy int) {
 		return g.w.CreateSignalsAuto(c, f, a)
 	}); !ok {
 		g.openError(i18n.Label(title), cmdErrorText(c))
+		return
 	}
+	g.playCommandSound(audio.SoundConstruct, c)
 }

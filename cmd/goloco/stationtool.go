@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/audio"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
@@ -115,8 +116,8 @@ func (g *Game) removeStationGhost() {
 // refused on another track type (wrong_type_of_track_road), then
 // CreateTrainStation with apply, after removeConstructionGhosts; a failure
 // opens the error window titled cant_build_pop3_string with the station's
-// name and the command's reason (when the command sets one). PARTIAL: the
-// construct sound.
+// name and the command's reason (when the command sets one); done, the
+// construct sound at the command's position.
 func (g *Game) stationToolUp(sx, sy int) {
 	if g.buildMode == buildModeAirport {
 		g.airportToolUp(sx, sy)
@@ -149,7 +150,9 @@ func (g *Game) stationToolUp(sx, sy int) {
 	c, g1 := g.stationCmd()
 	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreateTrainStation(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
 		g.openError(title, cmdErrorText(c))
+		return
 	}
+	g.playCommandSound(audio.SoundConstruct, c)
 }
 
 // roadStationArgsAt is getRoadStationPlacementArgsFromCursor with the
@@ -201,7 +204,7 @@ func (g *Game) roadStationToolUpdate(sx, sy int) {
 // roadStationToolUp is StationTab's onToolUpRoadStation (0x004A548F): after
 // removeConstructionGhosts, CreateRoadStation with apply on the road under
 // the cursor; a failure opens the error window titled cant_build_pop3_string
-// with the stop's name. PARTIAL: the construct sound, the command's own
+// with the stop's name, or the construct sound. PARTIAL: the command's own
 // error text.
 func (g *Game) roadStationToolUp(sx, sy int) {
 	g.removeStationGhost()
@@ -217,7 +220,9 @@ func (g *Game) roadStationToolUp(sx, sy int) {
 	c, g1 := g.stationCmd()
 	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreateRoadStation(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
 		g.openError(title, "")
+		return
 	}
+	g.playCommandSound(audio.SoundConstruct, c)
 }
 
 // ghostTabInfo is the Station tab's ghost part: cState.stationCost, the
