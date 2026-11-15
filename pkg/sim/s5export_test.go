@@ -167,7 +167,8 @@ func canonicalVehicles(es []scenario.VehicleEntity) []scenario.VehicleEntity {
 // VehicleHead.cpp's module static _vehicleMangled_113623B, the legacy
 // return state's last placed wall.
 var notSaved = map[string]bool{"SpriteLeft": true, "SpriteTop": true, "SpriteRight": true, "SpriteBottom": true,
-	"vehicleMangled113623B": true, "LastPlacedWallBaseZ": true, "LastCollision": true}
+	"vehicleMangled113623B": true, "LastPlacedWallBaseZ": true, "LastCollision": true,
+	"Sounds": true} // the sounds asked for this frame, played and gone, never saved
 
 // valueOf reads unexported fields too (by value).
 func valueOf(v reflect.Value) any {
