@@ -49,6 +49,7 @@ func (m *Map) roadElementsRange(x, y, z int32) (int, int) {
 // Mirrors upstream: each piece's range is looked up at args.pos, not at the
 // piece's own tile (the invalidation is the piece's tile's).
 func (m *Map) RemoveRoadStation(c *Cmd, flags uint8, a RoadStationRemoval, g1 G1Raw) (int32, bool) {
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition
 	om := c.Objects
 	initial, _ := m.getElRoad(a.X, a.Y, a.Z, a.Rotation, a.RoadObjectID, a.RoadID, a.Index)
 	if initial == nil || !initial.HasStationElement || int(a.RoadID) >= len(RoadPieces) {

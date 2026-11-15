@@ -256,6 +256,7 @@ func (m *Map) CreateTrackMod(c *Cmd, flags uint8, a TrackModsPlacement) (int32, 
 
 // RemoveTrackMod is the removeTrackMod game command: the refund over the section.
 func (m *Map) RemoveTrackMod(c *Cmd, flags uint8, a TrackModsPlacement) (int32, bool) {
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0))
 	x, y, z, tad, owner, ok := m.trackModsTarget(c, a)
 	if !ok {
 		return 0, false

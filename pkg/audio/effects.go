@@ -154,6 +154,16 @@ func (e *Effects) PlaySound(id SoundId, ch ChannelId, pan int32) {
 	e.play(id, ch, 0, pan)
 }
 
+// PlaySoundAt is playSound(id, channel, loc) after the viewport's part
+// (world.SoundAt): viewVolume is calculateVolumeFromViewport's, screenX the
+// point's x on the screen. Quieter than −100 dB in all, it is skipped.
+func (e *Effects) PlaySoundAt(id SoundId, ch ChannelId, viewVolume, screenX int32) {
+	if e == nil || int(id) >= len(soundVolumeTable) || soundVolumeTable[id]+viewVolume < -10000 {
+		return
+	}
+	e.play(id, ch, viewVolume, screenX)
+}
+
 func (e *Effects) play(id SoundId, ch ChannelId, volume, pan int32) {
 	if e == nil || int(id) >= len(soundVolumeTable) {
 		return

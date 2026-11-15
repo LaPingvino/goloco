@@ -32,6 +32,7 @@ func (t *Tile) removeStationElement(k int) {
 // modes, centre, label and canopies recalculated. The emptied station is
 // deallocated later by Station::update, as upstream.
 func (m *Map) RemoveTrainStation(c *Cmd, flags uint8, a TrainStationRemoval, g1 G1Raw) (int32, bool) {
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition
 	om := c.Objects
 	initial, _ := m.getElTrack(a.X, a.Y, a.Z, a.Rotation, a.TrackObjectID, a.TrackID, a.Index)
 	if initial == nil || !checkCompanyCompatibility(c, initial.Owner) || int(a.TrackID) >= len(TrackPieces) {

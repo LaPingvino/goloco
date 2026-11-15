@@ -382,6 +382,7 @@ func (m *Map) removeAirportAt(c *Cmd, stationID int, el scenario.StationElement,
 // the station's airport tile at that height whose (rotated) extents hold the
 // clicked tile is found among its tiles, and removed (loc_49372F).
 func (m *Map) RemoveAirport(c *Cmd, flags uint8, a AirportRemoval, g1 G1Raw) (int32, bool) {
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0))
 	t, k := m.stationElAt(a.X, a.Y, a.Z)
 	if k < 0 {
 		return 0, false

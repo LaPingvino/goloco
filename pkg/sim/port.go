@@ -330,6 +330,7 @@ func (m *Map) stationElAt(x, y, z int32) (*Tile, int) {
 // recalculated, the modes, centre and label. PARTIAL: the surfaces' AI
 // allocation flag reset (goloco's tiles don't keep it), the invalidations.
 func (m *Map) RemovePort(c *Cmd, flags uint8, a PortRemoval, g1 G1Raw) (int32, bool) {
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0))
 	om := c.Objects
 	t, k := m.stationElAt(a.X, a.Y, a.Z)
 	if k < 0 {
