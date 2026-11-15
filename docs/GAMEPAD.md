@@ -134,3 +134,21 @@ position (and back for the mouse), and its tools all act on the tile under the c
 Other games in ~/Projects with gamepad work queued: Pits (SDL2 `sdl_compat.c`: map pad events onto `key_event`),
 Pacmanio and Stelo (Ebitengine: an action layer over the existing key checks). These are layer 1 + 4 only: they have
 no mouse-heavy windows.
+
+## Part 3: OpenTTD and OpenRCT2 (after goloco)
+
+Once goloco's steps 1–4 show the design works, port the same layers to OpenTTD and OpenRCT2, both stable enough to
+carry a small patchset for a long time.
+
+- **Forks on GitHub** (LaPingvino/OpenTTD, LaPingvino/OpenRCT2): a `gamepad` branch rebased on each upstream release
+  tag, as a short series of commits in the same order as goloco's steps (input and the free cursor, the stick modes
+  with the tile cursor, actions, focus, context tools). Keep it all behind a setting that is off by default, so the
+  series stays easy to rebase and could go upstream later as is.
+- **PKGBUILDs** for Joop's Arch machines (main and living room): `openttd-gamepad` and `openrct2-gamepad`, built from
+  the fork's branch, with `provides`/`conflicts` on the official package so the data packages (openttd-opengfx,
+  OpenRCT2's RCT2 data) keep working. Start from the official Arch packages' PKGBUILDs. Keep them in a small repo
+  of their own, so each machine can do `git pull && makepkg -si`.
+- **Testing:** on the living room machine with a real pad on a TV (the 10-foot case: UI scale and prompts readable from
+  the couch), and on the main machine for keyboard focus navigation.
+- **First look upstream:** read each project's issues and pull requests on controllers before writing code. Reuse
+  earlier work, and avoid colliding with work in progress.
