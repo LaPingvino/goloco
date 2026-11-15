@@ -17,6 +17,31 @@ index d450452..798527d 100644
          auto srand0 = _srand_0;
          auto srand1 = _srand_1;
          _srand_0 += std::rotr<uint32_t>(srand1 ^ 0x1234567F, 7);
+diff --git a/src/OpenLoco/src/OpenLoco.cpp b/src/OpenLoco/src/OpenLoco.cpp
+index 0b66c55..c914f01 100644
+--- a/src/OpenLoco/src/OpenLoco.cpp
++++ b/src/OpenLoco/src/OpenLoco.cpp
+@@ -43,6 +43,8 @@
+ #include "Objects/ObjectIndex.h"
+ #include "Objects/ObjectManager.h"
+ #include "OpenLoco.h"
++#include "S5/S5.h"
++#include <cstdlib>
+ #include "Scenario/ScenarioManager.h"
+ #include "SceneManager.h"
+ #include "Scenes/BootScene.h"
+@@ -462,6 +464,11 @@ namespace OpenLoco
+ 
+             Scenes::GameScene::tick();
+         }
++        // OPENLOCO_SIMSAVE=path: the state after the ticks, saved (goloco comparison)
++        if (const char* out = std::getenv("OPENLOCO_SIMSAVE"); out != nullptr)
++        {
++            S5::exportGameStateToFile(fs::path(out), S5::SaveFlags::noWindowClose);
++        }
+     }
+ 
+ }
 diff --git a/src/OpenLoco/src/Random.cpp b/src/OpenLoco/src/Random.cpp
 index b1152dd..931b15b 100644
 --- a/src/OpenLoco/src/Random.cpp

@@ -88,7 +88,7 @@ func main() {
 	}
 	for i := 1; i <= *ticks; i++ {
 		tracing = i == *rngTrace
-		s.Tick(nil, om)
+		s.Tick(offScreen, om)
 	}
 	core.TraceHook = nil
 	s.AutosaveCheck = nil
@@ -144,3 +144,8 @@ func traceDraw() {
 	}
 	fmt.Fprintln(os.Stderr, out)
 }
+
+// offScreen is what a headless game shows: nothing (OpenLoco's simulate has
+// no window, so WaveManager::createWave's findWindowShowing finds none and
+// no wave starts, nor is gPrng2 drawn for one).
+func offScreen(int, int) bool { return false }

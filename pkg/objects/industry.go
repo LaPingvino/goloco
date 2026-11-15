@@ -34,6 +34,11 @@ type IndustryObject struct {
 	WallTypes                       [4]uint8     // 0xED
 	BuildingWall                    uint8        // 0xF1 (0xFF none)
 	BuildingWallEntrance            uint8        // 0xF2
+	// WallNames are the wall headers' DAT names (wallTypes, buildingWall,
+	// buildingWallEntrance; "": none): load resolves them into the wall
+	// slots above (ObjectManager.ReorderWallObjects) — the bytes at 0xED…
+	// are placeholders.
+	WallNames [6]string
 	Buildings                       []uint8      // the building types, in placement order (getBuildings)
 	BuildingSizeFlags               uint32       // 0xC6: bit n set = building type n is 2×2
 	ScaffoldingSegmentType          uint8        // 0xD4
@@ -193,6 +198,11 @@ func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 	for i := range o.RequiredCargoNames {
 		if data[p+(2+i)*16] != 0xFF {
 			o.RequiredCargoNames[i] = headerName(data, p+(2+i)*16)
+		}
+	}
+	for i := range o.WallNames {
+		if q := p + (5+i)*16; data[q] != 0xFF {
+			o.WallNames[i] = headerName(data, q)
 		}
 	}
 	p += (2 + 3 + 4 + 1 + 1) * 16 // produced, required cargo; wall types; buildingWall; buildingWallEntrance

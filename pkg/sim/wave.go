@@ -117,13 +117,19 @@ func (s *State) UpdateTiles(visible func(tileX, tileY int) bool, om *objects.Obj
 				continue
 			}
 		elements:
-			for k, r := range t.Order {
+			// The live list, as upstream's tile iterator: an update that
+			// removes an element and carries on (a field's wall) goes on
+			// with the next one there now, up to the tile's last now.
+			for k := 0; k < len(t.Order); k++ {
+				r := t.Order[k]
 				if r.Flags&0x10 != 0 { // ghost
 					continue
 				}
 				switch r.Kind {
 				case scenario.KindSurface:
-					s.updateSurface(t, tx, ty, visible, om) // surfaceupdate.go
+					if !s.updateSurface(t, tx, ty, visible, om) { // surfaceupdate.go
+						break elements // the tile's elements changed
+					}
 				case scenario.KindBuilding:
 					if int(r.Index) < len(t.Buildings) && !s.updateBuilding(&t.Buildings[r.Index], false, int32(tx)*32, int32(ty)*32, om) {
 						break elements // the tile's elements changed
