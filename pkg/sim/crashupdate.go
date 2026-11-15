@@ -16,7 +16,7 @@ import (
 // it stops or runs out of track. Each body follows its bogies and explodes
 // when one of them has.
 //
-// explodeComponent plays the crash sound (effect.go). PARTIAL: the splash, and the
+// explodeComponent plays the crash sound (effect.go), a splash its splash2. PARTIAL: the
 // body's sub_4AAB0B (animation; not ported for land at all).
 
 // bogieRoll is the bogie's roll state, as its normal update reads it.
@@ -124,7 +124,8 @@ func (m *Map) bogieCrashed(i int, om *objects.ObjectManager) {
 	if water != 0 && int32(water) < pz && int32(water) >= nz {
 		e.SpriteYaw = (e.SpriteYaw + 4) & 0x3F
 		if e.VehicleFlags&vehicleFlagUnk5 == 0 {
-			m.createSplash(int32(e.PosX), int32(e.PosY), int32(water)) // PARTIAL: its splash2 sound
+			m.createSplash(int32(e.PosX), int32(e.PosY), int32(water))
+			m.playSound(soundSplash2, ChannelVehicles, int32(e.PosX), int32(e.PosY), int32(water))
 			e.VehicleFlags |= vehicleFlagUnk5
 		}
 	}

@@ -35,6 +35,7 @@ func (m *Map) playSoundVF(id uint16, channel uint8, x, y, z, volume, frequency i
 const (
 	soundIncome        = 5
 	soundCrash         = 6
+	soundSplash2       = 9
 	soundVehiclePlace  = 19
 	soundVehiclePickup = 20
 	soundConstructShip = 21
