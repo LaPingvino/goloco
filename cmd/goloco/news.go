@@ -64,9 +64,10 @@ func (g *Game) writeNewsConfig() {
 	}
 }
 
-// playNewsSound is Audio::playSound for the news (PLATFORM: no sound
-// effects — nothing plays).
-func (g *Game) playNewsSound(id uint16) {}
+// playNewsSound is News' open: the message's sound (OpenNews chose it:
+// notification, or the type's own for the player's or no company's news,
+// none with audio.playNewsSounds off) in the middle of the screen.
+func (g *Game) playNewsSound(id uint16) { g.playSound(audio.SoundId(id), audio.ChannelUI, g.sw/2) }
 
 // newsHost is the game as MessageManager's update sees it (sim.NewsHost).
 type newsHost struct{ g *Game }
