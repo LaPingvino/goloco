@@ -96,6 +96,11 @@ Order of work:
 3. Labels, hit tests, tooltips, the money effects at the new levels.
 4. Compare with OpenLoco at both new levels on the title game.
 
+## E. Gamepad and focus navigation — docs/GAMEPAD.md
+
+The design (general, meant as a reference for other sim games too) and goloco's six steps are in docs/GAMEPAD.md.
+Design agreed in outline by Joop 2026-11-15 (shoulders tab through windows, buttons per context); the details are open.
+
 ## D. Smaller follow-ups ready to pick up
 
 - **N35 save leftovers:**
