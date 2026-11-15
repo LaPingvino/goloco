@@ -130,6 +130,7 @@ func (g *Game) updateTitle() {
 		// An open dropdown is on top: it takes the click (a click outside
 		// closes it); then the windows, front-most first.
 		if g.dropdown != nil && g.dropdown.Visible {
+			g.dropdownPressSound()
 			if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
 				g.dropdown = nil
 			}
@@ -308,6 +309,7 @@ func (g *Game) gameClick() {
 		if g.dropdown.PressOnOrigin(g.mouseX, g.mouseY) { // its own button: the release chooses
 			return
 		}
+		g.dropdownPressSound()
 		if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
 			// Click outside dropdown - close it
 			g.dropdown = nil

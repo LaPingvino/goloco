@@ -76,3 +76,15 @@ func (g *Game) playSimSounds() {
 		g.sfx.PlaySoundAtVF(audio.SoundId(s.ID), audio.ChannelId(s.Channel), vol+s.Volume, int32(sx), s.Frequency)
 	}
 }
+
+// dropdownPressSound is MouseInput's press while a dropdown is active: on
+// the dropdown, clickUp at its middle (window x + its widget's midX).
+// PARTIAL: a press on another window's widget while the dropdown is open
+// (upstream plays it there too, at that widget).
+func (g *Game) dropdownPressSound() {
+	d := g.dropdown
+	if d == nil || !d.Visible || g.mouseX < d.X || g.mouseX >= d.X+d.Width || g.mouseY < d.Y || g.mouseY >= d.Y+d.Height {
+		return
+	}
+	g.playSound(audio.SoundClickUp, audio.ChannelUI, d.X+d.Width/2)
+}
