@@ -22,8 +22,10 @@ type LandArgs struct {
 
 // RaiseLand is the raiseLand game command (0x00463702): raiseLand over the
 // range, the position its centre at the land height there. The caller pays
-// under Construction. PARTIAL: the construct sound, madeAnyChanges.
+// under Construction; a company's, applied, plays the construct sound first.
+// PARTIAL: madeAnyChanges.
 func (m *Map) RaiseLand(c *Cmd, flags uint8, a LandArgs) (int32, bool) {
+	m.constructSoundAtCentre(c, flags, a.CX, a.CY) // before the work, at the height as it is
 	cost, ok := m.raiseLand(c, a.AX, a.AY, a.BX, a.BY, a.Corner, flags)
 	if !ok {
 		return 0, false
@@ -35,6 +37,7 @@ func (m *Map) RaiseLand(c *Cmd, flags uint8, a LandArgs) (int32, bool) {
 
 // LowerLand is the lowerLand game command (0x00463751), as RaiseLand.
 func (m *Map) LowerLand(c *Cmd, flags uint8, a LandArgs) (int32, bool) {
+	m.constructSoundAtCentre(c, flags, a.CX, a.CY) // before the work, at the height as it is
 	cost, ok := m.lowerLand(c, a.AX, a.AY, a.BX, a.BY, a.Corner, flags)
 	if !ok {
 		return 0, false
@@ -184,3 +187,17 @@ func (m *Map) RemoveTree(c *Cmd, flags uint8, a TreeRemoval) (int32, bool) {
 	}
 	return 0, false
 }
+
+// constructSoundAtCentre is raiseLand's, lowerLand's and the mountain tool's
+// sound: applied, for a company (not the neutral one) at the top level (the
+// exported commands are called by the game only; nested ones use the
+// lowercase forms), the construct sound at the centre and its land height.
+func (m *Map) constructSoundAtCentre(c *Cmd, flags uint8, cx, cy int32) {
+	if flags&CmdApply == 0 || c.Company == CompanyNeutral {
+		return
+	}
+	land, _ := m.GetHeight(cx, cy)
+	m.playSound(soundConstruct, ChannelEffects, cx, cy, int32(land))
+}
+
+const soundConstruct = 3 // Audio::SoundId::construct
