@@ -62,6 +62,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >   carriage at extra fast speed reached 54% (270) by April 1951, still running, cash £59k → £46k. No blocker met
 >   yet; `expect progress` (script.go) reads challengeProgress. Next: a playthrough q-win-weatherworld that runs on
 >   to 100% and checks the Challenge tab opens (checkObjective) — then the next scenario.
+> - [x] WON 2026-11-15: Weatherworld, playthrough q-win-weatherworld (one Jinty + one carriage, extra fast: 100% in
+>   2 years 8 months, the Challenge tab opens with "Success!"). Fixed on the way: the scenario text objects (STEX,
+>   ScenarioTextObject::load) — every scenario showed "No details yet"; now its own name and details, in the game
+>   and the New Game list. Joop: "you manage to win it in the poorest way possible xD" — next, a proper game: more
+>   trains, a longer route, the money watched (cash fell to ~£6k–25k: compare the economy with OpenLoco), then the
+>   next scenario (Boulder Breakers / Sandbox Settler: performance index 10%; Desert Delirium: £5000 monthly profit).
 > - [x] a proper go-to sequence: checked 2026-11-15 on h2-paying-route's line run for four game months (Feb–May
 >   1950): Train 1 shuttles between both stations, fares at both ends, 76 passengers delivered. (Cash drifts down on
 >   that short line: running costs above its fares — not yet compared with OpenLoco.)

@@ -28,6 +28,7 @@ type ScenarioMeta struct {
 	Objective          Objective
 	HasObjective       bool
 	ObjectiveCargoName string
+	ScenarioTextName   string // options.scenarioText's DAT name ("" none)
 }
 
 // ScanScenario reads the header and ScenarioOptions chunks from a .SC5 file
@@ -88,6 +89,7 @@ func ScanScenario(filePath string) (*ScenarioMeta, error) {
 		Objective:          opts.Objective,
 		HasObjective:       opts.HasObjective,
 		ObjectiveCargoName: opts.ObjectiveCargoName,
+		ScenarioTextName:   opts.ScenarioTextName,
 	}, nil
 }
 

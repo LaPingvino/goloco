@@ -515,6 +515,9 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		cl := ParseClimateObject(header, decompressed)
 		loaded.Object = cl
 
+	case ObjectTypeScenarioText:
+		loaded.Object = ParseScenarioTextObject(header, decompressed)
+
 	case ObjectTypeSound:
 		if so := ParseSoundObject(header, decompressed); so != nil {
 			loaded.Object = so

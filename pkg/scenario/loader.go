@@ -735,6 +735,9 @@ func parseScenarioOptions(data []byte) Options {
 	if len(data) >= 0x6A+256 {
 		opts.Description = nullTermString(data[0x6A : 0x6A+256])
 	}
+	if len(data) >= 0x16A+16 && data[0x16A] != 0xFF { // options.scenarioText (an ObjectHeader)
+		opts.ScenarioTextName = nullTermString(data[0x16A+4 : 0x16A+12])
+	}
 	// Generation parameters
 	if len(data) >= 0x187 {
 		opts.MinLandHeight = data[0x184]

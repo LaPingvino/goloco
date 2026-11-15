@@ -447,6 +447,10 @@ func (g *Game) scriptExpect() {
 		ch := g.companyChallenge(company)
 		got = int64(ch.Progress)
 		log.Printf("[Script] objective: %q", strings.ReplaceAll(ch.Objective, "\x05", " "))
+	case "challengewin": // 1 while a Company window shows its Challenge tab (CompanyWindow::openChallenge)
+		if cw, ok := g.wins.Find(ui.WindowTypeCompany, ui.AnyNumber).(*ui.CompanyFinancesWindow); ok && cw.Tab == ui.CompanyTabChallenge {
+			got = 1
+		}
 	case "delivered": // this month's (cargoUnitsTotalDelivered, reset monthly) and the history's
 		if company < len(g.w.Map.Companies) {
 			c := &g.w.Map.Companies[company]
