@@ -78,6 +78,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    UpdateBlockSignals = sub_4A2AD7 on the next tile reversed), so UpdateBlockSignals' occupancy search
 >    (findOccupationByBlock + setSignalsOccupiedState, Routing.cpp) judges the block still occupied. Next: compare
 >    signals.go UpdateBlockSignals with Routing.cpp 862 and its filter/transform, on this case.
+>    More (2026-11-15, debug hooks in findOccupationByBlock / setSignalsOccupiedState, since removed): signals.go's
+>    filter and transform read like upstream's; the signal at 324,297 gets "occupied" (8) while 341 (entity id 348)
+>    drives through and is NEVER set "free" (9) in 4000 ticks — 341 drives its round and is back at 314,308 while
+>    261 (id 265) still waits. So the release when 341's tail leaves the block never reaches 324,297 with an empty
+>    block. Suspect: 261 itself stands partly inside that block and counts as its occupant (it waits on itself), or
+>    the search from the tail's release stops short. Next: log every UpdateBlockSignals reaching 324,297 with the
+>    occupants found, around the tick 341's tail passes the block's far signal.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)
