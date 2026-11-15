@@ -277,6 +277,7 @@ func (g *Game) openLoadGameWindow() {
 	}
 	w.OnPick = func(path string) {
 		w.Close()
+		rememberSavePath(w.Dir)
 		if err := g.loadScenario(path); err != nil {
 			log.Printf("[Game] Load error: %v", err)
 		}
