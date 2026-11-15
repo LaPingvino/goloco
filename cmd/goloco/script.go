@@ -443,6 +443,10 @@ func (g *Game) scriptExpect() {
 		}
 	case "rotation": // the view's rotation (WindowManager::getCurrentRotation)
 		got = int64(g.w.Rotation())
+	case "progress": // the company's challengeProgress (100 completed, 255 failed), the objective logged
+		ch := g.companyChallenge(company)
+		got = int64(ch.Progress)
+		log.Printf("[Script] objective: %q", strings.ReplaceAll(ch.Objective, "\x05", " "))
 	case "delivered": // this month's (cargoUnitsTotalDelivered, reset monthly) and the history's
 		if company < len(g.w.Map.Companies) {
 			c := &g.w.Map.Companies[company]
