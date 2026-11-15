@@ -101,6 +101,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    updateMonthly's production changes, CompanyManager::updateYearly, updateYearly2, TileManager::updateYearly,
 >    the quarterly AI thoughts though AI is off). The companies record differs earlier, from tick ≤50 (company 0,
 >    offset 35764 into companies). Next: compare the draws of those updates with upstream, and the company field.
+>    CORRECTION: tick 58 is NOT the month change (goloco's 1973-01 comes hundreds of ticks later; the tile-loop
+>    arithmetic is only mod 256). Tick 58 is a day change: OpenLoco makes 33 gPrng1 draws in it, goloco 31 (counted
+>    by stepping goloco's tick-57 rng to each side's tick-58 state). goloco's 31: 26 in dateTick's daily updates, 5
+>    in the vehicles/stations/effects; nothing in the tile loop, waves, towns, industries' tick. The 2 missing draws
+>    are most likely in a daily update (StationManager::updateDaily, VehicleManager::updateDaily — breakdowns —,
+>    IndustryManager::updateDaily — production) or the vehicles' tick. Next: compare those functions' draws.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)
