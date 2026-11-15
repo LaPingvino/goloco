@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/audio"
 	"log"
 	"time"
 
@@ -355,7 +356,9 @@ func (g *Game) hudOrMapClick() {
 			g.openCompanyFinances(company)
 		}
 	} else if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
-		g.toolbar.Buttons[btnIdx].Pressed = true
+		b := &g.toolbar.Buttons[btnIdx]
+		b.Pressed = true
+		g.playSound(audio.SoundClickDown, audio.ChannelUI, b.X+b.Width/2) // MouseInput: a button's press, at its middle
 		g.handleToolbarButton(btnIdx)
 	} else if g.tf.on && !g.inTitleScreen {
 		g.terraformToolDown(g.mouseX, g.mouseY) // the Terraform window's tool
