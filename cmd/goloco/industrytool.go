@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/audio"
 	"github.com/LaPingvino/goloco/pkg/core"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/sim"
@@ -9,8 +10,8 @@ import (
 
 // The Fund New Industries tab's tool (IndustryList.cpp NewIndustries): set
 // while the tab is open (switchTab's toolSet); the chosen industry's ghost
-// follows the cursor (onToolUpdate), a click funds it there (onToolDown).
-// PARTIAL: the construct sound.
+// follows the cursor (onToolUpdate), a click funds it there (onToolDown),
+// with the construct sound.
 
 // industryTool is the tool's state: on while the tab is open; the ghost
 // placed (_industryGhostPlaced/Pos/Type/Id); the last ghost's cost
@@ -125,6 +126,8 @@ func (g *Game) industryToolDown(x, y int) {
 			return cost, ok
 		}); !ok { // setErrorTitle(error_cant_build_this_here)
 			g.openError(i18n.Label(i18n.ErrorCantBuildThisHere), cmdErrorText(c))
+		} else {
+			g.playCommandSound(audio.SoundConstruct, c)
 		}
 	}
 	g.w.Rng2.RandNext()
