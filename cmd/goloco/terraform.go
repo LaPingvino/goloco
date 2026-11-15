@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/audio"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scene"
@@ -16,7 +17,7 @@ import (
 // selection, the ghost, the cost), acts on a press (onToolDown), while the
 // button is held (toolDrag) and on its release (toolUp), through the game
 // commands of pkg/sim. The window itself: pkg/ui terraformwindow.go.
-// PARTIAL: the construct sounds; the tool cursors; the editor (no cost,
+// The tree tool's construct sounds are played. PARTIAL: the other tools' construct sounds; the tool cursors; the editor (no cost,
 // buildImmediately); defaultTreeObjectId / defaultWallObjectId are kept for
 // the session, not in the save.
 
@@ -629,14 +630,20 @@ func (g *Game) terraformToolDown(x, y int) {
 				return cost, ok
 			}); !ok {
 				g.openError(i18n.Label(i18n.CantPlantThisHere), cmdErrorText(c))
+			} else {
+				g.playCommandSound(audio.SoundConstruct, c)
 			}
 		case 1: // placeTreeCluster(pos, 320, 3, the tree)
 			if !g.w.Map.PlaceTreeClusterFor(c, int(a.X)>>5, int(a.Y)>>5, 320, 3, int(a.Type)) {
 				g.openError(i18n.Label(i18n.CantPlantThisHere), "")
+			} else {
+				g.treeClusterSound(a.X, a.Y)
 			}
 		case 2: // placeTreeCluster(pos, 384, 4, any)
 			if !g.w.Map.PlaceTreeClusterFor(c, int(a.X)>>5, int(a.Y)>>5, 384, 4, -1) {
 				g.openError(i18n.Label(i18n.CantPlantThisHere), "")
+			} else {
+				g.treeClusterSound(a.X, a.Y)
 			}
 		}
 	case ui.TerraformTabWalls:
@@ -908,4 +915,11 @@ func (g *Game) placeWallGhost(a sim.WallPlacement) {
 	}); ok {
 		t.ghostWall, t.ghostX, t.ghostY, t.ghostRotation, t.ghostType, t.ghostBaseZ = true, a.X, a.Y, a.Rotation, a.Type, g.w.Map.LastPlacedWallBaseZ
 	}
+}
+
+// treeClusterSound is PlantTrees' onToolDown after a placed cluster: the
+// construct sound at the cursor's tile, at its land height.
+func (g *Game) treeClusterSound(x, y int32) {
+	land, _ := g.w.Map.GetHeight(x, y)
+	g.playSoundAt(audio.SoundConstruct, audio.ChannelEffects, x, y, int32(land))
 }
