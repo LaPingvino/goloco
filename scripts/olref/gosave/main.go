@@ -72,15 +72,16 @@ func main() {
 		s.StartScenarioGenerating(sc.Options.StartYear, gen, raw, om)
 		s.ScenarioFileName, s.ScenarioName, s.ScenarioDetails = in, sc.Options.Name, sc.Options.Description
 	}
-	month := s.CurrentMonth
-	for range *ticks {
-		s.Tick(nil, om)
-		if *monthly && s.CurrentMonth != month {
-			month = s.CurrentMonth
+	if *monthly { // GameScene's autosaveCheck: inside the tick, after the monthly updates — where OpenLoco autosaves
+		s.AutosaveCheck = func() {
 			name := strings.TrimSuffix(out, filepath.Ext(out)) + fmt.Sprintf("-%04d-%02d.SV5", s.CurrentYear, int(s.CurrentMonth)+1)
 			writeSave(s, sc, om, name, *ticks)
 		}
 	}
+	for range *ticks {
+		s.Tick(nil, om)
+	}
+	s.AutosaveCheck = nil
 	writeSave(s, sc, om, out, *ticks)
 }
 

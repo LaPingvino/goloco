@@ -80,7 +80,7 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 	m.updateSnowLine(today.DayOfYear, om) // Scenario::updateSnowLine
 	if today.Month != yesterday.Month {   // end of every month
 		m.ObjectiveMonthsInChallenge++
-		// TownManager::updateMonthly: PARTIAL
+		m.townsUpdateMonthly() // TownManager::updateMonthly (townmonthly.go)
 		m.industriesUpdateMonthly(om) // IndustryManager::updateMonthly (industryprod.go)
 		m.companiesUpdateMonthly1(om)
 		// CompanyManager::updateMonthlyHeadquarters: PARTIAL
