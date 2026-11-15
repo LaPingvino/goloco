@@ -45,6 +45,9 @@ func (m *Map) VehiclePlace(c *Cmd, flags uint8, a VehiclePlacement) (int32, bool
 	}
 	if a.ConvertGhost {
 		m.eachComponent(tr, func(i int) { m.Entities[i].Flags38 &^= flags38IsGhost })
+		if flags&CmdGhost == 0 {
+			m.playPlacedownSound(c, a.X, a.Y, a.Z)
+		}
 		return 0, true
 	}
 	ok := false
@@ -65,6 +68,8 @@ func (m *Map) VehiclePlace(c *Cmd, flags uint8, a VehiclePlacement) (int32, bool
 	head.ManualPower = -40
 	if flags&CmdGhost != 0 {
 		m.eachComponent(tr, func(i int) { m.Entities[i].Flags38 |= flags38IsGhost })
+	} else {
+		m.playPlacedownSound(c, a.X, a.Y, a.Z)
 	}
 	return 0, true
 }

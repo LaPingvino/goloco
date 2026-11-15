@@ -52,3 +52,15 @@ func TestStereo16(t *testing.T) {
 		t.Errorf("stereo16 = % x, want % x", out, want)
 	}
 }
+
+// A pitch of 2 halves the frames (AudioEngine applyPitch), 1 keeps them.
+func TestStereo16Pitch(t *testing.T) {
+	s := Sample{PCM: make([]byte, 200)}
+	s.Format.Channels, s.Format.BitsPerSample = 1, 16
+	if n := len(stereo16Pitch(s, 1, 1, 1)); n != 400 {
+		t.Errorf("pitch 1: %d bytes, want 400", n)
+	}
+	if n := len(stereo16Pitch(s, 1, 1, 2)); n != 200 {
+		t.Errorf("pitch 2: %d bytes, want 200", n)
+	}
+}

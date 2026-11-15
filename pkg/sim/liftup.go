@@ -7,8 +7,7 @@ import (
 // Taking a vehicle off the track: VehicleHead::liftUpVehicle (0x004B08DD) with
 // liftUpTail (VehicleTail.cpp 0x004B090F) and removeAllCargo (Vehicle.cpp
 // 0x004AF16A), and the VehiclePickup game command (0x004B0826).
-// PARTIAL: the pickup sound (playPickupSound, gPrng2) and the window
-// invalidations; removeAllCargo's body cargo sprite update (drawn from the
+// The pickup sound plays (sounds.go). PARTIAL: the window invalidations; removeAllCargo's body cargo sprite update (drawn from the
 // cargo state anyway, as load.go's note).
 
 // KeepCargoModifyPickup is Config::keepCargoModifyPickup (a cheat, off).
@@ -118,6 +117,9 @@ func (m *Map) VehiclePickup(c *Cmd, flags uint8, headID uint16) (int32, bool) {
 	}
 	if flags&CmdApply == 0 {
 		return 0, true
+	}
+	if flags&CmdGhost == 0 {
+		m.playPickupSound(c, tr)
 	}
 	m.LiftUpVehicle(headID, c.Objects)
 	tr, _ = m.TrainOf(headID)
