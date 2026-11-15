@@ -140,7 +140,7 @@ no mouse-heavy windows.
 Once goloco's steps 1–4 show the design works, port the same layers to OpenTTD and OpenRCT2, both stable enough to
 carry a small patchset for a long time.
 
-- **Forks on GitHub** (LaPingvino/OpenTTD, LaPingvino/OpenRCT2): a `gamepad` branch rebased on each upstream release
+- **Forks on GitHub** (created 2026-11-15: github.com/LaPingvino/OpenTTD, github.com/LaPingvino/OpenRCT2): a `gamepad` branch rebased on each upstream release
   tag, as a short series of commits in the same order as goloco's steps (input and the free cursor, the stick modes
   with the tile cursor, actions, focus, context tools). Keep it all behind a setting that is off by default, so the
   series stays easy to rebase and could go upstream later as is.
