@@ -280,7 +280,7 @@ func TestSavedTailsUpdate(t *testing.T) {
 		d1, _ := sim.UpdateDistances(m.Entities[tr.Veh2].CurrentSpeed)
 		for range 100 {
 			before := c.RoutingHandle
-			if !m.TailUpdate(&c, d1, head.HeadVar53) {
+			if !m.TailUpdate(&c, d1, head.HeadVar53, nil) {
 				t.Fatalf("head %d: tail lost its route", head.ID)
 			}
 			if c.RoutingHandle != before {

@@ -85,7 +85,13 @@ func (m *Map) UpdateRoadTileOccupancy(x, y, z int32, rad uint16, trackType uint8
 // released — road lanes cleared, or for rail the signal behind it freed,
 // the block it left re-evaluated (sub_4A2AD7) and a level crossing left.
 // It returns false where upstream destroys the train (noRouteFound).
-func (m *Map) TailUpdate(c *MotionComponent, distance int32, requiredMods uint8) bool {
+//
+// stored, when not nil, writes c back to its entity: called as soon as the
+// tail has moved, before the piece it left is released, as upstream's tail
+// moves in place — the block search (sub_4A2AD7) reads the entities, and a
+// tail still standing on the old piece kept every block it left occupied
+// (trains waited at a free signal for good).
+func (m *Map) TailUpdate(c *MotionComponent, distance int32, requiredMods uint8, stored func(*MotionComponent)) bool {
 	oldHandle := c.RoutingHandle
 	ox, oy, oz := c.TileX, c.TileY, int32(c.TileBaseZ)*4
 	next := m.TrackNewPiece
@@ -95,6 +101,9 @@ func (m *Map) TailUpdate(c *MotionComponent, distance int32, requiredMods uint8)
 	r := c.UpdateMotion(distance, func(c *MotionComponent, f *uint32) bool {
 		return next(c, f, requiredMods, false, 0)
 	})
+	if stored != nil {
+		stored(c)
+	}
 	if r.Flags&MotionNoRouteFound != 0 {
 		return false
 	}

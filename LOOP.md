@@ -85,6 +85,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    block. Suspect: 261 itself stands partly inside that block and counts as its occupant (it waits on itself), or
 >    the search from the tail's release stops short. Next: log every UpdateBlockSignals reaching 324,297 with the
 >    occupants found, around the tick 341's tail passes the block's far signal.
+>    FIXED 2026-11-15: the tail's move was written back to its entity only after TailUpdate's release, so the block
+>    search (which reads the entities) still found the tail on the piece it had just left: every block a train left
+>    stayed occupied, and the next train waited at that signal for good. Now stored before the release (tail.go,
+>    vehicletick.go). Company 7's trains match OpenLoco on 1973-01-01 and 02-01. Left: towns 34422 vs 34581 on 02-01.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)

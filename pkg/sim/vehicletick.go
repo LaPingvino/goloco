@@ -234,6 +234,6 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 
 	// VehicleTail::update.
 	ct := m.component(tr.Tail)
-	m.TailUpdate(&ct, d.D1, head.HeadVar53)
+	m.TailUpdate(&ct, d.D1, head.HeadVar53, func(c *MotionComponent) { m.store(tr.Tail, c) })
 	m.store(tr.Tail, &ct)
 }
