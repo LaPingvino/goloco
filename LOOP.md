@@ -58,6 +58,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >   Delirium "£5000 monthly vehicle profit". Next: a fast way to play months — a headless sim run (commands, no
 >   drawing) or the game at top speed — on Weatherworld until the objective, each blocker met a line here. Small:
 >   Objective.Describe says "cargo type 11" (logs and progress file only; upstream names the cargo).
+> - 2026-11-15 measured: Weatherworld's objective is "Deliver 500 Passengers"; h2-paying-route's one Jinty + one
+>   carriage at extra fast speed reached 54% (270) by April 1951, still running, cash £59k → £46k. No blocker met
+>   yet; `expect progress` (script.go) reads challengeProgress. Next: a playthrough q-win-weatherworld that runs on
+>   to 100% and checks the Challenge tab opens (checkObjective) — then the next scenario.
 > - [x] a proper go-to sequence: checked 2026-11-15 on h2-paying-route's line run for four game months (Feb–May
 >   1950): Train 1 shuttles between both stations, fares at both ends, 76 passengers delivered. (Cash drifts down on
 >   that short line: running costs above its fares — not yet compared with OpenLoco.)
