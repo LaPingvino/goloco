@@ -93,5 +93,8 @@ func (m *Map) BuildCompanyHeadquarters(c *Cmd, flags uint8, a HeadquarterPlaceme
 		m.Companies[company].HeadquartersY = int16(a.Y)
 		m.Companies[company].HeadquartersZ = uint8(a.Z / smallZStep)
 	}
+	if flags&CmdApply != 0 && flags&(CmdAiAllocated|CmdGhost) == 0 {
+		m.playSound(soundConstruct, ChannelEffects, a.X, a.Y, a.Z) // args.pos
+	}
 	return total, true
 }
