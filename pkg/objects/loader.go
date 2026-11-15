@@ -939,6 +939,26 @@ func (m *ObjectManager) ReorderWallObjects(order []string) {
 	}
 	m.WallObjects = reordered
 	fmt.Printf("Reordered wall objects: %d matched out of %d slots\n", matched, len(order))
+	// IndustryObject::load: each wall header resolved to its wall slot (0xFF:
+	// none, or not loaded).
+	slot := map[string]uint8{}
+	for i, name := range order {
+		if name != "" && reordered[i] != nil {
+			slot[strings.ToUpper(name)] = uint8(i)
+		}
+	}
+	for _, ind := range m.IndustryObjects {
+		if ind == nil {
+			continue
+		}
+		ids := [6]*uint8{&ind.WallTypes[0], &ind.WallTypes[1], &ind.WallTypes[2], &ind.WallTypes[3], &ind.BuildingWall, &ind.BuildingWallEntrance}
+		for k, name := range ind.WallNames {
+			*ids[k] = 0xFF
+			if id, ok := slot[strings.ToUpper(strings.TrimSpace(name))]; ok && name != "" {
+				*ids[k] = id
+			}
+		}
+	}
 }
 
 // ReorderTreeObjects rebuilds the TreeObjects slice so that each tree

@@ -115,8 +115,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    tree at tile 68,66 draws in goloco (tile loop) but is killed in OpenLoco (hasObstructionsTooNear) — goloco's
    logic is right from OpenLoco's own state (the traced build's OPENLOCO_SIMSAVE=path saves after simulating; gosave
    -rngtrace N lists goloco's draws), so the map had drifted. scripts/olref/tilediff showed 135332 surfaces
-   differing: updateSurface was unported (only its wave). Ported (surfaceupdate.go): 330 tiles differ now, around
-   a town near 66..70,64..68 (buildings, trees). Next: find that town's first differing building. NB: simcmp needs the established OLREF_HOME
+   differing: updateSurface was unported (only its wave). Ported (surfaceupdate.go). Then, bisecting the first
+   differing tile (tilediff on the traced build's OPENLOCO_SIMSAVE against gosave): gosave now plays headless
+   (no window: no waves, as OpenLoco's simulate); the fields' walls were unported (now in updateIndustrialSurface,
+   with the builtOnSnow thaw); the industry objects' wall types were the DAT's placeholders (now resolved from their
+   headers in ReorderWallObjects); the tile loop ranged over a stale element list (a removed wall: panic). Now 0
+   tiles differ after 6395 ticks, and the main rng matches through tick 10000 (AI off). Next: push past 10000. NB: simcmp needs the established OLREF_HOME
    (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
