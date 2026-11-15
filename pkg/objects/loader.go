@@ -515,6 +515,11 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 		cl := ParseClimateObject(header, decompressed)
 		loaded.Object = cl
 
+	case ObjectTypeSound:
+		if so := ParseSoundObject(header, decompressed); so != nil {
+			loaded.Object = so
+		}
+
 	case ObjectTypeHillShapes:
 		var g1Loader G1Loader
 		if m.G1File != nil {

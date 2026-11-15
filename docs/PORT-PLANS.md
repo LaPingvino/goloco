@@ -46,7 +46,9 @@ Reuse:
 ## B. Sounds (LOOP N9) — Audio/Audio.cpp 576, VehicleAudio.cpp 254, AmbientAudio.cpp 178, Audio/src/AudioEngine.cpp 598
 
 goloco plays only music: pkg/audio Manager (Ebitengine audio context, music, volume, sfx volume) and pkg/jukebox.
-There are no sound effects at all. No SoundObject loader exists in pkg/objects.
+There are no sound effects yet. Step 1 is done (2026-11-15): pkg/objects/sound.go `ParseSoundObject` (the 42
+SND*.DAT objects: 22050 Hz 16-bit mono PCM) and pkg/audio/css.go `ReadCSS` (css1.dat: 32 samples, SoundId
+clickDown…breakdown6). Next: step 2, the mixer.
 
 Upstream's structure:
 - **Samples:** `css1.dat` (Environment::PathId::css1) holds the UI samples, read by `loadSoundsFromCSS`
