@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/audio"
 	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/i18n"
@@ -102,7 +103,7 @@ func (g *Game) routeAction(headID uint16, action string) {
 // (World.RouteStopAt) added through addNewOrder — inserted before the selected
 // order, else before the table's end; the selection moves down with the order
 // it was on; plain track or road gives a route-through waypoint instead.
-// PARTIAL: the waypoint sound; water waypoints.
+// The waypoint sound plays for each. PARTIAL: water waypoints.
 func (g *Game) routeToolDown(sx, sy int) {
 	m := &g.w.Map
 	tr, err := m.TrainOf(g.routeHead)
@@ -118,6 +119,7 @@ func (g *Game) routeToolDown(sx, sy int) {
 	if hit.Waypoint != nil {
 		order = hit.Waypoint // route through (0x004B5160 / 0x004B5223)
 	}
+	g.playSound(audio.SoundWaypoint, audio.ChannelUI, sx) // every case: Input::getDragLastLocation().x
 	g.addNewOrder(g.routeHead, order)
 }
 
