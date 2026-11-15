@@ -18,6 +18,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/assets"
@@ -32,6 +33,7 @@ func main() {
 	monthly := flag.Bool("monthly", false, "also save at each month's start, as OpenLoco's monthly autosave (out-YYYY-MM.SV5 beside out)")
 	seed := flag.Uint("seed", 1950, "a .SC5's new-game rng seed (the script's \"seed N\")")
 	data := flag.String("data", "../locomotion", "the Locomotion folder")
+	rngTrace := flag.Int("rngtrace", 0, "print each main-rng (gPrng1) draw of this tick of the run (1-based) with its callers, as scripts/olref/rngtrace.patch does in OpenLoco")
 	flag.Parse()
 	if flag.NArg() != 2 {
 		log.Fatal("usage: gosave [-ticks N] [-seed S] [-data DIR] in.(SV5|SC5|dat) out.SV5")
@@ -78,9 +80,17 @@ func main() {
 			writeSave(s, sc, om, name, *ticks)
 		}
 	}
-	for range *ticks {
+	tracing := false
+	core.TraceHook = func(p *core.Prng) {
+		if tracing && p == &s.Rng1 {
+			traceDraw()
+		}
+	}
+	for i := 1; i <= *ticks; i++ {
+		tracing = i == *rngTrace
 		s.Tick(nil, om)
 	}
+	core.TraceHook = nil
 	s.AutosaveCheck = nil
 	writeSave(s, sc, om, out, *ticks)
 }
@@ -112,4 +122,25 @@ func must(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// traceDraw prints a draw's callers (past RandNext and its bounded forms).
+func traceDraw() {
+	pc := make([]uintptr, 8)
+	n := runtime.Callers(3, pc)
+	frames := runtime.CallersFrames(pc[:n])
+	out := "RNG"
+	for k := 0; k < 4; k++ {
+		f, more := frames.Next()
+		name := f.Function[strings.LastIndex(f.Function, "/")+1:]
+		if strings.HasPrefix(name, "core.(*Prng).") {
+			k--
+		} else {
+			out += " " + name
+		}
+		if !more {
+			break
+		}
+	}
+	fmt.Fprintln(os.Stderr, out)
 }

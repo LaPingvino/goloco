@@ -123,9 +123,7 @@ func (s *State) UpdateTiles(visible func(tileX, tileY int) bool, om *objects.Obj
 				}
 				switch r.Kind {
 				case scenario.KindSurface:
-					if t.WaterLevel != 0 && !t.WaveFlag {
-						s.createWave(t, tx, ty, visible)
-					}
+					s.updateSurface(t, tx, ty, visible, om) // surfaceupdate.go
 				case scenario.KindBuilding:
 					if int(r.Index) < len(t.Buildings) && !s.updateBuilding(&t.Buildings[r.Index], false, int32(tx)*32, int32(ty)*32, om) {
 						break elements // the tile's elements changed

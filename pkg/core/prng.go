@@ -16,7 +16,14 @@ func NewPrngSeed(s0, s1 uint32) *Prng { return &Prng{s0: s0, s1: s1} }
 func (p *Prng) Srand0() uint32 { return p.s0 }
 func (p *Prng) Srand1() uint32 { return p.s1 }
 
+// TraceHook, when set, sees every draw before it is made (gosave -rngtrace:
+// each draw's callers, against the rng-tracing OpenLoco's).
+var TraceHook func(*Prng)
+
 func (p *Prng) RandNext() uint32 {
+	if TraceHook != nil {
+		TraceHook(p)
+	}
 	s0 := p.s0
 	p.s0 += bits.RotateLeft32(p.s1^0x1234567F, -7)
 	p.s1 = bits.RotateLeft32(s0, -3)

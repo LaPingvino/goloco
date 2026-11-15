@@ -111,8 +111,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    OPENLOCO_RNGTRACE=FROM,TO prints each gPrng1 draw's tick and callers; addr2line -f -C -e build/OpenLoco 0x…): the
    2 draws were setAiObservation from Company::updateDaily, not ported. Now ported (companydaily.go: emotions,
    observation, jail days). Then tick 1551: produceTouchdownAirportSound's draw (ported, with produceLeavingDockSound,
-   sounds.go produceStartSound). The main rng now matches OpenLoco through tick 5000 (AI off). Next: bisect past
-   5000 (simcmp with OLREF_HOME=scratchpad/econ/simhome-noai), trace the parting tick. NB: simcmp needs the established OLREF_HOME
+   sounds.go produceStartSound). The main rng now matches OpenLoco through tick 6395 (AI off), parting at 6396: a
+   tree at tile 68,66 draws in goloco (tile loop) but is killed in OpenLoco (hasObstructionsTooNear) — goloco's
+   logic is right from OpenLoco's own state (the traced build's OPENLOCO_SIMSAVE=path saves after simulating; gosave
+   -rngtrace N lists goloco's draws), so the map had drifted. scripts/olref/tilediff showed 135332 surfaces
+   differing: updateSurface was unported (only its wave). Ported (surfaceupdate.go): 330 tiles differ now, around
+   a town near 66..70,64..68 (buildings, trees). Next: find that town's first differing building. NB: simcmp needs the established OLREF_HOME
    (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
