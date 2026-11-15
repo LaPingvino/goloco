@@ -49,6 +49,16 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > 1. (step 1 done 2026-11-15: scripts/olref/econ prints a save's economy — compare OpenLoco's monthly autosaves of a
 >    save played on with goloco's (gosave -ticks N / its autosaves); next: run both from p-save's Weatherworld save,
 >    diff month by month. Suspect seen: company value 0 in goloco's 1953-01-01 autosave.)
+>    FOUND 2026-11-15 (title save, 1972-12-15 on, OpenLoco's monthly autosaves vs gosave -monthly): goloco has NO
+>    COMPANY AI — OpenLoco's AI companies buy and place trains (98 → 115 by June 1973) and borrow to build (company 3
+>    +£62k, 6 +£95k loan in 17 days); goloco's stay at 98. CompanyAi.cpp (~6000 lines) unported: the competitors don't
+>    grow, which matters for every "be the top company / top three" objective and the performance index. A big port
+>    of its own (plan it like A–C). Next: the same comparison with OpenLoco's AI off (OLREF_NOAI=true in ol.sh), to see
+>    whether the rest of the economy matches. DONE: with OpenLoco's AI off, 1973-01-01 (17 days in) matches EXACTLY
+>    for all ten companies (cash, loan, value, deliveries, performance); by 1973-02-01 goloco delivered slightly less
+>    (company 1: 25489 vs 25564, company 5: 3505 vs 3541) and towns have ~280 fewer people (34297 vs 34581) — the core
+>    economy parts within January 1973 by about 1%. Next: dump both 1973-02-01 saves per town, station (cargo waiting,
+>    ratings) and industry (production) to find the first thing that differs.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)

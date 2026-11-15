@@ -14,6 +14,7 @@ package main
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -28,6 +29,7 @@ import (
 
 func main() {
 	ticks := flag.Int("ticks", 0, "game ticks to play before saving")
+	monthly := flag.Bool("monthly", false, "also save at each month's start, as OpenLoco's monthly autosave (out-YYYY-MM.SV5 beside out)")
 	seed := flag.Uint("seed", 1950, "a .SC5's new-game rng seed (the script's \"seed N\")")
 	data := flag.String("data", "../locomotion", "the Locomotion folder")
 	flag.Parse()
@@ -70,9 +72,21 @@ func main() {
 		s.StartScenarioGenerating(sc.Options.StartYear, gen, raw, om)
 		s.ScenarioFileName, s.ScenarioName, s.ScenarioDetails = in, sc.Options.Name, sc.Options.Description
 	}
+	month := s.CurrentMonth
 	for range *ticks {
 		s.Tick(nil, om)
+		if *monthly && s.CurrentMonth != month {
+			month = s.CurrentMonth
+			name := strings.TrimSuffix(out, filepath.Ext(out)) + fmt.Sprintf("-%04d-%02d.SV5", s.CurrentYear, int(s.CurrentMonth)+1)
+			writeSave(s, sc, om, name, *ticks)
+		}
 	}
+	writeSave(s, sc, om, out, *ticks)
+}
+
+// writeSave is S5::exportGameStateToFile: the pre-save clean-up, then the
+// file (header, save details, packed objects, object list, game state, tiles).
+func writeSave(s *sim.State, sc *scenario.Scenario, om *objects.ObjectManager, out string, ticks int) {
 	s.PrepareSave()
 	ex := s.ExportScenario()
 	ex.SavedViewX, ex.SavedViewY, ex.SavedViewZoom, ex.SavedViewRotation = sc.SavedViewX, sc.SavedViewY, sc.SavedViewZoom, sc.SavedViewRotation
@@ -90,7 +104,7 @@ func main() {
 	var buf bytes.Buffer
 	must(f.Write(&buf))
 	must(os.WriteFile(out, buf.Bytes(), 0o644))
-	log.Printf("gosave: %s, %d ticks → %s (%d bytes)", in, *ticks, out, buf.Len())
+	log.Printf("gosave: %d ticks → %s (%d bytes)", ticks, out, buf.Len())
 }
 
 func must(err error) {
