@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/audio"
 	"log"
 
 	"github.com/LaPingvino/goloco/pkg/paint"
@@ -427,12 +428,15 @@ func (g *Game) consSelectPosition() {
 	}
 }
 
-// The cheat words (Keyboard.cpp kCheats). PARTIAL: their click sound
-// (Audio::playSound clickPress).
+// The cheat words (Keyboard.cpp kCheats), each confirmed by the clickPress
+// sound in the middle of the screen.
+
+// cheatClick is the cheats' Audio::playSound(clickPress, ui, Ui::width() / 2).
+func (g *Game) cheatClick() { g.playSound(audio.SoundClickPress, audio.ChannelUI, g.sw/2) }
 
 // cheatDriver is DRIVER (loc_4BECDE): SceneManager's driverCheatEnabled —
 // the Vehicle window's manual control of trains.
-func (g *Game) cheatDriver() { g.driverCheat = true }
+func (g *Game) cheatDriver() { g.driverCheat = true; g.cheatClick() }
 
 // cheatShunt is SHUNT (loc_4BED04): with DRIVER on, the front-most Vehicle
 // window of one of the controlling company's trains gets the shunt cheat
@@ -457,6 +461,7 @@ func (g *Game) cheatShunt() {
 			continue
 		}
 		m.VehicleShuntCheat(g.playerCmd(), sim.CmdApply, head)
+		g.cheatClick()
 		return
 	}
 }
@@ -464,4 +469,5 @@ func (g *Game) cheatShunt() {
 // cheatFreeCash is FREECASH (loc_4BED79): ApplyFreeCashCheat.
 func (g *Game) cheatFreeCash() {
 	g.w.Map.FreeCashCheat(g.playerCmd(), sim.CmdApply)
+	g.cheatClick()
 }
