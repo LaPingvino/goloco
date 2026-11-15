@@ -110,6 +110,7 @@ func (m *Map) updateManagers(om *objects.ObjectManager) {
 func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 	head, v1, v2 := &m.Entities[tr.Head], &m.Entities[tr.Veh1], &m.Entities[tr.Veh2]
 	road := head.Mode == 1
+	initialStatus := head.Status // VehicleHead::update: for tryCreateInitialMovementSound
 	// VehicleHead::update: the distances (head logic: see PARTIAL).
 	d1, d2 := UpdateDistances(v2.CurrentSpeed)
 	d := VehicleUpdateDistances{D1: d1, D2: d2}
@@ -128,6 +129,7 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 		}
 		return
 	}
+	m.tryCreateInitialMovementSound(tr, initialStatus, om)
 
 	// Vehicle1::update.
 	if road {

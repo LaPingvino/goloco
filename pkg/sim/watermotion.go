@@ -35,11 +35,13 @@ func setVeh1Frac(m *Map, tr Train, x, y uint16) {
 // updateBoat is VehicleHead::update for a water vehicle.
 func (m *Map) updateBoat(tr Train, om *objects.ObjectManager) {
 	head := &m.Entities[tr.Head]
+	initialStatus := head.Status // VehicleHead::update: for tryCreateInitialMovementSound
 	if head.Var5C != 0 {
 		head.Var5C--
 	}
 	m.updateBreakdown(tr, om)
 	m.updateWater(tr, om)
+	m.tryCreateInitialMovementSound(tr, initialStatus, om)
 	m.bodiesAnimate(tr, om) // the bodies' update: animationUpdate (wakes, exhaust)
 }
 
