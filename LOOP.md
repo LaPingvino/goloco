@@ -72,6 +72,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    upstream (reversal.go), so sub_4ACEE7 keeps reporting the signal red: the block's occupation / reservation isn't
 >    released when 341 leaves (or 261's look-ahead reads it wrong). Next: tick by tick from title.SV5, the signal
 >    element's state at 325,301 and the blocks' occupancy as 341 leaves; compare with upstream's signal update.
+>    TRACED 2026-11-15 (scratch test, title.dat ticked): the signals at 325–327,296–299 keep their occupied bit (side
+>    B4 0x40: 0xC0) after 341 has driven through and gone (their state bits d0/e0/f0 fall back to c0 as setSignalState
+>    0 resets them, as upstream). tail.go's release is upstream's line for line (setSignalState 0, then
+>    UpdateBlockSignals = sub_4A2AD7 on the next tile reversed), so UpdateBlockSignals' occupancy search
+>    (findOccupationByBlock + setSignalsOccupiedState, Routing.cpp) judges the block still occupied. Next: compare
+>    signals.go UpdateBlockSignals with Routing.cpp 862 and its filter/transform, on this case.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)
