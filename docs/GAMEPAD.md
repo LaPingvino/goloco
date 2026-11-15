@@ -29,6 +29,30 @@ back to the one below it:
 4. **Free cursor.** The left stick moves a pointer (with acceleration and a precision modifier) and A/B are the
    left and right clicks. Nothing is ever out of reach, even in windows that aren't focus-aware yet.
 
+### Stick modes: pointer, scroll, tile
+
+The left stick has three modes, and one button (say, clicking the left stick) cycles through them, with the current
+mode shown by the cursor's shape:
+- **Pointer:** layer 4's free cursor.
+- **Scroll:** the stick pans the view (for a pad without a usable right stick, or one-handed play).
+- **Tile:** a cursor that sits on one map tile and steps one tile per push, along the map's axes for the current
+  rotation (so "up" on the stick stays "up the screen" in every view). The view scrolls to keep it in sight. A and B
+  are a left and right click **on that tile**: the game gets a click at the tile's screen position, exactly as if the
+  mouse had been there.
+
+The tile mode is the big one. In OpenTTD, OpenRCT2 and Locomotion nearly everything on the map is done by clicking the
+right tile: build a piece, place a station or a signal, bulldoze, raise land, open a vehicle or an industry. A tile
+cursor makes all of that precise without any per-tool code, because it only produces the clicks the tools already
+take. Drag tools (OpenTTD's rail drag, area select, station drag) work the same way: holding A is holding the button,
+and each step of the stick extends the drag by one tile. Details that make it pleasant:
+- holding the stick repeats the step after a short delay, faster the longer it's held;
+- a modifier (a held shoulder or trigger) steps several tiles at once;
+- the tile mode is the default while a map tool is active, and a tool can still move its own ghost (layer 3) where it
+  does more than take a click;
+- the tile under the cursor is highlighted the way the game highlights the mouse's tile, so no new drawing is needed;
+- a click in the tile mode can target the tile's centre or one edge or corner (a signal side, a quarter tile): a
+  modifier plus the d-pad nudges within the tile.
+
 On the main view, without a tool: the right stick pans, the triggers zoom (or a modifier plus the d-pad does), A
 opens what is under the centre or the cursor (a vehicle, station, town or industry window), and Y opens a radial or
 list menu of the toolbar's tools. Console builders (Cities: Skylines, Planet Coaster console editions) settled on
@@ -91,7 +115,9 @@ How goloco's code fits:
 
 Order of work (each step green and committed, like the other plans):
 1. Gamepad input: read the standard layout, hot-plug, the free cursor (layer 4) with A/B as clicks and a dead zone,
-   the right stick panning and the triggers zooming. Under Xvfb, test with an injected pad state (the same pattern as
+   the right stick panning and the triggers zooming. Then the stick modes: pointer, scroll and tile. The tile mode
+   steps along the map axes for `sim.Map.CurrentRotation` and clicks at the tile's screen point (`sim.GameToScreen`),
+   so every tool works with it at once. Under Xvfb, test with an injected pad state (the same pattern as
    the script player's input).
 2. Actions: a pad column in the shortcut table (pause, rotate, the menus), shown in the keyboard shortcuts window, and
    saved in openloco.yml next to the keys.
@@ -101,6 +127,9 @@ Order of work (each step green and committed, like the other plans):
    piece), then signals, stations, terraform and the bulldozer.
 5. Button prompts, and a radial or list menu for the toolbar.
 6. The Deck: a 2× UI scale (after plan C's zoom), a Steam Input template, and no typing needed for a new game.
+
+For OpenTTD the tile mode alone would be the biggest single gain: its viewport code already turns a tile into a screen
+position (and back for the mouse), and its tools all act on the tile under the cursor.
 
 Other games in ~/Projects with gamepad work queued: Pits (SDL2 `sdl_compat.c`: map pad events onto `key_event`),
 Pacmanio and Stelo (Ebitengine: an action layer over the existing key checks). These are layer 1 + 4 only: they have
