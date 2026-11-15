@@ -11,8 +11,7 @@ import (
 //
 // updateLastIncomeStats (Vehicle1 lastIncome) is here too (incomestats.go).
 // The workersCelebrate / citizensCelebrate news are posted. PARTIAL: the AI
-// thought revenue (aiThoughts[].var_80), the
-// money effect and income sound are not ported.
+// thought revenue (aiThoughts[].var_80).
 
 const (
 	stationIDNull         = 0xFFFF
@@ -226,9 +225,10 @@ func (m *Map) UpdateUnloadCargo(tr Train, om *objects.ObjectManager) {
 		m.Entities[tr.Veh2].CurMonthRevenue += profit
 		m.Entities[tr.Veh1].Var48 |= 1 << 2 // Flags48::flag2
 		m.ApplyPaymentToCompany(head.Owner, -profit, head.VehicleType*2)
-		if len(tr.Cars) > 0 && len(tr.Cars[0]) > 0 { // the first car's body + 28 up (spendMoneyEffect; PARTIAL: the income sound)
+		if len(tr.Cars) > 0 && len(tr.Cars[0]) > 0 { // the first car's body + 28 up: the money effect and the income sound
 			b := &m.Entities[tr.Cars[0][0].Body]
 			m.SpendMoneyEffect(int32(b.PosX), int32(b.PosY), int32(b.PosZ)+28, head.Owner, -profit)
+			m.playSound(soundIncome, ChannelUI, int32(b.PosX), int32(b.PosY), int32(b.PosZ)+28)
 		}
 	}
 	m.BeginLoading(tr)

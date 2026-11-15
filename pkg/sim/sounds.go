@@ -33,6 +33,7 @@ func (m *Map) playSoundVF(id uint16, channel uint8, x, y, z, volume, frequency i
 
 // Audio::SoundId values the sim plays.
 const (
+	soundIncome        = 5
 	soundVehiclePlace  = 19
 	soundVehiclePickup = 20
 	soundConstructShip = 21
