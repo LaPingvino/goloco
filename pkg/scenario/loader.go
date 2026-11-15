@@ -1530,6 +1530,24 @@ type CompanyEconomy struct {
 	CargoUnitsDistanceHist   [120]uint32   // 0x8C54
 	CargoUnitsDeliveredHist  [120]uint32   // 0x85FC
 	PerformanceIndexHist     [120]int16    // 0x87DC
+	// Company::updateDaily's: activeEmotions (0x8BB0, days each emotion
+	// lasts), the observation (status 0x8BB9, town 0x8BBA, entity 0x8BBC,
+	// x/y 0x8BBE, object 0x8BC2, timeout 0x8BC4), ownerStatus (0x8BC6), and
+	// of the AI: aiThinkState (0x4A4), activeThoughtId (0x2578) and each
+	// thought's type and destinationA (aiThoughts 0x4A8, 0x8C bytes each).
+	ActiveEmotions       [9]uint8
+	ObservationStatus    uint8
+	ObservationTownID    uint16
+	ObservationEntity    uint16
+	ObservationX         int16
+	ObservationY         int16
+	ObservationObject    uint16
+	ObservationTimeout   uint16
+	OwnerStatus          [2]int16
+	AiThinkState         uint8
+	ActiveThoughtID      uint8
+	ThoughtType          [60]uint8
+	ThoughtDestinationA  [60]uint8
 }
 
 // parseCompanyEconomy reads every company slot's CompanyEconomy.
@@ -1578,6 +1596,20 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 		c.NumExpenditureYears = r[0x57]
 		c.HistorySize = binary.LittleEndian.Uint16(r[0x88CC:])
 		c.NumMonthsInTheRed = r[0x8C4F]
+		copy(c.ActiveEmotions[:], r[0x8BB0:])
+		c.ObservationStatus = r[0x8BB9]
+		c.ObservationTownID = binary.LittleEndian.Uint16(r[0x8BBA:])
+		c.ObservationEntity = binary.LittleEndian.Uint16(r[0x8BBC:])
+		c.ObservationX = int16(binary.LittleEndian.Uint16(r[0x8BBE:]))
+		c.ObservationY = int16(binary.LittleEndian.Uint16(r[0x8BC0:]))
+		c.ObservationObject = binary.LittleEndian.Uint16(r[0x8BC2:])
+		c.ObservationTimeout = binary.LittleEndian.Uint16(r[0x8BC4:])
+		c.OwnerStatus = [2]int16{int16(binary.LittleEndian.Uint16(r[0x8BC6:])), int16(binary.LittleEndian.Uint16(r[0x8BC8:]))}
+		c.AiThinkState = r[0x4A4]
+		c.ActiveThoughtID = r[0x2578]
+		for k := range c.ThoughtType {
+			c.ThoughtType[k], c.ThoughtDestinationA[k] = r[0x4A8+0x8C*k], r[0x4A8+0x8C*k+1]
+		}
 	}
 	return out
 }

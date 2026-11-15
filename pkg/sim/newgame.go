@@ -209,6 +209,10 @@ func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectM
 	c.Var49C, c.Var4A0 = 0, 0
 	c.StartedDate = m.CurrentDay // company->startedDate = getCurrentDay()
 	c.HeadquartersX = -1
+	c.AiThinkState = 0 // AiThinkState::unk0; every thought AiThoughtType::null
+	for k := range c.ThoughtType {
+		c.ThoughtType[k] = 0xFF
+	}
 	m.CompanyNames[id] = stringIDNewCompany
 	for {
 		primary := uint8((m.Rng1.RandNext() & 0xFF) * colourMax / 256)
