@@ -23,6 +23,8 @@ import (
 	"github.com/LaPingvino/goloco/pkg/sim"
 )
 
+var showTowns = flag.Bool("towns", false, "also list every town: population, capacity, buildings, build speed")
+
 var company = flag.Int("company", -1, "also list this company's vehicles (status, place, speed, orders, profit)")
 
 func main() {
@@ -75,6 +77,11 @@ func describe(name string, m *sim.Map) string {
 	}
 	if *company >= 0 {
 		out += trains(m, *company)
+	}
+	if *showTowns {
+		for i, t := range m.Towns {
+			out += fmt.Sprintf("\n    town %d: pop %d capacity %d buildings %d buildSpeed %d", i, t.Population, t.PopulationCapacity, t.NumBuildings, t.BuildSpeed)
+		}
 	}
 	return out
 }
