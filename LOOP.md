@@ -110,8 +110,9 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    FOUND 2026-11-15 with an rng-tracing OpenLoco (scripts/olref/rngtrace.patch, built in ~/Projects/OpenLoco-rngtrace:
    OPENLOCO_RNGTRACE=FROM,TO prints each gPrng1 draw's tick and callers; addr2line -f -C -e build/OpenLoco 0x…): the
    2 draws were setAiObservation from Company::updateDaily, not ported. Now ported (companydaily.go: emotions,
-   observation, jail days). The main rng matches OpenLoco through tick 1500 (AI on or off); it parts between 1500 and
-   5000. Next: bisect that range, then trace the parting tick. NB: simcmp needs the established OLREF_HOME
+   observation, jail days). Then tick 1551: produceTouchdownAirportSound's draw (ported, with produceLeavingDockSound,
+   sounds.go produceStartSound). The main rng now matches OpenLoco through tick 5000 (AI off). Next: bisect past
+   5000 (simcmp with OLREF_HOME=scratchpad/econ/simhome-noai), trace the parting tick. NB: simcmp needs the established OLREF_HOME
    (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.

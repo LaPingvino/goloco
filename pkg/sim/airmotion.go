@@ -10,7 +10,7 @@ import (
 // airplaneLoadingUpdate (0x004A95F5) and movePlaneTo (0x00426CA4) — the
 // edges and statuses are in air.go. As for boats, an aircraft's tick is
 // the head's: var_5C, the breakdown, updateAir. PARTIAL: the body's
-// sub_4AAB0B (animation; not ported for land either), the touchdown sound.
+// sub_4AAB0B (animation; not ported for land either).
 
 const (
 	motorAirplaneAtTaxiSpeed uint8 = 5 // MotorState::airplaneAtTaxiSpeed
@@ -142,7 +142,9 @@ func (m *Map) updateAir(tr Train, om *objects.ObjectManager) {
 	}
 	if head.StationID != stationIDNull && head.AirportMovementEdge != airportEdgeNull {
 		if flags, _, _, _, ok := m.AirportGetMovementEdgeTarget(om, head.StationID, head.AirportMovementEdge); ok {
-			// touchdown: produceTouchdownAirportSound (PARTIAL)
+			if flags&objects.AirportNodeTouchdown != 0 {
+				m.produceStartSound(tr, om) // produceTouchdownAirportSound
+			}
 			if flags&objects.AirportNodeTaxiing != 0 {
 				m.updateLastJourneyAverageSpeed(tr)
 			}
