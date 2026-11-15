@@ -45,6 +45,18 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 
 ## Queue (top = next)
 
+> PRIORITY (Joop 2026-11-15: "fix playability first, the rest can make do"). Ticks take from this order, top down:
+> 1. Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
+>    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
+>    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)
+> 2. The map window (PORT-PLANS A): function first (finding towns/industries, centring the view), pixels later.
+> 3. N7 construction: the bridge retry, the alternate-road retry, shift's downward search, a refused road's reason,
+>    the selected-tile outline, the error window at the cursor.
+> 4. N19 tool cursors (which tool is active).
+> 5. N31 landscape generation leftovers (random new games only).
+> Then, as time allows ("the rest can make do"): sounds steps 3–4 and window clicks, zoom 2×/4×, N6/N17 window
+> details, N22 right-click in other viewports, N32/N34 view/keyboard leftovers; N14 editor last.
+
 > GOAL (Joop 2026-11-15: "After that it's probably good to try to play and win a first scenario, and fix any
 > blockers for that first. I think we're getting so close that this is likely a viable strategy..."): play a first
 > scenario through to its objective — a playthrough that wins it — and fix every blocker met on the way first
