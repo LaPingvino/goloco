@@ -146,6 +146,9 @@ type BuildVehicleWindow struct {
 	Tab, TrackTab       int
 	Disabled            uint8
 	NumTrackTabs        int
+	// Target is _buildTargetVehicle: the vehicle a row adds a car to, or
+	// sim's EntityIDNull (0xFFFF) for a new vehicle.
+	Target uint16
 	// TabIcon / TrackTabIcon are drawTransportTypeTabs' and
 	// drawTrackTypeTabs' images for a tab (the active one animated by the
 	// caller) and their colour (-1: none).

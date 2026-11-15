@@ -3,8 +3,10 @@ package main
 import (
 	"log"
 
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/shortcuts"
 	"github.com/LaPingvino/goloco/pkg/sim"
+	"github.com/LaPingvino/goloco/pkg/ui"
 )
 
 // vehicle_pickup.go — the Vehicle window's pickup tool: lifting a vehicle and
@@ -50,7 +52,7 @@ func (g *Game) pickupMode() uint8 {
 // cursor, VehiclePlace, then pickupToolPlacementCommandCallback — shift starts
 // the vehicle, the tool is cancelled, the window shown again. false: no track
 // there (the tool stays); rail or road by the vehicle's mode (World.PlacementAt).
-// PARTIAL: air and water, the error window.
+// PARTIAL: the error window for air and water.
 func (g *Game) pickupToolDown(sx, sy int) bool {
 	head := g.pickupHead
 	switch g.pickupMode() {
@@ -61,6 +63,7 @@ func (g *Game) pickupToolDown(sx, sy int) bool {
 	}
 	p, ok := g.w.PlacementAt(head, sx, sy)
 	if !ok {
+		g.pickupToolError(head, "")
 		return false
 	}
 	m := &g.w.Map
@@ -73,11 +76,24 @@ func (g *Game) pickupToolDown(sx, sy int) bool {
 	}
 	g.ghostProgress = -1
 	if _, ok := m.VehiclePlace(c, sim.CmdApply, p); !ok {
-		log.Printf("[Game] can't place vehicle %d here", head)
+		g.pickupToolError(head, cmdErrorText(c)) // setErrorTitle(cant_place_string_id_here): doCommand's error window
 		return false
 	}
 	g.pickupPlaced(c, head)
 	return true
+}
+
+// pickupToolError is Vehicle.cpp's: "Can't place <vehicle> here..." —
+// with the command's reason when it refused, alone when the cursor found
+// no place (pickupToolDownLand's missing placement).
+func (g *Game) pickupToolError(head uint16, reason string) {
+	m := &g.w.Map
+	tr, err := m.TrainOf(head)
+	if err != nil {
+		return
+	}
+	h := m.Entities[tr.Head]
+	g.openError(ui.FormatErrorArgs(i18n.Label(i18n.CantPlaceStringIdHere), m.VehicleName(h.Name, int(h.OrdinalNumber))), reason)
 }
 
 // pickupPlaced is pickupToolPlacementCommandCallback: shift starts the placed

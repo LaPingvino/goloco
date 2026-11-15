@@ -23,8 +23,54 @@ func (g *Game) openBuildVehicle(tab int) { g.openBuildVehicleFor(tab, sim.Entity
 // vehicle, and a row adds a car to it); EntityIDNull builds new vehicles.
 // PARTIAL: the caption still says "Build …" for a target.
 func (g *Game) openBuildVehicleFor(tab int, target uint16) {
+	if t := g.buildTargetVehicle(); t != sim.EntityIDNull { // open's sub_4B92A5: the top editing window wins
+		target = t
+	}
 	if bw := g.newBuildVehicleWindow(tab, target); bw != nil {
 		g.showAuto(bw, 0, 0)
+	}
+}
+
+// buildTargetVehicle is sub_4B92A5's _buildTargetVehicle: the front-most
+// Vehicle window on its Details tab whose vehicle the controlling company
+// owns (getTopEditingVehicleWindow), EntityIDNull when there is none. So a
+// bought locomotive's Details window, opened by the purchase, makes the next
+// purchase a car added to it.
+func (g *Game) buildTargetVehicle() uint16 {
+	company, _ := g.w.ControllingCompany()
+	for i := len(g.wins.Windows) - 1; i >= 0; i-- {
+		vw, ok := g.wins.Windows[i].(*ui.VehicleWindow)
+		if !ok || vw.Tab != 1 {
+			continue
+		}
+		tr, err := g.w.Map.TrainOf(uint16(vw.Number))
+		if err != nil || int(g.w.Map.Entities[tr.Head].Owner) != company {
+			continue
+		}
+		return uint16(vw.Number)
+	}
+	return sim.EntityIDNull
+}
+
+// refreshBuildVehicle is sub_4B92A5 on the open Build Vehicle window: its
+// target and list again, on its tab.
+func (g *Game) refreshBuildVehicle() {
+	company, _ := g.w.ControllingCompany()
+	old, ok := g.wins.Find(ui.WindowTypeBuildVehicle, company).(*ui.BuildVehicleWindow)
+	if !ok {
+		return
+	}
+	if bw := g.newBuildVehicleWindow(old.Tab, g.buildTargetVehicle()); bw != nil {
+		g.wins.Refresh(bw)
+	}
+}
+
+// updateBuildVehicle is onUpdate's refresh: the window's target no longer
+// the top editing Vehicle window (closed, or another tab) gets sub_4B92A5.
+func (g *Game) updateBuildVehicle() {
+	company, _ := g.w.ControllingCompany()
+	if bw, ok := g.wins.Find(ui.WindowTypeBuildVehicle, company).(*ui.BuildVehicleWindow); ok && bw.Target != g.buildTargetVehicle() {
+		g.refreshBuildVehicle()
 	}
 }
 
@@ -53,7 +99,7 @@ func (g *Game) newBuildVehicleWindow(tab int, target uint16) *ui.BuildVehicleWin
 		p, s = m.CompanyColourSchemes[company].Main[0], m.CompanyColourSchemes[company].Main[1]
 	}
 	bw := &ui.BuildVehicleWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeBuildVehicle, Number: company, W: 500, H: 400}, TitleColour: tc, Colour: wc,
-		Tab: tab, TrackTab: trackTab, Disabled: m.BuildVehicleDisabledTabs(uint8(company)), NumTrackTabs: len(tabs),
+		Tab: tab, TrackTab: trackTab, Target: target, Disabled: m.BuildVehicleDisabledTabs(uint8(company)), NumTrackTabs: len(tabs),
 		Rows: rows, Hover: -1, Primary: p, Secondary: s,
 		OnTab: func(t int) { g.openBuildVehicleFor(t, target) },
 		TabIcon: func(i int) (int, int) { // drawTransportTypeTabs: frame (frameNo / 2) & 0xF on the active tab
@@ -98,7 +144,7 @@ func (g *Game) newBuildVehicleWindow(tab int, target uint16) *ui.BuildVehicleWin
 			}
 			return -1, -1
 		},
-		OnBuy: func(id uint16) { g.buyVehicle(tab, id, target) }}
+		OnBuy: func(id uint16) { g.buyVehicle(tab, id, g.buildTargetVehicle()) }}
 	return bw
 }
 
@@ -134,9 +180,8 @@ func (g *Game) buyVehicle(tab int, id, target uint16) {
 	} else {
 		g.refreshVehicleWindow(head, 1) // the target's window shows its new car
 	}
-	if bw := g.newBuildVehicleWindow(tab, target); bw != nil { // sub_4B92A5: the list again, where the window stands
-		g.wins.Refresh(bw)
-	}
+	g.refreshBuildVehicle() // sub_4B92A5: the new vehicle's Details window is the target now
+
 }
 
 // cloneVehicle is Vehicle::Details' cloneVehicle: the cloneVehicle command
