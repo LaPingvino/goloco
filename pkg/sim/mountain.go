@@ -176,9 +176,10 @@ func clamp32(v, lo, hi int32) int32 { return min(max(v, lo), hi) }
 // each ring's four sides smoothed towards the selection's edge corners with
 // an allowed difference growing by 8 a ring. The cost (failed steps cost
 // nothing and don't stop it). The caller pays under Construction.
-// PARTIAL: the construct sound; madeAnyChanges.
+// Applied for a company, the construct sound first. PARTIAL: madeAnyChanges.
 func (m *Map) LowerRaiseLandMountain(c *Cmd, flags uint8, a MountainArgs) (int32, bool) {
 	mt := &mountainTool{m: m, c: c, flags: flags, removed: RemovedBuildings{}}
+	m.constructSoundAtCentre(c, flags, a.CX, a.CY) // first, at the height as it is
 	done := func() (int32, bool) {
 		land, _ := m.GetHeight(a.CX, a.CY)
 		c.Pos = &[3]int32{a.CX, a.CY, int32(land)}
