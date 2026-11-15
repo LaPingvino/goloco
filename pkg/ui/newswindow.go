@@ -418,7 +418,7 @@ func DrawVehicleOverview(rt *gfx8.RenderTarget, v *objects.VehicleObject, x, y i
 // the time panel's; while the mouse is over it, and 12 updates after, it
 // shows nothing — the date can be read.
 //
-// PARTIAL: the ticker sound (no sound effects in goloco). Its onMouseUp
+// Update reports when the ticker sound plays. PARTIAL: its onMouseUp
 // (the message opened as a window) is not ported: no press reaches a window
 // findAt ignores.
 type NewsTicker struct {
@@ -445,8 +445,9 @@ func (w *NewsTicker) HandleClick(px, py int) {}
 // Update is Ticker's onUpdate, once per interface update — under the mouse
 // the pause of 12 updates starts again; unpaused it counts down, and at 0
 // two more quarter characters show — and its onResize when the screen's size
-// has changed.
-func (w *NewsTicker) Update(sw, sh int, underMouse, paused bool) {
+// has changed. tick reports a new character that is not a space shown:
+// upstream plays the ticker sound then (Audio::playSound(ticker), the caller's).
+func (w *NewsTicker) Update(sw, sh int, underMouse, paused bool) (tick bool) {
 	if sw != w.screenW || sh != w.screenH {
 		w.screenW, w.screenH = sw, sh
 		w.X, w.Y = sw-tickerW-27, sh-tickerH
@@ -459,6 +460,33 @@ func (w *NewsTicker) Update(sw, sh int, underMouse, paused bool) {
 	}
 	if w.var852 == 0 && !paused {
 		w.numCharsToDisplay += 2
+		if w.numCharsToDisplay&(1<<15) == 0 && w.numCharsToDisplay&7 == 0 {
+			c := w.tickerChar(int(w.numCharsToDisplay >> 2))
+			return c != ' ' && c != 0
+		}
+	}
+	return false
+}
+
+// tickerChar is onUpdate's walk to the character now shown: cx characters
+// in, a newline counting as two (it shows as two spaces, read as ' '); 0 past
+// the end. (Loco's 3-byte argument codes are already formatted out of Text.)
+func (w *NewsTicker) tickerChar(cx int) rune {
+	rs := []rune(w.Text)
+	for i := 0; ; i++ {
+		ch := rune(0)
+		if i < len(rs) {
+			ch = rs[i]
+		}
+		if ch == controlNewline {
+			ch = ' '
+			if cx--; cx < 0 {
+				return ch
+			}
+		}
+		if cx--; cx < 0 || ch == 0 {
+			return ch
+		}
 	}
 }
 
