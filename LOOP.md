@@ -107,6 +107,12 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    in the vehicles/stations/effects; nothing in the tile loop, waves, towns, industries' tick. The 2 missing draws
 >    are most likely in a daily update (StationManager::updateDaily, VehicleManager::updateDaily — breakdowns —,
 >    IndustryManager::updateDaily — production) or the vehicles' tick. Next: compare those functions' draws.
+   FOUND 2026-11-15 with an rng-tracing OpenLoco (scripts/olref/rngtrace.patch, built in ~/Projects/OpenLoco-rngtrace:
+   OPENLOCO_RNGTRACE=FROM,TO prints each gPrng1 draw's tick and callers; addr2line -f -C -e build/OpenLoco 0x…): the
+   2 draws were setAiObservation from Company::updateDaily, not ported. Now ported (companydaily.go: emotions,
+   observation, jail days). The main rng matches OpenLoco through tick 1500 (AI on or off); it parts between 1500 and
+   5000. Next: bisect that range, then trace the parting tick. NB: simcmp needs the established OLREF_HOME
+   (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)

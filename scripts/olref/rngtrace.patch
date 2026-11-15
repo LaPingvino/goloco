@@ -1,0 +1,84 @@
+diff --git a/src/Core/src/Prng.cpp b/src/Core/src/Prng.cpp
+index d450452..798527d 100644
+--- a/src/Core/src/Prng.cpp
++++ b/src/Core/src/Prng.cpp
+@@ -4,8 +4,14 @@
+ 
+ namespace OpenLoco::Core
+ {
++    void (*gPrngTraceHook)(Prng&) = nullptr; // rng trace (goloco comparison)
++
+     uint32_t Prng::randNext()
+     {
++        if (gPrngTraceHook != nullptr)
++        {
++            gPrngTraceHook(*this);
++        }
+         auto srand0 = _srand_0;
+         auto srand1 = _srand_1;
+         _srand_0 += std::rotr<uint32_t>(srand1 ^ 0x1234567F, 7);
+diff --git a/src/OpenLoco/src/Random.cpp b/src/OpenLoco/src/Random.cpp
+index b1152dd..931b15b 100644
+--- a/src/OpenLoco/src/Random.cpp
++++ b/src/OpenLoco/src/Random.cpp
+@@ -1,5 +1,15 @@
+ #include "Random.h"
+ #include "GameState.h"
++#include "Scenario/ScenarioManager.h"
++#include <OpenLoco/Core/Prng.h>
++#include <cstdio>
++#include <cstdlib>
++#include <dlfcn.h>
++
++namespace OpenLoco::Core
++{
++    extern void (*gPrngTraceHook)(Prng&);
++}
+ 
+ namespace OpenLoco
+ {
+@@ -13,6 +23,44 @@ namespace OpenLoco
+         return getGameState().unkRng;
+     }
+ 
++    // OPENLOCO_RNGTRACE=FROM,TO: every gPrng1 draw in scenario ticks FROM..TO
++    // goes to stderr with the tick and the callers' offsets in the binary
++    // (addr2line -f -C -e OpenLoco 0x…).
++    static uint32_t _traceFrom, _traceTo;
++    [[gnu::noinline]] static void traceHook(Core::Prng& p)
++    {
++        if (&p != &getGameState().rng)
++        {
++            return;
++        }
++        auto t = ScenarioManager::getScenarioTicks();
++        if (t < _traceFrom || t > _traceTo)
++        {
++            return;
++        }
++        void* frames[4] = { __builtin_return_address(1), __builtin_return_address(2), __builtin_return_address(3), __builtin_return_address(4) };
++        std::fprintf(stderr, "RNG %u", t);
++        for (auto* f : frames)
++        {
++            Dl_info info{};
++            if (f != nullptr && dladdr(f, &info) != 0)
++            {
++                std::fprintf(stderr, " 0x%zx", static_cast<size_t>(static_cast<char*>(f) - static_cast<char*>(info.dli_fbase)) - 1);
++            }
++        }
++        std::fprintf(stderr, "\n");
++    }
++    static struct TraceInit
++    {
++        TraceInit()
++        {
++            if (const char* e = std::getenv("OPENLOCO_RNGTRACE"); e != nullptr && std::sscanf(e, "%u,%u", &_traceFrom, &_traceTo) == 2)
++            {
++                Core::gPrngTraceHook = traceHook;
++            }
++        }
++    } _traceInit;
++
+     void recordTickStartPrng()
+     {
+         auto& gs = getGameState();

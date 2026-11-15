@@ -207,7 +207,8 @@ type FREECASH
 wait 0.5
 keyup Insert
 wait 0.5
-expect jailed == 30
+# 30 days in jail; a day may pass meanwhile (Company::updateDaily)
+expect jailed >= 29
 expect window:news == 1
 key Space
 wait 1

@@ -15,7 +15,6 @@ import (
 // quarterly and yearly updates (of the monthly ones monthsInChallenge,
 // CompanyManager::updateMonthly1, VehicleManager::updateMonthly and
 // Economy::updateMonthly run), and the rest of
-// Company::updateDaily (emotions, AI logic, jail) are not ported.
 // VehicleHead::updateDaily: the stopped-road-vehicle restart (a game
 // command) and selling crashed AI vehicles are not ported.
 
@@ -102,21 +101,27 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 	m.companiesUpdateDaily(om)
 }
 
-// companiesUpdateDaily: updateDailyPlayer's challenge progress for the player
-// company (not on the title screen).
+// companiesUpdateDaily is CompanyManager::updateDaily: Company::updateDaily
+// for every company in play (companydaily.go).
 func (m *Map) companiesUpdateDaily(om *objects.ObjectManager) {
-	if m.TitleMode {
-		return
+	for id := range m.Companies {
+		if !m.CompanyEmpty(id) {
+			m.companyUpdateDaily(id, om)
+		}
 	}
-	id := int(m.ControllingCompany)
-	if id >= len(m.Companies) || m.CompanyEmpty(id) {
+}
+
+// companyUpdateDailyPlayer is Company::updateDailyPlayer: the challenge
+// progress, then its evaluation while the challenge isn't over (not on the
+// title screen).
+func (m *Map) companyUpdateDailyPlayer(id int, om *objects.ObjectManager) {
+	if m.TitleMode {
 		return
 	}
 	m.Companies[id].ChallengeProgress = m.NewChallengeProgress(id, om)
 	if m.CompanyFaces[id].ChallengeFlags&(companyFlagChallengeBeaten|companyFlagChallengeCompleted|companyFlagChallengeFailed) == 0 {
 		m.evaluateChallengeProgress(id, om)
 	}
-	m.updateLoanAutorepay(id) // updateDailyControllingPlayer
 }
 
 // evaluateChallengeProgress (Company.cpp): progress 100 completes the

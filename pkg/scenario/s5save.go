@@ -277,6 +277,20 @@ func (sc *Scenario) putCompanies(gs []byte) {
 		r[0x8C4E], r[0x8C4F] = c.ChallengeProgress, c.NumMonthsInTheRed
 		put32(r, 0x8C50, c.CargoUnitsTotalDistance)
 		put16(r, 0x8E34, c.JailStatus)
+		copy(r[0x8BB0:0x8BB9], c.ActiveEmotions[:])
+		r[0x8BB9] = c.ObservationStatus
+		put16(r, 0x8BBA, c.ObservationTownID)
+		put16(r, 0x8BBC, c.ObservationEntity)
+		put16(r, 0x8BBE, uint16(c.ObservationX))
+		put16(r, 0x8BC0, uint16(c.ObservationY))
+		put16(r, 0x8BC2, c.ObservationObject)
+		put16(r, 0x8BC4, c.ObservationTimeout)
+		put16(r, 0x8BC6, uint16(c.OwnerStatus[0]))
+		put16(r, 0x8BC8, uint16(c.OwnerStatus[1]))
+		r[0x4A4], r[0x2578] = c.AiThinkState, c.ActiveThoughtID
+		for k := range c.ThoughtType {
+			r[0x4A8+0x8C*k], r[0x4A8+0x8C*k+1] = c.ThoughtType[k], c.ThoughtDestinationA[k]
+		}
 	}
 }
 
