@@ -55,7 +55,8 @@ window's error sound. Next: the other call sites. The widget clicks (MouseInput 
 the press to know the widget is a button, and goloco's windows take clicks by position, so they come window by
 window; the tools' construct and demolish sounds (the PARTIAL notes) are one line each. Done 2026-11-15: the
 world-position form (world.SoundAt: calculateVolumeFromViewport and the pan, the main view only) and the right-click
-removals' demolish sound (the remove commands now set their position, as upstream's setPosition).
+removals' demolish sound (the remove commands now set their position, as upstream's setPosition). The construct sound for
+signals, train stations and road stations (not airports or docks: upstream plays none there).
 
 Upstream's structure:
 - **Samples:** `css1.dat` (Environment::PathId::css1) holds the UI samples, read by `loadSoundsFromCSS`
