@@ -65,6 +65,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    small deltas in deliveries/cash (a few units a month) and company 7 by 1973-05-01: vehicle profit 17386 vs 39267,
 >    perf 75 vs 191 — something of company 7's runs wrong (a stuck vehicle / route?): next lead. Also
 >    recordTickStartPrng and var_014A are never updated (harmless for play).
+>    Company 7 traced (econ -company 7): its train 261 waits at a signal at tile 325,301 in the start save (1972-12-15)
+>    behind train 341 loading at station 18 (338,295). OpenLoco: 341 leaves, the signal clears, 261 goes on (loading
+>    at 18 by 1973-01-01). goloco: 341 leaves the same way but 261 stays waitingAtSignal for good, and 341 later
+>    queues behind it — a deadlock that costs the company most of its income. trainNormalMovementUpdate's wait is as
+>    upstream (reversal.go), so sub_4ACEE7 keeps reporting the signal red: the block's occupation / reservation isn't
+>    released when 341 leaves (or 261's look-ahead reads it wrong). Next: tick by tick from title.SV5, the signal
+>    element's state at 325,301 and the blocks' occupancy as 341 leaves; compare with upstream's signal update.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)
