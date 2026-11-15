@@ -56,7 +56,10 @@ the press to know the widget is a button, and goloco's windows take clicks by po
 window; the tools' construct and demolish sounds (the PARTIAL notes) are one line each. Done 2026-11-15: the
 world-position form (world.SoundAt: calculateVolumeFromViewport and the pan, the main view only) and the right-click
 removals' demolish sound (the remove commands now set their position, as upstream's setPosition). The construct sound for
-signals, train stations and road stations (not airports or docks: upstream plays none there).
+signals, train stations and road stations (not airports or docks: upstream plays none there). A sim sound queue (pkg/sim/sounds.go: Map.playSound →
+TakeSounds, played by cmd/goloco playSimSounds at the world position) carries the simulation's sounds; first the
+breakdown sound. Also done: the industry, tree, waypoint, news and ticker sounds. Left in step 2: the widget clicks,
+the water/terraform sounds, splash and crash (through the queue).
 
 Upstream's structure:
 - **Samples:** `css1.dat` (Environment::PathId::css1) holds the UI samples, read by `loadSoundsFromCSS`

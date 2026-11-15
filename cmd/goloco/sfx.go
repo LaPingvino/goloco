@@ -63,3 +63,11 @@ func (g *Game) playCommandSound(id audio.SoundId, c *sim.Cmd) {
 		g.playSoundAt(id, audio.ChannelEffects, c.Pos[0], c.Pos[1], c.Pos[2])
 	}
 }
+
+// playSimSounds plays the sounds the simulation asked for since the last
+// frame (sim.Map.TakeSounds: a breakdown …) at their world positions.
+func (g *Game) playSimSounds() {
+	for _, s := range g.w.Map.TakeSounds() {
+		g.playSoundAt(audio.SoundId(s.ID), audio.ChannelId(s.Channel), s.X, s.Y, s.Z)
+	}
+}
