@@ -153,5 +153,8 @@ func (m *Map) RemoveTrack(c *Cmd, flags uint8, a TrackRemoval, g1 G1Raw) (int32,
 			total += m.InflationAdjustedCost(b.SellCostFactor, b.CostIndex, 10) * int32(TrackCostFactor[a.TrackID]) / 256
 		}
 	}
+	if flags&CmdApply != 0 && flags&(CmdAiAllocated|CmdGhost) == 0 {
+		m.playRemovalSound(c, a.X, a.Y, a.Z)
+	}
 	return total, true
 }

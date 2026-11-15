@@ -146,6 +146,9 @@ func (m *Map) RemoveRoad(c *Cmd, flags uint8, a RoadRemoval, g1 G1Raw) (int32, b
 			total += m.InflationAdjustedCost(b.SellCostFactor, b.CostIndex, 10) * int32(RoadCostFactor[a.RoadID]) / 256
 		}
 	}
+	if flags&CmdApply != 0 && flags&(CmdAiAllocated|CmdGhost) == 0 && c.Company != CompanyNeutral {
+		m.playRemovalSound(c, a.X, a.Y, a.Z)
+	}
 	return total, true
 }
 

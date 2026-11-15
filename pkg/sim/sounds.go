@@ -33,6 +33,7 @@ func (m *Map) playSoundVF(id uint16, channel uint8, x, y, z, volume, frequency i
 
 // Audio::SoundId values the sim plays.
 const (
+	soundDemolish      = 4
 	soundIncome        = 5
 	soundCrash         = 6
 	soundSplash2       = 9
@@ -73,6 +74,26 @@ func (m *Map) playWaterPlacedownSound(c *Cmd) {
 	if c.Pos != nil {
 		m.playSoundVF(soundConstructShip, ChannelEffects, c.Pos[0], c.Pos[1], c.Pos[2], -600, freq)
 	}
+}
+
+// playConstructionPlacementSound is GameCommands.cpp's (0x0048B013): the
+// construct sound at full volume, its frequency from gPrng2.
+func (m *Map) playConstructionPlacementSound(c *Cmd, x, y, z int32) {
+	freq := int32(22050)
+	if c.Rng2 != nil {
+		freq = c.Rng2.RandNextRange(17955, 26146)
+	}
+	m.playSoundVF(soundConstruct, ChannelEffects, x, y, z, 0, freq)
+}
+
+// playRemovalSound is RemoveTrack.cpp's playTrackRemovalSound (0x0048B04E)
+// and RemoveRoad.cpp's copy: the demolish sound, its frequency from gPrng2.
+func (m *Map) playRemovalSound(c *Cmd, x, y, z int32) {
+	freq := int32(22050)
+	if c.Rng2 != nil {
+		freq = c.Rng2.RandNextRange(17955, 26146)
+	}
+	m.playSoundVF(soundDemolish, ChannelEffects, x, y, z, 0, freq)
 }
 
 // TakeSounds returns the sounds queued since the last call and empties the

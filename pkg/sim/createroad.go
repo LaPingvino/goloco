@@ -322,9 +322,9 @@ const roadObjFlagUnk02 = 1 << 2
 // filled in (createRoadJunctions), then a bridge's and a tunnel's cost. The
 // cost, and false where upstream returns kFailure.
 // PARTIAL: a road station met is not recalculated (recalculateStationModes /
-// Center — not yet ported — then UpdateStationLabel, which is); the
-// placement sound.
+// Center — not yet ported — then UpdateStationLabel, which is).
 func (m *Map) createRoad(c *Cmd, a roadPlacementArgs, flags uint8) (int32, bool) {
+	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0))
 	r, ok := m.createRoadCheck(c, a, flags)
 	c.PosFlags = r.State.PosFlags
 	if !ok || !m.createRoadApply(c, a, flags, &r) {
@@ -348,6 +348,9 @@ func (m *Map) createRoad(c *Cmd, a roadPlacementArgs, flags uint8) (int32, bool)
 	if st.PosFlags&PosUnderground != 0 && st.Flags73&(1<<6) == 0 {
 		// upstream prices the tunnel with getTrackMiscData(roadId): kept
 		r.Cost += m.InflationAdjustedCost(road.TunnelCostFactor, 2, 8) * int32(TrackCostFactor[a.RoadID]) / 256
+	}
+	if flags&CmdApply != 0 && flags&(CmdAiAllocated|CmdGhost) == 0 && c.Company != CompanyNeutral && r.Cost != 0 {
+		m.playConstructionPlacementSound(c, c.Pos[0], c.Pos[1], c.Pos[2])
 	}
 	return r.Cost, true
 }
