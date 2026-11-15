@@ -70,6 +70,10 @@ func (m *Map) VehiclePlaceAir(c *Cmd, flags uint8, a VehicleAirPlacement) (int32
 	}
 	if a.ConvertGhost {
 		m.eachComponent(tr, func(i int) { m.Entities[i].Flags38 &^= flags38IsGhost })
+		if flags&CmdApply != 0 && flags&CmdGhost == 0 {
+			p := st.AirportStartPos
+			m.playPlacedownSound(c, int32(p[0]), int32(p[1]), int32(p[2]))
+		}
 		return 0, true
 	}
 	pos := st.AirportStartPos
@@ -123,6 +127,8 @@ func (m *Map) VehiclePlaceAir(c *Cmd, flags uint8, a VehicleAirPlacement) (int32
 	v2.CurrentSpeed, v2.MotorState = 0, MotorStopped
 	if flags&CmdGhost != 0 {
 		m.eachComponent(tr, func(i int) { m.Entities[i].Flags38 |= flags38IsGhost })
+	} else {
+		m.playPlacedownSound(c, int32(pos[0]), int32(pos[1]), int32(pos[2]))
 	}
 	return 0, true
 }
@@ -144,6 +150,9 @@ func (m *Map) VehiclePickupAir(c *Cmd, flags uint8, headID uint16) (int32, bool)
 		return 0, true
 	}
 	if head.TileX != -1 {
+		if flags&CmdGhost == 0 {
+			m.playPickupSound(c, tr)
+		}
 		m.eachComponent(tr, func(i int) {
 			e := &m.Entities[i]
 			e.TileX = -1
