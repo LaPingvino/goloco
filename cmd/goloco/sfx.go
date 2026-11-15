@@ -68,6 +68,11 @@ func (g *Game) playCommandSound(id audio.SoundId, c *sim.Cmd) {
 // frame (sim.Map.TakeSounds: a breakdown …) at their world positions.
 func (g *Game) playSimSounds() {
 	for _, s := range g.w.Map.TakeSounds() {
-		g.playSoundAt(audio.SoundId(s.ID), audio.ChannelId(s.Channel), s.X, s.Y, s.Z)
+		vol, sx, ok := g.w.SoundAt(s.X, s.Y, s.Z)
+		if !ok {
+			continue
+		}
+		g.sfx.ScreenW = int32(g.sw)
+		g.sfx.PlaySoundAtVF(audio.SoundId(s.ID), audio.ChannelId(s.Channel), vol+s.Volume, int32(sx), s.Frequency)
 	}
 }

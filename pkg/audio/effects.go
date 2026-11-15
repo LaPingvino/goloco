@@ -158,13 +158,23 @@ func (e *Effects) PlaySound(id SoundId, ch ChannelId, pan int32) {
 // (world.SoundAt): viewVolume is calculateVolumeFromViewport's, screenX the
 // point's x on the screen. Quieter than −100 dB in all, it is skipped.
 func (e *Effects) PlaySoundAt(id SoundId, ch ChannelId, viewVolume, screenX int32) {
-	if e == nil || int(id) >= len(soundVolumeTable) || soundVolumeTable[id]+viewVolume < -10000 {
-		return
-	}
-	e.play(id, ch, viewVolume, screenX)
+	e.PlaySoundAtVF(id, ch, viewVolume, screenX, 0)
 }
 
-func (e *Effects) play(id SoundId, ch ChannelId, volume, pan int32) {
+// PlaySoundAtVF is playSound(id, channel, loc, volume, frequency) after the
+// viewport's part: volume is the call's extra volume plus the viewport's;
+// frequency sets the pitch (AudioEngine applyPitch: frequency / 22000;
+// 0, or under 100, plays as recorded).
+func (e *Effects) PlaySoundAtVF(id SoundId, ch ChannelId, volume, screenX, frequency int32) {
+	if e == nil || int(id) >= len(soundVolumeTable) || soundVolumeTable[id]+volume < -10000 {
+		return
+	}
+	e.playF(id, ch, volume, screenX, frequency)
+}
+
+func (e *Effects) play(id SoundId, ch ChannelId, volume, pan int32) { e.playF(id, ch, volume, pan, 0) }
+
+func (e *Effects) playF(id SoundId, ch ChannelId, volume, pan, frequency int32) {
 	if e == nil || int(id) >= len(soundVolumeTable) {
 		return
 	}
@@ -183,7 +193,11 @@ func (e *Effects) play(id SoundId, ch ChannelId, volume, pan int32) {
 	}
 	gain := VolumeToGain(volume + e.channelVol[ChannelMaster] + e.channelVol[ch])
 	l, r := panGains(pan)
-	p := e.ctx.NewPlayerFromBytes(stereo16(e.samples[id], gain*l, gain*r))
+	pitch := 1.0
+	if frequency >= 100 || frequency <= -100 {
+		pitch = math.Abs(float64(frequency)) / 22000
+	}
+	p := e.ctx.NewPlayerFromBytes(stereo16Pitch(e.samples[id], gain*l, gain*r, pitch))
 	p.Play()
 	e.players = append(e.players, p)
 }
@@ -240,4 +254,28 @@ func stereo16(s Sample, gl, gr float64) []byte {
 		out[f*4], out[f*4+1], out[f*4+2], out[f*4+3] = byte(a), byte(a>>8), byte(b), byte(b>>8)
 	}
 	return out
+}
+
+// stereo16Pitch is stereo16 played at pitch × its speed (linear
+// interpolation, as OpenAL Soft's default resampler); pitch 1 is stereo16.
+func stereo16Pitch(s Sample, gl, gr, pitch float64) []byte {
+	out := stereo16(s, gl, gr)
+	if pitch == 1 || pitch <= 0 || len(out) < 8 {
+		return out
+	}
+	frames := len(out) / 4
+	n := int(float64(frames) / pitch)
+	res := make([]byte, n*4)
+	at := func(f, c int) float64 { return float64(int16(uint16(out[f*4+c*2]) | uint16(out[f*4+c*2+1])<<8)) }
+	for i := 0; i < n; i++ {
+		pos := float64(i) * pitch
+		f := int(pos)
+		t := pos - float64(f)
+		g := min(f+1, frames-1)
+		for c := 0; c < 2; c++ {
+			v := uint16(int16(at(f, c)*(1-t) + at(g, c)*t))
+			res[i*4+c*2], res[i*4+c*2+1] = byte(v), byte(v>>8)
+		}
+	}
+	return res
 }
