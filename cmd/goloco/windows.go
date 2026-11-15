@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/audio"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/shortcuts"
 	"github.com/LaPingvino/goloco/pkg/sim"
@@ -381,9 +382,13 @@ func (g *Game) fixedWindows() []ui.WinRect {
 	return []ui.WinRect{{X: 0, Y: 0, W: g.sw, H: 28}, {X: 0, Y: g.sh - 27, W: 140, H: 27}, {X: g.sw - 140, Y: g.sh - 27, W: 140, H: 27}}
 }
 
-// openError is Error::open at the mouse.
+// openError is Error::open at the mouse, with the error sound panned to the
+// window's centre (createErrorWindow).
 func (g *Game) openError(title, message string) {
 	g.errorWin = ui.OpenError(title, message, g.mouseX, g.mouseY, g.sw, g.sh) // the frame's mouse (a script's, when one plays)
+	if e := g.errorWin; e != nil {
+		g.playSound(audio.SoundError, audio.ChannelUI, e.W/2+e.X)
+	}
 }
 
 // cmdErrorText is the error window's second line: the command's reason

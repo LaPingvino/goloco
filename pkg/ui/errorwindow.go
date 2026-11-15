@@ -12,7 +12,7 @@ import (
 // Error.cpp's window: a title and a message, wrapped between 70 and 250
 // pixels, on a translucent muted dark red panel near the cursor; it closes
 // itself after 7 periodic updates (one per 1000 ms of WindowManager::update).
-// PARTIAL: the competitor variant (openWithCompetitor), the error sound, and
+// The error sound is played by cmd/goloco openError. PARTIAL: the competitor variant (openWithCompetitor), and
 // the text's translucent white (drawn opaque white).
 const (
 	errMinWidth = 70
