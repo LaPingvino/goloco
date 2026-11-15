@@ -96,6 +96,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    scenarioTicks2 (goloco doesn't count it), tickStartPrngState, var_014A, one vehicle entity (1530 bytes),
 >    animations (9663 bytes), waves[41]. Next: work through these one by one (export first: what goloco doesn't
 >    save is noise), then raise N and bisect the first tick the main rng parts.
+>    BISECTED: the main rng matches through tick 57 and parts at tick 58 — the date change 1972-12-31 → 1973-01-01
+>    (month AND year end): a monthly/yearly update draws gPrng1 differently (candidates: IndustryManager::
+>    updateMonthly's production changes, CompanyManager::updateYearly, updateYearly2, TileManager::updateYearly,
+>    the quarterly AI thoughts though AI is off). The companies record differs earlier, from tick ≤50 (company 0,
+>    offset 35764 into companies). Next: compare the draws of those updates with upstream, and the company field.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)
