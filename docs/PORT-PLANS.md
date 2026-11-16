@@ -31,7 +31,16 @@ Upstream's structure:
 Status (2026-11-16): step 1's pixels done — sim.MapPixelsOverall (pkg/sim/mappixels.go) is setMapPixelsOverall
 per tile (colours and flash colours; tested on the title map, mappixels_test.go), and step 2's buffer: sim.MapBuffer
 (_mapPixels / _mapAltPixels, cleared black0) filled a row per update by Map.FillMapRowOverall (setMapPixels'
-stepping for the four rotations; layout tested). Next: the window shell (drawScroll of the buffer, tabs, M key).
+stepping for the four rotations; layout tested). Next: the window shell, in tick-sized parts:
+   a. pkg/ui MapWindow (WindowType map): frame, caption, close, the scroll view (content 768 × 768, both bars),
+      size 350 × 272 (resizable, kMinWindowSize .. kMaxWindowSize); drawScroll = the buffer (Pixels, or Alt on
+      flashing frames) blitted at the scroll offset. Opened by shortcuts.ShowMap (shortcut_actions.go's stub),
+      ToolbarTop's map entry (l. 628) and TimePanel (l. 268/277); bringToFront when open.
+   b. onUpdate: Map.FillMapRowOverall a row per update (the open's clearMap and var_846 rotation; a rotation
+      change clears and restarts); getLastMapWindowAttributes (size, maximised) kept on close.
+   c. centerOnViewPoint (open, and ToolbarTop's rotate) and a click / drag centring the main view.
+   d. the five tabs (images, the overall tab only filled; the others' fills are step 4), the graph key (step 4).
+   Skin colours: InterfaceSkinObject windowTitlebarColour / windowMapColour.
 
 Order of work:
 1. Window shell: open/close from the toolbar's Map entry and the M key, frame, the five tabs, a resizable scroll
