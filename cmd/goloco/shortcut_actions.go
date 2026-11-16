@@ -19,9 +19,8 @@ import (
 // src/OpenLoco/src/Ui/WindowManager.cpp (closeTopmost, closeAllFloatingWindows),
 // src/OpenLoco/src/Ui/ToolManager.cpp (toolCancel).
 //
-// PARTIAL: no editor mode (the shortcuts it turns off); showMap (no map
-// window), sendMessage (no network game), openDebugWindow (no debug window)
-// do nothing; rotateConstructionObject's town list (the editor's build
+// PARTIAL: no editor mode (the shortcuts it turns off); sendMessage (no
+// network game), openDebugWindow (no debug window) do nothing; rotateConstructionObject's town list (the editor's build
 // tabs) and company window (the headquarters ghost) parts.
 
 // shortcutActions is ShortcutManager's list of actions, by shortcut.
@@ -60,7 +59,7 @@ var shortcutActions = [shortcuts.Count]func(g *Game){
 	shortcuts.ShowTownsList:                  (*Game).openTownsWindow,
 	shortcuts.ShowIndustriesList:             (*Game).openIndustryList,
 	shortcuts.ShowCompaniesList:              (*Game).openCompanyList,
-	shortcuts.ShowMap:                        func(g *Game) { log.Println("[Game] showMap: the map window is not ported yet") },
+	shortcuts.ShowMap:                        func(g *Game) { g.openMap() },
 	shortcuts.ShowCompanyInformation:         func(g *Game) { c, _ := g.w.ControllingCompany(); g.openCompanyWindow(c) },
 	shortcuts.ShowFinances:                   func(g *Game) { c, _ := g.w.ControllingCompany(); g.openCompanyFinances(c) },
 	shortcuts.ShowAnnouncementsList:          (*Game).openMessagesWindow,
