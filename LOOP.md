@@ -129,7 +129,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    performance) was unported — now in headquarters.go. Then town 31 (tick 17428): the same 144 town-prng draws, but
    goloco built a 2×2 building where OpenLoco's query pass refused it — constructBuilding and addRoadJunction applied
    without GameCommands::doCommand's query pass (now through sim doCommand). 0 tiles differ at 18055; the main rng
-   matches OpenLoco through tick 30000 (AI off). Next: push past 30000. Tools: the traced build's OPENLOCO_BUILDTRACE=1
+   matches OpenLoco through tick 100000 (AI off; ~2.8 game years). At 100000 every town matches; still differing:
+   companies[0] (321 bytes), industries[45] (19 bytes), vehicle entities, messages, animations, and the noise
+   (unkRng/gPrng2, entity lists, scenarioTicks2, tickStartPrngState, var_014A, pads). Next: industries[45] and
+   companies[0] — bisect their first divergence (simcmp | grep 'TYPE: industries \[45\]'), read the offsets. Tools: the traced build's OPENLOCO_BUILDTRACE=1
    and OPENLOCO_RNGTRACE_TOWN=N; gosave -rngtrace N -rngtrace-other (the other generators' draws too). NB: simcmp needs the established OLREF_HOME
    (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
