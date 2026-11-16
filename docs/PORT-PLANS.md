@@ -29,7 +29,9 @@ Upstream's structure:
   (`centerOnViewPoint`, also called by ToolbarTop's rotate).
 
 Status (2026-11-16): step 1's pixels done — sim.MapPixelsOverall (pkg/sim/mappixels.go) is setMapPixelsOverall
-per tile (colours and flash colours; tested on the title map, mappixels_test.go). Next: the window shell itself.
+per tile (colours and flash colours; tested on the title map, mappixels_test.go), and step 2's buffer: sim.MapBuffer
+(_mapPixels / _mapAltPixels, cleared black0) filled a row per update by Map.FillMapRowOverall (setMapPixels'
+stepping for the four rotations; layout tested). Next: the window shell (drawScroll of the buffer, tabs, M key).
 
 Order of work:
 1. Window shell: open/close from the toolbar's Map entry and the M key, frame, the five tabs, a resizable scroll

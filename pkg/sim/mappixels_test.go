@@ -57,3 +57,32 @@ func TestMapPixelsOverall(t *testing.T) {
 		t.Errorf("not every kind met: land %v water %v building %v tree %v", land, water, building, tree)
 	}
 }
+
+// Every row filled, a tile's pair lands where upstream's stepping puts it:
+// rotation 0, row tx, ty steps down; rotation 1, row ty, 383−tx steps.
+func TestMapBufferLayout(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	g1, ok := om.G1File.(*assets.G1File)
+	if !ok {
+		t.Skip("g1 not present")
+	}
+	pixel := func(img uint32, i int) uint8 { return g1.Elements[img].Data[i] }
+	for rot, at := range []func(tx, ty int) int{
+		func(tx, ty int) int { return tx*(MapRenderedWidth-1) + 383 + ty*(MapRenderedWidth+1) },
+		func(tx, ty int) int { return ty*(MapRenderedWidth-1) + 383 + (383-tx)*(MapRenderedWidth+1) },
+	} {
+		b := NewMapBuffer()
+		for range mapColumns + 1 {
+			m.FillMapRowOverall(b, rot, om, pixel, 0)
+		}
+		if b.Row != 0 {
+			t.Errorf("rotation %d: row %d after a round", rot, b.Row)
+		}
+		for _, p := range [][2]int{{100, 120}, {200, 50}, {57, 300}} {
+			c0, c1, _, _, _ := m.MapPixelsOverall(p[0], p[1], om, pixel, 0)
+			if o := at(p[0], p[1]); b.Pixels[o] != c0 || b.Pixels[o+1] != c1 {
+				t.Errorf("rotation %d tile %v: %#x %#x, want %#x %#x", rot, p, b.Pixels[o], b.Pixels[o+1], c0, c1)
+			}
+		}
+	}
+}
