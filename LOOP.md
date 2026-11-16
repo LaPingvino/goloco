@@ -154,7 +154,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    goloco has none — its export writes the loaded bytes back. Effect beyond the save: only the order a quadrant's
    entities are met (collision checks, when two collide at once). Port when worth it: one moveTo path for every
    position change first (goloco sets PosX in many places). Until then (a) and (b, the driving sounds: PORT-PLANS B)
-   are known noise in entdiff. Tools: the traced build's OPENLOCO_BUILDTRACE=1
+   are known noise in entdiff.
+   messages: the live messages match through tick 100000; from tick 69726 the slots PAST numMessages differ —
+   MessageManager::remove rotates a removed message to the array's end (slot 199), goloco's export leaves the
+   loaded bytes there. Nothing reads those slots: noise (mirroring it = the 200 raw records kept in the model).
+   Left at 100000 after this: animations, entity tile chains, driving sounds, and the noise fields. Tools: the traced build's OPENLOCO_BUILDTRACE=1
    and OPENLOCO_RNGTRACE_TOWN=N; gosave -rngtrace N -rngtrace-other (the other generators' draws too). NB: simcmp needs the established OLREF_HOME
    (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
