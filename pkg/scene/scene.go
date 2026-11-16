@@ -1218,11 +1218,13 @@ const (
 	imgVehicleCrash0  = 3302 // 5 sets of 12
 	imgExplosionCloud = 3372 // 18
 	imgSplash         = 3421 // 28
+	imgSmoke          = 3465 // smoke_00, 12
 )
 
 // paintEffectEntity is PaintEffectEntity.cpp for the crash effects:
 // paintVehicleCrashParticleEntity (zoom 0 only, in the part's colours),
-// paintExplosionCloudEntity and paintSplashEntity (zoom 2 at most); each a
+// paintExplosionCloudEntity and paintSplashEntity (zoom 2 at most),
+// paintSmokeEntity (a broken-down train's, zoom 1 at most); each a
 // parent at its height, frame / 256 into its run.
 func (r *Renderer) paintEffectEntity(s *paint.Session, e *sim.Effect) {
 	zoom := s.Zoom
@@ -1266,6 +1268,11 @@ func (r *Renderer) paintEffectEntity(s *paint.Session, e *sim.Effect) {
 		id = imgExplosionCloud + int(e.Frame)/256
 	case sim.EffectSplash:
 		id = imgSplash + int(e.Frame)/256
+	case sim.EffectSmoke: // paintSmokeEntity: zoom 1 at most
+		if zoom > 1 {
+			return
+		}
+		id = imgSmoke + int(e.Frame)/256
 	default:
 		return
 	}

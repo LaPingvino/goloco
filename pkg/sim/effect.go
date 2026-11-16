@@ -17,6 +17,7 @@ const (
 	effectTypeVehicleCrashParticle = 3 // EffectType::vehicleCrashParticle
 	effectTypeExplosionCloud       = 4 // EffectType::explosionCloud
 	effectTypeSplash               = 5 // EffectType::splash
+	effectTypeSmoke                = 8 // EffectType::smoke: a broken-down train's
 
 	maxMiscEntities = 4000 // Limits::kMaxMiscEntities
 
@@ -30,6 +31,7 @@ const (
 	EffectVehicleCrashParticle = effectTypeVehicleCrashParticle
 	EffectExplosionCloud       = effectTypeExplosionCloud
 	EffectSplash               = effectTypeSplash
+	EffectSmoke                = effectTypeSmoke
 )
 
 // Effect is a crash effect entity's fields: position, sprite extents
@@ -173,7 +175,18 @@ func (m *Map) updateEffect(om *objects.ObjectManager, id uint16, e *Effect) {
 		}
 	case effectTypeVehicleCrashParticle:
 		m.updateCrashParticle(id, e)
+	case effectTypeSmoke: // Smoke::tick (0x004407A1): rising a step a tick
+		m.moveEffect(e, e.X, e.Y, e.Z+1)
+		e.Frame += 0x55
+		if e.Frame >= 0xC00 {
+			m.freeEffect(id)
+		}
 	}
+}
+
+// createSmoke is Smoke::create (0x00440BEB).
+func (m *Map) createSmoke(x, y, z int32) {
+	m.newEffect(Effect{X: x, Y: y, Z: z, SubType: effectTypeSmoke, Width: 44, HeightNeg: 32, HeightPos: 34})
 }
 
 // updateCrashParticle is VehicleCrashParticle::update: gravity and air

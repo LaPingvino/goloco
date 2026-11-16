@@ -30,7 +30,10 @@ func (m *Map) updateBreakdown(tr Train, om *objects.ObjectManager) {
 	}
 	for _, car := range tr.Cars {
 		front := &m.Entities[car[0].Front]
-		// brokenDown: Smoke::create every 4th scenario tick — PARTIAL
+		if front.BreakdownFlags&BreakdownBrokenDn != 0 && m.ScenarioTicks&3 == 0 { // smoke from the body, every 4th tick
+			body := &m.Entities[car[0].Body]
+			m.createSmoke(int32(body.PosX), int32(body.PosY), int32(body.PosZ)+4)
+		}
 		if front.BreakdownFlags&BreakdownPending != 0 && !m.TitleMode && !Config.BreakdownsDisabled {
 			front.BreakdownFlags &^= BreakdownPending
 			front.BreakdownFlags |= BreakdownBrokenDn

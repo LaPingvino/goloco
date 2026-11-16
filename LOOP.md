@@ -145,7 +145,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    tile-quadrant chain: which entity follows which on a tile) on many vehicles — the order moveTo links them;
    (b) 0x46 on Vehicle2/tail: the driving sound's state (unported); (c) entities 51–54: an effect slot (base 1,
    sub 8) zeroed fresh in OpenLoco but holding an older effect in goloco, plus a body and others — goloco
-   creates/frees effects in other slots (the entity free list's order). Next: (c), then (a). Tools: the traced build's OPENLOCO_BUILDTRACE=1
+   creates/frees effects in other slots (the entity free list's order). Next: (c), then (a).
+   (c) was smoke: a broken-down train's smoke was unported (created, ticked, drawn) and the save's kept as read —
+   now in (effect.go, breakdown.go, scene.go). entdiff -base ol0,g0 hides what differed from the start (OpenLoco's
+   load drops padding goloco keeps): after one tick only (a) and (b) are left. Next: (a), the tile-quadrant chain. Tools: the traced build's OPENLOCO_BUILDTRACE=1
    and OPENLOCO_RNGTRACE_TOWN=N; gosave -rngtrace N -rngtrace-other (the other generators' draws too). NB: simcmp needs the established OLREF_HOME
    (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo

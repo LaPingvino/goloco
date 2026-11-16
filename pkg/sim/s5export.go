@@ -44,7 +44,8 @@ const moneySpriteWidth, moneySpriteHeightNeg, moneySpriteHeightPos = 64, 20, 30
 
 // loadEffects takes a saved game's effect entities: exhausts, crash
 // particles, explosion clouds and splashes into Effects, money into
-// MoneyEffects, the rest (fireball, explosion smoke, smoke) kept as read.
+// MoneyEffects, the rest (fireball, explosion smoke) kept as read; smoke too
+// goes into Effects.
 func (m *Map) loadEffects(misc []scenario.MiscEntity) {
 	m.Effects, m.MoneyEffects, m.OtherEffects = nil, nil, nil
 	for _, e := range misc {
@@ -62,7 +63,7 @@ func (m *Map) loadEffects(misc []scenario.MiscEntity) {
 				me.Frame = e.Field26
 			}
 			m.MoneyEffects[e.ID] = me
-		case scenario.EffectExhaust, scenario.EffectVehicleCrashParticle, scenario.EffectExplosionCloud, scenario.EffectSplash:
+		case scenario.EffectExhaust, scenario.EffectVehicleCrashParticle, scenario.EffectExplosionCloud, scenario.EffectSplash, scenario.EffectSmoke:
 			if m.Effects == nil {
 				m.Effects = map[uint16]*Effect{}
 			}
