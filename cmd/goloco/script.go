@@ -52,7 +52,7 @@ import (
 //	                    construction window open, building on from a position, its tab; camx, camy: the view's
 //	                    position; townlist, stationlist, vehiclelist, industrylist, companywindow: 1 while one
 //	                    is open; terraformwindow, terraformtab, paused, speed, zoom, constype, conspiece,
-//	                    consgradient, consrotation, drivercheat, jailed, windows, textinput (script.go
+//	                    consgradient, consrotation, drivercheat, jailed, orders, stationtool, windows, textinput (script.go
 //	                    scriptExpect says what each is); window:NAME: 1 while a window of that type is open; viewflags: the main viewport's flags (ViewportFlags' bits); maptip~TEXT: 1 while the map tooltip shows text holding TEXT, _ for a space),
 //	                    op one of
 //	                    > >= == <= <; a failed check makes the run exit 1
@@ -540,6 +540,19 @@ func (g *Game) scriptExpect() {
 	case "drivercheat": // 1 once the DRIVER cheat is on
 		if g.driverCheat {
 			got = 1
+		}
+	case "stationtool": // 1 while the construction window's Station tab has the tool (another tool's toolSet cancels it)
+		if g.stationToolOn() {
+			got = 1
+		}
+	case "orders": // the orders of the front-most vehicle window's train (its order table, End not counted)
+		for i := len(g.wins.Windows) - 1; i >= 0; i-- {
+			if vw, ok := g.wins.Windows[i].(*ui.VehicleWindow); ok {
+				if tr, err := g.w.Map.TrainOf(uint16(vw.Number)); err == nil {
+					got = int64(len(g.w.Map.OrderTable(g.w.Map.Entities[tr.Head].OrderTableOffset)))
+				}
+				break
+			}
 		}
 	case "jailed": // the controlling company's days in jail (the FREECASH cheat: 30)
 		if company < len(g.w.Map.Companies) {

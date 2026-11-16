@@ -39,21 +39,29 @@ type RouteHit struct {
 // ships or aircraft), roadAdjustedInteraction (any owner's road; its station,
 // else a waypoint — not for aircraft), the station elements as before. The
 // waypoint is at the piece's first tile, its height less the part's z
-// (0x004B5160 / 0x004B5223). PARTIAL: water waypoints (ships) and the station
-// label hit; the waypoint sound.
+// (0x004B5160 / 0x004B5223); a station's name sign is a stop there when the
+// station is the player's (stationLabelAdjustedInteraction), and wins over
+// what is painted under it (getMapCoordinatesFromPos' order). PARTIAL: water
+// waypoints (ships); the waypoint sound.
 func (w *World) RouteAt(sx, sy int, mode uint8) (RouteHit, bool) {
 	if !w.ensureScene() {
 		return RouteHit{}, false
 	}
 	m := &w.Map
-	v := w.mainView()
-	ps := w.scene.InteractionAt(m, v, sx, sy, func(it paint.InteractionItem) bool {
+	in := w.mapCoordinatesAt(sx, sy, func(it paint.InteractionItem) bool {
 		switch it {
-		case paint.ItemTrack, paint.ItemRoad, paint.ItemTrainStation, paint.ItemRoadStation, paint.ItemAirport, paint.ItemDock:
+		case paint.ItemTrack, paint.ItemRoad, paint.ItemTrainStation, paint.ItemRoadStation, paint.ItemAirport, paint.ItemDock, paint.ItemStationLabel:
 			return true
 		}
 		return false
 	})
+	if in.Type == paint.ItemStationLabel { // stationLabelAdjustedInteraction: a stop at the player's station
+		if in.ID < 0 || in.ID >= len(m.StationNames) || m.StationNames[in.ID].Owner != m.ControllingCompany {
+			return RouteHit{}, false
+		}
+		return RouteHit{Station: in.ID}, true
+	}
+	ps := in.ps
 	if ps == nil {
 		return RouteHit{}, false
 	}
