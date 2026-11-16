@@ -210,7 +210,7 @@ func (m *Map) constructBuilding(c *Cmd, town int, p *core.Prng, x, y, z int32, r
 	if growFlags&TownGrowBuildImmediately != 0 {
 		a.BuildImmediately = true
 	}
-	m.CreateBuilding(c, CmdApply, a)
+	doCommand(CmdApply, func(f uint8) (int32, bool) { return m.CreateBuilding(c, f, a) }) // GameCommands::doCommand: the query pass first
 }
 
 // intersectionCheck is Town.cpp kIntersectionCheck: the tiles either side
@@ -303,7 +303,8 @@ func (m *Map) addRoadJunction(c *Cmd, p *core.Prng, x, y, z int32, rad uint16, o
 			newRoad = 2
 		}
 	}
-	m.createRoad(c, roadPlacementArgs{X: x, Y: y, Z: z, Rotation: edge ^ 2, RoadID: newRoad, Bridge: 0xFF, RoadObjectID: roadObj}, CmdApply)
+	a := roadPlacementArgs{X: x, Y: y, Z: z, Rotation: edge ^ 2, RoadID: newRoad, Bridge: 0xFF, RoadObjectID: roadObj}
+	doCommand(CmdApply, func(f uint8) (int32, bool) { return m.createRoad(c, a, f) })
 	return true
 }
 
