@@ -635,8 +635,10 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 	// (the rows and their colours follow the sorted vehicles).
 	w.Sort = func(mode int) {
 		sort.SliceStable(vehicles, func(i, j int) bool { return vehicleOrder(mode, vehicles[i], vehicles[j]) })
+		w.RowIDs = w.RowIDs[:0]
 		for i, v := range vehicles {
 			w.Rows[i] = cells(v)
+			w.RowIDs = append(w.RowIDs, int(v.HeadID)) // rowInfo: the vehicle a click opens
 		}
 	}
 	w.Sort(0)

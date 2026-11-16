@@ -1,0 +1,37 @@
+# Playthrough H4: the Vehicles list opens a vehicle's window. Weatherworld:
+# Build Vehicles → Build Buses, the Vulcan VSD Bus bought (Bus 1, not
+# placed); every window closed; the Vehicles list → its Buses tab → Bus 1's
+# row: the bus's window (VehicleList onScrollMouseDown: Main when placed,
+# else Details — where the place button is). Joop 2026-11-16: "Trying to get
+# to the window of the bus especially when it's not placed on the road yet."
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+click 682 14
+wait 1
+click 720 67
+wait 2
+move 60 144
+wait 1
+click 60 144
+wait 2
+expect window:vehicle == 1
+key Left Shift+Backspace
+wait 1
+expect window:vehicle == 0
+click 725 14
+wait 1
+move 50 57
+wait 1
+click 50 57
+wait 1
+move 100 92
+wait 1
+click 100 92
+wait 1
+expect window:vehicle == 1
+move 700 520
+wait 1
+shot /tmp/goloco-playthrough/pt-h4-bus.png
+quit

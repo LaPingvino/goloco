@@ -48,7 +48,7 @@ func (g *Game) newVehicleList(company, tab int) *ui.TownListWindow {
 			for _, c := range g.w.TrainCars(v.HeadID) {
 				cars = append(cars, ui.TrainCarDraw(c))
 			}
-			rows = append(rows, ui.VehicleRow{Name: v.Name, Profit: v.Profit, AgeYears: v.AgeYears, Reliability: v.Reliability,
+			rows = append(rows, ui.VehicleRow{HeadID: v.HeadID, Name: v.Name, Profit: v.Profit, AgeYears: v.AgeYears, Reliability: v.Reliability,
 				RecentProfit: v.RecentProfit, DayCreated: v.DayCreated, Cars: cars, Status: v.Status, StatusRed: v.StatusRed, Cargos: v.Cargos, Carried: v.Carried})
 		}
 	}
@@ -82,6 +82,20 @@ func (g *Game) newVehicleList(company, tab int) *ui.TownListWindow {
 		return company < len(g.w.Map.Companies) && g.w.Map.Companies[company].AvailableVehicles&(1<<i) == 0
 	}
 	w.Rebuild = func() *ui.TownListWindow { return g.newVehicleList(company, tab) }
+	// onScrollMouseDown: the vehicle's window, on Main when it is placed,
+	// else on Details (where its pick-up / place button is).
+	w.OnRow = func(id int) {
+		tr, err := g.w.Map.TrainOf(uint16(id))
+		if err != nil {
+			return
+		}
+		h := g.w.Map.Entities[tr.Head]
+		if h.TileX != -1 && h.Flags38&0x10 == 0 { // VehicleHead::isPlaced: on the map, not a ghost
+			g.openVehicleWindow(uint16(id), 0)
+		} else {
+			g.openVehicleDetails(uint16(id))
+		}
+	}
 	return w
 }
 
