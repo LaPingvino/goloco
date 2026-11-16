@@ -136,7 +136,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    industries[45]: it closes at tick 1595 in both; the freed slot's record differed — the export now empties its
    tile list as RemoveIndustry does (s5save.go). Left as noise: the freed slot's live fields (tileLoop 0xD7 and ~5
    more) that goloco doesn't keep once the industry is gone (a new industry there overwrites them all).
-   Next: companies[0]. Tools: the traced build's OPENLOCO_BUILDTRACE=1
+   companies: the AI thoughts' income (a vehicle's cargo profit to its head's aiThoughtId, read from the raw entity),
+   the owner emotions (evaluateChallengeProgress; updateMonthly1's angry/happy/scared/worried/dejected; the lowest
+   performer dejected) and CompanyManager::updateQuarterly (thoughts' age, previous income, running cost) were
+   unported — now in. Companies match OpenLoco through tick 20000. Tools: the traced build's OPENLOCO_BUILDTRACE=1
    and OPENLOCO_RNGTRACE_TOWN=N; gosave -rngtrace N -rngtrace-other (the other generators' draws too). NB: simcmp needs the established OLREF_HOME
    (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo

@@ -134,9 +134,11 @@ func rotate120[T any](h *[120]T, v T) {
 
 // companiesUpdateMonthly1 is CompanyManager::updateMonthly1 → each company's
 // Company::updateMonthly1 (the controlling company's promotion posts
-// companyPromoted). PARTIAL: the competitor start delay, emotions
-// (angry / happy / scared / worried / dejected) and the Ui invalidations are
-// not ported. The bankruptcy news are posted (warnings at 3 and 6 months in
+// companyPromoted), with the owner's emotions: angry at two months of falling
+// deliveries, happy or scared as the performance rises or falls, worried
+// without cash, scared at the bankruptcy warnings, dejected at bankruptcy —
+// and, of more than one company, the lowest performer dejected. PARTIAL: the
+// competitor start delay and the Ui invalidations are not ported. The bankruptcy news are posted (warnings at 3 and 6 months in
 // the red for the controlling company, declared at 9), and a bankruptcy
 // stops the company's vehicles (stopAllCompanyVehicles).
 func (m *Map) companiesUpdateMonthly1(om *objects.ObjectManager) {
@@ -149,6 +151,9 @@ func (m *Map) companiesUpdateMonthly1(om *objects.ObjectManager) {
 		c.CargoUnitsTotalDelivered = 0
 		rotate120(&c.CargoUnitsDistanceHist, c.CargoUnitsTotalDistance)
 		c.CargoUnitsTotalDistance = 0
+		if c.HistorySize >= 2 && c.CargoUnitsDeliveredHist[0] < c.CargoUnitsDeliveredHist[1] && c.CargoUnitsDeliveredHist[1] < c.CargoUnitsDeliveredHist[2] {
+			m.companyEmotionEvent(id, emotionAngry)
+		}
 		perf := m.CalculatePerformanceIndex(id)
 		face.ChallengeFlags &^= companyFlagIncreasedPerformance | companyFlagDecreasedPerformance
 		if perf < face.Performance {
@@ -164,6 +169,12 @@ func (m *Map) companiesUpdateMonthly1(om *objects.ObjectManager) {
 				m.PostMessage(nil, MsgCompanyPromoted, 0xFF, uint16(id), uint16(rating), 0xFFFF)
 			}
 		}
+		if face.ChallengeFlags&companyFlagIncreasedPerformance != 0 {
+			m.companyEmotionEvent(id, emotionHappy)
+		}
+		if face.ChallengeFlags&companyFlagDecreasedPerformance != 0 {
+			m.companyEmotionEvent(id, emotionScared)
+		}
 		vp, value := m.CalculateCompanyValue(id)
 		rotate120(&c.CompanyValueHistory, value)
 		c.VehicleProfit = vp
@@ -177,6 +188,9 @@ func (m *Map) companiesUpdateMonthly1(om *objects.ObjectManager) {
 		interest := c.CurrentLoan * int32(m.LoanInterestRate) / 1200
 		m.ensureCompanyFunding(nil, id, interest+1)
 		m.ApplyPaymentToCompany(uint8(id), interest, expenditureLoanInterest)
+		if c.Cash <= 0 {
+			m.companyEmotionEvent(id, emotionWorried)
+		}
 		if face.ChallengeFlags&companyFlagBankrupt == 0 {
 			if c.Cash < 0 {
 				c.NumMonthsInTheRed++
@@ -190,20 +204,37 @@ func (m *Map) companiesUpdateMonthly1(om *objects.ObjectManager) {
 					if face.ChallengeFlags&(companyFlagChallengeBeaten|companyFlagChallengeCompleted) == 0 {
 						face.ChallengeFlags |= companyFlagChallengeFailed
 					}
+					m.companyEmotionEvent(id, emotionDejected)
 					m.stopAllCompanyVehicles(uint8(id), om)
 				}
 				if uint8(id) == m.ControllingCompany {
 					switch c.NumMonthsInTheRed {
 					case 3:
 						m.PostMessage(nil, MsgBankruptcyWarning6MonthsRemaining, uint8(id), uint16(id), 0xFFFF, 0xFFFF)
+						m.companyEmotionEvent(id, emotionScared)
 					case 6:
 						m.PostMessage(nil, MsgBankruptcyWarning3MonthsRemaining, uint8(id), uint16(id), 0xFFFF, 0xFFFF)
+						m.companyEmotionEvent(id, emotionScared)
 					}
 				}
 			} else {
 				c.NumMonthsInTheRed = 0
 			}
 		}
+	}
+	// the lowest performance (the first of equals) is dejected, unless alone
+	low, n := -1, 0
+	for id := range m.Companies {
+		if id >= len(m.CompanyFaces) || m.CompanyEmpty(id) {
+			continue
+		}
+		n++
+		if low < 0 || m.CompanyFaces[id].Performance < m.CompanyFaces[low].Performance {
+			low = id
+		}
+	}
+	if low >= 0 && n != 1 {
+		m.companyEmotionEvent(low, emotionDejected)
 	}
 }
 

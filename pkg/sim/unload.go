@@ -222,6 +222,11 @@ func (m *Map) UpdateUnloadCargo(tr Train, om *objects.ObjectManager) {
 	profit := int32(head.Var58)
 	head.Var58 = 0
 	if profit != 0 {
+		// an AI's vehicle: its thought's income (aiThoughtId, head 0x60: kept
+		// in the raw entity; one made in play has none, 0xFF)
+		if raw := head.Raw; len(raw) > 0x60 && raw[0x60] != 0xFF && int(head.Owner) < len(m.Companies) && int(raw[0x60]) < 60 {
+			m.Companies[head.Owner].ThoughtIncome[raw[0x60]] += profit
+		}
 		m.Entities[tr.Veh2].CurMonthRevenue += profit
 		m.Entities[tr.Veh1].Var48 |= 1 << 2 // Flags48::flag2
 		m.ApplyPaymentToCompany(head.Owner, -profit, head.VehicleType*2)

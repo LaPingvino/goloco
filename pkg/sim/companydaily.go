@@ -22,8 +22,23 @@ const aiThinkStateUnk3 = 3
 // emotionWeightings is Company.cpp's: which active emotion shows.
 var emotionWeightings = [9]uint8{0, 4, 6, 5, 3, 8, 1, 2, 7}
 
-// emotionDejected is Emotion::dejected (a bankrupt owner's face).
-const emotionDejected = 4
+// Emotion values (Company.h).
+const (
+	emotionHappy     = 1
+	emotionWorried   = 2
+	emotionDejected  = 4 // also a bankrupt owner's face
+	emotionSurprised = 5
+	emotionScared    = 6
+	emotionAngry     = 7
+)
+
+// kEmotionDurations (0x004F9462): the days an emotion lasts.
+var kEmotionDurations = [9]uint8{0, 31, 10, 7, 31, 10, 31, 31, 11}
+
+// companyEmotionEvent is Company.cpp's (0x00437F29): the emotion for its days.
+func (m *Map) companyEmotionEvent(id int, emotion int) {
+	m.Companies[id].ActiveEmotions[emotion] = kEmotionDurations[emotion]
+}
 
 // thoughtDestinationAIsIndustry is kThoughtTypeFlags' destinationAIsIndustry
 // per AI thought type (CompanyAi.cpp 0x004FE720): destinationA is an
@@ -178,4 +193,31 @@ func shouldSetObservation(timeout uint16, curStatus uint8, curX, curY int16, cur
 		return false
 	}
 	return status != curStatus || x != curX || y != curY || object != curObject || entity != curEntity
+}
+
+// companiesUpdateQuarterly is CompanyManager::updateQuarterly → Company::
+// updateQuarterly (0x00487FCC), at the start of January, April, July and
+// October: each AI thought a quarter older, its income kept as the previous
+// quarter's and counted afresh, its running cost its vehicles' now.
+func (m *Map) companiesUpdateQuarterly(om *objects.ObjectManager) {
+	for id := range m.Companies {
+		if m.CompanyEmpty(id) {
+			continue
+		}
+		c := &m.Companies[id]
+		for k := range c.ThoughtType {
+			if c.ThoughtType[k] == 0xFF { // AiThoughtType::null
+				continue
+			}
+			c.ThoughtAge[k] = uint8(min(0xFF, int(c.ThoughtAge[k])+1))
+			c.ThoughtPrevIncome[k], c.ThoughtIncome[k] = c.ThoughtIncome[k], 0
+			total := int32(0)
+			for v := range min(int(c.ThoughtNumVehicles[k]), 8) {
+				if tr, err := m.TrainOf(c.ThoughtVehicles[k][v]); err == nil {
+					total += m.calculateRunningCost(tr, om)
+				}
+			}
+			c.ThoughtRunningCost[k] = total
+		}
+	}
 }
