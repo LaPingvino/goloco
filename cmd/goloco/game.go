@@ -726,6 +726,7 @@ func (g *Game) tileUnderCursor(sx, sy int) (int, int) {
 // later (a game loaded) gets them again.
 func (g *Game) applyRenderingConfig() {
 	g.w.NoCashPopups = configValue("cashPopupRendering") == "false"
+	g.w.CashPopupIncomeColours = configValue("cashPopupIncomeColours") == "true" // goloco's own: green income, red costs
 	if world.GridlinesOnLandscape { // ViewportManager::create: the main view starts with them
 		g.w.SetGridlines(true)
 	}

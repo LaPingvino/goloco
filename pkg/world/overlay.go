@@ -172,6 +172,7 @@ var kWiggleYOffsets = func() [440]int8 {
 // (offsetX: minus half the medium bold width), each glyph raised by
 // kWiggleYOffsets from the effect's wiggle; medium bold at zoom 0, small at 1.
 // Like upstream (Viewport::paint) they come after the station and town names.
+// With goloco's cashPopupIncomeColours, green for income and red for costs.
 // PARTIAL: the redGreen subtype (made by nothing in OpenLoco) is not painted;
 // overlapping effects stack in the misc entity list's order, upstream's in the
 // order paint met them (the string plot list).
@@ -204,6 +205,12 @@ func (w *World) drawMoneyEffects(screen *ebiten.Image) {
 			colour = int(w.CompanyColours[e.Company])
 		}
 		body, outline := ui.WindowColour1Text(colour)
+		if w.CashPopupIncomeColours { // goloco's option: {COLOUR GREEN} / {COLOUR RED}
+			body, outline = ui.TextColours(13) // Colour::green
+			if amount < 0 {
+				body, outline = ui.TextColours(27) // Colour::red
+			}
+		}
 		tw := ui.DrawTextYOffsets(screen, text, font, sx, sy, kWiggleYOffsets[e.Wiggle:], body, outline)
 		ui.MarkForeign(image.Rect(sx-1, sy-5, sx+tw+1, sy+16)) // draw8's screen copy
 	}
