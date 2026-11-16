@@ -40,8 +40,9 @@ func (g *Game) industryToolOn() bool {
 // industryToolStart is switchTab's toolSet and the tab's prng step
 // (gPrng2().randNext(); _placementPrng = gPrng2()).
 func (g *Game) industryToolStart(win *ui.TownListWindow) {
+	g.toolCancel() // toolSet: whichever window had the tool loses it (a vehicle's place or route tool, a construction window's)
 	g.industryToolAbort()
-	g.closeTerraform() // toolSet: the tool is this window's now
+	g.closeTerraform() // and the Terraform window, whose tool it was
 	g.w.Rng2.RandNext()
 	g.indTool = industryTool{on: true, prng: g.w.Rng2, win: win}
 }
