@@ -132,7 +132,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    matches OpenLoco through tick 100000 (AI off; ~2.8 game years). At 100000 every town matches; still differing:
    companies[0] (321 bytes), industries[45] (19 bytes), vehicle entities, messages, animations, and the noise
    (unkRng/gPrng2, entity lists, scenarioTicks2, tickStartPrngState, var_014A, pads). Next: industries[45] and
-   companies[0] — bisect their first divergence (simcmp | grep 'TYPE: industries \[45\]'), read the offsets. Tools: the traced build's OPENLOCO_BUILDTRACE=1
+   companies[0] — bisect their first divergence (simcmp | grep 'TYPE: industries \[45\]'), read the offsets.
+   industries[45]: it closes at tick 1595 in both; the freed slot's record differed — the export now empties its
+   tile list as RemoveIndustry does (s5save.go). Left as noise: the freed slot's live fields (tileLoop 0xD7 and ~5
+   more) that goloco doesn't keep once the industry is gone (a new industry there overwrites them all).
+   Next: companies[0]. Tools: the traced build's OPENLOCO_BUILDTRACE=1
    and OPENLOCO_RNGTRACE_TOWN=N; gosave -rngtrace N -rngtrace-other (the other generators' draws too). NB: simcmp needs the established OLREF_HOME
    (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
