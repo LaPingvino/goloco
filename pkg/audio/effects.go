@@ -132,6 +132,9 @@ type Effects struct {
 	Record     bool
 	Played     []Played
 	ScreenW    int32 // Ui::width(), for calculatePan
+	// Disabled is !Audio::isAudioEnabled (the Audio menu's Mute):
+	// playSound returns at once.
+	Disabled bool
 }
 
 // NewEffects is the effects mixer over css1.dat's samples; ctx nil plays
@@ -175,7 +178,7 @@ func (e *Effects) PlaySoundAtVF(id SoundId, ch ChannelId, volume, screenX, frequ
 func (e *Effects) play(id SoundId, ch ChannelId, volume, pan int32) { e.playF(id, ch, volume, pan, 0) }
 
 func (e *Effects) playF(id SoundId, ch ChannelId, volume, pan, frequency int32) {
-	if e == nil || int(id) >= len(soundVolumeTable) {
+	if e == nil || e.Disabled || int(id) >= len(soundVolumeTable) {
 		return
 	}
 	volume += soundVolumeTable[id]
