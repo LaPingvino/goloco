@@ -33,6 +33,7 @@ func main() {
 	monthly := flag.Bool("monthly", false, "also save at each month's start, as OpenLoco's monthly autosave (out-YYYY-MM.SV5 beside out)")
 	seed := flag.Uint("seed", 1950, "a .SC5's new-game rng seed (the script's \"seed N\")")
 	data := flag.String("data", "../locomotion", "the Locomotion folder")
+	otherTrace := flag.Bool("rngtrace-other", false, "with -rngtrace: also the draws of the other generators (a town's, an industry's: copies the code makes as it goes)")
 	rngTrace := flag.Int("rngtrace", 0, "print each main-rng (gPrng1) draw of this tick of the run (1-based) with its callers, as scripts/olref/rngtrace.patch does in OpenLoco")
 	flag.Parse()
 	if flag.NArg() != 2 {
@@ -82,8 +83,12 @@ func main() {
 	}
 	tracing := false
 	core.TraceHook = func(p *core.Prng) {
-		if tracing && p == &s.Rng1 {
-			traceDraw()
+		switch {
+		case !tracing:
+		case p == &s.Rng1:
+			traceDraw("RNG")
+		case *otherTrace && p != &s.Rng2:
+			traceDraw("OTHER")
 		}
 	}
 	for i := 1; i <= *ticks; i++ {
@@ -125,11 +130,11 @@ func must(err error) {
 }
 
 // traceDraw prints a draw's callers (past RandNext and its bounded forms).
-func traceDraw() {
+func traceDraw(kind string) {
 	pc := make([]uintptr, 8)
 	n := runtime.Callers(3, pc)
 	frames := runtime.CallersFrames(pc[:n])
-	out := "RNG"
+	out := kind
 	for k := 0; k < 4; k++ {
 		f, more := frames.Next()
 		name := f.Function[strings.LastIndex(f.Function, "/")+1:]
