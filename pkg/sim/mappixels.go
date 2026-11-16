@@ -146,10 +146,15 @@ type MapBuffer struct {
 // NewMapBuffer is the buffers as clearMap (0x0046B69C) leaves them: black0.
 func NewMapBuffer() *MapBuffer {
 	b := &MapBuffer{Pixels: make([]uint8, mapRenderedSize), Alt: make([]uint8, mapRenderedSize)}
+	b.Clear()
+	return b
+}
+
+// Clear is clearMap: both buffers black0 (the row to fill next unchanged).
+func (b *MapBuffer) Clear() {
 	for i := range b.Pixels {
 		b.Pixels[i], b.Alt[i] = palBlack0, palBlack0
 	}
-	return b
 }
 
 // FillMapRowOverall is setMapPixels (the overall tab) for the buffer's next

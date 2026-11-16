@@ -15,8 +15,7 @@ import (
 //
 // clickable(MapWindow.cpp): close
 //
-// PARTIAL (PORT-PLANS A 1b–d): the scroll bars, the per-update row fill and
-// the remembered size, the centring on the main view and a click to centre
+// PARTIAL (PORT-PLANS A 1b–d): the scroll bars, the remembered size, the centring on the main view and a click to centre
 // it, the tabs, the graph key, the status bar, the overlays.
 
 const (
@@ -33,6 +32,8 @@ type MapWindow struct {
 	// scroll view's content offset.
 	Buf              *sim.MapBuffer
 	ScrollX, ScrollY int
+	// Rotation is var_846: the view's rotation the buffer was filled for.
+	Rotation uint8
 }
 
 // NewMapWindow is MapWindow::open's window (createWindow: the stack places
