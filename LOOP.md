@@ -120,7 +120,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    (no window: no waves, as OpenLoco's simulate); the fields' walls were unported (now in updateIndustrialSurface,
    with the builtOnSnow thaw); the industry objects' wall types were the DAT's placeholders (now resolved from their
    headers in ReorderWallObjects); the tile loop ranged over a stale element list (a removed wall: panic). Now 0
-   tiles differ after 6395 ticks, and the main rng matches through tick 10000 (AI off). Next: push past 10000. NB: simcmp needs the established OLREF_HOME
+   tiles differ after 6395 ticks, and the main rng matches through tick 10000 (AI off).
+   NEXT PARTING: tick 18056 — OpenLoco draws in roadPathing (sub_4ACEE7 → sub_47DA8D); from OpenLoco's own state
+   goloco does too, so the state drifted: 13 tiles differ at 18055. (a) 289-290,234-235: a town rebuilt a 2×2
+   building differently; (b) two 2×2 misc buildings (174-175,297-298 and 117-118,330-331, flag 0x40 in byte 0)
+   that OpenLoco REBUILT between ticks 9000 and 12000 (under construction again, variation 1; goloco keeps the old
+   one, variation 0). Town growth skips misc objects, so another caller of CreateBuilding does this. Next: log
+   CreateBuilding in the traced build (args + caller) over 9000..12000 and find goloco's missing/different caller. NB: simcmp needs the established OLREF_HOME
    (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
