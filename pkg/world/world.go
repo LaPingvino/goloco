@@ -39,6 +39,11 @@ type tile = sim.Tile
 type World struct {
 	// NoCashPopups is Config::cashPopupRendering off (paintMoneyEffect).
 	NoCashPopups bool
+	// CashPopupIncomeColours (goloco's cashPopupIncomeColours, off by
+	// default) draws the money effects green for income and red for costs
+	// (format_currency_income_green / expense_red_negative) instead of the
+	// company's colour: a deviation for a company whose colour is red.
+	CashPopupIncomeColours bool
 	viewFlags    paint.ViewFlags       // the main viewport's flags (viewflags.go)
 	townScene    *scene.Renderer       // the Town window's viewport (townview.go)
 	newsScene    [2]*scene.Renderer    // the news window's two viewports (newsview.go)
