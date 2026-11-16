@@ -127,3 +127,59 @@ func (m *Map) MapPixelsOverall(tx, ty int, om *objects.ObjectManager, pixel func
 	}
 	return c0, c1, f0, f1, true
 }
+
+// The map window's buffers (MapWindow.cpp): kMapColumns × 2 square, a pair of
+// pixels per tile along diagonal rows — the map turned 45°.
+const (
+	mapColumns       = 384 // kMapColumns
+	MapRenderedWidth = mapColumns * 2
+	mapRenderedSize  = MapRenderedWidth * MapRenderedWidth
+)
+
+// MapBuffer is _mapPixels and _mapAltPixels (the flashing frame), and
+// _drawMapRowIndex, the row the next update fills.
+type MapBuffer struct {
+	Pixels, Alt []uint8
+	Row         int
+}
+
+// NewMapBuffer is the buffers as clearMap (0x0046B69C) leaves them: black0.
+func NewMapBuffer() *MapBuffer {
+	b := &MapBuffer{Pixels: make([]uint8, mapRenderedSize), Alt: make([]uint8, mapRenderedSize)}
+	for i := range b.Pixels {
+		b.Pixels[i], b.Alt[i] = palBlack0, palBlack0
+	}
+	return b
+}
+
+// FillMapRowOverall is setMapPixels (the overall tab) for the buffer's next
+// row: from the rotation's corner a column of tiles (the tile loop's first
+// column for rotation 0), each tile's pair a row down and a pixel right of
+// the last; then on to the next row, round to 0 after kMapColumns.
+func (m *Map) FillMapRowOverall(b *MapBuffer, rotation int, om *objects.ObjectManager, pixel func(image uint32, i int) uint8, flashing uint32) {
+	r := b.Row
+	off := r*(MapRenderedWidth-1) + (mapColumns - 1)
+	var x, y, dx, dy int
+	switch rotation & 3 {
+	case 0:
+		x, y, dx, dy = r, 0, 0, 1
+	case 1:
+		x, y, dx, dy = mapColumns-1, r, -1, 0
+	case 2:
+		x, y, dx, dy = mapColumns-1-r, mapColumns-1, 0, -1
+	case 3:
+		x, y, dx, dy = 0, mapColumns-1-r, 1, 0
+	}
+	for range mapColumns {
+		if c0, c1, f0, f1, ok := m.MapPixelsOverall(x, y, om, pixel, flashing); ok && off >= 0 && off+1 < mapRenderedSize {
+			b.Pixels[off], b.Pixels[off+1] = c0, c1
+			b.Alt[off], b.Alt[off+1] = f0, f1
+		}
+		x, y = x+dx, y+dy
+		off += MapRenderedWidth + 1
+	}
+	b.Row++
+	if b.Row > mapColumns {
+		b.Row = 0
+	}
+}
