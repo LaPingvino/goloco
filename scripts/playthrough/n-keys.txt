@@ -243,4 +243,12 @@ expect rotation == 0
 move 400 300
 wait 1
 shot /tmp/goloco-playthrough/pt-n10-renamed.png
+# M: the map window (showMap); M again brings the one window to the front.
+key M
+wait 1
+expect window:map == 1
+key M
+wait 1
+expect window:map == 1
+shot /tmp/goloco-playthrough/pt-n11-map.png
 quit
