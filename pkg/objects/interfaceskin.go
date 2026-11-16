@@ -184,6 +184,11 @@ var ISBuildVehicleFrame0 = [6]int{251, 283, 315, 299, 267, 331}
 // ISToolbarMenuAirport / ISToolbarMenuShipPort are InterfaceSkin::ImageIds
 // toolbar_menu_airport (46) and toolbar_menu_ship_port (47).
 const (
-	ISToolbarMenuAirport  = 46
+	ISToolbarMenuAirport = 46
+	// The zoom menu's (toolbar_menu_zoom_in / _out, toolbar_menu_map_north;
+	// west, south and east follow, by the view's rotation).
+	ISToolbarMenuZoomIn   = 175
+	ISToolbarMenuZoomOut  = 176
+	ISToolbarMenuMapNorth = 466
 	ISToolbarMenuShipPort = 47
 )

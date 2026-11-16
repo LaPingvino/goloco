@@ -1,6 +1,10 @@
 package main
 
 import (
+	"image"
+
+	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 )
@@ -30,4 +34,20 @@ func (g *Game) openMap() {
 		m.FillMapRowOverall(buf, int(m.CurrentRotation), om, pixel, 0)
 	}
 	g.showAuto(ui.NewMapWindow(buf, tc, mc), 0, 0)
+}
+
+// mapChatMenu is TimePanel.cpp mapMouseDown (0x0043A67F) outside a network
+// game: a one-item menu below the button, the map (its icon by the view's
+// rotation); choosing it is mapDropdown's MapWindow::open.
+func (g *Game) mapChatMenu(x, y, w, h int) {
+	skin := 0
+	if sk := g.skin(); sk != nil {
+		skin = int(sk.ImageOffset)
+	}
+	items := []ui.DropdownItem{{MenuSprite: true, Sprite: skin + objects.ISToolbarMenuMapNorth + int(g.w.Map.CurrentRotation&3),
+		Text: i18n.Label(i18n.MenuMap), Action: g.openMap}}
+	d := ui.NewDropdownShowText(x, y, w, h, ui.DropdownColour, items, 25, g.sw, g.sh)
+	d.OpenedByPress(image.Rect(x, y, x+w, y+h))
+	d.Highlighted = 0
+	g.dropdown = d
 }
