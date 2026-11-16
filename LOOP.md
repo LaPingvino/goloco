@@ -148,7 +148,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    creates/frees effects in other slots (the entity free list's order). Next: (c), then (a).
    (c) was smoke: a broken-down train's smoke was unported (created, ticked, drawn) and the save's kept as read —
    now in (effect.go, breakdown.go, scene.go). entdiff -base ol0,g0 hides what differed from the start (OpenLoco's
-   load drops padding goloco keeps): after one tick only (a) and (b) are left. Next: (a), the tile-quadrant chain. Tools: the traced build's OPENLOCO_BUILDTRACE=1
+   load drops padding goloco keeps): after one tick only (a) and (b) are left. Next: (a), the tile-quadrant chain.
+   (a) is EntityManager's spatial index (nextQuadrantId, 0x02): rebuilt at load (resetSpatialIndex), each moveTo
+   that changes tile unlinks the entity and puts it at the head of the new tile's chain (moveSpatialEntry).
+   goloco has none — its export writes the loaded bytes back. Effect beyond the save: only the order a quadrant's
+   entities are met (collision checks, when two collide at once). Port when worth it: one moveTo path for every
+   position change first (goloco sets PosX in many places). Until then (a) and (b, the driving sounds: PORT-PLANS B)
+   are known noise in entdiff. Tools: the traced build's OPENLOCO_BUILDTRACE=1
    and OPENLOCO_RNGTRACE_TOWN=N; gosave -rngtrace N -rngtrace-other (the other generators' draws too). NB: simcmp needs the established OLREF_HOME
    (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
