@@ -199,7 +199,8 @@ func (g *Game) orderDropdown(headID uint16, kind string, x, y, w, h int) {
 // (WindowManager::isInFront) showing the Route tab of one of the controlling
 // company's vehicles takes the tool (toolSet) unless it has it; it loses it
 // when its window closes or leaves the tab (switchTab's toolCancel).
-// PARTIAL: not while the pickup tool is on (upstream's toolSet cancels it).
+// Taking it cancels another window's tool (toolSet → toolCancel). PARTIAL:
+// not while the pickup tool is on (upstream's toolSet cancels that too).
 func (g *Game) updateRouteTool() {
 	if g.routeTool {
 		if w := g.vehicleWin(g.routeHead); w == nil || w.Tab != 4 {
@@ -216,6 +217,7 @@ func (g *Game) updateRouteTool() {
 			continue
 		}
 		if head := uint16(w.Number); !g.routeTool || g.routeHead != head {
+			g.toolCancel() // toolSet: the tool another window had (a construction window's) goes
 			g.routeTool, g.routeHead = true, head
 		}
 	}

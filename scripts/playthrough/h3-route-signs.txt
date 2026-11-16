@@ -1,0 +1,151 @@
+# Playthrough H3: orders by the stations' name signs. Stage H's train
+# (Train 1 on its line, its window on the Route tab, dragged off the line),
+# the view zoomed out a step: a click on Cloudburst North's sign and one on
+# Cloudburst's, each a stop at that station (Route::
+# stationLabelAdjustedInteraction) — the signs win over the track painted
+# under them (getMapCoordinatesFromPos). Joop 2026-11-16: "clicking didn't
+# assign the orders".
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+move 592 14
+wait 1
+click 620 42
+wait 1
+move 400 300
+wait 2
+move 250 420
+wait 1
+click 250 420
+wait 2
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+wait 1
+shot /tmp/goloco-playthrough/pt-g-l1.png
+click 51 57
+wait 2
+move 302 395
+wait 1
+click 302 395
+wait 2
+move 497 302
+wait 1
+click 497 302
+wait 2
+move 700 500
+wait 2
+shot /tmp/goloco-playthrough/pt-g-l2.png
+move 682 14
+wait 1
+click 720 42
+move 550 230
+wait 2
+move 550 230
+wait 2
+shot /tmp/goloco-playthrough/pt-h-h2.png
+move 370 165
+wait 1
+click 370 165
+move 133 482
+wait 2
+shot /tmp/goloco-playthrough/pt-h-h3.png
+move 251 446
+wait 1
+click 251 446
+wait 1
+shot /tmp/goloco-playthrough/pt-h-h9a.png
+move 273 466
+wait 1
+click 273 466
+move 400 560
+wait 2
+move 450 370
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+wheel -3
+wait 1
+move 390 361
+wait 1
+click 390 361
+move 400 560
+wait 2
+shot /tmp/goloco-playthrough/pt-h-h9b.png
+move 791 37
+wait 1
+click 791 37
+wait 1
+move 251 470
+wait 1
+click 251 470
+wait 1
+move 318 397
+wait 2
+shot /tmp/goloco-playthrough/pt-h-p1.png
+click 318 397
+move 700 520
+wait 3
+shot /tmp/goloco-playthrough/pt-h-p2.png
+camera 52 250
+wait 2
+move 150 414
+wait 1
+click 150 414
+wait 2
+shot /tmp/goloco-playthrough/pt-h-r1.png
+drag 113 378 613 78
+wait 1
+key PageUp
+wait 2
+# The Route tab's tool took over from the Railway Track window's Station tab
+# (toolSet → toolCancel): no more station building. Joop 2026-11-16: "it still
+# wanted to continue building stations".
+expect stationtool == 0
+expect orders == 0
+move 155 181
+wait 1
+click 155 181
+wait 1
+expect orders == 1
+move 25 229
+wait 1
+click 25 229
+wait 1
+expect orders == 2
+move 700 520
+wait 1
+shot /tmp/goloco-playthrough/pt-h3-signs.png
+quit
