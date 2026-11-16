@@ -64,3 +64,16 @@ func TestStereo16Pitch(t *testing.T) {
 		t.Errorf("pitch 2: %d bytes, want 200", n)
 	}
 }
+
+// Muted (Audio::isAudioEnabled false), playSound returns at once: nothing
+// plays, on any of the ways in.
+func TestEffectsDisabled(t *testing.T) {
+	e := NewEffects(nil, nil)
+	e.Record, e.Disabled = true, true
+	e.PlaySound(SoundTicker, ChannelUI, KPlayAtCentre)
+	e.PlaySoundAt(SoundClickDown, ChannelUI, 0, 160)
+	e.PlaySoundAtVF(SoundClickDown, ChannelUI, 0, 160, 22050)
+	if len(e.Played) != 0 {
+		t.Errorf("muted, played %+v", e.Played)
+	}
+}

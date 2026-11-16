@@ -84,11 +84,14 @@ func (g *Game) initMusic() {
 // isAudioEnabled is Audio::isAudioEnabled (the Audio menu's "Mute" off).
 func (g *Game) isAudioEnabled() bool { return !g.audioMuted }
 
-// toggleSound is Audio::toggleSound, for the music channel (goloco has no
-// vehicle or ambient noise yet): muting stops the music; the next tick with
-// sound starts a track again.
+// toggleSound is Audio::toggleSound (goloco has no vehicle or ambient noise
+// yet): muted, no sound effect plays (Audio::playSound returns at once) and
+// the music stops; unmuted, the next tick with sound starts a track again.
 func (g *Game) toggleSound() {
 	g.audioMuted = !g.audioMuted
+	if g.sfx != nil {
+		g.sfx.Disabled = g.audioMuted
+	}
 	if !g.audioMuted {
 		return
 	}
