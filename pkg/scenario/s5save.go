@@ -290,6 +290,11 @@ func (sc *Scenario) putCompanies(gs []byte) {
 		r[0x4A4], r[0x2578] = c.AiThinkState, c.ActiveThoughtID
 		for k := range c.ThoughtType {
 			r[0x4A8+0x8C*k], r[0x4A8+0x8C*k+1] = c.ThoughtType[k], c.ThoughtDestinationA[k]
+			put32(r, 0x4A8+0x8C*k+0x80, uint32(c.ThoughtIncome[k]))
+			t := r[0x4A8+0x8C*k:]
+			put32(t, 0x7C, uint32(c.ThoughtRunningCost[k]))
+			put32(t, 0x84, uint32(c.ThoughtPrevIncome[k]))
+			t[0x88] = c.ThoughtAge[k]
 		}
 	}
 }

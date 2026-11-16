@@ -87,7 +87,9 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 		if today.Year <= 2029 {
 			m.EconomyUpdateMonthly()
 		}
-		// CompanyManager::updateQuarterly (AI thoughts): PARTIAL
+		if today.Month%3 == 0 { // January, April, July, October
+			m.companiesUpdateQuarterly(om) // companydaily.go
+		}
 		if today.Year != yesterday.Year { // end of every year
 			m.companiesUpdateYearly()
 			m.UpdateDefaultLevelCrossingType(om)
@@ -129,8 +131,8 @@ func (m *Map) companyUpdateDailyPlayer(id int, om *objects.ObjectManager) {
 // beaten and congratulationsCompleted posted, for another the controlling
 // company is marked beaten and haveBeenBeaten posted; either way the months
 // taken are kept —, 255 fails it (failedObjectives for the controlling
-// company). PARTIAL: owner emotions, the company window's challenge tab,
-// saveNewScore.
+// company); the owner happy, surprised or dejected at it. PARTIAL: the
+// company window's challenge tab, saveNewScore.
 func (m *Map) evaluateChallengeProgress(id int, om *objects.ObjectManager) {
 	switch m.Companies[id].ChallengeProgress {
 	case 100:
@@ -140,17 +142,23 @@ func (m *Map) evaluateChallengeProgress(id int, om *objects.ObjectManager) {
 				m.CompanyFaces[s].ChallengeFlags |= companyFlagChallengeBeaten
 			}
 			m.PostMessage(om, MsgCongratulationsCompleted, uint8(id), uint16(id), 0xFFFF, 0xFFFF)
+			m.companyEmotionEvent(id, emotionHappy)
+			m.updateOwnerEmotion(id)
 		} else {
 			if c := int(m.ControllingCompany); c != companyIDNull && c < len(m.CompanyFaces) {
 				m.CompanyFaces[c].ChallengeFlags |= companyFlagChallengeBeaten
 			}
 			m.PostMessage(om, MsgHaveBeenBeaten, uint8(id), uint16(id), 0xFFFF, 0xFFFF)
+			m.companyEmotionEvent(id, emotionSurprised)
+			m.updateOwnerEmotion(id)
 		}
 		m.ObjectiveCompletedInMonths = m.ObjectiveMonthsInChallenge
 	case 255:
 		m.CompanyFaces[id].ChallengeFlags |= companyFlagChallengeFailed
 		if uint8(id) == m.ControllingCompany {
 			m.PostMessage(om, MsgFailedObjectives, uint8(id), uint16(id), 0xFFFF, 0xFFFF)
+			m.companyEmotionEvent(id, emotionDejected)
+			m.updateOwnerEmotion(id)
 		}
 	}
 }

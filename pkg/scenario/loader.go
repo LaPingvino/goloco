@@ -1535,19 +1535,27 @@ type CompanyEconomy struct {
 	// x/y 0x8BBE, object 0x8BC2, timeout 0x8BC4), ownerStatus (0x8BC6), and
 	// of the AI: aiThinkState (0x4A4), activeThoughtId (0x2578) and each
 	// thought's type and destinationA (aiThoughts 0x4A8, 0x8C bytes each).
-	ActiveEmotions       [9]uint8
-	ObservationStatus    uint8
-	ObservationTownID    uint16
-	ObservationEntity    uint16
-	ObservationX         int16
-	ObservationY         int16
-	ObservationObject    uint16
-	ObservationTimeout   uint16
-	OwnerStatus          [2]int16
-	AiThinkState         uint8
-	ActiveThoughtID      uint8
-	ThoughtType          [60]uint8
-	ThoughtDestinationA  [60]uint8
+	ActiveEmotions      [9]uint8
+	ObservationStatus   uint8
+	ObservationTownID   uint16
+	ObservationEntity   uint16
+	ObservationX        int16
+	ObservationY        int16
+	ObservationObject   uint16
+	ObservationTimeout  uint16
+	OwnerStatus         [2]int16
+	AiThinkState        uint8
+	ActiveThoughtID     uint8
+	ThoughtType         [60]uint8
+	ThoughtDestinationA [60]uint8
+	ThoughtIncome       [60]int32 // each thought's income (0x80 in it): its vehicles' cargo profit
+	// and updateQuarterly's: the vehicles (count 0x44, ids 0x66), running
+	// cost (0x7C), previous quarter's income (0x84) and age (0x88)
+	ThoughtNumVehicles [60]uint8
+	ThoughtVehicles    [60][8]uint16
+	ThoughtRunningCost [60]int32
+	ThoughtPrevIncome  [60]int32
+	ThoughtAge         [60]uint8
 }
 
 // parseCompanyEconomy reads every company slot's CompanyEconomy.
@@ -1609,6 +1617,14 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 		c.ActiveThoughtID = r[0x2578]
 		for k := range c.ThoughtType {
 			c.ThoughtType[k], c.ThoughtDestinationA[k] = r[0x4A8+0x8C*k], r[0x4A8+0x8C*k+1]
+			c.ThoughtIncome[k] = int32(binary.LittleEndian.Uint32(r[0x4A8+0x8C*k+0x80:]))
+			t := r[0x4A8+0x8C*k:]
+			c.ThoughtNumVehicles[k], c.ThoughtAge[k] = t[0x44], t[0x88]
+			for v := range 8 {
+				c.ThoughtVehicles[k][v] = binary.LittleEndian.Uint16(t[0x66+2*v:])
+			}
+			c.ThoughtRunningCost[k] = int32(binary.LittleEndian.Uint32(t[0x7C:]))
+			c.ThoughtPrevIncome[k] = int32(binary.LittleEndian.Uint32(t[0x84:]))
 		}
 	}
 	return out
