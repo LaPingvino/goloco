@@ -17,6 +17,41 @@ index d450452..798527d 100644
          auto srand0 = _srand_0;
          auto srand1 = _srand_1;
          _srand_0 += std::rotr<uint32_t>(srand1 ^ 0x1234567F, 7);
+diff --git a/src/OpenLoco/src/GameCommands/Buildings/CreateBuilding.cpp b/src/OpenLoco/src/GameCommands/Buildings/CreateBuilding.cpp
+index 64332b4..670f4a2 100644
+--- a/src/OpenLoco/src/GameCommands/Buildings/CreateBuilding.cpp
++++ b/src/OpenLoco/src/GameCommands/Buildings/CreateBuilding.cpp
+@@ -1,4 +1,8 @@
+ #include "GameCommands/Buildings/CreateBuilding.h"
++#include "Scenario/ScenarioManager.h"
++#include <cstdio>
++#include <cstdlib>
++#include <dlfcn.h>
+ #include "Economy/Economy.h"
+ #include "Localisation/StringIds.h"
+ #include "Map/AnimationManager.h"
+@@ -275,6 +279,21 @@ namespace OpenLoco::GameCommands
+     void createBuilding(registers& regs, const Flags flags)
+     {
+         BuildingPlacementArgs args(regs);
++        // OPENLOCO_BUILDTRACE=1: each applied placement, its tick and callers (goloco comparison)
++        if (std::getenv("OPENLOCO_BUILDTRACE") != nullptr && hasFlags(flags, Flags::apply))
++        {
++            void* frames[6] = { __builtin_return_address(0), __builtin_return_address(1), __builtin_return_address(2), __builtin_return_address(3), __builtin_return_address(4), __builtin_return_address(5) };
++            std::fprintf(stderr, "BUILD %u %d,%d,%d type %u var %u rot %u", ScenarioManager::getScenarioTicks(), args.pos.x / 32, args.pos.y / 32, args.pos.z, args.type, args.variation, args.rotation);
++            for (auto* f : frames)
++            {
++                Dl_info info{};
++                if (f != nullptr && dladdr(f, &info) != 0)
++                {
++                    std::fprintf(stderr, " 0x%zx", static_cast<size_t>(static_cast<char*>(f) - static_cast<char*>(info.dli_fbase)) - 1);
++                }
++            }
++            std::fprintf(stderr, "\n");
++        }
+         regs.ebx = createBuilding(args, flags);
+     }
+ }
 diff --git a/src/OpenLoco/src/OpenLoco.cpp b/src/OpenLoco/src/OpenLoco.cpp
 index 0b66c55..c914f01 100644
 --- a/src/OpenLoco/src/OpenLoco.cpp
