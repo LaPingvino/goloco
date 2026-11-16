@@ -28,6 +28,9 @@ Upstream's structure:
 - **Input:** a click centres the main view; scroll and resize; the window opens centred on the main view
   (`centerOnViewPoint`, also called by ToolbarTop's rotate).
 
+Status (2026-11-16): step 1's pixels done — sim.MapPixelsOverall (pkg/sim/mappixels.go) is setMapPixelsOverall
+per tile (colours and flash colours; tested on the title map, mappixels_test.go). Next: the window shell itself.
+
 Order of work:
 1. Window shell: open/close from the toolbar's Map entry and the M key, frame, the five tabs, a resizable scroll
    view, the overall tab's pixels filled all at once (correct first, incremental later). Test the pixel colour of a
