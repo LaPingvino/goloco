@@ -32,7 +32,8 @@ Status (2026-11-16): step 1's pixels done — sim.MapPixelsOverall (pkg/sim/mapp
 per tile (colours and flash colours; tested on the title map, mappixels_test.go), and step 2's buffer: sim.MapBuffer
 (_mapPixels / _mapAltPixels, cleared black0) filled a row per update by Map.FillMapRowOverall (setMapPixels'
 stepping for the four rotations; layout tested). Next: the window shell, in tick-sized parts:
-   a. DONE (2026-11-16) but the scroll bars and the toolbar / time panel entries: pkg/ui MapWindow (WindowType
+   a. DONE (2026-11-16) but the scroll bars: the zoom menu's map entry and the time panel's map button open it too.
+      pkg/ui MapWindow (WindowType
       map), cmd/goloco openMap (M; the buffer filled whole at open). Was:
       pkg/ui MapWindow (WindowType map): frame, caption, close, the scroll view (content 768 × 768, both bars),
       size 350 × 272 (resizable, kMinWindowSize .. kMaxWindowSize); drawScroll = the buffer (Pixels, or Alt on

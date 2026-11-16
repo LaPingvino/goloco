@@ -251,4 +251,12 @@ key M
 wait 1
 expect window:map == 1
 shot /tmp/goloco-playthrough/pt-n11-map.png
+# The time panel's map button: its one-item menu, the release on the button
+# taking the map (mapMouseDown, showBelow without 1<<7).
+key Backspace
+wait 1
+expect window:map == 0
+click 786 587
+wait 1
+expect window:map == 1
 quit

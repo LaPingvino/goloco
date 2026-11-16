@@ -100,12 +100,19 @@ func (g *Game) handleToolbarButton(idx int) {
 		g.dropdown = d
 
 	case "Zoom":
-		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTopCommon.cpp:95-132
-		items := []ui.DropdownItem{
-			{Text: i18n.Label(i18n.MenuZoomIn), Action: func() { g.w.ZoomIn() }},
-			{Text: i18n.Label(i18n.MenuZoomOut), Action: func() { g.w.ZoomOut() }},
+		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTop.cpp
+		// zoomMenuMouseDown: zoom in, zoom out and the map (its icon by the
+		// view's rotation), menu_sprite_stringid items.
+		skin := 0
+		if sk := g.skin(); sk != nil {
+			skin = int(sk.ImageOffset)
 		}
-		g.dropdown = g.toolbarDropdown(btn, items)
+		items := []ui.DropdownItem{
+			{MenuSprite: true, Sprite: skin + objects.ISToolbarMenuZoomIn, Text: i18n.Label(i18n.MenuZoomIn), Action: func() { g.w.ZoomIn() }},
+			{MenuSprite: true, Sprite: skin + objects.ISToolbarMenuZoomOut, Text: i18n.Label(i18n.MenuZoomOut), Action: func() { g.w.ZoomOut() }},
+			{MenuSprite: true, Sprite: skin + objects.ISToolbarMenuMapNorth + int(g.w.Map.CurrentRotation&3), Text: i18n.Label(i18n.MenuMap), Action: g.openMap},
+		}
+		g.dropdown = g.toolbarImageMenu(btn, items)
 
 	case "Rotate":
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTopCommon.cpp:135-143

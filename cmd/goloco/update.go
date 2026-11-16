@@ -352,10 +352,13 @@ func (g *Game) hudOrMapClick() {
 		// the bottom-bar windows swallow the click; the time panel's date is
 		// MessageWindow::open (TimePanel.cpp onMouseUp date_btn); the player panel's
 		// company value is companyValueMouseUp: the Company window's Finances
-		// clickable(TimePanel.cpp): date_btn
+		// clickable(TimePanel.cpp): date_btn map_chat_menu
 		tx, ty := uilayout.TimePanelPos(g.sw, g.sh)
 		if d := uilayout.TimePanelDate; inRect(g.mouseX, g.mouseY, tx+d[0], ty+d[1], d[2], d[3]) {
 			g.openMessagesWindow()
+		}
+		if r := uilayout.TimePanelMapChat; inRect(g.mouseX, g.mouseY, tx+r[0], ty+r[1], r[2], r[3]) {
+			g.mapChatMenu(tx+r[0], ty+r[1], r[2], r[3])
 		}
 		px, py := uilayout.PlayerPanelPos(g.sw, g.sh)
 		if r := uilayout.PlayerPanelFace; uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh) &&
