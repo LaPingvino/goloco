@@ -205,6 +205,9 @@ func (w *World) LoadFromScenario(sc *scenario.Scenario) {
 		return
 	}
 	w.Map.LoadScenario(sc)
+	if w.renderer != nil {
+		w.Map.CreateAllMapAnimations(w.renderer.ObjMgr) // importGameState: the industries' animations
+	}
 	// Gui::init opens a new main window for the game loaded: its viewport's
 	// flags start clear, but for the gridlines with Config::gridlinesOnLandscape
 	// (ViewportManager::create).

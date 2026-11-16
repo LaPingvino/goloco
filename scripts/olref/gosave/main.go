@@ -54,6 +54,7 @@ func main() {
 	sim.ReorderObjectsForScenario(om, sc)
 	s := &sim.State{}
 	s.LoadScenario(sc)
+	s.CreateAllMapAnimations(om) // importGameState: the industries' animations
 	s.LoadWaves(sc.Waves)
 	if strings.EqualFold(filepath.Ext(in), ".sc5") {
 		s.Rng1 = *core.NewPrngSeed(uint32(*seed), uint32(*seed)^0x5EED)

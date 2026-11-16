@@ -158,7 +158,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    messages: the live messages match through tick 100000; from tick 69726 the slots PAST numMessages differ —
    MessageManager::remove rotates a removed message to the array's end (slot 199), goloco's export leaves the
    loaded bytes there. Nothing reads those slots: noise (mirroring it = the 200 raw records kept in the model).
-   Left at 100000 after this: animations, entity tile chains, driving sounds, and the noise fields. Tools: the traced build's OPENLOCO_BUILDTRACE=1
+   animations: IndustryManager::createAllMapAnimations (every load: each industry building's type-3 animation)
+   was unported — now Map.CreateAllMapAnimations, run after LoadScenario (world.go, gosave) — and the slots
+   AnimationManager::tick frees get the old last entry (Map.AnimationSlots, saved). Animations match through 100000.
+   Left at 100000: the entity tile chains (spatial index), driving sounds, the noise fields. Tools: the traced build's OPENLOCO_BUILDTRACE=1
    and OPENLOCO_RNGTRACE_TOWN=N; gosave -rngtrace N -rngtrace-other (the other generators' draws too). NB: simcmp needs the established OLREF_HOME
    (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo

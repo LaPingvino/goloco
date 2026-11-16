@@ -27,6 +27,9 @@ type Scenario struct {
 	// Animations is the map's animation list (GameState animations, the first
 	// numMapAnimations).
 	Animations []Animation
+	// AnimationSlots are slots past the count the game wrote (AnimationManager::
+	// tick fills those it frees with the old last entry): the save writes them.
+	AnimationSlots map[int]Animation
 	// Raw is the file's chunks as read (raw.go): the save's base.
 	Raw *Raw
 	// Waves is GameState waves (WaveManager's table).

@@ -487,11 +487,19 @@ func (sc *Scenario) putStations(gs []byte) {
 func (sc *Scenario) putAnimationsAndWaves(gs []byte) {
 	n := min(len(sc.Animations), 8192)
 	put16(gs, 0x154, uint16(n))
-	for i, a := range sc.Animations[:n] {
+	put := func(i int, a Animation) {
 		r := gs[animationsOffset+6*i:]
 		r[0], r[1] = a.BaseZ, a.Type
 		put16(r, 2, uint16(a.X))
 		put16(r, 4, uint16(a.Y))
+	}
+	for i, a := range sc.Animations[:n] {
+		put(i, a)
+	}
+	for i, a := range sc.AnimationSlots {
+		if i >= n && i < 8192 {
+			put(i, a)
+		}
 	}
 	for i, w := range sc.Waves {
 		r := gs[wavesOffset+6*i:]

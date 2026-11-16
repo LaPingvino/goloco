@@ -28,6 +28,11 @@ func (m *Map) CreateAnimation(typ uint8, x, y int32, baseZ uint8) {
 // UpdateAnimations is AnimationManager::update: every animation updated, the
 // finished ones removed (in order).
 func (m *Map) UpdateAnimations(om *objects.ObjectManager) {
+	old := len(m.Animations)
+	if old == 0 {
+		return
+	}
+	last := m.Animations[old-1]
 	keep := m.Animations[:0]
 	for _, a := range m.Animations {
 		if !m.updateAnimation(a, om) {
@@ -35,6 +40,13 @@ func (m *Map) UpdateAnimations(om *objects.ObjectManager) {
 		}
 	}
 	m.Animations = keep
+	// "For vanilla binary compatibility" the freed slots get the old last entry.
+	if len(keep) < old && m.AnimationSlots == nil {
+		m.AnimationSlots = map[int]scenario.Animation{}
+	}
+	for i := len(keep); i < old; i++ {
+		m.AnimationSlots[i] = last
+	}
 }
 
 // updateAnimation is callUpdateFunction: true = remove it.
@@ -439,4 +451,42 @@ func (m *Map) updateStationAnimation(a scenario.Animation, om *objects.ObjectMan
 		return false
 	}
 	return true
+}
+
+// CreateAllMapAnimations is IndustryManager::createAllMapAnimations
+// (0x00459D2D), part of every load (S5 importGameState, right after
+// resetSurfaceClearance): each industry's buildings get their continuous
+// animation (type 3) on every tile of their footprint (Industry::
+// createMapAnimations, 0x00459D43). Saves don't keep these; the callers of
+// LoadScenario run it straight after, with the objects.
+func (m *Map) CreateAllMapAnimations(om *objects.ObjectManager) {
+	if om == nil {
+		return
+	}
+	for i := range m.Industries {
+		ind := &m.Industries[i]
+		for _, p := range ind.Tiles {
+			x, y, baseZ := int32(p[0]), int32(p[1]), uint8(int32(p[2]&0x7FFF)/4)
+			t := m.TileAt(int(x)>>5, int(y)>>5)
+			if t == nil {
+				continue
+			}
+			for _, r := range t.Order {
+				if r.Kind != scenario.KindIndustry || int(r.Index) >= len(t.Industries) {
+					continue
+				}
+				el := &t.Industries[r.Index]
+				if el.BaseZ != baseZ {
+					continue
+				}
+				obj := m.IndustryObjectByID(el.IndustryID, om)
+				if obj == nil {
+					continue
+				}
+				for _, o := range buildingTileOffsets(obj.BuildingSizeFlags&(1<<el.BuildingType) != 0) {
+					m.CreateAnimation(3, x+o[0], y+o[1], baseZ)
+				}
+			}
+		}
+	}
 }
