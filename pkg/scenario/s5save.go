@@ -406,7 +406,21 @@ func (sc *Scenario) putIndustries(gs []byte) {
 	}
 	for i, p := range present {
 		if !p {
-			put16(gs, industriesGameStateOffset+i*industryRecordSize, 0xFFFF) // Industry::empty
+			r := gs[industriesGameStateOffset+i*industryRecordSize:]
+			if binary.LittleEndian.Uint16(r) != 0xFFFF {
+				// removed in play: RemoveIndustry took its buildings off one
+				// by one (removeIndustryElement, always tiles[0]), each time
+				// shifting the rest down — the list empty, and every slot it
+				// had left holding a copy of its last tile
+				if n := int(r[0x14]); n > 0 && n <= 32 {
+					last := append([]byte(nil), r[0x15+6*(n-1):0x15+6*n]...)
+					for k := range n {
+						copy(r[0x15+6*k:], last)
+					}
+				}
+				r[0x14] = 0
+			}
+			put16(r, 0, 0xFFFF) // Industry::empty
 		}
 	}
 }
