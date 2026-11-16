@@ -82,7 +82,7 @@ func (m *Map) dateTick(om *objects.ObjectManager) {
 		m.townsUpdateMonthly() // TownManager::updateMonthly (townmonthly.go)
 		m.industriesUpdateMonthly(om) // IndustryManager::updateMonthly (industryprod.go)
 		m.companiesUpdateMonthly1(om)
-		// CompanyManager::updateMonthlyHeadquarters: PARTIAL
+		m.companiesUpdateMonthlyHeadquarters(om) // headquarters.go
 		m.vehiclesUpdateMonthly(om)
 		if today.Year <= 2029 {
 			m.EconomyUpdateMonthly()

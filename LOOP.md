@@ -125,8 +125,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
    goloco does too, so the state drifted: 13 tiles differ at 18055. (a) 289-290,234-235: a town rebuilt a 2×2
    building differently; (b) two 2×2 misc buildings (174-175,297-298 and 117-118,330-331, flag 0x40 in byte 0)
    that OpenLoco REBUILT between ticks 9000 and 12000 (under construction again, variation 1; goloco keeps the old
-   one, variation 0). Town growth skips misc objects, so another caller of CreateBuilding does this. Next: log
-   CreateBuilding in the traced build (args + caller) over 9000..12000 and find goloco's missing/different caller. NB: simcmp needs the established OLREF_HOME
+   one, variation 0). They were company headquarters: CompanyManager::updateMonthlyHeadquarters (the HQ's look by
+   performance) was unported — now in headquarters.go. 5 tiles differ at 18055 now: a town's unfinished 2×2 building
+   at 289-290,234-235 that OpenLoco replaced by smaller ones on raised land (town growth), and a road at 297,236
+   (byte 5 bit 3). The rng still parts at 18056. Next: those two. (The traced build also logs placements:
+   OPENLOCO_BUILDTRACE=1.) NB: simcmp needs the established OLREF_HOME
    (scratchpad/econ/simhome; it has OpenLoco's object cache): a fresh home parts at tick 8.
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.

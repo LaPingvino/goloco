@@ -1,7 +1,13 @@
 package sim
 
+import (
+	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
+
 // GameCommands/Company/BuildCompanyHeadquarters.cpp and
-// RemoveCompanyHeadquarters.cpp.
+// RemoveCompanyHeadquarters.cpp; Company::setHeadquartersVariation (the
+// monthly look by performance).
 
 // HeadquarterPlacement is HeadquarterPlacementArgs: where (world units, z
 // the base height), rotation, the HQ building object, built at once.
@@ -97,4 +103,64 @@ func (m *Map) BuildCompanyHeadquarters(c *Cmd, flags uint8, a HeadquarterPlaceme
 		m.playSound(soundConstruct, ChannelEffects, a.X, a.Y, a.Z) // args.pos
 	}
 	return total, true
+}
+
+// companiesUpdateMonthlyHeadquarters is CompanyManager::updateMonthlyHeadquarters:
+// every company's headquarters shows its performance (Company::
+// updateMonthlyHeadquarters).
+func (m *Map) companiesUpdateMonthlyHeadquarters(om *objects.ObjectManager) {
+	for id := range m.Companies {
+		if m.CompanyEmpty(id) || id >= len(m.CompanyFaces) {
+			continue
+		}
+		// getHeadquarterPerformanceVariation: a step per 20%, at most 4.
+		v := min(int(m.CompanyFaces[id].Performance)/200, 4)
+		m.setHeadquartersVariation(id, uint8(v), om)
+	}
+}
+
+// setHeadquartersVariation is Company::setHeadquartersVariation (0x0042F142):
+// on each of the headquarters' four tiles, the building at its height, if
+// it isn't that variation yet, is rebuilt as it — under construction again,
+// its clearance the new variation's height.
+func (m *Map) setHeadquartersVariation(id int, variation uint8, om *objects.ObjectManager) {
+	c := &m.Companies[id]
+	if c.HeadquartersX == -1 {
+		return
+	}
+	tx, ty := int(c.HeadquartersX)>>5, int(c.HeadquartersY)>>5
+	for dy := 0; dy <= 1; dy++ {
+		for dx := 0; dx <= 1; dx++ {
+			t := m.TileAt(tx+dx, ty+dy)
+			if t == nil {
+				continue
+			}
+			for _, r := range t.Order {
+				if r.Kind != scenario.KindBuilding || int(r.Index) >= len(t.Buildings) {
+					continue
+				}
+				b := &t.Buildings[r.Index]
+				if b.BaseZ != c.HeadquartersZ {
+					continue
+				}
+				if b.Variation == variation {
+					break
+				}
+				x, y := int32(tx+dx)*32, int32(ty+dy)*32
+				m.invalidateTile(x, y, int32(b.BaseZ)*smallZStep, int32(b.ClearZ)*smallZStep, ZoomEighth, defaultRadius)
+				b.Variation, b.Age, b.IsConstructed, b.SectionProgress = variation, 0, false, 0
+				total := 0
+				if obj := om.GetBuildingObjectByIndex(int(b.ObjectID)); obj != nil {
+					for _, part := range obj.GetBuildingParts(variation) {
+						if int(part) < len(obj.PartHeights) {
+							total += int(obj.PartHeights[part])
+						}
+					}
+				}
+				b.ClearZ = uint8(total/4) + b.BaseZ
+				m.invalidateTile(x, y, int32(b.BaseZ)*smallZStep, int32(b.ClearZ)*smallZStep, ZoomEighth, defaultRadius)
+				break
+			}
+		}
+	}
 }
