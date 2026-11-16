@@ -135,6 +135,22 @@ Order of work:
 The design (general, meant as a reference for other sim games too) and goloco's six steps are in docs/GAMEPAD.md.
 Design agreed in outline by Joop 2026-11-15 (shoulders tab through windows, buttons per context); the details are open.
 
+## F. Company AI — configurable, not loyal (Joop 2026-11-16)
+
+Joop: "interesting to make configurable like with OpenTTD, because the Locomotion one is famously not that great...
+That definitely doesn't have priority to be loyal to the original, rather it should be easy to make accurate,
+configurable and good."
+
+Direction (design to be agreed with Joop before building):
+- **An AI interface in pkg/sim:** what a company's AI may see (the map, towns, industries, its own finances) and do
+  (game commands only, as a player does: no shortcuts). One AI per company, chosen when it's created.
+- **The original as one implementation:** CompanyAi.cpp ported faithfully (about 6000 lines, chipped at like plans
+  A–C). That keeps the economy comparison with OpenLoco exact with the AI on, and gives a baseline to beat.
+- **Better AIs beside it:** written against the same interface; picked per scenario or game in the options, like
+  OpenTTD's AI settings (which AI, how many competitors, how fast they start, how hard they play).
+- **Easy to make accurate:** each AI's decisions are logged and replayable, so a bad choice can be traced to its
+  inputs; the comparison tools (simcmp, rngtrace) work with the original AI on.
+
 ## D. Smaller follow-ups ready to pick up
 
 - **N35 save leftovers:**
