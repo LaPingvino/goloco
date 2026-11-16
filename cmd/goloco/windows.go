@@ -225,6 +225,8 @@ func (g *Game) updateWindows() {
 			hx, hy = mx, my
 		}
 		switch w := win.(type) {
+		case *ui.MapWindow:
+			g.updateMap(w) // onUpdate
 		case *ui.TownListWindow:
 			w.MouseOver(hx, hy)  // onScrollMouseOver: the row (or grid cell) under the mouse
 			w.Drag(mx, my, left) // the list's scrollbar thumb follows the mouse while held

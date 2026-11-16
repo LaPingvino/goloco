@@ -39,7 +39,8 @@ stepping for the four rotations; layout tested). Next: the window shell, in tick
       size 350 × 272 (resizable, kMinWindowSize .. kMaxWindowSize); drawScroll = the buffer (Pixels, or Alt on
       flashing frames) blitted at the scroll offset. Opened by shortcuts.ShowMap (shortcut_actions.go's stub),
       ToolbarTop's map entry (l. 628) and TimePanel (l. 268/277); bringToFront when open.
-   b. onUpdate: Map.FillMapRowOverall a row per update (the open's clearMap and var_846 rotation; a rotation
+   b. DONE but the remembered size (2026-11-16): onUpdate fills 80 rows a frame (cmd/goloco updateMap), a new
+      rotation clears the buffer. Was: onUpdate: Map.FillMapRowOverall a row per update (the open's clearMap and var_846 rotation; a rotation
       change clears and restarts); getLastMapWindowAttributes (size, maximised) kept on close.
    c. centerOnViewPoint (open, and ToolbarTop's rotate) and a click / drag centring the main view.
    d. the five tabs (images, the overall tab only filled; the others' fills are step 4), the graph key (step 4).
