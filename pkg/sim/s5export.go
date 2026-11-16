@@ -186,7 +186,7 @@ func (s *State) ExportScenario() *scenario.Scenario {
 	sc.LastAirport, sc.LastShipPort = m.LastAirport, m.LastShipPort
 	sc.PickupDirection = m.PickupDirection
 	sc.UnlockedVehicles = m.UnlockedVehicles
-	sc.Animations = m.Animations
+	sc.Animations, sc.AnimationSlots = m.Animations, m.AnimationSlots
 	sc.Waves = s.ExportWaves()
 	sc.CurrentYear, sc.CurrentMonth, sc.CurrentDayOfMonth = m.CurrentYear, m.CurrentMonth, m.CurrentDayOfMonth
 	sc.GameStateFlags = m.GameStateFlags

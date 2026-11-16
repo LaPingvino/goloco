@@ -100,3 +100,13 @@ func importGameStateType2(dst, src []byte) {
 		copy(dst[gsTownsOffset:], src[rest:])
 	}
 }
+
+// ClearAnimations blanks a game state's animation count (0x154) and table:
+// what every load rebuilds (IndustryManager::createAllMapAnimations), so a
+// comparison of a save with the game it loads leaves them out.
+func ClearAnimations(gs []byte) {
+	if len(gs) >= gsAnimationsOffset+gsAnimationsSize {
+		gs[0x154], gs[0x155] = 0, 0
+		clear(gs[gsAnimationsOffset : gsAnimationsOffset+gsAnimationsSize])
+	}
+}

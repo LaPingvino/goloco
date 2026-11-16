@@ -23,6 +23,8 @@ type Map struct {
 	OtherEffects map[uint16]scenario.MiscEntity
 	// Animations is the AnimationManager list (animation.go).
 	Animations []scenario.Animation
+	// AnimationSlots: slots past the count UpdateAnimations wrote (the save's).
+	AnimationSlots map[int]scenario.Animation
 	// InvalidateEntity: see entitymove.go (EntityBase::invalidateSprite).
 	InvalidateEntity InvalidateEntity
 	// InvalidateTile: ViewportManager::invalidate(pos, …) (entitymove.go).
@@ -251,6 +253,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.PickupDirection = sc.PickupDirection
 	m.UnlockedVehicles = sc.UnlockedVehicles
 	m.Animations = append([]scenario.Animation(nil), sc.Animations...)
+	m.AnimationSlots = nil
 	m.CurrentYear = sc.CurrentYear
 	m.CurrentMonth = sc.CurrentMonth
 	m.CurrentDayOfMonth = sc.CurrentDayOfMonth

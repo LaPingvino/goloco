@@ -168,7 +168,8 @@ func canonicalVehicles(es []scenario.VehicleEntity) []scenario.VehicleEntity {
 // return state's last placed wall.
 var notSaved = map[string]bool{"SpriteLeft": true, "SpriteTop": true, "SpriteRight": true, "SpriteBottom": true,
 	"vehicleMangled113623B": true, "LastPlacedWallBaseZ": true, "LastCollision": true,
-	"Sounds": true} // the sounds asked for this frame, played and gone, never saved
+	"Sounds":         true, // the sounds asked for this frame, played and gone, never saved
+	"AnimationSlots": true} // freed slots past the count: written by the save, unused, not read back
 
 // valueOf reads unexported fields too (by value).
 func valueOf(v reflect.Value) any {

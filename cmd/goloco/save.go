@@ -122,7 +122,9 @@ func (g *Game) saveGameTo(path string, autosave bool) error {
 		TileElements:    scenario.EncodeTileElements(sc.Tiles),
 	}
 	if g.script != nil {
-		g.script.lastSave = append(append([]byte(nil), f.GameState...), f.TileElements...)
+		gs := append([]byte(nil), f.GameState...)
+		scenario.ClearAnimations(gs) // as saveStateBytes: a load rebuilds them
+		g.script.lastSave = append(gs, f.TileElements...)
 	}
 	var buf bytes.Buffer
 	if err := f.Write(&buf); err != nil {
@@ -147,7 +149,9 @@ func (g *Game) saveGameTo(path string, autosave bool) error {
 func saveStateBytes(w *world.World) []byte {
 	sc := w.ExportScenario()
 	sc.SavedViewX, sc.SavedViewY, sc.SavedViewZoom, sc.SavedViewRotation = w.SavedView()
-	return append(sc.EncodeGameState(), scenario.EncodeTileElements(sc.Tiles)...)
+	gs := sc.EncodeGameState()
+	scenario.ClearAnimations(gs) // a load rebuilds them (the industries'), as upstream's
+	return append(gs, scenario.EncodeTileElements(sc.Tiles)...)
 }
 
 // saveDetails is prepareSaveDetails: the player company's name and owner,
