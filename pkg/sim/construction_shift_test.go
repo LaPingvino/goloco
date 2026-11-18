@@ -32,8 +32,9 @@ func shiftTestState() (*State, *Cmd) {
 // constructionLoop with shift (ConstructionTab.cpp): the arrow and the ghost
 // start 32 below the ground instead of 16 and the tries go down, 16 at a
 // time — under flat ground the straight finds its tunnel depth (past a
-// tunnel across at that depth); without shift it stands on the ground. The tool's tiles are selected
-// (enableConstruct), and the click takes them away.
+// tunnel across at that depth); without shift it stands on the ground. The
+// tool's tiles are selected (enableConstruct); after the click the next
+// piece's are.
 func TestConstructionShift(t *testing.T) {
 	s, c := shiftTestState()
 	s.ConstructionToolUpdate(c, 8, 8, -1, false, 0, false)
@@ -65,8 +66,11 @@ func TestConstructionShift(t *testing.T) {
 	if _, built, _ := s.ConstructionToolUp(c, 8, 8, -1, false, 0, true); !built {
 		t.Fatalf("shift click: refused, error %d", c.ErrorText)
 	}
-	if s.ConsSelection.On || s.ConsArrow.On {
-		t.Errorf("after the click: selection %v arrow %v, want both off", s.ConsSelection.On, s.ConsArrow.On)
+	// The click's tool selection went (toolCancel); building on, the
+	// selection is the next piece's (activateSelectedConstructionWidgets:
+	// unk_03, at the state's position).
+	if s.ConsArrow.On || !s.ConsSelection.On || !s.ConsSelection.Unk03 || len(s.ConsSelection.Tiles) != 1 || s.ConsSelection.Tiles[0] != [2]int32{s.Cons.X, s.Cons.Y} {
+		t.Errorf("after the click: arrow %v, selection %+v, want no arrow and the next piece's tile (%d, %d) in unk_03", s.ConsArrow.On, s.ConsSelection, s.Cons.X, s.Cons.Y)
 	}
 	tl := s.TileAt(8, 8)
 	if r, _ := countTrack(tl); r != 2 || int32(tl.Tracks[1].BaseZ)*4 != ghostZ {

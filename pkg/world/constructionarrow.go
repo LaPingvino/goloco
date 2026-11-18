@@ -46,9 +46,11 @@ func (w *World) syncConstructSelection(on bool) {
 	if on && w.ConsSelection.On {
 		tiles = w.ConsSelection.Tiles
 	}
-	if slices.Equal(tiles, w.consSelection) {
+	unk03 := w.ConsSelection.Unk03
+	if slices.Equal(tiles, w.consSelection) && unk03 == w.consSelectionUnk03 {
 		return
 	}
+	w.consSelectionUnk03 = unk03
 	for _, t := range w.consSelection {
 		w.invalidateTile(t[0], t[1], 0, 1120, 3, 32)
 	}
@@ -63,6 +65,7 @@ func (w *World) syncConstructSelection(on bool) {
 		w.scene.ConstructSelection = nil
 		return
 	}
+	w.scene.ConstructSelectionUnk03 = unk03
 	sel := slices.Clone(tiles)
 	w.scene.ConstructSelection = func(tx, ty int) bool {
 		return slices.Contains(sel, [2]int32{int32(tx) * 32, int32(ty) * 32})

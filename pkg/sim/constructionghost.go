@@ -186,7 +186,10 @@ func (s *State) selectedPiece(road bool) (construct.TrackPieceID, []PreviewTrack
 // MapSelectionFlags::enableConstruct (On): the tiles under the construction
 // tool's piece, outlined on the map (PaintSurface.cpp).
 type ConstructionSelection struct {
-	On    bool
+	On bool
+	// Unk03 is MapSelectionFlags::unk_03: the outline in ExtColour::unk2B
+	// (building on), not unk25 (the tool's, hovering).
+	Unk03 bool
 	Tiles [][2]int32
 }
 
@@ -265,7 +268,7 @@ func (s *State) ConstructionToolUpdate(c *Cmd, tx, ty int, junction int32, road 
 		h = junction
 	}
 	s.ConsArrow = ConstructionArrow{On: true, X: x, Y: y, Z: h, Direction: cs.Rotation}
-	s.ConsSelection.On = true
+	s.ConsSelection.On, s.ConsSelection.Unk03 = true, false
 	s.ConsSelection.Tiles = append(s.ConsSelection.Tiles[:0], [2]int32{x, y})
 	_, pieces, ok := s.selectedPiece(road)
 	if !ok {
@@ -335,6 +338,7 @@ func (s *State) constructionGhostLoop(c *Cmd, x, y, z int32, retries uint32, roa
 				}
 			}
 		}
+		s.ActivateSelection()
 		return
 	}
 }

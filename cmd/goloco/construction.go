@@ -202,6 +202,8 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		g.w.EndConstruction(g.playerCmd())
 	}
 	g.w.ResetConstruction()
+	g.w.Cons.Road = g.consIsRoad()
+	g.w.ActivateSelection() // trackWindow's activateSelectedConstructionWidgets
 	g.w.SwitchRoadType = g.consSwitchRoadType
 	// trackWindow's init: signalPlacementStepSize = kDefaultSignalPlacementStepSize, repeatedSignalMode off.
 	g.consSigStep, g.consSigRepeat, g.consSigCost = 4, false, -1
@@ -600,13 +602,14 @@ func (g *Game) updateConstruction() {
 		return
 	}
 	if !g.consHasHead() || g.consTab != 0 || g.inTitleScreen {
-		if g.w.TrackGhost != nil || g.w.RoadGhost != nil || g.w.ConsArrow.On {
+		if g.w.TrackGhost != nil || g.w.RoadGhost != nil || g.w.ConsArrow.On || g.w.ConsSelection.On {
 			g.w.EndConstruction(g.playerCmd())
 		}
 		g.w.SyncConstructionArrow(false)
 		return
 	}
 	road, obj := g.consIsRoad(), uint8(g.buildObjID)
+	g.w.Cons.Road = road
 	// cState.lastSelectedBridge, bridgeList and lastSelectedMods: the
 	// window's choices, for every piece built
 	g.w.Cons.Bridge, g.w.Cons.Mods, g.w.Cons.BridgeList = 0, g.consMods, [9]uint8{}
