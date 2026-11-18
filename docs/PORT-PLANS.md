@@ -160,5 +160,6 @@ Direction (design to be agreed with Joop before building):
   - ~~the Options autosave widgets read the config~~ (done 2026-11-14);
   - re-pack every custom object, not only the loaded file's.
 - **N7:** a refused road's reason line, the bridge and alternate-road retries, shift's downward search.
-- **N6:** toolbar and panels as stack windows; drag by frame; vehicle list column widths.
+- **N6:** (bars on the stack, flash/sound, resizing, vehicle list columns done 2026-11-18) drag by frame for the
+  windows without a widget list; the Company window's headquarters viewport.
 - **N32:** see-through checks still not compared with OpenLoco; the unexplained dark face at 186,143 underground.
