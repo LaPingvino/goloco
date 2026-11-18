@@ -77,12 +77,15 @@ func (w *ScenarioSelectWindow) in(r [4]int, px, py int) bool {
 // the selected row starts it — upstream starts on a single click; goloco keeps
 // the details visible first), close closes.
 func (w *ScenarioSelectWindow) HandleClick(px, py int) {
-	if w.in(ssClose, px, py) {
+	if w.Button(ssClose, px, py) {
 		w.Close()
 		return
 	}
 	for i, r := range ssTabs {
 		if w.in(r, px, py) {
+			if len(w.byCat[i]) > 0 { // upstream hides an empty category's tab
+				w.PressWidget(r)
+			}
 			w.Tab, w.Scroll = i, 0
 			return
 		}

@@ -99,13 +99,19 @@ func (w *MusicJukeboxWindow) screen() (int, int) {
 func (w *MusicJukeboxWindow) HandleClick(px, py int) {
 	sw, sh := w.screen()
 	switch {
-	case w.in([4]int{w.W - 15, 2, 13, 13}, px, py):
+	case w.Button([4]int{w.W - 15, 2, 13, 13}, px, py):
 		w.Close()
 	case w.in(mjEdit, px, py):
-		if w.State.Playlist == 2 && w.OnEditSelection != nil { // disabled for the other playlists
-			w.OnEditSelection()
+		if w.State.Playlist == 2 { // disabled for the other playlists
+			w.PressWidget(mjEdit)
+			if w.OnEditSelection != nil {
+				w.OnEditSelection()
+			}
 		}
 	case w.in(mjPlaying, px, py):
+		if w.State.PlayMode { // disabled outside play mode
+			dropdownPress(&w.WinBase, mjPlaying, px, py)
+		}
 		// currentlyPlayingMouseDown: Dropdown::show at the combobox, width() − 4
 		// by height() (Widget.cpp: right − left + 1, bottom − top + 1).
 		if !w.State.PlayMode || w.Tracks == nil || w.OpenDropdown == nil {
@@ -126,7 +132,7 @@ func (w *MusicJukeboxWindow) HandleClick(px, py int) {
 			}
 		}
 		w.OpenDropdown(d)
-	case w.in(mjPlaylist, px, py):
+	case dropdownPress(&w.WinBase, mjPlaylist, px, py):
 		// musicPlaylistMouseDown
 		if w.OpenDropdown == nil {
 			return
@@ -144,7 +150,7 @@ func (w *MusicJukeboxWindow) HandleClick(px, py int) {
 		w.OpenDropdown(d)
 	default:
 		for i, r := range mjControls {
-			if w.in(r, px, py) && w.State.PlayMode && w.OnControl != nil {
+			if w.State.PlayMode && w.Button(r, px, py) && w.OnControl != nil { // disabled outside play mode
 				w.OnControl(i)
 			}
 		}

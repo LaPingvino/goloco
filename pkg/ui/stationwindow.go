@@ -165,7 +165,7 @@ func (w *StationWindow) HandleWheel(dy float64) {
 // viewport's bottom-right 24 × 24).
 func (w *StationWindow) HandleClick(px, py int) {
 	rx, ry := px-w.X, py-w.Y
-	if rx >= w.W-15 && rx < w.W-2 && ry >= 2 && ry < 15 {
+	if w.Button([4]int{w.W - 15, 2, 13, 13}, px, py) {
 		w.Close()
 		return
 	}
@@ -173,7 +173,9 @@ func (w *StationWindow) HandleClick(px, py int) {
 		w.OnRename()
 		return
 	}
-	if t := tabAt(w.stationTabs(), rx, ry); t >= 0 { // Common::switchTab
+	if xs := w.stationTabs(); tabAt(xs, rx, ry) >= 0 { // Common::switchTab
+		t := tabAt(xs, rx, ry) // a disabled tab is hidden (leftAlignTabs)
+		w.PressWidget([4]int{xs[t], 15, 31, 27})
 		if t != 1 && w.Catchment && w.OnCatchment != nil { // leaving for another tab: this station's catchment goes
 			w.OnCatchment()
 		}
@@ -191,7 +193,7 @@ func (w *StationWindow) HandleClick(px, py int) {
 		w.cScroll = w.cHold.Begin(ry-t, py, ht, contentH, w.cScroll)
 		return
 	}
-	if w.Tab == 1 && rx >= w.W-25 && rx <= w.W-2 && ry >= 44 && ry < 44+24 && w.OnCatchment != nil {
+	if w.Tab == 1 && w.Button([4]int{w.W - 25, 44, 24, 24}, px, py) && w.OnCatchment != nil { // station_catchment
 		w.OnCatchment()
 		return
 	}
@@ -199,7 +201,7 @@ func (w *StationWindow) HandleClick(px, py int) {
 		return
 	}
 	_, _, r, b := w.viewport()
-	if rx >= r-24 && rx <= r-1 && ry >= b-24 && ry <= b-1 && w.OnCentreView != nil {
+	if w.Button([4]int{r - 24, b - 24, 24, 24}, px, py) && w.OnCentreView != nil { // centre_on_viewport
 		w.OnCentreView()
 	}
 }

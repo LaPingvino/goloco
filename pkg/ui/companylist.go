@@ -188,13 +188,15 @@ func (w *CompanyListWindow) Sort() {
 // HandleClick: close, a header (sort by it), a row (its company).
 func (w *CompanyListWindow) HandleClick(x, y int) {
 	in := func(l, t, ww, h int) bool { return x >= w.X+l && x < w.X+l+ww && y >= w.Y+t && y < w.Y+t+h }
-	if in(w.W-15, 2, 13, 13) {
+	if w.Button([4]int{w.W - 15, 2, 13, 13}, x, y) {
 		w.Close()
 		return
 	}
 	for t := range companyTabSizes { // Common::switchTab (the ported tabs)
-		if in(3+31*t, 15, 31, 27) && t != w.Tab {
-			w.switchTab(t)
+		if w.Button([4]int{3 + 31*t, 15, 31, 27}, x, y) {
+			if t != w.Tab {
+				w.switchTab(t)
+			}
 			return
 		}
 	}
@@ -202,7 +204,7 @@ func (w *CompanyListWindow) HandleClick(x, y int) {
 		return
 	}
 	for i, h := range companyListHeaders {
-		if l, r := w.headerSpan(h.x, h.w); r >= l && in(l, 43, r-l+1, 12) {
+		if l, r := w.headerSpan(h.x, h.w); r >= l && w.Button([4]int{l, 43, r - l + 1, 12}, x, y) {
 			if i != w.SortMode {
 				w.SortMode = i
 				w.Sort()

@@ -212,13 +212,17 @@ func (w *PromptBrowseWindow) in(r [4]int, px, py int) bool {
 // on the selected row opens the folder or picks the file).
 func (w *PromptBrowseWindow) HandleClick(px, py int) {
 	switch {
-	case w.in(pbClose, px, py):
+	case w.Button(pbClose, px, py):
 		w.Close()
 	case w.in(pbParent, px, py):
+		// goloco's parent button stands where upstream's home_button is
+		// (prepareDraw: width − 27 … width − 3; parent_button is the 25 px left
+		// of it): the press sounds as upstream's there.
+		w.PressWidget([4]int{pbW - 27, 18, 25, 24})
 		if parent := filepath.Dir(w.Dir); parent != w.Dir {
 			w.chdir(parent)
 		}
-	case w.Save && w.in(pbOK, px, py):
+	case w.Save && w.Button(pbOK, px, py): // hidden when loading
 		w.ok()
 	case w.onScrollbar(px, py):
 		// The scrollbar (ScrollView): buttons and track move the list, the

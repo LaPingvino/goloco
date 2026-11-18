@@ -231,7 +231,7 @@ func (w *ViewWindow) viewport() (l, t, r, b int) { return 3, 44, w.W - 26 + 22, 
 // Transported tab), centre_on_viewport.
 func (w *ViewWindow) HandleClick(px, py int) {
 	rx, ry := px-w.X, py-w.Y
-	if rx >= w.W-15 && rx < w.W-2 && ry >= 2 && ry < 15 {
+	if w.Button([4]int{w.W - 15, 2, 13, 13}, px, py) {
 		w.Close()
 		return
 	}
@@ -241,7 +241,9 @@ func (w *ViewWindow) HandleClick(px, py int) {
 		}
 		return
 	}
-	if i := tabAt(tabLayout(w.Tabs, w.tabDisabled), rx, ry); i >= 0 {
+	if xs := tabLayout(w.Tabs, w.tabDisabled); tabAt(xs, rx, ry) >= 0 {
+		i := tabAt(xs, rx, ry) // a disabled tab is hidden (leftAlignTabs)
+		w.PressWidget([4]int{xs[i], 15, 31, 27})
 		graph := false
 		if w.Graph != nil {
 			_, graph = w.Graph(i)
@@ -263,7 +265,7 @@ func (w *ViewWindow) HandleClick(px, py int) {
 		return
 	}
 	_, _, r, b := w.viewport()
-	if rx >= r-24 && rx <= r-1 && ry >= b-24 && ry <= b-1 && w.OnCentreView != nil {
+	if w.Button([4]int{r - 24, b - 24, 24, 24}, px, py) && w.OnCentreView != nil { // centre_on_viewport
 		w.OnCentreView()
 	}
 }

@@ -365,7 +365,15 @@ func (g *Game) timePanelPress(x, y int) {
 		return
 	}
 	if sp := uilayout.TimePanelSpeedAt(x, y, g.sw, g.sh); sp >= 0 {
+	tx, ty := uilayout.TimePanelPos(g.sw, g.sh)
+	press := func(r [4]int) { // MouseInput: the widget's clickDown (ui clicks.go)
+		if bar := g.wins.Find(ui.WindowTypeTimePanel, ui.AnyNumber); bar != nil {
+			b := bar.Base()
+			b.PressWidget([4]int{tx + r[0] - b.X, ty + r[1] - b.Y, r[2], r[3]})
+		}
+	}
 		switch sp { // pause toggles; the others set the speed
+		press(uilayout.TimePanelSpeed[sp])
 		case 0:
 			g.isPaused = !g.isPaused
 		case 1:
@@ -377,12 +385,13 @@ func (g *Game) timePanelPress(x, y int) {
 		}
 		return
 	}
-	tx, ty := uilayout.TimePanelPos(g.sw, g.sh)
 	if d := uilayout.TimePanelDate; inRect(x, y, tx+d[0], ty+d[1], d[2], d[3]) {
 		g.openMessagesWindow()
+		press(d)
 	}
 	if r := uilayout.TimePanelMapChat; inRect(x, y, tx+r[0], ty+r[1], r[2], r[3]) {
 		g.mapChatMenu(tx+r[0], ty+r[1], r[2], r[3])
+		press(r)
 	}
 }
 
@@ -395,10 +404,18 @@ func (g *Game) playerPanelPress(x, y int) {
 	}
 	px, py := uilayout.PlayerPanelPos(g.sw, g.sh)
 	if r := uilayout.PlayerPanelFace; inRect(x, y, px+r[0], py+r[1], r[2], r[3]) {
+	press := func(r [4]int) { // MouseInput: the widget's clickDown (ui clicks.go)
+		if bar := g.wins.Find(ui.WindowTypeCompanyInfoPanel, ui.AnyNumber); bar != nil {
+			b := bar.Base()
+			b.PressWidget([4]int{px + r[0] - b.X, py + r[1] - b.Y, r[2], r[3]})
+		}
+	}
 		g.playerCompanyDropdown(px+r[0], py+r[1], r[2], r[3])
+		press(r)
 	}
 	if r := uilayout.PlayerPanelCompanyVal; inRect(x, y, px+r[0], py+r[1], r[2], r[3]) {
 		company, _ := g.w.ControllingCompany()
+		press(r)
 		g.openCompanyFinances(company)
 	}
 }
