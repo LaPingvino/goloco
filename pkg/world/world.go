@@ -53,6 +53,7 @@ type World struct {
 	selType                uint8                 // its type (scene.SelFull …)
 	consArrow              sim.ConstructionArrow // the arrow last handed to the renderer (constructionarrow.go)
 	consSelection          [][2]int32            // the selected tiles last handed to the renderer (constructionarrow.go)
+	consSelectionUnk03     bool                  // and their unk_03 colour
 	// savedCentre: a saved view's centre still to be placed (SetSavedView
 	// before the first Draw gave the view its size).
 	savedCentre *[2]int

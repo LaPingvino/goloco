@@ -30,6 +30,9 @@ type ConstructionState struct {
 	// Hover is constructionHover: the window's tool is on the map, choosing
 	// where to start; false while building on from X, Y, Z.
 	Hover bool
+	// Road is cState.trackType's bit 7: the window builds road (the window
+	// sets it).
+	Road bool
 	// Piece and Gradient are lastSelectedTrackPiece and
 	// lastSelectedTrackGradient (construct.Straight …, construct.Level …).
 	Piece, Gradient uint8
@@ -94,7 +97,7 @@ func rotOffset(x, y int16, rotation uint8) (int16, int16) {
 // 0, straight and level, byte_113603A clear; the bridge and mods stay the
 // window's.
 func (s *State) ResetConstruction() {
-	s.Cons = ConstructionState{Hover: true, Mods: s.Cons.Mods, Bridge: s.Cons.Bridge, BridgeList: s.Cons.BridgeList}
+	s.Cons = ConstructionState{Hover: true, Mods: s.Cons.Mods, Bridge: s.Cons.Bridge, BridgeList: s.Cons.BridgeList, Road: s.Cons.Road}
 	s.ghostPos = [3]int32{-1, -1, -1}
 	s.ConsArrow.On = false
 }
@@ -195,6 +198,12 @@ func (s *State) advance(tc TrackCoord) {
 // and the state moved past it. The cost; false when no piece is selected
 // that fits the rotation or the command refuses (c.ErrorText says why).
 func (s *State) ConstructTrack(c *Cmd, objID uint8) (int32, bool) {
+	cost, ok := s.constructTrack(c, objID)
+	s.ActivateSelection() // constructTrackOrRoad
+	return cost, ok
+}
+
+func (s *State) constructTrack(c *Cmd, objID uint8) (int32, bool) {
 	s.Cons.Cost = 0
 	s.RemoveConstructionGhosts(c)
 	a, ok := s.trackPlacement(objID)
@@ -220,7 +229,9 @@ func (s *State) ConstructTrack(c *Cmd, objID uint8) (int32, bool) {
 // (sub_4A18D4, SwitchRoadType) and the piece is tried once more — with the
 // road type the window has then, even when it didn't change (as upstream).
 func (s *State) ConstructRoad(c *Cmd, objID uint8) (int32, bool) {
-	return s.constructRoad(c, &objID)
+	cost, ok := s.constructRoad(c, &objID)
+	s.ActivateSelection() // constructTrackOrRoad
+	return cost, ok
 }
 
 // constructRoad is ConstructRoad; *objID follows a switch of road type.
@@ -278,6 +289,7 @@ func (s *State) switchToAlternateRoad(c *Cmd, alt uint8, objID *uint8) {
 			if s.SwitchRoadType != nil {
 				s.SwitchRoadType(alt)
 			}
+			s.ActivateSelection()
 			return
 		}
 	}
@@ -353,6 +365,7 @@ func (s *State) ConstructionRemoveTrack(c *Cmd, objID uint8, g1 G1Raw) (removed,
 		return false, true
 	}
 	s.retreat(unk)
+	s.ActivateSelection()
 	return true, false
 }
 
@@ -407,6 +420,7 @@ func (s *State) ConstructionRemoveRoad(c *Cmd, objID uint8, g1 G1Raw) (removed, 
 		}
 	}
 	s.retreat(unk)
+	s.ActivateSelection()
 	return true, false
 }
 
@@ -421,6 +435,7 @@ func (s *State) ChangeTrackPiece(c *Cmd, v uint8, slope bool) {
 	} else {
 		s.Cons.Piece = v
 	}
+	s.ActivateSelection()
 }
 
 // ChangeBridge is onDropdown on the bridge dropdown: the bridge chosen
@@ -430,6 +445,7 @@ func (s *State) ChangeBridge(c *Cmd, slot uint8) {
 	s.Cons.Bridge = slot + 1
 	s.RemoveConstructionGhosts(c)
 	s.Cons.Cost = 0
+	s.ActivateSelection()
 }
 
 // ConstructionRotate90 is the Construction tab's rotate_90 button
@@ -442,12 +458,14 @@ func (s *State) ConstructionRotate90(c *Cmd) {
 	if cs.Hover {
 		cs.Rotation = (cs.Rotation + 1) & 3
 		cs.Cost = 0
+		s.ActivateSelection()
 		return
 	}
 	s.RemoveConstructionGhosts(c)
 	cs.Hover = true
 	cs.placeUnk = 0
 	cs.Rotation &= 3
+	s.ActivateSelection()
 }
 
 // ConstructionLoop is constructionLoop (0x004A0121's caller, the map click's
@@ -468,14 +486,16 @@ func (s *State) ConstructionLoop(c *Cmd, x, y, height int32, maxRetries uint32, 
 		cs.placeUnk = 0
 		cs.X, cs.Y, cs.Z = x, y, height
 		cs.arrowBlink, cs.arrowFrame = false, 0
+		s.ActivateSelection()
 		c.ErrorText = 0
 		var cost int32
 		var ok bool
 		if road {
 			cost, ok = s.constructRoad(c, &objID)
 		} else {
-			cost, ok = s.ConstructTrack(c, objID)
+			cost, ok = s.constructTrack(c, objID)
 		}
+		s.ActivateSelection() // onMouseUp(construct): constructTrackOrRoad
 		if ok {
 			cs.placeUnk = 1
 			return cost, true
@@ -515,6 +535,7 @@ func (s *State) UpdateConstruction(c *Cmd, road bool, objID uint8) {
 			s.RemoveTrackGhost(c)
 			s.placeRoadGhost(c, a)
 			s.adoptBridge(c)
+			s.ActivateSelection()
 		}
 	} else {
 		if a, ok := s.trackPlacement(objID); !ok {
@@ -523,9 +544,35 @@ func (s *State) UpdateConstruction(c *Cmd, road bool, objID uint8) {
 			s.RemoveRoadGhost(c)
 			s.placeTrackGhost(c, a)
 			s.adoptBridge(c)
+			s.ActivateSelection()
 		}
 	}
 	s.updateConstructionArrow()
+}
+
+// ActivateSelection is activateSelectedConstructionWidgets' map part
+// (activateSelectedTrackWidgets / activateSelectedRoadWidgets 0x0049F1B5,
+// on the Construction tab): enableConstruct with unk_03 (the outline in
+// ExtColour::unk2B) and the selected piece's tiles at the state's position
+// in the piece's rotation — none selectable: piece 0 in the construction
+// rotation.
+func (s *State) ActivateSelection() {
+	cs := &s.Cons
+	rot, id := cs.Rotation, uint8(0)
+	pieces := TrackPieces[:]
+	p, ok := construct.GetTrackPieceID(cs.Piece, cs.Gradient, cs.Rotation)
+	if cs.Road {
+		pieces = RoadPieces[:]
+		p, ok = construct.GetRoadPieceID(cs.Piece, cs.Gradient, cs.Rotation)
+	}
+	if ok {
+		rot, id = p.Rotation, p.ID
+	}
+	if int(id) >= len(pieces) {
+		return
+	}
+	s.ConsSelection.On, s.ConsSelection.Unk03 = true, true
+	s.setSelectedTilesFromPiece(pieces[id], cs.X, cs.Y, rot&3)
 }
 
 // adoptBridge is sub_4A193B (0x004A193B): the bridge of the bridged element
@@ -616,4 +663,5 @@ func (s *State) ConstructionOpenAt(end ConstructionEnd, mods uint8) {
 	cs.Mods = mods
 	cs.Cost = 0
 	cs.arrowBlink, cs.arrowFrame = false, 0
+	s.ActivateSelection()
 }

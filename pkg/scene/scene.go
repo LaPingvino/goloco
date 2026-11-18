@@ -53,8 +53,10 @@ type Renderer struct {
 	SelectionType uint8
 	// ConstructSelection is MapSelectionFlags::enableConstruct with
 	// isWithinMapSelectionFreeFormTiles: a tile in it gets the selection box
-	// in ExtColour::unk25 (unk_03 is never set where goloco sets it). nil: none.
-	ConstructSelection func(tileX, tileY int) bool
+	// in ExtColour::unk25, or with ConstructSelectionUnk03 (unk_03) unk2B.
+	// nil: none.
+	ConstructSelection      func(tileX, tileY int) bool
+	ConstructSelectionUnk03 bool
 	// ConstructionArrow is World::getConstructionArrow with
 	// MapSelectionFlags::enableConstructionArrow as Visible.
 	ConstructionArrow ConstructionArrow
@@ -256,6 +258,7 @@ func (r *Renderer) worker(i int) *Renderer {
 	r.workers[i].Selection = r.Selection
 	r.workers[i].SelectionType = r.SelectionType
 	r.workers[i].ConstructSelection = r.ConstructSelection
+	r.workers[i].ConstructSelectionUnk03 = r.ConstructSelectionUnk03
 	r.workers[i].ConstructionArrow = r.ConstructionArrow
 	return r.workers[i]
 }
@@ -950,11 +953,14 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 		}
 	}
 	// enableConstruct's free-form tiles (PaintSurface.cpp 1655): the
-	// selection box in unk25 — over water deeper than the surface by the
+	// selection box in unk25 (unk_03: unk2B) — over water deeper than the surface by the
 	// water surface's display slope as a parent at its height (bbox
 	// 32,32,1, the last struct kept), else attached by the display slope.
 	if r.ConstructSelection != nil && r.ConstructSelection(x, y) {
 		pm := r.colourMap(0x25)
+		if r.ConstructSelectionUnk03 {
+			pm = r.colourMap(0x2B)
+		}
 		if wh := int(t.WaterLevel) * 16; t.WaterLevel != 0 && wh > z {
 			h, slope := waterSurface()
 			if sel := sprite(constructionSelectionCornersSlope0 + slopeToDisplay[slope&0x1F]); sel != nil {
