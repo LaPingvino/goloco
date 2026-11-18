@@ -57,6 +57,10 @@ type Game struct {
 	// vehicleHandles: the audio handles the vehicles held at the last
 	// updateVehicleNoise (vehicleaudio.go).
 	vehicleHandles map[uint32]bool
+	// ambient is AmbientAudio.cpp's state, ambientSamples the css2–4.dat
+	// samples loaded (loadMusicSample's cache; nil: failed).
+	ambient        audio.Ambient
+	ambientSamples map[int]*audio.Sample
 	dataDir        string
 
 	// The screen and the mouse.

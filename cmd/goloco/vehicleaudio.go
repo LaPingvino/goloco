@@ -1,9 +1,60 @@
 package main
 
 import (
+	"log"
+	"path/filepath"
+
 	"github.com/LaPingvino/goloco/pkg/audio"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
+
+// audioTick is Audio::tick (reclaimFinishedInstances is the frame's
+// sfx.Update): the vehicles' sounds, then the ambient sound. Upstream calls
+// it once per frame (OpenLoco.cpp tick) and once per game tick (GameScene
+// tick); so does goloco.
+func (g *Game) audioTick() {
+	g.updateVehicleNoise()
+	g.updateAmbientNoise()
+}
+
+// updateAmbientNoise is AmbientAudio.cpp updateAmbientNoise: sound off or
+// paused it does nothing (pauseSound / toggleSound stopped the handle:
+// stopAmbientNoise); else the main view's scan chooses (world AmbientScan),
+// and the handle fades (pkg/audio UpdateAmbient).
+func (g *Game) updateAmbientNoise() {
+	if g.sfx.Disabled || g.isPaused {
+		g.sfx.StopAmbient(&g.ambient)
+		return
+	}
+	chosen, maxVol := audio.AmbientNone, int32(-3500)
+	if g.w != nil && g.r != nil && g.r.ObjMgr != nil {
+		water, wild, trees, zoom := g.w.AmbientScan(g.r.ObjMgr)
+		chosen, maxVol = audio.ChooseAmbient(water, wild, trees), audio.AmbientMaxVolume(zoom)
+	}
+	g.sfx.UpdateAmbient(&g.ambient, chosen, maxVol, g.ambientSample)
+}
+
+// ambientSample is loadMusicSample(css2 / css3 / css4), each file read once.
+func (g *Game) ambientSample(which int) (audio.Sample, bool) {
+	if g.ambientSamples == nil {
+		g.ambientSamples = map[int]*audio.Sample{}
+	}
+	s, seen := g.ambientSamples[which]
+	if !seen {
+		if g.dataDir != "" {
+			if smp, err := audio.ReadMusicSample(filepath.Join(g.dataDir, audio.AmbientFiles[which])); err == nil {
+				s = &smp
+			} else {
+				log.Printf("[Audio] %v", err)
+			}
+		}
+		g.ambientSamples[which] = s
+	}
+	if s == nil {
+		return audio.Sample{}, false
+	}
+	return *s, true
+}
 
 // updateVehicleNoise is VehicleAudio.cpp updateVehicleNoise, from Audio::tick:
 // with a map loaded, sound on and the game not paused, every train's
