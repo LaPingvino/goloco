@@ -76,6 +76,7 @@ func (g *Game) Update() error {
 	if pan, ok := g.wins.TakeOpenSound(); ok { // createWindow's openWindow sound
 		g.playSound(audio.SoundOpenWindow, audio.ChannelUI, pan)
 	}
+	g.playClickSounds()
 	return nil
 }
 
@@ -158,6 +159,7 @@ func (g *Game) updateTitle() {
 			g.handleTitleMenuClick(g.mouseX, g.mouseY)
 		}
 	}
+	g.releaseButton()
 	g.routeWheelToWindows()
 }
 
@@ -170,6 +172,7 @@ func (g *Game) updateGame() {
 	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 		g.gameClick()
 	}
+	g.releaseButton()
 	if g.inMouseJustReleased(ebiten.MouseButtonLeft) && g.dropdown != nil && g.dropdown.Visible {
 		// the release of the press that opened a toolbar menu — after the press:
 		// a quick click brings both in one frame (ui.DropdownMenu
@@ -405,7 +408,9 @@ func (g *Game) toolbarPress(x, y int) {
 	if btnIdx := g.toolbar.HandleClick(x, y); btnIdx >= 0 {
 		b := &g.toolbar.Buttons[btnIdx]
 		b.Pressed = true
-		g.playSound(audio.SoundClickDown, audio.ChannelUI, b.X+b.Width/2) // MouseInput: a button's press, at its middle
+		if bar := g.wins.Find(ui.WindowTypeTopToolbar, ui.AnyNumber); bar != nil { // MouseInput: the button's clickDown (ui clicks.go)
+			bar.Base().PressWidget([4]int{b.X - bar.Base().X, b.Y - bar.Base().Y, b.Width, b.Height})
+		}
 		g.handleToolbarButton(btnIdx)
 	}
 }

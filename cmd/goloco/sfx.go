@@ -7,6 +7,8 @@ import (
 
 	"github.com/LaPingvino/goloco/pkg/audio"
 	"github.com/LaPingvino/goloco/pkg/sim"
+	"github.com/LaPingvino/goloco/pkg/ui"
+	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // newEffects is the effects half of Audio.cpp initialiseDSound: css1.dat's
@@ -90,4 +92,27 @@ func (g *Game) dropdownPressSound() {
 		return
 	}
 	g.playSound(audio.SoundClickUp, audio.ChannelUI, d.X+d.Width/2)
+}
+
+// playClickSounds plays the window stack's clicks (ui clicks.go: MouseInput's
+// clickDown, clickUp and clickPress) on the ui channel.
+func (g *Game) playClickSounds() {
+	for _, c := range g.wins.TakeClickSounds() {
+		id := audio.SoundClickDown
+		switch c.ID {
+		case ui.ClickUp:
+			id = audio.SoundClickUp
+		case ui.ClickPress:
+			id = audio.SoundClickPress
+		}
+		g.playSound(id, audio.ChannelUI, c.X)
+	}
+}
+
+// releaseButton is stateWidgetPressed's leftReleased after a widget press
+// (ui WindowStack.ReleaseButton): a dropdown the press opened takes it.
+func (g *Game) releaseButton() {
+	if g.inMouseJustReleased(ebiten.MouseButtonLeft) && g.wins.WidgetPressed() {
+		g.wins.ReleaseButton(g.mouseX, g.mouseY, g.dropdown != nil && g.dropdown.Visible || g.colourDropdown != nil && g.colourDropdown.Visible)
+	}
 }
