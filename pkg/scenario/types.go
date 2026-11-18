@@ -122,6 +122,8 @@ type Scenario struct {
 	StationNames []StationName
 	// DockObjectOrder is the dock-object names in slot order (slots 381..388).
 	DockObjectOrder []string
+	// SoundObjectOrder is the sound-object names in slot order (slots 1..128).
+	SoundObjectOrder []string
 
 	// TrackObjectOrder is the list of track-object names in track-slot order.
 	// Slots 337-344 (8 slots).

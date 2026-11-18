@@ -3,6 +3,7 @@ package objects
 import (
 	"encoding/binary"
 	"errors"
+	"strings"
 )
 
 // SoundObject is Objects/SoundObject.h (0x0C bytes: name, dataOffset,
@@ -65,4 +66,41 @@ func ParseSoundObject(header *ObjectHeader, data []byte) *SoundObject {
 	}
 	s.PCM = data[pcm : pcm+length]
 	return s
+}
+
+// ReorderSoundObjects puts the sound objects in the scenario's slot order
+// (ObjectType::sound, slots 1–128): a slot whose object isn't loaded is nil.
+func (m *ObjectManager) ReorderSoundObjects(order []string) {
+	re := make([]*SoundObject, len(order))
+	for i, name := range order {
+		if name == "" {
+			continue
+		}
+		if lo := m.GetObject(strings.ToUpper(name)); lo != nil {
+			if so, ok := lo.Object.(*SoundObject); ok {
+				re[i] = so
+			}
+		}
+	}
+	m.SoundObjects = re
+}
+
+// SoundObjectIndex is the slot of the sound object a header names
+// (findObjectHandle: VehicleObject::load's soundObjectId / startSounds,
+// SteamObject's soundEffects); -1 when it isn't loaded.
+func (m *ObjectManager) SoundObjectIndex(name string) int {
+	for i, s := range m.SoundObjects {
+		if s != nil && s.Header != nil && strings.EqualFold(strings.TrimSpace(s.Header.GetName()), strings.TrimSpace(name)) {
+			return i
+		}
+	}
+	return -1
+}
+
+// GetSoundObject is ObjectManager::get<SoundObject>(slot); nil when none.
+func (m *ObjectManager) GetSoundObject(slot int) *SoundObject {
+	if m == nil || slot < 0 || slot >= len(m.SoundObjects) {
+		return nil
+	}
+	return m.SoundObjects[slot]
 }

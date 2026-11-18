@@ -36,7 +36,7 @@ func TestEffectsRecord(t *testing.T) {
 	e.Record = true
 	e.PlaySound(SoundTicker, ChannelUI, KPlayAtCentre)
 	e.PlaySound(SoundClickDown, ChannelUI, 160)
-	want := []Played{{SoundTicker, ChannelUI, -1900, 0}, {SoundClickDown, ChannelUI, 0, -1024}}
+	want := []Played{{ID: SoundTicker, Channel: ChannelUI, Volume: -1900}, {ID: SoundClickDown, Channel: ChannelUI, Pan: -1024}}
 	if len(e.Played) != 2 || e.Played[0] != want[0] || e.Played[1] != want[1] {
 		t.Errorf("Played = %+v, want %+v", e.Played, want)
 	}

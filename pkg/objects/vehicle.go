@@ -21,6 +21,13 @@ type VehicleObject struct {
 	// StartSoundNames are those sound objects' DAT names.
 	NumStartSounds  uint8
 	StartSoundNames []string
+	// DrivingSoundType (0x119) is DrivingSoundType (none, friction,
+	// simpleMotor, gearboxMotor); DrivingSound its sound union (0x11A) and
+	// DrivingSoundName the sound object it names (load resolves the header
+	// into sound.*.soundObjectId).
+	DrivingSoundType uint8
+	DrivingSound     VehicleDrivingSound
+	DrivingSoundName string
 	// ShipWakeSpacing (0x113) is the distance between a ship's two wakes
 	// (0: one wake).
 	ShipWakeSpacing uint8
@@ -643,7 +650,11 @@ func walkVariableSections(v *VehicleObject, data []byte) int {
 	}
 
 	// 8. Driving-sound object header (drivingSoundType at 0x119, none = 0).
+	v.DrivingSoundType = data[0x119]
+	v.DrivingSound = parseDrivingSound(data[0x11A : 0x11A+0x1B])
+	v.DrivingSoundName = ""
 	if data[0x119] != 0 {
+		v.DrivingSoundName = headerName(data, offset)
 		offset += HeaderSize
 	}
 
@@ -712,4 +723,82 @@ func (m *ObjectManager) CompatibleVehiclesFor(v *VehicleObject) [8]uint16 {
 		}
 	}
 	return out
+}
+
+// DrivingSoundType values (VehicleObject.h).
+const (
+	DrivingSoundNone uint8 = iota
+	DrivingSoundFriction
+	DrivingSoundSimpleMotor
+	DrivingSoundGearboxMotor
+)
+
+// VehicleDrivingSound is VehicleObject's sound union (0x11A), each reading
+// of its bytes: VehicleObjectFrictionSound (0xB), VehicleSimpleMotorSound
+// (0x11), VehicleGearboxMotorSound (0x1B), packed.
+type VehicleDrivingSound struct {
+	Friction    VehicleFrictionSound
+	SimpleMotor VehicleSimpleMotorSound
+	Gearbox     VehicleGearboxMotorSound
+}
+
+// VehicleFrictionSound is VehicleObjectFrictionSound.
+type VehicleFrictionSound struct {
+	MinSpeed          int32 // 0x1, Speed32
+	SpeedFreqFactor   uint8 // 0x5
+	BaseFrequency     uint16
+	SpeedVolumeFactor uint8 // 0x8
+	BaseVolume        uint8
+	MaxVolume         uint8
+}
+
+// VehicleSimpleMotorSound is VehicleSimpleMotorSound.
+type VehicleSimpleMotorSound struct {
+	IdleFrequency        uint16 // 0x1
+	IdleVolume           uint8  // 0x3
+	CoastingFrequency    uint16 // 0x4
+	CoastingVolume       uint8  // 0x6
+	AccelerationBaseFreq uint16 // 0x7
+	AccelerationVolume   uint8  // 0x9
+	FreqIncreaseStep     uint16 // 0xA
+	FreqDecreaseStep     uint16 // 0xC
+	VolumeIncreaseStep   uint8  // 0xE
+	VolumeDecreaseStep   uint8  // 0xF
+	SpeedFreqFactor      uint8  // 0x10
+}
+
+// VehicleGearboxMotorSound is VehicleGearboxMotorSound.
+type VehicleGearboxMotorSound struct {
+	IdleFrequency        uint16 // 0x1
+	IdleVolume           uint8  // 0x3
+	FirstGearFrequency   uint16 // 0x4
+	FirstGearSpeed       int16  // 0x6, Speed16
+	SecondGearFreqOffset uint16 // 0x8
+	SecondGearSpeed      int16  // 0xA
+	ThirdGearFreqOffset  uint16 // 0xC
+	ThirdGearSpeed       int16  // 0xE
+	FourthGearFreqOffset uint16 // 0x10
+	CoastingVolume       uint8  // 0x12
+	AcceleratingVolume   uint8  // 0x13
+	FreqIncreaseStep     uint16 // 0x14
+	FreqDecreaseStep     uint16 // 0x16
+	VolumeIncreaseStep   uint8  // 0x18
+	VolumeDecreaseStep   uint8  // 0x19
+	SpeedFreqFactor      uint8  // 0x1A
+}
+
+func parseDrivingSound(b []byte) VehicleDrivingSound {
+	u16 := func(o int) uint16 { return binary.LittleEndian.Uint16(b[o:]) }
+	return VehicleDrivingSound{
+		Friction: VehicleFrictionSound{MinSpeed: int32(binary.LittleEndian.Uint32(b[1:])), SpeedFreqFactor: b[5],
+			BaseFrequency: u16(6), SpeedVolumeFactor: b[8], BaseVolume: b[9], MaxVolume: b[0xA]},
+		SimpleMotor: VehicleSimpleMotorSound{IdleFrequency: u16(1), IdleVolume: b[3], CoastingFrequency: u16(4),
+			CoastingVolume: b[6], AccelerationBaseFreq: u16(7), AccelerationVolume: b[9], FreqIncreaseStep: u16(0xA),
+			FreqDecreaseStep: u16(0xC), VolumeIncreaseStep: b[0xE], VolumeDecreaseStep: b[0xF], SpeedFreqFactor: b[0x10]},
+		Gearbox: VehicleGearboxMotorSound{IdleFrequency: u16(1), IdleVolume: b[3], FirstGearFrequency: u16(4),
+			FirstGearSpeed: int16(u16(6)), SecondGearFreqOffset: u16(8), SecondGearSpeed: int16(u16(0xA)),
+			ThirdGearFreqOffset: u16(0xC), ThirdGearSpeed: int16(u16(0xE)), FourthGearFreqOffset: u16(0x10),
+			CoastingVolume: b[0x12], AcceleratingVolume: b[0x13], FreqIncreaseStep: u16(0x14), FreqDecreaseStep: u16(0x16),
+			VolumeIncreaseStep: b[0x18], VolumeDecreaseStep: b[0x19], SpeedFreqFactor: b[0x1A]},
+	}
 }

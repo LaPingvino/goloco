@@ -139,11 +139,12 @@ var vehicleFields = func() map[uint8]map[string]bool {
 		scenario.VehicleTypeVeh1: with("TargetSpeed", "TimeAtSignal", "Var48", "Var49", "DayCreated", "HeadVar52", "LastIncome",
 			"TrainAcceptedCargoTypes"), // var_4E / var_50 read through the head's name (watermotion.go veh1Frac)
 		scenario.VehicleTypeVeh2: with("Var4F", "TotalPower", "TotalWeight", "MaxSpeed", "CurrentSpeed", "MotorState", "BrakeLightTimeout",
-			"RackRailMaxSpeed", "CurMonthRevenue", "Profit", "Veh2Reliability", "Var73"),
+			"RackRailMaxSpeed", "CurMonthRevenue", "Profit", "Veh2Reliability", "Var73",
+			"DrivingSoundID", "DrivingSoundVolume", "DrivingSoundFrequency", "SoundObjectID", "SoundFlags"),
 		scenario.VehicleTypeBogie:         with(append(body, "TotalWeight", "Reliability", "TimeoutToBreakdown")...),
 		scenario.VehicleTypeBodyStart:     with(append(body, "ChuffSoundIndex")...),
 		scenario.VehicleTypeBodyContinued: with(append(body, "ChuffSoundIndex")...),
-		scenario.VehicleTypeTail:          with(),
+		scenario.VehicleTypeTail:          with("DrivingSoundID", "DrivingSoundVolume", "DrivingSoundFrequency", "SoundObjectID", "SoundFlags"),
 	}
 }()
 

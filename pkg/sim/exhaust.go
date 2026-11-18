@@ -12,7 +12,7 @@ import (
 // secondaryAnimationUpdate, one emitter each (animation[0], animation[1]).
 // Ships and aircraft run animationUpdate from their ticks (VehicleBody::update
 // for air and water: animationUpdate only): the ship's wakes and diesel
-// exhaust. PARTIAL: the chuff sounds (no sound queue in the sim).
+// exhaust. A steam puff's chuff sound is queued (chuffSound).
 
 const effectTypeExhaust = 0 // EffectType::exhaust
 
@@ -198,11 +198,12 @@ func (m *Map) emitterUpdate(tr Train, cc CarComponent, om *objects.ObjectManager
 			id |= 0x80
 		}
 		m.createExhaust(om, x, y, z, id)
-		if working { // chuffSoundIndex (PARTIAL: the sound itself)
+		if working {
 			body.ChuffSoundIndex++
 			if body.ChuffSoundIndex >= a.Type+1 {
 				body.ChuffSoundIndex = 0
 			}
+			m.chuffSound(om, body, front, v2, int(steamID), x, y, z)
 		}
 	case objects.EmitterDieselExhaust1:
 		if m.Entities[tr.Head].VehicleType == vehicleTypeShip { // a ship: back along the hull from its position
@@ -394,4 +395,74 @@ func (m *Map) bodiesAnimate(tr Train, om *objects.ObjectManager) {
 			m.bodyAnimationUpdate(tr, cc, om, d2)
 		}
 	}
+}
+
+// chuffSound is steamPuffsAnimationUpdate's sound after a working puff
+// (VehicleBody.cpp 0x004AAC4E): none above 15 mph; the steam object's sound
+// effects are the chuffs, then (its second half) the tunnel chuffs. A steam
+// object with tunnel sounds plays its tunnel chuff in a station — the front
+// bogie on a track piece of its own (height, piece, direction) that has a
+// station element, not a ghost or AI-allocated one, after it — at the speed's
+// volume, 15 dB down at or under the ground. Elsewhere it plays its chuff, the
+// tunnel one at or under the ground (15 dB down), never louder than −4 dB.
+func (m *Map) chuffSound(om *objects.ObjectManager, body, front, v2 *scenario.VehicleEntity, steamSlot int, x, y, z int32) {
+	if v2.CurrentSpeed > 15<<16 || om == nil || steamSlot < 0 || steamSlot >= len(om.SteamObjects) || om.SteamObjects[steamSlot] == nil {
+		return
+	}
+	st := om.SteamObjects[steamSlot]
+	n := len(st.SoundNames)
+	effect := func(i int) string {
+		if i < 0 || i >= n {
+			return ""
+		}
+		return st.SoundNames[i]
+	}
+	chuff := int(body.ChuffSoundIndex)
+	tunnelSounds := st.Flags&objects.SteamFlagHasTunnelSounds != 0
+	stationFound := false
+	if tunnelSounds {
+		if t := m.TileAt(int(front.TileX)>>5, int(front.TileY)>>5); t != nil {
+			id, dir := uint8(front.TrackAndDirection>>3)&0x3F, uint8(front.TrackAndDirection)&3
+			for i, r := range t.Order {
+				if stationFound && r.Flags&(elemFlagGhost|elemFlagAiAllocated) == 0 {
+					break
+				}
+				stationFound = false
+				if r.Kind != scenario.KindTrack {
+					continue
+				}
+				tr := &t.Tracks[r.Index]
+				if tr.BaseZ != front.TileBaseZ || tr.TrackID != id || tr.Rotation != dir || !tr.HasStation {
+					continue
+				}
+				if i != len(t.Order)-1 {
+					stationFound = true
+				}
+			}
+		}
+	}
+	volume := -(v2.CurrentSpeed >> 9)
+	land, _ := m.GetHeight(x, y)
+	under := z <= int32(land)
+	var name string
+	if stationFound {
+		name = effect(chuff + n/2)
+		if under {
+			volume -= 1500
+		}
+	} else {
+		mod := n / 2
+		if !tunnelSounds {
+			mod = 0
+		}
+		name = effect(chuff)
+		if under {
+			name = effect(mod + chuff)
+			volume -= 1500
+		}
+		if volume > -400 {
+			volume = -400
+		}
+	}
+	m.Sounds = append(m.Sounds, SoundEvent{Object: name, Channel: ChannelVehicles, X: x, Y: y, Z: z, Volume: volume, Frequency: 22050})
 }

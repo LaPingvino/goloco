@@ -54,7 +54,10 @@ type Game struct {
 	r          *render.Renderer
 	audioMgr   *audio.Manager
 	sfx        *audio.Effects // the sound effects (sfx.go)
-	dataDir    string
+	// vehicleHandles: the audio handles the vehicles held at the last
+	// updateVehicleNoise (vehicleaudio.go).
+	vehicleHandles map[uint32]bool
+	dataDir        string
 
 	// The screen and the mouse.
 	sw, sh                         int     // current logical screen dimensions (updated by Layout each frame)

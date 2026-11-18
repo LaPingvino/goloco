@@ -117,6 +117,7 @@ func panGains(pan int32) (l, r float64) {
 // PORT-PLANS B asks to assert on.
 type Played struct {
 	ID      SoundId
+	Object  string // an object sound: its name (ID unset)
 	Channel ChannelId
 	Volume  int32 // the handle's volume, the sound's own volume included
 	Pan     int32 // −4096…4096
@@ -135,6 +136,10 @@ type Effects struct {
 	// Disabled is !Audio::isAudioEnabled (the Audio menu's Mute):
 	// playSound returns at once.
 	Disabled bool
+
+	// voices are the lasting handles (voice.go: Create … Destroy).
+	voices     map[Handle]*voice
+	nextHandle Handle
 }
 
 // NewEffects is the effects mixer over css1.dat's samples; ctx nil plays
@@ -219,6 +224,12 @@ func (e *Effects) Update() {
 		}
 	}
 	e.players = live
+	for _, v := range e.voices { // reclaimFinishedInstances: a one-shot that ended
+		if v.player != nil && !v.done && !v.player.IsPlaying() && !v.attr.Loop {
+			_ = v.player.Close()
+			v.done = true
+		}
+	}
 }
 
 // stereo16 renders a mono or stereo, 8- or 16-bit PCM sample as the context's
