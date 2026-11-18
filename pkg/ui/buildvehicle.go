@@ -163,6 +163,42 @@ type BuildVehicleWindow struct {
 	OnBuy                 func(id uint16) // a row clicked (onScrollMouseDown): buy that vehicle
 }
 
+// OnResize is onResize (0x4C3929): the window resizable within
+// BuildVehicleSize's bounds (at least max(track tabs · 31 + 195, 380) ×
+// 233, at most kMaxWindowSize 700 × 600), and the list's scroll no further
+// than its rows reach (contentHeight − (bottom − top)).
+// PARTIAL: rowHover set to the first row when none (the preview).
+func (w *BuildVehicleWindow) OnResize() {
+	w.WinFlags |= WindowFlagResizable
+	w.SetSize(max(w.NumTrackTabs*31+195, 380), 233, 700, 600)
+	list := BuildVehicleLayout(w.W, w.H, w.Disabled, w.NumTrackTabs)[bvList]
+	w.Scroll = min(w.Scroll, max(0, len(w.Rows)*sim.BuildVehicleRowHeight[w.Tab]-(list.B-list.T)))
+}
+
+// PrepareDraw runs onResize: the stack calls it as the size changes.
+func (w *BuildVehicleWindow) PrepareDraw() { w.OnResize() }
+
+// OnFrame: no widget but the frame and the panel at the point
+// (findWidgetAt): a press there moves the window, or in the corner
+// resizes it.
+func (w *BuildVehicleWindow) OnFrame(x, y int) bool {
+	lw := BuildVehicleLayout(w.W, w.H, w.Disabled, w.NumTrackTabs)
+	return bareFrame(lw[:], bvPanel, w.X, w.Y, x, y)
+}
+
+// bareFrame reports a point on the window whose last widget there
+// (findWidgetAt) is the frame or the panel — the widgets up to and with
+// index panel are the frame, caption, close button and panel.
+func bareFrame(lw []BVWidget, panel, wx, wy, x, y int) bool {
+	at := -1
+	for i, c := range lw {
+		if !c.Hidden && x >= wx+c.L && x <= wx+c.R && y >= wy+c.T && y <= wy+c.B {
+			at = i
+		}
+	}
+	return at == 0 || at == panel
+}
+
 // Draw is draw + drawScroll(vehicle_selection).
 func (w *BuildVehicleWindow) Draw(screen *ebiten.Image) {
 	if globalG1Font == nil {
@@ -182,6 +218,7 @@ func (w *BuildVehicleWindow) Draw(screen *ebiten.Image) {
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
 		p := lw[bvPanel]
 		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
+		drawResizeHandle(rt, &w.WinBase, sec) // PanelWidget: the handle on a resizable window
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[bvClose].L, lw[bvClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}

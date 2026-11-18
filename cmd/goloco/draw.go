@@ -136,9 +136,12 @@ func (g *Game) drawTitleScreen(screen *ebiten.Image) {
 	g.drawInlineDiag(screen)
 }
 
-// drawGameWindows draws the toolbar and the game's windows, back to front
-// (the stack's order), the menus and modals last.
-func (g *Game) drawGameWindows(screen *ebiten.Image) {
+// drawGameWindows draws the game's windows — the toolbar and the panels
+// among them —, back to front (the stack's order).
+func (g *Game) drawGameWindows(screen *ebiten.Image) { g.drawWindows(screen) }
+
+// drawToolbar is ToolbarTop's draw (its window on the stack).
+func (g *Game) drawToolbar(screen *ebiten.Image) {
 	m := &g.w.Map // the button faces: the last track and road options, in the player's colour
 	ctrl, _ := g.w.ControllingCompany()
 	g.toolbar.LastRailroadOption, g.toolbar.LastRoadOption = m.LastRailroadOption, m.LastRoadOption
@@ -149,7 +152,6 @@ func (g *Game) drawGameWindows(screen *ebiten.Image) {
 		g.toolbar.Colours = [4]uint8{sk.TopToolbarPrimaryColour, sk.TopToolbarSecondaryColour, sk.TopToolbarTertiaryColour, sk.TopToolbarQuaternaryColour}
 	}
 	g.toolbar.Draw(screen, g.r) // through draw8: the 8-bit screen copy stays in step
-	g.drawWindows(screen)
 }
 
 // drawTopmost draws what opens over the panels and the news (stickToFront
@@ -181,14 +183,16 @@ func (g *Game) drawTopmost(screen *ebiten.Image) {
 	}
 }
 
-// drawOverlays draws the bottom panels and what lies over the game.
+// drawOverlays draws what lies over the game's windows.
 func (g *Game) drawOverlays(screen *ebiten.Image) {
-	// Bottom bar: the ported PlayerInfoPanel (left) and TimePanel (right).
-	g.drawPlayerPanel(screen)
-	// The objective is not an overlay upstream: it is the time panel's date
-	// tooltip (StringIds::tooltip_daymonthyear_challenge), shown on hover.
-	g.drawTimePanel(screen)
-	g.drawNews(screen) // the news window and the ticker: stickToFront, made after the panels and so over them
+	if g.timePanelTip != "" { // the date's challenge tooltip
+		var c uint8
+		if sk := g.skin(); sk != nil {
+			c = sk.TooltipColour
+		}
+		ui.DrawTooltip(screen, g.timePanelTip, g.mouseX, g.mouseY, c)
+		g.timePanelTip = ""
+	}
 	g.drawTopmost(screen)
 
 	g.drawInlineDiag(screen)
@@ -210,8 +214,9 @@ func (g *Game) drawPlayerPanel(screen *ebiten.Image) {
 	g.playerPanelCompany(&st)
 	wx, wy := uilayout.PlayerPanelPos(g.sw, g.sh)
 	cv, pf := uilayout.PlayerPanelCompanyVal, uilayout.PlayerPanelPerformance
-	st.HoverCash = inRect(g.mouseX, g.mouseY, wx+cv[0], wy+cv[1], cv[2], cv[3])
-	st.HoverPerf = inRect(g.mouseX, g.mouseY, wx+pf[0], wy+pf[1], pf[2], pf[3])
+	under := g.barUnderMouse(ui.WindowTypeCompanyInfoPanel) // the hover: the window under the mouse only
+	st.HoverCash = under && inRect(g.mouseX, g.mouseY, wx+cv[0], wy+cv[1], cv[2], cv[3])
+	st.HoverPerf = under && inRect(g.mouseX, g.mouseY, wx+pf[0], wy+pf[1], pf[2], pf[3])
 	ui.DrawPlayerPanel(screen, st)
 }
 
@@ -264,8 +269,9 @@ func (g *Game) drawTimePanel(screen *ebiten.Image) {
 	}
 	wx, wy := uilayout.TimePanelPos(g.sw, g.sh)
 	d := uilayout.TimePanelDate
-	st.HoverDate = inRect(g.mouseX, g.mouseY, wx+d[0], wy+d[1], d[2], d[3])
+	st.HoverDate = g.barUnderMouse(ui.WindowTypeTimePanel) && inRect(g.mouseX, g.mouseY, wx+d[0], wy+d[1], d[2], d[3])
 	ui.DrawTimePanel(screen, st)
+	g.timePanelTip = ""
 	if st.HoverDate && g.hasObjective {
 		// formatChallenge (string 647: date, then 695 / 696 / 699 + 700).
 		tip := st.Date
@@ -283,12 +289,15 @@ func (g *Game) drawTimePanel(screen *ebiten.Image) {
 				tip += fmt.Sprintf("\nTime left: %d years %d months", left/12, left%12)
 			}
 		}
-		var c uint8
-		if sk := g.skin(); sk != nil {
-			c = sk.TooltipColour
-		}
-		ui.DrawTooltip(screen, tip, g.mouseX, g.mouseY, c)
+		g.timePanelTip = tip // drawn over the windows (drawOverlays)
 	}
+}
+
+// barUnderMouse reports the bar of that type as the window under the mouse
+// (findAt): its hover.
+func (g *Game) barUnderMouse(typ ui.WindowType) bool {
+	w := g.wins.FindAt(g.mouseX, g.mouseY)
+	return w != nil && w.Base().WinType == typ
 }
 
 // drawFPS is Gfx::drawFPS (Graphics/FPSCounter.cpp), drawn when

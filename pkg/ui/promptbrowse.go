@@ -168,7 +168,7 @@ type pbEntry struct {
 // NewPromptBrowse opens the window (createWindowCentred) on dir.
 func NewPromptBrowse(title, dir string, exts []string, sw, sh int) *PromptBrowseWindow {
 	w := &PromptBrowseWindow{WinBase: WinBase{WinType: WindowTypeFileBrowserPrompt, X: (sw - pbW) / 2, Y: (sh - pbH) / 2, W: pbW, H: pbH,
-		WinFlags: WindowFlagStickToFront}, Title: title, Exts: exts, Selected: -1}
+		WinFlags: WindowFlagStickToFront | WindowFlagPlaySoundOnOpen}, Title: title, Exts: exts, Selected: -1}
 	w.chdir(dir)
 	return w
 }

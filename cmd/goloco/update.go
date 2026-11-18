@@ -69,9 +69,12 @@ func (g *Game) Update() error {
 
 	if g.inTitleScreen {
 		g.updateTitle()
-		return nil
+	} else {
+		g.updateGame()
 	}
-	g.updateGame()
+	if pan, ok := g.wins.TakeOpenSound(); ok { // createWindow's openWindow sound
+		g.playSound(audio.SoundOpenWindow, audio.ChannelUI, pan)
+	}
 	return nil
 }
 
@@ -119,7 +122,11 @@ func (g *Game) updateTitle() {
 	// The title map is a running game: w.Update is its game tick.
 	g.titleFrame++
 	g.w.Map.TitleMode = true
-	for range g.w.GameTicks(g.mouseMoved()) { // tickLogic(numUpdates): the title is a running game upstream
+	n := g.w.GameTicks(g.mouseMoved())
+	if n > 0 {
+		g.wins.Tick() // tickInterface → sub_431695 → WindowManager::tick: the border flashes
+	}
+	for range n { // tickLogic(numUpdates): the title is a running game upstream
 		g.w.Update() // tickLogic: one game tick
 		if g.titleSeq != nil {
 			g.titleSeq.Update()
@@ -144,6 +151,8 @@ func (g *Game) updateTitle() {
 			if !g.dropdown.HandleClick(g.mouseX, g.mouseY) {
 				g.dropdown = nil
 			}
+		} else if g.wins.PressModal(g.mouseX, g.mouseY) {
+			g.playSound(audio.SoundError, audio.ChannelUI, g.mouseX)
 		} else if !g.windowsPress() {
 			g.handleTitleMenuClick(g.mouseX, g.mouseY)
 		}
@@ -153,7 +162,7 @@ func (g *Game) updateTitle() {
 
 // updateGame is a frame of a running game.
 func (g *Game) updateGame() {
-	g.syncScreen() // the fixed windows known to the stack before a press reorders it
+	g.syncScreen() // the bars on the stack (Gui::init, resizeGameScene) before a press reorders it
 	g.diagKeepMoneyEffect()
 	g.updateConstructionTools()
 	g.updateHeld()
@@ -197,6 +206,9 @@ func (g *Game) updateGame() {
 	g.updateMusic()
 	// Update world (skipped when paused; repeated per speed multiplier)
 	n := g.w.GameTicks(g.mouseMoved())
+	if n > 0 {
+		g.wins.Tick() // tickInterface → sub_431695 → WindowManager::tick: the border flashes
+	}
 	g.updateNews(n)  // sub_431695: MessageManager's update and the news windows', per interface update
 	if !g.isPaused { // tickLogic(numUpdates × the speed)
 		for i := 0; i < n*g.speedMult; i++ {
@@ -272,11 +284,17 @@ func (g *Game) updateHeld() {
 	} else if g.colourDropdown != nil && g.colourDropdown.Visible {
 		g.colourDropdown.UpdateHover(g.mouseX, g.mouseY)
 	} else {
-		g.toolbar.UpdateHover(g.mouseX, g.mouseY)
+		// The toolbar's hover: only as the window under the mouse (findAt — a
+		// window brought over it hides it).
+		hx, hy := g.mouseX, g.mouseY
+		if w := g.wins.FindAt(hx, hy); w == nil || w.Base().WinType != ui.WindowTypeTopToolbar {
+			hx, hy = farAway, farAway
+		}
+		g.toolbar.UpdateHover(hx, hy)
 		// ToolbarTop.cpp onMouseHover: with Config::toolbarAutoMenu (10c1e49) —
 		// in the normal input state (no menu open) a button under the mouse
 		// opens its menu.
-		if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 && !g.inTitleScreen && !g.noAutoMenu &&
+		if btnIdx := g.toolbar.HandleClick(hx, hy); btnIdx >= 0 && !g.inTitleScreen && !g.noAutoMenu &&
 			g.textInput == nil && g.prompt == nil && !g.inMousePressed(ebiten.MouseButtonLeft) {
 			g.toolbar.Buttons[btnIdx].Pressed = true
 			g.handleToolbarButton(btnIdx)
@@ -327,18 +345,23 @@ func (g *Game) gameClick() {
 	} else if g.colourDropdown != nil && g.colourDropdown.Visible {
 		g.colourDropdown.HandleClick(g.mouseX, g.mouseY) // a colour picked, or closed
 		g.colourDropdown = nil
+	} else if g.wins.PressModal(g.mouseX, g.mouseY) { // a modal window open: it comes forward
+		g.playSound(audio.SoundError, audio.ChannelUI, g.mouseX)
 	} else if !g.windowsPress() { // the windows, front-most first (stateNormalLeft)
 		g.hudOrMapClick()
 	}
 }
 
-// hudOrMapClick is a left press no window took: the bottom panels, the
-// toolbar, else the active tool on the map.
-func (g *Game) hudOrMapClick() {
-	if sp := uilayout.TimePanelSpeedAt(g.mouseX, g.mouseY, g.sw, g.sh); sp >= 0 && !g.inTitleScreen {
-		// TimePanel speed buttons: pause toggles; the others set the speed.
-		// clickable(TimePanel.cpp): pause_btn normal_speed_btn fast_forward_btn extra_fast_forward_btn
-		switch sp {
+// timePanelPress is TimePanel's press (its window on the stack): the speed
+// buttons; the date opens the Messages window (onMouseUp date_btn) and the
+// map / chat button its menu.
+// clickable(TimePanel.cpp): pause_btn normal_speed_btn fast_forward_btn extra_fast_forward_btn date_btn map_chat_menu
+func (g *Game) timePanelPress(x, y int) {
+	if g.inTitleScreen {
+		return
+	}
+	if sp := uilayout.TimePanelSpeedAt(x, y, g.sw, g.sh); sp >= 0 {
+		switch sp { // pause toggles; the others set the speed
 		case 0:
 			g.isPaused = !g.isPaused
 		case 1:
@@ -348,34 +371,47 @@ func (g *Game) hudOrMapClick() {
 		case 3:
 			g.setSpeed(4)
 		}
-	} else if (uilayout.InTimePanel(g.mouseX, g.mouseY, g.sw, g.sh) || uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh)) && !g.inTitleScreen {
-		// the bottom-bar windows swallow the click; the time panel's date is
-		// MessageWindow::open (TimePanel.cpp onMouseUp date_btn); the player panel's
-		// company value is companyValueMouseUp: the Company window's Finances
-		// clickable(TimePanel.cpp): date_btn map_chat_menu
-		tx, ty := uilayout.TimePanelPos(g.sw, g.sh)
-		if d := uilayout.TimePanelDate; inRect(g.mouseX, g.mouseY, tx+d[0], ty+d[1], d[2], d[3]) {
-			g.openMessagesWindow()
-		}
-		if r := uilayout.TimePanelMapChat; inRect(g.mouseX, g.mouseY, tx+r[0], ty+r[1], r[2], r[3]) {
-			g.mapChatMenu(tx+r[0], ty+r[1], r[2], r[3])
-		}
-		px, py := uilayout.PlayerPanelPos(g.sw, g.sh)
-		if r := uilayout.PlayerPanelFace; uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh) &&
-			inRect(g.mouseX, g.mouseY, px+r[0], py+r[1], r[2], r[3]) {
-			g.playerCompanyDropdown(px+r[0], py+r[1], r[2], r[3]) // playerMouseDown
-		}
-		if r := uilayout.PlayerPanelCompanyVal; uilayout.InPlayerPanel(g.mouseX, g.mouseY, g.sw, g.sh) &&
-			inRect(g.mouseX, g.mouseY, px+r[0], py+r[1], r[2], r[3]) {
-			company, _ := g.w.ControllingCompany()
-			g.openCompanyFinances(company)
-		}
-	} else if btnIdx := g.toolbar.HandleClick(g.mouseX, g.mouseY); btnIdx >= 0 {
+		return
+	}
+	tx, ty := uilayout.TimePanelPos(g.sw, g.sh)
+	if d := uilayout.TimePanelDate; inRect(x, y, tx+d[0], ty+d[1], d[2], d[3]) {
+		g.openMessagesWindow()
+	}
+	if r := uilayout.TimePanelMapChat; inRect(x, y, tx+r[0], ty+r[1], r[2], r[3]) {
+		g.mapChatMenu(tx+r[0], ty+r[1], r[2], r[3])
+	}
+}
+
+// playerPanelPress is CompanyInfoPanel's press: the owner's face opens the
+// company dropdown (playerMouseDown), the company value the Company window's
+// Finances (companyValueMouseUp).
+func (g *Game) playerPanelPress(x, y int) {
+	if g.inTitleScreen {
+		return
+	}
+	px, py := uilayout.PlayerPanelPos(g.sw, g.sh)
+	if r := uilayout.PlayerPanelFace; inRect(x, y, px+r[0], py+r[1], r[2], r[3]) {
+		g.playerCompanyDropdown(px+r[0], py+r[1], r[2], r[3])
+	}
+	if r := uilayout.PlayerPanelCompanyVal; inRect(x, y, px+r[0], py+r[1], r[2], r[3]) {
+		company, _ := g.w.ControllingCompany()
+		g.openCompanyFinances(company)
+	}
+}
+
+// toolbarPress is ToolbarTop's press on a button: its menu.
+func (g *Game) toolbarPress(x, y int) {
+	if btnIdx := g.toolbar.HandleClick(x, y); btnIdx >= 0 {
 		b := &g.toolbar.Buttons[btnIdx]
 		b.Pressed = true
 		g.playSound(audio.SoundClickDown, audio.ChannelUI, b.X+b.Width/2) // MouseInput: a button's press, at its middle
 		g.handleToolbarButton(btnIdx)
-	} else if g.tf.on && !g.inTitleScreen {
+	}
+}
+
+// hudOrMapClick is a left press no window took: the active tool on the map.
+func (g *Game) hudOrMapClick() {
+	if g.tf.on && !g.inTitleScreen {
 		g.terraformToolDown(g.mouseX, g.mouseY) // the Terraform window's tool
 	} else if g.industryToolOn() && !g.inTitleScreen {
 		g.industryToolDown(g.mouseX, g.mouseY) // the Fund New Industries tool

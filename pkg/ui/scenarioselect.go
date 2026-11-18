@@ -56,7 +56,7 @@ type ScenarioSelectWindow struct {
 // NewScenarioSelect opens the window for screen size sw × sh.
 func NewScenarioSelect(metas []*scenario.ScenarioMeta, sw, sh int) *ScenarioSelectWindow {
 	w := &ScenarioSelectWindow{WinBase: WinBase{WinType: WindowTypeScenarioSelect, X: sw/2 - ssW/2, Y: max(sh/2-ssH/2, 28), W: ssW, H: ssH,
-		WinFlags: WindowFlagStickToFront}}
+		WinFlags: WindowFlagStickToFront | WindowFlagPlaySoundOnOpen}}
 	for _, m := range metas {
 		c := int(m.Category)
 		if c < 0 || c >= 5 {

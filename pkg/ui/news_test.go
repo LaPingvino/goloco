@@ -110,7 +110,7 @@ func TestNewsTicker(t *testing.T) {
 // to move it by and stays in front.
 func TestNewsWindowInStack(t *testing.T) {
 	s := &WindowStack{ScreenW: 800, ScreenH: 600}
-	s.Fixed = []WinRect{{X: 0, Y: 0, W: 800, H: 28}, {X: 0, Y: 573, W: 140, H: 27}, {X: 660, Y: 573, W: 140, H: 27}}
+	openBars(s)
 	news := NewNewsWindow(true, true, true, 800, 600)
 	s.Open(news)
 	a := newTestWin(WindowTypeTown, 1, 0, 0, 300, 200)
@@ -217,7 +217,7 @@ func TestMessagesWindow(t *testing.T) {
 // screen's width) and is clamped onto the screen.
 func TestPlacementOrderWithNews(t *testing.T) {
 	s := &WindowStack{ScreenW: 800, ScreenH: 600}
-	s.Fixed = []WinRect{{X: 0, Y: 0, W: 800, H: 28}, {X: 0, Y: 573, W: 140, H: 27}, {X: 660, Y: 573, W: 140, H: 27}}
+	openBars(s)
 	msg := NewMessagesWindow(800, 0, 0)
 	s.Open(msg)
 	news := func() {
@@ -237,13 +237,13 @@ func TestPlacementOrderWithNews(t *testing.T) {
 	s.Press(msg.X+100, msg.Y+100)
 	news()
 	var kinds []int
-	for _, e := range s.order {
+	for _, w := range s.Windows {
 		switch {
-		case e.win == nil:
-			kinds = append(kinds, e.fixed)
-		case e.win == Win(msg):
+		case IsBar(w):
+			kinds = append(kinds, int(w.Base().WinType-WindowTypeTopToolbar))
+		case w == Win(msg):
 			kinds = append(kinds, 10)
-		case e.win == Win(ind):
+		case w == Win(ind):
 			kinds = append(kinds, 11)
 		default:
 			kinds = append(kinds, 12)
@@ -257,8 +257,9 @@ func TestPlacementOrderWithNews(t *testing.T) {
 	if town.X != 0 || town.Y != 439 {
 		t.Errorf("the town window at %d,%d, want 0,439 as OpenLoco", town.X, town.Y)
 	}
-	// A new scene: the list starts over.
+	// A new scene: the list starts over (Gui::init opens the bars anew).
 	s.CloseAll()
+	openBars(s)
 	if r := s.rects(); len(r) != 3 || r[0].H != 28 {
 		t.Errorf("after CloseAll: %+v", r)
 	}

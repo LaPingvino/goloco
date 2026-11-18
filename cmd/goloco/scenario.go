@@ -283,4 +283,5 @@ func (g *Game) openLoadGameWindow() {
 		}
 	}
 	g.showCentred(w)
+	g.wins.Modal = ui.WindowTypeFileBrowserPrompt // setCurrentModalType(fileBrowserPrompt)
 }

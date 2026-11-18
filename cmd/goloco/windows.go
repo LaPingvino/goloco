@@ -78,6 +78,7 @@ func (g *Game) showAuto(w ui.Win, createW, createH int) {
 	b.ApplyLimits()
 	g.wins.Show(w)
 	if createW > 0 {
+		g.wins.RepanOpenSound(b.X + createW/2) // createWindow's sound: its origin and size
 		g.wins.MoveInsideScreenEdges(w)
 	}
 }
@@ -128,7 +129,7 @@ func (g *Game) uiOpen() bool {
 		return true
 	}
 	for _, w := range g.wins.Windows {
-		if !isNews(w) { // news comes by itself: the world keeps its pace under it
+		if !isNews(w) && !ui.IsBar(w) { // news comes by itself: the world keeps its pace under it
 			return true
 		}
 	}
@@ -153,9 +154,7 @@ func (g *Game) windowColours(player bool) (tc, wc uint8) {
 // overWindow reports whether a screen point is on one of goloco's windows or
 // bars, where the tool does not act (the viewport is under none of them).
 func (g *Game) overWindow(x, y int) bool {
-	return g.wins.FindAt(x, y) != nil ||
-		g.toolbar.HandleClick(x, y) >= 0 ||
-		uilayout.InTimePanel(x, y, g.sw, g.sh) || uilayout.InPlayerPanel(x, y, g.sw, g.sh)
+	return g.wins.FindAt(x, y) != nil
 }
 
 // routeWheelToWindows is WindowManager::wheelInput for the window under the
@@ -354,10 +353,11 @@ func (g *Game) prepareWindow(win ui.Win) {
 	}
 }
 
-// drawWindows draws the stack, back to front, and a dragged car over it
+// drawWindows draws the stack, back to front — the toolbar, the panels, the
+// news among the others in the list's order — and a dragged car over it
 // (DragVehiclePart: stickToFront).
 func (g *Game) drawWindows(screen *ebiten.Image) {
-	g.wins.DrawWhere(screen, g.prepareWindow, func(w ui.Win) bool { return !isNews(w) })
+	g.wins.Draw(screen, g.prepareWindow)
 	for _, win := range g.wins.Windows {
 		if w, ok := win.(*ui.VehicleWindow); ok {
 			w.DrawDrag(screen)
@@ -365,23 +365,45 @@ func (g *Game) drawWindows(screen *ebiten.Image) {
 	}
 }
 
-// drawNews draws the news window or the ticker, over the bottom panels.
-func (g *Game) drawNews(screen *ebiten.Image) {
+// syncBars keeps the game scene's bars on the stack: Gui::init opens
+// ToolbarTop, CompanyInfoPanel and TimePanel (in that order) when the scene
+// has none — a new scene, its windows closed — and resizeGameScene puts them
+// at the screen's edges; the title screen has none.
+func (g *Game) syncBars() {
+	bars := [3]ui.WindowType{ui.WindowTypeTopToolbar, ui.WindowTypeCompanyInfoPanel, ui.WindowTypeTimePanel}
 	if g.inTitleScreen {
+		for _, t := range bars {
+			g.wins.CloseType(t, ui.AnyNumber)
+		}
 		return
 	}
-	g.wins.DrawWhere(screen, g.prepareWindow, isNews)
-}
-
-// fixedWindows are upstream's stickToFront windows goloco keeps outside the
-// stack — ToolbarTop (0, 0, width × 28), PlayerInfoPanel and TimePanel (140 ×
-// 27 in the bottom corners), in Gui::init's order — as a new window's
-// placement sees them; none on the title screen (its windows are centred).
-func (g *Game) fixedWindows() []ui.WinRect {
-	if g.inTitleScreen {
-		return nil
+	if g.wins.Find(ui.WindowTypeTopToolbar, ui.AnyNumber) == nil {
+		top := ui.NewBarWindow(ui.WindowTypeTopToolbar, 0, 0, g.sw, 28)
+		top.DrawBar = g.drawToolbar
+		top.ClickBar = g.toolbarPress
+		top.WidgetAt = func(x, y int) bool { return g.toolbar.HandleClick(x, y) >= 0 }
+		g.wins.Open(top)
+		player := ui.NewBarWindow(ui.WindowTypeCompanyInfoPanel, 0, g.sh-27, uilayout.PlayerPanelW, 27)
+		player.DrawBar = g.drawPlayerPanel
+		player.ClickBar = g.playerPanelPress
+		player.WidgetAt = func(x, y int) bool { return true } // its outer frame: 140 × 29
+		g.wins.Open(player)
+		tp := ui.NewBarWindow(ui.WindowTypeTimePanel, g.sw-140, g.sh-27, 140, 27)
+		tp.DrawBar = g.drawTimePanel
+		tp.ClickBar = g.timePanelPress
+		tp.WidgetAt = func(x, y int) bool { return true }
+		g.wins.Open(tp)
 	}
-	return []ui.WinRect{{X: 0, Y: 0, W: g.sw, H: 28}, {X: 0, Y: g.sh - 27, W: 140, H: 27}, {X: g.sw - 140, Y: g.sh - 27, W: 140, H: 27}}
+	w := max(g.sw, 640)
+	if b := g.wins.Find(ui.WindowTypeTopToolbar, ui.AnyNumber); b != nil {
+		b.Base().X, b.Base().Y, b.Base().W = 0, 0, w
+	}
+	if b := g.wins.Find(ui.WindowTypeCompanyInfoPanel, ui.AnyNumber); b != nil {
+		b.Base().X, b.Base().Y = 0, g.sh-b.Base().H
+	}
+	if b := g.wins.Find(ui.WindowTypeTimePanel, ui.AnyNumber); b != nil {
+		b.Base().X, b.Base().Y = w-b.Base().W, g.sh-b.Base().H
+	}
 }
 
 // openError is Error::open at the mouse, with the error sound panned to the
