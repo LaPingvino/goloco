@@ -92,7 +92,14 @@ func (g *Game) playerCompanyDropdown(x, y, w, h int) {
 func (g *Game) openCompanyWindow(company int) {
 	if cw := g.newCompanyWindow(company); cw != nil {
 		cw.SwitchTab(ui.CompanyTabStatus)
+		old := g.companyWin(company)
 		g.showAuto(cw, 0, 0) // create: Status::kWindowSize, the tab it opens on
+		if old != nil { // open: setSize(Status::kWindowSize) within the bounds the window had, then Status's onResize
+			ob := old.Base()
+			cw.W, cw.H = min(max(ui.CompanyStatusSize[0], ob.MinW), ob.MaxW), min(max(ui.CompanyStatusSize[1], ob.MinH), ob.MaxH)
+			cw.ApplyLimits()
+			g.wins.MoveInsideScreenEdges(cw)
+		}
 	}
 }
 
@@ -408,9 +415,8 @@ func (g *Game) openCompanyList() {
 		}
 		rows = append(rows, r)
 	}
-	w, h := ui.CompanyListSize[0], ui.CompanyListSize[1]
-	cl := &ui.CompanyListWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeCompanyList, W: w, H: h}, TitleColour: tc, Colour: wc, Rows: rows, SortMode: 2, Hover: -1,
-		OnRow: g.openCompanyWindow}
+	cl := ui.NewCompanyList(tc, wc, rows)
+	cl.OnRow = g.openCompanyWindow
 	for i := range cl.Records { // CompanyManager::getRecords()
 		rec := m.CompanyRecords
 		r := ui.SpeedRecord{Speed: int(rec.Speed[i])}
