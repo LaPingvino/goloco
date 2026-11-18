@@ -1,6 +1,8 @@
 package world
 
 import (
+	"slices"
+
 	"github.com/LaPingvino/goloco/pkg/scene"
 	"github.com/LaPingvino/goloco/pkg/sim"
 )
@@ -31,5 +33,38 @@ func (w *World) SyncConstructionArrow(on bool) {
 	}
 	if w.scene != nil {
 		w.scene.ConstructionArrow = scene.ConstructionArrow{Visible: a.On, X: a.X, Y: a.Y, Z: a.Z, Direction: a.Direction}
+	}
+	w.syncConstructSelection(on)
+}
+
+// syncConstructSelection hands the construction tool's selected tiles
+// (sim.State.ConsSelection: enableConstruct and the free-form tiles) to the
+// renderer, the old and new tiles redrawn when they change
+// (mapInvalidateMapSelectionFreeFormTiles); on false switches them off.
+func (w *World) syncConstructSelection(on bool) {
+	var tiles [][2]int32
+	if on && w.ConsSelection.On {
+		tiles = w.ConsSelection.Tiles
+	}
+	if slices.Equal(tiles, w.consSelection) {
+		return
+	}
+	for _, t := range w.consSelection {
+		w.invalidateTile(t[0], t[1], 0, 1120, 3, 32)
+	}
+	for _, t := range tiles {
+		w.invalidateTile(t[0], t[1], 0, 1120, 3, 32)
+	}
+	w.consSelection = append(w.consSelection[:0], tiles...)
+	if w.scene == nil {
+		return
+	}
+	if len(tiles) == 0 {
+		w.scene.ConstructSelection = nil
+		return
+	}
+	sel := slices.Clone(tiles)
+	w.scene.ConstructSelection = func(tx, ty int) bool {
+		return slices.Contains(sel, [2]int32{int32(tx) * 32, int32(ty) * 32})
 	}
 }

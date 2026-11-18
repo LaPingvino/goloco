@@ -6,6 +6,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/construct"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/shortcuts"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/uilayout"
@@ -627,7 +628,7 @@ func (g *Game) updateConstruction() {
 		g.w.UpdateConstruction(c, road, obj)
 	} else if g.hoverTileX >= 0 && !g.overWindow(g.mouseX, g.mouseY) {
 		tx, ty, jh := g.consTarget(road)
-		g.w.ConstructionToolUpdate(c, tx, ty, jh, road, obj)
+		g.w.ConstructionToolUpdate(c, tx, ty, jh, road, obj, g.hasKeyModifier(shortcuts.ModShift))
 	}
 	g.w.SyncConstructionArrow(true)
 }
@@ -711,6 +712,17 @@ func (g *Game) consSelectedID() int {
 // Error::open(cant_build_pop3_string with the track's or road's name, the
 // command's reason).
 func (g *Game) openTrackBuildError(c *sim.Cmd) {
+	g.openError(g.trackBuildErrorTitle(), cmdErrorText(c))
+}
+
+// openTrackBuildErrorQuiet is openTrackBuildError with the error sound off
+// (GameCommands::setErrorSound(false): Error::openQuiet).
+func (g *Game) openTrackBuildErrorQuiet(c *sim.Cmd) {
+	g.openErrorQuiet(g.trackBuildErrorTitle(), cmdErrorText(c))
+}
+
+// trackBuildErrorTitle is cant_build_pop3_string with the track's or road's name.
+func (g *Game) trackBuildErrorTitle() string {
 	title := i18n.Label(i18n.CantBuildPop3String)
 	id := g.buildObjID
 	if g.consIsRoad() {
@@ -720,7 +732,7 @@ func (g *Game) openTrackBuildError(c *sim.Cmd) {
 	} else if id >= 0 && id < len(g.r.ObjMgr.TrackObjects) && g.r.ObjMgr.TrackObjects[id] != nil {
 		title = ui.FormatErrorArgs(title, g.r.ObjMgr.TrackObjects[id].Name)
 	}
-	g.openError(title, cmdErrorText(c))
+	return title
 }
 
 // consConstruct is the Construct button — the piece preview —

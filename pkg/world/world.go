@@ -44,14 +44,15 @@ type World struct {
 	// (format_currency_income_green / expense_red_negative) instead of the
 	// company's colour: a deviation for a company whose colour is red.
 	CashPopupIncomeColours bool
-	viewFlags    paint.ViewFlags       // the main viewport's flags (viewflags.go)
-	townScene    *scene.Renderer       // the Town window's viewport (townview.go)
-	newsScene    [2]*scene.Renderer    // the news window's two viewports (newsview.go)
-	catchment    []uint8               // SetCatchmentDisplay's map (nil: none)
-	selOn        bool                  // SetMapSelection: the selection is shown
-	selArea      [4]int                // its tiles: min x, min y, max x, max y
-	selType      uint8                 // its type (scene.SelFull …)
-	consArrow    sim.ConstructionArrow // the arrow last handed to the renderer (constructionarrow.go)
+	viewFlags              paint.ViewFlags       // the main viewport's flags (viewflags.go)
+	townScene              *scene.Renderer       // the Town window's viewport (townview.go)
+	newsScene              [2]*scene.Renderer    // the news window's two viewports (newsview.go)
+	catchment              []uint8               // SetCatchmentDisplay's map (nil: none)
+	selOn                  bool                  // SetMapSelection: the selection is shown
+	selArea                [4]int                // its tiles: min x, min y, max x, max y
+	selType                uint8                 // its type (scene.SelFull …)
+	consArrow              sim.ConstructionArrow // the arrow last handed to the renderer (constructionarrow.go)
+	consSelection          [][2]int32            // the selected tiles last handed to the renderer (constructionarrow.go)
 	// savedCentre: a saved view's centre still to be placed (SetSavedView
 	// before the first Draw gave the view its size).
 	savedCentre *[2]int

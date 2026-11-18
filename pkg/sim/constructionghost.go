@@ -181,18 +181,41 @@ func (s *State) selectedPiece(road bool) (construct.TrackPieceID, []PreviewTrack
 	return p, TrackPieces[p.ID], true
 }
 
-// maxSelectionHeight is getMaxConstructHeightFromExistingSelection over
-// setMapSelectedTilesFromPiece's tiles: the highest construction height
-// under the piece laid at the tile in the construction rotation (its
-// diagonal tiles left out), water counting 16 higher.
-func (s *State) maxSelectionHeight(tx, ty int, pieces []PreviewTrack) int32 {
-	var maxH int32
+// ConstructionSelection is the map selection's free-form tiles
+// (_mapSelectedFreeFormTiles, world x and y) with
+// MapSelectionFlags::enableConstruct (On): the tiles under the construction
+// tool's piece, outlined on the map (PaintSurface.cpp).
+type ConstructionSelection struct {
+	On    bool
+	Tiles [][2]int32
+}
+
+// setSelectedTilesFromPiece is setMapSelectedTilesFromPiece: the piece's
+// tiles laid at origin in the rotation, its diagonal tiles left out.
+func (s *State) setSelectedTilesFromPiece(pieces []PreviewTrack, x, y int32, rotation uint8) {
+	s.ConsSelection.Tiles = s.ConsSelection.Tiles[:0]
 	for _, p := range pieces {
-		if p.Flags&(1<<7) != 0 { // PreviewTrackFlags::diagonal: not selected
+		if p.Flags&(1<<7) != 0 { // PreviewTrackFlags::diagonal
 			continue
 		}
-		dx, dy := rotOffset(p.X, p.Y, s.Cons.Rotation)
-		if l, w, ok := s.constructionHeight(tx+int(dx)/32, ty+int(dy)/32); ok {
+		dx, dy := rotOffset(p.X, p.Y, rotation)
+		s.ConsSelection.Tiles = append(s.ConsSelection.Tiles, [2]int32{x + int32(dx), y + int32(dy)})
+	}
+}
+
+// maxSelectionHeight is getMaxConstructHeightFromExistingSelection: the
+// highest construction height under the selected tiles, water counting 16
+// higher; 0 with no selection.
+func (s *State) maxSelectionHeight() int32 {
+	var maxH int32
+	if !s.ConsSelection.On {
+		return 0
+	}
+	for _, t := range s.ConsSelection.Tiles {
+		if !s.validCoords(t[0], t[1]) {
+			continue
+		}
+		if l, w, ok := s.constructionHeight(int(t[0]/32), int(t[1]/32)); ok {
 			maxH = max(maxH, l)
 			if w != 0 {
 				maxH = max(maxH, w+16)
@@ -211,21 +234,27 @@ func minPieceZ(pieces []PreviewTrack) int32 {
 	return m
 }
 
-// ConstructionToolUpdate is onToolUpdateSingle (the Construction tab's tool
-// moved over the map while hovering), for a track or a road. The cursor is
-// over the tile (tx, ty): with junction >= 0 on existing track / road at
-// that height (tryMakeTrackJunctionAtLoc / tryMakeRoadJunctionAtLoc), else
-// on the ground (getConstructionPos: its land height, at least its water's).
-// The arrow stands there in the construction rotation; the selected piece
-// (none: the ghosts go) starts at that height — over the ground at least as
-// high as the highest tile under it — less the piece's lowest point, and
-// constructionGhostLoop puts its ghost 16 below that: the state's position
-// follows; with a ghost standing and the position unchanged nothing happens;
-// else the ghost is tried there and, refused, once more 16 higher.
-// PARTIAL: shift's search downwards, the selected tiles' outline.
-func (s *State) ConstructionToolUpdate(c *Cmd, tx, ty int, junction int32, road bool, objID uint8) {
+// shiftRetries is maxRetries with shift held (0x80000008): the search goes
+// down 16 at a time until below zero.
+const shiftRetries uint32 = 0x80000008
+
+// ConstructionToolUpdate is onToolUpdateSingle (0x004A1968: the Construction
+// tab's tool moved over the map while hovering), for a track or a road. The
+// cursor is over the tile (tx, ty): with junction >= 0 on existing track /
+// road at that height (tryMakeTrackJunctionAtLoc / tryMakeRoadJunctionAtLoc),
+// else on the ground (getConstructionPos: its land height, at least its
+// water's). The arrow stands there in the construction rotation and the
+// tile is selected (enableConstruct); with a piece selected (none: the
+// ghosts go) its tiles are, and it starts at that height — over the ground
+// at least as high as the highest selected tile — less the piece's lowest
+// point; the arrow moves there, and constructionGhostLoop puts the ghost 16
+// below it: the state's position follows; with a ghost standing and the
+// position unchanged nothing happens; else the ghost is tried there and,
+// refused, once more 16 higher. With shift held the ghost starts 16 lower
+// still (the arrow too) and the tries go down, 16 at a time, to zero.
+func (s *State) ConstructionToolUpdate(c *Cmd, tx, ty int, junction int32, road bool, objID uint8, shift bool) {
 	cs := &s.Cons
-	s.ConsArrow.On = false
+	s.ConsArrow.On, s.ConsSelection.On = false, false
 	land, water, ok := s.constructionHeight(tx, ty)
 	if !ok {
 		return
@@ -236,62 +265,77 @@ func (s *State) ConstructionToolUpdate(c *Cmd, tx, ty int, junction int32, road 
 		h = junction
 	}
 	s.ConsArrow = ConstructionArrow{On: true, X: x, Y: y, Z: h, Direction: cs.Rotation}
+	s.ConsSelection.On = true
+	s.ConsSelection.Tiles = append(s.ConsSelection.Tiles[:0], [2]int32{x, y})
 	_, pieces, ok := s.selectedPiece(road)
 	if !ok {
 		s.RemoveConstructionGhosts(c)
 		return
 	}
+	s.setSelectedTilesFromPiece(pieces, x, y, cs.Rotation)
 	if junction < 0 {
-		h = max(s.maxSelectionHeight(tx, ty, pieces), h)
+		h = max(s.maxSelectionHeight(), h)
 	}
 	h -= minPieceZ(pieces)
 	s.ConsArrow.Z = h
 	h -= 16
+	retries := uint32(2)
+	if shift {
+		retries = shiftRetries
+		h -= 16
+		s.ConsArrow.Z = h
+	}
+	s.constructionGhostLoop(c, x, y, h, retries, road, objID, shift)
+}
 
-	// constructionGhostLoop
-	cs.X, cs.Y, cs.Z = x, y, h
-	pos := [3]int32{x, y, h}
+// constructionGhostLoop is constructionGhostLoop: the state's position is
+// (x, y, z); with a ghost standing there already nothing happens; else the
+// ghost is placed there (the bridge it meets taken, sub_4A193B) and, refused
+// and tries left, 16 higher — with shift, 16 lower — until one stands or
+// the height would go below zero.
+func (s *State) constructionGhostLoop(c *Cmd, x, y, z int32, retries uint32, road bool, objID uint8, shift bool) {
+	cs := &s.Cons
+	cs.X, cs.Y, cs.Z = x, y, z
+	pos := [3]int32{x, y, z}
 	if (s.TrackGhost != nil || s.RoadGhost != nil) && s.ghostPos == pos {
 		return
 	}
 	s.ghostPos = pos
+	var ra roadPlacementArgs
+	var ta trackPlacementArgs
+	var ok bool
 	if road {
-		a, ok := s.roadPlacement(objID)
-		if !ok {
-			return
-		}
+		ra, ok = s.roadPlacement(objID)
 		s.RemoveTrackGhost(c)
-		for tries := 2; ; a.Z += 32 {
-			_, ok := s.placeRoadGhost(c, a)
-			s.adoptBridge(c)
-			if ok {
-				return
-			}
-			if tries--; tries == 0 {
-				return
-			}
-			if a.Z -= 16; a.Z < 0 {
-				return
-			}
-		}
+	} else {
+		ta, ok = s.trackPlacement(objID)
+		s.RemoveRoadGhost(c)
 	}
-	a, ok := s.trackPlacement(objID)
 	if !ok {
 		return
 	}
-	s.RemoveRoadGhost(c)
-	for tries := 2; ; a.Z += 32 {
-		_, ok := s.placeTrackGhost(c, a)
+	for {
+		var placed bool
+		if road {
+			_, placed = s.placeRoadGhost(c, ra)
+		} else {
+			_, placed = s.placeTrackGhost(c, ta)
+		}
 		s.adoptBridge(c)
-		if ok {
-			return
+		if !placed {
+			if retries--; retries != 0 {
+				ta.Z -= 16
+				ra.Z -= 16
+				if (road && ra.Z >= 0) || (!road && ta.Z >= 0) {
+					if !shift {
+						ta.Z += 32
+						ra.Z += 32
+					}
+					continue
+				}
+			}
 		}
-		if tries--; tries == 0 {
-			return
-		}
-		if a.Z -= 16; a.Z < 0 {
-			return
-		}
+		return
 	}
 }
 
@@ -299,34 +343,43 @@ func (s *State) ConstructionToolUpdate(c *Cmd, tx, ty int, junction int32, road 
 // hovering): the ghosts removed; with a piece selected that fits the
 // rotation, building starts at the tile (tx, ty) through ConstructionLoop —
 // on existing track / road (junction >= 0) at exactly that height, one try;
-// else at the height the tool's ghost stood at (the ground or the highest
-// tile under the piece, less the piece's lowest point, 16 down, not below
-// zero), two tries. The tool goes (toolCancel); a refusal brings it back
-// (ConstructionLoop). built: a piece stands and the state has moved past it;
-// refused: the command said no (c.ErrorText) and the state hovers again.
-// PARTIAL: shift.
-func (s *State) ConstructionToolUp(c *Cmd, tx, ty int, junction int32, road bool, objID uint8) (cost int32, built, refused bool) {
+// else (or with shift held) at the height the tool's ghost stood at: the
+// highest tile the tool selected (getMaxConstructHeightFromExistingSelection)
+// or the ground's — land no higher than that, water at least —, less the
+// piece's lowest point, 16 down (shift: 32, and the tries go down to zero),
+// not below zero, two tries. The selection and the arrow go, and the tool
+// (toolCancel); a refusal brings it back (ConstructionLoop). built: a piece
+// stands and the state has moved past it; refused: the command said no
+// (c.ErrorText) and the state hovers again.
+func (s *State) ConstructionToolUp(c *Cmd, tx, ty int, junction int32, road bool, objID uint8, shift bool) (cost int32, built, refused bool) {
 	s.RemoveConstructionGhosts(c)
 	_, pieces, ok := s.selectedPiece(road)
 	if !ok {
 		return 0, false, false
 	}
-	s.ConsArrow.On = false
-	land, water, ok := s.constructionHeight(tx, ty)
-	if !ok {
-		return 0, false, false
-	}
-	h, tries := junction, 1
+	h := s.maxSelectionHeight()
+	maxH := h // cState.constructionMaxHeight
+	s.ConsArrow.On, s.ConsSelection.On = false, false
 	if junction < 0 {
-		// getConstructionPos(x, y, constructionMaxHeight): the land no higher
-		// than the selection's highest, the water at least; then the higher
-		// of that and the selection's.
-		sel := s.maxSelectionHeight(tx, ty, pieces)
-		h = max(sel, max(min(land, sel), water))
+		// getConstructionPos(x, y, constructionMaxHeight)
+		land, water, ok := s.constructionHeight(tx, ty)
+		if !ok {
+			return 0, false, false
+		}
+		h = max(h, max(min(land, maxH), water))
+	}
+	var retries uint32
+	if shift || junction < 0 {
 		h -= minPieceZ(pieces) + 16
-		tries = 2
+		retries = 2
+		if shift {
+			retries = shiftRetries
+			h -= 16
+		}
+	} else {
+		retries, h = 1, junction
 	}
 	h = max(0, h) // "Height should never go negative"
-	cost, built = s.ConstructionLoop(c, int32(tx)*32, int32(ty)*32, h, tries, road, objID)
+	cost, built = s.ConstructionLoop(c, int32(tx)*32, int32(ty)*32, h, retries, road, objID, shift)
 	return cost, built, !built
 }

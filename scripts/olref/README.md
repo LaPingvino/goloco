@@ -19,7 +19,7 @@ one running at the same time needs its own OLREF_DISPLAY (and OLREF_HOME).
 | file | what |
 |------|------|
 | ol.sh | launcher: scratch config, Xvfb, openloco, shot, stop |
-| xt.py | input: move, click, rightclick, press, release, drag, wheel, key, type, wait, shot, state, run |
+| xt.py | input: move, click, rightclick, press, release, drag, wheel, key, keydown, keyup, type, wait, shot, state, run |
 | untitle.py | Data/title.dat → a save the real OpenLoco loads |
 | pair.py | goloco crop, OpenLoco crop, and their differing pixels, side by side |
 | match.py | two map views of one save: find the offset, then diff |

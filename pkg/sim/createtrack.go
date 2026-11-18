@@ -25,6 +25,9 @@ type trackPlacementArgs struct {
 	Bridge        uint8 // a bridge object slot, 0xFF none
 	TrackObjectID uint8
 	UnkFlags      uint8
+	// Unk is args.unk (the construction window's byte_113607E); createTrack
+	// doesn't read it.
+	Unk bool
 }
 
 // trackObject is the track object in a slot, or nil.

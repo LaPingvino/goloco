@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/LaPingvino/goloco/pkg/audio"
+	"github.com/LaPingvino/goloco/pkg/shortcuts"
 	"log"
 	"time"
 
@@ -430,10 +431,14 @@ func (g *Game) hudOrMapClick() {
 		road := g.consIsRoad()
 		c := g.playerCmd()
 		tx, ty, jh := g.consTarget(road)
-		if _, built, refused := g.w.ConstructionToolUp(c, tx, ty, jh, road, uint8(g.buildObjID)); built {
+		if _, built, refused := g.w.ConstructionToolUp(c, tx, ty, jh, road, uint8(g.buildObjID), g.hasKeyModifier(shortcuts.ModShift)); built {
 			g.errorWin = nil // the loop's WindowManager::close(WindowType::error)
 		} else if refused {
-			g.openTrackBuildError(c)
+			// constructionLoop: each try's error window opens quietly
+			// (setErrorSound(false)), the last one stays; then the error
+			// sound at the mouse's x.
+			g.openTrackBuildErrorQuiet(c)
+			g.playSound(audio.SoundError, audio.ChannelUI, g.mouseX)
 		}
 	} else if (g.buildMode == buildModeNone || g.consHasHead() && g.consTab == 0) && !g.inTitleScreen {
 		// (while building on from a position the construction window has no

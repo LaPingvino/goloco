@@ -76,7 +76,7 @@ func TestConstructionTrack(t *testing.T) {
 		tl := s.TileAt(x, y)
 		wx, wy := int32(x)*32, int32(y)*32
 		s.ResetConstruction()
-		s.ConstructionToolUpdate(c, x, y, -1, false, 0)
+		s.ConstructionToolUpdate(c, x, y, -1, false, 0, false)
 		if s.TrackGhost == nil {
 			return false // refused here (owner, clearance …): another place
 		}
@@ -84,7 +84,7 @@ func TestConstructionTrack(t *testing.T) {
 			t.Fatalf("hovering: %d ghosts, arrow %+v, state %+v", g, s.ConsArrow, s.Cons)
 		}
 		cash := s.Companies[c.Company].Cash
-		if _, built, _ := s.ConstructionToolUp(c, x, y, -1, false, 0); !built {
+		if _, built, _ := s.ConstructionToolUp(c, x, y, -1, false, 0, false); !built {
 			return false
 		}
 		z := s.Cons.Z
@@ -121,7 +121,8 @@ func TestConstructionTrack(t *testing.T) {
 			}
 		}
 		// The last piece gone: still building on from where it began.
-		want := ConstructionState{X: wx, Y: wy, Z: z, Mods: s.Cons.Mods, Bridge: s.Cons.Bridge}
+		// byte_113607E stays 1 from the click's loop.
+		want := ConstructionState{X: wx, Y: wy, Z: z, Mods: s.Cons.Mods, Bridge: s.Cons.Bridge, placeUnk: 1}
 		got := s.Cons
 		got.arrowFrame, got.arrowBlink, got.Cost = 0, false, 0
 		if got != want {
@@ -167,7 +168,7 @@ func TestConstructionTrack(t *testing.T) {
 			t.Fatalf("rotate while hovering: %+v", s.Cons)
 		}
 		// A refused click: hovering on, the rotation as it was.
-		if _, built, refused := s.ConstructionToolUp(c, 0, 0, -1, false, 0); built || !refused {
+		if _, built, refused := s.ConstructionToolUp(c, 0, 0, -1, false, 0, false); built || !refused {
 			t.Fatalf("a click on the map's edge: built %v refused %v", built, refused)
 		}
 		if !s.Cons.Hover || s.Cons.Rotation != 1 {
@@ -198,14 +199,14 @@ func TestConstructionRoad(t *testing.T) {
 		tl := s.TileAt(x, y)
 		wx := int32(x) * 32
 		s.ResetConstruction()
-		s.ConstructionToolUpdate(c, x, y, -1, true, o)
+		s.ConstructionToolUpdate(c, x, y, -1, true, o, false)
 		if s.RoadGhost == nil {
 			return false
 		}
 		if _, g := countRoad(tl); g != 1 {
 			t.Fatalf("hovering: %d ghost roads", g)
 		}
-		if _, built, _ := s.ConstructionToolUp(c, x, y, -1, true, o); !built {
+		if _, built, _ := s.ConstructionToolUp(c, x, y, -1, true, o, false); !built {
 			return false
 		}
 		if r, g := countRoad(tl); r != 1 || g != 0 || s.Cons.Hover || s.Cons.X != wx-32 {
@@ -272,7 +273,8 @@ func TestConstructionDiagonal(t *testing.T) {
 			}
 			s.ResetConstruction()
 			s.Cons.Piece = construct.LeftCurveLarge
-			if _, built, _ := s.ConstructionToolUp(c, x, y, -1, false, 0); !built {
+			s.ConstructionToolUpdate(c, x, y, -1, false, 0, false) // the tool over the tile, then the click
+			if _, built, _ := s.ConstructionToolUp(c, x, y, -1, false, 0, false); !built {
 				continue
 			}
 			start := s.Cons
