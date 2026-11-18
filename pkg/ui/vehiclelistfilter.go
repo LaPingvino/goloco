@@ -33,16 +33,51 @@ func vehicleListFooter(tab, n int) string {
 	return strings.Replace(f, "{INT16}", Comma16(n), 1)
 }
 
-// The filter widgets (dropdownWidgets): filter type at (264, 200) 120×12,
-// cargo type at (386, 200) 150×12 in the 550 × 213 window; prepareDraw keeps
-// them at the window's right and bottom as it resizes, and hides them when it
-// is no wider than the two and 50 (enoughSpaceForCargoFilters).
-// PARTIAL: goloco's boxes keep their kWindowSize offsets from the corner;
-// upstream's prepareDraw re-derives them (cargo_type.right = width − 20,
-// top = height − 14), which at 550 × 213 is 5 px left and 1 px up of these.
+// The filter widgets (dropdownWidgets: filter type 120 × 12, cargo type 150
+// × 12) as VehicleList's onResize places them from the window's bottom
+// right: cargo_type.right = width − kResizeHandleSize − 2, left = right −
+// 150, top = height − 14, bottom = height − 3 (so 151 wide); filter_type to
+// its left (right = cargo.left − 2, left = right − 120); each button at
+// right − 10 … right − 1, height − 13 … height − 4. They are hidden when the
+// window is no wider than the two and 50 (enoughSpaceForCargoFilters).
+// The boxes are {left, top, width, 12} (Widget::width: right − left + 1).
 func vlBoxes(w *TownListWindow) (filter, cargo [4]int, shown bool) {
-	dx, dy := w.W-550, w.H-213
-	return [4]int{280 - 16 + dx, 200 + dy, 120, 12}, [4]int{402 - 16 + dx, 200 + dy, 150, 12}, w.W > 150+120+50
+	cr := w.W - ResizeHandleSize - 2
+	cl := cr - 150
+	fr := cl - 2
+	fl := fr - 120
+	return [4]int{fl, w.H - 14, fr - fl + 1, 12}, [4]int{cl, w.H - 14, cr - cl + 1, 12}, w.W > 150+120+50
+}
+
+// vlDropdown draws a combo box and its button as onResize leaves them (the
+// button 10 wide at right − 10).
+func vlDropdown(rt *gfx8.RenderTarget, box [4]int, sec []uint8) {
+	l, t, r := box[0], box[1], box[0]+box[2]-1
+	gfx8.FillRectInset(rt, l, t, r, t+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+	gfx8.FillRectInset(rt, r-10, t+1, r-1, t+10, gfx8.InsetColour{Map: sec}, 0)
+}
+
+// vlColumns is VehicleList's onResize for the table headers: the name
+// column takes what the other three (100, 65, 67 wide as declared) leave,
+// at least its own 310 — its right edge set to that width, as upstream does
+// — and each next header starts one past the last one's right, its right
+// at left + its width; every edge kept within width − 4.
+func vlColumns(w *TownListWindow) {
+	if len(w.Columns) != 4 {
+		return
+	}
+	nameW := max(310, w.W-100-65-67)
+	edge := w.W - 4
+	spans := [4][2]int{{4, min(nameW, edge)}}
+	for i, cw := range [3]int{100, 65, 67} {
+		l := min(spans[i][1]+1, edge)
+		spans[i+1] = [2]int{l, min(l+cw, edge)}
+	}
+	for i, s := range spans {
+		c := &w.Columns[i]
+		c.HeaderX, c.HeaderW = s[0], s[1]-s[0]+1
+		c.TextX, c.TextW = s[0]+1-4, c.HeaderW-2 // drawScroll: header.left + 1, width() − 2
+	}
 }
 
 // addVehicleListFilters adds VehicleList's filter type and cargo type
@@ -105,8 +140,8 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 		if !shown {
 			return
 		}
-		optDropdown(rt, vlFilterBox[0], vlFilterBox[1], vlFilterBox[2], sec)
-		optDropdown(rt, vlCargoBox[0], vlCargoBox[1], vlCargoBox[2], sec)
+		vlDropdown(rt, vlFilterBox, sec)
+		vlDropdown(rt, vlCargoBox, sec)
 		if mode != 0 && cargo >= 0 { // the cargo's inline sprite after its text
 			if t, sp := cargoName(); sp > 0 {
 				tw, _ := MeasureTextBold(t)
@@ -127,13 +162,13 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 		aw, _ := MeasureTextBold(arrow)
 		label := vlFilterMode(mode)
 		DrawTextBold(screen, label, w.X+vlFilterBox[0]+1, w.Y+vlFilterBox[1]+1, win2) // wcolour2_stringid
-		bx := vlFilterBox[0] + vlFilterBox[2] - 12
-		DrawTextBold(screen, arrow, w.X+bx+(11-1)/2-aw/2, w.Y+vlFilterBox[1]+1, black)
-		bx = vlCargoBox[0] + vlCargoBox[2] - 12
+		bx := vlFilterBox[0] + vlFilterBox[2] - 1 - 10                                // the button: right − 10 … right − 1, its text at (10 − 1) / 2 (Label: centred)
+		DrawTextBold(screen, arrow, w.X+bx+(10-1)/2-aw/2, w.Y+vlFilterBox[1]+1, black)
+		bx = vlCargoBox[0] + vlCargoBox[2] - 1 - 10
 		if mode == 0 { // disabled (prepareDraw): no text, the button inset
 			c6, c4 := pal[gfx8.Shade(cmap, 6)], pal[gfx8.Shade(cmap, 4)]
-			DrawTextBold(screen, arrow, w.X+bx+(11-1)/2-aw/2+1, w.Y+vlCargoBox[1]+2, c4)
-			DrawTextBold(screen, arrow, w.X+bx+(11-1)/2-aw/2, w.Y+vlCargoBox[1]+1, c6)
+			DrawTextBold(screen, arrow, w.X+bx+(10-1)/2-aw/2+1, w.Y+vlCargoBox[1]+2, c4)
+			DrawTextBold(screen, arrow, w.X+bx+(10-1)/2-aw/2, w.Y+vlCargoBox[1]+1, c6)
 			return
 		}
 		t, _ := cargoName()
@@ -142,7 +177,7 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 			x += 10 // carrying_cargoid_sprite's {MOVE_X 10}
 		}
 		DrawTextBold(screen, t, x, w.Y+vlCargoBox[1]+1, win2)
-		DrawTextBold(screen, arrow, w.X+bx+(11-1)/2-aw/2, w.Y+vlCargoBox[1]+1, black)
+		DrawTextBold(screen, arrow, w.X+bx+(10-1)/2-aw/2, w.Y+vlCargoBox[1]+1, black)
 	}
 	w.ExtraClick = func(px, py int) bool {
 		vlFilterBox, vlCargoBox, shown := vlBoxes(w)

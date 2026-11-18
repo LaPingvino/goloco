@@ -61,7 +61,7 @@ func NewIndustryList(sw int, industries []IndustryListRow, titleColour, colour u
 	w := &TownListWindow{WinBase: WinBase{X: sw - w759, Y: 30}, TitleColour: titleColour, Colour: colour, Caption: i18n.Label(i18n.TitleIndustries), Tabs: 2,
 		Columns: []TableColumn{{4, 200, i18n.Label(i18n.IndustryTableHeader), 0, 198}, {204, 240, i18n.Label(i18n.IndustryTableHeaderStatus), 200, 238},
 			{444, 160, i18n.Label(i18n.IndustryTableHeaderProduction), 440, 138}, {604, 151, i18n.Label(i18n.IndustryTableHeaderProductionLastMonth), 600, 138}},
-		Status: status, Hover: -1}
+		Status: status, Hover: -1, ClearShade: 4} // drawScroll: getShade(secondary, 4)
 	w.setTableGeometry()
 	w.W, w.List = w759, [4]int{3, 56, w759 - 6, 126} // onResize: the scroll view to the frame
 	w.Rows = make([][]string, len(industries))

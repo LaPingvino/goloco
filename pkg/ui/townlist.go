@@ -55,17 +55,27 @@ type TownListWindow struct {
 	Rows        [][]string
 	// RowIDs are the rows' object ids in their current order; OnRow is a
 	// row clicked (onScrollMouseDown: Town::open for the town list).
-	RowIDs  []int
-	OnRow   func(id int)
-	Status  string
-	Hover   int
-	Scroll  int
-	hold    L.VScrollHold // a press on the scrollbar held (stateScrollLeft)
-	content [4]int
+	RowIDs []int
+	OnRow  func(id int)
+	// HeaderInset: prepareDraw keeps the headers' edges within width −
+	// HeaderInset (TownList 8; StationList, IndustryList 4: 0 means 4).
+	HeaderInset int
+	// OnResize is the window's own onResize after the common layout
+	// (VehicleList's: the columns follow the width).
+	OnResize func()
+	Status   string
+	Hover    int
+	Scroll   int
+	hold     L.VScrollHold // a press on the scrollbar held (stateScrollLeft)
+	content  [4]int
 
 	// Geometry: window size, row height, the scroll view rect, the status
 	// label's y and the text's y offset in a row (VehicleList: +2).
 	RowHeight, StatusY, TextDY int
+	// StatusX is the status label's left (0: 4, the town, station and
+	// industry lists'; VehicleList's is 3). ClearShade is drawScroll's
+	// clear (0: shade 3; VehicleList's getShade(secondary, 1)).
+	StatusX, ClearShade int
 	// RowDraw draws extra content into row i whose top is at y in the scroll
 	// view's own coordinates (VehicleList's drawTrainInline); clipped to it.
 	RowDraw func(rt *gfx8.RenderTarget, i, y int)
@@ -156,6 +166,9 @@ func (w *TownListWindow) PrepareDraw() {
 	}
 	w.List[2], w.List[3] = w.W-w.listRight-w.List[0], w.H-w.listBottom-w.List[1]
 	w.StatusY = w.H - w.statusOff
+	if w.OnResize != nil {
+		w.OnResize()
+	}
 	if w.RowHeight > 0 {
 		w.Scroll = min(w.Scroll, max(len(w.Rows)*w.RowHeight-w.List[3], 0))
 	}
@@ -171,9 +184,21 @@ func (w *TownListWindow) GripBlocked(px, py int) bool {
 	return rx >= 3 && rx <= w.W-ResizeHandleSize-1 && ry >= w.StatusY && ry < w.StatusY+10
 }
 
+// headerSpan is a header's left and right edges as prepareDraw places them:
+// both kept within width − HeaderInset (TownList.cpp, StationList.cpp,
+// IndustryList.cpp prepareDraw: left = min(left, width − 8 / 4), right the
+// same). A header with right < left is not drawn.
+func (w *TownListWindow) headerSpan(c TableColumn) (l, r int) {
+	k := w.HeaderInset
+	if k == 0 {
+		k = 4
+	}
+	return min(c.HeaderX, w.W-k), min(c.HeaderX+c.HeaderW-1, w.W-k)
+}
+
 // setTableGeometry fills the 600×197 town/station list geometry.
 func (w *TownListWindow) setTableGeometry() *TownListWindow {
-	w.W, w.H, w.RowHeight, w.StatusY, w.List = tlW, tlH, tlRowHeight, tlH-17, tlList
+	w.W, w.H, w.RowHeight, w.StatusY, w.List = tlW, tlH, tlRowHeight, tlH-12, tlList // prepareDraw: status_bar.top = height − 12
 	return w
 }
 
@@ -187,7 +212,7 @@ func NewTownList(sw int, towns []TownRow, titleColour, colour uint8) *TownListWi
 	if len(rows) == 1 {
 		status = "1 town"
 	}
-	w := (&TownListWindow{WinBase: WinBase{X: sw - tlW, Y: 30}, TitleColour: titleColour, Colour: colour, Caption: i18n.Label(i18n.TitleTowns), Tabs: 4,
+	w := (&TownListWindow{WinBase: WinBase{X: sw - tlW, Y: 30}, TitleColour: titleColour, Colour: colour, Caption: i18n.Label(i18n.TitleTowns), Tabs: 4, HeaderInset: 8,
 		Columns: []TableColumn{{4, 200, i18n.Label(i18n.TableHeaderName), 0, 198}, {204, 80, i18n.Label(i18n.TableHeaderTownType), 200, 78}, {284, 70, i18n.Label(i18n.TableHeaderPopulation), 280, 68}, {354, 70, i18n.Label(i18n.TableHeaderStations), 350, 68}},
 		Rows:    rows, Status: status, Hover: -1}).setTableGeometry()
 	// sortTownList (run every update): a stable sort by the header clicked,
@@ -247,7 +272,7 @@ func NewStationList(sw int, stations []StationRow, titleColour, colour uint8) *T
 	}
 	w := (&TownListWindow{WinBase: WinBase{X: sw - tlW, Y: 30}, TitleColour: titleColour, Colour: colour, Caption: i18n.Label(i18n.AllStations), Tabs: 5, ColourCaption: true,
 		Columns: []TableColumn{{4, 200, i18n.Label(i18n.TableHeaderName), 0, 198}, {204, 200, i18n.Label(i18n.TableHeaderStatus), 200, 198}, {404, 90, i18n.Label(i18n.TableHeaderTotalWaiting), 400, 88}, {494, 120, i18n.Label(i18n.TableHeaderAccepts), 490, 118}},
-		Rows:    rows, Status: status, Hover: -1}).setTableGeometry()
+		Rows:    rows, Status: status, Hover: -1, ClearShade: 4}).setTableGeometry() // drawScroll: getShade(secondary, 4)
 	// sortStationList: a stable sort by the header clicked, name by default.
 	w.Sort = func(mode int) {
 		order := append([]StationRow(nil), stations...)
@@ -305,7 +330,7 @@ func (w *TownListWindow) HandleClick(px, py int) {
 	// A column header (TableHeader, 12 px at y 43): sort by it, once per change.
 	if w.Sort != nil {
 		for i, c := range w.Columns {
-			if w.in([4]int{c.HeaderX, 43, c.HeaderW, 12}, px, py) {
+			if l, r := w.headerSpan(c); r >= l && w.in([4]int{l, 43, r - l + 1, 12}, px, py) {
 				if i != w.SortMode {
 					w.SortMode, w.Hover = i, -1
 					w.Sort(i)
@@ -405,13 +430,18 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 			drawTab(rt, xs[i], 15, i == w.CurrentTab, sec, icon, m)
 		}
 		for _, c := range w.Columns {
-			hw := min(c.HeaderW, w.W-4-c.HeaderX) // headers are clipped to the window (prepareDraw)
-			gfx8.FillRectInset(rt, c.HeaderX, 43, c.HeaderX+hw-1, 43+12-1, gfx8.InsetColour{Map: sec}, 0)
+			if l, r := w.headerSpan(c); r >= l {
+				gfx8.FillRectInset(rt, l, 43, r, 43+12-1, gfx8.InsetColour{Map: sec}, 0)
+			}
 		}
 		l := w.List
 		cx, cy, cw, ch, _ := drawVScrollViewPressed(rt, l[0], l[1], l[2], l[3], gfx8.InsetColour{Map: sec}, len(w.Rows)*w.RowHeight, w.Scroll, w.hold.PressedPart())
 		w.content = [4]int{cx, cy, cw, ch}
-		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 3)) // drawScroll: clearSingle(shade 3)
+		shade := 3 // drawScroll: clearSingle(shade 3)
+		if w.ClearShade != 0 {
+			shade = w.ClearShade
+		}
+		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, shade))
 		m30, _ := g1.GetPaletteMap(0x30)
 		if w.Hover >= 0 && w.Hover < len(w.Rows) {
 			y := cy + w.Hover*w.RowHeight - w.Scroll
@@ -475,7 +505,11 @@ func (w *TownListWindow) Draw(screen *ebiten.Image) {
 	status := clip(w.X, w.Y, w.X+w.W-ResizeHandleSize, w.Y+w.H)
 	screen = clip(w.X+ct[0], w.Y+ct[1], w.X+ct[0]+ct[2], w.Y+ct[1]+ct[3])
 	defer func() {
-		DrawTextBold(status, w.Status, w.X+4, w.Y+w.StatusY, black)
+		sx := 4
+		if w.StatusX != 0 {
+			sx = w.StatusX
+		}
+		DrawTextBold(status, w.Status, w.X+sx, w.Y+w.StatusY, black)
 		if w.ExtraText != nil {
 			w.ExtraText(full)
 		}
@@ -613,8 +647,11 @@ func NewVehicleList(sw int, tab int, vehicles []VehicleRow, titleColour, colour 
 	w := &TownListWindow{WinBase: WinBase{X: sw - 550, Y: 30, W: 550, H: 213}, TitleColour: titleColour, Colour: colour, Caption: vehicleListCaptions()[tab], Tabs: 6,
 		Columns: []TableColumn{{4, 310, i18n.Label(i18n.TableHeaderName), 4 + 1 - 4, 310 - 2}, {314, 100, i18n.Label(i18n.TableHeaderMonthlyProfit), 314 + 1 - 4, 100 - 2}, {414, 65, i18n.Label(i18n.TableHeaderAge), 414 + 1 - 4, 65 - 2}, {479, 67, i18n.Label(i18n.TableHeaderReliability), 479 + 1 - 4, 67 - 2}},
 		Rows:    rows, Status: status, Hover: -1, CurrentTab: tab,
-		RowHeight: vehicleListRowHeights[tab], StatusY: 213 - 13, TextDY: 2, List: [4]int{3, 56, 544, 138},
+		// onResize at open: the scroll view to height − 15, the status label
+		// at (3, height − 13); drawScroll clears in shade 1.
+		RowHeight: vehicleListRowHeights[tab], StatusY: 213 - 13, StatusX: 3, ClearShade: 1, TextDY: 2, List: [4]int{3, 56, 544, 213 - 15 - 56 + 1},
 		Outline: true, HoverSolid: true, ColourCaption: true}
+	w.OnResize = func() { vlColumns(w) }
 	// drawScroll: drawTrainInline at (0, y + (rowHeight − 28) / 2 + 6).
 	w.RowDraw = func(rt *gfx8.RenderTarget, i, y int) {
 		DrawTrainInline(rt, vehicles[i].Cars, 0, y+(w.RowHeight-28)/2+6)
