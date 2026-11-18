@@ -49,6 +49,14 @@ type Cmd struct {
 	// some of it under the ground) — what the construction ghost sets the
 	// view's underground mode by.
 	PosFlags uint8
+	// Bridge is getLegacyReturnState().byte_1136075 after createTrack /
+	// createRoad: the bridge type of the last bridged element the piece met
+	// (0xFF none) — what the construction window adopts (sub_4A193B).
+	Bridge uint8
+	// AltRoadObject is getLegacyReturnState().alternateRoadObjectId after
+	// createRoad: the road object of the last road element met (0xFF none) —
+	// constructRoad's retry with that road (sub_4A18D4).
+	AltRoadObject uint8
 }
 
 func (c *Cmd) isPlayer(company uint8) bool { return c.Players != nil && c.Players(company) }
@@ -307,6 +315,7 @@ const ExpenditureVehicleDisposals = 14
 // command's position + 24 up; Cmd.Pos). PARTIAL: the error window texts /
 // sounds.
 func (m *Map) DoCommandFor(c *Cmd, flags uint8, expenditure uint8, run func(flags uint8) (int32, bool)) (int32, bool) {
+	c.ErrorText, c.ErrorArg = 0, "" // loc_4313C6: _gGameCommandErrorText = StringIds::null
 	cost, ok := run(flags &^ CmdApply)
 	if !ok {
 		return 0, false

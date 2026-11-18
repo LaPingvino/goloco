@@ -3,13 +3,15 @@ package sim
 import (
 	"strings"
 
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
 
 // clearRoad's helpers (GameCommands/Road/CreateRoad.cpp 201–254, and
-// GameCommands.cpp's checkCompanyCompatibility), item 5.9f3. The error texts
-// are not kept (as elsewhere in goloco's game commands).
+// GameCommands.cpp's checkCompanyCompatibility), item 5.9f3, with their
+// error texts (setErrorText). PARTIAL: checkCompanyCompatibility's
+// kErrorBelongsToOther (the competitor's error window) is not kept.
 
 // roadTraitJunction is RoadTraitFlags::junction.
 const roadTraitJunction = 1 << 6
@@ -51,15 +53,27 @@ func (c *Cmd) compatibleRoads(r *objects.RoadObject) uint16 {
 // trait; different ones must be compatible one way or the other.
 func (c *Cmd) roadTraitAndCompatibilityCheck(e *scenario.RoadElement, a roadClearArgs, target, placed *objects.RoadObject) bool {
 	if e.RoadObjectID == a.RoadObjectID {
-		return target != nil && target.RoadPieces&roadTraitJunction != 0
+		if target == nil || target.RoadPieces&roadTraitJunction == 0 {
+			c.ErrorText = i18n.JunctionsNotPossible
+			return false
+		}
+		return true
 	}
-	return c.compatibleRoads(target)&(1<<a.RoadObjectID) != 0 || c.compatibleRoads(placed)&(1<<e.RoadObjectID) != 0
+	if c.compatibleRoads(target)&(1<<a.RoadObjectID) == 0 && c.compatibleRoads(placed)&(1<<e.RoadObjectID) == 0 {
+		c.ErrorText = i18n.UnableToCrossOrCreateJunctionWithString // FormatArguments::common(targetRoadObj.name)
+		if target != nil {
+			c.ErrorArg = target.Name
+		}
+		return false
+	}
+	return true
 }
 
 // finalJunctionChecks is CreateRoad.cpp's: a junction only between
 // single-tile pieces, then the trait and compatibility check.
 func (c *Cmd) finalJunctionChecks(e *scenario.RoadElement, a roadClearArgs, target, placed *objects.RoadObject) bool {
 	if len(RoadPieces[a.RoadID]) > 1 || len(RoadPieces[e.RoadID]) > 1 {
+		c.ErrorText = i18n.JunctionNotPossible
 		return false
 	}
 	return c.roadTraitAndCompatibilityCheck(e, a, target, placed)
@@ -118,6 +132,7 @@ func (m *Map) clearRoad(c *Cmd, st *roadCmdState, e *scenario.RoadElement, a roa
 	}
 	target, placed := c.roadObject(e.RoadObjectID), c.roadObject(a.RoadObjectID)
 	if a.Flags&CmdAiAllocated != 0 && a.UnkFlags&(1<<4) != 0 && target != nil && target.Flags&1 != 0 { // isOneWay
+		c.ErrorText = i18n.JunctionsNotPossible
 		return roadRes(ClearCollisionErrorSet)
 	}
 	if m.RoadUsableByAll&(1<<e.RoadObjectID) == 0 || m.RoadUsableByAll&(1<<a.RoadObjectID) == 0 {
@@ -135,10 +150,15 @@ func (m *Map) clearRoad(c *Cmd, st *roadCmdState, e *scenario.RoadElement, a roa
 		}
 	}
 	if !confirmedOverlay {
-		if slope(e.RoadID) || slope(a.RoadID) { // junction_must_be_entirely_level
+		if slope(e.RoadID) || slope(a.RoadID) {
+			c.ErrorText = i18n.JunctionMustBeEntirelyLevel
 			return roadRes(ClearCollisionErrorSet)
 		}
-		if int32(e.BaseZ)*4 != a.Z { // in the way: wrong height for a junction
+		if int32(e.BaseZ)*4 != a.Z { // FormatArguments::common(targetRoadObj->name)
+			c.ErrorText = i18n.StringIdInTheWayWrongHeightForJunction
+			if target != nil {
+				c.ErrorArg = target.Name
+			}
 			return roadRes(ClearCollisionErrorSet)
 		}
 	}
@@ -148,10 +168,12 @@ func (m *Map) clearRoad(c *Cmd, st *roadCmdState, e *scenario.RoadElement, a roa
 	}
 	st.AltRoadObject = e.RoadObjectID
 	if e.HasSignalElement {
+		c.ErrorText = i18n.SignalInTheWay
 		return roadRes(ClearCollisionErrorSet)
 	}
 	if e.HasStationElement {
 		if a.RoadID != 0 || (a.Rotation != e.Rotation && a.Rotation != e.Rotation^2) {
+			c.ErrorText = i18n.StationInTheWay
 			return roadRes(ClearCollisionErrorSet)
 		}
 		if s := m.roadStationAt(a.X, a.Y, a.Z); s != nil {
@@ -164,6 +186,7 @@ func (m *Map) clearRoad(c *Cmd, st *roadCmdState, e *scenario.RoadElement, a roa
 			if placed != nil && so != nil && (nameIn(placed.StationNames, so.Header) || nameIn(so.CompatibleNames, placed.Header)) {
 				res.HasStation = true
 			} else {
+				c.ErrorText = i18n.StationInTheWay
 				return roadRes(ClearCollisionErrorSet)
 			}
 		}
@@ -175,12 +198,14 @@ func (m *Map) clearRoad(c *Cmd, st *roadCmdState, e *scenario.RoadElement, a roa
 		(e.SequenceIndex != 0 && e.IsLast && a.Index == 0) ||
 		(e.SequenceIndex != 0 && !e.IsLast && e.SequenceIndex == a.Index)
 	if e.HasBridge {
-		if e.BridgeID != a.BridgeID { // bridge types must match
+		if e.BridgeID != a.BridgeID {
+			c.ErrorText = i18n.BridgeTypesMustMatch
 			return roadRes(ClearCollisionErrorSet)
 		}
 		if b := c.bridge(a.BridgeID); b != nil && b.DisabledTrackCfg&commonTraitJunction != 0 {
 			if a.RoadObjectID == e.RoadObjectID || (!isExact && (!isReverseExact || !isConnectableSequence)) {
-				return roadRes(ClearCollisionErrorSet) // bridge not suitable for a junction
+				c.ErrorText = i18n.BridgeNotSuitableForJunction
+				return roadRes(ClearCollisionErrorSet)
 			}
 		}
 	}
@@ -200,7 +225,8 @@ func (m *Map) clearRoad(c *Cmd, st *roadCmdState, e *scenario.RoadElement, a roa
 			if aiUnk {
 				return junction()
 			}
-			return roadRes(ClearCollisionErrorSet) // already built here
+			c.ErrorText = i18n.AlreadyBuiltHere
+			return roadRes(ClearCollisionErrorSet)
 		}
 		if !c.roadTraitAndCompatibilityCheck(e, a, target, placed) {
 			return roadRes(ClearCollisionErrorSet)

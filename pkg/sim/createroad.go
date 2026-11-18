@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/scenario"
+import (
+	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 // createRoad (GameCommands/Road/CreateRoad.cpp 594–1105), item 5.9f3 — the
 // game command towns grow their roads with. Ported in parts; this is its
@@ -92,7 +95,7 @@ type createRoadResult struct {
 // (not partly above / below ground, not under water or too close to its
 // surface). It changes nothing unless a.Flags applies (the clear functions
 // remove trees / buildings then). The pieces' insertion is the apply step.
-// PARTIAL: company observation / emotion events; the error texts.
+// PARTIAL: company observation / emotion events.
 func (m *Map) createRoadCheck(c *Cmd, a roadPlacementArgs, flags uint8) (createRoadResult, bool) {
 	var r createRoadResult
 	st := &r.State
@@ -111,7 +114,8 @@ func (m *Map) createRoadCheck(c *Cmd, a roadPlacementArgs, flags uint8) (createR
 		x, y, z := a.X+int32(ox), a.Y+int32(oy), a.Z+int32(piece.Z)
 		quarter := rotateQuarterTile(piece.SubTileClearance, a.Rotation)
 		unk := rotl4bit(piece.Flags&0xF, a.Rotation)
-		if z < 16 { // error_too_low
+		if z < 16 {
+			c.ErrorText = i18n.ErrorTooLow
 			return r, false
 		}
 		baseZ := uint8(z / 4)
@@ -125,21 +129,25 @@ func (m *Map) createRoadCheck(c *Cmd, a roadPlacementArgs, flags uint8) (createR
 			if isBridgeRequired(baseZ, t, piece.Flags&(1<<4) != 0, unk) {
 				st.Flags73 |= 1<<1 | 1<<0
 				heightDiff := (int(baseZ) - int(t.BaseZ)) / microToSmallZStep
-				if a.Bridge == 0xFF { // bridge_needed
+				if a.Bridge == 0xFF {
+					c.ErrorText = i18n.BridgeNeeded
 					return r, false
 				}
 				b := c.bridge(a.Bridge)
-				if b == nil || heightDiff > int(b.MaxHeight) { // too far above ground for this bridge
+				if b == nil || heightDiff > int(b.MaxHeight) {
+					c.ErrorText = i18n.TooFarAboveGroundForBridgeType
 					return r, false
 				}
 				st.MaxBridgeDiff = max(st.MaxBridgeDiff, uint8(heightDiff))
-				if b.DisabledTrackCfg&RoadMiscFlags[a.RoadID] != 0 { // unsuitable for this configuration
+				if b.DisabledTrackCfg&RoadMiscFlags[a.RoadID] != 0 {
+					c.ErrorText = i18n.BridgeTypeUnsuitableForThisConfiguration
 					return r, false
 				}
 				clearZ += int(b.ClearHeight) / 4
 			}
 		}
-		if clearZ > 236 { // error_too_high
+		if clearZ > 236 {
+			c.ErrorText = i18n.ErrorTooHigh
 			return r, false
 		}
 		plan := roadPiecePlan{X: x, Y: y, Z: z, Index: piece.Index, BaseZ: baseZ, ClearZ: uint8(clearZ), Quarter: quarter, LevelCrossingObjID: 0xFF}
@@ -160,8 +168,12 @@ func (m *Map) createRoadCheck(c *Cmd, a roadPlacementArgs, flags uint8) (createR
 			}
 			return res.Res
 		}
+		m.LastCollision = nil
 		ok, pos := m.ApplyClearAtStandardHeight(x, y, baseZ, uint8(clearZ), quarter&0xF, quarter>>4, clear)
 		if !ok {
+			if c.ErrorText == 0 { // setCollisionErrorMessage: what is in the way
+				c.ErrorText, c.ErrorArg = m.collisionMessage(c)
+			}
 			return r, false
 		}
 		if plan.LevelCrossingObjID == 0xFF {
@@ -173,11 +185,17 @@ func (m *Map) createRoadCheck(c *Cmd, a roadPlacementArgs, flags uint8) (createR
 			}
 		}
 		ground := pos & (PosAboveGround | PosUnderground)
-		if st.PosFlags != 0 && st.PosFlags&ground == 0 { // partly above, partly below ground
+		if st.PosFlags != 0 && st.PosFlags&ground == 0 {
+			c.ErrorText = i18n.CantBuildPartlyAbovePartlyBelowGround
 			return r, false
 		}
 		st.PosFlags = ground
-		if pos&(PosPartiallyUnderwater|PosUnderwater) != 0 { // under water / too close to its surface
+		if pos&PosPartiallyUnderwater != 0 {
+			c.ErrorText = i18n.CantBuildThisUnderwater
+			return r, false
+		}
+		if pos&PosUnderwater != 0 {
+			c.ErrorText = i18n.TooCloseToWaterSurface
 			return r, false
 		}
 		plan.HasBridge = st.Flags73&(1<<1) != 0
@@ -327,6 +345,8 @@ func (m *Map) createRoad(c *Cmd, a roadPlacementArgs, flags uint8) (int32, bool)
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0))
 	r, ok := m.createRoadCheck(c, a, flags)
 	c.PosFlags = r.State.PosFlags
+	c.Bridge = r.State.Bridge
+	c.AltRoadObject = r.State.AltRoadObject
 	if !ok || !m.createRoadApply(c, a, flags, &r) {
 		return 0, false
 	}
