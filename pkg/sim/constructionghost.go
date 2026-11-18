@@ -1,6 +1,9 @@
 package sim
 
-import "github.com/LaPingvino/goloco/pkg/construct"
+import (
+	"github.com/LaPingvino/goloco/pkg/construct"
+	"github.com/LaPingvino/goloco/pkg/i18n"
+)
 
 // The construction window's ghost and its tool on the map (ConstructionTab
 // onToolUpdateSingle 0x004A1968, constructionGhostLoop, onToolUpSingle
@@ -78,20 +81,55 @@ func (s *State) RemoveRoadGhost(c *Cmd) {
 // createTrack with apply, prevent building clearing, no error window, no
 // payment and ghost; placed, it is remembered for removal and its cost is
 // the state's (trackCost), and the main view follows it
-// (ghostVisibility). PARTIAL: the bridge retry (bridge_type_unsuitable…: the
-// next bridge in the list).
+// (ghostVisibility). Refused with bridge_type_unsuitable_for_this_configuration
+// just after a piece button (byte_113603A), the window takes the first
+// bridge of its list that suits the piece (none: the selected one comes
+// first, nothing changes) and the ghost is tried again — upstream retries
+// with the old args (placeTrackGhost(args), not newArgs), so that try fails
+// too and the next update places the ghost with the new bridge.
 func (s *State) placeTrackGhost(c *Cmd, a trackPlacementArgs) (int32, bool) {
 	s.RemoveTrackGhost(c)
 	cost, ok := s.DoCommandFor(c, CmdApply|CmdPreventBuildingClearing|CmdNoErrorWindow|CmdNoPayment|CmdGhost, ExpenditureConstruction, func(f uint8) (int32, bool) {
 		return s.createTrack(c, a, f)
 	})
 	s.Cons.Cost = 0
+	if !ok && s.retryBridge(c, TrackMiscFlags[a.TrackID]) {
+		return s.placeTrackGhost(c, a)
+	}
 	if ok {
 		s.Cons.Cost = cost
 		s.TrackGhost = &TrackGhost{X: a.X, Y: a.Y, Z: a.Z, Rotation: a.Rotation, TrackID: a.TrackID, TrackObjectID: a.TrackObjectID}
 		s.ghostVisibility(c)
 	}
+	s.Cons.pieceChanged = 0
 	return cost, ok
+}
+
+// retryBridge is placeTrackGhost's / placeRoadGhost's bridge retry: with
+// byte_113603A set and the ghost refused for its bridge, byte_113603A is
+// cleared and the first bridge of the list whose disabledTrackCfg allows
+// the piece (flags: its CommonTraitFlags) becomes the window's — unless it
+// is the selected one already. True: a bridge was chosen, try again.
+func (s *State) retryBridge(c *Cmd, flags uint16) bool {
+	cs := &s.Cons
+	if cs.pieceChanged == 0 || c.ErrorText != i18n.BridgeTypeUnsuitableForThisConfiguration {
+		return false
+	}
+	cs.pieceChanged = 0
+	for _, b := range cs.BridgeList {
+		if b == 0 {
+			break
+		}
+		if o := c.bridge(b - 1); o == nil || o.DisabledTrackCfg&flags != 0 {
+			continue
+		}
+		if b == cs.Bridge {
+			break
+		}
+		cs.Bridge = b
+		return true
+	}
+	return false
 }
 
 // ghostVisibility is what placeTrackGhost / placeRoadGhost do to the main
@@ -105,18 +143,23 @@ func (s *State) ghostVisibility(c *Cmd) {
 	}
 }
 
-// placeRoadGhost is placeRoadGhost, as placeTrackGhost through createRoad.
+// placeRoadGhost is placeRoadGhost (0x0049FC60), as placeTrackGhost through
+// createRoad.
 func (s *State) placeRoadGhost(c *Cmd, a roadPlacementArgs) (int32, bool) {
 	s.RemoveRoadGhost(c)
 	cost, ok := s.DoCommandFor(c, CmdApply|CmdPreventBuildingClearing|CmdNoErrorWindow|CmdNoPayment|CmdGhost, ExpenditureConstruction, func(f uint8) (int32, bool) {
 		return s.createRoad(c, a, f)
 	})
 	s.Cons.Cost = 0
+	if !ok && s.retryBridge(c, RoadMiscFlags[a.RoadID]) {
+		return s.placeRoadGhost(c, a)
+	}
 	if ok {
 		s.Cons.Cost = cost
 		s.RoadGhost = &RoadGhost{X: a.X, Y: a.Y, Z: a.Z, Rotation: a.Rotation, RoadID: a.RoadID, RoadObjectID: a.RoadObjectID}
 		s.ghostVisibility(c)
 	}
+	s.Cons.pieceChanged = 0
 	return cost, ok
 }
 
@@ -219,7 +262,9 @@ func (s *State) ConstructionToolUpdate(c *Cmd, tx, ty int, junction int32, road 
 		}
 		s.RemoveTrackGhost(c)
 		for tries := 2; ; a.Z += 32 {
-			if _, ok := s.placeRoadGhost(c, a); ok {
+			_, ok := s.placeRoadGhost(c, a)
+			s.adoptBridge(c)
+			if ok {
 				return
 			}
 			if tries--; tries == 0 {
@@ -236,7 +281,9 @@ func (s *State) ConstructionToolUpdate(c *Cmd, tx, ty int, junction int32, road 
 	}
 	s.RemoveRoadGhost(c)
 	for tries := 2; ; a.Z += 32 {
-		if _, ok := s.placeTrackGhost(c, a); ok {
+		_, ok := s.placeTrackGhost(c, a)
+		s.adoptBridge(c)
+		if ok {
 			return
 		}
 		if tries--; tries == 0 {

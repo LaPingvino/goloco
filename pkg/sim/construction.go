@@ -20,7 +20,7 @@ import (
 type ConstructionState struct {
 	// signalGhost is the signal tab's ghost (GhostVisibilityFlags::signal and
 	// cState.signalGhost…): the placement it was made with.
-	signalGhost   *SignalsPlacementAuto
+	signalGhost *SignalsPlacementAuto
 	// X, Y, Z are cState.x, y and constructionZ (world units): where the next
 	// piece starts — while hovering, where the ghost under the cursor stands.
 	X, Y, Z int32
@@ -38,9 +38,18 @@ type ConstructionState struct {
 	// Bridge is lastSelectedBridge + 1 (0: none), the bridge type a piece is
 	// built with where it needs one.
 	Bridge uint8
+	// BridgeList is cState.bridgeList: the bridges available for this track
+	// or road (getAvailableCompatibleBridges), each slot + 1 as Bridge (0:
+	// the list's end, upstream's 0xFF).
+	BridgeList [9]uint8
 	// Cost is trackCost / roadCost: what the ghost standing would cost, or
 	// the piece just built did (0: none — GameCommands::kFailure).
 	Cost int32
+
+	// pieceChanged is byte_113603A: a piece button was pressed since the
+	// last ghost placement (changeTrackPiece sets it, every placeTrackGhost /
+	// placeRoadGhost clears it) — the ghost may then try another bridge.
+	pieceChanged uint8
 
 	arrowFrame uint8 // constructionArrowFrameNum
 	arrowBlink bool  // GhostVisibilityFlags::constructArrow
@@ -78,9 +87,10 @@ func rotOffset(x, y int16, rotation uint8) (int16, int16) {
 
 // ResetConstruction is the state a construction window opens with and leaves
 // behind (Common's open, then trackWindow's rotate_90): hovering, rotation
-// 0, straight and level; the bridge and mods stay the window's.
+// 0, straight and level, byte_113603A clear; the bridge and mods stay the
+// window's.
 func (s *State) ResetConstruction() {
-	s.Cons = ConstructionState{Hover: true, Mods: s.Cons.Mods, Bridge: s.Cons.Bridge}
+	s.Cons = ConstructionState{Hover: true, Mods: s.Cons.Mods, Bridge: s.Cons.Bridge, BridgeList: s.Cons.BridgeList}
 	s.ghostPos = [3]int32{-1, -1, -1}
 	s.ConsArrow.On = false
 }
@@ -400,6 +410,7 @@ func (s *State) ConstructionRemoveRoad(c *Cmd, objID uint8, g1 G1Raw) (removed, 
 // ChangeTrackPiece is changeTrackPiece (a piece or gradient button): the
 // ghosts removed, the piece — or, slope, the gradient — selected.
 func (s *State) ChangeTrackPiece(c *Cmd, v uint8, slope bool) {
+	s.Cons.pieceChanged = 0xFF // byte_113603A = TrackPiece::null (the dual-track buttons: 0xFF)
 	s.RemoveConstructionGhosts(c)
 	s.Cons.Cost = 0
 	if slope {
@@ -407,6 +418,15 @@ func (s *State) ChangeTrackPiece(c *Cmd, v uint8, slope bool) {
 	} else {
 		s.Cons.Piece = v
 	}
+}
+
+// ChangeBridge is onDropdown on the bridge dropdown: the bridge chosen
+// (lastSelectedBridge; slot), the ghosts removed so the ghost comes back
+// with it, no cost.
+func (s *State) ChangeBridge(c *Cmd, slot uint8) {
+	s.Cons.Bridge = slot + 1
+	s.RemoveConstructionGhosts(c)
+	s.Cons.Cost = 0
 }
 
 // ConstructionRotate90 is the Construction tab's rotate_90 button
@@ -474,7 +494,7 @@ func (s *State) ConstructionLoop(c *Cmd, x, y, height int32, maxRetries int, roa
 // whenever GhostVisibilityFlags::track is clear — every change of position
 // or piece clears it through removeConstructionGhosts, and a refused ghost
 // leaves it clear; here: whenever the ghost standing isn't the one wanted.
-// PARTIAL: the bridge retry (sub_4A193B).
+// After each placement the window takes the bridge the piece met (sub_4A193B).
 func (s *State) UpdateConstruction(c *Cmd, road bool, objID uint8) {
 	if s.Cons.Hover {
 		return
@@ -485,6 +505,7 @@ func (s *State) UpdateConstruction(c *Cmd, road bool, objID uint8) {
 		} else if g := s.RoadGhost; g == nil || *g != (RoadGhost{a.X, a.Y, a.Z, a.Rotation, a.RoadID, a.RoadObjectID}) {
 			s.RemoveTrackGhost(c)
 			s.placeRoadGhost(c, a)
+			s.adoptBridge(c)
 		}
 	} else {
 		if a, ok := s.trackPlacement(objID); !ok {
@@ -492,9 +513,25 @@ func (s *State) UpdateConstruction(c *Cmd, road bool, objID uint8) {
 		} else if g := s.TrackGhost; g == nil || *g != (TrackGhost{a.X, a.Y, a.Z, a.Rotation, a.TrackID, a.TrackObjectID}) {
 			s.RemoveRoadGhost(c)
 			s.placeTrackGhost(c, a)
+			s.adoptBridge(c)
 		}
 	}
 	s.updateConstructionArrow()
+}
+
+// adoptBridge is sub_4A193B (0x004A193B): the bridge of the bridged element
+// the last placement met (byte_1136075), when it is in the window's list,
+// becomes the window's bridge.
+func (s *State) adoptBridge(c *Cmd) {
+	for _, b := range s.Cons.BridgeList {
+		if b == 0 {
+			return
+		}
+		if c.Bridge == b-1 {
+			s.Cons.Bridge = b
+			return
+		}
+	}
 }
 
 // updateConstructionArrow is updateConstructionArrow: every sixth update the

@@ -579,9 +579,10 @@ func (g *Game) openBridgeDropdown(wx, wy int, colour, company uint8) {
 	}
 	d := ui.NewDropdownShowItemHeight(wx+40, wy+123, 155, 19, colour, items, 22, g.sw, g.sh)
 	d.Highlighted = hl
-	d.OnSelect = func(i int) {
+	d.OnSelect = func(i int) { // onDropdown: the bridge, the ghosts removed
 		if i >= 0 && i < len(list) {
 			g.consBridge = list[i]
+			g.w.ChangeBridge(g.playerCmd(), uint8(list[i]))
 		}
 	}
 	g.dropdown = d
@@ -605,11 +606,22 @@ func (g *Game) updateConstruction() {
 		return
 	}
 	road, obj := g.consIsRoad(), uint8(g.buildObjID)
-	// cState.lastSelectedBridge and lastSelectedMods: the window's choices, for every piece built
-	g.w.Cons.Bridge, g.w.Cons.Mods = 0, g.consMods
+	// cState.lastSelectedBridge, bridgeList and lastSelectedMods: the
+	// window's choices, for every piece built
+	g.w.Cons.Bridge, g.w.Cons.Mods, g.w.Cons.BridgeList = 0, g.consMods, [9]uint8{}
 	if list := g.r.ObjMgr.AvailableCompatibleBridges(g.buildObjID, road, int(g.w.CurrentYear)); len(list) > 0 {
 		g.w.Cons.Bridge = uint8(pickSlot(list, g.consBridge)) + 1
+		for i, b := range list[:min(len(list), 8)] { // copyToLegacyList
+			g.w.Cons.BridgeList[i] = uint8(b) + 1
+		}
 	}
+	// The ghost may choose the bridge (placeTrackGhost's retry, sub_4A193B):
+	// lastSelectedBridge is the state's, the window shows it.
+	defer func() {
+		if g.w.Cons.Bridge != 0 {
+			g.consBridge = int(g.w.Cons.Bridge) - 1
+		}
+	}()
 	c := g.playerCmd()
 	if !g.w.Cons.Hover {
 		g.w.UpdateConstruction(c, road, obj)
