@@ -17,11 +17,77 @@ import (
 // prepareDraw 0x00435D07, drawScroll 0x00435EA7), opened by the player
 // panel's dropdown's last item (CompanyList::open).
 //
-// PARTIAL: the other tabs (performance, cargo units / distance, values,
-// payment rates, speed records: graphs), resizing.
+// Resizable (CompanyList::open: WindowFlags::resizable): the list from
+// 300 × 272, a graph tab from its own size, both to 800 × 940; the speed
+// records fixed (each tab's onResize and tabReset).
 
 // CompanyListSize is CompanyList::kWindowSize.
 var CompanyListSize = [2]int{640, 272}
+
+// Common::kMinWindowSize, kMaxWindowSize.
+var (
+	companyListMinSize = [2]int{300, 272}
+	companyListMaxSize = [2]int{800, 940}
+)
+
+// NewCompanyList is CompanyList::open's window: kWindowSize, resizable
+// within kMinWindowSize … kMaxWindowSize, on its first tab, sorted by
+// performance (sortMode 2).
+func NewCompanyList(titleColour, colour uint8, rows []CompanyListRow) *CompanyListWindow {
+	return &CompanyListWindow{WinBase: WinBase{WinType: WindowTypeCompanyList, W: CompanyListSize[0], H: CompanyListSize[1],
+		WinFlags: WindowFlagResizable, MinW: companyListMinSize[0], MinH: companyListMinSize[1], MaxW: companyListMaxSize[0], MaxH: companyListMaxSize[1]},
+		TitleColour: titleColour, Colour: colour, Rows: rows, SortMode: 2, Hover: -1}
+}
+
+// switchTab is Common::switchTab's size work: maximised off, the tab's
+// tabReset — the list setSize(kWindowSize) within the bounds it had, then
+// its own; a graph tab setSizeFixed(its kWindowSize) — then onResize's
+// bounds (a graph tab from its size to kMaxWindowSize; the speed records
+// fixed) and moveInsideScreenEdges.
+func (w *CompanyListWindow) switchTab(t int) {
+	w.Tab = t
+	w.WinFlags &^= WindowFlagMaximised
+	size := companyTabSizes[t]
+	switch {
+	case t == 0:
+		w.W, w.H = size[0], size[1]
+		w.SetSize(w.MinW, w.MinH, w.MaxW, w.MaxH) // setSize: within the last tab's bounds
+		w.SetSize(companyListMinSize[0], companyListMinSize[1], companyListMaxSize[0], companyListMaxSize[1])
+		w.Hover = -1
+	case t == 6:
+		w.SetFixedSize(size[0], size[1])
+	default:
+		w.SetFixedSize(size[0], size[1])
+		w.SetSize(size[0], size[1], companyListMaxSize[0], companyListMaxSize[1])
+	}
+	w.MoveInsideScreenEdges()
+}
+
+// PrepareDraw is onResize's scroll keeping: the list's scroll within what
+// the scroll view now shows.
+func (w *CompanyListWindow) PrepareDraw() {
+	if w.Tab == 0 {
+		w.Scroll = min(w.Scroll, max(len(w.Rows)*25-(w.H-14-56+1), 0))
+	}
+}
+
+// GripBlocked: on the list tab the scroll view (to width − 4, height − 14)
+// and the status bar (3 … width − 19, height − 13 … height − 3) reach the
+// resize corner.
+func (w *CompanyListWindow) GripBlocked(x, y int) bool {
+	if w.Tab != 0 {
+		return false
+	}
+	rx, ry := x-w.X, y-w.Y
+	return rx >= 3 && rx <= w.W-4 && ry >= 56 && ry <= w.H-14 ||
+		rx >= 3 && rx <= w.W-ResizeHandleSize-1 && ry >= w.H-13 && ry <= w.H-3
+}
+
+// headerSpan is prepareDraw's header edges: left and right each at most
+// width − 8.
+func (w *CompanyListWindow) headerSpan(x, width int) (l, r int) {
+	return min(x, w.W-8), min(x+width-1, w.W-8)
+}
 
 // CompanyListRow is one company's row.
 type CompanyListRow struct {
@@ -126,9 +192,9 @@ func (w *CompanyListWindow) HandleClick(x, y int) {
 		w.Close()
 		return
 	}
-	for t, size := range companyTabSizes { // Common::switchTab (the ported tabs)
+	for t := range companyTabSizes { // Common::switchTab (the ported tabs)
 		if in(3+31*t, 15, 31, 27) && t != w.Tab {
-			w.Tab, w.W, w.H = t, size[0], size[1]
+			w.switchTab(t)
 			return
 		}
 	}
@@ -136,7 +202,7 @@ func (w *CompanyListWindow) HandleClick(x, y int) {
 		return
 	}
 	for i, h := range companyListHeaders {
-		if in(h.x, 43, h.w, 12) {
+		if l, r := w.headerSpan(h.x, h.w); r >= l && in(l, 43, r-l+1, 12) {
 			if i != w.SortMode {
 				w.SortMode = i
 				w.Sort()
@@ -185,13 +251,15 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
 		gfx8.FillRectInset(rt, 0, 41, w.W-1, w.H-1, gfx8.InsetColour{Map: sec}, 0)
+		drawResizeHandle(rt, &w.WinBase, sec) // PanelWidget: the handle on a resizable window
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
 		w.drawTabs(rt, sec)
 		for _, h := range companyListHeaders {
-			r := min(h.x+h.w-1, w.W-8)
-			gfx8.FillRectInset(rt, h.x, 43, r, 43+11, gfx8.InsetColour{Map: sec}, 0)
+			if l, r := w.headerSpan(h.x, h.w); r >= l {
+				gfx8.FillRectInset(rt, l, 43, r, 43+11, gfx8.InsetColour{Map: sec}, 0)
+			}
 		}
 		cx, cy, cw, ch, _ = drawVScrollViewPressed(rt, svL, svT, svR-svL+1, svB-svT+1, gfx8.InsetColour{Map: sec}, len(w.Rows)*25, w.Scroll, w.hold.PressedPart())
 		gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 3)) // clearSingle(shade 3)
@@ -231,7 +299,12 @@ func (w *CompanyListWindow) Draw(screen *ebiten.Image) {
 		if i == w.SortMode {
 			label++ // table_header_…_desc
 		}
-		drawFormattedEx(screen, w.X+h.x+1, w.Y+43, i18n.Str(label), win2, black, red)
+		l, r := w.headerSpan(h.x, h.w)
+		if r < l {
+			continue
+		}
+		hc := screen.SubImage(image.Rect(w.X+l, w.Y+43, w.X+r, w.Y+43+12)).(*ebiten.Image) // Label: clipped to width − 2
+		drawFormattedEx(hc, w.X+l+1, w.Y+43, i18n.Str(label), win2, black, red)
 	}
 	clip := screen.SubImage(image.Rect(w.X+cx, w.Y+cy, w.X+cx+cw, w.Y+cy+ch)).(*ebiten.Image)
 	ox, oy := w.X+cx, w.Y+cy
@@ -421,6 +494,7 @@ func (w *CompanyListWindow) drawGraphTab(screen *ebiten.Image) {
 	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
 		gfx8.FillRectInset(rt, 0, 41, w.W-1, w.H-1, gfx8.InsetColour{Map: sec}, 0)
+		drawResizeHandle(rt, &w.WinBase, sec) // PanelWidget: the handle on a resizable window
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
@@ -519,6 +593,7 @@ func (w *CompanyListWindow) drawSpeedRecords(screen *ebiten.Image) {
 	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
 		gfx8.FillRectInset(rt, 0, 41, w.W-1, w.H-1, gfx8.InsetColour{Map: sec}, 0)
+		drawResizeHandle(rt, &w.WinBase, sec) // PanelWidget: the handle on a resizable window
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}

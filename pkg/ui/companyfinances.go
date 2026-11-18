@@ -230,10 +230,14 @@ var companyExpenditureLabels = [17]int{
 	i18n.Construction, i18n.VehiclePurchases, i18n.VehicleDisposals, i18n.LoanInterest, i18n.Miscellaneous,
 }
 
-// switchTab is Common::switchTab: the window takes the tab's size, keeping
-// its place.
+// switchTab is Common::switchTab: maximised off, the window takes the tab's
+// size (setSizeFixed(kWindowSize)), keeping its place; then the tab's
+// onResize — Status's makes it resizable from there to 640 × 400 (the
+// window is resizable from create on; the other tabs are fixed).
 func (w *CompanyFinancesWindow) switchTab(tab int) {
 	w.Tab = tab
+	w.WinFlags |= WindowFlagResizable
+	w.WinFlags &^= WindowFlagMaximised
 	switch tab {
 	case CompanyTabFinances:
 		w.W, w.H = CompanyFinancesSize[0], CompanyFinancesSize[1]
@@ -247,6 +251,10 @@ func (w *CompanyFinancesWindow) switchTab(tab int) {
 		w.W, w.H = CompanyDetailsSize[0], CompanyDetailsSize[1]
 	case CompanyTabColourScheme:
 		w.W, w.H = CompanyColourSchemeSize[0], CompanyColourSchemeSize[1]
+	}
+	w.SetFixedSize(w.W, w.H)
+	if tab == CompanyTabStatus { // Status::onResize: setSizeBounds(kWindowSize, {640, 400})
+		w.SetSize(CompanyStatusSize[0], CompanyStatusSize[1], 640, 400)
 	}
 	w.Scroll = 0
 	if tab == CompanyTabFinances { // switchTab: Finances::scrollToLatestData
@@ -836,6 +844,7 @@ func (w *CompanyFinancesWindow) drawStatus(screen *ebiten.Image) {
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
 		p := lw[cwPanel]
 		gfx8.FillRectInset(rt, p.L, p.T, p.R, p.B, gfx8.InsetColour{Map: sec}, 0)
+		drawResizeHandle(rt, &w.WinBase, sec) // PanelWidget: the handle on the resizable Status tab
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, lw[cwClose].L, lw[cwClose].T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 			w.drawCompanySelect(rt, lw[cwCompanySelect])
@@ -1061,6 +1070,13 @@ func (w *CompanyFinancesWindow) colourSwatchAt(x, y int) *colourSwatch {
 		}
 	}
 	return nil
+}
+
+// GripBlocked: on the Status tab its status label (unk_11: 3 … width − 14,
+// height − 12 … height − 3) reaches the resize corner.
+func (w *CompanyFinancesWindow) GripBlocked(x, y int) bool {
+	rx, ry := x-w.X, y-w.Y
+	return w.Tab == CompanyTabStatus && rx >= 3 && rx <= w.W-14 && ry >= w.H-12 && ry <= w.H-3
 }
 
 // SwitchTab is Common::switchTab from outside (CompanyWindow::open's tab).
