@@ -1,7 +1,6 @@
 package main
 
 import (
-
 	"github.com/LaPingvino/goloco/pkg/construct"
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
@@ -159,6 +158,7 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 	}
 	st.Gradient = nameFor(consGradientWidget, cs.Gradient)
 	st.Hover = cs.Hover
+	st.GhostBridge = g.w.GhostNeedsBridge()
 	st.BridgeImage, st.Company = -1, f.CompanyColour
 	// drawCostString's trackCost / roadCost: the ghost's cost (hovering or
 	// building), or the piece's just built.

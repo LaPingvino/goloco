@@ -324,6 +324,7 @@ func (s *State) constructionGhostLoop(c *Cmd, x, y, z int32, retries uint32, roa
 		} else {
 			_, placed = s.placeTrackGhost(c, ta)
 		}
+		cs.ghostFlags = c.Flags73
 		s.adoptBridge(c)
 		if !placed {
 			if retries--; retries != 0 {

@@ -120,7 +120,10 @@ type ConstructionTabState struct {
 	Piece             string // the activated piece widget ("straight", …); "" none
 	Gradient          string // the activated gradient widget ("level", …)
 	Hover             bool   // constructionHover: placing the first piece
-	Rotation          uint8  // constructionRotation (the dual-track buttons' images)
+	// GhostBridge is byte_1136076 & 1: the ghost standing needs a bridge —
+	// the bridge box shows while building on too.
+	GhostBridge bool
+	Rotation    uint8 // constructionRotation (the dual-track buttons' images)
 	// Cost is trackCost/roadCost for the piece at the head (0: none drawn).
 	Cost int64
 	// Preview is draw's drawTrackCost / drawRoadCost: it paints the piece on
@@ -287,12 +290,11 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 				gfx8.DrawSpriteNoise(rt, sp, ic[0], ic[1], gfx8.OpFor(sp, true, false), sec, nil)
 			}
 		}
-		// The bridge box (dropdownWidgets 40,123 58×20), shown while placing
-		// the first piece when a bridge is available (prepareDraw), with the
-		// bridge's image at (left + 2, top + 1) in the company colour.
-		// PARTIAL: shown while extending when the ghost needs a bridge
-		// (byte_1136076 & 1); the dropdown list (bridge images, speed, height).
-		if st.Hover && st.BridgeImage >= 0 {
+		// The bridge box (dropdownWidgets 40,123 58×20), shown when a bridge
+		// is available while placing the first piece or while the ghost needs
+		// a bridge (activateSelectedTrackWidgets), with the bridge's image at
+		// (left + 2, top + 1) in the company colour.
+		if st.bridgeBox() {
 			gfx8.FillRectInset(rt, 40, 123, 40+58-1, 123+20-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 			gfx8.FillRectInset(rt, 40+58-12, 124, 40+58-12+11-1, 124+10-1, gfx8.InsetColour{Map: sec}, 0)
 			if st.BridgeImage < len(g1.Elements) {
@@ -339,7 +341,7 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 		DrawTextBold(screen, label, x, f.Y+y+11, text)
 		DrawTextBold(screen, amount, x+lw, f.Y+y+11, pal[paletteBlack0])
 	}
-	if st.Hover && st.BridgeImage >= 0 { // the bridge box's ▼
+	if st.bridgeBox() { // the bridge box's ▼
 		arrow := string(rune(170))
 		aw, _ := MeasureTextBold(arrow)
 		DrawTextBold(screen, arrow, f.X+40+58-12+(11-1)/2-aw/2, f.Y+124, pal[paletteBlack0])
@@ -374,7 +376,7 @@ func ConstructionHit(rx, ry int, st ConstructionTabState) string {
 		}
 	}
 	switch {
-	case st.Hover && st.BridgeImage >= 0 && in(40, 123, 58, 20):
+	case st.bridgeBox() && in(40, 123, 58, 20):
 		return "bridge" // the bridge box (bridge_dropdown opens the list)
 	case in(3, 145, 132, 100):
 		return "construct"
@@ -410,4 +412,10 @@ func drawClipped(rt *gfx8.RenderTarget, x, y, w, h int, draw func(*gfx8.RenderTa
 	each(func(src, dst int) { sub.Bits[dst] = rt.Bits[src] })
 	draw(sub)
 	each(func(src, dst int) { rt.Bits[src] = sub.Bits[dst] })
+}
+
+// bridgeBox is activateSelectedTrackWidgets' bridge / bridge_dropdown shown:
+// a bridge selected, and hovering or the ghost on a bridge (byte_1136076 & 1).
+func (st ConstructionTabState) bridgeBox() bool {
+	return st.BridgeImage >= 0 && (st.Hover || st.GhostBridge)
 }
