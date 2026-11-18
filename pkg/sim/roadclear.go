@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -54,6 +55,7 @@ func (m *Map) clearTrack(c *Cmd, st *roadCmdState, e *scenario.TrackElement, a r
 	if e.HasBridge {
 		st.Bridge = e.BridgeID
 		if b := c.bridge(e.BridgeID); b != nil && b.DisabledTrackCfg&commonTraitJunction != 0 {
+			c.ErrorText = i18n.BridgeNotSuitableForJunction
 			return roadRes(ClearCollisionErrorSet)
 		}
 	}
@@ -66,15 +68,26 @@ func (m *Map) clearTrack(c *Cmd, st *roadCmdState, e *scenario.TrackElement, a r
 		roadTracks, _ = om.CompatibleSets(om.RoadObjects[a.RoadObjectID].CompatibleNames)
 	}
 	if trackRoads&(1<<a.RoadObjectID) == 0 && roadTracks&(1<<e.TrackObjectID) == 0 {
+		c.ErrorText = i18n.UnableToCrossOrCreateJunctionWithString // FormatArguments::common(trackObj->name)
+		if o := c.trackObject(e.TrackObjectID); o != nil {
+			c.ErrorArg = o.Name
+		}
 		return roadRes(ClearCollisionErrorSet)
 	}
-	if e.HasSignal || e.HasStation {
+	if e.HasSignal {
+		c.ErrorText = i18n.SignalInTheWay
+		return roadRes(ClearCollisionErrorSet)
+	}
+	if e.HasStation {
+		c.ErrorText = i18n.StationInTheWay
 		return roadRes(ClearCollisionErrorSet)
 	}
 	if e.HasBridge && e.BridgeID != a.BridgeID {
+		c.ErrorText = i18n.BridgeTypesMustMatch
 		return roadRes(ClearCollisionErrorSet)
 	}
 	if e.TrackID != 0 || a.RoadID != 0 || (e.Rotation-a.Rotation)&1 == 0 || int32(e.BaseZ)*4 != a.Z {
+		c.ErrorText = i18n.LevelCrossingOnlyPossibleWithStraightRoadAndTrackAtSameLevel
 		return roadRes(ClearCollisionErrorSet)
 	}
 	res := roadRes(ClearNoCollision)
