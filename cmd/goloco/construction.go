@@ -201,6 +201,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		g.w.EndConstruction(g.playerCmd())
 	}
 	g.w.ResetConstruction()
+	g.w.SwitchRoadType = g.consSwitchRoadType
 	// trackWindow's init: signalPlacementStepSize = kDefaultSignalPlacementStepSize, repeatedSignalMode off.
 	g.consSigStep, g.consSigRepeat, g.consSigCost = 4, false, -1
 	x, y := g.consWindowOrigin()
@@ -617,6 +618,25 @@ func (g *Game) updateConstruction() {
 		g.w.ConstructionToolUpdate(c, tx, ty, jh, road, obj)
 	}
 	g.w.SyncConstructionArrow(true)
+}
+
+// consSwitchRoadType is Common::sub_4A3A50 (the road type constructRoad's
+// retry switched to, sim.State.SwitchRoadType): the window's road object, the
+// toolbar's last road (setTrackOptions), its station and bridge — the
+// scenario's remembered ones, else the first available (PARTIAL: not
+// remembered, so the first) — and its mods (roadMods: not remembered, so
+// none); into the state at once, for the retry.
+func (g *Game) consSwitchRoadType(obj uint8) {
+	g.buildObjID = int(obj)
+	if g.r.ObjMgr == nil {
+		return
+	}
+	g.w.Map.SetTrackOptions(obj|1<<7, g.r.ObjMgr)
+	g.consStation, g.consBridge, g.consMods = -1, -1, 0
+	g.w.Cons.Bridge, g.w.Cons.Mods = 0, 0
+	if list := g.r.ObjMgr.AvailableCompatibleBridges(int(obj), true, int(g.w.CurrentYear)); len(list) > 0 {
+		g.w.Cons.Bridge = uint8(list[0]) + 1
+	}
 }
 
 // endConstruction is the track / road window closing (Common::onClose): the
