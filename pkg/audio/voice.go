@@ -125,8 +125,10 @@ func (e *Effects) Destroy(h Handle) {
 }
 
 // SetVolume, SetPan and SetPitch are AudioEngine's setters on a live handle.
-func (e *Effects) SetVolume(h Handle, volume int32) { e.setAttr(h, func(a *Attributes) { a.Volume = volume }) }
-func (e *Effects) SetPan(h Handle, pan int32)       { e.setAttr(h, func(a *Attributes) { a.Pan = pan }) }
+func (e *Effects) SetVolume(h Handle, volume int32) {
+	e.setAttr(h, func(a *Attributes) { a.Volume = volume })
+}
+func (e *Effects) SetPan(h Handle, pan int32) { e.setAttr(h, func(a *Attributes) { a.Pan = pan }) }
 func (e *Effects) SetPitch(h Handle, frequency int32) {
 	e.setAttr(h, func(a *Attributes) { a.Frequency = frequency })
 }
