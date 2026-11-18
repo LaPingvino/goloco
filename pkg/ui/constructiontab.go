@@ -123,6 +123,11 @@ type ConstructionTabState struct {
 	Rotation          uint8  // constructionRotation (the dual-track buttons' images)
 	// Cost is trackCost/roadCost for the piece at the head (0: none drawn).
 	Cost int64
+	// Preview is draw's drawTrackCost / drawRoadCost: it paints the piece on
+	// the construct widget's area clipped as upstream (left + 1, top + 1,
+	// width × height: 4, 146, 132 × 100), which holds the window's pixels;
+	// nil: no piece.
+	Preview func(rt *gfx8.RenderTarget)
 	// PieceUnbuildable: getTrackPieceId / getRoadPieceId finds no piece for
 	// the piece, gradient and rotation chosen (the Construct button disabled).
 	PieceUnbuildable bool
@@ -255,8 +260,17 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 	}
 	draw8(screen, f.X, f.Y, ConstructionW, ConstructionH, func(rt *gfx8.RenderTarget) {
 		// The construct area (Wt3Widget 3,145 132×100): a raised inset in the
-		// window colour; the piece preview is drawn into it by the caller.
-		gfx8.FillRectInset(rt, 3, 145, 3+132-1, 145+100-1, gfx8.InsetColour{Map: sec}, 0)
+		// window colour — while hovering it is the tool's widget
+		// (toolSet(self, construct): Window::draw's tool_widget), activated:
+		// the border inset; the piece preview is drawn into it.
+		var constructFlags int
+		if st.Hover {
+			constructFlags = gfx8.InsetBorderInset
+		}
+		gfx8.FillRectInset(rt, 3, 145, 3+132-1, 145+100-1, gfx8.InsetColour{Map: sec}, constructFlags)
+		if st.Preview != nil {
+			drawClipped(rt, 4, 146, 132, 100, st.Preview)
+		}
 		// Bottom row: Copy, Paste (Buttons), Remove (only while extending),
 		// Rotate (rotate_object while placing the first piece, else
 		// construction_new_position).
@@ -374,4 +388,26 @@ func ConstructionHit(rx, ry int, st ConstructionTabState) string {
 		return "paste"
 	}
 	return ""
+}
+
+// drawClipped is Gfx::clipRenderTarget(rt, (x, y, w × h)): draw paints on a
+// target of its own holding that part of rt (what lies outside rt stays 0),
+// copied back into rt afterwards.
+func drawClipped(rt *gfx8.RenderTarget, x, y, w, h int, draw func(*gfx8.RenderTarget)) {
+	sub := gfx8.NewRenderTarget(w, h)
+	each := func(f func(src, dst int)) {
+		for j := 0; j < h; j++ {
+			if y+j < 0 || y+j >= rt.Height {
+				continue
+			}
+			for i := 0; i < w; i++ {
+				if x+i >= 0 && x+i < rt.Width {
+					f((y+j)*rt.Width+x+i, j*w+i)
+				}
+			}
+		}
+	}
+	each(func(src, dst int) { sub.Bits[dst] = rt.Bits[src] })
+	draw(sub)
+	each(func(src, dst int) { rt.Bits[src] = sub.Bits[dst] })
 }

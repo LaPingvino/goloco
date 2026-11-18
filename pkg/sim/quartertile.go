@@ -18,3 +18,7 @@ func rotateQuarterTile(v, amount uint8) uint8 {
 func rotl4bit(v, rotation uint8) uint8 {
 	return uint8((uint32(v)<<rotation | uint32(v)>>(4-rotation)) & 0xF)
 }
+
+// RotateQuarterTile is QuarterTile::rotate (rotateQuarterTile), for the
+// construction window's preview (pkg/world).
+func RotateQuarterTile(v, amount uint8) uint8 { return rotateQuarterTile(v, amount) }
