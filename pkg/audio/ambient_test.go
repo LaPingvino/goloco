@@ -33,7 +33,9 @@ func TestChooseAmbient(t *testing.T) {
 func TestUpdateAmbient(t *testing.T) {
 	e := NewEffects(nil, nil)
 	var a Ambient
-	smp := func(int) (Sample, bool) { return Sample{Format: objects.WaveFormat{Channels: 1, BitsPerSample: 16}}, true }
+	smp := func(int) (Sample, bool) {
+		return Sample{Format: objects.WaveFormat{Channels: 1, BitsPerSample: 16}}, true
+	}
 	e.UpdateAmbient(&a, AmbientForest, -1200, smp)
 	at, ch, ok := e.VoiceAttributes(a.Handle)
 	if !ok || a.Chosen != AmbientForest || a.Volume != -3500 || !at.Loop || ch != ChannelAmbient {
