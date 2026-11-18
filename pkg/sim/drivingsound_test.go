@@ -172,6 +172,32 @@ func TestDrivingSoundTitleMap(t *testing.T) {
 		t.Fatalf("%d trains, %d sounding: nothing checked", checked, sounding)
 	}
 	t.Logf("%d trains, %d driving sounds", checked, sounding)
+
+	// One updateDrivingSound on the saved state: the game saved each sound
+	// one tick's ramp or speed change from now, so a right reading of the
+	// objects' sound parameters keeps every id and moves the volume and the
+	// frequency by little (a misread offset gives wild values).
+	moved := 0
+	for _, tr := range trains {
+		for _, i := range []int{tr.Veh2, tr.Tail} {
+			before := m.Entities[i]
+			if before.DrivingSoundID == soundObjectIDNull {
+				continue
+			}
+			m.updateDrivingSound(tr, &m.Entities[i], i == tr.Veh2, om)
+			after := m.Entities[i]
+			dv := int(after.DrivingSoundVolume) - int(before.DrivingSoundVolume)
+			df := int(after.DrivingSoundFrequency) - int(before.DrivingSoundFrequency)
+			if after.DrivingSoundID != before.DrivingSoundID || dv < -5 || dv > 5 || df < -1000 || df > 1000 {
+				t.Errorf("train %d: id %d→%d vol %d→%d freq %d→%d in one update", m.Entities[tr.Head].ID, before.DrivingSoundID,
+					after.DrivingSoundID, before.DrivingSoundVolume, after.DrivingSoundVolume, before.DrivingSoundFrequency, after.DrivingSoundFrequency)
+			}
+			if dv != 0 || df != 0 {
+				moved++
+			}
+		}
+	}
+	t.Logf("one update: %d of %d sounds moved a step", moved, sounding)
 }
 
 // chuffSound (steamPuffsAnimationUpdate's sound, outside a station): none
@@ -219,6 +245,100 @@ func TestChuffSound(t *testing.T) {
 		}
 		if len(m.Sounds) != 1 || m.Sounds[0].Object != c.name || m.Sounds[0].Volume != c.volume || m.Sounds[0].Channel != ChannelVehicles {
 			t.Errorf("%d mph at z %d: %+v, want %q at %d", c.speed>>16, c.z, m.Sounds, c.name, c.volume)
+		}
+	}
+}
+
+// A train off the map (picked up) has no driving sound: VehicleHead::update
+// runs updateDrivingSounds before its tileX check.
+func TestDrivingSoundOffMap(t *testing.T) {
+	m, tr := soundTrain(0, MotorStopped)
+	m.Entities[tr.Head].TileX = -1
+	for _, i := range []int{tr.Veh2, tr.Tail} {
+		m.Entities[i].DrivingSoundID, m.Entities[i].SoundObjectID = 4, 0
+	}
+	m.updateDrivingSounds(tr, &objects.ObjectManager{})
+	if m.Entities[tr.Veh2].DrivingSoundID != soundObjectIDNull || m.Entities[tr.Tail].DrivingSoundID != soundObjectIDNull {
+		t.Errorf("off the map: %d %d, want none", m.Entities[tr.Veh2].DrivingSoundID, m.Entities[tr.Tail].DrivingSoundID)
+	}
+}
+
+// updateTrainProperties' sounding objects: the first car with a driving
+// sound at Vehicle2, the last other one at the tail; turned round (the
+// front's object at the tail), the two sounds and their handles swap.
+func TestSoundingObjects(t *testing.T) {
+	om := &objects.ObjectManager{Vehicles: []*objects.VehicleObject{
+		{DrivingSoundType: objects.DrivingSoundGearboxMotor}, {DrivingSoundType: objects.DrivingSoundNone},
+		{DrivingSoundType: objects.DrivingSoundSimpleMotor}}}
+	m, tr := soundTrain(0, MotorStopped)
+	for _, id := range []uint16{1, 2, 0, 1} { // cars: none, simple, gearbox, none
+		m.Entities = append(m.Entities, scenario.VehicleEntity{EntityType: scenario.VehicleTypeBodyStart, ObjectID: id})
+		tr.Cars = append(tr.Cars, Car{{Body: len(m.Entities) - 1}})
+	}
+	v2, tail := &m.Entities[tr.Veh2], &m.Entities[tr.Tail]
+	v2.SoundObjectID, tail.SoundObjectID = 0, 2 // as before the turn: gearbox in front
+	v2.DrivingSoundID, v2.SoundHandle, tail.DrivingSoundID, tail.SoundHandle = 7, 70, 8, 80
+	m.updateSoundingObjects(tr, om)
+	if v2.SoundObjectID != 2 || tail.SoundObjectID != 0 {
+		t.Fatalf("objects: Vehicle2 %d, tail %d, want 2 and 0", v2.SoundObjectID, tail.SoundObjectID)
+	}
+	if v2.DrivingSoundID != 8 || v2.SoundHandle != 80 || tail.DrivingSoundID != 7 || tail.SoundHandle != 70 {
+		t.Errorf("turned round: Vehicle2 %d/%d, tail %d/%d, want the sounds swapped", v2.DrivingSoundID, v2.SoundHandle, tail.DrivingSoundID, tail.SoundHandle)
+	}
+	m.updateSoundingObjects(tr, om) // again: nothing turned
+	if v2.DrivingSoundID != 8 || tail.DrivingSoundID != 7 {
+		t.Errorf("unchanged train swapped again: %d %d", v2.DrivingSoundID, tail.DrivingSoundID)
+	}
+}
+
+// railProduceCrossingWhistle: the first car's last start sound, at
+// Vehicle2 + 22, 15 dB down below the ground (the empty map's land: 16).
+func TestCrossingWhistle(t *testing.T) {
+	om := &objects.ObjectManager{Vehicles: []*objects.VehicleObject{
+		{NumStartSounds: 3 | 0x80, StartSoundNames: []string{"a", "b", "whistle"}}}}
+	m, tr := soundTrain(0, MotorStopped)
+	m.Entities = append(m.Entities, scenario.VehicleEntity{EntityType: scenario.VehicleTypeBogie, ObjectID: 0})
+	tr.Cars = []Car{{{Front: len(m.Entities) - 1}}}
+	for _, c := range []struct{ z, volume int32 }{{30, 0}, {10, -1500}} {
+		m.Sounds = nil
+		m.Entities[tr.Veh2].PosZ = int16(c.z)
+		m.railProduceCrossingWhistle(tr, om)
+		if len(m.Sounds) != 1 || m.Sounds[0].Object != "whistle" || m.Sounds[0].Volume != c.volume || m.Sounds[0].Z != c.z+22 {
+			t.Errorf("z %d: %+v, want the whistle at %d", c.z, m.Sounds, c.volume)
+		}
+	}
+}
+
+// chuffSound in a station: the front bogie on its own track piece with a
+// station element after it plays the tunnel chuff (the second half) at the
+// speed's volume, uncapped; the station a ghost, the plain chuff, capped.
+func TestChuffSoundStation(t *testing.T) {
+	om := &objects.ObjectManager{SteamObjects: []*objects.SteamObject{
+		{Flags: objects.SteamFlagHasTunnelSounds, SoundNames: []string{"c0", "c1", "t0", "t1"}}}}
+	for _, ghost := range []bool{false, true} {
+		tiles := make([][]Tile, 4)
+		for y := range tiles {
+			tiles[y] = make([]Tile, 4)
+		}
+		tl := &tiles[1][2]
+		tl.Tracks = []scenario.TrackElement{{TrackID: 5, Rotation: 1, BaseZ: 8, HasStation: true}}
+		tl.Stations = []scenario.StationElement{{}}
+		st := scenario.ElemRef{Kind: scenario.KindStation}
+		if ghost {
+			st.Flags = elemFlagGhost
+		}
+		tl.Order = []scenario.ElemRef{{Kind: scenario.KindSurface}, {Kind: scenario.KindTrack}, st}
+		m := &Map{Width: 4, Height: 4, Tiles: tiles}
+		front := &scenario.VehicleEntity{TileX: 2 * 32, TileY: 1 * 32, TileBaseZ: 8, TrackAndDirection: 5<<3 | 1}
+		body := &scenario.VehicleEntity{ChuffSoundIndex: 1}
+		v2 := &scenario.VehicleEntity{CurrentSpeed: 1 << 16}
+		m.chuffSound(om, body, front, v2, 0, 2*32+16, 32+16, 100)
+		want, vol := "t1", int32(-(1 << 16 >> 9))
+		if ghost {
+			want, vol = "c1", -400
+		}
+		if len(m.Sounds) != 1 || m.Sounds[0].Object != want || m.Sounds[0].Volume != vol {
+			t.Errorf("ghost %v: %+v, want %q at %d", ghost, m.Sounds, want, vol)
 		}
 	}
 }

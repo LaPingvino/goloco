@@ -85,6 +85,14 @@ func TestClickSounds(t *testing.T) {
 	}
 
 	s, _ = newStack()
+	s.Press(115, 75) // its release taken elsewhere (a modal), then a press on the map
+	s.Press(500, 400)
+	s.ReleaseButton(115, 75, false)
+	if got, want := s.TakeClickSounds(), []ClickSound{{ClickDown, 124}}; !reflect.DeepEqual(got, want) {
+		t.Errorf("stale press: %v, want only the first clickDown", got)
+	}
+
+	s, _ = newStack()
 	s.Press(150, 55) // the caption, released unmoved
 	s.Release(150, 55)
 	if got, want := s.TakeClickSounds(), []ClickSound{{ClickPress, 100 + 99}}; !reflect.DeepEqual(got, want) {

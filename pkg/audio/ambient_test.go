@@ -80,7 +80,7 @@ func TestReadMusicSample(t *testing.T) {
 			t.Skip("game data not present")
 		}
 		s, err := ReadMusicSample(p)
-		if err != nil || len(s.PCM) == 0 || s.Format.Channels == 0 || s.Format.BitsPerSample == 0 {
+		if err != nil || len(s.PCM) == 0 || s.Format.Channels == 0 || s.Format.BitsPerSample == 0 || s.Format.SamplesPerSec != SampleRate {
 			t.Errorf("%s: %v (%d bytes, %+v)", f, err, len(s.PCM), s.Format)
 		}
 	}

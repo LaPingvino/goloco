@@ -464,5 +464,5 @@ func (m *Map) chuffSound(om *objects.ObjectManager, body, front, v2 *scenario.Ve
 			volume = -400
 		}
 	}
-	m.Sounds = append(m.Sounds, SoundEvent{Object: name, Channel: ChannelVehicles, X: x, Y: y, Z: z, Volume: volume, Frequency: 22050})
+	m.playObjectSound(SoundEvent{Object: name, Channel: ChannelVehicles, X: x, Y: y, Z: z, Volume: volume, Frequency: 22050})
 }
