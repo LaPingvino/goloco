@@ -23,7 +23,7 @@ func (g *Game) Update() error {
 	g.windowFrame++
 	g.sfx.Update()
 	g.playSimSounds()
-	g.updateVehicleNoise() // Audio::tick: the vehicles' running sounds (vehicleaudio.go)
+	g.audioTick() // the main loop's Audio::tick (vehicleaudio.go)
 	g.updateBuildVehicle()
 	g.diagTrackShip()
 	g.w.TitleMode = g.inTitleScreen // SceneManager::isTitleMode() for the viewport's names
@@ -130,7 +130,8 @@ func (g *Game) updateTitle() {
 		g.wins.Tick() // tickInterface → sub_431695 → WindowManager::tick: the border flashes
 	}
 	for range n { // tickLogic(numUpdates): the title is a running game upstream
-		g.w.Update() // tickLogic: one game tick
+		g.w.Update()  // tickLogic: one game tick
+		g.audioTick() // GameScene::tick's Audio::tick
 		if g.titleSeq != nil {
 			g.titleSeq.Update()
 		}
@@ -218,7 +219,8 @@ func (g *Game) updateGame() {
 	if !g.isPaused { // tickLogic(numUpdates × the speed)
 		for i := 0; i < n*g.speedMult; i++ {
 			g.w.Map.TitleMode = false
-			g.w.Update() // tickLogic: one game tick
+			g.w.Update()  // tickLogic: one game tick
+			g.audioTick() // GameScene::tick's Audio::tick
 			if g.inGame {
 				g.checkObjective()
 			}

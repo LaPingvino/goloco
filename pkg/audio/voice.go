@@ -216,6 +216,12 @@ func newVoiceStream(s Sample, loop bool) *voiceStream {
 	return st
 }
 
+func (s *voiceStream) ended() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.finished
+}
+
 func (s *voiceStream) set(gl, gr, pitch float64) {
 	s.mu.Lock()
 	s.gl, s.gr, s.pitch = gl, gr, pitch
