@@ -200,26 +200,74 @@ func (s *State) ConstructTrack(c *Cmd, objID uint8) (int32, bool) {
 	return cost, true
 }
 
-// ConstructRoad is constructRoad, as ConstructTrack through createRoad.
-// PARTIAL: the retry with the alternate road object (sub_4A18D4, a road of
-// another any-road-type-compatible type in the way).
+// ConstructRoad is constructRoad, as ConstructTrack through createRoad;
+// objID is the window's road object (cState.trackType). Refused with
+// unable_to_cross_or_create_junction_with_string over another road
+// (alternateRoadObjectId), the window may switch to that road
+// (sub_4A18D4, SwitchRoadType) and the piece is tried once more — with the
+// road type the window has then, even when it didn't change (as upstream).
 func (s *State) ConstructRoad(c *Cmd, objID uint8) (int32, bool) {
+	return s.constructRoad(c, &objID)
+}
+
+// constructRoad is ConstructRoad; *objID follows a switch of road type.
+func (s *State) constructRoad(c *Cmd, objID *uint8) (int32, bool) {
 	s.Cons.Cost = 0
 	s.RemoveConstructionGhosts(c)
-	a, ok := s.roadPlacement(objID)
+	a, ok := s.roadPlacement(*objID)
 	if !ok {
 		return 0, false
 	}
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
-	cost, ok := s.DoCommandFor(c, CmdApply, ExpenditureConstruction, func(f uint8) (int32, bool) {
-		return s.createRoad(c, a, f)
-	})
+	place := func() (int32, bool) {
+		return s.DoCommandFor(c, CmdApply, ExpenditureConstruction, func(f uint8) (int32, bool) {
+			return s.createRoad(c, a, f)
+		})
+	}
+	cost, ok := place()
 	if !ok {
-		return 0, false
+		alt := c.AltRoadObject
+		if c.ErrorText != i18n.UnableToCrossOrCreateJunctionWithString || alt == 0xFF {
+			return 0, false
+		}
+		s.switchToAlternateRoad(c, alt, objID)
+		if a, ok = s.roadPlacement(*objID); !ok {
+			return 0, false
+		}
+		// WindowManager::close(WindowType::error): the caller opens the
+		// error window after the last try only.
+		cost, ok = place()
+		if !ok {
+			return 0, false
+		}
 	}
 	s.Cons.Cost = cost
 	s.advance(RoadCoordinates[int(a.RoadID)<<3|int(a.Rotation)])
 	return cost, true
+}
+
+// switchToAlternateRoad is sub_4A18D4 (0x004A18D4): the road met (alt)
+// becomes the window's road type when it isn't already, both it and the
+// current one are any-road-type compatible, and the controlling company has
+// it (companyGetAvailableRoads); then Common::sub_4A3A50 (SwitchRoadType).
+func (s *State) switchToAlternateRoad(c *Cmd, alt uint8, objID *uint8) {
+	if alt == 0xFF || alt == *objID || c.Objects == nil {
+		return
+	}
+	altObj, cur := c.roadObject(alt), c.roadObject(*objID)
+	if altObj == nil || altObj.Flags&roadFlagAnyRoadTypeCompatible == 0 || cur == nil || cur.Flags&roadFlagAnyRoadTypeCompatible == 0 {
+		return
+	}
+	for _, id := range s.companyAvailableRoads(s.ControllingCompany, c.Objects) {
+		if id == alt|1<<7 {
+			*objID = alt
+			s.RemoveConstructionGhosts(c) // sub_4A3A50's removeConstructionGhosts
+			if s.SwitchRoadType != nil {
+				s.SwitchRoadType(alt)
+			}
+			return
+		}
+	}
 }
 
 // retreat moves the state back over a removed piece (removeTrack's /
@@ -398,7 +446,7 @@ func (s *State) ConstructionLoop(c *Cmd, x, y, height int32, maxRetries int, roa
 		var cost int32
 		var ok bool
 		if road {
-			cost, ok = s.ConstructRoad(c, objID)
+			cost, ok = s.constructRoad(c, &objID)
 		} else {
 			cost, ok = s.ConstructTrack(c, objID)
 		}

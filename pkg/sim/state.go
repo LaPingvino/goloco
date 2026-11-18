@@ -14,6 +14,11 @@ type State struct {
 	// it is under the ground and whether a gradient is selected — for the
 	// view's underground mode and height marks (the world sets it; nil: no view).
 	GhostVisibility func(underground, sloped bool)
+	// SwitchRoadType is Common::sub_4A3A50 after constructRoad's retry chose
+	// another road type (sub_4A18D4): the window takes the road object obj
+	// (cState.trackType) with its stations, bridge (Cons.Bridge) and mods
+	// (Cons.Mods). nil: the type can't change (no window).
+	SwitchRoadType func(obj uint8)
 	// TrackGhost / RoadGhost is the construction ghost on the map
 	// (constructionghost.go); ghostPos its last position under the cursor
 	// (ghostTrackPos).
