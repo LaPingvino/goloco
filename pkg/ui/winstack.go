@@ -143,6 +143,10 @@ type WinBase struct {
 	// whiteBorder is WindowFlags::whiteBorderMask's count (3 at the flash's
 	// start, one less each WindowManager::tick).
 	whiteBorder int
+	// pressed: the widget a HandleClick named (Button, PressWidget), in
+	// screen coordinates.
+	pressed    image.Rectangle
+	hasPressed bool
 }
 
 // Win is a window on the stack.
@@ -289,6 +293,13 @@ type WindowStack struct {
 	pressX, pressY   int
 	moved            bool
 	captionClickable bool
+
+	// clicks: the click sounds due (TakeClickSounds); pressedBtn: the
+	// pressed widget, in screen coordinates, until the release
+	// (_pressedWindowType / _pressedWidgetIndex, State::widgetPressed).
+	clicks        []ClickSound
+	pressedBtn    image.Rectangle
+	hasPressedBtn bool
 }
 
 func prepare(w Win) {
@@ -712,7 +723,7 @@ func (s *WindowStack) Press(x, y int) bool {
 	case frame: // panel / frame elsewhere: windowPositionBegin
 		begin(dragPositioning)
 	default:
-		w.HandleClick(x, y)
+		s.pressHandled(w, x, y)
 	}
 	return true
 }
@@ -775,8 +786,15 @@ func (s *WindowStack) Release(x, y int) {
 	switch d {
 	case dragPositioning:
 		s.position(w, x, y)
+		if !s.moved {
+			// MouseInput statePositioningWindow: a window that never moved
+			// sounds clickPress at the pressed caption / frame / panel's
+			// midX — each spans the window: (1 + w − 2) / 2 = (w − 1) / 2.
+			s.clicks = append(s.clicks, ClickSound{ClickPress, b.X + MidX(0, b.W)})
+		}
 		if !s.moved && b.onCaption(s.pressX, s.pressY) {
 			w.HandleClick(s.pressX, s.pressY)
+			b.hasPressed = false // the caption's own click: the clickPress above
 		}
 	case dragResizing:
 		switch {
