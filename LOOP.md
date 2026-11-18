@@ -277,7 +277,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       error window's translucent fill is lighter than OpenLoco's (cr-07, cr-12: same place, same text); money
 >       effects that overlap stack downwards in goloco, OpenLoco draws them on one line (N12).
 > - [x] N8 One-way road arrows — done with N23.
-> - [ ] (plan: docs/PORT-PLANS.md B) N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks). Step 1 done 2026-11-15: SoundObject loader + css1.dat reader; step 2 begun: the Effects mixer (pkg/audio/effects.go); wired, and most effect sounds done (PORT-PLANS B lists them); left: window widget clicks, then step 3 vehicle audio and step 4 ambient.
+> - [x] (plan: docs/PORT-PLANS.md B) N9 Sounds: done 2026-11-18 — SoundObject / css1 loaders, the Effects mixer and every effect call site, the widget clicks window by window (pkg/ui clicks.go), vehicle audio (driving sounds in the sim and saved, chuffs, crossing whistle, VehicleAudio.cpp's handles) and ambient audio (AmbientAudio.cpp). Left (PORT-PLANS B "Left"): silent widgets goloco doesn't act on, off-widget / dropdown releases, other windows' viewports, tunnel reverb.
 > - [ ] (plan: docs/PORT-PLANS.md E, docs/GAMEPAD.md) N37 Gamepad and focus navigation: six steps, start with step 1 (pad input + free cursor).
 > - [x] N10 Gfx::recolour exactness: already exact (Vehicle.cpp Main::draw redraws the pickup image in the company
 >       colour over the secondary-colour one; goloco draws that) — the PARTIAL note was stale.

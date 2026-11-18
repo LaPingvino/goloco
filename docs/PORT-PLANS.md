@@ -63,26 +63,39 @@ Reuse:
 
 ## B. Sounds (LOOP N9) — Audio/Audio.cpp 576, VehicleAudio.cpp 254, AmbientAudio.cpp 178, Audio/src/AudioEngine.cpp 598
 
-goloco plays only music: pkg/audio Manager (Ebitengine audio context, music, volume, sfx volume) and pkg/jukebox.
-There are no sound effects yet. Step 1 is done (2026-11-15): pkg/objects/sound.go `ParseSoundObject` (the 42
-SND*.DAT objects: 22050 Hz 16-bit mono PCM) and pkg/audio/css.go `ReadCSS` (css1.dat: 32 samples, SoundId
-clickDown…breakdown6). Step 2 begun (2026-11-15): pkg/audio/effects.go `Effects` — channel volumes,
-kSoundVolumeTable, percentToDb, volumeToGain, calculatePan, one-shot players, a `Record`/`Played` test hook. cmd/goloco
-sfx.go creates it from css1.dat with the config's channel volumes (`g.playSound`); the first call site is the error
-window's error sound. Next: the other call sites. The widget clicks (MouseInput clickDown/clickUp/clickPress) need
-the press to know the widget is a button, and goloco's windows take clicks by position, so they come window by
-window; the tools' construct and demolish sounds (the PARTIAL notes) are one line each. Done 2026-11-15: the
-world-position form (world.SoundAt: calculateVolumeFromViewport and the pan, the main view only) and the right-click
-removals' demolish sound (the remove commands now set their position, as upstream's setPosition). The construct sound for
-signals, train stations and road stations (not airports or docks: upstream plays none there). A sim sound queue (pkg/sim/sounds.go: Map.playSound →
-TakeSounds, played by cmd/goloco playSimSounds at the world position) carries the simulation's sounds; first the
-breakdown sound. Also done (2026-11-15): the industry, tree, waypoint, news, ticker, water, land/mountain, HQ,
-crash, splash, income, vehicle pickup/place (land, air, water — with playSound's volume and frequency: the mixer
-resamples for the pitch), track/road construct and demolish, airport/dock placement sounds; the toolbar's and a
-dropdown's clicks and the Build Vehicle list's. The gPrng2 draws these sounds make are now made, so gPrng2 follows
-upstream. Left in step 2: the widget clicks window by window (MouseInput clickDown/clickUp/clickPress need a press
-to know it hit a button), the cheat words' click, the town tools' construct sounds (the tools aren't ported).
-Next steps: 3 vehicle audio channels, 4 ambient audio.
+Steps 1–4 are done (2026-11-15 … 11-18); what is left is listed at the end.
+- Step 1: pkg/objects/sound.go `ParseSoundObject` (the 42 SND*.DAT objects) and pkg/audio/css.go `ReadCSS` (css1.dat).
+- Step 2: pkg/audio/effects.go `Effects` (channel volumes, kSoundVolumeTable, percentToDb, calculatePan, one-shots,
+  a `Record`/`Played` test hook), cmd/goloco sfx.go; the world-position form (world.SoundAt) and the sim's sound
+  queue (pkg/sim/sounds.go → playSimSounds). Every effect call site of the commands, the sim, the news and the tools.
+  The widget clicks (2026-11-18): pkg/ui clicks.go — a window names the widget its HandleClick hit (WinBase.Button /
+  PressWidget) and the stack sounds MouseInput's clickDown at window x + Widget::midX, clickUp on the release over it
+  (or over the main viewport), clickPress on an unmoved caption / frame release; every window on the stack names its
+  widgets (close, tabs, buttons, checkboxes, steppers, dropdowns), plus the toolbar, time panel and company panel.
+- Step 3 (2026-11-18): the sim keeps VehicleSound (pkg/sim drivingsound.go: updateDrivingSounds' friction, simple and
+  gearbox motors; updateTrainProperties' sounding objects and the turn-round swap), saved at Vehicle2 / tail 0x44–0x4B;
+  sound objects in the save's slot order (ReorderSoundObjects, slots 1–128) — title.dat's 101 saved driving sounds
+  match. The chuffs (exhaust.go chuffSound, tunnel chuffs underground and in stations) and the crossing whistle are
+  queued; object one-shots play at the object's volume (Effects.PlayObjectAt). The mixer has lasting handles
+  (voice.go: create / setVolume / setPan / setPitch / destroy on a looping stream), and VehicleAudio.cpp runs in
+  pkg/audio vehicleaudio.go (updateSingleVehicleSound, getVehicleAudioAttributes) from cmd/goloco vehicleaudio.go.
+  NB the plan's old premise "a fixed set of channels chosen by distance" was wrong: upstream keeps one handle per
+  Vehicle2 / tail sound while a view shows it; AudioEngine's only cap is OpenAL's source count.
+- Step 4 (2026-11-18): AmbientAudio.cpp — world AmbientScan (the 12 × 12 tiles about the main view's centre), the
+  sea / wilderness / forest choice and its fades (pkg/audio ambient.go, css2–4.dat via ReadMusicSample). Audio::tick
+  runs once a frame and once per game tick, as upstream.
+
+Left:
+- Clicks: widgets goloco's windows don't act on stay silent (labels, BuildVehicle's filters and search, Options'
+  Company tab, the audio device dropdown and the five other volume sliders, the paint brush, the bars' wt3 frames);
+  the release off the pressed widget over another window's widget; a dropdown's release path
+  (dropdownRegisterSelection's clickUp); the modal prompts outside the stack (text input, save, OK / Cancel); the
+  cheat words' click, the town tools' construct sounds (tools not ported).
+- World sounds and vehicles are heard from the main view only (findBestViewportForSound / ForEntity's other
+  windows' viewports; the main view following a train).
+- The tunnel reverb (setReverb: OpenAL EFX; Ebitengine has none).
+- With ALSA's null device the mixer is read as fast as it swallows (CPU as before vehicle audio: measured 144 s
+  before, 128 s after for 60 s of title).
 
 Upstream's structure:
 - **Samples:** `css1.dat` (Environment::PathId::css1) holds the UI samples, read by `loadSoundsFromCSS`
@@ -93,7 +106,7 @@ Upstream's structure:
   - ViewportInteraction (demolish);
   - Vehicle and VehicleHead (horns, crashes, splash);
   - TerraForm, MouseInput (clicks), Keyboard, the construction tabs (construct).
-- **Vehicle audio:** per-vehicle running sounds on a fixed set of channels, chosen by distance to the view
+- **Vehicle audio:** one handle per Vehicle2 / tail driving sound while a view shows the vehicle
   (VehicleAudio.cpp).
 - **Ambient:** sea, forest, town and so on, from the tiles around the view (AmbientAudio.cpp).
 
