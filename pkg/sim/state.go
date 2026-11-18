@@ -10,6 +10,9 @@ type State struct {
 	// enableConstructionArrow): steady under the cursor while hovering,
 	// blinking at the position while building.
 	ConsArrow ConstructionArrow
+	// ConsSelection is the construction tool's selected tiles
+	// (enableConstruct with the free-form tiles), outlined on the map.
+	ConsSelection ConstructionSelection
 	// GhostVisibility is told when a construction ghost is placed: whether
 	// it is under the ground and whether a gradient is selected — for the
 	// view's underground mode and height marks (the world sets it; nil: no view).

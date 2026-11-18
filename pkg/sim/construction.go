@@ -46,6 +46,10 @@ type ConstructionState struct {
 	// the piece just built did (0: none — GameCommands::kFailure).
 	Cost int32
 
+	// placeUnk is byte_113607E: 0 while constructionLoop tries, 1 once a
+	// piece of it stands, 0 again with the red cross; it goes to createTrack
+	// as TrackPlacementArgs::unk, which nothing reads (CreateTrack.cpp).
+	placeUnk uint8
 	// pieceChanged is byte_113603A: a piece button was pressed since the
 	// last ghost placement (changeTrackPiece sets it, every placeTrackGhost /
 	// placeRoadGhost clears it) — the ghost may then try another bridge.
@@ -148,7 +152,6 @@ func (s *State) RemoveSignalGhost(c *Cmd) {
 // trackPlacement is getTrackPlacementArgs at the state's position: the
 // selected piece's track id (getTrackPieceId) with the window's mods and
 // bridge; ok false when the piece can't be built in this rotation.
-// PARTIAL: args.unk (byte_113607E).
 func (s *State) trackPlacement(objID uint8) (trackPlacementArgs, bool) {
 	cs := &s.Cons
 	p, ok := construct.GetTrackPieceID(cs.Piece, cs.Gradient, cs.Rotation)
@@ -156,7 +159,7 @@ func (s *State) trackPlacement(objID uint8) (trackPlacementArgs, bool) {
 		return trackPlacementArgs{}, false
 	}
 	return trackPlacementArgs{X: cs.X, Y: cs.Y, Z: cs.Z, Rotation: p.Rotation & 3, TrackID: p.ID,
-		Mods: cs.Mods, Bridge: s.bridge(), TrackObjectID: objID}, true
+		Mods: cs.Mods, Bridge: s.bridge(), TrackObjectID: objID, Unk: cs.placeUnk&1 != 0}, true
 }
 
 // roadPlacement is getRoadPlacementArgs, as trackPlacement.
@@ -443,23 +446,26 @@ func (s *State) ConstructionRotate90(c *Cmd) {
 	}
 	s.RemoveConstructionGhosts(c)
 	cs.Hover = true
+	cs.placeUnk = 0
 	cs.Rotation &= 3
 }
 
 // ConstructionLoop is constructionLoop (0x004A0121's caller, the map click's
 // end): building starts at the tile (x, y) (world units) at height — the
 // state leaves hovering and the selected piece is built there as the
-// Construct button would; refused, it is tried again 16 higher (maxRetries
-// tries in all; not after error_can_only_build_above_ground, not from below
-// zero). When every try is refused the loop presses rotate_90 — with the
-// state no longer hovering that is the red cross: back to hovering, the
-// rotation as it was (an earlier port turned it a quarter here). The cost
-// and whether a piece was built. PARTIAL: shift's search downwards, the
-// error sound, byte_113607E.
-func (s *State) ConstructionLoop(c *Cmd, x, y, height int32, maxRetries int, road bool, objID uint8) (int32, bool) {
+// Construct button would (byte_113607E 0 for it, 1 once built); refused, it
+// is tried again 16 higher — with shift held, 16 lower — while tries are
+// left (maxRetries), not after error_can_only_build_above_ground, not from
+// below zero. When every try is refused the loop presses rotate_90 — with
+// the state no longer hovering that is the red cross: back to hovering, the
+// rotation as it was (an earlier port turned it a quarter here) — and plays
+// the error sound (the caller: Audio::playSound at the mouse's x). The cost
+// and whether a piece was built.
+func (s *State) ConstructionLoop(c *Cmd, x, y, height int32, maxRetries uint32, road bool, objID uint8, shift bool) (int32, bool) {
 	cs := &s.Cons
 	for {
 		cs.Hover = false
+		cs.placeUnk = 0
 		cs.X, cs.Y, cs.Z = x, y, height
 		cs.arrowBlink, cs.arrowFrame = false, 0
 		c.ErrorText = 0
@@ -471,12 +477,15 @@ func (s *State) ConstructionLoop(c *Cmd, x, y, height int32, maxRetries int, roa
 			cost, ok = s.ConstructTrack(c, objID)
 		}
 		if ok {
+			cs.placeUnk = 1
 			return cost, true
 		}
 		if c.ErrorText != i18n.ErrorCanOnlyBuildAboveGround {
 			if maxRetries--; maxRetries != 0 {
 				if height -= 16; height >= 0 {
-					height += 32
+					if !shift {
+						height += 32
+					}
 					continue
 				}
 			}
@@ -551,6 +560,7 @@ func (s *State) updateConstructionArrow() {
 func (s *State) EndConstruction(c *Cmd) {
 	s.RemoveConstructionGhosts(c)
 	s.ConsArrow.On = false
+	s.ConsSelection.On = false // toolCancel / onClose: enableConstruct off
 }
 
 // ConstructionEnd is one end of a piece as the construction state takes it

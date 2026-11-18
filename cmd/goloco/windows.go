@@ -409,10 +409,15 @@ func (g *Game) syncBars() {
 // openError is Error::open at the mouse, with the error sound panned to the
 // window's centre (createErrorWindow).
 func (g *Game) openError(title, message string) {
-	g.errorWin = ui.OpenError(title, message, g.mouseX, g.mouseY, g.sw, g.sh) // the frame's mouse (a script's, when one plays)
+	g.openErrorQuiet(title, message)
 	if e := g.errorWin; e != nil {
 		g.playSound(audio.SoundError, audio.ChannelUI, e.W/2+e.X)
 	}
+}
+
+// openErrorQuiet is Error::openQuiet: the error window without its sound.
+func (g *Game) openErrorQuiet(title, message string) {
+	g.errorWin = ui.OpenError(title, message, g.mouseX, g.mouseY, g.sw, g.sh) // the frame's mouse (a script's, when one plays)
 }
 
 // cmdErrorText is the error window's second line: the command's reason

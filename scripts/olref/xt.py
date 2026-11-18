@@ -50,7 +50,7 @@ OX, OY = (int(v) for v in os.environ.get("OLREF_ORIGIN", "112,84").split(","))
 
 KEYS = {"ESC": "Escape", "ESCAPE": "Escape", "ENTER": "Return", "SPACE": "space",
         "BACKSPACE": "BackSpace", "TAB": "Tab", "UP": "Up", "DOWN": "Down",
-        "LEFT": "Left", "RIGHT": "Right"}
+        "LEFT": "Left", "RIGHT": "Right", "LEFT SHIFT": "Shift_L", "RIGHT SHIFT": "Shift_R"}
 CHARS = {" ": "space", ".": "period", ",": "comma", "-": "minus", "'": "apostrophe"}
 
 
@@ -135,6 +135,13 @@ def do(cmd, args):
     elif cmd == "key":
         name = args[0]
         tap(KEYS.get(name.upper(), name))
+    elif cmd in ("keydown", "keyup"):  # goloco's: hold a key (Left Shift for the construction tool's search down)
+        name = " ".join(args)
+        code = x11.XKeysymToKeycode(dpy, x11.XStringToKeysym(KEYS.get(name.upper(), name).encode()))
+        if not code:
+            sys.exit(f"xt.py: no key {name!r}")
+        xtst.XTestFakeKeyEvent(dpy, code, 1 if cmd == "keydown" else 0, 0)
+        sync(0.05)
     elif cmd == "type":
         for ch in " ".join(args):
             tap(CHARS.get(ch, ch), shift=ch.isupper())

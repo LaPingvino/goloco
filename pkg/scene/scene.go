@@ -51,6 +51,10 @@ type Renderer struct {
 	// getMapSelectionCorner (MapSelectionType: SelCorner0 … SelEdge3).
 	Selection     func(tileX, tileY int) bool
 	SelectionType uint8
+	// ConstructSelection is MapSelectionFlags::enableConstruct with
+	// isWithinMapSelectionFreeFormTiles: a tile in it gets the selection box
+	// in ExtColour::unk25 (unk_03 is never set where goloco sets it). nil: none.
+	ConstructSelection func(tileX, tileY int) bool
 	// ConstructionArrow is World::getConstructionArrow with
 	// MapSelectionFlags::enableConstructionArrow as Visible.
 	ConstructionArrow ConstructionArrow
@@ -251,6 +255,7 @@ func (r *Renderer) worker(i int) *Renderer {
 	r.workers[i].Catchment = r.Catchment
 	r.workers[i].Selection = r.Selection
 	r.workers[i].SelectionType = r.SelectionType
+	r.workers[i].ConstructSelection = r.ConstructSelection
 	r.workers[i].ConstructionArrow = r.ConstructionArrow
 	return r.workers[i]
 }
@@ -942,6 +947,23 @@ func (r *Renderer) paintSurface(s *paint.Session, m *sim.Map, t *sim.Tile, x, y 
 			last := s.LastPS()
 			s.AddAsParent(paint.Image{Sprite: sel, Op: gfx8.OpFor(sel, pm != nil, false), PalMap: pm}, paint.Pos3{Z: h}, paint.Pos3{Z: h}, paint.Pos3{X: 32, Y: 32, Z: 1})
 			s.SetLastPS(last)
+		}
+	}
+	// enableConstruct's free-form tiles (PaintSurface.cpp 1655): the
+	// selection box in unk25 — over water deeper than the surface by the
+	// water surface's display slope as a parent at its height (bbox
+	// 32,32,1, the last struct kept), else attached by the display slope.
+	if r.ConstructSelection != nil && r.ConstructSelection(x, y) {
+		pm := r.colourMap(0x25)
+		if wh := int(t.WaterLevel) * 16; t.WaterLevel != 0 && wh > z {
+			h, slope := waterSurface()
+			if sel := sprite(constructionSelectionCornersSlope0 + slopeToDisplay[slope&0x1F]); sel != nil {
+				last := s.LastPS()
+				s.AddAsParent(paint.Image{Sprite: sel, Op: gfx8.OpFor(sel, pm != nil, false), PalMap: pm}, paint.Pos3{Z: h}, paint.Pos3{Z: h}, paint.Pos3{X: 32, Y: 32, Z: 1})
+				s.SetLastPS(last)
+			}
+		} else if sel := sprite(constructionSelectionCornersSlope0 + ds); sel != nil {
+			s.AttachToPrevious(paint.Image{Sprite: sel, Op: gfx8.OpFor(sel, pm != nil, false), PalMap: pm}, 0, 0)
 		}
 	}
 	if r.Catchment != nil && r.Catchment(x, y) {
