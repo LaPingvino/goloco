@@ -75,7 +75,7 @@ func (g *Game) newVehicleList(company, tab int) *ui.TownListWindow {
 	if cname != "" {
 		w.Caption = cname + " - " + w.Caption // stringid_trains etc.
 	}
-	w.OnTab = func(t int) { g.openVehicleListFor(company, t) }
+	w.OnTab = func(t int) { g.wins.Quietly(func() { g.openVehicleListFor(company, t) }) } // switchTab
 	g.listTabIcons(w, vehicleTabFrames, vehicleTabCounts, int(tc)) // recoloured to the company colour
 	w.TabTooltips = labels(i18n.TooltipTrains, i18n.TooltipBuses, i18n.TooltipTrucks, i18n.TooltipTrams, i18n.TooltipAircraft, i18n.TooltipShips)
 	w.TabDisabled = func(i int) bool { // disableUnavailableVehicleTypes: availableVehicles ^ 0x3F
@@ -175,7 +175,7 @@ func (g *Game) newStationList(company, tab int) *ui.TownListWindow {
 		w.Caption = strings.Replace(i18n.Label(i18n.StringidAllStations+tab), "{STRINGID}", cname, 1) // "{STRINGID} - Rail Stations" …
 	}
 	w.CurrentTab = tab
-	w.OnTab = func(t int) { g.openStationList(company, t) }
+	w.OnTab = func(t int) { g.wins.Quietly(func() { g.openStationList(company, t) }) } // switchTab
 	g.companySelect(w, company, func(id int) { g.turnList(w, ui.WindowTypeStationList, id, g.newStationList(id, tab)) })
 	w.OnRow = func(id int) { g.openStationWindow(id) }             // onScrollMouseDown: Station::open
 	g.listTabIcons(w, stationTabFrames, stationTabCounts, int(tc)) // the company colour
@@ -327,9 +327,9 @@ func (g *Game) newIndustryList() *ui.TownListWindow {
 	w.WinType = ui.WindowTypeIndustryList
 	w.Resizable(192, 100, 759, 900)                     // IndustryList::kMinDimensions, kMaxDimensions
 	w.OnRow = func(id int) { g.openIndustryWindow(id) } // onScrollMouseDown: Industry::open
-	w.OnTab = func(t int) {
+	w.OnTab = func(t int) { // switchTab
 		if t == 1 {
-			g.openNewIndustries()
+			g.wins.Quietly(g.openNewIndustries)
 		}
 	}
 	g.listTabIcons(w, industryTabFrames, industryTabCounts, -1)
@@ -384,10 +384,10 @@ func (g *Game) openNewIndustries() {
 	w.PlacementCost = func() (int64, bool) { return int64(g.indTool.cost), g.indTool.ghost && g.indTool.costOK }
 	w.WinType = ui.WindowTypeIndustryList
 	w.OnClose = func() { g.industryToolAbort() } // onClose: toolCancel
-	w.OnTab = func(t int) {
+	w.OnTab = func(t int) { // switchTab
 		if t == 0 {
 			g.industryToolAbort()
-			g.openIndustryList()
+			g.wins.Quietly(g.openIndustryList)
 		}
 	}
 	g.listTabIcons(w, industryTabFrames, industryTabCounts, -1)

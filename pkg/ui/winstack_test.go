@@ -349,6 +349,21 @@ func TestOpenFlashAndSound(t *testing.T) {
 	if _, ok := s.TakeOpenSound(); ok {
 		t.Error("Show on an open window sounded")
 	}
+	// A tab switch that rebuilds the window (Quietly): neither flash nor sound,
+	// a new window included.
+	for range 3 {
+		s.Tick()
+	}
+	s.Quietly(func() {
+		s.Show(newTestWin(WindowTypeTown, 1, 0, 0, 200, 160))
+		s.Show(newTestWin(WindowTypeIndustry, 5, 0, 0, 200, 160))
+	})
+	if w := s.Find(WindowTypeTown, 1).Base(); w.WhiteBorder() {
+		t.Error("a quiet rebuild flashed")
+	}
+	if _, ok := s.TakeOpenSound(); ok || s.Find(WindowTypeIndustry, 5).Base().WhiteBorder() {
+		t.Error("a quiet open sounded or flashed")
+	}
 	// The browser modal: a press on another window brings it forward instead.
 	s.Modal = WindowTypeFileBrowserPrompt
 	for range 3 {
