@@ -94,6 +94,13 @@ func (m *Map) updateManagers(om *objects.ObjectManager) {
 	for _, tr := range trains {
 		h := &m.Entities[tr.Head]
 		if h.TileX == -1 {
+			// VehicleHead::update off the map: the driving sounds (none:
+			// updateDrivingSound's tileX check), var_5C, then false.
+			// PARTIAL: the empty train's trainDanglingTimeout (vehiclesell.go).
+			m.updateDrivingSounds(tr, om)
+			if h.Var5C != 0 {
+				h.Var5C--
+			}
 			continue
 		}
 		switch h.Mode {

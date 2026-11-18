@@ -143,7 +143,7 @@ func (m *Map) tryCreateInitialMovementSound(tr Train, initialStatus uint8, om *o
 	if int(i) < len(obj.StartSoundNames) {
 		name = obj.StartSoundNames[i]
 	}
-	m.Sounds = append(m.Sounds, SoundEvent{Object: name, Channel: ChannelVehicles,
+	m.playObjectSound(SoundEvent{Object: name, Channel: ChannelVehicles,
 		X: int32(v2.PosX), Y: int32(v2.PosY), Z: int32(v2.PosZ) + 22, Volume: volume, Frequency: 22050})
 }
 
@@ -165,7 +165,7 @@ func (m *Map) produceStartSound(tr Train, om *objects.ObjectManager) {
 		name = obj.StartSoundNames[i]
 	}
 	v2 := &m.Entities[tr.Veh2]
-	m.Sounds = append(m.Sounds, SoundEvent{Object: name, Channel: ChannelVehicles,
+	m.playObjectSound(SoundEvent{Object: name, Channel: ChannelVehicles,
 		X: int32(v2.PosX), Y: int32(v2.PosY), Z: int32(v2.PosZ) + 22, Frequency: 22050})
 }
 
@@ -190,6 +190,16 @@ func (m *Map) railProduceCrossingWhistle(tr Train, om *objects.ObjectManager) {
 	if land, _ := m.GetHeight(int32(v2.PosX), int32(v2.PosY)); v2.PosZ < land {
 		volume = -1500
 	}
-	m.Sounds = append(m.Sounds, SoundEvent{Object: name, Channel: ChannelVehicles,
+	m.playObjectSound(SoundEvent{Object: name, Channel: ChannelVehicles,
 		X: int32(v2.PosX), Y: int32(v2.PosY), Z: int32(v2.PosZ) + 22, Volume: volume, Frequency: 22050})
+}
+
+// playObjectSound queues a sound object's sound (makeObjectSoundId). One
+// the vehicle or steam object doesn't name (an empty name: its index past
+// the object's sounds, or the object not loaded) is not queued: upstream
+// would read past its array.
+func (m *Map) playObjectSound(s SoundEvent) {
+	if s.Object != "" {
+		m.Sounds = append(m.Sounds, s)
+	}
 }

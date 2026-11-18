@@ -702,6 +702,7 @@ func (s *WindowStack) Dragging() bool { return s.drag != dragNone }
 // modal one to the front instead (MouseInput's handleMouse: the press goes
 // no further; the error sound is the caller's): see PressModal.
 func (s *WindowStack) Press(x, y int) bool {
+	s.hasPressedBtn = false // a new press: the last one's widget is done (a modal may have taken its release)
 	w := s.FindAt(x, y)
 	if w == nil {
 		return false
