@@ -102,7 +102,7 @@ func (g *Game) newBuildVehicleWindow(tab int, target uint16) *ui.BuildVehicleWin
 	bw := &ui.BuildVehicleWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeBuildVehicle, Number: company, W: 500, H: 400}, TitleColour: tc, Colour: wc,
 		Tab: tab, TrackTab: trackTab, Target: target, Disabled: m.BuildVehicleDisabledTabs(uint8(company)), NumTrackTabs: len(tabs),
 		Rows: rows, Hover: -1, Primary: p, Secondary: s,
-		OnTab: func(t int) { g.openBuildVehicleFor(t, target) },
+		OnTab: func(t int) { g.wins.Quietly(func() { g.openBuildVehicleFor(t, target) }) }, // switchTab
 		TabIcon: func(i int) (int, int) { // drawTransportTypeTabs: frame (frameNo / 2) & 0xF on the active tab
 			sk := g.skin()
 			if sk == nil || i >= len(objects.ISBuildVehicleFrame0) {

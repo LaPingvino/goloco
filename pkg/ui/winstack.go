@@ -276,6 +276,9 @@ type WindowStack struct {
 	// middle, for the game to play (TakeOpenSound).
 	sound    bool
 	soundPan int
+	// quiet: a window rebuilt in place (a tab switch, Quietly) — no flash
+	// and no sound, as upstream's switchTab changes the one window.
+	quiet bool
 
 	// The drag: _dragWindowType / _dragWindowNumber, _dragLast, _windowMoved,
 	// and where the press was (the caption's click on an unmoved release).
@@ -429,7 +432,7 @@ func (s *WindowStack) Open(w Win) {
 			}
 		}
 	}
-	if b.HasFlags(WindowFlagPlaySoundOnOpen) || !b.HasFlags(WindowFlagStickToBack|WindowFlagStickToFront|WindowFlagOpenQuietly) {
+	if !s.quiet && (b.HasFlags(WindowFlagPlaySoundOnOpen) || !b.HasFlags(WindowFlagStickToBack|WindowFlagStickToFront|WindowFlagOpenQuietly)) {
 		b.whiteBorder = 3
 		s.sound, s.soundPan = true, b.X+b.W/2
 	}
@@ -445,6 +448,16 @@ func (s *WindowStack) RepanOpenSound(x int) {
 	if s.sound {
 		s.soundPan = x
 	}
+}
+
+// Quietly runs f, a window's tab switch that goloco does by rebuilding the
+// window (its opener on another tab): Show and Open within it neither flash
+// nor sound — upstream's switchTab changes the window it has.
+func (s *WindowStack) Quietly(f func()) {
+	q := s.quiet
+	s.quiet = true
+	defer func() { s.quiet = q }()
+	f()
 }
 
 // TakeOpenSound reports an openWindow sound due since the last call and
@@ -500,7 +513,11 @@ func (s *WindowStack) Show(w Win) bool {
 	b := w.Base()
 	if old := s.Find(b.WinType, b.Number); old != nil {
 		s.Replace(old, w)
-		s.BringToFrontType(b.WinType, b.Number)
+		if s.quiet {
+			s.BringToFront(w)
+		} else {
+			s.BringToFrontType(b.WinType, b.Number)
+		}
 		return false
 	}
 	s.Open(w)
