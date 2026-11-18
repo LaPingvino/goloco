@@ -19,6 +19,23 @@ func newTestWin(typ WindowType, number, x, y, w, h int) *testWin {
 	return &testWin{WinBase: WinBase{WinType: typ, Number: number, X: x, Y: y, W: w, H: h}}
 }
 
+// openBars opens the game scene's bars as Gui::init does: the toolbar, the
+// company panel, the time panel (a panel's widgets cover it; the toolbar's
+// one button at 0–29).
+func openBars(s *WindowStack) (top, player, tp *BarWindow) {
+	top = NewBarWindow(WindowTypeTopToolbar, 0, 0, s.ScreenW, 28)
+	top.WidgetAt = func(x, y int) bool { return x < 30 }
+	player = NewBarWindow(WindowTypeCompanyInfoPanel, 0, s.ScreenH-27, 140, 27)
+	tp = NewBarWindow(WindowTypeTimePanel, s.ScreenW-140, s.ScreenH-27, 140, 27)
+	for _, b := range []*BarWindow{player, tp} {
+		b.WidgetAt = func(x, y int) bool { return true }
+	}
+	for _, b := range []*BarWindow{top, player, tp} {
+		s.Open(b)
+	}
+	return
+}
+
 func order(s *WindowStack) []int {
 	var out []int
 	for _, w := range s.Windows {
@@ -66,7 +83,9 @@ func TestWindowStackOrder(t *testing.T) {
 	if s.Press(700, 500) {
 		t.Error("a press on no window was taken")
 	}
-	// A stickToFront window stays in front; new windows open behind it.
+	// New windows open behind a stickToFront window; a press brings a window
+	// in front of it too (bringToFront swaps with the front-most window that
+	// doesn't stick to the back).
 	top := newTestWin(WindowTypeScenarioSelect, 0, 300, 300, 100, 100)
 	top.WinFlags = WindowFlagStickToFront
 	s.Open(top)
@@ -76,7 +95,7 @@ func TestWindowStackOrder(t *testing.T) {
 		t.Errorf("order with a stickToFront window: %v", order(s))
 	}
 	s.Press(55, 155) // b alone there
-	if !sameOrder(order(s), 3, 4, 1, 2, 0) || !s.IsInFront(b) {
+	if !sameOrder(order(s), 3, 0, 1, 4, 2) || !s.IsInFront(b) {
 		t.Errorf("order after bringing 2 forward: %v", order(s))
 	}
 }
@@ -252,5 +271,128 @@ func TestResizableWindows(t *testing.T) {
 	list.PrepareDraw()
 	if list.List[2] != l0[2]-100 || list.List[3] != l0[3]+103 || list.StatusY != s0+103 {
 		t.Errorf("list resized: scroll view %v (was %v), status y %d (was %d)", list.List, l0, list.StatusY, s0)
+	}
+}
+
+// The bars on the stack (Gui::init's stickToFront windows): a new window
+// opens behind them; pressed, it changes places with the time panel and lies
+// over the toolbar and the panels, as in the real OpenLoco (a Town window
+// dragged up over the toolbar and down over the company panel covers them:
+// WindowManager::bringToFront, render's list order). The toolbar is under
+// the mouse only on a button (noBackground).
+func TestBarsOnTheStack(t *testing.T) {
+	s := &WindowStack{ScreenW: 800, ScreenH: 600}
+	top, player, tp := openBars(s)
+	a := newTestWin(WindowTypeTown, 1, 0, 30, 220, 160)
+	s.Open(a)
+	if s.Windows[0] != Win(a) || s.Windows[3] != Win(tp) {
+		t.Fatalf("a new window opens behind the bars: %v", s.Windows)
+	}
+	if s.FindAt(10, 10) != Win(top) || s.FindAt(300, 10) != nil || s.FindAt(10, 590) != Win(player) {
+		t.Error("FindAt: the toolbar on a button only, the panel everywhere")
+	}
+	a.Y = 560 // over the company panel, still behind it
+	if s.FindAt(10, 590) != Win(player) {
+		t.Error("the panel is in front of a window not yet pressed")
+	}
+	s.Press(100, 565) // the caption: brought to the front, moving
+	s.Release(100, 565)
+	if s.Windows[3] != Win(a) || s.Windows[0] != Win(tp) || s.FindAt(10, 590) != Win(a) {
+		t.Errorf("pressed: swapped with the time panel, over the company panel: %v", s.Windows)
+	}
+	// The press on the panel brings nothing forward (stickToFront).
+	s.Press(700, 590)
+	if s.Windows[3] != Win(a) {
+		t.Error("a press on the time panel reordered the list")
+	}
+}
+
+// createWindow: a window that sticks neither way flashes its border for
+// three ticks and sounds openWindow at its middle; a stickToFront one is
+// quiet unless playSoundOnOpen; Show on an open window flashes it again
+// (bringToFront(type, number)) without a sound.
+func TestOpenFlashAndSound(t *testing.T) {
+	s := &WindowStack{ScreenW: 800, ScreenH: 600}
+	a := newTestWin(WindowTypeTown, 1, 100, 30, 200, 160)
+	s.Open(a)
+	if pan, ok := s.TakeOpenSound(); !ok || pan != 200 || !a.WhiteBorder() {
+		t.Fatalf("open: sound %v at %d, flash %v", ok, pan, a.WhiteBorder())
+	}
+	if _, ok := s.TakeOpenSound(); ok {
+		t.Error("the sound was taken twice")
+	}
+	for range 2 {
+		s.Tick()
+	}
+	if !a.WhiteBorder() {
+		t.Error("the flash ended after two ticks")
+	}
+	if s.Tick(); a.WhiteBorder() {
+		t.Error("the flash lasts three ticks")
+	}
+	news := newTestWin(WindowTypeNews, 0, 0, 500, 360, 100)
+	news.WinFlags = WindowFlagStickToFront
+	s.Open(news)
+	if _, ok := s.TakeOpenSound(); ok || news.WhiteBorder() {
+		t.Error("a stickToFront window opened with a sound")
+	}
+	browse := newTestWin(WindowTypeFileBrowserPrompt, 0, 300, 200, 100, 100)
+	browse.WinFlags = WindowFlagStickToFront | WindowFlagPlaySoundOnOpen
+	s.Open(browse)
+	if _, ok := s.TakeOpenSound(); !ok || !browse.WhiteBorder() {
+		t.Error("playSoundOnOpen: no sound")
+	}
+	a2 := newTestWin(WindowTypeTown, 1, 0, 0, 200, 160)
+	if s.Show(a2) || !a2.WhiteBorder() {
+		t.Error("Show on an open window: no flash")
+	}
+	if _, ok := s.TakeOpenSound(); ok {
+		t.Error("Show on an open window sounded")
+	}
+	// The browser modal: a press on another window brings it forward instead.
+	s.Modal = WindowTypeFileBrowserPrompt
+	for range 3 {
+		s.Tick()
+	}
+	if !s.PressModal(150, 100) || !browse.WhiteBorder() || s.PressModal(350, 250) {
+		t.Error("modal: a press elsewhere is taken and flashes the browser; on it, it isn't")
+	}
+	s.Close(browse)
+	if s.PressModal(150, 100) || s.Modal != 0 {
+		t.Error("modal after the browser closed")
+	}
+}
+
+// A press on a window's bare panel moves it (stateNormalLeft: panel / frame
+// → windowPositionBegin) when the window tells its widgets apart
+// (FrameHitter); on a widget the window takes the press. The Build Vehicle
+// window resizes (onResize: resizable, 380 × 233 … 700 × 600), by the grip
+// only where its list doesn't reach.
+func TestDragByFrame(t *testing.T) {
+	s := &WindowStack{ScreenW: 1024, ScreenH: 768}
+	w := &BuildVehicleWindow{WinBase: WinBase{WinType: WindowTypeBuildVehicle, X: 100, Y: 100, W: 500, H: 400}, NumTrackTabs: 2, Hover: -1}
+	w.OnResize()
+	s.Open(w)
+	s.Press(100+200, 100+60) // the bare panel
+	s.Held(100+230, 100+90)
+	s.Release(100+230, 100+90)
+	if w.X != 130 || w.Y != 130 || w.W != 500 {
+		t.Errorf("dragged by the panel to %d,%d", w.X, w.Y)
+	}
+	s.Press(130+50, 130+150) // the list: not a move
+	s.Held(130+80, 130+180)
+	s.Release(130+80, 130+180)
+	if w.X != 130 || w.Y != 130 {
+		t.Errorf("a press on the list moved the window to %d,%d", w.X, w.Y)
+	}
+	if !w.CanResize() || w.MinW != 380 || w.MaxH != 600 {
+		t.Errorf("build vehicle bounds %d…%d", w.MinW, w.MaxH)
+	}
+	gx, gy := w.X+w.W-2, w.Y+w.H-2 // the corner, right of the list (to width − 187)
+	s.Press(gx, gy)
+	s.Held(gx+50, gy+50)
+	s.Release(gx+50, gy+50)
+	if w.W != 550 || w.H != 450 {
+		t.Errorf("resized to %dx%d", w.W, w.H)
 	}
 }

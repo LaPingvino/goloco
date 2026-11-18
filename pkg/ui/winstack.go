@@ -3,6 +3,7 @@ package ui
 import (
 	"image"
 
+	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -22,11 +23,14 @@ import (
 // old one's slot, keeping its place, its size (within the new limits) and its
 // position in the order.
 //
-// PARTIAL: the toolbar and the bottom panels are not windows of the stack
-// (upstream: stickToFront windows); Fixed carries their rectangles for the
-// placement. A press on a window's bare panel or frame does not move it
-// (upstream: windowPositionBegin there too) — only the caption does. No white
-// border flash (WindowFlags::whiteBorderMask), no open sound.
+// The toolbar and the bottom panels are windows of the stack too, as
+// upstream's stickToFront ToolbarTop, CompanyInfoPanel and TimePanel (Gui::
+// init; cmd/goloco opens them, BarWindow): the list is drawn, hit-tested and
+// walked by the placement in one order, upstream's.
+//
+// PARTIAL: a press on a window's bare panel or frame moves it (upstream:
+// windowPositionBegin there too) only for the windows that tell their bare
+// panel apart (FrameHitter); the others move by the caption alone.
 
 // WindowType is a window's type (Ui/WindowType.h), the half of its identity
 // that its number completes.
@@ -56,6 +60,10 @@ const (
 	WindowTypeKeyboardShortcuts
 	WindowTypeEditKeyboardShortcut
 	WindowTypeMap
+	// WindowType::topToolbar, companyInfoPanel, timePanel: the bars.
+	WindowTypeTopToolbar
+	WindowTypeCompanyInfoPanel
+	WindowTypeTimePanel
 )
 
 // WindowTypeNames are the types by their upstream WindowType names (a
@@ -70,6 +78,7 @@ var WindowTypeNames = map[string]WindowType{
 	"musicSelection": WindowTypeMusicSelection, "messages": WindowTypeMessages, "news": WindowTypeNews,
 	"terraform": WindowTypeTerraform, "keyboardShortcuts": WindowTypeKeyboardShortcuts,
 	"editKeyboardShortcut": WindowTypeEditKeyboardShortcut, "map": WindowTypeMap,
+	"topToolbar": WindowTypeTopToolbar, "companyInfoPanel": WindowTypeCompanyInfoPanel, "timePanel": WindowTypeTimePanel,
 }
 
 // WindowFlags are Ui::WindowFlags, those the stack acts on.
@@ -83,6 +92,15 @@ const (
 	// WindowFlagIgnoreInFindAt (the news ticker): findAt looks through the
 	// window — a press there is for what lies under it — findAtAlt does not.
 	WindowFlagIgnoreInFindAt WindowFlags = 1 << 7
+	// WindowFlagNoBackground (the toolbar, the panels): findAt sees the window
+	// only where one of its widgets is (WidgetHitter).
+	WindowFlagNoBackground WindowFlags = 1 << 8
+	// WindowFlagPlaySoundOnOpen, WindowFlagOpenQuietly: createWindow flashes
+	// the new window's border and plays openWindow for a window that sticks
+	// neither to the back nor the front unless it opens quietly, and for any
+	// window with playSoundOnOpen.
+	WindowFlagPlaySoundOnOpen WindowFlags = 1 << 9
+	WindowFlagOpenQuietly     WindowFlags = 1 << 10
 )
 
 // Flags the stack keeps itself (MouseInput's stateResizing).
@@ -122,6 +140,9 @@ type WinBase struct {
 	stack              *WindowStack
 	self               Win
 	restoreW, restoreH int // var_88A, var_88C: the size before maximising
+	// whiteBorder is WindowFlags::whiteBorderMask's count (3 at the flash's
+	// start, one less each WindowManager::tick).
+	whiteBorder int
 }
 
 // Win is a window on the stack.
@@ -137,6 +158,16 @@ type Win interface {
 // Preparer is a window's prepareDraw / onResize: its size brought in line with
 // its current tab, before the stack looks at its rectangle.
 type Preparer interface{ PrepareDraw() }
+
+// WidgetHitter reports a widget at a screen point: what findAt asks a
+// noBackground window (findWidgetAt != kWidgetIndexNull).
+type WidgetHitter interface{ HasWidgetAt(x, y int) bool }
+
+// FrameHitter reports that the widget at a screen point is the window's
+// frame or panel (findWidgetAt: no other widget there): stateNormalLeft then
+// begins moving the window (windowPositionBegin), or resizing it in the grip.
+// A window without it moves by its caption alone.
+type FrameHitter interface{ OnFrame(x, y int) bool }
 
 // GripBlocker reports a widget other than the frame and the panel at a
 // screen point inside the resize grip's corner: MouseInput starts resizing
@@ -237,15 +268,14 @@ type WindowStack struct {
 	Windows []Win
 	// ScreenW, ScreenH are Ui::width() and Ui::height().
 	ScreenW, ScreenH int
-	// Fixed are the rectangles of what upstream keeps as stickToFront windows
-	// outside this stack (the top toolbar, the player and time panels): they
-	// block and anchor a new window's placement.
-	Fixed []WinRect
+	// Modal is WindowManager's _currentModalType (0: none): a press on any
+	// other window brings the modal one to the front instead.
+	Modal WindowType
 
-	// order is WindowManager's _windows as upstream would hold it, the fixed
-	// windows among the stack's (orderEntry): what createWindow's placement
-	// walks. Windows above stays the order the stack draws and hit-tests in.
-	order []orderEntry
+	// sound is createWindow's openWindow sound, panned to the new window's
+	// middle, for the game to play (TakeOpenSound).
+	sound    bool
+	soundPan int
 
 	// The drag: _dragWindowType / _dragWindowNumber, _dragLast, _windowMoved,
 	// and where the press was (the caption's click on an unmoved release).
@@ -256,80 +286,6 @@ type WindowStack struct {
 	pressX, pressY   int
 	moved            bool
 	captionClickable bool
-}
-
-// orderEntry is a window of upstream's list: one of the stack's, or fixed
-// window s.Fixed[fixed] (win nil) — a toolbar or panel, stickToFront.
-type orderEntry struct {
-	win   Win
-	fixed int
-}
-
-func (e orderEntry) has(f WindowFlags) bool {
-	if e.win == nil {
-		return f&WindowFlagStickToFront != 0
-	}
-	return e.win.Base().HasFlags(f)
-}
-
-// orderInsert is createWindow's "find right position to insert new window":
-// a stickToBack one before the last of its kind, a stickToFront one at the
-// end, any other after the last window that doesn't stick to the front.
-func (s *WindowStack) orderInsert(e orderEntry) {
-	dst := 0
-	switch {
-	case e.has(WindowFlagStickToBack):
-		for i, o := range s.order {
-			if o.has(WindowFlagStickToBack) {
-				dst = i
-			}
-		}
-	case e.has(WindowFlagStickToFront):
-		dst = len(s.order)
-	default:
-		for i := len(s.order); i > 0; i-- {
-			if !s.order[i-1].has(WindowFlagStickToFront) {
-				dst = i
-				break
-			}
-		}
-	}
-	s.order = append(s.order, orderEntry{})
-	copy(s.order[dst+1:], s.order[dst:])
-	s.order[dst] = e
-}
-
-// syncOrder brings order in line with the stack and the fixed windows:
-// closed windows and fixed windows that are gone leave it; a fixed window
-// not yet in it is made now (Gui::init: at the end), as is a window of the
-// stack it doesn't know.
-func (s *WindowStack) syncOrder() {
-	keep := s.order[:0]
-	wins := make(map[Win]bool, len(s.Windows))
-	fixed := make([]bool, len(s.Fixed))
-	for _, e := range s.order {
-		switch {
-		case e.win != nil:
-			if s.indexOf(e.win) >= 0 && !wins[e.win] {
-				wins[e.win] = true
-				keep = append(keep, e)
-			}
-		case e.fixed < len(s.Fixed) && !fixed[e.fixed]:
-			fixed[e.fixed] = true
-			keep = append(keep, e)
-		}
-	}
-	s.order = keep
-	for i, have := range fixed {
-		if !have {
-			s.orderInsert(orderEntry{fixed: i})
-		}
-	}
-	for _, w := range s.Windows {
-		if !wins[w] {
-			s.orderInsert(orderEntry{win: w})
-		}
-	}
 }
 
 func prepare(w Win) {
@@ -358,79 +314,69 @@ func (s *WindowStack) indexOf(w Win) int {
 	return -1
 }
 
-// FindAt is WindowManager::findAt: the front-most window at a screen point.
-func (s *WindowStack) FindAt(x, y int) Win {
-	for i := len(s.Windows) - 1; i >= 0; i-- {
-		w := s.Windows[i]
-		prepare(w) // callOnResize
-		if b := w.Base(); b.Contains(x, y) && !b.HasFlags(WindowFlagIgnoreInFindAt) {
-			return w
-		}
-	}
-	return nil
-}
+// FindAt is WindowManager::findAt: the front-most window at a screen point
+// (not an ignoreInFindAt one; a noBackground one only on a widget).
+func (s *WindowStack) FindAt(x, y int) Win { return s.findAt(x, y, false) }
 
 // FindAtAlt is WindowManager::findAtAlt: findAt that sees the windows
 // ignoreInFindAt hides from it.
-func (s *WindowStack) FindAtAlt(x, y int) Win {
+func (s *WindowStack) FindAtAlt(x, y int) Win { return s.findAt(x, y, true) }
+
+func (s *WindowStack) findAt(x, y int, alt bool) Win {
 	for i := len(s.Windows) - 1; i >= 0; i-- {
 		w := s.Windows[i]
-		prepare(w)
-		if w.Base().Contains(x, y) {
-			return w
+		prepare(w) // callOnResize
+		b := w.Base()
+		if !b.Contains(x, y) || !alt && b.HasFlags(WindowFlagIgnoreInFindAt) {
+			continue
 		}
+		if b.HasFlags(WindowFlagNoBackground) {
+			if h, ok := w.(WidgetHitter); !ok || !h.HasWidgetAt(x, y) {
+				continue
+			}
+		}
+		return w
 	}
 	return nil
 }
 
 // BringToFront is WindowManager::bringToFront(Window&): the window changes
-// places with the front-most one that does not stick to the front or back
-// (upstream swaps the two — it does not move the others down), and a window
-// almost off the screen's left comes back to x 20.
-//
-// In upstream's list (order) the swap is with the front-most window that
-// doesn't stick to the back, whatever it is: the time panel, or the news
-// window when one is up — which is how the panels and the news come to lie
-// before other windows in the list, and what a later window's placement
-// then meets first. PARTIAL: drawing and hit-testing keep the panels and the
-// news in front (Windows' order), where upstream draws by that list.
+// places with the front-most one that does not stick to the back — a
+// toolbar or panel, the news window, a stickToFront prompt — unless that is
+// the list's first (upstream swaps the two: it does not move the others
+// down), and a window almost off the screen's left comes back to x 20. So a
+// window pressed comes in front of the panels and the toolbar, and the panel
+// it changed places with lies where the window was.
 func (s *WindowStack) BringToFront(w Win) {
 	b := w.Base()
 	if b.HasFlags(WindowFlagStickToBack | WindowFlagStickToFront) {
 		return
 	}
-	s.syncOrder()
-	for i := len(s.order) - 1; i >= 0; i-- {
-		if s.order[i].has(WindowFlagStickToBack) {
-			continue
-		}
-		if s.order[i].win != w {
-			for k := range s.order {
-				if s.order[k].win == w {
-					s.order[i], s.order[k] = s.order[k], s.order[i]
-					break
-				}
-			}
-		}
-		break
-	}
 	front := -1
 	for i := len(s.Windows) - 1; i >= 0; i-- {
-		// Upstream's loop skips stickToBack only; its stickToFront windows
-		// (toolbars, panels) are swapped with too. goloco's are not on the
-		// stack, and its own stickToFront ones are modal prompts that must
-		// stay in front, so those are skipped as well.
-		if !s.Windows[i].Base().HasFlags(WindowFlagStickToBack | WindowFlagStickToFront) {
+		if !s.Windows[i].Base().HasFlags(WindowFlagStickToBack) {
 			front = i
 			break
 		}
 	}
-	if i := s.indexOf(w); i >= 0 && front >= 0 && front != i {
+	if i := s.indexOf(w); i >= 0 && front > 0 && front != i {
 		s.Windows[i], s.Windows[front] = s.Windows[front], s.Windows[i]
 	}
 	if b.X+b.W < 20 {
 		b.X = 20
 	}
+}
+
+// BringToFrontType is WindowManager::bringToFront(type, number): the window
+// flashes its border (whiteBorderMask) and comes to the front; nil: none open.
+func (s *WindowStack) BringToFrontType(typ WindowType, number int) Win {
+	w := s.Find(typ, number)
+	if w == nil {
+		return nil
+	}
+	w.Base().whiteBorder = 3
+	s.BringToFront(w)
+	return w
 }
 
 // IsInFront is WindowManager::isInFront: nothing but stickToFront windows
@@ -451,7 +397,9 @@ func (s *WindowStack) IsInFront(w Win) bool {
 // Open is WindowManager::createWindow(type, origin, size, flags, events)'s
 // list work for a window already built and placed: at kMaxWindows the first
 // window that may go is closed; the new one goes in front of every window but
-// the stickToFront ones (behind the others if it sticks to the back).
+// the stickToFront ones (behind the others if it sticks to the back). A
+// window that sticks neither way, or has playSoundOnOpen, flashes its border
+// and sounds openWindow at its middle (TakeOpenSound) unless it opens quietly.
 func (s *WindowStack) Open(w Win) {
 	if len(s.Windows) >= maxWindows {
 		for _, o := range s.Windows {
@@ -481,11 +429,44 @@ func (s *WindowStack) Open(w Win) {
 			}
 		}
 	}
+	if b.HasFlags(WindowFlagPlaySoundOnOpen) || !b.HasFlags(WindowFlagStickToBack|WindowFlagStickToFront|WindowFlagOpenQuietly) {
+		b.whiteBorder = 3
+		s.sound, s.soundPan = true, b.X+b.W/2
+	}
 	s.Windows = append(s.Windows, nil)
 	copy(s.Windows[dst+1:], s.Windows[dst:])
 	s.Windows[dst] = w
-	s.syncOrder()
 }
+
+// RepanOpenSound is for a window that createWindow made at another width
+// than the one it opened with (its tab's onResize came after): the sound
+// due is panned to x, the middle of the size it was created at.
+func (s *WindowStack) RepanOpenSound(x int) {
+	if s.sound {
+		s.soundPan = x
+	}
+}
+
+// TakeOpenSound reports an openWindow sound due since the last call and
+// where to pan it (createWindow's origin.x + size.width / 2).
+func (s *WindowStack) TakeOpenSound() (pan int, ok bool) {
+	pan, ok = s.soundPan, s.sound
+	s.sound = false
+	return
+}
+
+// Tick is WindowManager::tick's border flash: each flashing window's count
+// one less.
+func (s *WindowStack) Tick() {
+	for _, w := range s.Windows {
+		if b := w.Base(); b.whiteBorder > 0 {
+			b.whiteBorder--
+		}
+	}
+}
+
+// WhiteBorder reports the window's border flashing (whiteBorderMask set).
+func (b *WinBase) WhiteBorder() bool { return b.whiteBorder > 0 }
 
 // Replace puts a rebuilt window in the slot of the one it replaces: the same
 // place on the screen and in the order, the old size within the new one's
@@ -505,14 +486,10 @@ func (s *WindowStack) Replace(old, w Win) {
 	b.ApplyLimits()
 	b.WinFlags |= ob.WinFlags & (WindowFlagHasBeenResized | WindowFlagMaximised)
 	b.restoreW, b.restoreH = ob.restoreW, ob.restoreH
+	b.whiteBorder = ob.whiteBorder
 	b.stack, b.self = s, w
 	ob.stack, ob.self = nil, nil
 	s.Windows[i] = w
-	for k := range s.order {
-		if s.order[k].win == old {
-			s.order[k].win = w
-		}
-	}
 }
 
 // Show opens a window, or — one of its type and number being open — is that
@@ -523,7 +500,7 @@ func (s *WindowStack) Show(w Win) bool {
 	b := w.Base()
 	if old := s.Find(b.WinType, b.Number); old != nil {
 		s.Replace(old, w)
-		s.BringToFront(w)
+		s.BringToFrontType(b.WinType, b.Number)
 		return false
 	}
 	s.Open(w)
@@ -556,7 +533,6 @@ func (s *WindowStack) Close(w Win) {
 		s.Windows = append(s.Windows[:i], s.Windows[i+1:]...)
 	}
 	b.stack, b.self = nil, nil
-	s.syncOrder()
 }
 
 // CloseType is WindowManager::close(type) (number AnyNumber) or close(type,
@@ -582,24 +558,17 @@ func (s *WindowStack) CloseAll() {
 		}
 	}
 	s.drag = dragNone
-	s.order = nil // a new scene: Gui::init makes the toolbar and the panels anew
+	s.Modal = 0
 }
 
-// rects are the windows as createWindow's placement sees them: upstream's
-// list (order), back to front — the stack's windows and the fixed ones (the
-// toolbar and the panels) where creation and bringToFront's swaps have put
-// them. The news window, the ticker and the panels thus block and anchor a
-// new window as any other window does, in their turn.
+// rects are the windows as createWindow's placement sees them: the list,
+// back to front — the toolbar, the panels and the news window among the
+// others where creation and bringToFront's swaps have put them.
 func (s *WindowStack) rects() []WinRect {
-	s.syncOrder()
 	var out []WinRect
-	for _, e := range s.order {
-		if e.win == nil {
-			out = append(out, s.Fixed[e.fixed])
-			continue
-		}
-		prepare(e.win)
-		b := e.win.Base()
+	for _, w := range s.Windows {
+		prepare(w)
+		b := w.Base()
 		out = append(out, WinRect{X: b.X, Y: b.Y, W: b.W, H: b.H, StickToBack: b.HasFlags(WindowFlagStickToBack)})
 	}
 	return out
@@ -698,8 +667,12 @@ func (s *WindowStack) Dragging() bool { return s.drag != dragNone }
 
 // Press is stateNormalLeft for a left press: the window under it comes to
 // the front; on its caption the window starts moving, on a resizable
-// window's grip resizing, else the window takes the press. It reports a
-// window under the press.
+// window's grip resizing, on its bare frame or panel (FrameHitter) moving,
+// else the window takes the press. It reports a window under the press.
+//
+// With a modal window open (Modal), a press on any other window brings the
+// modal one to the front instead (MouseInput's handleMouse: the press goes
+// no further; the error sound is the caller's): see PressModal.
 func (s *WindowStack) Press(x, y int) bool {
 	w := s.FindAt(x, y)
 	if w == nil {
@@ -711,16 +684,44 @@ func (s *WindowStack) Press(x, y int) bool {
 		s.drag, s.dragType, s.dragNumber = d, b.WinType, b.Number
 		s.lastX, s.lastY, s.pressX, s.pressY, s.moved = x, y, x, y, false
 	}
+	frame, knows := onFrame(w, x, y)
+	bare := frame || !knows && !gripBlocked(w, x, y) // without FrameHitter, the grip's corner by GripBlocker
 	switch {
 	case b.onCaption(x, y): // WidgetType::caption: windowPositionBegin
 		begin(dragPositioning)
-	case b.CanResize() && b.inGrip(x, y) && !gripBlocked(w, x, y): // panel / frame: windowResizeBegin
+	case b.CanResize() && b.inGrip(x, y) && bare: // panel / frame: windowResizeBegin
 		begin(dragResizing)
 		b.WinFlags &^= WindowFlagHasBeenResized
+	case frame: // panel / frame elsewhere: windowPositionBegin
+		begin(dragPositioning)
 	default:
 		w.HandleClick(x, y)
 	}
 	return true
+}
+
+// PressModal is handleMouse's modal check for a left press at a screen
+// point: with a modal window open, a press anywhere but on it brings it to
+// the front (bringToFront(modalType): its border flashes) and is taken —
+// the caller sounds the error. It reports that the press went to it.
+func (s *WindowStack) PressModal(x, y int) bool {
+	if s.Modal != 0 && s.Find(s.Modal, AnyNumber) == nil {
+		s.Modal = 0 // the modal window has gone (setCurrentModalType(undefined))
+	}
+	if s.Modal == 0 {
+		return false
+	}
+	if w := s.FindAt(x, y); w != nil && w.Base().WinType == s.Modal {
+		return false
+	}
+	s.BringToFrontType(s.Modal, AnyNumber)
+	return true
+}
+
+// onFrame is FrameHitter's answer, and whether the window gives one.
+func onFrame(w Win, x, y int) (frame, knows bool) {
+	f, ok := w.(FrameHitter)
+	return ok && f.OnFrame(x, y), ok
 }
 
 func gripBlocked(w Win, x, y int) bool {
@@ -757,7 +758,7 @@ func (s *WindowStack) Release(x, y int) {
 	switch d {
 	case dragPositioning:
 		s.position(w, x, y)
-		if !s.moved {
+		if !s.moved && b.onCaption(s.pressX, s.pressY) {
 			w.HandleClick(s.pressX, s.pressY)
 		}
 	case dragResizing:
@@ -829,26 +830,22 @@ func (s *WindowStack) resizeBy(w Win, dx, dy int) {
 	prepare(w) // callOnResize, callPrepareDraw
 }
 
-// Draw draws the windows back to front. A window that a later one overlaps
-// is marked foreign for draw8's screen copy: its text and viewport are drawn
-// past that copy, and the window over it must read them back.
+// Draw draws the windows back to front (WindowManager::render: the list's
+// order). A window that a later one overlaps is marked foreign for draw8's
+// screen copy: its text and viewport are drawn past that copy, and the window
+// over it must read them back. A flashing window gets its white border
+// (Window::draw: fillRectInset(0, 0, width − 1, height − 1, white, fillNone)).
 func (s *WindowStack) Draw(screen *ebiten.Image, before func(Win)) {
-	s.DrawWhere(screen, before, nil)
-}
-
-// DrawWhere is Draw for the windows keep says yes to (nil: all): the game
-// draws the news over the bottom panels, which are not on this stack.
-func (s *WindowStack) DrawWhere(screen *ebiten.Image, before func(Win), keep func(Win) bool) {
 	for i, w := range s.Windows {
-		if keep != nil && !keep(w) {
-			continue
-		}
 		prepare(w)
 		if before != nil {
 			before(w)
 		}
 		w.Draw(screen)
 		b := w.Base()
+		if b.whiteBorder > 0 {
+			drawWhiteBorder(screen, b.X, b.Y, b.W, b.H)
+		}
 		r := image.Rect(b.X, b.Y, b.X+b.W, b.Y+b.H)
 		for _, o := range s.Windows[i+1:] {
 			ob := o.Base()
@@ -857,5 +854,26 @@ func (s *WindowStack) DrawWhere(screen *ebiten.Image, before func(Win), keep fun
 				break
 			}
 		}
+	}
+}
+
+// drawWhiteBorder is the flash: an outset border in Colour::white's shades.
+func drawWhiteBorder(screen *ebiten.Image, x, y, w, h int) {
+	if globalG1Font == nil {
+		return
+	}
+	m, err := globalG1Font.g1.GetPaletteMap(colourWhite)
+	if err != nil {
+		return
+	}
+	// The four edges only, each a draw8 of its own: the window's inside
+	// (text drawn past draw8's screen copy) is left as it is. The edges are
+	// all overwritten; their old pixels are read back (foreign).
+	MarkForeign(image.Rect(x, y, x+w, y+h))
+	for _, e := range [4][4]int{{0, 0, w, 1}, {0, h - 1, w, 1}, {0, 0, 1, h}, {w - 1, 0, 1, h}} {
+		ox, oy := e[0], e[1]
+		draw8(screen, x+ox, y+oy, e[2], e[3], func(rt *gfx8.RenderTarget) {
+			gfx8.FillRectInset(rt, -ox, -oy, w-1-ox, h-1-oy, gfx8.InsetColour{Map: m}, gfx8.InsetFillNone)
+		})
 	}
 }

@@ -90,6 +90,7 @@ func (g *Game) openSaveWindowThen(after func()) {
 		}
 	}
 	g.showCentred(w)
+	g.wins.Modal = ui.WindowTypeFileBrowserPrompt // setCurrentModalType(fileBrowserPrompt)
 }
 
 // saveGameTo is S5::exportGameStateToFile for a saved game: the construction

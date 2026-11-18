@@ -146,6 +146,7 @@ func (g *Game) newBuildVehicleWindow(tab int, target uint16) *ui.BuildVehicleWin
 			return -1, -1
 		},
 		OnBuy: func(id uint16) { g.buyVehicle(tab, id, g.buildTargetVehicle()) }}
+	bw.OnResize() // resizable, its bounds (callOnResize)
 	return bw
 }
 

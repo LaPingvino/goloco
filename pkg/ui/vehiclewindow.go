@@ -923,6 +923,32 @@ func (w *VehicleWindow) MouseOver(x, y int) {
 	w.Hover = w.carRowAt(sy, rowH)
 }
 
+// OnFrame: no widget but the frame and the panel at the point (findWidgetAt):
+// a press there moves the window, or in the corner resizes it.
+func (w *VehicleWindow) OnFrame(x, y int) bool {
+	return bareFrame(w.tabWidgets(), vwPanel, w.X, w.Y, x, y)
+}
+
+// tabWidgets is the current tab's widgets as prepareDraw places them.
+func (w *VehicleWindow) tabWidgets() []BVWidget {
+	switch w.Tab {
+	case 0:
+		l := VehicleMainLayout(w.W, w.H, w.Main)
+		return l[:]
+	case 1:
+		l, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+		return l[:]
+	case 2:
+		l := VehicleCargoLayout(w.W, w.H, w.State.HiddenTabs, w.Cargo.CanRefit)
+		return l[:]
+	case 3:
+		l := VehicleFinancesLayout(w.W, w.H, w.State.HiddenTabs)
+		return l[:]
+	}
+	l := VehicleRouteLayout(w.W, w.H, w.State.HiddenTabs, !w.Main.Own)
+	return l[:]
+}
+
 // GripBlocked: any of the tab's widgets but the frame and the panel at the
 // point (the right column's buttons and the status bar reach into the
 // resize corner on a small window).

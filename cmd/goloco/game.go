@@ -91,6 +91,7 @@ type Game struct {
 
 	// The toolbar and the windows, each nil unless open.
 	toolbar          *ui.Toolbar
+	timePanelTip     string         // the time panel's date tooltip this frame (drawTimePanel)
 	lastPortOption   int            // ToolbarTop's _lastPortOption: 0 airport, 1 dock
 	wins             ui.WindowStack // the open windows, back to front (WindowManager)
 	dropdown         *ui.DropdownMenu
@@ -660,7 +661,7 @@ func (g *Game) syncScreen() {
 		sw, sh = defaultWidth, defaultHeight
 	}
 	g.wins.Resize(sw, sh)
-	g.wins.Fixed = g.fixedWindows()
+	g.syncBars()
 }
 
 // processStart is when the program started; used for startup timings.
@@ -727,7 +728,7 @@ func (g *Game) tileUnderCursor(sx, sy int) (int, int) {
 func (g *Game) applyRenderingConfig() {
 	g.w.NoCashPopups = configValue("cashPopupRendering") == "false"
 	g.w.CashPopupIncomeColours = configValue("cashPopupIncomeColours") == "true" // goloco's own: green income, red costs
-	if world.GridlinesOnLandscape { // ViewportManager::create: the main view starts with them
+	if world.GridlinesOnLandscape {                                              // ViewportManager::create: the main view starts with them
 		g.w.SetGridlines(true)
 	}
 }
