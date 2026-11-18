@@ -111,6 +111,7 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 	head, v1, v2 := &m.Entities[tr.Head], &m.Entities[tr.Veh1], &m.Entities[tr.Veh2]
 	road := head.Mode == 1
 	initialStatus := head.Status // VehicleHead::update: for tryCreateInitialMovementSound
+	m.updateDrivingSounds(tr, om)
 	// VehicleHead::update: the distances (head logic: see PARTIAL).
 	d1, d2 := UpdateDistances(v2.CurrentSpeed)
 	d := VehicleUpdateDistances{D1: d1, D2: d2}
@@ -151,6 +152,9 @@ func (m *Map) updateTrain(tr Train, om *objects.ObjectManager) {
 		c := m.component(tr.Veh1)
 		f := m.Vehicle1RailMove(&c, v2.CurrentSpeed, d.D1, &v1.Var3C, head.HeadVar53)
 		m.store(tr.Veh1, &c)
+		if f&MotionNoRouteFound == 0 && f&MotionApproachingGradeCrossing != 0 {
+			m.railProduceCrossingWhistle(tr, om)
+		}
 		if f&MotionNoRouteFound != 0 { // Vehicle1::update: sub_4AD93A, stop approaching
 			m.Sub4AD93A(tr)
 			if head.Status == StatusApproaching {

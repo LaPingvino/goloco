@@ -168,3 +168,28 @@ func (m *Map) produceStartSound(tr Train, om *objects.ObjectManager) {
 	m.Sounds = append(m.Sounds, SoundEvent{Object: name, Channel: ChannelVehicles,
 		X: int32(v2.PosX), Y: int32(v2.PosY), Z: int32(v2.PosZ) + 22, Frequency: 22050})
 }
+
+// railProduceCrossingWhistle is Vehicle1.cpp's (0x004B98DA), when the rail
+// move approaches a level crossing: the first car's last start sound (the
+// crossing whistle) at Vehicle2 + 22 up, 15 dB down below ground.
+func (m *Map) railProduceCrossingWhistle(tr Train, om *objects.ObjectManager) {
+	if len(tr.Cars) == 0 || len(tr.Cars[0]) == 0 {
+		return
+	}
+	obj := vehicleObject(om, m.Entities[tr.Cars[0][0].Front].ObjectID)
+	if obj == nil || obj.NumStartSounds == 0 {
+		return
+	}
+	i := int(obj.NumStartSounds&0x7F) - 1
+	name := ""
+	if i >= 0 && i < len(obj.StartSoundNames) {
+		name = obj.StartSoundNames[i]
+	}
+	v2 := &m.Entities[tr.Veh2]
+	volume := int32(0)
+	if land, _ := m.GetHeight(int32(v2.PosX), int32(v2.PosY)); v2.PosZ < land {
+		volume = -1500
+	}
+	m.Sounds = append(m.Sounds, SoundEvent{Object: name, Channel: ChannelVehicles,
+		X: int32(v2.PosX), Y: int32(v2.PosY), Z: int32(v2.PosZ) + 22, Volume: volume, Frequency: 22050})
+}

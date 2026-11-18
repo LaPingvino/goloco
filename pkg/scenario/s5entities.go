@@ -292,6 +292,19 @@ type VehicleEntity struct {
 	Var4F               int8     // Vehicle2 var_4F (0x4F): the road object it is on (-1 none)
 	MaxSpeed            int16    // Vehicle2 maxSpeed (0x54): Speed16
 	RackRailMaxSpeed    int16    // Vehicle2 rackRailMaxSpeed (0x5C): Speed16
+	// Vehicle2 / VehicleTail sound (VehicleSound, 0x44): the driving sound's
+	// sound object slot (0xFF none), volume, frequency, and the vehicle object
+	// it sounds for (0xFFFF none), soundFlags. soundWindowNumber and
+	// soundWindowType (0x4C–0x4E) stay as read.
+	DrivingSoundID        uint8
+	DrivingSoundVolume    uint8
+	DrivingSoundFrequency uint16
+	SoundObjectID         uint16
+	SoundFlags            uint16 // 0x4A
+	// SoundHandle and ActiveSoundID are VehicleSound's audioHandle and
+	// activeSoundId: the game's audio state, not saved (0: no handle).
+	SoundHandle   uint32
+	ActiveSoundID uint8
 
 	// ---- VehicleBody / VehicleBogie sprite fields ----
 	ObjectID         uint16 // vbObjectId (0x40) — vehicle object slot (ObjMgr.Vehicles[N])
@@ -437,6 +450,9 @@ func ParseVehicleEntities(gameState []byte) []VehicleEntity {
 			Var4F:               int8(e[0x4F]),
 			MaxSpeed:            int16(binary.LittleEndian.Uint16(e[0x54:])),
 			RackRailMaxSpeed:    int16(binary.LittleEndian.Uint16(e[0x5C:])),
+			DrivingSoundID:      e[0x44], DrivingSoundVolume: e[0x45],
+			DrivingSoundFrequency: binary.LittleEndian.Uint16(e[0x46:]), SoundObjectID: binary.LittleEndian.Uint16(e[0x48:]),
+			SoundFlags: binary.LittleEndian.Uint16(e[0x4A:]),
 
 			Raw:              append([]byte(nil), e...),
 			ObjectID:         uint16(e[vbObjectId]) | uint16(e[vbObjectId+1])<<8,
@@ -637,6 +653,14 @@ func putMiscEntity(e []byte, m *MiscEntity) {
 // putVehicle is exportEntity for a vehicle component: the base and the
 // fields every vehicle has, then its type's own (S5Entity.h's VehicleHead …
 // VehicleTail: one offset means another field in each).
+// putVehicleSound writes Vehicle2's / VehicleTail's VehicleSound (0x44–0x4B).
+func putVehicleSound(e []byte, v *VehicleEntity) {
+	e[0x44], e[0x45] = v.DrivingSoundID, v.DrivingSoundVolume
+	put16(e, 0x46, v.DrivingSoundFrequency)
+	put16(e, 0x48, v.SoundObjectID)
+	put16(e, 0x4A, v.SoundFlags)
+}
+
 func putVehicle(e []byte, v *VehicleEntity) {
 	putEntityBase(e, v.EntityType, v.ID, int16(v.PosX), int16(v.PosY), v.PosZ, v.SpriteWidth, v.SpriteHeightNegative, v.SpriteHeightPositive)
 	put16(e, ebVehicleFlags, v.VehicleFlags)
@@ -692,6 +716,7 @@ func putVehicle(e []byte, v *VehicleEntity) {
 			put32(e, 0x6F+4*k, uint32(s.CargoProfits[k]))
 		}
 	case VehicleTypeVeh2:
+		putVehicleSound(e, v)
 		e[0x4F] = uint8(v.Var4F)
 		put16(e, 0x50, v.TotalPower)
 		put16(e, 0x52, v.TotalWeight)
@@ -704,6 +729,8 @@ func putVehicle(e []byte, v *VehicleEntity) {
 			put32(e, 0x62+4*k, uint32(p))
 		}
 		e[0x72], e[0x73] = v.Veh2Reliability, v.Var73
+	case VehicleTypeTail:
+		putVehicleSound(e, v)
 	case VehicleTypeBogie, VehicleTypeBodyStart, VehicleTypeBodyContinued:
 		put16(e, 0x44, v.Var44)
 		e[vbAnimation], e[vbCargoFrame] = v.Animation, v.CargoFrame

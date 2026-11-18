@@ -4,8 +4,10 @@ import (
 	"log"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/audio"
+	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -66,18 +68,33 @@ func (g *Game) playCommandSound(id audio.SoundId, c *sim.Cmd) {
 	}
 }
 
+// soundObject is the loaded sound object of a DAT name (getSoundObject).
+func (g *Game) soundObject(name string) *objects.SoundObject {
+	if g.r == nil || g.r.ObjMgr == nil {
+		return nil
+	}
+	if lo := g.r.ObjMgr.GetObject(strings.ToUpper(strings.TrimSpace(name))); lo != nil {
+		so, _ := lo.Object.(*objects.SoundObject)
+		return so
+	}
+	return nil
+}
+
 // playSimSounds plays the sounds the simulation asked for since the last
 // frame (sim.Map.TakeSounds: a breakdown …) at their world positions.
 func (g *Game) playSimSounds() {
 	for _, s := range g.w.Map.TakeSounds() {
-		if s.Object != "" { // an object sound: not in the mixer yet (PORT-PLANS B step 3)
-			continue
-		}
 		vol, sx, ok := g.w.SoundAt(s.X, s.Y, s.Z)
 		if !ok {
 			continue
 		}
 		g.sfx.ScreenW = int32(g.sw)
+		if s.Object != "" { // makeObjectSoundId: a sound object's sample at its own volume
+			if so := g.soundObject(s.Object); so != nil {
+				g.sfx.PlayObjectAt(so, audio.ChannelId(s.Channel), vol+s.Volume, int32(sx), s.Frequency)
+			}
+			continue
+		}
 		g.sfx.PlaySoundAtVF(audio.SoundId(s.ID), audio.ChannelId(s.Channel), vol+s.Volume, int32(sx), s.Frequency)
 	}
 }

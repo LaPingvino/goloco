@@ -123,9 +123,11 @@ func (m *Map) createBaseVehicle(company, mode, vehicleType, trackType uint8) (ui
 	common(v2, headID)
 	v2.CurrentSpeed, v2.MotorState, v2.BrakeLightTimeout = 0, 0, 0
 	v2.CurMonthRevenue, v2.Profit, v2.Veh2Reliability, v2.Var73 = 0, [4]int32{}, 0, 0
+	initVehicleSound(v2)
 	link(v2)
 	tail, _ := m.newVehicleEntity(scenario.VehicleTypeTail)
 	common(tail, headID)
+	initVehicleSound(tail)
 	link(tail)
 	tail.NextCarID = entityIDNull
 	return headID, true

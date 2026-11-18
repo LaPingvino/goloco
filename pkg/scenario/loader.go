@@ -212,6 +212,7 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 	sc.RoadStationObjectOrder = parseRoadStationObjectOrder(reqObjBytes)
 	sc.AirportObjectOrder = parseObjectOrder(reqObjBytes, airportSlotStart, airportSlotCount, objectTypeAirport)
 	sc.DockObjectOrder = parseObjectOrder(reqObjBytes, dockSlotStart, dockSlotCount, objectTypeDock)
+	sc.SoundObjectOrder = parseObjectOrder(reqObjBytes, soundSlotStart, soundSlotCount, objectTypeSound)
 	sc.TrackObjectOrder = parseTrackObjectOrder(reqObjBytes)
 	sc.RoadObjectOrder = parseRoadObjectOrder(reqObjBytes)
 	sc.VehicleObjectOrder = parseVehicleObjectOrder(reqObjBytes)
@@ -839,7 +840,12 @@ const (
 	// Offsets into the 859-element RequiredObjects array.
 	// Cumulative counts: Interface(1)+Sound(128)+Currency(1)+Steam(32)+Rock(8)+Water(1)=171
 	landSlotStart = 171
-	landSlotCount = 32
+
+	// Sound: ObjectType::sound (1), after the one interface slot.
+	soundSlotStart  = 1
+	soundSlotCount  = 128
+	objectTypeSound = 1
+	landSlotCount   = 32
 
 	cargoSlotStart = 204
 	cargoSlotCount = 32

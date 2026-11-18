@@ -11,8 +11,8 @@ import (
 //
 // Vehicle1::updateRoad (0x004A9969) is Vehicle1RoadTargetSpeed plus
 // Vehicle1RoadMove (vehicle1road.go). PARTIAL: on noRouteFound upstream calls
-// the head's sub_4AD93A (not ported: the moves report the flag); the level
-// crossing whistle is sound only.
+// the head's sub_4AD93A (not ported: the moves report the flag). The level
+// crossing whistle: sounds.go railProduceCrossingWhistle.
 
 const (
 	speed16Max  int16 = 0x7FFF

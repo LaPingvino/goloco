@@ -24,6 +24,7 @@ const (
 func (m *Map) updateAircraft(tr Train, om *objects.ObjectManager) {
 	head := &m.Entities[tr.Head]
 	initialStatus := head.Status // VehicleHead::update: for tryCreateInitialMovementSound
+	m.updateDrivingSounds(tr, om)
 	if head.Var5C != 0 {
 		head.Var5C--
 	}

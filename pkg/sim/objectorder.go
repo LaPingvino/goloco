@@ -37,6 +37,7 @@ func ReorderObjectsForScenario(m *objects.ObjectManager, sc *scenario.Scenario) 
 		{sc.IndustryObjectOrder, m.ReorderIndustryObjects},
 		{sc.AirportObjectOrder, m.ReorderAirportObjects},
 		{sc.DockObjectOrder, m.ReorderDockObjects},
+		{sc.SoundObjectOrder, m.ReorderSoundObjects},
 	} {
 		if len(r.order) > 0 {
 			r.apply(r.order)

@@ -40,32 +40,35 @@ type LoadedObject struct {
 
 // ObjectManager manages loaded objects
 type ObjectManager struct {
-	Objects              map[string]*LoadedObject
-	Vehicles             []*VehicleObject
-	CurrencyObjects      []*CurrencyObject // every loaded currency object (one is in use per scenario)
-	CurrencySlot         string            // DAT name of the scenario's currency (its one currency slot)
-	LandObjects          []*LandObject
-	TreeObjects          []*TreeObject           // all loaded tree objects
-	IndustryObjects      []*IndustryObject       // all loaded industry objects
-	SnowObj              *SnowObject             // the single snow object
-	DockObjects          []*DockObject           // dock objects (scenario slot order after ReorderDockObjects)
-	AirportObjects       []*AirportObject        // airport objects (scenario slot order after ReorderAirportObjects)
-	BuildingObjects      []*BuildingObject       // all loaded building objects
-	WallObjects          []*WallObject           // all loaded wall objects
-	TrackObjects         []*TrackObject          // all loaded track objects
-	TrackExtraOrder      []string                // track-extra DAT names in scenario slot order
-	RoadExtraOrder       []string                // road-extra DAT names in scenario slot order
-	extraNames           map[string]string       // track/road extra DAT name → display name
-	extras               map[string]*ExtraObject // track/road extra DAT name → object
-	RoadObjects          []*RoadObject           // all loaded road objects
-	SteamObjects         []*SteamObject          // smoke / steam / spark objects, in load order (steam.go)
-	TrainStationObjects  []*TrainStationObject   // all loaded train-station objects
-	RoadStationObjects   []*RoadStationObject    // all loaded road-station objects
-	TrainSignalObjects   []*TrainSignalObject    // all loaded train-signal objects (slots 268-283)
-	LevelCrossingObjects []*LevelCrossingObject  // all loaded level-crossing objects (slots 284-287)
-	BridgeObjects        []*BridgeObject         // all loaded bridge objects (slots 305-312)
-	CargoObjects         []*CargoObject          // cargo slot order (reordered per scenario)
-	HillShapesObjects    []*HillShapesObject     // every loaded hill shapes object; HillShapes is the scenario's
+	Objects         map[string]*LoadedObject
+	Vehicles        []*VehicleObject
+	CurrencyObjects []*CurrencyObject // every loaded currency object (one is in use per scenario)
+	CurrencySlot    string            // DAT name of the scenario's currency (its one currency slot)
+	LandObjects     []*LandObject
+	TreeObjects     []*TreeObject           // all loaded tree objects
+	IndustryObjects []*IndustryObject       // all loaded industry objects
+	SnowObj         *SnowObject             // the single snow object
+	DockObjects     []*DockObject           // dock objects (scenario slot order after ReorderDockObjects)
+	AirportObjects  []*AirportObject        // airport objects (scenario slot order after ReorderAirportObjects)
+	BuildingObjects []*BuildingObject       // all loaded building objects
+	WallObjects     []*WallObject           // all loaded wall objects
+	TrackObjects    []*TrackObject          // all loaded track objects
+	TrackExtraOrder []string                // track-extra DAT names in scenario slot order
+	RoadExtraOrder  []string                // road-extra DAT names in scenario slot order
+	extraNames      map[string]string       // track/road extra DAT name → display name
+	extras          map[string]*ExtraObject // track/road extra DAT name → object
+	RoadObjects     []*RoadObject           // all loaded road objects
+	SteamObjects    []*SteamObject          // smoke / steam / spark objects, in load order (steam.go)
+	// SoundObjects are the sound objects in load order, then (ReorderSoundObjects)
+	// in the scenario's slot order: a SoundObjectId_t is a slot here.
+	SoundObjects         []*SoundObject
+	TrainStationObjects  []*TrainStationObject  // all loaded train-station objects
+	RoadStationObjects   []*RoadStationObject   // all loaded road-station objects
+	TrainSignalObjects   []*TrainSignalObject   // all loaded train-signal objects (slots 268-283)
+	LevelCrossingObjects []*LevelCrossingObject // all loaded level-crossing objects (slots 284-287)
+	BridgeObjects        []*BridgeObject        // all loaded bridge objects (slots 305-312)
+	CargoObjects         []*CargoObject         // cargo slot order (reordered per scenario)
+	HillShapesObjects    []*HillShapesObject    // every loaded hill shapes object; HillShapes is the scenario's
 	HillShapes           *HillShapesObject
 	Climate              *ClimateObject      // the scenario's climate
 	Region               *RegionObject       // the scenario\'s region
@@ -521,6 +524,7 @@ func (m *ObjectManager) parseAndRegisterObject(loaded *LoadedObject, header *Obj
 	case ObjectTypeSound:
 		if so := ParseSoundObject(header, decompressed); so != nil {
 			loaded.Object = so
+			m.SoundObjects = append(m.SoundObjects, so)
 		}
 
 	case ObjectTypeHillShapes:
