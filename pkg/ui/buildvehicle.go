@@ -50,6 +50,9 @@ type BVWidget struct {
 
 func bvW(x, y, w, h int) BVWidget { return BVWidget{x, y, x + w - 1, y + h - 1, false} }
 
+// rect is the widget as left, top, width, height (WinBase.Button).
+func (b BVWidget) rect() [4]int { return [4]int{b.L, b.T, b.R - b.L + 1, b.B - b.T + 1} }
+
 // buildVehicleWidgets is _widgets as declared (a dropdown is its combo box and
 // an 11×10 button 12 px from its right).
 func buildVehicleWidgets() [bvWidgets]BVWidget {
@@ -325,12 +328,16 @@ func (w *BuildVehicleWindow) HandleClick(x, y int) {
 		return !b.Hidden && x >= w.X+b.L && x <= w.X+b.R && y >= w.Y+b.T && y <= w.Y+b.B
 	}
 	if in(lw[bvClose]) {
+		w.PressWidget(lw[bvClose].rect())
 		w.Close()
 		return
 	}
 	for i := 0; i < 6; i++ {
-		if in(lw[bvTabTrains+i]) && i != w.Tab && w.OnTab != nil {
-			w.OnTab(i)
+		if in(lw[bvTabTrains+i]) { // a disabled tab is hidden (leftAlignTabs)
+			w.PressWidget(lw[bvTabTrains+i].rect())
+			if i != w.Tab && w.OnTab != nil {
+				w.OnTab(i)
+			}
 			return
 		}
 	}

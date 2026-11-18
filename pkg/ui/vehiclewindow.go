@@ -672,28 +672,51 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 	in := func(c BVWidget) bool {
 		return !c.Hidden && x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B
 	}
+	press := func(c BVWidget) bool { // in, and the widget's clickDown (MouseInput)
+		if !in(c) {
+			return false
+		}
+		w.PressWidget(c.rect())
+		return true
+	}
+	// tab is a tab's press: the current one's too (upstream sounds it; switchTab
+	// ignores it).
+	tab := func(lw []BVWidget, i, t int) bool {
+		if !press(lw[i]) {
+			return false
+		}
+		if t != w.Tab && w.OnTab != nil {
+			w.OnTab(t)
+		}
+		return true
+	}
+	tabs := map[int]int{vwTabMain: 0, vwTabDetails: 1, vwTabCargo: 2, vwTabFinances: 3, vwTabRoute: 4}
+	anyTab := func(lw []BVWidget) bool {
+		for i, t := range tabs {
+			if tab(lw, i, t) {
+				return true
+			}
+		}
+		return false
+	}
 	if w.Tab == 4 { // Route::onMouseUp and onScrollMouseDown. PARTIAL: the tool button
 		lw := VehicleRouteLayout(w.W, w.H, w.State.HiddenTabs, !w.Main.Own)
 		list := lw[vrRouteList]
 		action := map[int]string{vrDelete: "delete", vrUp: "up", vrDown: "down", vrSkip: "skip", vrReverse: "reverse"}
+		// prepareDraw's disabledWidgets, for the clickDown: skip / delete with
+		// no orders (sizeOfOrderTable 1), up / down with none selected.
+		disabled := map[int]bool{vrSkip: len(w.Route) <= 1, vrDelete: len(w.Route) <= 1, vrUp: w.RouteSel == -1, vrDown: w.RouteSel == -1}
 		if w.Main.Own { // disabled for another company's vehicle
 			action[vrLocalMode], action[vrExpressMode] = "local", "express"
 		}
 		switch {
-		case in(lw[vwClose]):
+		case press(lw[vwClose]):
 			w.Close()
-		case in(lw[vwTabMain]) && w.OnTab != nil:
-			w.OnTab(0)
-		case in(lw[vwTabDetails]) && w.OnTab != nil:
-			w.OnTab(1)
-		case in(lw[vwTabFinances]) && w.OnTab != nil:
-			w.OnTab(3)
-		case in(lw[vwTabCargo]) && w.OnTab != nil:
-			w.OnTab(2)
-		case in(lw[vrForceUnload]) && w.OnOrderDropdown != nil:
+		case anyTab(lw[:]):
+		case press(lw[vrForceUnload]) && w.OnOrderDropdown != nil: // PARTIAL: disabled without trainAcceptedCargoTypes
 			b := lw[vrForceUnload]
 			w.OnOrderDropdown("unload", w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
-		case in(lw[vrWait]) && w.OnOrderDropdown != nil:
+		case press(lw[vrWait]) && w.OnOrderDropdown != nil:
 			b := lw[vrWait]
 			w.OnOrderDropdown("wait", w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
 		case in(list) && w.OnRouteSelect != nil: // a row (lineHeight 10) — the end of the list too
@@ -702,6 +725,9 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			}
 		default:
 			for i, a := range action {
+				if in(lw[i]) && !disabled[i] {
+					w.PressWidget(lw[i].rect())
+				}
 				if in(lw[i]) && w.OnRoute != nil {
 					w.OnRoute(a)
 					return
@@ -714,85 +740,65 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 		lw := VehicleMainLayout(w.W, w.H, w.Main)
 		dis := VehicleMainDisabled(w.Main)
 		switch {
-		case in(lw[vwClose]):
+		case press(lw[vwClose]):
 			w.Close()
-		case in(lw[vwTabDetails]) && w.OnTab != nil:
-			w.OnTab(1)
-		case in(lw[vwTabRoute]) && w.OnTab != nil:
-			w.OnTab(4)
-		case in(lw[vwTabFinances]) && w.OnTab != nil:
-			w.OnTab(3)
-		case in(lw[vwTabCargo]) && w.OnTab != nil:
-			w.OnTab(2)
-		case in(lw[vmStopStart]) && w.OnStopStart != nil && !dis[vmStopStart]:
+		case anyTab(lw[:]):
+		case !dis[vmStopStart] && press(lw[vmStopStart]) && w.OnStopStart != nil:
 			b := lw[vmStopStart]
 			w.OnStopStart(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
-		case in(lw[vmPickup]) && w.OnPickup != nil && !dis[vmPickup]:
+		case !dis[vmPickup] && press(lw[vmPickup]) && w.OnPickup != nil:
 			w.OnPickup()
-		case in(lw[vmCentreViewport]) && w.OnCentreView != nil && !dis[vmCentreViewport]:
+		case !dis[vmCentreViewport] && press(lw[vmCentreViewport]) && w.OnCentreView != nil:
 			w.OnCentreView()
-		case in(lw[vmSpeedControl]) && w.OnSpeed != nil: // Main::onMouseDown speedControl (holdable)
+		case press(lw[vmSpeedControl]) && w.OnSpeed != nil: // Main::onMouseDown speedControl (holdable)
 			w.speedHeld = true
 			w.speedAt(y)
-		case in(lw[vmPassSignal]) && w.OnPassSignal != nil && !dis[vmPassSignal]: // Main::onMouseUp passSignal
+		case !dis[vmPassSignal] && press(lw[vmPassSignal]) && w.OnPassSignal != nil: // Main::onMouseUp passSignal
 			w.OnPassSignal()
-		case in(lw[vmChangeDirection]) && w.OnChangeDirection != nil && !dis[vmChangeDirection]: // Main::onMouseUp changeDirection
+		case !dis[vmChangeDirection] && press(lw[vmChangeDirection]) && w.OnChangeDirection != nil: // Main::onMouseUp changeDirection
 			w.OnChangeDirection()
 		}
 		return
 	}
 	if w.Tab == 2 { // Cargo::onMouseUp / onMouseDown (refit). PARTIAL: renaming by the caption
 		lw := VehicleCargoLayout(w.W, w.H, w.State.HiddenTabs, w.Cargo.CanRefit)
-		for i, tab := range map[int]int{vwTabMain: 0, vwTabDetails: 1, vwTabFinances: 3, vwTabRoute: 4} {
-			if in(lw[i]) && w.OnTab != nil {
-				w.OnTab(tab)
-				return
-			}
+		if anyTab(lw[:]) {
+			return
 		}
 		if w.carBar(x, y) {
 			w.barBegin(y)
 			return
 		}
-		if b := lw[vcRefit]; in(b) && w.OnRefit != nil {
+		if b := lw[vcRefit]; press(b) && w.OnRefit != nil {
 			w.OnRefit(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
 			return
 		}
-		if in(lw[vwClose]) {
+		if press(lw[vwClose]) {
 			w.Close()
 		}
 		return
 	}
 	if w.Tab == 3 { // Finances::onMouseUp. PARTIAL: renaming by the caption
 		lw := VehicleFinancesLayout(w.W, w.H, w.State.HiddenTabs)
-		for i, tab := range map[int]int{vwTabMain: 0, vwTabDetails: 1, vwTabCargo: 2, vwTabRoute: 4} {
-			if in(lw[i]) && w.OnTab != nil {
-				w.OnTab(tab)
-				return
-			}
+		if anyTab(lw[:]) {
+			return
 		}
-		if in(lw[vwClose]) {
+		if press(lw[vwClose]) {
 			w.Close()
 		}
 		return
 	}
 	lw, pickupDisabled := VehicleDetailsLayout(w.W, w.H, w.State)
 	switch {
-	case in(lw[vwClose]):
+	case press(lw[vwClose]):
 		w.Close()
-	case in(lw[vwTabMain]) && w.OnTab != nil:
-		w.OnTab(0)
-	case in(lw[vwTabRoute]) && w.OnTab != nil:
-		w.OnTab(4)
-	case in(lw[vwTabFinances]) && w.OnTab != nil:
-		w.OnTab(3)
-	case in(lw[vwTabCargo]) && w.OnTab != nil:
-		w.OnTab(2)
-	case in(lw[vdPickup]) && !pickupDisabled && w.OnPickup != nil:
+	case anyTab(lw[:]):
+	case !pickupDisabled && press(lw[vdPickup]) && w.OnPickup != nil:
 		w.OnPickup()
-	case in(lw[vdBuildNew]) && w.OnBuildNew != nil:
+	case press(lw[vdBuildNew]) && w.OnBuildNew != nil:
 		b := lw[vdBuildNew]
 		w.OnBuildNew(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
-	case in(lw[vdRemove]) && w.OnSell != nil: // Details::onMouseUp remove: VehicleSell(head)
+	case press(lw[vdRemove]) && w.OnSell != nil: // Details::onMouseUp remove: VehicleSell(head)
 		w.OnSell()
 	case w.carBar(x, y): // scrollLeftBegin on the car list's bar
 		w.barBegin(y)

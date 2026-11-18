@@ -240,11 +240,12 @@ func (w *TerraformWindow) onScrollbar(px int) bool {
 // close button, a tab, then the tab's widgets.
 // clickable(TerraForm.cpp): close_button tab_clear_area tab_adjust_land tab_adjust_water tab_plant_trees tab_build_walls decrease_area increase_area mountain_mode paint_mode land_material scrollview rotate_object object_colour plant_cluster_selected plant_cluster_random
 func (w *TerraformWindow) HandleClick(px, py int) {
-	if w.in([4]int{w.W - 15, 2, 13, 13}, px, py) {
+	if w.Button([4]int{w.W - 15, 2, 13, 13}, px, py) {
 		w.Close()
 		return
 	}
 	if i := tabAt(tabLayout(5, nil), px-w.X, py-w.Y); i >= 0 {
+		w.PressWidget([4]int{3 + 31*i, 15, 31, 27})
 		if w.OnTab != nil {
 			w.OnTab(i)
 		}
@@ -258,21 +259,21 @@ func (w *TerraformWindow) HandleClick(px, py int) {
 	switch w.Tab {
 	case TerraformTabClear, TerraformTabLand, TerraformTabWater:
 		switch {
-		case w.in(tfDecrease, px, py):
+		case w.Button(tfDecrease, px, py):
 			w.held, w.heldAt = -1, 0
 			if w.OnToolSize != nil {
 				w.OnToolSize(-1)
 			}
-		case w.in(tfIncrease, px, py):
+		case w.Button(tfIncrease, px, py):
 			w.held, w.heldAt = 1, 0
 			if w.OnToolSize != nil {
 				w.OnToolSize(1)
 			}
-		case w.Tab == TerraformTabLand && w.in(tfMountain, px, py):
+		case w.Tab == TerraformTabLand && w.Button(tfMountain, px, py):
 			call(w.OnMountain)
-		case w.Tab == TerraformTabLand && w.in(tfPaint, px, py):
+		case w.Tab == TerraformTabLand && w.Button(tfPaint, px, py):
 			call(w.OnPaint)
-		case w.Tab == TerraformTabLand && w.PaintMode && w.in(tfLandMaterial, px, py):
+		case w.Tab == TerraformTabLand && w.PaintMode && w.Button(tfLandMaterial, px, py):
 			if r := tfLandMaterial; w.OnLandMaterial != nil {
 				w.OnLandMaterial(w.X+r[0], w.Y+r[1], r[2], r[3])
 			}
@@ -295,17 +296,17 @@ func (w *TerraformWindow) HandleClick(px, py int) {
 		}
 		sel := w.selectedCell()
 		switch {
-		case sel != nil && sel.Rotatable && w.in(w.treeButton(0), px, py):
+		case sel != nil && sel.Rotatable && w.Button(w.treeButton(0), px, py):
 			call(w.OnRotate)
-		case sel != nil && sel.Colours != 0 && w.in(w.treeButton(1), px, py):
+		case sel != nil && sel.Colours != 0 && w.Button(w.treeButton(1), px, py):
 			if r := w.treeButton(1); w.OnColour != nil {
 				w.OnColour(w.X+r[0], w.Y+r[1], r[2], r[3])
 			}
-		case w.in(w.treeButton(2), px, py):
+		case w.Button(w.treeButton(2), px, py):
 			if w.OnCluster != nil {
 				w.OnCluster(1)
 			}
-		case w.in(w.treeButton(3), px, py):
+		case w.Button(w.treeButton(3), px, py):
 			if w.OnCluster != nil {
 				w.OnCluster(2)
 			}

@@ -61,8 +61,7 @@ func (w *MapWindow) PrepareDraw() {
 
 // HandleClick: the close button.
 func (w *MapWindow) HandleClick(px, py int) {
-	x, y := px-w.X, py-w.Y
-	if x >= w.W-15 && x < w.W-2 && y >= 2 && y < 15 {
+	if w.Button([4]int{w.W - 15, 2, 13, 13}, px, py) { // closeButton (prepareDraw: width − 15)
 		w.Close()
 	}
 }

@@ -11,7 +11,7 @@ import (
 // HandleClick names (Button), unless disabled.
 type buttonWin struct {
 	WinBase
-	disabled bool
+	disabled     bool
 	closeOnPress bool
 }
 

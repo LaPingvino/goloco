@@ -180,45 +180,68 @@ type CompanyFinancesWindow struct {
 func (w *CompanyFinancesWindow) HandleClick(x, y int) {
 	lw := CompanyFinancesLayout(w.W, w.H)
 	in := func(b BVWidget) bool { return x >= w.X+b.L && x <= w.X+b.R && y >= w.Y+b.T && y <= w.Y+b.B }
+	press := func(b BVWidget) bool { // MouseInput: the widget's clickDown
+		if !in(b) {
+			return false
+		}
+		w.PressWidget(b.rect())
+		return true
+	}
+	tab := func(b BVWidget, t int) bool {
+		if !press(b) {
+			return false
+		}
+		if w.Tab != t {
+			w.switchTab(t)
+		}
+		return true
+	}
 	switch {
-	case in(lw[cwClose]):
+	case press(lw[cwClose]):
 		w.Close()
 	case w.hBarClick(x, y):
-	case in(lw[cwCompanySelect]) && len(w.Companies) > 0 && w.OpenDropdown != nil: // onMouseDown company_select
-		w.OpenDropdown(CompanySelectDropdown(w.X+lw[cwCompanySelect].L, w.Y+lw[cwCompanySelect].T, w.TitleColour, w.Companies, w.CompanyID, w.ScreenW, w.ScreenH, w.OnCompany))
+	case in(lw[cwCompanySelect]): // onMouseDown company_select
+		if w.Tab != CompanyTabChallenge { // Challenge::prepareDraw hides it
+			w.PressWidget(lw[cwCompanySelect].rect())
+		}
+		if len(w.Companies) > 0 && w.OpenDropdown != nil {
+			w.OpenDropdown(CompanySelectDropdown(w.X+lw[cwCompanySelect].L, w.Y+lw[cwCompanySelect].T, w.TitleColour, w.Companies, w.CompanyID, w.ScreenW, w.ScreenH, w.OnCompany))
+		}
 	case in(lw[cwCaption]): // the caption's click (the stack moves the window by it; an unmoved release arrives here)
 		if w.OnRename != nil {
 			w.OnRename()
 		}
-	case w.Tab == CompanyTabStatus && w.Status.Own && w.OnRenameOwner != nil &&
-		in(BVWidget{L: w.W - 116, T: 124, R: w.W - 4, B: 145}): // change_owner_name
-		w.OnRenameOwner()
-	case in(lw[cwTabColour]) && w.Tab != CompanyTabColourScheme:
-		w.switchTab(CompanyTabColourScheme)
-	case w.Tab == CompanyTabColourScheme && w.Colours.Own && w.OnColour != nil && w.colourSwatchAt(x, y) != nil:
+	case w.Tab == CompanyTabStatus && w.Status.Own && press(BVWidget{L: w.W - 116, T: 124, R: w.W - 4, B: 145}): // change_owner_name (hidden for another company's)
+		if w.OnRenameOwner != nil {
+			w.OnRenameOwner()
+		}
+	case tab(lw[cwTabColour], CompanyTabColourScheme):
+	case w.Tab == CompanyTabColourScheme && w.Colours.Own && w.colourSwatchAt(x, y) != nil: // another company's are disabled
 		s := w.colourSwatchAt(x, y)
-		w.OnColour(s.colourType, s.primary, w.X+s.x, w.Y+s.y, 16, 16)
-	case w.Tab == CompanyTabColourScheme && w.Colours.Own && w.colourCheckAt(x, y) >= 0 && w.OnColourMode != nil:
+		w.PressWidget([4]int{s.x, s.y, 16, 16})
+		if w.OnColour != nil {
+			w.OnColour(s.colourType, s.primary, w.X+s.x, w.Y+s.y, 16, 16)
+		}
+	case w.Tab == CompanyTabColourScheme && w.Colours.Own && w.colourCheckAt(x, y) >= 0:
 		i := w.colourCheckAt(x, y) // onMouseUp check_…: the vehicle type's scheme toggled
-		w.OnColourMode(i+1, w.Colours.Custom&(1<<(i+1)) == 0)
-	case in(lw[cwTabDetails]) && w.Tab != CompanyTabDetails:
-		w.switchTab(CompanyTabDetails)
-	case in(lw[cwTabStatus]) && w.Tab != CompanyTabStatus:
-		w.switchTab(CompanyTabStatus)
-	case in(lw[cwTabFinances]) && w.Tab != CompanyTabFinances:
-		w.switchTab(CompanyTabFinances)
-	case in(lw[cwTabCargo]) && w.Tab != CompanyTabCargoDelivered:
-		w.switchTab(CompanyTabCargoDelivered)
-	case in(lw[cwTabChallenge]) && w.Tab != CompanyTabChallenge && w.Data.Own: // disableChallengeTab: another company's
-		w.switchTab(CompanyTabChallenge)
+		w.PressWidget([4]int{15, 81 + 17*i, 204, 12})
+		if w.OnColourMode != nil {
+			w.OnColourMode(i+1, w.Colours.Custom&(1<<(i+1)) == 0)
+		}
+	case tab(lw[cwTabDetails], CompanyTabDetails):
+	case tab(lw[cwTabStatus], CompanyTabStatus):
+	case tab(lw[cwTabFinances], CompanyTabFinances):
+	case tab(lw[cwTabCargo], CompanyTabCargoDelivered):
+	case in(lw[cwTabChallenge]) && !w.Data.Own: // disableChallengeTab: another company's
+	case tab(lw[cwTabChallenge], CompanyTabChallenge):
 	case w.Tab != CompanyTabFinances: // the loan controls are the Finances tab's only
-	case w.Data.Own && in(lw[cfLoanDecrease]) && w.OnLoan != nil:
+	case w.Data.Own && press(lw[cfLoanDecrease]) && w.OnLoan != nil: // hidden for another company's
 		w.loanHeld, w.loanRepeat = -1, 1
 		w.OnLoan(-1, 1)
-	case w.Data.Own && in(lw[cfLoanIncrease]) && w.OnLoan != nil:
+	case w.Data.Own && press(lw[cfLoanIncrease]) && w.OnLoan != nil:
 		w.loanHeld, w.loanRepeat = 1, 1
 		w.OnLoan(1, 1)
-	case w.Data.Own && in(lw[cfLoanAutopay]) && w.OnAutopay != nil:
+	case w.Data.Own && press(lw[cfLoanAutopay]) && w.OnAutopay != nil:
 		w.OnAutopay()
 	}
 }

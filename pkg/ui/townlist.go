@@ -310,18 +310,20 @@ func (w *TownListWindow) in(r [4]int, px, py int) bool {
 
 // HandleClick: close, or a row (selects it, as rowHover).
 func (w *TownListWindow) HandleClick(px, py int) {
-	if w.in([4]int{w.W - 15, 2, 13, 13}, px, py) {
+	if w.Button([4]int{w.W - 15, 2, 13, 13}, px, py) {
 		w.Close()
 		return
 	}
 	if w.ExtraClick != nil && w.ExtraClick(px, py) {
 		return
 	}
-	if len(w.Companies) > 0 && w.OpenDropdown != nil && w.in([4]int{w.W - 28, 14, 26, 26}, px, py) {
+	if len(w.Companies) > 0 && w.OpenDropdown != nil && w.Button([4]int{w.W - 28, 14, 26, 26}, px, py) {
 		w.OpenDropdown(w.companySelect())
 		return
 	}
-	if i := tabAt(tabLayout(w.Tabs, w.TabDisabled), px-w.X, py-w.Y); i >= 0 {
+	xs := tabLayout(w.Tabs, w.TabDisabled)
+	if i := tabAt(xs, px-w.X, py-w.Y); i >= 0 { // a disabled tab is hidden (leftAlignTabs)
+		w.PressWidget([4]int{xs[i], 15, 31, 27})
 		if w.OnTab != nil && i != w.CurrentTab {
 			w.OnTab(i)
 		}
@@ -330,7 +332,7 @@ func (w *TownListWindow) HandleClick(px, py int) {
 	// A column header (TableHeader, 12 px at y 43): sort by it, once per change.
 	if w.Sort != nil {
 		for i, c := range w.Columns {
-			if l, r := w.headerSpan(c); r >= l && w.in([4]int{l, 43, r - l + 1, 12}, px, py) {
+			if l, r := w.headerSpan(c); r >= l && w.Button([4]int{l, 43, r - l + 1, 12}, px, py) {
 				if i != w.SortMode {
 					w.SortMode, w.Hover = i, -1
 					w.Sort(i)

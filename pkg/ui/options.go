@@ -213,6 +213,12 @@ func (w *OptionsWindow) in(r [4]int, px, py int) bool {
 	return px >= w.X+r[0] && px < w.X+r[0]+r[2] && py >= w.Y+r[1] && py < w.Y+r[1]+r[3]
 }
 
+// dropdownPress is WinBase.Button for dropdownWidgets (r the combo box): the
+// 11 × 10 button at (x + w − 12, y + 1), else the combo box.
+func dropdownPress(b *WinBase, r [4]int, px, py int) bool {
+	return b.Button([4]int{r[0] + r[2] - 12, r[1] + 1, 11, 10}, px, py) || b.Button(r, px, py)
+}
+
 // PrepareDraw is each tab's onResize: setSize(kWindowSize).
 func (w *OptionsWindow) PrepareDraw() { w.W, w.H = w.size() }
 
@@ -227,23 +233,23 @@ func optSliderRow(i int) (lx, sx, y int) {
 // HandleClick: close, the title-music checkbox, the music slider.
 func (w *OptionsWindow) HandleClick(px, py int) {
 	ww, _ := w.size()
-	if w.in([4]int{ww - 15, 2, 13, 13}, px, py) {
+	if w.Button([4]int{ww - 15, 2, 13, 13}, px, py) {
 		w.Close()
 		return
 	}
 	for i := range 7 {
-		if w.in([4]int{3 + 31*i, 15, 31, 27}, px, py) {
+		if w.Button([4]int{3 + 31*i, 15, 31, 27}, px, py) {
 			w.Tab = i // switchTab: the window keeps its position and takes the tab's size
 			return
 		}
 	}
 	if w.Tab == OptTabControls {
-		if w.in([4]int{26, 124, 160, 12}, px, py) && w.OnCustomiseKeys != nil {
+		if w.Button([4]int{26, 124, 160, 12}, px, py) && w.OnCustomiseKeys != nil {
 			w.OnCustomiseKeys()
 			return
 		}
 		for i := range w.Controls {
-			if w.in([4]int{10, 49 + 15*i, 346, 12}, px, py) {
+			if w.Button([4]int{10, 49 + 15*i, 346, 12}, px, py) {
 				w.Controls[i] = !w.Controls[i]
 				if w.OnControl != nil {
 					w.OnControl(i, w.Controls[i])
@@ -255,7 +261,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 	}
 	if w.Tab == OptTabMisc {
 		for i, y := range []int{64, 79, 94, 130, 145, 160, 175} { // the Checkboxes, 400 × 12
-			if w.in([4]int{10, y, 400, 12}, px, py) {
+			if w.Button([4]int{10, y, 400, 12}, px, py) {
 				w.MiscChecks[i] = !w.MiscChecks[i]
 				if w.OnMiscCheck != nil {
 					w.OnMiscCheck(i, w.MiscChecks[i])
@@ -265,7 +271,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		}
 		// autosave_frequency_btn: Dropdown::show at the widget, width() − 4 —
 		// never, every month, every 3 / 6 / 12 months; the stepper's − / + (1–24).
-		if w.in([4]int{250, 211, 156, 12}, px, py) && w.OpenDropdown != nil {
+		if dropdownPress(&w.WinBase, [4]int{250, 211, 156, 12}, px, py) && w.OpenDropdown != nil {
 			months := []int{0, 1, 3, 6, 12}
 			items := make([]DropdownItem, len(months))
 			for i, m := range months {
@@ -284,9 +290,9 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			return
 		}
 		step := 0
-		if w.in([4]int{250 + 156 - 26, 227, 13, 10}, px, py) {
+		if w.Button([4]int{250 + 156 - 26, 227, 13, 10}, px, py) { // stepperWidgets
 			step = -1
-		} else if w.in([4]int{250 + 156 - 13, 227, 12, 10}, px, py) {
+		} else if w.Button([4]int{250 + 156 - 13, 227, 12, 10}, px, py) {
 			step = 1
 		}
 		if n := min(max(w.AutosaveAmount+step, 1), 24); step != 0 && n != w.AutosaveAmount { // changeAutosaveAmount
@@ -299,7 +305,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 	}
 	if w.Tab == OptTabRendering {
 		for i := range w.RenderChecks { // the checkboxes at (10, 110 + 16i), 346 × 12
-			if w.in([4]int{10, 110 + 16*i, 346, 12}, px, py) {
+			if w.Button([4]int{10, 110 + 16*i, 346, 12}, px, py) {
 				w.RenderChecks[i] = !w.RenderChecks[i]
 				if w.OnRenderCheck != nil {
 					w.OnRenderCheck(i, w.RenderChecks[i])
@@ -315,7 +321,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			v     *int
 		}{{63, optScales(), &w.VehiclesMinScale}, {79, optScales(), &w.StationNamesMinScale}, {95, optMarkers(), &w.ConstructionMarker},
 			{194, optFrameStyles, &FrameStyle}} { // windowFrameStyleMouseDown too
-			if w.in([4]int{235, c.y, 154, 12}, px, py) && w.OpenDropdown != nil {
+			if dropdownPress(&w.WinBase, [4]int{235, c.y, 154, 12}, px, py) && w.OpenDropdown != nil {
 				v := c.v
 				items := make([]DropdownItem, len(c.items))
 				for i, t := range c.items {
@@ -339,6 +345,9 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			by   float64
 		}{{235 + 154 - 26, 13, -ScaleFactorStep}, {235 + 154 - 13, 12, ScaleFactorStep}} {
 			if w.in([4]int{b.x, 95, b.w, 12}, px, py) {
+				if s := w.scale(); b.by < 0 && s > ScaleFactorMin || b.by > 0 && s < ScaleFactorMax { // disabled at the limit
+					w.Button([4]int{b.x, 96, b.w, 10}, px, py) // stepperWidgets: y + 1, height − 2
+				}
 				if s := min(max(w.scale()+b.by, ScaleFactorMin), ScaleFactorMax); s != w.scale() {
 					w.Scale = s
 					if w.OnScale != nil {
@@ -348,7 +357,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 				return
 			}
 		}
-		if w.in([4]int{10, 127, 380, 12}, px, py) { // Widx::show_fps: cfg.showFPS ^= 1, Config::write
+		if w.Button([4]int{10, 127, 380, 12}, px, py) { // Widx::show_fps: cfg.showFPS ^= 1, Config::write
 			w.ShowFPS = !w.ShowFPS
 			if w.OnShowFPS != nil {
 				w.OnShowFPS(w.ShowFPS)
@@ -357,7 +366,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		}
 		// screenModeMouseDown: the three modes (dropdown_stringid), the current
 		// one selected; screenModeDropdown sets it when it changes.
-		if w.in([4]int{235, 63, 154, 12}, px, py) && w.OpenDropdown != nil {
+		if dropdownPress(&w.WinBase, [4]int{235, 63, 154, 12}, px, py) && w.OpenDropdown != nil {
 			items := make([]DropdownItem, len(optScreenModes()))
 			for i, m := range optScreenModes() {
 				items[i] = DropdownItem{Text: m, Selected: i == w.ScreenMode, MoveX10: true}
@@ -376,7 +385,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		// resolutionMouseDown: Dropdown::showText2 at the combobox, width();
 		// "W x H" (display_resolution_dropdown_format), the configured one
 		// selected. Enabled only in fullscreen mode (screenModeToggleEnabled).
-		if w.ScreenMode == 1 && w.in([4]int{235, 79, 154, 12}, px, py) && w.OpenDropdown != nil && len(w.Resolutions) > 0 {
+		if w.ScreenMode == 1 && dropdownPress(&w.WinBase, [4]int{235, 79, 154, 12}, px, py) && w.OpenDropdown != nil && len(w.Resolutions) > 0 {
 			items := make([]DropdownItem, len(w.Resolutions))
 			for i, r := range w.Resolutions {
 				items[i] = DropdownItem{Text: resolutionText(r), Selected: r == w.Resolution, MoveX10: true}
@@ -394,7 +403,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			w.OpenDropdown(d)
 		}
 		// frameLimitMouseDown: Dropdown::show at the combobox, width() (no −4).
-		if w.in([4]int{235, 111, 154, 12}, px, py) && w.OpenDropdown != nil {
+		if dropdownPress(&w.WinBase, [4]int{235, 111, 154, 12}, px, py) && w.OpenDropdown != nil {
 			items := make([]DropdownItem, len(optFrameLimits))
 			for i, m := range optFrameLimits {
 				items[i] = DropdownItem{Text: m, Selected: i == w.FrameLimit, MoveX10: true}
@@ -415,7 +424,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 	if w.Tab == OptTabRegional {
 		// distanceSpeedMouseDown: Dropdown::show at the combobox (183, 69),
 		// width() − 4, Imperial / Metric, the current one ticked.
-		if r := optRegionalRows[1]; w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil {
+		if r := optRegionalRows[1]; dropdownPress(&w.WinBase, [4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil {
 			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour,
 				[]DropdownItem{{Text: i18n.Label(i18n.Imperial), Selected: !L.Metric, MoveX10: true}, {Text: i18n.Label(i18n.Metric), Selected: L.Metric, MoveX10: true}}, 1<<20, 1<<20)
 			d.OnSelect = func(i int) { L.Metric = i == 1 } // distanceSpeedDropdown (PARTIAL: Config::write)
@@ -423,7 +432,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		}
 		// languageMouseDown: the available languages (dropdown_stringptr), the
 		// current one selected.
-		if r := optRegionalRows[0]; w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil && len(w.Languages) > 0 {
+		if r := optRegionalRows[0]; dropdownPress(&w.WinBase, [4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil && len(w.Languages) > 0 {
 			items := make([]DropdownItem, len(w.Languages))
 			for i, n := range w.Languages {
 				items[i] = DropdownItem{Text: n, Selected: i == w.Language, MoveX10: true}
@@ -441,7 +450,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		}
 		// preferredCurrencyNewGameMouseUp / preferredCurrencyAlwaysMouseUp.
 		for i := range 2 {
-			if w.in([4]int{10, 134 + 14*i, 346, 12}, px, py) {
+			if w.Button([4]int{10, 134 + 14*i, 346, 12}, px, py) {
 				w.PreferredCurrency[i] = !w.PreferredCurrency[i]
 				if w.OnPreferredToggle != nil {
 					w.OnPreferredToggle(i, w.PreferredCurrency[i])
@@ -451,7 +460,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		}
 		// currencyMouseDown: every installed currency, the loaded one selected;
 		// the widget is disabled in title mode or with 'always' (prepareDraw).
-		if r := optRegionalRows[3]; !w.currencyDisabled() && w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil && len(w.Currencies) > 0 {
+		if r := optRegionalRows[3]; !w.currencyDisabled() && dropdownPress(&w.WinBase, [4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil && len(w.Currencies) > 0 {
 			items := make([]DropdownItem, len(w.Currencies))
 			for i, c := range w.Currencies {
 				items[i] = DropdownItem{Text: c.Name, Selected: c.Name == w.CurrencyName, MoveX10: true}
@@ -469,7 +478,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		}
 		// preferredCurrencyMouseDown: every installed currency (dropdown_stringptr
 		// "{MOVE_X 10}{STRING}"), the preferred one selected ("»").
-		if r := optRegionalRows[4]; w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil && len(w.Currencies) > 0 {
+		if r := optRegionalRows[4]; dropdownPress(&w.WinBase, [4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil && len(w.Currencies) > 0 {
 			items := make([]DropdownItem, len(w.Currencies))
 			for i, c := range w.Currencies {
 				items[i] = DropdownItem{Text: c.Name, Selected: c.Name == w.PreferredCurrencyName, MoveX10: true}
@@ -486,7 +495,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			w.OpenDropdown(d)
 		}
 		// heightsLabelsMouseDown: Units / Real Values, the current one selected.
-		if r := optRegionalRows[2]; w.in([4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil {
+		if r := optRegionalRows[2]; dropdownPress(&w.WinBase, [4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil {
 			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour,
 				[]DropdownItem{{Text: i18n.Label(i18n.HeightUnits), Selected: L.HeightUnits, MoveX10: true}, {Text: i18n.Label(i18n.HeightRealValues), Selected: !L.HeightUnits, MoveX10: true}}, 1<<20, 1<<20)
 			d.OnSelect = func(i int) { L.HeightUnits = i == 0 } // heightsLabelsDropdown (PARTIAL: Config::write)
@@ -497,20 +506,23 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 	if w.Tab != OptTabAudio {
 		return
 	}
-	if w.in(optTitleMusic, px, py) {
+	if w.Button(optTitleMusic, px, py) {
 		w.TitleMusic = !w.TitleMusic
 		if w.OnTitleMusic != nil {
 			w.OnTitleMusic(w.TitleMusic)
 		}
 		return
 	}
-	if w.in(optGameMusic, px, py) {
+	if w.Button(optGameMusic, px, py) {
 		if w.OnGameMusic != nil {
 			w.OnGameMusic()
 		}
 		return
 	}
 	if w.in(optOpenJukebox, px, py) {
+		if w.GameMusic { // prepareDraw disables it without game music
+			w.PressWidget(optOpenJukebox)
+		}
 		if w.GameMusic && w.OnOpenJukebox != nil {
 			w.OnOpenJukebox()
 		}
@@ -518,6 +530,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 	}
 	_, sx, y := optSliderRow(1) // the music slider
 	if w.in([4]int{sx, y - 3, 196, 18}, px, py) {
+		w.Button([4]int{sx, y - 3, 100, 24}, px, py) // the Slider widget: kSliderSize 100 × 24
 		v := float64(px-(w.X+sx)-optThumbHalf) / optSliderRange
 		w.MusicVolume = min(max(v, 0), 1)
 		if w.OnMusicVol != nil {

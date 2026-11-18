@@ -178,24 +178,24 @@ func newsSettingNames() [3]string {
 // widget's width − 2, the current setting marked) and scrollMouseDown.
 func (w *MessagesWindow) HandleClick(px, py int) {
 	switch {
-	case w.in([4]int{w.W - 15, 2, 13, 13}, px, py):
+	case w.Button([4]int{w.W - 15, 2, 13, 13}, px, py):
 		w.Close()
 		return
-	case w.in([4]int{3, 15, 31, 27}, px, py):
+	case w.Button([4]int{3, 15, 31, 27}, px, py):
 		w.switchTab(0)
 		return
-	case w.in([4]int{34, 15, 31, 27}, px, py):
+	case w.Button([4]int{34, 15, 31, 27}, px, py):
 		w.switchTab(1)
 		return
 	}
 	if w.Tab == 1 {
-		if w.in([4]int{messageSettingsCheckboxX, messageSettingsCheckboxY, 346, 12}, px, py) && w.OnPlaySounds != nil {
+		if w.Button([4]int{messageSettingsCheckboxX, messageSettingsCheckboxY, 346, 12}, px, py) && w.OnPlaySounds != nil {
 			w.OnPlaySounds()
 			return
 		}
 		for i := range w.Settings {
 			r := settingsDropdown(i)
-			if !w.in(r, px, py) || w.OpenDropdown == nil {
+			if !dropdownPress(&w.WinBase, r, px, py) || w.OpenDropdown == nil {
 				continue
 			}
 			var items []DropdownItem

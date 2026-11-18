@@ -106,9 +106,12 @@ func (w *KeyboardShortcutsWindow) GripBlocked(px, py int) bool { return w.in(w.l
 // row opens its editor; a separator does nothing).
 func (w *KeyboardShortcutsWindow) HandleClick(px, py int) {
 	switch {
-	case w.in([4]int{w.W - 15, 2, 13, 13}, px, py):
+	case w.Button([4]int{w.W - 15, 2, 13, 13}, px, py):
 		w.Close()
 	case w.in(w.reset(), px, py):
+		// reset_keys_btn as prepareDraw leaves it: width − 166 … width − 16 (151
+		// wide), height − 16 … height − 4.
+		w.PressWidget([4]int{w.W - 166, w.H - 16, 151, 13})
 		if w.OnReset != nil {
 			w.OnReset()
 		}
@@ -261,7 +264,7 @@ func NewEditShortcut(sw, sh int, id int, name string, titleColour, colour uint8)
 
 // HandleClick is onMouseUp: the close button.
 func (w *EditShortcutWindow) HandleClick(px, py int) {
-	if px >= w.X+265 && px < w.X+278 && py >= w.Y+2 && py < w.Y+15 {
+	if w.Button([4]int{265, 2, 13, 13}, px, py) {
 		w.Close()
 	}
 }

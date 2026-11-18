@@ -49,6 +49,13 @@ func vlBoxes(w *TownListWindow) (filter, cargo [4]int, shown bool) {
 	return [4]int{fl, w.H - 14, fr - fl + 1, 12}, [4]int{cl, w.H - 14, cr - cl + 1, 12}, w.W > 150+120+50
 }
 
+// vlPress is WinBase.Button for a filter combo box and its button (onResize:
+// right − 10 … right − 1, top + 1, 10 high).
+func vlPress(w *TownListWindow, box [4]int, px, py int) bool {
+	r := box[0] + box[2] - 1
+	return w.Button([4]int{r - 10, box[1] + 1, 10, 10}, px, py) || w.Button(box, px, py)
+}
+
 // vlDropdown draws a combo box and its button as onResize leaves them (the
 // button 10 wide at right − 10).
 func vlDropdown(rt *gfx8.RenderTarget, box [4]int, sec []uint8) {
@@ -188,7 +195,7 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 			return false
 		}
 		// filter_type_btn: Dropdown::show at the widget, width() − 4.
-		if w.in(vlFilterBox, px, py) {
+		if vlPress(w, vlFilterBox, px, py) {
 			d := NewDropdownShow(w.X+vlFilterBox[0], w.Y+vlFilterBox[1], vlFilterBox[2]-4, 11, w.Colour,
 				[]DropdownItem{{Text: vlFilterMode(0), Selected: mode == 0, MoveX10: true}, {Text: vlFilterMode(1), Selected: mode == 1, MoveX10: true},
 					{Text: vlFilterMode(2), Selected: mode == 2, MoveX10: true}}, 1<<20, 1<<20)
@@ -204,7 +211,7 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 		// cargo_type_btn (enabled but for all vehicles): Dropdown::showText,
 		// every cargo "Carrying {name} {sprite}"; the selected test compares
 		// the item index with var_852 (the cargo id) as upstream does.
-		if mode != 0 && w.in(vlCargoBox, px, py) && len(cargos) > 0 {
+		if mode != 0 && vlPress(w, vlCargoBox, px, py) && len(cargos) > 0 { // all vehicles: disabled
 			items := make([]DropdownItem, len(cargos))
 			for i, c := range cargos {
 				items[i] = DropdownItem{Text: "Carrying " + c.Name + " ", MoveX10: true, TrailSprite: c.Sprite, Selected: i == cargo}

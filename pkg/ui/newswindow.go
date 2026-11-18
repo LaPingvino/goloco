@@ -183,13 +183,18 @@ func (w *NewsWindow) MouseOver(px, py int) { w.hover = w.buttonAt(px, py) }
 // HandleClick is Common::onMouseUp.
 func (w *NewsWindow) HandleClick(px, py int) {
 	if w.onClose(px, py) {
+		w.PressWidget([4]int{w.W - 15, 2, 13, 13})
 		if w.OnDismiss != nil {
 			w.OnDismiss()
 		}
 		return
 	}
-	if i := w.buttonAt(px, py); i >= 0 && w.OnSubject != nil {
-		w.OnSubject(i)
+	if i := w.buttonAt(px, py); i >= 0 {
+		l, t, r, b := w.button(i) // viewport1Button / viewport2Button
+		w.PressWidget([4]int{l, t, r - l + 1, b - t + 1})
+		if w.OnSubject != nil {
+			w.OnSubject(i)
+		}
 	}
 }
 

@@ -138,11 +138,11 @@ func (w *MusicSelectionWindow) selected() int {
 // HandleClick is onMouseUp (close, the headers) and onScrollMouseDown.
 func (w *MusicSelectionWindow) HandleClick(px, py int) {
 	switch {
-	case w.in([4]int{w.W - 15, 2, 13, 13}, px, py):
+	case w.Button([4]int{w.W - 15, 2, 13, 13}, px, py):
 		w.Close()
-	case w.in(w.sortTitle(), px, py):
+	case w.Button(w.sortTitle(), px, py):
 		w.cycleSortMode(jukebox.SortTitleAscending, jukebox.SortTitleDescending)
-	case w.in(w.sortYears(), px, py):
+	case w.Button(w.sortYears(), px, py):
 		w.cycleSortMode(jukebox.SortYearsDescending, jukebox.SortYearsAscending)
 	case w.onBar(px, py):
 		l := w.list()

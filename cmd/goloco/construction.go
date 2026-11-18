@@ -248,40 +248,57 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 	// clickable(Construction): close_button tab_construction tab_station tab_signal tab_overhead construct rotate bridge_dropdown station_dropdown signal_dropdown both_directions single_direction checkbox_1 checkbox_2 checkbox_3 checkbox_4 image rotate_90 straight left_hand_curve left_hand_curve_large left_hand_curve_small left_hand_curve_very_small right_hand_curve right_hand_curve_large right_hand_curve_small right_hand_curve_very_small s_bend_left s_bend_right s_bend_dual_track_left s_bend_dual_track_right level slope_up slope_down steep_slope_up steep_slope_down remove
 	win.OnWindowClick = func(rx, ry int) {
 		f, st := g.constructionFrame(win.X, win.Y)
+		// press: the widget's clickDown (MouseInput; ui clicks.go)
+		press := win.PressWidget
 		if tab := f.TabAt(rx, ry); tab >= 0 || (ry >= 15 && ry < 42) { // tabs
+			if tab >= 0 {
+				press([4]int{f.TabX()[tab], 15, 31, 27})
+			}
 			g.consSwitchTab(tab)
 			return
 		}
 		if g.consTab == 3 {
 			if i := ui.OverheadHit(rx, ry, g.overheadTabState()); i >= 0 {
-				g.consMods ^= 1 << i // lastSelectedMods ^= (1 << checkbox)
+				press([4]int{3, 45 + 12*i, 132, 12}) // checkbox_1 …
+				g.consMods ^= 1 << i                 // lastSelectedMods ^= (1 << checkbox)
 			}
 			return
 		}
 		if g.consTab == 1 && g.buildMode == buildModeAirport && inRect(rx, ry, 112, 104, 24, 24) {
+			press([4]int{112, 104, 24, 24})
 			g.consStationRotate()
 			return
 		}
 		if g.consTab == 1 && inRect(rx, ry, 3, 45, 132, 12) {
+			press(consDropdownWidget([4]int{3, 45, 132, 12}, rx, ry)) // station / station_dropdown
 			g.openConsDropdown(win.X, win.Y, f.SkinColour, true)
 			return
 		}
 		if g.consTab == 2 {
-			switch ui.SignalHit(rx, ry) {
+			// SignalTab::widgets (kWidth 156, kSpacing 4, kImageButtonSize 40,
+			// the stepper 48 wide at kWidth − 52, 182).
+			const sw = ui.SignalTabW
+			switch hit := ui.SignalHit(rx, ry); hit {
 			case "dropdown":
+				press(consDropdownWidget([4]int{4, 45, sw - 8, 12}, rx, ry))
 				g.openConsDropdown(win.X, win.Y, f.SkinColour, false)
 			case "both":
+				press([4]int{(sw-8)/2 - 4 - 40, 110, 40, 40})
 				g.consSigOne = false
 			case "single":
+				press([4]int{(sw-8)/2 + 4, 110, 40, 40})
 				g.consSigOne = true
 			case "repeat": // onMouseUp auto_mode
+				press([4]int{4, 166, sw - 8, 12})
 				g.consSigRepeat = !g.consSigRepeat
 			case "stepdec":
 				if g.consSigRepeat { // disabled without repeated placement
+					press([4]int{sw - 4 - 26, 183, 13, 10})
 					g.consSigStep = max(1, g.consSigStep-1)
 				}
 			case "stepinc":
 				if g.consSigRepeat {
+					press([4]int{sw - 4 - 13, 183, 12, 10})
 					g.consSigStep = min(64, g.consSigStep+1) // kMaxSignalPlacementStepSize
 				}
 			}
@@ -289,8 +306,12 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 		}
 		hit := ui.ConstructionHit(rx, ry, st)
 		if hit == "bridge" {
+			press(consDropdownWidget([4]int{40, 123, 58, 20}, rx, ry)) // bridge / bridge_dropdown
 			g.openBridgeDropdown(win.X, win.Y, f.SkinColour, f.CompanyColour)
 			return
+		}
+		if r, ok := consTabWidget(hit, st); ok && !g.consDisabled(hit) && !(hit == "construct" && st.PieceUnbuildable) {
+			press(r)
 		}
 		g.consWidget(hit)
 	}
@@ -327,6 +348,29 @@ func (g *Game) consStationRotate() {
 // consWidget is the Construction tab's onMouseUp / onMouseDown for a widget
 // by its name (ui.ConstructionHit's; the keyboard's construction shortcuts
 // call the same): a disabled widget does nothing.
+// consDropdownWidget is the widget of dropdownWidgets(r) at window point
+// (rx, ry): the 11 × 10 button at (x + w − 12, y + 1), else the combo box.
+func consDropdownWidget(r [4]int, rx, ry int) [4]int {
+	if b := [4]int{r[0] + r[2] - 12, r[1] + 1, 11, 10}; inRect(rx, ry, b[0], b[1], b[2], b[3]) {
+		return b
+	}
+	return r
+}
+
+// consTabWidget is the rectangle of ConstructionHit's widget (ConstructionTab
+// _widgets: the piece and gradient buttons where activateSelected…Widgets
+// leaves them, construct, remove, rotate_90, copy, paste).
+func consTabWidget(hit string, st ui.ConstructionTabState) ([4]int, bool) {
+	for _, b := range st.Buttons() {
+		if b.Name == hit {
+			return [4]int{b.X, b.Y, b.W, b.H}, true
+		}
+	}
+	r, ok := map[string][4]int{"construct": {3, 145, 132, 100}, "remove": {72, 248, 39, 24}, "rotate": {111, 248, 24, 24},
+		"copy": {3, 248, 33, 24}, "paste": {36, 248, 37, 24}}[hit]
+	return r, ok
+}
+
 func (g *Game) consWidget(hit string) {
 	if g.consDisabled(hit) {
 		return // a disabled widget (setDisabledWidgets)

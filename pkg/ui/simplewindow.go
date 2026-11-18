@@ -28,7 +28,7 @@ func NewSimpleWindow(typ WindowType, x, y, width, height int) *SimpleWindow {
 // HandleClick is a left press on the window.
 func (w *SimpleWindow) HandleClick(x, y int) {
 	switch rx, ry := x-w.X, y-w.Y; {
-	case rx >= w.W-15 && rx < w.W-2 && ry >= 2 && ry < 15:
+	case w.Button([4]int{w.W - 15, 2, 13, 13}, x, y): // the close button
 		w.Close()
 	case w.OnWindowClick != nil:
 		w.OnWindowClick(rx, ry)
