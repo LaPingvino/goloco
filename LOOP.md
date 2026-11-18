@@ -228,8 +228,26 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [x] N4 Name plates follow towns and stations: every upstream updateLabel caller is ported (the station rename's last).
 > - [x] N5 The porting gap b93e074..09d74ee: audited 2026-11-14 (most already ported; fd6db41's land patterns fixed
 >       now). What's missing became N24–N31.
-> - [ ] N6 Window stack leftovers: toolbar / panels as stack windows (a dragged window covers the toolbar), drag by
->       frame, BuildVehicle / CompanyList / Company status resize, vehicle list column widths, open flash/sound.
+> - [ ] N6 Window stack leftovers. DONE 2026-11-18 (branch n6-winstack): the toolbar and the two panels are
+>       stack windows (ui.BarWindow, Gui::init's order; noBackground: the toolbar only on a button) — one list for
+>       drawing, hit-testing and placement, bringToFront upstream's swap: a pressed window now lies over the
+>       toolbar and the panels, as in the real OpenLoco (checked with olref: dragged up over the toolbar and
+>       down over the company panel); the file browser is modal (a press elsewhere flashes it, error sound);
+>       createWindow's white border flash (3 ticks) and openWindow sound, bringToFront(type, id)'s flash;
+>       drag by the bare frame / panel for the windows with full widget lists (Vehicle, BuildVehicle:
+>       FrameHitter); BuildVehicle, CompanyList (per tab, tabReset's clamp) and Company Status resizing; the
+>       vehicle list's columns and filter boxes follow its width (onResize), its scroll view to height − 15,
+>       status at x 3, scroll clear shade 1; town / station / industry list status at height − 12 and their
+>       clear shades (3 / 4 / 4); list headers kept within width − 8 / 4.
+>       LEFT: drag by frame for the windows without a widget list (Town, Industry, Station, the lists, Company,
+>       Messages, Options …: each needs its findWidgetAt); Company Status's headquarters viewport following the
+>       size; BuildVehicle onResize's rowHover (with the preview); Cargo Delivered's height from its cargo lines;
+>       the flash countdown and open sound while a text input / confirmation is up (upstream's prompt loop keeps
+>       calling WindowManager::tick; goloco's updateModal returns before it); a scroll view's content area — the
+>       real OpenLoco leaves the row and column inside its bottom / right border uncleared (vehicle list: y 197,
+>       x 545), goloco clears them; the inset font's edge pixels (1 px off on the disabled cargo arrow).
+>       Not compared with OpenLoco: the flash, drag by frame, BuildVehicle / Company Status resizing, the
+>       station / industry list shades.
 > - [ ] N7 Construction leftovers (disabled buttons greyed and the whole setDisabledWidgets — gradient, piece, traits,
 >       roads too — DONE 2026-11-14): a refused road's reason
 >       line, constructRoad's alternate-road retry, the bridge retry, shift's downward search, byte_113607E, the
