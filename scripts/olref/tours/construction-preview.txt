@@ -1,0 +1,116 @@
+# The construction window's preview (drawTrack) for every piece and gradient button
+# while hovering, then with the view turned (Enter), on the Sandbox Settler autosave
+# (README "The same world in both games"). 2026-11-18: the construct widget
+# identical to OpenLoco's in all 32 shots (only the pressed slope buttons' lower
+# edge, which reaches into the compared box, differs).
+wait 25
+click 598 14
+wait 2
+move 300 450
+wait 1
+click 14 87
+wait 1
+shot pv-00.png
+click 36 87
+wait 1
+shot pv-01.png
+click 58 87
+wait 1
+shot pv-02.png
+click 80 87
+wait 1
+shot pv-03.png
+click 102 87
+wait 1
+shot pv-04.png
+click 124 87
+wait 1
+shot pv-05.png
+click 21 111
+wait 1
+shot pv-06.png
+click 45 111
+wait 1
+shot pv-07.png
+click 69 111
+wait 1
+shot pv-08.png
+click 93 111
+wait 1
+shot pv-09.png
+click 117 111
+wait 1
+shot pv-10.png
+click 69 111
+wait 1
+click 21 138
+wait 1
+shot pv-11.png
+click 45 138
+wait 1
+shot pv-12.png
+click 93 138
+wait 1
+shot pv-13.png
+click 117 138
+wait 1
+shot pv-14.png
+click 69 138
+wait 1
+shot pv-15.png
+move 400 300
+key Enter
+wait 2
+move 300 450
+wait 1
+click 14 87
+wait 1
+shot pv-16.png
+click 36 87
+wait 1
+shot pv-17.png
+click 58 87
+wait 1
+shot pv-18.png
+click 80 87
+wait 1
+shot pv-19.png
+click 102 87
+wait 1
+shot pv-20.png
+click 124 87
+wait 1
+shot pv-21.png
+click 21 111
+wait 1
+shot pv-22.png
+click 45 111
+wait 1
+shot pv-23.png
+click 69 111
+wait 1
+shot pv-24.png
+click 93 111
+wait 1
+shot pv-25.png
+click 117 111
+wait 1
+shot pv-26.png
+click 69 111
+wait 1
+click 21 138
+wait 1
+shot pv-27.png
+click 45 138
+wait 1
+shot pv-28.png
+click 93 138
+wait 1
+shot pv-29.png
+click 117 138
+wait 1
+shot pv-30.png
+click 69 138
+wait 1
+shot pv-31.png
+quit

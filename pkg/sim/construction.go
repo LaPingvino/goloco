@@ -49,6 +49,9 @@ type ConstructionState struct {
 	// the piece just built did (0: none — GameCommands::kFailure).
 	Cost int32
 
+	// ghostFlags is byte_1136076: flags_1136073 of the last ghost placed
+	// (bit 0: it needs a bridge), 0 after a build or removal.
+	ghostFlags uint8
 	// placeUnk is byte_113607E: 0 while constructionLoop tries, 1 once a
 	// piece of it stands, 0 again with the red cross; it goes to createTrack
 	// as TrackPlacementArgs::unk, which nothing reads (CreateTrack.cpp).
@@ -93,11 +96,13 @@ func rotOffset(x, y int16, rotation uint8) (int16, int16) {
 }
 
 // ResetConstruction is the state a construction window opens with and leaves
-// behind (Common's open, then trackWindow's rotate_90): hovering, rotation
+// behind (Common::createConstructionWindow, then trackWindow's rotate_90):
+// at (0x1800, 0x1800, 0x100) — where activateSelectedConstructionWidgets
+// outlines the piece until the tool reaches the map —, hovering, rotation
 // 0, straight and level, byte_113603A clear; the bridge and mods stay the
 // window's.
 func (s *State) ResetConstruction() {
-	s.Cons = ConstructionState{Hover: true, Mods: s.Cons.Mods, Bridge: s.Cons.Bridge, BridgeList: s.Cons.BridgeList, Road: s.Cons.Road}
+	s.Cons = ConstructionState{X: 0x1800, Y: 0x1800, Z: 0x100, Hover: true, Mods: s.Cons.Mods, Bridge: s.Cons.Bridge, BridgeList: s.Cons.BridgeList, Road: s.Cons.Road}
 	s.ghostPos = [3]int32{-1, -1, -1}
 	s.ConsArrow.On = false
 }
@@ -204,7 +209,7 @@ func (s *State) ConstructTrack(c *Cmd, objID uint8) (int32, bool) {
 }
 
 func (s *State) constructTrack(c *Cmd, objID uint8) (int32, bool) {
-	s.Cons.Cost = 0
+	s.Cons.Cost, s.Cons.ghostFlags = 0, 0
 	s.RemoveConstructionGhosts(c)
 	a, ok := s.trackPlacement(objID)
 	if !ok {
@@ -236,7 +241,7 @@ func (s *State) ConstructRoad(c *Cmd, objID uint8) (int32, bool) {
 
 // constructRoad is ConstructRoad; *objID follows a switch of road type.
 func (s *State) constructRoad(c *Cmd, objID *uint8) (int32, bool) {
-	s.Cons.Cost = 0
+	s.Cons.Cost, s.Cons.ghostFlags = 0, 0
 	s.RemoveConstructionGhosts(c)
 	a, ok := s.roadPlacement(*objID)
 	if !ok {
@@ -321,7 +326,7 @@ func (s *State) retreat(tc TrackCoord) {
 // false: nothing behind the position (as upstream, nothing happens — the
 // ghost comes back with the next update).
 func (s *State) ConstructionRemoveTrack(c *Cmd, objID uint8, g1 G1Raw) (removed, refused bool) {
-	s.Cons.Cost = 0
+	s.Cons.Cost, s.Cons.ghostFlags = 0, 0
 	s.RemoveConstructionGhosts(c)
 	cs := &s.Cons
 	if cs.Hover {
@@ -379,7 +384,7 @@ const roadObjectUnk02 = 1 << 2
 // unk_02; each taken up by the removeRoad game command — a refusal stops
 // there, the position unmoved — and the state moves back over the last.
 func (s *State) ConstructionRemoveRoad(c *Cmd, objID uint8, g1 G1Raw) (removed, refused bool) {
-	s.Cons.Cost = 0
+	s.Cons.Cost, s.Cons.ghostFlags = 0, 0
 	s.RemoveConstructionGhosts(c)
 	cs := &s.Cons
 	if cs.Hover {
@@ -534,6 +539,7 @@ func (s *State) UpdateConstruction(c *Cmd, road bool, objID uint8) {
 		} else if g := s.RoadGhost; g == nil || *g != (RoadGhost{a.X, a.Y, a.Z, a.Rotation, a.RoadID, a.RoadObjectID}) {
 			s.RemoveTrackGhost(c)
 			s.placeRoadGhost(c, a)
+			s.Cons.ghostFlags = c.Flags73
 			s.adoptBridge(c)
 			s.ActivateSelection()
 		}
@@ -543,6 +549,7 @@ func (s *State) UpdateConstruction(c *Cmd, road bool, objID uint8) {
 		} else if g := s.TrackGhost; g == nil || *g != (TrackGhost{a.X, a.Y, a.Z, a.Rotation, a.TrackID, a.TrackObjectID}) {
 			s.RemoveRoadGhost(c)
 			s.placeTrackGhost(c, a)
+			s.Cons.ghostFlags = c.Flags73
 			s.adoptBridge(c)
 			s.ActivateSelection()
 		}
@@ -574,6 +581,10 @@ func (s *State) ActivateSelection() {
 	s.ConsSelection.On, s.ConsSelection.Unk03 = true, true
 	s.setSelectedTilesFromPiece(pieces[id], cs.X, cs.Y, rot&3)
 }
+
+// GhostNeedsBridge is byte_1136076 & 1: the last ghost placed needs a
+// bridge (the window shows its bridge box while building on).
+func (s *State) GhostNeedsBridge() bool { return s.Cons.ghostFlags&1 != 0 }
 
 // adoptBridge is sub_4A193B (0x004A193B): the bridge of the bridged element
 // the last placement met (byte_1136075), when it is in the window's list,
@@ -608,6 +619,7 @@ func (s *State) EndConstruction(c *Cmd) {
 	s.RemoveConstructionGhosts(c)
 	s.ConsArrow.On = false
 	s.ConsSelection.On = false // toolCancel / onClose: enableConstruct off
+	s.Cons.ghostFlags = 0      // switchTab: byte_1136076 = 0
 }
 
 // ConstructionEnd is one end of a piece as the construction state takes it
@@ -661,7 +673,7 @@ func (s *State) ConstructionOpenAt(end ConstructionEnd, mods uint8) {
 	cs.X, cs.Y, cs.Z, cs.Rotation = end.X, end.Y, end.Z, end.Rotation
 	cs.Piece, cs.Gradient = 0, 0
 	cs.Mods = mods
-	cs.Cost = 0
+	cs.Cost, cs.ghostFlags = 0, 0
 	cs.arrowBlink, cs.arrowFrame = false, 0
 	s.ActivateSelection()
 }

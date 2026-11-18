@@ -266,6 +266,7 @@ func (m *Map) createTrack(c *Cmd, a trackPlacementArgs, flags uint8) (int32, boo
 	r, ok := m.createTrackCheck(c, a, flags)
 	c.PosFlags = r.State.PosFlags
 	c.Bridge = r.State.Bridge
+	c.Flags73 = r.State.Flags73
 	if !ok || !m.createTrackApply(c, a, flags, &r) {
 		return 0, false
 	}

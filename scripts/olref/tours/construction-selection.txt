@@ -1,7 +1,7 @@
 # The construction tool's selected tiles (enableConstruct: the white outline under
 # the piece) and shift's search down, on the Sandbox Settler autosave (flat
 # desert; README "The same world in both games"). 2026-11-18: the map identical
-# to OpenLoco's in all four shots (the preview in the window differs: N7).
+# to OpenLoco's in all four shots.
 wait 25
 click 598 14          # the track menu's default: Railway Track at 0,30
 wait 2
