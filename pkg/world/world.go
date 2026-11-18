@@ -47,6 +47,7 @@ type World struct {
 	viewFlags              paint.ViewFlags       // the main viewport's flags (viewflags.go)
 	townScene              *scene.Renderer       // the Town window's viewport (townview.go)
 	newsScene              [2]*scene.Renderer    // the news window's two viewports (newsview.go)
+	previewScene           *scene.Renderer       // the construction window's piece preview (piecepreview.go)
 	catchment              []uint8               // SetCatchmentDisplay's map (nil: none)
 	selOn                  bool                  // SetMapSelection: the selection is shown
 	selArea                [4]int                // its tiles: min x, min y, max x, max y

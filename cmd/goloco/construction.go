@@ -1,9 +1,9 @@
 package main
 
 import (
-	"image"
 
 	"github.com/LaPingvino/goloco/pkg/construct"
+	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/shortcuts"
@@ -234,18 +234,16 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 			ui.DrawOverheadTab(screen, f, g.overheadTabState())
 			return
 		}
-		ui.DrawConstructionTab(screen, f, st)
-		// The piece preview in the construct area (goloco's preview drawing;
-		// PARTIAL: upstream draws it with the paint code, drawTrack).
-		if clip, ok := screen.SubImage(image.Rect(x+4, y+146, x+3+132-1, y+145+100-1)).(*ebiten.Image); ok {
-			id, rot := -1, int(g.w.Cons.Rotation)&3
-			if p, ok := g.consPiece(); ok {
-				id, rot = int(p.ID), int(p.Rotation)&3
+		// draw: the piece preview in the construct widget, painted as the
+		// map is (drawTrackCost / drawRoadCost → drawTrack / drawRoad), in
+		// the piece's direction with the arrow, the window's mods.
+		if p, ok := g.consPiece(); ok {
+			road, obj, mods := g.consIsRoad(), g.buildObjID, g.w.Cons.Mods
+			st.Preview = func(rt *gfx8.RenderTarget) {
+				g.w.PaintPiecePreview(rt, road, int(p.ID), obj, p.Rotation, mods)
 			}
-			// drawTrack / drawRoad paint with options.rotation = getCurrentRotation():
-			// the piece shows as the view shows it.
-			g.w.DrawPiecePreview(clip, float64(x+3+66), float64(y+145+28), 1.0, g.consIsRoad(), id, g.buildObjID, (rot+int(g.w.Rotation()))&3)
 		}
+		ui.DrawConstructionTab(screen, f, st)
 	}
 	// clickable(Construction): close_button tab_construction tab_station tab_signal tab_overhead construct rotate bridge_dropdown station_dropdown signal_dropdown both_directions single_direction checkbox_1 checkbox_2 checkbox_3 checkbox_4 image rotate_90 straight left_hand_curve left_hand_curve_large left_hand_curve_small left_hand_curve_very_small right_hand_curve right_hand_curve_large right_hand_curve_small right_hand_curve_very_small s_bend_left s_bend_right s_bend_dual_track_left s_bend_dual_track_right level slope_up slope_down steep_slope_up steep_slope_down remove
 	win.OnWindowClick = func(rx, ry int) {
