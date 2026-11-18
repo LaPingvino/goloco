@@ -168,8 +168,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)
 > 2. The map window (PORT-PLANS A): function first (finding towns/industries, centring the view), pixels later.
-> 3. N7 construction: the bridge retry, the alternate-road retry, shift's downward search, a refused road's reason,
->    the selected-tile outline, the error window at the cursor.
+> 3. N7 construction: the list DONE 2026-11-18 (branch n7-construction); what is left is listed under N7.
 > 4. N19 tool cursors (which tool is active).
 > 5. N31 landscape generation leftovers (random new games only).
 > Then, as time allows ("the rest can make do"): sounds steps 3–4 and window clicks, zoom 2×/4×, N6/N17 window
@@ -249,9 +248,34 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       Not compared with OpenLoco: the flash, drag by frame, BuildVehicle / Company Status resizing, the
 >       station / industry list shades.
 > - [ ] N7 Construction leftovers (disabled buttons greyed and the whole setDisabledWidgets — gradient, piece, traits,
->       roads too — DONE 2026-11-14): a refused road's reason
->       line, constructRoad's alternate-road retry, the bridge retry, shift's downward search, byte_113607E, the
->       selected-tile outline, the preview's arrow, the error window at the cursor.
+>       roads too — DONE 2026-11-14). The 2026-11-13 list DONE 2026-11-18 (branch n7-construction), each ported from
+>       ConstructionTab.cpp / CreateRoad.cpp with a test: a refused road's reason line (every createRoad / clearRoad /
+>       clearTrack setErrorText with its name; every command starts with no error text, loc_4313C6); constructRoad's
+>       alternate-road retry (sub_4A18D4, Common::sub_4A3A50); the bridge retry (placeTrackGhost / placeRoadGhost
+>       after a piece button, byte_113603A — upstream retries with the old args, kept), sub_4A193B (the bridge met)
+>       and byte_1136076 (the bridge box while building on when the ghost needs a bridge); shift's downward search
+>       (tool update, ghost loop, click, constructionLoop); byte_113607E (kept and passed as TrackPlacementArgs::unk,
+>       which nothing reads); the selected-tile outline (enableConstruct: the tool's white unk25 outline, over water
+>       at the water surface, and activateSelectedConstructionWidgets' orange unk_03 outline under the next piece
+>       while building; the window opens at 0x1800, 0x1800, 0x100 as upstream); the preview's arrow — the preview is
+>       drawTrack / drawRoad through the paint code now (pkg/world/piecepreview.go; the old sprite compositor, which
+>       drew a curve as a straight, is gone), the construct widget drawn activated while it is the tool's; the error
+>       window at the cursor was already Error.cpp's placement — a refused map click now opens it quietly and plays
+>       the error sound at the mouse's x (constructionLoop).
+>       Compared with OpenLoco (scripts/olref tours construction-rail, -road, -selection, -preview, and a lake on the
+>       title save; rotation 0 only, plus the preview with the view turned once; flat desert and one lake; no mods,
+>       no bridges): the map identical in every hovering shot (white outline, shift, curve); the construct widget
+>       identical in all 13 shots of the rail and road tours and all 32 of the preview tour (every piece and
+>       gradient); the orange outline identical where looked at (cr-04, cr-08); the other building shots differ only
+>       by the arrow's blink phase and money-effect text; cr-12's two grass tiles (regrown in OpenLoco, still bare
+>       in goloco, the same on the pre-N7 base) are the tile loop's timing, not N7's.
+>       LEFT: checkCompanyCompatibility's kErrorBelongsToOther (the competitor's error window, also for track);
+>       canConstructAtWithClear's own error texts (off_edge_of_map, another_company_is_about_to_build_here,
+>       cannot_build_partly_above_below_water — goloco names only the collision); the Station tab's enableConstruct
+>       tiles (StationTab.cpp 292–364); the copy / paste (blueprint) tools; not compared: other rotations of the map
+>       outline, bridges and mods in the preview, the bridge box while building on. Seen on the way, not N7's: the
+>       error window's translucent fill is lighter than OpenLoco's (cr-07, cr-12: same place, same text); money
+>       effects that overlap stack downwards in goloco, OpenLoco draws them on one line (N12).
 > - [x] N8 One-way road arrows — done with N23.
 > - [ ] (plan: docs/PORT-PLANS.md B) N9 Sounds: the sim has no sound queue (crash, splash, chuff, construction, UI clicks). Step 1 done 2026-11-15: SoundObject loader + css1.dat reader; step 2 begun: the Effects mixer (pkg/audio/effects.go); wired, and most effect sounds done (PORT-PLANS B lists them); left: window widget clicks, then step 3 vehicle audio and step 4 ambient.
 > - [ ] (plan: docs/PORT-PLANS.md E, docs/GAMEPAD.md) N37 Gamepad and focus navigation: six steps, start with step 1 (pad input + free cursor).
@@ -328,7 +352,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       the editor (N14).
 > - [ ] N32 View leftovers: (the shortcut keys: N33 — rebound in openloco.yml, the window is N34); Config gridlinesOnLandscape
 >       (the Options checkbox: gridlines kept after a window closes, and in the town / station / vehicle viewports);
->       the copy / paste tools' overground view (no such tools); the placeTrackGhost bridge retry; in the underground
+>       the copy / paste tools' overground view (no such tools); (the placeTrackGhost bridge retry: DONE with N7); in the underground
 >       view at 186,143 (title game) OpenLoco draws a dark face over the tunnel's road at screen 410–428, 396–414
 >       that goloco doesn't (unexplained: paintSurfaceCliffEdgeImpl's underground image is attached some 500 px below
 >       its tile at that height, as upstream's yOffset reads); not checked against OpenLoco: a ghost under the ground
@@ -337,7 +361,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       not the View menu's: the toolbar menus' translucent colour differs from OpenLoco's (the title game: goloco
 >       grey-green over the map, OpenLoco the company's green); goloco draws a dark strip across the whole top
 >       toolbar, OpenLoco only the buttons; after a curve is built the construction window's preview goes back to
->       the straight (OpenLoco keeps the curve, with the bridge dropdown) and the ghost's arrow is missing; the
+>       the straight (OpenLoco keeps the curve, with the bridge dropdown) and the ghost's arrow is missing (N7,
+>       2026-11-18: the state kept the curve — goloco's old preview drew it as a straight, without an arrow; the
+>       preview is upstream's drawTrack now, arrow and all; the map's arrow blinks in both; the bridge box while
+>       extending, byte_1136076, ported too — not compared); the
 >       station tab's image is blank on a one-way road; snow and farm fields differ from OpenLoco some seconds into
 >       the title game (snow coverage under the bridges at 82,182; haystacks at 105,127); paintSignalSide draws no
 >       lights (hasLights red / green children); paintSurfaceCliffEdge's hideTopSection
