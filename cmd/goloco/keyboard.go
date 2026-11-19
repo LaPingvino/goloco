@@ -243,7 +243,7 @@ func (g *Game) hasKeyModifier(m shortcuts.KeyModifier) bool { return g.kb.modifi
 // PARTIAL: Input::State::dropdownActive scrolls too upstream; the news
 // window's viewportNoScrolling.
 func (g *Game) edgeScroll() {
-	if !ebiten.IsFocused() || g.noEdgeScrolling || g.vpRight.on || g.wins.Dragging() {
+	if !ebiten.IsFocused() || g.noEdgeScrolling || g.rightDragging() || g.wins.Dragging() {
 		return
 	}
 	if g.hasKeyModifier(shortcuts.ModShift) || g.hasKeyModifier(shortcuts.ModControl) {

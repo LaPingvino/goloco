@@ -1,0 +1,40 @@
+# The right drag in a scroll view (MouseInput scrollDragBegin / stateScrollRight,
+# ScrollView verticalDragFollow) on the title game (untitle.py), one script for
+# both games: the Towns list, a 20 px drag down, then 8 px back up — released
+# at the press point (both put the pointer back there every frame, so each
+# absolute move counts from it). goloco: sed the shot names to a scratch
+# directory, the game has to start in the repository.
+# 2026-11-19, OpenLoco 09d74ee: the list scrolls the thumb's way in both, the
+# hovered row stays under the held pointer; OpenLoco ends 1 px short (60, not
+# 20 × 321 / 104 = 61): it takes the move over several frames, each step
+# truncated — a 40 px drag gives about 121 there, 123 in one step.
+wait 12
+click 688 592
+wait 0.5
+click 571 451
+wait 0.5
+press 784 14
+wait 0.5
+move 760 42
+wait 0.5
+release 760 42
+wait 1.5
+move 400 130
+wait 1
+shot sr-0.png
+rightpress 400 130
+wait 0.3
+move 400 150
+wait 0.5
+shot sr-1.png
+rightrelease 400 130
+wait 0.5
+shot sr-2.png
+rightpress 400 130
+wait 0.3
+move 400 122
+wait 0.5
+rightrelease 400 130
+wait 0.5
+shot sr-3.png
+quit

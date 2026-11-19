@@ -46,6 +46,8 @@ const (
 	soundVehiclePlace  = 19
 	soundVehiclePickup = 20
 	soundConstructShip = 21
+	soundDemolishTree  = 17
+	soundDemolishBldg  = 18
 )
 
 // playPickupSound is VehiclePickup.cpp's: the pickup sound at Vehicle2,
@@ -100,6 +102,27 @@ func (m *Map) playRemovalSound(c *Cmd, x, y, z int32) {
 		freq = c.Rng2.RandNextRange(17955, 26146)
 	}
 	m.playSoundVF(soundDemolish, ChannelEffects, x, y, z, 0, freq)
+}
+
+// playDemolishTreeSound is TileManager.cpp's (0x0048B089): the tree's
+// demolish sound, 11 dB down, its frequency from gPrng2.
+func (m *Map) playDemolishTreeSound(c *Cmd, x, y, z int32) {
+	freq := int32(22050)
+	if c.Rng2 != nil {
+		freq = c.Rng2.RandNextRange(20003, 24098)
+	}
+	m.playSoundVF(soundDemolishTree, ChannelEffects, x, y, z, -1100, freq)
+}
+
+// playDestructExplosionSound is createDestructExplosion's sound
+// (TileManager.cpp 0x0048B0C7): the building's demolish sound, 14 dB down,
+// its frequency from gPrng2.
+func (m *Map) playDestructExplosionSound(c *Cmd, x, y, z int32) {
+	freq := int32(22050)
+	if c.Rng2 != nil {
+		freq = c.Rng2.RandNextRange(20003, 24098)
+	}
+	m.playSoundVF(soundDemolishBldg, ChannelEffects, x, y, z, -1400, freq)
 }
 
 // TakeSounds returns the sounds queued since the last call and empties the

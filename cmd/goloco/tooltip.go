@@ -72,6 +72,11 @@ func (t *tooltipState) close(now time.Time) {
 // updateTooltip runs the timing each update.
 func (g *Game) updateTooltip() {
 	t, now := &g.tip, gameNow()
+	if g.rightDragging() { // the tooltips' timing runs in State::normal only (stateNormalHover)
+		t.close(now)
+		t.text, t.since = "", now
+		return
+	}
 	text := g.windowTooltip()
 	if text != t.text || g.mouseX != t.x || g.mouseY != t.y { // moved, or another tooltip
 		t.close(now)
