@@ -9,9 +9,11 @@ import (
 	"github.com/LaPingvino/goloco/pkg/ui"
 )
 
-// openMap is MapWindow::open (PORT-PLANS A, step 1a): the one map window,
-// brought to the front when open; the skin's windowTitlebarColour and
-// windowMapColour; the buffer cleared (clearMap), filled as it updates.
+// openMap is MapWindow::open (0x0046B490; PORT-PLANS A, steps 1a and 1c): the
+// one map window, brought to the front when open; the skin's
+// windowTitlebarColour and windowMapColour; the buffer cleared (clearMap),
+// filled as it updates; centred on the main view (centerOnViewPoint);
+// mapFrameNumber 0.
 func (g *Game) openMap() {
 	if w := g.wins.Find(ui.WindowTypeMap, ui.AnyNumber); w != nil {
 		g.wins.BringToFront(w)
@@ -23,7 +25,30 @@ func (g *Game) openMap() {
 	}
 	w := ui.NewMapWindow(sim.NewMapBuffer(), tc, mc) // clearMap
 	w.Rotation = g.w.Map.CurrentRotation
+	w.MainView = g.mapMainView
+	w.OnCentre = g.w.CentreOnMapView // moveMainViewToMapView
 	g.showAuto(w, 0, 0)
+	w.CentreOnViewPoint()
+}
+
+// mapMainView is the main window's viewports[0] as the map window reads it:
+// viewX / viewY and viewWidth / viewHeight (viewport coordinates), and
+// getCurrentRotation.
+func (g *Game) mapMainView() ui.MapMainView {
+	v := g.w.MainViewport().View
+	return ui.MapMainView{X: v.X, Y: v.Y, W: v.W << v.Zoom, H: v.H << v.Zoom, Rotation: g.w.Rotation(), OK: true}
+}
+
+// rotateView is a rotation of the main view by its callers — Shortcuts.cpp
+// rotateView (l. 101), MouseInput.cpp's wheel with the right button held
+// (l. 1916), ToolbarTop.cpp rotateMenuDropdown (l. 645): viewportRotateRight
+// / Left with updateLabels (World.RotateView), then
+// MapWindow::centerOnViewPoint.
+func (g *Game) rotateView(right bool) {
+	g.w.RotateView(right)
+	if w, ok := g.wins.Find(ui.WindowTypeMap, ui.AnyNumber).(*ui.MapWindow); ok {
+		w.CentreOnViewPoint()
+	}
 }
 
 // mapChatMenu is TimePanel.cpp mapMouseDown (0x0043A67F) outside a network
@@ -42,9 +67,11 @@ func (g *Game) mapChatMenu(x, y, w, h int) {
 	g.dropdown = d
 }
 
-// updateMap is MapWindow's onUpdate (each frame): a new view rotation
-// clears the buffer (var_846), then 80 rows are filled (setMapPixels).
+// updateMap is MapWindow's onUpdate (0x0046BA5B, each frame): mapFrameNumber
+// counts, a new view rotation clears the buffer (var_846), then 80 rows are
+// filled (setMapPixels).
 func (g *Game) updateMap(w *ui.MapWindow) {
+	w.FrameNo++
 	m := &g.w.Map
 	if m.CurrentRotation != w.Rotation {
 		w.Rotation = m.CurrentRotation

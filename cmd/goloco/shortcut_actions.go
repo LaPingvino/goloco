@@ -33,7 +33,7 @@ var shortcutActions = [shortcuts.Count]func(g *Game){
 	// view's centre, not the cursor.
 	shortcuts.ZoomViewOut:                    func(g *Game) { g.w.ZoomOut() },
 	shortcuts.ZoomViewIn:                     func(g *Game) { g.w.ZoomIn() },
-	shortcuts.RotateView:                     func(g *Game) { g.w.RotateView(true) }, // viewportRotateRight
+	shortcuts.RotateView:                     func(g *Game) { g.rotateView(true) }, // rotateView: viewportRotateRight, centerOnViewPoint
 	shortcuts.RotateConstructionObject:       (*Game).rotateConstructionObject,
 	shortcuts.ToggleUndergroundView:          toggleView(paint.ViewUnderground),
 	shortcuts.ToggleSeeThroughTracks:         toggleView(paint.ViewSeeThroughTracks),

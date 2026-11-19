@@ -1,0 +1,62 @@
+# Playthrough T: the map window's centring (MapWindow.cpp centerOnViewPoint,
+# scrollMouseDown / scrollMouseDrag; PORT-PLANS A step c). As G (seed 1950,
+# Weatherworld, the fixed view by Cloudburst: viewX 5680, viewY 4532, 800 × 600
+# at zoom 0). M opens the map at (0, 30), its scroll view's content from
+# (4, 75), 229 × 204 visible. Worked by hand:
+# - open: vpCentre ((400 + 5680) / 32, (300 + 4532) / 16) = (190, 302), plus
+#   rotation 0's frame offset (384, 0), less half the visible part (114, 102):
+#   offset (460, 200);
+# - a click at (50, 200): content (50 − 4 + 460, 200 − 75 + 200) = (506, 325),
+#   mapWindowPosToLocation ((506 + 8 − 384) / 2, (325 + 8) / 2) = (65, 166):
+#   tile (101, 231) = (3232, 7392), land height 28 · 4 = 112 there; the view
+#   centred on it: viewX 7392 − 3232 − 400 = 3760, viewY (3232 + 7392) / 2 −
+#   112 − 300 = 4900;
+# - a drag on to (120, 150): content (576, 275), tile (41, 241): viewX
+#   7712 − 1312 − 400 = 6000;
+# - a press at x 235, on the vertical bar's strip (x ≥ the widget's right 242 − 11), does
+#   not move the view;
+# - Enter (rotate): the map re-centred on the turned view — rotation 1's frame
+#   offset (768, 384): ((400 + viewX) / 32 + 768 − 114, (300 + viewY) / 16 +
+#   384 − 102).
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+expect camx == 5680
+expect camy == 4532
+expect mapscrollx == -1
+key M
+wait 5
+expect mapscrollx == 460
+expect mapscrolly == 200
+shot /tmp/goloco-playthrough/pt-t1-open.png
+click 50 200
+wait 2
+expect height@101,231 == 28
+expect camx == 3760
+expect camy == 4900
+press 50 200
+wait 1
+move 120 150
+wait 2
+expect camx == 6000
+release 120 150
+wait 1
+move 400 400
+wait 1
+expect camx == 6000
+click 235 150
+wait 2
+expect camx == 6000
+shot /tmp/goloco-playthrough/pt-t2-drag.png
+key ENTER
+wait 3
+expect rotation == 1
+expect camx == -9424
+expect camy == 2820
+expect mapscrollx == 372
+expect mapscrolly == 477
+shot /tmp/goloco-playthrough/pt-t3-rotated.png
+quit

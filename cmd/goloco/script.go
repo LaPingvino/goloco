@@ -496,6 +496,14 @@ func (g *Game) scriptExpect() {
 		if req[0] == "camy" {
 			got = int64(cy)
 		}
+	case "mapscrollx", "mapscrolly": // the map window's scroll offset (its content's x / y); -1 closed
+		got = -1
+		if w, ok := g.wins.Find(ui.WindowTypeMap, ui.AnyNumber).(*ui.MapWindow); ok {
+			got = int64(w.ScrollX)
+			if req[0] == "mapscrolly" {
+				got = int64(w.ScrollY)
+			}
+		}
 	case "townlist", "stationlist", "vehiclelist", "industrylist", "companywindow": // 1 while such a window is open
 		typ := map[string]ui.WindowType{"townlist": ui.WindowTypeTownList, "stationlist": ui.WindowTypeStationList,
 			"vehiclelist": ui.WindowTypeVehicleList, "industrylist": ui.WindowTypeIndustryList, "companywindow": ui.WindowTypeCompany}[req[0]]
