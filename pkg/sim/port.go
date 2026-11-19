@@ -163,13 +163,13 @@ func (m *Map) portBuilding(c *Cmd, stationID int, a PortPlacement, flags uint8, 
 			if t.Type6Flag {
 				return 0, false // water_channel_currently_needed_by_ships
 			}
-			if ok, _ := m.ApplyClearAtStandardHeight(px, py, argBaseZ, argClearZ, 0xF, 0xF, clear); !ok {
+			if ok, _ := m.ApplyClearAtStandardHeight(c, px, py, argBaseZ, argClearZ, 0xF, 0xF, clear); !ok {
 				return 0, false
 			}
 		} else {
 			baseZ := min(min(t.BaseZ, argBaseZ), argClearZ)
 			clearZ := max(max(t.BaseZ, argBaseZ), argClearZ)
-			if ok, _ := m.ApplyClearAtStandardHeight(px, py, baseZ, clearZ, 0xF, 0xF, clear); !ok {
+			if ok, _ := m.ApplyClearAtStandardHeight(c, px, py, baseZ, clearZ, 0xF, 0xF, clear); !ok {
 				return 0, false
 			}
 			t = m.TileAt(tx, ty)

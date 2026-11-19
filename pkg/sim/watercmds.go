@@ -78,7 +78,7 @@ func (m *Map) adjustWaterHeight(c *Cmd, px, py int32, target int, removed Remove
 	clear := func(tt *Tile, k int) ClearResult {
 		return m.tileClearFunction(c, tt, k, px, py, removed, flags, &total, true)
 	}
-	if ok, _ := m.ApplyClearAtAllHeights(px, py, uint8(min(target, ref)), uint8(max(target, ref)), 0xF, 0, clear); !ok {
+	if ok, _ := m.ApplyClearAtAllHeights(c, px, py, uint8(min(target, ref)), uint8(max(target, ref)), 0xF, 0, clear); !ok {
 		return 0, false
 	}
 	if t.Type6Flag {

@@ -149,7 +149,7 @@ func (g *Game) stationToolUp(sx, sy int) {
 	}
 	c, g1 := g.stationCmd()
 	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return g.w.Map.CreateTrainStation(c, f, a, g1) }); !ok { // GameCommands::doCommand: checked, then charged
-		g.openError(title, cmdErrorText(c))
+		g.openCmdError(title, c)
 		return
 	}
 	g.playCommandSound(audio.SoundConstruct, c)
@@ -272,14 +272,18 @@ func (g *Game) dockArgsAt(sx, sy int) (sim.PortPlacement, int, bool) {
 // dockToolUpdate is StationTab's onToolUpdateDock: the ghost dock follows
 // the cursor (createPort with apply | noErrorWindow | noPayment | ghost),
 // its cost, the catchment shown (sub_491D20) and its cargo
-// (calcAcceptedCargoDockGhost). PARTIAL: the construction arrow and the
-// selected 2×2 tiles (map selection).
+// (calcAcceptedCargoDockGhost); first the map selection — the dock's 2 × 2
+// tiles outlined and the construction arrow at it, both off when no dock
+// fits there (SetStationToolSelection).
 func (g *Game) dockToolUpdate(sx, sy int) {
+	g.w.ClearStationToolSelection()
 	a, _, ok := g.dockArgsAt(sx, sy)
 	if !ok {
 		g.removeStationGhost()
 		return
 	}
+	x0, y0, x1, y1 := sim.DockToolTiles(a.X, a.Y)
+	g.w.SetStationToolSelection(x0, y0, x1, y1, sim.ConstructionArrow{X: a.X, Y: a.Y, Z: a.Z, Direction: a.Rotation})
 	if gh := g.dockGhost; gh != nil && gh.X == a.X && gh.Y == a.Y && gh.Z == a.Z && gh.Rotation == a.Rotation && gh.Type == a.Type {
 		return
 	}
@@ -342,13 +346,18 @@ func (g *Game) airportArgsAt(sx, sy int) (sim.AirportPlacement, int, bool) {
 
 // airportToolUpdate is StationTab's onToolUpdateAirport: the ghost airport
 // follows the cursor, its cost, the catchment (sub_491C6F) and its cargo
-// (calcAcceptedCargoAirportGhost). PARTIAL: the construction arrow and the
-// selected tiles of its extents.
+// (calcAcceptedCargoAirportGhost); first the map selection — the tiles of
+// its extents outlined and the construction arrow at it, both off when no
+// airport fits there (SetStationToolSelection).
 func (g *Game) airportToolUpdate(sx, sy int) {
+	g.w.ClearStationToolSelection()
 	a, typ, ok := g.airportArgsAt(sx, sy)
 	if !ok {
 		g.removeStationGhost()
 		return
+	}
+	if x0, y0, x1, y1, ok := sim.AirportToolTiles(g.r.ObjMgr, a.Type, a.X, a.Y, a.Rotation); ok {
+		g.w.SetStationToolSelection(x0, y0, x1, y1, sim.ConstructionArrow{X: a.X, Y: a.Y, Z: a.Z, Direction: a.Rotation})
 	}
 	if gh := g.airportGhost; gh != nil && *gh == a {
 		return

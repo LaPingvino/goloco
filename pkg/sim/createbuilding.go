@@ -104,7 +104,7 @@ func (m *Map) CreateBuilding(c *Cmd, flags uint8, a BuildingPlacement) (int32, b
 			}
 			return ClearCollision
 		}
-		if ok, _ := m.ApplyClearAtStandardHeight(px, py, baseZ, clearZ, 0xF, 0xF, clear); !ok {
+		if ok, _ := m.ApplyClearAtStandardHeight(c, px, py, baseZ, clearZ, 0xF, 0xF, clear); !ok {
 			return 0, false
 		}
 		t = m.TileAt(tx, ty)

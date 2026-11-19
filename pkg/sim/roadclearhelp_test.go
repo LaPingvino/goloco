@@ -44,10 +44,13 @@ func TestClearRoadHelpers(t *testing.T) {
 		}
 	}
 	co := &Cmd{Company: 2}
-	if !co.companyCompatible(2) || !co.companyCompatible(CompanyNeutral) || co.companyCompatible(3) {
-		t.Error("companyCompatible")
+	if !co.checkRoadCompatibility(2, 0) || !co.checkRoadCompatibility(CompanyNeutral, 0) || co.ErrorText != 0 {
+		t.Error("checkRoadCompatibility: its own and a neutral road")
 	}
-	if !c.companyCompatible(3) {
+	if co.checkRoadCompatibility(3, 5) || co.ErrorText != ErrorBelongsToOther || co.ErrorCompany != 3 || co.ErrorKind != ErrorKindRoad || co.ErrorObject != 5 {
+		t.Errorf("another company's road: %+v", co)
+	}
+	if !c.checkRoadCompatibility(3, 0) {
 		t.Error("a town (neutral) may build over any company's road")
 	}
 	ai := &Cmd{Company: 2}

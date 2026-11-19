@@ -63,7 +63,7 @@ func (m *Map) trackClearTrack(c *Cmd, st *trackCmdState, e *scenario.TrackElemen
 		c.ErrorText = i18n.JunctionsNotPossible
 		return ClearCollisionErrorSet
 	}
-	if !c.companyCompatible(e.Owner) {
+	if !c.checkTrackCompatibility(e.Owner, e.TrackObjectID) {
 		return ClearCollisionErrorSet
 	}
 	if TrackMiscFlags[e.TrackID]&(commonTraitSlope|commonTraitSteepSlope) != 0 ||

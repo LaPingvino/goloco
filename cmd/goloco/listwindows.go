@@ -532,7 +532,7 @@ func (g *Game) renameTown(id int, win *ui.ViewWindow) {
 			if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) {
 				return m.RenameTown(c, f, id, text, g1)
 			}); !ok {
-				g.openError(i18n.Label(i18n.ErrorCantRenameTown), cmdErrorText(c))
+				g.openCmdError(i18n.Label(i18n.ErrorCantRenameTown), c)
 				return
 			}
 			if infos := g.w.TownList(); id < len(infos) {
@@ -564,7 +564,7 @@ func (g *Game) renameIndustry(idx int, win *ui.ViewWindow) {
 			if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) {
 				return m.RenameIndustry(c, f, idx, text, g.r.ObjMgr)
 			}); !ok {
-				g.openError(i18n.Label(i18n.ErrorCantRenameIndustry), cmdErrorText(c))
+				g.openCmdError(i18n.Label(i18n.ErrorCantRenameIndustry), c)
 				return
 			}
 			win.Title, _ = m.IndustryName(idx, g.r.ObjMgr)

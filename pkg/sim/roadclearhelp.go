@@ -9,9 +9,8 @@ import (
 )
 
 // clearRoad's helpers (GameCommands/Road/CreateRoad.cpp 201–254, and
-// GameCommands.cpp's checkCompanyCompatibility), item 5.9f3, with their
-// error texts (setErrorText). PARTIAL: checkCompanyCompatibility's
-// kErrorBelongsToOther (the competitor's error window) is not kept.
+// companycompat.go's checkRoadCompatibility), item 5.9f3, with their error
+// texts (setErrorText).
 
 // roadTraitJunction is RoadTraitFlags::junction.
 const roadTraitJunction = 1 << 6
@@ -22,12 +21,6 @@ func (c *Cmd) roadObject(id uint8) *objects.RoadObject {
 		return c.Objects.RoadObjects[id]
 	}
 	return nil
-}
-
-// companyCompatible is checkCompanyCompatibility(Common): a neutral owner, or
-// the updating company owns it, or the updating company is neutral (a town).
-func (c *Cmd) companyCompatible(owner uint8) bool {
-	return owner == CompanyNeutral || c.Company == owner || c.Company == CompanyNeutral
 }
 
 // aiUnkCheck is CreateRoad.cpp's aiUnkCheck.
@@ -136,7 +129,7 @@ func (m *Map) clearRoad(c *Cmd, st *roadCmdState, e *scenario.RoadElement, a roa
 		return roadRes(ClearCollisionErrorSet)
 	}
 	if m.RoadUsableByAll&(1<<e.RoadObjectID) == 0 || m.RoadUsableByAll&(1<<a.RoadObjectID) == 0 {
-		if !c.companyCompatible(e.Owner) {
+		if !c.checkRoadCompatibility(e.Owner, e.RoadObjectID) {
 			return roadRes(ClearCollisionErrorSet)
 		}
 	}

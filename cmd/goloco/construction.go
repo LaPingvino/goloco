@@ -644,6 +644,10 @@ func (g *Game) updateConstruction() {
 		return
 	}
 	if !g.consHasHead() || g.consTab != 0 || g.inTitleScreen {
+		if g.stationToolSelects() { // the airport / dock tool's selection and arrow (stationtool.go)
+			g.w.SyncConstructionArrow(true)
+			return
+		}
 		if g.w.TrackGhost != nil || g.w.RoadGhost != nil || g.w.ConsArrow.On || g.w.ConsSelection.On {
 			g.w.EndConstruction(g.playerCmd())
 		}
@@ -739,6 +743,14 @@ func (g *Game) consHasHead() bool {
 	return g.buildMode == buildModeTrack || g.buildMode == buildModeRoad
 }
 
+// stationToolSelects: the Station tab's tool is the airport's or the dock's,
+// whose tool update owns the map selection and the construction arrow
+// (onToolUpdateAirport / onToolUpdateDock); a train or road station's
+// doesn't touch them.
+func (g *Game) stationToolSelects() bool {
+	return g.stationToolOn() && (g.buildMode == buildModeAirport || g.buildMode == buildModeDock)
+}
+
 // stationToolOn: a construction window is on its Station tab (every mode has
 // one), so the map takes the station tool.
 func (g *Game) stationToolOn() bool {
@@ -757,13 +769,13 @@ func (g *Game) consSelectedID() int {
 // Error::open(cant_build_pop3_string with the track's or road's name, the
 // command's reason).
 func (g *Game) openTrackBuildError(c *sim.Cmd) {
-	g.openError(g.trackBuildErrorTitle(), cmdErrorText(c))
+	g.openCmdError(g.trackBuildErrorTitle(), c)
 }
 
 // openTrackBuildErrorQuiet is openTrackBuildError with the error sound off
 // (GameCommands::setErrorSound(false): Error::openQuiet).
 func (g *Game) openTrackBuildErrorQuiet(c *sim.Cmd) {
-	g.openErrorQuiet(g.trackBuildErrorTitle(), cmdErrorText(c))
+	g.openCmdErrorQuiet(g.trackBuildErrorTitle(), c)
 }
 
 // trackBuildErrorTitle is cant_build_pop3_string with the track's or road's name.

@@ -101,7 +101,7 @@ func (g *Game) signalToolUp(sx, sy int) {
 	if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) {
 		return g.w.CreateSignalsAuto(c, f, a)
 	}); !ok {
-		g.openError(i18n.Label(title), cmdErrorText(c))
+		g.openCmdError(i18n.Label(title), c)
 		return
 	}
 	g.playCommandSound(audio.SoundConstruct, c)

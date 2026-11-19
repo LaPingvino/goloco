@@ -44,7 +44,7 @@ func (m *Map) RemoveCompanyHeadquarters(c *Cmd, flags uint8, x, y, z int32) (int
 			if int32(hq.HeadquartersX) != x || int32(hq.HeadquartersY) != y || int32(hq.HeadquartersZ) != z/smallZStep {
 				continue
 			}
-			if !c.companyCompatible(uint8(i)) {
+			if !checkCompanyCompatibility(c, uint8(i)) {
 				return 0, false
 			}
 			target = i

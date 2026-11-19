@@ -93,7 +93,7 @@ func (m *Map) RemoveSignal(c *Cmd, flags uint8, a SignalRemoval) (int32, bool) {
 		return 0, false
 	}
 	t, ti, _ := m.signalTrackAt(a, a.X, a.Y, a.Z, a.Index)
-	if t == nil || !c.companyCompatible(t.Tracks[ti].Owner) {
+	if t == nil || !c.checkTrackCompatibility(t.Tracks[ti].Owner, t.Tracks[ti].TrackObjectID) {
 		return 0, false
 	}
 	pieces := TrackPieces[a.TrackID]

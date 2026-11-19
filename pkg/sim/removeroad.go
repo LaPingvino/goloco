@@ -96,7 +96,7 @@ func (m *Map) RemoveRoad(c *Cmd, flags uint8, a RoadRemoval, g1 G1Raw) (int32, b
 		return 0, false
 	}
 	el := t.Roads[i]
-	if !c.companyCompatible(el.Owner) {
+	if !c.checkRoadCompatibility(el.Owner, el.RoadObjectID) {
 		return 0, false
 	}
 	var total int32

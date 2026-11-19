@@ -62,7 +62,7 @@ func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g
 		return 0, false
 	}
 	initial, _ := m.getElTrack(a.X, a.Y, a.Z, a.Rotation, a.TrackObjectID, a.TrackID, a.Index)
-	if initial == nil || !checkCompanyCompatibility(c, initial.Owner) {
+	if initial == nil || !c.checkTrackCompatibility(initial.Owner, initial.TrackObjectID) {
 		return 0, false
 	}
 	pieces := TrackPieces[a.TrackID]
@@ -177,9 +177,7 @@ func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g
 				}
 				return ClearCollision
 			}
-			m.LastCollision = nil
-			if ok, _ := m.ApplyClearAtStandardHeight(px, py, baseZ+8, clearZ, quarters, 0, aiRes); !ok {
-				c.ErrorText, c.ErrorArg = m.collisionMessage(c)
+			if ok, _ := m.ApplyClearAtStandardHeight(c, px, py, baseZ+8, clearZ, quarters, 0, aiRes); !ok {
 				return 0, false
 			}
 		}
@@ -189,9 +187,7 @@ func (m *Map) CreateTrainStation(c *Cmd, flags uint8, a TrainStationPlacement, g
 			}
 			return ClearNoCollision
 		}
-		m.LastCollision = nil
-		if ok, _ := m.ApplyClearAtStandardHeight(px, py, baseZ, clearZ, quarters, 0, surface); !ok {
-			c.ErrorText, c.ErrorArg = m.collisionMessage(c)
+		if ok, _ := m.ApplyClearAtStandardHeight(c, px, py, baseZ, clearZ, quarters, 0, surface); !ok {
 			return 0, false
 		}
 		if el.HasStation && flags&CmdGhost != 0 {

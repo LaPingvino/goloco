@@ -44,6 +44,13 @@ type Cmd struct {
 	// ErrorCost is the amount ErrorText's {CURRENCY32} shows
 	// (FormatArguments::common(payment)).
 	ErrorCost int32
+	// ErrorCompany, ErrorKind and ErrorObject go with ErrorText
+	// ErrorBelongsToOther (checkCompanyCompatibility): the company the thing
+	// belongs to (_errorCompanyId) and the thing (_errorElementData: its kind,
+	// and the track / road object or the station).
+	ErrorCompany uint8
+	ErrorKind    ErrorElementKind
+	ErrorObject  uint16
 	// PosFlags is getLegacyReturnState().flags_1136072 after createTrack /
 	// createRoad: the ElementPositionFlags of what was placed (PosUnderground:
 	// some of it under the ground) — what the construction ghost sets the
@@ -318,7 +325,7 @@ const ExpenditureVehicleDisposals = 14
 // command's position + 24 up; Cmd.Pos). PARTIAL: the error window texts /
 // sounds.
 func (m *Map) DoCommandFor(c *Cmd, flags uint8, expenditure uint8, run func(flags uint8) (int32, bool)) (int32, bool) {
-	c.ErrorText, c.ErrorArg = 0, "" // loc_4313C6: _gGameCommandErrorText = StringIds::null
+	c.ErrorText, c.ErrorArg, c.ErrorKind = 0, "", ErrorKindNone // loc_4313C6: _gGameCommandErrorText = StringIds::null
 	cost, ok := run(flags &^ CmdApply)
 	if !ok {
 		return 0, false

@@ -168,12 +168,8 @@ func (m *Map) createRoadCheck(c *Cmd, a roadPlacementArgs, flags uint8) (createR
 			}
 			return res.Res
 		}
-		m.LastCollision = nil
-		ok, pos := m.ApplyClearAtStandardHeight(x, y, baseZ, uint8(clearZ), quarter&0xF, quarter>>4, clear)
+		ok, pos := m.ApplyClearAtStandardHeight(c, x, y, baseZ, uint8(clearZ), quarter&0xF, quarter>>4, clear)
 		if !ok {
-			if c.ErrorText == 0 { // setCollisionErrorMessage: what is in the way
-				c.ErrorText, c.ErrorArg = m.collisionMessage(c)
-			}
 			return r, false
 		}
 		if plan.LevelCrossingObjID == 0xFF {

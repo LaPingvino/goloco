@@ -25,7 +25,7 @@ func (m *Map) clearTile(c *Cmd, px, py int32, removed RemovedBuildings, flags ui
 		return m.tileClearFunction(c, tt, k, px, py, removed, flags, &cost, false)
 	}
 	land, _ := m.GetHeight(px, py)
-	if ok, _ := m.ApplyClearAtAllHeights(px, py, uint8(land/4), uint8(land/4), 0xF, 0, clear); !ok {
+	if ok, _ := m.ApplyClearAtAllHeights(c, px, py, uint8(land/4), uint8(land/4), 0xF, 0, clear); !ok {
 		return 0, false
 	}
 	return cost, true

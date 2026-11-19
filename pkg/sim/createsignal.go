@@ -155,7 +155,7 @@ func (m *Map) CreateSignal(c *Cmd, flags uint8, a SignalPlacement) (int32, bool)
 		c.ErrorText = i18n.LevelCrossingInTheWay
 		return 0, false
 	}
-	if !c.companyCompatible(t.Tracks[ti].Owner) {
+	if !c.checkTrackCompatibility(t.Tracks[ti].Owner, t.Tracks[ti].TrackObjectID) {
 		return 0, false
 	}
 	pieces := TrackPieces[a.TrackID]

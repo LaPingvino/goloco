@@ -91,7 +91,7 @@ func (m *Map) RemoveTrack(c *Cmd, flags uint8, a TrackRemoval, g1 G1Raw) (int32,
 		return 0, false
 	}
 	el := t.Tracks[i]
-	if flags&CmdGhost == 0 && !c.companyCompatible(el.Owner) {
+	if flags&CmdGhost == 0 && !c.checkTrackCompatibility(el.Owner, el.TrackObjectID) {
 		return 0, false
 	}
 	var total int32

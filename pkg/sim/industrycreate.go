@@ -197,14 +197,14 @@ func (m *Map) placeIndustryBuilding(c *Cmd, id uint8, x, y int32, direction, bui
 			if t.WaterLevel*4 != highest || t.Type6Flag {
 				return 0, false // can_only_be_built_on_water / water_channel_currently_needed_by_ships
 			}
-			if ok, _ := m.ApplyClearAtStandardHeight(px, py, highest, clearZ, 0xF, 0xF, clear); !ok {
+			if ok, _ := m.ApplyClearAtStandardHeight(c, px, py, highest, clearZ, 0xF, 0xF, clear); !ok {
 				return 0, false
 			}
 		} else {
 			if t.WaterLevel != 0 {
 				return 0, false // cant_build_this_underwater
 			}
-			if ok, _ := m.ApplyClearAtStandardHeight(px, py, t.BaseZ, clearZ, 0xF, 0xF, clear); !ok {
+			if ok, _ := m.ApplyClearAtStandardHeight(c, px, py, t.BaseZ, clearZ, 0xF, 0xF, clear); !ok {
 				return 0, false
 			}
 			t = m.TileAt(tx, ty)

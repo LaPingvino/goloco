@@ -228,7 +228,7 @@ func (m *Map) RemoveTrackModsToTrackNetwork(c *Cmd, x, y, z int32, tad uint16, c
 func (m *Map) trackModsTarget(c *Cmd, a TrackModsPlacement) (x, y, z int32, tad uint16, owner uint8, ok bool) {
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
 	el := m.trackModElement(a.X, a.Y, a.Z, a.Rotation, a.Index, a.TrackObjectID, a.TrackID)
-	if el == nil || int(el.TrackID) >= len(TrackPieces) || int(el.SequenceIndex) >= len(TrackPieces[el.TrackID]) || !c.companyCompatible(el.Owner) {
+	if el == nil || int(el.TrackID) >= len(TrackPieces) || int(el.SequenceIndex) >= len(TrackPieces[el.TrackID]) || !c.checkTrackCompatibility(el.Owner, el.TrackObjectID) {
 		return 0, 0, 0, 0, 0, false
 	}
 	p := TrackPieces[el.TrackID][el.SequenceIndex]

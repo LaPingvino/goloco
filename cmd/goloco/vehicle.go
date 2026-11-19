@@ -569,7 +569,7 @@ func (g *Game) passSignal(headID uint16) {
 	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureTrainRunningCosts, func(f uint8) (int32, bool) {
 		return m.VehiclePassSignal(c, f, headID)
 	}); !ok {
-		g.openError(i18n.Label(i18n.CantPassSignalAtDanger), cmdErrorText(c))
+		g.openCmdError(i18n.Label(i18n.CantPassSignalAtDanger), c)
 	}
 }
 
@@ -587,7 +587,7 @@ func (g *Game) changeDirection(headID uint16) {
 	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureTrainRunningCosts, func(f uint8) (int32, bool) {
 		return m.VehicleReverse(c, f, headID)
 	}); !ok {
-		g.openError(i18n.Label(i18n.CantReverseTrain), cmdErrorText(c))
+		g.openCmdError(i18n.Label(i18n.CantReverseTrain), c)
 	}
 }
 

@@ -96,7 +96,7 @@ func (m *Map) updateTreeElement(t *Tile, k int, x, y int32, om *objects.ObjectMa
 		}
 		newClearZ := int(e.BaseZ) + (int(obj.InitialHeight)+length)/4
 		occupied := uint8(1) << ((e.Quadrant + 2) & 0x3)
-		if newClearZ > 255 || !m.CanConstructAt(x, y, e.BaseZ, uint8(newClearZ), occupied, 0b1111) {
+		if newClearZ > 255 || !m.CanConstructAt(nil, x, y, e.BaseZ, uint8(newClearZ), occupied, 0b1111) {
 			e.ClearZ = oldClearZ
 			e.IsDying = true
 			return true
@@ -222,7 +222,7 @@ func (m *Map) treeObstructionsTooNear(x, y int32, quadrant, baseZ, clearZ uint8)
 					quarter = 1 << 3
 				}
 			}
-			m.ApplyClearAtStandardHeight(cx, cy, baseZ, clearZ, quarter, 0b1111, clear)
+			m.ApplyClearAtStandardHeight(nil, cx, cy, baseZ, clearZ, quarter, 0b1111, clear)
 			px += 16
 		}
 		py += 16

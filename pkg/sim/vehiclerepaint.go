@@ -57,7 +57,7 @@ func (m *Map) paintEntireCar(car Car, a VehicleRepaint) {
 // PARTIAL: invalidateSprite (goloco redraws).
 func (m *Map) VehicleRepaint(c *Cmd, flags uint8, a VehicleRepaint) (int32, bool) {
 	v := m.entity(a.Vehicle)
-	if v == nil || !c.companyCompatible(v.Owner) {
+	if v == nil || !checkCompanyCompatibility(c, v.Owner) {
 		return 0, false
 	}
 	if flags&CmdApply == 0 {

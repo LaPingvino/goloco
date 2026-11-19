@@ -420,10 +420,63 @@ func (g *Game) openErrorQuiet(title, message string) {
 	g.errorWin = ui.OpenError(title, message, g.mouseX, g.mouseY, g.sw, g.sh) // the frame's mouse (a script's, when one plays)
 }
 
+// openCmdError is GameCommands::doCommand's failure for the controlling
+// company (loc_4314EA): the error window with the title and the command's
+// reason (Error::open) — or, when the thing belongs to another company
+// (kErrorBelongsToOther), Error::openWithCompetitor: that company's face
+// beside "<track / road / station> belongs to <company>", or "Belongs to
+// <company>" for a thing without an element.
+func (g *Game) openCmdError(title string, c *sim.Cmd) { g.cmdError(title, c, true) }
+
+// openCmdErrorQuiet is openCmdError with the error sound off
+// (GameCommands::setErrorSound(false): Error::openQuiet; openWithCompetitor
+// sounds regardless).
+func (g *Game) openCmdErrorQuiet(title string, c *sim.Cmd) { g.cmdError(title, c, false) }
+
+func (g *Game) cmdError(title string, c *sim.Cmd, sound bool) {
+	if c.ErrorText != sim.ErrorBelongsToOther {
+		if sound {
+			g.openError(title, cmdErrorText(c))
+		} else {
+			g.openErrorQuiet(title, cmdErrorText(c))
+		}
+		return
+	}
+	m, om := &g.w.Map, g.r.ObjMgr
+	company := m.CompanyName(int(c.ErrorCompany))
+	msg := ""
+	switch c.ErrorKind { // the advanced errors: the element's name
+	case sim.ErrorKindTrack:
+		if om != nil && int(c.ErrorObject) < len(om.TrackObjects) && om.TrackObjects[c.ErrorObject] != nil {
+			msg = ui.FormatErrorArgs(i18n.Label(i18n.ErrorReasonStringidBelongsTo), om.TrackObjects[c.ErrorObject].Name, company)
+		}
+	case sim.ErrorKindRoad:
+		if om != nil && int(c.ErrorObject) < len(om.RoadObjects) && om.RoadObjects[c.ErrorObject] != nil {
+			msg = ui.FormatErrorArgs(i18n.Label(i18n.ErrorReasonStringidBelongsTo), om.RoadObjects[c.ErrorObject].Name, company)
+		}
+	case sim.ErrorKindStation:
+		if int(c.ErrorObject) < len(m.StationNames) {
+			msg = ui.FormatErrorArgs(i18n.Label(i18n.ErrorReasonStringidBelongsTo), m.StationName(int(c.ErrorObject)), company)
+		}
+	}
+	if msg == "" { // ErrorElementKind::none, or no such object: the fallback
+		msg = ui.FormatErrorArgs(i18n.Label(i18n.ErrorReasonBelongsTo), company)
+	}
+	face, colour := g.companyFace(int(c.ErrorCompany))
+	if face > 0 {
+		face++ // Error::draw: images[ownerEmotion] + 1
+	}
+	jailed := int(c.ErrorCompany) < len(m.Companies) && m.Companies[c.ErrorCompany].JailStatus != 0
+	g.errorWin = ui.OpenErrorWithCompetitor(title, msg, face, colour, jailed, g.mouseX, g.mouseY, g.sw, g.sh)
+	if e := g.errorWin; e != nil {
+		g.playSound(audio.SoundError, audio.ChannelUI, e.W/2+e.X)
+	}
+}
+
 // cmdErrorText is the error window's second line: the command's reason
 // (setErrorText, with its name argument), "" when it set none.
 func cmdErrorText(c *sim.Cmd) string {
-	if c.ErrorText == 0 {
+	if c.ErrorText == 0 || c.ErrorText == sim.ErrorBelongsToOther {
 		return ""
 	}
 	msg := i18n.Label(c.ErrorText)

@@ -108,7 +108,7 @@ func (m *Map) maxHeightOfNewBuilding(om *objects.ObjectManager, x, y, z int32, l
 		clear := func(tt *Tile, k int) ClearResult {
 			return m.buildingMaxHeightClear(om, tt, k, uint8(z/smallZStep), &minClear, allowUpdate)
 		}
-		if ok, _ := m.ApplyClearAtStandardHeight(px&^31, py&^31, minZ, 255, 0xF, 0xF, clear); !ok {
+		if ok, _ := m.ApplyClearAtStandardHeight(nil, px&^31, py&^31, minZ, 255, 0xF, 0xF, clear); !ok {
 			return 0
 		}
 	}

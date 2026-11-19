@@ -629,7 +629,7 @@ func (g *Game) terraformToolDown(x, y int) {
 				cost, _, ok := g.w.Map.CreateTreeCmd(c, f, a)
 				return cost, ok
 			}); !ok {
-				g.openError(i18n.Label(i18n.CantPlantThisHere), cmdErrorText(c))
+				g.openCmdError(i18n.Label(i18n.CantPlantThisHere), c)
 			} else {
 				g.playCommandSound(audio.SoundConstruct, c)
 			}
@@ -657,7 +657,7 @@ func (g *Game) terraformToolDown(x, y int) {
 		if _, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) {
 			return g.w.Map.CreateWall(c, f, a)
 		}); !ok {
-			g.openError(i18n.Label(i18n.ErrorCantBuildThisHere), cmdErrorText(c))
+			g.openCmdError(i18n.Label(i18n.ErrorCantBuildThisHere), c)
 		}
 	}
 }
@@ -730,7 +730,7 @@ func (g *Game) terraformCommand(flags uint8, title int, run func(c *sim.Cmd, f u
 	g.unpauseForCommand(flags)
 	cost, ok := g.w.Map.DoCommandFor(c, flags, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return run(c, f) })
 	if !ok && flags&sim.CmdApply != 0 {
-		g.openError(i18n.Label(title), cmdErrorText(c))
+		g.openCmdError(i18n.Label(title), c)
 	}
 	return cost, ok
 }
