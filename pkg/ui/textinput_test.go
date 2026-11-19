@@ -35,10 +35,23 @@ func TestTextInputOnStack(t *testing.T) {
 	if !a.Closed || s.Find(WindowTypeTextInput, AnyNumber) != b {
 		t.Error("a second text input should close the first")
 	}
-	// The caller closing takes it along (sub_4CE6C9).
-	s.Close(caller)
+	// The caller switching tab cancels it (sub_4CE6C9); another window's doesn't.
+	other := &SimpleWindow{WinBase: WinBase{WinType: WindowTypeStation, Number: 8, W: 100, H: 50}}
+	s.Open(other)
+	other.TextInputCallerSwitchedTab()
+	if s.Find(WindowTypeTextInput, AnyNumber) != b {
+		t.Error("another window's tab switch closed the text input")
+	}
+	caller.TextInputCallerSwitchedTab()
 	if s.Find(WindowTypeTextInput, AnyNumber) != nil {
-		t.Error("the text input outlived its caller's close")
+		t.Error("the caller's tab switch should cancel its text input")
+	}
+	// The caller closing: the box goes after the windows' update (sub_4CE6FF).
+	OpenTextInput(s, WindowTypeStation, 7, "T", "M", "c", 31, 0, 0, true, nil)
+	s.Close(caller)
+	CloseTextInputWithoutCaller(s)
+	if s.Find(WindowTypeTextInput, AnyNumber) != nil {
+		t.Error("the text input outlived its caller")
 	}
 
 	// OK with the caller gone (closed without its onClose reaching the box):
@@ -48,10 +61,5 @@ func TestTextInputOnStack(t *testing.T) {
 	c.ok()
 	if len(got) != 0 {
 		t.Error("OK reached a caller that is not open")
-	}
-	OpenTextInput(s, WindowTypeTown, 3, "T", "M", "x", 31, 0, 0, true, nil)
-	CloseTextInputWithoutCaller(s)
-	if s.Find(WindowTypeTextInput, AnyNumber) != nil {
-		t.Error("sub_4CE6FF should cancel a text input without its caller")
 	}
 }

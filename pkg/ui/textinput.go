@@ -134,8 +134,9 @@ func (s *InputSession) Sanitized() string {
 // playSoundOnOpen; there is one, number 0): the game and the other windows
 // run on under it — only PromptOkCancel and PromptBrowse are modal.
 // It remembers its caller (_callingWindowType / _callingWindowNumber): OK
-// hands the text over only while the caller is open, and the box goes when
-// the caller does (sub_4CE6C9, sub_4CE6FF).
+// hands the text over only while the caller is open; the box goes when the
+// caller switches tab (sub_4CE6C9) and after the windows' update once the
+// caller is gone (sub_4CE6FF).
 type TextInputWindow struct {
 	WinBase
 	Title, Message      string
@@ -184,11 +185,17 @@ func OpenTextInput(s *WindowStack, callerType WindowType, callerNumber int, titl
 // CancelTextInput is TextInput::cancel (0x004CE6F2): close(textInput).
 func CancelTextInput(s *WindowStack) { s.CloseType(WindowTypeTextInput, AnyNumber) }
 
-// callerClosed is sub_4CE6C9 (0x004CE6C9), what the callers' onClose call:
-// the text input goes with the window that opened it.
-func (s *WindowStack) callerClosed(typ WindowType, number int) {
-	if t, ok := s.Find(WindowTypeTextInput, AnyNumber).(*TextInputWindow); ok && t.CallerType == typ && t.CallerNumber == number {
-		s.Close(t)
+// TextInputCallerSwitchedTab is TextInput::sub_4CE6C9 (0x004CE6C9), which
+// the callers' Common::switchTab call (Town, Industry, Station, Company,
+// Vehicle windows): a text input this window opened is cancelled — on any
+// tab press, the current tab's too.
+func (b *WinBase) TextInputCallerSwitchedTab() {
+	s := b.stack
+	if s == nil {
+		return
+	}
+	if t, ok := s.Find(WindowTypeTextInput, AnyNumber).(*TextInputWindow); ok && t.CallerType == b.WinType && t.CallerNumber == b.Number {
+		CancelTextInput(s)
 	}
 }
 

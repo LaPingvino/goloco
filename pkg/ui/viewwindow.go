@@ -278,7 +278,8 @@ func (w *ViewWindow) HandleClick(px, py int) {
 		delivered := i == w.DeliveredTab && w.DeliveredTab != 0
 		if !w.TabDisabled[i] && (i == 0 || cargo || ratings || delivered || graph) {
 			// switchTab: setSize(kWindowSize), the tab's onResize,
-			// moveInsideScreenEdges
+			// moveInsideScreenEdges; TextInput::sub_4CE6C9 first
+			w.TextInputCallerSwitchedTab()
 			w.Tab = i
 			w.WinFlags &^= WindowFlagMaximised
 			w.SetFixedSize(w.baseW, w.baseH)

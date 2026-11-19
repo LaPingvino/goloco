@@ -438,30 +438,39 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       the tileManagerLoaded gate.
 > - [x] N38 (seen 2026-11-19 with N7, olref title save at 331,295, the heliport tool) the airport ghost is drawn in its
 >       own colours; OpenLoco draws a ghost airport as a ghost (Paint: the ghost's translucent remap). DONE 2026-11-19
->       (branch n38-n39): every painter's ghost colour (Gfx::applyGhostToImage, ExtColour::unk2C) — airports and docks
->       (PaintAirport.cpp:66 / PaintDocks.cpp:62, isGhost); train and road stations (isGhost || isAiAllocated, the
->       canopy in unk2F; cargo skipped on isGhost only); buildings (PaintBuilding.cpp: they had no ghost colour at all)
->       and the scaffolding of ghost buildings and industries; the ghost track / road mods (hasGhostMods with
->       getLastSelectedMods: drawn in the ghost colour, before not at all). Compared: the heliport ghost on the title
->       save at 331,295 is pixel-identical to OpenLoco 26.09's (0 of 4048 px). Tests: pkg/paint ghost_test.go.
->       LEFT: Config constructionMarker 1 (translucent) — Options has the dropdown, the painters always use marker 0
->       (unk2C); marker 1 is withTranslucency(unk31), a blend, not a remap (one applyGhost helper for every site).
->       Seen on the way: the airport tool's station name shows "New Station", OpenLoco "(New Station)"; on the
->       untitled title save OpenLoco renames the "Dallas" station by its caption, goloco's player (New Company)
->       doesn't own it — which company the player is there differs.
+>       (branch n38-n39), the ghost colour (Gfx::applyGhostToImage, ExtColour::unk2C) ported from source to: airports
+>       and docks (PaintAirport.cpp:66 / PaintDocks.cpp:62, isGhost); train and road stations (isGhost ||
+>       isAiAllocated, the canopy in unk2F; no cargo on isGhost); buildings (PaintBuilding.cpp: no ghost colour at all
+>       before) and the scaffolding of ghost buildings and industries; ghost track / road mods (hasGhostMods with
+>       getLastSelectedMods, before not drawn). Compared in the game: the heliport ghost only — pixel-identical to
+>       OpenLoco 26.09's (0 of 4048 px differ). Not compared: docks, buildings, scaffolding and stations (the title
+>       save's player owns no track to hover a station tool over); ghost mods can't be seen yet — nothing in goloco
+>       places them (the Overhead tab's ghost, onToolUpdate's placeTrackModGhost, isn't ported; when it is, check its
+>       tiles get invalidated under dirty regions). Tests: pkg/paint ghost_test.go.
+> - [ ] N40 (seen with N38) Config constructionMarker 1 (translucent): Options has the dropdown, the painters always use
+>       marker 0 (unk2C); marker 1 is withTranslucency(unk31) — a blend, not a remap: one applyGhost helper for every
+>       ghost site.
+> - [ ] N41 (seen with N38, olref title save at 331,295) the airport tool's station name shows "New Station", OpenLoco's
+>       "(New Station)".
+> - [ ] N42 (seen with N39, the untitled title save at 331,295) OpenLoco renames the "Dallas" train station from its
+>       caption (enableRenameByCaption: isPlayerCompany(owner)), goloco doesn't; and OpenLoco's player Company window
+>       shows a view ("Surveying landscape near Dallas") where goloco's is blank. Same save; IsPlayerCompany matches
+>       upstream (both player ids) — cause not found. (OpenLoco 26.09 itself asserts in ViewportManager::destroy when
+>       that Company window goes back to its first tab.)
 > - [x] N39 (seen 2026-11-19 with N6) the rename box (TextInputWindow) is modal in goloco: the game and the other
 >       windows stop under it; upstream's TextInput is an ordinary window (only PromptOkCancel and PromptBrowse run
 >       promptTickLoop), so the game runs on. DONE 2026-11-19 (branch n38-n39): a window of the stack (WindowType
 >       textInput, stickToFront | playSoundOnOpen, centred; moved by caption and panel), with its caller's type and
->       number: OK reaches the caller only while it is open (callTextInput), the box goes when the caller closes
->       (sub_4CE6C9) or is gone after the windows' update (sub_4CE6FF), a new box / PromptBrowse / the Save prompt
->       cancel it. Input::isFocused ported: a press on the text box focuses it, on anything else takes the focus, and
->       unfocused the keys go on to the shortcuts (Return is still OK). Compared with OpenLoco 26.09 (title save,
->       unpaused): both run on under the box (date and waiting passengers move), keys after a press elsewhere open
->       the Companies list (c) and the dock tool (d) in both, a press on the box takes keys again, closing the caller
->       closes the box. Tests: pkg/ui textinput_test.go; n-keys checks the focus and the running clock (expect ticks).
->       LEFT: the save prompt (PromptSaveWindow) is still modal in goloco (update.go PARTIAL); CompanyManager's
->       cancel() sites belong to the new-company name prompts, which goloco doesn't have.
+>       number: OK reaches the caller only while it is open (callTextInput), a tab press on the caller cancels the box
+>       (sub_4CE6C9, in the callers' switchTab), it goes after the windows' update once the caller is gone
+>       (sub_4CE6FF), and a new box, PromptBrowse and the Save prompt cancel it. Input::isFocused ported: a press on
+>       the text box focuses it, any other press takes the focus; unfocused, keys go on to the shortcuts (Return is
+>       still OK). Compared with OpenLoco 26.09 (untitled title save at 331,295, unpaused, same scripts): both run on
+>       under the box (date, waiting passengers); after a press elsewhere c / d open the Companies list and the dock
+>       tool in both; a press on the box takes keys again; a tab press on the caller (Company window) closes the box in
+>       both; closing the caller closes it in both. Tests: pkg/ui textinput_test.go; n-keys checks the focus and the
+>       running clock (new expect key: ticks). LEFT: the Save prompt (PromptSaveWindow) is still modal in goloco
+>       (update.go PARTIAL); CompanyManager's cancel() sites belong to the new-company name prompts goloco lacks.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).
 SK. [x] **Interface skin images after a save loads.** DONE 2026-11-05: the skin's image table now joins the global image list (LoadImageTable, as every other object; interface->img = its first index); before, only a private counter (NextSpriteIndex) moved, so img + n were other objects' images. The Build Vehicles menu has its images; the time panel's map icon draws again. LEFT (own small items): the toolbar faces upstream draws by state — Build Vehicles (kBuildVehicleImages by lastBuildVehiclesOption, company colour) and Vehicles (vehicle_*_frame_0); goloco's Vehicles button face is blank. Land objects still take NextSpriteIndex (their sprites are drawn from land.Sprites, so harmless now — check before anything indexes G1 by land.ImageOffset).
 
