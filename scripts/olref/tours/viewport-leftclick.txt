@@ -1,0 +1,56 @@
+# Left clicks in a window's viewport (MouseInput.cpp stateNormalLeft: a
+# viewport widget begins State::viewportLeft; stateViewportLeft's release:
+# ViewportInteraction::getItemLeft at the release point through findAt's
+# window opens the vehicle / town / station / industry), on the title game
+# (untitle.py for OpenLoco; goloco opens title.dat as it is), one script for
+# both (see viewport-rightclick.txt for how to run it). The Dallas Town
+# window opens bottom left (0,411); in its viewport: the Dallas Central sign
+# (a click opens its Station window), Memphis Freight's Train 2 (its Vehicle
+# window), an office block (nothing); then a press on the sign released on
+# the main view's Kansas City Central sign opens Kansas City Central.
+# 2026-11-19, OpenLoco 09d74ee: what the four clicks open is the same in both
+# (before, goloco's Town window took them and opened nothing); OpenLoco's
+# shots also show the parked pointer's map tooltip, goloco's not (N52).
+wait 12
+click 688 592
+wait 0.5
+click 571 451
+wait 0.5
+press 784 14
+wait 0.5
+move 760 42
+wait 0.5
+release 760 42
+wait 1
+click 220 172
+move 400 300
+wait 1.5
+shot vl-01-town.png
+click 112 541
+wait 1
+move 600 590
+wait 1
+shot vl-02-station.png
+key Backspace
+wait 0.5
+click 75 494
+wait 1
+move 600 590
+wait 1
+shot vl-03-train.png
+key Backspace
+wait 0.5
+click 165 502
+wait 1
+move 600 590
+wait 1
+shot vl-04-building.png
+press 112 541
+wait 0.3
+move 210 341
+wait 0.3
+release 210 341
+wait 1
+move 600 590
+wait 1
+shot vl-05-release-main.png

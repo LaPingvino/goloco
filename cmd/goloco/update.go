@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/LaPingvino/goloco/pkg/world"
 	"github.com/LaPingvino/goloco/pkg/audio"
 	"github.com/LaPingvino/goloco/pkg/shortcuts"
 	"log"
@@ -365,9 +364,35 @@ func (g *Game) gameClick() {
 		g.colourDropdown = nil
 	} else if g.wins.PressModal(g.mouseX, g.mouseY) { // a modal window open: it comes forward
 		g.playSound(audio.SoundError, audio.ChannelUI, g.mouseX)
+	} else if g.windowViewportPress(g.mouseX, g.mouseY) { // a window's viewport widget
 	} else if !g.windowsPress() { // the windows, front-most first (stateNormalLeft)
 		g.hudOrMapClick()
 	}
+}
+
+// windowViewportPress is stateNormalLeft on a window's viewport widget (the
+// Town, Industry, Station and Vehicle windows'): the window comes to the
+// front and, without a tool, State::viewportLeft begins with it as the drag
+// window — the window's own widgets don't see the press (no onMouseDown /
+// onMouseUp, no click sound). It reports that the press was there.
+// PARTIAL: with a tool active upstream calls the tool's onToolDown here
+// (the tools read getMapCoordinatesFromPos through findAt's window);
+// goloco's tools act on the main view only, so the press does nothing.
+func (g *Game) windowViewportPress(x, y int) bool {
+	w := g.wins.FindAt(x, y)
+	if w == nil {
+		return false
+	}
+	vw, ok := w.(ui.ViewportWidgets)
+	if !ok || !vw.ViewportWidgetAt(x, y) {
+		return false
+	}
+	g.wins.BringToFront(w)
+	if !g.toolActive() && !g.inTitleScreen {
+		b := w.Base()
+		g.viewportLeft, g.vpLeft = true, viewportLeftState{typ: b.WinType, number: b.Number}
+	}
+	return true
 }
 
 // pressFocus is stateNormalLeft's text focus for a left press: on the text
@@ -499,20 +524,32 @@ func (g *Game) hudOrMapClick() {
 		// tool on the map — toolCancel — so a click is the viewport's.)
 		// MouseInput.cpp: a press on the main view without a tool begins
 		// State::viewportLeft; its release acts (viewportLeftRelease).
-		g.viewportLeft = true
+		g.viewportLeft, g.vpLeft = true, viewportLeftState{main: true}
 	}
 }
 
+// viewportLeftState is the window a viewportLeft press began in
+// (_dragWindowType, _dragWindowNumber; main: the main window).
+type viewportLeftState struct {
+	main   bool
+	typ    ui.WindowType
+	number int
+}
+
 // viewportLeftRelease is stateViewportLeft's leftReleased without a tool
-// (0x4C73C2): released over the main view (no window there), getItemLeft at
-// the release point opens the vehicle's, town's, station's or industry's
-// window.
+// (0x4C73C2): the drag window gone, nothing (State::reset); else
+// getItemLeft at the release point — through the window there and its
+// viewports (findAt), wherever the press began — opens the vehicle's,
+// town's, station's or industry's window, or the headquarters' company's.
+// (Its check of the window against _dragWindowType always holds: the
+// window is found by it.)
 func (g *Game) viewportLeftRelease() {
 	g.viewportLeft = false
-	if g.overWindow(g.mouseX, g.mouseY) {
-		return // released over another window: _dragWindowType differs
+	if d := g.vpLeft; !d.main && g.wins.Find(d.typ, d.number) == nil {
+		return
 	}
-	if it, ok := g.w.ItemLeftAt([]world.Viewport{g.w.MainViewport()}, g.mouseX, g.mouseY); ok {
+	vps, _ := g.viewportsAt(g.mouseX, g.mouseY)
+	if it, ok := g.w.ItemLeftAt(vps, g.mouseX, g.mouseY); ok {
 		switch it.Kind {
 		case paint.ItemEntity:
 			g.openVehicleWindow(uint16(it.ID), 0)
