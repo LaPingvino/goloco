@@ -1,0 +1,29 @@
+# The construction window's remembered station (Scenario::getConstruction:
+# StationTab.cpp onDropdown writes trainStations[trackType];
+# createTrackConstructionWindow reads it back), on the title game, one script
+# for both: the Railway Track window, its Station tab, the dropdown, the
+# second station chosen; the window opened again from the toolbar shows
+# that station, not the first.
+wait 12
+click 688 592
+wait 0.5
+click 598 14
+wait 2
+click 44 58
+wait 1.5
+shot cm-01-station-tab.png
+click 130 80
+wait 1
+shot cm-02-dropdown.png
+click 60 99
+wait 1
+move 400 400
+wait 1
+shot cm-03-chosen.png
+click 598 14
+wait 2
+click 44 58
+wait 1.5
+move 400 400
+wait 1
+shot cm-04-reopened.png

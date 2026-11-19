@@ -585,9 +585,58 @@ func (g *Game) openConsDropdown(wx, wy int, colour uint8, station bool) {
 	d.OnSelect = func(i int) {
 		if i >= 0 && i < len(list) {
 			*sel = list[i]
+			g.consRemember(station, list[i])
 		}
 	}
 	g.dropdown = d
+}
+
+// consRemember is the Station and Signal tabs' onDropdown beyond
+// lastSelected…: the choice remembered — the airport's and dock's in the
+// game state (lastAirport, lastShipPort), the others per track / road object
+// in Scenario::getConstruction (roadStations, trainStations, signals).
+// OpenLoco reference: src/OpenLoco/src/Ui/Windows/Construction/StationTab.cpp
+// onDropdown, SignalTab.cpp onDropdown
+func (g *Game) consRemember(station bool, slot int) {
+	m, obj, v := &g.w.Map, g.buildObjID&7, uint8(slot)
+	switch {
+	case !station:
+		m.Construction.Signals[obj] = v
+	case g.buildMode == buildModeAirport:
+		m.LastAirport = v
+	case g.buildMode == buildModeDock:
+		m.LastShipPort = v
+	case g.consIsRoad():
+		m.Construction.RoadStations[obj] = v
+	default:
+		m.Construction.TrainStations[obj] = v
+	}
+}
+
+// consRecall is createTrackConstructionWindow / createRoadConstructionWindow's
+// (and openAtTrack / openAtRoad's) choices for the object: the signal (track
+// only), station and bridge Scenario::getConstruction remembers for it, else
+// (0xFF) the first available (-1 here). Bridges is one list for track and
+// road objects alike. PARTIAL: the remembered mods (trackMods / roadMods,
+// initialiseDefaultTrackRoadMods) — consMods keeps the window's own.
+// OpenLoco reference: src/OpenLoco/src/Ui/Windows/Construction/Common.cpp
+func (g *Game) consRecall(road bool, obj int) {
+	c := &g.w.Map.Construction
+	slot := func(v uint8) int {
+		if v == 0xFF {
+			return -1
+		}
+		return int(v)
+	}
+	obj &= 7
+	if road {
+		g.consSignal = -1 // lastSelectedSignal = 0xFF
+		g.consStation = slot(c.RoadStations[obj])
+	} else {
+		g.consSignal = slot(c.Signals[obj])
+		g.consStation = slot(c.TrainStations[obj])
+	}
+	g.consBridge = slot(c.Bridges[obj])
 }
 
 // openBridgeDropdown is bridgeDropdown (ConstructionTab.cpp): Dropdown::show
@@ -627,6 +676,7 @@ func (g *Game) openBridgeDropdown(wx, wy int, colour, company uint8) {
 	d.OnSelect = func(i int) { // onDropdown: the bridge, the ghosts removed
 		if i >= 0 && i < len(list) {
 			g.consBridge = list[i]
+			g.w.Map.Construction.Bridges[g.buildObjID&7] = uint8(list[i]) // the TODO's & ~(1 << 7): road objects share it
 			g.w.ChangeBridge(g.playerCmd(), uint8(list[i]))
 		}
 	}
@@ -685,19 +735,20 @@ func (g *Game) updateConstruction() {
 // consSwitchRoadType is Common::sub_4A3A50 (the road type constructRoad's
 // retry switched to, sim.State.SwitchRoadType): the window's road object, the
 // toolbar's last road (setTrackOptions), its station and bridge — the
-// scenario's remembered ones, else the first available (PARTIAL: not
-// remembered, so the first) — and its mods (roadMods: not remembered, so
-// none); into the state at once, for the retry.
+// scenario's remembered ones, else the first available (consRecall) — and
+// its mods (PARTIAL: roadMods not remembered, so none); into the state at
+// once, for the retry.
 func (g *Game) consSwitchRoadType(obj uint8) {
 	g.buildObjID = int(obj)
 	if g.r.ObjMgr == nil {
 		return
 	}
 	g.w.Map.SetTrackOptions(obj|1<<7, g.r.ObjMgr)
-	g.consStation, g.consBridge, g.consMods = -1, -1, 0
+	g.consRecall(true, int(obj))
+	g.consSignal, g.consMods = -1, 0
 	g.w.Cons.Bridge, g.w.Cons.Mods = 0, 0
 	if list := g.r.ObjMgr.AvailableCompatibleBridges(int(obj), true, int(g.w.CurrentYear)); len(list) > 0 {
-		g.w.Cons.Bridge = uint8(list[0]) + 1
+		g.w.Cons.Bridge = uint8(pickSlot(list, g.consBridge)) + 1
 	}
 }
 

@@ -205,6 +205,7 @@ func (g *Game) openConstructionWithFlags(flags uint8) {
 		g.buildMode, g.buildObjID = buildModeTrack, int(flags)
 	}
 	g.w.Map.SetTrackOptions(flags, g.r.ObjMgr)
+	g.consRecall(g.buildMode == buildModeRoad, g.buildObjID) // the remembered signal, station, bridge
 	g.wins.Show(g.newPortedConstructionWindow())
 }
 

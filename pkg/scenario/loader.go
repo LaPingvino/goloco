@@ -1714,8 +1714,11 @@ func currency48(b []byte) int64 {
 // companies", S5.cpp importSave).
 func parseGeneralState(sc *Scenario, gs []byte) {
 	if len(gs) < 0x434 {
+		sc.Construction.ResetTrackObjects() // nothing remembered
+		sc.Construction.ResetRoadObjects()
 		return
 	}
+	sc.Construction.Decode(gs) // scenarioConstruction
 	sc.RoadAnyTypeCompatible = binary.LittleEndian.Uint32(gs[0x1A4:])
 	sc.OrderTableLength = binary.LittleEndian.Uint32(gs[0x1A0:]) // GameState orderTableLength
 	sc.Rng = [2]uint32{binary.LittleEndian.Uint32(gs[0:]), binary.LittleEndian.Uint32(gs[4:])}

@@ -83,6 +83,7 @@ type Map struct {
 	LastBuildVehiclesOption                                 uint8                   // GameState: the Build Vehicles menu's last type (VehicleType)
 	LastVehicleType                                         uint8                   // GameState: the Vehicles menu's last type (VehicleType)
 	LastAirport, LastShipPort                               uint8                   // GameState: the Port menu's airport / dock object (0xFF: none)
+	Construction                                            scenario.Construction   // Scenario::getConstruction: the construction window's remembered choices
 	PickupDirection                                         uint8                   // GameState pickupDirection: placing vehicles facing the other way
 	UnlockedVehicles                                        [][7]uint32             // per company: Company::unlockedVehicles
 	CurrentYear                                             uint16                  // GameState general.currentYear
@@ -248,6 +249,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.LastRailroadOption, m.LastRoadOption, m.LastTrackTypeOption = sc.LastRailroadOption, sc.LastRoadOption, sc.LastTrackTypeOption
 	m.LastBuildVehiclesOption, m.LastVehicleType = sc.LastBuildVehiclesOption, sc.LastVehicleType
 	m.LastAirport, m.LastShipPort = sc.LastAirport, sc.LastShipPort
+	m.Construction = sc.Construction
 	m.PickupDirection = sc.PickupDirection
 	m.UnlockedVehicles = sc.UnlockedVehicles
 	m.Animations = append([]scenario.Animation(nil), sc.Animations...)

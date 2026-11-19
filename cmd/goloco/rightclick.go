@@ -462,8 +462,9 @@ func firstTile(x, y int32, seq uint8) (int32, int32) {
 // window's first viewport shows them — openAtTrack(*window, …)'s
 // viewports[0]), straight and level, with the element's mods and — if it
 // stands on one — its bridge.
-// PARTIAL: the signal, station and bridge the scenario remembers per type
-// (Scenario::getConstruction) — the window's first available, as elsewhere.
+// The signal, station and bridge are the ones the scenario remembers for
+// the type (Scenario::getConstruction, openConstructionWithFlags' consRecall),
+// the element's own bridge over the remembered one.
 func (g *Game) openConstructionAt(vps []world.Viewport, road bool, obj, id, seq, rotation uint8, x, y, z int32, mods uint8, hasBridge bool, bridge uint8, sx, sy int) {
 	next, prev, ok := sim.NextAndPreviousTile(road, id, seq, rotation, x, y, z)
 	if !ok {
@@ -476,10 +477,10 @@ func (g *Game) openConstructionAt(vps []world.Viewport, road bool, obj, id, seq,
 	}
 	g.consTab, g.consSigOne, g.consToolOff = 0, false, false
 	g.consModSection = sim.ModSectionSingle // lastSelectedTrackModSection = single
+	g.openConstructionWithFlags(flags)      // createConstructionWindow / resetWindow, setTrackOptions; the remembered choices
 	if hasBridge {
-		g.consBridge = int(bridge)
+		g.consBridge = int(bridge) // copyElement->hasBridge(): its bridge
 	}
-	g.openConstructionWithFlags(flags) // createConstructionWindow / resetWindow, setTrackOptions
 	vp := g.w.MainViewport()
 	if len(vps) > 0 {
 		vp = vps[0]
