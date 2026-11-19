@@ -209,9 +209,12 @@ type Scenario struct {
 	// lastRoadOption, lastTrackTypeOption).
 	LastRailroadOption, LastRoadOption, LastTrackTypeOption uint8
 	LastAirport, LastShipPort                               uint8 // GameState 0x194 / 0x195: the Port menu's objects (0xFF none)
-	LastBuildVehiclesOption                                 uint8 // a VehicleType (0x414)
-	LastVehicleType                                         uint8 // the Vehicles menu's last type, a VehicleType (0x197)
-	PickupDirection                                         uint8 // GameState 0x198: placing vehicles facing the other way
+	// Construction is GameState 0x15A–0x191 (Scenario::getConstruction): the
+	// construction window's remembered choices per track / road object.
+	Construction            Construction
+	LastBuildVehiclesOption uint8 // a VehicleType (0x414)
+	LastVehicleType         uint8 // the Vehicles menu's last type, a VehicleType (0x197)
+	PickupDirection         uint8 // GameState 0x198: placing vehicles facing the other way
 
 	// Towns holds the non-empty town records parsed from the scenario Towns
 	// chunk (or the towns array embedded in a saved-game GameState chunk).
@@ -820,4 +823,54 @@ type MessageRecord struct {
 	TimeActive uint16
 	Subjects   [3]uint16
 	Date       uint32
+}
+
+// Construction is Scenario::Construction (GameState 0x15A, 0x38 bytes): the
+// construction window's last signal, bridge, train station and mods per
+// track object, and road station and mods per road object (0xFF: none —
+// the window takes the first available). Bridges is one list for track
+// type n and road type n alike, as upstream.
+// OpenLoco reference: src/OpenLoco/include/OpenLoco/Scenario/ScenarioConstruction.h
+type Construction struct {
+	Signals, Bridges, TrainStations, TrackMods [8]uint8
+	Var17A                                     [8]uint8 // not used, always 0xFF
+	RoadStations, RoadMods                     [8]uint8
+}
+
+// ConstructionOffset is Construction's place in the GameState.
+const ConstructionOffset = 0x15A
+
+// ResetTrackObjects is Scenario::resetTrackObjects: signals, bridges, train
+// stations and track mods all 0xFF.
+func (c *Construction) ResetTrackObjects() {
+	for i := range 8 {
+		c.Signals[i], c.Bridges[i], c.TrainStations[i], c.TrackMods[i] = 0xFF, 0xFF, 0xFF, 0xFF
+	}
+}
+
+// ResetRoadObjects is Scenario::resetRoadObjects (0x00475988): var_17A, road
+// stations and road mods all 0xFF.
+func (c *Construction) ResetRoadObjects() {
+	for i := range 8 {
+		c.Var17A[i], c.RoadStations[i], c.RoadMods[i] = 0xFF, 0xFF, 0xFF
+	}
+}
+
+// arrays is the struct's seven lists in their GameState order.
+func (c *Construction) arrays() []*[8]uint8 {
+	return []*[8]uint8{&c.Signals, &c.Bridges, &c.TrainStations, &c.TrackMods, &c.Var17A, &c.RoadStations, &c.RoadMods}
+}
+
+// Decode reads the struct from the GameState gs.
+func (c *Construction) Decode(gs []byte) {
+	for i, a := range c.arrays() {
+		copy(a[:], gs[ConstructionOffset+8*i:])
+	}
+}
+
+// Encode writes the struct into the GameState gs.
+func (c *Construction) Encode(gs []byte) {
+	for i, a := range c.arrays() {
+		copy(gs[ConstructionOffset+8*i:], a[:])
+	}
 }

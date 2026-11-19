@@ -136,6 +136,7 @@ func (sc *Scenario) putGeneralState(gs []byte) {
 	put16(gs, 0x158, uint16(sc.TileUpdateStart[1]))
 	gs[0x192], gs[0x193], gs[0x1AD] = sc.LastRailroadOption, sc.LastRoadOption, sc.LastTrackTypeOption
 	gs[0x194], gs[0x195] = sc.LastAirport, sc.LastShipPort
+	sc.Construction.Encode(gs) // scenarioConstruction
 	gs[0x196], gs[0x197], gs[0x198] = sc.TrafficHandedness, sc.LastVehicleType, sc.PickupDirection
 	put16(gs, 0x19A, uint16(sc.SeaLevel))
 	gs[0x19C], gs[0x19D], gs[0x19E] = sc.CurrentSnowLine, sc.CurrentSeason, sc.LastLandOption

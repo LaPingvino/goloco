@@ -137,6 +137,10 @@ func (m *Map) InitialiseTiles() {
 // object flags and default level crossing.
 func (m *Map) GenerateLandscape(startYear uint16, o TerrainOptions, g1 G1Raw, om *objects.ObjectManager) {
 	m.GenerateTerrainOnly(startYear, o, g1, om)
+	// Scenario::reset's Construction::reset (resetTrackObjects) and
+	// resetRoadObjects: nothing remembered for the construction window
+	m.Construction.ResetTrackObjects()
+	m.Construction.ResetRoadObjects()
 	m.GenerateTrees(o, om)
 	m.GenerateTowns(o, g1, om)
 	m.GenerateIndustries(o, om)

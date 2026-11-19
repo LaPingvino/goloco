@@ -383,16 +383,35 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       seam; drawRect's dx) — fixed: the main view's signs now match pixel for pixel; the Town window's
 >       zoom-2 sign is still one column wider on the right in goloco (suspect: the save's labelFrame, as
 >       Station::updateLabel isn't ported — check the frame's right[2] against OpenLoco's).
->       LEFT: the news window's viewports (its subject buttons lie over them: findWidgetAt; flags
->       viewportNoScrolling) and the Company window's headquarters view (not drawn yet); a left click in a
->       window's viewport (viewportLeft there: getItemLeft opens the vehicle / town / station / industry —
->       goloco's windows take the click); the window viewports' gridlines flag (Config gridlinesOnLandscape
+>       DONE 2026-11-19 (branch n22c): a left click in a window's viewport — stateNormalLeft on the Town,
+>       Industry, Station or Vehicle window's viewport widget brings it forward and begins viewportLeft with
+>       it as the drag window (its widgets don't see the press); stateViewportLeft's release runs getItemLeft
+>       at the release point through findAt's window there (the main view's release too: goloco used to drop
+>       a release over any window, a misread of the _dragWindowType check, which always holds). Premise
+>       checked (the pre-change build opened nothing) and compared with OpenLoco on the title game
+>       (tours/viewport-leftclick.txt): the Dallas Town viewport's station sign opens Dallas Central, Memphis
+>       Freight's Train 2 its Vehicle window, the office block nothing, a press on the sign released on the
+>       main view's Kansas City Central opens that station — the same in both. Scenario::getConstruction:
+>       GameState 0x15A's 0x38 bytes loaded and saved (scenario.Construction, sim.Map.Construction),
+>       Scenario::reset's resetTrackObjects / resetRoadObjects in GenerateLandscape; the Signal / Station
+>       tabs' dropdowns (and the bridge dropdown) write signals / trainStations / roadStations / bridges (the
+>       airport's and dock's lastAirport / lastShipPort too); createTrack/RoadConstructionWindow (the toolbar),
+>       openAtTrack / openAtRoad (the element's bridge over the remembered one) and sub_4A3A50 read them back
+>       (consRecall). Checked on the title game (tours/construction-remember.txt): the second station
+>       ("Station") chosen, the window opened again shows it in both (goloco showed it before too — its choice
+>       was one value for every type, not saved). LEFT: the news window's viewports (its subject buttons lie
+>       over them: findWidgetAt; flags viewportNoScrolling) and the Company window's headquarters view (not
+>       drawn yet); the window viewports' gridlines flag (Config gridlinesOnLandscape
 >       at initViewport); the route tool's hovered station (Vehicle.cpp stationLabelAdjustedInteraction).
 >       Scroll views not reached: the Station window's Cargo Ratings tab and
 >       the Vehicle window's route list (goloco draws no scrolling list there). Then: the Overhead tab's mod
 >       section (single only); the Overhead tab has no map tool yet;
->       openAtTrack's remembered signal / station / bridge per track type (Scenario::getConstruction); the
->       construction arrow in the window's piece preview (OpenLoco draws it there too).
+>       the construction arrow in the window's piece preview (OpenLoco draws it there too): ConstructionTab.cpp
+>       drawTrack / drawRoad (0x004A0AE5 / 0x00478F1F) back up the map selection flags and the arrow, set
+>       enableConstructionArrow + setConstructionArrow({pos, direction}) when the preview flags carry
+>       displayConstructionArrow, paint the temporary elements (paintTileElements → PaintTile.cpp
+>       paintConstructionArrow on the same session), then restore both — port it as that condition on the
+>       preview's paint session, not a separate draw (tours/construction-preview.txt for the shots).
 > - [x] N23 The View menu — done 2026-11-14: the main viewport's flags (pkg/paint viewflags.go: Ui::ViewportFlags on
 >       the paint session; pkg/world viewflags.go; cmd/goloco viewmenu.go) — the menu's twelve ticked entries and the
 >       keys 1 … 0; the underground view, the six see-through modes (drawStructs' cull), the height marks on land and
@@ -568,6 +587,21 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [ ] N51 (seen by N22) Another company's Vehicle window (opened from its train list, title game, Memphis Freight's
 >       Train 2): OpenLoco captions it "Memphis Freight - Train 2" (Vehicle.cpp prepareDraw: competitor_vehicle),
 >       goloco "Train 2"; OpenLoco opened it at y 425, goloco at y 397 (createWindow's placement).
+> - [ ] N52 (seen by N22) A map tooltip at a parked pointer: in tours/viewport-leftclick.txt's shots (pointer at 600,590
+>       on the title game, over Kansas City Oil Refinery) OpenLoco shows the industry's tooltip, goloco none. Check
+>       updateMapTip / ItemLeftAt there (a news window got in the way of a first try; pause both first).
+> - [ ] N53 (seen by N22) The construction window's Station tab: OpenLoco draws the station's image in an inset
+>       box (a lighter frame around the preview), goloco the image alone (tours/construction-remember.txt shots).
+> - [ ] N54 (seen by N22) A tool in a window's viewport: stateNormalLeft with a tool active calls the tool's
+>       onToolDown there (the tools read getMapCoordinatesFromPos through findAt's window, so they act in the Town /
+>       Station / … viewports); goloco's tools act on the main view only, a press on a window's viewport does nothing
+>       (update.go windowViewportPress PARTIAL).
+> - [ ] N55 (seen by N22) The remembered mods: Scenario::getConstruction's trackMods / roadMods are loaded and saved
+>       but not used — createTrack/RoadConstructionWindow and sub_4A3A50 set lastSelectedMods from them (0xFF → 0),
+>       OverheadTab.cpp's checkboxes write trackMods (roads' too, the TODO's & ~(1 << 7)), openAtRoad takes the
+>       element's mods only for a road object without anyRoadTypeCompatible (goloco takes them always), and
+>       Scenario::start's initialiseDefaultTrackRoadMods presets them from the unlocked powered vehicles' required
+>       extras (sim StartScenario PARTIAL). Port all of it together.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).
 SK. [x] **Interface skin images after a save loads.** DONE 2026-11-05: the skin's image table now joins the global image list (LoadImageTable, as every other object; interface->img = its first index); before, only a private counter (NextSpriteIndex) moved, so img + n were other objects' images. The Build Vehicles menu has its images; the time panel's map icon draws again. LEFT (own small items): the toolbar faces upstream draws by state — Build Vehicles (kBuildVehicleImages by lastBuildVehiclesOption, company colour) and Vehicles (vehicle_*_frame_0); goloco's Vehicles button face is blank. Land objects still take NextSpriteIndex (their sprites are drawn from land.Sprites, so harmless now — check before anything indexes G1 by land.ImageOffset).
 
@@ -2262,3 +2296,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-19 (branch n17) — N17 music leftovers: placement confirmed upstream (news window in the tour); scroll thumb, group box, dropdown pressed / combobox press, web music fetch async.
 - 2026-11-19 (branch n22) — N22 right-click leftovers, part: the right drag in scroll views (State::scrollRight, the cursor pinned as getNextDragOffset), the commands' demolish sounds (tree, building, HQ); other viewports' premise checked and left; N49 seen.
 - 2026-11-19 (branch n22b) — N22: right clicks and map tooltips in the Town / Industry / Station / Vehicle windows' viewports (viewportNoScrolling), the hovered station's light sign; N50 seen.
+- 2026-11-19 (branch n22c) — N22: left clicks in windows' viewports (viewportLeft through the release point's window), Scenario::getConstruction's remembered signal / station / bridge per type (loaded, saved, written by the dropdowns, read by the window's opens); N52–N55 seen.
