@@ -12,7 +12,7 @@ import (
 )
 
 // rightover.go — ViewportInteraction::rightOver (0x004CDB2B) and its
-// rightOver… functions: what a right click on the main view would act on,
+// rightOver… functions: what a right click on a viewport would act on,
 // and the map tooltip's text for it.
 // OpenLoco reference: src/OpenLoco/src/Ui/ViewportInteraction.cpp
 
@@ -56,9 +56,6 @@ type RightOverState struct {
 	// TipTimeout is MapToolTip::getTooltipTimeout: the track, road and
 	// building texts wait for 45.
 	TipTimeout uint16
-	// SeeThrough… are the viewport's flags: what they hide is not found.
-	// PARTIAL: goloco's view has none of them yet (always false).
-	SeeThroughBuildings, SeeThroughTrees, SeeThroughScenery, SeeThroughTracks, SeeThroughRoads bool
 }
 
 // tipFormat is formatString for a map tooltip: the string's {STRINGID}s
@@ -119,32 +116,37 @@ func prevTrackRoad(t *sim.Tile, item any) (*scenario.TrackElement, *scenario.Roa
 // RightOver is ViewportInteraction::rightOver at screen point (sx, sy): the
 // item a right click would act on (ok false: none — InteractionArg{}), and,
 // when hasTip, the map tooltip it sets (FormatArguments::mapToolTip, with
-// setOwner's company; otherwise the tooltip stays as it was).
-// PARTIAL: viewports other than the main view's.
-func (w *World) RightOver(sx, sy int, st RightOverState) (item RightItem, tip MapTip, hasTip, ok bool) {
+// setOwner's company; otherwise the tooltip stays as it was). vps are the
+// viewports of the window under the point (findAt; World.MainViewport's when
+// there is none): the first that holds the point is the one read.
+func (w *World) RightOver(vps []Viewport, sx, sy int, st RightOverState) (item RightItem, tip MapTip, hasTip, ok bool) {
 	if w.TitleMode || !w.ensureScene() {
 		return RightItem{}, MapTip{}, false, false
 	}
 	// "Interaction types to exclude by default": the surface and the water,
-	// then what the view's see-through flags hide.
+	// then what the see-through flags of the viewport holding the point hide.
+	var vf paint.ViewFlags
+	if i := containingViewport(vps, sx, sy); i >= 0 {
+		vf = vps[i].View.Flags
+	}
 	accept := func(i paint.InteractionItem) bool {
 		switch i {
 		case paint.ItemSurface, paint.ItemWater:
 			return false
 		case paint.ItemBuilding, paint.ItemHeadquarterBuilding, paint.ItemIndustry:
-			return !st.SeeThroughBuildings
+			return !vf.Has(paint.ViewSeeThroughBuildings)
 		case paint.ItemTree:
-			return !st.SeeThroughTrees
+			return !vf.Has(paint.ViewSeeThroughTrees)
 		case paint.ItemWall:
-			return !st.SeeThroughScenery
+			return !vf.Has(paint.ViewSeeThroughScenery)
 		case paint.ItemTrack, paint.ItemTrackExtra, paint.ItemSignal:
-			return !st.SeeThroughTracks
+			return !vf.Has(paint.ViewSeeThroughTracks)
 		case paint.ItemRoad, paint.ItemRoadExtra:
-			return !st.SeeThroughRoads
+			return !vf.Has(paint.ViewSeeThroughRoads)
 		}
 		return true
 	}
-	in := w.mapCoordinatesAt(sx, sy, accept)
+	in, _ := w.mapCoordinatesAt(vps, sx, sy, accept)
 	item = RightItem{Type: in.Type, ID: in.ID}
 	if ps := in.ps; ps != nil {
 		item.X, item.Y, item.ModID = int32(ps.MapX), int32(ps.MapY), ps.ModID

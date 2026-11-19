@@ -360,14 +360,31 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       sound: the right click's (mapCommand, as the rightReleased… functions) was already upstream's; what was
 >       silent were the commands' own — removeTree's playDemolishTreeSound, removeBuildingElement's
 >       createDestructExplosion sound, RemoveCompanyHeadquarters' demolish — now queued (pkg/sim sounds.go).
->       LEFT: right clicks and map tooltips in other viewports — premise checked: Town, Station, Industry and
->       Company windows set viewportNoScrolling, so a right press on their viewport starts viewportRight
->       (cursor held, no pan) and a release within 500 ms runs handleRightReleased there (rightOver through
->       findAt's window viewport and its see-through flags); goloco's RightOver / ItemLeftAt read the main view
->       only — needs a paint-struct pick in a window's viewport (the Vehicle window's view does pan upstream,
->       but re-centres on its vehicle). Scroll views not reached: the Station window's Cargo Ratings tab and
->       the Vehicle window's route list (goloco draws no scrolling list there). Then: the hovered station's
->       highlight; the Overhead tab's mod section (single only); the Overhead tab has no map tool yet;
+>       DONE 2026-11-19 (branch n22b): right clicks and map tooltips in other windows' viewports — the pick
+>       takes findAt's window and its viewports (pkg/world viewportpick.go: world.Viewport, the view each
+>       window draws; cmd/goloco windows.go viewportsAt; pkg/ui viewportwidgets.go: the viewport widget as
+>       findWidgetAt sees it, the centre-view button over it excluded): getMapCoordinatesFromPos in the first
+>       viewport holding the point (its zoom, origin, label flags), rightOver's see-through flags from that
+>       viewport, getItemLeft's nearest-vehicle fallback in viewports[0]; a right press on the Town, Industry,
+>       Station or Vehicle window's viewport begins viewportRight as viewportNoScrolling (the cursor hidden
+>       but not pinned — stateViewportRight returns before getNextDragOffset —, no pan, a release within
+>       500 ms acts at the press point however far the mouse went; stopCursorDrag puts it back);
+>       openAtTrack / openAtRoad's nearer end measured in the clicked window's viewport. Premise corrected:
+>       the Vehicle window's viewport is viewportNoScrolling too (Vehicle.cpp createViewport), it doesn't pan.
+>       The hovered station's sign: getStationArguments(id) (every ItemLeftAt that finds a station) sets
+>       it, processMouseOver's start lets it go; drawStationName draws it getTranslucent(colour, 0), in every
+>       viewport. Checked against OpenLoco on the title game (tours/viewport-rightclick.txt): the Town
+>       window viewport's tooltips (station, office block, a train), its right clicks (the train's owner's
+>       train list, the station's owner's station list, a 28 px drag released at once the same), a slow
+>       press nothing, the sign light in the window and on the main view and plain again after.
+>       LEFT: the news window's viewports (its subject buttons lie over them: findWidgetAt; flags
+>       viewportNoScrolling) and the Company window's headquarters view (not drawn yet); a left click in a
+>       window's viewport (viewportLeft there: getItemLeft opens the vehicle / town / station / industry —
+>       goloco's windows take the click); the window viewports' gridlines flag (Config gridlinesOnLandscape
+>       at initViewport); the route tool's hovered station (Vehicle.cpp stationLabelAdjustedInteraction).
+>       Scroll views not reached: the Station window's Cargo Ratings tab and
+>       the Vehicle window's route list (goloco draws no scrolling list there). Then: the Overhead tab's mod
+>       section (single only); the Overhead tab has no map tool yet;
 >       openAtTrack's remembered signal / station / bridge per track type (Scenario::getConstruction); the
 >       construction arrow in the window's piece preview (OpenLoco draws it there too).
 > - [x] N23 The View menu — done 2026-11-14: the main viewport's flags (pkg/paint viewflags.go: Ui::ViewportFlags on
@@ -540,6 +557,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       (TownList, the Station Cargo tab) where the bars' ends are content + 1 − (h − 2): a scroll to the end
 >       (wheel, track, the right drag) can stop or be pulled back 1–3 px short of OpenLoco's. Check one list's last
 >       page against OpenLoco, then fix in one place (a ScrollArea-like value the windows share).
+> - [ ] N50 (seen by N22) The Stations list (StationList.cpp drawScroll) shows each station's transport icons after
+>       its name in OpenLoco ("Dallas Central ▭"); goloco's list has the names alone.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).
 SK. [x] **Interface skin images after a save loads.** DONE 2026-11-05: the skin's image table now joins the global image list (LoadImageTable, as every other object; interface->img = its first index); before, only a private counter (NextSpriteIndex) moved, so img + n were other objects' images. The Build Vehicles menu has its images; the time panel's map icon draws again. LEFT (own small items): the toolbar faces upstream draws by state — Build Vehicles (kBuildVehicleImages by lastBuildVehiclesOption, company colour) and Vehicles (vehicle_*_frame_0); goloco's Vehicles button face is blank. Land objects still take NextSpriteIndex (their sprites are drawn from land.Sprites, so harmless now — check before anything indexes G1 by land.ImageOffset).
 
@@ -2233,3 +2252,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-14 (loop) — Fable's news and Terraform merged (after full suites on rebased branches); station drag; terrain vectors regenerated (b460716 had pushed a failing test: unit failures now counted separately). Joop: one Fable agent at a time.
 - 2026-11-19 (branch n17) — N17 music leftovers: placement confirmed upstream (news window in the tour); scroll thumb, group box, dropdown pressed / combobox press, web music fetch async.
 - 2026-11-19 (branch n22) — N22 right-click leftovers, part: the right drag in scroll views (State::scrollRight, the cursor pinned as getNextDragOffset), the commands' demolish sounds (tree, building, HQ); other viewports' premise checked and left; N49 seen.
+- 2026-11-19 (branch n22b) — N22: right clicks and map tooltips in the Town / Industry / Station / Vehicle windows' viewports (viewportNoScrolling), the hovered station's light sign; N50 seen.

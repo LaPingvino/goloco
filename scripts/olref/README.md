@@ -177,6 +177,8 @@ getNextDragOffset), so xt.py's absolute moves each count from there: `move`
 view goes 80 px (2 × 40). goloco does the same since 2026-11-19 (a script's
 pointer goes back to the press point too: cmd/goloco rightclick.go pinRightDrag).
 tours/scrollright.txt is the same drag in a scroll view (the Towns list).
+tours/viewport-rightclick.txt is the same in a window's viewport (the Town window's: tooltips, right
+clicks, a short right drag that still clicks) and the hovered station's light sign, on the title game.
 
 For one window: `pair.py out.png goloco.png@X,Y,W,H openloco.png@X,Y,W,H 2`.
 

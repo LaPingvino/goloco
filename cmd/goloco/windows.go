@@ -7,6 +7,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/sim"
 	"github.com/LaPingvino/goloco/pkg/ui"
 	"github.com/LaPingvino/goloco/pkg/uilayout"
+	"github.com/LaPingvino/goloco/pkg/world"
 	"github.com/hajimehoshi/ebiten/v2"
 	"os"
 	"strings"
@@ -499,4 +500,64 @@ func cmdErrorText(c *sim.Cmd) string {
 // inRect reports the point (px, py) inside the w×h rectangle at (x, y).
 func inRect(px, py, x, y, w, h int) bool {
 	return px >= x && px < x+w && py >= y && py < y+h
+}
+
+// viewportsAt is what ViewportInteraction reads at screen (x, y):
+// WindowManager::findAt's window and its viewports (Window::viewports, [0]
+// first) — the main view's when no window is there (the main window is the
+// bottom of upstream's stack). win is nil for the main window. The Town,
+// Industry, Station and Vehicle windows' viewports are built with the same
+// world view their draw uses for that size, so a pick sees what is drawn.
+// PARTIAL: the news window's viewports (its subject buttons lie over them)
+// and the Company window's headquarters view (not drawn yet).
+func (g *Game) viewportsAt(x, y int) (vps []world.Viewport, win ui.Win) {
+	win = g.wins.FindAt(x, y)
+	if win == nil {
+		return []world.Viewport{g.w.MainViewport()}, nil
+	}
+	vw, ok := win.(ui.ViewportWidgets)
+	if !ok {
+		return nil, win
+	}
+	r, ok := vw.ViewportRect()
+	if !ok {
+		return nil, win
+	}
+	b := win.Base()
+	px, py, pw, ph := r.Min.X, r.Min.Y, r.Dx(), r.Dy()
+	var vp world.Viewport
+	switch b.WinType {
+	case ui.WindowTypeTown:
+		vp, ok = g.w.TownViewport(b.Number, px, py, pw, ph)
+	case ui.WindowTypeIndustry:
+		ok = false
+		for i := range g.w.Map.Industries { // the window's number is the industry's id
+			if in := &g.w.Map.Industries[i]; int(in.ID) == b.Number && in.Name != 0xFFFF {
+				vp, ok = g.w.IndustryViewport(i, px, py, pw, ph)
+				break
+			}
+		}
+	case ui.WindowTypeStation:
+		vp, ok = g.w.StationViewport(b.Number, px, py, pw, ph)
+	case ui.WindowTypeVehicle:
+		vp, ok = g.w.VehicleViewport(uint16(b.Number), px, py, pw, ph)
+	default:
+		ok = false
+	}
+	if !ok {
+		return nil, win
+	}
+	return []world.Viewport{vp}, win
+}
+
+// viewportWidgetAt is findWidgetAt's widget type at (x, y) being
+// WidgetType::viewport: the main view where no window is, else the window's
+// viewport widget (ViewportWidgets).
+func (g *Game) viewportWidgetAt(x, y int) bool {
+	win := g.wins.FindAt(x, y)
+	if win == nil {
+		return true
+	}
+	vw, ok := win.(ui.ViewportWidgets)
+	return ok && vw.ViewportWidgetAt(x, y)
 }

@@ -21,25 +21,31 @@ type interaction struct {
 	ID   int
 }
 
-// mapCoordinatesAt is ViewportInteraction::getMapCoordinatesFromPos for the
-// main view at screen point (sx, sy): the topmost element accept takes
-// (getNormalInteractionInfo), then the station labels up to
-// stationNamesMinScale, then the town labels, the last match of each winning
-// (the labels too only when accept takes them).
-func (w *World) mapCoordinatesAt(sx, sy int, accept func(paint.InteractionItem) bool) interaction {
-	var in interaction
-	v := w.mainView()
-	if ps := w.scene.InteractionAt(&w.Map, v, sx, sy, accept); ps != nil {
+// mapCoordinatesAt is ViewportInteraction::getMapCoordinatesFromPos at
+// screen point (sx, sy) over a window's viewports vps (findAt's window): the
+// first viewport that holds the point (none: noInteraction) is painted for
+// its one pixel — the topmost element accept takes
+// (getNormalInteractionInfo) — then its station labels up to
+// stationNamesMinScale, then its town labels, the last match of each winning
+// (the labels too only when accept takes them), each unless the viewport's
+// flags hide them. vp is the viewport's index, -1 none.
+func (w *World) mapCoordinatesAt(vps []Viewport, sx, sy int, accept func(paint.InteractionItem) bool) (in interaction, vp int) {
+	vp = containingViewport(vps, sx, sy)
+	if vp < 0 {
+		return in, vp
+	}
+	v := vps[vp].View
+	px, py := sx-vps[vp].X, sy-vps[vp].Y // windowToViewport's window → viewport offset
+	if ps := w.scene.InteractionAt(&w.Map, v, px, py, accept); ps != nil {
 		in = interaction{Type: ps.Type, ps: ps}
 	}
 	// the 1×1 render target's getDrawableRect at this zoom
-	z := max(0, min(3, w.zoom))
+	z := max(0, min(3, v.Zoom))
 	mask := ^0 << z
-	x, y := (int(w.camX)+sx<<z)&mask, (int(w.camY)+sy<<z)&mask
+	x, y := (v.X+px<<z)&mask, (v.Y+py<<z)&mask
 	l, t := x>>z, y>>z
 	r, b := l+(1>>z), t+(1>>z)
-	// the labels a viewport hides (hideStationNames / hideTownNames) aren't found
-	if !w.viewFlags.Has(paint.ViewHideStationNames) && w.zoom <= stationNamesMinScale && accept(paint.ItemStationLabel) { // getStationNameInteractionInfo
+	if !v.Flags.Has(paint.ViewHideStationNames) && z <= stationNamesMinScale && accept(paint.ItemStationLabel) { // getStationNameInteractionInfo
 		for id := range w.Map.StationNames {
 			st := &w.Map.StationNames[id]
 			if st.Name == 0xFFFF || st.Flags&(1<<5) != 0 || !st.LabelFrame.Contains(l, t, r, b, z) {
@@ -48,14 +54,14 @@ func (w *World) mapCoordinatesAt(sx, sy int, accept func(paint.InteractionItem) 
 			in = interaction{Type: paint.ItemStationLabel, ID: id}
 		}
 	}
-	if !w.viewFlags.Has(paint.ViewHideTownNames) && accept(paint.ItemTownLabel) {
+	if !v.Flags.Has(paint.ViewHideTownNames) && accept(paint.ItemTownLabel) {
 		for i := range w.Map.Towns { // getTownNameInteractionInfo
 			if tn := &w.Map.Towns[i]; tn.Name != 0xFFFF && tn.LabelFrame.Contains(l, t, r, b, z) {
 				in = interaction{Type: paint.ItemTownLabel, ID: i}
 			}
 		}
 	}
-	return in
+	return in, vp
 }
 
 // headquartersCompany is the company whose headquarters' first tile the
@@ -78,15 +84,27 @@ func (w *World) headquartersCompany(el *scenario.BuildingElement, mapX, mapY int
 // of a station counts as that station's label (_track / _road /
 // getStationArguments). ok is false where the click opens nothing, and in the title.
 // A headquarters building gives its company; the nearest vehicle part when
-// nothing was hit (nearestVehicleAt).
-func (w *World) ItemLeftAt(sx, sy int) (LeftItem, bool) {
+// nothing was hit (nearestVehicleAt, in vps[0]: window->viewports[0]).
+// vps are the viewports of the window under the point (World.MainViewport's
+// when there is none). A station found is the hovered one
+// (getStationArguments(id): setHoveredStationId, hoveringOverStation) until
+// ResetHoveredStation.
+func (w *World) ItemLeftAt(vps []Viewport, sx, sy int) (LeftItem, bool) {
+	it, ok := w.itemLeftAt(vps, sx, sy)
+	if ok && it.Kind == paint.ItemStationLabel {
+		w.hoveredStation, w.hoveringOverStation = it.ID, true
+	}
+	return it, ok
+}
+
+func (w *World) itemLeftAt(vps []Viewport, sx, sy int) (LeftItem, bool) {
 	if w.TitleMode || !w.ensureScene() {
 		return LeftItem{}, false
 	}
 	pass := func(accept func(paint.InteractionItem) bool, industries bool) (LeftItem, bool) {
 		var it LeftItem
 		found := false
-		in := w.mapCoordinatesAt(sx, sy, accept)
+		in, _ := w.mapCoordinatesAt(vps, sx, sy, accept)
 		ps := in.ps
 		switch in.Type {
 		case paint.ItemStationLabel, paint.ItemTownLabel:
@@ -131,7 +149,10 @@ func (w *World) ItemLeftAt(sx, sy int) (LeftItem, bool) {
 	}, true); ok {
 		return it, true
 	}
-	return w.nearestVehicleAt(sx, sy)
+	if len(vps) == 0 {
+		return LeftItem{}, false
+	}
+	return w.nearestVehicleAt(vps[0], sx, sy)
 }
 
 // vehiclesMinScale is Config::vehiclesMinScale (default 2).
@@ -140,12 +161,14 @@ const vehiclesMinScale = 2
 // nearestVehicleAt is getItemLeft's fallback when nothing was hit: up to
 // vehiclesMinScale, the vehicle part (each train's veh2, then its cars'
 // bogies and bodies) whose sprite box holds the point (windowToViewport) and
-// whose box centre is nearest by Manhattan distance, if within 32.
-func (w *World) nearestVehicleAt(sx, sy int) (LeftItem, bool) {
-	if w.zoom > vehiclesMinScale {
+// whose box centre is nearest by Manhattan distance, if within 32. vp is the
+// window's first viewport, whether it holds the point or not (as upstream).
+func (w *World) nearestVehicleAt(vp Viewport, sx, sy int) (LeftItem, bool) {
+	v := vp.View
+	if v.Zoom > vehiclesMinScale {
 		return LeftItem{}, false
 	}
-	tx, ty := int32(w.camX)+int32(sx)<<w.zoom, int32(w.camY)+int32(sy)<<w.zoom
+	tx, ty := int32(v.X)+int32(sx-vp.X)<<v.Zoom, int32(v.Y)+int32(sy-vp.Y)<<v.Zoom
 	trains, err := w.Map.Trains()
 	if err != nil {
 		return LeftItem{}, false
@@ -247,7 +270,7 @@ func (w *World) TrackUnder(sx, sy int) (el scenario.TrackElement, x, y int32, ok
 	if w.TitleMode || !w.ensureScene() {
 		return el, 0, 0, false
 	}
-	in := w.mapCoordinatesAt(sx, sy, func(i paint.InteractionItem) bool { return i == paint.ItemTrack })
+	in, _ := w.mapCoordinatesAt(w.mainViewports(), sx, sy, func(i paint.InteractionItem) bool { return i == paint.ItemTrack })
 	if in.Type != paint.ItemTrack || in.ps == nil {
 		return el, 0, 0, false
 	}

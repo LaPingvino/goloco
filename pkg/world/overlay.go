@@ -96,9 +96,9 @@ const labelIconsNone = 230
 // whose saved labelFrame at this zoom overlaps the screen — the curved
 // ends and the middle each drawn twice translucent (ExtColour::unk34, then
 // the owner's colour, grey for none, getTranslucent(…, 1)), then in black
-// the name with its town and the transport icons. PARTIAL: the hovered
-// station's look (getTranslucent(…, 0)), Station::updateLabel (frames are the
-// save's).
+// the name with its town and the transport icons; the hovered station's
+// (hoveringOverStation and getHoveredStationId) in the lighter
+// getTranslucent(…, 0). PARTIAL: Station::updateLabel (frames are the save's).
 func (w *World) drawStationNames(screen *ebiten.Image, ox, oy, z int) {
 	bd := screen.Bounds()
 	vl, vt, vr, vb := ox, oy, ox+bd.Dx()-1, oy+bd.Dy()-1 // the view's rectangle in its pixels
@@ -123,7 +123,11 @@ func (w *World) drawStationNames(screen *ebiten.Image, ox, oy, z int) {
 		if st.Owner != 0xFF && int(st.Owner) < len(w.CompanyColours) {
 			colour = int(w.CompanyColours[st.Owner])
 		}
-		mc, err := g1.GetPaletteMap(int(paint.TranslucentColour[colour%len(paint.TranslucentColour)][1]))
+		shade := 1
+		if w.hoveringOverStation && id == w.hoveredStation { // isHovered
+			shade = 0
+		}
+		mc, err := g1.GetPaletteMap(int(paint.TranslucentColour[colour%len(paint.TranslucentColour)][shade]))
 		if err != nil {
 			continue
 		}
