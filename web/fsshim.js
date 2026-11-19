@@ -132,6 +132,20 @@
 		console.log("fetched " + path);
 	};
 
+	// audioURL is the music's way in (pkg/audio browser_js.go): a Blob URL
+	// an <audio> element plays the file from, as a Promise — a lazy track is
+	// fetched first, as open() would, but the game goes on meanwhile: a Go
+	// read (os.ReadFile) waits in open() for the whole fetch, and the game's
+	// frame with it.
+	const audioURL = async (path) => {
+		path = norm(path);
+		if (lazy.has(path)) await fetchLazy(path);
+		const data = files.get(path);
+		if (!data) throw err("ENOENT", path);
+		const opus = data.length > 4 && String.fromCharCode(data[0], data[1], data[2], data[3]) === "OggS"; // the web page's Opus music (cmd/webpack)
+		return URL.createObjectURL(new Blob([data], { type: opus ? "audio/ogg; codecs=opus" : "audio/wav" }));
+	};
+
 	const statOf = (path) => {
 		const isDir = dirs.has(path);
 		const f = files.get(path) || (lazy.has(path) ? { length: lazy.get(path).size } : null);
@@ -264,6 +278,6 @@
 		chdir(p) { p = norm(p); if (!dirs.has(p)) throw err("ENOENT", p); cwd = p; },
 	};
 	globalThis.path = { resolve(...segs) { return norm(segs.join("/")); } };
-	globalThis.GolocoFS = { addFile, addLazy, misses, files, dirs, onLog: null };
+	globalThis.GolocoFS = { addFile, addLazy, audioURL, misses, files, dirs, onLog: null };
 	restoreKept();
 })();
