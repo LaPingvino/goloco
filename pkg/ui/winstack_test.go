@@ -226,7 +226,7 @@ func TestResizableWindows(t *testing.T) {
 		t.Errorf("town window resized to %dx%d, viewport to %d,%d", town.W, town.H, r, b)
 	}
 	// Inside the viewport's part of the corner the press is the viewport's.
-	if !town.GripBlocked(town.X+town.W-10, town.Y+town.H-16) || town.GripBlocked(town.X+town.W-2, town.Y+town.H-2) {
+	if town.OnFrame(town.X+town.W-10, town.Y+town.H-16) || !town.OnFrame(town.X+town.W-2, town.Y+town.H-2) {
 		t.Error("the town window's grip: the viewport blocks it, the corner itself doesn't")
 	}
 	// Industry: Production 299 × 282 … 337, no handle (fixed width); back on
@@ -409,5 +409,45 @@ func TestDragByFrame(t *testing.T) {
 	s.Release(gx+50, gy+50)
 	if w.W != 550 || w.H != 450 {
 		t.Errorf("resized to %dx%d", w.W, w.H)
+	}
+}
+
+// stateNormalLeft on a Town window without a widget list of its own
+// (findWidgetAt over ViewWindow.frameWidgets): the viewport and the status
+// bar take a press, the bare panel moves the window — on the Population tab
+// the graph is drawn on the bare panel, so a press anywhere on it moves the
+// window (checked on the real OpenLoco, 2026-11-19: dragged by the graph).
+func TestViewWindowDragByFrame(t *testing.T) {
+	s := &WindowStack{ScreenW: 800, ScreenH: 600}
+	town := NewTownWindow(800, 600, "Town", "Town", 1000, 0, 1)
+	town.WinType = WindowTypeTown
+	town.X, town.Y = 100, 300
+	town.Graph = func(i int) (GraphTab, bool) { return GraphTab{Layout: TownGraphLayout}, i == 1 }
+	s.Open(town)
+	drag := func(x, y, dx, dy int) (int, int) {
+		ox, oy := town.X, town.Y
+		s.Press(x, y)
+		s.Held(x+dx, y+dy)
+		s.Release(x+dx, y+dy)
+		return town.X - ox, town.Y - oy
+	}
+	if dx, dy := drag(town.X+100, town.Y+80, 20, -30); dx != 0 || dy != 0 {
+		t.Errorf("a press on the viewport moved the window by %d,%d", dx, dy)
+	}
+	if dx, dy := drag(town.X+50, town.Y+town.H-6, 20, -30); dx != 0 || dy != 0 {
+		t.Errorf("a press on the status bar moved the window by %d,%d", dx, dy)
+	}
+	if dx, dy := drag(town.X+1, town.Y+80, 20, -30); dx != 20 || dy != -30 {
+		t.Errorf("a press on the panel's edge moved the window by %d,%d, want 20,-30", dx, dy)
+	}
+	town.HandleClick(town.X+34+5, town.Y+20) // the Population tab
+	if town.Tab != 1 {
+		t.Fatalf("tab %d", town.Tab)
+	}
+	if dx, dy := drag(town.X+150, town.Y+100, 50, -100); dx != 50 || dy != -100 {
+		t.Errorf("a press on the graph moved the window by %d,%d, want 50,-100", dx, dy)
+	}
+	if dx, dy := drag(town.X+3+31+5, town.Y+20, 50, 50); dx != 0 || dy != 0 {
+		t.Errorf("a press on a tab moved the window by %d,%d", dx, dy)
 	}
 }

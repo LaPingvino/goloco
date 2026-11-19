@@ -52,6 +52,15 @@ func (g *Game) Update() error {
 	}
 	g.updateKeyboard() // every key: the windows that take keys, then the shortcuts (keyboard.go)
 	if g.updateModal() {
+		// The windows' interface update goes on under a prompt: the
+		// confirmation's promptTickLoop calls WindowManager::tick once a
+		// pass (a pass at least 25 ms after the last), the rename box and the
+		// save prompt are ordinary windows of the running loop. So the white
+		// borders count down and a window opened meanwhile sounds at once.
+		if g.w.GameTicks(g.mouseMoved()) > 0 {
+			g.wins.Tick()
+		}
+		g.playOpenSound()
 		return nil
 	}
 	// A right click on the load/save list deletes a file (after asking).
@@ -74,11 +83,17 @@ func (g *Game) Update() error {
 	} else {
 		g.updateGame()
 	}
-	if pan, ok := g.wins.TakeOpenSound(); ok { // createWindow's openWindow sound
-		g.playSound(audio.SoundOpenWindow, audio.ChannelUI, pan)
-	}
+	g.playOpenSound()
 	g.playClickSounds()
 	return nil
+}
+
+// playOpenSound plays createWindow's openWindow sound for a window opened
+// this frame, panned to it.
+func (g *Game) playOpenSound() {
+	if pan, ok := g.wins.TakeOpenSound(); ok {
+		g.playSound(audio.SoundOpenWindow, audio.ChannelUI, pan)
+	}
 }
 
 // updateModal gives the frame's mouse to an open text input or confirmation,

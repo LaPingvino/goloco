@@ -172,13 +172,8 @@ func addVehicleListFilters(w *TownListWindow, tab int, vehicles *[]VehicleRow, a
 		bx := vlFilterBox[0] + vlFilterBox[2] - 1 - 10                                // the button: right − 10 … right − 1, its text at (10 − 1) / 2 (Label: centred)
 		DrawTextBold(screen, arrow, w.X+bx+(10-1)/2-aw/2, w.Y+vlFilterBox[1]+1, black)
 		bx = vlCargoBox[0] + vlCargoBox[2] - 1 - 10
-		if mode == 0 { // disabled (prepareDraw): no text, the button inset
-			c6, c4 := pal[gfx8.Shade(cmap, 6)], pal[gfx8.Shade(cmap, 4)]
-			// the inset font: the glyph in shade 4, its inset edge in shade 6 one
-			// right and down (TextRenderer: textRemap0 / textRemap2) — as the
-			// real OpenLoco draws it
-			DrawTextBold(screen, arrow, w.X+bx+(10-1)/2-aw/2+1, w.Y+vlCargoBox[1]+2, c6)
-			DrawTextBold(screen, arrow, w.X+bx+(10-1)/2-aw/2, w.Y+vlCargoBox[1]+1, c4)
+		if mode == 0 { // disabled (prepareDraw): no text, the button's arrow in colour.inset()
+			DrawTextInset(screen, arrow, w.X+bx+(10-1)/2-aw/2, w.Y+vlCargoBox[1]+1, cmap)
 			return
 		}
 		t, _ := cargoName()

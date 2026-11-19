@@ -157,3 +157,19 @@ func TestFinancesBarHold(t *testing.T) {
 		t.Fatalf("after release: %d %q", w.Scroll, w.hPart)
 	}
 }
+
+// CargoDelivered::onResize: 240 wide, max(10 × the cargo lines, 50) + 62
+// high, fixed — set as the tab opens and kept after.
+func TestCompanyCargoDeliveredHeight(t *testing.T) {
+	for _, c := range []struct{ lines, h int }{{0, 112}, {3, 112}, {5, 112}, {6, 122}, {12, 182}} {
+		w := &CompanyFinancesWindow{WinBase: WinBase{W: 636, H: 319}, CargoLines: make([]string, c.lines)}
+		w.switchTab(CompanyTabCargoDelivered)
+		if w.W != 240 || w.H != c.h || w.MinH != c.h || w.MaxH != c.h {
+			t.Errorf("%d lines: %d×%d (bounds %d–%d), want 240×%d", c.lines, w.W, w.H, w.MinH, w.MaxH, c.h)
+		}
+		w.CargoLines = append(w.CargoLines, "x")
+		if w.H != c.h {
+			t.Errorf("%d lines: the height followed a new line", c.lines)
+		}
+	}
+}

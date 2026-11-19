@@ -213,14 +213,40 @@ func (w *ViewWindow) PrepareDraw() {
 	}
 }
 
-// GripBlocked: on the first tab the viewport and the status bar reach into
-// the resize corner.
-func (w *ViewWindow) GripBlocked(px, py int) bool {
-	if w.Tab != 0 {
-		return false
+// frameWidgets is the current tab's widget list as prepareDraw leaves it,
+// what findWidgetAt looks through: Common::makeCommonWidgets (the frame, the
+// caption, the close button and the panel resized to the window; the four
+// tabs, leftAlignTabs: a disabled one hidden), and on the first tab
+// Town::widgets / Industry::widgets — the viewport, the status bar
+// (3, height − 12 to width − 14, height − 3) and centre_on_viewport in the
+// viewport's corner (the editor's expand / demolish buttons hidden, as
+// viewport() assumes). The graph, ratings and transported tabs have the
+// common widgets only: their contents are drawn on the bare panel.
+func (w *ViewWindow) frameWidgets() []BVWidget {
+	lw := []BVWidget{
+		{L: 0, T: 0, R: w.W - 1, B: w.H - 1},
+		{L: 1, T: 1, R: w.W - 2, B: 13},
+		{L: w.W - 15, T: 2, R: w.W - 3, B: 14},
+		{L: 0, T: 41, R: w.W - 1, B: w.H - 1},
 	}
-	_, _, r, b := w.viewport()
-	return gripBlockedStd(&w.WinBase, px, py, r, b)
+	for _, x := range tabLayout(w.Tabs, w.tabDisabled) {
+		t := bvW(x, 15, 31, 27)
+		t.Hidden = x < 0
+		lw = append(lw, t)
+	}
+	if w.Tab == 0 {
+		l, t, r, b := w.viewport()
+		lw = append(lw, BVWidget{L: l, T: t, R: r, B: b}, BVWidget{L: 3, T: w.H - 12, R: w.W - 14, B: w.H - 3},
+			BVWidget{L: r - 24, T: b - 24, R: r - 1, B: b - 1})
+	}
+	return lw
+}
+
+// OnFrame: no widget but the frame and the panel at the point (findWidgetAt):
+// a press there moves the window, or in the corner resizes it — on a graph
+// tab anywhere below the tabs.
+func (w *ViewWindow) OnFrame(x, y int) bool {
+	return bareFrame(w.frameWidgets(), vwPanel, w.X, w.Y, x, y)
 }
 
 // viewport is prepareDraw's viewport outside the editor: 3,44 to

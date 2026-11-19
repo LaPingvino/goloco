@@ -297,9 +297,6 @@ func (w *MessagesWindow) Draw(screen *ebiten.Image) {
 			return
 		}
 		cx, cy, cw, ch, _ := drawVScrollViewPressed(rt, l[0], l[1], l[2], l[3], gfx8.InsetColour{Map: sec}, w.contentHeight(), w.scroll, w.hold.PressedPart())
-		// ScrollView::draw crops the content a scrollbar margin short of its
-		// size, right and bottom.
-		cw, ch = cw-L.ScrollbarMargin, ch-L.ScrollbarMargin
 		w.content = [4]int{cx, cy, cw, ch}
 		if cw <= 0 || ch <= 0 {
 			return
