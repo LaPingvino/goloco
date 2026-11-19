@@ -61,7 +61,7 @@ handling.
 | A2 | `createRoad` (RoadPlacementArgs) | **Query, direct**, AA\|NP, with a retry on the alternate road object or bridge from the legacy return state (Pathfinding.cpp:552-578). Build of the plan, AA\|NP\|apply, in three tries: no bridge, bridge, then the alternate object or bridge (Pathfinding.cpp:1123-1161). Conversion of AA road to real road, apply\|F7, retried with NP (CompanyAi.cpp:5891-5905). | `Map.createRoad` (pkg/sim/createroad.go:340) is unexported. Its callers are `State.ConstructRoad` (construction.go:236) and town growth. **Needs an exported command.** |
 | A3 | `removeTrack` | Undo of a plan piece, AA\|NP\|apply (Pathfinding.cpp:742-748). Sell-off walk, apply (CompanyAi.cpp:6916-6922). Undo of stray AA track, AA\|NP (7078-7084, 7249-7255), and NP alone (7266-7272). End of company, NP plus AA where the piece is AA (7601-7608). **Direct**, apply, station tiles (6689-6698, `removeTrainStationAndTrack`). | `Map.RemoveTrack` (pkg/sim/removetrack.go:84) |
 | A4 | `removeRoad` | Undo of a plan piece (Pathfinding.cpp:1011-1017). Conversion step that removes the AA road before rebuilding it real (CompanyAi.cpp:5878-5884). Sell-off (6672-6678, 6798-6804). Undo (7054-7060, 7196-7202). End of company (7619-7626). | `Map.RemoveRoad` (pkg/sim/removeroad.go:89) |
-| A5 | `createTrackMod` | Query for the cost (flags none), then apply, then apply again with NP if that failed (CompanyAi.cpp:7406-7419). Called from 7445 (cost estimate) and 7484-7497 (upgrade). | `Map.CreateTrackMod` (pkg/sim/trackmods.go:244) |
+| A5 | `createTrackMod` | Query for the cost (flags none), then apply, then apply again with NP if that failed (CompanyAi.cpp:7406-7419). Called from 7465 (cost estimate) and 7496 (upgrade). | `Map.CreateTrackMod` (pkg/sim/trackmods.go:244) |
 | A6 | `createRoadMod` | Same pattern (CompanyAi.cpp:7389-7402). | `Map.CreateRoadMod` (pkg/sim/roadmods.go:202) |
 
 ### Stations, signals and AI-only composites
@@ -72,7 +72,7 @@ handling.
 | A8 | `aiCreateRoadAndStation` (AI only; AiCreateRoadAndStation.cpp:122) | Road station with its road, AA\|NP\|apply (CompanyAi.cpp:4648-4724). | **missing** (not wanted) |
 | A9 | `createRoadStation` | Station on an existing road, AA\|NP\|apply (CompanyAi.cpp:4738-4745). Conversion to real, apply\|F7, retried with NP (5915-5925). | `Map.CreateRoadStation` (pkg/sim/createroadstation.go:49). PARTIAL: the AI's placement without a road. |
 | A10 | `removeRoadStation` | Conversion, AA\|NP (CompanyAi.cpp:5866-5872). **Direct**, apply, both directions, in the sell-off (6648-6663). Undo, AA\|NP (7150-7162). | `Map.RemoveRoadStation` (pkg/sim/removeroadstation.go:51) |
-| A11 | `createTrainStation` | Only inside A7 and A14. The AI never issues it on its own (CompanyAi.cpp includes RemoveTrainStation.h but calls neither). | `Map.CreateTrainStation` (pkg/sim/createtrainstation.go:51). PARTIAL: the AI's query without a track. |
+| A11 | `createTrainStation` | Only inside A7 (AiCreateTrackAndStation.cpp:118); A14 converts existing AA station elements instead. The AI never issues it on its own (CompanyAi.cpp includes RemoveTrainStation.h but calls neither). | `Map.CreateTrainStation` (pkg/sim/createtrainstation.go:51). PARTIAL: the AI's query without a track. |
 | A12 | `createSignal` | One-sided signals spaced along the planned line, AA\|NP\|apply (CompanyAi.cpp:5380-5390, from `placeAiAllocatedSignalsEvenlySpaced` 5333-5396). | `Map.CreateSignal` (pkg/sim/createsignal.go:144) |
 | A13 | `createAirport` | Plan, AA\|NP\|apply (CompanyAi.cpp:4361-4365). Conversion: apply, retried with NP; the new station id is read from the legacy return state (5987-6000). | `Map.CreateAirport` (pkg/sim/airportcmd.go:210). PARTIAL: the AA surface flag. |
 | A14 | `aiTrackReplacement` (AI only; AiTrackReplacement.cpp:428) | Converts AA track (and its AA station and signal elements) to real, paying the replacement cost. Apply, retried with NP: station tiles (CompanyAi.cpp:6049-6060) and line (6294-6304). **Direct** with flags none, as a cost query in `measureTrackRoute` (Pathfinding.cpp:2215-2223). | **missing** (not wanted) |
@@ -157,11 +157,11 @@ applies to every AI the same way.
 
 | # | Power | Where |
 |---|---|---|
-| H1 | **Free, invisible reservations (aiAllocated).** All planning (stations, track, road, signals, airports, docks) is placed with AA\|NP: it costs nothing, is not drawn (unless `showAiPlanningAsGhosts`), does not remove trees or buildings, and **blocks players** with "another company is about to build here". OpenLoco's own change lets a player build over a plan that is not yet converting; this sets the AI's clearance flag (`challengeFlags` unk1), and the AI then undoes the plan. Once converting (unk2), the plan blocks. | GameCommands.h:46 ("ai can place down invisible ghosts ... that blocks players"); src/Map/TileClearance.cpp:150-175, 229; CompanyAi.cpp:4365, 4631, 4692, 4825, 5390; Pathfinding.cpp:899-903, 1142-1161 |
+| H1 | **Free, invisible reservations (aiAllocated).** All planning (stations, track, road, signals, airports, docks) is placed with AA\|NP: it costs nothing, is not drawn (unless `showAiPlanningAsGhosts`), does not remove trees or buildings, and **blocks other AIs and the neutral company** with "another company is about to build here". A player may build over a plan that is not yet converting; this sets the planning AI's clearance flag (`challengeFlags` unk1, the line marked "Modification from vanilla", TileClearance.cpp:173) and the AI then undoes the plan. Once the owner is converting (unk2), the plan blocks players too. | GameCommands.h:46 ("ai can place down invisible ghosts ... that blocks players"); src/Map/TileClearance.cpp:150-175, 229; CompanyAi.cpp:4365, 4631, 4692, 4825, 5390; Pathfinding.cpp:899-903, 1142-1161 |
 | H2 | **Build for free when broke.** Every paying step is retried with `noPayment` on failure: vehicles (CompanyAi.cpp:262-266), conversion of road, road station, airport, port and track (5902-5905, 5922-5925, 5992-5994, 6018-6020, 6058-6060, 6301-6304), and mods (7397-7402, 7414-7419). Upstream's own comment: "the AI is allowed to build for free if it can't afford it" (5937-5938). | as listed |
 | H3 | **Automatic loans** inside every paid command: non-players borrow in 1000 steps instead of being refused (src/World/CompanyManager.cpp:1180-1200). The AI's money checks call it directly (CompanyAi.cpp:4100, 5644), so asking "can I afford it?" takes out the loan. **goloco has ported this** (pkg/sim/companyvalue.go:111-125), so any AI that runs commands through `DoCommandFor` gets it today. | |
 | H4 | **Automatic monthly repayment** for non-players (src/World/Company.cpp:710-720; goloco pkg/sim/companyvalue.go:182-187). This is a direct cash and loan write, not a command. | |
-| H5 | **Acting as the neutral company.** Placement, start and failed-placement sale run with `setUpdatingCompanyId(neutral)` ("// Why?", PlaceVehicle.cpp:68, 85, 333, 394, 480). `checkCompanyCompatibilityCommon` passes everything for neutral (src/GameCommands/GameCommands.cpp:515-528), so the ownership checks on track, road and vehicle are skipped. A side effect that cuts the other way: `applyPaymentToCompany(neutral)` finds no company (src/World/CompanyManager.cpp:168-176) and returns, so the **refund of a sale made as neutral is lost**. | as listed |
+| H5 | **Acting as the neutral company.** Placement, start and failed-placement sale run with `setUpdatingCompanyId(neutral)` ("// Why?", PlaceVehicle.cpp:68, 85, 333, 394, 480). `checkCompanyCompatibilityCommon` passes everything for neutral (src/GameCommands/GameCommands.cpp:515-528), so the ownership checks on track, road and vehicle are skipped. A side effect that cuts the other way: `applyPaymentToCompany(neutral)` finds no company (src/World/CompanyManager.cpp:168-176) and returns, so the **refund of a sale made as neutral is lost** (neutral is 15, `kMaxCompanies` is 15, include/OpenLoco/S5/Limits.h:7). | as listed |
 | H6 | **Commands called directly, outside `doCommand`:** no payment, no refund, no funding check. Station and track removal in the sell-off (CompanyAi.cpp:6656-6663, 6696-6698); the pathfinder's queries (Pathfinding.cpp:412, 566, 578, 2223). The queries are harmless (no apply); the removals skip the refund (**(unsure)** whether they skip a cost too). | |
 | H7 | **AI-only composite commands:** A7, A8, A14. A14's conversion cost sets the bridge height factor to 1 (AiTrackReplacement.cpp:401, "Why 1???"). The pathfinder's road replacement cost uses 0 (Pathfinding.cpp:1404, "probably a bug"), so the estimate is too low. **(unsure)** whether the paid conversion in A14 also undercharges tall bridges compared with a player's createTrack. The code suggests so: the cost is recomputed rather than taken from createTrack. | |
 | H8 | **Direct writes to vehicles:** `aiThoughtId` (CompanyAi.cpp:310); `aiPlacementPos/BaseZ/TaD` (417-437, PlaceVehicle.cpp:537); `breakdownFlags` breakdownPending set or cleared as a "place me" marker (439, 6396); `brokenDown` set after placement ("// Why?", PlaceVehicle.cpp:78). | |
@@ -169,7 +169,7 @@ applies to every AI the same way.
 | H10 | **Engine actions for the AI:** posting the "new company" news (5696); deleting itself (`aiDestroy`, 1790, 7674); emotions and observations (A38). | |
 | H11 | **Reading other companies' private plans** (O19): every competitor's thoughts, including their income against running cost. A player sees only public figures (the company list and company windows). | |
 | H12 | **AI-only command arguments** (`unkFlags`) that change the rules: track bit 2 refuses junctions (src/GameCommands/Track/CreateTrack.cpp:85-89); road bits 4 and 5 change how it treats existing roads under AA (src/GameCommands/Road/CreateRoad.cpp:238-253, 283). These restrict rather than empower, but they are rules a player's command never gets. | Pathfinding.cpp:361-389, 552-560 |
-| H13 | **`flag_7`** on conversions (CompanyAi.cpp:5902, 5922). It is "ai only?" in the header (GameCommands.h:49). In building removal it skips the indestructible check (src/GameCommands/Buildings/RemoveBuilding.cpp:61). **(unsure)** of its full effect in createRoad and createRoadStation. | |
+| H13 | **`flag_7`** on conversions (CompanyAi.cpp:5902, 5922). It is "ai only?" in the header (GameCommands.h:49). In building removal it skips the indestructible check (src/GameCommands/Buildings/RemoveBuilding.cpp:61). It is not purely an AI flag: the clearance code sets it itself on nested building removal (upstream TileClearance, goloco pkg/sim/gamecmd.go `clearBuildingCollision`). **(unsure)** of its full effect in createRoad and createRoadStation. | |
 | H14 | **Engine branches that favour or limit the AI** (keep them as named rules, not hidden ones): at most 2 AI airports per town (src/GameCommands/Airports/CreateAirport.cpp:323-330); 500 AI vehicles in total (src/GameCommands/Vehicles/CreateVehicle.cpp:41, 48-70; goloco has it, pkg/sim/createvehiclecmd.go:17); separate forbidden-vehicle masks (src/Objects/ObjectManager.cpp:1050; goloco pkg/sim/yearly.go); unused town-type roads of non-players removed by the tile loop (src/Map/RoadElement.cpp:29-117; goloco pkg/sim/roadtick.go); stuck or crashed vehicles sold at once only for players (src/GameCommands/Vehicles/VehicleChangeRunningMode.cpp:208). | |
 | H15 | **No emotion or "thinking" feedback for AI construction** (CreateTrack.cpp:518, CreateRoad.cpp:810, CreateRoadStation.cpp:591 are player-only). This is cosmetic. | |
 | H16 | **Auto-sale of crashed AI vehicles** by the engine (A30). | |
@@ -222,7 +222,7 @@ every raw field above survives a load and save unchanged. Two open questions:
 ## 5. The pathfinder's needs (CompanyAiPathfinding.cpp)
 
 How it works: `aiPathfind` (2503-2665) runs one step per think. The upper bound is 384 steps per phase
-(2531-2541), and the phases are 0, 1 and 2 (2400-2413). It grows track from **both** station stubs. At each
+(2531-2541), and the phases are 0, 1 and 2 (2400-2413). It grows track from one station stub at a time: phase 0 from the first end, phase 1 unwinds (backtracks), phase 2 from the other end. At each
 step, for every allowed piece id (`getPlacementVars`, 67-265: from the track or road object's traits, steep
 slopes only with rack rail), it scores the piece by recursive look-ahead
 (`queryTrackPlacementScoreRecurse`, 333-475). Each look-ahead piece is a **dry run of createTrack**. The
@@ -395,6 +395,10 @@ Engine rules that stay (they apply to every AI equally, and each is named in the
   Borrowing becomes a visible decision in the log, and the H3 code path stays only for OpenLoco's own AI
   companies when the original rules are in force (AI off, simcmp).
 
+The G6 switch covers borrowing only. The monthly auto-repay (H4) stays an engine rule for every non-player
+company. It never adds money, so it is harmless to an AI that borrows on purpose; an AI that wants to keep its
+loan can be given the same switch later.
+
 Ruled out: H1 (reservations), H2 (free building), H5 (acting as neutral), H6 (direct calls), H7 (AI-only
 commands), H8 and H9 (direct writes; the engine keeps its own bookkeeping), H11 (others' plans), H12 and H13
 (AI-only argument bits), H16 (engine sale on the AI's behalf; the AI gets the crash event and decides).
@@ -423,8 +427,10 @@ commands), H8 and H9 (direct writes; the engine keeps its own bookkeeping), H11 
    ghost-station forms exist, pkg/sim/stationaccept.go:122-190); town demand (`getTownRequiredCargoTypes`).
 8. **G8 Vehicle purchase as one action:** CreateVehicle and AddCarToVehicle exist but leave payment to the caller
    ("PARTIAL", createvehiclecmd.go:23). The Actor must run both through `DoCommandFor` under VehiclePurchases.
-9. **G9 Air and water vehicles do not move yet** (pkg/sim/vehicletick.go:16-17: "Air and water vehicles are
-   not updated"; airmotion.go exists, so check the current state). An AI should begin with rail and road.
+9. **G9 Vehicle movement is PARTIAL for rail and road** (pkg/sim/vehicletick.go:14-18: stations, stopping and
+   reversing of the head's land logic are not all ported; the same header's "air and water vehicles are not
+   updated" is stale: `updateManagers` dispatches them to `updateAircraft` / `updateBoat`). An AI's services
+   only earn once trains load, unload and turn round; check the head-update PARTIAL list before testing one.
 10. **G10 Takeover of a loaded OpenLoco AI company:** clear its thoughts and the vehicles' `aiThoughtId` (§4
     question 1). Until then, run our AI only on companies it created.
 11. **G11 Saving the AI's own state** (a goloco chunk or sidecar; §4 question 2), the per-AI PRNG, and the
@@ -442,7 +448,7 @@ commands), H8 and H9 (direct writes; the engine keeps its own bookkeeping), H11 
   (24 KiB per company).
 - Placing, starting and failed-placement sales run **as the neutral company**, which skips ownership checks
   and throws away the sale refund.
-- Aggressiveness has one use: it sets how many thinks pass between converted pieces (1-25, CompanyAi.cpp:6079-6090).
+- In the AI, aggressiveness has one use: it sets how many thinks pass between converted pieces (1-25, CompanyAi.cpp:6079-6090).
   Intelligence scales the revenue it demands (4069-4101). Competitiveness below 5 avoids any route another
   company already serves (3057-3060).
 - The AI shares `gPrng1` with the game. With the AI on, goloco and OpenLoco can only match if the AI is a
