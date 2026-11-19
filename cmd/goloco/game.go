@@ -147,6 +147,7 @@ type Game struct {
 	indTool            industryTool  // the Fund New Industries tab's tool (industrytool.go)
 	tf                 terraformTool // the Terraform window's tools (terraform.go)
 	tip                tooltipState  // the window tooltip's timing (tooltip.go)
+	cursor             cursorState   // the mouse cursor (cursor.go)
 	routeTool          bool          // the Route tab's tool (adding stops by clicking the map) is active
 	routeHead          uint16        // the vehicle (window) whose tool that is
 	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,

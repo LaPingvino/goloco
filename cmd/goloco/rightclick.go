@@ -56,8 +56,8 @@ func (g *Game) updateViewportRight() {
 		return
 	}
 	if g.inMouseJustReleased(ebiten.MouseButtonRight) || !g.inMousePressed(ebiten.MouseButtonRight) && !g.inMouseJustPressed(ebiten.MouseButtonRight) {
-		r.on = false // Input::state(State::reset)
-		ebiten.SetCursorMode(ebiten.CursorModeVisible)
+		r.on = false    // Input::state(State::reset)
+		g.applyCursor() // Ui::showCursor: the chosen cursor back
 		if r.ticks <= 500 {
 			g.handleRightReleased(r.pressX, r.pressY)
 		}
