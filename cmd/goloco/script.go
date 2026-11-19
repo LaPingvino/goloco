@@ -588,6 +588,17 @@ func (g *Game) scriptExpect() {
 			}
 			break
 		}
+		if sub, ok := strings.CutPrefix(req[0], "error~"); ok { // 1 while the error window shows a line holding this (_ for a space), its lines logged
+			if e := g.errorWin; e != nil {
+				log.Printf("[Script] error window: %q", e.Lines)
+				for _, l := range e.Lines {
+					if strings.Contains(l, strings.ReplaceAll(sub, "_", " ")) {
+						got = 1
+					}
+				}
+			}
+			break
+		}
 		// KEY@X,Y: a tile's surface height (baseZ, in SmallZ), its slope bits,
 		// its water level, its trees and walls (ghosts not counted).
 		key, at, _ := strings.Cut(req[0], "@")
