@@ -209,8 +209,8 @@ func (w *MusicJukeboxWindow) Draw(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		optDropdown(rt, mjPlaying[0], mjPlaying[1], mjPlaying[2], sec)
-		optDropdown(rt, mjPlaylist[0], mjPlaylist[1], mjPlaylist[2], sec)
+		optDropdown(rt, &w.WinBase, mjPlaying[0], mjPlaying[1], mjPlaying[2], sec)
+		optDropdown(rt, &w.WinBase, mjPlaylist[0], mjPlaylist[1], mjPlaylist[2], sec)
 		for i, r := range mjControls {
 			drawImageButton(rt, r, mjControlImgs[i], w.Colour, st.PlayMode && i == activated, st.PlayMode && i == w.hover, !st.PlayMode)
 		}

@@ -35,7 +35,7 @@ func TestOptionsClickSounds(t *testing.T) {
 		{"Audio tab", 3 + 31*OptTabAudio + 5, 20, nil, MidX(3+31*OptTabAudio, 31)},
 		{"current tab", 3 + 31*OptTabDisplay + 5, 20, nil, MidX(3, 31)},
 		{"screen mode button", 235 + 154 - 6, 68, nil, MidX(235+154-12, 11)},
-		{"screen mode combo box", 240, 68, nil, MidX(235, 154)},
+		{"screen mode combo box", 240, 68, nil, MidX(235+154-12, 11)}, // findWidgetAt: a combobox is its button
 		{"Misc checkbox", 20, 80, func(w *OptionsWindow) { w.Tab = OptTabMisc }, MidX(10, 400)},
 	}
 	for _, c := range cases {

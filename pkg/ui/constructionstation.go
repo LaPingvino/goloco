@@ -73,7 +73,7 @@ func DrawStationTab(screen *ebiten.Image, f *ConstructionFrame, st StationTabSta
 	winMap, _ := g1.GetPaletteMap(win)
 	const imgL, imgT, imgB = 35, 60, 60 + 68 - 1
 	draw8(screen, f.X, f.Y, ConstructionW, f.Height(), func(rt *gfx8.RenderTarget) {
-		optDropdown(rt, 3, 45, 132, sec)
+		optDropdown(rt, nil, 3, 45, 132, sec)
 		if st.Image >= 0 && st.Image+1 < len(g1.Elements) {
 			if sp, err := gfx8.Decode(&g1.Elements[st.Image]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, imgL, imgT, gfx8.OpFor(sp, prim != nil, false), prim, nil)

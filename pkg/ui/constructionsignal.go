@@ -62,7 +62,7 @@ func DrawSignalTab(screen *ebiten.Image, f *ConstructionFrame, st SignalTabState
 	pal := g1.GetPalette()
 	black := pal[paletteBlack0]
 	draw8(screen, f.X, f.Y, SignalTabW, f.Height(), func(rt *gfx8.RenderTarget) {
-		optDropdown(rt, sigDropdown[0], sigDropdown[1], sigDropdown[2], sec)
+		optDropdown(rt, nil, sigDropdown[0], sigDropdown[1], sigDropdown[2], sec)
 		on := sigSingle
 		if st.Both {
 			on = sigBoth

@@ -45,7 +45,7 @@ func DrawOverheadTab(screen *ebiten.Image, f *ConstructionFrame, st OverheadTabS
 			}
 		}
 		if any {
-			optDropdown(rt, 3, 95, 132, sec)
+			optDropdown(rt, nil, 3, 95, 132, sec)
 			gfx8.FillRectInset(rt, 35, 110, 35+66-1, 110+66-1, gfx8.InsetColour{Map: sec}, 0)
 		}
 	})

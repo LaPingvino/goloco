@@ -7,6 +7,7 @@ import (
 	"github.com/LaPingvino/goloco/pkg/objects"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
+	"image"
 	"strconv"
 	"strings"
 )
@@ -184,12 +185,24 @@ var optRegionalRows = [5]struct {
 }{{49, i18n.OptionsLanguage}, {69, i18n.DistanceAndSpeed}, {84, i18n.Heights}, {104, i18n.CurrentGameCurrency}, {119, i18n.NewGameCurrency}}
 
 // optDropdown draws dropdownWidgets: the ComboBox (inset, fillDarker) and the
-// 11×10 Button at (x + w - 12, y + 1).
-func optDropdown(rt *gfx8.RenderTarget, x, y, w int, sec []uint8) {
+// 11×10 Button at (x + w - 12, y + 1). The Button is drawn activated
+// (borderInset) while the dropdown its press opened is up — Window::draw's
+// pressedWidget in State::dropdownActive (Window.cpp, ButtonWidget.cpp);
+// b is the window (nil: a window whose presses don't go through
+// dropdownPress, never drawn pressed).
+func optDropdown(rt *gfx8.RenderTarget, b *WinBase, x, y, w int, sec []uint8) {
 	gfx8.FillRectInset(rt, x, y, x+w-1, y+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
-	bx := x + w - 12
-	gfx8.FillRectInset(rt, bx, y+1, bx+11-1, y+1+10-1, gfx8.InsetColour{Map: sec}, 0)
+	btn := dropdownButton([4]int{x, y, w, 12})
+	flags := 0
+	if b != nil && b.dropdownPressed(btn) {
+		flags = gfx8.InsetBorderInset
+	}
+	gfx8.FillRectInset(rt, btn[0], btn[1], btn[0]+btn[2]-1, btn[1]+btn[3]-1, gfx8.InsetColour{Map: sec}, flags)
 }
+
+// dropdownButton is dropdownWidgets' Button for the ComboBox r: 11 × 10 at
+// (x + w − 12, y + 1).
+func dropdownButton(r [4]int) [4]int { return [4]int{r[0] + r[2] - 12, r[1] + 1, 11, 10} }
 
 // The Audio tab's music group (AudioTab::_widgets): the two checkboxes and
 // the jukebox button.
@@ -213,10 +226,25 @@ func (w *OptionsWindow) in(r [4]int, px, py int) bool {
 	return px >= w.X+r[0] && px < w.X+r[0]+r[2] && py >= w.Y+r[1] && py < w.Y+r[1]+r[3]
 }
 
-// dropdownPress is WinBase.Button for dropdownWidgets (r the combo box): the
-// 11 × 10 button at (x + w − 12, y + 1), else the combo box.
+// dropdownPress is WinBase.Button for dropdownWidgets (r the combo box): a
+// press on the button or on the combo box is the button's — findWidgetAt
+// turns a combobox into the widget after it (Window.cpp). The button is then
+// the pressed widget, drawn pressed while the dropdown it opens is up.
 func dropdownPress(b *WinBase, r [4]int, px, py int) bool {
-	return b.Button([4]int{r[0] + r[2] - 12, r[1] + 1, 11, 10}, px, py) || b.Button(r, px, py)
+	rx, ry := px-b.X, py-b.Y
+	if rx < r[0] || ry < r[1] || rx >= r[0]+r[2] || ry >= r[1]+r[3] {
+		btn := dropdownButton(r)
+		if rx < btn[0] || ry < btn[1] || rx >= btn[0]+btn[2] || ry >= btn[1]+btn[3] {
+			return false
+		}
+	}
+	btn := dropdownButton(r)
+	b.PressWidget(btn)
+	b.pressedHit = image.Rect(b.X+r[0], b.Y+r[1], b.X+r[0]+r[2], b.Y+r[1]+r[3])
+	if b.stack != nil {
+		b.stack.dropdownBtn = stackDropdownBtn{owner: b.self, r: btn, state: dropdownPending}
+	}
+	return true
 }
 
 // PrepareDraw is each tab's onResize: setSize(kWindowSize).
@@ -584,7 +612,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			for _, y := range []int{64, 79, 94, 130, 145, 160, 175} {
 				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 			}
-			optDropdown(rt, 250, 211, 156, sec)
+			optDropdown(rt, &w.WinBase, 250, 211, 156, sec)
 			gfx8.FillRectInset(rt, 250, 226, 250+156-1, 226+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 			gfx8.FillRectInset(rt, 250+156-26, 227, 250+156-26+13-1, 227+10-1, gfx8.InsetColour{Map: sec}, 0)
 			gfx8.FillRectInset(rt, 250+156-13, 227, 250+156-13+12-1, 227+10-1, gfx8.InsetColour{Map: sec}, 0)
@@ -594,7 +622,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 			groupBox(rt, 4, 49, 392, 128, sec, i18n.Label(i18n.FrameMapRendering))
 			groupBox(rt, 4, 180, 392, 32, sec, i18n.Label(i18n.UserInterfaceGroup))
 			for _, y := range []int{63, 79, 95, 194} {
-				optDropdown(rt, 235, y, 154, sec)
+				optDropdown(rt, &w.WinBase, 235, y, 154, sec)
 			}
 			for _, y := range []int{110, 126, 142, 158} {
 				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
@@ -617,7 +645,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		if w.Tab == OptTabDisplay {
 			groupBox(rt, 4, 49, 392, 97, sec, i18n.Label(i18n.FrameHardware))
 			for _, y := range []int{63, 79, 111} {
-				optDropdown(rt, 235, y, 154, sec)
+				optDropdown(rt, &w.WinBase, 235, y, 154, sec)
 			}
 			// stepperWidgets({235, 95}, {154, 12}): TextBox + "-" (x+w-26, 13 wide) and
 			// "+" (x+w-13, 12 wide) Buttons, both y+1 and h-2 high.
@@ -629,7 +657,7 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		}
 		if w.Tab == OptTabRegional {
 			for _, r := range optRegionalRows {
-				optDropdown(rt, 183, r.y, 173, sec)
+				optDropdown(rt, &w.WinBase, 183, r.y, 173, sec)
 			}
 			for i := range 2 { // Checkboxes at (10, 134) and (10, 148)
 				y := 134 + 14*i
@@ -642,8 +670,8 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		}
 		groupBox(rt, 4, optSoundOff, optW-8, optSoundH, sec, i18n.Label(i18n.FrameSound))
 		groupBox(rt, 4, optVolOff, optW-8, optVolH, sec, i18n.Label(i18n.FrameVolume))
-		// Device row (dropdown widget: inset field + button)
-		gfx8.FillRectInset(rt, 10, optSoundOff+14, 10+346-1, optSoundOff+14+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+		// Device row: dropdownWidgets (audio_device, audio_device_btn)
+		optDropdown(rt, &w.WinBase, 10, optSoundOff+14, 346, sec)
 		// The music group: two checkboxes and the jukebox Button
 		groupBox(rt, 4, optMusicOff, optW-8, optMusicH, sec, i18n.Label(i18n.FrameMusic))
 		for _, c := range [][4]int{optTitleMusic, optGameMusic} {
@@ -859,6 +887,10 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 	DrawTextBold(screen, i18n.Label(i18n.FrameSound), w.X+4+5, w.Y+optSoundOff, text)
 	DrawTextBold(screen, i18n.Label(i18n.FrameVolume), w.X+4+5, w.Y+optVolOff, text)
 	DrawTextBold(screen, "Default", w.X+10+2, w.Y+optSoundOff+14+1, black)
+	// audio_device_btn's label, StringIds::dropdown "▼", centred as Label::draw.
+	arrow := string(rune(170))
+	aw, _ := MeasureTextBold(arrow)
+	DrawTextBold(screen, arrow, w.X+10+346-12+(11-1)/2-aw/2, w.Y+optSoundOff+14+1, black)
 	DrawTextBold(screen, i18n.Label(i18n.FrameMusic), w.X+4+5, w.Y+optMusicOff, text)
 	for _, c := range []struct {
 		r     [4]int
@@ -885,7 +917,10 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 }
 
 // groupBox is GroupBox::draw's border (the label is drawn by the caller, so
-// the gap is computed from the label width here).
+// the gap is computed from the label width here), w × h the widget's size:
+// the right and bottom edges inside it, as upstream since 588abac ("Address
+// groupbox border regression") — before, they lay one pixel outside.
+// OpenLoco reference: src/OpenLoco/src/Ui/Widgets/GroupBoxWidget.cpp.
 func groupBox(rt *gfx8.RenderTarget, x, y, w, h int, cmap []uint8, label string) {
 	s4, s7 := gfx8.Shade(cmap, 4), gfx8.Shade(cmap, 7)
 	tw, _ := MeasureTextBold(label)
@@ -896,12 +931,12 @@ func groupBox(rt *gfx8.RenderTarget, x, y, w, h int, cmap []uint8, label string)
 	f(x+1, by+1, 4, 1, s7)
 	f(textEnd, by, w-(textEnd-x)-1, 1, s4)
 	f(textEnd, by+1, w-(textEnd-x)-2, 1, s7)
-	f(x+w-1, by+1, 1, bh-1, s4)
-	f(x+w, by, 1, bh+1, s7)
-	f(x, by+bh-1, w-1, 1, s4)
-	f(x, by+bh, w, 1, s7)
+	f(x+w-2, by+1, 1, bh-1, s4)
+	f(x+w-1, by, 1, bh, s7)
+	f(x, by+bh-2, w-1, 1, s4)
+	f(x, by+bh-1, w, 1, s7)
 	f(x, by+1, 1, bh-2, s4)
-	f(x+1, by+2, 1, bh-3, s7)
+	f(x+1, by+2, 1, bh-4, s7)
 }
 
 // currencyDisabled is prepareDraw's test for the current-currency dropdown:
