@@ -211,9 +211,12 @@ type Game struct {
 
 	// scripted input playback (GOLOCO_SCRIPT)
 	script *inputScript
-	// viewportLeft is Input::State::viewportLeft: a left press on the main view
-	// without a tool, waiting for its release (viewportLeftRelease).
+	// viewportLeft is Input::State::viewportLeft: a left press on a viewport
+	// (the main view's, or a window's viewport widget) without a tool,
+	// waiting for its release (viewportLeftRelease); vpLeft is the window
+	// pressed in (_dragWindowType, _dragWindowNumber).
 	viewportLeft bool
+	vpLeft       viewportLeftState
 	// stDrag is the Station tab tool's press / drag (stationdrag.go).
 	stDrag stationDrag
 
