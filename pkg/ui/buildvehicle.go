@@ -471,8 +471,9 @@ func (w *BuildVehicleWindow) drawPreviewName(screen *ebiten.Image, p BVWidget, w
 // Contains reports whether the point is on the window.
 // HandleClick is onMouseUp's close and vehicle-type tabs (BuildVehicle.cpp):
 // close → WindowManager::close; a type tab → switchTab (here: OnTab, which
-// opens the window afresh on that tab). PARTIAL: the track tabs, the list
-// (buying), the search box and the dropdowns.
+// opens the window afresh on that tab); the list's scroll bar and a row
+// (onScrollMouseDown: OnBuy). PARTIAL: the track tabs, the search box and
+// the dropdowns.
 //
 // clickable(BuildVehicle.cpp): close_button tab_build_new_trains tab_build_new_buses tab_build_new_trucks tab_build_new_trams tab_build_new_aircraft tab_build_new_ships
 func (w *BuildVehicleWindow) HandleClick(x, y int) {

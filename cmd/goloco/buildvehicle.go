@@ -183,8 +183,8 @@ func (g *Game) newBuildVehicleWindow(tab int, target uint16) *ui.BuildVehicleWin
 
 // buyVehicle is onScrollMouseDown's purchase: the createVehicle command (no
 // target vehicle) for the controlling company through doCommand (cash checked,
-// paid under VehiclePurchases), then the window refreshed (sub_4B92A5: here
-// opened afresh on its tab). PARTIAL: Vehicle::Details::open on the new
+// paid under VehiclePurchases), then the window refreshed (sub_4B92A5, in
+// place: refreshBuildVehicle). PARTIAL: Vehicle::Details::open on the new
 // vehicle (the Vehicle window, 5P.g — until then the bought vehicle waits
 // unplaced, as upstream's does until placed, and shows in the vehicle list),
 // Config::buildLockedVehicles (false).
