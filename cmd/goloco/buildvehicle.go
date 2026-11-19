@@ -156,8 +156,7 @@ func (g *Game) newBuildVehicleWindow(tab int, target uint16) *ui.BuildVehicleWin
 // opened afresh on its tab). PARTIAL: Vehicle::Details::open on the new
 // vehicle (the Vehicle window, 5P.g — until then the bought vehicle waits
 // unplaced, as upstream's does until placed, and shows in the vehicle list),
-// the error window ("Can't build …" with the reason), Config::buildLockedVehicles
-// (false).
+// Config::buildLockedVehicles (false).
 func (g *Game) buyVehicle(tab int, id, target uint16) {
 	if g.r.ObjMgr == nil {
 		return
@@ -178,6 +177,7 @@ func (g *Game) buyVehicle(tab int, id, target uint16) {
 	})
 	if !ok {
 		log.Printf("[Game] can't build vehicle %d", id)
+		g.openCmdError(g.buildErrorTitle(id, target), c)
 		return
 	}
 	log.Printf("[Game] bought vehicle %d (head %d) for %d", id, head, cost)
@@ -244,4 +244,22 @@ func (g *Game) buildNewImage(h *scenario.VehicleEntity) int {
 		return 0
 	}
 	return int(g.skin().ImageOffset) + 411 + int(h.VehicleType)
+}
+
+// buildErrorTitle is onScrollMouseDown's setErrorTitle: "Can't build
+// <vehicle>..." (cant_build_pop_5_string_id), or with a target vehicle "Can't
+// add <vehicle> to <train>..." (cant_add_pop_5_string_id_string_id).
+func (g *Game) buildErrorTitle(id, target uint16) string {
+	name := ""
+	if int(id) < len(g.r.ObjMgr.Vehicles) && g.r.ObjMgr.Vehicles[id] != nil {
+		name = g.r.ObjMgr.Vehicles[id].DisplayName
+	}
+	m := &g.w.Map
+	if target != sim.EntityIDNull {
+		if tr, err := m.TrainOf(target); err == nil {
+			h := m.Entities[tr.Head]
+			return ui.FormatErrorArgs(i18n.Label(i18n.CantAddPop5StringIdStringId), name, m.VehicleName(h.Name, int(h.OrdinalNumber)))
+		}
+	}
+	return ui.FormatErrorArgs(i18n.Label(i18n.CantBuildPop5StringId), name)
 }

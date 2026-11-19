@@ -3,6 +3,7 @@ package sim
 import (
 	"fmt"
 	"github.com/LaPingvino/goloco/pkg/assets"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"math"
 	"strings"
 	"testing"
@@ -433,7 +434,7 @@ func TestAddCarToVehicle(t *testing.T) {
 	// a vehicle on the track: lifted, the car added, put back (a stopped rail one)
 	for _, tr := range trains {
 		hh := m.Entities[tr.Head]
-		if hh.TileX == -1 || hh.Mode != 0 || !m.canBeModified(tr) {
+		if hh.TileX == -1 || hh.Mode != 0 || !m.canBeModified(nil, tr) {
 			continue
 		}
 		car := m.Entities[tr.Cars[len(tr.Cars)-1][0].Body].ObjectID
@@ -463,7 +464,7 @@ func TestVehiclePickup(t *testing.T) {
 		if h.TileX == -1 || h.Mode == 2 || h.Mode == 3 { // land vehicles on the map
 			continue
 		}
-		if !m.canBeModified(tr) { // moving, broken down, stuck …: refused (as checked here)
+		if !m.canBeModified(nil, tr) { // moving, broken down, stuck …: refused (as checked here)
 			if _, ok := m.VehiclePickup(&Cmd{Company: h.Owner, Objects: om}, CmdApply, h.ID); ok {
 				t.Errorf("vehicle %d picked up though it can't be modified", h.ID)
 			}
@@ -531,7 +532,7 @@ func TestPlaceDownRoundTrip(t *testing.T) {
 	}
 	for _, tr := range trains {
 		h := m.Entities[tr.Head]
-		if h.TileX == -1 || h.Mode == 2 || h.Mode == 3 || !m.canBeModified(tr) {
+		if h.TileX == -1 || h.Mode == 2 || h.Mode == 3 || !m.canBeModified(nil, tr) {
 			continue
 		}
 		saved := positions(tr)
@@ -620,7 +621,7 @@ func TestVehiclePlaceCommand(t *testing.T) {
 	placed := 0
 	for _, tr := range trains {
 		h := m.Entities[tr.Head]
-		if h.TileX == -1 || h.Mode == 2 || h.Mode == 3 || !m.canBeModified(tr) {
+		if h.TileX == -1 || h.Mode == 2 || h.Mode == 3 || !m.canBeModified(nil, tr) {
 			continue
 		}
 		v2 := m.Entities[tr.Veh2]
@@ -661,6 +662,51 @@ func TestVehiclePlaceCommand(t *testing.T) {
 	if placed < 10 {
 		t.Fatalf("only %d", placed)
 	}
+}
+
+// TestVehiclePlaceInTheWayText: a vehicle picked up and put down where
+// another of its company stands is refused with placeDownVehicle's reason as
+// the error text (VehiclePlace.cpp: not_enough_space_or_vehicle_in_the_way
+// for Unk0, vehicle_approaching_or_in_the_way otherwise) — the error window's
+// second line; before, the refusal said only "Can't place … here".
+func TestVehiclePlaceInTheWayText(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	refused := 0
+	for _, a := range trains {
+		ha := m.Entities[a.Head]
+		if ha.TileX == -1 || ha.Mode != 0 || !m.canBeModified(nil, a) {
+			continue
+		}
+		for _, b := range trains {
+			hb := m.Entities[b.Head]
+			if hb.ID == ha.ID || hb.TileX == -1 || hb.Mode != 0 || hb.Owner != ha.Owner || hb.TrackType != ha.TrackType {
+				continue
+			}
+			own := &Cmd{Company: ha.Owner, Objects: om}
+			if _, ok := m.VehiclePickup(own, CmdApply, ha.ID); !ok {
+				break
+			}
+			v2 := m.Entities[b.Veh2]
+			at := VehiclePlacement{X: int32(v2.TileX), Y: int32(v2.TileY), Z: int32(v2.TileBaseZ) * 4, TrackAndDirection: v2.TrackAndDirection, TrackProgress: v2.SubPosition, Head: ha.ID}
+			c := &Cmd{Company: ha.Owner, Objects: om}
+			if _, ok := m.VehiclePlace(c, CmdApply|CmdGhost, at); ok {
+				t.Errorf("vehicle %d placed onto vehicle %d", ha.ID, hb.ID)
+			} else if c.ErrorText == i18n.VehicleApproachingOrInTheWay || c.ErrorText == i18n.NotEnoughSpaceOrVehicleInTheWay {
+				refused++
+			} else if c.ErrorText != 0 {
+				t.Errorf("vehicle %d onto %d: error text %d", ha.ID, hb.ID, c.ErrorText)
+			}
+			break
+		}
+		if refused >= 5 {
+			break
+		}
+	}
+	if refused == 0 {
+		t.Fatal("no refusal with placeDownVehicle's reason")
+	}
+	t.Logf("%d refused with the reason", refused)
 }
 
 // TestVehicleChangeRunningMode: every saved running vehicle passes
@@ -896,7 +942,7 @@ func TestPlayableVehicleEndToEnd(t *testing.T) {
 	found := false
 	for _, tr := range trains {
 		h := m.Entities[tr.Head]
-		if h.Mode != 0 || h.TileX == -1 || !m.canBeModified(tr) {
+		if h.Mode != 0 || h.TileX == -1 || !m.canBeModified(nil, tr) {
 			continue
 		}
 		stops := 0
@@ -1213,7 +1259,7 @@ func TestRailPlacementAtCursor(t *testing.T) {
 	checked, placeable, tried := 0, 0, 0
 	for _, tr := range trains {
 		h := m.Entities[tr.Head]
-		if h.TileX == -1 || h.Mode != 0 || !m.canBeModified(tr) {
+		if h.TileX == -1 || h.Mode != 0 || !m.canBeModified(nil, tr) {
 			continue
 		}
 		v2 := m.Entities[tr.Veh2]
@@ -1279,7 +1325,7 @@ func TestRoadPlacementAtCursor(t *testing.T) {
 	checked, placeable, tried := 0, 0, 0
 	for _, tr := range trains {
 		h := m.Entities[tr.Head]
-		if h.TileX == -1 || h.Mode != 1 || !m.canBeModified(tr) {
+		if h.TileX == -1 || h.Mode != 1 || !m.canBeModified(nil, tr) {
 			continue
 		}
 		v2 := m.Entities[tr.Veh2]

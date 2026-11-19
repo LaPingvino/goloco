@@ -26,7 +26,7 @@ func (m *Map) VehicleRearrange(c *Cmd, flags uint8, source, dest uint16) (int32,
 		if !checkCompanyCompatibility(c, src.Owner) || !checkCompanyCompatibility(c, dst.Owner) {
 			return 0, false
 		}
-		if !m.canBeModified(srcTr) || !m.canBeModified(dstTr) {
+		if !m.canBeModified(c, srcTr) || !m.canBeModified(c, dstTr) {
 			return 0, false
 		}
 		if src.TrackType != dst.TrackType { // incompatible_vehicle

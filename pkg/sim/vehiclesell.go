@@ -44,7 +44,7 @@ func (m *Map) VehicleSell(c *Cmd, flags uint8, id uint16) (int32, bool) {
 		refund = int64(base.RefundCost)
 	}
 	if flags&CmdApply == 0 {
-		if !checkCompanyCompatibility(c, base.Owner) || !m.canBeModified(tr) {
+		if !checkCompanyCompatibility(c, base.Owner) || !m.canBeModified(c, tr) {
 			return 0, false
 		}
 		return int32(-refund), true

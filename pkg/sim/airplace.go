@@ -143,7 +143,7 @@ func (m *Map) VehiclePickupAir(c *Cmd, flags uint8, headID uint16) (int32, bool)
 		return 0, false
 	}
 	head := &m.Entities[tr.Head]
-	if !checkCompanyCompatibility(c, head.Owner) || !m.canBeModified(tr) {
+	if !checkCompanyCompatibility(c, head.Owner) || !m.canBeModified(c, tr) {
 		return 0, false
 	}
 	if flags&CmdApply == 0 {

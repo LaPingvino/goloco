@@ -14,7 +14,7 @@ func (m *Map) VehicleRefit(c *Cmd, flags uint8, headID uint16, cargoType uint8) 
 		return 0, false
 	}
 	head := &m.Entities[tr.Head]
-	if !m.canBeModified(tr) || !checkCompanyCompatibility(c, head.Owner) {
+	if !m.canBeModified(c, tr) || !checkCompanyCompatibility(c, head.Owner) {
 		return 0, false
 	}
 	om := c.Objects

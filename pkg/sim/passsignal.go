@@ -16,7 +16,7 @@ func (m *Map) VehiclePassSignal(c *Cmd, flags uint8, headID uint16) (int32, bool
 	v2 := m.Entities[tr.Veh2]
 	c.Pos = &[3]int32{int32(v2.PosX), int32(v2.PosY), int32(v2.PosZ)} // setPosition(veh2->position)
 	head := &m.Entities[tr.Head]
-	if !checkCompanyCompatibility(c, head.Owner) || !m.canBeModified(tr) {
+	if !checkCompanyCompatibility(c, head.Owner) || !m.canBeModified(c, tr) {
 		return 0, false
 	}
 	if flags&CmdApply == 0 || head.TileX == -1 {

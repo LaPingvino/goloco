@@ -112,7 +112,7 @@ func (m *Map) VehiclePickup(c *Cmd, flags uint8, headID uint16) (int32, bool) {
 		return 0, false
 	}
 	tr, err := m.TrainOf(headID)
-	if err != nil || h.Owner != c.Company || !m.canBeModified(tr) {
+	if err != nil || h.Owner != c.Company || !m.canBeModified(c, tr) {
 		return 0, false
 	}
 	if flags&CmdApply == 0 {

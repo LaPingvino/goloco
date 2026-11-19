@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -213,7 +214,7 @@ func (m *Map) AddCarToVehicle(c *Cmd, flags uint8, objID, headID uint16, lockedO
 		return 0, false
 	}
 	tr, err := m.TrainOf(headID)
-	if err != nil || !m.canBeModified(tr) || !m.isVehicleTypeCompatible(tr, objID, om) {
+	if err != nil || !m.canBeModified(c, tr) || !m.isVehicleTypeCompatible(tr, objID, om) {
 		return 0, false
 	}
 	if m.EntityLists.numFreeEntities() <= maxNumVehicleComponentsInCar {
@@ -244,30 +245,47 @@ func (m *Map) AddCarToVehicle(c *Cmd, flags uint8, objID, headID uint16, lockedO
 	return m.InflationAdjustedCost(obj.CostFactor, obj.CostIndex, 6), true
 }
 
-// canBeModified is VehicleHead::canBeModified (VehicleHead.cpp 0x004B6D1F).
-func (m *Map) canBeModified(tr Train) bool {
+// canBeModified is VehicleHead::canBeModified (VehicleHead.cpp 0x004B6D1F):
+// the reason it refuses goes to c's error text (setErrorText; c may be nil).
+func (m *Map) canBeModified(c *Cmd, tr Train) bool {
+	refuse := func(text int) bool {
+		if c != nil {
+			c.ErrorText = text
+		}
+		return false
+	}
 	h := &m.Entities[tr.Head]
 	switch h.Status {
-	case StatusCrashed, StatusStuck, StatusBrokenDown:
-		return false
+	case StatusCrashed:
+		return refuse(i18n.VehicleHasCrashed)
+	case StatusStuck:
+		return refuse(i18n.VehicleIsStuck)
+	case StatusBrokenDown:
+		return refuse(i18n.VehicleHasBrokenDown)
 	}
 	v2 := &m.Entities[tr.Veh2]
 	if h.VehicleType == uint8(objects.VehicleTypeAircraft) || h.VehicleType == uint8(objects.VehicleTypeShip) {
 		if v2.Var73&1 != 0 { // isBrokenDown
-			return false
+			return refuse(i18n.VehicleHasBrokenDown)
 		}
 		if h.TileX == -1 {
 			return true
 		}
 		if h.Status != StatusLoading && h.Status != StatusStopped {
-			return false // vehicle_must_be_stopped
+			return refuse(i18n.VehicleMustBeStopped)
 		}
-		return v2.CurrentSpeed == 0
+		if v2.CurrentSpeed == 0 {
+			return true
+		}
+		return refuse(i18n.VehicleMustBeStopped)
 	}
 	if h.TileX == -1 || v2.CurrentSpeed == 0 {
 		return true
 	}
-	return m.Entities[tr.Veh1].Var3C <= 0x3689
+	if m.Entities[tr.Veh1].Var3C <= 0x3689 {
+		return true
+	}
+	return refuse(i18n.VehicleMustBeStopped)
 }
 
 // canVehiclesCouple is VehicleHead.cpp's canVehiclesCouple.

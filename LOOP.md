@@ -172,6 +172,39 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    fills and their graph keys (d), the overlays (vehicles, town names, the view rectangle).
 > 3. A second scenario played through properly (Desert Delirium £5000 monthly profit, or Boulder Breakers 10%
 >    performance index): more trains, a longer route, the money watched; each blocker a line here.
+>    2026-11-19 (branch boulder) Boulder Breakers played: scripts/playthrough/r-boulder.txt (manual, ~18 min: `run.sh
+>    r-boulder`). Coal mine → steel mill and iron ore mine → steel mill (a diamond crossing, signals each side), one
+>    Baldwin 2-8-0 + five Wagons each on full load: WON in October 1925 (10.0%; the Challenge tab: "completed the
+>    challenge in 0 years 9 months"), then a steel line to the factory and on to May 1928 (£88,514 cash, £43,800
+>    loan, 10.1%, 12,640 units delivered). With three wagons per train the index stalls at 5.4% (one train) / ~8.4%
+>    (two) — in OpenLoco too (below).
+>    Blockers, worst first:
+>    - [ ] The Build Vehicles window has no details panel: no price, power, speed, capacity or cargo, no row highlight
+>      — a player buys blind (BuildVehicle.cpp draw l.1453, drawScroll l.1622, onScrollMouseOver
+>      l.1262; pkg/ui/buildvehicle.go PARTIAL); its caption stays "Build Trains" when it adds to a train.
+>    - [x] Refusals were silent: a wagon added to a moving train did nothing but log "can't build vehicle" — now the
+>      error window "Can't add Wagon to Train 1… / Vehicle must be stopped first!" (BuildVehicle.cpp onScrollMouseDown's
+>      setErrorTitle; canBeModified's setErrorText, VehicleHead.cpp 0x004B6D1F; every command's caller passes its Cmd).
+>    - [x] "Can't place Train 2 here…" had no reason: the second train refused while both lines were one block (no
+>      signals yet). Now placeDownVehicle's reason (VehiclePlace.cpp: vehicle_approaching_or_in_the_way /
+>      not_enough_space_or_vehicle_in_the_way). Left: validateTrack/RoadPlacement's can_only_be_placed_on_stringid
+>      and this_vehicle_requires_stringid (need their name args).
+>    - [x] The rail window came back on the Station tab it was closed on (the map hover then does nothing); a new
+>      construction window starts on its first tab (Common::createConstructionWindow currentTab = 0).
+>    - [ ] Adding wagons to a placed train can leave it off the map ("Train 1 - No position"): 1926-07-25, Train 1
+>      stopped near the Breakers Bridge buffer; a scratch sweep (AddCarToVehicle at 40 moments × 3 trains) lost Train 2
+>      once, head at 202,184 heading for the buffer (tad 0x6). AddCarToVehicle mirrors CreateVehicle.cpp
+>      addCarToVehicle / updateWholeVehicle, which ignore placeDownVehicle's result (the train is laid out reversed
+>      from its head, so it needs its length of track AHEAD): not yet checked whether OpenLoco drops it there too.
+>    - [ ] Economy vs OpenLoco (simulate + OPENLOCO_SIMSAVE from goloco's 1925-03-01 autosave, AI off): cash, loan,
+>      value, profit, deliveries and the index EXACT for 12 months; then a 2-tick-early departure from a full-load
+>      wait (goloco leaves Boulder Bay Mines at run tick 17076, OpenLoco 17078, 1925-08-25; speeds differ from 17076)
+>      parts the rng at 17208 (a wheel-slip draw). From the two-line 1925-07-01 autosave: cash within ~1% over two
+>      years (1927-07: £50,340 vs £50,854), deliveries equal, towns apart by up to 200 people. Next lead: the loading
+>      update's tick that ends a full-load wait (load.go vs VehicleHead.cpp updateLoadCargo / sub_4B9A2A).
+>    - [ ] To check against OpenLoco: the Vehicles list showed "Train 1 - Unloading at Boulder Bay Mines" (its
+>      pick-up) for two days while it waited there (1926-07-10); a dragged station's money pop-ups float ~2 tiles
+>      up-left of the platforms; the Route tab's order buttons showed no tooltip after 3 s.
 > 4. Company AI (PORT-PLANS F, decided: our own AI on an interface, the original studied, not ported): step 1, the
 >    original's end points (docs/AI-INTERFACE.md).
 > 5. N7 construction: the list DONE 2026-11-18 (branch n7-construction); what is left is listed under N7.
