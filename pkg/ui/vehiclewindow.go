@@ -685,6 +685,7 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 		if !press(lw[i]) {
 			return false
 		}
+		w.TextInputCallerSwitchedTab() // switchTab: TextInput::sub_4CE6C9 (every tab press)
 		if t != w.Tab && w.OnTab != nil {
 			w.OnTab(t)
 		}

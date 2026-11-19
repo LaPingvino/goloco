@@ -568,10 +568,6 @@ func (s *WindowStack) Close(w Win) {
 		s.Windows = append(s.Windows[:i], s.Windows[i+1:]...)
 	}
 	b.stack, b.self = nil, nil
-	// The callers of a text input (Town, Industry, Station, Company, Vehicle
-	// windows) call TextInput::sub_4CE6C9 in their onClose: the box goes
-	// with them. No other window opens one, so every close may ask.
-	s.callerClosed(b.WinType, b.Number)
 }
 
 // CloseType is WindowManager::close(type) (number AnyNumber) or close(type,

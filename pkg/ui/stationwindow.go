@@ -165,6 +165,7 @@ func (w *StationWindow) HandleClick(px, py int) {
 	if xs := w.stationTabs(); tabAt(xs, rx, ry) >= 0 { // Common::switchTab
 		t := tabAt(xs, rx, ry) // a disabled tab is hidden (leftAlignTabs)
 		w.PressWidget([4]int{xs[t], 15, 31, 27})
+		w.TextInputCallerSwitchedTab() // switchTab: TextInput::sub_4CE6C9
 		if t != 1 && w.Catchment && w.OnCatchment != nil { // leaving for another tab: this station's catchment goes
 			w.OnCatchment()
 		}
