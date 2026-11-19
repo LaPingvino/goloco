@@ -50,6 +50,7 @@ func (g *Game) Update() error {
 	if g.script != nil && g.script.hasMouse {
 		g.mouseX, g.mouseY = g.script.mouseX, g.script.mouseY
 	}
+	g.pinRightDrag() // a right drag holds the cursor at its press point (rightclick.go)
 	g.updateKeyboard() // every key: the windows that take keys, then the shortcuts (keyboard.go)
 	if g.updateModal() {
 		// The windows' interface update goes on under a prompt: the

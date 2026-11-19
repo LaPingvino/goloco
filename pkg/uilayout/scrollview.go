@@ -198,3 +198,32 @@ func (s *VScrollHold) PressedPart() string {
 	}
 	return ""
 }
+
+// DragFollow is ScrollView::verticalDragFollow (0x004C8E2E) and
+// horizontalDragFollow (0x004C8CFD) for one axis: the right-button drag in a
+// scroll view (MouseInput's stateScrollRight). bar is the axis's own
+// …scrollbarVisible flag (nothing moves without it), otherBar the other
+// axis's; size is Widget::width() / height(), content the area's
+// contentWidth / contentHeight (getScrollSize + 1). The track is size − 2 −
+// 2 thumb sizes (minus the other bar), the content moves by delta × content
+// / track, as int16, kept within 0 … content − (size − 2, minus the other
+// bar). OpenLoco reference: src/OpenLoco/src/Ui/ScrollView.cpp.
+func DragFollow(bar, otherBar bool, size, content, offset, delta int) int {
+	if !bar {
+		return offset
+	}
+	track := uint16(size - 2 - ThumbSize - ThumbSize)
+	if otherBar {
+		track -= ScrollbarSize
+	}
+	if track == 0 {
+		return offset
+	}
+	newOffset := int16(offset + int(int16(delta))*content/int(track))
+	frame := size - 2
+	if otherBar {
+		frame -= ScrollbarSize
+	}
+	maxOffset := max(int16(content-frame), 0)
+	return int(min(max(newOffset, 0), maxOffset))
+}

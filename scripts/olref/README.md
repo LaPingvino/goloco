@@ -174,7 +174,9 @@ hold the button (goloco's script has the same two). While it drags, OpenLoco
 puts the pointer back on the press point every frame (Input.cpp
 getNextDragOffset), so xt.py's absolute moves each count from there: `move`
 20 px off and `rightrelease` at the same place are two steps of 20 — the
-view goes 80 px (2 × 40), where goloco, whose pointer runs free, goes 40.
+view goes 80 px (2 × 40). goloco does the same since 2026-11-19 (a script's
+pointer goes back to the press point too: cmd/goloco rightclick.go pinRightDrag).
+tours/scrollright.txt is the same drag in a scroll view (the Towns list).
 
 For one window: `pair.py out.png goloco.png@X,Y,W,H openloco.png@X,Y,W,H 2`.
 

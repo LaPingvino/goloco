@@ -13,45 +13,101 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-// rightclick.go — the main view's right button: MouseInput.cpp's
-// State::viewportRight (stateNormalRight 0x004C8048's viewport case,
-// stateViewportRight 0x004C74BB) — a drag pans the view, a click (released
-// within 500 ms without the mouse having moved) acts on what is under it —
-// and ViewportInteraction::handleRightReleased with its rightReleased…
-// actions.
+// rightclick.go — the right button: MouseInput.cpp's stateNormalRight
+// (0x004C834A: the tooltip closed, the window under the mouse brought to the
+// front, then by its widget) with State::viewportRight (the main view:
+// stateViewportRight 0x004C74BB — a drag pans the view, a click, released
+// within 500 ms without the mouse having moved, acts on what is under it) and
+// State::scrollRight (a window's scroll view: scrollDragBegin,
+// stateScrollRight 0x004C76A7 — a drag scrolls it), and
+// ViewportInteraction::handleRightReleased with its rightReleased… actions.
 // OpenLoco reference: src/OpenLoco/src/Input/MouseInput.cpp,
-// src/OpenLoco/src/Ui/ViewportInteraction.cpp
+// src/OpenLoco/src/Input.cpp (startCursorDrag, getNextDragOffset),
+// src/OpenLoco/src/Ui/ScrollView.cpp, src/OpenLoco/src/Ui/ViewportInteraction.cpp
 // The view pans the way the mouse moves, twice as far (zoom + 1), the cursor
 // hidden meanwhile (Ui::hideCursor); Options → Controls' "invert right mouse
 // dragging" turns it round — the map then follows the mouse, as goloco's pan
-// did before this port (at half the speed).
+// did before this port (at half the speed). A scroll view moves the way its
+// thumb would (verticalDragFollow / horizontalDragFollow), the same switch
+// turning it round.
 // PARTIAL: a view following a vehicle is not let go (viewportUnfocusFromEntity); viewports of other
-// windows; the right drag in scroll views (State::scrollRight).
+// windows.
+
+// cursorDrag is startCursorDrag's hold on the cursor: hidden, and put back
+// at the press point after every frame (getNextDragOffset) — the frame's move
+// is the drag, and the rest of the frame (hover, tooltips) sees the mouse
+// where it was pressed.
+type cursorDrag struct {
+	pressX, pressY int // _dragLast / _cursorDragStart: where the button went down
+	lastX, lastY   int // the mouse as last read
+	dx, dy         int // this frame's getNextDragOffset
+}
+
+func (c *cursorDrag) begin(x, y int) { *c = cursorDrag{pressX: x, pressY: y, lastX: x, lastY: y} }
+
+// pin takes the frame's move and puts the mouse back at the press point.
+func (c *cursorDrag) pin(x, y *int) {
+	c.dx, c.dy = *x-c.lastX, *y-c.lastY
+	c.lastX, c.lastY = *x, *y
+	*x, *y = c.pressX, c.pressY
+}
 
 // viewportRightState is Input's state for State::viewportRight.
 type viewportRightState struct {
-	on             bool      // Input::state() == State::viewportRight
-	ticks          int       // _ticksSinceDragStart (ms; 1000 once the mouse moved)
-	last           time.Time // getTimeSinceLastTick's clock
-	pressX, pressY int       // _dragLast: where the button went down (the click's point)
-	lastX, lastY   int       // the mouse at the last frame (the pan's step)
+	on    bool      // Input::state() == State::viewportRight
+	ticks int       // _ticksSinceDragStart (ms; 1000 once the mouse moved)
+	last  time.Time // getTimeSinceLastTick's clock
+	cursorDrag
 }
+
+// scrollRightState is Input's state for State::scrollRight: the window
+// (_dragWindowType, _dragWindowNumber) and its scroll area
+// (_dragScrollIndex).
+type scrollRightState struct {
+	on     bool
+	typ    ui.WindowType
+	number int
+	index  int
+	cursorDrag
+}
+
+// rightDragging reports a right drag holding the cursor (viewportRight or
+// scrollRight).
+func (g *Game) rightDragging() bool { return g.vpRight.on || g.scRight.on }
+
+// pinRightDrag is the frame's getNextDragOffset for a right drag: called as
+// soon as the frame's mouse is read.
+func (g *Game) pinRightDrag() {
+	var c *cursorDrag
+	switch {
+	case g.vpRight.on:
+		c = &g.vpRight.cursorDrag
+	case g.scRight.on:
+		c = &g.scRight.cursorDrag
+	default:
+		return
+	}
+	c.pin(&g.mouseX, &g.mouseY)
+	if g.script != nil && g.script.hasMouse {
+		// setCursorPos: a script's pointer goes back to the press point too,
+		// so its next move counts from there (as xt.py's do in OpenLoco)
+		g.script.mouseX, g.script.mouseY = g.mouseX, g.mouseY
+		c.lastX, c.lastY = g.mouseX, g.mouseY
+	}
+}
+
+// startCursorDrag hides the cursor and holds it (captured: the mouse still
+// moves the drag, unbounded by the screen's edge, and the cursor comes back
+// at the press point).
+func startCursorDrag() { ebiten.SetCursorMode(ebiten.CursorModeCaptured) }
 
 // updateViewportRight is the right button's part of handleMouse.
 func (g *Game) updateViewportRight() {
-	r := &g.vpRight
-	if g.inMouseJustPressed(ebiten.MouseButtonRight) {
-		// stateNormalRight: not in the title; only on the viewport widget (no
-		// window under the mouse); an open dropdown takes the press instead.
-		dropdown := (g.dropdown != nil && g.dropdown.Visible) || (g.colourDropdown != nil && g.colourDropdown.Visible)
-		if !g.inTitleScreen && !dropdown && !g.overWindow(g.mouseX, g.mouseY) {
-			*r = viewportRightState{on: true, last: gameNow(), pressX: g.mouseX, pressY: g.mouseY, lastX: g.mouseX, lastY: g.mouseY}
-			// Ui::hideCursor + startCursorDrag: the cursor hidden and held where it
-			// was pressed (captured: the mouse still moves the pan, unbounded by
-			// the screen's edge, and the cursor comes back at the press point).
-			ebiten.SetCursorMode(ebiten.CursorModeCaptured)
-		}
+	if g.inMouseJustPressed(ebiten.MouseButtonRight) && !g.rightDragging() {
+		g.rightPressed(g.mouseX, g.mouseY)
 	}
+	g.updateScrollRight()
+	r := &g.vpRight
 	if !r.on {
 		return
 	}
@@ -66,7 +122,7 @@ func (g *Game) updateViewportRight() {
 	now := gameNow()
 	r.ticks = min(r.ticks+int(now.Sub(r.last)/time.Millisecond), 2000)
 	r.last = now
-	if dx, dy := g.mouseX-r.lastX, g.mouseY-r.lastY; dx != 0 || dy != 0 {
+	if dx, dy := r.dx, r.dy; dx != 0 || dy != 0 {
 		r.ticks = 1000
 		// the view moves the mouse's way, twice as far (panZoom = zoom + 1);
 		// Config::invertRightMouseViewPan turns it round
@@ -75,8 +131,71 @@ func (g *Game) updateViewportRight() {
 			dx, dy = -dx, -dy
 		}
 		g.w.PanCamera(float64(dx<<shift), float64(dy<<shift))
-		r.lastX, r.lastY = g.mouseX, g.mouseY
 	}
+}
+
+// rightPressed is stateNormalRight: an open dropdown takes the press
+// instead; on a window the tooltip closes and the window comes to the front —
+// with a modal window open nothing more (its scrollModalRight: the file
+// browser's, update.go), nor in the title — then a scroll view begins
+// scrollRight; on no window the main view begins viewportRight.
+func (g *Game) rightPressed(x, y int) {
+	if (g.dropdown != nil && g.dropdown.Visible) || (g.colourDropdown != nil && g.colourDropdown.Visible) {
+		return
+	}
+	if w := g.wins.FindAt(x, y); w != nil {
+		g.tip.close(gameNow()) // WindowManager::close(WindowType::tooltip)
+		g.wins.BringToFront(w)
+		if g.wins.Modal != 0 || g.prompt != nil || g.inTitleScreen {
+			return
+		}
+		if i := ui.ScrollAreaAt(w, x, y); i >= 0 { // scrollDragBegin
+			b := w.Base()
+			g.scRight = scrollRightState{on: true, typ: b.WinType, number: b.Number, index: i}
+			g.scRight.begin(x, y)
+			startCursorDrag()
+		}
+		return
+	}
+	if g.inTitleScreen {
+		return
+	}
+	g.vpRight = viewportRightState{on: true, last: gameNow()} // viewportDragBegin
+	g.vpRight.begin(x, y)
+	startCursorDrag()
+}
+
+// updateScrollRight is stateScrollRight: the window gone, the state resets;
+// released, it resets (no click); held, the frame's move scrolls the area
+// (horizontalDragFollow, then verticalDragFollow), inverted by
+// Config::invertRightMouseViewPan.
+func (g *Game) updateScrollRight() {
+	r := &g.scRight
+	if !r.on {
+		return
+	}
+	w := g.wins.Find(r.typ, r.number)
+	if w == nil || !g.inMousePressed(ebiten.MouseButtonRight) {
+		r.on = false    // Input::state(State::reset)
+		g.applyCursor() // stopCursorDrag: Ui::showCursor
+		return
+	}
+	dx, dy := r.dx, r.dy
+	if dx == 0 && dy == 0 {
+		return
+	}
+	s, ok := w.(ui.ScrollAreas)
+	if !ok {
+		return
+	}
+	areas := s.ScrollAreas()
+	if r.index >= len(areas) {
+		return
+	}
+	if g.invertRightPan {
+		dx, dy = -dx, -dy
+	}
+	areas[r.index].DragFollow(dx, dy)
 }
 
 // rightOverState is what ViewportInteraction::rightOver reads from the

@@ -97,3 +97,26 @@ func TestVScrollHold(t *testing.T) {
 		t.Fatalf("thumb: %d %q", off, s.PressedPart())
 	}
 }
+
+// DragFollow: verticalDragFollow / horizontalDragFollow's arithmetic, worked
+// by hand from ScrollView.cpp.
+func TestDragFollow(t *testing.T) {
+	for _, c := range []struct {
+		bar, other                   bool
+		size, content, offset, delta int
+		want                         int
+	}{
+		{true, false, 200, 721, 0, 10, 40},   // track 178: 7210 / 178
+		{true, false, 200, 721, 30, -10, 0},  // −40 from 30: kept at 0
+		{true, false, 200, 721, 0, 300, 523}, // to the end: 721 − 198
+		{true, false, 200, 721, 100, -1, 96}, // −721 / 178 = −4 (towards zero)
+		{true, true, 499, 513, 0, 50, 27},    // the other bar: track 466, end 513 − 486
+		{false, false, 200, 721, 5, 10, 5},   // no bar: nothing moves
+		{true, false, 200, 101, 0, 50, 0},    // content within the frame: stays at 0
+		{true, false, 22, 721, 7, 10, 7},     // a track of 0: nothing moves
+	} {
+		if got := DragFollow(c.bar, c.other, c.size, c.content, c.offset, c.delta); got != c.want {
+			t.Errorf("DragFollow(%v, %v, %d, %d, %d, %d) = %d, want %d", c.bar, c.other, c.size, c.content, c.offset, c.delta, got, c.want)
+		}
+	}
+}

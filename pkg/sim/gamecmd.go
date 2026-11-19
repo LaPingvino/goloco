@@ -94,14 +94,14 @@ func (m *Map) clearTreeCollision(c *Cmd, t *Tile, k int, px, py int32, flags uin
 	return ClearCollisionRemoved
 }
 
-// removeTree is TileManager::removeTree: the demolish sound (a gPrng2 draw —
-// randNext(20003, 24098) — when a company, not the neutral one, removes a
+// removeTree is TileManager::removeTree: the demolish sound
+// (playDemolishTreeSound, when a company, not the neutral one, removes a
 // real tree), the town rating reduction (updateTownInfo: companies only), and
 // the element removed.
 func (m *Map) removeTree(c *Cmd, t *Tile, k int, px, py int32, flags uint8, obj *objects.TreeObject) {
 	r := t.Order[k]
-	if r.Flags&(elemFlagGhost|elemFlagAiAllocated) == 0 && c.Company != CompanyNeutral && c.Rng2 != nil {
-		c.Rng2.RandNextRange(20003, 24098) // playDemolishTreeSound's frequency
+	if r.Flags&(elemFlagGhost|elemFlagAiAllocated) == 0 && c.Company != CompanyNeutral {
+		m.playDemolishTreeSound(c, px, py, int32(t.Trees[r.Index].BaseZ)*4)
 	}
 	if flags&CmdGhost == 0 {
 		var rating int16
@@ -207,8 +207,8 @@ func (m *Map) clearBuildingCollision(c *Cmd, t *Tile, k int, px, py int32, remov
 // — its tiles' building elements at that height removed when applied, and
 // its clear cost (inflation adjusted, divisor 8). ok false on failure.
 //
-// PARTIAL: createDestructExplosion (a company's real building) draws gPrng2
-// for the sound here but does not create the ExplosionSmoke entity yet.
+// PARTIAL: createDestructExplosion (a company's real building) plays its
+// sound but does not create the ExplosionSmoke entity yet.
 func (m *Map) RemoveBuilding(c *Cmd, x, y, z int32, flags uint8) (int32, bool) {
 	t := m.TileAt(int(x/tileSize), int(y/tileSize))
 	if t == nil {
@@ -263,8 +263,8 @@ func (m *Map) RemoveBuilding(c *Cmd, x, y, z int32, flags uint8) (int32, bool) {
 func (m *Map) removeBuildingElement(c *Cmd, t *Tile, k int, px, py int32) {
 	r := t.Order[k]
 	b := t.Buildings[r.Index]
-	if r.Flags&(elemFlagGhost|elemFlagAiAllocated) == 0 && c.Company != CompanyNeutral && c.Rng2 != nil {
-		c.Rng2.RandNextRange(20003, 24098) // createDestructExplosion's sound frequency
+	if r.Flags&(elemFlagGhost|elemFlagAiAllocated) == 0 && c.Company != CompanyNeutral {
+		m.playDestructExplosionSound(c, px+16, py+16, int32(b.BaseZ)*4) // createDestructExplosion
 	}
 	if b.SequenceIndex == 0 && r.Flags&elemFlagGhost == 0 {
 		if obj := c.Objects.GetBuildingObjectByIndex(int(b.ObjectID)); obj != nil && obj.Flags&objects.BuildingFlagMiscBuilding == 0 {

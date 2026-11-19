@@ -69,6 +69,7 @@ type Game struct {
 	mouseX, mouseY                 int
 	lastTickMouseX, lastTickMouseY int                // the cursor at the last GameTicks (mouseMoved)
 	vpRight                        viewportRightState // the right button on the main view (rightclick.go)
+	scRight                        scrollRightState   // the right button on a window's scroll view (rightclick.go)
 	windowFrame                    int                // counts Updates: the windows' frameNo (onUpdate's frameNo += 1)
 
 	// The title screen.

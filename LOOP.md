@@ -349,11 +349,27 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       it round); the paint structs' modId and the ghosts' noInteraction. Checked against OpenLoco on the title game
 >       (scripts/olref/tours/rightclick.txt); playthrough L. LEFT → N22.
 > - [ ] N22 Right-click leftovers (the cursor held in place while panning — captured — and the kept
->       invertRightMouseViewPan DONE 2026-11-14): the right drag in scroll views (scrollRight); map tooltips and
->       right clicks in other viewports (town / station windows); the hovered station's highlight; the demolish sound; the Overhead tab's mod section (single only); the Overhead tab has no
->       map tool yet; openAtTrack's remembered signal /
->       station / bridge per track type (Scenario::getConstruction); the construction arrow in the window's piece
->       preview (OpenLoco draws it there too).
+>       invertRightMouseViewPan DONE 2026-11-14). DONE 2026-11-19 (branch n22): the right drag in scroll views
+>       (State::scrollRight: ui.ScrollAreas on every window with a scroll view, uilayout.DragFollow =
+>       vertical/horizontalDragFollow with tests; stateNormalRight's tooltip close and bringToFront on a window;
+>       the cursor pinned at the press point for the rest of the frame as getNextDragOffset does — hover and
+>       tooltips stay put, and a script's pointer goes back too, so tours/rightclick.txt now pans 80 px in goloco
+>       as in OpenLoco). Checked on the title game's Towns list (tours/scrollright.txt): the same rows scroll the
+>       thumb's way, the hovered row stays under the pointer; OpenLoco ends 1 px short because it takes an
+>       XTest move over several frames, each step truncated (40 px: ~121 there, 123 in one step). The demolish
+>       sound: the right click's (mapCommand, as the rightReleased… functions) was already upstream's; what was
+>       silent were the commands' own — removeTree's playDemolishTreeSound, removeBuildingElement's
+>       createDestructExplosion sound, RemoveCompanyHeadquarters' demolish — now queued (pkg/sim sounds.go).
+>       LEFT: right clicks and map tooltips in other viewports — premise checked: Town, Station, Industry and
+>       Company windows set viewportNoScrolling, so a right press on their viewport starts viewportRight
+>       (cursor held, no pan) and a release within 500 ms runs handleRightReleased there (rightOver through
+>       findAt's window viewport and its see-through flags); goloco's RightOver / ItemLeftAt read the main view
+>       only — needs a paint-struct pick in a window's viewport (the Vehicle window's view does pan upstream,
+>       but re-centres on its vehicle). Scroll views not reached: the Station window's Cargo Ratings tab and
+>       the Vehicle window's route list (goloco draws no scrolling list there). Then: the hovered station's
+>       highlight; the Overhead tab's mod section (single only); the Overhead tab has no map tool yet;
+>       openAtTrack's remembered signal / station / bridge per track type (Scenario::getConstruction); the
+>       construction arrow in the window's piece preview (OpenLoco draws it there too).
 > - [x] N23 The View menu — done 2026-11-14: the main viewport's flags (pkg/paint viewflags.go: Ui::ViewportFlags on
 >       the paint session; pkg/world viewflags.go; cmd/goloco viewmenu.go) — the menu's twelve ticked entries and the
 >       keys 1 … 0; the underground view, the six see-through modes (drawStructs' cull), the height marks on land and
@@ -517,6 +533,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       cursor is the arrow, so it only shows in comparison shots). Also on the cursor tour: the news window drawn
 >       over the expanded tree list in goloco and under it in OpenLoco — the news came at different moments (the
 >       pause click didn't hold in either); check with both paused (bringToFront's swap, N44).
+> - [ ] N49 (seen by N22) Scroll views' content size: upstream's contentWidth / contentHeight is getScrollSize + 1
+>       (Window::initScrollWidgets / updateScrollWidgets); goloco's lists (TownList, Messages, MusicSelection,
+>       KeyboardShortcuts, CompanyList, BuildVehicle, Terraform, Station, Vehicle) give VScrollClick / VThumb /
+>       VScrollDrag getScrollSize itself (Finances passes the + 1), and several PrepareDraw clamps use content − h
+>       (TownList, the Station Cargo tab) where the bars' ends are content + 1 − (h − 2): a scroll to the end
+>       (wheel, track, the right drag) can stop or be pulled back 1–3 px short of OpenLoco's. Check one list's last
+>       page against OpenLoco, then fix in one place (a ScrollArea-like value the windows share).
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).
 SK. [x] **Interface skin images after a save loads.** DONE 2026-11-05: the skin's image table now joins the global image list (LoadImageTable, as every other object; interface->img = its first index); before, only a private counter (NextSpriteIndex) moved, so img + n were other objects' images. The Build Vehicles menu has its images; the time panel's map icon draws again. LEFT (own small items): the toolbar faces upstream draws by state — Build Vehicles (kBuildVehicleImages by lastBuildVehiclesOption, company colour) and Vehicles (vehicle_*_frame_0); goloco's Vehicles button face is blank. Land objects still take NextSpriteIndex (their sprites are drawn from land.Sprites, so harmless now — check before anything indexes G1 by land.ImageOffset).
 
@@ -2209,3 +2232,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-14 (branch terraform) — the landscaping tools (Joop: "still fully missing"): the toolbar's terraform menu and the Terraform window (pkg/ui terraformwindow.go, cmd/goloco terraform.go; TerraForm.cpp) — Clear Area, Adjust Land (tool size, mountain mode, paint mode with the land dropdown), Adjust Water, Plant Trees (the list growing under the mouse, rotate, colour, the two cluster buttons), Build Walls — with their tools: map selection by type (corner / tile / water / quarter / edge: PaintSurface's paintSurfaceSelection), gridlines, tree and wall ghosts (PaintTree / PaintWall), drag to raise / lower, costs, error windows. Commands: createTree with flags / cost / ghost (the generator runs through it), removeTree, RaiseLand / LowerLand with their centre, error texts of adjustSurfaceHeight and createWall; the terraform commands end a pause (doCommandForReal). Side by side with OpenLoco on the title save (scripts/olref/tours/terraform.txt, terraform-trees.txt): windows, selections, costs, cash and error texts the same. Playthrough K (k-terraform, expect height@X,Y / slope@ / water@ / trees@ / walls@ / terraformwindow). Open: planted saplings do not grow — the tile update's tree part (TreeElement.cpp updateTreeElement: seasons, growth, spreading, dying; draws gPrng1, needs the element's unk5h / isDying) is not ported; the map tooltip "N x N" at the cursor (MouseInput.cpp, map_tooltip_int_x_int — goloco has no map tooltips), tool cursors, construct sounds, the editor's variants, defaultTree/WallObjectId not in the save, Config gridlinesOnLandscape, unpausing by the other windows' commands, the expanded tree list under the bottom panels (they are not stack windows).
 - 2026-11-14 (loop) — Fable's news and Terraform merged (after full suites on rebased branches); station drag; terrain vectors regenerated (b460716 had pushed a failing test: unit failures now counted separately). Joop: one Fable agent at a time.
 - 2026-11-19 (branch n17) — N17 music leftovers: placement confirmed upstream (news window in the tour); scroll thumb, group box, dropdown pressed / combobox press, web music fetch async.
+- 2026-11-19 (branch n22) — N22 right-click leftovers, part: the right drag in scroll views (State::scrollRight, the cursor pinned as getNextDragOffset), the commands' demolish sounds (tree, building, HQ); other viewports' premise checked and left; N49 seen.

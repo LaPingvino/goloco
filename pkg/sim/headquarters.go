@@ -30,8 +30,7 @@ func (m *Map) headquarterPerformanceVariation(company int) uint8 {
 // RemoveCompanyHeadquarters is removeCompanyHeadquarters: not a ghost, the
 // company whose HQ stands there (its owner must be compatible); then the
 // building removed (removeBuilding, nested); applied (not a ghost), that
-// company has no HQ. The cost. PARTIAL: the company window invalidation, the
-// demolish sound.
+// company has no HQ. The cost. PARTIAL: the company window invalidation.
 func (m *Map) RemoveCompanyHeadquarters(c *Cmd, flags uint8, x, y, z int32) (int32, bool) {
 	c.Pos = &[3]int32{x, y, z}
 	target := -1
@@ -57,6 +56,9 @@ func (m *Map) RemoveCompanyHeadquarters(c *Cmd, flags uint8, x, y, z int32) (int
 	}
 	if flags&CmdApply != 0 && flags&CmdGhost == 0 && target >= 0 {
 		m.Companies[target].HeadquartersX = -1
+	}
+	if flags&CmdApply != 0 && flags&(CmdGhost|CmdAiAllocated) == 0 {
+		m.playSound(soundDemolish, ChannelEffects, x, y, z) // the demolish sound at pos
 	}
 	return cost, true
 }

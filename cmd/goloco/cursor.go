@@ -71,7 +71,7 @@ func (g *Game) toolCursor() (cursor.Id, bool) {
 // right drag holds the cursor hidden (Ui::hideCursor): its release shows the
 // chosen one again.
 func (g *Game) applyCursor() {
-	if g.vpRight.on {
+	if g.rightDragging() {
 		return
 	}
 	switch g.cursor.id.System() {
@@ -88,7 +88,7 @@ func (g *Game) applyCursor() {
 
 // drawCursor draws a bitmap cursor at the mouse, its hot spot on it.
 func (g *Game) drawCursor(screen *ebiten.Image) {
-	if g.cursor.image == nil || g.vpRight.on {
+	if g.cursor.image == nil || g.rightDragging() {
 		return
 	}
 	hx, hy := g.cursor.id.Hot()
