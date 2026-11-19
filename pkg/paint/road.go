@@ -133,7 +133,7 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 	// the element has, AdditionStyle1's piece (the null piece — image 0 the
 	// sentinel — skipped) — mergeable into track/road addition priority 0, else as a
 	// parent (addToPlotList4FD150); a piece's supports via setAdditionSupport
-	// (drawn by paintSupports). PARTIAL: ghost mods.
+	// (drawn by paintSupports); a ghost mod (TrackMod.Ghost) in the ghost colour.
 	if s.Zoom > 0 || el.AnyRoadTypeCompatible {
 		return
 	}
@@ -153,7 +153,8 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 		if sp == nil {
 			continue
 		}
-		img := Colour(sp, el.Remap)
+		remap := m.remap(el.Remap)
+		img := Colour(sp, remap)
 		bbOff := Pos3{p.BBOffsets[rot].X, p.BBOffsets[rot].Y, p.BBOffsets[rot].Z + h.Z}
 		if p.IsMergeable {
 			s.AddTrackRoadAddition(img, 0, h, bbOff, p.BBSizes[rot])
@@ -161,7 +162,7 @@ func (s *Session) PaintRoad(el RoadEl, image int, paintStyle uint8, sprite func(
 			s.AddAsParent(img, h, bbOff, p.BBSizes[rot])
 		}
 		if sup := p.Supports; sup != nil { // AdditionStyle1::paintSupport
-			s.setAdditionSupport(h.Z+int(sup.Height), sup.Segments[rot], sup.ImageIDs[rot][:], true, sup.Frequencies[rot], m.Image, el.Remap)
+			s.setAdditionSupport(h.Z+int(sup.Height), sup.Segments[rot], sup.ImageIDs[rot][:], true, sup.Frequencies[rot], m.Image, remap)
 		}
 	}
 }

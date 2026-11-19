@@ -41,6 +41,7 @@ func (w *World) drawScene(screen *ebiten.Image) {
 		w.scene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
 		w.scene.WaveFrame = func(tx, ty int) uint8 { return uint8(w.Waves[sim.WaveIndex(tx, ty)].Frame) }
 	}
+	w.scene.GhostMods = w.Cons.Mods // Construction::getLastSelectedMods: the ghost mods painted
 	sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
 	t0 := time.Now()
 	defer func() {

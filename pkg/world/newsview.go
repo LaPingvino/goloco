@@ -25,6 +25,7 @@ func (w *World) NewsView(slot int, argType uint8, id uint16, width, height int) 
 	if w.newsScene[slot] == nil {
 		w.newsScene[slot] = scene.New(w.renderer.G1, w.renderer.ObjMgr)
 	}
+	w.newsScene[slot].GhostMods = w.Cons.Mods // getLastSelectedMods: one for every viewport
 	return w.newsScene[slot].Render(&w.Map, v)
 }
 

@@ -23,6 +23,7 @@ func (w *World) VehicleView(headID uint16, width, height int) *gfx8.RenderTarget
 	if w.vehicleScene == nil {
 		w.vehicleScene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
 	}
+	w.vehicleScene.GhostMods = w.Cons.Mods // getLastSelectedMods: one for every viewport
 	return w.vehicleScene.Render(&w.Map, v)
 }
 

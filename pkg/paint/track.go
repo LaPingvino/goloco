@@ -70,13 +70,28 @@ type TrackMod struct {
 	Has        bool
 	Image      int
 	PaintStyle uint8
+	// Ghost is applyGhostToImage's palette map for a mod drawn as a ghost
+	// (the element hasGhostMods and the Overhead tab has the mod ticked,
+	// getLastSelectedMods; the element itself without it); nil: the mod is
+	// the element's own, in the element's colour (baseTrackImageColour).
+	Ghost []uint8
+}
+
+// remap is the mod's image colour: applyGhostToImage(extra image) for a
+// ghost mod, else the element's baseTrackImageColour / baseRoadImageColour.
+func (m TrackMod) remap(el []uint8) []uint8 {
+	if m.Ghost != nil {
+		return m.Ghost
+	}
+	return el
 }
 
 // PaintTrackMods is paintTrack's track extras (zoom 0 only): for each mod the
 // element has, the Style0/Style1 addition piece for its track id and sequence
 // index (paintTrackAdditionPP) in the track's colour — mergeable pieces into
 // track/road priority 4, the others as a child of the last struct; Style1's
-// supports via setAdditionSupport (drawn by paintSupports). PARTIAL: ghost mods.
+// supports via setAdditionSupport (drawn by paintSupports); a ghost mod
+// (TrackMod.Ghost) in the ghost colour.
 func (s *Session) PaintTrackMods(el TrackEl, mods [4]TrackMod, sprite func(int) *gfx8.Sprite) {
 	s.ItemType = ItemTrackExtra // setItemType (PaintTrack.cpp:306: a ghost's extras too)
 	if s.Zoom > 0 {
@@ -110,7 +125,8 @@ func (s *Session) PaintTrackMods(el TrackEl, mods [4]TrackMod, sprite func(int) 
 		if sp == nil {
 			continue
 		}
-		img := Colour(sp, el.Remap)
+		remap := m.remap(el.Remap)
+		img := Colour(sp, remap)
 		bbOff := Pos3{p.BBOffsets[rot].X, p.BBOffsets[rot].Y, p.BBOffsets[rot].Z + h.Z}
 		if p.IsMergeable {
 			s.AddTrackRoad(img, 4, h, bbOff, p.BBSizes[rot])
@@ -118,7 +134,7 @@ func (s *Session) PaintTrackMods(el TrackEl, mods [4]TrackMod, sprite func(int) 
 			s.AddAsChild(img, h, bbOff, p.BBSizes[rot])
 		}
 		if sup := p.Supports; sup != nil && m.PaintStyle == 1 { // Style1::paintSupport
-			s.setAdditionSupport(h.Z+int(sup.Height), sup.Segments[rot], sup.ImageIDs[rot][:], false, sup.Frequencies[rot], m.Image, el.Remap)
+			s.setAdditionSupport(h.Z+int(sup.Height), sup.Segments[rot], sup.ImageIDs[rot][:], false, sup.Frequencies[rot], m.Image, remap)
 		}
 	}
 }

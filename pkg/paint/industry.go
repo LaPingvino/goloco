@@ -6,8 +6,9 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 // paintIndustryBuilding, with shadows and the under-construction sections
 // (industry fields are the surface painter's industrial branch, in scene).
 // with their scaffolding while under construction; a ghost (the Fund New
-// Industries tool's) in the ghost colour, not interactive. PARTIAL: the
-// ghost's scaffolding (applyGhostToImage on it) and its shadow.
+// Industries tool's) in the ghost colour, its scaffolding too, not interactive (its
+// shadow is a built one's: withTranslucency replaces the ghost colour,
+// ImageId.h).
 
 // IndustryEl is what paintIndustry reads from an industry element.
 type IndustryEl struct {
@@ -70,6 +71,9 @@ func (s *Session) PaintIndustry(el IndustryEl, obj IndustryObj, colourMap []uint
 	// The scaffolding while under construction: back segments before the parts.
 	totalSectionHeight := sectionsHeight(numSections, obj.Parts, obj.PartHeights)
 	sc := obj.Scaffold
+	if el.Ghost {
+		sc = sc.ghost(obj.GhostMap)
+	}
 	set, ok := scaffoldSet(sc, obj.LargeTile)
 	if !ok {
 		sc = nil
@@ -141,7 +145,8 @@ type AirportObj struct {
 }
 
 // PaintAirport — a port of Paint/PaintAirport.cpp paintAirport and
-// paintAirportBuilding, with shadows and the company colour. PARTIAL: ghosts.
+// paintAirportBuilding, with shadows and the company colour (obj.Remap: a
+// ghost's applyGhostToImage, the caller's).
 func (s *Session) PaintAirport(rotationEl, sequenceIndex, baseZ uint8, obj AirportObj, tileX, tileY int, ticks uint32, sprite func(int) *gfx8.Sprite) {
 	s.ItemType = ItemAirport // setItemType (PaintAirport.cpp:60)
 	if s.ElGhost {           // elStation.isGhost()
@@ -202,7 +207,7 @@ func (s *Session) paintStationBuilding(obj AirportObj, off, bbOff, bbSz Pos3, ro
 
 // PaintDocks — a port of Paint/PaintDocks.cpp paintDocks (always 2×2; bbox
 // height from the element's clear height), with shadows and the company
-// colour. PARTIAL: ghosts.
+// colour (obj.Remap: a ghost's applyGhostToImage, the caller's).
 func (s *Session) PaintDocks(rotationEl, sequenceIndex, baseZ, clearZ uint8, obj AirportObj, tileX, tileY int, ticks uint32, sprite func(int) *gfx8.Sprite) {
 	s.ItemType = ItemDock // setItemType (PaintDocks.cpp:55)
 	if s.ElGhost {        // elStation.isGhost()
