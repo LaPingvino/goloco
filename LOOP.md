@@ -305,9 +305,21 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       track / road / station elements now hover and click as the station (_track / _road). Rest → N21.
 > - [x] N16 The pause click works (the report came from the music agent's mixed-up displays); what differed: paused,
 >       the time panel alternates "* Paused *" with the date (TimePanel::draw) — done.
-> - [ ] N17 Music leftovers: Music Selection opens under the Jukebox (OpenLoco: beside the player panel — a window
->       goloco doesn't model blocks the spot?); 1 px gaps in shared widgets against 09d74ee (scroll thumb, old
->       dropdown / group-box sizes, combobox not drawn pressed while open); a web track change fetches blocking.
+> - [x] N17 Music leftovers — DONE 2026-11-19 (branch n17). (a) Placement was right: createWindow (WindowManager.cpp
+>       0x004C9C68) and bringToFront's swap are ported as upstream; OpenLoco opens Music Selection left of the TIME
+>       panel (298,362: the Jukebox click swapped it with the time panel, which is then tried first). goloco's tour
+>       shot had a speed-record news window up at the pause (OpenLoco's had none), which blocks every spot → (0,30).
+>       With the news closed goloco opens it at 298,362 too, pixel for pixel but the tooltip (test
+>       TestMusicSelectionPlacement). (b) Ported: the scroll thumb one margin lower (ScrollViewWidget.cpp drawVScroll:
+>       scrollPos + vThumbTop); GroupBox's border inside its size (GroupBoxWidget.cpp after 588abac); the dropdown
+>       button drawn pressed while its dropdown is up (Window::draw's pressedWidget in State::dropdownActive; ui
+>       WindowStack.SetDropdownActive) and a press on a combobox is its button's (Window::findWidgetAt) — click sounds
+>       at the button's midX; Options → Audio's device dropdown gets its button and ▼. Compared with OpenLoco 09d74ee
+>       (tours/music.txt): Jukebox with each dropdown open 0 px off at the button, Options' group boxes match, Music
+>       Selection matches. (c) The web track change no longer blocks: fsshim.js GolocoFS.audioURL fetches the lazy track
+>       in the background and hands pkg/audio a Blob URL (Promise); the <audio> element counts as playing while it
+>       loads (checked in node; not yet on the test page). LEFT: the construction windows' dropdowns (drawn via
+>       optDropdown with no window) aren't drawn pressed; other held buttons aren't drawn pressed while held either.
 > - [x] N18 Trees grow: TreeElement.cpp updateTreeElement (seasons, growth, spreading, dying; gPrng1; the element's
 >       unk5h / isDying fields) in the tile loop — planted saplings never grow now.
 > - [ ] N19 News / Terraform leftovers: tool cursors and construct sounds; the tree / wall lists' tooltips; default tree /
@@ -471,6 +483,15 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       both; closing the caller closes it in both. Tests: pkg/ui textinput_test.go; n-keys checks the focus and the
 >       running clock (new expect key: ticks). LEFT: the Save prompt (PromptSaveWindow) is still modal in goloco
 >       (update.go PARTIAL); CompanyManager's cancel() sites belong to the new-company name prompts goloco lacks.
+> - [ ] N43 (seen by N17) Options' tabs 2 (Rendering) and 6 (Company) draw no icon in goloco; OpenLoco shows the
+>       rainbow-brush and the face (Options.cpp Common::drawTabs).
+> - [ ] N44 (seen by N17) On the title game paused at 23 Dec 1972 after tours/music.txt's 25 s, goloco has the 21 Dec
+>       speed-record news window up and OpenLoco none: either OpenLoco doesn't post it by then or closes it sooner
+>       (MessageManager sub_428E47's time; tours/news.txt). Makes the two tours' window placements differ.
+> - [ ] N45 (seen by N17) A widget tooltip shows ~1 s after the pointer stops in goloco (Music Selection's list in
+>       mu-05); OpenLoco showed none at the same moment (README: about two seconds) — compare Tooltip timeouts.
+> - [ ] N46 (seen by N17) Options → Audio's device shows "Default"; OpenLoco shows getCurrentDeviceName (empty with
+>       the dummy driver) or audio_device_none (Options.cpp AudioTab::prepareDraw).
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).
 SK. [x] **Interface skin images after a save loads.** DONE 2026-11-05: the skin's image table now joins the global image list (LoadImageTable, as every other object; interface->img = its first index); before, only a private counter (NextSpriteIndex) moved, so img + n were other objects' images. The Build Vehicles menu has its images; the time panel's map icon draws again. LEFT (own small items): the toolbar faces upstream draws by state — Build Vehicles (kBuildVehicleImages by lastBuildVehiclesOption, company colour) and Vehicles (vehicle_*_frame_0); goloco's Vehicles button face is blank. Land objects still take NextSpriteIndex (their sprites are drawn from land.Sprites, so harmless now — check before anything indexes G1 by land.ImageOffset).
 
@@ -2162,3 +2183,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 
 - 2026-11-14 (branch terraform) — the landscaping tools (Joop: "still fully missing"): the toolbar's terraform menu and the Terraform window (pkg/ui terraformwindow.go, cmd/goloco terraform.go; TerraForm.cpp) — Clear Area, Adjust Land (tool size, mountain mode, paint mode with the land dropdown), Adjust Water, Plant Trees (the list growing under the mouse, rotate, colour, the two cluster buttons), Build Walls — with their tools: map selection by type (corner / tile / water / quarter / edge: PaintSurface's paintSurfaceSelection), gridlines, tree and wall ghosts (PaintTree / PaintWall), drag to raise / lower, costs, error windows. Commands: createTree with flags / cost / ghost (the generator runs through it), removeTree, RaiseLand / LowerLand with their centre, error texts of adjustSurfaceHeight and createWall; the terraform commands end a pause (doCommandForReal). Side by side with OpenLoco on the title save (scripts/olref/tours/terraform.txt, terraform-trees.txt): windows, selections, costs, cash and error texts the same. Playthrough K (k-terraform, expect height@X,Y / slope@ / water@ / trees@ / walls@ / terraformwindow). Open: planted saplings do not grow — the tile update's tree part (TreeElement.cpp updateTreeElement: seasons, growth, spreading, dying; draws gPrng1, needs the element's unk5h / isDying) is not ported; the map tooltip "N x N" at the cursor (MouseInput.cpp, map_tooltip_int_x_int — goloco has no map tooltips), tool cursors, construct sounds, the editor's variants, defaultTree/WallObjectId not in the save, Config gridlinesOnLandscape, unpausing by the other windows' commands, the expanded tree list under the bottom panels (they are not stack windows).
 - 2026-11-14 (loop) — Fable's news and Terraform merged (after full suites on rebased branches); station drag; terrain vectors regenerated (b460716 had pushed a failing test: unit failures now counted separately). Joop: one Fable agent at a time.
+- 2026-11-19 (branch n17) — N17 music leftovers: placement confirmed upstream (news window in the tour); scroll thumb, group box, dropdown pressed / combobox press, web music fetch async.
