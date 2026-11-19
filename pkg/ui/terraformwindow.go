@@ -440,6 +440,20 @@ func (w *TerraformWindow) WidgetTooltip(px, py int) string {
 		}
 		return ""
 	}
+	if l := w.list(); w.isGrid() && w.in(l, px, py) && w.onScrollbar(px) {
+		// MouseInput.cpp processMouseOver: over a scroll bar's part, that part's
+		// tooltip (kScrollWidgetTooltips: "Scroll {STRINGID} up" …) with the
+		// window's tooltip() as its argument — PlantTrees tooltip (0x004BBB00)
+		// tooltip_scroll_trees_list, BuildWalls tooltip_scroll_walls_list. The
+		// list's widget has no tooltip of its own: none over its cells.
+		part := map[string]int{"up": i18n.TooltipScrollUp, "down": i18n.TooltipScrollDown, "trackTop": i18n.TooltipScrollUpFast,
+			"trackBottom": i18n.TooltipScrollDownFast, "thumb": i18n.TooltipScrollUpDown}[L.VScrollPart(py-(w.Y+l[1]), l[3], w.contentHeight(), w.Scroll)]
+		list := i18n.TooltipScrollTreesList
+		if w.Tab == TerraformTabWalls {
+			list = i18n.TooltipScrollWallsList
+		}
+		return strings.Replace(i18n.Str(part), "{STRINGID}", i18n.Str(list), 1)
+	}
 	if w.Tab == TerraformTabTrees {
 		sel := w.selectedCell()
 		switch {

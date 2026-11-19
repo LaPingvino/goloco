@@ -163,6 +163,7 @@ type Scenario struct {
 	MaxLoanSize                                             uint16         // maxLoanSize (0x402)
 	StartingLoanSize                                        uint16         // startingLoanSize (0x400)
 	SeaLevel, LastLandOption                                uint8          // GameState seaLevel (0x19A), lastLandOption (0x19E)
+	DefaultTreeObjectId, DefaultWallObjectId                uint8          // GameState defaultTreeObjectId (0x199), defaultWallObjectId (0x1B2)
 	CurrentSnowLine, CurrentSeason                          uint8          // GameState 0x19C / 0x19D
 	PreferredAI                                             [3]uint8       // preferredAIIntelligence / Aggressiveness / Competitiveness (0x3FD)
 	DefaultLevelCrossingType                                uint8          // currentDefaultLevelCrossingType (0x1AC)
