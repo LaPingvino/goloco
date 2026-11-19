@@ -276,8 +276,11 @@ func (w *CompanyFinancesWindow) switchTab(tab int) {
 		w.W, w.H = CompanyColourSchemeSize[0], CompanyColourSchemeSize[1]
 	}
 	w.SetFixedSize(w.W, w.H)
-	if tab == CompanyTabStatus { // Status::onResize: setSizeBounds(kWindowSize, {640, 400})
+	switch tab {
+	case CompanyTabStatus: // Status::onResize: setSizeBounds(kWindowSize, {640, 400})
 		w.SetSize(CompanyStatusSize[0], CompanyStatusSize[1], 640, 400)
+	case CompanyTabCargoDelivered: // CargoDelivered::onResize (0x00433C97)
+		w.SetFixedSize(CompanyCargoDeliveredSize[0], CargoDeliveredHeight(len(w.CargoLines)))
 	}
 	w.Scroll = 0
 	if tab == CompanyTabFinances { // switchTab: Finances::scrollToLatestData
@@ -285,6 +288,12 @@ func (w *CompanyFinancesWindow) switchTab(tab int) {
 	}
 	w.MoveInsideScreenEdges() // switchTab ends with it
 }
+
+// CargoDeliveredHeight is CargoDelivered::onResize's height: 10 for each
+// cargo the company has delivered, at least 50, + 62. Upstream runs it only
+// as the tab opens (switchTab, setSize's callOnResize), so the window keeps
+// that height while more cargo types come in.
+func CargoDeliveredHeight(lines int) int { return max(lines*10, 50) + 62 }
 
 // financesContentW is the Finances scroll view's contentWidth.
 func (w *CompanyFinancesWindow) financesContentW() int {
@@ -412,7 +421,8 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 			ch -= L.ScrollbarSize
 			w.drawHBar(rt, sc, sec)
 		}
-		sub := gfx8.NewRenderTarget(cw, ch) // the scroll's content, then copied into the view
+		cw, ch = cw-L.ScrollbarMargin, ch-L.ScrollbarMargin // ScrollView::draw's crop (cropSize)
+		sub := gfx8.NewRenderTarget(cw, ch)                 // the scroll's content, then copied into the view
 		for yy := range ch {
 			copy(sub.Bits[yy*cw:(yy+1)*cw], rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw])
 		}

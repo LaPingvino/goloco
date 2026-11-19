@@ -149,6 +149,7 @@ func (g *Game) newCompanyWindow(company int) *ui.CompanyFinancesWindow {
 			}
 		}}
 	cw.ScrollToLatest() // openFinances: scrollToLatestData
+	cw.CargoLines = g.companyCargoLines(company) // what CargoDelivered::onResize counts (switchTab)
 	cw.Face, cw.FaceColour = g.companyFace(company)
 	cw.CompanyID, cw.ScreenW, cw.ScreenH = company, g.sw, g.sh
 	for id := range g.w.CompanyNames { // populateCompanySelect: every non-empty slot
@@ -169,6 +170,9 @@ func (g *Game) newCompanyWindow(company int) *ui.CompanyFinancesWindow {
 		}
 		if n := g.newCompanyWindow(id); n != nil {
 			n.SwitchTab(cw.Tab)
+			// upstream changes the window's number only: its size and size
+			// bounds stay (no onResize — Cargo delivered keeps its height)
+			n.W, n.H, n.MinW, n.MinH, n.MaxW, n.MaxH = cw.W, cw.H, cw.MinW, cw.MinH, cw.MaxW, cw.MaxH
 			g.wins.Replace(cw, n)
 		}
 	}

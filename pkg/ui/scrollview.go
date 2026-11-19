@@ -26,7 +26,10 @@ func fillRectCrossHatch(rt *gfx8.RenderTarget, l, t, r, b int, c uint8) {
 // drawVScrollView draws ScrollView::draw's frame (inset, fillDarker) for a
 // widget at x, y (target coordinates) of w × h, and — when the content is
 // taller — drawVScroll: the hatched track with its lines, the up/down buttons
-// and the thumb. It returns the content rectangle (1 px inset, minus the bar).
+// and the thumb. It returns the content rectangle drawScroll draws in: 1 px
+// inset, minus the bar, and — ScrollView::draw's crop (cropSize) — one
+// scrollbar margin short at the right and the bottom, so the column and row
+// inside the right and bottom border keep the frame's fill.
 // PARTIAL: pressed states of the buttons/thumb; the arrow glyphs are drawn by
 // the caller (drawVScrollArrows) since text goes through ebiten.
 func drawVScrollView(rt *gfx8.RenderTarget, x, y, w, h int, c gfx8.InsetColour, contentH, offset int) (cx, cy, cw, ch int, bar bool) {
@@ -45,7 +48,7 @@ func drawVScrollViewPressed(rt *gfx8.RenderTarget, x, y, w, h int, c gfx8.InsetC
 	gfx8.FillRectInset(rt, x, y, x+w-1, y+h-1, c, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 	cx, cy, cw, ch = x+L.ScrollbarMargin, y+L.ScrollbarMargin, w-2*L.ScrollbarMargin, h-2*L.ScrollbarMargin
 	if contentH <= h {
-		return cx, cy, cw, ch, false
+		return cx, cy, cw - L.ScrollbarMargin, ch - L.ScrollbarMargin, false
 	}
 	sx, sy := x+w-L.ScrollbarSize-L.ScrollbarMargin, y+L.ScrollbarMargin
 	sh := h - 2*L.ScrollbarMargin
@@ -59,7 +62,7 @@ func drawVScrollViewPressed(rt *gfx8.RenderTarget, x, y, w, h int, c gfx8.InsetC
 	gfx8.FillRectInset(rt, sx, sy+sh-L.ScrollbarSize, sx+L.ScrollbarSize-1, sy+sh-1, c, pf("down"))
 	top, bot := L.VThumb(h, contentH, offset)
 	gfx8.FillRectInset(rt, sx, y+top, sx+L.ScrollbarSize-1, y+top+(bot-top-L.ScrollbarMargin)-1, c, pf("thumb"))
-	return cx, cy, cw - L.ScrollbarSize, ch, true
+	return cx, cy, cw - L.ScrollbarSize - L.ScrollbarMargin, ch - L.ScrollbarMargin, true
 }
 
 // drawVScrollArrows draws the up/down arrow glyphs (font characters 0xA0 and
