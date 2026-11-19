@@ -56,6 +56,7 @@ func (w *World) renderView(v scene.View, ok bool) *gfx8.RenderTarget {
 	if w.townScene == nil {
 		w.townScene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
 	}
+	w.townScene.GhostMods = w.Cons.Mods // getLastSelectedMods: one for every viewport
 	return w.townScene.Render(&w.Map, v)
 }
 

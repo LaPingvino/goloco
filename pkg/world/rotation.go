@@ -181,6 +181,7 @@ func (w *World) SavePreview(width, height int) []byte {
 	if w.townScene == nil {
 		w.townScene = scene.New(w.renderer.G1, w.renderer.ObjMgr)
 	}
+	w.townScene.GhostMods = w.Cons.Mods // getLastSelectedMods: one for every viewport
 	rt := w.townScene.Render(&w.Map, v)
 	out := make([]byte, width*height)
 	if rt != nil && rt.Width == width {

@@ -4,9 +4,10 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 
 // Train stations — a port of Paint/PaintTrainStation.cpp (paint style 0:
 // straight and diagonal track), with the cargo on the platforms
-// (paintStationCargo). PARTIAL: ghosts. Company colour
-// (StationEl.Remap) and the translucent canopy layer (StationEl.Translucent) are
-// ported; road stations below, airports and docks in industry.go.
+// (paintStationCargo). Company colour (StationEl.Remap) and the translucent
+// canopy layer (StationEl.Translucent) — a ghost's (isGhost or isAiAllocated)
+// are applyGhostToImage and ExtColour::unk2F, the caller's —; road stations
+// below, airports and docks in industry.go.
 
 // StationEl is what paintTrainStation reads from a station element and the
 // track element before it.
@@ -132,7 +133,7 @@ var (
 // sprite position; base is stationObj->imageOffsets[sequenceIndex].
 func (s *Session) PaintTrainStation(el StationEl, base int, sprite func(int) *gfx8.Sprite) {
 	s.ItemType = ItemTrainStation // setItemType (PaintTrainStation.cpp:278)
-	if s.ElGhost {                // elStation.isGhost()
+	if s.ElGhost {                // elStation.isGhost() || isAiAllocated()
 		s.ItemType = ItemNoInteraction
 	}
 	s.SetOccupiedAdditionSupportSegments(SegmentsAll) // stations block addition supports
@@ -225,7 +226,7 @@ var (
 // element before it.
 func (s *Session) PaintRoadStation(rotation, baseZ, roadID uint8, base int, remap, translucent []uint8, cargo *StationCargo, sprite func(int) *gfx8.Sprite) {
 	s.ItemType = ItemRoadStation // setItemType (PaintRoadStation.cpp:158)
-	if s.ElGhost {               // elStation.isGhost()
+	if s.ElGhost {               // elStation.isGhost() || isAiAllocated()
 		s.ItemType = ItemNoInteraction
 	}
 	s.SetOccupiedAdditionSupportSegments(SegmentsAll) // stations block addition supports

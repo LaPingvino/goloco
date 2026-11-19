@@ -60,6 +60,9 @@ type Renderer struct {
 	// ConstructionArrow is World::getConstructionArrow with
 	// MapSelectionFlags::enableConstructionArrow as Visible.
 	ConstructionArrow ConstructionArrow
+	// GhostMods is Construction::getLastSelectedMods (the Overhead tab's
+	// ticked mods): on an element with hasGhostMods, the mods drawn as ghosts.
+	GhostMods uint8
 	// workers paint columns in parallel (Viewport::paint's
 	// std::execution::par): clones with their own session and scratch.
 	workers      []*Renderer
@@ -260,6 +263,7 @@ func (r *Renderer) worker(i int) *Renderer {
 	r.workers[i].ConstructSelection = r.ConstructSelection
 	r.workers[i].ConstructSelectionUnk03 = r.ConstructSelectionUnk03
 	r.workers[i].ConstructionArrow = r.ConstructionArrow
+	r.workers[i].GhostMods = r.GhostMods
 	return r.workers[i]
 }
 
@@ -679,7 +683,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 			var mods [4]paint.TrackMod // trackObj->mods: the track extras, by the element's hasMod bits
 			for i, name := range to.ModNames {
 				if ex := om.Extra(name); i < 4 && ex != nil && ex.Image != 0 {
-					mods[i] = paint.TrackMod{Has: tk.Mods&(1<<i) != 0, Image: int(ex.Image), PaintStyle: ex.PaintStyle}
+					mods[i] = r.mod(tk.Mods&(1<<i) != 0, tk.HasGhostMods, i, ex)
 				}
 			}
 			s.PaintTrackMods(paint.TrackEl{TrackID: tk.TrackID, SequenceIndex: tk.SequenceIndex, Rotation: tk.Rotation, BaseZ: tk.BaseZ,
@@ -724,7 +728,11 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 		if t.Stations[ref.Index].AiAllocated && !ShowAiPlanning { // paintStation: as the track's
 			return
 		}
-		s.ElGhost = t.Stations[ref.Index].Ghost // paintTrainStation: isGhost only (an AI-allocated one is drawn as it is)
+		// the ghost flag the painters read: paintTrainStation / paintRoadStation
+		// take an AI-allocated station for a ghost too (isGhost() ||
+		// isAiAllocated()), paintAirport / paintDocks isGhost() alone.
+		st := t.Stations[ref.Index]
+		s.ElGhost = st.Ghost || st.AiAllocated && (st.StationType == 0 || st.StationType == 1)
 		r.paintStation(s, m, t, t.Stations[ref.Index], prev, x, y, ticks)
 	case scenario.KindBuilding:
 		b := t.Buildings[ref.Index]
@@ -742,7 +750,7 @@ func (r *Renderer) paintElement(s *paint.Session, m *sim.Map, t *sim.Tile, ref s
 				PartAnimFrames: frames, PartAnimSpeed: speeds, ElevatorSequences: bo.ElevatorSequences, LargeTile: bo.HasFlags(objects.BuildingFlagLargeTile),
 				Headquarters: bo.HasFlags(objects.BuildingFlagIsHeadquarters),
 				Shadow:       r.shadow(s.Zoom, bo.HasFlags(objects.BuildingFlagHasShadows), (int(bo.NumParts)+int(bo.NumElevatorSequences)+int(b.Variation))*4+int(bo.ImageOffset), colourOrange, false),
-				Scaffold:     r.scaffold(bo.ScaffoldingSegmentType, bo.ScaffoldingColour)},
+				Scaffold:     r.scaffold(bo.ScaffoldingSegmentType, bo.ScaffoldingColour), GhostMap: r.colourMap(extColourGhost)},
 			cmap, x, y, v.Ticks, sprite)
 	case scenario.KindIndustry:
 		ie := t.Industries[ref.Index]
@@ -1109,6 +1117,9 @@ func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st sc
 			remap = r.companyRemap(m, owner)
 			tl = r.canopyTranslucent(m, owner, rso.Flags&objects.RoadStationFlagRecolourable != 0)
 		}
+		if s.ElGhost { // isGhost() || isAiAllocated(): applyGhostToImage, the canopy in ExtColour::unk2F
+			remap, tl = r.colourMap(extColourGhost), r.colourMap(extColourGhostCanopy)
+		}
 		// cargoTypeFlags: all; a passenger/freight station drops its cargo type,
 		// a passenger-only one then keeps just that type.
 		types := uint32(0xFFFFFFFF)
@@ -1118,7 +1129,10 @@ func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st sc
 				types = ^types
 			}
 		}
-		cargo := r.stationCargo(m, rso, rso.CargoOffsets, types, st.StationID, int((s.Rotation+st.Rotation)&3), x+y)
+		var cargo *paint.StationCargo
+		if !st.Ghost { // paintStationCargo: none on a ghost (isGhost only)
+			cargo = r.stationCargo(m, rso, rso.CargoOffsets, types, st.StationID, int((s.Rotation+st.Rotation)&3), x+y)
+		}
 		s.PaintRoadStation(st.Rotation, st.BaseZ, rd.RoadID, int(rso.SequenceImageOffsets[1]), remap, tl, cargo, sprite)
 		return
 	}
@@ -1130,7 +1144,7 @@ func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st sc
 		an := r.animOf(ao, ao.PartAnimations)
 		s.PaintAirport(st.Rotation, st.SequenceIndex, st.BaseZ, paint.AirportObj{BuildingImage: int(ao.BuildingImage),
 			Parts: ao.Variations[st.BuildingType], PartHeights: ao.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds,
-			LargeTile: ao.LargeTiles&(1<<st.BuildingType) != 0, Remap: r.companyRemap(m, st.Owner),
+			LargeTile: ao.LargeTiles&(1<<st.BuildingType) != 0, Remap: r.stationBuildingRemap(m, st),
 			Shadow: r.shadow(s.Zoom, ao.HasShadows(), int(st.BuildingType)*4+int(ao.Image)+1, colourOrange, false)}, x, y, v.Ticks, sprite)
 		return
 	}
@@ -1141,7 +1155,7 @@ func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st sc
 		}
 		an := r.animOf(do, do.PartAnimations)
 		s.PaintDocks(st.Rotation, st.SequenceIndex, st.BaseZ, st.ClearZ, paint.AirportObj{BuildingImage: int(do.BuildingImage),
-			Parts: do.Variations[st.BuildingType], PartHeights: do.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds, Remap: r.companyRemap(m, st.Owner),
+			Parts: do.Variations[st.BuildingType], PartHeights: do.PartHeights, PartAnimFrames: an.frames, PartAnimSpeed: an.speeds, Remap: r.stationBuildingRemap(m, st),
 			Shadow: r.shadow(s.Zoom, do.Flags&objects.DockFlagHasShadows != 0, int(st.BuildingType)*4+int(do.Image)+1, colourOrange, false)}, x, y, v.Ticks, sprite)
 		return
 	}
@@ -1157,10 +1171,25 @@ func (r *Renderer) paintStation(s *paint.Session, m *sim.Map, t *sim.Tile, st sc
 		return
 	}
 	tk := t.Tracks[prev.Index]
-	s.PaintTrainStation(paint.StationEl{Rotation: st.Rotation, BaseZ: st.BaseZ, TrackID: tk.TrackID, TrackSeq: tk.SequenceIndex, Remap: r.companyRemap(m, tk.Owner),
-		Translucent: r.canopyTranslucent(m, tk.Owner, so.Flags&objects.TrainStationFlagRecolourable != 0),
-		Cargo:       r.stationCargo(m, so, so.CargoOffsets, 0xFFFFFFFF, st.StationID, int((s.Rotation+st.Rotation)&3), x+y)},
-		int(so.SequenceImageOffsets[st.SequenceIndex]), sprite)
+	el := paint.StationEl{Rotation: st.Rotation, BaseZ: st.BaseZ, TrackID: tk.TrackID, TrackSeq: tk.SequenceIndex, Remap: r.companyRemap(m, tk.Owner),
+		Translucent: r.canopyTranslucent(m, tk.Owner, so.Flags&objects.TrainStationFlagRecolourable != 0)}
+	if s.ElGhost { // isGhost() || isAiAllocated(): applyGhostToImage, the canopy in ExtColour::unk2F
+		el.Remap, el.Translucent = r.colourMap(extColourGhost), r.colourMap(extColourGhostCanopy)
+	}
+	if !st.Ghost { // paintStationCargo: none on a ghost (isGhost only)
+		el.Cargo = r.stationCargo(m, so, so.CargoOffsets, 0xFFFFFFFF, st.StationID, int((s.Rotation+st.Rotation)&3), x+y)
+	}
+	s.PaintTrainStation(el, int(so.SequenceImageOffsets[st.SequenceIndex]), sprite)
+}
+
+// stationBuildingRemap is paintAirport / paintDocks's baseColour:
+// ImageId(0, getCompanyColour(owner)), a ghost's applyGhostToImage(0)
+// (PaintAirport.cpp:66, PaintDocks.cpp:62 — isGhost only).
+func (r *Renderer) stationBuildingRemap(m *sim.Map, st scenario.StationElement) []uint8 {
+	if st.Ghost {
+		return r.colourMap(extColourGhost)
+	}
+	return r.companyRemap(m, st.Owner)
 }
 
 // entitiesByTile is EntityTileList per tile for paintEntities: the bogie and
@@ -1319,6 +1348,10 @@ func (r *Renderer) paintEffectEntity(s *paint.Session, e *sim.Effect) {
 // the default construction marker (Config constructionMarker 0).
 const extColourGhost = 0x2C
 
+// extColourGhostCanopy is ExtColour::unk2F, a ghost station's translucent
+// canopy (PaintTrainStation.cpp / PaintRoadStation.cpp imageIdTranslucentBase).
+const extColourGhostCanopy = 0x2F
+
 // paintVehicleEntity is PaintVehicle.cpp paintVehicleEntity: a ghost of
 // another company is not drawn; bogies and bodies by their painters at the
 // entity's position (setEntityPosition), in their colour schemes.
@@ -1407,10 +1440,22 @@ func (r *Renderer) roadMods(ro *objects.RoadObject, rd scenario.RoadElement) [2]
 	var mods [2]paint.TrackMod
 	for i, name := range ro.ModNames {
 		if ex := r.Objects.Extra(name); i < 2 && ex != nil && ex.Image != 0 {
-			mods[i] = paint.TrackMod{Has: rd.Mods&(1<<i) != 0, Image: int(ex.Image), PaintStyle: ex.PaintStyle}
+			mods[i] = r.mod(rd.Mods&(1<<i) != 0, rd.HasGhostMods, i, ex)
 		}
 	}
 	return mods
+}
+
+// mod is one of paintTrack's / paintRoad's mods: the element's own
+// (hasMod: baseTrackImageColour.withIndex(extra image)), else a ghost one
+// (hasGhostMods and the mod in getLastSelectedMods: applyGhostToImage(extra
+// image)), else none.
+func (r *Renderer) mod(has, hasGhostMods bool, i int, ex *objects.ExtraObject) paint.TrackMod {
+	m := paint.TrackMod{Has: has, Image: int(ex.Image), PaintStyle: ex.PaintStyle}
+	if !has && hasGhostMods && r.GhostMods&(1<<i) != 0 {
+		m.Has, m.Ghost = true, r.colourMap(extColourGhost)
+	}
+	return m
 }
 
 // bridgeHasRoof is BridgeObjectFlags::hasRoof of a bridge slot (paintSupports).

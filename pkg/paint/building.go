@@ -5,8 +5,9 @@ import "github.com/LaPingvino/goloco/pkg/gfx8"
 // Buildings — a port of Paint/PaintBuilding.cpp paintBuilding /
 // paintBuildingBuilding, with the shadow (translucency
 // Colours::getShadow(orange)) and the under-construction stages (built
-// sections by age, the newest noise-masked) with their scaffolding. PARTIAL:
-// ghost buildings are not ported.
+// sections by age, the newest noise-masked) with their scaffolding; a ghost
+// (the Build Buildings / headquarters tool's) in the ghost colour, its
+// scaffolding too, not interactive.
 
 // BuildingEl is what paintBuilding reads from a building element.
 type BuildingEl struct {
@@ -34,6 +35,20 @@ type BuildingObj struct {
 	// Scaffold is the scaffolding drawn while under construction (nil: the
 	// object has none — segment type 0xFF — or no Scaffolding object).
 	Scaffold *Scaffold
+	// GhostMap is Gfx::applyGhostToImage's palette map (ExtColour::unk2C).
+	GhostMap []uint8
+}
+
+// ghost is the scaffolding of a ghost: baseScaffImage =
+// applyGhostToImage(scaffObj->image) instead of the object's
+// scaffoldingColour (PaintBuilding.cpp / PaintIndustry.cpp).
+func (sc *Scaffold) ghost(ghostMap []uint8) *Scaffold {
+	if sc == nil {
+		return nil
+	}
+	g := *sc
+	g.Colour = ghostMap
+	return &g
 }
 
 // Scaffold is what paintBuildingBuilding reads for the scaffolding: the
@@ -110,8 +125,9 @@ func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint
 	if obj.Headquarters {
 		s.ItemType = ItemHeadquarterBuilding
 	}
-	if el.Ghost { // PARTIAL: the ghost colour (applyGhostToImage)
+	if el.Ghost { // baseColour = applyGhostToImage(0), no interaction
 		s.ItemType = ItemNoInteraction
+		colourMap = obj.GhostMap
 	}
 	rotation := (s.Rotation + el.Rotation) & 3
 	baseHeight := int(el.BaseZ) * 4
@@ -152,6 +168,9 @@ func (s *Session) PaintBuilding(el BuildingEl, obj BuildingObj, colourMap []uint
 	totalSectionHeight := sectionsHeight(numSections, obj.Parts, obj.PartHeights)
 	// The scaffolding's back segments, before the parts.
 	sc := obj.Scaffold
+	if el.Ghost {
+		sc = sc.ghost(obj.GhostMap)
+	}
 	set, ok := scaffoldSet(sc, obj.LargeTile)
 	if !ok {
 		sc = nil
