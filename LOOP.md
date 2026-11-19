@@ -227,7 +227,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 > - [x] N4 Name plates follow towns and stations: every upstream updateLabel caller is ported (the station rename's last).
 > - [x] N5 The porting gap b93e074..09d74ee: audited 2026-11-14 (most already ported; fd6db41's land patterns fixed
 >       now). What's missing became N24–N31.
-> - [ ] N6 Window stack leftovers. DONE 2026-11-18 (branch n6-winstack): the toolbar and the two panels are
+> - [x] N6 Window stack leftovers (CLOSED 2026-11-19: drag by frame for the remaining windows, 6a2ac04 cherry-picked as 0ca71d0 — Station, the lists, Company, CompanyList, Messages, Options, Jukebox, Music Selection, Shortcuts, Scenario Select, Browse, Terraform, Map, News; not compared with OpenLoco; its noted 1 px mismatches → N32-style leftovers; skipped: the construction window, bars, ticker, prompts off the stack). DONE 2026-11-18 (branch n6-winstack): the toolbar and the two panels are
 >       stack windows (ui.BarWindow, Gui::init's order; noBackground: the toolbar only on a button) — one list for
 >       drawing, hit-testing and placement, bringToFront upstream's swap: a pressed window now lies over the
 >       toolbar and the panels, as in the real OpenLoco (checked with olref: dragged up over the toolbar and
