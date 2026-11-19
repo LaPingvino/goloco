@@ -154,11 +154,20 @@ Joop: "interesting to make configurable like with OpenTTD, because the Locomotio
 That definitely doesn't have priority to be loyal to the original, rather it should be easy to make accurate,
 configurable and good."
 
-Direction (design to be agreed with Joop before building):
+DECIDED (Joop 2026-11-19): the interface first and our own AI, not a port of the original — "the original AI is
+not super great and if you want that, you can just play the original". The original is studied, not ported: "you
+could start a to figure out which end points we need".
+
+Direction:
+- **Step 1 — study the original for its end points:** World/CompanyAi/CompanyAi.cpp (7889 lines),
+  CompanyAiPathfinding.cpp (2665), CompanyAiPlaceVehicle.cpp (659). List everything it reads (observations) and
+  every game command it issues (actions), and where its state lives in the company record. The result is the
+  interface's first draft (docs/AI-INTERFACE.md), with goloco's existing equivalent or the gap for each.
 - **An AI interface in pkg/sim:** what a company's AI may see (the map, towns, industries, its own finances) and do
   (game commands only, as a player does: no shortcuts). One AI per company, chosen when it's created.
-- **The original as one implementation:** CompanyAi.cpp ported faithfully (about 6000 lines, chipped at like plans
-  A–C). That keeps the economy comparison with OpenLoco exact with the AI on, and gives a baseline to beat.
+- **The original is not ported.** Consequence: the economy comparison with OpenLoco (simcmp) stays an AI-off check;
+  the AI companies' records (aiThoughts, the AI fields of the company) are kept as loaded, so OpenLoco saves still
+  load and save.
 - **Better AIs beside it:** written against the same interface; picked per scenario or game in the options, like
   OpenTTD's AI settings (which AI, how many competitors, how fast they start, how hard they play).
 - **Easy to make accurate:** each AI's decisions are logged and replayable, so a bad choice can be traced to its

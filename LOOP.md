@@ -167,10 +167,18 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    Economy and simulation against OpenLoco: the same save in both games for a few game years — cash, cargo
 >    delivered, running costs, breakdowns, town growth, the AI companies; every difference a line here, ported.
 >    (Weatherworld's cash fell £59k → £6k–25k in the won run; unverified against OpenLoco.)
-> 2. The map window (PORT-PLANS A): function first (finding towns/industries, centring the view), pixels later.
-> 3. N7 construction: the list DONE 2026-11-18 (branch n7-construction); what is left is listed under N7.
-> 4. N19 tool cursors — done 2026-11-19 (the other tools' cursors: N47).
-> 5. N31 landscape generation leftovers (random new games only).
+> REORDERED 2026-11-19 (Joop agreed: playability before the NOW list's polish; ticks take from here, top down):
+> 2. The map window (PORT-PLANS A): what's left — a click / drag centres the main view (c), the other four tabs'
+>    fills and their graph keys (d), the overlays (vehicles, town names, the view rectangle).
+> 3. A second scenario played through properly (Desert Delirium £5000 monthly profit, or Boulder Breakers 10%
+>    performance index): more trains, a longer route, the money watched; each blocker a line here.
+> 4. Company AI (PORT-PLANS F, decided: our own AI on an interface, the original studied, not ported): step 1, the
+>    original's end points (docs/AI-INTERFACE.md).
+> 5. N7 construction: the list DONE 2026-11-18 (branch n7-construction); what is left is listed under N7.
+> 6. N19 tool cursors — done 2026-11-19 (the other tools' cursors: N47).
+> 7. N31 landscape generation leftovers (random new games only).
+> Small NOW items (N40–N55) are batched a few per tick when nothing above fits in one; also the clickables count
+> (Completion measure below) refreshed, so the gaps rank by size.
 > Then, as time allows ("the rest can make do"): sounds steps 3–4 and window clicks, zoom 2×/4×, N6/N17 window
 > details, N22 right-click in other viewports, N32/N34 view/keyboard leftovers; N14 editor last.
 
