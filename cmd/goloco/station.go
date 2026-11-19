@@ -182,8 +182,8 @@ func (g *Game) renameStation(id int, titleColour, colour uint8) {
 	if infos := g.w.TownList(); id < len(m.StationNames) && int(m.StationNames[id].Town) < len(infos) {
 		town = infos[m.StationNames[id].Town].Name
 	}
-	g.textInput = ui.OpenTextInput(i18n.Str(i18n.TitleStationName), ui.FillArgs(i18n.Str(i18n.PromptTypeNewStationName), town),
-		m.StationName(id), 31, g.sw, g.sh, titleColour, colour, true, func(text string) {
+	ui.OpenTextInput(&g.wins, ui.WindowTypeStation, id, i18n.Str(i18n.TitleStationName), ui.FillArgs(i18n.Str(i18n.PromptTypeNewStationName), town),
+		m.StationName(id), 31, titleColour, colour, true, func(text string) {
 			c := g.playerCmd()
 			g1, _ := g.r.ObjMgr.G1File.(sim.G1Raw)
 			if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) {

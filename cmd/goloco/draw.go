@@ -165,9 +165,6 @@ func (g *Game) drawTopmost(screen *ebiten.Image) {
 	if g.colourDropdown != nil && g.colourDropdown.Visible {
 		g.colourDropdown.Draw(screen)
 	}
-	if g.textInput != nil { // stickToFront
-		g.textInput.Draw(screen)
-	}
 	if g.prompt != nil { // a confirmation, on top of everything
 		g.prompt.Draw(screen)
 	}

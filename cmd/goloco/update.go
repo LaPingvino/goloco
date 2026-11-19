@@ -96,20 +96,11 @@ func (g *Game) playOpenSound() {
 	}
 }
 
-// updateModal gives the frame's mouse to an open text input or confirmation,
-// and reports that one took it (their keys: keyboard.go callKeyUp).
+// updateModal gives the frame's mouse to an open confirmation (or the save
+// prompt), and reports that one took it (their keys: keyboard.go callKeyUp).
+// The rename box (TextInputWindow) is not among them: an ordinary window of
+// the stack, under which the game runs on.
 func (g *Game) updateModal() bool {
-	if g.textInput != nil { // TextInputWindow: onMouseUp, onUpdate
-		t := g.textInput
-		t.Update()
-		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
-			t.HandleClick(g.mouseX, g.mouseY)
-		}
-		if t.Closed && g.textInput == t {
-			g.textInput = nil
-		}
-		return true
-	}
 	if g.savePrompt != nil { // PARTIAL: upstream's isn't modal (stickToFront, the game paused: PauseFlags::promptSave)
 		if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
 			p := g.savePrompt
@@ -163,6 +154,7 @@ func (g *Game) updateTitle() {
 		g.dropdown.UpdateHover(g.mouseX, g.mouseY)
 	}
 	if g.inMouseJustPressed(ebiten.MouseButtonLeft) {
+		g.pressFocus()
 		// An open dropdown is on top: it takes the click (a click outside
 		// closes it); then the windows, front-most first.
 		if g.dropdown != nil && g.dropdown.Visible {
@@ -317,7 +309,7 @@ func (g *Game) updateHeld() {
 		// in the normal input state (no menu open) a button under the mouse
 		// opens its menu.
 		if btnIdx := g.toolbar.HandleClick(hx, hy); btnIdx >= 0 && !g.inTitleScreen && !g.noAutoMenu &&
-			g.textInput == nil && g.prompt == nil && !g.inMousePressed(ebiten.MouseButtonLeft) {
+			g.prompt == nil && !g.inMousePressed(ebiten.MouseButtonLeft) {
 			g.toolbar.Buttons[btnIdx].Pressed = true
 			g.handleToolbarButton(btnIdx)
 			if g.dropdown != nil {
@@ -353,6 +345,7 @@ func (g *Game) updateHeld() {
 // gameClick sends a left press to what lies under it, topmost first: an open
 // dropdown, the windows (the stack, front to back), then the HUD and the map.
 func (g *Game) gameClick() {
+	g.pressFocus()
 	// Check dropdown first (it's on top: a window's dropdown lies over the
 	// window that opened it)
 	if g.dropdown != nil && g.dropdown.Visible {
@@ -372,6 +365,24 @@ func (g *Game) gameClick() {
 	} else if !g.windowsPress() { // the windows, front-most first (stateNormalLeft)
 		g.hudOrMapClick()
 	}
+}
+
+// pressFocus is stateNormalLeft's text focus for a left press: on the text
+// input's text box it takes the focus (setFocus), on any other widget —
+// another window, the map (the main window's viewport), a menu — it loses
+// it (resetFocus; MouseInput.cpp). A press that a modal window refuses
+// (handleMouse brings the modal one forward instead) leaves it.
+func (g *Game) pressFocus() {
+	t := g.textInputWin()
+	if t == nil {
+		return
+	}
+	x, y := g.mouseX, g.mouseY
+	under := g.wins.FindAt(x, y)
+	if m := g.wins.Modal; m != 0 && g.wins.Find(m, ui.AnyNumber) != nil && (under == nil || under.Base().WinType != m) {
+		return
+	}
+	t.Focused = under == ui.Win(t) && t.OnTextBox(x, y)
 }
 
 // timePanelPress is TimePanel's press (its window on the stack): the speed

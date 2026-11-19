@@ -271,6 +271,7 @@ func (g *Game) openNewGameWindow() {
 // openLoadGameWindow is Game::loadSaveGameOpen: the file browser (PromptBrowse,
 // load mode) on the saves folder, saved games only.
 func (g *Game) openLoadGameWindow() {
+	ui.CancelTextInput(&g.wins) // PromptBrowse::open: TextInput::cancel
 	w := ui.NewPromptBrowse(i18n.Label(i18n.TitlePromptLoadGame), savesDir(), []string{".sv5"}, g.sw, g.sh)
 	w.Confirm = func(caption, text, ok string, then func()) { // right-click delete asks first
 		g.prompt = ui.NewPromptOkCancel(caption, text, ok, g.sw, g.sh, then)

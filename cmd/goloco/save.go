@@ -73,6 +73,7 @@ func (g *Game) openSaveWindowThen(after func()) {
 		name = strings.TrimSuffix(filepath.Base(g.activeSavePath), filepath.Ext(g.activeSavePath))
 	}
 	_ = os.MkdirAll(dir, 0o755)
+	ui.CancelTextInput(&g.wins) // PromptBrowse::open: TextInput::cancel
 	w := ui.NewPromptBrowseSave(i18n.Label(i18n.TitlePromptSaveGame), dir, name, ".SV5", g.sw, g.sh)
 	w.Confirm = func(caption, text, ok string, then func()) {
 		g.prompt = ui.NewPromptOkCancel(caption, text, ok, g.sw, g.sh, then)
@@ -260,6 +261,7 @@ func (g *Game) loadSaveQuit(mode ui.LoadOrQuitMode) {
 		g.loadOrQuit(mode)
 		return
 	}
+	ui.CancelTextInput(&g.wins) // LoadSaveQuitGame promptSave: TextInput::cancel, then PromptSaveWindow::open
 	p := ui.NewPromptSave(mode, g.sw, g.sh)
 	// confirmSaveGame: the save, then LoadSaveQuit with loadGamePrompt and
 	// dontSave — always loadGamePrompt, whatever the prompt asked (as upstream)

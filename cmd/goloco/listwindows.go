@@ -524,8 +524,8 @@ func (g *Game) renameTown(id int, win *ui.ViewWindow) {
 		return
 	}
 	tc, wc := g.windowColours(false)
-	g.textInput = ui.OpenTextInput(i18n.Str(i18n.TitleTownName), ui.FillArgs(i18n.Str(i18n.PromptTypeNewTownName), infos[id].Name),
-		infos[id].Name, 31, g.sw, g.sh, tc, wc, true, func(text string) {
+	ui.OpenTextInput(&g.wins, win.WinType, win.Number, i18n.Str(i18n.TitleTownName), ui.FillArgs(i18n.Str(i18n.PromptTypeNewTownName), infos[id].Name),
+		infos[id].Name, 31, tc, wc, true, func(text string) {
 			m := &g.w.Map
 			c := g.playerCmd()
 			g1, _ := g.r.ObjMgr.G1File.(sim.G1Raw)
@@ -536,7 +536,9 @@ func (g *Game) renameTown(id int, win *ui.ViewWindow) {
 				return
 			}
 			if infos := g.w.TownList(); id < len(infos) {
-				win.Title = infos[id].Name
+				if w, ok := g.wins.Find(win.WinType, win.Number).(*ui.ViewWindow); ok { // the caller (callTextInput) as it stands now
+					w.Title = infos[id].Name
+				}
 			}
 			g.refreshList() // the open list repopulated
 		})
@@ -558,8 +560,8 @@ func (g *Game) renameIndustry(idx int, win *ui.ViewWindow) {
 		town = infos[m.Industries[idx].Town].Name
 	}
 	tc, wc := g.windowColours(false)
-	g.textInput = ui.OpenTextInput(i18n.Str(i18n.TitleIndustryName), ui.FillArgs(i18n.Str(i18n.PromptEnterNewIndustryName), town),
-		name, 31, g.sw, g.sh, tc, wc, true, func(text string) {
+	ui.OpenTextInput(&g.wins, win.WinType, win.Number, i18n.Str(i18n.TitleIndustryName), ui.FillArgs(i18n.Str(i18n.PromptEnterNewIndustryName), town),
+		name, 31, tc, wc, true, func(text string) {
 			c := g.playerCmd()
 			if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) {
 				return m.RenameIndustry(c, f, idx, text, g.r.ObjMgr)
@@ -567,7 +569,9 @@ func (g *Game) renameIndustry(idx int, win *ui.ViewWindow) {
 				g.openCmdError(i18n.Label(i18n.ErrorCantRenameIndustry), c)
 				return
 			}
-			win.Title, _ = m.IndustryName(idx, g.r.ObjMgr)
+			if w, ok := g.wins.Find(win.WinType, win.Number).(*ui.ViewWindow); ok { // the caller (callTextInput) as it stands now
+				w.Title, _ = m.IndustryName(idx, g.r.ObjMgr)
+			}
 		})
 }
 

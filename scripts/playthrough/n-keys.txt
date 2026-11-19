@@ -218,10 +218,13 @@ wait 1
 click 230 140
 wait 2
 expect townwindows == 1
-# its name's text input takes every key
+# its name's text input takes every key while its box has the focus; the game
+# runs on under it (TextInputWindow is no modal window: ticks go on)
 click 110 417
 wait 1
 expect textinput == 1
+# (2799 on 2026-11-19; the next check, 2 s on, saw 2898 — under a modal box it stayed put)
+expect ticks <= 2800
 key S
 key V
 type xy
@@ -236,10 +239,28 @@ shot /tmp/goloco-playthrough/pt-n9-rename.png
 key Backspace
 wait 0.5
 expect windows == 2
+expect ticks >= 2850
+# a press off the text box (the window's panel) takes the focus: S is the
+# shortcut again (the station list); a press on the box gives it back
+click 400 285
+wait 0.5
+key S
+wait 1
+expect stationlist == 1
+expect textinput == 1
+click 400 320
+wait 0.5
+type z
+wait 0.5
+expect stationlist == 1
+shot /tmp/goloco-playthrough/pt-n9b-refocused.png
 key ENTER
 wait 1
 expect textinput == 0
 expect rotation == 0
+key Backspace
+wait 0.5
+expect stationlist == 0
 move 400 300
 wait 1
 shot /tmp/goloco-playthrough/pt-n10-renamed.png

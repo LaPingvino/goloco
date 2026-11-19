@@ -235,13 +235,13 @@ func (g *Game) diagRename() {
 			g.inTitleScreen = false
 			g.openVehicleWindow(h.ID, 3)
 			g.frontVehicleWin().HandleClick(g.frontVehicleWin().X+40, g.frontVehicleWin().Y+6)
-			if g.textInput != nil {
-				g.textInput.Keys([]rune(" Express"), nil, false, false)
+			t := g.textInputWin()
+			if t != nil {
+				t.KeyUp(false, []rune(" Express"), nil)
 			}
-			log.Printf("[Diag] rename: vehicle %d, text input open %v", h.ID, g.textInput != nil)
-			if os.Getenv("GOLOCO_DIAG_RENAME_OK") != "" && g.textInput != nil { // Enter: OK
-				g.textInput.Keys(nil, nil, true, false)
-				g.textInput = nil
+			log.Printf("[Diag] rename: vehicle %d, text input open %v", h.ID, t != nil)
+			if os.Getenv("GOLOCO_DIAG_RENAME_OK") != "" && t != nil { // Enter: OK
+				t.KeyUp(true, nil, nil)
 				nh := m.Entities[tr.Head]
 				log.Printf("[Diag] rename: now %q, window %q", m.VehicleName(nh.Name, int(nh.OrdinalNumber)), g.frontVehicleWin().Title)
 			}
