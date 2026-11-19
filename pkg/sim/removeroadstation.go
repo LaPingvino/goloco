@@ -63,7 +63,7 @@ func (m *Map) RemoveRoadStation(c *Cmd, flags uint8, a RoadStationRemoval, g1 G1
 		}
 		return &t.Stations[t.Order[e].Index], b, e
 	}
-	if st, _, _ := stationAt(); st == nil || !checkCompanyCompatibility(c, st.Owner) {
+	if st, _, _ := stationAt(); st == nil || !c.checkStationCompatibility(st.Owner, uint16(st.StationID)) {
 		return 0, false // vanilla asked the station struct, not the element
 	}
 	pieces := RoadPieces[a.RoadID]

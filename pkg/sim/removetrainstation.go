@@ -35,7 +35,7 @@ func (m *Map) RemoveTrainStation(c *Cmd, flags uint8, a TrainStationRemoval, g1 
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition
 	om := c.Objects
 	initial, _ := m.getElTrack(a.X, a.Y, a.Z, a.Rotation, a.TrackObjectID, a.TrackID, a.Index)
-	if initial == nil || !checkCompanyCompatibility(c, initial.Owner) || int(a.TrackID) >= len(TrackPieces) {
+	if initial == nil || !c.checkTrackCompatibility(initial.Owner, initial.TrackObjectID) || int(a.TrackID) >= len(TrackPieces) {
 		return 0, false
 	}
 	pieces := TrackPieces[a.TrackID]

@@ -39,18 +39,20 @@ var edgeWallMapping = [32][4]uint8{
 // canConstructWall: on the drawable map, nothing (but the surface, trees and
 // what occupies no quarter) overlapping baseZ–clearZ, and no wall on the same
 // edge there.
-func (m *Map) canConstructWall(x, y int32, baseZ, clearZ, edge uint8) bool {
+func (m *Map) canConstructWall(c *Cmd, x, y int32, baseZ, clearZ, edge uint8) bool {
 	tx, ty := int(x)>>5, int(y)>>5
 	if tx < 1 || ty < 1 || tx > m.Width-2 || ty > m.Height-2 { // drawableCoords
+		c.setErrorText(i18n.OffEdgeOfMap)
 		return false
 	}
 	t := m.TileAt(tx, ty)
-	for _, r := range t.Order {
+	for k, r := range t.Order {
 		if r.Kind == scenario.KindSurface || baseZ >= t.clearZOf(r) || clearZ <= t.baseZOf(r) {
 			continue
 		}
 		if r.Kind == scenario.KindWall {
 			if t.Walls[r.Index].Rotation == edge {
+				m.setCollisionErrorMessage(c, t, k)
 				return false
 			}
 			continue
@@ -58,6 +60,7 @@ func (m *Map) canConstructWall(x, y int32, baseZ, clearZ, edge uint8) bool {
 		if r.Flags&0x0F == 0 || r.Kind == scenario.KindTree {
 			continue
 		}
+		m.setCollisionErrorMessage(c, t, k)
 		return false
 	}
 	return true
@@ -134,9 +137,7 @@ func (m *Map) CreateWall(c *Cmd, flags uint8, a WallPlacement) (int32, bool) {
 		clearZ += 4
 	}
 	clearZ += w.Height
-	m.LastCollision = nil
-	if !m.canConstructWall(a.X, a.Y, baseZ, clearZ, a.Rotation) {
-		c.setCollisionError(m) // canConstructWall: off_edge_of_map, or what is in the way
+	if !m.canConstructWall(c, a.X, a.Y, baseZ, clearZ, a.Rotation) {
 		return 0, false
 	}
 	if flags&CmdApply == 0 {

@@ -188,7 +188,7 @@ func (m *Map) RemoveRoadModsToTrackNetwork(c *Cmd, x, y, z int32, rad uint16, co
 func (m *Map) roadModsTarget(c *Cmd, a RoadModsPlacement) (x, y, z int32, rad uint16, owner uint8, ok bool) {
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
 	el := m.roadModElement(a.X, a.Y, a.Z, a.Rotation, a.Index, a.RoadObjectID, a.RoadID)
-	if el == nil || !c.companyCompatible(el.Owner) || int(el.RoadID) >= len(RoadPieces) || int(el.SequenceIndex) >= len(RoadPieces[el.RoadID]) {
+	if el == nil || !c.checkRoadCompatibility(el.Owner, el.RoadObjectID) || int(el.RoadID) >= len(RoadPieces) || int(el.SequenceIndex) >= len(RoadPieces[el.RoadID]) {
 		return 0, 0, 0, 0, 0, false
 	}
 	p := RoadPieces[el.RoadID][el.SequenceIndex]

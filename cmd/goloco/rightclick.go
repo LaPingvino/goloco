@@ -111,7 +111,7 @@ func (g *Game) mapCommand(title string, demolish bool, run func(c *sim.Cmd, g1 s
 	g.unpauseForCommand(sim.CmdApply)
 	_, ok := g.w.Map.DoCommandFor(c, sim.CmdApply, sim.ExpenditureConstruction, func(f uint8) (int32, bool) { return run(c, g1, f) })
 	if !ok {
-		g.openError(title, cmdErrorText(c))
+		g.openCmdError(title, c)
 	} else if demolish {
 		g.playCommandSound(audio.SoundDemolish, c)
 	}

@@ -110,9 +110,6 @@ type Map struct {
 	// CurrencyMultiplicationFactor prices cost indices (Economy).
 	CurrencyMultiplicationFactor [32]uint32
 
-	// LastCollision: what applyClearAtStandardHeight last collided with (for
-	// the command's error text; clearance.go).
-	LastCollision *CollisionAt
 	// LastPlacedWallBaseZ is getLegacyReturnState().lastPlacedWall's baseZ: the
 	// wall the last createWall placed (0: none).
 	LastPlacedWallBaseZ  uint8

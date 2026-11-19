@@ -142,7 +142,7 @@ func (g *Game) addNewOrder(headID uint16, order []byte) {
 	c := g.playerCmd()
 	before := h.SizeOfOrderTable
 	if _, ok := m.DoCommandFor(c, sim.CmdApply, 0, func(f uint8) (int32, bool) { return m.VehicleOrderInsert(c, f, headID, offset, order) }); !ok {
-		g.openError(i18n.Label(i18n.OrdersCantInsert), cmdErrorText(c))
+		g.openCmdError(i18n.Label(i18n.OrdersCantInsert), c)
 		return
 	}
 	if tr, err := m.TrainOf(headID); err == nil && m.Entities[tr.Head].SizeOfOrderTable != before && sel != -1 {

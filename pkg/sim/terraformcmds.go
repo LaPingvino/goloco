@@ -93,9 +93,7 @@ func (m *Map) CreateTreeCmd(c *Cmd, flags uint8, a TreePlacement) (cost int32, b
 		clearZ = 0xFF
 	}
 	baseQuarter := uint8(1) << (q ^ 2)
-	m.LastCollision = nil
-	if !m.CanConstructAt(a.X, a.Y, baseZ, clearZ, baseQuarter, 0x0F) {
-		c.setCollisionError(m)
+	if !m.CanConstructAt(c, a.X, a.Y, baseZ, clearZ, baseQuarter, 0x0F) {
 		return 0, 0, false
 	}
 	cost = m.InflationAdjustedCost(to.BuildCostFactor, to.CostIndex, 12)
@@ -130,19 +128,6 @@ func (m *Map) CreateTreeCmd(c *Cmd, flags uint8, a TreePlacement) (cost int32, b
 	}
 	m.invalidateTile(a.X, a.Y, int32(el.BaseZ)*4, int32(el.ClearZ)*4, ZoomEighth, 56)
 	return cost, baseZ, true
-}
-
-// setCollisionError is TileClearance's setCollisionErrorMessage after a
-// refused clearance: what the clear function said, else what was in the way
-// (collisionMessage), else object_in_the_way.
-func (c *Cmd) setCollisionError(m *Map) {
-	if c.ErrorText == 0 {
-		c.ErrorText, c.ErrorArg = m.collisionMessage(c)
-	}
-	if c.ErrorText == 0 {
-		c.ErrorText = i18n.ObjectInTheWay
-	}
-	m.LastCollision = nil
 }
 
 // TreeRemoval is TreeRemovalArgs: the tile and height (world units), the

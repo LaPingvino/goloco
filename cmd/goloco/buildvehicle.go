@@ -204,7 +204,7 @@ func (g *Game) cloneVehicle(headID uint16) {
 	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureVehiclePurchases, func(flags uint8) (int32, bool) {
 		return m.CloneVehicle(c, flags, headID, &head)
 	}); !ok {
-		g.openError(i18n.Label(i18n.CantCloneVehicle), cmdErrorText(c))
+		g.openCmdError(i18n.Label(i18n.CantCloneVehicle), c)
 		return
 	}
 	if head != sim.EntityIDNull {

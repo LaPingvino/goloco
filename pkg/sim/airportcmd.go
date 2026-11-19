@@ -141,7 +141,7 @@ func (m *Map) airportBuilding(c *Cmd, stationID int, tx, ty int, baseHeight int3
 		}
 		baseZ := min(min(t.BaseZ, argBaseZ), argClearZ)
 		clearZ := max(max(t.BaseZ, argBaseZ), argClearZ)
-		if ok, _ := m.ApplyClearAtStandardHeight(px, py, baseZ, clearZ, 0xF, 0xF, clear); !ok {
+		if ok, _ := m.ApplyClearAtStandardHeight(c, px, py, baseZ, clearZ, 0xF, 0xF, clear); !ok {
 			return 0, false
 		}
 		t = m.TileAt(px0, py0)

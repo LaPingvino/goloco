@@ -126,7 +126,7 @@ func (g *Game) industryToolDown(x, y int) {
 			cost, _, ok := g.w.Map.CreateIndustry(c, f, a)
 			return cost, ok
 		}); !ok { // setErrorTitle(error_cant_build_this_here)
-			g.openError(i18n.Label(i18n.ErrorCantBuildThisHere), cmdErrorText(c))
+			g.openCmdError(i18n.Label(i18n.ErrorCantBuildThisHere), c)
 		} else {
 			g.playCommandSound(audio.SoundConstruct, c)
 		}

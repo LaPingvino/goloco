@@ -3,6 +3,7 @@ package sim
 import (
 	"github.com/LaPingvino/goloco/pkg/construct"
 	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/objects"
 )
 
 // The construction window's ghost and its tool on the map (ConstructionTab
@@ -387,4 +388,49 @@ func (s *State) ConstructionToolUp(c *Cmd, tx, ty int, junction int32, road bool
 	h = max(0, h) // "Height should never go negative"
 	cost, built = s.ConstructionLoop(c, int32(tx)*32, int32(ty)*32, h, retries, road, objID, shift)
 	return cost, built, !built
+}
+
+// AirportToolTiles is getAirportPlacementArgs' stationMinPos …
+// stationMaxPos: the airport's extents (getAirportExtents) round the tile at
+// world (x, y) in the rotation, in tiles; ok false without the object.
+func AirportToolTiles(om *objects.ObjectManager, typ uint8, x, y int32, rotation uint8) (x0, y0, x1, y1 int, ok bool) {
+	if om == nil || int(typ) >= len(om.AirportObjects) || om.AirportObjects[typ] == nil {
+		return 0, 0, 0, 0, false
+	}
+	x0, y0, x1, y1 = airportExtents(om.AirportObjects[typ], int(x)>>5, int(y)>>5, rotation)
+	return x0, y0, x1, y1, true
+}
+
+// DockToolTiles is getDockPlacementArgs' stationMinPos … stationMaxPos: the
+// tile at world (x, y) and the one past it in x and y — the dock's 2 × 2.
+func DockToolTiles(x, y int32) (x0, y0, x1, y1 int) {
+	return int(x) >> 5, int(y) >> 5, int(x)>>5 + 1, int(y)>>5 + 1
+}
+
+// SetStationToolSelection is onToolUpdateAirport / onToolUpdateDock once the
+// placement is found (StationTab.cpp 0x004A4F3B, 0x004A5158):
+// enableConstruct and enableConstructionArrow on, unk_03 off, the arrow at
+// the placement in its rotation (setConstructionArrow) and the selected
+// tiles the station's tiles x0, y0 … x1, y1 (setMapSelectedTilesFromRange
+// of getClampedRange: each corner clamped to the map).
+func (s *State) SetStationToolSelection(x0, y0, x1, y1 int, arrow ConstructionArrow) {
+	clamp := func(v, n int) int { return min(max(v, 0), n-1) } // clampTileCoord
+	x0, x1 = clamp(x0, s.Width), clamp(x1, s.Width)
+	y0, y1 = clamp(y0, s.Height), clamp(y1, s.Height)
+	arrow.On = true
+	s.ConsArrow = arrow
+	s.ConsSelection.On, s.ConsSelection.Unk03 = true, false
+	s.ConsSelection.Tiles = s.ConsSelection.Tiles[:0]
+	for ty := y0; ty <= y1; ty++ { // TilePosRangeView: x fastest, both ends included
+		for tx := x0; tx <= x1; tx++ {
+			s.ConsSelection.Tiles = append(s.ConsSelection.Tiles, [2]int32{int32(tx) * 32, int32(ty) * 32})
+		}
+	}
+}
+
+// ClearStationToolSelection is onToolUpdateAirport / onToolUpdateDock's
+// first step: resetMapSelectionFlag(enable | enableConstruct |
+// enableConstructionArrow).
+func (s *State) ClearStationToolSelection() {
+	s.ConsArrow.On, s.ConsSelection.On = false, false
 }

@@ -198,7 +198,7 @@ func (g *Game) changeLoan(company, dir, step int) {
 	}
 	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
 	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureLoanInterest, func(f uint8) (int32, bool) { return m.ChangeLoan(c, f, newLoan) }); !ok {
-		g.openError(i18n.Label(title), cmdErrorText(c))
+		g.openCmdError(i18n.Label(title), c)
 	}
 }
 
@@ -317,7 +317,7 @@ func (g *Game) changeCompanyColour(company int, a sim.ColourSchemeChange) {
 	m := &g.w.Map
 	c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
 	if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) { return m.ChangeCompanyColourScheme(c, f, a, g.r.ObjMgr) }); !ok {
-		g.openError(i18n.Label(i18n.ErrorCantChangeColourScheme), cmdErrorText(c))
+		g.openCmdError(i18n.Label(i18n.ErrorCantChangeColourScheme), c)
 	}
 }
 
@@ -383,7 +383,7 @@ func (g *Game) renameCompany(company int, titleColour, colour uint8) {
 			}
 			c := &sim.Cmd{Company: uint8(company), Objects: g.r.ObjMgr}
 			if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) { return m.RenameCompany(c, f, company, text) }); !ok {
-				g.openError(i18n.Label(i18n.CannotRenameThisCompany), cmdErrorText(c))
+				g.openCmdError(i18n.Label(i18n.CannotRenameThisCompany), c)
 				return
 			}
 			if w := g.companyWin(company); w != nil {
@@ -462,7 +462,7 @@ func (g *Game) renameOwner(company int, titleColour, colour uint8) {
 			if _, ok := m.DoCommandFor(c, sim.CmdApply, sim.ExpenditureMiscellaneous, func(f uint8) (int32, bool) {
 				return m.RenameCompanyOwner(c, f, company, text, g.r.ObjMgr)
 			}); !ok {
-				g.openError(i18n.Label(i18n.CannotChangeOwnerName), cmdErrorText(c))
+				g.openCmdError(i18n.Label(i18n.CannotChangeOwnerName), c)
 			}
 		})
 }

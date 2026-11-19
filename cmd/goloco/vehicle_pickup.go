@@ -63,7 +63,7 @@ func (g *Game) pickupToolDown(sx, sy int) bool {
 	}
 	p, ok := g.w.PlacementAt(head, sx, sy)
 	if !ok {
-		g.pickupToolError(head, "")
+		g.pickupToolError(head, &sim.Cmd{})
 		return false
 	}
 	m := &g.w.Map
@@ -76,7 +76,7 @@ func (g *Game) pickupToolDown(sx, sy int) bool {
 	}
 	g.ghostProgress = -1
 	if _, ok := m.VehiclePlace(c, sim.CmdApply, p); !ok {
-		g.pickupToolError(head, cmdErrorText(c)) // setErrorTitle(cant_place_string_id_here): doCommand's error window
+		g.pickupToolError(head, c) // setErrorTitle(cant_place_string_id_here): doCommand's error window
 		return false
 	}
 	g.pickupPlaced(c, head)
@@ -86,14 +86,14 @@ func (g *Game) pickupToolDown(sx, sy int) bool {
 // pickupToolError is Vehicle.cpp's: "Can't place <vehicle> here..." —
 // with the command's reason when it refused, alone when the cursor found
 // no place (pickupToolDownLand's missing placement).
-func (g *Game) pickupToolError(head uint16, reason string) {
+func (g *Game) pickupToolError(head uint16, c *sim.Cmd) {
 	m := &g.w.Map
 	tr, err := m.TrainOf(head)
 	if err != nil {
 		return
 	}
 	h := m.Entities[tr.Head]
-	g.openError(ui.FormatErrorArgs(i18n.Label(i18n.CantPlaceStringIdHere), m.VehicleName(h.Name, int(h.OrdinalNumber))), reason)
+	g.openCmdError(ui.FormatErrorArgs(i18n.Label(i18n.CantPlaceStringIdHere), m.VehicleName(h.Name, int(h.OrdinalNumber))), c)
 }
 
 // pickupPlaced is pickupToolPlacementCommandCallback: shift starts the placed

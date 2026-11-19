@@ -16,12 +16,6 @@ type VehiclePlacement struct {
 	ConvertGhost      bool
 }
 
-// checkCompanyCompatibility is GameCommands::checkCompanyCompatibility: the
-// neutral company's, or the updating company is that one or neutral.
-func checkCompanyCompatibility(c *Cmd, owner uint8) bool {
-	return owner == CompanyNeutral || c.Company == owner || c.Company == CompanyNeutral
-}
-
 // VehiclePlace is the vehiclePlace game command: 0 and true, or false when
 // refused (another company's vehicle, already placed, no cars, no fitting
 // piece there, a missing track / road extra, or in the way).
@@ -108,7 +102,7 @@ func (m *Map) validateTrackPlacement(c *Cmd, x, y, z int32, tad uint16, tr Train
 			uint16(el.TrackID) != id || uint16(el.Rotation) != tad&3 {
 			continue
 		}
-		if !checkCompanyCompatibility(c, el.Owner) {
+		if !c.checkTrackCompatibility(el.Owner, el.TrackObjectID) {
 			return false
 		}
 		return el.Mods&head.HeadVar53 == head.HeadVar53 // this_vehicle_requires_stringid
@@ -148,7 +142,7 @@ func (m *Map) validateRoadPlacement(c *Cmd, x, y, z int32, tad uint16, tr Train)
 		if uint16(el.RoadID) != id || uint16(el.Rotation) != tad&3 {
 			continue
 		}
-		if m.RoadUsableByAll&(1<<el.RoadObjectID) == 0 && !checkCompanyCompatibility(c, el.Owner) {
+		if m.RoadUsableByAll&(1<<el.RoadObjectID) == 0 && !c.checkRoadCompatibility(el.Owner, el.RoadObjectID) {
 			return false
 		}
 		return el.Mods&head.HeadVar53 == head.HeadVar53

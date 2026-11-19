@@ -2274,10 +2274,10 @@ func TestCanConstructAtTrees(t *testing.T) {
 					quarterOK++
 				}
 				px, py := int32(x*32), int32(y*32)
-				if !m.CanConstructAt(px, py, tr.BaseZ, tr.ClearZ, q, 0x0F) {
+				if !m.CanConstructAt(nil, px, py, tr.BaseZ, tr.ClearZ, q, 0x0F) {
 					own++
 				}
-				if m.CanConstructAt(px, py, tr.ClearZ, tr.ClearZ+4, q, 0x0F) {
+				if m.CanConstructAt(nil, px, py, tr.ClearZ, tr.ClearZ+4, q, 0x0F) {
 					above++
 				} else {
 					aboveBlocked++
@@ -2558,11 +2558,11 @@ func TestApplyClearWithClearFunction(t *testing.T) {
 			}
 			tr := tl.Trees[0]
 			px, py := int32(tx*32), int32(ty*32)
-			if m.CanConstructAt(px, py, tr.BaseZ, tr.ClearZ, 0xF, 0) {
+			if m.CanConstructAt(nil, px, py, tr.BaseZ, tr.ClearZ, 0xF, 0) {
 				continue
 			}
 			calls := 0
-			ok, pos := m.ApplyClearAtStandardHeight(px, py, tr.BaseZ, tr.ClearZ, 0xF, 0, func(tt *sim.Tile, k int) sim.ClearResult {
+			ok, pos := m.ApplyClearAtStandardHeight(nil, px, py, tr.BaseZ, tr.ClearZ, 0xF, 0, func(tt *sim.Tile, k int) sim.ClearResult {
 				calls++
 				if tt.Order[k].Kind != scenario.KindTree {
 					return sim.ClearCollision
@@ -2581,7 +2581,7 @@ func TestApplyClearWithClearFunction(t *testing.T) {
 				t.Error("clear function path")
 			}
 			if tl.BaseZ >= 8 {
-				_, under := m.ApplyClearAtStandardHeight(px, py, tl.BaseZ-8, tl.BaseZ, 0xF, 0, nil)
+				_, under := m.ApplyClearAtStandardHeight(nil, px, py, tl.BaseZ-8, tl.BaseZ, 0xF, 0, nil)
 				if under&sim.PosUnderground == 0 || under&sim.PosAboveGround != 0 {
 					t.Errorf("underground flags %#x", under)
 				}

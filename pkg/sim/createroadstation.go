@@ -73,7 +73,7 @@ func (m *Map) CreateRoadStation(c *Cmd, flags uint8, a RoadStationPlacement, g1 
 	}
 	if initial.HasStationElement {
 		st := m.getStationElement(a.X, a.Y, a.Z)
-		if st == nil || !checkCompanyCompatibility(c, st.Owner) {
+		if st == nil || !c.checkStationCompatibility(st.Owner, uint16(st.StationID)) {
 			return 0, false
 		}
 	}
@@ -185,7 +185,7 @@ func (m *Map) CreateRoadStation(c *Cmd, flags uint8, a RoadStationPlacement, g1 
 			if stationObj.Flags&roadStationFlagRoadEnd != 0 && ro.Flags&roadObjFlagIsRoad == 0 {
 				return 0, false // station_not_compatible_with_string_id
 			}
-			if ro.Flags&(roadObjFlagAnyRoadTypeCompat|roadObjFlagAllowUseByAllCompany) != 0 || checkCompanyCompatibility(c, o.Owner) {
+			if ro.Flags&(roadObjFlagAnyRoadTypeCompat|roadObjFlagAllowUseByAllCompany) != 0 || c.checkRoadCompatibility(o.Owner, o.RoadObjectID) {
 				usable = true
 			}
 			fits := false
@@ -236,7 +236,7 @@ func (m *Map) CreateRoadStation(c *Cmd, flags uint8, a RoadStationPlacement, g1 
 			}
 			return ClearCollision
 		}
-		if ok, _ := m.ApplyClearAtStandardHeight(px, py, baseZ+8, clearZ, 0xF, 0, roads); !ok {
+		if ok, _ := m.ApplyClearAtStandardHeight(c, px, py, baseZ+8, clearZ, 0xF, 0, roads); !ok {
 			return 0, false
 		}
 		if flags&CmdAiAllocated == 0 {
@@ -246,7 +246,7 @@ func (m *Map) CreateRoadStation(c *Cmd, flags uint8, a RoadStationPlacement, g1 
 				}
 				return ClearNoCollision
 			}
-			if ok, _ := m.ApplyClearAtStandardHeight(px, py, baseZ, clearZ, 0xF, 0, surface); !ok {
+			if ok, _ := m.ApplyClearAtStandardHeight(c, px, py, baseZ, clearZ, 0xF, 0, surface); !ok {
 				return 0, false
 			}
 		}
