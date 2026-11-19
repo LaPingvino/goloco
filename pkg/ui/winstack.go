@@ -28,9 +28,13 @@ import (
 // init; cmd/goloco opens them, BarWindow): the list is drawn, hit-tested and
 // walked by the placement in one order, upstream's.
 //
-// PARTIAL: a press on a window's bare panel or frame moves it (upstream:
-// windowPositionBegin there too) only for the windows that tell their bare
-// panel apart (FrameHitter); the others move by the caption alone.
+// A press on a window's bare panel or frame moves it (upstream:
+// windowPositionBegin there too) for the windows that tell their bare panel
+// apart (FrameHitter: their widget lists, framehit.go and the Vehicle and
+// Build Vehicle layouts). PARTIAL: the others move by the caption alone —
+// the Construction window (SimpleWindow, drawn by cmd/goloco), the Town /
+// Industry windows on this branch, a list on a tab goloco doesn't open
+// (the editor's town build tabs).
 
 // WindowType is a window's type (Ui/WindowType.h), the half of its identity
 // that its number completes.

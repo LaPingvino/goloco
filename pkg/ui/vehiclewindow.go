@@ -955,36 +955,6 @@ func (w *VehicleWindow) tabWidgets() []BVWidget {
 	return l[:]
 }
 
-// GripBlocked: any of the tab's widgets but the frame and the panel at the
-// point (the right column's buttons and the status bar reach into the
-// resize corner on a small window).
-func (w *VehicleWindow) GripBlocked(x, y int) bool {
-	var lw []BVWidget
-	switch w.Tab {
-	case 0:
-		l := VehicleMainLayout(w.W, w.H, w.Main)
-		lw = l[:]
-	case 1:
-		l, _ := VehicleDetailsLayout(w.W, w.H, w.State)
-		lw = l[:]
-	case 2:
-		l := VehicleCargoLayout(w.W, w.H, w.State.HiddenTabs, w.Cargo.CanRefit)
-		lw = l[:]
-	case 3:
-		l := VehicleFinancesLayout(w.W, w.H, w.State.HiddenTabs)
-		lw = l[:]
-	default:
-		l := VehicleRouteLayout(w.W, w.H, w.State.HiddenTabs, !w.Main.Own)
-		lw = l[:]
-	}
-	for i, c := range lw {
-		if i > vwPanel && !c.Hidden && x >= w.X+c.L && x <= w.X+c.R && y >= w.Y+c.T && y <= w.Y+c.B {
-			return true
-		}
-	}
-	return false
-}
-
 // barList is the current tab's scrolled list and its content height:
 // Details' cars, Cargo's rows (ok false on the other tabs).
 func (w *VehicleWindow) barList() (list BVWidget, content int, ok bool) {

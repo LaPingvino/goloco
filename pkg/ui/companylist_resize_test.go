@@ -21,7 +21,7 @@ func TestCompanyListResize(t *testing.T) {
 	if w.W != 300 || w.H != 372 {
 		t.Errorf("resized to %dx%d, want 300x372", w.W, w.H)
 	}
-	if !w.GripBlocked(w.X+w.W-10, w.Y+w.H-16) || w.GripBlocked(w.X+w.W-2, w.Y+w.H-2) {
+	if w.OnFrame(w.X+w.W-10, w.Y+w.H-16) || !w.OnFrame(w.X+w.W-2, w.Y+w.H-2) {
 		t.Error("the scroll view blocks the grip, the corner doesn't")
 	}
 	w.switchTab(3) // cargo distance: 660 × 272, to 800 × 940
@@ -53,7 +53,7 @@ func TestCompanyStatusResize(t *testing.T) {
 		t.Fatalf("status tab %dx%d, max %dx%d", w.W, w.H, w.MaxW, w.MaxH)
 	}
 	gx, gy := w.X+w.W-2, w.Y+w.H-2
-	if w.GripBlocked(gx, gy) || !w.GripBlocked(w.X+w.W-16, w.Y+w.H-5) {
+	if !w.OnFrame(gx, gy) || w.OnFrame(w.X+w.W-16, w.Y+w.H-5) {
 		t.Error("the status label blocks the grip where it reaches; the corner is free")
 	}
 	s.Press(gx, gy)

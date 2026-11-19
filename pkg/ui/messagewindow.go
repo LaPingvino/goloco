@@ -160,9 +160,6 @@ func (w *MessagesWindow) rowAt(px, py int) int {
 	return -1
 }
 
-// GripBlocked: the scroll view reaches into the resize corner.
-func (w *MessagesWindow) GripBlocked(px, py int) bool { return w.Tab == 0 && w.in(w.list(), px, py) }
-
 // settingsDropdown is news setting i's dropdown (the combo box and its
 // button) as x, y, width, height.
 func settingsDropdown(i int) [4]int {

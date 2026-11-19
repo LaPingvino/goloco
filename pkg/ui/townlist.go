@@ -174,16 +174,6 @@ func (w *TownListWindow) PrepareDraw() {
 	}
 }
 
-// GripBlocked: the scroll view and the status bar (to width − 19) reach
-// into the resize corner.
-func (w *TownListWindow) GripBlocked(px, py int) bool {
-	if w.in(w.List, px, py) {
-		return true
-	}
-	rx, ry := px-w.X, py-w.Y
-	return rx >= 3 && rx <= w.W-ResizeHandleSize-1 && ry >= w.StatusY && ry < w.StatusY+10
-}
-
 // headerSpan is a header's left and right edges as prepareDraw places them:
 // both kept within width − HeaderInset (TownList.cpp, StationList.cpp,
 // IndustryList.cpp prepareDraw: left = min(left, width − 8 / 4), right the

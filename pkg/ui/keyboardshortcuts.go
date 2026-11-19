@@ -99,9 +99,6 @@ func (w *KeyboardShortcutsWindow) rowAt(px, py int) int {
 	return -1
 }
 
-// GripBlocked: the list reaches the resize corner's row.
-func (w *KeyboardShortcutsWindow) GripBlocked(px, py int) bool { return w.in(w.list(), px, py) }
-
 // HandleClick is onMouseUp (close, reset) and onScrollMouseDown (a shortcut's
 // row opens its editor; a separator does nothing).
 func (w *KeyboardShortcutsWindow) HandleClick(px, py int) {

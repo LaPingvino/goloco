@@ -456,9 +456,6 @@ func (w *TerraformWindow) WidgetTooltip(px, py int) string {
 	return ""
 }
 
-// GripBlocked: the window has no resize grip.
-func (w *TerraformWindow) GripBlocked(px, py int) bool { return true }
-
 // Draw draws the window: the frame, the tabs (Common::drawTabs), the tab's
 // widgets and its draw().
 func (w *TerraformWindow) Draw(screen *ebiten.Image) {

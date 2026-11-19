@@ -1105,13 +1105,6 @@ func (w *CompanyFinancesWindow) colourSwatchAt(x, y int) *colourSwatch {
 	return nil
 }
 
-// GripBlocked: on the Status tab its status label (unk_11: 3 … width − 14,
-// height − 12 … height − 3) reaches the resize corner.
-func (w *CompanyFinancesWindow) GripBlocked(x, y int) bool {
-	rx, ry := x-w.X, y-w.Y
-	return w.Tab == CompanyTabStatus && rx >= 3 && rx <= w.W-14 && ry >= w.H-12 && ry <= w.H-3
-}
-
 // SwitchTab is Common::switchTab from outside (CompanyWindow::open's tab).
 func (w *CompanyFinancesWindow) SwitchTab(tab int) { w.switchTab(tab) }
 

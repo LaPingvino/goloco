@@ -116,15 +116,6 @@ func (w *MusicSelectionWindow) rowAt(px, py int) int {
 	return -1
 }
 
-// GripBlocked: the scroll view and the status bar reach into the resize
-// corner.
-func (w *MusicSelectionWindow) GripBlocked(px, py int) bool {
-	if w.in(w.list(), px, py) {
-		return true
-	}
-	return w.in([4]int{msPadding, w.H - 12, w.W - ResizeHandleSize - 2*msPadding, 11}, px, py)
-}
-
 func (w *MusicSelectionWindow) selected() int {
 	n := 0
 	for _, on := range w.Cfg.CustomJukebox {

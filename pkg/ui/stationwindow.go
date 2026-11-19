@@ -118,17 +118,6 @@ func (w *StationWindow) PrepareDraw() {
 	}
 }
 
-// GripBlocked: the tab's viewport or scroll view (3, 44 to its right edge,
-// height − 14) and the status bar (3, height − 12 to width − 14, height − 3)
-// reach into the resize corner.
-func (w *StationWindow) GripBlocked(px, py int) bool {
-	r := w.W - 4
-	if w.Tab == 1 {
-		r = w.W - 26
-	}
-	return gripBlockedStd(&w.WinBase, px, py, r, w.H-14)
-}
-
 // MouseOver is VehiclesStopping's onScrollMouseOver: the row under the mouse.
 func (w *StationWindow) MouseOver(px, py int) {
 	if w.Tab < 3 || w.Vehicles == nil {
