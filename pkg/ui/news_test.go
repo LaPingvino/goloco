@@ -138,12 +138,21 @@ func TestNewsWindowInStack(t *testing.T) {
 	if b.X != 400 || b.Y != 600-200-29 {
 		t.Errorf("without the news: %d,%d, want the bottom right corner", b.X, b.Y)
 	}
-	// No caption: a press on its top edge is a click, not a move.
+	// No caption, but its frame is a NewsPanel: a press there moves it
+	// (MouseInput stateNormalLeft: windowPositionBegin), and Common::onUpdate
+	// pulls it back to the screen's bottom centre.
 	news = NewNewsWindow(true, true, true, 800, 600)
 	s.Open(news)
+	x0, y0 := news.X, news.Y
 	s.Press(news.X+100, news.Y+5)
-	if s.Dragging() {
-		t.Error("the news window is being moved")
+	if !s.Dragging() {
+		t.Error("a press on the news window's panel doesn't move it")
+	}
+	s.Held(x0+100-50, y0+5-40)
+	s.Release(x0+100-50, y0+5-40)
+	news.Update(800, 600)
+	if news.X != x0 || news.Y != y0 {
+		t.Errorf("after an update the news window is at %d,%d, want %d,%d", news.X, news.Y, x0, y0)
 	}
 }
 

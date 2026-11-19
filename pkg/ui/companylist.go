@@ -71,18 +71,6 @@ func (w *CompanyListWindow) PrepareDraw() {
 	}
 }
 
-// GripBlocked: on the list tab the scroll view (to width − 4, height − 14)
-// and the status bar (3 … width − 19, height − 13 … height − 3) reach the
-// resize corner.
-func (w *CompanyListWindow) GripBlocked(x, y int) bool {
-	if w.Tab != 0 {
-		return false
-	}
-	rx, ry := x-w.X, y-w.Y
-	return rx >= 3 && rx <= w.W-4 && ry >= 56 && ry <= w.H-14 ||
-		rx >= 3 && rx <= w.W-ResizeHandleSize-1 && ry >= w.H-13 && ry <= w.H-3
-}
-
 // headerSpan is prepareDraw's header edges: left and right each at most
 // width − 8.
 func (w *CompanyListWindow) headerSpan(x, width int) (l, r int) {
