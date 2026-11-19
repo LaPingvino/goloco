@@ -1,0 +1,40 @@
+# The map window's centring (MapWindow.cpp centerOnViewPoint, scrollMouseDown /
+# scrollMouseDrag, drawViewportPosition) on the title game opened at tile
+# 330,60, rotation 2 (untitle.py, then `go run ./scripts/olref/setview -tile
+# 330,60 -rotation 2 title.SV5 mc.SV5`): near the map's edge, so the open's
+# offset is clamped. One script for both games, paused: the view, the map
+# opened (M) on the view's frame, a click on the map (the main view goes
+# there: OpenLoco glides, goloco jumps — the shot waits for the glide), a drag,
+# then the rotate key (the map re-centred on the turned view).
+# Shots are named SHOTS/…: sed that to a scratch directory per game.
+wait 12
+click 688 592
+wait 0.5
+click 571 451
+wait 0.5
+move 400 300
+wait 1
+shot SHOTS/mc-00-view.png
+key M
+wait 2
+shot SHOTS/mc-01-open.png
+click 120 200
+wait 0.2
+move 600 400
+wait 3
+shot SHOTS/mc-02-click.png
+press 60 120
+wait 0.2
+move 90 160
+wait 0.2
+move 150 230
+wait 0.2
+release 150 230
+wait 0.2
+move 600 400
+wait 3
+shot SHOTS/mc-03-drag.png
+key ENTER
+wait 3
+shot SHOTS/mc-04-rotated.png
+quit

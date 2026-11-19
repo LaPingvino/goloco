@@ -42,7 +42,13 @@ stepping for the four rotations; layout tested). Next: the window shell, in tick
    b. DONE but the remembered size (2026-11-16): onUpdate fills 80 rows a frame (cmd/goloco updateMap), a new
       rotation clears the buffer. Was: onUpdate: Map.FillMapRowOverall a row per update (the open's clearMap and var_846 rotation; a rotation
       change clears and restarts); getLastMapWindowAttributes (size, maximised) kept on close.
-   c. centerOnViewPoint (open, and ToolbarTop's rotate) and a click / drag centring the main view.
+   c. DONE (2026-11-19): centerOnViewPoint (open; the rotate key, the right-held wheel and ToolbarTop's rotate
+      menu: cmd/goloco Game.rotateView), scrollMouseDown / scrollMouseDrag centring the main view
+      (World.CentreOnMapView = moveMainViewToMapView), the conversions mapWindowPosToLocation /
+      locationToMapWindowPos (sim mapwindowpos.go, four rotations tested), and step 3's view rectangle
+      (drawViewportPosition). Checked against OpenLoco (scripts/olref/tours/mapcentre.txt), playthrough t-map.
+      Left: the scroll bars (step a), the main view's glide (Window.cpp viewportsUpdatePosition's
+      scrollingToLocation: goloco jumps, for every centring), _flashingItems (with the graph key, d).
    d. the five tabs (images, the overall tab only filled; the others' fills are step 4), the graph key (step 4).
    Skin colours: InterfaceSkinObject windowTitlebarColour / windowMapColour.
 

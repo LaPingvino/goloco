@@ -117,8 +117,8 @@ func (g *Game) handleToolbarButton(idx int) {
 	case "Rotate":
 		// OpenLoco reference: src/OpenLoco/src/Ui/Windows/ToolbarTopCommon.cpp:135-143
 		items := []ui.DropdownItem{
-			{Text: i18n.Label(i18n.MenuRotateClockwise), Action: func() { g.w.RotateView(true) }},      // rotateMenuDropdown: viewportRotateRight
-			{Text: i18n.Label(i18n.MenuRotateAntiClockwise), Action: func() { g.w.RotateView(false) }}, // viewportRotateLeft
+			{Text: i18n.Label(i18n.MenuRotateClockwise), Action: func() { g.rotateView(true) }},      // rotateMenuDropdown: viewportRotateRight, centerOnViewPoint
+			{Text: i18n.Label(i18n.MenuRotateAntiClockwise), Action: func() { g.rotateView(false) }}, // viewportRotateLeft, centerOnViewPoint
 		}
 		g.dropdown = g.toolbarDropdown(btn, items)
 

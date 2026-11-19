@@ -189,3 +189,24 @@ func (w *World) SavePreview(width, height int) []byte {
 	}
 	return out
 }
+
+// CentreOnMapView is MapWindow.cpp moveMainViewToMapView (0x0046B9D4, l. 1157):
+// the main view centred on a world position at its land height
+// (TileManager::getHeight, 16 off the map) — Window::viewportCentreOnTile
+// (Window.cpp l. 562): the underground flag set by that height (so cleared),
+// then moveWindowToLocation (l. 544), which leaves a view that follows an
+// entity where it is.
+//
+// PARTIAL: moveWindowToLocation only sets savedView and scrollingToLocation;
+// viewportsUpdatePosition (Window.cpp l. 328) then glides the view there an
+// eighth of the way a frame. goloco has no scrollingToLocation: the view jumps
+// (as for every other centring).
+func (w *World) CentreOnMapView(x, y int32) {
+	land, _ := w.Map.GetHeight(x, y)
+	w.centreUnderground(x, y, int32(land))
+	if w.following { // viewportTargetSprite != EntityId::null
+		return
+	}
+	w.centreOn(int(x), int(y), int(land))
+	w.externalCamera = false
+}
