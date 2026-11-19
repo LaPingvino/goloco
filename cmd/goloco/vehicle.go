@@ -488,8 +488,8 @@ func (g *Game) renameVehicle(headID uint16, titleColour, colour uint8) {
 	}
 	h := m.Entities[tr.Head]
 	typ := i18n.Str([]int{i18n.Train, i18n.Bus, i18n.Truck, i18n.Tram, i18n.Aircraft, i18n.Ship}[min(int(h.VehicleType), 5)])
-	g.textInput = ui.OpenTextInput(ui.FillArgs(i18n.Str(i18n.TitleNameVehicle), typ), ui.FillArgs(i18n.Str(i18n.PromptEnterNewVehicleName), typ),
-		m.VehicleName(h.Name, int(h.OrdinalNumber)), 31, g.sw, g.sh, titleColour, colour, true, func(text string) {
+	ui.OpenTextInput(&g.wins, ui.WindowTypeVehicle, int(headID), ui.FillArgs(i18n.Str(i18n.TitleNameVehicle), typ), ui.FillArgs(i18n.Str(i18n.PromptEnterNewVehicleName), typ),
+		m.VehicleName(h.Name, int(h.OrdinalNumber)), 31, titleColour, colour, true, func(text string) {
 			if text == "" {
 				return
 			}

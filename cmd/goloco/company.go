@@ -376,8 +376,8 @@ func (g *Game) colourSwatchOpen(company, colourType int, primary bool, x, y, h i
 // and the reason on a refusal).
 func (g *Game) renameCompany(company int, titleColour, colour uint8) {
 	m := &g.w.Map
-	g.textInput = ui.OpenTextInput(i18n.Str(i18n.TitleNameCompany), i18n.Str(i18n.PromptEnterNewCompanyName),
-		m.CompanyName(company), 31, g.sw, g.sh, titleColour, colour, true, func(text string) {
+	ui.OpenTextInput(&g.wins, ui.WindowTypeCompany, company, i18n.Str(i18n.TitleNameCompany), i18n.Str(i18n.PromptEnterNewCompanyName),
+		m.CompanyName(company), 31, titleColour, colour, true, func(text string) {
 			if text == "" {
 				return
 			}
@@ -453,8 +453,8 @@ func (g *Game) openCompanyList() {
 // (cannot_change_owner_name and the reason on a refusal).
 func (g *Game) renameOwner(company int, titleColour, colour uint8) {
 	m := &g.w.Map
-	g.textInput = ui.OpenTextInput(i18n.Str(i18n.TitleNameOwner), i18n.Str(i18n.PromptEnterNewNameForOwner),
-		m.OwnerName(company, g.r.ObjMgr), 31, g.sw, g.sh, titleColour, colour, true, func(text string) {
+	ui.OpenTextInput(&g.wins, ui.WindowTypeCompany, company, i18n.Str(i18n.TitleNameOwner), i18n.Str(i18n.PromptEnterNewNameForOwner),
+		m.OwnerName(company, g.r.ObjMgr), 31, titleColour, colour, true, func(text string) {
 			if text == "" {
 				return
 			}

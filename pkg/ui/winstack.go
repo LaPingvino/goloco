@@ -68,6 +68,8 @@ const (
 	WindowTypeTopToolbar
 	WindowTypeCompanyInfoPanel
 	WindowTypeTimePanel
+	// WindowType::textInput: the rename box (TextInputWindow).
+	WindowTypeTextInput
 )
 
 // WindowTypeNames are the types by their upstream WindowType names (a
@@ -83,6 +85,7 @@ var WindowTypeNames = map[string]WindowType{
 	"terraform": WindowTypeTerraform, "keyboardShortcuts": WindowTypeKeyboardShortcuts,
 	"editKeyboardShortcut": WindowTypeEditKeyboardShortcut, "map": WindowTypeMap,
 	"topToolbar": WindowTypeTopToolbar, "companyInfoPanel": WindowTypeCompanyInfoPanel, "timePanel": WindowTypeTimePanel,
+	"textInput": WindowTypeTextInput,
 }
 
 // WindowFlags are Ui::WindowFlags, those the stack acts on.
@@ -565,6 +568,10 @@ func (s *WindowStack) Close(w Win) {
 		s.Windows = append(s.Windows[:i], s.Windows[i+1:]...)
 	}
 	b.stack, b.self = nil, nil
+	// The callers of a text input (Town, Industry, Station, Company, Vehicle
+	// windows) call TextInput::sub_4CE6C9 in their onClose: the box goes
+	// with them. No other window opens one, so every close may ask.
+	s.callerClosed(b.WinType, b.Number)
 }
 
 // CloseType is WindowManager::close(type) (number AnyNumber) or close(type,

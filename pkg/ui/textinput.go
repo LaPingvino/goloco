@@ -130,15 +130,27 @@ func (s *InputSession) Sanitized() string {
 // colours (a company's: the lighter frame and a coloured caption); the
 // message centred and wrapped at y 30, the text box (4, 58, 322×14) with the
 // caret blinking (cursorFrame % 32 < 16), "n/limit" right-aligned at
-// (150, 75, 100) and OK. Enter is OK, Escape closes.
+// (150, 75, 100) and OK. An ordinary window of the stack (stickToFront,
+// playSoundOnOpen; there is one, number 0): the game and the other windows
+// run on under it — only PromptOkCancel and PromptBrowse are modal.
+// It remembers its caller (_callingWindowType / _callingWindowNumber): OK
+// hands the text over only while the caller is open, and the box goes when
+// the caller does (sub_4CE6C9, sub_4CE6FF).
 type TextInputWindow struct {
-	X, Y                int
+	WinBase
 	Title, Message      string
 	TitleColour, Colour uint8
 	Owned               bool // window->owner != null: lighterFrame, colourText caption
 	Session             *InputSession
 	OnOK                func(text string)
-	Closed              bool
+	// CallerType, CallerNumber are the window that opened the box.
+	CallerType   WindowType
+	CallerNumber int
+	// Focused is Input::isFocused(textInput, 0, widx::input): set when the
+	// box opens (setFocus) and by a press on the text box, lost by a press
+	// on any other widget (MouseInput stateNormalLeft: resetFocus).
+	Focused bool
+	Closed  bool
 }
 
 const tiW, tiH = 330, 90
@@ -150,56 +162,114 @@ var (
 	tiOK    = [4]int{256, 74, 70, 12}
 )
 
-// OpenTextInput is openTextInput: the window centred on an sw × sh screen,
+// OpenTextInput is openTextInput: any text input open is cancelled, the new
+// one is created centred (createWindowCentred, stickToFront |
+// playSoundOnOpen) on the stack with the caller (its type and number) noted,
 // the session on the current text (inputSize: its limit), the text offset
-// for the box.
-func OpenTextInput(title, message, value string, limit, sw, sh int, titleColour, colour uint8, owned bool, onOK func(string)) *TextInputWindow {
-	w := &TextInputWindow{X: (sw - tiW) / 2, Y: (sh - tiH) / 2, Title: title, Message: message, TitleColour: titleColour, Colour: colour,
-		Owned: owned, Session: NewInputSession(value, limit), OnOK: onOK}
+// for the box, and the text box focused.
+func OpenTextInput(s *WindowStack, callerType WindowType, callerNumber int, title, message, value string, limit int, titleColour, colour uint8, owned bool, onOK func(string)) *TextInputWindow {
+	CancelTextInput(s)
+	w := &TextInputWindow{Title: title, Message: message, TitleColour: titleColour, Colour: colour,
+		Owned: owned, Session: NewInputSession(value, limit), OnOK: onOK,
+		CallerType: callerType, CallerNumber: callerNumber, Focused: true}
+	w.WinType, w.W, w.H = WindowTypeTextInput, tiW, tiH
+	w.WinFlags = WindowFlagStickToFront | WindowFlagPlaySoundOnOpen
+	s.PlaceCentred(w) // createWindowCentred
+	w.OnClose = func() { w.Closed = true }
 	w.Session.CalculateTextOffset(tiInput[2] - 2)
+	s.Open(w)
 	return w
+}
+
+// CancelTextInput is TextInput::cancel (0x004CE6F2): close(textInput).
+func CancelTextInput(s *WindowStack) { s.CloseType(WindowTypeTextInput, AnyNumber) }
+
+// callerClosed is sub_4CE6C9 (0x004CE6C9), what the callers' onClose call:
+// the text input goes with the window that opened it.
+func (s *WindowStack) callerClosed(typ WindowType, number int) {
+	if t, ok := s.Find(WindowTypeTextInput, AnyNumber).(*TextInputWindow); ok && t.CallerType == typ && t.CallerNumber == number {
+		s.Close(t)
+	}
+}
+
+// CloseTextInputWithoutCaller is sub_4CE6FF (0x004CE6FF), after every
+// window's onUpdate (dispatchUpdateAll): a text input whose caller is gone
+// is cancelled.
+func CloseTextInputWithoutCaller(s *WindowStack) {
+	if t, ok := s.Find(WindowTypeTextInput, AnyNumber).(*TextInputWindow); ok && s.Find(t.CallerType, t.CallerNumber) == nil {
+		CancelTextInput(s)
+	}
 }
 
 func (w *TextInputWindow) in(r [4]int, px, py int) bool {
 	return px >= w.X+r[0] && px < w.X+r[0]+r[2] && py >= w.Y+r[1] && py < w.Y+r[1]+r[3]
 }
 
-// HandleClick is onMouseUp: close, or OK (sanitizeInput, the caller's
-// textInput with the text, closed).
+// OnTextBox reports a screen point on the text box (widx::input, the
+// window's one textbox widget).
+func (w *TextInputWindow) OnTextBox(px, py int) bool { return w.in(tiInput, px, py) }
+
+// HandleClick is a press on the window: the close button closes it; OK
+// (onMouseUp kOk): sanitizeInput, the caller's textInput with the text when
+// the caller is still open, then closed.
 func (w *TextInputWindow) HandleClick(px, py int) {
 	switch {
-	case w.in(tiClose, px, py):
-		w.Closed = true
-	case w.in(tiOK, px, py):
-		w.Closed = true
-		if w.OnOK != nil {
-			w.OnOK(w.Session.Sanitized())
-		}
+	case w.Button(tiClose, px, py):
+		w.close()
+	case w.Button(tiOK, px, py):
+		w.ok()
+	case w.Button(tiInput, px, py): // the textbox: clickDown; its focus is the game's press (setFocus)
 	}
 }
 
-// Contains reports whether a screen point is on the window.
-func (w *TextInputWindow) Contains(px, py int) bool {
-	return w.in([4]int{0, 0, tiW, tiH}, px, py)
+// OnFrame is FrameHitter: off the close button, the text box and OK the
+// press is on the window's frame or panel, and moves it.
+func (w *TextInputWindow) OnFrame(px, py int) bool {
+	return w.Contains(px, py) && !w.in(tiClose, px, py) && !w.in(tiInput, px, py) && !w.in(tiOK, px, py)
+}
+
+func (w *TextInputWindow) ok() {
+	text := w.Session.Sanitized()
+	caller := true
+	if s := w.Stack(); s != nil {
+		caller = s.Find(w.CallerType, w.CallerNumber) != nil
+	}
+	w.close()
+	if caller && w.OnOK != nil {
+		w.OnOK(text)
+	}
+}
+
+func (w *TextInputWindow) close() {
+	w.Closed = true
+	w.Close()
 }
 
 // Update is onUpdate: the caret's blink counter.
 func (w *TextInputWindow) Update() { w.Session.CursorFrame++ }
 
-// Keys is keyUp: Enter is OK, Escape the close button; else the typed
-// characters and editing keys go to the session, re-offset when needed.
-func (w *TextInputWindow) Keys(typed []rune, keys []int, enter, escape bool) {
-	switch {
-	case enter:
-		w.HandleClick(w.X+tiOK[0], w.Y+tiOK[1])
-		return
-	case escape:
-		w.Closed = true
-		return
+// KeyUp is keyUp (0x004CE910): Return is OK; with the text box focused
+// every other key is InputSession::handleInput's (a typed character,
+// Backspace, Delete, Home, End, Left, Right — each consumed, even when it
+// changes nothing), re-offset when needed; unfocused, the key goes on to the
+// next window and the shortcuts (false). Upstream closes on a *character*
+// Escape, which SDL never sends: Escape is like any other key (checked on
+// OpenLoco 26.09).
+func (w *TextInputWindow) KeyUp(enter bool, typed []rune, keys []int) bool {
+	if enter {
+		w.ok()
+		return true
 	}
-	if len(typed) == 0 && len(keys) == 0 {
-		return
+	if !w.Focused {
+		return false
 	}
+	w.Keys(typed, keys)
+	return true
+}
+
+// Keys gives typed characters and editing keys to the session, re-offset
+// when needed.
+func (w *TextInputWindow) Keys(typed []rune, keys []int) {
 	for _, r := range typed {
 		w.Session.Type(r)
 	}

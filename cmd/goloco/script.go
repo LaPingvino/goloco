@@ -52,7 +52,7 @@ import (
 //	                    construction window open, building on from a position, its tab; camx, camy: the view's
 //	                    position; townlist, stationlist, vehiclelist, industrylist, companywindow: 1 while one
 //	                    is open; terraformwindow, terraformtab, paused, speed, zoom, constype, conspiece,
-//	                    consgradient, consrotation, drivercheat, jailed, orders, stationtool, windows, textinput (script.go
+//	                    consgradient, consrotation, drivercheat, jailed, orders, stationtool, windows, textinput, ticks (script.go
 //	                    scriptExpect says what each is); window:NAME: 1 while a window of that type is open; viewflags: the main viewport's flags (ViewportFlags' bits); maptip~TEXT: 1 while the map tooltip shows text holding TEXT, _ for a space),
 //	                    op one of
 //	                    > >= == <= <; a failed check makes the run exit 1
@@ -564,8 +564,10 @@ func (g *Game) scriptExpect() {
 				got++
 			}
 		}
+	case "ticks": // ScenarioManager::getScenarioTicks: the game's clock (it runs under a rename box)
+		got = int64(g.w.Map.ScenarioTicks)
 	case "textinput": // 1 while a text input (a rename) is open
-		if g.textInput != nil {
+		if g.textInputWin() != nil {
 			got = 1
 		}
 	default:

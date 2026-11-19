@@ -27,6 +27,9 @@ func winOf[T ui.Win](g *Game, typ ui.WindowType, number int) T {
 func (g *Game) optionsWin() *ui.OptionsWindow {
 	return winOf[*ui.OptionsWindow](g, ui.WindowTypeOptions, ui.AnyNumber)
 }
+func (g *Game) textInputWin() *ui.TextInputWindow {
+	return winOf[*ui.TextInputWindow](g, ui.WindowTypeTextInput, ui.AnyNumber)
+}
 func (g *Game) browseWin() *ui.PromptBrowseWindow {
 	return winOf[*ui.PromptBrowseWindow](g, ui.WindowTypeFileBrowserPrompt, ui.AnyNumber)
 }
@@ -255,6 +258,8 @@ func (g *Game) updateWindows() {
 		case *ui.KeyboardShortcutsWindow:
 			w.MouseOver(hx, hy) // onScrollMouseOver
 			w.Drag(mx, my, left)
+		case *ui.TextInputWindow: // onUpdate: the caret's blink
+			w.Update()
 		case *ui.EditShortcutWindow: // onUpdate: the modifiers held
 			w.Modifiers = shortcuts.ModifierText(g.kb.modifier &^ shortcuts.ModCheat)
 		case *ui.MusicSelectionWindow:
@@ -284,6 +289,7 @@ func (g *Game) updateWindows() {
 			}
 		}
 	}
+	ui.CloseTextInputWithoutCaller(&g.wins) // dispatchUpdateAll: TextInput::sub_4CE6FF after the windows' onUpdate
 }
 
 // windowsPress is a left press for the windows (stateNormalLeft): the one

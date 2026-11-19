@@ -273,7 +273,7 @@ func (g *Game) keyScroll() {
 	if g.prompt != nil || g.browseWin() != nil { // WindowManager::getCurrentModalType
 		return
 	}
-	if g.textInput != nil {
+	if g.textInputWin() != nil { // WindowManager::find(WindowType::textInput)
 		return
 	}
 	speed := float64(edgeScrollingSpeed)
@@ -419,11 +419,7 @@ func (g *Game) callKeyUp(key keyEvent) bool {
 		g.editShortcutKey(e, key)
 		return true
 	}
-	if t := g.textInput; t != nil {
-		g.textInputKeyUp(t, key)
-		if t.Closed && g.textInput == t {
-			g.textInput = nil
-		}
+	if t := g.textInputWin(); t != nil && g.textInputKeyUp(t, key) {
 		return true
 	}
 	for i := len(g.wins.Windows) - 1; i >= 0; i-- {
@@ -435,17 +431,15 @@ func (g *Game) callKeyUp(key keyEvent) bool {
 }
 
 // textInputKeyUp is TextInputWindow.cpp's keyUp (0x004CE910): Return is OK;
-// else the key is the input session's (InputSession::handleInput: a typed
-// character, Backspace, Delete, Home, End, Left, Right) — which takes every
-// key, whatever it is: no shortcut runs under an open text input.
+// with the text box focused (Input::isFocused) every other key is the input
+// session's (InputSession::handleInput: a typed character, Backspace,
+// Delete, Home, End, Left, Right — it consumes every key, so no shortcut runs
+// while the box has the focus); unfocused, the key goes on to the shortcuts.
 // Upstream closes on a *character* Escape, which SDL never sends: Escape
 // does nothing there (checked on OpenLoco 26.09).
-// PARTIAL: Input::isFocused — the text box loses the keys when another
-// widget is clicked.
-func (g *Game) textInputKeyUp(t *ui.TextInputWindow, key keyEvent) {
+func (g *Game) textInputKeyUp(t *ui.TextInputWindow, key keyEvent) bool {
 	if key.charCode == rune(shortcuts.KeyReturn) {
-		t.Keys(nil, nil, true, false)
-		return
+		return t.KeyUp(true, nil, nil)
 	}
 	var typed []rune
 	var keys []int
@@ -460,7 +454,7 @@ func (g *Game) textInputKeyUp(t *ui.TextInputWindow, key keyEvent) {
 			keys = []int{k}
 		}
 	}
-	t.Keys(typed, keys, false, false)
+	return t.KeyUp(false, typed, keys)
 }
 
 // browseKeyUp is PromptBrowseWindow.cpp's keyUp: Return is OK, Escape the
