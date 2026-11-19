@@ -139,6 +139,7 @@ func (sc *Scenario) putGeneralState(gs []byte) {
 	gs[0x196], gs[0x197], gs[0x198] = sc.TrafficHandedness, sc.LastVehicleType, sc.PickupDirection
 	put16(gs, 0x19A, uint16(sc.SeaLevel))
 	gs[0x19C], gs[0x19D], gs[0x19E] = sc.CurrentSnowLine, sc.CurrentSeason, sc.LastLandOption
+	gs[0x199], gs[0x1B2] = sc.DefaultTreeObjectId, sc.DefaultWallObjectId
 	put32(gs, 0x1A0, sc.OrderTableLength)
 	put32(gs, 0x1A4, sc.RoadAnyTypeCompatible)
 	put32(gs, 0x1A8, sc.RoadUsableByAll)

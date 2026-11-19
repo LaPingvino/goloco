@@ -198,6 +198,7 @@ func (s *State) ExportScenario() *scenario.Scenario {
 	sc.DefaultLevelCrossingType = m.DefaultLevelCrossingType
 	sc.StartingLoanSize = m.StartingLoanSize
 	sc.SeaLevel, sc.LastLandOption = m.SeaLevel, m.LastLandOption
+	sc.DefaultTreeObjectId, sc.DefaultWallObjectId = m.DefaultTreeObjectId, m.DefaultWallObjectId
 	sc.CurrentSnowLine, sc.CurrentSeason = m.CurrentSnowLine, m.CurrentSeason
 	sc.PreferredAI = m.PreferredAI
 	sc.ForbiddenVehiclesPlayers, sc.ForbiddenVehiclesCompetitors = m.ForbiddenVehiclesPlayers, m.ForbiddenVehiclesCompetitors

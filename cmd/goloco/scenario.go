@@ -109,6 +109,7 @@ func (g *Game) loadScenario(filePath string) error {
 		g.script.loadedSave = bytes.Equal(saveStateBytes(gameW), g.script.lastSave)
 	}
 	g.w = gameW
+	g.terraformResetDefaults()
 	g.applyRenderingConfig()
 	g.currentScenarioPath = filePath
 	g.inTitleScreen = false

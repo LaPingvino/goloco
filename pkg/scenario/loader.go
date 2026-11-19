@@ -1762,9 +1762,10 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 	sc.StartingLoanSize = binary.LittleEndian.Uint16(gs[0x400:]) // startingLoanSize
 	sc.SeaLevel = uint8(binary.LittleEndian.Uint16(gs[0x19A:]))  // seaLevel
 	sc.CurrentSnowLine, sc.CurrentSeason = gs[0x19C], gs[0x19D]
-	sc.LastLandOption = gs[0x19E]                              // lastLandOption
-	sc.PreferredAI = [3]uint8{gs[0x3FD], gs[0x3FE], gs[0x3FF]} // preferredAIIntelligence / Aggressiveness / Competitiveness
-	sc.DefaultLevelCrossingType = gs[0x1AC]                    // currentDefaultLevelCrossingType
+	sc.LastLandOption = gs[0x19E]                                         // lastLandOption
+	sc.DefaultTreeObjectId, sc.DefaultWallObjectId = gs[0x199], gs[0x1B2] // defaultTreeObjectId, defaultWallObjectId
+	sc.PreferredAI = [3]uint8{gs[0x3FD], gs[0x3FE], gs[0x3FF]}            // preferredAIIntelligence / Aggressiveness / Competitiveness
+	sc.DefaultLevelCrossingType = gs[0x1AC]                               // currentDefaultLevelCrossingType
 	sc.ForbiddenVehiclesPlayers = binary.LittleEndian.Uint16(gs[0x430:])
 	sc.ForbiddenVehiclesCompetitors = binary.LittleEndian.Uint16(gs[0x432:])
 	if len(gs) > 0x196 { // general.trafficHandedness (from the compiler)

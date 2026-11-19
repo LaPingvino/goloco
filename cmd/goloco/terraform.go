@@ -17,9 +17,9 @@ import (
 // selection, the ghost, the cost), acts on a press (onToolDown), while the
 // button is held (toolDrag) and on its release (toolUp), through the game
 // commands of pkg/sim. The window itself: pkg/ui terraformwindow.go.
-// The tree tool's construct sounds are played. PARTIAL: the other tools' construct sounds; the tool cursors; the editor (no cost,
-// buildImmediately); defaultTreeObjectId / defaultWallObjectId are kept for
-// the session, not in the save.
+// The chosen tree and wall are the game state's (sim.Map DefaultTreeObjectId /
+// DefaultWallObjectId: saved, reset on every load); the tools' cursors:
+// cursor.go toolCursor. PARTIAL: the editor (no cost, buildImmediately).
 
 // terraformTool is the window's statics.
 type terraformTool struct {
@@ -55,8 +55,6 @@ type terraformTool struct {
 	cluster                  int
 	treeCost                 int32
 	treeCostOK               bool
-	// GameState defaultTreeObjectId / defaultWallObjectId (−1: 0xFF, none).
-	defaultTree, defaultWall int
 	inited                   bool
 }
 
@@ -108,8 +106,8 @@ func (g *Game) terraformWin() *ui.TerraformWindow {
 // toolbar, the windows there moved down, the gridlines shown; then the tab.
 func (g *Game) openTerraform(tab int) {
 	t := &g.tf
-	if !t.inited { // Gui::init's tool sizes, resetDefaultObjectIds
-		t.inited, t.landSize, t.clearSize, t.waterSize, t.treeRotation, t.defaultTree, t.defaultWall = true, 1, 2, 1, 2, -1, -1
+	if !t.inited { // Gui::init's tool sizes
+		t.inited, t.landSize, t.clearSize, t.waterSize = true, 1, 2, 1
 	}
 	win := g.terraformWin()
 	if win == nil {
@@ -239,11 +237,11 @@ func (g *Game) terraformTabReset() {
 		t.raiseOK, t.lowerOK, t.toolSize = false, false, t.waterSize
 	case ui.TerraformTabTrees:
 		t.ghostTree, t.ghostWall, t.treeCostOK = false, false, false
-		t.win.Selected = firstObject(t.defaultTree, len(om.TreeObjects), func(i int) bool { return om.TreeObjects[i] != nil })
+		t.win.Selected = firstObject(defaultObject(g.w.Map.DefaultTreeObjectId), len(om.TreeObjects), func(i int) bool { return om.TreeObjects[i] != nil })
 		g.updateTreeColours()
 	case ui.TerraformTabWalls:
 		t.ghostTree, t.ghostWall = false, false
-		t.win.Selected = firstObject(t.defaultWall, len(om.WallObjects), func(i int) bool { return om.WallObjects[i] != nil })
+		t.win.Selected = firstObject(defaultObject(g.w.Map.DefaultWallObjectId), len(om.WallObjects), func(i int) bool { return om.WallObjects[i] != nil })
 	}
 }
 
@@ -300,12 +298,30 @@ func (g *Game) terraformToolSize(delta int) {
 // default; a tree's colour and cost follow.
 func (g *Game) terraformSelect(id int) {
 	t := &g.tf
+	g.playSound(audio.SoundClickDown, audio.ChannelUI, t.win.X+t.win.W/2) // pan: (width >> 1) + x
 	if t.win.Tab == ui.TerraformTabTrees {
-		t.defaultTree, t.treeCostOK = id, false
+		g.w.Map.DefaultTreeObjectId, t.treeCostOK = uint8(id), false
 		g.updateTreeColours()
 	} else {
-		t.defaultWall = id
+		g.w.Map.DefaultWallObjectId = uint8(id)
 	}
+}
+
+// defaultObject is a GameState default object id as firstObject takes it
+// (0xFF none: −1).
+func defaultObject(id uint8) int {
+	if id == 0xFF {
+		return -1
+	}
+	return int(id)
+}
+
+// terraformResetDefaults is Terraform::resetDefaultObjectIds' window share
+// (S5.cpp importSaveToGameState, on every load): _treeRotation back to 2;
+// the game state's default tree and wall are reset by the load (sim.Map
+// LoadScenario).
+func (g *Game) terraformResetDefaults() {
+	g.tf.treeRotation = 2
 }
 
 // terraformLandDropdown is AdjustLand's showDropdown (0x004BCB47): the land
@@ -658,6 +674,8 @@ func (g *Game) terraformToolDown(x, y int) {
 			return g.w.Map.CreateWall(c, f, a)
 		}); !ok {
 			g.openCmdError(i18n.Label(i18n.ErrorCantBuildThisHere), c)
+		} else { // BuildWalls onToolDown (0x004BC232): the construct sound at the command's position
+			g.playCommandSound(audio.SoundConstruct, c)
 		}
 	}
 }

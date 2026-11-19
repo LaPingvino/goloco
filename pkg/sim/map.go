@@ -98,6 +98,7 @@ type Map struct {
 	MaxLoanSize                                             uint16                  // GameState maxLoanSize
 	StartingLoanSize                                        uint16                  // GameState startingLoanSize
 	SeaLevel, LastLandOption                                uint8                   // GameState seaLevel, lastLandOption
+	DefaultTreeObjectId, DefaultWallObjectId                uint8                   // GameState defaultTreeObjectId / defaultWallObjectId: the Terraform window's tree and wall (0xFF none), saved; reset on load
 	CurrentSnowLine, CurrentSeason                          uint8                   // GameState currentSnowLine, currentSeason
 	EntriesEnd                                              int                     // TileManager entriesEnd as the generator's inserts move it (numFreeElements = kMaxElements − EntriesEnd)
 	PreferredAI                                             [3]uint8                // GameState preferredAI intelligence / aggressiveness / competitiveness
@@ -263,6 +264,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.DefaultLevelCrossingType = sc.DefaultLevelCrossingType
 	m.StartingLoanSize = sc.StartingLoanSize
 	m.SeaLevel, m.LastLandOption = sc.SeaLevel, sc.LastLandOption
+	m.DefaultTreeObjectId, m.DefaultWallObjectId = 0xFF, 0xFF // resetDefaultObjectIds (S5.cpp:974): the file's values go
 	m.CurrentSnowLine, m.CurrentSeason = sc.CurrentSnowLine, sc.CurrentSeason
 	m.PreferredAI = sc.PreferredAI
 	m.ForbiddenVehiclesPlayers, m.ForbiddenVehiclesCompetitors = sc.ForbiddenVehiclesPlayers, sc.ForbiddenVehiclesCompetitors
