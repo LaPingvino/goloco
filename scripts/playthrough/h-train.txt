@@ -13,6 +13,8 @@
 # has 0,30), Train 1's window bottom left (0,394, growing upwards with its
 # tabs), over Cloudburst North: so the drag (to 500,71) comes before the
 # station clicks.
+# 2026-11-19: the hovered row's details (bvhover 1 on the 'Jinty' row), gone
+# after the purchase with the pointer off the list (onUpdate's sub_4B92A5).
 wait 20
 seed 1950
 scenario Weatherworld
@@ -74,10 +76,12 @@ wait 2
 shot /tmp/goloco-playthrough/pt-h-h2.png
 move 370 165
 wait 1
+expect bvhover == 1
 click 370 165
 move 133 482
 wait 2
 shot /tmp/goloco-playthrough/pt-h-h3.png
+expect bvhover == 0
 move 251 446
 wait 1
 click 251 446

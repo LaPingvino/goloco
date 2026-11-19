@@ -22,7 +22,8 @@ func (g *Game) openBuildVehicle(tab int) { g.openBuildVehicleFor(tab, sim.Entity
 // openBuildVehicleFor is openBuildVehicle with _buildTargetVehicle = target
 // (BuildVehicle::openByVehicleId: the list limited to what fits that
 // vehicle, and a row adds a car to it); EntityIDNull builds new vehicles.
-// PARTIAL: the caption still says "Build …" for a target.
+// The caption stays build_trains + tab for a target, as upstream's
+// prepareDraw has it; the bottom-left message names the target.
 func (g *Game) openBuildVehicleFor(tab int, target uint16) {
 	if t := g.buildTargetVehicle(); t != sim.EntityIDNull { // open's sub_4B92A5: the top editing window wins
 		target = t
@@ -54,7 +55,8 @@ func (g *Game) buildTargetVehicle() uint16 {
 }
 
 // refreshBuildVehicle is sub_4B92A5 on the open Build Vehicle window: its
-// target and list again, on its tab.
+// target and list again, on its tab, rowHover −1 (in place: its scroll
+// stays).
 func (g *Game) refreshBuildVehicle() {
 	company, _ := g.w.ControllingCompany()
 	old, ok := g.wins.Find(ui.WindowTypeBuildVehicle, company).(*ui.BuildVehicleWindow)
@@ -62,15 +64,24 @@ func (g *Game) refreshBuildVehicle() {
 		return
 	}
 	if bw := g.newBuildVehicleWindow(old.Tab, g.buildTargetVehicle()); bw != nil {
-		g.wins.Refresh(bw)
+		old.Refresh(bw)
 	}
 }
 
-// updateBuildVehicle is onUpdate's refresh: the window's target no longer
-// the top editing Vehicle window (closed, or another tab) gets sub_4B92A5.
+// updateBuildVehicle is onUpdate (0x4C377B): sub_4B92A5 unless "the linked
+// vehicle is still available" — window.number (the company's id) not 0 and a
+// Vehicle window of that number open —, and whenever the year has changed
+// since the list was made (_lastRefreshYear; _lastDisplayLockedVehiclesState
+// is Config::displayLockedVehicles, fixed false here). For company 0 that
+// is every update: rowHover is −1 again each time, so the details show
+// while the pointer is on a row (onScrollMouseOver after it).
 func (g *Game) updateBuildVehicle() {
 	company, _ := g.w.ControllingCompany()
-	if bw, ok := g.wins.Find(ui.WindowTypeBuildVehicle, company).(*ui.BuildVehicleWindow); ok && bw.Target != g.buildTargetVehicle() {
+	if _, ok := g.wins.Find(ui.WindowTypeBuildVehicle, company).(*ui.BuildVehicleWindow); !ok {
+		return
+	}
+	linked := company != 0 && g.wins.Find(ui.WindowTypeVehicle, company) != nil
+	if !linked || g.bvLastRefreshYear != int(g.w.Map.CurrentYear) {
 		g.refreshBuildVehicle()
 	}
 }
@@ -86,12 +97,14 @@ func (g *Game) newBuildVehicleWindow(tab int, target uint16) *ui.BuildVehicleWin
 	o := sim.DefaultBuildVehicleOptions(uint8(company))
 	o.TargetHead = target
 	tabs := m.BuildVehicleTrackTabs(om, uint8(tab), o)
+	g.bvLastRefreshYear = int(m.CurrentYear) // generateBuildableVehiclesArray's _lastRefreshYear
 	trackTab := m.BuildVehicleTrackTab(uint8(tab), tabs)
 	var rows []ui.BVRow
 	if len(tabs) > 0 {
 		for _, id := range m.BuildableVehicles(om, uint8(tab), tabs[trackTab], o) {
 			v := om.Vehicles[id]
-			rows = append(rows, ui.BVRow{ID: id, Vehicle: v, Name: v.DisplayName})
+			rows = append(rows, ui.BVRow{ID: id, Vehicle: v, Name: v.DisplayName,
+				Locked: !m.IsVehicleIndexUnlocked(uint8(company), id)}) // && !Config::buildLockedVehicles (false)
 		}
 	}
 	tc, wc := g.windowColours(true)
@@ -101,8 +114,26 @@ func (g *Game) newBuildVehicleWindow(tab int, target uint16) *ui.BuildVehicleWin
 	}
 	bw := &ui.BuildVehicleWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeBuildVehicle, Number: company, W: 500, H: 400}, TitleColour: tc, Colour: wc,
 		Tab: tab, TrackTab: trackTab, Target: target, Disabled: m.BuildVehicleDisabledTabs(uint8(company)), NumTrackTabs: len(tabs),
-		Rows: rows, Hover: -1, Primary: p, Secondary: s,
-		OnTab: func(t int) { g.wins.Quietly(func() { g.openBuildVehicleFor(t, target) }) }, // switchTab
+		Rows: rows, RowHover: -1, Primary: p, Secondary: s, TargetName: g.buildTargetName(target),
+		Details: func(id uint16) string { // draw's buffer_1250
+			v := om.Vehicles[id]
+			return ui.VehicleStats(v, om, ui.VehicleStatsArgs{
+				Cost:        int64(m.InflationAdjustedCost(v.CostFactor, v.CostIndex, 6)),
+				RunningCost: int64(m.InflationAdjustedCost(v.RunCostFactor, v.RunCostIndex, 10)),
+				Unlocked:    m.IsVehicleIndexUnlocked(uint8(company), id)})
+		},
+		CargoSprites: func(id uint16) []int { // compatibleCargoCategories[0] | [1], lowest type first
+			c := om.CargoFor(om.Vehicles[id])
+			var out []int
+			for ct, co := range om.CargoObjects {
+				if ct < 32 && co != nil && (c.CompatibleCargoCategories[0]|c.CompatibleCargoCategories[1])&(1<<ct) != 0 {
+					out = append(out, int(co.ImageOffset)) // unitInlineSprite
+				}
+			}
+			return out
+		},
+		PreviewFrame: func() int { return g.previewFrame },
+		OnTab:        func(t int) { g.wins.Quietly(func() { g.openBuildVehicleFor(t, target) }) }, // switchTab
 		TabIcon: func(i int) (int, int) { // drawTransportTypeTabs: frame (frameNo / 2) & 0xF on the active tab
 			sk := g.skin()
 			if sk == nil || i >= len(objects.ISBuildVehicleFrame0) {
@@ -244,6 +275,21 @@ func (g *Game) buildNewImage(h *scenario.VehicleEntity) int {
 		return 0
 	}
 	return int(g.skin().ImageOffset) + 411 + int(h.VehicleType)
+}
+
+// buildTargetName is the target vehicle's name as draw formats it
+// (vehicle->name, vehicle->ordinalNumber), "" for none.
+func (g *Game) buildTargetName(target uint16) string {
+	if target == sim.EntityIDNull {
+		return ""
+	}
+	m := &g.w.Map
+	tr, err := m.TrainOf(target)
+	if err != nil {
+		return ""
+	}
+	h := m.Entities[tr.Head]
+	return m.VehicleName(h.Name, int(h.OrdinalNumber))
 }
 
 // buildErrorTitle is onScrollMouseDown's setErrorTitle: "Can't build

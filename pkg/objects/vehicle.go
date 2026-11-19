@@ -501,6 +501,18 @@ func (v *VehicleObject) GetSpeedKmh() float64 {
 	return mph * 1.60934
 }
 
+// Length is VehicleObject::getLength (VehicleObject.cpp): each car component's body sprite's halfLength × 2 (a
+// component without a body counts nothing).
+func (v *VehicleObject) Length() int {
+	length := 0
+	for i := 0; i < int(v.NumCarComponents) && i < len(v.CarComponents); i++ {
+		if b := v.CarComponents[i].BodySpriteIdx; b != 0xFF {
+			length += int(v.BodySprites[int(b)&(len(v.BodySprites)-1)].HalfLength) * 2
+		}
+	}
+	return length
+}
+
 // HasBodySprites returns true if this vehicle has body sprites
 func (v *VehicleObject) HasBodySprites(idx int) bool {
 	if idx < 0 || idx >= 4 {

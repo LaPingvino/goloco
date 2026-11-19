@@ -178,6 +178,7 @@ type Game struct {
 	sceneAge          int
 	savePrompt        *ui.PromptSave // PromptSaveWindow (save.go loadSaveQuit)
 	previewFrame      int
+	bvLastRefreshYear int  // BuildVehicle.cpp _lastRefreshYear
 	audioMuted        bool // !Audio::isAudioEnabled
 	silentTrack       bool
 	musicPaused       bool

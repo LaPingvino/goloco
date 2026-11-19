@@ -502,6 +502,14 @@ func (g *Game) scriptExpect() {
 		if g.wins.Find(typ, ui.AnyNumber) != nil {
 			got = 1
 		}
+	case "bvhover": // 1 while the Build Vehicle window drew a hovered row (rowHover: its details shown); -1 closed
+		got = -1
+		if bw := g.buildVehicleWin(); bw != nil {
+			got = 0
+			if bw.ShownHover() >= 0 {
+				got = 1
+			}
+		}
 	case "viewflags": // the main viewport's flags (Ui::ViewportFlags' bits)
 		got = int64(g.w.ViewFlags())
 	case "terraformwindow": // 1 while the Terraform window is open
