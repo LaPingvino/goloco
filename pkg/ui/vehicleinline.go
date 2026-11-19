@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -86,14 +85,7 @@ func carTooltip(c TrainCarDraw) string {
 		s += line(i18n.VehicleDetailsTooltipPower, L.Power(int(v.Power)))
 	}
 	if landed {
-		length := 0 // getLength: each car component's body sprite's halfLength × 2
-		for i := 0; i < int(v.NumCarComponents) && i < len(v.CarComponents); i++ {
-			if b := v.CarComponents[i].BodySpriteIdx; b != 0xFF {
-				length += int(v.BodySprites[int(b)&(len(v.BodySprites)-1)].HalfLength) * 2
-			}
-		}
-		n := length * 100 / 4 / 32 // internalLengthToComma1DP
-		s += line(i18n.VehicleDetailsTooltipLength, fmt.Sprintf("%d.%02d", n/100, n%100))
+		s += line(i18n.VehicleDetailsTooltipLength, length2DP(v.Length()))
 	}
 	s += line(i18n.VehicleDetailsTooltipWeight, strconv.Itoa(int(v.Weight)))
 	s += line(i18n.VehicleDetailsTooltipMaxSpeed, L.Velocity(int(v.Speed)))

@@ -65,6 +65,11 @@ func (m *Map) CreateVehicle(c *Cmd, flags uint8, objID uint16, lockedOK bool, he
 	return m.InflationAdjustedCost(obj.CostFactor, obj.CostIndex, 6), true
 }
 
+// IsVehicleIndexUnlocked is Company::isVehicleIndexUnlocked.
+func (m *Map) IsVehicleIndexUnlocked(company uint8, objID uint16) bool {
+	return m.isVehicleIndexUnlocked(company, objID)
+}
+
 // isVehicleIndexUnlocked is Company::isVehicleIndexUnlocked.
 func (m *Map) isVehicleIndexUnlocked(company uint8, objID uint16) bool {
 	if int(company) >= len(m.UnlockedVehicles) || objID >= 7*32 {

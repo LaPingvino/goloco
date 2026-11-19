@@ -385,7 +385,7 @@ func TestOpenFlashAndSound(t *testing.T) {
 // only where its list doesn't reach.
 func TestDragByFrame(t *testing.T) {
 	s := &WindowStack{ScreenW: 1024, ScreenH: 768}
-	w := &BuildVehicleWindow{WinBase: WinBase{WinType: WindowTypeBuildVehicle, X: 100, Y: 100, W: 500, H: 400}, NumTrackTabs: 2, Hover: -1}
+	w := &BuildVehicleWindow{WinBase: WinBase{WinType: WindowTypeBuildVehicle, X: 100, Y: 100, W: 500, H: 400}, NumTrackTabs: 2, RowHover: -1}
 	w.OnResize()
 	s.Open(w)
 	s.Press(100+200, 100+60) // the bare panel

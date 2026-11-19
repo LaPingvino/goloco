@@ -138,6 +138,8 @@ const (
 const (
 	VehicleFlagJacobsBogieFront = 1 << 2
 	VehicleFlagJacobsBogieRear  = 1 << 3
+	VehicleFlagRackRail         = 1 << 6  // VehicleObjectFlags::rackRail
+	VehicleFlagRefittable       = 1 << 14 // VehicleObjectFlags::refittable
 )
 
 // kUnk500264: the roll frame offset per roll (& 7).

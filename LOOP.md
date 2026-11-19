@@ -181,9 +181,17 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    AI off): the same numbers through 1925-10-01 (cash, value, profit; index 10.3% that day in both: the win
 >    month agrees); 1926-01: cash equal, index 9.3% vs 9.5%.
 >    Blockers, worst first:
->    - [ ] The Build Vehicles window has no details panel: no price, power, speed, capacity or cargo, no row highlight
->      — a player buys blind (BuildVehicle.cpp draw l.1453, drawScroll l.1622, onScrollMouseOver
->      l.1262; pkg/ui/buildvehicle.go PARTIAL); its caption stays "Build Trains" when it adds to a train.
+>    - [x] The Build Vehicles window had no details panel and no row highlight — a player bought blind. Now
+>      (branch bvdetails) draw's buffer_1250 (cost, running cost, designed/proposed, obsolete, requires + extras +
+>      rack rail, power, length, weight, speed, getCargoString; ui.VehicleStats), the preview (drawVehicleOverview
+>      turning, name + cargo icons), onScrollMouseOver's rowHover (a vehicle id) and onUpdate's refresh (for company
+>      0 every update: the details show while the pointer is on a row, as in OpenLoco), the empty-list and
+>      "Select vehicle to add to Train 1" messages. The caption stays "Build Trains" for a target in OpenLoco too
+>      (prepareDraw: build_trains + currentTab) — not a bug. Side by side on the title save: the details text pixel
+>      for pixel. Left PARTIAL: search box, filter/cargo/sort dropdowns, the cargo-filter line, tooltips. Seen, not
+>      done: the list's inline vehicles ~1 px off OpenLoco's, the list's scrollbar thumb drawn full length (OpenLoco:
+>      short), the wheel scrolls 2 px further at the end; the Vehicle window's caption lacks " - Vehicle Details"
+>      and its Details tab the stats lines (Total power / Weight / Max. speed / Reliability / Length) and paint button.
 >    - [x] Refusals were silent: a wagon added to a moving train did nothing but log "can't build vehicle" — now the
 >      error window "Can't add Wagon to Train 1… / Vehicle must be stopped first!" (BuildVehicle.cpp onScrollMouseDown's
 >      setErrorTitle; canBeModified's setErrorText, VehicleHead.cpp 0x004B6D1F; every command's caller passes its Cmd).
@@ -2346,3 +2354,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-19 (branch n22c) — N22: left clicks in windows' viewports (viewportLeft through the release point's window), Scenario::getConstruction's remembered signal / station / bridge per type (loaded, saved, written by the dropdowns, read by the window's opens); N52–N55 seen.
 - 2026-11-19 (branch ai-interface) — PORT-PLANS F step 1: docs/AI-INTERFACE.md, the original Company AI studied for its end points (38 actions, 23 observations, 18 hidden powers, 18 company-record fields, 13 pathfinder needs), a first Go draft (Observer / Actor / CompanyAI) and 13 gaps (exported CreateTrack/CreateRoad, company tick, produceCompanies, the auto-loan decision first).
 - 2026-11-19 (branch boulder) — Priority 3: Boulder Breakers played through as a player and won (Oct 1925, index 10%; OpenLoco wins the same month from the same autosave); r-boulder (manual, ~20 min) and s-refusals; three silent refusals fixed (canBeModified reasons, vehiclePlace reasons, construction window opens on its first tab). Blockers listed under PRIORITY 3, worst: the Build Vehicles window has no details panel. Unit 22 ok 0 FAIL, playthroughs 23/23.
+- 2026-11-19 (branch bvdetails) — Priority 3 blocker: the Build Vehicles window's details panel (draw's buffer_1250: cost, running cost, designed/proposed, obsolete, requires, power, length, weight, speed, getCargoString), the preview (drawVehicleOverview, name + cargo icons), onScrollMouseOver's rowHover and onUpdate's per-update refresh, the target's "Select vehicle to add to Train 1" (the caption stays Build Trains in OpenLoco too); side by side with OpenLoco on the title save: the details text pixel for pixel. h-train checks it (bvhover). Unit 22 ok 0 FAIL, playthroughs 23/23.

@@ -1,6 +1,9 @@
 package ui
 
 import (
+	"image"
+	"image/color"
+
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
@@ -13,7 +16,7 @@ import (
 // 5P.f): its widgets (_widgets 0x5231D0) laid out for a window size as
 // prepareDraw and onResize do. The list it shows is sim.BuildableVehicles,
 // its tabs sim.BuildVehicleTrackTabs / BuildVehicleDisabledTabs.
-// PARTIAL: drawing and input come next (5P.f part 4).
+// PARTIAL: the search box, the filter / cargo / sort dropdowns.
 
 // PaletteIndex::mutedDarkRed3 / 5 (Colour.h): a locked vehicle's row.
 const (
@@ -140,9 +143,10 @@ type BVRow struct {
 
 // BuildVehicleWindow is the Build Vehicle window: 500×400 at first, the
 // lighter frame, the skin's titlebar colour and the player colour.
+// The caption is build_trains + currentTab whether or not it adds to a
+// vehicle (prepareDraw); a target shows in the bottom-left message.
 // PARTIAL (5P.f part 4): the search box and the three dropdowns' texts, the
-// preview (drawVehicleOverview, the cargo icons), the cargo-filter line,
-// the scroll bar, input, and createWindow's free-spot placement.
+// cargo-filter line (draw's _cargoSupportedFilter), the tooltips.
 type BuildVehicleWindow struct {
 	WinBase
 	TitleColour, Colour uint8
@@ -157,29 +161,100 @@ type BuildVehicleWindow struct {
 	// caller) and their colour (-1: none).
 	TabIcon, TrackTabIcon func(i int) (img, colour int)
 	Rows                  []BVRow
-	Hover                 int // a row index, or -1
-	Scroll                int
-	hold                  uilayout.VScrollHold // a press on the list\'s scrollbar held (stateScrollLeft)
-	Primary, Secondary    uint8                // the controlling company's colours for the vehicles
-	Message               string
-	OnTab                 func(int)       // a vehicle-type tab
-	OnBuy                 func(id uint16) // a row clicked (onScrollMouseDown): buy that vehicle
+	// RowHover is window.rowHover: the hovered vehicle's object id (not a
+	// row index), -1 none. onResize sets the first row's when none.
+	RowHover int
+	// TargetName is _buildTargetVehicle's name (vehicle->name with its
+	// ordinalNumber, formatted), "" for none: the bottom-left message
+	// (select_vehicle_to_add_to_string_id) and the empty list's
+	// (no_compatible_vehicles_available).
+	TargetName string
+	// Details is draw's buffer_1250 for a vehicle object (VehicleStats).
+	Details func(id uint16) string
+	// CargoSprites are the vehicle's usable cargoes' unitInlineSprite
+	// images, by cargo type (drawScroll's vehicle_preview).
+	CargoSprites func(id uint16) []int
+	// PreviewFrame is WindowManager's vehiclePreviewRotationFrame.
+	PreviewFrame       func() int
+	shownHover         int // rowHover as the last Draw showed it
+	Scroll             int
+	hold               uilayout.VScrollHold // a press on the list\'s scrollbar held (stateScrollLeft)
+	Primary, Secondary uint8                // the controlling company's colours for the vehicles
+	OnTab              func(int)            // a vehicle-type tab
+	OnBuy              func(id uint16)      // a row clicked (onScrollMouseDown): buy that vehicle
 }
 
 // OnResize is onResize (0x4C3929): the window resizable within
 // BuildVehicleSize's bounds (at least max(track tabs · 31 + 195, 380) ×
 // 233, at most kMaxWindowSize 700 × 600), and the list's scroll no further
 // than its rows reach (contentHeight − (bottom − top)).
-// PARTIAL: rowHover set to the first row when none (the preview).
+// Then, with no row hovered and rows to show, rowHover is the first row's
+// vehicle. Upstream calls it from open (callOnResize) — onUpdate's refresh
+// (sub_4B92A5) clears rowHover again at the next update, so the details
+// show while the pointer is on a row.
 func (w *BuildVehicleWindow) OnResize() {
+	w.resizeBounds()
+	if w.RowHover == -1 && len(w.Rows) > 0 {
+		w.RowHover = int(w.Rows[0].ID)
+	}
+}
+
+// resizeBounds is onResize's size bounds and scroll clamp.
+func (w *BuildVehicleWindow) resizeBounds() {
 	w.WinFlags |= WindowFlagResizable
 	w.SetSize(max(w.NumTrackTabs*31+195, 380), 233, 700, 600)
 	list := BuildVehicleLayout(w.W, w.H, w.Disabled, w.NumTrackTabs)[bvList]
 	w.Scroll = min(w.Scroll, max(0, len(w.Rows)*sim.BuildVehicleRowHeight[w.Tab]-(list.B-list.T)))
 }
 
-// PrepareDraw runs onResize: the stack calls it as the size changes.
-func (w *BuildVehicleWindow) PrepareDraw() { w.OnResize() }
+// Refresh is sub_4B92A5 on the open window: the target, the list (and what
+// goes with it) from n, a window built afresh for it; rowHover −1. The
+// window's place, size, scroll and held scrollbar stay.
+func (w *BuildVehicleWindow) Refresh(n *BuildVehicleWindow) {
+	base, scroll, hold, shown := w.WinBase, w.Scroll, w.hold, w.shownHover
+	*w = *n
+	w.WinBase, w.Scroll, w.hold, w.shownHover = base, scroll, hold, shown
+	w.RowHover = -1
+	w.resizeBounds()
+}
+
+// listContent is the vehicle list's scrolled view in screen coordinates:
+// the widget less its 1 px border, less the bar when the rows overflow.
+func (w *BuildVehicleWindow) listContent() (x, y, cw, ch int) {
+	list := BuildVehicleLayout(w.W, w.H, w.Disabled, w.NumTrackTabs)[bvList]
+	x, y = w.X+list.L+uilayout.ScrollbarMargin, w.Y+list.T+uilayout.ScrollbarMargin
+	cw, ch = list.R-list.L+1-2*uilayout.ScrollbarMargin, list.B-list.T+1-2*uilayout.ScrollbarMargin
+	if len(w.Rows)*sim.BuildVehicleRowHeight[w.Tab] > list.B-list.T+1 {
+		cw -= uilayout.ScrollbarSize
+	}
+	return
+}
+
+// rowAt is the list row under a screen point (y / rowHeight over the
+// scrolled content), -1 off the view or past the last row.
+func (w *BuildVehicleWindow) rowAt(x, y int) int {
+	cx, cy, cw, ch := w.listContent()
+	if x < cx || x >= cx+cw || y < cy || y >= cy+ch {
+		return -1
+	}
+	if row := (y - cy + w.Scroll) / sim.BuildVehicleRowHeight[w.Tab]; row < len(w.Rows) {
+		return row
+	}
+	return -1
+}
+
+// MouseOver is onScrollMouseOver (0x4C3802) over the vehicle list: the
+// row under the pointer's vehicle becomes rowHover; past the last row, or
+// off the list, rowHover stays.
+func (w *BuildVehicleWindow) MouseOver(x, y int) {
+	if r := w.rowAt(x, y); r >= 0 {
+		w.RowHover = int(w.Rows[r].ID)
+	}
+}
+
+// PrepareDraw runs onResize's bounds and scroll clamp: the stack calls it
+// as the size changes (not its rowHover part: see OnResize).
+func (w *BuildVehicleWindow) PrepareDraw() { w.resizeBounds() }
 
 // OnFrame: no widget but the frame and the panel at the point
 // (findWidgetAt): a press there moves the window, or in the corner
@@ -214,6 +289,7 @@ func (w *BuildVehicleWindow) Draw(screen *ebiten.Image) {
 	if err != nil {
 		return
 	}
+	w.shownHover = w.RowHover
 	lw := BuildVehicleLayout(w.W, w.H, w.Disabled, w.NumTrackTabs)
 	rowH := sim.BuildVehicleRowHeight[w.Tab]
 	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, true)
@@ -269,14 +345,15 @@ func (w *BuildVehicleWindow) Draw(screen *ebiten.Image) {
 		}
 		m30, _ := g1.GetPaletteMap(0x30)
 		for i, r := range w.Rows {
+			hover := int(r.ID) == w.RowHover
 			y := i*rowH - w.Scroll
 			if y+rowH+30 <= 0 || y >= ch+30 {
 				continue
 			}
 			switch {
-			case i == w.Hover && r.Locked:
+			case hover && r.Locked:
 				fillRectCrossHatch(sub, 0, y, cw-1, y+rowH-1, paletteMutedDarkRed3)
-			case i == w.Hover:
+			case hover:
 				gfx8.FillRectTranslucent(sub, 0, max(y, 0), cw-1, min(y+rowH-1, ch-1), m30)
 			case r.Locked:
 				fillRectCrossHatch(sub, 0, y, cw-1, y+rowH-1, paletteMutedDarkRed5)
@@ -288,13 +365,17 @@ func (w *BuildVehicleWindow) Draw(screen *ebiten.Image) {
 		for yy := range ch {
 			copy(rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw], sub.Bits[yy*cw:(yy+1)*cw])
 		}
+		w.drawPreview(rt, lw[bvPreview], sec)
 	})
 	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
 	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, i18n.Label(i18n.BuildTrains+w.Tab), int(w.TitleColour))
-	cx, cy := w.X+list.L+1, w.Y+list.T+1
+	// The rows' names, clipped to the scroll view's content (drawScroll's
+	// render target): a row the view cuts shows the part inside.
+	cx, cy, vw, vh := w.listContent()
+	clip := screen.SubImage(image.Rect(cx, cy, cx+vw-uilayout.ScrollbarMargin, cy+vh-uilayout.ScrollbarMargin)).(*ebiten.Image)
 	for i, r := range w.Rows {
 		y := i*rowH - w.Scroll
-		if y < 0 || y+rowH > list.B-list.T-1 {
+		if y+rowH <= 0 || y >= vh {
 			continue
 		}
 		x := 0
@@ -303,16 +384,88 @@ func (w *BuildVehicleWindow) Draw(screen *ebiten.Image) {
 			x = int(total)
 		}
 		c := black
-		if i == w.Hover {
+		if int(r.ID) == w.RowHover { // wcolour2_stringid
 			c = win2
 		}
-		DrawTextBold(screen, r.Name, cx+x+3, cy+y+(rowH-10)/2, c)
+		DrawTextBold(clip, r.Name, cx+x+3, cy+y+(rowH-10)/2, c)
 	}
-	msg := w.Message
-	if msg == "" {
-		msg = i18n.Label(i18n.SelectNewVehicle)
+	drawVScrollArrows(screen, w.X+list.L, w.Y+list.T, list.R-list.L+1, list.B-list.T+1)
+	if len(w.Rows) == 0 { // drawScroll: no_vehicles_available / no_compatible_vehicles_available at (3, (rowHeight − 10) / 2)
+		msg := i18n.Str(i18n.NoVehiclesAvailable)
+		if w.TargetName != "" {
+			msg = FillArgs(i18n.Str(i18n.NoCompatibleVehiclesAvailable), w.TargetName)
+		}
+		drawCodedWrapped(screen, msg, cx+3, cy+(rowH-10)/2, list.R-list.L-17, win2, black)
 	}
-	DrawTextBold(screen, msg, w.X+2, w.Y+w.H-13, black)
+	// draw: the bottom-left message, clipped to width − 186.
+	msg := i18n.Label(i18n.SelectNewVehicle)
+	if w.TargetName != "" {
+		msg = FillArgs(i18n.Label(i18n.SelectVehicleToAddToStringId), w.TargetName)
+	}
+	DrawTextBold(screen, ClipString(msg, G1FontMediumBold, w.W-186), w.X+2, w.Y+w.H-13, black)
+	w.drawPreviewName(screen, lw[bvPreview], win2)
+	// draw: the hovered vehicle's buffer_1250, wrapped to 180 at
+	// (selection.right + 2, preview.bottom + 2).
+	if w.RowHover >= 0 && w.Details != nil {
+		drawCodedWrapped(screen, w.Details(uint16(w.RowHover)), w.X+list.R+2, w.Y+lw[bvPreview].B+2, 180, win2, black)
+	}
+}
+
+// ShownHover is rowHover as the last frame drew it (the details shown for
+// that vehicle; -1 none) — a script's check, between frames.
+func (w *BuildVehicleWindow) ShownHover() int { return w.shownHover }
+
+// hoveredVehicle is rowHover's vehicle object among the rows (nil none).
+func (w *BuildVehicleWindow) hoveredVehicle() *objects.VehicleObject {
+	for _, r := range w.Rows {
+		if int(r.ID) == w.RowHover {
+			return r.Vehicle
+		}
+	}
+	return nil
+}
+
+// drawPreview is drawScroll's vehicle_preview (a scroll view without bars):
+// cleared to the secondary colour's shade 0, then the hovered vehicle's
+// drawVehicleOverview at (90, 37) turned by the preview rotation frame (yaw
+// frame & 0x3F, roll ((frame + 2) / 4) & 0x3F).
+func (w *BuildVehicleWindow) drawPreview(rt *gfx8.RenderTarget, p BVWidget, sec []uint8) {
+	cx, cy, cw, ch, _ := drawVScrollView(rt, p.L, p.T, p.R-p.L+1, p.B-p.T+1, gfx8.InsetColour{Map: sec}, 0, 0)
+	if cw <= 0 || ch <= 0 {
+		return
+	}
+	gfx8.FillRect(rt, cx, cy, cx+cw-1, cy+ch-1, gfx8.Shade(sec, 0))
+	v := w.hoveredVehicle()
+	if v == nil {
+		return
+	}
+	frame := 0
+	if w.PreviewFrame != nil {
+		frame = w.PreviewFrame()
+	}
+	sub := gfx8.NewRenderTarget(cw, ch)
+	for yy := range ch {
+		copy(sub.Bits[yy*cw:(yy+1)*cw], rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw])
+	}
+	DrawVehicleOverview(sub, v, 90, 37, uint8(frame&0x3F), uint8(((frame+2)/4)&0x3F), w.Primary, w.Secondary)
+	for yy := range ch {
+		copy(rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw], sub.Bits[yy*cw:(yy+1)*cw])
+	}
+}
+
+// drawPreviewName is the preview's last line: wcolour2_stringid of the
+// vehicle's name and, for each usable cargo, a space and its
+// unitInlineSprite — drawStringCentredClipped at (89, 52), width 177.
+func (w *BuildVehicleWindow) drawPreviewName(screen *ebiten.Image, p BVWidget, win2 color.Color) {
+	v := w.hoveredVehicle()
+	if v == nil || globalG1Font == nil {
+		return
+	}
+	var sprites []int
+	if w.CargoSprites != nil {
+		sprites = w.CargoSprites(uint16(w.RowHover))
+	}
+	drawInlineCentredClipped(screen, v.DisplayName, sprites, w.X+p.L+1+89, w.Y+p.T+1+52, 177, win2)
 }
 
 // Contains reports whether the point is on the window.
@@ -348,12 +501,8 @@ func (w *BuildVehicleWindow) HandleClick(x, y int) {
 		w.Scroll = w.hold.Begin(y-(w.Y+list.T), y, list.B-list.T+1, len(w.Rows)*sim.BuildVehicleRowHeight[w.Tab], w.Scroll)
 		return
 	}
-	cx, cy := w.X+list.L+uilayout.ScrollbarMargin, w.Y+list.T+uilayout.ScrollbarMargin
-	cw, ch := list.R-list.L+1-2*uilayout.ScrollbarMargin, list.B-list.T+1-2*uilayout.ScrollbarMargin
-	if x >= cx && x < cx+cw && y >= cy && y < cy+ch && w.OnBuy != nil {
-		if row := (y - cy + w.Scroll) / sim.BuildVehicleRowHeight[w.Tab]; row >= 0 && row < len(w.Rows) {
-			w.OnBuy(w.Rows[row].ID)
-		}
+	if row := w.rowAt(x, y); row >= 0 && w.OnBuy != nil {
+		w.OnBuy(w.Rows[row].ID)
 	}
 }
 

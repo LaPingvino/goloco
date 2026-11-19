@@ -246,6 +246,7 @@ func (g *Game) updateWindows() {
 			w.MouseOver(hx, hy)
 			w.Update(mx, my, win == top, ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight)) // findAt: the window under the mouse
 		case *ui.BuildVehicleWindow:
+			w.MouseOver(hx, hy) // onScrollMouseOver: the hovered row's vehicle
 			w.Drag(mx, my, left)
 		case *ui.TerraformWindow:
 			w.Update(mx, my, win == top, left, ebiten.IsMouseButtonPressed(ebiten.MouseButtonRight), g.sh)
