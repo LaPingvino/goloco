@@ -376,7 +376,13 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       viewport. Checked against OpenLoco on the title game (tours/viewport-rightclick.txt): the Town
 >       window viewport's tooltips (station, office block, a train), its right clicks (the train's owner's
 >       train list, the station's owner's station list, a 28 px drag released at once the same), a slow
->       press nothing, the sign light in the window and on the main view and plain again after.
+>       press nothing, the sign light in the window and on the main view and plain again after; with the main
+>       view see-through (buildings) the Town viewport still tips its office block (its own flags), and in
+>       Memphis Freight's Train 2 window a 30 px right drag released at once acts (its train list to the
+>       front) with the view unmoved, in both. The sign's middle ran one column into its right end (a light
+>       seam; drawRect's dx) — fixed: the main view's signs now match pixel for pixel; the Town window's
+>       zoom-2 sign is still one column wider on the right in goloco (suspect: the save's labelFrame, as
+>       Station::updateLabel isn't ported — check the frame's right[2] against OpenLoco's).
 >       LEFT: the news window's viewports (its subject buttons lie over them: findWidgetAt; flags
 >       viewportNoScrolling) and the Company window's headquarters view (not drawn yet); a left click in a
 >       window's viewport (viewportLeft there: getItemLeft opens the vehicle / town / station / industry —
@@ -557,8 +563,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       (TownList, the Station Cargo tab) where the bars' ends are content + 1 − (h − 2): a scroll to the end
 >       (wheel, track, the right drag) can stop or be pulled back 1–3 px short of OpenLoco's. Check one list's last
 >       page against OpenLoco, then fix in one place (a ScrollArea-like value the windows share).
-> - [ ] N50 (seen by N22) The Stations list (StationList.cpp drawScroll) shows each station's transport icons after
->       its name in OpenLoco ("Dallas Central ▭"); goloco's list has the names alone.
+> - [ ] N50 (seen by N22) The Stations list shows each station's transport icons after its name in OpenLoco
+>       (StationList.cpp drawScroll: getTransportIconsFromStationFlags after the name); goloco's has the names alone.
+> - [ ] N51 (seen by N22) Another company's Vehicle window (opened from its train list, title game, Memphis Freight's
+>       Train 2): OpenLoco captions it "Memphis Freight - Train 2" (Vehicle.cpp prepareDraw: competitor_vehicle),
+>       goloco "Train 2"; OpenLoco opened it at y 425, goloco at y 397 (createWindow's placement).
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).
 SK. [x] **Interface skin images after a save loads.** DONE 2026-11-05: the skin's image table now joins the global image list (LoadImageTable, as every other object; interface->img = its first index); before, only a private counter (NextSpriteIndex) moved, so img + n were other objects' images. The Build Vehicles menu has its images; the time panel's map icon draws again. LEFT (own small items): the toolbar faces upstream draws by state — Build Vehicles (kBuildVehicleImages by lastBuildVehiclesOption, company colour) and Vehicles (vehicle_*_frame_0); goloco's Vehicles button face is blank. Land objects still take NextSpriteIndex (their sprites are drawn from land.Sprites, so harmless now — check before anything indexes G1 by land.ImageOffset).
 
