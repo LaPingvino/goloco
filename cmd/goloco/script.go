@@ -504,6 +504,14 @@ func (g *Game) scriptExpect() {
 				got = int64(w.ScrollY)
 			}
 		}
+	case "maptab", "maphover": // the map window's tab (currentTab) / hovered key row bits (var_854); -1 closed
+		got = -1
+		if w, ok := g.wins.Find(ui.WindowTypeMap, ui.AnyNumber).(*ui.MapWindow); ok {
+			got = int64(w.Tab)
+			if req[0] == "maphover" {
+				got = int64(w.Hover)
+			}
+		}
 	case "townlist", "stationlist", "vehiclelist", "industrylist", "companywindow": // 1 while such a window is open
 		typ := map[string]ui.WindowType{"townlist": ui.WindowTypeTownList, "stationlist": ui.WindowTypeStationList,
 			"vehiclelist": ui.WindowTypeVehicleList, "industrylist": ui.WindowTypeIndustryList, "companywindow": ui.WindowTypeCompany}[req[0]]

@@ -8,8 +8,8 @@ import (
 // The map window's overall tab, per tile (MapWindow.cpp setMapPixelsOverall,
 // 0x0046C5E5; PORT-PLANS A step 1): the two palette colours its rendered
 // pixel pair takes, and the pair while flashing (the graph key's hovered
-// row). The window (not yet ported) lays the pairs out rotated 45° and fills
-// them a row a tick.
+// row). FillMapRow lays the pairs out rotated 45°, a row at a time; the other
+// tabs' colours are in maptabs.go.
 
 // Palette indices the map uses (Colour.h PaletteIndex).
 const (
@@ -157,11 +157,12 @@ func (b *MapBuffer) Clear() {
 	}
 }
 
-// FillMapRowOverall is setMapPixels (the overall tab) for the buffer's next
-// row: from the rotation's corner a column of tiles (the tile loop's first
-// column for rotation 0), each tile's pair a row down and a pixel right of
-// the last; then on to the next row, round to 0 after kMapColumns.
-func (m *Map) FillMapRowOverall(b *MapBuffer, rotation int, om *objects.ObjectManager, pixel func(image uint32, i int) uint8, flashing uint32) {
+// FillMapRow is setMapPixels (0x0046C544, l. 911) for the buffer's next row:
+// from the rotation's corner a column of tiles (the tile loop's first column
+// for rotation 0), each tile's pair a row down and a pixel right of the last,
+// coloured by the window's tab (setMapPixelsOverall … Ownership); then on to
+// the next row, round to 0 after kMapColumns. _flashingItems is f.Flashing.
+func (m *Map) FillMapRow(b *MapBuffer, rotation, tab int, f *MapFill) {
 	r := b.Row
 	off := r*(MapRenderedWidth-1) + (mapColumns - 1)
 	var x, y, dx, dy int
@@ -176,7 +177,14 @@ func (m *Map) FillMapRowOverall(b *MapBuffer, rotation int, om *objects.ObjectMa
 		x, y, dx, dy = 0, mapColumns-1-r, 1, 0
 	}
 	for range mapColumns {
-		if c0, c1, f0, f1, ok := m.MapPixelsOverall(x, y, om, pixel, flashing); ok && off >= 0 && off+1 < mapRenderedSize {
+		var c0, c1, f0, f1 uint8
+		var ok bool
+		if tab == MapTabOverall {
+			c0, c1, f0, f1, ok = m.MapPixelsOverall(x, y, f.OM, f.Pixel, f.Flashing)
+		} else {
+			c0, c1, f0, f1, ok = m.MapPixelsTab(tab, x, y, f)
+		}
+		if ok && off >= 0 && off+1 < mapRenderedSize {
 			b.Pixels[off], b.Pixels[off+1] = c0, c1
 			b.Alt[off], b.Alt[off+1] = f0, f1
 		}

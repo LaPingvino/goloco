@@ -1,0 +1,53 @@
+# The map window's five tabs (MapWindow.cpp setMapPixels*, drawTabs,
+# drawGraphKey*, setHoverItemTab, drawVehiclesOnMap, drawTownNames; PORT-PLANS
+# A step d) on the title game (untitle.py's title.SV5, its saved view),
+# paused: the map opened (M) at (0, 28); per tab a shot with the pointer away
+# and one with it on the key's second row (x 260, y 72 + 10 + 5: the key is at
+# the window's width − 104, 44), which flashes that row's items and turns its
+# name white. Shots are named SHOTS/…: sed that to a scratch directory per game.
+wait 12
+click 688 592
+wait 0.5
+move 400 300
+wait 1
+key M
+wait 2
+move 600 500
+wait 3
+shot SHOTS/mt-0-tab.png
+move 260 87
+wait 3
+shot SHOTS/mt-0-key.png
+click 49 58
+wait 0.2
+move 600 500
+wait 3
+shot SHOTS/mt-1-tab.png
+move 260 77
+wait 3
+shot SHOTS/mt-1-key.png
+click 80 58
+wait 0.2
+move 600 500
+wait 3
+shot SHOTS/mt-2-tab.png
+move 260 87
+wait 3
+shot SHOTS/mt-2-key.png
+click 111 58
+wait 0.2
+move 600 500
+wait 3
+shot SHOTS/mt-3-tab.png
+move 260 87
+wait 3
+shot SHOTS/mt-3-key.png
+click 142 58
+wait 0.2
+move 600 500
+wait 3
+shot SHOTS/mt-4-tab.png
+move 260 87
+wait 3
+shot SHOTS/mt-4-key.png
+quit
