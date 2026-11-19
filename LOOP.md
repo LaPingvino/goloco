@@ -238,16 +238,21 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       vehicle list's columns and filter boxes follow its width (onResize), its scroll view to height − 15,
 >       status at x 3, scroll clear shade 1; town / station / industry list status at height − 12 and their
 >       clear shades (3 / 4 / 4); list headers kept within width − 8 / 4.
->       LEFT: drag by frame for the windows without a widget list (Town, Industry, Station, the lists, Company,
->       Messages, Options …: each needs its findWidgetAt); Company Status's headquarters viewport following the
->       size; BuildVehicle onResize's rowHover (with the preview); Cargo Delivered's height from its cargo lines;
->       the flash countdown and open sound while a text input / confirmation is up (upstream's prompt loop keeps
->       calling WindowManager::tick; goloco's updateModal returns before it); a scroll view's content area — the
->       real OpenLoco leaves the row and column inside its bottom / right border uncleared (vehicle list: y 197,
->       x 545), goloco clears them; the inset font's edge pixels (1 px off on the disabled cargo arrow).
->       Not compared with OpenLoco: the flash, drag by frame, BuildVehicle / Company Status resizing, the
->       station / industry list shades.
-> - [ ] N7 Construction leftovers (disabled buttons greyed and the whole setDisabledWidgets — gradient, piece, traits,
+>       2026-11-19 (branch n6n7-leftovers): Cargo Delivered's height (CargoDelivered::onResize: max(10 × lines, 50)
+>       + 62, set as the tab opens — setSize's callOnResize — and kept; a company switch keeps the window's size);
+>       the flash countdown and open sound under a prompt (WindowManager::tick once per interface tick, as
+>       promptTickLoop; the open sound no longer waits for the prompt to close); ScrollView::draw's crop (the
+>       content one scrollbar margin short right and bottom, every scroll view — Messages' own copy gone); the
+>       disabled cargo arrow in the real inset font (DrawTextInset); drag by frame for Town and Industry
+>       (ViewWindow.frameWidgets: a graph tab drags anywhere below its tabs — checked on OpenLoco).
+>       Compared with OpenLoco (olref, title save): the vehicle list's scroll area and disabled arrow identical
+>       (only the caption text colour differs — the caption-colour gap); Cargo Delivered 112 high with two
+>       cargo lines in OpenLoco; a Town window's Population tab moves when dragged by its graph, its first tab
+>       not by the viewport.
+>       LEFT: drag by frame for the other windows (Station, the lists, Company, Messages, Options …; branch
+>       n6-frame); Company Status's headquarters viewport following the size (the HQ view isn't ported);
+>       BuildVehicle onResize's rowHover (the preview isn't ported). Seen on the way: the rename box is modal (N39).
+> - [x] N7 Construction leftovers (disabled buttons greyed and the whole setDisabledWidgets — gradient, piece, traits,
 >       roads too — DONE 2026-11-14). The 2026-11-13 list DONE 2026-11-18 (branch n7-construction), each ported from
 >       ConstructionTab.cpp / CreateRoad.cpp with a test: a refused road's reason line (every createRoad / clearRoad /
 >       clearTrack setErrorText with its name; every command starts with no error text, loc_4313C6); constructRoad's
@@ -269,12 +274,21 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       gradient); the orange outline identical where looked at (cr-04, cr-08); the other building shots differ only
 >       by the arrow's blink phase and money-effect text; cr-12's two grass tiles (regrown in OpenLoco, still bare
 >       in goloco, the same on the pre-N7 base) are the tile loop's timing, not N7's.
->       LEFT: checkCompanyCompatibility's kErrorBelongsToOther (the competitor's error window, also for track);
->       canConstructAtWithClear's own error texts (off_edge_of_map, another_company_is_about_to_build_here,
->       cannot_build_partly_above_below_water — goloco names only the collision); the Station tab's enableConstruct
->       tiles (StationTab.cpp 292–364); the copy / paste (blueprint) tools; not compared: other rotations of the map
->       outline, bridges and mods in the preview, the bridge box while building on. Seen on the way, not N7's: the
->       error window's translucent fill is lighter than OpenLoco's (cr-07, cr-12: same place, same text); money
+>       2026-11-19 (branch n6n7-leftovers): checkCompanyCompatibility's kErrorBelongsToOther — every overload
+>       (track, road, station, none) keeps the owner and the thing on the Cmd (pkg/sim companycompat.go), and
+>       loc_4314EA's error path (cmd/goloco openCmdError, every command error window) opens
+>       Error::openWithCompetitor: the owner's face in the inner frame, "<Railway Track> belongs to <company>";
+>       canConstructAtWithClear's own error texts (off_edge_of_map, cannot_build_partly_above_below_water,
+>       another_company_is_about_to_build_here, setCollisionErrorMessage inside it — an industry named with its
+>       town; canConstructWall's too) and aiCompanyAboutToBuildCheck ported whole (getTileOwner, the AI's
+>       unk1 / unk2 flags); the Station tab's enableConstruct tiles and arrow for airports and docks
+>       (onToolUpdateAirport / onToolUpdateDock).
+>       Compared with OpenLoco (olref, the title save at 331,295): building rail onto Memphis Freight's track —
+>       the competitor's error window identical in place, size, face and text (the translucent fill shows the
+>       different map behind it); the heliport tool's hover identical but for the ghost (below).
+>       Closed 2026-11-19: what is left needs an unported system — the copy / paste (blueprint) tools. Not compared: other rotations of the map
+>       outline, bridges and mods in the preview, the bridge box while building on, the dock's selection. Seen
+>       on the way, not N7's: an airport ghost drawn in its own colours (N38); the error window's translucent fill is lighter than OpenLoco's (cr-07, cr-12); money
 >       effects that overlap stack downwards in goloco, OpenLoco draws them on one line (N12).
 > - [x] N8 One-way road arrows — done with N23.
 > - [x] (plan: docs/PORT-PLANS.md B) N9 Sounds: done 2026-11-18 — SoundObject / css1 loaders, the Effects mixer and every effect call site, the widget clicks window by window (pkg/ui clicks.go), vehicle audio (driving sounds in the sim and saved, chuffs, crossing whistle, VehicleAudio.cpp's handles) and ambient audio (AmbientAudio.cpp). Left (PORT-PLANS B "Left"): silent widgets goloco doesn't act on, off-widget / dropdown releases, other windows' viewports, tunnel reverb.
@@ -422,6 +436,11 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       company AI tick yet).
 > - [ ] N14 (PAUSED until an editor exists) the town list's editor build tabs; updateBuilding's isEditorMode return;
 >       the tileManagerLoaded gate.
+> - [ ] N38 (seen 2026-11-19 with N7, olref title save at 331,295, the heliport tool) the airport ghost is drawn in its
+>       own colours; OpenLoco draws a ghost airport as a ghost (Paint: the ghost's translucent remap).
+> - [ ] N39 (seen 2026-11-19 with N6) the rename box (TextInputWindow) is modal in goloco: the game and the other
+>       windows stop under it; upstream's TextInput is an ordinary window (only PromptOkCancel and PromptBrowse run
+>       promptTickLoop), so the game runs on.
 FPS. [ ] **Browser speed, in this order (Joop 2026-11-05: "making the drawing space smaller … a brutal difference. How much of this is GPU ready?")** — the world is painted on the CPU in 8-bit (the paint sort, remaps, masks: not GPU-ready without a renderer rewrite that would risk upstream's pixels), so the cost scales with pixels. (1) DONE 2026-11-05 — Options → Display's window scale factor (Config scaleFactor): the game drawn smaller, the GPU scales it up — upstream's own answer. (2) DONE 2026-11-05 — Dirty regions as the default (GOLOCO_DIRTY=0 turns them off): first the two known misses (BuildingElement::update's invalidations; the vehicle code's invalidateSprite sites). (3) DONE 2026-11-05 for the default path (full frames + column updates; the dirty-rect path still converts on the CPU) — Palette → RGBA on the GPU: upload the 8-bit frame (¼ the bytes) and look the colours up in a Kage shader — also makes palette cycling (item W) almost free. Joop's machine reported "DRI3 … no accelerated rendering": Crostini, OpenGL on llvmpipe — solved on his side with Mesa's Zink (OpenGL over Crostini's accelerated Vulkan), no Vulkan work in goloco. Joop 2026-11-05: "don't worry about it and make sure the GPU gets cracking" — so the GPU step moves up: (1) scale factor, then (3) palette on the GPU, then (2) dirty regions default; after those, look for more that the GPU can take (scaling, the UI windows' translucency, palette cycling).
 SK. [x] **Interface skin images after a save loads.** DONE 2026-11-05: the skin's image table now joins the global image list (LoadImageTable, as every other object; interface->img = its first index); before, only a private counter (NextSpriteIndex) moved, so img + n were other objects' images. The Build Vehicles menu has its images; the time panel's map icon draws again. LEFT (own small items): the toolbar faces upstream draws by state — Build Vehicles (kBuildVehicleImages by lastBuildVehiclesOption, company colour) and Vehicles (vehicle_*_frame_0); goloco's Vehicles button face is blank. Land objects still take NextSpriteIndex (their sprites are drawn from land.Sprites, so harmless now — check before anything indexes G1 by land.ImageOffset).
 
