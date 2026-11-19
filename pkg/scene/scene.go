@@ -515,11 +515,12 @@ func (r *Renderer) renderRect(m *sim.Map, v View) *gfx8.RenderTarget {
 	return rt
 }
 
-// InteractionAt is ViewportInteraction::getMapCoordinatesFromPos for the
-// main view: the paint session of the one pixel under screen (sx, sy)
+// InteractionAt is ViewportInteraction::getMapCoordinatesFromPos for one
+// viewport's view: the paint session of the one pixel under (sx, sy), the
+// point relative to the viewport's top-left
 // (rt.x / y = the viewport position masked to the zoom, 1×1), generated and
 // arranged, then getNormalInteractionInfo with accept as the filter. nil: no
-// item there. PARTIAL: the station / town label passes after it.
+// item there. (The station / town label passes: world mapCoordinatesAt.)
 func (r *Renderer) InteractionAt(m *sim.Map, v View, sx, sy int, accept func(paint.InteractionItem) bool) *paint.Struct {
 	mask := ^0 << v.Zoom // (0xFFFF << zoom) on upstream's int16 coordinates: the sign kept
 	pv := v

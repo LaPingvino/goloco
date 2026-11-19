@@ -14,7 +14,11 @@
 # held 0.8 s on the main view it does nothing. Last the main view's Kansas
 # City Central sign hovered (light) and left (plain again).
 # 2026-11-19, OpenLoco 09d74ee: every tooltip, what each click opens and the
-# signs agree (the signs' pixels but for a train passing behind).
+# signs agree (the signs' right end differed by one column: the middle's
+# drawRect ran into it in goloco, fixed). Also checked by hand: with key 5
+# (see-through buildings, main view only) the Town viewport still tips the
+# office block; in a Vehicle window's viewport a right drag released at once
+# acts and the view stays on its train.
 wait 12
 click 688 592
 wait 0.5

@@ -143,7 +143,9 @@ func (w *World) drawStationNames(screen *ebiten.Image, ox, oy, z int) {
 				if rerr == nil {
 					gfx8.DrawSpriteNoise(rt, right, wd-b.width, 0, gfx8.OpFor(right, false, true), m, nil)
 				}
-				gfx8.FillRectTranslucent(rt, b.width+1, 0, b.width+1+wd-2*b.width-1, ht-1, m)
+				// drawRect(left + width + 1, top, right − left − 2·width, …): its last
+				// column right − width, the one before the right end's first
+				gfx8.FillRectTranslucent(rt, b.width+1, 0, wd-1-b.width, ht-1, m)
 			}
 		}
 		ui.DrawRect8(screen, l, t, wd, ht, drawLabelBox)
