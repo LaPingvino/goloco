@@ -6,7 +6,7 @@
 # train each (Baldwin 2-8-0 + five Wagons, full load); a year on, a third
 # line takes the mill's steel to the factory; then the game left to run at
 # extra fast speed for years, the money and the objective watched.
-# run.sh: manual — it plays some 18 minutes (run.sh r-boulder runs it).
+# run.sh: manual — it plays some 18–20 minutes (run.sh r-boulder runs it).
 # Coordinates: camera X Y Z puts tile X,Y in the middle; zoom 1 a tile is
 # 16 px across and 8 down per x or y step (+x down-left, +y down-right).
 wait 20
