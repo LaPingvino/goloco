@@ -54,6 +54,11 @@ type Game struct {
 	r          *render.Renderer
 	audioMgr   *audio.Manager
 	sfx        *audio.Effects // the sound effects (sfx.go)
+	// mapColours and mapVehicleCounts are MapWindow.cpp's statics
+	// (_assignedIndustryColours … _roadColours, _vehicleTypeCounts): kept
+	// between the map window's opens (mapwindow.go).
+	mapColours       sim.MapColours
+	mapVehicleCounts [6]uint16
 	// vehicleHandles: the audio handles the vehicles held at the last
 	// updateVehicleNoise (vehicleaudio.go).
 	vehicleHandles map[uint32]bool

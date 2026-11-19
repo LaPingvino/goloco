@@ -73,7 +73,7 @@ func TestMapBufferLayout(t *testing.T) {
 	} {
 		b := NewMapBuffer()
 		for range mapColumns + 1 {
-			m.FillMapRowOverall(b, rot, om, pixel, 0)
+			m.FillMapRow(b, rot, MapTabOverall, &MapFill{OM: om, Pixel: pixel})
 		}
 		if b.Row != 0 {
 			t.Errorf("rotation %d: row %d after a round", rot, b.Row)

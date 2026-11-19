@@ -229,8 +229,8 @@ func (g *Game) updateWindows() {
 		}
 		switch w := win.(type) {
 		case *ui.MapWindow:
-			g.updateMap(w)                         // onUpdate
-			w.ScrollDrag(mx, my, left, win == top) // stateScrollLeft: a held press on the map
+			g.updateMap(w, mx, my, win == top, g.inMousePressed(ebiten.MouseButtonRight)) // onUpdate
+			w.ScrollDrag(mx, my, left, win == top)                                        // stateScrollLeft: a held press on the map
 		case *ui.TownListWindow:
 			w.MouseOver(hx, hy)  // onScrollMouseOver: the row (or grid cell) under the mouse
 			w.Drag(mx, my, left) // the list's scrollbar thumb follows the mouse while held

@@ -38,19 +38,20 @@ type IndustryObject struct {
 	// buildingWallEntrance; "": none): load resolves them into the wall
 	// slots above (ObjectManager.ReorderWallObjects) — the bytes at 0xED…
 	// are placeholders.
-	WallNames [6]string
-	Buildings                       []uint8      // the building types, in placement order (getBuildings)
-	BuildingSizeFlags               uint32       // 0xC6: bit n set = building type n is 2×2
-	ScaffoldingSegmentType          uint8        // 0xD4
-	ScaffoldingColour               uint8        // 0xD5
-	Flags                           uint32       // 0xE4 (IndustryObjectFlags)
-	ObsoleteYear                    uint16       // 0xCC
-	DesignedYear                    uint16       // 0xCA
-	TotalOfTypeInScenario           uint8        // 0xCE: 1–32
-	CostIndex                       uint8        // 0xCF
-	ClearCostFactor                 int16        // 0xD2
-	MonthlyClosureChance            uint8        // 0xF3: out of 65535
-	FarmTileNumImageAngles          uint8        // 0xE9
+	WallNames              [6]string
+	Buildings              []uint8 // the building types, in placement order (getBuildings)
+	BuildingSizeFlags      uint32  // 0xC6: bit n set = building type n is 2×2
+	ScaffoldingSegmentType uint8   // 0xD4
+	ScaffoldingColour      uint8   // 0xD5
+	Flags                  uint32  // 0xE4 (IndustryObjectFlags)
+	MapColour              uint8   // 0xE3: the map window's preferred colour (an index into kIndustryColours)
+	ObsoleteYear           uint16  // 0xCC
+	DesignedYear           uint16  // 0xCA
+	TotalOfTypeInScenario  uint8   // 0xCE: 1–32
+	CostIndex              uint8   // 0xCF
+	ClearCostFactor        int16   // 0xD2
+	MonthlyClosureChance   uint8   // 0xF3: out of 65535
+	FarmTileNumImageAngles uint8   // 0xE9
 
 	PartHeights        []uint8
 	PartAnimations     []BuildingPartAnimation
@@ -110,6 +111,7 @@ func ParseIndustryObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (
 		ScaffoldingSegmentType:          data[0xD4],
 		ScaffoldingColour:               data[0xD5],
 		Flags:                           binary.LittleEndian.Uint32(data[0xE4:]),
+		MapColour:                       data[0xE3],
 		ObsoleteYear:                    binary.LittleEndian.Uint16(data[0xCC:]),
 		DesignedYear:                    binary.LittleEndian.Uint16(data[0xCA:]),
 		TotalOfTypeInScenario:           data[0xCE],

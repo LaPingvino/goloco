@@ -49,7 +49,20 @@ stepping for the four rotations; layout tested). Next: the window shell, in tick
       (drawViewportPosition). Checked against OpenLoco (scripts/olref/tours/mapcentre.txt), playthrough t-map.
       Left: the scroll bars (step a), the main view's glide (Window.cpp viewportsUpdatePosition's
       scrollingToLocation: goloco jumps, for every centring), _flashingItems (with the graph key, d).
-   d. the five tabs (images, the overall tab only filled; the others' fills are step 4), the graph key (step 4).
+   d. DONE (2026-11-19) but the editor's disabled tabs: the five tabs (drawTabs' images, the vehicles' animated and
+      recoloured, the routes' animated; onMouseUp's tab change: frameNo and var_854 reset, the buffer kept; the
+      caption per tab), the fills setMapPixelsVehicles / Industries / Routes / Ownership (sim maptabs.go
+      MapPixelsTab, FillMapRow by tab), assignIndustryColours / assignRouteColours (sim.MapColours, kept on the
+      Game between opens as upstream's statics; IndustryObject mapColour 0xE3 parsed), the graph keys
+      (drawGraphKeyOverall … Companies) with setHoverItemTab / setHoverItem (var_854 → _flashingItems at the
+      next fill: the rows' items flash on mapFrameNumber's bit 2, the row white, the swatch blinking, the view
+      frame's corners off), draw's minHeight and status bar (formatVehicleString / formatIndustryString),
+      drawScroll's drawVehiclesOnMap (countVehiclesOnMap; getVehicleColour; the routes tab's aircraft and ship
+      routes, drawLine ported with its unordered-rectangle early-out) and drawTownNames. Checked against OpenLoco
+      (scripts/olref/tours/maptabs.txt: the title save, each tab with and without a hovered key row): equal but
+      the scroll bars, the vehicles' positions by the seconds the games ran, and the animation / flash phase.
+      Playthrough t-map (expect maptab / maphover). Left: the scroll bars (a), the remembered size (b), the
+      glide (c), and the editor's disabled vehicles / routes / ownership tabs (goloco has no scenario editor).
    Skin colours: InterfaceSkinObject windowTitlebarColour / windowMapColour.
 
 Order of work:

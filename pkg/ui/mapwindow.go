@@ -8,21 +8,24 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-// MapWindow — a port of Ui/Windows/MapWindow.cpp (PORT-PLANS A, steps 1a–c):
+// MapWindow — a port of Ui/Windows/MapWindow.cpp (PORT-PLANS A, steps 1a–d):
 // 350×272, resizable 229×176 … 888×828, the skin's windowTitlebarColour and
 // windowMapColour; the caption, the close button, the panel and the scroll
 // view ({3, 44} to the window's width − 108 and height − 14) showing the map
 // buffer (sim.MapBuffer: the map turned 45°) at the scroll offset, with the
 // main view's frame on it (drawViewportPosition). It opens centred on the main
 // view (centerOnViewPoint), and a press or a drag on the map centres the main
-// view there (scrollMouseDown / scrollMouseDrag).
+// view there (scrollMouseDown / scrollMouseDrag). The five tabs (overall,
+// vehicles, industries, routes, ownership: maptabs.go) each fill the buffer
+// their way and have a graph key on the right whose hovered row flashes what
+// it stands for; over the map the vehicles, the routes tab's aircraft and
+// ship routes, and the town names.
 //
-// clickable(MapWindow.cpp): close, the map (centres the main view)
+// clickable(MapWindow.cpp): close, the five tabs, the map (centres the main view)
 //
-// PARTIAL (PORT-PLANS A 1a, 1b, 1d): the scroll bars (drawn and clicked; the
-// right drag works), the remembered size, the tabs, the graph key and its
-// flashing items (_flashingItems: always none here), the status bar, the
-// other overlays (vehicles, routes, town names).
+// PARTIAL (PORT-PLANS A 1a, 1b): the scroll bars (drawn and clicked; the
+// right drag works), the remembered size; the editor's disabled tabs
+// (goloco has no scenario editor).
 
 const (
 	mapWinW, mapWinH       = 350, 272
@@ -63,13 +66,59 @@ type MapWindow struct {
 	// viewHeld: a left press on the map is held (Input::State::scrollLeft
 	// with _currentScrollArea view).
 	viewHeld bool
+
+	// Tab is currentTab (sim.MapTabOverall …); TabFrame the window's frameNo
+	// (counted by onUpdate, 0 on a tab change: the tab images' animation).
+	Tab      int
+	TabFrame uint16
+	// Hover is var_854: the graph key's hovered row as a bit (setHoverItem);
+	// Flashing is _flashingItems, var_854 as the last setMapPixels took it.
+	Hover, Flashing uint32
+	// SkinImage is the interface skin's image base; VehicleColour the
+	// vehicles tab's recolour (the player's primary colour, black in the
+	// editor and sandbox).
+	SkinImage     int
+	VehicleColour uint8
+	// Key gives a tab's graph key rows; Status the status bar's string for
+	// a tab and the hovered row; Vehicles drawScroll's vehicle and route
+	// marks (drawVehiclesOnMap); Towns the towns for drawTownNames.
+	Key      func(tab int) []MapKeyRow
+	Status   func(tab int, hover uint32) string
+	Vehicles func(tab int, flashing uint32, frame uint16) []sim.MapMark
+	Towns    func() []MapTownName
+	// ShowTownNames is showTownNames (true at the open).
+	ShowTownNames bool
+	keyRows       []MapKeyRow
 }
 
 // NewMapWindow is MapWindow::open's window (createWindow: the stack places
 // it); the opener sets MainView and OnCentre, then calls CentreOnViewPoint.
 func NewMapWindow(buf *sim.MapBuffer, titleColour, colour uint8) *MapWindow {
 	return &MapWindow{WinBase: WinBase{WinType: WindowTypeMap, W: mapWinW, H: mapWinH, MinW: mapWinMinW, MinH: mapWinMinH,
-		MaxW: mapWinMaxW, MaxH: mapWinMaxH, WinFlags: WindowFlagResizable}, TitleColour: titleColour, Colour: colour, Buf: buf}
+		MaxW: mapWinMaxW, MaxH: mapWinMaxH, WinFlags: WindowFlagResizable}, TitleColour: titleColour, Colour: colour, Buf: buf,
+		ShowTownNames: true}
+}
+
+// Update is onUpdate's window part (0x0046BA5B) after the fill: frameNo
+// counted, the key's rows for the tab, and setHoverItemTab (l. 1027) — with
+// the right button up and this window under the mouse, the key row under it
+// (the key at width − 104, 44) hovered, none off the key.
+func (w *MapWindow) Update(mx, my int, onTop, rightHeld bool) {
+	w.TabFrame++
+	w.keyRows = nil
+	if w.Key != nil {
+		w.keyRows = w.Key(w.Tab)
+	}
+	if rightHeld || !onTop {
+		return
+	}
+	w.Hover = MapHoverItem(w.Tab, mx-(w.X+w.W-104), my-(w.Y+44), w.keyRows)
+}
+
+// keyMinHeight is draw's minHeight: the key's bottom + 14, at least
+// kMinWindowSize's height.
+func (w *MapWindow) keyMinHeight() int {
+	return max(44+len(w.keyRows)*mapLegendItemHeight+14, mapWinMinH)
 }
 
 // scrollView is the scroll view widget as prepareDraw lays it out (x, y,
@@ -106,7 +155,9 @@ func (w *MapWindow) contentSize() (cw, ch int) {
 // initScrollWidgets zeroes the offsets — nothing keeps the offset within the
 // map afterwards (centerOnViewPoint may leave it up to 11 px past
 // contentWidth − widget width), so nothing is done here.
-func (w *MapWindow) PrepareDraw() {}
+func (w *MapWindow) PrepareDraw() {
+	w.MinH = w.keyMinHeight() // draw: self.minHeight = y
+}
 
 // CentreOnViewPoint is MapWindow::centerOnViewPoint (0x0046B5C0, l. 2452):
 // the scroll offset that puts the main view's centre in the middle of the
@@ -187,6 +238,12 @@ func (w *MapWindow) HandleClick(px, py int) {
 		w.Close()
 		return
 	}
+	if t := tabAt(tabLayout(5, nil), px-w.X, py-w.Y); t >= 0 { // onMouseUp: tabOverall … tabOwnership
+		if t != w.Tab {
+			w.Tab, w.TabFrame, w.Hover = t, 0, 0
+		}
+		return
+	}
 	if cx, cy, ok := w.mapPart(px, py); ok {
 		w.viewHeld = true
 		w.scrollMouseDown(cx, cy)
@@ -219,6 +276,9 @@ func (w *MapWindow) WidgetTooltip(px, py int) string {
 	x, y := px-w.X, py-w.Y
 	if x >= w.W-15 && x < w.W-2 && y >= 2 && y < 15 {
 		return i18n.Str(i18n.TooltipCloseWindow)
+	}
+	if t := tabAt(tabLayout(5, nil), x, y); t >= 0 {
+		return i18n.Str(i18n.TabMapOverall + t)
 	}
 	return ""
 }
@@ -308,7 +368,9 @@ func (w *MapWindow) drawViewportPosition(t mapTarget) {
 	if w.FrameNo&(1<<2) == 0 {
 		return
 	}
-	// _flashingItems != 0 returns here: the graph key is not ported, none flash.
+	if w.Flashing != 0 {
+		return
+	}
 	const cornerSize = 5
 	corner := func(left, top, lo, to, ro, bo int) { // drawViewCornersOnMap (l. 1987)
 		left, top = int(int16(left))/32+off[0], int(int16(top))/16+off[1]
@@ -340,10 +402,13 @@ func (w *MapWindow) Draw(screen *ebiten.Image) {
 		return
 	}
 	sx, sy, sw, sh := w.scrollView()
+	var town mapTarget
 	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, false)
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
 		gfx8.FillRectInset(rt, 0, 41, w.W-1, w.H-1, gfx8.InsetColour{Map: sec}, 0) // Panel
 		drawResizeHandle(rt, &w.WinBase, sec)
+		w.drawTabs8(rt, sec)
+		w.drawKeySwatches(rt)
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
@@ -370,7 +435,21 @@ func (w *MapWindow) Draw(screen *ebiten.Image) {
 				rt.Bits[(t.OrgY+yy)*rt.Width+t.OrgX+xx] = pix[my*sim.MapRenderedWidth+mx]
 			}
 		}
+		if w.Vehicles != nil { // drawVehiclesOnMap (countVehiclesOnMap with it)
+			for _, mk := range w.Vehicles(w.Tab, w.Flashing, w.FrameNo) {
+				if mk.Line {
+					t.drawMapLine(mk.X0, mk.Y0, mk.X1, mk.Y1, mk.Colour)
+				} else {
+					t.fillRect(mk.X0, mk.Y0, mk.X1, mk.Y1, mk.Colour, false)
+				}
+			}
+		}
 		w.drawViewportPosition(t)
+		town = t
 	})
-	DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, i18n.Label(i18n.TitleMap))
+	if w.ShowTownNames && town.rt != nil {
+		w.drawTownNames(screen, town)
+	}
+	DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, i18n.Label(mapCaptions[w.Tab%5]))
+	w.drawKeyText(screen)
 }

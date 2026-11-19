@@ -18,6 +18,11 @@
 # - Enter (rotate): the map re-centred on the turned view — rotation 1's frame
 #   offset (768, 384): ((400 + viewX) / 32 + 768 − 114, (300 + viewY) / 16 +
 #   384 − 102).
+# - the tabs (PORT-PLANS A step d): the routes tab (x 96 … 126, y 45 … 71) clicked;
+#   the key at (350 − 104, 30 + 44) = (246, 74), its rows 10 apart: the pointer at
+#   (260, 88) hovers the second row (bit 1 << 1); off the window the hover stays
+#   (setHoverItemTab returns when another window is under the pointer); on the
+#   map, left of the key, none.
 wait 20
 seed 1950
 scenario Weatherworld
@@ -59,4 +64,18 @@ expect camy == 2820
 expect mapscrollx == 372
 expect mapscrolly == 477
 shot /tmp/goloco-playthrough/pt-t3-rotated.png
+expect maptab == 0
+click 111 58
+wait 1
+expect maptab == 3
+move 260 88
+wait 1
+expect maphover == 2
+shot /tmp/goloco-playthrough/pt-t4-routes.png
+move 600 400
+wait 1
+expect maphover == 2
+move 200 150
+wait 1
+expect maphover == 0
 quit
