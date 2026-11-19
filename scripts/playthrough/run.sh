@@ -8,13 +8,14 @@
 # playthrough changes in the options, its saves and its autosaves (save.go)
 # stay out of the player's own.
 #
-#   scripts/playthrough/run.sh [a-newgame h2-paying-route ...]
+#   scripts/playthrough/run.sh [a-newgame h2-paying-route r-boulder ...]
 here=$(dirname "$(readlink -f "$0")")
 root=$here/../..
 bin=$(mktemp "${TMPDIR:-/tmp}/goloco-playthrough-bin.XXXXXX") # its own: runs in parallel (other agents) mustn't share it
 trap 'rm -f "$bin"' EXIT
 go -C "$root" build -o "$bin" ./cmd/goloco || exit 1
-names=${*:-$(ls "$here"/*.txt | xargs -n1 basename | sed 's/\.txt$//')}
+# A script with a "# run.sh: manual" line (a long playthrough) runs only by name.
+names=${*:-$(grep -L '^# run.sh: manual' "$here"/*.txt | xargs -n1 basename | sed 's/\.txt$//')}
 status=0
 for p in $names; do
 	log=${TMPDIR:-/tmp}/goloco-playthrough-$p.log

@@ -1,9 +1,12 @@
 package sim
 
+import "github.com/LaPingvino/goloco/pkg/i18n"
+
 // The vehiclePlace game command (VehiclePlace.cpp 0x004B01B6) with
 // validateTrackPlacement / validateRoadPlacement.
-// PARTIAL: the placedown sound, the error texts (which piece or extra is
-// missing), the viewport invalidation of convertGhost.
+// PARTIAL: the placedown sound, the error texts of validateTrackPlacement /
+// validateRoadPlacement (which piece or extra is missing; placeDownVehicle's
+// two are set), the viewport invalidation of convertGhost.
 
 // VehiclePlacement is VehiclePlacementArgs: where the front goes (pos, a
 // world position with z in world units), on which piece, how far along it,
@@ -53,7 +56,12 @@ func (m *Map) VehiclePlace(c *Cmd, flags uint8, a VehiclePlacement) (int32, bool
 	if !ok {
 		return 0, false
 	}
-	if m.PlaceDownVehicle(a.Head, a.X, a.Y, uint8(a.Z/4), a.TrackAndDirection, a.TrackProgress, c.Objects) != PlaceDownOkay {
+	if r := m.PlaceDownVehicle(a.Head, a.X, a.Y, uint8(a.Z/4), a.TrackAndDirection, a.TrackProgress, c.Objects); r != PlaceDownOkay {
+		// VehiclePlace.cpp: the reason, the error window's second line.
+		c.ErrorText = i18n.VehicleApproachingOrInTheWay
+		if r == PlaceDownUnk0 {
+			c.ErrorText = i18n.NotEnoughSpaceOrVehicleInTheWay
+		}
 		return 0, false
 	}
 	tr, _ = m.TrainOf(a.Head)

@@ -1,0 +1,664 @@
+# r-boulder: Boulder Breakers played as a player would (LOOP PRIORITY 3, "a
+# second scenario played through properly"). Objective: performance index
+# 10% (no time limit), start January 1925, £39,800 cash all borrowed. The map:
+# a coal mine (183,167) and an iron ore mine (198,149) feed the Breakers
+# Bridge steel mill (210,181), which needs both. Two lines into the mill, one
+# train each (Baldwin 2-8-0 + five Wagons, full load); a year on, a third
+# line takes the mill's steel to the factory; then the game left to run at
+# extra fast speed for years, the money and the objective watched.
+# run.sh: manual — it plays some 18 minutes (run.sh r-boulder runs it).
+# Coordinates: camera X Y Z puts tile X,Y in the middle; zoom 1 a tile is
+# 16 px across and 8 down per x or y step (+x down-left, +y down-right).
+wait 20
+seed 1950
+scenario Boulder Breakers
+wait 20
+camera 196 172 1
+wait 3
+# The coal line: the Railway Track window; the first piece turned twice with
+# Z (heading +x, down-left on the screen) on tile 190,168 by the coal mine,
+# 16 straights, the large left curve (35,87), 12 straights south along x 205
+# past the steel mill.
+move 592 14
+wait 1
+click 620 42
+wait 1
+move 432 224
+wait 2
+key Z
+wait 1
+key Z
+wait 1
+move 433 224
+wait 1
+click 433 224
+wait 2
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 35 87
+wait 1
+click 67 225
+wait 1
+move 67 102
+wait 1
+click 67 102
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+camera 200 176 1
+wait 2
+# Two 4-tile stations by drag (Station tab): Boulder Bay Mines (190-193,168)
+# and Breakers Bridge (205,178-181) by the steel mill.
+click 51 57
+wait 2
+drag 352 356 400 380
+wait 2
+drag 432 156 384 180
+wait 2
+move 600 500
+wait 1
+# Train 1: Build Vehicles → Build Trains → Baldwin 2-8-0 and five Wagons
+# (the Build window shows no price, power or capacity: LOOP PRIORITY 3);
+# placed in the middle of the line (by a station's dead end: "not enough
+# space").
+move 682 14
+wait 1
+click 720 42
+move 450 165
+wait 2
+click 450 165
+wait 2
+move 360 298
+wait 1
+click 360 298
+wait 1
+click 360 298
+wait 1
+click 360 298
+wait 1
+click 360 298
+wait 1
+click 360 298
+wait 1
+move 791 37
+wait 1
+click 791 37
+wait 1
+move 251 470
+wait 1
+click 251 470
+wait 1
+move 330 215
+wait 2
+click 330 215
+move 700 520
+wait 3
+expect placed == 1
+move 150 414
+wait 1
+click 150 414
+wait 2
+# Route: Boulder Bay Mines, Breakers Bridge by their signs; the second order
+# selected so that "Wait for full load of Coal" goes in after the first
+# stop (an order is inserted before the selected one, as upstream); Main →
+# the flag → Start.
+move 405 158
+wait 1
+click 405 158
+wait 1
+move 375 358
+wait 1
+click 375 358
+wait 1
+move 60 443
+wait 1
+click 60 443
+wait 1
+move 251 450
+wait 1
+click 251 450
+wait 1
+move 300 468
+wait 1
+click 300 468
+wait 1
+move 700 520
+wait 1
+move 18 400
+wait 1
+click 18 400
+wait 2
+move 251 425
+wait 1
+click 251 425
+wait 1
+move 256 454
+wait 1
+click 256 454
+move 700 520
+wait 1
+# The ore line. Train 1's window and the Railway Track window closed; the
+# toolbar's rail entry opens a new window on its Construction tab (it used to
+# come back on the Station tab it was closed on: fixed, Common::
+# createConstructionWindow currentTab = 0). From tile 199,154 by the iron ore
+# mine, Z once (heading +y), 14 straights to the coal line and one across it
+# (a diamond crossing), 13 more, the large right curve, 5 straights east
+# along y 184 below the coal line's end.
+move 257 379
+wait 1
+click 257 379
+wait 1
+move 129 37
+wait 1
+click 129 37
+wait 1
+camera 205 160 1
+wait 2
+move 592 14
+wait 1
+click 620 42
+wait 1
+expect constab == 0
+move 400 204
+wait 2
+key Z
+wait 1
+move 401 204
+wait 1
+click 401 204
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+move 700 520
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 101 87
+wait 1
+click 67 225
+wait 1
+move 67 102
+wait 1
+click 67 102
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+camera 203 178 1
+wait 2
+move 700 520
+wait 1
+wait 2
+click 67 225
+wait 1
+click 67 225
+wait 1
+# Stations: Breakers Bridge North (203-206,184) at the mill, Beachtown Mines
+# (199,154-157) at the ore mine.
+click 51 57
+wait 2
+drag 496 348 448 372
+wait 2
+camera 205 160 1
+wait 2
+drag 400 204 448 228
+wait 2
+move 700 520
+wait 1
+expect stations == 4
+shot /tmp/goloco-playthrough/pt-rb-lines.png
+# Signals (Signal tab) on both lines either side of the crossing: without
+# them both lines are one block and Train 2 can't be placed while Train 1
+# runs ("Vehicle approaching or in the way" — the reason line was missing:
+# fixed, VehiclePlace.cpp's setErrorText).
+move 80 57
+wait 1
+click 80 57
+wait 1
+camera 199 168 0
+wait 2
+move 304 267
+wait 2
+click 304 267
+wait 2
+move 496 363
+wait 2
+click 496 363
+wait 2
+move 304 363
+wait 2
+click 304 363
+wait 2
+move 496 267
+wait 2
+click 496 267
+wait 2
+move 700 520
+wait 1
+# Train 2: Baldwin 2-8-0 and five Wagons on the ore line; route Beachtown
+# Mines (wait for full load of Iron Ore) → Breakers Bridge North; started;
+# extra fast forward.
+camera 203 178 1
+wait 2
+move 682 14
+wait 1
+click 720 42
+move 450 165
+wait 2
+click 450 165
+wait 2
+move 360 298
+wait 1
+click 360 298
+wait 1
+click 360 298
+wait 1
+click 360 298
+wait 1
+click 360 298
+wait 1
+click 360 298
+wait 1
+move 791 37
+wait 1
+click 791 37
+wait 1
+move 251 470
+wait 1
+click 251 470
+wait 1
+move 400 247
+wait 2
+click 400 247
+move 700 520
+wait 2
+expect placed == 2
+expect vehicles == 2
+move 150 414
+wait 1
+click 150 414
+wait 2
+camera 199 168 1
+wait 2
+move 200 190
+wait 1
+click 200 190
+wait 1
+move 570 463
+wait 1
+click 570 463
+wait 1
+move 60 443
+wait 1
+click 60 443
+wait 1
+move 251 450
+wait 1
+click 251 450
+wait 1
+move 300 478
+wait 1
+click 300 478
+wait 1
+move 700 520
+wait 1
+move 18 400
+wait 1
+click 18 400
+wait 2
+move 251 425
+wait 1
+click 251 425
+wait 1
+move 256 454
+wait 1
+click 256 454
+move 700 520
+wait 1
+move 748 594
+wait 1
+click 748 594
+move 700 520
+wait 30
+# Finances (the company face's menu → the company → Finances tab): the
+# loan raised by £4,000 (two clicks on its + button).
+shot /tmp/goloco-playthrough/pt-rb-started.png
+move 688 594
+wait 1
+click 688 594
+wait 1
+move 20 585
+wait 1
+click 20 585
+wait 1
+move 70 535
+wait 1
+click 70 535
+wait 2
+move 641 57
+wait 1
+click 641 57
+wait 2
+move 345 299
+wait 1
+click 345 299
+wait 1
+click 345 299
+wait 1
+move 700 520
+wait 1
+shot /tmp/goloco-playthrough/pt-rb-finances.png
+move 688 594
+wait 1
+click 688 594
+move 700 520
+# half year 1
+wait 20
+wait 20
+wait 20
+wait 20
+wait 20
+wait 20
+shot /tmp/goloco-playthrough/pt-rb-half1.png
+expect progress >= 0
+expect cash > -100000
+# half year 2
+wait 20
+wait 20
+wait 20
+wait 20
+wait 20
+wait 20
+shot /tmp/goloco-playthrough/pt-rb-half2.png
+expect progress >= 0
+expect cash > -100000
+# The steel line (with the mill fed, it makes steel): every window closed;
+# the rail entry again; from tile 187,188 by the Boulder Bay factory, Z
+# twice (heading +x), 21 straights along y 188 to the mill; stations Boulder
+# Bay (187-190) and Breakers Bridge Transfer (204-207). Train 3: Baldwin
+# 2-8-0 and three Flatbed Wagons, Breakers Bridge Transfer (wait for full
+# load of Steel) → Boulder Bay.
+key Left Shift+Backspace
+wait 1
+camera 197 188 1
+wait 2
+move 592 14
+wait 1
+click 620 42
+wait 1
+expect constab == 0
+move 560 220
+wait 2
+key Z
+wait 1
+key Z
+wait 1
+move 561 220
+wait 1
+click 561 220
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+move 700 520
+wait 1
+click 51 57
+wait 2
+drag 240 380 288 356
+wait 2
+drag 560 220 512 244
+wait 2
+move 700 520
+wait 1
+expect stations == 6
+move 682 14
+wait 1
+click 720 42
+move 450 165
+wait 2
+click 450 165
+wait 2
+move 380 232
+wait 1
+click 380 232
+wait 1
+click 380 232
+wait 1
+click 380 232
+wait 1
+move 791 37
+wait 1
+click 791 37
+wait 1
+move 251 470
+wait 1
+click 251 470
+wait 1
+move 400 304
+wait 2
+click 400 304
+move 700 520
+wait 2
+expect placed == 3
+move 150 414
+wait 1
+click 150 414
+wait 2
+move 260 358
+wait 1
+click 260 358
+wait 1
+move 535 222
+wait 1
+click 535 222
+wait 1
+move 60 443
+wait 1
+click 60 443
+wait 1
+move 251 450
+wait 1
+click 251 450
+wait 1
+move 300 488
+wait 1
+click 300 488
+wait 1
+move 700 520
+wait 1
+move 18 400
+wait 1
+click 18 400
+wait 2
+move 251 425
+wait 1
+click 251 425
+wait 1
+move 256 454
+wait 1
+click 256 454
+move 700 520
+wait 1
+move 748 594
+wait 1
+click 748 594
+move 700 520
+expect vehicles == 3
+# half year 3
+wait 20
+wait 20
+wait 20
+wait 20
+wait 20
+wait 20
+shot /tmp/goloco-playthrough/pt-rb-half3.png
+expect progress >= 0
+expect cash > -100000
+# half year 4
+wait 20
+wait 20
+wait 20
+wait 20
+wait 20
+wait 20
+shot /tmp/goloco-playthrough/pt-rb-half4.png
+expect progress >= 0
+expect cash > -100000
+# half year 5
+wait 20
+wait 20
+wait 20
+wait 20
+wait 20
+wait 20
+shot /tmp/goloco-playthrough/pt-rb-half5.png
+expect progress >= 0
+expect cash > -100000
+# half year 6
+wait 20
+wait 20
+wait 20
+wait 20
+wait 20
+wait 20
+shot /tmp/goloco-playthrough/pt-rb-half6.png
+expect progress >= 0
+expect cash > -100000
+expect delivered > 0
+# won in October 1925 ("0 years 9 months"), still won in May 1928
+expect progress == 100
+quit

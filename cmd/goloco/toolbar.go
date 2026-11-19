@@ -206,6 +206,10 @@ func (g *Game) openConstructionWithFlags(flags uint8) {
 	}
 	g.w.Map.SetTrackOptions(flags, g.r.ObjMgr)
 	g.consRecall(g.buildMode == buildModeRoad, g.buildObjID) // the remembered signal, station, bridge
+	// Common::createConstructionWindow: a new window is on its first tab
+	// (currentTab = 0). The tab used to outlive the window: one closed on its
+	// Station tab came back on it, the map hover doing nothing.
+	g.consTab, g.consSigOne = 0, false
 	g.wins.Show(g.newPortedConstructionWindow())
 }
 

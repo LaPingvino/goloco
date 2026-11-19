@@ -1,6 +1,10 @@
 package sim
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/LaPingvino/goloco/pkg/i18n"
+)
 
 // vehiclePassSignal on a saved train: another company's is refused; its own
 // query changes nothing; applied, var_5C = 2 and Vehicle1's passSignal set.
@@ -27,5 +31,30 @@ func TestVehiclePassSignal(t *testing.T) {
 	_, ok := m.VehiclePassSignal(c, CmdApply, head.ID)
 	if !ok || m.Entities[tr.Head].Var5C != 2 || m.Entities[tr.Veh1].Var48&flags48PassSignal == 0 || c.Pos == nil {
 		t.Fatalf("apply: ok %v var5C %d var48 %#x pos %v", ok, m.Entities[tr.Head].Var5C, m.Entities[tr.Veh1].Var48, c.Pos)
+	}
+}
+
+// canBeModified's reasons (VehicleHead::canBeModified's setErrorText) reach
+// the command: a moving train, a crashed, stuck or broken-down one.
+func TestCanBeModifiedErrorText(t *testing.T) {
+	m, _ := loadDataMap(t, "title.dat")
+	trains, _ := m.Trains()
+	tr := firstRailTrain(t, m, trains, 1)
+	m.Entities[tr.Head].Status = StatusTravelling
+	m.Entities[tr.Veh2].CurrentSpeed, m.Entities[tr.Veh1].Var3C = 10, 0x4000
+	for _, k := range []struct {
+		status uint8
+		want   int
+	}{{StatusTravelling, i18n.VehicleMustBeStopped}, {StatusCrashed, i18n.VehicleHasCrashed}, {StatusStuck, i18n.VehicleIsStuck}, {StatusBrokenDown, i18n.VehicleHasBrokenDown}} {
+		m.Entities[tr.Head].Status = k.status
+		c := &Cmd{}
+		if m.canBeModified(c, tr) || c.ErrorText != k.want {
+			t.Errorf("status %d: error text %d, want %d", k.status, c.ErrorText, k.want)
+		}
+	}
+	m.Entities[tr.Head].Status = StatusTravelling
+	m.Entities[tr.Veh2].CurrentSpeed = 0
+	if c := (&Cmd{}); !m.canBeModified(c, tr) || c.ErrorText != 0 {
+		t.Errorf("stopped: refused (%d)", c.ErrorText)
 	}
 }
