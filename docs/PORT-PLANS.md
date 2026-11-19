@@ -165,6 +165,15 @@ Direction:
   interface's first draft (docs/AI-INTERFACE.md), with goloco's existing equivalent or the gap for each.
 - **An AI interface in pkg/sim:** what a company's AI may see (the map, towns, industries, its own finances) and do
   (game commands only, as a player does: no shortcuts). One AI per company, chosen when it's created.
+- **Cheats: configurable, off by default, and designed so they don't break the AI** (Joop 2026-11-19: "make that
+  configurable. There are stories about how the cheating actually breaks AIs badly, maybe read up on that, and
+  it's probably good to still allow them to be challenging and for that allow some kind of cheating if turned on,
+  but in a way that actually works and doesn't destroy them"). Default: the AI sees and does what a player can
+  (own loans, private planning, its own rng, no peeking at competitors' plans). Advantages are separate switches
+  per AI or difficulty level. To do before building them: read up on how cheats break game AIs (OpenLoco's own
+  free-build fallback — retrying for free hides bad plans instead of teaching the AI to plan within its means;
+  OpenTTD / TTD, Civ, RTS experiences) and pick advantages that keep the AI's decisions sound, e.g. a cost or
+  income multiplier the AI plans WITH (it knows its real prices) rather than silent free retries it can't see.
 - **The original is not ported.** Consequence: the economy comparison with OpenLoco (simcmp) stays an AI-off check;
   the AI companies' records (aiThoughts, the AI fields of the company) are kept as loaded, so OpenLoco saves still
   load and save.
