@@ -287,7 +287,7 @@ func (w *MessagesWindow) Draw(screen *ebiten.Image) {
 		if w.Tab == 1 {
 			for i := range w.Settings {
 				r := settingsDropdown(i)
-				optDropdown(rt, r[0], r[1], r[2], sec)
+				optDropdown(rt, &w.WinBase, r[0], r[1], r[2], sec)
 			}
 			gfx8.FillRectInset(rt, messageSettingsCheckboxX, messageSettingsCheckboxY, messageSettingsCheckboxX+10-1, messageSettingsCheckboxY+10-1,
 				gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)

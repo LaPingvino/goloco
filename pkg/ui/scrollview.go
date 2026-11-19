@@ -60,8 +60,11 @@ func drawVScrollViewPressed(rt *gfx8.RenderTarget, x, y, w, h int, c gfx8.InsetC
 	}
 	gfx8.FillRectInset(rt, sx, sy, sx+L.ScrollbarSize-1, sy+L.ScrollbarSize-1, c, pf("up"))
 	gfx8.FillRectInset(rt, sx, sy+sh-L.ScrollbarSize, sx+L.ScrollbarSize-1, sy+sh-1, c, pf("down"))
+	// The thumb at scrollPos + (0, vThumbTop): vThumbTop counts from the
+	// widget's top, scrollPos is one margin below it (ScrollViewWidget.cpp
+	// drawVScroll); getPart's hit test counts from the widget's top alone.
 	top, bot := L.VThumb(h, contentH, offset)
-	gfx8.FillRectInset(rt, sx, y+top, sx+L.ScrollbarSize-1, y+top+(bot-top-L.ScrollbarMargin)-1, c, pf("thumb"))
+	gfx8.FillRectInset(rt, sx, sy+top, sx+L.ScrollbarSize-1, sy+top+(bot-top-L.ScrollbarMargin)-1, c, pf("thumb"))
 	return cx, cy, cw - L.ScrollbarSize - L.ScrollbarMargin, ch - L.ScrollbarMargin, true
 }
 

@@ -363,6 +363,7 @@ func (g *Game) prepareWindow(win ui.Win) {
 // news among the others in the list's order — and a dragged car over it
 // (DragVehiclePart: stickToFront).
 func (g *Game) drawWindows(screen *ebiten.Image) {
+	g.wins.SetDropdownActive(g.dropdown != nil && g.dropdown.Visible || g.colourDropdown != nil && g.colourDropdown.Visible)
 	g.wins.Draw(screen, g.prepareWindow)
 	for _, win := range g.wins.Windows {
 		if w, ok := win.(*ui.VehicleWindow); ok {

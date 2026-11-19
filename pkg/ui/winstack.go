@@ -154,6 +154,10 @@ type WinBase struct {
 	// screen coordinates.
 	pressed    image.Rectangle
 	hasPressed bool
+	// pressedHit: where a release still counts as over the pressed widget,
+	// when more than its own rectangle (a combobox's button: the combobox
+	// too, findWidgetAt); empty: pressed alone.
+	pressedHit image.Rectangle
 }
 
 // Win is a window on the stack.
@@ -306,7 +310,47 @@ type WindowStack struct {
 	// (_pressedWindowType / _pressedWidgetIndex, State::widgetPressed).
 	clicks        []ClickSound
 	pressedBtn    image.Rectangle
+	pressedHit    image.Rectangle // pressedBtn and what counts as it (WinBase.pressedHit)
 	hasPressedBtn bool
+	// dropdownBtn: a dropdown button whose press opens a dropdown (set by
+	// dropdownPress), pressed while that dropdown is up (SetDropdownActive).
+	dropdownBtn stackDropdownBtn
+}
+
+// stackDropdownBtn is _pressedWindowType / _pressedWidgetIndex kept through
+// State::dropdownActive: the window and its button (window coordinates).
+type stackDropdownBtn struct {
+	owner Win
+	r     [4]int
+	state uint8
+}
+
+const (
+	dropdownNone    = iota
+	dropdownPending // pressed; the dropdown is to open
+	dropdownActive  // the dropdown is up
+)
+
+// SetDropdownActive tells the stack whether a dropdown is up, before the
+// windows are drawn: a dropdown button pressed since is the dropdown's
+// (Input::State::dropdownActive with its pressed widget) until none is up.
+func (s *WindowStack) SetDropdownActive(open bool) {
+	switch {
+	case !open:
+		s.dropdownBtn = stackDropdownBtn{}
+	case s.dropdownBtn.state == dropdownPending:
+		s.dropdownBtn.state = dropdownActive
+	}
+}
+
+// dropdownPressed reports the window's dropdown button r as the pressed
+// widget of the dropdown that is up (Window::draw's pressedWidget).
+func (b *WinBase) dropdownPressed(r [4]int) bool {
+	if b.stack == nil {
+		return false
+	}
+	d := b.stack.dropdownBtn
+	return d.state == dropdownActive && d.owner == b.self && d.r == r
 }
 
 func prepare(w Win) {

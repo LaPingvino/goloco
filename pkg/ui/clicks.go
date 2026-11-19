@@ -68,6 +68,7 @@ func (b *WinBase) Button(r [4]int, x, y int) bool {
 // that found the widget its own way.
 func (b *WinBase) PressWidget(r [4]int) {
 	b.pressed = image.Rect(b.X+r[0], b.Y+r[1], b.X+r[0]+r[2], b.Y+r[1]+r[3])
+	b.pressedHit = image.Rectangle{}
 	b.hasPressed = true
 }
 
@@ -89,6 +90,7 @@ func (s *WindowStack) pressHandled(w Win, x, y int) {
 	if r, ok := b.takePressed(); ok {
 		s.clicks = append(s.clicks, ClickSound{ClickDown, MidX(r.Min.X, r.Dx())})
 		s.pressedBtn, s.hasPressedBtn = r, true
+		s.pressedHit = r.Union(b.pressedHit)
 	}
 }
 
@@ -110,7 +112,7 @@ func (s *WindowStack) ReleaseButton(x, y int, dropdownOpen bool) {
 		return
 	}
 	switch {
-	case image.Pt(x, y).In(r):
+	case image.Pt(x, y).In(r) || image.Pt(x, y).In(s.pressedHit):
 		s.clicks = append(s.clicks, ClickSound{ClickUp, MidX(r.Min.X, r.Dx())})
 	case s.FindAt(x, y) == nil:
 		s.clicks = append(s.clicks, ClickSound{ClickUp, MidX(0, s.ScreenW)})
