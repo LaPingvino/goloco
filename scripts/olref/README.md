@@ -122,6 +122,11 @@ Terraform window's five tabs on the title save opened at tile 294,370
 (setview): every step's shot is taken under the same name in each game's
 directory, to put side by side.
 
+tours/terraform-cursors.txt is the tools' cursors in both games: OLREF_SHOT_POINTER=1 makes xt.py's
+`shot` take the pointer too (ffmpeg x11grab instead of import); goloco, which draws its bitmap cursors
+itself, is driven by xt.py on its own Xvfb (OLREF_ORIGIN=0,0). Run a script with a press and its drag in
+one xt.py process (`run`): X releases the buttons of an XTest client when it exits.
+
 tours/music.txt (the Audio menu, the Jukebox, Music Selection, Options' Audio
 tab, on the title game) and music-title.txt (the Jukebox on the title screen)
 start both games from the same audio settings — OpenLoco picks its track with

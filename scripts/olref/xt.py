@@ -146,7 +146,11 @@ def do(cmd, args):
         for ch in " ".join(args):
             tap(CHARS.get(ch, ch), shift=ch.isupper())
     elif cmd == "shot":
-        subprocess.run(["import", "-window", "root", "-crop", f"800x600+{OX}+{OY}", "+repage", args[0]], check=True)
+        if os.environ.get("OLREF_SHOT_POINTER"):  # the pointer in the shot (import leaves it out): ffmpeg's x11grab draws it
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "x11grab", "-draw_mouse", "1", "-video_size", "800x600",
+                            "-i", f"{os.environ['DISPLAY']}+{OX},{OY}", "-frames:v", "1", args[0]], check=True)
+        else:
+            subprocess.run(["import", "-window", "root", "-crop", f"800x600+{OX}+{OY}", "+repage", args[0]], check=True)
     elif cmd == "state":
         x, y, held = state()
         print(f"pointer {x - OX},{y - OY} buttons held: {held or 0}")

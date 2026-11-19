@@ -24,6 +24,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.shotsEvery > 0 && g.shotsLeft > 0 && time.Since(g.shotsLast) >= g.shotsEvery && os.Getenv("GOLOCO_SHOT_PAINTDUMP") != "" {
 		paint.Dump = &[]string{} // diagnostic: this frame's paint structs, saved with the shot
 	}
+	defer g.drawCursor(screen)    // a bitmap cursor (SDL's own upstream): after the shots, never in them
 	defer g.maybeSaveShot(screen) // captures (--shots) of the finished frame: after the FPS counter
 	defer g.drawFPS(screen)       // SoftwareDrawingEngine: the FPS counter over everything, last
 	defer g.drawTooltip(screen)   // the tooltip window, over the other windows

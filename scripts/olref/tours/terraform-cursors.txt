@@ -1,0 +1,83 @@
+# The Terraform window's tool cursors (and the expanded tree list, the lists'
+# tooltips) on the title save opened at tile 294,370 (as terraform.txt), one
+# script for both games, run with OLREF_SHOT_POINTER=1 so each shot has the
+# pointer in it (xt.py: ffmpeg x11grab; goloco draws its bitmap cursors itself
+# — drive goloco on its own Xvfb with xt.py, OLREF_ORIGIN=0,0, not
+# GOLOCO_SCRIPT, whose shots leave the cursor out as OpenLoco's screenshots
+# do). One xt.py process for the whole script: X releases a button an XTest
+# client held when it exits, so a press and the moves that drag must be in
+# the same run. 2026-11-19, OpenLoco 09d74ee: bulldozer, land, water, plant
+# tree and fence cursors, the up/down arrow while a land or water selection is
+# held, the pointer over the window — the same pixels at the same place
+# (goloco's pointer over a window is the X root's cross on a bare Xvfb).
+wait 12
+click 688 592
+wait 0.5
+press 562 14
+wait 0.5
+move 580 66
+wait 0.5
+release 580 66
+wait 1
+click 200 58
+wait 1
+move 400 300
+wait 1
+shot c1-land-hover.png
+press 400 300
+wait 0.5
+shot c2a-land-pressed.png
+move 400 296
+wait 1
+shot c2-land-held.png
+move 400 283
+wait 1
+shot c2b-land-raised.png
+release 400 283
+wait 1
+move 400 300
+wait 1
+shot c3-land-released.png
+move 190 120
+wait 1
+shot c4-over-window.png
+click 184 58
+wait 0.5
+move 300 350
+wait 1
+shot c5-clear.png
+click 246 58
+wait 0.5
+move 520 380
+wait 1
+shot c6-water.png
+press 520 380
+wait 0.5
+move 520 376
+wait 1
+shot c7-water-held.png
+release 520 376
+wait 1
+click 277 58
+move 100 300
+wait 1
+move 500 400
+wait 1.5
+shot c8-trees.png
+move 400 100
+wait 3
+shot c9-trees-list.png
+move 100 300
+wait 1
+click 308 58
+move 100 300
+wait 1
+move 600 380
+wait 1.5
+shot c10-walls.png
+click 600 380
+wait 1
+shot c11-walls-built.png
+move 400 90
+wait 3
+shot c12-walls-list.png
