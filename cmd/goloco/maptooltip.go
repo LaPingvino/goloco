@@ -65,12 +65,14 @@ func (g *Game) updateMapTip() {
 func (g *Game) mapTipMouseOver() {
 	t := &g.mapTip
 	t.tip = world.MapTip{Owner: -1} // MapToolTip::reset
+	g.w.ResetHoveredStation()       // resetMapSelectionFlag(hoveringOverStation)
 	if g.inTitleScreen {
 		return
 	}
 	mx, my := g.mouseX, g.mouseY
-	if !g.overWindow(mx, my) && !g.toolActive() { // the viewport widget, no tool
-		if it, ok := g.w.ItemLeftAt(mx, my); ok {
+	vps, _ := g.viewportsAt(mx, my)                    // findAt's window and its viewports
+	if g.viewportWidgetAt(mx, my) && !g.toolActive() { // a viewport widget, no tool
+		if it, ok := g.w.ItemLeftAt(vps, mx, my); ok {
 			switch it.Kind {
 			case paint.ItemEntity, paint.ItemTownLabel, paint.ItemStationLabel, paint.ItemIndustry, paint.ItemHeadquarterBuilding:
 				if tip, ok := g.w.MapTipLeft(it); ok {
@@ -85,9 +87,10 @@ func (g *Game) mapTipMouseOver() {
 		t.tip.Text = itoa(l) + " x " + itoa(d)
 	}
 	// ViewportInteraction::rightOver: what a right click would act on gives
-	// its text (over a window there is no viewport under the mouse).
-	if !g.overWindow(mx, my) && g.r.ObjMgr != nil {
-		if _, tip, hasTip, ok := g.w.RightOver(mx, my, g.rightOverState()); ok && hasTip {
+	// its text — in the viewport of the window under the mouse that holds it
+	// (none: nothing).
+	if g.r.ObjMgr != nil {
+		if _, tip, hasTip, ok := g.w.RightOver(vps, mx, my, g.rightOverState()); ok && hasTip {
 			t.tip = tip
 		}
 	}

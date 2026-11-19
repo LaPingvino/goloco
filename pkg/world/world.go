@@ -113,6 +113,11 @@ type World struct {
 	scene      *scene.Renderer   // ported software renderer (scene.go)
 	// The Vehicle window's viewport: its own renderer and image.
 	vehicleScene *scene.Renderer
+	// hoveredStation / hoveringOverStation: Input's _hoveredStationId and
+	// MapSelectionFlags::hoveringOverStation — the station whose name sign
+	// is drawn highlighted (ItemLeftAt sets them, ResetHoveredStation clears).
+	hoveredStation      int
+	hoveringOverStation bool
 	// The main view's focus on a train (FocusOnVehicle).
 	followHead uint16
 	following  bool

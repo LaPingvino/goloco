@@ -48,7 +48,7 @@ func (w *World) RouteAt(sx, sy int, mode uint8) (RouteHit, bool) {
 		return RouteHit{}, false
 	}
 	m := &w.Map
-	in := w.mapCoordinatesAt(sx, sy, func(it paint.InteractionItem) bool {
+	in, _ := w.mapCoordinatesAt(w.mainViewports(), sx, sy, func(it paint.InteractionItem) bool {
 		switch it {
 		case paint.ItemTrack, paint.ItemRoad, paint.ItemTrainStation, paint.ItemRoadStation, paint.ItemAirport, paint.ItemDock, paint.ItemStationLabel:
 			return true

@@ -30,8 +30,11 @@ import (
 // did before this port (at half the speed). A scroll view moves the way its
 // thumb would (verticalDragFollow / horizontalDragFollow), the same switch
 // turning it round.
-// PARTIAL: a view following a vehicle is not let go (viewportUnfocusFromEntity); viewports of other
-// windows.
+// The Town, Industry, Station and Vehicle windows' viewports are
+// viewportNoScrolling: a right press there holds the cursor (hidden, not
+// pinned) and pans nothing; released within 500 ms — however far the mouse
+// went — it acts on what is under the press point in that viewport.
+// PARTIAL: a view following a vehicle is not let go (viewportUnfocusFromEntity).
 
 // cursorDrag is startCursorDrag's hold on the cursor: hidden, and put back
 // at the press point after every frame (getNextDragOffset) — the frame's move
@@ -57,6 +60,12 @@ type viewportRightState struct {
 	on    bool      // Input::state() == State::viewportRight
 	ticks int       // _ticksSinceDragStart (ms; 1000 once the mouse moved)
 	last  time.Time // getTimeSinceLastTick's clock
+	// the window dragged in (_dragWindowType, _dragWindowNumber; main: the
+	// main view) and its viewportNoScrolling
+	main     bool
+	typ      ui.WindowType
+	number   int
+	noScroll bool
 	cursorDrag
 }
 
@@ -80,6 +89,8 @@ func (g *Game) rightDragging() bool { return g.vpRight.on || g.scRight.on }
 func (g *Game) pinRightDrag() {
 	var c *cursorDrag
 	switch {
+	case g.vpRight.on && g.vpRight.noScroll:
+		return // stateViewportRight returns before getNextDragOffset: the cursor is not put back
 	case g.vpRight.on:
 		c = &g.vpRight.cursorDrag
 	case g.scRight.on:
@@ -111,9 +122,14 @@ func (g *Game) updateViewportRight() {
 	if !r.on {
 		return
 	}
+	if !r.main && g.wins.Find(r.typ, r.number) == nil { // the window gone: State::reset
+		r.on = false
+		g.stopCursorDrag(&r.cursorDrag)
+		return
+	}
 	if g.inMouseJustReleased(ebiten.MouseButtonRight) || !g.inMousePressed(ebiten.MouseButtonRight) && !g.inMouseJustPressed(ebiten.MouseButtonRight) {
-		r.on = false    // Input::state(State::reset)
-		g.applyCursor() // Ui::showCursor: the chosen cursor back
+		r.on = false // Input::state(State::reset)
+		g.stopCursorDrag(&r.cursorDrag)
 		if r.ticks <= 500 {
 			g.handleRightReleased(r.pressX, r.pressY)
 		}
@@ -122,6 +138,9 @@ func (g *Game) updateViewportRight() {
 	now := gameNow()
 	r.ticks = min(r.ticks+int(now.Sub(r.last)/time.Millisecond), 2000)
 	r.last = now
+	if r.noScroll { // viewportNoScrolling: only the time counts
+		return
+	}
 	if dx, dy := r.dx, r.dy; dx != 0 || dy != 0 {
 		r.ticks = 1000
 		// the view moves the mouse's way, twice as far (panZoom = zoom + 1);
@@ -138,7 +157,8 @@ func (g *Game) updateViewportRight() {
 // instead; on a window the tooltip closes and the window comes to the front —
 // with a modal window open nothing more (its scrollModalRight: the file
 // browser's, update.go), nor in the title — then a scroll view begins
-// scrollRight; on no window the main view begins viewportRight.
+// scrollRight, a viewport widget viewportRight (viewportDragBegin); on no
+// window the main view begins viewportRight.
 func (g *Game) rightPressed(x, y int) {
 	if (g.dropdown != nil && g.dropdown.Visible) || (g.colourDropdown != nil && g.colourDropdown.Visible) {
 		return
@@ -149,10 +169,16 @@ func (g *Game) rightPressed(x, y int) {
 		if g.wins.Modal != 0 || g.prompt != nil || g.inTitleScreen {
 			return
 		}
+		b := w.Base()
 		if i := ui.ScrollAreaAt(w, x, y); i >= 0 { // scrollDragBegin
-			b := w.Base()
 			g.scRight = scrollRightState{on: true, typ: b.WinType, number: b.Number, index: i}
 			g.scRight.begin(x, y)
+			startCursorDrag()
+		} else if vw, ok := w.(ui.ViewportWidgets); ok && vw.ViewportWidgetAt(x, y) {
+			// viewportDragBegin: these windows' viewports are viewportNoScrolling
+			// (initViewport sets it with the viewport)
+			g.vpRight = viewportRightState{on: true, last: gameNow(), typ: b.WinType, number: b.Number, noScroll: true}
+			g.vpRight.begin(x, y)
 			startCursorDrag()
 		}
 		return
@@ -160,7 +186,7 @@ func (g *Game) rightPressed(x, y int) {
 	if g.inTitleScreen {
 		return
 	}
-	g.vpRight = viewportRightState{on: true, last: gameNow()} // viewportDragBegin
+	g.vpRight = viewportRightState{on: true, last: gameNow(), main: true} // viewportDragBegin
 	g.vpRight.begin(x, y)
 	startCursorDrag()
 }
@@ -176,8 +202,8 @@ func (g *Game) updateScrollRight() {
 	}
 	w := g.wins.Find(r.typ, r.number)
 	if w == nil || !g.inMousePressed(ebiten.MouseButtonRight) {
-		r.on = false    // Input::state(State::reset)
-		g.applyCursor() // stopCursorDrag: Ui::showCursor
+		r.on = false // Input::state(State::reset)
+		g.stopCursorDrag(&r.cursorDrag)
 		return
 	}
 	dx, dy := r.dx, r.dy
@@ -198,17 +224,23 @@ func (g *Game) updateScrollRight() {
 	areas[r.index].DragFollow(dx, dy)
 }
 
+// stopCursorDrag is Input::stopCursorDrag: the cursor shown again, back at
+// the press point (the captured mode gives it back there; a script's pointer
+// is put there too, as setCursorPos puts X's).
+func (g *Game) stopCursorDrag(c *cursorDrag) {
+	g.applyCursor()
+	if g.script != nil && g.script.hasMouse {
+		g.script.mouseX, g.script.mouseY = c.pressX, c.pressY
+	}
+}
+
 // rightOverState is what ViewportInteraction::rightOver reads from the
 // windows: the construction window and its tab; a building tool on the map
 // (Input's toolActive with flag6: the Terraform window's tools, the industry
 // tool, the Construction tab's — the last always with the window).
 func (g *Game) rightOverState() world.RightOverState {
 	open := g.buildMode != buildModeNone && g.consWin() != nil
-	vf := g.w.ViewFlags() // the viewport's see-through flags: what they hide is not found
 	return world.RightOverState{
-		SeeThroughBuildings: vf.Has(paint.ViewSeeThroughBuildings), SeeThroughTrees: vf.Has(paint.ViewSeeThroughTrees),
-		SeeThroughScenery: vf.Has(paint.ViewSeeThroughScenery), SeeThroughTracks: vf.Has(paint.ViewSeeThroughTracks),
-		SeeThroughRoads:  vf.Has(paint.ViewSeeThroughRoads),
 		ConstructionOpen: open,
 		StationTab:       open && g.consTab == 1,
 		SignalTab:        open && g.consTab == 2,
@@ -245,14 +277,16 @@ func (g *Game) mapCommand(title string, demolish bool, run func(c *sim.Cmd, g1 s
 // building mode a tree, wall, building or headquarters is removed. Nothing
 // to act on: getItemLeft's item opens its list (the vehicle's owner's
 // vehicle list of its type, the town list, the station's owner's station
-// list, the industry list).
+// list, the industry list). (x, y) is the press point; the viewports are
+// those of the window there (the main view's, or a window's).
 func (g *Game) handleRightReleased(x, y int) {
 	if g.r.ObjMgr == nil {
 		return
 	}
 	m := &g.w.Map
 	ctrl, _ := g.w.ControllingCompany()
-	item, _, _, ok := g.w.RightOver(x, y, g.rightOverState())
+	vps, _ := g.viewportsAt(x, y)
+	item, _, _, ok := g.w.RightOver(vps, x, y, g.rightOverState())
 	if !ok {
 		item = world.RightItem{}
 	}
@@ -262,7 +296,7 @@ func (g *Game) handleRightReleased(x, y int) {
 	case paint.ItemTrack:
 		if t := item.Track; t != nil {
 			if int(t.Owner) == ctrl {
-				g.openConstructionAt(false, t.TrackObjectID, t.TrackID, t.SequenceIndex, t.Rotation, item.X, item.Y, int32(t.BaseZ)*4,
+				g.openConstructionAt(vps, false, t.TrackObjectID, t.TrackID, t.SequenceIndex, t.Rotation, item.X, item.Y, int32(t.BaseZ)*4,
 					t.Mods, t.HasBridge, t.BridgeID, x, y)
 			} else {
 				g.openCompanyWindow(int(t.Owner))
@@ -277,7 +311,7 @@ func (g *Game) handleRightReleased(x, y int) {
 				if anyRoad { // openAtRoad: such a road's mods are not taken
 					mods = 0
 				}
-				g.openConstructionAt(true, rd.RoadObjectID, rd.RoadID, rd.SequenceIndex, rd.Rotation, item.X, item.Y, int32(rd.BaseZ)*4,
+				g.openConstructionAt(vps, true, rd.RoadObjectID, rd.RoadID, rd.SequenceIndex, rd.Rotation, item.X, item.Y, int32(rd.BaseZ)*4,
 					mods, rd.HasBridge, rd.BridgeID, x, y)
 			} else {
 				g.openCompanyWindow(int(rd.Owner))
@@ -392,7 +426,7 @@ func (g *Game) handleRightReleased(x, y int) {
 			})
 		}
 	default: // noInteraction and the rest: getItemLeft's item opens its list
-		it, ok := g.w.ItemLeftAt(x, y)
+		it, ok := g.w.ItemLeftAt(vps, x, y)
 		if !ok {
 			return
 		}
@@ -424,11 +458,13 @@ func firstTile(x, y int32, seq uint8) (int32, int32) {
 // (0x004A147F): the construction window (opened, or reset to its
 // Construction tab) for the element's track or road type, building on from
 // the piece's end nearer the click (isPointCloserToNextOrPreviousTile: by
-// Manhattan distance on the screen to each end tile's centre), straight and
-// level, with the element's mods and — if it stands on one — its bridge.
+// Manhattan distance on the screen to each end tile's centre, as the clicked
+// window's first viewport shows them — openAtTrack(*window, …)'s
+// viewports[0]), straight and level, with the element's mods and — if it
+// stands on one — its bridge.
 // PARTIAL: the signal, station and bridge the scenario remembers per type
 // (Scenario::getConstruction) — the window's first available, as elsewhere.
-func (g *Game) openConstructionAt(road bool, obj, id, seq, rotation uint8, x, y, z int32, mods uint8, hasBridge bool, bridge uint8, sx, sy int) {
+func (g *Game) openConstructionAt(vps []world.Viewport, road bool, obj, id, seq, rotation uint8, x, y, z int32, mods uint8, hasBridge bool, bridge uint8, sx, sy int) {
 	next, prev, ok := sim.NextAndPreviousTile(road, id, seq, rotation, x, y, z)
 	if !ok {
 		return
@@ -444,8 +480,12 @@ func (g *Game) openConstructionAt(road bool, obj, id, seq, rotation uint8, x, y,
 		g.consBridge = int(bridge)
 	}
 	g.openConstructionWithFlags(flags) // createConstructionWindow / resetWindow, setTrackOptions
+	vp := g.w.MainViewport()
+	if len(vps) > 0 {
+		vp = vps[0]
+	}
 	dist := func(e sim.ConstructionEnd) int {
-		px, py := g.w.WorldToScreen(e.X+16, e.Y+16, e.Z)
+		px, py := vp.ToScreen(g.w, e.X+16, e.Y+16, e.Z)
 		return abs(px-sx) + abs(py-sy)
 	}
 	end := prev

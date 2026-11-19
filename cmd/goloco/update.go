@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/LaPingvino/goloco/pkg/world"
 	"github.com/LaPingvino/goloco/pkg/audio"
 	"github.com/LaPingvino/goloco/pkg/shortcuts"
 	"log"
@@ -511,7 +512,7 @@ func (g *Game) viewportLeftRelease() {
 	if g.overWindow(g.mouseX, g.mouseY) {
 		return // released over another window: _dragWindowType differs
 	}
-	if it, ok := g.w.ItemLeftAt(g.mouseX, g.mouseY); ok {
+	if it, ok := g.w.ItemLeftAt([]world.Viewport{g.w.MainViewport()}, g.mouseX, g.mouseY); ok {
 		switch it.Kind {
 		case paint.ItemEntity:
 			g.openVehicleWindow(uint16(it.ID), 0)

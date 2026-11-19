@@ -1,0 +1,81 @@
+# Right clicks and map tooltips in a window's viewport (ViewportInteraction
+# getMapCoordinatesFromPos / getItemLeft / rightOver through findAt's window,
+# MouseInput's viewportRight on a viewportNoScrolling window) and the hovered
+# station's sign (hoveringOverStation: getTranslucent(colour, 0)), on the title
+# game (untitle.py; goloco opens title.dat as it is), one script for both:
+#   env -C $SCRATCH/cwd ol.sh run viewport-rightclick.txt
+#   env -C <repo> XDG_CONFIG_HOME=$CFG GOLOCO_SCRIPT=… goloco …/Data/title.dat
+# The Dallas Town window opens bottom left (0,411); in its viewport: the
+# Dallas Central sign (its tooltip, the sign drawn light), an office block
+# (its tooltip), Memphis Freight's Train 2 (its tooltip; a right click opens
+# that company's train list); a right click on the sign opens Sapphire Lines'
+# station list; a right press, a 28 px move and the release within 500 ms on
+# the sign does the same (no pan: the window's viewport doesn't scroll);
+# held 0.8 s on the main view it does nothing. Last the main view's Kansas
+# City Central sign hovered (light) and left (plain again).
+# 2026-11-19, OpenLoco 09d74ee: every tooltip, what each click opens and the
+# signs agree (the signs' pixels but for a train passing behind).
+wait 12
+click 688 592
+wait 0.5
+click 571 451
+wait 0.5
+press 784 14
+wait 0.5
+move 760 42
+wait 0.5
+release 760 42
+wait 1
+click 220 172
+move 400 300
+wait 1.5
+shot vr-01-town.png
+move 112 541
+wait 3
+shot vr-02-station-hover.png
+move 165 502
+wait 3
+shot vr-03-building.png
+move 75 494
+wait 3
+shot vr-04-train.png
+rightclick 75 494
+wait 1
+move 600 500
+wait 1
+shot vr-05-trainlist.png
+key Backspace
+wait 0.5
+rightclick 112 541
+wait 1
+move 600 500
+wait 1
+shot vr-06-stationlist.png
+key Backspace
+wait 0.5
+rightpress 112 541
+wait 0.05
+move 140 520
+wait 0.05
+rightrelease 140 520
+wait 1
+move 600 500
+wait 1
+shot vr-07-dragclick.png
+key Backspace
+wait 0.5
+key Backspace
+wait 0.5
+rightpress 165 502
+wait 0.8
+rightrelease 165 502
+wait 1
+move 600 500
+wait 1
+shot vr-08-slow.png
+move 210 341
+wait 3
+shot vr-09-main-hover.png
+move 600 500
+wait 2
+shot vr-10-unhover.png

@@ -26,8 +26,8 @@ func tipTwoLines(top, bottom string) string {
 
 // MapTipLeft is the tooltip getItemLeft's argument functions give an item
 // ItemLeftAt found (getTownArguments, getStationArguments,
-// getIndustryArguments, getVehicleArguments, getHeadquarterArguments).
-// PARTIAL: the hovered station's highlight (hoveringOverStation).
+// getIndustryArguments, getVehicleArguments, getHeadquarterArguments; the
+// hovered station is set by ItemLeftAt).
 func (w *World) MapTipLeft(it LeftItem) (MapTip, bool) {
 	m := &w.Map
 	switch it.Kind {
@@ -96,3 +96,8 @@ func formatInt(n int64) string {
 	}
 	return b.String()
 }
+
+// ResetHoveredStation is processMouseOver's first step: the hovered station
+// let go (resetMapSelectionFlag(hoveringOverStation); its sign is drawn
+// plain again — every frame redraws the names, so no invalidate is needed).
+func (w *World) ResetHoveredStation() { w.hoveringOverStation = false }
