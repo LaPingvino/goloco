@@ -695,7 +695,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       ahead of time by an LLM translating each string of ja-JP / zh-CN (and zh-TW if one appears) into kana,
 >       pinyin and bopomofo (e.g. ja-JP-kana.yml, zh-CN-pinyin.yml, zh-TW-bopomofo.yml — bopomofo belongs with Taiwan;
 >       OpenLoco has only zh-CN, so a zh-TW.yml in Traditional characters comes first, converted with OpenCC's
->       rules and Taiwan phrasing, then its bopomofo variant), same keys and format
+>       rules and Taiwan phrasing, then its bopomofo variant; likewise zh-HK.yml in Traditional with Hong Kong
+>       phrasing and Cantonese where the UI would say it so, and zh-HK-jyutping.yml — Joop), same keys and format
 >       codes ({INT16}, {POP16} …) kept exactly, checked by a script (every key present, every format code intact,
 >       only the expected character set used) and spot-checked; they appear in the language list as variants.
 >       Korean jamo stays runtime (arithmetic). Licence: the files derive from OpenLoco's language files — check
