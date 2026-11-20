@@ -1,0 +1,38 @@
+# The map window's scroll bars and the main view's glide (PORT-PLANS A's
+# leftovers: ScrollViewWidget.cpp drawHScroll / drawVScroll, ScrollView.cpp
+# getPart and its handlers; Window.cpp viewportsUpdatePosition's
+# scrollingToLocation) on the title game (untitle.py's title.SV5, its saved
+# view), paused: the map opened (M) at (0, 28), its scroll view at (3, 72),
+# 240 × 215. Shots: the bars as opened; a click on the map and three shots in
+# quick succession while the main view glides there, and one when it has
+# arrived; the horizontal bar's right button held (drawn pressed; how far it
+# repeats depends on how long each game holds it); a page down on the
+# vertical track. Shots are named SHOTS/…: sed that to a scratch
+# directory per game.
+wait 12
+click 688 592
+wait 0.5
+move 400 300
+wait 1
+key M
+wait 2
+move 600 500
+wait 2
+shot SHOTS/mf-0-open.png
+click 60 120
+shot SHOTS/mf-1-glide-a.png
+shot SHOTS/mf-2-glide-b.png
+shot SHOTS/mf-3-glide-c.png
+wait 4
+shot SHOTS/mf-4-arrived.png
+press 223 280
+wait 0.3
+shot SHOTS/mf-5-held.png
+release 223 280
+wait 0.3
+click 235 222
+wait 0.3
+move 600 500
+wait 1
+shot SHOTS/mf-6-page.png
+quit

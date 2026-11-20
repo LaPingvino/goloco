@@ -490,6 +490,10 @@ func (g *Game) scriptExpect() {
 		}
 	case "constab": // the construction window's tab (0 construction, 1 station, 2 signal, 3 overhead)
 		got = int64(g.consTab)
+	case "glide": // 1 while the main view glides to a location (scrollingToLocation)
+		if g.w.Gliding() {
+			got = 1
+		}
 	case "camx", "camy": // the main view's position (viewport pixels)
 		cx, cy := g.w.CameraPos()
 		got = int64(cx)
@@ -502,6 +506,14 @@ func (g *Game) scriptExpect() {
 			got = int64(w.ScrollX)
 			if req[0] == "mapscrolly" {
 				got = int64(w.ScrollY)
+			}
+		}
+	case "mapw", "maph": // the map window's width / height; -1 closed
+		got = -1
+		if w, ok := g.wins.Find(ui.WindowTypeMap, ui.AnyNumber).(*ui.MapWindow); ok {
+			got = int64(w.W)
+			if req[0] == "maph" {
+				got = int64(w.H)
 			}
 		}
 	case "maptab", "maphover": // the map window's tab (currentTab) / hovered key row bits (var_854); -1 closed

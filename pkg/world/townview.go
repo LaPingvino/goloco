@@ -89,30 +89,30 @@ func (w *World) placeView(x, y, width, height int) (scene.View, bool) {
 	return scene.View{X: vx - (width<<zoom)/2, Y: vy - (height<<zoom)/2, W: width, H: height, Zoom: zoom, Ticks: m.ScenarioTicks}, true
 }
 
-// CentreOnTown is the Town window's centre_on_viewport (viewportCentreMain):
-// the main view moved to the town.
+// CentreOnTown is the Town window's centre_on_viewport (TownWindow.cpp:
+// viewportCentreMain on its savedView, which initViewport sets to the
+// town's x, y and the land height there): the main view glides to the town.
 func (w *World) CentreOnTown(idx int) bool {
 	m := &w.Map
 	if idx < 0 || idx >= len(m.Towns) {
 		return false
 	}
 	t := &m.Towns[idx]
-	w.SetCamera(float64(t.X)/32, float64(t.Y)/32)
-	w.externalCamera = false
-	w.SetViewFlags(paint.ViewUnderground, false) // viewportCentreOnTile: a place on the ground ends the underground view
+	land, _ := m.GetHeight(int32(t.X), int32(t.Y))
+	w.viewportCentreMain(int32(t.X), int32(t.Y), int32(land))
 	return true
 }
 
 // CentreOnIndustry is the Industry window's centre_on_viewport
-// (viewportCentreMain): the main view moved to the industry.
+// (IndustryWindow.cpp: viewportCentreMain on the industry's x, y at the land
+// height there): the main view glides to the industry.
 func (w *World) CentreOnIndustry(idx int) bool {
 	if idx < 0 || idx >= len(w.Map.Industries) {
 		return false
 	}
 	in := &w.Map.Industries[idx]
-	w.SetCamera(float64(in.X)/32, float64(in.Y)/32)
-	w.externalCamera = false
-	w.SetViewFlags(paint.ViewUnderground, false) // viewportCentreOnTile, as the town's
+	land, _ := w.Map.GetHeight(int32(in.X), int32(in.Y))
+	w.viewportCentreMain(int32(in.X), int32(in.Y), int32(land))
 	return true
 }
 
@@ -146,15 +146,14 @@ func (w *World) stationView(id, width, height int) (scene.View, bool) {
 }
 
 // CentreOnStation is the Station window's centre_on_viewport
-// (viewportCentreMain): the main view moves to the station.
+// (StationWindow.cpp: viewportCentreMain on the station's x, y, z): the main
+// view glides to the station.
 func (w *World) CentreOnStation(id int) bool {
 	m := &w.Map
 	if id < 0 || id >= len(m.StationNames) {
 		return false
 	}
 	s := &m.StationNames[id]
-	w.SetCamera(float64(s.X)/32, float64(s.Y)/32)
-	w.externalCamera = false
-	w.centreUnderground(int32(s.X), int32(s.Y), int32(s.Z)) // viewportCentreOnTile(station->x, y, z)
+	w.viewportCentreMain(int32(s.X), int32(s.Y), int32(s.Z))
 	return true
 }

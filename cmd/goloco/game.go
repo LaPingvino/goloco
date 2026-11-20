@@ -76,6 +76,7 @@ type Game struct {
 	vpRight                        viewportRightState // the right button on the main view (rightclick.go)
 	scRight                        scrollRightState   // the right button on a window's scroll view (rightclick.go)
 	windowFrame                    int                // counts Updates: the windows' frameNo (onUpdate's frameNo += 1)
+	rendered                       bool               // this Update ran a tick (GameTicks > 0): its Ui::render follows (ViewportsUpdatePosition)
 
 	// The title screen.
 	inTitleScreen bool

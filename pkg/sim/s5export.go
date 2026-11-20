@@ -185,6 +185,7 @@ func (s *State) ExportScenario() *scenario.Scenario {
 	sc.LastBuildVehiclesOption, sc.LastVehicleType = m.LastBuildVehiclesOption, m.LastVehicleType
 	sc.LastAirport, sc.LastShipPort = m.LastAirport, m.LastShipPort
 	sc.Construction = m.Construction
+	sc.LastMapWindow = m.LastMapWindow
 	sc.PickupDirection = m.PickupDirection
 	sc.UnlockedVehicles = m.UnlockedVehicles
 	sc.Animations, sc.AnimationSlots = m.Animations, m.AnimationSlots

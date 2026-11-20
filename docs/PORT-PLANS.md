@@ -13,7 +13,13 @@ General rules (CLAUDE.md has the rest):
 
 ## A. The map window (LOOP N34 showMap) — Ui/Windows/MapWindow.cpp, 2504 lines
 
-goloco has none. The toolbar's map entries and the `showMap` shortcut (M) do nothing, and nothing in pkg/ or cmd/
+DONE 2026-11-20 (branch mapfinish): steps a–d and their leftovers — the scroll bars (one ScrollView port for every
+window: uilayout Bars / ScrollHold, pkg/ui drawScrollView), the remembered size (getLastMapWindowAttributes in the
+game state, kept on close, used at open, saved), the main view's glide (Window.cpp scrollingToLocation, pkg/world
+viewscroll.go, for every viewportCentreOnTile caller). Checked against OpenLoco: scripts/olref/tours/mapfinish.txt.
+Left: only the editor's disabled vehicles / routes / ownership tabs (goloco has no scenario editor).
+
+Was: goloco had none. The toolbar's map entries and the `showMap` shortcut (M) do nothing, and nothing in pkg/ or cmd/
 draws a minimap.
 
 Upstream's structure:
@@ -63,6 +69,10 @@ stepping for the four rotations; layout tested). Next: the window shell, in tick
       the scroll bars, the vehicles' positions by the seconds the games ran, and the animation / flash phase.
       Playthrough t-map (expect maptab / maphover). Left: the scroll bars (a), the remembered size (b), the
       glide (c), and the editor's disabled vehicles / routes / ownership tabs (goloco has no scenario editor).
+   e. DONE (2026-11-20): a's scroll bars (ScrollView.cpp getPart / thumbs / handlers and ScrollViewWidget.cpp
+      drawHScroll / drawVScroll for two bars, shared by every scroll view), b's remembered size (onClose,
+      open l. 2409; GameState lastMapWindowAttributes 0x46C), c's glide (viewportsUpdatePosition l. 328 for
+      moveWindowToLocation's callers). Left: the editor's disabled tabs.
    Skin colours: InterfaceSkinObject windowTitlebarColour / windowMapColour.
 
 Order of work:

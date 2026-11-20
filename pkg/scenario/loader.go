@@ -1781,6 +1781,11 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 		sc.LastVehicleType = gs[0x197]         // GameState::lastVehicleType
 		sc.PickupDirection = gs[0x198]         // GameState::pickupDirection
 	}
+	if len(gs) >= 0x478 { // S5GameState lastMapWindowFlags 0x46C, lastMapWindowSize 0x470, var88A 0x474, var88C 0x476
+		sc.LastMapWindow = LastMapWindow{Flags: binary.LittleEndian.Uint32(gs[0x46C:]),
+			Width: binary.LittleEndian.Uint16(gs[0x470:]), Height: binary.LittleEndian.Uint16(gs[0x472:]),
+			Var88A: binary.LittleEndian.Uint16(gs[0x474:]), Var88C: binary.LittleEndian.Uint16(gs[0x476:])}
+	}
 }
 
 // CompanyColourScheme is a company's colours (S5::Company): mainColours

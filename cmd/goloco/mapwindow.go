@@ -26,6 +26,7 @@ func (g *Game) openMap() {
 	if sk := g.skin(); sk != nil {
 		tc, mc = sk.WindowTitlebarColour, sk.WindowMapColour
 	}
+	m := &g.w.Map
 	w := ui.NewMapWindow(sim.NewMapBuffer(), tc, mc) // clearMap
 	w.Rotation = g.w.Map.CurrentRotation
 	w.MainView = g.mapMainView
@@ -33,12 +34,19 @@ func (g *Game) openMap() {
 	if sk := g.skin(); sk != nil {
 		w.SkinImage = int(sk.ImageOffset)
 	}
-	m := &g.w.Map
 	if pc := int(m.ControllingCompany); pc < len(m.CompanyColourSchemes) { // getPlayerCompany()->mainColours.primary
 		w.VehicleColour = m.CompanyColourSchemes[pc].Main[0]
 	}
 	w.Key, w.Status, w.Vehicles, w.Towns = g.mapKey, g.mapStatus, g.mapVehicles, g.mapTowns
+	sw, sh := g.sw, g.sh // Ui::width(), Ui::height()
+	if sw <= 0 || sh <= 0 {
+		sw, sh = defaultWidth, defaultHeight
+	}
+	ow, oh := ui.MapOpenSize(m.LastMapWindow, sw, sh) // getLastMapWindowAttributes' size
+	w.W, w.H = ow, oh
 	g.showAuto(w, 0, 0)
+	w.RestoreLast(m.LastMapWindow)                              // var_88A, var_88C, maximised
+	w.OnClose = func() { m.LastMapWindow = w.LastAttributes() } // onClose: the game state of the world it showed
 	w.CentreOnViewPoint()
 	if om := g.r.ObjMgr; om != nil {
 		g.mapColours.AssignIndustryColours(om, g.mapPixel)

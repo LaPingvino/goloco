@@ -467,10 +467,7 @@ func (w *CompanyFinancesWindow) Draw(screen *ebiten.Image) {
 	clipB := w.Y + sc.B
 	if w.hBar() {
 		clipB -= L.ScrollbarSize
-		pb := pal[paletteBlack0] // the arrows: "\x90\xBE" / "\x90\xAF" at kArrowOffset
-		bx, by, bw := w.X+sc.L+L.ScrollbarMargin, w.Y+sc.B+1-L.ScrollbarSize-L.ScrollbarMargin, sc.R-sc.L+1-2*L.ScrollbarMargin
-		DrawTextBold(screen, string(rune(0xBE)), bx+2, by-1, pb)
-		DrawTextBold(screen, string(rune(0xAF)), bx+bw-L.ScrollbarSize+L.ScrollbarMargin+2, by-1, pb)
+		drawScrollArrows(screen, w.X+sc.L, w.Y+sc.T, L.Bars{W: sc.R - sc.L + 1, H: sc.B - sc.T + 1, ContentW: w.financesContentW(), HBar: true})
 	}
 	clip := screen.SubImage(image.Rect(w.X+sc.L+1, w.Y+sc.T+1, w.X+sc.R, clipB)).(*ebiten.Image)
 	x := w.X + sc.L + 1 + 132 - sc.L + companyFinancesExpenditureColumnWidth - w.Scroll
@@ -1149,32 +1146,15 @@ func (w *CompanyFinancesWindow) drawCompanySelect(rt *gfx8.RenderTarget, b BVWid
 	}
 }
 
-// drawHBar is ScrollViewWidget's drawHScroll: the hatched track (shade 7,
-// hatched shade 3) with its lines at 2, 3, 7 and 8, the left and right
-// buttons and the thumb (hThumbLeft … hThumbRight − 1), at the view's
-// bottom inside its 1 px margin.
+// drawHBar is ScrollViewWidget's drawHScroll (drawHScroll, shared) for the
+// Finances scroll view (Scrollbars::horizontal).
 func (w *CompanyFinancesWindow) drawHBar(rt *gfx8.RenderTarget, sc BVWidget, sec []uint8) {
-	c := gfx8.InsetColour{Map: sec}
-	ww, wh := sc.R-sc.L+1, sc.B-sc.T+1
-	x, y := sc.L+L.ScrollbarMargin, sc.T+wh-L.ScrollbarSize-L.ScrollbarMargin
-	bw := ww - 2*L.ScrollbarMargin
-	s3, s7 := gfx8.Shade(sec, 3), gfx8.Shade(sec, 7)
-	gfx8.FillRect(rt, x, y, x+bw-1, y+L.ScrollbarSize-1, s7)
-	fillRectCrossHatch(rt, x, y, x+bw-1, y+L.ScrollbarSize-1, s3)
-	for _, ln := range [][2]int{{2, int(s3)}, {3, int(s7)}, {7, int(s3)}, {8, int(s7)}} {
-		gfx8.FillRect(rt, x, y+ln[0], x+bw-1, y+ln[0], uint8(ln[1]))
+	b := L.Bars{W: sc.R - sc.L + 1, H: sc.B - sc.T + 1, ContentW: w.financesContentW(), HBar: true}
+	pressed := L.PartNone // hscrollbar…Pressed
+	if w.hPressed {
+		pressed = map[string]L.Part{"left": L.PartHLeft, "right": L.PartHRight, "thumb": L.PartHThumb}[w.hPart]
 	}
-	pressed := func(part string) int { // hscrollbar…Pressed: borderInset
-		if w.hPressed && w.hPart == part {
-			return gfx8.InsetBorderInset
-		}
-		return 0
-	}
-	gfx8.FillRectInset(rt, x, y, x+L.ScrollbarSize-1, y+L.ScrollbarSize-1, c, pressed("left"))
-	rx := x + bw - L.ScrollbarSize + L.ScrollbarMargin
-	gfx8.FillRectInset(rt, rx, y, rx+L.ScrollbarSize-1, y+L.ScrollbarSize-1, c, pressed("right"))
-	l, r := L.HThumb(ww, w.financesContentW(), w.Scroll)
-	gfx8.FillRectInset(rt, x+l, y, x+l+(r-l-L.ScrollbarMargin)-1, y+L.ScrollbarSize-1, c, pressed("thumb"))
+	drawHScroll(rt, sc.L, sc.T, b, gfx8.InsetColour{Map: sec}, w.Scroll, pressed)
 }
 
 // StripCodes is stripCodes for callers outside the package: the text with

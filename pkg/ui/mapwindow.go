@@ -3,6 +3,7 @@ package ui
 import (
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/scenario"
 	"github.com/LaPingvino/goloco/pkg/sim"
 	L "github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -21,11 +22,14 @@ import (
 // it stands for; over the map the vehicles, the routes tab's aircraft and
 // ship routes, and the town names.
 //
-// clickable(MapWindow.cpp): close, the five tabs, the map (centres the main view)
+// The scroll view has both bars (Scrollbars::horizontal | vertical), drawn
+// and clicked as every scroll view (scrollview.go, uilayout Bars). The
+// window's size and maximised state are kept on close (onClose,
+// getLastMapWindowAttributes: sim.Map.LastMapWindow) for the next open.
 //
-// PARTIAL (PORT-PLANS A 1a, 1b): the scroll bars (drawn and clicked; the
-// right drag works), the remembered size; the editor's disabled tabs
-// (goloco has no scenario editor).
+// clickable(MapWindow.cpp): close, the five tabs, the map (centres the main view), the scroll bars
+//
+// PARTIAL: the editor's disabled tabs (goloco has no scenario editor).
 
 const (
 	mapWinW, mapWinH       = 350, 272
@@ -63,9 +67,9 @@ type MapWindow struct {
 	// (0x0046B9D4): the main view centred on a world position.
 	MainView func() MapMainView
 	OnCentre func(x, y int32)
-	// viewHeld: a left press on the map is held (Input::State::scrollLeft
-	// with _currentScrollArea view).
-	viewHeld bool
+	// hold: a left press on the scroll view held (Input::State::scrollLeft:
+	// _currentScrollArea, the bars' pressed flags).
+	hold L.ScrollHold
 
 	// Tab is currentTab (sim.MapTabOverall …); TabFrame the window's frameNo
 	// (counted by onUpdate, 0 on a tab change: the tab images' animation).
@@ -89,6 +93,45 @@ type MapWindow struct {
 	// ShowTownNames is showTownNames (true at the open).
 	ShowTownNames bool
 	keyRows       []MapKeyRow
+}
+
+// Ui::WindowFlags maximised and hasStoredState (Window.h).
+const (
+	upstreamMaximised      = 1 << 16
+	upstreamHasStoredState = 1 << 31
+)
+
+// MapOpenSize is MapWindow::open's size (l. 2409): 350 × 272, or — once a map
+// window was closed in this game (getLastMapWindowAttributes().flags set) —
+// the size it had, as uint16, kept within 350 … the screen's width and 272 …
+// its height − 56.
+func MapOpenSize(last scenario.LastMapWindow, screenW, screenH int) (int, int) {
+	if last.Flags == 0 {
+		return mapWinW, mapWinH
+	}
+	clamp := func(v, lo, hi uint16) int { return int(max(lo, min(v, hi))) } // std::clamp<uint16_t>
+	return clamp(last.Width, mapWinW, uint16(screenW)), clamp(last.Height, mapWinH, uint16(screenH-56))
+}
+
+// RestoreLast is open's part after createWindow (l. 2424): with a stored
+// state, var_88A / var_88C (the size to un-maximise to) and the maximised
+// flag come back.
+func (w *MapWindow) RestoreLast(last scenario.LastMapWindow) {
+	if last.Flags == 0 {
+		return
+	}
+	w.restoreW, w.restoreH = int(last.Var88A), int(last.Var88C)
+	if last.Flags&upstreamMaximised != 0 {
+		w.WinFlags |= WindowFlagMaximised
+	}
+}
+
+// LastAttributes is onClose (0x0046B8E6, l. 197): the window's size,
+// var_88A / var_88C and its flags with hasStoredState, for
+// getLastMapWindowAttributes.
+func (w *MapWindow) LastAttributes() scenario.LastMapWindow {
+	return scenario.LastMapWindow{Flags: w.UpstreamFlags() | upstreamHasStoredState, Width: uint16(w.W), Height: uint16(w.H),
+		Var88A: uint16(w.restoreW), Var88C: uint16(w.restoreH)}
 }
 
 // NewMapWindow is MapWindow::open's window (createWindow: the stack places
@@ -127,28 +170,13 @@ func (w *MapWindow) scrollView() (x, y, ww, hh int) {
 	return 3, 44, w.W - 108 - 3 + 1, w.H - 14 - 44 + 1
 }
 
-// bars are the scroll view's bars (both flagged visible: Scrollbars::
-// horizontal | vertical) as getPart and ScrollView::draw see them: shown
-// while the content is wider / taller than the widget.
-func (w *MapWindow) bars() (h, v bool) {
+// bars is the scroll view as ScrollView.cpp reads it: the widget's size,
+// the content kRenderedMapWidth + 1 square, both bars flagged
+// (Scrollbars::horizontal | vertical; shown while the content is wider /
+// taller than the widget).
+func (w *MapWindow) bars() L.Bars {
 	_, _, ww, hh := w.scrollView()
-	return mapContentSize > ww, mapContentSize > hh
-}
-
-// contentSize is ScrollView::draw's crop for drawScroll (ScrollViewWidget.cpp
-// draw): the widget less its 1 px border, the bars, and one more margin at
-// the right and the bottom.
-func (w *MapWindow) contentSize() (cw, ch int) {
-	_, _, ww, hh := w.scrollView()
-	hBar, vBar := w.bars()
-	cw, ch = ww-2*L.ScrollbarMargin, hh-2*L.ScrollbarMargin
-	if hBar {
-		ch -= L.ScrollbarSize
-	}
-	if vBar {
-		cw -= L.ScrollbarSize
-	}
-	return cw - L.ScrollbarMargin, ch - L.ScrollbarMargin
+	return L.Bars{W: ww, H: hh, ContentW: mapContentSize, ContentH: mapContentSize, HBar: true, VBar: true}
 }
 
 // PrepareDraw: onResize (0x0046B8E6 … l. 239) is called by open alone, before
@@ -195,26 +223,12 @@ func (w *MapWindow) CentreOnViewPoint() {
 	w.ScrollX, w.ScrollY = centreX, centreY
 }
 
-// mapPart is ScrollView::getPart (ScrollView.cpp l. 167) for the map's
-// scroll view at a screen point on the widget: the point in the content
-// (scrollviewLoc) and whether it is the view part — not a bar, not the
-// border's top or left pixel.
-func (w *MapWindow) mapPart(px, py int) (cx, cy int, view bool) {
+// onScrollView reports a screen point on the scroll view widget
+// (findWidgetAt), and gives it relative to the widget.
+func (w *MapWindow) onScrollView(px, py int) (x, y int, ok bool) {
 	sx, sy, ww, hh := w.scrollView()
-	left, top := w.X+sx, w.Y+sy
-	right, bottom := left+ww-1, top+hh-1
-	if px < left || px > right || py < top || py > bottom { // findWidgetAt: not on the widget
-		return 0, 0, false
-	}
-	hBar, vBar := w.bars()
-	if hBar && py >= bottom-L.ScrollbarSize || vBar && px >= right-L.ScrollbarSize {
-		return 0, 0, false // a bar's part (or the deadzone)
-	}
-	cx, cy = px-(left+1), py-(top+1)
-	if cx < 0 || cy < 0 {
-		return 0, 0, false
-	}
-	return cx + w.ScrollX, cy + w.ScrollY, true
+	x, y = px-(w.X+sx), py-(w.Y+sy)
+	return x, y, x >= 0 && y >= 0 && x < ww && y < hh
 }
 
 // scrollMouseDown is scrollMouseDown (0x0046B97C, l. 1171), also the
@@ -230,9 +244,10 @@ func (w *MapWindow) scrollMouseDown(cx, cy int) {
 	w.OnCentre(x, y)
 }
 
-// HandleClick: the close button; on the map's view part a press centres the
-// main view and holds (ScrollView::scrollLeftBegin, then the window's
-// scrollMouseDown).
+// HandleClick: the close button; the tabs; on the scroll view a press held
+// (stateNormalLeft's scrollview case, ScrollView::scrollLeftBegin): a bar's
+// button or track moves the map, the view part centres the main view there
+// (scrollMouseDown).
 func (w *MapWindow) HandleClick(px, py int) {
 	if w.Button([4]int{w.W - 15, 2, 13, 13}, px, py) { // closeButton (prepareDraw: width − 15)
 		w.Close()
@@ -244,29 +259,35 @@ func (w *MapWindow) HandleClick(px, py int) {
 		}
 		return
 	}
-	if cx, cy, ok := w.mapPart(px, py); ok {
-		w.viewHeld = true
-		w.scrollMouseDown(cx, cy)
+	if x, y, ok := w.onScrollView(px, py); ok {
+		var view bool
+		var cx, cy int
+		w.ScrollX, w.ScrollY, view, cx, cy = w.hold.Begin(w.bars(), x, y, px, py, w.ScrollX, w.ScrollY)
+		if view {
+			w.scrollMouseDown(cx, cy)
+		}
 	}
 }
 
-// ScrollDrag is MouseInput.cpp stateScrollLeft each tick (l. 641): released,
-// the hold ends; held with the pointer over this window's scroll view
-// (onTop: the window findAt gives) and still on its view part
-// (scrollLeftContinue's getPart), the window's scrollMouseDrag — the main view
-// follows the pointer. Elsewhere it does nothing that tick.
+// ScrollDrag is MouseInput.cpp stateScrollLeft each frame (l. 642): released,
+// the state resets and the pressed look clears; held with the pointer off
+// this window's scroll view (onTop: the window findAt gives) only the pressed
+// look clears; on it scrollLeftContinue — a thumb follows the pointer, a
+// button steps on, the view part's drag (scrollMouseDrag) centres the main
+// view where the pointer is.
 func (w *MapWindow) ScrollDrag(px, py int, held, onTop bool) {
-	if !w.viewHeld {
+	if w.hold.Part == L.PartNone {
 		return
 	}
 	if !held {
-		w.viewHeld = false
+		w.hold.Release()
 		return
 	}
-	if !onTop {
-		return
-	}
-	if cx, cy, ok := w.mapPart(px, py); ok {
+	x, y, on := w.onScrollView(px, py)
+	var view bool
+	var cx, cy int
+	w.ScrollX, w.ScrollY, view, cx, cy = w.hold.Continue(w.bars(), on && onTop, x, y, px, py, w.ScrollX, w.ScrollY)
+	if view {
 		w.scrollMouseDown(cx, cy)
 	}
 }
@@ -401,7 +422,7 @@ func (w *MapWindow) Draw(screen *ebiten.Image) {
 	if err != nil {
 		return
 	}
-	sx, sy, sw, sh := w.scrollView()
+	sx, sy, _, _ := w.scrollView()
 	var town mapTarget
 	DrawWindowFrame(screen, w.X, w.Y, w.W, w.H, w.TitleColour, false)
 	draw8(screen, w.X, w.Y, w.W, w.H, func(rt *gfx8.RenderTarget) {
@@ -412,12 +433,11 @@ func (w *MapWindow) Draw(screen *ebiten.Image) {
 		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
 			gfx8.DrawSpriteNoise(rt, sp, w.W-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 		}
-		gfx8.FillRectInset(rt, sx, sy, sx+sw-1, sy+sh-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker) // ScrollView::draw
-		cw, ch := w.contentSize()
+		ox, oy, cw, ch := drawScrollView(rt, sx, sy, w.bars(), gfx8.InsetColour{Map: sec}, w.ScrollX, w.ScrollY, w.hold.PressedPart())
 		if w.Buf == nil || cw <= 0 || ch <= 0 {
 			return
 		}
-		t := mapTarget{rt: rt, OrgX: sx + L.ScrollbarMargin, OrgY: sy + L.ScrollbarMargin, W: cw, H: ch, X: w.ScrollX, Y: w.ScrollY}
+		t := mapTarget{rt: rt, OrgX: ox, OrgY: oy, W: cw, H: ch, X: w.ScrollX, Y: w.ScrollY}
 		pix := w.Buf.Pixels
 		if w.FrameNo&(1<<2) != 0 {
 			pix = w.Buf.Alt
@@ -450,6 +470,7 @@ func (w *MapWindow) Draw(screen *ebiten.Image) {
 	if w.ShowTownNames && town.rt != nil {
 		w.drawTownNames(screen, town)
 	}
+	drawScrollArrows(screen, w.X+sx, w.Y+sy, w.bars())
 	DrawWindowCaption(screen, w.X+1, w.Y+1, w.W-2, i18n.Label(mapCaptions[w.Tab%5]))
 	w.drawKeyText(screen)
 }

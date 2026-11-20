@@ -120,3 +120,152 @@ func TestDragFollow(t *testing.T) {
 		}
 	}
 }
+
+// The map window's scroll view at 350 × 272 (MapWindow.cpp: the widget
+// {3, 44} to width − 108, height − 14 = 240 × 215; content 769 × 769, both
+// bars), worked by hand from ScrollView.cpp.
+var mapBars = Bars{W: 240, H: 215, ContentW: 769, ContentH: 769, HBar: true, VBar: true}
+
+// calculateThumbSizeAndPosition with the other bar: 229 × 207 / 769 → 61 wide,
+// 146 to travel; 204 × 182 / 769 → 48 tall.
+func TestBarsThumbs(t *testing.T) {
+	if l, r := mapBars.HThumb(0); l != 11 || r != 72 {
+		t.Errorf("h thumb at 0: %d..%d", l, r)
+	}
+	if l, r := mapBars.HThumb(540); l != 157 || r != 217 { // the end clamped to 229 − 11 − 1
+		t.Errorf("h thumb at 540: %d..%d", l, r)
+	}
+	if tp, b := mapBars.VThumb(0); tp != 11 || b != 59 {
+		t.Errorf("v thumb at 0: %d..%d", tp, b)
+	}
+}
+
+// getPart: the horizontal bar takes the bottom 12 rows (the corner too), its
+// right button 10 px before the corner's deadzone; the vertical bar the
+// right 12 columns above it; the view starts 1 px in.
+func TestBarsPart(t *testing.T) {
+	for _, c := range []struct {
+		x, y int
+		want Part
+	}{
+		{5, 208, PartHLeft}, {10, 203, PartHLeft}, {11, 208, PartHThumb}, {72, 208, PartHThumb},
+		{73, 208, PartHTrackRight}, {217, 208, PartHTrackRight}, {218, 208, PartHRight},
+		{227, 208, PartHRight}, {228, 208, PartNone}, {239, 214, PartNone},
+		{230, 5, PartVTop}, {228, 10, PartVTop}, {230, 11, PartVThumb}, {230, 59, PartVThumb},
+		{230, 60, PartVTrackBottom}, {230, 193, PartVBottom}, {230, 202, PartVBottom},
+		{0, 50, PartNone}, {50, 0, PartNone}, {227, 202, PartView},
+	} {
+		if p, _, _ := mapBars.Part(c.x, c.y, 0, 0); p != c.want {
+			t.Errorf("Part(%d, %d) = %d, want %d", c.x, c.y, p, c.want)
+		}
+	}
+	if p, cx, cy := mapBars.Part(50, 60, 460, 200); p != PartView || cx != 509 || cy != 259 {
+		t.Errorf("view point: %d %d,%d", p, cx, cy)
+	}
+	// Without the vertical bar the horizontal one runs to the widget's end.
+	h := Bars{W: 240, H: 215, ContentW: 769, ContentH: 100, HBar: true}
+	if p, _, _ := h.Part(229, 208, 0, 0); p != PartHRight {
+		t.Errorf("no v bar: %d", p)
+	}
+}
+
+// The buttons step 3, the tracks a page (the widget − 2 − the other bar),
+// both kept within contentWidth − that page; a thumb dragged moves the
+// content by delta × content / (widget − 20 − the other bar).
+func TestBarsClickFollow(t *testing.T) {
+	if x, _ := mapBars.Click(PartHRight, 541, 0); x != 542 { // 769 − 227
+		t.Errorf("right at the end: %d", x)
+	}
+	if x, _ := mapBars.Click(PartHTrackRight, 0, 0); x != 227 {
+		t.Errorf("track right: %d", x)
+	}
+	if _, y := mapBars.Click(PartVTrackBottom, 0, 0); y != 202 {
+		t.Errorf("track bottom: %d", y)
+	}
+	if x, y := mapBars.Click(PartHLeft, 2, 7); x != 0 || y != 7 {
+		t.Errorf("left: %d %d", x, y)
+	}
+	if got := mapBars.HFollow(0, 10); got != 36 { // 7690 / 209
+		t.Errorf("h follow: %d", got)
+	}
+	if got := mapBars.VFollow(0, 10); got != 41 { // 7690 / 184
+		t.Errorf("v follow: %d", got)
+	}
+	if got := mapBars.VFollow(560, 100); got != 567 { // 769 − 202
+		t.Errorf("v follow clamp: %d", got)
+	}
+}
+
+// A held button repeats on its part, shows unpressed off it; a held thumb
+// follows the pointer while it is on the widget (off it only the pressed
+// look clears); the view part reports its drag.
+func TestScrollHold(t *testing.T) {
+	var s ScrollHold
+	x, y, view, _, _ := s.Begin(mapBars, 220, 208, 223, 252, 0, 0)
+	if x != 3 || y != 0 || view || s.PressedPart() != PartHRight {
+		t.Fatalf("begin: %d %d %v %d", x, y, view, s.PressedPart())
+	}
+	x, _, _, _, _ = s.Continue(mapBars, true, 220, 208, 223, 252, x, y)
+	if x != 6 {
+		t.Fatalf("held: %d", x)
+	}
+	x, _, _, _, _ = s.Continue(mapBars, true, 100, 208, 103, 252, x, y)
+	if x != 6 || s.PressedPart() != PartNone {
+		t.Fatalf("off the button: %d %d", x, s.PressedPart())
+	}
+	x, _, _, _, _ = s.Continue(mapBars, true, 220, 208, 223, 252, x, y)
+	if x != 9 || s.PressedPart() != PartHRight {
+		t.Fatalf("back on it: %d", x)
+	}
+	s.Release()
+	if s.Part != PartNone {
+		t.Fatal("not released")
+	}
+	x, _, _, _, _ = s.Begin(mapBars, 40, 208, 100, 252, 0, 0)
+	if x != 0 || s.PressedPart() != PartNone {
+		t.Fatalf("thumb begin: %d %d", x, s.PressedPart())
+	}
+	x, _, _, _, _ = s.Continue(mapBars, true, 50, 208, 110, 252, x, 0)
+	if x != 36 || s.PressedPart() != PartHThumb {
+		t.Fatalf("thumb: %d %d", x, s.PressedPart())
+	}
+	x, _, _, _, _ = s.Continue(mapBars, false, 50, 300, 110, 400, x, 0)
+	if x != 36 || s.PressedPart() != PartNone {
+		t.Fatalf("thumb off the widget: %d %d", x, s.PressedPart())
+	}
+	x, _, _, _, _ = s.Continue(mapBars, true, 60, 208, 120, 252, x, 0)
+	if x != 72 {
+		t.Fatalf("thumb back: %d", x)
+	}
+	s.Release()
+	_, _, view, cx, cy := s.Begin(mapBars, 50, 60, 53, 104, 460, 200)
+	if !view || cx != 509 || cy != 259 {
+		t.Fatalf("view: %v %d %d", view, cx, cy)
+	}
+	if _, _, view, cx, _ = s.Continue(mapBars, true, 60, 60, 63, 104, 460, 200); !view || cx != 519 {
+		t.Fatalf("view drag: %v %d", view, cx)
+	}
+	if _, _, view, _, _ = s.Continue(mapBars, true, 230, 60, 233, 104, 460, 200); view {
+		t.Fatal("drag onto the bar still drags the view")
+	}
+}
+
+// getPart's ends of the vertical bar alone: the up button is the top 11 rows,
+// the down button the 10 above the bottom border row, the thumb's last row
+// still the thumb (ScrollView.cpp l. 237–268).
+func TestVScrollPartEdges(t *testing.T) {
+	const h, content = 100, 400
+	if p := VScrollPart(11, h, content, 0); p != "thumb" {
+		t.Errorf("row 11: %s", p)
+	}
+	if p := VScrollPart(89, h, content, 0); p != "down" {
+		t.Errorf("row 89: %s", p)
+	}
+	if p := VScrollPart(88, h, content, 0); p != "trackBottom" {
+		t.Errorf("row 88: %s", p)
+	}
+	_, bot := VThumb(h, content, 0)
+	if p := VScrollPart(bot, h, content, 0); p != "thumb" {
+		t.Errorf("thumb's last row %d: %s", bot, p)
+	}
+}

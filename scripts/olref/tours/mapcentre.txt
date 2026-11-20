@@ -4,7 +4,7 @@
 # 330,60 -rotation 2 title.SV5 mc.SV5`): near the map's edge, so the open's
 # offset is clamped. One script for both games, paused: the view, the map
 # opened (M) on the view's frame, a click on the map (the main view goes
-# there: OpenLoco glides, goloco jumps — the shot waits for the glide), a drag,
+# there: both glide (Window.cpp scrollingToLocation) — the shot waits for it), a drag,
 # then the rotate key (the map re-centred on the turned view).
 # Shots are named SHOTS/…: sed that to a scratch directory per game.
 wait 12

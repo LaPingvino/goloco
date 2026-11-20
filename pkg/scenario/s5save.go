@@ -152,6 +152,11 @@ func (sc *Scenario) putGeneralState(gs []byte) {
 	put16(gs, 0x400, sc.StartingLoanSize)
 	put16(gs, 0x402, sc.MaxLoanSize)
 	gs[0x414], gs[0x415] = sc.LastBuildVehiclesOption, sc.NumberOfIndustries
+	put32(gs, 0x46C, sc.LastMapWindow.Flags) // lastMapWindowAttributes (S5GameState.cpp l. 121)
+	put16(gs, 0x470, sc.LastMapWindow.Width)
+	put16(gs, 0x472, sc.LastMapWindow.Height)
+	put16(gs, 0x474, sc.LastMapWindow.Var88A)
+	put16(gs, 0x476, sc.LastMapWindow.Var88C)
 	o := sc.Objective
 	gs[0x418], gs[0x419] = o.Type, o.Flags
 	put32(gs, 0x41A, o.CompanyValue)

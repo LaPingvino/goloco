@@ -60,6 +60,7 @@ func (g *Game) Update() error {
 		// borders count down and a window opened meanwhile sounds at once.
 		if g.w.GameTicks(g.mouseMoved()) > 0 {
 			g.wins.Tick()
+			g.w.ViewportsUpdatePosition() // promptTickLoop's Ui::render after the tick: WindowManager::updateViewports
 		}
 		g.playOpenSound()
 		return nil
@@ -79,10 +80,14 @@ func (g *Game) Update() error {
 		browse.HandleText(nil, false, false, false) // the caret's blink (its keys: keyboard.go browseKeyUp)
 	}
 
+	g.rendered = false
 	if g.inTitleScreen {
 		g.updateTitle()
 	} else {
 		g.updateGame()
+	}
+	if g.rendered { // the tick's Ui::render, after its input: WindowManager::updateViewports (the main view's glide)
+		g.w.ViewportsUpdatePosition()
 	}
 	g.playOpenSound()
 	g.playClickSounds()
@@ -135,6 +140,7 @@ func (g *Game) updateTitle() {
 	n := g.w.GameTicks(g.mouseMoved())
 	if n > 0 {
 		g.wins.Tick() // tickInterface → sub_431695 → WindowManager::tick: the border flashes
+		g.rendered = true
 	}
 	for range n { // tickLogic(numUpdates): the title is a running game upstream
 		g.w.Update()  // tickLogic: one game tick
@@ -222,6 +228,7 @@ func (g *Game) updateGame() {
 	n := g.w.GameTicks(g.mouseMoved())
 	if n > 0 {
 		g.wins.Tick() // tickInterface → sub_431695 → WindowManager::tick: the border flashes
+		g.rendered = true
 	}
 	g.updateNews(n)  // sub_431695: MessageManager's update and the news windows', per interface update
 	if !g.isPaused { // tickLogic(numUpdates × the speed)

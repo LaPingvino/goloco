@@ -36,6 +36,7 @@ func (w *World) centreOn(x, y, z int) {
 	vx, vy := w.gameToView(x, y, z)
 	sw, sh := w.viewSize()
 	w.camX, w.camY = float64(vx-(sw<<w.zoom)/2), float64(vy-(sh<<w.zoom)/2)
+	w.glide.on = false // savedView and viewX set alike: nothing left to glide
 }
 
 // surfaceLocAt is ViewportInteraction's getSurfaceLocFromUi (water false) and
@@ -140,6 +141,7 @@ func (w *World) UpdateLabels() {
 func (w *World) SetSavedView(x, y int, zoom, rotation uint8) {
 	w.zoom = int(min(zoom, 3))
 	w.setRotation(rotation & 3)
+	w.glide.on = false
 	w.savedCentre = &[2]int{x, y}
 	w.placeSavedCentre()
 	if w.viewW > 0 {
@@ -195,18 +197,8 @@ func (w *World) SavePreview(width, height int) []byte {
 // (TileManager::getHeight, 16 off the map) — Window::viewportCentreOnTile
 // (Window.cpp l. 562): the underground flag set by that height (so cleared),
 // then moveWindowToLocation (l. 544), which leaves a view that follows an
-// entity where it is.
-//
-// PARTIAL: moveWindowToLocation only sets savedView and scrollingToLocation;
-// viewportsUpdatePosition (Window.cpp l. 328) then glides the view there an
-// eighth of the way a frame. goloco has no scrollingToLocation: the view jumps
-// (as for every other centring).
+// entity where it is; the view glides there (viewscroll.go).
 func (w *World) CentreOnMapView(x, y int32) {
 	land, _ := w.Map.GetHeight(x, y)
-	w.centreUnderground(x, y, int32(land))
-	if w.following { // viewportTargetSprite != EntityId::null
-		return
-	}
-	w.centreOn(int(x), int(y), int(land))
-	w.externalCamera = false
+	w.viewportCentreOnTile(x, y, int32(land))
 }
