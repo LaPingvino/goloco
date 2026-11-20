@@ -26,6 +26,7 @@ one running at the same time needs its own OLREF_DISPLAY (and OLREF_HOME).
 | setview/ | `go run ./scripts/olref/setview -tile X,Y [-zoom Z] [-rotation R] in.SV5 out.SV5`: a copy of a save that opens on that view |
 | gosave/ | `go run ./scripts/olref/gosave [-ticks N] in.(dat\|SC5\|SV5) out.SV5`: goloco's own save of a game (a .SC5 started as a new game), played N ticks — for loading goloco's saves in OpenLoco |
 | tours/ | the input scripts of past comparisons |
+| rngtrace.patch | an OpenLoco built with it (~/Projects/OpenLoco-rngtrace, `cmake -DSTRICT=OFF`): `simulate` with OPENLOCO_RNGTRACE=FROM,TO (each gPrng1 draw's tick and callers), OPENLOCO_SIMSAVE=out.SV5 (the state after the ticks), OPENLOCO_ADDCAR=HEAD,TYPE (then the player adds a car, as the Build Vehicles window does — a game command at an exact tick) |
 
 ## goloco's saves in OpenLoco
 

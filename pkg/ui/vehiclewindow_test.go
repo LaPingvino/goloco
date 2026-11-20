@@ -104,3 +104,37 @@ func TestCompanyListBar(t *testing.T) {
 		t.Fatalf("scroll %d opened %d", w.Scroll, opened)
 	}
 }
+
+// The Vehicle window's widget tooltips (Vehicle.cpp's widget lists and tooltip
+// events): the Route tab's order buttons had none, so a player could only guess
+// what they do. Each tab's {POP16}{STRINGID} is the vehicle type ("train").
+func TestVehicleWindowWidgetTooltips(t *testing.T) {
+	w := &VehicleWindow{WinBase: WinBase{X: 100, Y: 50, W: 265, H: 202}, Tab: 4, Hover: -1}
+	w.Main.Own = true
+	lw := VehicleRouteLayout(w.W, w.H, 0, false)
+	centre := func(b BVWidget) (int, int) { return w.X + (b.L+b.R)/2, w.Y + (b.T+b.B)/2 }
+	for _, c := range []struct {
+		i    int
+		want string
+	}{
+		{vrWait, "Insert an order to wait for a full load of cargo"},
+		{vrForceUnload, "Insert an order to force unloading of cargo, even if cargo is not accepted by station"},
+		{vrSkip, "Skip to next order in list"},
+		{vrDelete, "Delete the last or selected order"},
+		{vrUp, "Move the selected order up in the list"},
+		{vrDown, "Move the selected order down in the list"},
+		{vrReverse, "Reverse the route order table"},
+		{vwTabMain, "Show view of train"},
+		{vwClose, "Close window"},
+	} {
+		x, y := centre(lw[c.i])
+		if got := stripCodes(w.WidgetTooltip(x, y)); got != c.want {
+			t.Errorf("widget %d: tooltip %q, want %q", c.i, got, c.want)
+		}
+	}
+	w.Tab = 0
+	ml := VehicleMainLayout(w.W, w.H, w.Main)
+	if x, y := centre(ml[vmStopStart]); stripCodes(w.WidgetTooltip(x, y)) != "Stop/Start train" {
+		t.Errorf("stop/start: %q", w.WidgetTooltip(x, y))
+	}
+}

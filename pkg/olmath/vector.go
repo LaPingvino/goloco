@@ -1,7 +1,5 @@
 package olmath
 
-import "math"
-
 // Vector2i represents a 2D vector with int32 components.
 type Vector2i struct {
 	X int32
@@ -109,28 +107,21 @@ func Cross3D(a, b Vector3i) Vector3i {
 	}
 }
 
-// fastSquareRoot approximates square root and returns uint16 (mirrors OpenLoco behaviour).
+// FastSquareRoot is Math::Vector::fastSquareRoot (Math/src/Vector.cpp 119):
+// a table lookup, not the exact root — distances, payments and car spacing
+// all go through it upstream (table generated: sqrt_gen.go).
 func FastSquareRoot(distance uint32) uint16 {
-	if distance == 0 {
-		return 0
+	i := uint(10)
+	for ; distance >= 4096; i, distance = i-1, distance>>2 {
 	}
-	v := math.Sqrt(float64(distance))
-	if v > float64(^uint16(0)) {
-		return ^uint16(0)
-	}
-	return uint16(v)
+	return fastSquareRootTable[(distance&0xFFE)>>1] >> i
 }
 
-// Distance2D returns the integer-approximated Euclidean distance between two 2D vectors.
+// Distance2D is Math::Vector::distance2D (Vector.hpp 252):
+// fastSquareRoot(x*x + y*y), the sum taken as upstream's uint32 argument.
 func Distance2D(a, b Vector2i) uint16 {
-	dx := int64(a.X - b.X)
-	dy := int64(a.Y - b.Y)
-	d := uint64(dx*dx + dy*dy)
-	if d > math.MaxUint32 {
-		// fallback to float calculation
-		return uint16(math.Sqrt(float64(d)))
-	}
-	return FastSquareRoot(uint32(d))
+	dx, dy := a.X-b.X, a.Y-b.Y
+	return FastSquareRoot(uint32(dx*dx + dy*dy))
 }
 
 // Distance squared (helper)

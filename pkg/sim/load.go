@@ -12,8 +12,8 @@ import (
 // updateLoadCargoComponent, beginNewJourney (0x004BAC74) and landLoadingUpdate
 // (0x004A9011).
 //
-// The cantWaitForFullLoad news is posted. PARTIAL: the cargo sprite update (drawn
-// from the cargo state anyway) and the Ui invalidations are not ported.
+// The cantWaitForFullLoad news is posted; a body's cargo sprite follows its
+// load (updateCargoSprite). PARTIAL: the Ui invalidations are not ported.
 // After loading, pathingShouldReverse / tryReverse run as upstream.
 
 const stationFlag7 uint16 = 1 << 7 // StationFlags::flag_7
@@ -133,6 +133,31 @@ func (m *Map) updateLoadCargoComponent(tr Train, cargo *scenario.VehicleCargo, b
 	return true
 }
 
+// updateCargoSprite is VehicleBody::updateCargoSprite (VehicleBody.cpp
+// 0x004AC039): the body's cargoFrame from how full its primary cargo is —
+// the load frame (numCargoLoadFrames steps), offset by the cargo type's
+// sprites, times the animation frames.
+func (m *Map) updateCargoSprite(body *scenario.VehicleEntity, om *objects.ObjectManager) {
+	if body.ObjectSpriteType == 0xFF || body.Cargo.MaxQty == 0 {
+		return
+	}
+	veh := vehicleObject(om, body.ObjectID)
+	if veh == nil || int(body.ObjectSpriteType) >= len(veh.BodySprites) {
+		return
+	}
+	bs := &veh.BodySprites[body.ObjectSpriteType]
+	full := min(uint32(body.Cargo.Qty)*256/uint32(body.Cargo.MaxQty), 255)
+	frame := full * uint32(bs.NumCargoLoadFrames) / 256
+	if frame != 0 && body.Cargo.Type < 32 {
+		frame += uint32(om.CargoFor(veh).CargoTypeSpriteOffsets[body.Cargo.Type])
+	}
+	frame *= uint32(bs.NumAnimationFrames)
+	if uint8(frame) != body.CargoFrame {
+		body.CargoFrame = uint8(frame)
+		m.invalidateSprite(body)
+	}
+}
+
 // UpdateLoadCargo is updateLoadCargo: true while loading goes on.
 func (m *Map) UpdateLoadCargo(tr Train, om *objects.ObjectManager) bool {
 	head := &m.Entities[tr.Head]
@@ -155,8 +180,8 @@ func (m *Map) UpdateLoadCargo(tr Train, om *objects.ObjectManager) bool {
 				return true
 			case body.BreakdownFlags&BreakdownAwaitingCargoTransfer != 0:
 				body.BreakdownFlags &^= BreakdownAwaitingCargoTransfer
-				if body.Cargo.Type != 0xFF {
-					m.updateLoadCargoComponent(tr, &body.Cargo, cc.Back, om)
+				if body.Cargo.Type != 0xFF && m.updateLoadCargoComponent(tr, &body.Cargo, cc.Back, om) {
+					m.updateCargoSprite(body, om)
 				}
 				return true
 			}

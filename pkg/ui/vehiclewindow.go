@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
@@ -323,6 +324,7 @@ type VehicleWindow struct {
 	OnPickup            func()        // Common::onPickup: lift the vehicle, or take the placing tool
 	PickupActive        bool          // the placing tool is this window's (the button shown pressed)
 	PickupImage         int           // getPickupImageIdandTooltip's image (0: none)
+	PickupTooltip       int           // getPickupImageIdandTooltip's tooltip (a StringId; 0: none)
 	BuildNewImage       int           // Details' buildNew: skin + build_additional_<type> (0: none)
 	// OnBuildNew is Details::onMouseDown(buildNew): the button's screen rect,
 	// for its dropdown (Modify vehicle / Clone vehicle).
@@ -1064,6 +1066,69 @@ func (w *VehicleWindow) Tooltip() string {
 		return ""
 	}
 	return carTooltip(w.Cars[w.Hover])
+}
+
+// vehicleTabTooltips are makeCommonWidgets' tab tooltips (Vehicle.cpp 135–139),
+// by widget index from vwTabMain.
+var vehicleTabTooltips = [5]int{i18n.TooltipVehicleTabMain, i18n.TooltipVehicleTabDetails, i18n.TooltipVehicleTabCargo,
+	i18n.TooltipVehicleTabFinance, i18n.TooltipVehicleTabRoute}
+
+// WidgetTooltip is the tooltip at a screen point (MouseInput's tooltip: the
+// widget's own): the car under the mouse on the Details and Cargo tabs
+// (Tooltip), else the widget's from its tab's widget list (Vehicle.cpp
+// makeCommonWidgets, Main / Details / Route widgets): close, the tabs, Main's
+// stop/start, pick-up, pass signal and change direction, Details' build new,
+// pick-up, sell, repaint and colours, Route's list and order buttons. Hidden
+// widgets have none.
+func (w *VehicleWindow) WidgetTooltip(px, py int) string {
+	if t := w.Tooltip(); t != "" {
+		return t
+	}
+	// every tab's tooltip event: args.skip(2), push getVehicleType — the
+	// {POP16}{STRINGID} ("Show view of train", "Stop/Start train").
+	str := func(id int) string {
+		vt := ""
+		if w.VehicleType >= 0 && w.VehicleType < 6 {
+			vt = i18n.Str(i18n.Train + w.VehicleType)
+		}
+		return strings.Replace(i18n.Str(id), "{POP16}{STRINGID}", vt, 1)
+	}
+	rx, ry := px-w.X, py-w.Y
+	lw := w.tabWidgets()
+	at := func(i int) bool {
+		if i >= len(lw) {
+			return false
+		}
+		b := lw[i]
+		return !b.Hidden && rx >= b.L && rx <= b.R && ry >= b.T && ry <= b.B
+	}
+	if at(vwClose) {
+		return str(i18n.TooltipCloseWindow)
+	}
+	for i, tip := range vehicleTabTooltips {
+		if at(vwTabMain + i) {
+			return str(tip)
+		}
+	}
+	var tips map[int]int
+	switch w.Tab {
+	case 0:
+		tips = map[int]int{vmStopStart: i18n.TooltipStopStart, vmPickup: w.PickupTooltip,
+			vmPassSignal: i18n.TooltipPassSignalAtDanger, vmChangeDirection: i18n.TooltipChangeDirection}
+	case 1:
+		tips = map[int]int{vdBuildNew: i18n.TooltipBuildNewVehicleFor, vdPickup: w.PickupTooltip, vdRemove: i18n.TooltipSellOrDragVehicle,
+			vdPaintBrush: i18n.VehicleRepaintTooltip, vdPaintPrimary: i18n.TooltipSelectMainColour, vdPaintSecondary: i18n.TooltipSelectSecondaryColour}
+	case 4:
+		tips = map[int]int{vrRouteList: i18n.TooltipRouteScrollview, vrForceUnload: i18n.TooltipRouteInsertForceUnload,
+			vrWait: i18n.TooltipRouteInsertWaitFullCargo, vrSkip: i18n.TooltipRouteSkipNextOrder, vrDelete: i18n.TooltipRouteDeleteOrder,
+			vrUp: i18n.TooltipRouteMoveOrderUp, vrDown: i18n.TooltipRouteMoveOrderDown, vrReverse: i18n.ReverseOrderTableTooltip}
+	}
+	for i, tip := range tips {
+		if tip != 0 && at(i) {
+			return str(tip)
+		}
+	}
+	return ""
 }
 
 // buttonFrame is ImageButton::draw's frame: under the mouse (draw_3) a
