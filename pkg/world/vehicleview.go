@@ -58,21 +58,22 @@ func (w *World) vehicleView(headID uint16, width, height int) (scene.View, bool)
 	return scene.View{X: vx - width/2, Y: vy - height/2, W: width, H: height, Zoom: 0, Ticks: m.ScenarioTicks, Flags: flags}, true
 }
 
-// CentreOnVehicle is Main::onCentreViewportControl: the main view moved to
-// show the train's viewport target (its first car's body, else veh2). false
-// when the train is not placed.
+// CentreOnVehicle is the Vehicle window's "centre main view on this"
+// (Vehicle.cpp onCentreViewportDropdown item 0: viewportCentreMain on its
+// savedView's entity — the train's viewport target, its first car's body,
+// else veh2): the main view unfocused and gliding to the entity's position.
+// false when the train is not placed.
 func (w *World) CentreOnVehicle(headID uint16) bool {
-	e, ok := w.centreOnVehicle(headID)
+	e, ok := w.vehicleViewTarget(headID)
 	if ok {
-		w.centreUnderground(int32(e.PosX), int32(e.PosY), int32(e.PosZ)) // viewportCentreOnTile(entity->position)
+		w.viewportCentreMain(int32(e.PosX), int32(e.PosY), int32(e.PosZ)) // viewportCentreOnTile(entity->position)
 	}
 	return ok
 }
 
-// centreOnVehicle moves the view to the train's viewport target (and returns
-// it), the view's flags left alone: what following a train does each frame
-// (viewportSetUndergroundFlag skips the main window).
-func (w *World) centreOnVehicle(headID uint16) (*scenario.VehicleEntity, bool) {
+// vehicleViewTarget is the train's viewport target entity (its first car's
+// body, else veh2); false when the train is not placed.
+func (w *World) vehicleViewTarget(headID uint16) (*scenario.VehicleEntity, bool) {
 	m := &w.Map
 	tr, err := m.TrainOf(headID)
 	if err != nil || m.Entities[tr.Head].TileX == -1 {
@@ -82,16 +83,29 @@ func (w *World) centreOnVehicle(headID uint16) (*scenario.VehicleEntity, bool) {
 	if len(tr.Cars) > 0 && len(tr.Cars[0]) > 0 {
 		target = tr.Cars[0][0].Body
 	}
-	e := &m.Entities[target]
+	return &m.Entities[target], true
+}
+
+// centreOnVehicle moves the view to the train's viewport target (and returns
+// it), the view's flags left alone: what following a train does each frame
+// (viewportSetUndergroundFlag skips the main window).
+func (w *World) centreOnVehicle(headID uint16) (*scenario.VehicleEntity, bool) {
+	e, ok := w.vehicleViewTarget(headID)
+	if !ok {
+		return nil, false
+	}
 	w.SetCamera(float64(e.PosX)/32, float64(e.PosY)/32)
 	w.externalCamera = false
 	return e, true
 }
 
-// FocusOnVehicle is the "focus main view on this" item: the main view follows
-// the train (viewportFocusOnEntity) until the player moves the view.
+// FocusOnVehicle is the "focus main view on this" item (item 1:
+// Main::viewportFocusOnEntity): the main view follows the train from the
+// next pass on (viewportsUpdatePosition's target branch: followVehicle, a
+// jump; viewportSetUndergroundFlag leaves the main view's flag alone) until
+// the player moves the view.
 func (w *World) FocusOnVehicle(headID uint16) {
-	if w.CentreOnVehicle(headID) {
+	if _, ok := w.centreOnVehicle(headID); ok {
 		w.followHead, w.following = headID, true
 	}
 }

@@ -215,6 +215,7 @@ type Scenario struct {
 	LastBuildVehiclesOption uint8 // a VehicleType (0x414)
 	LastVehicleType         uint8 // the Vehicles menu's last type, a VehicleType (0x197)
 	PickupDirection         uint8 // GameState 0x198: placing vehicles facing the other way
+	LastMapWindow           LastMapWindow
 
 	// Towns holds the non-empty town records parsed from the scenario Towns
 	// chunk (or the towns array embedded in a saved-game GameState chunk).
@@ -873,4 +874,15 @@ func (c *Construction) Encode(gs []byte) {
 	for i, a := range c.arrays() {
 		copy(gs[ConstructionOffset+8*i:], a[:])
 	}
+}
+
+// LastMapWindow is GameState lastMapWindowAttributes (LastMapWindowAttributes.h,
+// S5GameState.h 0x46C–0x477): the map window's state as it was last closed —
+// its flags in upstream's Ui::WindowFlags bits (maximised 1 << 16,
+// hasStoredState 1 << 31; 0: never closed in this game), its size, and its
+// var_88A / var_88C (the size to restore from maximised).
+type LastMapWindow struct {
+	Flags          uint32
+	Width, Height  uint16
+	Var88A, Var88C uint16
 }

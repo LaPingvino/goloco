@@ -10,11 +10,19 @@
 #   mapWindowPosToLocation ((506 + 8 − 384) / 2, (325 + 8) / 2) = (65, 166):
 #   tile (101, 231) = (3232, 7392), land height 28 · 4 = 112 there; the view
 #   centred on it: viewX 7392 − 3232 − 400 = 3760, viewY (3232 + 7392) / 2 −
-#   112 − 300 = 4900;
+#   112 − 300 = 4900. The view glides there (Window.cpp viewportsUpdatePosition's
+#   scrollingToLocation: an eighth of the way, rounded up, a render pass; one a
+#   frame here, 93 ms of the script's clock): x 5680 → 5440, 5230, … 46 passes,
+#   y 34; half a second in it is on its way, after five it is there;
 # - a drag on to (120, 150): content (576, 275), tile (41, 241): viewX
 #   7712 − 1312 − 400 = 6000;
-# - a press at x 235, on the vertical bar's strip (x ≥ the widget's right 242 − 11), does
-#   not move the view;
+# - the scroll bars (ScrollView.cpp; the widget 240 × 215 at (3, 74)): a press at
+#   (235, 150) is on the vertical thumb (x 232 ≥ 239 − 11; at offset 200 the thumb
+#   is rows 58 … 106 of the widget) — neither view nor map moves; at (235, 224)
+#   (row 150) the track below it: a page, 215 − 2 − 11 = 202; at (223, 282) the
+#   horizontal bar's right button (column 220 ≥ 228 − 10): 3 (a script click is
+#   a press and a release in one frame, as both queued in one tick upstream:
+#   scrollLeftBegin, then leftReleased resets — no held pass) = 463;
 # - Enter (rotate): the map re-centred on the turned view — rotation 1's frame
 #   offset (768, 384): ((400 + viewX) / 32 + 768 − 114, (300 + viewY) / 16 +
 #   384 − 102).
@@ -23,6 +31,9 @@
 #   (260, 88) hovers the second row (bit 1 << 1); off the window the hover stays
 #   (setHoverItemTab returns when another window is under the pointer); on the
 #   map, left of the key, none.
+# - the remembered size (onClose's getLastMapWindowAttributes, open l. 2409): the
+#   window resized by 100 × 50 from its handle, closed, M again — it opens
+#   450 × 322.
 wait 20
 seed 1950
 scenario Weatherworld
@@ -38,14 +49,19 @@ expect mapscrollx == 460
 expect mapscrolly == 200
 shot /tmp/goloco-playthrough/pt-t1-open.png
 click 50 200
-wait 2
+wait 0.5
+expect glide == 1
+expect camx < 5680
+expect camx > 3760
+wait 5
 expect height@101,231 == 28
 expect camx == 3760
 expect camy == 4900
+expect glide == 0
 press 50 200
 wait 1
 move 120 150
-wait 2
+wait 6
 expect camx == 6000
 release 120 150
 wait 1
@@ -54,6 +70,14 @@ wait 1
 expect camx == 6000
 click 235 150
 wait 2
+expect camx == 6000
+expect mapscrolly == 200
+click 235 224
+wait 1
+expect mapscrolly == 402
+click 223 282
+wait 1
+expect mapscrollx == 463
 expect camx == 6000
 shot /tmp/goloco-playthrough/pt-t2-drag.png
 key ENTER
@@ -78,4 +102,21 @@ expect maphover == 2
 move 200 150
 wait 1
 expect maphover == 0
+expect mapw == 350
+press 345 297
+wait 1
+move 445 347
+wait 1
+release 445 347
+wait 1
+expect mapw == 450
+expect maph == 322
+key Backspace
+wait 1
+expect mapw == -1
+key M
+wait 2
+expect mapw == 450
+expect maph == 322
+shot /tmp/goloco-playthrough/pt-t5-reopened.png
 quit

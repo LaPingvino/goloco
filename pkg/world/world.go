@@ -88,6 +88,8 @@ type World struct {
 	// camera offset in pixels (in world-space before zoom is applied)
 	camX float64
 	camY float64
+	// glide: scrollingToLocation and the saved view it glides to (viewscroll.go)
+	glide glide
 	// last tile CenterOn snapped to (set by CenterOn, read by caller for diagTileX/Y)
 	LastCenterTileX, LastCenterTileY int
 	// when true, Draw() does not recentre the camera —
@@ -299,6 +301,7 @@ func (w *World) SetCamera(tileX, tileY float64) {
 	halfH := vh / 2 * float64(int(1)<<w.zoom)
 	w.camX = worldX - halfW
 	w.camY = worldY - halfH
+	w.glide.on = false // set outright (Title.cpp l. 190 clears scrollingToLocation)
 }
 
 // ZoomIn decreases the zoom level (more detail, fewer tiles visible).
@@ -346,8 +349,13 @@ func (w *World) zoomAt(newZoom, sx, sy int) {
 	vpX := float64(sx)/oldScale + w.camX
 	vpY := float64(sy)/oldScale + w.camY
 	w.zoom = newZoom
-	w.camX = vpX - float64(sx)/newScale
-	w.camY = vpY - float64(sy)/newScale
+	nx, ny := vpX-float64(sx)/newScale, vpY-float64(sy)/newScale
+	if w.glide.on { // viewportZoomSet (Window.cpp l. 665): the saved view moves, the view glides on to it
+		w.glide.x += int(nx - w.camX)
+		w.glide.y += int(ny - w.camY)
+		return
+	}
+	w.camX, w.camY = nx, ny
 }
 
 // SetZoom sets the zoom level directly (0=full, 1=half, 2=quarter, 3=eighth)
@@ -866,6 +874,11 @@ func abs(x int) int {
 func (w *World) PanCamera(dx, dy float64) {
 	w.following = false      // moving the view ends a focus (viewportUnfocusFromEntity)
 	w.externalCamera = false // user is now driving the camera
+	if w.glide.on {          // savedViewX / Y += delta (Keyboard.cpp l. 493, MouseInput.cpp l. 615): the glide's end moves
+		w.glide.x += int(dx)
+		w.glide.y += int(dy)
+		return
+	}
 	w.camX += dx
 	w.camY += dy
 }

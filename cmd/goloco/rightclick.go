@@ -187,6 +187,7 @@ func (g *Game) rightPressed(x, y int) {
 		return
 	}
 	g.vpRight = viewportRightState{on: true, last: gameNow(), main: true} // viewportDragBegin
+	g.w.StopGlide()                                                       // viewportDragBegin: scrollingToLocation off
 	g.vpRight.begin(x, y)
 	startCursorDrag()
 }

@@ -251,7 +251,7 @@ func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectM
 // limit and month count.
 //
 // PARTIAL: the season,
-// initialiseDefaultTrackRoadMods, lastMapWindowAttributes' flags. The
+// initialiseDefaultTrackRoadMods. The
 // scenario name / details / file name copy, the labels and the windows /
 // viewport / music resets are cmd/goloco's side.
 func (m *Map) StartScenario(startYear uint16, om *objects.ObjectManager) {
@@ -283,6 +283,7 @@ func (m *Map) StartScenarioGenerating(startYear uint16, gen *TerrainOptions, g1 
 	m.CompanyRecords = scenario.CompanyRecords{Company: [3]uint8{0xFF, 0xFF, 0xFF}}
 	m.ObjectiveUntilYear = uint16(m.Objective.TimeLimitYears) - 1 + m.CurrentYear
 	m.ObjectiveMonthsInChallenge = 0
+	m.LastMapWindow.Flags = 0 // Scenario.cpp l. 366: lastMapWindowAttributes.flags = WindowFlags::none
 }
 
 // vehicleColourScheme is createCar's colour choice: the company's main

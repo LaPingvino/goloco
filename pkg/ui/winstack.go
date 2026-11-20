@@ -116,6 +116,30 @@ const (
 	WindowFlagMaximised
 )
 
+// upstreamFlagBits are Ui::WindowFlags' bits (Window.h) for goloco's flags,
+// for what keeps a window's flags in a save (LastMapWindowAttributes).
+var upstreamFlagBits = []struct {
+	f   WindowFlags
+	bit uint32
+}{
+	{WindowFlagStickToBack, 1 << 0}, {WindowFlagStickToFront, 1 << 1}, {WindowFlagNoBackground, 1 << 5},
+	{WindowFlagIgnoreInFindAt, 1 << 7}, {WindowFlagResizable, 1 << 9}, {WindowFlagNoAutoClose, 1 << 10},
+	{WindowFlagPlaySoundOnOpen, 1 << 12}, {WindowFlagOpenQuietly, 1 << 13},
+	{WindowFlagHasBeenResized, 1 << 15}, {WindowFlagMaximised, 1 << 16},
+}
+
+// UpstreamFlags is the window's flags in Ui::WindowFlags' bits, the white
+// border's count as whiteBorderOne's multiple (whiteBorderMask, 1 << 17 …).
+func (b *WinBase) UpstreamFlags() uint32 {
+	var u uint32
+	for _, m := range upstreamFlagBits {
+		if b.WinFlags&m.f != 0 {
+			u |= m.bit
+		}
+	}
+	return u | uint32(b.whiteBorder&3)<<17
+}
+
 // kMaxWindows, kResizeHandleSize (Ui/Widget.h) and the caption widget every
 // goloco window has ({1, 1}, {width − 2, 13}; the close button {width − 15,
 // 2}, {13, 13} over its right end).
