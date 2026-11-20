@@ -202,23 +202,47 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >    - [x] The rail window came back on the Station tab it was closed on (the map hover then does nothing); a new
 >      construction window starts on its first tab (Common::createConstructionWindow currentTab = 0). Checked in the
 >      default suite with the placement reason: playthrough s-refusals (script check `error~TEXT`).
->    - [ ] Adding wagons to a placed train can leave it off the map ("Train 1 - No position"): 1926-07-25, Train 1
->      stopped near the Breakers Bridge buffer; a scratch sweep (AddCarToVehicle at 40 moments × 3 trains) lost Train 2
->      once, head at 202,184 heading for the buffer (tad 0x6). AddCarToVehicle mirrors CreateVehicle.cpp
->      addCarToVehicle / updateWholeVehicle, which ignore placeDownVehicle's result (the train is laid out reversed
->      from its head, so it needs its length of track AHEAD): not yet checked whether OpenLoco drops it there too.
->    - [ ] Economy vs OpenLoco (simulate + OPENLOCO_SIMSAVE from goloco's 1925-03-01 autosave, AI off): cash, loan,
->      value, profit, deliveries and the index EXACT for 12 months; then a 2-tick-early departure from a full-load
->      wait (goloco leaves Boulder Bay Mines at run tick 17076, OpenLoco 17078, 1925-08-25; speeds differ from 17076)
->      parts the rng at 17208 (a wheel-slip draw). From the two-line 1925-07-01 autosave (three wagons a train),
->      sampled every 6 months for two years (goloco vs OpenLoco): cash 3.4% apart at 1926-01 (£22,418 vs
->      £21,690), converging to ~1% by 1927-07 (£50,340 vs £50,854); deliveries within 60 units; but the
->      performance index — the objective's own measure — 7.7% vs 8.4% (1926-01), 8.2% vs 8.4% (1926-07), 7.7% vs
->      8.5% (1927-01), equal at 8.4% (1927-07): it hangs on which months the deliveries fall in. Towns apart by up to 200 people. Next lead: the loading
->      update's tick that ends a full-load wait (load.go vs VehicleHead.cpp updateLoadCargo / sub_4B9A2A).
->    - [ ] To check against OpenLoco: the Vehicles list showed "Train 1 - Unloading at Boulder Bay Mines" (its
->      pick-up) for two days while it waited there (1926-07-10); a dragged station's money pop-ups float ~2 tiles
->      up-left of the platforms; the Route tab's order buttons showed no tooltip after 3 s.
+>    - [x] Adding wagons to a placed train can leave it off the map ("Train 1 - No position"): OpenLoco DOES THE SAME
+>      (2026-11-20, branch boulder2). Reproduced in goloco from the 1926-07-01 three-train save: Train 2 (head 27)
+>      creeping to its stop at 202,184 (canBeModified lets a moving train be changed while Vehicle1's var_3C ≤ 0x3689)
+>      is lost by a wagon (object 87) added at run ticks 3199–3201 and refused from 3202 on. OpenLoco on the same
+>      save: the traced build's OPENLOCO_ADDCAR=HEAD,TYPE (after `simulate`'s ticks, doCommand(VehicleCreateArgs) as
+>      BuildVehicle.cpp does; ~/Projects/OpenLoco-rngtrace OpenLoco.cpp) — tileX −1 at 3199, 3200, 3201, refused at
+>      3202, placed at 3150 and 3198: the same window to the tick. Why: placeDownVehicle (VehicleManager.cpp
+>      0x004B05E4) lays the train out reversed from the head, positionVehicleOnTrack's sub_4ACEE7 runs into the end
+>      of the line at 206,184 (unk_m00, 195223 left over), the train is lifted, and addCarToVehicle /
+>      updateWholeVehicle (CreateVehicle.cpp 0x004AE5FF / 0x004AE6DE) ignore the result. Kept faithful. A later
+>      deliberate fix could refuse the add (or put the old train back) when placeDownVehicle fails. A train stopped
+>      by command (−cmdstop, 160 moments × 3 trains) was never lost. Found on the way and fixed: totalRefundCost was
+>      not recomputed by updateTrainProperties (calculateRefundCost, VehicleHead.cpp 7002 — the add's after-state
+>      now equals OpenLoco's), and a new entity's name was 8, not StringIds::empty_pop = 1. Seen, not fixed: the
+>      exhaust effects part from OpenLoco's from tick 1 (effect fields 0x26 / 0x28 / 0x32, name 0 not 1), so the
+>      free entity list's order parts and a car bought later can take other slots than in OpenLoco — next lead.
+>    - [x] Economy vs OpenLoco: EXACT now (2026-11-20, branch boulder2). The 2-tick-early departure was not the
+>      loading tick (load.go is updateLoadCargo line for line): the trains had parted long before. (1) Vehicle2::
+>      update asks shouldStartWheelSlipping inside its car loop, after the motor state is set and the slip counters
+>      are incremented, never while braking (Vehicle2.cpp 0x004A9B0B); goloco asked it before the speed step with
+>      last tick's motor state and counter — at a slip's end (63 → 0) OpenLoco drew for a new slip and goloco not
+>      (rng parted at run tick 3391, 1925-04-05). (2) olmath.Distance2D took the exact root; upstream's
+>      fastSquareRoot is a table (Math/src/Vector.cpp 119): Train 1's 657-unit journey was 656, its average speed
+>      26 not 27 (tick 7334) — and the same distance pays cargo (unload.go) and spaces cars (body.go). The table
+>      moved to pkg/olmath. (3) VehicleBody::updateCargoSprite (VehicleBody.cpp 0x004AC039) was unported: wagons
+>      loaded in play were drawn empty, and their cargoFrame differed. Now from the 1925-03-01 one-train save every
+>      6000 ticks to 120000 (1928-07-31): cash, loan, value, profit, deliveries, index, towns and every train byte
+>      equal, the main rng equal at 120000; the two-line 1925-07-01 save (three wagons a train; before: 3.4% apart,
+>      index 7.7% vs 8.4%) equal every 18000 ticks to 90000 (1928-01-23); the three-train 1926-07-01 save equal at
+>      1927-07-10 and 1928-07-19.
+>    - [x] Checked against OpenLoco (2026-11-20): the Route tab's order buttons had no tooltips — the Vehicle window
+>      had only its car tooltip. Now VehicleWindow.WidgetTooltip: close, the tabs ("Show view of train"…), Main's
+>      stop/start, pick-up (getPickupImageIdandTooltip's by mode), pass signal, change direction, Details' build
+>      new, pick-up, sell, repaint, colours, Route's list and seven order buttons, each tab's {POP16}{STRINGID} the
+>      vehicle type (Vehicle.cpp widget lists and tooltip events). The money pop-ups drifting ~2 tiles up-left are
+>      upstream's: MoneyEffect::update nudges by _wiggleAmounts (1,−1 at rotation 0: 2 px left on screen) every
+>      other frame for kLifetime 160 frames while _wiggleZAmounts lifts it (MoneyEffect.cpp 13–65), and the drag's
+>      positions are setPosition(args.pos + 16,16) per tile as upstream (CreateTrainStation.cpp 202, StationTab.cpp
+>      onToolUpMultiple) — no fix. "Unloading at Boulder Bay Mines" at the pick-up: the status text is getStatus's
+>      (VehicleHead.cpp 903) and the head's status is now OpenLoco's tick for tick (unloading at the pick-up < 20
+>      ticks, then loading, in both); not seen again in the compared saves.
 > 4. Company AI (PORT-PLANS F, decided: our own AI on an interface, the original studied, not ported): step 1, the
 >    original's end points (docs/AI-INTERFACE.md).
 > 5. N7 construction: the list DONE 2026-11-18 (branch n7-construction); what is left is listed under N7.
@@ -2407,3 +2431,4 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
 - 2026-11-19 (branch mapcentre) — PORT-PLANS A step c: MapWindow centerOnViewPoint (open; the rotate key, the right-held wheel and the rotate menu through Game.rotateView), scrollMouseDown / scrollMouseDrag (getPart's view part, stateScrollLeft each tick) centring the main view (World.CentreOnMapView: moveMainViewToMapView, viewportCentreOnTile), mapWindowPosToLocation / locationToMapWindowPos (pkg/sim mapwindowpos.go, four rotations tested), drawViewportPosition (cross-hatched frame, corners on mapFrameNumber bit 2, drawRectImpl's clip phase), the scroll crop as ScrollView::draw's; the old per-frame offset clamp dropped (upstream's onResize runs only at open). Side by side with OpenLoco (scripts/olref/tours/mapcentre.txt: title save at 330,60 rotation 2): offsets, frame, the view after a click and after Enter the same. Playthrough T (t-map; expect mapscrollx / mapscrolly). Unit 22 ok 0 FAIL, playthroughs 24/24. Left: scroll bars, scrollingToLocation's glide, tabs / key / other overlays.
 - 2026-11-19 (branch maptabs) — PORT-PLANS A step d: MapWindow's five tabs — drawTabs (animated train / routes images, the train in the player's colour), the tab change (onMouseUp), the captions; setMapPixelsVehicles / Industries / Routes / Ownership (sim maptabs.go, FillMapRow by tab) with assignIndustryColours / assignRouteColours (sim.MapColours; IndustryObject mapColour 0xE3); the graph keys drawGraphKey* with setHoverItemTab → _flashingItems (the hovered row's items flash, white name, blinking swatch, no view-frame corners); draw's minHeight and status bar (formatVehicleString / formatIndustryString); drawScroll's drawVehiclesOnMap (countVehiclesOnMap, getVehicleColour, aircraft / ship routes with drawLine) and drawTownNames. Side by side with OpenLoco on the title save (scripts/olref/tours/maptabs.txt): every tab equal but the scroll bars, moving vehicles and the flash phase. t-map extended (expect maptab / maphover). Unit 22 ok 0 FAIL, playthroughs 24/24. Left: the scroll bars, the remembered size, the glide, the editor’s disabled tabs.
 - 2026-11-20 (branch mapfinish) — PORT-PLANS A's leftovers, the map window done: ScrollView ported for two bars once for every window (uilayout Bars / ScrollHold: getPart l. 167 with the corner deadzone, calculateThumbSizeAndPosition with the other bar, the buttons / tracks / follows; pkg/ui drawScrollView / drawHScroll / drawVScroll; the list windows' vertical bars and Finances' horizontal one now draw and hit-test through it — VScrollPart's ends fixed to upstream's 11 / h − 11 and the thumb's last row); the map's bars drawn and clicked (held buttons repeat, thumbs follow, view drag as before); getLastMapWindowAttributes (GameState 0x46C–0x477 parsed, saved, reset by Scenario::start; open's clamp, onClose; the maximised state and var_88A / 88C back); Window.cpp's scrollingToLocation glide (pkg/world viewscroll.go, a step a render pass) for every viewportCentreOnTile caller goloco has — the map's click and drag, the town / industry / station / vehicle windows' centre (now at upstream's positions: getHeight / station z / the entity's position, not SetCamera's tile BaseZ); pans and zooms move the glide's end, a right drag stops it, rotation and the title tour stay jumps; FocusOnVehicle no longer goes through the centring. Side by side with OpenLoco (scripts/olref/tours/mapfinish.txt, title save): bars identical (incl. the arrows and the pressed button), both glide, the destinations line up pixel for pixel. t-map extended (glide, bar clicks, the remembered size; expect glide / mapw / maph). Unit 22 ok 0 FAIL, playthroughs 24/24 (none needed a changed expectation but t-map, extended for the glide).
+- 2026-11-20 (branch boulder2) — Priority 3's last Boulder blockers. Economy vs OpenLoco now EXACT: shouldStartWheelSlipping asked inside Vehicle2::update's loop (this tick's motor state, the incremented slip counter, never while braking — the rng had parted at run tick 3391), Distance2D through fastSquareRoot's table (the table moved to pkg/olmath; 656 not 657: the average speed and cargo payments), updateCargoSprite ported (loaded wagons were drawn empty); one-train save equal for 120000 ticks (to 1928-07-31), two- and three-train saves for ~2 years. Adding a wagon losing the train: OpenLoco does the same, to the tick (rngtrace.patch OPENLOCO_ADDCAR) — kept faithful; on the way calculateRefundCost in updateTrainProperties, empty_pop = 1. Vehicle window widget tooltips (the Route tab's order buttons); the money pop-ups' drift is upstream's. Unit 22 ok 0 FAIL, playthroughs 24/24.

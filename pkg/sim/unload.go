@@ -212,8 +212,8 @@ func (m *Map) UpdateUnloadCargo(tr Train, om *objects.ObjectManager) {
 				return
 			case body.BreakdownFlags&BreakdownAwaitingCargoTransfer != 0:
 				body.BreakdownFlags &^= BreakdownAwaitingCargoTransfer
-				if body.Cargo.Type != 0xFF {
-					m.updateUnloadCargoComponent(tr, &body.Cargo, cc.Back, om)
+				if body.Cargo.Type != 0xFF && m.updateUnloadCargoComponent(tr, &body.Cargo, cc.Back, om) {
+					m.updateCargoSprite(body, om)
 				}
 				return
 			}

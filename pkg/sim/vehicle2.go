@@ -44,7 +44,10 @@ type CarPhysics struct {
 	TotalCarWeight uint16 // front bogie totalCarWeight
 	Powered        bool   // its vehicle object has power != 0
 	OnRackRail     bool   // isOnRackRail (see PARTIAL)
-	StartSlipping  bool   // shouldStartWheelSlipping (see PARTIAL)
+	// StartSlipping is shouldStartWheelSlipping (it may draw from gPrng1),
+	// asked with the motor state and the car's wheelSlipping as they stand at
+	// that point of the loop; nil: never.
+	StartSlipping func(motorState, wheelSlipping uint8) bool
 	// WheelSlipping is the car's components' wheelSlipping (all equal: the
 	// car starts and stops slipping together); updated in place.
 	WheelSlipping uint8
@@ -93,7 +96,7 @@ func (v *Vehicle2Speed) UpdateSpeed(targetSpeed int16, headFlags uint16, manualP
 	var ebp int32
 	for i := range cars {
 		c := &cars[i]
-		if c.StartSlipping {
+		if c.StartSlipping != nil && c.StartSlipping(v.MotorState, c.WheelSlipping) {
 			c.WheelSlipping = 1
 		}
 		if c.WheelSlipping != 0 {

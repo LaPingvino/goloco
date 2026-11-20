@@ -18,10 +18,11 @@ index d450452..798527d 100644
          auto srand1 = _srand_1;
          _srand_0 += std::rotr<uint32_t>(srand1 ^ 0x1234567F, 7);
 diff --git a/src/OpenLoco/src/GameCommands/Buildings/CreateBuilding.cpp b/src/OpenLoco/src/GameCommands/Buildings/CreateBuilding.cpp
-index 64332b4..670f4a2 100644
+index 64332b4..64db379 100644
 --- a/src/OpenLoco/src/GameCommands/Buildings/CreateBuilding.cpp
 +++ b/src/OpenLoco/src/GameCommands/Buildings/CreateBuilding.cpp
-@@ -1,4 +1,8 @@
+@@ -1,4 +1,9 @@
++#pragma GCC diagnostic ignored "-Wframe-address"
  #include "GameCommands/Buildings/CreateBuilding.h"
 +#include "Scenario/ScenarioManager.h"
 +#include <cstdio>
@@ -30,7 +31,7 @@ index 64332b4..670f4a2 100644
  #include "Economy/Economy.h"
  #include "Localisation/StringIds.h"
  #include "Map/AnimationManager.h"
-@@ -275,6 +279,21 @@ namespace OpenLoco::GameCommands
+@@ -275,6 +280,21 @@ namespace OpenLoco::GameCommands
      void createBuilding(registers& regs, const Flags flags)
      {
          BuildingPlacementArgs args(regs);
@@ -53,10 +54,19 @@ index 64332b4..670f4a2 100644
      }
  }
 diff --git a/src/OpenLoco/src/OpenLoco.cpp b/src/OpenLoco/src/OpenLoco.cpp
-index 0b66c55..c914f01 100644
+index 0b66c55..03dd2b5 100644
 --- a/src/OpenLoco/src/OpenLoco.cpp
 +++ b/src/OpenLoco/src/OpenLoco.cpp
-@@ -43,6 +43,8 @@
+@@ -26,6 +26,8 @@
+ #include "Entities/EntityTweener.h"
+ #include "Environment.h"
+ #include "GameCommands/GameCommands.h"
++#include <OpenLoco/GameCommands/Vehicles/CreateVehicle.h>
++#include "Vehicles/VehicleHead.h"
+ #include "Graphics/Colour.h"
+ #include "Graphics/Gfx.h"
+ #include "Gui.h"
+@@ -43,6 +45,8 @@
  #include "Objects/ObjectIndex.h"
  #include "Objects/ObjectManager.h"
  #include "OpenLoco.h"
@@ -65,10 +75,25 @@ index 0b66c55..c914f01 100644
  #include "Scenario/ScenarioManager.h"
  #include "SceneManager.h"
  #include "Scenes/BootScene.h"
-@@ -462,6 +464,11 @@ namespace OpenLoco
+@@ -462,6 +466,26 @@ namespace OpenLoco
  
              Scenes::GameScene::tick();
          }
++        // OPENLOCO_ADDCAR=HEAD,TYPE: after the ticks, the player adds a car of TYPE to train HEAD (vehicleCreate, as BuildVehicle.cpp)
++        if (const char* ac = std::getenv("OPENLOCO_ADDCAR"); ac != nullptr)
++        {
++            unsigned h = 0, ty = 0;
++            if (std::sscanf(ac, "%u,%u", &h, &ty) == 2)
++            {
++                GameCommands::setUpdatingCompanyId(CompanyManager::getControllingId());
++                GameCommands::VehicleCreateArgs a{};
++                a.vehicleId = EntityId(h);
++                a.vehicleType = static_cast<uint16_t>(ty);
++                auto r = GameCommands::doCommand(a, GameCommands::Flags::apply);
++                auto* head = EntityManager::get<Vehicles::VehicleHead>(EntityId(h));
++                Logging::info("ADDCAR head {} type {}: result {:#x}, head tileX {} tileY {} status {}", h, ty, static_cast<uint32_t>(r), head ? head->tileX : -2, head ? head->tileY : -2, head ? static_cast<int>(head->status) : -1);
++            }
++        }
 +        // OPENLOCO_SIMSAVE=path: the state after the ticks, saved (goloco comparison)
 +        if (const char* out = std::getenv("OPENLOCO_SIMSAVE"); out != nullptr)
 +        {
@@ -78,10 +103,11 @@ index 0b66c55..c914f01 100644
  
  }
 diff --git a/src/OpenLoco/src/Random.cpp b/src/OpenLoco/src/Random.cpp
-index b1152dd..81fe15d 100644
+index b1152dd..92b8b5d 100644
 --- a/src/OpenLoco/src/Random.cpp
 +++ b/src/OpenLoco/src/Random.cpp
-@@ -1,5 +1,16 @@
+@@ -1,5 +1,17 @@
++#pragma GCC diagnostic ignored "-Wframe-address"
  #include "Random.h"
  #include "GameState.h"
 +#include "Scenario/ScenarioManager.h"
@@ -98,7 +124,7 @@ index b1152dd..81fe15d 100644
  
  namespace OpenLoco
  {
-@@ -13,6 +24,49 @@ namespace OpenLoco
+@@ -13,6 +25,49 @@ namespace OpenLoco
          return getGameState().unkRng;
      }
  

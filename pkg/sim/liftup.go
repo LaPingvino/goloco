@@ -7,8 +7,7 @@ import (
 // Taking a vehicle off the track: VehicleHead::liftUpVehicle (0x004B08DD) with
 // liftUpTail (VehicleTail.cpp 0x004B090F) and removeAllCargo (Vehicle.cpp
 // 0x004AF16A), and the VehiclePickup game command (0x004B0826).
-// The pickup sound plays (sounds.go). PARTIAL: the window invalidations; removeAllCargo's body cargo sprite update (drawn from the
-// cargo state anyway, as load.go's note).
+// The pickup sound plays (sounds.go). PARTIAL: the window invalidations.
 
 // KeepCargoModifyPickup is Config::keepCargoModifyPickup (a cheat, off).
 var KeepCargoModifyPickup = false
@@ -94,12 +93,13 @@ func (m *Map) liftUpTail(tr Train) {
 }
 
 // removeAllCargo is Vehicle.cpp removeAllCargo: the car component's cargo
-// emptied, then the train's properties updated.
+// emptied, then the train's properties and the body's cargo sprite updated.
 func (m *Map) removeAllCargo(tr Train, cc CarComponent, om *objects.ObjectManager) {
 	m.Entities[cc.Front].Cargo.Qty = 0
 	m.Entities[cc.Back].Cargo.Qty = 0
 	m.Entities[cc.Body].Cargo.Qty = 0
 	m.UpdateTrainProperties(tr, om)
+	m.updateCargoSprite(&m.Entities[cc.Body], om)
 }
 
 // VehiclePickup is the vehiclePickup game command: 0 and true, or false when

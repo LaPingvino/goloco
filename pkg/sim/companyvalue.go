@@ -4,9 +4,10 @@ import "github.com/LaPingvino/goloco/pkg/i18n"
 
 import "github.com/LaPingvino/goloco/pkg/objects"
 
+import "github.com/LaPingvino/goloco/pkg/olmath"
+
 // Company performance and value — World/Company.cpp calculatePerformanceIndex
-// and calculateCompanyValue, Math::Vector::fastSquareRoot (table generated,
-// checked against 2000 upstream vectors).
+// and calculateCompanyValue, olmath.FastSquareRoot (Math::Vector::fastSquareRoot).
 //
 // Not checkable against a save: Company::updateMonthly1 computes both BEFORE
 // VehicleManager::updateMonthly rotates the vehicles' profit history (dateTick
@@ -14,14 +15,6 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // line for line; wired into the monthly update next (item 5 monthly tick).
 
 const companyFlagBankrupt = 1 << 9
-
-// FastSquareRoot is Math::Vector::fastSquareRoot.
-func FastSquareRoot(d uint32) uint16 {
-	i := uint(10)
-	for ; d >= 4096; i, d = i-1, d>>2 {
-	}
-	return fastSquareRootTable[(d&0xFFE)>>1] >> i
-}
 
 // totalRecentProfit is Vehicle2::totalRecentProfit.
 func totalRecentProfit(p [4]int32) int32 { return p[0] + p[1] + p[2] + p[3] }
@@ -43,13 +36,13 @@ func (m *Map) CalculatePerformanceIndex(id int) int16 {
 		}
 	}
 	total = max(0, total)
-	partial := uint32(FastSquareRoot(uint32(total))) * 75
-	eco := uint32(FastSquareRoot(m.CurrencyMultiplicationFactor[0]))
+	partial := uint32(olmath.FastSquareRoot(uint32(total))) * 75
+	eco := uint32(olmath.FastSquareRoot(m.CurrencyMultiplicationFactor[0]))
 	profitFactor := uint16(500)
 	if partial < eco*500 {
 		profitFactor = uint16(partial / eco)
 	}
-	cargoFactor := min(500, FastSquareRoot(m.Companies[id].CargoUnitsDistanceHist[0]/4))
+	cargoFactor := min(500, olmath.FastSquareRoot(m.Companies[id].CargoUnitsDistanceHist[0]/4))
 	return int16(profitFactor + cargoFactor)
 }
 

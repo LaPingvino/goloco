@@ -32,7 +32,7 @@ func (m *Map) newVehicleEntity(entityType uint8) (*scenario.VehicleEntity, bool)
 }
 
 const (
-	stringIDEmptyPop = 0x08 // StringIds::empty_pop — what createEntity names a new entity
+	stringIDEmptyPop = 1 // StringIds::empty_pop (StringIds.h: 1) — what createEntity names a new entity
 )
 
 // createUniqueTypeNumber is CreateVehicle.cpp 0x004B64F9: the lowest ordinal

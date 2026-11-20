@@ -128,7 +128,7 @@ func (g *Game) newVehicleWindow(headID uint16, tab int) *ui.VehicleWindow {
 		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
 		State:        ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
 		OnPickup:     func() { g.onPickup(headID) },
-		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h), BuildNewImage: g.buildNewImage(&h),
+		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h), PickupTooltip: pickupTooltip(&h), BuildNewImage: g.buildNewImage(&h),
 		OnBuildNew: func(x, y, w, hh int) { g.buildNewOpen(headID, x, y, w, hh) },
 		Route:      g.routeLines(&h), RouteSel: routeSel, Hover: -1, Finances: g.vehicleFinances(tr), Cargo: g.vehicleCargo(tr, cars),
 		OnRouteSelect: func(row int) { g.setRouteSel(headID, row); g.refreshVehicleWindow(headID, 4) },
@@ -276,6 +276,26 @@ func (g *Game) pickupImage(h *scenario.VehicleEntity) int {
 		}
 	}
 	return 0
+}
+
+// pickupTooltip is getPickupImageIdandTooltip's tooltip (Vehicle.cpp
+// Common): by transport mode remove from / place on track (rail and road),
+// airport or water (dock).
+func pickupTooltip(h *scenario.VehicleEntity) int {
+	placed := h.TileX != -1
+	pick := func(remove, place int) int {
+		if placed {
+			return remove
+		}
+		return place
+	}
+	switch h.Mode {
+	case 2:
+		return pick(i18n.TooltipRemoveFromAirport, i18n.TooltipPlaceOnAirport)
+	case 3:
+		return pick(i18n.TooltipRemoveFromWater, i18n.TooltipPlaceOnDock)
+	}
+	return pick(i18n.TooltipRemoveFromTrack, i18n.TooltipPlaceOnTrack)
 }
 
 // centreViewportOpen is Main's onCentreViewportControl: a text dropdown at the

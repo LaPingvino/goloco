@@ -87,7 +87,11 @@ const StatusTravelling uint8 = 2
 // ShouldStartWheelSlipping is shouldStartWheelSlipping for a car's front
 // bogie. It draws from gPrng1 (m.Rng1) at the same point upstream does.
 // The tutorial check is upstream's too: goloco has no tutorial (always none).
-func (m *Map) ShouldStartWheelSlipping(head, veh2, front *scenario.VehicleEntity, om *objects.ObjectManager) bool {
+// motorState and wheelSlipping are the values at the moment of the call in
+// Vehicle2::update (Vehicle2.cpp 0x004A9B0B): the motor state just set from
+// the target speed and the front bogie's wheelSlipping just incremented — not
+// the entities' fields, which the speed step writes back only afterwards.
+func (m *Map) ShouldStartWheelSlipping(head, veh2, front *scenario.VehicleEntity, motorState, wheelSlipping uint8, om *objects.ObjectManager) bool {
 	veh := vehicleObject(om, front.ObjectID)
 	if veh == nil || veh.Flags&vehicleFlagCanWheelslip == 0 || veh.Power == 0 {
 		return false
@@ -95,10 +99,10 @@ func (m *Map) ShouldStartWheelSlipping(head, veh2, front *scenario.VehicleEntity
 	if head.Status != StatusTravelling {
 		return false
 	}
-	if veh2.MotorState == MotorCoasting || veh2.CurrentSpeed > 10*mph {
+	if motorState == MotorCoasting || veh2.CurrentSpeed > 10*mph {
 		return false
 	}
-	if front.WheelSlipping != 0 {
+	if wheelSlipping != 0 {
 		return false
 	}
 	if head.VehicleFlags&VehicleFlagManualControl != 0 && head.ManualPower <= 10 {
@@ -138,8 +142,10 @@ func (m *Map) ShouldStartWheelSlipping(head, veh2, front *scenario.VehicleEntity
 }
 
 // CarPhysicsOf builds the speed step's per-car inputs for a train from its
-// cars' front bogies (Vehicle2::update's loop over train.cars), deciding
-// StartSlipping with shouldStartWheelSlipping as upstream does in that loop.
+// cars' front bogies (Vehicle2::update's loop over train.cars); StartSlipping
+// is shouldStartWheelSlipping, which UpdateSpeed calls inside that loop as
+// upstream does (after the motor state and the slip counters are updated, and
+// not at all when braking).
 func (m *Map) CarPhysicsOf(tr Train, om *objects.ObjectManager) []CarPhysics {
 	head, veh2 := &m.Entities[tr.Head], &m.Entities[tr.Veh2]
 	out := make([]CarPhysics, 0, len(tr.Cars))
@@ -151,8 +157,10 @@ func (m *Map) CarPhysicsOf(tr Train, om *objects.ObjectManager) []CarPhysics {
 			TotalCarWeight: f.TotalWeight,
 			Powered:        veh != nil && veh.Power != 0,
 			OnRackRail:     m.IsOnRackRail(f, om),
-			StartSlipping:  m.ShouldStartWheelSlipping(head, veh2, f, om),
-			WheelSlipping:  f.WheelSlipping,
+			StartSlipping: func(motorState, wheelSlipping uint8) bool {
+				return m.ShouldStartWheelSlipping(head, veh2, f, motorState, wheelSlipping, om)
+			},
+			WheelSlipping: f.WheelSlipping,
 		})
 	}
 	return out

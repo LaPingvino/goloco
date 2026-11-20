@@ -31,3 +31,28 @@ func TestVehicle2UpdateSpeed(t *testing.T) {
 		t.Errorf("stopped: state %d speed %#x", v.MotorState, v.CurrentSpeed)
 	}
 }
+
+// shouldStartWheelSlipping is asked inside Vehicle2::update's car loop
+// (Vehicle2.cpp 0x004A9B0B): after the motor state is set from this tick's
+// target and the slip counters are incremented, and never while braking.
+// goloco asked it before the speed step, with last tick's motor state and
+// counter: at the end of a slip (counter 63 → 0) OpenLoco draws for a new one
+// and goloco did not — Boulder Breakers' rng parted there (1925-04-05).
+func TestVehicle2AsksWheelSlipInTheLoop(t *testing.T) {
+	type ask struct{ motor, slip uint8 }
+	var asked []ask
+	start := func(motor, slip uint8) bool { asked = append(asked, ask{motor, slip}); return false }
+
+	v := Vehicle2Speed{CurrentSpeed: 60 * mph, MotorState: MotorAccelerating}
+	v.UpdateSpeed(40, 0, 0, 1000, 100, false, []CarPhysics{{TotalCarWeight: 100, Powered: true, OnRackRail: true, StartSlipping: start}})
+	if len(asked) != 0 {
+		t.Errorf("braking: asked %v, want no question (and no rng draw)", asked)
+	}
+
+	v = Vehicle2Speed{CurrentSpeed: 2 * mph, MotorState: MotorCoasting}
+	cars := []CarPhysics{{TotalCarWeight: 100, Powered: true, OnRackRail: true, StartSlipping: start, WheelSlipping: WheelSlippingDuration - 1}}
+	v.UpdateSpeed(60, 0, 0, 1000, 100, false, cars)
+	if len(asked) != 1 || asked[0] != (ask{MotorAccelerating, 0}) {
+		t.Errorf("asked %v, want once with this tick's motor state (accelerating) and the counter run out (0)", asked)
+	}
+}

@@ -287,13 +287,11 @@ func (m *Map) vehiclesUpdateMonthly(om *objects.ObjectManager) {
 			v2.Profit[0] = v2.CurMonthRevenue - costs
 			v2.CurMonthRevenue = 0
 		}
-		var total uint32
 		for _, car := range tr.Cars {
 			f := &m.Entities[car[0].Front]
 			f.RefundCost -= f.RefundCost / 128 // -0.78% a month
-			total += f.RefundCost
 		}
-		head.TotalRefundCost = total // calculateRefundCost
+		m.calculateRefundCost(tr)
 	}
 }
 

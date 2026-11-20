@@ -118,7 +118,20 @@ func (m *Map) UpdateTrainProperties(tr Train, om *objects.ObjectManager) {
 	v2.RackRailMaxSpeed = rackSpeed
 	v2.Var4F = -1
 	m.updateSoundingObjects(tr, om) // the driving sounds' objects (drivingsound.go)
+	m.calculateRefundCost(tr)
 	m.recalculateTrainMinReliability(tr)
+}
+
+// calculateRefundCost is VehicleHead::calculateRefundCost (VehicleHead.cpp
+// 0x004B82AE): the head's totalRefundCost, the sum of its cars' front bogies'
+// refundCost. updateTrainProperties ends with it (VehicleHead.cpp 7002), so a
+// car bought or sold counts at once, not only at the next month's update.
+func (m *Map) calculateRefundCost(tr Train) {
+	var total uint32
+	for _, car := range tr.Cars {
+		total += m.Entities[car[0].Front].RefundCost
+	}
+	m.Entities[tr.Head].TotalRefundCost = total
 }
 
 // VehicleCargoRef is the part of a VehicleCargo the weight sums read.
