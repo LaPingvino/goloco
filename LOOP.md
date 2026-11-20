@@ -693,7 +693,9 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       in Unifont. Setting: "Small text: full characters (larger UI) / phonetic". Do option 1 (Unifont) first.
 >       How (Joop): no dictionary in goloco at all — secondary language files in OpenLoco's own .yml format, made
 >       ahead of time by an LLM translating each string of ja-JP / zh-CN (and zh-TW if one appears) into kana,
->       pinyin and bopomofo (e.g. ja-JP-kana.yml, zh-CN-pinyin.yml, zh-CN-bopomofo.yml), same keys and format
+>       pinyin and bopomofo (e.g. ja-JP-kana.yml, zh-CN-pinyin.yml, zh-TW-bopomofo.yml — bopomofo belongs with Taiwan;
+>       OpenLoco has only zh-CN, so a zh-TW.yml in Traditional characters comes first, converted with OpenCC's
+>       rules and Taiwan phrasing, then its bopomofo variant), same keys and format
 >       codes ({INT16}, {POP16} …) kept exactly, checked by a script (every key present, every format code intact,
 >       only the expected character set used) and spot-checked; they appear in the language list as variants.
 >       Korean jamo stays runtime (arithmetic). Licence: the files derive from OpenLoco's language files — check
