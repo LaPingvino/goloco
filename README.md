@@ -78,5 +78,8 @@ CI runs the test suite on every push and PR.
 
 ## License
 
+MIT (see `LICENSE`). goloco ports from [OpenLoco](https://github.com/OpenLoco/OpenLoco)
+and ships its language packs; OpenLoco's copyright and licence are in `NOTICE`.
+
 Reimplementation project; original game by Chris Sawyer. Requires an original
-copy of Locomotion for game data.
+copy of Locomotion for game data, which is not part of goloco.
