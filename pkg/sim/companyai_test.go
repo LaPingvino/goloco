@@ -174,3 +174,24 @@ func TestFormatAICompanyName(t *testing.T) {
 		}
 	}
 }
+
+// updateMonthly1's automatic repayment (H4) goes with AutoBorrow: without it
+// a goloco AI company's cash isn't taken for its loan (it would then be in
+// the red after every month's interest, and bankrupt in nine); OpenLoco's AI
+// companies still repay.
+func TestAIMonthlyRepaySwitch(t *testing.T) {
+	for _, c := range []struct {
+		ai, autoBorrow bool
+		wantLoan       int32
+	}{{false, false, 0}, {true, false, 5000}, {true, true, 0}} {
+		m := aiTestMap()
+		m.Companies[3].Cash, m.Companies[3].CurrentLoan = 8000, 5000
+		if c.ai {
+			_ = m.SetCompanyAI(3, "test", AIOptions{AutoBorrow: c.autoBorrow})
+		}
+		m.companiesUpdateMonthly1(nil)
+		if m.Companies[3].CurrentLoan != c.wantLoan {
+			t.Errorf("AI %v AutoBorrow %v: loan %d, want %d", c.ai, c.autoBorrow, m.Companies[3].CurrentLoan, c.wantLoan)
+		}
+	}
+}

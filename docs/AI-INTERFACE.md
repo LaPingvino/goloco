@@ -388,16 +388,17 @@ Engine rules that stay (they apply to every AI equally, and each is named in the
 - the 500-vehicle AI cap;
 - 2 AI airports per town;
 - the competitors' forbidden-vehicle mask;
-- the monthly auto-repay (H4);
+- the monthly auto-repay (H4), together with H3 (see below);
 - the removal of unused town-type roads;
 - **(decision for Joop)** auto-borrowing in the funding check (H3): keep it, as OpenLoco does for non-players,
   or treat our AI companies like players, so they must `ChangeLoan` themselves. Proposal: players' rule.
   Borrowing becomes a visible decision in the log, and the H3 code path stays only for OpenLoco's own AI
   companies when the original rules are in force (AI off, simcmp).
 
-The G6 switch covers borrowing only. The monthly auto-repay (H4) stays an engine rule for every non-player
-company. It never adds money, so it is harmless to an AI that borrows on purpose; an AI that wants to keep its
-loan can be given the same switch later.
+The G6 switch covers the monthly auto-repay (H4) too. This draft first called the repay harmless, and it
+isn't. It leaves under 1000 in cash, and that month's interest is charged afterwards. A company refused automatic
+loans is then in the red at every month's check, and bankrupt after nine months, whatever it earns.
+`AIOptions.AutoBorrow` therefore switches both rules together. OpenLoco's AI companies keep both.
 
 Ruled out: H1 (reservations), H2 (free building), H5 (acting as neutral), H6 (direct calls), H7 (AI-only
 commands), H8 and H9 (direct writes; the engine keeps its own bookkeeping), H11 (others' plans), H12 and H13
@@ -463,8 +464,8 @@ logged, because a route search makes thousands.
   - **Open:** a competitor's ownerName. It is 0, because object string ids aren't modelled; `OwnerName` still shows
     the competitor's name.
 - **G6 done.** `AIOptions.AutoBorrow`, off by default. Without it, ensureCompanyFunding refuses a goloco AI
-  company as it refuses a player, and the AI borrows with `ChangeLoan`. OpenLoco's AI companies keep the
-  automatic loan.
+  company as it refuses a player, updateMonthly1 doesn't take its cash for the loan, and the AI borrows and
+  repays with `ChangeLoan`. OpenLoco's AI companies keep both automatic rules.
 - **G7 partly done.** The view exposes the surface, road elements, getRoadConnections, towns, industries,
   stations, the own company and vehicles, buildable vehicles, available roads, road stop types, and the passenger
   cargo (mostCommonBuildingCargoType). Still open: water count, catchment, town demand, coupling.

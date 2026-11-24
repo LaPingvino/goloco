@@ -114,3 +114,52 @@ func TestBusLinkEndToEnd(t *testing.T) {
 		t.Errorf("the AI paid nothing for its commands (%d)", spent)
 	}
 }
+
+// idleAI makes no commands.
+type idleAI struct{}
+
+func (idleAI) Name() string      { return "idle" }
+func (idleAI) Think(*sim.AIView) {}
+
+func init() { sim.RegisterAI("idle", func() sim.CompanyAI { return idleAI{} }) }
+
+// The dry runs change nothing: buslink's planning think (thousands of
+// queries: stop sites, the road network walks, the joining search) leaves
+// the game's two rngs, the tiles' element counts and the company's money
+// as an idle AI's think does.
+func TestBusLinkPlanningChangesNothing(t *testing.T) {
+	type snap struct {
+		rng1, rng2 [2]uint32
+		cash       int64
+		loan       int32
+		elements   int
+	}
+	take := func(name string) (snap, int) {
+		s, om := loadDataMap(t, "title.dat")
+		m := &s.Map
+		id := m.CreateAICompany(name, sim.AIOptions{}, om)
+		if id == 0xFF {
+			t.Fatal("no AI company")
+		}
+		for range 16 { // one think for company id
+			m.UpdateVehicles(om)
+		}
+		n := 0
+		for y := range m.Height {
+			for x := range m.Width {
+				n += len(m.TileAt(x, y).Order)
+			}
+		}
+		return snap{[2]uint32{m.Rng1.Srand0(), m.Rng1.Srand1()}, [2]uint32{m.Rng2.Srand0(), m.Rng2.Srand1()},
+			m.Companies[id].Cash, m.Companies[id].CurrentLoan, n}, int(m.AIQueries(int(id)))
+	}
+	idle, _ := take("idle")
+	planned, queries := take(BusLinkName)
+	t.Logf("%d dry runs in buslink's first think", queries)
+	if queries == 0 {
+		t.Fatal("buslink made no dry runs")
+	}
+	if idle != planned {
+		t.Errorf("planning changed the game: idle %+v, buslink %+v", idle, planned)
+	}
+}

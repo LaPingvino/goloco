@@ -10,5 +10,5 @@ var Config struct {
 	LoadPenaltyDisabled    bool
 	StationSizeLimitOff    bool
 	TrainsReverseAtSignals bool
-	CompanyAIDisabled      bool // PARTIAL: goloco has no company AI tick to switch off yet
+	CompanyAIDisabled      bool // stops goloco's company AIs (companiesTick)
 }

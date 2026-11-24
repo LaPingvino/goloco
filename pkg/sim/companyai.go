@@ -60,10 +60,11 @@ func AINames() []string {
 // separate switch, off by default (PORT-PLANS F, "cheats: configurable, off
 // by default").
 type AIOptions struct {
-	// AutoBorrow keeps OpenLoco's rule for non-player companies in
-	// ensureCompanyFunding (AI-INTERFACE.md H3, G6): a command it can't pay
-	// takes out a loan by itself. Off, the company pays as a player does and
-	// borrows with ChangeLoan.
+	// AutoBorrow keeps OpenLoco's rules for non-player companies
+	// (AI-INTERFACE.md H3, H4, G6): ensureCompanyFunding takes out a loan for
+	// a command it can't pay, and updateMonthly1 pays the loan back from the
+	// cash each month. Off, the company is treated as a player: refused
+	// without the cash, and its loan is its own business (ChangeLoan).
 	AutoBorrow bool
 }
 

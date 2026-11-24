@@ -173,7 +173,7 @@ func (m *Map) companiesUpdateMonthly1(om *objects.ObjectManager) {
 		rotate120(&c.CompanyValueHistory, value)
 		c.VehicleProfit = vp
 		c.HistorySize = min(c.HistorySize+1, 120)
-		if !m.IsPlayerCompany(id) { // AI: auto pay the loan
+		if !m.IsPlayerCompany(id) && !m.aiPaysAsPlayer(id) { // AI: auto pay the loan (not goloco's AIs that borrow as players: G6)
 			for c.CurrentLoan >= 1000 && c.Cash >= 1000 {
 				c.CurrentLoan -= 1000
 				c.Cash -= 1000
