@@ -253,6 +253,8 @@ func (sc *Scenario) putCompanies(gs []byte) {
 		putCurrency48(r, 0x08, c.Cash)
 		put32(r, 0x0E, uint32(c.CurrentLoan))
 		put16(r, 0x50, c.AvailableVehicles)
+		put32(r, 0x52, c.AiPlaystyleFlags)
+		r[0x56] = c.AiPlaystyleTownID
 		r[0x57] = c.NumExpenditureYears
 		for mo := range c.Expenditures {
 			for t, v := range c.Expenditures[mo] {

@@ -124,17 +124,17 @@ func TestCreateRoadCost(t *testing.T) {
 	c := &Cmd{Company: CompanyNeutral, Objects: om}
 	m := &Map{}
 	base := m.InflationAdjustedCost(100, 0, 10)
-	mods, cost, ok := m.createRoadCost(c, roadPlacementArgs{Z: 32, RoadID: 0, RoadObjectID: 0, Mods: 1})
+	mods, cost, ok := m.createRoadCost(c, RoadPlacement{Z: 32, RoadID: 0, RoadObjectID: 0, Mods: 1})
 	if !ok || mods != 0 { // no PAVEMENT object loaded: the extra is dropped
 		t.Errorf("mods %b ok %v", mods, ok)
 	}
 	if want := base * int32(RoadCostFactor[0]) / 256; cost != want {
 		t.Errorf("straight road cost %d, want %d", cost, want)
 	}
-	if _, _, ok := m.createRoadCost(c, roadPlacementArgs{Z: 36, RoadObjectID: 0}); ok {
+	if _, _, ok := m.createRoadCost(c, RoadPlacement{Z: 36, RoadObjectID: 0}); ok {
 		t.Error("a height off the 16 grid must fail")
 	}
-	_, curve, _ := m.createRoadCost(c, roadPlacementArgs{Z: 32, RoadID: 3, RoadObjectID: 0})
+	_, curve, _ := m.createRoadCost(c, RoadPlacement{Z: 32, RoadID: 3, RoadObjectID: 0})
 	if want := base * int32(RoadCostFactor[3]) / 256; curve != want {
 		t.Errorf("piece 3 cost %d, want %d", curve, want)
 	}
@@ -158,7 +158,7 @@ func TestCreateRoadCheck(t *testing.T) {
 			m.Tiles[y][x].BaseZ = 4 // the ground at z 16
 		}
 	}
-	a := roadPlacementArgs{X: 3 * 32, Y: 3 * 32, Z: 16, RoadID: 0, RoadObjectID: 0, Bridge: 0xFF}
+	a := RoadPlacement{X: 3 * 32, Y: 3 * 32, Z: 16, RoadID: 0, RoadObjectID: 0, Bridge: 0xFF}
 	r, ok := m.createRoadCheck(c, a, 0)
 	_, base, _ := m.createRoadCost(c, a)
 	if !ok || len(r.Pieces) != 1 || r.Pieces[0].BaseZ != 4 || r.Pieces[0].ClearZ != 12 || r.Cost != base {
@@ -194,7 +194,7 @@ func TestCreateRoadApply(t *testing.T) {
 	tile.Slope = 2 << 5 // snow
 	tile.Walls = []scenario.WallElement{{BaseZ: 4, ClearZ: 8}}
 	tile.insertRef(scenario.KindWall, 0, 4)
-	a := roadPlacementArgs{X: 3 * 32, Y: 3 * 32, Z: 16, RoadID: 0, RoadObjectID: 0, Bridge: 0xFF}
+	a := RoadPlacement{X: 3 * 32, Y: 3 * 32, Z: 16, RoadID: 0, RoadObjectID: 0, Bridge: 0xFF}
 	r, ok := m.createRoadCheck(c, a, CmdApply)
 	if !ok || !m.createRoadApply(c, a, CmdApply, &r) {
 		t.Fatal("placing a road on flat ground failed")
@@ -239,7 +239,7 @@ func TestCreateRoadJunctionsUpstream(t *testing.T) {
 		}
 		r := &createRoadResult{}
 		r.RoadIDUnk[0], r.RoadIDUnk[1], r.RoadIDUnk[2] = uint8(in&0xF)|0x80, uint8(in>>4&0xF), uint8(in>>8&0xF)
-		m.createRoadJunctions(c, roadPlacementArgs{X: 32, Y: 32, Z: 64, Bridge: 0xFF}, CmdApply, r)
+		m.createRoadJunctions(c, RoadPlacement{X: 32, Y: 32, Z: 64, Bridge: 0xFF}, CmdApply, r)
 		var b strings.Builder
 		fmt.Fprintf(&b, "%d", in)
 		for _, e := range m.TileAt(1, 1).Roads {

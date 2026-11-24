@@ -9,8 +9,9 @@ import (
 // game command towns grow their roads with. Ported in parts; this is its
 // start: the arguments, the road extras that fit the piece, and the cost.
 
-// roadPlacementArgs is RoadPlacementArgs.
-type roadPlacementArgs struct {
+// RoadPlacement is RoadPlacementArgs: the explicit arguments of a createRoad
+// (CreateRoad), as the construction window, a town or an AI sends them.
+type RoadPlacement struct {
 	X, Y, Z      int32
 	Rotation     uint8 // 0–3
 	RoadID       uint8 // 0–15
@@ -25,7 +26,7 @@ type roadPlacementArgs struct {
 // whether the height is valid (a multiple of 16), and the cost — the road's
 // and each valid extra's inflation-adjusted build cost (divisor 10) times the
 // piece's cost factor / 256.
-func (m *Map) createRoadCost(c *Cmd, a roadPlacementArgs) (validMods uint8, cost int32, ok bool) {
+func (m *Map) createRoadCost(c *Cmd, a RoadPlacement) (validMods uint8, cost int32, ok bool) {
 	road := c.roadObject(a.RoadObjectID)
 	if road == nil || int(a.RoadID) >= len(RoadCompatibleFlags) {
 		return 0, 0, false
@@ -96,7 +97,7 @@ type createRoadResult struct {
 // surface). It changes nothing unless a.Flags applies (the clear functions
 // remove trees / buildings then). The pieces' insertion is the apply step.
 // PARTIAL: company observation / emotion events.
-func (m *Map) createRoadCheck(c *Cmd, a roadPlacementArgs, flags uint8) (createRoadResult, bool) {
+func (m *Map) createRoadCheck(c *Cmd, a RoadPlacement, flags uint8) (createRoadResult, bool) {
 	var r createRoadResult
 	st := &r.State
 	st.Bridge, st.AltRoadObject = 0xFF, 0xFF
@@ -213,7 +214,7 @@ func (m *Map) validCoords(x, y int32) bool {
 // last-piece, ghost and AI flags.
 // PARTIAL: the player company's emotion event; Scenario options'
 // madeAnyChanges (not kept); viewport invalidation (the renderer redraws).
-func (m *Map) createRoadApply(c *Cmd, a roadPlacementArgs, flags uint8, r *createRoadResult) bool {
+func (m *Map) createRoadApply(c *Cmd, a RoadPlacement, flags uint8, r *createRoadResult) bool {
 	if flags&CmdApply == 0 {
 		return true
 	}
@@ -331,18 +332,19 @@ func (t *Tile) setTerrainStyleAsCleared() {
 // (createRoad's 0x47656B).
 const roadObjFlagUnk02 = 1 << 2
 
-// createRoad is the game command (CreateRoad.cpp 594–1105): the checks
+// CreateRoad is the game command (CreateRoad.cpp 594–1105): the checks
 // (createRoadCheck), the pieces placed (createRoadApply), the junction pieces
 // filled in (createRoadJunctions), then a bridge's and a tunnel's cost. The
 // cost, and false where upstream returns kFailure.
 // PARTIAL: a road station met is not recalculated (recalculateStationModes /
 // Center — not yet ported — then UpdateStationLabel, which is).
-func (m *Map) createRoad(c *Cmd, a roadPlacementArgs, flags uint8) (int32, bool) {
+func (m *Map) CreateRoad(c *Cmd, flags uint8, a RoadPlacement) (int32, bool) {
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0))
 	r, ok := m.createRoadCheck(c, a, flags)
 	c.PosFlags = r.State.PosFlags
 	c.Bridge = r.State.Bridge
 	c.Flags73 = r.State.Flags73
+	c.BridgeHeight = r.State.MaxBridgeDiff
 	c.AltRoadObject = r.State.AltRoadObject
 	if !ok || !m.createRoadApply(c, a, flags, &r) {
 		return 0, false
@@ -377,7 +379,7 @@ func (m *Map) createRoad(c *Cmd, a roadPlacementArgs, flags uint8) (int32, bool)
 // for each rotation the missing curve / straight pieces (road ids 1, 2, 0)
 // that the met junction needs are placed at the command's position, as
 // upstream decides from the gathered bits (roadIdUnk).
-func (m *Map) createRoadJunctions(c *Cmd, a roadPlacementArgs, flags uint8, r *createRoadResult) {
+func (m *Map) createRoadJunctions(c *Cmd, a RoadPlacement, flags uint8, r *createRoadResult) {
 	u := &r.RoadIDUnk
 	t := m.TileAt(int(a.X/tileSize), int(a.Y/tileSize))
 	if t == nil {

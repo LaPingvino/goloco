@@ -83,8 +83,9 @@ func (m *Map) IsPlayerCompany(id int) bool {
 }
 
 // ensureCompanyFunding is CompanyManager::ensureCompanyFunding (outside the
-// editor): a player needs the cash; an AI takes a loan in 1000 steps up to
-// the inflation-adjusted maximum. A refusal sets the command's error text
+// editor): a player needs the cash, and so does a company run by one of
+// goloco's AIs without AIOptions.AutoBorrow (AI-INTERFACE.md G6); any other
+// AI company takes a loan in 1000 steps up to the inflation-adjusted maximum. A refusal sets the command's error text
 // (cmd may be nil: none kept): company_is_bankrupt, or
 // not_enough_cash_requires_currency32 with the payment.
 func (m *Map) ensureCompanyFunding(cmd *Cmd, id int, payment int32) bool {
@@ -98,7 +99,7 @@ func (m *Map) ensureCompanyFunding(cmd *Cmd, id int, payment int32) bool {
 		return false
 	}
 	c := &m.Companies[id]
-	if m.IsPlayerCompany(id) {
+	if m.IsPlayerCompany(id) || m.aiPaysAsPlayer(id) { // goloco's AIs without AutoBorrow pay as players (companyai.go, G6)
 		if m.CompanyFaces[id].ChallengeFlags&companyFlagBankrupt != 0 {
 			return refuse(i18n.CompanyIsBankrupt)
 		}

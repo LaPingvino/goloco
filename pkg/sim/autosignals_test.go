@@ -45,7 +45,7 @@ func TestSignalsAuto(t *testing.T) {
 				return n < 200
 			})
 		}
-		walk(x, y, z, uint16(el.Rotation)) // the straight (id 0) forward
+		walk(x, y, z, uint16(el.Rotation))  // the straight (id 0) forward
 		ts := TrackCoordinates[el.Rotation] // and back from its start, as autoSignalsWalk does
 		rx, ry := x, y
 		if ts.RotBegin < 12 {

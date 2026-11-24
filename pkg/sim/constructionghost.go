@@ -88,10 +88,10 @@ func (s *State) RemoveRoadGhost(c *Cmd) {
 // first, nothing changes) and the ghost is tried again — upstream retries
 // with the old args (placeTrackGhost(args), not newArgs), so that try fails
 // too and the next update places the ghost with the new bridge.
-func (s *State) placeTrackGhost(c *Cmd, a trackPlacementArgs) (int32, bool) {
+func (s *State) placeTrackGhost(c *Cmd, a TrackPlacement) (int32, bool) {
 	s.RemoveTrackGhost(c)
 	cost, ok := s.DoCommandFor(c, CmdApply|CmdPreventBuildingClearing|CmdNoErrorWindow|CmdNoPayment|CmdGhost, ExpenditureConstruction, func(f uint8) (int32, bool) {
-		return s.createTrack(c, a, f)
+		return s.CreateTrack(c, f, a)
 	})
 	s.Cons.Cost = 0
 	if !ok && s.retryBridge(c, TrackMiscFlags[a.TrackID]) {
@@ -146,10 +146,10 @@ func (s *State) ghostVisibility(c *Cmd) {
 
 // placeRoadGhost is placeRoadGhost (0x0049FC60), as placeTrackGhost through
 // createRoad.
-func (s *State) placeRoadGhost(c *Cmd, a roadPlacementArgs) (int32, bool) {
+func (s *State) placeRoadGhost(c *Cmd, a RoadPlacement) (int32, bool) {
 	s.RemoveRoadGhost(c)
 	cost, ok := s.DoCommandFor(c, CmdApply|CmdPreventBuildingClearing|CmdNoErrorWindow|CmdNoPayment|CmdGhost, ExpenditureConstruction, func(f uint8) (int32, bool) {
-		return s.createRoad(c, a, f)
+		return s.CreateRoad(c, f, a)
 	})
 	s.Cons.Cost = 0
 	if !ok && s.retryBridge(c, RoadMiscFlags[a.RoadID]) {
@@ -305,8 +305,8 @@ func (s *State) constructionGhostLoop(c *Cmd, x, y, z int32, retries uint32, roa
 		return
 	}
 	s.ghostPos = pos
-	var ra roadPlacementArgs
-	var ta trackPlacementArgs
+	var ra RoadPlacement
+	var ta TrackPlacement
 	var ok bool
 	if road {
 		ra, ok = s.roadPlacement(objID)

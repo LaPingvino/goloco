@@ -303,8 +303,8 @@ func (m *Map) addRoadJunction(c *Cmd, p *core.Prng, x, y, z int32, rad uint16, o
 			newRoad = 2
 		}
 	}
-	a := roadPlacementArgs{X: x, Y: y, Z: z, Rotation: edge ^ 2, RoadID: newRoad, Bridge: 0xFF, RoadObjectID: roadObj}
-	doCommand(CmdApply, func(f uint8) (int32, bool) { return m.createRoad(c, a, f) })
+	a := RoadPlacement{X: x, Y: y, Z: z, Rotation: edge ^ 2, RoadID: newRoad, Bridge: 0xFF, RoadObjectID: roadObj}
+	doCommand(CmdApply, func(f uint8) (int32, bool) { return m.CreateRoad(c, f, a) })
 	return true
 }
 

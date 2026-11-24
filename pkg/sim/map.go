@@ -54,10 +54,13 @@ type Map struct {
 	// CloseNewsWindow is clearActiveMessage's WindowManager::close(
 	// WindowType::news): the game's (nil: no interface).
 	CloseNewsWindow       func()
-	RoadAnyTypeCompatible uint32                    // GameState roadObjectIdIsAnyRoadTypeCompatible
-	RoadUsableByAll       uint32                    // GameState roadObjectIdIsUsableByAllCompanies
-	Rng1                  core.Prng                 // GameState rng (gPrng1), from the save
-	Rng2                  core.Prng                 // GameState unkRng (gPrng2: waves, sound frequencies), from the save
+	RoadAnyTypeCompatible uint32    // GameState roadObjectIdIsAnyRoadTypeCompatible
+	RoadUsableByAll       uint32    // GameState roadObjectIdIsUsableByAllCompanies
+	Rng1                  core.Prng // GameState rng (gPrng1), from the save
+	Rng2                  core.Prng // GameState unkRng (gPrng2: waves, sound frequencies), from the save
+	// companyAIs is each company's goloco AI (companyai.go), nil none: not
+	// in the save (AI-INTERFACE.md G11).
+	companyAIs            [companyMaxCount]*companyAI
 	TitleMode             bool                      // SceneManager::isTitleMode (pending breakdowns don\'t happen)
 	ScenarioTicks         uint32                    // GameState scenarioTicks: +1 per game tick (UpdateVehicles)
 	Companies             []scenario.CompanyEconomy // the save\'s companies (economy)

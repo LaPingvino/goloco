@@ -194,6 +194,14 @@ Direction:
   interface's first draft (docs/AI-INTERFACE.md), with goloco's existing equivalent or the gap for each.
 - **An AI interface in pkg/sim:** what a company's AI may see (the map, towns, industries, its own finances) and do
   (game commands only, as a player does: no shortcuts). One AI per company, chosen when it's created.
+  DONE 2026-11-24 (step 2, branch aiface).
+  - The interface: sim.CompanyAI, sim.AIView, a closed set of AICommands run through DoCommandFor, its own PRNG
+    per AI, and a decision log.
+  - The reference AI: pkg/companyai buslink. It joins two towns' roads if it must, then builds two stops and runs
+    one bus.
+  - Gaps: G1–G4 (produceCompanies still open), G6, G8 and parts of G7 and G11. AI-INTERFACE.md §7 has the status.
+  - Next: produceCompanies with the start delay, saving the AI state (G11), events (G12) and the options (G13).
+    Then the cheat switches, then a better AI.
 - **Cheats: configurable, off by default, and designed so they don't break the AI** (Joop 2026-11-19: "make that
   configurable. There are stories about how the cheating actually breaks AIs badly, maybe read up on that, and
   it's probably good to still allow them to be challenging and for that allow some kind of cheating if turned on,

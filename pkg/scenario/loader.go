@@ -1514,6 +1514,8 @@ type CompanyEconomy struct {
 	Cash                     int64         // 0x08 currency48_t
 	CurrentLoan              int32         // 0x0E
 	AvailableVehicles        uint16        // 0x50: a bit per VehicleType the company can buy
+	AiPlaystyleFlags         uint32        // 0x52: the competitor's playstyle (createCompany's kCompanyAiPlaystyleFlags)
+	AiPlaystyleTownID        uint8         // 0x56: the playstyle's home town (0xFF none)
 	Expenditures             [16][17]int32 // 0x58 [month][ExpenditureType]
 	Var4A0                   uint32        // 0x4A0 cargo types delivered (bits)
 	TransportTypeCount       [6]uint16     // 0x8BA4 vehicles by VehicleType (recalculateTransportCounts)
@@ -1583,6 +1585,8 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 		c.HeadquartersZ = r[0x2579]
 		c.JailStatus = binary.LittleEndian.Uint16(r[0x8E34:])
 		c.AvailableVehicles = binary.LittleEndian.Uint16(r[0x50:])
+		c.AiPlaystyleFlags = binary.LittleEndian.Uint32(r[0x52:])
+		c.AiPlaystyleTownID = r[0x56]
 		for k := range c.TransportTypeCount {
 			c.TransportTypeCount[k] = binary.LittleEndian.Uint16(r[0x8BA4+2*k:])
 		}

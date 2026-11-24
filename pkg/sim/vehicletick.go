@@ -79,12 +79,13 @@ func (m *Map) UpdateVehicles(om *objects.ObjectManager) {
 }
 
 // updateManagers is tickLogic after the waves: TownManager, IndustryManager,
-// VehicleManager, StationManager, EffectsManager, AnimationManager.
-// PARTIAL: CompanyManager::update.
+// VehicleManager, StationManager, EffectsManager, CompanyManager (goloco's
+// AIs: companyai.go), AnimationManager.
 func (m *Map) updateManagers(om *objects.ObjectManager) {
 	m.UpdateTowns(om)                                 // TownManager::update (towngrowroad.go)
 	m.industriesUpdate(om)                            // IndustryManager::update: the farm tiles (industryfarm.go)
 	defer m.UpdateAnimations(om)                      // AnimationManager::update: after the vehicles (tickLogic's order)
+	defer m.companiesTick(om)                         // CompanyManager::tick: after the effects, before the animations
 	defer m.UpdateEffects(om, int(m.CurrentRotation)) // EffectsManager::update: after the stations
 	defer m.stationsUpdate(om)                        // StationManager::update: after the vehicles, before the animations (defers run last-first)
 	trains, err := m.Trains()

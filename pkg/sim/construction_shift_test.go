@@ -55,7 +55,7 @@ func TestConstructionShift(t *testing.T) {
 	}
 	// A tunnel across at 96: the search goes on down past it.
 	s.EndConstruction(c)
-	if _, ok := s.createTrack(c, trackPlacementArgs{X: 256, Y: 256, Z: 96, Rotation: 1, Bridge: 0xFF}, CmdApply); !ok {
+	if _, ok := s.CreateTrack(c, CmdApply, TrackPlacement{X: 256, Y: 256, Z: 96, Rotation: 1, Bridge: 0xFF}); !ok {
 		t.Fatalf("the tunnel across: error %d", c.ErrorText)
 	}
 	s.ConstructionToolUpdate(c, 8, 8, -1, false, 0, true)

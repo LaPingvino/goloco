@@ -58,7 +58,7 @@ func TestConstructionBridgeRetry(t *testing.T) {
 	// meeting it (refused: no junctions on this track) takes its bridge.
 	s, c = newState()
 	s.Cons.Bridge = 1
-	if _, ok := s.createTrack(c, trackPlacementArgs{X: 8 * 32, Y: 8 * 32, Z: 96, Rotation: 1, Bridge: 1, TrackObjectID: 0}, CmdApply); !ok {
+	if _, ok := s.CreateTrack(c, CmdApply, TrackPlacement{X: 8 * 32, Y: 8 * 32, Z: 96, Rotation: 1, Bridge: 1, TrackObjectID: 0}); !ok {
 		t.Fatalf("the bridged straight: error %d", c.ErrorText)
 	}
 	s.UpdateConstruction(c, false, 0)

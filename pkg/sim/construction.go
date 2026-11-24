@@ -160,24 +160,24 @@ func (s *State) RemoveSignalGhost(c *Cmd) {
 // trackPlacement is getTrackPlacementArgs at the state's position: the
 // selected piece's track id (getTrackPieceId) with the window's mods and
 // bridge; ok false when the piece can't be built in this rotation.
-func (s *State) trackPlacement(objID uint8) (trackPlacementArgs, bool) {
+func (s *State) trackPlacement(objID uint8) (TrackPlacement, bool) {
 	cs := &s.Cons
 	p, ok := construct.GetTrackPieceID(cs.Piece, cs.Gradient, cs.Rotation)
 	if !ok {
-		return trackPlacementArgs{}, false
+		return TrackPlacement{}, false
 	}
-	return trackPlacementArgs{X: cs.X, Y: cs.Y, Z: cs.Z, Rotation: p.Rotation & 3, TrackID: p.ID,
+	return TrackPlacement{X: cs.X, Y: cs.Y, Z: cs.Z, Rotation: p.Rotation & 3, TrackID: p.ID,
 		Mods: cs.Mods, Bridge: s.bridge(), TrackObjectID: objID, Unk: cs.placeUnk&1 != 0}, true
 }
 
 // roadPlacement is getRoadPlacementArgs, as trackPlacement.
-func (s *State) roadPlacement(objID uint8) (roadPlacementArgs, bool) {
+func (s *State) roadPlacement(objID uint8) (RoadPlacement, bool) {
 	cs := &s.Cons
 	p, ok := construct.GetRoadPieceID(cs.Piece, cs.Gradient, cs.Rotation)
 	if !ok {
-		return roadPlacementArgs{}, false
+		return RoadPlacement{}, false
 	}
-	return roadPlacementArgs{X: cs.X, Y: cs.Y, Z: cs.Z, Rotation: p.Rotation & 3, RoadID: p.ID,
+	return RoadPlacement{X: cs.X, Y: cs.Y, Z: cs.Z, Rotation: p.Rotation & 3, RoadID: p.ID,
 		Mods: cs.Mods, Bridge: s.bridge(), RoadObjectID: objID}, true
 }
 
@@ -217,7 +217,7 @@ func (s *State) constructTrack(c *Cmd, objID uint8) (int32, bool) {
 	}
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
 	cost, ok := s.DoCommandFor(c, CmdApply, ExpenditureConstruction, func(f uint8) (int32, bool) {
-		return s.createTrack(c, a, f)
+		return s.CreateTrack(c, f, a)
 	})
 	if !ok {
 		return 0, false
@@ -250,7 +250,7 @@ func (s *State) constructRoad(c *Cmd, objID *uint8) (int32, bool) {
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z}
 	place := func() (int32, bool) {
 		return s.DoCommandFor(c, CmdApply, ExpenditureConstruction, func(f uint8) (int32, bool) {
-			return s.createRoad(c, a, f)
+			return s.CreateRoad(c, f, a)
 		})
 	}
 	cost, ok := place()

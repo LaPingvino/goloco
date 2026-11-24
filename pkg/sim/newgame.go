@@ -1,6 +1,10 @@
 package sim
 
 import (
+	"math/bits"
+	"strings"
+
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/LaPingvino/goloco/pkg/objects"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -10,8 +14,7 @@ import (
 // competingColourMask, getInflationAdjustedStartingLoan,
 // determineAvailableVehicles' unlocked set.
 //
-// PARTIAL: createCompany's competitor branch (AI names, playstyles, town),
-// the preferred owner face / name options,
+// PARTIAL: the preferred owner face / name options,
 // the network player slots, the owner name, startedDate, secondary and
 // vehicle colours, availableVehicles, AI state, transport type counts,
 // observation / owner status, town company ratings, and
@@ -190,7 +193,21 @@ func (m *Map) CreatePlayerCompany(om *objects.ObjectManager) uint8 {
 	return id
 }
 
-// createCompany (the player branch; see PARTIAL).
+// createCompany is CompanyManager::createCompany (0x0042FE06): the first
+// empty slot gets the competitor's face; a player's company a random free
+// colour; a competitor's (isPlayer false) its owner's first name, a name
+// prefix and playstyle drawn from the object's sets (250 tries for a colour
+// no other company has: a prefix's own colour, or a random one), the
+// playstyle's flags, a home town for the town-name prefix, and its name
+// formatted from the playstyle's string (refused if another company has it).
+// Then the common part: the expenditures, the AI state reset, the starting
+// loan as cash, the unlocked vehicles, the history, the observation, and
+// every town's rating of it at 500. Returns its id (0xFF: no slot, or the
+// competitor branch refused — the slot is left empty).
+// PARTIAL: a competitor's ownerName is 0, not the object's string id
+// (object string ids are not modelled; OwnerName reads the competitor
+// object's name, which is the same text, but a save written then shows no
+// owner name in OpenLoco); updateCounter is not modelled.
 func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectManager) uint8 {
 	m.ensureCompanySlots()
 	id := -1
@@ -200,35 +217,52 @@ func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectM
 			break
 		}
 	}
-	if id < 0 || !isPlayer {
-		return companyIDNull // the competitor branch: PARTIAL
+	if id < 0 {
+		return companyIDNull
+	}
+	var compObj *objects.CompetitorObject
+	if om != nil && int(competitor) < len(om.CompetitorObjects) {
+		compObj = om.CompetitorObjects[competitor]
 	}
 	face, c := &m.CompanyFaces[id], &m.Companies[id]
 	face.Competitor, face.ChallengeFlags, face.Emotion = competitor, 0, 0
-	face.OwnerName = stringIDNewOwner // company->ownerName = StringIds::new_owner
-	c.Var49C, c.Var4A0 = 0, 0
-	c.StartedDate = m.CurrentDay // company->startedDate = getCurrentDay()
-	c.HeadquartersX = -1
-	c.AiThinkState = 0 // AiThinkState::unk0; every thought AiThoughtType::null
-	for k := range c.ThoughtType {
-		c.ThoughtType[k] = 0xFF
-	}
+	c.Var49C, c.Var4A0 = 0, 0 // cargoTypesDelivered, cargoTypesDelivered2
 	m.CompanyNames[id] = stringIDNewCompany
-	for {
-		primary := uint8((m.Rng1.RandNext() & 0xFF) * colourMax / 256)
-		if m.competingColourMask(id)&(1<<primary) == 0 {
-			m.CompanyColours[id] = primary
-			scheme := [2]uint8{primary, primaryToSecondary[primary]}
-			cs := &m.CompanyColourSchemes[id]
-			cs.Main, cs.CustomSet = scheme, 0
-			for k := range cs.Vehicle {
-				cs.Vehicle[k] = scheme
+	face.OwnerName = stringIDNewOwner // company->ownerName = StringIds::new_owner
+	c.StartedDate = m.CurrentDay      // company->startedDate = getCurrentDay()
+	setScheme := func(primary uint8) {
+		m.CompanyColours[id] = primary
+		scheme := [2]uint8{primary, primaryToSecondary[primary]}
+		cs := &m.CompanyColourSchemes[id]
+		cs.Main, cs.CustomSet = scheme, 0
+		for k := range cs.Vehicle {
+			cs.Vehicle[k] = scheme
+		}
+	}
+	if isPlayer {
+		for {
+			primary := uint8((m.Rng1.RandNext() & 0xFF) * colourMax / 256)
+			if m.competingColourMask(id)&(1<<primary) == 0 {
+				setScheme(primary)
+				break
 			}
-			break
+		}
+	} else {
+		face.OwnerName = 0 // competitorObj->firstName: see PARTIAL
+		if !m.createCompetitorCompany(id, compObj, setScheme) {
+			m.CompanyNames[id] = 0 // company->name = StringIds::empty
+			return companyIDNull
 		}
 	}
 	c.NumExpenditureYears = 1
 	c.Expenditures[0] = [17]int32{}
+	c.AiThinkState = 0 // AiThinkState::unk0; aiPlaceVehicleState, aiThinkTimer: the raw record (s5save initCreatedCompany)
+	for k := range c.ThoughtType {
+		c.ThoughtType[k] = 0xFF // AiThoughtType::null
+	}
+	c.HeadquartersX = -1
+	m.UnlockedVehicles[id] = [7]uint32{} // unlockedVehicles.reset()
+	c.AvailableVehicles = 0
 	c.CurrentLoan = m.startingLoan()
 	c.Cash = int64(c.CurrentLoan)
 	m.DetermineAvailableVehicles(id, om)
@@ -237,10 +271,159 @@ func (m *Map) createCompany(competitor uint8, isPlayer bool, om *objects.ObjectM
 	face.Performance = 0
 	c.PerformanceIndexHist[0] = 0
 	c.CargoUnitsDeliveredHist[0] = 0
+	c.TransportTypeCount = [6]uint16{}
+	c.ActiveEmotions = [9]uint8{}
 	c.VehicleProfit, c.CompanyValueHistory[0] = m.CalculateCompanyValue(id)
+	c.ObservationStatus, c.ObservationEntity = 0, entityIDNull // ObservationStatus::empty, EntityId::null
+	c.ObservationX, c.ObservationY = -1, -1
+	c.ObservationObject, c.ObservationTimeout = 0xFFFF, 0
+	c.OwnerStatus = [2]int16{}
 	c.CurrentRating, c.ChallengeProgress, c.NumMonthsInTheRed = 0, 0, 0
+	c.JailStatus = 0
 	c.CargoDelivered = [32]uint32{}
+	for i := range m.Towns {
+		if m.Towns[i].Name == 0xFFFF {
+			continue
+		}
+		m.Towns[i].CompanyRatings[id] = 500
+		m.Towns[i].CompaniesWithRating &^= 1 << id
+	}
 	return uint8(id)
+}
+
+// aiPlaystyleTownIDSet is AiPlaystyleFlags::townIdSet.
+const aiPlaystyleTownIDSet = 1 << 8
+
+// createCompetitorCompany is createCompany's competitor branch
+// (CompanyManager.cpp 0x0042FE06, the else of isPlayer), as upstream draws
+// gPrng1; false where upstream empties the name and returns
+// CompanyId::null.
+func (m *Map) createCompetitorCompany(id int, obj *objects.CompetitorObject, setScheme func(uint8)) bool {
+	if obj == nil {
+		return false
+	}
+	c := &m.Companies[id]
+	pick := func(bits uint32, r uint32) uint8 {
+		var avail []uint8
+		for j := range uint8(32) {
+			if bits&(1<<j) != 0 {
+				avail = append(avail, j)
+			}
+		}
+		if len(avail) == 0 {
+			return 0
+		}
+		return avail[uint32(len(avail))*(r&0xFF)/256]
+	}
+	var randVal uint32
+	var prefix, playstyle, primary uint8
+	colourOK := false
+	for range 250 {
+		randVal = m.Rng1.RandNext()
+		prefix = pick(obj.AvailableNamePrefixes, randVal)
+		randVal = bits.RotateLeft32(randVal, -8)
+		playstyle = pick(obj.AvailablePlayStyles, randVal)
+		randVal = bits.RotateLeft32(randVal, -8)
+		if int(prefix) >= len(aiPrimaryColours) || int(playstyle) >= len(companyAiPlaystyleFlags) {
+			return false
+		}
+		primary = aiPrimaryColours[prefix]
+		if primary == colourMax {
+			primary = uint8((randVal & 0xFF) * 31 / 256)
+			randVal = bits.RotateLeft32(randVal, -8)
+		}
+		if m.competingColourMask(id)&(1<<primary) != 0 {
+			continue
+		}
+		colourOK = true
+		break
+	}
+	if !colourOK {
+		return false
+	}
+	setScheme(primary)
+	c.AiPlaystyleFlags = companyAiPlaystyleFlags[playstyle]
+	c.AiPlaystyleTownID = 0xFF
+	if prefix == 12 { // company_ai_name_pop_string: named after a town
+		var towns []int
+		for i := range m.Towns {
+			if m.Towns[i].Name != 0xFFFF {
+				towns = append(towns, i)
+			}
+		}
+		if len(towns) == 0 {
+			return false
+		}
+		town := towns[(randVal&0xFF)*uint32(len(towns))/256]
+		for o := range m.Companies {
+			if o == id || m.CompanyEmpty(o) || m.Companies[o].AiPlaystyleFlags&aiPlaystyleTownIDSet != 0 { // as upstream: skips those WITH a town
+				continue
+			}
+			if int(m.Companies[o].AiPlaystyleTownID) == town {
+				return false
+			}
+		}
+		c.AiPlaystyleTownID = uint8(town)
+		c.AiPlaystyleFlags |= aiPlaystyleTownIDSet
+	}
+	args := []any{companyAiNamePrefixes[prefix], obj.LastName}
+	if c.AiPlaystyleTownID != 0xFF {
+		args = append(args, m.TownName(m.Towns[c.AiPlaystyleTownID].Name, int(c.AiPlaystyleTownID)))
+	}
+	name := formatNameString(companyAiPlaystyleString[playstyle], args)
+	for o := range m.CompanyNames {
+		if o != id && !m.CompanyEmpty(o) && m.CompanyName(o) == name {
+			return false
+		}
+	}
+	n := m.userStringAllocate(name, false)
+	if n == 0 {
+		return false
+	}
+	m.CompanyNames[id] = n
+	return true
+}
+
+// formatNameString is StringManager::formatString for the company-name
+// strings: {STRINGID} takes the next argument (a string id, formatted in
+// turn with the arguments after it, or an object's string), {STRING} a
+// string, {POP16} (and an object string's 0x88, its encoded form) skips one.
+func formatNameString(id int, args []any) string {
+	var b strings.Builder
+	var format func(s string)
+	next := func() any {
+		if len(args) == 0 {
+			return nil
+		}
+		a := args[0]
+		args = args[1:]
+		return a
+	}
+	format = func(s string) {
+		for len(s) > 0 {
+			switch {
+			case strings.HasPrefix(s, "{STRINGID}"), strings.HasPrefix(s, "{STRING}"):
+				s = s[strings.Index(s, "}")+1:]
+				switch a := next().(type) {
+				case int:
+					format(i18n.Str(a))
+				case string:
+					format(a)
+				}
+			case strings.HasPrefix(s, "{POP16}"):
+				s = s[len("{POP16}"):]
+				next()
+			case s[0] == 0x88:
+				s = s[1:]
+				next()
+			default:
+				b.WriteByte(s[0])
+				s = s[1:]
+			}
+		}
+	}
+	format(i18n.Str(id))
+	return b.String()
 }
 
 // StartScenario is Scenario::start's game-state part for a new game from a

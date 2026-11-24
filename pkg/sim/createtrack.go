@@ -16,8 +16,9 @@ import (
 // whole command (the construction window's: State.ConstructTrack). PARTIAL:
 // the company observation, emotion and sound.
 
-// trackPlacementArgs is TrackPlacementArgs.
-type trackPlacementArgs struct {
+// TrackPlacement is TrackPlacementArgs: the explicit arguments of a
+// createTrack (CreateTrack), as the construction window or an AI sends them.
+type TrackPlacement struct {
 	X, Y, Z       int32
 	Rotation      uint8 // 0–3
 	TrackID       uint8 // 0–43
@@ -44,7 +45,7 @@ func (c *Cmd) trackObject(id uint8) *objects.TrackObject {
 // startsAtHalfHeight, the RCT2 leftover), and the cost — the track's and each
 // valid extra's inflation-adjusted build cost (divisor 10) times the piece's
 // cost factor / 256.
-func (m *Map) createTrackCost(c *Cmd, a trackPlacementArgs) (validMods uint8, cost int32, ok bool) {
+func (m *Map) createTrackCost(c *Cmd, a TrackPlacement) (validMods uint8, cost int32, ok bool) {
 	track := c.trackObject(a.TrackObjectID)
 	if track == nil || int(a.TrackID) >= len(TrackCompatibleFlags) {
 		return 0, 0, false
@@ -107,7 +108,7 @@ type createTrackResult struct {
 // close to its surface); then the bridge's and a tunnel's cost. It changes
 // nothing unless flags apply (the clear functions remove trees / buildings
 // and mark level crossings then).
-func (m *Map) createTrackCheck(c *Cmd, a trackPlacementArgs, flags uint8) (createTrackResult, bool) {
+func (m *Map) createTrackCheck(c *Cmd, a TrackPlacement, flags uint8) (createTrackResult, bool) {
 	var r createTrackResult
 	st := &r.State
 	st.Bridge = 0xFF
@@ -216,7 +217,7 @@ func (m *Map) createTrackCheck(c *Cmd, a trackPlacementArgs, flags uint8) (creat
 // for ghosts or AI plans), then the TrackElement inserted — heights,
 // rotation, object, sequence, piece, owner, the valid extras, the bridge, a
 // level crossing, flag_6 on the last tile, ghost / AI flags.
-func (m *Map) createTrackApply(c *Cmd, a trackPlacementArgs, flags uint8, r *createTrackResult) bool {
+func (m *Map) createTrackApply(c *Cmd, a TrackPlacement, flags uint8, r *createTrackResult) bool {
 	if flags&CmdApply == 0 {
 		return true
 	}
@@ -253,16 +254,17 @@ func (m *Map) createTrackApply(c *Cmd, a trackPlacementArgs, flags uint8, r *cre
 	return true
 }
 
-// createTrack is the game command (CreateTrack.cpp 321–585): the checks and
+// CreateTrack is the game command (CreateTrack.cpp 321–585): the checks and
 // costs (createTrackCheck), then the pieces placed; applied (not for the AI's
 // plans or a ghost), the placement sound. The cost, and false where upstream
 // returns kFailure.
-func (m *Map) createTrack(c *Cmd, a trackPlacementArgs, flags uint8) (int32, bool) {
+func (m *Map) CreateTrack(c *Cmd, flags uint8, a TrackPlacement) (int32, bool) {
 	c.Pos = &[3]int32{a.X + 16, a.Y + 16, a.Z} // setPosition(args.pos + (16, 16, 0))
 	r, ok := m.createTrackCheck(c, a, flags)
 	c.PosFlags = r.State.PosFlags
 	c.Bridge = r.State.Bridge
 	c.Flags73 = r.State.Flags73
+	c.BridgeHeight = r.State.MaxBridgeDiff
 	if !ok || !m.createTrackApply(c, a, flags, &r) {
 		return 0, false
 	}

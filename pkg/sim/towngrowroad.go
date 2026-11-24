@@ -26,8 +26,8 @@ func (m *Map) placeRoadBridge(c *Cmd, town int, x, y, z int32, rotation, roadObj
 	for _, b := range c.Objects.AvailableCompatibleBridges(int(roadObjectID), true, int(m.CurrentYear)) {
 		valid = append(valid, uint8(b))
 	}
-	args := func(bridge uint8, bx, by int32) roadPlacementArgs {
-		return roadPlacementArgs{X: bx, Y: by, Z: z, Rotation: rotation, RoadID: 0, Mods: 0, Bridge: bridge, RoadObjectID: roadObjectID}
+	args := func(bridge uint8, bx, by int32) RoadPlacement {
+		return RoadPlacement{X: bx, Y: by, Z: z, Rotation: rotation, RoadID: 0, Mods: 0, Bridge: bridge, RoadObjectID: roadObjectID}
 	}
 	off := RotationOffset[rotation&3]
 	bx, by := x, y
@@ -36,7 +36,7 @@ func (m *Map) placeRoadBridge(c *Cmd, town int, x, y, z int32, rotation, roadObj
 	for ; length <= maxTownBridgeLength; length++ {
 		var ok []uint8
 		for _, b := range valid {
-			if _, fine := m.createRoad(c, args(b, bx, by), 0); fine {
+			if _, fine := m.CreateRoad(c, 0, args(b, bx, by)); fine {
 				ok = append(ok, b)
 			}
 		}
@@ -68,7 +68,7 @@ func (m *Map) placeRoadBridge(c *Cmd, town int, x, y, z int32, rotation, roadObj
 	tw.Prng = [2]uint32{p.Srand0(), p.Srand1()}
 	bx, by = x, y
 	for range length {
-		doCommand(CmdApply, func(f uint8) (int32, bool) { return m.createRoad(c, args(bridge, bx, by), f) })
+		doCommand(CmdApply, func(f uint8) (int32, bool) { return m.CreateRoad(c, f, args(bridge, bx, by)) })
 		bx, by = bx+int32(off[0]), by+int32(off[1])
 	}
 	return true
@@ -146,8 +146,8 @@ func (m *Map) appendToRoadEnd(c *Cmd, town int, x, y, z int32, rotation, roadObj
 		return
 	}
 	place := func(roadID uint8) {
-		a := roadPlacementArgs{X: x, Y: y, Z: z, Rotation: rotation, RoadID: roadID, Bridge: 0xFF, RoadObjectID: roadObjectID}
-		doCommand(CmdApply, func(f uint8) (int32, bool) { return m.createRoad(c, a, f) })
+		a := RoadPlacement{X: x, Y: y, Z: z, Rotation: rotation, RoadID: roadID, Bridge: 0xFF, RoadObjectID: roadObjectID}
+		doCommand(CmdApply, func(f uint8) (int32, bool) { return m.CreateRoad(c, f, a) })
 	}
 	double := t.Slope&slopeDoubleHeight != 0
 	corners := rotr4bit(t.Slope&0xF, rotation)
@@ -318,8 +318,8 @@ func (m *Map) buildInitialRoad(c *Cmd, town int) {
 		p := core.NewPrngSeed(tw.Prng[0], tw.Prng[1])
 		rot := uint8(p.RandNextBound(3))
 		tw.Prng = [2]uint32{p.Srand0(), p.Srand1()}
-		a := roadPlacementArgs{X: x, Y: y, Z: h, Rotation: rot, RoadID: 0, Bridge: 0xFF, RoadObjectID: roadObj}
-		_, built := doCommand(CmdApply, func(f uint8) (int32, bool) { return m.createRoad(c, a, f) })
+		a := RoadPlacement{X: x, Y: y, Z: h, Rotation: rot, RoadID: 0, Bridge: 0xFF, RoadObjectID: roadObj}
+		_, built := doCommand(CmdApply, func(f uint8) (int32, bool) { return m.CreateRoad(c, f, a) })
 		return !built
 	})
 }

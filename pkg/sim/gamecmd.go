@@ -63,6 +63,12 @@ type Cmd struct {
 	// Flags73 is getLegacyReturnState().flags_1136073 after createTrack /
 	// createRoad (bit 0: a bridge needed somewhere on the piece).
 	Flags73 uint8
+	// BridgeHeight is getLegacyReturnState().byte_1136074 after createTrack /
+	// createRoad: the greatest height difference a bridge on the piece
+	// spans (createTrackCheck / createRoadCheck's MaxBridgeDiff), what the
+	// original AI's pathfinder weighs a bridge by (CompanyAiPathfinding.cpp
+	// 419-427).
+	BridgeHeight uint8
 	// AltRoadObject is getLegacyReturnState().alternateRoadObjectId after
 	// createRoad: the road object of the last road element met (0xFF none) —
 	// constructRoad's retry with that road (sub_4A18D4).

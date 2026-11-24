@@ -22,8 +22,8 @@ func TestRemoveTrack(t *testing.T) {
 			m.Tiles[y][x].BaseZ = 4
 		}
 	}
-	a := trackPlacementArgs{X: 3 * 32, Y: 3 * 32, Z: 16, TrackID: 0, Bridge: 0xFF}
-	if _, ok := m.createTrack(c, a, CmdApply); !ok {
+	a := TrackPlacement{X: 3 * 32, Y: 3 * 32, Z: 16, TrackID: 0, Bridge: 0xFF}
+	if _, ok := m.CreateTrack(c, CmdApply, a); !ok {
 		t.Fatal("build")
 	}
 	r := TrackRemoval{X: a.X, Y: a.Y, Z: a.Z, TrackID: 0}
@@ -40,8 +40,8 @@ func TestRemoveTrack(t *testing.T) {
 	if _, ok := m.RemoveTrack(c, CmdApply, r, nil); !ok || len(m.TileAt(3, 3).Tracks) != 0 {
 		t.Fatal("not removed")
 	}
-	g := trackPlacementArgs{X: 6 * 32, Y: 6 * 32, Z: 16, TrackID: 0, Bridge: 0xFF}
-	m.createTrack(c, g, CmdApply|CmdGhost)
+	g := TrackPlacement{X: 6 * 32, Y: 6 * 32, Z: 16, TrackID: 0, Bridge: 0xFF}
+	m.CreateTrack(c, CmdApply|CmdGhost, g)
 	gr := TrackRemoval{X: g.X, Y: g.Y, Z: g.Z, TrackID: 0}
 	if _, ok := m.RemoveTrack(c, CmdApply, gr, nil); ok {
 		t.Fatal("a ghost found without the ghost flag")
@@ -60,8 +60,8 @@ func TestRemoveTrack(t *testing.T) {
 			break
 		}
 	}
-	b := trackPlacementArgs{X: 6 * 32, Y: 6 * 32, Z: 16, TrackID: uint8(id), Bridge: 0xFF}
-	if _, ok := m.createTrack(c, b, CmdApply); !ok {
+	b := TrackPlacement{X: 6 * 32, Y: 6 * 32, Z: 16, TrackID: uint8(id), Bridge: 0xFF}
+	if _, ok := m.CreateTrack(c, CmdApply, b); !ok {
 		t.Fatalf("build piece %d", id)
 	}
 	last := TrackPieces[id][len(TrackPieces[id])-1]

@@ -59,7 +59,7 @@ func TestRoadErrorTexts(t *testing.T) {
 	track := &scenario.TrackElement{TrackObjectID: 0, BaseZ: 8}
 	check("a road over incompatible track", i18n.UnableToCrossOrCreateJunctionWithString, "Railway", func() { m.clearTrack(c, &st, track, args(0, 1, 32)) })
 
-	a := roadPlacementArgs{X: 3 * 32, Y: 3 * 32, Z: 32, RoadID: 0, RoadObjectID: 0, Bridge: 0xFF}
+	a := RoadPlacement{X: 3 * 32, Y: 3 * 32, Z: 32, RoadID: 0, RoadObjectID: 0, Bridge: 0xFF}
 	check("raised without a bridge", i18n.BridgeNeeded, "", func() { m.createRoadCheck(c, a, 0) })
 	a.Z = 0
 	check("below 16", i18n.ErrorTooLow, "", func() { m.createRoadCheck(c, a, 0) })

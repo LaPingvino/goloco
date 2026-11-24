@@ -38,7 +38,7 @@ func TestConstructRoadAlternateRoad(t *testing.T) {
 			}
 		}
 		c := &Cmd{Company: CompanyNeutral, Objects: om}
-		if _, ok := s.createRoad(c, roadPlacementArgs{X: 96, Y: 96, Z: 16, Rotation: 1, RoadObjectID: 1, Bridge: 0xFF}, CmdApply); !ok {
+		if _, ok := s.CreateRoad(c, CmdApply, RoadPlacement{X: 96, Y: 96, Z: 16, Rotation: 1, RoadObjectID: 1, Bridge: 0xFF}); !ok {
 			t.Fatalf("road B: error %d", c.ErrorText)
 		}
 		var switched []uint8

@@ -10,7 +10,14 @@ import (
 // name and their face images, one per Emotion the object has.
 type CompetitorObject struct {
 	Header *ObjectHeader
-	Name   string
+	// Name is firstName (0x00, the first string table): the owner's name.
+	Name string
+	// LastName (0x02, the second string table) goes into an AI company's
+	// name (createCompany).
+	LastName string
+	// AvailableNamePrefixes (0x04) and AvailablePlayStyles (0x08) are the
+	// bits createCompany picks an AI company's name prefix and playstyle from.
+	AvailableNamePrefixes, AvailablePlayStyles uint32
 	// Emotions (0x0C) is the set of Emotion bits the object has faces for;
 	// Images are images[9] after load: the image table's base, plus 2 for each
 	// present emotion before it (absent ones keep the base).
@@ -22,17 +29,18 @@ type CompetitorObject struct {
 }
 
 // ParseCompetitorObjectWithG1 is CompetitorObject::load: the two string
-// tables (name, availableNamePrefixes), then the image table.
+// tables (firstName, lastName), then the image table.
 func ParseCompetitorObjectWithG1(header *ObjectHeader, data []byte, g1 G1Loader) (*CompetitorObject, error) {
 	const fixedSize = 0x38
 	if len(data) < fixedSize {
 		return nil, fmt.Errorf("competitor object too small: %d bytes", len(data))
 	}
 	c := &CompetitorObject{Header: header, Emotions: binary.LittleEndian.Uint32(data[0x0C:]),
+		AvailableNamePrefixes: binary.LittleEndian.Uint32(data[0x04:]), AvailablePlayStyles: binary.LittleEndian.Uint32(data[0x08:]),
 		Intelligence: data[0x34], Aggressiveness: data[0x35], Competitiveness: data[0x36]}
 	offset := fixedSize
 	offset, c.Name = walkStringTableLang(data, offset)
-	offset, _ = walkStringTableLang(data, offset)
+	offset, c.LastName = walkStringTableLang(data, offset)
 	if g1 != nil && offset < len(data) {
 		imgRes, err := g1.LoadImageTable(data[offset:])
 		if err != nil {
