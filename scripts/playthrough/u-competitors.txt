@@ -1,0 +1,55 @@
+# Competitors (PORT-PLANS F, AI-INTERFACE.md G4/G11/G13): Great Britain &
+# Ireland 1955 (a made map; up to 14 competing companies, no start delay) as a new game with the options'
+# default — goloco's buslink AI — plays until produceCompanies has started
+# competitors running it; the game is saved and loaded back: the loaded game
+# is the saved one byte for byte, its competitors still run buslink (goloco's
+# AI chunk in the save), and it plays on.
+wait 20
+seed 1950
+scenario Great Britain & Ireland 1955
+wait 20
+expect competitors == 0
+wait 240
+expect competitors >= 1
+shot /tmp/goloco-playthrough/pt-u-competitors.png
+click 688 592
+wait 1
+expect paused == 1
+press 14 14
+wait 1
+move 40 46
+wait 1
+release 40 46
+wait 2
+expect window:fileBrowserPrompt == 1
+type pt-competitors
+wait 1
+key Return
+wait 3
+expect window:fileBrowserPrompt == 0
+sceneage 4000
+press 14 14
+wait 1
+move 40 36
+wait 1
+release 40 36
+wait 2
+expect saveprompt == 1
+move 400 315
+wait 1
+click 400 315
+wait 2
+expect window:fileBrowserPrompt == 1
+move 200 172
+wait 1
+click 200 172
+wait 10
+expect window:fileBrowserPrompt == 0
+expect saved == 1
+expect competitors >= 1
+click 688 592
+wait 30
+expect paused == 0
+expect competitors >= 1
+shot /tmp/goloco-playthrough/pt-u-playson.png
+quit

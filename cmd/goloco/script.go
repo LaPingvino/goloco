@@ -602,6 +602,12 @@ func (g *Game) scriptExpect() {
 		}
 	case "ticks": // ScenarioManager::getScenarioTicks: the game's clock (it runs under a rename box)
 		got = int64(g.w.Map.ScenarioTicks)
+	case "competitors": // how many companies run one of goloco's AIs (companyai.go)
+		for id := range g.w.Map.Companies {
+			if g.w.Map.CompanyAIName(id) != "" {
+				got++
+			}
+		}
 	case "textinput": // 1 while a text input (a rename) is open
 		if g.textInputWin() != nil {
 			got = 1

@@ -2461,7 +2461,14 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
     A save made mid-road resumes byte-identical to the unbroken game (TestAISaveResumes, with an AI-off control).
   - Checks: AI off, gosave is byte-identical to main (title 20000 ticks, Boulder Breakers 2000). The olref
     Misc tab comparison is the same above the new group (tours/options-competitors.txt).
-  - Gate: unit 23 ok, 0 FAIL; playthroughs 24/24. None of the playthroughs runs long enough for a competitor to start.
+  - New playthrough u-competitors: Great Britain & Ireland 1955 in the real binary. Competitors start running
+    buslink, and the game is saved through the menu and loaded. The loaded game matches the save byte for byte and
+    plays on. OpenLoco loads that save, the Aerophobia one and the title one from gosave. Yew Island's 3-month
+    delay holds: the first competitor starts in April 1900.
+  - Found (pre-existing, AI off too): an Aerophobia new game (generated landscape), saved and loaded, fails
+    "expect saved". Every surface element's byte 7 (clearZ) is 0 in the save but 4 as loaded
+    (resetSurfaceClearance?). Next lead.
+  - Gate: see the merge commit's run (unit, then playthroughs 25).
   - Seen, not fixed: OpenLoco's Misc tab shows "Trains reverse at signals" ticked by default in a fresh config;
     goloco's is unticked.
   - Open: G5, G10, G12, the decision log in the save, difficulty and cheat switches.

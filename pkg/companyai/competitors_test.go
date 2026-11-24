@@ -227,3 +227,33 @@ func TestAIChunkOnlyWithAIs(t *testing.T) {
 		t.Fatalf("the loaded file has no goloco chunk (%d bytes)", len(sc.GolocoAI))
 	}
 }
+
+// A game with a goloco competitor saved and loaded is, as loaded, the save
+// byte for byte (the playthroughs' "expect saved"): nothing of the company
+// the competitor branch made is lost on the way.
+func TestCompetitorSaveLoadExact(t *testing.T) {
+	s, om := loadDataMap(t, "title.dat")
+	if s.CreateAICompany(BusLinkName, sim.AIOptions{}, om) == 0xFF {
+		t.Fatal("no AI company")
+	}
+	for range 64 {
+		step(s, om)
+	}
+	a := saveBytes(t, s)
+	b := saveBytes(t, reload(t, a))
+	sa, _ := scenario.ParseScenario(a, "a.SV5")
+	sb, _ := scenario.ParseScenario(b, "b.SV5")
+	ga, gb := sa.Raw.GameState, sb.Raw.GameState
+	n := 0
+	for i := range ga {
+		if ga[i] != gb[i] {
+			if n < 30 {
+				t.Errorf("game state 0x%X: saved %02x, loaded %02x", i, ga[i], gb[i])
+			}
+			n++
+		}
+	}
+	if !bytes.Equal(sa.Raw.TileElements, sb.Raw.TileElements) || !bytes.Equal(sa.GolocoAI, sb.GolocoAI) {
+		t.Error("tiles or AI chunk differ")
+	}
+}
