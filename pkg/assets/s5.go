@@ -125,6 +125,10 @@ func (r *S5ChunkReader) Offset() int {
 	return r.offset
 }
 
+// Remaining is how many bytes follow the current position (the file's
+// checksum, the last 4, included).
+func (r *S5ChunkReader) Remaining() int { return len(r.data) - r.offset }
+
 // AdvanceRaw skips n raw bytes in the stream without any chunk decoding.
 // Used to skip over structs that are written directly (not chunk-framed),
 // such as the 16-byte ObjectHeader before each packed object's data chunk.

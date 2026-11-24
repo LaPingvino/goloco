@@ -62,6 +62,8 @@ func (m *Map) ResetCompanies() {
 	}
 	m.PlayerCompanies = [2]uint8{0, companyIDNull}
 	m.ControllingCompany = 0
+	m.ProduceAICompanyTimeout = 0
+	m.companyAIs = [companyMaxCount]*companyAI{}
 	m.CompanyColours[0] = colourMutedSeaGreen
 }
 

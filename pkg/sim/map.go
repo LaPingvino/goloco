@@ -1,6 +1,8 @@
 package sim
 
 import (
+	"log"
+
 	"github.com/LaPingvino/goloco/pkg/core"
 	"github.com/LaPingvino/goloco/pkg/scenario"
 )
@@ -58,8 +60,8 @@ type Map struct {
 	RoadUsableByAll       uint32    // GameState roadObjectIdIsUsableByAllCompanies
 	Rng1                  core.Prng // GameState rng (gPrng1), from the save
 	Rng2                  core.Prng // GameState unkRng (gPrng2: waves, sound frequencies), from the save
-	// companyAIs is each company's goloco AI (companyai.go), nil none: not
-	// in the save (AI-INTERFACE.md G11).
+	// companyAIs is each company's goloco AI (companyai.go), nil none; saved
+	// in goloco's own chunk (companyai_save.go).
 	companyAIs            [companyMaxCount]*companyAI
 	TitleMode             bool                      // SceneManager::isTitleMode (pending breakdowns don\'t happen)
 	ScenarioTicks         uint32                    // GameState scenarioTicks: +1 per game tick (UpdateVehicles)
@@ -107,6 +109,12 @@ type Map struct {
 	CurrentSnowLine, CurrentSeason                          uint8                   // GameState currentSnowLine, currentSeason
 	EntriesEnd                                              int                     // TileManager entriesEnd as the generator's inserts move it (numFreeElements = kMaxElements − EntriesEnd)
 	PreferredAI                                             [3]uint8                // GameState preferredAI intelligence / aggressiveness / competitiveness
+	MaxCompetingCompanies                                   uint8                   // GameState maxCompetingCompanies (produceCompanies, companyai.go)
+	CompetitorStartDelay                                    uint8                   // GameState competitorStartDelay: months until produceCompanies starts competitors
+	ProduceAICompanyTimeout                                 uint8                   // GameState produceAICompanyTimeout: ticks to the next produceCompanies (192)
+	// Competitors is the goloco AI produceCompanies gives the competitors it
+	// starts (companyai.go); its zero value, no AI, starts none.
+	Competitors Competitors
 	DefaultLevelCrossingType                                uint8                   // GameState currentDefaultLevelCrossingType
 	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors  uint16
 	Objective                                               scenario.Objective // the scenario objective
@@ -274,6 +282,11 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.DefaultTreeObjectId, m.DefaultWallObjectId = 0xFF, 0xFF // resetDefaultObjectIds (S5.cpp:974): the file's values go
 	m.CurrentSnowLine, m.CurrentSeason = sc.CurrentSnowLine, sc.CurrentSeason
 	m.PreferredAI = sc.PreferredAI
+	m.MaxCompetingCompanies, m.CompetitorStartDelay, m.ProduceAICompanyTimeout = sc.MaxCompetingCompanies, sc.CompetitorStartDelay, sc.ProduceAICompanyTimeout
+	m.companyAIs = [companyMaxCount]*companyAI{}
+	if err := m.DecodeAIChunk(sc.GolocoAI); err != nil {
+		log.Printf("[AI] the save's company AIs: %v", err)
+	}
 	m.ForbiddenVehiclesPlayers, m.ForbiddenVehiclesCompetitors = sc.ForbiddenVehiclesPlayers, sc.ForbiddenVehiclesCompetitors
 	m.Objective = sc.Objective
 	m.ObjectiveUntilYear = sc.ObjectiveTimeLimitUntilYear

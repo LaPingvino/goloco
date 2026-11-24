@@ -380,6 +380,16 @@ func (w *OptionsWindow) frameWidgets() []BVWidget {
 		add(label(10, 226, 200))
 		add(fhStepper(250, 226, 156, 12)...)
 		add(fhHidden(fhW(10, 241, 400, 12), true)) // export_plugin_objects
+		// goloco's competing companies group (options.go optCompY)
+		add(fhW(4, optCompY, 412, 65))
+		for i, y := range optCompRows {
+			add(label(10, y, 235))
+			if i == 0 {
+				add(fhDropdown(250, y, 156, 12)...)
+			} else {
+				add(fhStepper(250, y, 156, 12)...)
+			}
+		}
 	}
 	return lw
 }

@@ -1,0 +1,18 @@
+# The Options window's Miscellaneous tab from the title (goloco adds its
+# "Competing companies" group under the autosave group), and goloco's AI
+# dropdown open. One script for goloco (no scenario argument) and ol.sh run;
+# the shot names are relative to the folder the game runs in.
+wait 25
+click 770 7           # the title's Options
+wait 2
+click 404 252         # the Miscellaneous tab
+wait 2
+move 100 580
+wait 1
+shot oc-00-misc.png
+click 600 510         # goloco: the Company AI dropdown
+wait 1
+shot oc-01-ai-dropdown.png
+key Escape
+wait 1
+quit

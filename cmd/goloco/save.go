@@ -122,6 +122,7 @@ func (g *Game) saveGameTo(path string, autosave bool) error {
 		RequiredObjects: g.requiredObjects(),
 		GameState:       sc.EncodeGameState(),
 		TileElements:    scenario.EncodeTileElements(sc.Tiles),
+		GolocoAI:        sc.GolocoAI,
 	}
 	if g.script != nil {
 		gs := append([]byte(nil), f.GameState...)

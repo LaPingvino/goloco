@@ -4,7 +4,7 @@
 // (pkg/scenario S5File, sim.State.ExportScenario) — for loading goloco's
 // saves in the real OpenLoco (scripts/olref) and in goloco.
 //
-//	go run ./scripts/olref/gosave [-ticks N] [-seed S] [-ai NAME [-ais N]] ../locomotion/Data/title.dat $SCRATCH/title-goloco.SV5
+//	go run ./scripts/olref/gosave [-ticks N] [-seed S] [-ai NAME [-ais N] [-competitors]] ../locomotion/Data/title.dat $SCRATCH/title-goloco.SV5
 //
 // No preview image (the save details' 250×200 picture is blank: there is no
 // renderer here). The save is game
@@ -37,7 +37,8 @@ func main() {
 	otherTrace := flag.Bool("rngtrace-other", false, "with -rngtrace: also the draws of the other generators (a town's, an industry's: copies the code makes as it goes)")
 	rngTrace := flag.Int("rngtrace", 0, "print each main-rng (gPrng1) draw of this tick of the run (1-based) with its callers, as scripts/olref/rngtrace.patch does in OpenLoco")
 	aiName := flag.String("ai", "", "start AI companies running this goloco AI ("+strings.Join(sim.AINames(), ", ")+") before playing; their decision logs go to stderr at the end")
-	aiCount := flag.Int("ais", 1, "with -ai: how many AI companies")
+	aiCount := flag.Int("ais", 1, "with -ai: how many AI companies to start at once (0: none)")
+	produce := flag.Bool("competitors", false, "with -ai: also let produceCompanies start competitors running it on schedule, as a game with the AI chosen in the options (draws the game's rng: not for simcmp)")
 	flag.Parse()
 	if flag.NArg() != 2 {
 		log.Fatal("usage: gosave [-ticks N] [-seed S] [-data DIR] in.(SV5|SC5|dat) out.SV5")
@@ -85,13 +86,13 @@ func main() {
 			writeSave(s, sc, om, name, *ticks)
 		}
 	}
-	var aiCompanies []uint8
+	if *produce && *aiName != "" {
+		s.Competitors = sim.Competitors{AI: *aiName}
+	}
 	for i := 0; *aiName != "" && i < *aiCount; i++ {
-		id := s.CreateAICompany(*aiName, sim.AIOptions{}, om)
-		if id == 0xFF {
+		if s.CreateAICompany(*aiName, sim.AIOptions{}, om) == 0xFF {
 			log.Fatalf("gosave: no AI company made for %q", *aiName)
 		}
-		aiCompanies = append(aiCompanies, id)
 	}
 	tracing := false
 	core.TraceHook = func(p *core.Prng) {
@@ -109,8 +110,11 @@ func main() {
 	}
 	core.TraceHook = nil
 	s.AutosaveCheck = nil
-	for _, id := range aiCompanies {
-		for _, d := range s.AIDecisions(int(id)) {
+	for id := range 15 {
+		if s.CompanyAIName(id) == "" {
+			continue
+		}
+		for _, d := range s.AIDecisions(id) {
 			fmt.Fprintf(os.Stderr, "ai %d tick %d: %s (ok %v cost %d err %d)\n", id, d.Tick, d.Text, d.OK, d.Cost, d.Err)
 		}
 	}
@@ -133,7 +137,7 @@ func writeSave(s *sim.State, sc *scenario.Scenario, om *objects.ObjectManager, o
 	}
 	f := &scenario.S5File{Header: scenario.SavedGameHeader(len(sc.PackedObjectsRaw)), SaveDetails: scenario.EncodeSaveDetails(d, perf, s.ScenarioName),
 		PackedObjects: sc.PackedObjectsRaw, RequiredObjects: sim.RequiredObjects(sc.Raw.RequiredObjects, om),
-		GameState: ex.EncodeGameState(), TileElements: scenario.EncodeTileElements(ex.Tiles)}
+		GameState: ex.EncodeGameState(), TileElements: scenario.EncodeTileElements(ex.Tiles), GolocoAI: ex.GolocoAI}
 	var buf bytes.Buffer
 	must(f.Write(&buf))
 	must(os.WriteFile(out, buf.Bytes(), 0o644))

@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/LaPingvino/goloco/pkg/core"
@@ -14,6 +15,17 @@ type testAI struct {
 }
 
 func (a *testAI) Name() string { return "test" }
+
+// Save / Load: the thinks count, as text.
+func (a *testAI) Save() []byte { return []byte(fmt.Sprint(len(a.thinks))) }
+func (a *testAI) Load(b []byte) error {
+	var n int
+	if _, err := fmt.Sscan(string(b), &n); err != nil {
+		return err
+	}
+	a.thinks = make([]uint32, n)
+	return nil
+}
 func (a *testAI) Think(v *AIView) {
 	a.thinks = append(a.thinks, v.Ticks())
 	a.draws = append(a.draws, v.Rng().RandNext())

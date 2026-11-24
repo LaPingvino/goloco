@@ -71,3 +71,32 @@ func TestSimpleWindowCloseClickSound(t *testing.T) {
 		t.Errorf("unnamed press: %v, want none", got)
 	}
 }
+
+// The Miscellaneous tab's competing companies group: its steppers go from
+// the scenario's value (-1) up to 14 competitors and 240 months, and each
+// change is told; a press there is the widget's, not the frame's.
+func TestOptionsCompetitorSteppers(t *testing.T) {
+	s := &WindowStack{ScreenW: 640, ScreenH: 480}
+	w := NewOptions(640, 480, 0, 0)
+	w.Tab, w.Competitors, w.StartDelay = OptTabMisc, -1, 239
+	s.Open(w)
+	w.PrepareDraw()
+	told := 0
+	w.OnCompetitors = func() { told++ }
+	click := func(rx, ry int) {
+		s.Press(w.X+rx, w.Y+ry)
+		s.ReleaseButton(w.X+rx, w.Y+ry, false)
+	}
+	minus, plus := 250+156-26+5, 250+156-13+5
+	click(minus, optCompRows[1]+5) // already the scenario's: no change
+	click(plus, optCompRows[1]+5)
+	click(plus, optCompRows[1]+5)
+	click(plus, optCompRows[2]+5)
+	click(plus, optCompRows[2]+5) // 240 is the most
+	if w.Competitors != 1 || w.StartDelay != 240 || told != 3 {
+		t.Errorf("competitors %d, delay %d, told %d", w.Competitors, w.StartDelay, told)
+	}
+	if w.OnFrame(w.X+plus, w.Y+optCompRows[1]+5) {
+		t.Error("the stepper's button is the window's frame")
+	}
+}

@@ -1,6 +1,7 @@
 package scenario
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -351,6 +352,14 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		log.Println("[Scenario] Read TileElements,", len(tileData), "bytes (", len(tileData)/tileElementSize, "elements)")
 		sc.Raw.TileElements = tileData
 		sc.parseTileElements(tileData)
+		// goloco's own chunk, after the tiles and before the checksum: the
+		// company AIs (GolocoAIMagic). OpenLoco's loadSave stops reading after
+		// the tile elements, so it never sees it.
+		if reader.Remaining() > 4 {
+			if extra, err := reader.ReadChunk(); err == nil && bytes.HasPrefix(extra, []byte(GolocoAIMagic)) {
+				sc.GolocoAI = extra
+			}
+		}
 	} else {
 		// No tile elements in file. For "randomly generated" scenarios
 		// (landscapeGenerationDone flag clear) generate terrain from the
@@ -1772,6 +1781,7 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 	sc.LastLandOption = gs[0x19E]                                         // lastLandOption
 	sc.DefaultTreeObjectId, sc.DefaultWallObjectId = gs[0x199], gs[0x1B2] // defaultTreeObjectId, defaultWallObjectId
 	sc.PreferredAI = [3]uint8{gs[0x3FD], gs[0x3FE], gs[0x3FF]}            // preferredAIIntelligence / Aggressiveness / Competitiveness
+	sc.MaxCompetingCompanies, sc.CompetitorStartDelay, sc.ProduceAICompanyTimeout = gs[0x19F], gs[0x3FC], gs[0x1B3]
 	sc.DefaultLevelCrossingType = gs[0x1AC]                               // currentDefaultLevelCrossingType
 	sc.ForbiddenVehiclesPlayers = binary.LittleEndian.Uint16(gs[0x430:])
 	sc.ForbiddenVehiclesCompetitors = binary.LittleEndian.Uint16(gs[0x432:])

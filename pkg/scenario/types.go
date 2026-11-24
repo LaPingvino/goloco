@@ -166,6 +166,12 @@ type Scenario struct {
 	DefaultTreeObjectId, DefaultWallObjectId                uint8          // GameState defaultTreeObjectId (0x199), defaultWallObjectId (0x1B2)
 	CurrentSnowLine, CurrentSeason                          uint8          // GameState 0x19C / 0x19D
 	PreferredAI                                             [3]uint8       // preferredAIIntelligence / Aggressiveness / Competitiveness (0x3FD)
+	// maxCompetingCompanies (0x19F), competitorStartDelay (0x3FC, months)
+	// and produceAICompanyTimeout (0x1B3): CompanyManager's produceCompanies.
+	MaxCompetingCompanies, CompetitorStartDelay, ProduceAICompanyTimeout uint8
+	// GolocoAI is goloco's own chunk after the tile elements (the company
+	// AIs' state, AI-INTERFACE.md G11), nil when the file has none.
+	GolocoAI []byte
 	DefaultLevelCrossingType                                uint8          // currentDefaultLevelCrossingType (0x1AC)
 	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors  uint16         // 0x430 / 0x432
 	Orders                                                  []byte         // GameState orders[] (ParseOrders)

@@ -94,3 +94,11 @@ older release binary — goloco may fix it knowingly. Each fix is listed here, s
 |---|---|---|---|
 | (none yet) | | | |
 
+## Y. goloco's own design (PORT-PLANS F: decided, not drift)
+
+| Where | Upstream | goloco | Why |
+|---|---|---|---|
+| pkg/sim companyai.go produceCompanies | createAiCompany: the new competitor runs OpenLoco's CompanyAi.cpp | the same schedule (192-tick timeout, start delay, max competitors, both gPrng1 draws), but the company runs the goloco AI the options name (`Map.Competitors`); with "none" the timeout doesn't run, as with Config::companyAIDisabled | PORT-PLANS F: our own AI, not a port |
+| cmd/goloco companyai.go, Options' Miscellaneous tab | the scenario sets maxCompetingCompanies / competitorStartDelay (editor only) | a "Competing companies" group: the AI, and a count and delay that replace the scenario's at a new game ("Scenario's" by default); kept in goloco.yml | PORT-PLANS F, G13: OpenTTD-style AI settings |
+| pkg/sim companyai_save.go | the S5 file ends with the tile elements | goloco's AI companies' state in one more chunk after them (only when there are some); OpenLoco ignores it | G11: AI state must not go in OpenLoco's AI bytes |
+

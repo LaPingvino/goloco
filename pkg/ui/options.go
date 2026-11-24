@@ -63,11 +63,26 @@ const (
 // optTabSize is each tab namespace's kWindowSize; optTabCaption() its caption
 // (en-GB).
 var (
-	optTabSize = [7][2]int{{400, 151}, {400, 218}, {optW, optH}, {366, 167}, {366, 144}, {420, 187}, {420, 266}}
+	optTabSize = [7][2]int{{400, 151}, {400, 218}, {optW, optH}, {366, 167}, {366, 144}, {420, 187}, {420, optMiscH}}
 
 	// Controls tab checkboxes (Controls::_widgets) and the Customize Keys button.
 
 )
+
+// The Miscellaneous tab's goloco group, "Competing companies" (below
+// upstream's autosave group, which ends at 261; the tab grows by the group
+// and upstream's 4 px gap and 5 px margin): the AI the competitors run (a
+// dropdown) and two steppers in ScenarioOptions' style — maximum competing
+// companies and the delay before they start (StringIds 1682–1685) — each
+// "Scenario's" below 0. goloco's own settings (cmd/goloco companyai.go).
+const (
+	optCompY    = 265
+	optCompRow0 = optCompY + 15
+	optMiscH    = optCompY + 65 + 5
+)
+
+// optCompRows are the group's rows' y: AI, competitors, delay.
+var optCompRows = [3]int{optCompRow0, optCompRow0 + 15, optCompRow0 + 30}
 
 // OptionsWindow is the window state.
 type OptionsWindow struct {
@@ -110,6 +125,13 @@ type OptionsWindow struct {
 	MiscChecks                            [7]bool
 	OnMiscCheck                           func(i int, v bool)
 	OnAutosaveFrequency, OnAutosaveAmount func(int)
+	// CompetitorAIs are goloco's AIs and CompetitorAI the competitors' ("":
+	// none); Competitors and StartDelay the maximum and the delay in months
+	// for a new game, -1 the scenario's. OnCompetitors follows a change.
+	CompetitorAIs           []string
+	CompetitorAI            string
+	Competitors, StartDelay int
+	OnCompetitors           func()
 	// OnCustomiseKeys is the Customise Keys button (openKeyboardShortcuts).
 	OnCustomiseKeys func()
 	// RenderChecks are the Rendering tab's checkboxes — landscapeSmoothing,
@@ -296,6 +318,9 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 				}
 				return
 			}
+		}
+		if w.competitorsClick(px, py) {
+			return
 		}
 		// autosave_frequency_btn: Dropdown::show at the widget, width() − 4 —
 		// never, every month, every 3 / 6 / 12 months; the stepper's − / + (1–24).
@@ -613,9 +638,11 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 			}
 			optDropdown(rt, &w.WinBase, 250, 211, 156, sec)
-			gfx8.FillRectInset(rt, 250, 226, 250+156-1, 226+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
-			gfx8.FillRectInset(rt, 250+156-26, 227, 250+156-26+13-1, 227+10-1, gfx8.InsetColour{Map: sec}, 0)
-			gfx8.FillRectInset(rt, 250+156-13, 227, 250+156-13+12-1, 227+10-1, gfx8.InsetColour{Map: sec}, 0)
+			optStepper(rt, 250, 226, 156, sec)
+			groupBox(rt, 4, optCompY, 412, 65, sec, optCompGroup)
+			optDropdown(rt, &w.WinBase, 250, optCompRows[0], 156, sec)
+			optStepper(rt, 250, optCompRows[1], 156, sec)
+			optStepper(rt, 250, optCompRows[2], 156, sec)
 			return
 		}
 		if w.Tab == OptTabRendering {
@@ -739,6 +766,19 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		pw, _ := MeasureTextBold("+")
 		DrawTextBold(screen, "-", w.X+250+156-26+(13-1)/2-mw/2, w.Y+227, black)
 		DrawTextBold(screen, "+", w.X+250+156-13+(12-1)/2-pw/2, w.Y+227, black)
+		DrawTextBold(screen, optCompGroup, w.X+4+5, w.Y+optCompY, text)
+		labels := [3]string{"Company AI:", i18n.Label(i18n.MaxCompetingCompanies), i18n.Label(i18n.DelayBeforeCompetingCompaniesStart)}
+		values := [3]string{w.competitorAIText(w.CompetitorAI), w.competitorsText(), w.startDelayText()}
+		for i, y := range optCompRows {
+			DrawTextBold(screen, labels[i], w.X+10, w.Y+y, text)
+			DrawTextBold(screen, values[i], w.X+250+1, w.Y+y+1, black)
+			if i == 0 {
+				DrawTextBold(screen, arrow, w.X+250+156-12+(11-1)/2-aw/2, w.Y+y+1, black)
+				continue
+			}
+			DrawTextBold(screen, "-", w.X+250+156-26+(13-1)/2-mw/2, w.Y+y+1, black)
+			DrawTextBold(screen, "+", w.X+250+156-13+(12-1)/2-pw/2, w.Y+y+1, black)
+		}
 		return
 	}
 	if w.Tab == OptTabRendering {
@@ -987,4 +1027,96 @@ func autosaveFrequencyText(months int) string {
 		return i18n.Label(i18n.AutosaveEveryMonth)
 	}
 	return strings.Replace(i18n.Label(i18n.AutosaveEveryXMonths), "{INT32}", strconv.Itoa(months), 1)
+}
+
+// optStepper draws stepperWidgets at (x, y), w × 12: the inset TextBox and
+// the "-" (x+w-26, 13 wide) and "+" (x+w-13, 12 wide) Buttons, both y+1 and
+// 10 high.
+func optStepper(rt *gfx8.RenderTarget, x, y, w int, sec []uint8) {
+	gfx8.FillRectInset(rt, x, y, x+w-1, y+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+	gfx8.FillRectInset(rt, x+w-26, y+1, x+w-26+13-1, y+1+10-1, gfx8.InsetColour{Map: sec}, 0)
+	gfx8.FillRectInset(rt, x+w-13, y+1, x+w-13+12-1, y+1+10-1, gfx8.InsetColour{Map: sec}, 0)
+}
+
+// optCompGroup is the goloco group's caption.
+const optCompGroup = "Competing companies"
+
+const optScenarioValue = "Scenario's"
+
+func (w *OptionsWindow) competitorAIText(name string) string {
+	if name == "" {
+		return "None"
+	}
+	return name
+}
+
+// competitorsText is max_competing_companies_value ({INT16}), or the scenario's.
+func (w *OptionsWindow) competitorsText() string {
+	if w.Competitors < 0 {
+		return optScenarioValue
+	}
+	return strings.Replace(i18n.Label(i18n.MaxCompetingCompaniesValue), "{INT16}", strconv.Itoa(w.Competitors), 1)
+}
+
+// startDelayText is delay_before_competing_companies_start_months ({INT16}
+// months), or the scenario's.
+func (w *OptionsWindow) startDelayText() string {
+	if w.StartDelay < 0 {
+		return optScenarioValue
+	}
+	return strings.Replace(i18n.Label(i18n.DelayBeforeCompetingCompaniesStartMonths), "{INT16}", strconv.Itoa(w.StartDelay), 1)
+}
+
+// competitorsClick is the goloco group's widgets: the AI dropdown (as the
+// autosave frequency's: Dropdown::show at the widget, width() − 4) and the
+// steppers (ScenarioOptions' max_competing_companies_down/up and
+// delay_before_competing_companies_start_down/up: 0–14 and 0–240 months,
+// Scenario::kMaxCompetingCompanies / kMaxCompetitorStartDelay, with the
+// scenario's value below 0).
+func (w *OptionsWindow) competitorsClick(px, py int) bool {
+	changed := func() {
+		if w.OnCompetitors != nil {
+			w.OnCompetitors()
+		}
+	}
+	if dropdownPress(&w.WinBase, [4]int{250, optCompRows[0], 156, 12}, px, py) {
+		if w.OpenDropdown == nil {
+			return true
+		}
+		names := append(append([]string(nil), w.CompetitorAIs...), "")
+		items := make([]DropdownItem, len(names))
+		for i, n := range names {
+			items[i] = DropdownItem{Text: w.competitorAIText(n), Selected: n == w.CompetitorAI, MoveX10: true}
+		}
+		d := NewDropdownShow(w.X+250, w.Y+optCompRows[0], 156-4, 11, w.Colour, items, 1<<20, 1<<20)
+		d.OnSelect = func(i int) {
+			if i >= 0 && i < len(names) && names[i] != w.CompetitorAI {
+				w.CompetitorAI = names[i]
+				changed()
+			}
+		}
+		w.OpenDropdown(d)
+		return true
+	}
+	for k, row := range []struct {
+		v   *int
+		max int
+	}{{&w.Competitors, 14}, {&w.StartDelay, 240}} {
+		y := optCompRows[k+1]
+		step := 0
+		if w.Button([4]int{250 + 156 - 26, y + 1, 13, 10}, px, py) {
+			step = -1
+		} else if w.Button([4]int{250 + 156 - 13, y + 1, 12, 10}, px, py) {
+			step = 1
+		}
+		if step == 0 {
+			continue
+		}
+		if n := min(max(*row.v+step, -1), row.max); n != *row.v {
+			*row.v = n
+			changed()
+		}
+		return true
+	}
+	return false
 }

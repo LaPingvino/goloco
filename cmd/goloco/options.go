@@ -148,6 +148,18 @@ func (g *Game) openOptionsWindow() {
 		}
 		setConfigValue(miscConfigKeys[i], strconv.FormatBool(v))
 	}
+	// The competitors (goloco's group, companyai.go): kept in goloco.yml.
+	ai := loadAISettings()
+	w.CompetitorAIs, w.CompetitorAI, w.Competitors, w.StartDelay = sim.AINames(), ai.AI, ai.Competitors, ai.StartDelay
+	w.OnCompetitors = func() {
+		s := aiSettings{AI: w.CompetitorAI, Competitors: w.Competitors, StartDelay: w.StartDelay}
+		if err := s.save(); err != nil {
+			log.Printf("[Options] saving the competitors: %v", err)
+		}
+		if !g.inTitleScreen {
+			s.applyGame(&g.w.Map) // the AI at once; the count and delay wait for a new game
+		}
+	}
 	w.OnAutosaveFrequency = func(v int) { setConfigValue("autosave_frequency", strconv.Itoa(v)) }
 	w.OnAutosaveAmount = func(v int) { setConfigValue("autosave_amount", strconv.Itoa(v)) }
 	w.OnControl = func(i int, v bool) {

@@ -2451,3 +2451,17 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   - Gate: unit 23 ok 0 FAIL (pkg/companyai the new one), playthroughs 24/24.
   - Open: produceCompanies (start delay and timeout not modelled), G5, G10, G11's save, G12, G13. No AI can be
     reached from the game yet, only from tests and gosave -ai NAME.
+- 2026-11-24 (branch aiplay): AI competitors in a real game (PORT-PLANS F after step 2).
+  - Built: produceCompanies, ported from CompanyManager.cpp 0x004306D1 / tick 0x00430319: the 192-tick timeout,
+    the start delay counted down in updateMonthly1, maxCompetingCompanies, and both gPrng1 draws. New competitors
+    are made through Map.CreateAICompany and run the AI in Map.Competitors.
+  - G13: the Options window's Miscellaneous tab has a "Competing companies" group: the AI (buslink by default, or
+    none), the maximum and the start delay (each "Scenario's" by default), kept in goloco.yml.
+  - G11: the AI state goes in goloco's own S5 chunk after the tiles. OpenLoco 26.09 loads and plays such a save.
+    A save made mid-road resumes byte-identical to the unbroken game (TestAISaveResumes, with an AI-off control).
+  - Checks: AI off, gosave is byte-identical to main (title 20000 ticks, Boulder Breakers 2000). The olref
+    Misc tab comparison is the same above the new group (tours/options-competitors.txt).
+  - Gate: unit 23 ok, 0 FAIL; playthroughs 24/24. None of the playthroughs runs long enough for a competitor to start.
+  - Seen, not fixed: OpenLoco's Misc tab shows "Trains reverse at signals" ticked by default in a fresh config;
+    goloco's is unticked.
+  - Open: G5, G10, G12, the decision log in the save, difficulty and cheat switches.

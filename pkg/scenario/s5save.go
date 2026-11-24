@@ -32,7 +32,14 @@ type S5File struct {
 	RequiredObjects []byte
 	GameState       []byte // GameStateSize bytes
 	TileElements    []byte
+	// GolocoAI is goloco's own chunk (the company AIs' state, written by
+	// sim's EncodeAIChunk), after the tile elements; nil writes none, and
+	// the file is then exactly OpenLoco's.
+	GolocoAI []byte
 }
+
+// GolocoAIMagic opens goloco's own chunk.
+const GolocoAIMagic = "GOLOCOAI"
 
 // Write is exportGameState: the header, options or save details, packed
 // objects (writePackedObjects: the raw header, then the data chunk), the
@@ -61,6 +68,9 @@ func (f *S5File) Write(w io.Writer) error {
 		s.WriteChunk(assets.EncodingRunLengthSingle, f.GameState)
 	}
 	s.WriteChunk(assets.EncodingRunLengthMulti, f.TileElements)
+	if f.GolocoAI != nil {
+		s.WriteChunk(assets.EncodingRunLengthSingle, f.GolocoAI)
+	}
 	return s.Close()
 }
 
@@ -149,6 +159,7 @@ func (sc *Scenario) putGeneralState(gs []byte) {
 	putCString(gs[0x2BC:], sc.ScenarioName, 64)
 	putCString(gs[0x2FC:], sc.ScenarioDetails, 256)
 	gs[0x3FD], gs[0x3FE], gs[0x3FF] = sc.PreferredAI[0], sc.PreferredAI[1], sc.PreferredAI[2]
+	gs[0x19F], gs[0x3FC], gs[0x1B3] = sc.MaxCompetingCompanies, sc.CompetitorStartDelay, sc.ProduceAICompanyTimeout
 	put16(gs, 0x400, sc.StartingLoanSize)
 	put16(gs, 0x402, sc.MaxLoanSize)
 	gs[0x414], gs[0x415] = sc.LastBuildVehiclesOption, sc.NumberOfIndustries
@@ -546,7 +557,7 @@ func (sc *Scenario) putOrdersAndRoutings(gs []byte) {
 // tile elements.
 func (sc *Scenario) SavedGameFile(details, requiredObjects []byte) *S5File {
 	return &S5File{Header: SavedGameHeader(0), SaveDetails: details, RequiredObjects: requiredObjects,
-		GameState: sc.EncodeGameState(), TileElements: EncodeTileElements(sc.Tiles)}
+		GameState: sc.EncodeGameState(), TileElements: EncodeTileElements(sc.Tiles), GolocoAI: sc.GolocoAI}
 }
 
 // SaveDetailsSize is sizeof(S5::SaveDetails).

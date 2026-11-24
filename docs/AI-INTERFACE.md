@@ -204,7 +204,7 @@ example `vehicleObjTypes` is at thought+0x46 (absolute 0x4EE for thought 0), not
 | S15 | 0x85C0-0x85F7 | `hashTableLength`, `aiStationIndex`, `aiStationFlags`, pathfind target/start pos, baseZ, rot or tad ×2, weightings 1/2, `aiBestTrackRoadId`, `aiPathfindPhase`, `aiPathfindMaxWeighting`, undo counts 1/2, `aiPathfindIterCount`, `aiVehicleCost`, `aiThinkTimer` | raw |
 | S16 | 0x8BB9-0x8BCA | observation fields (written by `setAiObservation` daily) | modelled (pkg/sim/companydaily.go) |
 | S17 | vehicle head +0x60-0x67 | `aiThoughtId` (0xFF none), `aiPlacementPos`, `aiPlacementTaD`, `aiPlacementBaseZ` (include/OpenLoco/S5/S5Entity.h:168-171) | raw in the entity; set for created heads (s5entities.go:757-765); 0x60 read by unload.go |
-| S18 | game state | competitor start delay, max competitors, preferred AI traits, forbidden-vehicle masks, `produceAICompanyTimeout` | `PreferredAI`, `ForbiddenVehicles*`, `MaxCompetitors` modelled (pkg/sim/map.go:105-107, pkg/scenario/types.go:665) |
+| S18 | game state | competitor start delay, max competitors, preferred AI traits, forbidden-vehicle masks, `produceAICompanyTimeout` | `PreferredAI`, `ForbiddenVehicles*` modelled; since 2026-11-24 also `MaxCompetingCompanies`, `CompetitorStartDelay`, `ProduceAICompanyTimeout` (pkg/sim/map.go, read and written by pkg/scenario) |
 
 Round-trip status: `EncodeGameState` starts from the loaded raw game state (pkg/scenario/s5save.go:98-115), so
 every raw field above survives a load and save unchanged. Two open questions:
@@ -475,6 +475,34 @@ logged, because a route search makes thousands.
 - **G11 partly done.** Each AI has its own PRNG, seeded from the game's rng state and the company id (read, never
   drawn), and a decision log (`AIDecisions`). Still open: saving that state with the game.
 - **G5, G12, G13 open.** gosave's `-ai NAME [-ais N]` starts AI companies headless, for the comparison tools.
+
+### Status after the competitors item (2026-11-24, branch aiplay)
+
+AI competitors now appear in a real game.
+
+- **G4 done.** produceCompanies is ported (CompanyManager.cpp 0x004306D1, tick 0x00430319): every 192 ticks, once
+  `competitorStartDelay` is 0 and `maxCompetingCompanies` isn't, a 1-in-16 draw and then
+  `randNext(max) + 1 > competitors` start one through `Map.CreateAICompany`, running the AI in `Map.Competitors`.
+  Both draws are gPrng1's, as upstream. updateMonthly1 counts the delay down, whether the AI is on or off.
+  `reset` zeroes the timeout. The three game-state bytes (0x19F, 0x3FC, 0x1B3) are modelled and saved. With no
+  competitor AI named, the timeout doesn't run: gosave of the title save (20000 ticks) and of Boulder Breakers
+  (2000) is byte-identical to main's. `gosave -ai NAME -ais 0 -competitors` plays a game with competitors started
+  on schedule.
+- **G11 done, except the log.** `CompanyAI` gained `Save() []byte` / `Load([]byte) error`. The state lives in
+  goloco's own chunk after the tile elements (companyai_save.go: per company the AI's name, AutoBorrow, the
+  PRNG's two words, the dry-run count and the AI's bytes). The chunk is written only when a company has a
+  goloco AI. OpenLoco's loadSave stops after the tiles, so it loads the file (checked: the title save with a
+  buslink competitor loads and plays on in OpenLoco 26.09). goloco then sees those companies as AI-less after an
+  OpenLoco re-save. A save made mid-plan and reloaded plays on byte-identical to the unbroken game
+  (pkg/companyai TestAISaveResumes, with an AI-off control). The decision log isn't saved.
+- **G13 done (minimal).** The Options window's Miscellaneous tab has a "Competing companies" group: the AI
+  (buslink or none, default buslink), maximum competing companies and the start delay (ScenarioOptions'
+  strings 1682-1685 and steppers; default "Scenario's"). They are kept in `<config>/goloco/goloco.yml`
+  (`companyAI.ai`, `.competitors`, `.startDelay`), never in openloco.yml. A count or delay other than the
+  scenario's replaces the game state's at a new game. The AI choice applies to every game loaded. The title
+  screen's game never gets competitors. Config::companyAIDisabled still stops everything.
+- Still open: G5, G10 (a loaded OpenLoco AI company stays as it is, unthinking), G12, the log in the save,
+  difficulty and cheat switches in the options.
 
 ## 8. Notes and surprises
 

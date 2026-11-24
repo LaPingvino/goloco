@@ -202,6 +202,10 @@ Direction:
   - Gaps: G1–G4 (produceCompanies still open), G6, G8 and parts of G7 and G11. AI-INTERFACE.md §7 has the status.
   - Next: produceCompanies with the start delay, saving the AI state (G11), events (G12) and the options (G13).
     Then the cheat switches, then a better AI.
+  - DONE 2026-11-24 (branch aiplay): produceCompanies with the start delay and timeout; the options (the AI, the
+    count and the delay, in goloco.yml); the AI state saved in goloco's own S5 chunk. Competitors running buslink
+    now start in real games. AI-INTERFACE.md §7 has the status. Next: events (G12), then the cheat switches and a
+    better AI.
 - **Cheats: configurable, off by default, and designed so they don't break the AI** (Joop 2026-11-19: "make that
   configurable. There are stories about how the cheating actually breaks AIs badly, maybe read up on that, and
   it's probably good to still allow them to be challenging and for that allow some kind of cheating if turned on,

@@ -5,6 +5,8 @@
 package companyai
 
 import (
+	"encoding/json"
+	"fmt"
 	"sort"
 
 	"github.com/LaPingvino/goloco/pkg/i18n"
@@ -488,4 +490,55 @@ func abs(x int) int {
 		return -x
 	}
 	return x
+}
+
+// busLinkSave is BusLink's state as the save keeps it (sim.CompanyAI Save /
+// Load): JSON, the town pairs tried sorted so one state is one encoding.
+type busLinkSave struct {
+	State, PairsTried int
+	Tried             [][2]int
+	Towns             [2]sim.AITown
+	Road0             uint8
+	Road              []sim.RoadPlacement
+	Stops             [2]stopSite
+	StopType          uint8
+	Bus               uint16
+	Stations          [2]int
+	Head              uint16
+	Step              int
+}
+
+func (b *BusLink) Save() []byte {
+	p := b.plan
+	s := busLinkSave{State: b.state, PairsTried: b.pairsTried, Towns: p.towns, Road0: p.road0, Road: p.road, Stops: p.stops,
+		StopType: p.stopType, Bus: p.bus, Stations: p.stations, Head: p.head, Step: p.step}
+	for k := range b.tried {
+		s.Tried = append(s.Tried, k)
+	}
+	sort.Slice(s.Tried, func(i, j int) bool {
+		if s.Tried[i][0] != s.Tried[j][0] {
+			return s.Tried[i][0] < s.Tried[j][0]
+		}
+		return s.Tried[i][1] < s.Tried[j][1]
+	})
+	out, _ := json.Marshal(s)
+	return out
+}
+
+func (b *BusLink) Load(data []byte) error {
+	var s busLinkSave
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	if s.State < busPlanning || s.State > busGivenUp {
+		return fmt.Errorf("buslink: no state %d", s.State)
+	}
+	b.state, b.pairsTried = s.State, s.PairsTried
+	b.tried = map[[2]int]bool{}
+	for _, k := range s.Tried {
+		b.tried[k] = true
+	}
+	b.plan = busPlan{towns: s.Towns, road0: s.Road0, road: s.Road, stops: s.Stops, stopType: s.StopType, bus: s.Bus,
+		stations: s.Stations, head: s.Head, step: s.Step}
+	return nil
 }

@@ -80,6 +80,7 @@ func (g *Game) loadScenario(filePath string) error {
 			log.Printf("[Seed] before generating: rng %08x %08x, generate %v", gameW.Map.Rng1.Srand0(), gameW.Map.Rng1.Srand1(), sc.LandscapeToGenerate)
 		}
 		gameW.Map.StartScenarioGenerating(sc.Options.StartYear, gen, g.r.G1, g.r.ObjMgr)
+		loadAISettings().applyNewGame(&gameW.Map) // the competitors' count and delay chosen in the options (companyai.go)
 		if g.script != nil && g.script.seed != nil {
 			log.Printf("[Seed] after starting: rng %08x %08x, company colour %v", gameW.Map.Rng1.Srand0(), gameW.Map.Rng1.Srand1(), gameW.Map.CompanyColours)
 		}
@@ -92,6 +93,7 @@ func (g *Game) loadScenario(filePath string) error {
 		gameW.SetSavedView(int(sc.SavedViewX), int(sc.SavedViewY), min(sc.SavedViewZoom, 3), sc.SavedViewRotation)
 	}
 	gameW.Map.AutosaveCheck = g.autosaveCheck
+	loadAISettings().applyGame(&gameW.Map) // the competitors' AI (companyai.go)
 	g.packedObjects = sc.PackedObjectsRaw
 	if strings.EqualFold(filepath.Ext(filePath), ".sc5") {
 		// Scenario::loadAndStart / start: the file's path, the options'

@@ -120,6 +120,8 @@ type idleAI struct{}
 
 func (idleAI) Name() string      { return "idle" }
 func (idleAI) Think(*sim.AIView) {}
+func (idleAI) Save() []byte      { return nil }
+func (idleAI) Load([]byte) error { return nil }
 
 func init() { sim.RegisterAI("idle", func() sim.CompanyAI { return idleAI{} }) }
 

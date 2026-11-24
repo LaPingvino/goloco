@@ -131,11 +131,13 @@ func rotate120[T any](h *[120]T, v T) {
 // companyPromoted), with the owner's emotions: angry at two months of falling
 // deliveries, happy or scared as the performance rises or falls, worried
 // without cash, scared at the bankruptcy warnings, dejected at bankruptcy —
-// and, of more than one company, the lowest performer dejected. PARTIAL: the
-// competitor start delay and the Ui invalidations are not ported. The bankruptcy news are posted (warnings at 3 and 6 months in
+// and, of more than one company, the lowest performer dejected; first, the
+// competitor start delay counts down (competitorsUpdateMonthly1). PARTIAL:
+// the Ui invalidations are not ported. The bankruptcy news are posted (warnings at 3 and 6 months in
 // the red for the controlling company, declared at 9), and a bankruptcy
 // stops the company's vehicles (stopAllCompanyVehicles).
 func (m *Map) companiesUpdateMonthly1(om *objects.ObjectManager) {
+	m.competitorsUpdateMonthly1()
 	for id := range m.Companies {
 		if id >= len(m.CompanyFaces) || m.CompanyEmpty(id) {
 			continue

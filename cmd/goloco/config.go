@@ -26,9 +26,32 @@ func configPath() string {
 	return filepath.Join(dir, "goloco", "openloco.yml")
 }
 
+// golocoConfigPath is goloco's own settings, those OpenLoco doesn't have
+// (the company AI's: companyai.go): <user config dir>/goloco/goloco.yml, in
+// openloco.yml's format, so no OpenLoco key ever means something of
+// goloco's.
+func golocoConfigPath() string {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(dir, "goloco", "goloco.yml")
+}
+
+// golocoConfigValue / setGolocoConfigValues are configValue /
+// setConfigValues on goloco.yml.
+func golocoConfigValue(key string) string {
+	v, _ := configLookupIn(golocoConfigPath(), key)
+	return v
+}
+
+func setGolocoConfigValues(kvs [][2]string) error { return setConfigValuesIn(golocoConfigPath(), kvs) }
+
 // configLines is the config file's lines (nil: none yet).
-func configLines() []string {
-	data, err := os.ReadFile(configPath())
+func configLines() []string { return configLinesAt(configPath()) }
+
+func configLinesAt(p string) []string {
+	data, err := os.ReadFile(p)
 	if err != nil {
 		return nil
 	}
@@ -94,8 +117,10 @@ func configValue(key string) string {
 // configLookup is a key's value, and whether the file has the key (a
 // shortcut set to "" is unbound; one the file doesn't name is on its
 // default).
-func configLookup(key string) (string, bool) {
-	lines, path := configLines(), strings.Split(key, ".")
+func configLookup(key string) (string, bool) { return configLookupIn(configPath(), key) }
+
+func configLookupIn(file, key string) (string, bool) {
+	lines, path := configLinesAt(file), strings.Split(key, ".")
 	if i, depth, _ := configFind(lines, path); depth == len(path) {
 		_, _, v, _ := configKey(lines[i])
 		return v, true
@@ -111,12 +136,13 @@ func setConfigValue(key, value string) error {
 // setConfigValues is Config::write for some keys, in one write of the file:
 // each replaced in place, or added at the end of its section (the section
 // too, when it is new).
-func setConfigValues(kvs [][2]string) error {
-	p := configPath()
+func setConfigValues(kvs [][2]string) error { return setConfigValuesIn(configPath(), kvs) }
+
+func setConfigValuesIn(p string, kvs [][2]string) error {
 	if p == "" {
 		return nil
 	}
-	lines := configLines()
+	lines := configLinesAt(p)
 	for _, kv := range kvs {
 		path := strings.Split(kv[0], ".")
 		i, depth, indent := configFind(lines, path)

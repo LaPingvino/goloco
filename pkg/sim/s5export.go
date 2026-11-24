@@ -203,6 +203,8 @@ func (s *State) ExportScenario() *scenario.Scenario {
 	sc.DefaultTreeObjectId, sc.DefaultWallObjectId = m.DefaultTreeObjectId, m.DefaultWallObjectId
 	sc.CurrentSnowLine, sc.CurrentSeason = m.CurrentSnowLine, m.CurrentSeason
 	sc.PreferredAI = m.PreferredAI
+	sc.MaxCompetingCompanies, sc.CompetitorStartDelay, sc.ProduceAICompanyTimeout = m.MaxCompetingCompanies, m.CompetitorStartDelay, m.ProduceAICompanyTimeout
+	sc.GolocoAI = m.EncodeAIChunk()
 	sc.ForbiddenVehiclesPlayers, sc.ForbiddenVehiclesCompetitors = m.ForbiddenVehiclesPlayers, m.ForbiddenVehiclesCompetitors
 	sc.Objective = m.Objective
 	sc.ObjectiveTimeLimitUntilYear, sc.ObjectiveMonthsInChallenge = m.ObjectiveUntilYear, m.ObjectiveMonthsInChallenge

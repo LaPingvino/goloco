@@ -2,6 +2,7 @@ package sim
 
 import (
 	"fmt"
+	"log"
 	"sort"
 
 	"github.com/LaPingvino/goloco/pkg/core"
@@ -24,11 +25,17 @@ import (
 // no AI attached to any company the hook does nothing at all — the AI-off
 // game is the one the economy comparison with OpenLoco (simcmp) checks.
 //
-// Still open (AI-INTERFACE.md §7): produceCompanies (the competitor start
-// delay and produceAICompanyTimeout are not modelled, so companies appear only
-// through CreateAICompany), removing a company (G5), taking over a loaded
-// OpenLoco AI company (G10: refused here), saving an AI's own state with the
-// game (G11's save part), events (G12), the options window (G13).
+// Competitors appear as upstream's produceCompanies starts them (every 192
+// ticks, after the start delay, up to maxCompetingCompanies), each running
+// the AI Map.Competitors names; with none named, no competitor starts and
+// the timeout doesn't run, as with Config::companyAIDisabled. An AI's state
+// is saved in goloco's own chunk of the save (EncodeAIChunk), which OpenLoco
+// doesn't read.
+//
+// Still open (AI-INTERFACE.md §7): removing a company (G5), taking over a
+// loaded OpenLoco AI company (G10: refused here, so such companies keep
+// standing still), events (G12), saving the decision log (G11: the log
+// starts empty after a load).
 
 // CompanyAI is one AI, run for one company, chosen when the company is
 // created (CreateAICompany).
@@ -39,6 +46,18 @@ type CompanyAI interface {
 	// (scenarioTicks & 0x0F == id, as CompanyManager::tick). Long work spreads
 	// over thinks in the AI's own state.
 	Think(v *AIView)
+	// Save is the AI's own state, kept in the saved game (EncodeAIChunk);
+	// Load restores it into a new AI of the same name. The state must be
+	// enough to go on as if the game had never been saved.
+	Save() []byte
+	Load(b []byte) error
+}
+
+// Competitors is the goloco AI that produceCompanies gives the competitors
+// it starts, and its switches; AI "" starts none.
+type Competitors struct {
+	AI   string
+	Opts AIOptions
 }
 
 var aiRegistry = map[string]func() CompanyAI{}
@@ -181,22 +200,70 @@ func (m *Map) aiPaysAsPlayer(id int) bool {
 
 // companiesTick is CompanyManager::tick (0x00430319) for goloco's AIs: not
 // with Config::companyAIDisabled, the company scenarioTicks & 0x0F thinks if
-// it isn't a player's, isn't empty and has an AI. PARTIAL: the editor check
-// (the sim has no editor mode flag) and produceCompanies (see the file's
-// note).
+// it isn't a player's, isn't empty and has an AI; then, every 192 ticks,
+// produceCompanies. The timeout runs only while Map.Competitors names an AI
+// (goloco's "no competitors" is upstream's companyAIDisabled for it), so a
+// game without one is tick for tick the AI-off game. PARTIAL: the editor
+// check (the sim has no editor mode flag).
 func (m *Map) companiesTick(om *objects.ObjectManager) {
 	if Config.CompanyAIDisabled {
 		return
 	}
 	id := int(m.ScenarioTicks & 0x0F)
-	if id >= companyMaxCount {
+	if st := m.aiOf(id); st != nil && !m.IsPlayerCompany(id) && !m.CompanyEmpty(id) {
+		st.ai.Think(&AIView{m: m, om: om, id: uint8(id), st: st})
+	}
+	if m.Competitors.AI == "" {
 		return
 	}
-	st := m.companyAIs[id]
-	if st == nil || m.IsPlayerCompany(id) || m.CompanyEmpty(id) {
+	m.ProduceAICompanyTimeout++
+	if m.ProduceAICompanyTimeout >= 192 {
+		m.ProduceAICompanyTimeout = 0
+		m.produceCompanies(om)
+	}
+}
+
+func (m *Map) aiOf(id int) *companyAI {
+	if id < 0 || id >= companyMaxCount {
+		return nil
+	}
+	return m.companyAIs[id]
+}
+
+// produceCompanies is CompanyManager.cpp produceCompanies (0x004306D1):
+// once the start delay is over and competitors are allowed, a one in 16
+// chance, then randNext(maxCompetingCompanies) + 1 above the companies that
+// aren't a player's starts one — createAiCompany, as CreateAICompany with
+// Map.Competitors' AI instead of OpenLoco's. Both draws are the game's
+// gPrng1, as upstream (and selectNewCompetitor / createCompany draw it too),
+// so a game with competitors parts from the AI-off game here.
+func (m *Map) produceCompanies(om *objects.ObjectManager) {
+	if m.CompetitorStartDelay != 0 || m.MaxCompetingCompanies == 0 {
 		return
 	}
-	st.ai.Think(&AIView{m: m, om: om, id: uint8(id), st: st})
+	active := 0
+	for id := range m.CompanyNames {
+		if !m.CompanyEmpty(id) && !m.IsPlayerCompany(id) {
+			active++
+		}
+	}
+	if m.Rng1.RandNextBound(16) != 0 {
+		return
+	}
+	if int(m.Rng1.RandNextBound(int32(m.MaxCompetingCompanies)))+1 > active {
+		if id := m.CreateAICompany(m.Competitors.AI, m.Competitors.Opts, om); id != companyIDNull {
+			log.Printf("[AI] competitor %d started: %s, running %s", id, m.CompanyName(int(id)), m.Competitors.AI)
+		}
+	}
+}
+
+// competitorsUpdateMonthly1 is CompanyManager::updateMonthly1's first line:
+// the competitor start delay counts down a month (Math::Bound::sub, never
+// below 0), with the AI on or off.
+func (m *Map) competitorsUpdateMonthly1() {
+	if m.CompetitorStartDelay > 0 {
+		m.CompetitorStartDelay--
+	}
 }
 
 func (st *companyAI) record(d AIDecision) {
