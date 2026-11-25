@@ -101,12 +101,17 @@ func TestAvailable(t *testing.T) {
 		if l.Locale == "en-GB" {
 			found = true
 		}
-		if i > 0 && ls[i-1].NativeName > l.NativeName {
+		if i > 0 && ToLoco(ls[i-1].NativeName) > ToLoco(l.NativeName) {
 			t.Errorf("not sorted at %d: %q > %q", i, ls[i-1].NativeName, l.NativeName)
 		}
 	}
 	if !found {
 		t.Error("en-GB missing")
+	}
+	for _, l := range ls { // N56: the names stay Unicode (drawn from the fallback font)
+		if l.Locale == "ja-JP" && ToLoco(l.NativeName) == l.NativeName {
+			t.Errorf("ja-JP native name %q converted to Loco characters", l.NativeName)
+		}
 	}
 }
 

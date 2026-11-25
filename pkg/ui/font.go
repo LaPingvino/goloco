@@ -210,7 +210,7 @@ func DrawTextBold(screen *ebiten.Image, str string, x, y int, clr color.Color) {
 func MeasureText(str string) (int, int) {
 	if globalG1Font != nil && globalG1Font.supports(str) {
 		return globalG1Font.drawString(nil, str, G1FontMediumNormal, 0, 0, 1.0, nil),
-			g1FontHeight(G1FontMediumNormal)
+			TextLineHeight(str, G1FontMediumNormal)
 	}
 	if globalFontManager == nil || globalFontManager.RegularFace == nil {
 		// Fallback estimate
@@ -245,7 +245,7 @@ func DrawTextBoldScaled(screen *ebiten.Image, str string, x, y int, scale float6
 func MeasureTextBold(str string) (int, int) {
 	if globalG1Font != nil && globalG1Font.supports(str) {
 		return globalG1Font.drawString(nil, str, G1FontMediumBold, 0, 0, 1.0, nil),
-			g1FontHeight(G1FontMediumBold)
+			TextLineHeight(str, G1FontMediumBold)
 	}
 	if globalFontManager == nil || globalFontManager.BoldFace == nil {
 		// Fallback estimate (slightly wider than regular)

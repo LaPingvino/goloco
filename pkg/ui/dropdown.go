@@ -177,10 +177,12 @@ func NewDropdownMenu(x, y int, items []DropdownItem) *DropdownMenu {
 		maxW = max(maxW, itemTextWidth(it))
 	}
 	itemWidth := maxW + 3
+	ih := tallItemHeight(items, dropdownItemHeight)
 	return &DropdownMenu{
 		X: x, Y: y,
 		Width:       itemWidth + 3 + 1,
-		Height:      dropdownItemHeight*len(items) + 3 + 1,
+		Height:      ih*len(items) + 3 + 1,
+		ItemHeight:  ih,
 		ItemWidth:   itemWidth,
 		Colour:      DropdownColour,
 		Items:       items,
@@ -467,6 +469,7 @@ func NewDropdownShow(x, y, width, height int, colour uint8, items []DropdownItem
 // NewDropdownShowItemHeight is Dropdown::show with flag 1<<6: items of the
 // given height.
 func NewDropdownShowItemHeight(x, y, width, height int, colour uint8, items []DropdownItem, itemHeight, sw, sh int) *DropdownMenu {
+	itemHeight = tallItemHeight(items, itemHeight)
 	h := len(items)*itemHeight + 3 + 1
 	oy := y + height
 	if h+oy > sh || oy < 0 {
@@ -485,6 +488,18 @@ func NewDropdownShowItemHeight(x, y, width, height int, colour uint8, items []Dr
 	x = min(x+w, sw) - w
 	return &DropdownMenu{X: x, Y: oy, Width: w, Height: h, ItemWidth: width, Colour: colour,
 		Items: items, Highlighted: -1, Visible: true, ItemHeight: itemHeight}
+}
+
+// tallItemHeight is the item height for items: as given, or — goloco's own
+// (LOOP.md N56) — the fallback font's line height when an item's text has
+// glyphs from it, so their 16 px glyphs don't run into each other.
+func tallItemHeight(items []DropdownItem, itemHeight int) int {
+	for _, it := range items {
+		if hasFallback(it.Text) {
+			return max(itemHeight, fallbackLineH)
+		}
+	}
+	return itemHeight
 }
 
 // itemTextWidth is getMaxStringWidth of an item's formatted string: the text
@@ -544,6 +559,7 @@ func NewDropdownShowText(x, y, width, height int, colour uint8, items []Dropdown
 		maxW = max(maxW, itemTextWidth(it))
 	}
 	maxW += 3
+	itemHeight = tallItemHeight(items, itemHeight)
 	h := len(items)*itemHeight + 3 + 1
 	ox, oy := x, y+height
 	if h+oy > sh || oy < 0 {

@@ -86,6 +86,7 @@ var optCompRows = [3]int{optCompRow0, optCompRow0 + 15, optCompRow0 + 30}
 
 // OptionsWindow is the window state.
 type OptionsWindow struct {
+	sw, sh int // the screen (NewOptions): Dropdown::show keeps lists on it
 	WinBase
 	TitleColour  uint8
 	Colour       uint8
@@ -241,7 +242,23 @@ func (w *OptionsWindow) size() (int, int) { s := optTabSize[w.Tab]; return s[0],
 func NewOptions(sw, sh int, titleColour, colour uint8) *OptionsWindow {
 	dw, dh := optTabSize[OptTabDisplay][0], optTabSize[OptTabDisplay][1]
 	return &OptionsWindow{WinBase: WinBase{WinType: WindowTypeOptions, X: (sw - dw) / 2, Y: (sh - dh) / 2, W: dw, H: dh}, TitleColour: titleColour, Colour: colour, Tab: OptTabDisplay,
-		VehiclesMinScale: 2, StationNamesMinScale: 2}
+		VehiclesMinScale: 2, StationNamesMinScale: 2, sw: sw, sh: sh}
+}
+
+// screenW / screenH are the screen Dropdown::show keeps its list on (Ui::width
+// / height): the one the window opened on; unbounded without one.
+func (w *OptionsWindow) screenW() int {
+	if w.sw <= 0 {
+		return 1 << 20
+	}
+	return w.sw
+}
+
+func (w *OptionsWindow) screenH() int {
+	if w.sh <= 0 {
+		return 1 << 20
+	}
+	return w.sh
 }
 
 func (w *OptionsWindow) in(r [4]int, px, py int) bool {
@@ -330,7 +347,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			for i, m := range months {
 				items[i] = DropdownItem{Text: autosaveFrequencyText(m), Selected: m == w.AutosaveFrequency, MoveX10: true}
 			}
-			d := NewDropdownShow(w.X+250, w.Y+211, 156-4, 11, w.Colour, items, 1<<20, 1<<20)
+			d := NewDropdownShow(w.X+250, w.Y+211, 156-4, 11, w.Colour, items, w.screenW(), w.screenH())
 			d.OnSelect = func(i int) {
 				if i >= 0 && i < len(months) && months[i] != w.AutosaveFrequency {
 					w.AutosaveFrequency = months[i]
@@ -380,7 +397,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 				for i, t := range c.items {
 					items[i] = DropdownItem{Text: t, Selected: i == *v, MoveX10: true}
 				}
-				d := NewDropdownShow(w.X+235, w.Y+c.y, 154-1-4, 11, w.Colour, items, 1<<20, 1<<20)
+				d := NewDropdownShow(w.X+235, w.Y+c.y, 154-1-4, 11, w.Colour, items, w.screenW(), w.screenH())
 				d.OnSelect = func(i int) {
 					if i >= 0 {
 						*v = i // (PARTIAL: Config::write)
@@ -424,7 +441,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			for i, m := range optScreenModes() {
 				items[i] = DropdownItem{Text: m, Selected: i == w.ScreenMode, MoveX10: true}
 			}
-			d := NewDropdownShow(w.X+235, w.Y+63, 154-1-4, 11, w.Colour, items, 1<<20, 1<<20)
+			d := NewDropdownShow(w.X+235, w.Y+63, 154-1-4, 11, w.Colour, items, w.screenW(), w.screenH())
 			d.OnSelect = func(i int) {
 				if i >= 0 && i != w.ScreenMode {
 					w.ScreenMode = i
@@ -443,7 +460,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			for i, r := range w.Resolutions {
 				items[i] = DropdownItem{Text: resolutionText(r), Selected: r == w.Resolution, MoveX10: true}
 			}
-			d := NewDropdownShow(w.X+235, w.Y+79, 154, 11, w.Colour, items, 1<<20, 1<<20)
+			d := NewDropdownShow(w.X+235, w.Y+79, 154, 11, w.Colour, items, w.screenW(), w.screenH())
 			d.OnSelect = func(i int) {
 				if i >= 0 && i < len(w.Resolutions) {
 					w.Resolution = w.Resolutions[i]
@@ -461,7 +478,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			for i, m := range optFrameLimits {
 				items[i] = DropdownItem{Text: m, Selected: i == w.FrameLimit, MoveX10: true}
 			}
-			d := NewDropdownShow(w.X+235, w.Y+111, 154-1, 11, w.Colour, items, 1<<20, 1<<20)
+			d := NewDropdownShow(w.X+235, w.Y+111, 154-1, 11, w.Colour, items, w.screenW(), w.screenH())
 			d.OnSelect = func(i int) {
 				if i >= 0 {
 					w.FrameLimit = i
@@ -479,7 +496,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		// width() − 4, Imperial / Metric, the current one ticked.
 		if r := optRegionalRows[1]; dropdownPress(&w.WinBase, [4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil {
 			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour,
-				[]DropdownItem{{Text: i18n.Label(i18n.Imperial), Selected: !L.Metric, MoveX10: true}, {Text: i18n.Label(i18n.Metric), Selected: L.Metric, MoveX10: true}}, 1<<20, 1<<20)
+				[]DropdownItem{{Text: i18n.Label(i18n.Imperial), Selected: !L.Metric, MoveX10: true}, {Text: i18n.Label(i18n.Metric), Selected: L.Metric, MoveX10: true}}, w.screenW(), w.screenH())
 			d.OnSelect = func(i int) { L.Metric = i == 1 } // distanceSpeedDropdown (PARTIAL: Config::write)
 			w.OpenDropdown(d)
 		}
@@ -490,7 +507,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			for i, n := range w.Languages {
 				items[i] = DropdownItem{Text: n, Selected: i == w.Language, MoveX10: true}
 			}
-			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour, items, 1<<20, 1<<20)
+			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour, items, w.screenW(), w.screenH())
 			d.OnSelect = func(i int) {
 				if i >= 0 && i < len(w.Languages) {
 					w.Language = i
@@ -518,7 +535,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			for i, c := range w.Currencies {
 				items[i] = DropdownItem{Text: c.Name, Selected: c.Name == w.CurrencyName, MoveX10: true}
 			}
-			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour, items, 1<<20, 1<<20)
+			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour, items, w.screenW(), w.screenH())
 			d.OnSelect = func(i int) {
 				if i >= 0 && i < len(w.Currencies) {
 					w.CurrencyName = w.Currencies[i].Name
@@ -536,7 +553,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 			for i, c := range w.Currencies {
 				items[i] = DropdownItem{Text: c.Name, Selected: c.Name == w.PreferredCurrencyName, MoveX10: true}
 			}
-			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour, items, 1<<20, 1<<20)
+			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour, items, w.screenW(), w.screenH())
 			d.OnSelect = func(i int) { // preferredCurrencyDropdown (PARTIAL: Config::write, loadPreferredCurrencyAlways)
 				if i >= 0 && i < len(w.Currencies) {
 					w.PreferredCurrencyName = w.Currencies[i].Name
@@ -550,7 +567,7 @@ func (w *OptionsWindow) HandleClick(px, py int) {
 		// heightsLabelsMouseDown: Units / Real Values, the current one selected.
 		if r := optRegionalRows[2]; dropdownPress(&w.WinBase, [4]int{183, r.y, 173, 12}, px, py) && w.OpenDropdown != nil {
 			d := NewDropdownShow(w.X+183, w.Y+r.y, 173-1-4, 11, w.Colour,
-				[]DropdownItem{{Text: i18n.Label(i18n.HeightUnits), Selected: L.HeightUnits, MoveX10: true}, {Text: i18n.Label(i18n.HeightRealValues), Selected: !L.HeightUnits, MoveX10: true}}, 1<<20, 1<<20)
+				[]DropdownItem{{Text: i18n.Label(i18n.HeightUnits), Selected: L.HeightUnits, MoveX10: true}, {Text: i18n.Label(i18n.HeightRealValues), Selected: !L.HeightUnits, MoveX10: true}}, w.screenW(), w.screenH())
 			d.OnSelect = func(i int) { L.HeightUnits = i == 0 } // heightsLabelsDropdown (PARTIAL: Config::write)
 			w.OpenDropdown(d)
 		}
@@ -1088,7 +1105,7 @@ func (w *OptionsWindow) competitorsClick(px, py int) bool {
 		for i, n := range names {
 			items[i] = DropdownItem{Text: w.competitorAIText(n), Selected: n == w.CompetitorAI, MoveX10: true}
 		}
-		d := NewDropdownShow(w.X+250, w.Y+optCompRows[0], 156-4, 11, w.Colour, items, 1<<20, 1<<20)
+		d := NewDropdownShow(w.X+250, w.Y+optCompRows[0], 156-4, 11, w.Colour, items, w.screenW(), w.screenH())
 		d.OnSelect = func(i int) {
 			if i >= 0 && i < len(names) && names[i] != w.CompetitorAI {
 				w.CompetitorAI = names[i]

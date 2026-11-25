@@ -297,8 +297,10 @@ type Language struct{ Locale, NativeName string }
 
 // Available is enumerateLanguages: every pack in the first language folder
 // that has any (./data/language, then ~/OpenLoco/data/language), sorted by
-// native name converted to Locomotion's characters (ToLoco: Č → C, CJK → ?),
-// sorted by that converted name.
+// native name converted to Locomotion's characters (ToLoco: Č → C, CJK → ?).
+// The name itself stays Unicode — a deliberate deviation (LOOP.md N56):
+// upstream shows the converted name ("???"), goloco draws the runes without
+// a Loco glyph from the fallback font (pkg/ui fallbackfont.go).
 func Available() []Language {
 	for _, dir := range packDirs() {
 		ents, err := fs.ReadDir(dir, ".")
@@ -317,11 +319,11 @@ func Available() []Language {
 			_, hdr := parse(f)
 			f.Close()
 			if hdr.locale != "" {
-				out = append(out, Language{Locale: hdr.locale, NativeName: ToLoco(hdr.nativeName)})
+				out = append(out, Language{Locale: hdr.locale, NativeName: hdr.nativeName})
 			}
 		}
 		if len(out) > 0 {
-			sort.Slice(out, func(i, j int) bool { return out[i].NativeName < out[j].NativeName })
+			sort.SliceStable(out, func(i, j int) bool { return ToLoco(out[i].NativeName) < ToLoco(out[j].NativeName) })
 			return out
 		}
 	}

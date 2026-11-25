@@ -714,6 +714,23 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       dictionary — a generator writes phonetic copies of the .yml strings, nothing at runtime); jamo is plain
 >       Unicode arithmetic, so Korean also works for names the player types. Typed Japanese/Chinese names stay
 >       in Unifont. Setting: "Small text: full characters (larger UI) / phonetic". Do option 1 (Unifont) first.
+       STEP 1 DONE 2026-11-25 (branch n56): pkg/ui fallbackfont*.go — runes above U+00FF without a Loco code draw
+       from GNU Unifont, 16 px unscaled, 1-bit in the text colour, outline/inset planes by the Loco glyphs' rule
+       (0x02 above/left, 0x03 below/right); a line holding one is 18 px (16 + the 1 px frame) and its Loco glyphs
+       move down onto Unifont's baseline. NOT SHIPPED, per Joop 2026-11-24 ("system or browser fallback, not ship"):
+       desktop reads the system's Unifont lazily on the first such rune (GOLOCO_FALLBACK_FONT, else the font folders
+       as Lexington's fontDirs + /usr/share/unifont; .bdf/.hex(.gz) before .otf/.ttf — the OTF gives the BDF's pixels,
+       TestUnifontOTFMatchesBDF); none found → "?" as upstream plus one log line. Web build: the browser's fonts
+       through a canvas ("16px Unifont, sans-serif"), thresholded to 1 bit. Licence (Unifont 17.0.03, checked): dual
+       SIL OFL 1.1 and GPLv2+ with the GNU font embedding exception, no Reserved Font Name — shipping a subset would
+       be allowed, not needed. Language list shows native names (Available keeps Unicode; sorted as before). Dropdowns
+       grow rows to 18 px when an item has fallback text; Options dropdowns now keep to the real screen (Ui::width/
+       height, was 1<<20). LEFT: (a) every other fixed row/widget height (Options rows overlap in ja-JP: 15 px rows),
+       lists, tooltips, window sizes — the UI-sizing pass Joop decided on; (b) news/messages go through Loco bytes
+       (sim/messages.go, as upstream's 8-bit buffers) so CJK there is still "?"; same for typed names (InputSession
+       drops runes without a Loco code; saves hold 8-bit names); (c) bold fonts draw Unifont regular weight;
+       (d) Unifont_jp for ja-JP (Han glyph forms) not chosen yet; (e) the web build's canvas path is untested in a
+       browser here.
 >       How (Joop): no dictionary in goloco at all — secondary language files in OpenLoco's own .yml format, made
 >       ahead of time by an LLM translating each string of ja-JP / zh-CN (and zh-TW if one appears) into kana,
 >       pinyin and bopomofo (e.g. ja-JP-kana.yml, zh-CN-pinyin.yml, zh-TW-bopomofo.yml — bopomofo belongs with Taiwan;

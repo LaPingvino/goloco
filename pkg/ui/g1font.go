@@ -34,6 +34,7 @@ type g1Font struct {
 	outlines map[int]*ebiten.Image // the glyphs' textRemap1/2 pixels (outline style)
 	insets   map[int]*ebiten.Image // the glyphs' textRemap2 pixels (inset style)
 	widths   [4][224]int8
+	baseline [4]int // the first row below a capital's body ('A': yOffset + height - 1)
 }
 
 var globalG1Font *g1Font
@@ -60,6 +61,9 @@ func InitG1Font(g1 *assets.G1File) {
 				w = 0
 			}
 			f.widths[fi][i] = w
+		}
+		if a := g1FontBase + fi*224 + 'A' - 32; a < len(g1.Elements) {
+			f.baseline[fi] = int(g1.Elements[a].YOffset) + int(g1.Elements[a].Height) - 1
 		}
 	}
 	globalG1Font = f
@@ -119,6 +123,9 @@ func (f *g1Font) glyph(font, chr int) *ebiten.Image {
 // outside Latin-1 needs the TTF fallback.
 func (f *g1Font) supports(str string) bool {
 	for _, r := range str { // after convertUnicodeToLoco (i18n.LocoChar)
+		if fallbackGlyph(r) != nil {
+			continue
+		}
 		if c := i18n.LocoChar(r); c < 32 || c > 255 || (c >= 123 && c <= 150) || (c == '?' && r != '?') {
 			return false
 		}
@@ -129,8 +136,19 @@ func (f *g1Font) supports(str string) bool {
 // drawString renders str at (x, y top-left) in the given font and colour and
 // returns the advance in pixels. dst may be nil to only measure.
 func (f *g1Font) drawString(dst *ebiten.Image, str string, font, x, y int, scale float64, clr color.Color) int {
-	penX := 0
+	penX, dy := 0, f.tallShift(str, font)
 	for _, r := range str {
+		if g := fallbackGlyph(r); g != nil {
+			if dst != nil {
+				op := &ebiten.DrawImageOptions{}
+				op.GeoM.Scale(scale, scale)
+				op.GeoM.Translate(float64(x)+float64(penX)*scale, float64(y))
+				op.ColorScale.ScaleWithColor(clr)
+				dst.DrawImage(g.body, op)
+			}
+			penX += g.advance
+			continue
+		}
 		chr := i18n.LocoChar(r)
 		w := int(f.widths[font][chr-32])
 		if dst != nil {
@@ -141,7 +159,7 @@ func (f *g1Font) drawString(dst *ebiten.Image, str string, font, x, y int, scale
 				op.GeoM.Scale(scale, scale)
 				op.GeoM.Translate(
 					float64(x)+(float64(penX)+float64(e.XOffset))*scale,
-					float64(y)+float64(e.YOffset)*scale)
+					float64(y)+float64(int(e.YOffset)+dy)*scale)
 				op.ColorScale.ScaleWithColor(clr)
 				dst.DrawImage(g, op)
 			}
@@ -149,6 +167,15 @@ func (f *g1Font) drawString(dst *ebiten.Image, str string, font, x, y int, scale
 		penX += w
 	}
 	return int(float64(penX) * scale)
+}
+
+// tallShift is how far a line's Loco glyphs move down when it holds fallback
+// glyphs: onto the fallback's baseline (0 without any).
+func (f *g1Font) tallShift(str string, font int) int {
+	if !hasFallback(str) {
+		return 0
+	}
+	return fallbackBaseline - f.baseline[font]
 }
 
 // g1FontHeight returns the nominal line height for a font index.
@@ -259,7 +286,13 @@ func DrawTextInset(screen *ebiten.Image, str string, x, y int, cmap []uint8) int
 	}
 	pal := f.g1.GetPalette()
 	font, penX := G1FontMediumBold, 0
+	dy := f.tallShift(str, font)
 	for _, r := range str {
+		if g := fallbackGlyph(r); g != nil {
+			drawPlanes(screen, x+penX, y, g.inset, pal[gfx8.Shade(cmap, 6)], g.body, pal[gfx8.Shade(cmap, 4)])
+			penX += g.advance
+			continue
+		}
 		chr := i18n.LocoChar(r)
 		idx := g1FontBase + font*224 + (chr - 32)
 		e := &f.g1.Elements[idx]
@@ -271,7 +304,7 @@ func DrawTextInset(screen *ebiten.Image, str string, x, y int, cmap []uint8) int
 				continue
 			}
 			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(x+penX+int(e.XOffset)), float64(y+int(e.YOffset)))
+			op.GeoM.Translate(float64(x+penX+int(e.XOffset)), float64(y+int(e.YOffset)+dy))
 			op.ColorScale.ScaleWithColor(plane.c)
 			screen.DrawImage(plane.img, op)
 		}
@@ -294,8 +327,13 @@ func DrawTextOutlinedFont(screen *ebiten.Image, str string, font, x, y int, clr,
 	if f == nil {
 		return 0
 	}
-	penX := 0
+	penX, dy := 0, f.tallShift(str, font)
 	for _, r := range str {
+		if g := fallbackGlyph(r); g != nil {
+			drawPlanes(screen, x+penX, y, g.outline, outlineClr, g.body, clr)
+			penX += g.advance
+			continue
+		}
 		chr := i18n.LocoChar(r)
 		idx := g1FontBase + font*224 + (chr - 32)
 		e := &f.g1.Elements[idx]
@@ -307,13 +345,26 @@ func DrawTextOutlinedFont(screen *ebiten.Image, str string, font, x, y int, clr,
 				continue
 			}
 			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(x+penX+int(e.XOffset)), float64(y+int(e.YOffset)))
+			op.GeoM.Translate(float64(x+penX+int(e.XOffset)), float64(y+int(e.YOffset)+dy))
 			op.ColorScale.ScaleWithColor(plane.c)
 			screen.DrawImage(plane.img, op)
 		}
 		penX += int(f.widths[font][chr-32])
 	}
 	return penX
+}
+
+// drawPlanes draws a fallback glyph's back plane then its body at (x, y).
+func drawPlanes(dst *ebiten.Image, x, y int, back *ebiten.Image, backClr color.Color, body *ebiten.Image, bodyClr color.Color) {
+	for _, p := range [2]struct {
+		img *ebiten.Image
+		c   color.Color
+	}{{back, backClr}, {body, bodyClr}} {
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(float64(x), float64(y))
+		op.ColorScale.ScaleWithColor(p.c)
+		dst.DrawImage(p.img, op)
+	}
 }
 
 // TextColours returns the body and outline colours of the outline text style

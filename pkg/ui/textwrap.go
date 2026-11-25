@@ -27,6 +27,9 @@ func FromLocoBytes(s string) string {
 }
 
 func charWidth(font int, r rune) int {
+	if g := fallbackGlyph(r); g != nil {
+		return g.advance
+	}
 	if globalG1Font == nil || r < 32 || r > 255 {
 		return 0
 	}
@@ -101,7 +104,7 @@ func WrapString(text string, font, width int) []string {
 // 1) up).
 func DrawStringCentredWrapped(screen *ebiten.Image, text string, font, x, y, width int, clr color.Color) {
 	lines := WrapString(text, font, width)
-	lh := g1FontHeight(font)
+	lh := TextLineHeight(text, font)
 	y -= (lh / 2) * (len(lines) - 1)
 	for _, l := range lines {
 		DrawTextFont(screen, l, font, x-MeasureTextFont(l, font)/2, y, clr)
@@ -111,7 +114,7 @@ func DrawStringCentredWrapped(screen *ebiten.Image, text string, font, x, y, wid
 
 // DrawStringLeftWrapped is drawStringLeftWrapped; the y below the last line.
 func DrawStringLeftWrapped(screen *ebiten.Image, text string, font, x, y, width int, clr color.Color) int {
-	lh := g1FontHeight(font)
+	lh := TextLineHeight(text, font)
 	for _, l := range WrapString(text, font, width) {
 		DrawTextFont(screen, l, font, x, y, clr)
 		y += lh
@@ -125,7 +128,7 @@ func DrawStringLeftWrapped(screen *ebiten.Image, text string, font, x, y, width 
 // every character of a line counts, drawn or scrolled out of sight).
 func DrawStringTicker(screen *ebiten.Image, text string, font, x, y, numLines, numChars, width int, clr color.Color) {
 	lines, need := wrapLines(text, font, width, numChars)
-	lh := g1FontHeight(font)
+	lh := TextLineHeight(text, font)
 	if from := need - numLines; from > 0 {
 		y -= lh * from
 	}
