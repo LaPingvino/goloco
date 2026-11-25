@@ -420,7 +420,7 @@ commands), H8 and H9 (direct writes; the engine keeps its own bookkeeping), H11 
    competitor branch of `createCompany` (name, playstyle, home town). Both are missing or PARTIAL
    (pkg/sim/newgame.go:9-13).
 5. **G5 Removing a company** (`aiDestroy`, src/World/CompanyManager.cpp:1436): for an AI that gives up or never
-   starts. Bankruptcy for AIs follows the engine's existing rules.
+   starts. Bankruptcy for AIs follows the engine's existing rules. (Done: see the status after G5 and G12.)
 6. **G6 The funding decision (H3)** in `ensureCompanyFunding`/`DoCommandFor`: a per-company switch,
    "borrows automatically", default off for our AIs.
 7. **G7 Observer helpers that exist but are unexported:** `countNearbyWaterTiles`, `mostCommonBuildingCargoType`,
@@ -437,7 +437,8 @@ commands), H8 and H9 (direct writes; the engine keeps its own bookkeeping), H11 
 11. **G11 Saving the AI's own state** (a goloco chunk or sidecar; §4 question 2), the per-AI PRNG, and the
     decision log.
 12. **G12 Events** for `OnEvent`: crashes, breakdowns and closures are posted as news today. An event channel
-    for the AI hook is needed (it could be the news messages themselves, filtered by company).
+    for the AI hook is needed (it could be the news messages themselves, filtered by company). (Done: the news,
+   filtered by company.)
 13. **G13 The options UI** (which AI, how many, start delay, difficulty) is later work, after G3 and G4.
 
 ### Status after step 2 (2026-11-24, branch aiface)
@@ -503,6 +504,27 @@ AI competitors now appear in a real game.
   screen's game never gets competitors. Config::companyAIDisabled still stops everything.
 - Still open: G5, G10 (a loaded OpenLoco AI company stays as it is, unthinking), G12, the log in the save,
   difficulty and cheat switches in the options.
+
+### Status after G5 and G12 (2026-11-25, branch aig5)
+
+- **G5 done.** `Map.AIDestroy` is aiDestroy (CompanyManager.cpp 0x00435AEF): the HQ removed (DoCommandFor, apply,
+  under the company), its windows and the company select dropdown closed (`Map.CompanyRemoved`, set by
+  cmd/goloco), the messages' references to it cleared, its speed records' holder cleared (removeCompaniesRecords),
+  its name and owner name emptied, its competitor object unloaded (the slot set to nil), and its goloco AI dropped.
+  An AI asks for it with `AIView.EndCompany()`; the company goes once that think is over. It is refused while the
+  company owns a vehicle, a station, or track or road: upstream's AI removes all of them first
+  (removeAllCompanyAssetsOnMapByChunk), and ours must do it with a player's commands. buslink ends its company
+  when it gives up having built nothing (upstream's aiThinkState1: no thought ever started it); with something
+  built it stands still, as before. PARTIAL: CompanyList's removeCompany (goloco's list is rebuilt from the slots),
+  and any dropdown closes, not only a company select one.
+- **G12 done.** The news is the event channel. Every message PostMessage files that is addressed to the company,
+  or to everyone (company 0xFF), becomes an `AIEvent{Type, Subjects, Day}` for an AI that implements the optional
+  `AIEventHandler` (`OnEvent(v, e)`). Events wait for the company's next think and are handed over before Think,
+  oldest first (at most 64). They are saved: the AI chunk is version 2 (version 1 still loads). Crashes, slips,
+  full-load waits, landing refusals, cargo acceptance, bankruptcy warnings, industry closures and promotions
+  arrive this way. Breakdowns don't: OpenLoco posts no news for one, and goloco never sets
+  BreakdownFlags::brokenDown yet. When breakdowns are ported, a breakdown becomes an event of its own.
+- Still open: G10, the log in the save, breakdown events (after breakdowns), difficulty and cheat switches.
 
 ## 8. Notes and surprises
 

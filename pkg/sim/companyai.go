@@ -32,10 +32,13 @@ import (
 // is saved in goloco's own chunk of the save (EncodeAIChunk), which OpenLoco
 // doesn't read.
 //
-// Still open (AI-INTERFACE.md §7): removing a company (G5), taking over a
-// loaded OpenLoco AI company (G10: refused here, so such companies keep
-// standing still), events (G12), saving the decision log (G11: the log
-// starts empty after a load).
+// An AI ends its company with AIView.EndCompany (aiDestroy, G5:
+// companyai_end.go) and hears the news addressed to its company as events
+// (AIEventHandler, G12: companyai_events.go).
+//
+// Still open (AI-INTERFACE.md §7): taking over a loaded OpenLoco AI company
+// (G10: refused here, so such companies keep standing still), saving the
+// decision log (G11: the log starts empty after a load).
 
 // CompanyAI is one AI, run for one company, chosen when the company is
 // created (CreateAICompany).
@@ -114,6 +117,10 @@ type companyAI struct {
 	log  []AIDecision
 	// queries counts the dry runs (Query), which the log leaves out.
 	queries uint64
+	// events waits for the company's next think (OnEvent; saved).
+	events []AIEvent
+	// ending: the AI called EndCompany during this think.
+	ending bool
 }
 
 // aiSeed is a company AI's PRNG seed: the game's rng state when the AI is
@@ -211,7 +218,20 @@ func (m *Map) companiesTick(om *objects.ObjectManager) {
 	}
 	id := int(m.ScenarioTicks & 0x0F)
 	if st := m.aiOf(id); st != nil && !m.IsPlayerCompany(id) && !m.CompanyEmpty(id) {
-		st.ai.Think(&AIView{m: m, om: om, id: uint8(id), st: st})
+		v := &AIView{m: m, om: om, id: uint8(id), st: st}
+		events := st.events
+		st.events = nil
+		if h, ok := st.ai.(AIEventHandler); ok {
+			for _, e := range events {
+				h.OnEvent(v, e)
+			}
+		}
+		if !st.ending {
+			st.ai.Think(v)
+		}
+		if st.ending {
+			m.AIDestroy(uint8(id), om)
+		}
 	}
 	if m.Competitors.AI == "" {
 		return

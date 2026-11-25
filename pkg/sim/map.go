@@ -55,7 +55,11 @@ type Map struct {
 	AutosaveCheck func()
 	// CloseNewsWindow is clearActiveMessage's WindowManager::close(
 	// WindowType::news): the game's (nil: no interface).
-	CloseNewsWindow       func()
+	CloseNewsWindow func()
+	// CompanyRemoved is aiDestroy's window part: the company's Company,
+	// Vehicle list and Station list windows and the map closed, and the
+	// company select dropdown (the game's; nil: no interface).
+	CompanyRemoved        func(id uint8)
 	RoadAnyTypeCompatible uint32    // GameState roadObjectIdIsAnyRoadTypeCompatible
 	RoadUsableByAll       uint32    // GameState roadObjectIdIsUsableByAllCompanies
 	Rng1                  core.Prng // GameState rng (gPrng1), from the save

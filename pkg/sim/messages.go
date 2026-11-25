@@ -125,6 +125,7 @@ func (m *Map) PostMessage(om *objects.ObjectManager, t MessageType, company uint
 	}
 	msg.Text = m.messageText(msg, om)
 	m.Messages = append(m.Messages, msg)
+	m.aiNews(msg) // goloco: the company AIs hear it (companyai_events.go)
 }
 
 // clearActiveMessage (0x00428E0F): the shown message no longer active, the

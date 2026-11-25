@@ -21,10 +21,12 @@ import (
 // companies (u8); per company: its id (u8), the AI's name (u8 length, the
 // bytes), the switches (u8: bit 0 AutoBorrow), the PRNG's two words (u32
 // each), the dry runs made (u64), the AI's own state (u32 length, the bytes:
-// CompanyAI.Save). Not kept: the decision log, which starts empty after a
-// load.
+// CompanyAI.Save); from version 2 the events waiting for its next think
+// (u8 count; each the message type (u8), the three subjects (u16) and the
+// day (u32)). Not kept: the decision log, which starts empty after a load.
+// Version 1 chunks still load (no events waiting).
 
-const aiChunkVersion = 1
+const aiChunkVersion = 2
 
 // EncodeAIChunk is the chunk for the companies with a goloco AI, nil when
 // there are none (the save is then exactly what it is without AIs).
@@ -59,6 +61,12 @@ func (m *Map) EncodeAIChunk() []byte {
 		state := st.ai.Save()
 		w(uint32(len(state)))
 		b.Write(state)
+		w(uint8(len(st.events)))
+		for _, e := range st.events {
+			w(uint8(e.Type))
+			w(e.Subjects)
+			w(e.Day)
+		}
 	}
 	return b.Bytes()
 }
@@ -79,7 +87,7 @@ func (m *Map) DecodeAIChunk(data []byte) error {
 	if _, err := r.Read(magic); err != nil || string(magic) != scenario.GolocoAIMagic {
 		return fmt.Errorf("not a goloco AI chunk")
 	}
-	if err := rd(&version); err != nil || version != aiChunkVersion {
+	if err := rd(&version); err != nil || (version != 1 && version != aiChunkVersion) {
 		return fmt.Errorf("AI chunk version %d unknown", version)
 	}
 	if err := rd(&n); err != nil {
@@ -110,6 +118,24 @@ func (m *Map) DecodeAIChunk(data []byte) error {
 		}
 		state := make([]byte, stateLen)
 		r.Read(state)
+		var events []AIEvent
+		if version >= 2 {
+			var ne uint8
+			if err := rd(&ne); err != nil {
+				return err
+			}
+			for range int(ne) {
+				var typ uint8
+				var e AIEvent
+				for _, v := range []any{&typ, &e.Subjects, &e.Day} {
+					if err := rd(v); err != nil {
+						return err
+					}
+				}
+				e.Type = MessageType(typ)
+				events = append(events, e)
+			}
+		}
 		newAI, ok := aiRegistry[string(name)]
 		switch {
 		case !ok:
@@ -125,7 +151,7 @@ func (m *Map) DecodeAIChunk(data []byte) error {
 			continue
 		}
 		m.companyAIs[id] = &companyAI{ai: ai, name: string(name), opts: AIOptions{AutoBorrow: flags&1 != 0},
-			rng: *core.NewPrngSeed(s0, s1), queries: queries}
+			rng: *core.NewPrngSeed(s0, s1), queries: queries, events: events}
 	}
 	return nil
 }

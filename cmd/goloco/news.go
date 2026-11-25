@@ -92,6 +92,18 @@ func (g *Game) newsSetting(criticality uint8) sim.NewsType {
 func (g *Game) newsWin() ui.Win { return g.wins.Find(ui.WindowTypeNews, ui.AnyNumber) }
 
 // closeNews is WindowManager::close(WindowType::news).
+// companyRemoved is aiDestroy's windows (CompanyManager.cpp 0x00435AEF):
+// the company's Company, Vehicle list and Station list windows, the map, and
+// the company select dropdown (forceCloseCompanySelect). PARTIAL: any open
+// dropdown closes, not only a company select one.
+func (g *Game) companyRemoved(id uint8) {
+	for _, t := range []ui.WindowType{ui.WindowTypeCompany, ui.WindowTypeVehicleList, ui.WindowTypeStationList} {
+		g.wins.CloseType(t, int(id))
+	}
+	g.wins.CloseType(ui.WindowTypeMap, ui.AnyNumber)
+	g.closeDropdown()
+}
+
 func (g *Game) closeNews() { g.wins.CloseType(ui.WindowTypeNews, ui.AnyNumber) }
 
 func isNews(w ui.Win) bool { return w.Base().WinType == ui.WindowTypeNews }
@@ -116,6 +128,7 @@ func (g *Game) updateNews(n int) {
 	m := &g.w.Map
 	m.TitleMode = false
 	m.CloseNewsWindow = g.closeNews // clearActiveMessage's close, wherever the sim clears it
+	m.CompanyRemoved = g.companyRemoved
 	for range n {
 		m.UpdateNews(newsHost{g})
 		switch w := g.newsWin().(type) {

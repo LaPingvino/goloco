@@ -39,6 +39,7 @@ const (
 	busBuilding
 	busRunning
 	busGivenUp
+	busStandingStill // given up with something built: it stays as it is
 )
 
 // busPlan is the service planned: the towns, the road pieces still to build,
@@ -75,6 +76,28 @@ func (b *BusLink) Think(v *sim.AIView) {
 		b.roadStep(v)
 	case busBuilding:
 		b.buildStep(v)
+	case busGivenUp:
+		b.endCompany(v)
+	}
+}
+
+// endCompany: having given up, the company ends (aiDestroy, as upstream's
+// aiThinkState1 ends a company no thought ever started) — refused if it
+// built anything (buslink doesn't sell up), and then it stands still.
+func (b *BusLink) endCompany(v *sim.AIView) {
+	if err := v.EndCompany(); err != nil {
+		v.Logf("not ending the company: %v", err)
+		b.state = busStandingStill
+	}
+}
+
+// OnEvent notes the news about its own bus in the log; buslink acts on none.
+func (b *BusLink) OnEvent(v *sim.AIView, e sim.AIEvent) {
+	switch e.Type {
+	case sim.MsgVehicleCrashed, sim.MsgVehicleSlipped, sim.MsgCantWaitForFullLoad:
+		if e.Subjects[0] == b.plan.head {
+			v.Logf("news: message type %d about bus %d", e.Type, b.plan.head)
+		}
 	}
 }
 
@@ -530,7 +553,7 @@ func (b *BusLink) Load(data []byte) error {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return err
 	}
-	if s.State < busPlanning || s.State > busGivenUp {
+	if s.State < busPlanning || s.State > busStandingStill {
 		return fmt.Errorf("buslink: no state %d", s.State)
 	}
 	b.state, b.pairsTried = s.State, s.PairsTried
