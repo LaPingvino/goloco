@@ -3,6 +3,7 @@ package ui
 import (
 	"image/color"
 
+	"github.com/LaPingvino/goloco/pkg/i18n"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -17,11 +18,21 @@ const controlNewline = 5 // ControlCodes::newline
 
 // FromLocoBytes is a Loco-encoded string (a message's text, an object's
 // string: one byte a character) as goloco's strings carry it — Loco codes as
-// runes.
+// runes; a wide sequence (i18n.LocoWide + UTF-8, N56) as its rune, for the
+// fallback font.
 func FromLocoBytes(s string) string {
-	r := make([]rune, len(s))
-	for i := 0; i < len(s); i++ {
-		r[i] = rune(s[i])
+	r := make([]rune, 0, len(s))
+	for i := 0; i < len(s); {
+		if s[i] == i18n.LocoWide {
+			w, n, ok := i18n.DecodeWide(s, i)
+			if ok {
+				r = append(r, w)
+			}
+			i += n
+			continue
+		}
+		r = append(r, rune(s[i]))
+		i++
 	}
 	return string(r)
 }

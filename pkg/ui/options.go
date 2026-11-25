@@ -87,6 +87,9 @@ var optCompRows = [3]int{optCompRow0, optCompRow0 + 15, optCompRow0 + 30}
 // OptionsWindow is the window state.
 type OptionsWindow struct {
 	sw, sh int // the screen (NewOptions): Dropdown::show keeps lists on it
+	// rows stretches the tab's rows for fallback text (rowstretch.go, N56):
+	// the gaps the last frame's text needed; none for Loco-only text.
+	rows rowStretch
 	WinBase
 	TitleColour  uint8
 	Colour       uint8
@@ -235,7 +238,10 @@ var (
 	optOpenJukebox = [4]int{236, optMusicOff + 28, 120, 12}
 )
 
-func (w *OptionsWindow) size() (int, int) { s := optTabSize[w.Tab]; return s[0], s[1] }
+func (w *OptionsWindow) size() (int, int) {
+	s := optTabSize[w.Tab]
+	return s[0], s[1] + w.rows.total()
+}
 
 // NewOptions is Options::open's window: centred at the Display tab's size
 // (createWindowCentred), on the Display tab.
@@ -297,8 +303,37 @@ func optSliderRow(i int) (lx, sx, y int) {
 	return 190, 260, y
 }
 
-// HandleClick: close, the title-music checkbox, the music slider.
+// HandleClick is the press on the stretched layout (rowstretch.go) taken
+// back to upstream's: the y mapped back, and what the press opens or
+// presses moved down with its row.
 func (w *OptionsWindow) HandleClick(px, py int) {
+	if len(w.rows) == 0 {
+		w.handleClick(px, py)
+		return
+	}
+	up := w.rows.inv(py - w.Y)
+	dy := w.rows.m(up) - up
+	open := w.OpenDropdown
+	if open != nil {
+		w.OpenDropdown = func(d *DropdownMenu) { d.Y += dy; open(d) }
+		defer func() { w.OpenDropdown = open }()
+	}
+	tab := w.Tab
+	w.hasPressed = false
+	w.handleClick(px, w.Y+up)
+	if w.hasPressed {
+		w.pressed = w.pressed.Add(image.Pt(0, dy))
+		if !w.pressedHit.Empty() {
+			w.pressedHit = w.pressedHit.Add(image.Pt(0, dy))
+		}
+	}
+	if w.Tab != tab {
+		w.rows = nil // the new tab's rows come with its first frame
+	}
+}
+
+// handleClick: close, the title-music checkbox, the music slider.
+func (w *OptionsWindow) handleClick(px, py int) {
 	ww, _ := w.size()
 	if w.Button([4]int{ww - 15, 2, 13, 13}, px, py) {
 		w.Close()
@@ -624,117 +659,124 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 	text := pal[gfx8.Shade(sec, 9)] // opaque window colour → shade 9
 	black := pal[paletteBlack0]
 	ww, wh := w.size()
+	wh0 := optTabSize[w.Tab][1]
+	rows := w.rows
+	beginTextRows(w.Y, rows)
+	defer func() { w.rows = endTextRows(42, wh0) }() // below the tabs
 	DrawWindowFrame(screen, w.X, w.Y, ww, wh, w.TitleColour, false)
 	vols := [6]float64{1, w.MusicVolume, 1, 1, 1, 1}
-	draw8(screen, w.X, w.Y, ww, wh, func(rt *gfx8.RenderTarget) {
-		gfx8.FillRectInset(rt, 0, 41, ww-1, wh-1, gfx8.InsetColour{Map: sec}, 0) // panel (to the window bottom)
-		if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
-			gfx8.DrawSpriteNoise(rt, sp, ww-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
-		}
-		for i, img := range optTabImages {
-			icon := img
-			if img == imgTab { // Rendering/Company: skin icons drawn by drawTabs (PARTIAL: not yet)
-				icon = tabNoIcon
+	draw8(screen, w.X, w.Y, ww, wh, func(rt8 *gfx8.RenderTarget) {
+		rows.draw8(rt8, wh0, func(rt *gfx8.RenderTarget) {
+			ww, wh := ww, wh0                                                        // the upstream layout
+			gfx8.FillRectInset(rt, 0, 41, ww-1, wh-1, gfx8.InsetColour{Map: sec}, 0) // panel (to the window bottom)
+			if sp, err := gfx8.Decode(&g1.Elements[imgCloseButton]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, ww-15, 2, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
 			}
-			drawTab(rt, 3+31*i, 15, i == w.Tab, sec, icon, nil)
-		}
-		if w.Tab == OptTabControls {
-			for i := range w.Controls { // Checkbox boxes at (10, 49 + 15i)
-				y := 49 + 15*i
-				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			for i, img := range optTabImages {
+				icon := img
+				if img == imgTab { // Rendering/Company: skin icons drawn by drawTabs (PARTIAL: not yet)
+					icon = tabNoIcon
+				}
+				drawTab(rt, 3+31*i, 15, i == w.Tab, sec, icon, nil)
 			}
-			// Button({26, 124}, {160, 12}): fillRectInset with the window colour, raised.
-			gfx8.FillRectInset(rt, 26, 124, 26+160-1, 124+12-1, gfx8.InsetColour{Map: sec}, 0)
-			return
-		}
-		if w.Tab == OptTabMisc {
-			groupBox(rt, 4, 49, 412, 62, sec, i18n.Label(i18n.GameplayTweaks))
-			groupBox(rt, 4, 115, 412, 77, sec, i18n.Label(i18n.VehicleTrackBehaviour))
-			groupBox(rt, 4, 196, 412, 65, sec, i18n.Label(i18n.AutosavePreferences))
-			for _, y := range []int{64, 79, 94, 130, 145, 160, 175} {
-				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			if w.Tab == OptTabControls {
+				for i := range w.Controls { // Checkbox boxes at (10, 49 + 15i)
+					y := 49 + 15*i
+					gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+				}
+				// Button({26, 124}, {160, 12}): fillRectInset with the window colour, raised.
+				gfx8.FillRectInset(rt, 26, 124, 26+160-1, 124+12-1, gfx8.InsetColour{Map: sec}, 0)
+				return
 			}
-			optDropdown(rt, &w.WinBase, 250, 211, 156, sec)
-			optStepper(rt, 250, 226, 156, sec)
-			groupBox(rt, 4, optCompY, 412, 65, sec, optCompGroup)
-			optDropdown(rt, &w.WinBase, 250, optCompRows[0], 156, sec)
-			optStepper(rt, 250, optCompRows[1], 156, sec)
-			optStepper(rt, 250, optCompRows[2], 156, sec)
-			return
-		}
-		if w.Tab == OptTabRendering {
-			groupBox(rt, 4, 49, 392, 128, sec, i18n.Label(i18n.FrameMapRendering))
-			groupBox(rt, 4, 180, 392, 32, sec, i18n.Label(i18n.UserInterfaceGroup))
-			for _, y := range []int{63, 79, 95, 194} {
-				optDropdown(rt, &w.WinBase, 235, y, 154, sec)
+			if w.Tab == OptTabMisc {
+				groupBox(rt, 4, 49, 412, 62, sec, i18n.Label(i18n.GameplayTweaks))
+				groupBox(rt, 4, 115, 412, 77, sec, i18n.Label(i18n.VehicleTrackBehaviour))
+				groupBox(rt, 4, 196, 412, 65, sec, i18n.Label(i18n.AutosavePreferences))
+				for _, y := range []int{64, 79, 94, 130, 145, 160, 175} {
+					gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+				}
+				optDropdown(rt, &w.WinBase, 250, 211, 156, sec)
+				optStepper(rt, 250, 226, 156, sec)
+				groupBox(rt, 4, optCompY, 412, 65, sec, optCompGroup)
+				optDropdown(rt, &w.WinBase, 250, optCompRows[0], 156, sec)
+				optStepper(rt, 250, optCompRows[1], 156, sec)
+				optStepper(rt, 250, optCompRows[2], 156, sec)
+				return
 			}
-			for _, y := range []int{110, 126, 142, 158} {
-				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			if w.Tab == OptTabRendering {
+				groupBox(rt, 4, 49, 392, 128, sec, i18n.Label(i18n.FrameMapRendering))
+				groupBox(rt, 4, 180, 392, 32, sec, i18n.Label(i18n.UserInterfaceGroup))
+				for _, y := range []int{63, 79, 95, 194} {
+					optDropdown(rt, &w.WinBase, 235, y, 154, sec)
+				}
+				for _, y := range []int{110, 126, 142, 158} {
+					gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+				}
+				return
 			}
-			return
-		}
-		if w.Tab == OptTabCompany {
-			groupBox(rt, 4, 50, 412, 80, sec, i18n.Label(i18n.PreferredOwnerName))
-			groupBox(rt, 4, 135, 412, 47, sec, "Preferred company")
-			for _, y := range []int{64, 97, 149} { // Checkboxes
-				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			if w.Tab == OptTabCompany {
+				groupBox(rt, 4, 50, 412, 80, sec, i18n.Label(i18n.PreferredOwnerName))
+				groupBox(rt, 4, 135, 412, 47, sec, "Preferred company")
+				for _, y := range []int{64, 97, 149} { // Checkboxes
+					gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+				}
+				for _, y := range []int{79, 112, 164} { // i18n.Label(i18n.Change) Buttons (265, y, 75×12)
+					gfx8.FillRectInset(rt, 265, y, 265+75-1, y+12-1, gfx8.InsetColour{Map: sec}, 0)
+				}
+				// The face preview (ImageButton 345,59 66×66) has no image while
+				// usePreferredOwnerFace is off, and then draws nothing.
+				return
 			}
-			for _, y := range []int{79, 112, 164} { // i18n.Label(i18n.Change) Buttons (265, y, 75×12)
-				gfx8.FillRectInset(rt, 265, y, 265+75-1, y+12-1, gfx8.InsetColour{Map: sec}, 0)
+			if w.Tab == OptTabDisplay {
+				groupBox(rt, 4, 49, 392, 97, sec, i18n.Label(i18n.FrameHardware))
+				for _, y := range []int{63, 79, 111} {
+					optDropdown(rt, &w.WinBase, 235, y, 154, sec)
+				}
+				// stepperWidgets({235, 95}, {154, 12}): TextBox + "-" (x+w-26, 13 wide) and
+				// "+" (x+w-13, 12 wide) Buttons, both y+1 and h-2 high.
+				gfx8.FillRectInset(rt, 235, 95, 235+154-1, 95+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+				gfx8.FillRectInset(rt, 235+154-26, 96, 235+154-26+13-1, 96+10-1, gfx8.InsetColour{Map: sec}, 0)
+				gfx8.FillRectInset(rt, 235+154-13, 96, 235+154-13+12-1, 96+10-1, gfx8.InsetColour{Map: sec}, 0)
+				gfx8.FillRectInset(rt, 10, 127, 10+10-1, 127+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+				return
 			}
-			// The face preview (ImageButton 345,59 66×66) has no image while
-			// usePreferredOwnerFace is off, and then draws nothing.
-			return
-		}
-		if w.Tab == OptTabDisplay {
-			groupBox(rt, 4, 49, 392, 97, sec, i18n.Label(i18n.FrameHardware))
-			for _, y := range []int{63, 79, 111} {
-				optDropdown(rt, &w.WinBase, 235, y, 154, sec)
+			if w.Tab == OptTabRegional {
+				for _, r := range optRegionalRows {
+					optDropdown(rt, &w.WinBase, 183, r.y, 173, sec)
+				}
+				for i := range 2 { // Checkboxes at (10, 134) and (10, 148)
+					y := 134 + 14*i
+					gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+				}
+				return
 			}
-			// stepperWidgets({235, 95}, {154, 12}): TextBox + "-" (x+w-26, 13 wide) and
-			// "+" (x+w-13, 12 wide) Buttons, both y+1 and h-2 high.
-			gfx8.FillRectInset(rt, 235, 95, 235+154-1, 95+12-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
-			gfx8.FillRectInset(rt, 235+154-26, 96, 235+154-26+13-1, 96+10-1, gfx8.InsetColour{Map: sec}, 0)
-			gfx8.FillRectInset(rt, 235+154-13, 96, 235+154-13+12-1, 96+10-1, gfx8.InsetColour{Map: sec}, 0)
-			gfx8.FillRectInset(rt, 10, 127, 10+10-1, 127+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
-			return
-		}
-		if w.Tab == OptTabRegional {
-			for _, r := range optRegionalRows {
-				optDropdown(rt, &w.WinBase, 183, r.y, 173, sec)
+			if w.Tab != OptTabAudio {
+				return
 			}
-			for i := range 2 { // Checkboxes at (10, 134) and (10, 148)
-				y := 134 + 14*i
-				gfx8.FillRectInset(rt, 10, y, 10+10-1, y+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
+			groupBox(rt, 4, optSoundOff, optW-8, optSoundH, sec, i18n.Label(i18n.FrameSound))
+			groupBox(rt, 4, optVolOff, optW-8, optVolH, sec, i18n.Label(i18n.FrameVolume))
+			// Device row: dropdownWidgets (audio_device, audio_device_btn)
+			optDropdown(rt, &w.WinBase, 10, optSoundOff+14, 346, sec)
+			// The music group: two checkboxes and the jukebox Button
+			groupBox(rt, 4, optMusicOff, optW-8, optMusicH, sec, i18n.Label(i18n.FrameMusic))
+			for _, c := range [][4]int{optTitleMusic, optGameMusic} {
+				gfx8.FillRectInset(rt, c[0], c[1], c[0]+10-1, c[1]+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
 			}
-			return
-		}
-		if w.Tab != OptTabAudio {
-			return
-		}
-		groupBox(rt, 4, optSoundOff, optW-8, optSoundH, sec, i18n.Label(i18n.FrameSound))
-		groupBox(rt, 4, optVolOff, optW-8, optVolH, sec, i18n.Label(i18n.FrameVolume))
-		// Device row: dropdownWidgets (audio_device, audio_device_btn)
-		optDropdown(rt, &w.WinBase, 10, optSoundOff+14, 346, sec)
-		// The music group: two checkboxes and the jukebox Button
-		groupBox(rt, 4, optMusicOff, optW-8, optMusicH, sec, i18n.Label(i18n.FrameMusic))
-		for _, c := range [][4]int{optTitleMusic, optGameMusic} {
-			gfx8.FillRectInset(rt, c[0], c[1], c[0]+10-1, c[1]+10-1, gfx8.InsetColour{Map: sec}, gfx8.InsetBorderInset|gfx8.InsetFillDarker)
-		}
-		b := optOpenJukebox
-		gfx8.FillRectInset(rt, b[0], b[1], b[0]+b[2]-1, b[1]+b[3]-1, gfx8.InsetColour{Map: sec}, 0)
-		track, terr := gfx8.Decode(&g1.Elements[imgSliderTrack])
-		thumb, herr := gfx8.Decode(&g1.Elements[imgSliderThumb])
-		for i := range 6 {
-			_, sx, y := optSliderRow(i)
-			if terr == nil {
-				gfx8.DrawSpriteNoise(rt, track, sx, y-3, gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
+			b := optOpenJukebox
+			gfx8.FillRectInset(rt, b[0], b[1], b[0]+b[2]-1, b[1]+b[3]-1, gfx8.InsetColour{Map: sec}, 0)
+			track, terr := gfx8.Decode(&g1.Elements[imgSliderTrack])
+			thumb, herr := gfx8.Decode(&g1.Elements[imgSliderThumb])
+			for i := range 6 {
+				_, sx, y := optSliderRow(i)
+				if terr == nil {
+					gfx8.DrawSpriteNoise(rt, track, sx, y-3, gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
+				}
+				if herr == nil {
+					tx := optThumbHalf + int(vols[i]*100)*optSliderRange/100
+					gfx8.DrawSpriteNoise(rt, thumb, sx+tx, y-3, gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
+				}
 			}
-			if herr == nil {
-				tx := optThumbHalf + int(vols[i]*100)*optSliderRange/100
-				gfx8.DrawSpriteNoise(rt, thumb, sx+tx, y-3, gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
-			}
-		}
+		})
 	})
 	DrawWindowCaption(screen, w.X+1, w.Y+1, ww-2, optTabCaption()[w.Tab])
 	if w.Tab == OptTabControls {

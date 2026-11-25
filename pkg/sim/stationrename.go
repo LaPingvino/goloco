@@ -11,9 +11,7 @@ import "github.com/LaPingvino/goloco/pkg/objects"
 // it changes, and the station's label is recomputed (updateLabel: its frame
 // sized for the new name). PARTIAL: the screen invalidation (goloco redraws).
 func (m *Map) RenameStation(c *Cmd, flags uint8, id int, name string, om *objects.ObjectManager, g1 G1Raw) (int32, bool) {
-	if len(name) > 36 {
-		name = name[:36]
-	}
+	name = clipName(name, 36)
 	if id < 0 || id >= len(m.StationNames) {
 		return 0, false
 	}

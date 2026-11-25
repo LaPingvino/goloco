@@ -731,6 +731,19 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
        drops runes without a Loco code; saves hold 8-bit names); (c) bold fonts draw Unifont regular weight;
        (d) Unifont_jp for ja-JP (Han glyph forms) not chosen yet; (e) the web build's canvas path is untested in a
        browser here.
+       STEP 2 DONE 2026-11-25 (branch n56b): news and typed names (LEFT (b) above) — a rune without a Loco glyph rides in Loco
+       byte strings as i18n.LocoWide (2, upstream's unused adjustPalette) + UTF-8 (pkg/i18n wide.go): locoText and
+       the names put into messages (NameLoco) keep it, ui.FromLocoBytes draws it; InputSession types it when the
+       fallback has the glyph (else "?", as upstream); renames clip by characters. Saves: "?" in the 8-bit user
+       strings and messages (putCString wrote the rune's low byte before), the text itself in goloco's chunk
+       GOLOCOTX after GOLOCOAI (scenario textchunk.go), laid back only where the 8-bit text still matches.
+       UI sizing, Options only (LEFT (a) above): ui rowstretch.go: a window drawn in upstream's fixed layout gets blank lines between rows
+       whose text was tall in the last frame (each row ≥ 19 px after a tall one), its 8-bit drawing spread over
+       the gaps, text and clicks mapped; no tall text → no gaps, Latin unchanged. Options uses it (every tab); en-GB Options pixel-identical to main.
+       Checked in ja-JP end to end: Weatherworld, a town renamed "Cloudburst東京" by typing, a news message, saved,
+       loaded (expect saved == 1), the name and the news text back.
+       LEFT of (a): widgets keep 12 px (CJK in a combo box overhangs its bottom), the other windows (lists,
+       tooltips …) — rowStretch is reusable for any fixed-layout window; (c)–(e) as above.
 >       How (Joop): no dictionary in goloco at all — secondary language files in OpenLoco's own .yml format, made
 >       ahead of time by an LLM translating each string of ja-JP / zh-CN (and zh-TW if one appears) into kana,
 >       pinyin and bopomofo (e.g. ja-JP-kana.yml, zh-CN-pinyin.yml, zh-TW-bopomofo.yml — bopomofo belongs with Taiwan;

@@ -47,3 +47,15 @@ func (w *Map) StationName(id int) string {
 	}
 	return fmt.Sprintf("Station %d", id)
 }
+
+// clipName is the renames' 36-character limit (three 12-byte calls): by
+// characters, as upstream's bytes are characters — a wide rune (N56) is one.
+func clipName(name string, n int) string {
+	for i := range name {
+		if n == 0 {
+			return name[:i]
+		}
+		n--
+	}
+	return name
+}

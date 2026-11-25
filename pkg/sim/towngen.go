@@ -165,9 +165,7 @@ func (m *Map) userStringAllocate(s string, unique bool) uint16 {
 	if best < 0 {
 		return 0
 	}
-	if len(s) > kUserStringSize-1 {
-		s = s[:kUserStringSize-1]
-	}
+	s = clipName(s, kUserStringSize-1) // characters: a wide rune (N56) is one
 	m.UserStrings[best] = s
 	return uint16(best + kUserStringsStart)
 }

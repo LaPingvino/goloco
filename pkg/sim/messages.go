@@ -209,7 +209,7 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 		if om != nil && int(msg.Subjects[1]) < len(om.CargoObjects) && om.CargoObjects[msg.Subjects[1]] != nil {
 			cargo = om.CargoObjects[msg.Subjects[1]].Name // an object string: Loco bytes
 		}
-		s = fillStringIDs(locoText(i18n.Str(id)), m.StationName(int(msg.Subjects[0])), cargo)
+		s = fillStringIDs(locoText(i18n.Str(id)), i18n.NameLoco(m.StationName(int(msg.Subjects[0]))), cargo)
 	case MsgCitizensCelebrate, MsgWorkersCelebrate: // subject 2: the cargo << 8 | the town / industry
 		cargo := ""
 		if co := m.cargoObject(om, msg.Subjects[2]>>8); co != nil {
@@ -222,35 +222,36 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 			}
 			town := ""
 			if tw := m.TownByID(msg.Subjects[2] & 0xFF); tw != nil {
-				town = m.TownName(tw.Name, int(tw.ID))
+				town = i18n.NameLoco(m.TownName(tw.Name, int(tw.ID)))
 			}
 			s = fillStringIDs(locoText(i18n.Str(id)), cargo, town)
 		} else {
 			name := ""
 			if i := m.industryIndex(msg.Subjects[2] & 0xFF); i >= 0 {
 				name, _ = m.IndustryName(i, om)
+				name = i18n.NameLoco(name)
 			}
 			s = fillStringIDs(locoText(i18n.Str(i18n.MessageFirstStringDeliveredTo)), cargo, name)
 		}
 	case MsgUnableToLandAtAirport: // the vehicle (name + ordinal), the airport's station
 		if h := m.entity(msg.Subjects[0]); h != nil {
-			s = fillStringIDs(locoText(i18n.Str(i18n.MessageNotAbleToLandAt)), m.VehicleName(h.Name, int(h.OrdinalNumber)), m.StationName(int(msg.Subjects[1])))
+			s = fillStringIDs(locoText(i18n.Str(i18n.MessageNotAbleToLandAt)), i18n.NameLoco(m.VehicleName(h.Name, int(h.OrdinalNumber))), i18n.NameLoco(m.StationName(int(msg.Subjects[1]))))
 		}
 	case MsgNewCompany: // the company's name, the town's
 		town := ""
 		if tw := m.TownByID(msg.Subjects[1]); tw != nil {
-			town = m.TownName(tw.Name, int(tw.ID))
+			town = i18n.NameLoco(m.TownName(tw.Name, int(tw.ID)))
 		}
 		s = fillStringIDs(locoText(i18n.Str(i18n.MessageNewTransportCompany)), m.companyNameLoco(int(msg.Subjects[0])), town)
 	case MsgCantWaitForFullLoad, MsgVehicleSlipped, MsgVehicleCrashed: // the vehicle (name + ordinal); the station
 		if h := m.entity(msg.Subjects[0]); h != nil {
-			veh := m.VehicleName(h.Name, int(h.OrdinalNumber))
+			veh := i18n.NameLoco(m.VehicleName(h.Name, int(h.OrdinalNumber)))
 			if msg.Type == MsgVehicleCrashed {
 				s = fillStringIDs(locoText(i18n.Str(i18n.MessageHasCrashed)), veh)
 			} else if msg.Type == MsgVehicleSlipped {
 				s = fillStringIDs(locoText(i18n.Str(i18n.MessageHasSlippedToAHaltOnIncline)), veh)
 			} else {
-				s = fillStringIDs(locoText(i18n.Str(i18n.MessageNotAllowedToWaitForFullLoadAt)), veh, m.StationName(int(msg.Subjects[1])))
+				s = fillStringIDs(locoText(i18n.Str(i18n.MessageNotAllowedToWaitForFullLoadAt)), veh, i18n.NameLoco(m.StationName(int(msg.Subjects[1]))))
 			}
 		}
 	case MsgCongratulationsCompleted, MsgFailedObjectives, MsgHaveBeenBeaten: // the company's owner name
@@ -291,13 +292,13 @@ func (m *Map) messageText(msg Message, om *objects.ObjectManager) string {
 				obj = o.Name // an object string (cleaned to ASCII)
 			}
 			if tw := m.TownByID(ind.Town); tw != nil {
-				town = m.TownName(tw.Name, int(tw.ID))
+				town = i18n.NameLoco(m.TownName(tw.Name, int(tw.ID)))
 			}
 			s = fillStringIDs(locoText(i18n.Str(i18n.MessageNewStringUnderConstructionNear)), obj, town)
 		}
 	}
 	if len(s) > 197 {
-		s = s[:197]
+		s = i18n.ClipLoco(s, 197) // characters: a wide one (N56) is one "?" in the 8-bit field
 	}
 	return s
 }
@@ -317,6 +318,7 @@ func (m *Map) industryMessage(om *objects.ObjectManager, id uint16, k int) strin
 			return ""
 		}
 		name, _ := m.IndustryName(i, om)
+		name = i18n.NameLoco(name)
 		var out []byte
 		for _, c := range obj.RawStrings[k] {
 			switch {
@@ -341,7 +343,7 @@ func locoText(s string) string {
 			b = append(b, byte(r))
 			continue
 		}
-		b = append(b, byte(i18n.LocoChar(r)))
+		b = i18n.AppendLoco(b, r) // wide runes kept for the fallback font (i18n.LocoWide, N56)
 	}
 	return string(b)
 }
@@ -387,14 +389,14 @@ func (m *Map) ownerName(company int, om *objects.ObjectManager) string {
 	if company >= 0 && company < len(m.CompanyFaces) && m.CompanyFaces[company].OwnerName == stringIDNewOwner {
 		return locoText(m.OwnerName(company, om)) // the pack's (UTF-8) string
 	}
-	return m.OwnerName(company, om) // a user string or an object's: Loco bytes already
+	return i18n.NameLoco(m.OwnerName(company, om)) // a user string (wide runes as LocoWide) or an object's: Loco bytes
 }
 
 // companyNameLoco is CompanyName as Loco bytes (user strings are stored so;
 // the pack's strings converted).
 func (m *Map) companyNameLoco(company int) string {
 	if company >= 0 && company < len(m.CompanyNames) && m.CompanyNames[company] >= kUserStringsStart {
-		return m.CompanyName(company)
+		return i18n.NameLoco(m.CompanyName(company)) // wide runes as LocoWide
 	}
 	return locoText(m.CompanyName(company))
 }

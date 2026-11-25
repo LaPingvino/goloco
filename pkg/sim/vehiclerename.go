@@ -12,9 +12,7 @@ func (m *Map) VehicleRename(c *Cmd, flags uint8, headID uint16, name string) (in
 		return 0, false
 	}
 	head := &m.Entities[tr.Head]
-	if len(name) > 36 {
-		name = name[:36]
-	}
+	name = clipName(name, 36)
 	if m.VehicleName(head.Name, int(head.OrdinalNumber)) == name {
 		return 0, true
 	}

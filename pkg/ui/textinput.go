@@ -46,6 +46,9 @@ func NewInputSession(text string, limit int) *InputSession {
 // Type is handleInput for a typed character: printable (32–126, 159–255 in
 // the game's code page) inserted at the caret unless the limit is reached.
 func (s *InputSession) Type(r rune) {
+	if i18n.IsWide(r) && !typableWide(r) {
+		r = '?' // convertUnicodeToLoco's replacement_character, as upstream
+	}
 	c := i18n.LocoChar(r)
 	if !(c >= 32 && c < 127 || c >= 159 && c <= 255) {
 		return
@@ -57,6 +60,12 @@ func (s *InputSession) Type(r rune) {
 	s.CursorPosition++
 	s.CursorFrame = 0
 }
+
+// typableWide is a deviation (LOOP.md N56): upstream types a character
+// outside the Loco code page as "?" (convertUnicodeToLoco); goloco keeps one
+// the fallback font draws, so names can be typed in Japanese, Russian …
+// (saved as "?" in the 8-bit tables, the text itself in goloco's own chunk).
+func typableWide(r rune) bool { return fallbackGlyph(r) != nil }
 
 // Key is handleInput for an editing key.
 func (s *InputSession) Key(k int) {
@@ -118,6 +127,10 @@ func (s *InputSession) Sanitized() string {
 	var out []rune
 	for _, r := range s.Buffer {
 		c := i18n.LocoChar(r)
+		if typableWide(r) {
+			out = append(out, r)
+			continue
+		}
 		if c < ' ' || c > 'z' && c != 171 && c != 187 && c < 191 {
 			continue
 		}

@@ -136,6 +136,9 @@ func (f *g1Font) supports(str string) bool {
 // drawString renders str at (x, y top-left) in the given font and colour and
 // returns the advance in pixels. dst may be nil to only measure.
 func (f *g1Font) drawString(dst *ebiten.Image, str string, font, x, y int, scale float64, clr color.Color) int {
+	if dst != nil {
+		y = mapTextY(y, str) // a stretched window's row (rowstretch.go)
+	}
 	penX, dy := 0, f.tallShift(str, font)
 	for _, r := range str {
 		if g := fallbackGlyph(r); g != nil {
@@ -287,6 +290,7 @@ func DrawTextInset(screen *ebiten.Image, str string, x, y int, cmap []uint8) int
 	pal := f.g1.GetPalette()
 	font, penX := G1FontMediumBold, 0
 	dy := f.tallShift(str, font)
+	y = mapTextY(y, str)
 	for _, r := range str {
 		if g := fallbackGlyph(r); g != nil {
 			drawPlanes(screen, x+penX, y, g.inset, pal[gfx8.Shade(cmap, 6)], g.body, pal[gfx8.Shade(cmap, 4)])
@@ -328,6 +332,7 @@ func DrawTextOutlinedFont(screen *ebiten.Image, str string, font, x, y int, clr,
 		return 0
 	}
 	penX, dy := 0, f.tallShift(str, font)
+	y = mapTextY(y, str)
 	for _, r := range str {
 		if g := fallbackGlyph(r); g != nil {
 			drawPlanes(screen, x+penX, y, g.outline, outlineClr, g.body, clr)

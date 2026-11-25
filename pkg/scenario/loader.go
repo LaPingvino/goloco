@@ -353,11 +353,18 @@ func ParseScenario(data []byte, filePath string) (*Scenario, error) {
 		sc.Raw.TileElements = tileData
 		sc.parseTileElements(tileData)
 		// goloco's own chunk, after the tiles and before the checksum: the
-		// company AIs (GolocoAIMagic). OpenLoco's loadSave stops reading after
+		// company AIs (GolocoAIMagic), then the wide text (GolocoTextMagic). OpenLoco's loadSave stops reading after
 		// the tile elements, so it never sees it.
-		if reader.Remaining() > 4 {
-			if extra, err := reader.ReadChunk(); err == nil && bytes.HasPrefix(extra, []byte(GolocoAIMagic)) {
+		for reader.Remaining() > 4 {
+			extra, err := reader.ReadChunk()
+			if err != nil {
+				break
+			}
+			switch {
+			case bytes.HasPrefix(extra, []byte(GolocoAIMagic)):
 				sc.GolocoAI = extra
+			case bytes.HasPrefix(extra, []byte(GolocoTextMagic)):
+				sc.decodeTextChunk(extra) // after the game state: the 8-bit texts it overlays are read
 			}
 		}
 	} else {

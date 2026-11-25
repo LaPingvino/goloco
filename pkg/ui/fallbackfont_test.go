@@ -178,3 +178,20 @@ func TestUnifontOTFMatchesBDF(t *testing.T) {
 		}
 	}
 }
+
+// Typed names and news (N56 leftovers): a wide rune the fallback draws can be
+// typed and is kept by sanitizeInput; a message's LocoWide sequence decodes.
+func TestFallbackTypedAndNews(t *testing.T) {
+	defer setFallbackSource(nil)
+	setFallbackSource(parseBDF(strings.NewReader(testBDF)))
+	s := NewInputSession("", 10)
+	for _, r := range "A日一" { // 一 isn't in the test font: "?"
+		s.Type(r)
+	}
+	if got := s.Sanitized(); got != "A日?" {
+		t.Errorf("typed %q", got)
+	}
+	if got := FromLocoBytes("At \x02\xe6\x97\xa5\xe9\x02\xe6"); got != "At 日é" {
+		t.Errorf("FromLocoBytes %q", got)
+	}
+}

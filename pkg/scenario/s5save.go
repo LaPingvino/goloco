@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/LaPingvino/goloco/pkg/assets"
+	"github.com/LaPingvino/goloco/pkg/i18n"
 )
 
 // s5save.go — the S5 writer (S5.cpp exportGameStateToFile / exportGameState):
@@ -36,6 +37,9 @@ type S5File struct {
 	// sim's EncodeAIChunk), after the tile elements; nil writes none, and
 	// the file is then exactly OpenLoco's.
 	GolocoAI []byte
+	// GolocoText is goloco's chunk of text the 8-bit fields can't hold
+	// (EncodeTextChunk), after GolocoAI; nil writes none.
+	GolocoText []byte
 }
 
 // GolocoAIMagic opens goloco's own chunk.
@@ -71,6 +75,9 @@ func (f *S5File) Write(w io.Writer) error {
 	if f.GolocoAI != nil {
 		s.WriteChunk(assets.EncodingRunLengthSingle, f.GolocoAI)
 	}
+	if f.GolocoText != nil {
+		s.WriteChunk(assets.EncodingRunLengthSingle, f.GolocoText)
+	}
 	return s.Close()
 }
 
@@ -96,6 +103,9 @@ func putCString(b []byte, s string, n int) {
 	for _, r := range s {
 		if i >= n-1 {
 			break
+		}
+		if r > 0xFF {
+			r = rune(i18n.LocoChar(r)) // convertUnicodeToLoco: a wide rune (N56) is "?", GolocoText keeps it
 		}
 		b[i] = byte(r)
 		i++
@@ -194,7 +204,7 @@ func (sc *Scenario) putGeneralState(gs []byte) {
 	for i, m := range sc.Messages[:n] {
 		r := gs[base+i*size : base+(i+1)*size]
 		r[0] = m.Type
-		t := m.Text
+		t := i18n.StripWide(m.Text) // wide runes "?" (N56); GolocoText keeps them
 		if len(t) > 197 {
 			t = t[:197]
 		}
@@ -557,7 +567,7 @@ func (sc *Scenario) putOrdersAndRoutings(gs []byte) {
 // tile elements.
 func (sc *Scenario) SavedGameFile(details, requiredObjects []byte) *S5File {
 	return &S5File{Header: SavedGameHeader(0), SaveDetails: details, RequiredObjects: requiredObjects,
-		GameState: sc.EncodeGameState(), TileElements: EncodeTileElements(sc.Tiles), GolocoAI: sc.GolocoAI}
+		GameState: sc.EncodeGameState(), TileElements: EncodeTileElements(sc.Tiles), GolocoAI: sc.GolocoAI, GolocoText: sc.EncodeTextChunk()}
 }
 
 // SaveDetailsSize is sizeof(S5::SaveDetails).

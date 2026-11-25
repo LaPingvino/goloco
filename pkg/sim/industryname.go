@@ -73,9 +73,7 @@ func (m *Map) IndustryName(i int, om *objects.ObjectManager) (string, bool) {
 // free; the query frees it); applied, the industry takes it and the old
 // name's string is freed. PARTIAL: the screen invalidation.
 func (m *Map) RenameIndustry(c *Cmd, flags uint8, i int, name string, om *objects.ObjectManager) (int32, bool) {
-	if len(name) > 36 {
-		name = name[:36]
-	}
+	name = clipName(name, 36)
 	if name == "" || i < 0 || i >= len(m.Industries) {
 		return 0, true
 	}

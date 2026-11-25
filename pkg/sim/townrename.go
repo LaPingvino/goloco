@@ -8,9 +8,7 @@ package sim
 // and every station's (StationManager::updateLabels) are recomputed.
 // PARTIAL: the screen invalidation (goloco redraws).
 func (m *Map) RenameTown(c *Cmd, flags uint8, town int, name string, g1 G1Raw) (int32, bool) {
-	if len(name) > 36 {
-		name = name[:36]
-	}
+	name = clipName(name, 36)
 	if name == "" || town < 0 || town >= len(m.Towns) {
 		return 0, true
 	}
