@@ -525,6 +525,7 @@ func (s *WindowStack) Open(w Win) {
 	s.Windows = append(s.Windows, nil)
 	copy(s.Windows[dst+1:], s.Windows[dst:])
 	s.Windows[dst] = w
+	s.KeepOnScreen(w)
 }
 
 // RepanOpenSound is for a window that createWindow made at another width
@@ -762,6 +763,45 @@ func (s *WindowStack) Resize(sw, sh int) {
 			loc += 8
 		}
 	}
+	for _, w := range s.Windows {
+		s.KeepOnScreen(w)
+	}
+}
+
+// KeepOnScreen is goloco's small-screen deviation (N57; upstream has no
+// such step): a window (not the bars or the news) is brought wholly onto the
+// screen, within moveInsideScreenEdges' bounds (Window.cpp: x in [0,
+// width − w], y in [28, height − 27 − h]) — the toolbar above and the bottom
+// panels (the time panel's pause, the company's) stay uncovered. One larger than
+// the screen that may be resized is first shrunk to fit (down to its minimum
+// size, its onResize laying it out again); one that still does not fit keeps
+// its top left — title bar and caption — on screen, the rest reached by
+// dragging it by its panel. Open and Resize call it: upstream's windows open
+// where createWindow puts them and only relocateWindows' origin test moves
+// them on a resize, so on a phone (or a turned or shrunk browser viewport)
+// a window could open or end with its buttons past the edge, out of reach.
+func (s *WindowStack) KeepOnScreen(w Win) {
+	b := w.Base()
+	if b.HasFlags(WindowFlagStickToBack) || b.HasFlags(WindowFlagStickToFront) && b.NoCaption || s.ScreenW <= 0 || s.ScreenH <= 0 {
+		return // the bars, the news and its ticker: placed by their own
+	}
+	prepare(w)
+	if b.HasFlags(WindowFlagResizable) {
+		nw, nh := b.W, b.H
+		if nw > s.ScreenW {
+			nw = max(s.ScreenW, b.MinW)
+		}
+		if nh > s.ScreenH-28-27 {
+			nh = max(s.ScreenH-28-27, b.MinH)
+		}
+		if nw != b.W || nh != b.H {
+			b.W, b.H = nw, nh
+			b.WinFlags |= WindowFlagHasBeenResized
+			prepare(w) // callOnResize, callPrepareDraw
+		}
+	}
+	b.X = min(max(b.X, 0), max(0, s.ScreenW-b.W))
+	b.Y = min(max(b.Y, 28), max(28, s.ScreenH-27-b.H))
 }
 
 // Dragging reports a window being moved or resized (Input::State::

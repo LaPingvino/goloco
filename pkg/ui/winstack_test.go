@@ -451,3 +451,32 @@ func TestViewWindowDragByFrame(t *testing.T) {
 		t.Errorf("a press on a tab moved the window by %d,%d", dx, dy)
 	}
 }
+
+// N57: on a small screen a window opens, and stays after a resize, wholly on
+// screen — a resizable one too large shrunk to fit, a fixed one too large
+// kept at the top left (title bar reachable).
+func TestKeepOnScreen(t *testing.T) {
+	s := &WindowStack{ScreenW: 800, ScreenH: 600}
+	openBars(s)
+	a := newTestWin(WindowTypeVehicle, 1, 600, 500, 265, 177)
+	s.Open(a)
+	if a.X != 800-265 || a.Y != 600-27-177 {
+		t.Fatalf("opened at %d,%d", a.X, a.Y)
+	}
+	r := newTestWin(WindowTypeVehicle, 2, 300, 30, 500, 400)
+	r.WinFlags |= WindowFlagResizable
+	r.MinW, r.MinH, r.MaxW, r.MaxH = 200, 150, 1000, 1000
+	f := newTestWin(WindowTypeVehicle, 3, 100, 100, 700, 500)
+	s.Open(r)
+	s.Open(f)
+	s.Resize(640, 360)
+	if a.X+a.W > 640 || a.Y+a.H > 333 || a.Y < 28 {
+		t.Errorf("a at %d,%d %dx%d", a.X, a.Y, a.W, a.H)
+	}
+	if r.W != 500 || r.H != 305 || r.X != 140 || r.Y != 28 {
+		t.Errorf("r at %d,%d %dx%d", r.X, r.Y, r.W, r.H)
+	}
+	if f.X != 0 || f.Y != 28 || f.W != 700 {
+		t.Errorf("f at %d,%d %dx%d", f.X, f.Y, f.W, f.H)
+	}
+}

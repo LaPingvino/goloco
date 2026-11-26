@@ -59,7 +59,7 @@ Build: `go build -o goloco ./cmd/goloco`. Always verify visually:
 - `./goloco [scenario] --diag [TX,TY|water|track|station|train|industry|worst]`
   — 480×360 diag.png centred on the target, then quit.
 - `GOLOCO_SCRIPT=file.txt ./goloco …` — scripted input playback
-  (cmd/goloco/script.go: wait/move/click/rightclick/rightpress/rightrelease/key/keydown/keyup/type/wheel/shot/quit;
+  (cmd/goloco/script.go: wait/move/click/rightclick/rightpress/rightrelease/key/keydown/keyup/type/wheel/shot/screen W H/quit;
   `key` takes a binding as openloco.yml writes one — `key Z`, `key PageUp`, `key Left Ctrl+S`),
   like OpenLoco tutorial playback. CAUTION: scripted input ORs with real
   hardware input — coordinate with the user before driving the visible

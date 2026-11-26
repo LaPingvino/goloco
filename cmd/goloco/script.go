@@ -251,6 +251,8 @@ func (s *inputScript) step() {
 	case "shot":
 		s.shotRequest = fields[1]
 		s.waitUntil = gameNow().Add(300 * time.Millisecond) // let Draw consume it
+	case "screen": // goloco only: the window's size — screen W H (a small screen: N57)
+		ebiten.SetWindowSize(arg(1), arg(2))
 	case "quit":
 		s.quit = true
 	default:
