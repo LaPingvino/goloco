@@ -378,7 +378,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       autosave: three straights, the copy drag, the paste ghost, turned, pasted, paste off): the map 0.00–0.03%
 >       off in all five shots, the window only by its tab icon's frame; the same cash after the paste.
 >       LEFT: the construct tool's own drag (onToolUpMultiple: a piece on every tile of a dragged area); the
->       copy / paste tools' crosshair cursor (N47); not compared: a blueprint with signals or stations, a
+>       copy / paste tools' crosshair cursor (done in N47); not compared: a blueprint with signals or stations, a
 >       refused paste's error window, roads (upstream copies only track).
 > - [x] N8 One-way road arrows — done with N23.
 > - [x] (plan: docs/PORT-PLANS.md B) N9 Sounds: done 2026-11-18 — SoundObject / css1 loaders, the Effects mixer and every effect call site, the widget clicks window by window (pkg/ui clicks.go), vehicle audio (driving sounds in the sim and saved, chuffs, crossing whistle, VehicleAudio.cpp's handles) and ambient audio (AmbientAudio.cpp). Left (PORT-PLANS B "Left"): silent widgets goloco doesn't act on, off-widget / dropdown releases, other windows' viewports, tunnel reverb.
@@ -661,13 +661,23 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       mu-05); OpenLoco showed none at the same moment (README: about two seconds) — compare Tooltip timeouts.
 > - [ ] N46 (seen by N17) Options → Audio's device shows "Default"; OpenLoco shows getCurrentDeviceName (empty with
 >       the dummy driver) or audio_device_none (Options.cpp AudioTab::prepareDraw).
-> - [ ] N47 (seen by N19) The other cursors of processMouseOver (cmd/goloco cursor.go toolCursor has only the
->       Terraform window's): the construction tools (track / road / station: ToolManager::toolSet's CursorIds in
->       Construction/*.cpp), signals, the Fund New Industries tool, the vehicle pickup and route tools, the
->       town / building / HQ tools; the window cursor events (callCursor, callToolCursor); handPointer over a
->       vehicle, a label, an industry, an HQ (getItemLeft); diagonalArrows on a resizable window's corner and while
->       resizing. The drawn cursor also stays at the window's edge when the mouse leaves it (Ebitengine says nothing
->       of that), and isn't scaled with Options' scale factor (nor is SDL's).
+> - [ ] N47 (seen by N19) The other cursors of processMouseOver. Tools done 2026-11-26 (branch n47, cmd/goloco cursor.go):
+>       every ported tool's cursor (ToolManager::getToolCursor) — the construction window's construct / copy / paste
+>       crosshair (ConstructionTab.cpp onMouseDown kConstruct / kCopy / kPaste and the copy tool's onToolUp), the
+>       Station tab's placeStation, the Signal tab's placeSignal, the Overhead tab's crosshair (StationTab / SignalTab /
+>       OverheadTab onMouseDown), the Fund New Industries tool's placeFactory (IndustryList switchTab), the vehicle
+>       pickup's kTypeToToolCursor by type and pickupDirection (Vehicle.cpp onPickup, pickupToolUpdate), the Route
+>       tool's crosshair (Vehicle.cpp toolSet(widx::tool)); a tool's cursor over any viewport widget, as upstream;
+>       handPointer over a vehicle, a label, an industry or an HQ without a tool (getItemLeft — the map tooltip's
+>       pass, mapTipMouseOver); diagonalArrows on a resizable window's grip and while resizing (ui
+>       WindowStack.ResizeGripAt / Resizing). Tests TestConstructionToolCursors, TestWindowStackResizeGripCursor.
+>       Compared with OpenLoco (desert.SV5, OLREF_SHOT_POINTER=1, goloco on its own Xvfb): the construct hover,
+>       copy, paste, Station and Signal cursors the same pixels at the same place. LEFT: the town / building / HQ
+>       tools (placeTown, placeBuilding, placeHQ: those tools aren't ported); the windows' cursor events
+>       (callCursor: the lists' handPointer rows — TownList, IndustryList, StationList, CompanyList, VehicleList,
+>       BuildVehicle, StationWindow — the Vehicle window's openHand / brush / inwardArrows, DragVehiclePart's
+>       dragHand); the Overhead tab not compared (desert's track has none); the drawn cursor stays at the window's
+>       edge when the mouse leaves it, and isn't scaled with Options' scale factor (nor is SDL's).
 > - [ ] N48 (seen by N19) goloco's pointer is Ebitengine's CursorShapeDefault (no cursor set: the root window's);
 >       on a bare Xvfb that is X's cross where OpenLoco's SDL_SYSTEM_CURSOR_DEFAULT is the arrow (a desktop's root
 >       cursor is the arrow, so it only shows in comparison shots). Also on the cursor tour: the news window drawn

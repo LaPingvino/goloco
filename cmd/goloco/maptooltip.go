@@ -34,6 +34,9 @@ type mapTipState struct {
 	tip        world.MapTip // FormatArguments::mapToolTip and _mapTooltipOwner (Text "": StringIds::null)
 	open       bool         // the window open
 	winX, winY int
+	// hand: getItemLeft found an item this pass, so processMouseOver's
+	// cursor is handPointer (updateCursor).
+	hand bool
 }
 
 // toolActive is Input::hasFlag(toolActive): some window's tool on the map.
@@ -65,6 +68,7 @@ func (g *Game) updateMapTip() {
 func (g *Game) mapTipMouseOver() {
 	t := &g.mapTip
 	t.tip = world.MapTip{Owner: -1} // MapToolTip::reset
+	t.hand = false
 	g.w.ResetHoveredStation()       // resetMapSelectionFlag(hoveringOverStation)
 	if g.inTitleScreen {
 		return
@@ -75,6 +79,7 @@ func (g *Game) mapTipMouseOver() {
 		if it, ok := g.w.ItemLeftAt(vps, mx, my); ok {
 			switch it.Kind {
 			case paint.ItemEntity, paint.ItemTownLabel, paint.ItemStationLabel, paint.ItemIndustry, paint.ItemHeadquarterBuilding:
+				t.hand = true // skipItem; cursorId = handPointer
 				if tip, ok := g.w.MapTipLeft(it); ok {
 					t.tip = tip
 				}

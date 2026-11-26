@@ -808,6 +808,23 @@ func (s *WindowStack) KeepOnScreen(w Win) {
 // positioningWindow / resizing).
 func (s *WindowStack) Dragging() bool { return s.drag != dragNone }
 
+// Resizing is Input::State::resizing.
+func (s *WindowStack) Resizing() bool { return s.drag == dragResizing }
+
+// ResizeGripAt is processMouseOver's diagonalArrows test (MouseInput.cpp
+// 0x004CD47A): over a resizable window whose size isn't fixed both ways, on
+// its panel or frame (the widget there), in the 19 px corner — where a press
+// begins resizing (Press).
+func (s *WindowStack) ResizeGripAt(x, y int) bool {
+	w := s.FindAt(x, y)
+	if w == nil {
+		return false
+	}
+	b := w.Base()
+	frame, knows := onFrame(w, x, y)
+	return b.CanResize() && b.inGrip(x, y) && (frame || !knows && !gripBlocked(w, x, y))
+}
+
 // Press is stateNormalLeft for a left press: the window under it comes to
 // the front; on its caption the window starts moving, on a resizable
 // window's grip resizing, on its bare frame or panel (FrameHitter) moving,

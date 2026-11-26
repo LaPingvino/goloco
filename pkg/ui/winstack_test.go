@@ -480,3 +480,27 @@ func TestKeepOnScreen(t *testing.T) {
 		t.Errorf("f at %d,%d %dx%d", f.X, f.Y, f.W, f.H)
 	}
 }
+
+// processMouseOver's diagonalArrows: on the grip of a resizable window, and
+// while resizing anywhere.
+func TestWindowStackResizeGripCursor(t *testing.T) {
+	s := &WindowStack{ScreenW: 800, ScreenH: 600}
+	w := newTestWin(WindowTypeTown, 1, 100, 100, 223, 161)
+	w.WinFlags = WindowFlagResizable
+	w.SetSize(192, 161, 600, 440)
+	s.Open(w)
+	gx, gy := 100+223-5, 100+161-5
+	if !s.ResizeGripAt(gx, gy) || s.ResizeGripAt(150, 150) {
+		t.Fatal("grip test")
+	}
+	s.Press(gx, gy)
+	s.Held(gx+40, gy+40)
+	if !s.Resizing() {
+		t.Fatal("not resizing")
+	}
+	s.Release(gx+40, gy+40)
+	w.SetSize(223, 161, 223, 161) // fixed both ways: no grip
+	if s.ResizeGripAt(w.X+w.W-5, w.Y+w.H-5) || s.Resizing() {
+		t.Error("a fixed-size window's corner gives the arrows")
+	}
+}
