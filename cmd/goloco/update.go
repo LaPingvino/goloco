@@ -210,6 +210,9 @@ func (g *Game) updateGame() {
 		if g.viewportLeft {
 			g.viewportLeftRelease()
 		}
+		if g.bpDrag.pressed && g.bpToolOn() {
+			g.bpToolUp(g.mouseX, g.mouseY) // the copy / paste tool's onToolUp
+		}
 		if g.stDrag.pressed && g.stationToolOn() {
 			g.stationToolRelease(g.mouseX, g.mouseY) // onToolUp: single or the dragged area
 		}
@@ -510,6 +513,8 @@ func (g *Game) hudOrMapClick() {
 		g.stationToolDown(g.mouseX, g.mouseY) // the Station tab's tool: onToolDown (the build comes with the release, stationdrag.go)
 	} else if g.signalToolOn() {
 		g.sigToolDown = true // the Signal tab's tool acts on the release (onToolUp)
+	} else if g.bpToolOn() && g.r.ObjMgr != nil {
+		g.bpToolDown(g.mouseX, g.mouseY) // the copy / paste tool's onToolDown (blueprint.go)
 	} else if g.consHasHead() && g.consTab == 0 && g.w.Cons.Hover && g.hoverTileX >= 0 && g.r.ObjMgr != nil {
 		// onToolUp → onToolUpSingle + constructionLoop: the click starts
 		// building — the selected piece at the tile, as the Construct button

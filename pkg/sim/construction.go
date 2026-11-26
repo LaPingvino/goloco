@@ -111,7 +111,8 @@ func (s *State) ResetConstruction() {
 func (s *State) bridge() uint8 { return s.Cons.Bridge - 1 }
 
 // RemoveConstructionGhosts is removeConstructionGhosts' track and road part:
-// the blinking arrow off, the ghost taken up.
+// the blinking arrow off, the ghost taken up, the blueprint's ghost too
+// (Common.cpp: Construction::removeBlueprintGhosts).
 func (s *State) RemoveConstructionGhosts(c *Cmd) {
 	if s.Cons.arrowBlink {
 		s.Cons.arrowBlink = false
@@ -119,6 +120,7 @@ func (s *State) RemoveConstructionGhosts(c *Cmd) {
 	}
 	s.RemoveTrackGhost(c)
 	s.RemoveRoadGhost(c)
+	s.RemoveBlueprintGhosts(c)
 	s.RemoveSignalGhost(c)
 }
 

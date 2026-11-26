@@ -120,6 +120,7 @@ type ConstructionTabState struct {
 	Piece             string // the activated piece widget ("straight", …); "" none
 	Gradient          string // the activated gradient widget ("level", …)
 	Hover             bool   // constructionHover: placing the first piece
+	Tool              int    // the tab's map tool: 0 construct, 1 copy, 2 paste (ToolManager's widget)
 	// GhostBridge is byte_1136076 & 1: the ghost standing needs a bridge —
 	// the bridge box shows while building on too.
 	GhostBridge bool
@@ -251,7 +252,7 @@ func TrackButtons(traits uint16, rotation uint8) []ConstructionButton {
 // (ImageButton::draw: an activated button gets an inset background in the
 // secondary colour, every visible button its image recoloured to that colour).
 // PARTIAL: the bridge dropdown, the construct/preview area (Wt3Widget with the
-// track piece drawn by the paint code), remove/rotate/copy/paste, hover.
+// track piece drawn by the paint code), remove/rotate, hover.
 func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st ConstructionTabState) {
 	if globalG1Font == nil {
 		return
@@ -267,7 +268,7 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 		// (toolSet(self, construct): Window::draw's tool_widget), activated:
 		// the border inset; the piece preview is drawn into it.
 		var constructFlags int
-		if st.Hover {
+		if st.Hover && st.Tool == 0 {
 			constructFlags = gfx8.InsetBorderInset
 		}
 		gfx8.FillRectInset(rt, 3, 145, 3+132-1, 145+100-1, gfx8.InsetColour{Map: sec}, constructFlags)
@@ -277,8 +278,17 @@ func DrawConstructionTab(screen *ebiten.Image, f *ConstructionFrame, st Construc
 		// Bottom row: Copy, Paste (Buttons), Remove (only while extending),
 		// Rotate (rotate_object while placing the first piece, else
 		// construction_new_position).
-		gfx8.FillRectInset(rt, 3, 248, 3+33-1, 248+24-1, gfx8.InsetColour{Map: sec}, 0)
-		gfx8.FillRectInset(rt, 36, 248, 36+37-1, 248+24-1, gfx8.InsetColour{Map: sec}, 0)
+		// Copy and Paste are drawn activated while they are the tool
+		// (ButtonWidget::draw: borderInset; paste's activated too).
+		copyFlags, pasteFlags := 0, 0
+		if st.Hover && st.Tool == 1 {
+			copyFlags = gfx8.InsetBorderInset
+		}
+		if st.Hover && st.Tool == 2 {
+			pasteFlags = gfx8.InsetBorderInset
+		}
+		gfx8.FillRectInset(rt, 3, 248, 3+33-1, 248+24-1, gfx8.InsetColour{Map: sec}, copyFlags)
+		gfx8.FillRectInset(rt, 36, 248, 36+37-1, 248+24-1, gfx8.InsetColour{Map: sec}, pasteFlags)
 		icons := [][3]int{{111, 248, imgConstructionNewPosition}}
 		if st.Hover {
 			icons[0][2] = imgRotateObject

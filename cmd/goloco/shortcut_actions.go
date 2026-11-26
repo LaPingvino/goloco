@@ -216,6 +216,10 @@ func (g *Game) toolCancel() {
 	case g.tf.on:
 		g.closeTerraform()
 	case g.consToolOn():
+		if g.consHasHead() && g.consTab == 0 && g.consTool == consToolPaste {
+			g.pasteToolAbort() // onToolAbort: paste off, building on from the position
+			return
+		}
 		if g.consHasHead() && g.consTab == 0 {
 			g.wins.CloseType(ui.WindowTypeConstruction, ui.AnyNumber)
 			return

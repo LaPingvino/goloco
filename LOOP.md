@@ -369,6 +369,17 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       outline, bridges and mods in the preview, the bridge box while building on, the dock's selection. Seen
 >       on the way, not N7's: an airport ghost drawn in its own colours (N38); the error window's translucent fill is lighter than OpenLoco's (cr-07, cr-12); money
 >       effects that overlap stack downwards in goloco, OpenLoco draws them on one line (N12).
+>       2026-11-26 (branch n7b): the copy / paste (blueprint) tools — Blueprints.cpp ported whole (pkg/sim
+>       blueprint.go: copyTrackToBlueprint, placeBlueprint's trial then track / signals / stations,
+>       removeBlueprint, rotateBlueprint; removeBlueprintGhosts inside removeConstructionGhosts) and
+>       ConstructionTab's kCopy / kPaste / rotate_90-while-hovering, onToolDown / Drag / Up / Update / Abort for
+>       copy and paste (cmd/goloco blueprint.go; the buttons drawn activated while they are the tool), test
+>       TestBlueprintCopyPaste. Compared with OpenLoco (olref tour construction-blueprint on the Sandbox Settler
+>       autosave: three straights, the copy drag, the paste ghost, turned, pasted, paste off): the map 0.00–0.03%
+>       off in all five shots, the window only by its tab icon's frame; the same cash after the paste.
+>       LEFT: the construct tool's own drag (onToolUpMultiple: a piece on every tile of a dragged area); the
+>       copy / paste tools' crosshair cursor (N47); not compared: a blueprint with signals or stations, a
+>       refused paste's error window, roads (upstream copies only track).
 > - [x] N8 One-way road arrows — done with N23.
 > - [x] (plan: docs/PORT-PLANS.md B) N9 Sounds: done 2026-11-18 — SoundObject / css1 loaders, the Effects mixer and every effect call site, the widget clicks window by window (pkg/ui clicks.go), vehicle audio (driving sounds in the sim and saved, chuffs, crossing whistle, VehicleAudio.cpp's handles) and ambient audio (AmbientAudio.cpp). Left (PORT-PLANS B "Left"): silent widgets goloco doesn't act on, off-widget / dropdown releases, other windows' viewports, tunnel reverb.
 > - [ ] (plan: docs/PORT-PLANS.md E, docs/GAMEPAD.md) N37 Gamepad and focus navigation: six steps, start with step 1 (pad input + free cursor).
@@ -536,7 +547,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       Generator says), ed2dd0c.
 > - [ ] N32 View leftovers: (the shortcut keys: N33 — rebound in openloco.yml, the window is N34); Config gridlinesOnLandscape
 >       (the Options checkbox: gridlines kept after a window closes, and in the town / station / vehicle viewports);
->       the copy / paste tools' overground view (no such tools); (the placeTrackGhost bridge retry: DONE with N7); in the underground
+>       (the copy / paste tools' overground view: DONE 2026-11-26 with N7); (the placeTrackGhost bridge retry: DONE with N7); in the underground
 >       view at 186,143 (title game) OpenLoco draws a dark face over the tunnel's road at screen 410–428, 396–414
 >       that goloco doesn't (unexplained: paintSurfaceCliffEdgeImpl's underground image is attached some 500 px below
 >       its tile at that height, as upstream's yOffset reads); not checked against OpenLoco: a ghost under the ground

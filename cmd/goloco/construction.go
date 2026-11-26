@@ -158,6 +158,7 @@ func (g *Game) constructionFrame(x, y int) (*ui.ConstructionFrame, ui.Constructi
 	}
 	st.Gradient = nameFor(consGradientWidget, cs.Gradient)
 	st.Hover = cs.Hover
+	st.Tool = g.consTool
 	st.GhostBridge = g.w.GhostNeedsBridge()
 	st.BridgeImage, st.Company = -1, f.CompanyColour
 	// drawCostString's trackCost / roadCost: the ghost's cost (hovering or
@@ -194,6 +195,7 @@ func (g *Game) newPortedConstructionWindow() *ui.SimpleWindow {
 	// level (Common's open, then trackWindow's rotate_90).
 	g.closeTerraform() // the construction tool's toolSet
 	g.consToolOff = false
+	g.consTool, g.bpDrag.pressed, g.bpDrag.dragging = consToolConstruct, false, false
 	if g.consWin() != nil {
 		g.consResetView() // the window it replaces closes first (its onClose)
 	}
@@ -326,6 +328,12 @@ func (g *Game) consToolCancelled() bool { return g.consToolOff && g.consTab != 0
 // consSwitchTab is a click on one of the construction window's tabs
 // (Common::switchTab): the tab, its tool on the map again.
 func (g *Game) consSwitchTab(tab int) {
+	if tab >= 0 && tab <= 3 && g.consTool != consToolConstruct { // switchTab's toolCancel: the copy / paste tool's onToolAbort
+		if g.consTool == consToolPaste {
+			g.pasteToolAbort()
+		}
+		g.consTool = consToolConstruct
+	}
 	switch tab {
 	case 1:
 		g.consTab = 1 // switchTab; tabReset turns the placing tool on (the Station tab's tool builds, through createTrainStation)
@@ -380,13 +388,22 @@ func (g *Game) consWidget(hit string) {
 	case "construct":
 		g.consConstruct()
 	case "rotate": // rotate_90: the rotate arrows while hovering, the red cross while building
-		if !g.w.Cons.Hover { // back to a new position: the overground view (viewportSetVisibility)
+		if g.w.Cons.Hover {
+			if bp := g.w.Blueprint(); bp != nil { // the blueprint turns with it (rotateBlueprint)
+				g.w.RemoveConstructionGhosts(g.playerCmd())
+				bp.Rotate(1)
+			}
+		} else { // back to a new position: the overground view (viewportSetVisibility), the construct tool
 			g.consOverground()
+			g.consTool = consToolConstruct
 		}
 		g.w.ConstructionRotate90(g.playerCmd())
 	case "remove":
 		g.consRemove()
-	case "copy", "paste": // PARTIAL: blueprints not ported
+	case "copy":
+		g.consCopy()
+	case "paste":
+		g.consPaste()
 	case "s_bend_dual_track_left", "s_bend_dual_track_right", "turnaround":
 		piece := uint8(construct.Turnaround) // the road's turnaround button
 		if !g.consIsRoad() {
@@ -698,7 +715,7 @@ func (g *Game) updateConstruction() {
 			g.w.SyncConstructionArrow(true)
 			return
 		}
-		if g.w.TrackGhost != nil || g.w.RoadGhost != nil || g.w.ConsArrow.On || g.w.ConsSelection.On {
+		if g.w.TrackGhost != nil || g.w.RoadGhost != nil || g.w.BlueprintGhostShown() || g.w.ConsArrow.On || g.w.ConsSelection.On {
 			g.w.EndConstruction(g.playerCmd())
 		}
 		g.w.SyncConstructionArrow(false)
@@ -723,6 +740,15 @@ func (g *Game) updateConstruction() {
 		}
 	}()
 	c := g.playerCmd()
+	if g.bpToolOn() { // the copy / paste tool's update and drag (blueprint.go)
+		if g.bpDrag.pressed && g.inMousePressed(ebiten.MouseButtonLeft) {
+			g.bpToolDrag(g.mouseX, g.mouseY)
+		} else if !g.overWindow(g.mouseX, g.mouseY) {
+			g.bpToolUpdate(g.mouseX, g.mouseY)
+		}
+		g.w.SyncConstructionArrow(true)
+		return
+	}
 	if !g.w.Cons.Hover {
 		g.w.UpdateConstruction(c, road, obj)
 	} else if g.hoverTileX >= 0 && !g.overWindow(g.mouseX, g.mouseY) {

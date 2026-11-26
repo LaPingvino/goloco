@@ -1,0 +1,44 @@
+# The construction window's Copy and Paste tools (Blueprints.cpp) on the
+# Sandbox Settler autosave (flat desert; README "The same world in both
+# games"): three straights built, the copy tool dragged over them, the paste
+# tool's ghost elsewhere, turned once, and the paste built.
+wait 25
+click 598 14          # the track menu's default: Railway Track at 0,30
+wait 2
+move 500 400
+wait 2
+click 500 400         # the first piece
+wait 2
+click 67 225          # construct, twice more
+wait 1
+click 67 225
+wait 2
+click 19 290          # Copy
+wait 1
+move 430 330
+wait 2
+press 430 330
+wait 1
+move 500 380
+wait 1
+move 600 470
+wait 2
+shot bp-00-copy-drag.png
+release 600 470
+wait 1
+move 300 250
+wait 2
+shot bp-01-paste-ghost.png
+click 124 290         # rotate_90 while hovering: the blueprint turns
+wait 1
+move 302 252
+wait 2
+shot bp-02-paste-turned.png
+click 302 252         # the paste
+wait 2
+move 700 150
+wait 2
+shot bp-03-pasted.png
+click 54 290          # Paste again: the tool off, building on
+wait 2
+shot bp-04-paste-off.png

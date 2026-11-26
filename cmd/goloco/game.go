@@ -226,6 +226,10 @@ type Game struct {
 	vpLeft       viewportLeftState
 	// stDrag is the Station tab tool's press / drag (stationdrag.go).
 	stDrag stationDrag
+	// consTool is the Construction tab's map tool (construct, copy, paste),
+	// bpDrag the copy / paste tools' press and drag (blueprint.go).
+	consTool int
+	bpDrag   stationDrag
 
 	// --shots mode: periodic full-frame captures (shot_NN.png), then quit.
 	shotsEvery time.Duration // wall-clock interval between captures

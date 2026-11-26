@@ -28,6 +28,12 @@ type State struct {
 	TrackGhost *TrackGhost
 	RoadGhost  *RoadGhost
 	ghostPos   [3]int32
+	// blueprint is the copy tool's _copiedTrack, blueprintGhost where its
+	// ghost stands (GhostVisibilityFlags::blueprint, ghostRemovalTrackPos;
+	// nil none), blueprintG1 the station commands' G1 (blueprint.go).
+	blueprint      *Blueprint
+	blueprintGhost *[3]int32
+	blueprintG1    G1Raw
 
 	// Waves (wave.go): the wave table (they draw from Map.Rng2).
 	Waves [MaxWaves]Wave
