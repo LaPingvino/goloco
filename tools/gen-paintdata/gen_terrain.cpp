@@ -17,8 +17,9 @@ namespace OpenLoco {
   namespace Scenario {
     enum class ScenarioFlags : uint16_t { none = 0, hillsEdgeOfMap = 2 };
     constexpr ScenarioFlags operator&(ScenarioFlags a, ScenarioFlags b) { return ScenarioFlags(uint16_t(a) & uint16_t(b)); }
-    enum class TopographyStyle : uint8_t {};
-    struct Options { uint8_t minLandHeight; TopographyStyle topographyStyle; uint8_t hillDensity; ScenarioFlags scenarioFlags; uint8_t numRiverbeds, minRiverWidth, maxRiverWidth, riverbankWidth, riverMeanderRate; };
+    enum class TopographyStyle : uint8_t { flatLand };
+    enum class LandGeneratorType : uint8_t { Original };
+    struct Options { uint8_t minLandHeight; TopographyStyle topographyStyle; uint8_t hillDensity; ScenarioFlags scenarioFlags; uint8_t numRiverbeds, minRiverWidth, maxRiverWidth, riverbankWidth, riverMeanderRate; LandGeneratorType generator; };
   }
   enum class HillShapeFlags : uint16_t { none = 0, isHeightMap = 1 };
   constexpr HillShapeFlags operator&(HillShapeFlags a, HillShapeFlags b) { return HillShapeFlags(uint16_t(a) & uint16_t(b)); }
@@ -320,6 +321,11 @@ namespace OpenLoco::World::MapGenerator
 namespace OpenLoco::World::MapGenerator {
     static void generateRivers(const Scenario::Options& options, HeightMap& heightMap)
     {
+        if (options.topographyStyle == Scenario::TopographyStyle::flatLand && options.generator == Scenario::LandGeneratorType::Original)
+        {
+            return;
+        }
+
         for (auto i = 0; i < options.numRiverbeds; i++)
         {
             auto& gs = getGameState();

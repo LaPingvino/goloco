@@ -20,6 +20,10 @@ type TerrainOptions struct {
 	HillDensity     uint8
 	HillsEdgeOfMap  bool // ScenarioFlags::hillsEdgeOfMap
 	SeaLevel        uint8
+	// Generator is Scenario::Options::generator (LandGeneratorType: 0
+	// Original, 1 Simplex, 2 PngHeightMap). Only the original generator is
+	// ported: GenerateTerrainHeightMap runs it whatever this says.
+	Generator uint8
 	// Rivers (OpenLoco's options; none in vanilla scenarios).
 	NumRiverbeds, MinRiverWidth, MaxRiverWidth, RiverbankWidth, RiverMeanderRate uint8
 	LandDistributionPatterns                                                     [32]uint8 // per land object slot
@@ -33,6 +37,8 @@ type TerrainOptions struct {
 }
 
 const (
+	topographyFlatLand    = 0 // TopographyStyle::flatLand
+	landGeneratorOriginal = 0 // LandGeneratorType::Original
 	topoHasHills     = 1 << 0
 	topoHasMountains = 1 << 1
 	mapPitch         = 512 // kMapPitch
@@ -171,7 +177,13 @@ func (m *Map) blitHill(o TerrainOptions, hs *objects.HillShapesObject, g1 G1Raw,
 
 // GenerateRivers is generateRivers: each riverbed a band carved to just below
 // sea level (banks sloping), north–south or east–west, meandering every 4 rows.
+// Flat land from the original generator gets none, and draws nothing (upstream
+// d9cb11a, #4020: generateRivers returns for TopographyStyle::flatLand with
+// LandGeneratorType::Original).
 func (m *Map) GenerateRivers(o TerrainOptions, hm *HeightMap) {
+	if o.TopographyStyle == topographyFlatLand && o.Generator == landGeneratorOriginal {
+		return
+	}
 	for range int(o.NumRiverbeds) {
 		eastWest := m.Rng1.RandBool()
 		riverWidth := int(m.Rng1.RandNextRange(int32(o.MinRiverWidth), int32(o.MaxRiverWidth)))

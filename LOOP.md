@@ -524,8 +524,16 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >       Track, as goloco's does on Weatherworld).
 > - [ ] (plan: docs/PORT-PLANS.md C) N30 Zoom in to 2× / 4× (9850f2d: negative zoom levels).
 > - [ ] N31 Browse prompt's Home button and folder_path widget (ed2dd0c); landscape generation window leftovers
->       (d9cb11a disabled options + flatLand rivers return, 9b99b3b kMinBaseLandHeight, 9fb9e37 PNG heightmap) — with
->       the editor (N14).
+>       (d9cb11a disabled options, 9b99b3b kMinBaseLandHeight, 9fb9e37 PNG heightmap) — with the editor (N14).
+>       DONE 2026-11-26 (branch n31): d9cb11a's MapGenerator half — generateRivers returns for flatLand with the
+>       original generator (TerrainOptions.Generator, from the S5 options' 0x41BD); upstream's harness
+>       (tools/gen-paintdata/gen_terrain.cpp, guard added) re-run: cases 0–4 unchanged, case 5 (flatLand, 2
+>       riverbeds) new hash, goloco identical. Random new games (the editor's defaults: mountains, no riverbeds)
+>       generate as before. OpenLoco's editor takes no seed, so the GUI can't be compared seed for seed — the
+>       compiled-upstream hashes are the comparison. LEFT, all window / editor (N14): d9cb11a's disabled widgets,
+>       9b99b3b (the base height stepper's minimum 1; goloco has no landscape window), 9fb9e37 (refuse to go on
+>       without a PNG heightmap; no PNG / simplex generator ported — goloco runs the original one whatever
+>       Generator says), ed2dd0c.
 > - [ ] N32 View leftovers: (the shortcut keys: N33 — rebound in openloco.yml, the window is N34); Config gridlinesOnLandscape
 >       (the Options checkbox: gridlines kept after a window closes, and in the town / station / vehicle viewports);
 >       the copy / paste tools' overground view (no such tools); (the placeTrackGhost bridge retry: DONE with N7); in the underground
