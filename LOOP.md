@@ -192,6 +192,10 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >      done: the list's inline vehicles ~1 px off OpenLoco's, the list's scrollbar thumb drawn full length (OpenLoco:
 >      short), the wheel scrolls 2 px further at the end; the Vehicle window's caption lacks " - Vehicle Details"
 >      and its Details tab the stats lines (Total power / Weight / Max. speed / Reliability / Length) and paint button.
+>      DONE 2026-11-27 but the paint button: the Details tab's three lines (ui.VehicleDetailsStats), every tab's own
+>      caption ("Train 1 - Vehicle Details" / Cargo / Finances / Route; Main "Company - Train 1" for a competitor's),
+>      the captions in colourText's windowColour1 (shade 7, was 9) — side by side with OpenLoco equal but the
+>      animated tab icon. Left: the paint brush and its tool (VehicleRepaint).
 >    - [x] Refusals were silent: a wagon added to a moving train did nothing but log "can't build vehicle" — now the
 >      error window "Can't add Wagon to Train 1… / Vehicle must be stopped first!" (BuildVehicle.cpp onScrollMouseDown's
 >      setErrorTitle; canBeModified's setErrorText, VehicleHead.cpp 0x004B6D1F; every command's caller passes its Cmd).
@@ -2583,3 +2587,13 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   switches byte (no chunk still when there are neither AIs nor the switch; v1/v2 load). gosave -takeover -2: every
   one. Tests: TestTakeOverOpenLocoAIsTitle, TestAIChunkKeepOpenLocoAI, TestAISettings, TestOptionsLoadedAIs.
   Focus navigation (FocusTargets) isn't built yet: the rows are ordinary dropdowns, as the others.
+- 2026-11-27 (item 3 leftover, the Vehicle window's Details tab) — Details::draw's text under the car list (Vehicle.cpp
+  0x004B3542): total power and weight (weight alone for air / water), max. speed (and the rack rail speed when
+  veh1 var_49 is set) and reliability (0 → 64), length (and the car count for a train of more cars), clipped as
+  drawStringLeftClipped (ui vehicledetailstats.go; TestVehicleDetailsStatsLines). Each tab's caption as its
+  prepareDraw sets it: title_vehicle_details / _cargo / title_company_finances / _route, and Main's
+  competitor_vehicle for another company's vehicle. All five tabs' captions drawn in Caption::Style::colourText
+  (windowColour1, shade 7; goloco drew shade 9, brighter). Checked against OpenLoco on the title save (Redbone
+  Transport's Train 1 from the news, Details tab): the 265×177 window equal pixel for pixel but the animated tab
+  icon (237 px); before, the caption alone differed in 428. Left: the paint brush and its tool. Unit 23 ok 0 FAIL,
+  playthroughs 25/25.

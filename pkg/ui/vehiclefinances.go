@@ -133,7 +133,7 @@ func (w *VehicleWindow) drawFinances(screen *ebiten.Image) {
 		}
 		w.drawVehicleTabs(rt, lw[:], vwTabFinances, sec, prim)
 	})
-	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))
+	DrawWindowCaptionColourText(screen, w.X+1, w.Y+1, w.W-2, w.Title, w.TitleColour) // makeCommonWidgets: Caption::Style::colourText
 	pal := g1.GetPalette()
 	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
 	f := &w.Finances

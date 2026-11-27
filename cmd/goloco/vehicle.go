@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"log"
+	"strings"
 
 	"github.com/LaPingvino/goloco/pkg/gfx8"
 	"github.com/LaPingvino/goloco/pkg/i18n"
@@ -90,6 +91,21 @@ func (g *Game) newVehicleWindow(headID uint16, tab int) *ui.VehicleWindow {
 			title = r.Name
 		}
 	}
+	// Each tab's prepareDraw sets the caption's arguments: Main's stringid
+	// with company_vehicle (the name) or, for a competitor's vehicle,
+	// competitor_vehicle "{company} - {name}"; the other tabs their own
+	// title_vehicle_details / _cargo / title_company_finances / _route,
+	// "{name} - Vehicle Details" and so on.
+	switch tab {
+	case 0:
+		if !m.IsPlayerCompany(int(h.Owner)) {
+			c := strings.Replace(i18n.Label(i18n.CompetitorVehicle), "{STRINGID}", locoName(m.CompanyName(int(h.Owner))), 1)
+			title = strings.Replace(c, "{STRINGID}", title, 1)
+		}
+	case 1, 2, 3, 4:
+		id := [...]int{0, i18n.TitleVehicleDetails, i18n.TitleVehicleCargo, i18n.TitleCompanyFinances, i18n.TitleVehicleRoute}[tab]
+		title = strings.Replace(i18n.Label(id), "{STRINGID}", title, 1)
+	}
 	var cars []ui.TrainCarDraw
 	var names []string
 	for _, c := range g.w.TrainCars(headID) {
@@ -127,6 +143,7 @@ func (g *Game) newVehicleWindow(headID uint16, tab int) *ui.VehicleWindow {
 		MinW: lim[0], MinH: lim[1], MaxW: lim[2], MaxH: lim[3], WinFlags: ui.WindowFlagResizable}, TitleColour: tc, Colour: wc,
 		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
 		State:        ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
+		Stats:        g.vehicleDetailsStats(headID, tr),
 		OnPickup:     func() { g.onPickup(headID) },
 		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h), PickupTooltip: pickupTooltip(&h), BuildNewImage: g.buildNewImage(&h),
 		OnBuildNew: func(x, y, w, hh int) { g.buildNewOpen(headID, x, y, w, hh) },
@@ -173,6 +190,24 @@ func (g *Game) newVehicleWindow(headID uint16, tab int) *ui.VehicleWindow {
 	vw.OnDropSell = func(row int) { g.dropCar(headID, row, -2) }
 	vw.OnDropMove = func(row, dest int) { g.dropCar(headID, row, dest) }
 	return vw
+}
+
+// vehicleDetailsStats is what Details::draw reads for its three lines:
+// Vehicle2's power, weight, speeds and reliability, Vehicle1's var_49, the
+// head's getVehicleTotalLength (each car's body object's getLength) and
+// getCarCount.
+func (g *Game) vehicleDetailsStats(headID uint16, tr sim.Train) ui.VehicleDetailsStats {
+	m := &g.w.Map
+	v2 := &m.Entities[tr.Veh2]
+	s := ui.VehicleDetailsStats{Mode: int(m.Entities[tr.Head].Mode), TotalPower: int(v2.TotalPower), TotalWeight: int(v2.TotalWeight),
+		MaxSpeed: v2.MaxSpeed, RackMaxSpeed: v2.RackRailMaxSpeed, Reliability: int(v2.Veh2Reliability),
+		RackMods: m.Entities[tr.Veh1].Var49 != 0, CarCount: len(tr.Cars)}
+	for _, c := range g.w.TrainCars(headID) {
+		if c.Object != nil {
+			s.TotalLength += c.Object.Length()
+		}
+	}
+	return s
 }
 
 // stopStartImage is Main::prepareDraw's: yellow in manual control, red when

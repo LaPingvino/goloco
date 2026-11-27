@@ -307,16 +307,16 @@ var vehicleRowHeights = [6]int{22, 22, 22, 22, 22, 22}
 
 // VehicleWindow is the Vehicle window on its Details tab (5P.g): the
 // caption (the vehicle's name), the tabs, the car list (drawScroll) and the
-// right bar. PARTIAL: the other tabs (Main, Cargo, Finances, Route), the
-// tab icons, the right bar's images (build-new, pickup, rubbish bin, paint
-// brush), the three text lines (power / weight, speed / reliability,
-// length), hover and drag, the scroll bar's input, createWindow's placement.
+// right bar, the three text lines (Stats); the other tabs are drawn by
+// drawMain / drawCargo / drawFinances / drawRoute. PARTIAL: Details' paint
+// brush and its tool (VehicleRepaint).
 type VehicleWindow struct {
 	WinBase
 	TitleColour, Colour uint8
 	Title               string
 	VehicleType         int
 	State               VehicleDetailsState
+	Stats               VehicleDetailsStats // Details' text lines under the car list
 	Cars                []TrainCarDraw
 	Names               []string // each car's vehicle object name
 	Scroll              int
@@ -479,7 +479,7 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 			copy(rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw], sub.Bits[yy*cw:(yy+1)*cw])
 		}
 	})
-	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))
+	DrawWindowCaptionColourText(screen, w.X+1, w.Y+1, w.W-2, w.Title, w.TitleColour) // makeCommonWidgets: Caption::Style::colourText
 	black := pal[paletteBlack0]
 	cx, cy := w.X+list.L+1, w.Y+list.T+1
 	// The names clipped to the scroll view's content, as its drawing context.
@@ -494,6 +494,23 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 			continue
 		}
 		DrawTextBold(clip, n, cx+nameX[i], cy+y, black)
+	}
+	// Details::draw's text: the power and weight, the speeds and reliability,
+	// the length (and cars), clipped at the window's right less 6 / 16 px, or
+	// at the paint colours (width − 39) while the paint tool is on.
+	right := w.W
+	if w.State.PaintTool {
+		right = w.W - 39
+	}
+	win2 := pal[gfx8.Shade(sec, 9)]
+	y := w.Y + w.H - vehicleDetailsTextHeight + 2
+	for i, line := range w.Stats.Lines() {
+		margin := 16
+		if i == 0 {
+			margin = 6
+		}
+		drawCodedLeftClipped(screen, line, w.X+3, y, min(w.W-margin, right), win2, black)
+		y += 12
 	}
 }
 
@@ -549,7 +566,7 @@ func (w *VehicleWindow) drawMain(screen *ebiten.Image) {
 			drawViewport(screen, &w.viewImg, rt, w.X+v.L+1, w.Y+v.T+1, w.Labels, !c.Hidden, w.X+c.L, w.Y+c.T, prim)
 		}
 	}
-	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))
+	DrawWindowCaptionColourText(screen, w.X+1, w.Y+1, w.W-2, w.Title, w.TitleColour) // makeCommonWidgets: Caption::Style::colourText
 }
 
 // drawRoute is Route::draw and drawScroll: the frame, the tabs (Route
@@ -594,7 +611,7 @@ func (w *VehicleWindow) drawRoute(screen *ebiten.Image) {
 			}
 		}
 	})
-	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))
+	DrawWindowCaptionColourText(screen, w.X+1, w.Y+1, w.W-2, w.Title, w.TitleColour) // makeCommonWidgets: Caption::Style::colourText
 	pal := g1.GetPalette()
 	black := pal[paletteBlack0]
 	for _, b := range []struct {

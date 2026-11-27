@@ -124,7 +124,7 @@ func (w *VehicleWindow) drawCargo(screen *ebiten.Image) {
 			copy(rt.Bits[(cy+yy)*rt.Width+cx:(cy+yy)*rt.Width+cx+cw], sub.Bits[yy*cw:(yy+1)*cw])
 		}
 	})
-	DrawWindowCaptionColour(screen, w.X+1, w.Y+1, w.W-2, w.Title, int(w.TitleColour))
+	DrawWindowCaptionColourText(screen, w.X+1, w.Y+1, w.W-2, w.Title, w.TitleColour) // makeCommonWidgets: Caption::Style::colourText
 	pal := g1.GetPalette()
 	black, win2 := pal[paletteBlack0], pal[gfx8.Shade(sec, 9)]
 	sx, sy := w.X+cx, w.Y+cy
