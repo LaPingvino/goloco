@@ -436,7 +436,8 @@ commands), H8 and H9 (direct writes; the engine keeps its own bookkeeping), H11 
     question 1). Until then, run our AI only on companies it created.
 11. **G11 Saving the AI's own state** (a goloco chunk or sidecar; §4 question 2), the per-AI PRNG, and the
     decision log.
-12. **G12 Events** for `OnEvent`: crashes, breakdowns and closures are posted as news today. An event channel
+12. **G12 Events** for `OnEvent`: crashes and closures are posted as news; breakdowns are not (upstream has no
+    message for one). An event channel
     for the AI hook is needed (it could be the news messages themselves, filtered by company). (Done: the news,
    filtered by company.)
 13. **G13 The options UI** (which AI, how many, start delay, difficulty) is later work, after G3 and G4.
@@ -522,9 +523,10 @@ AI competitors now appear in a real game.
   `AIEventHandler` (`OnEvent(v, e)`). Events wait for the company's next think and are handed over before Think,
   oldest first (at most 64). They are saved: the AI chunk is version 2 (version 1 still loads). Crashes, slips,
   full-load waits, landing refusals, cargo acceptance, bankruptcy warnings, industry closures and promotions
-  arrive this way. Breakdowns don't: OpenLoco posts no news for one, and goloco never sets
-  BreakdownFlags::brokenDown yet. When breakdowns are ported, a breakdown becomes an event of its own.
-- Still open: G10 (done 2026-11-27, below), the log in the save, breakdown events (after breakdowns), difficulty and cheat switches.
+  arrive this way. Breakdowns don't come as news (OpenLoco posts none for one); they are events of their own
+  (below, 2026-11-27).
+- Still open: G10 (done 2026-11-27, below), the log in the save, breakdown events (done 2026-11-27, below),
+  difficulty and cheat switches.
 
 ### Status after G10 (2026-11-27)
 
@@ -558,3 +560,14 @@ AI competitors now appear in a real game.
   company already serves (3057-3060).
 - The AI shares `gPrng1` with the game. With the AI on, goloco and OpenLoco can only match if the AI is a
   port. That is why the economy comparison stays an AI-off check (PORT-PLANS F).
+
+### Breakdown events (2026-11-27)
+
+- Breakdowns are ported (pkg/sim/breakdown.go updateBreakdown, date.go's VehicleHead::updateDaily). Upstream posts no
+  news for one and its AI never reads them (CompanyAi.cpp uses breakdownPending only as a "place me" marker, H8),
+  so there is no upstream event to follow: goloco adds two event types of its own past every MessageType,
+  `EventVehicleBrokenDown` (0xF0: a car's pending breakdown begins, outside title mode and not with
+  breakdownsDisabled) and `EventVehicleRepaired` (0xF1: its breakdownTimeout runs out). Subjects: the head's id,
+  the car's front bogie id, 0xFFFF; Day the current day. Per car, as upstream breaks cars down one by one; the
+  train stops while any powered car is broken down (Vehicle2 var_73). They go to the owner's AI only, are queued
+  and saved like the news events, and are handed over before Think. Test: TestBreakdownEvents (pkg/sim).

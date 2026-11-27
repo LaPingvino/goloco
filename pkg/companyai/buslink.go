@@ -94,7 +94,8 @@ func (b *BusLink) endCompany(v *sim.AIView) {
 // OnEvent notes the news about its own bus in the log; buslink acts on none.
 func (b *BusLink) OnEvent(v *sim.AIView, e sim.AIEvent) {
 	switch e.Type {
-	case sim.MsgVehicleCrashed, sim.MsgVehicleSlipped, sim.MsgCantWaitForFullLoad:
+	case sim.MsgVehicleCrashed, sim.MsgVehicleSlipped, sim.MsgCantWaitForFullLoad,
+		sim.EventVehicleBrokenDown, sim.EventVehicleRepaired:
 		if e.Subjects[0] == b.plan.head {
 			v.Logf("news: message type %d about bus %d", e.Type, b.plan.head)
 		}

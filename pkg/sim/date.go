@@ -212,6 +212,7 @@ func (m *Map) vehiclesUpdateDaily(om *objects.ObjectManager) {
 				if front.BreakdownTimeout == 0 {
 					front.BreakdownFlags &^= BreakdownBrokenDn
 					m.ApplyBreakdownToTrain(tr, om)
+					m.aiVehicleEvent(head.Owner, EventVehicleRepaired, head.ID, front.ID) // goloco
 				}
 			} else if front.TimeoutToBreakdown != 0xFFFF {
 				if front.TimeoutToBreakdown > 0 {

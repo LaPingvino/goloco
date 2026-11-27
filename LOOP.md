@@ -2587,6 +2587,15 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   switches byte (no chunk still when there are neither AIs nor the switch; v1/v2 load). gosave -takeover -2: every
   one. Tests: TestTakeOverOpenLocoAIsTitle, TestAIChunkKeepOpenLocoAI, TestAISettings, TestOptionsLoadedAIs.
   Focus navigation (FocusTargets) isn't built yet: the rows are ordinary dropdowns, as the others.
+- 2026-11-27 (item 4, breakdown events) — breakdowns were already ported (breakdown.go updateBreakdown, date.go's
+  VehicleHead::updateDaily), only the notes said otherwise. Upstream has no equivalent (no news for a breakdown;
+  CompanyAi.cpp reads breakdownPending only as its placement marker), so two goloco event types past every
+  MessageType: EventVehicleBrokenDown (0xF0, a car's breakdown begins) and EventVehicleRepaired (0xF1, its timeout
+  runs out), subjects head id + the car's front bogie id, to the owner's AI only, queued / saved / handed over as the
+  news events (aiNews and the new aiVehicleEvent share aiEvent). buslink logs them for its bus. Stale notes fixed:
+  breakdown.go's header (smoke, sound and the daily part are all in), companyai_events.go, AI-INTERFACE.md (G12 and
+  "still open"). TestBreakdownEvents (pkg/sim, title save): none on the title screen, broken down then repaired with
+  the right subjects and day, no other AI hears this train, both handed over at the owner's think, oldest first.
 - 2026-11-27 (item 3 leftover, the Vehicle window's Details tab) — Details::draw's text under the car list (Vehicle.cpp
   0x004B3542): total power and weight (weight alone for air / water), max. speed (and the rack rail speed when
   veh1 var_49 is set) and reliability (0 → 64), length (and the car count for a train of more cars), clipped as

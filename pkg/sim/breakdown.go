@@ -2,14 +2,13 @@ package sim
 
 import "github.com/LaPingvino/goloco/pkg/objects"
 
-// Breakdowns — VehicleHead::updateBreakdown (every tick) and
-// applyBreakdownToTrain.
-//
-// The breakdown sound is queued (sounds.go). PARTIAL: the smoke puffs are
-// not drawn;
-// updateDaily's countdowns (a breakdown ending after breakdownTimeout days, a
-// new one falling due after timeoutToBreakdown days, sub_4BA873) wait for a
-// day tick; with Config breakdownsDisabled a pending breakdown never begins.
+// Breakdowns — VehicleHead::updateBreakdown (every tick: a pending breakdown
+// begins, the smoke puffs, the breakdown sound) and applyBreakdownToTrain.
+// The daily part — a breakdown ending after breakdownTimeout days, a new one
+// falling due after timeoutToBreakdown days (sub_4BA873), reliability loss —
+// is VehicleHead::updateDaily in date.go. With Config breakdownsDisabled a
+// pending breakdown never begins. goloco: each begin and end is an event for
+// the owner's company AI (companyai_events.go).
 
 const (
 	BreakdownPending  uint8 = 1 << 1
@@ -39,6 +38,8 @@ func (m *Map) updateBreakdown(tr Train, om *objects.ObjectManager) {
 			front.BreakdownFlags |= BreakdownBrokenDn
 			front.BreakdownTimeout = 5
 			m.ApplyBreakdownToTrain(tr, om)
+			head := &m.Entities[tr.Head]
+			m.aiVehicleEvent(head.Owner, EventVehicleBrokenDown, head.ID, front.ID)
 			snd := m.Rng1.RandNextRange(26, 26+5) // a breakdown sound, at the body + 22 up
 			body := &m.Entities[car[0].Body]
 			m.playSound(uint16(snd), ChannelVehicles, int32(body.PosX), int32(body.PosY), int32(body.PosZ)+22)
