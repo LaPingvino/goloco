@@ -2533,8 +2533,21 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
     delay holds: the first competitor starts in April 1900.
   - Found (pre-existing, AI off too): an Aerophobia new game (generated landscape), saved and loaded, fails
     "expect saved". Every surface element's byte 7 (clearZ) is 0 in the save but 4 as loaded
-    (resetSurfaceClearance?). Next lead.
+    (resetSurfaceClearance?). Next lead. CLOSED 2026-11-27: faithful, not a bug — the map edge (1532 tiles) keeps
+    TileManager::initialise's default surface (SurfaceElement{}: baseZ 4, clearZ 0; generateLand only walks
+    1 … size − 2) until a load's resetSurfaceClearance sets clearZ = baseZ, in OpenLoco too. The script's
+    "expect saved" now records the save as a load leaves it (scenario.ResetSurfaceClearance, shared with
+    DiffFromFile); an Aerophobia new game saved and loaded passes it.
   - Gate: see the merge commit's run (unit, then playthroughs 25).
   - Seen, not fixed: OpenLoco's Misc tab shows "Trains reverse at signals" ticked by default in a fresh config;
     goloco's is unticked.
   - Open: G5, G10, G12, the decision log in the save, difficulty and cheat switches.
+- 2026-11-27 (item 4, the Aerophobia lead) — "expect saved" failed for a generated landscape: byte 3 (clearZ) of
+  the 1532 edge surfaces, 0 saved / 4 loaded. Upstream's in-memory map has the same (initialise's default surface,
+  edges outside generateLand); its load normalises. Fixed the check, not the game: cmd/goloco save.go records the
+  save through scenario.ResetSurfaceClearance (s5compare.go, now shared with DiffFromFile; TestResetSurfaceClearance).
+  Aerophobia new game → save → load → expect saved: passes (scratch script, not added to the suite). Next for
+  item 4: G10 — the title save's OpenLoco AI companies hold aiAllocated pieces (companies 2–4, 6, 11–13: up to
+  427 track + 20 station elements), so a takeover must first remove them (removeCompanyTracksRoadsOnTile
+  0x00488563's pattern, aiAllocated only, apply|noPayment|aiAllocated; the stations as removeAiAllocatedStations
+  0x00483602), then null the thoughts (clearThought), think state 0, every head's 0x60 = 0xFF.

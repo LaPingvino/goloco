@@ -128,7 +128,8 @@ func (g *Game) saveGameTo(path string, autosave bool) error {
 	if g.script != nil {
 		gs := append([]byte(nil), f.GameState...)
 		scenario.ClearAnimations(gs) // as saveStateBytes: a load rebuilds them
-		g.script.lastSave = append(gs, f.TileElements...)
+		// and resets the flat surfaces' clearZ (a generated map's edge: 0 → its baseZ)
+		g.script.lastSave = append(gs, scenario.ResetSurfaceClearance(append([]byte(nil), f.TileElements...))...)
 	}
 	var buf bytes.Buffer
 	if err := f.Write(&buf); err != nil {

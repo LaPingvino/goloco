@@ -30,12 +30,7 @@ func (sc *Scenario) DiffFromFile(gs, tiles []byte, max int, loaded bool) []strin
 	if tiles != nil {
 		raw := sc.Raw.TileElements
 		if loaded {
-			raw = append([]byte(nil), raw...)
-			for i := 0; i < len(raw); i += tileElementSize {
-				if (raw[i]&elementTypeMask)>>elementTypeShift == KindSurface && raw[i+4]&0x1F == 0 {
-					raw[i+3] = raw[i+2]
-				}
-			}
+			raw = ResetSurfaceClearance(append([]byte(nil), raw...))
 		}
 		if len(tiles) != len(raw) {
 			diffs[fmt.Sprintf("tile elements: %d bytes, want %d", len(tiles), len(raw))]++
@@ -143,4 +138,19 @@ func upstreamDrops(kind uint8, b int, x uint8) bool {
 		return true
 	}
 	return false
+}
+
+// ResetSurfaceClearance is TileManager::resetSurfaceClearance (Map/
+// TileManager.cpp, run by every load: S5.cpp importSaveToGameState) on a
+// TileElements chunk, in place: each flat surface's clearZ (byte 3) its baseZ
+// (byte 2). A game as a load leaves it: a generated landscape's map edge
+// keeps initialise's default surface (baseZ 4, clearZ 0 — generateLand never
+// touches the edge) until it is saved and loaded, in OpenLoco as here.
+func ResetSurfaceClearance(tiles []byte) []byte {
+	for i := 0; i+tileElementSize <= len(tiles); i += tileElementSize {
+		if (tiles[i]&elementTypeMask)>>elementTypeShift == KindSurface && tiles[i+4]&0x1F == 0 {
+			tiles[i+3] = tiles[i+2]
+		}
+	}
+	return tiles
 }
