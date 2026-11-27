@@ -100,3 +100,45 @@ func TestOptionsCompetitorSteppers(t *testing.T) {
 		t.Error("the stepper's button is the window's frame")
 	}
 }
+
+// The loaded-games rows: the setting's dropdown tells OnCompetitors; the
+// game's offers "take over now" only with OpenLoco AI companies and an AI,
+// and is dead on the title screen.
+func TestOptionsLoadedAIs(t *testing.T) {
+	s := &WindowStack{ScreenW: 640, ScreenH: 480}
+	w := NewOptions(640, 480, 0, 0)
+	w.Tab, w.CompetitorAI, w.GameOpenLocoAIs = OptTabMisc, "buslink", 0
+	s.Open(w)
+	w.PrepareDraw()
+	var open *DropdownMenu
+	w.OpenDropdown = func(d *DropdownMenu) { open = d }
+	told, game := 0, -1
+	w.OnCompetitors = func() { told++ }
+	w.OnGameAIs = func(c int) { game = c }
+	w.HandleClick(w.X+260, w.Y+optCompRows[3]+5)
+	if open == nil {
+		t.Fatal("no loaded-games dropdown")
+	}
+	open.OnSelect(1)
+	if !w.TakeOverLoaded || told != 1 {
+		t.Errorf("take over: %v, told %d", w.TakeOverLoaded, told)
+	}
+	open = nil
+	w.HandleClick(w.X+260, w.Y+optCompRows[4]+5)
+	if open == nil || len(open.Items) != 3 || !open.Items[GameAIsTakeOver].Disabled {
+		t.Fatalf("the game's dropdown: %+v", open)
+	}
+	open.OnSelect(GameAIsTakeOver)
+	if game != -1 {
+		t.Error("a disabled take over now was told")
+	}
+	open.OnSelect(GameAIsKeep)
+	if game != GameAIsKeep || !w.GameKeepAIs {
+		t.Errorf("keep: told %d, keep %v", game, w.GameKeepAIs)
+	}
+	w.TitleMode, open = true, nil
+	w.HandleClick(w.X+260, w.Y+optCompRows[4]+5)
+	if open != nil {
+		t.Error("the game's dropdown opened on the title screen")
+	}
+}

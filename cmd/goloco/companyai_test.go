@@ -32,7 +32,7 @@ func TestAISettings(t *testing.T) {
 		t.Error("the AI settings went into openloco.yml")
 	}
 	data, _ := os.ReadFile(golocoConfigPath())
-	if !strings.Contains(string(data), "companyAI:\n  ai: none\n  competitors: 3\n  startDelay: 0\n") {
+	if !strings.Contains(string(data), "companyAI:\n  ai: none\n  competitors: 3\n  startDelay: 0\n  loadedGames: keep\n") {
 		t.Errorf("goloco.yml:\n%s", data)
 	}
 	s = loadAISettings()
@@ -45,4 +45,18 @@ func TestAISettings(t *testing.T) {
 	if s := loadAISettings(); s != (aiSettings{AI: companyai.BusLinkName, Competitors: 14, StartDelay: -1}) {
 		t.Errorf("an unknown AI, too many competitors: %+v", s)
 	}
+	if err := (aiSettings{AI: companyai.BusLinkName, Competitors: -1, StartDelay: -1, TakeOverLoaded: true}).save(); err != nil {
+		t.Fatal(err)
+	}
+	if s := loadAISettings(); !s.TakeOverLoaded {
+		t.Errorf("loadedGames: takeover not read back: %+v", s)
+	}
+	setGolocoConfigValues([][2]string{{"companyAI.loadedGames", "maybe"}})
+	if s := loadAISettings(); s.TakeOverLoaded {
+		t.Error("an unknown loadedGames took over")
+	}
+	// A game that pins keep, or the AI none, is left alone (no companies
+	// here: only that nothing panics without game data).
+	m = &sim.Map{KeepOpenLocoAI: true}
+	(aiSettings{AI: companyai.BusLinkName, TakeOverLoaded: true}).applyLoadedGame(m, nil)
 }

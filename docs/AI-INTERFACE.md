@@ -534,9 +534,15 @@ AI competitors now appear in a real game.
   the AI-allocated track and road over the whole map (0x00486224), each thought's AI-allocated stations
   (removeAiAllocatedStations 0x00483602), the thoughts nulled, aiThinkState unk0, the heads' aiThoughtId 0xFF. The
   company keeps its real network, vehicles and cash. AI-allocated road stops that no thought names (the title
-  save's companies 2 and 4 have three) stay, as upstream leaves them. Nothing calls it on load yet: whether a
-  loaded game's competitors get goloco's AI is Joop's call. `gosave -ai NAME -takeover ID` does it headless; such a
-  save loads and plays on in OpenLoco 26.09.
+  save's companies 2 and 4 have three) stay, as upstream leaves them. `gosave -ai NAME -takeover ID` does it
+  headless (`-takeover -2`: every one); such a save loads and plays on in OpenLoco 26.09.
+- **Configurable on load (2026-11-27, Joop: "make it configurable").** goloco.yml `companyAI.loadedGames`: `keep`
+  (default, faithful: a loaded game's OpenLoco AI companies stay as the save has them) or `takeover` (each goes to
+  the competitors' AI as a .sv5 loads: `Map.TakeOverOpenLocoAIs`, refusals logged and left as they were; never
+  with the AI "none" or companyAIDisabled). Options → Miscellaneous → Competing companies has both: "Loaded
+  OpenLoco AIs" (the setting, for games loaded from then on) and "This game's OpenLoco AIs" (as the setting /
+  keep / take over now). A game's "keep" is saved in the AI chunk (version 3's game switches,
+  `Map.KeepOpenLocoAI`), so it outlasts a later "takeover" setting; a game taken over stays so through its chunk.
 
 ## 8. Notes and surprises
 

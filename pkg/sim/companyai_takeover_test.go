@@ -146,3 +146,59 @@ func TestTakeOverCompanyTitle(t *testing.T) {
 		}
 	}
 }
+
+// Taking over every OpenLoco AI company of the title save (the loaded-games
+// setting's "take over"): each non-player company then runs the AI, the
+// player's stays without one, and a second call finds none left.
+func TestTakeOverOpenLocoAIsTitle(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	before := m.OpenLocoAICompanies()
+	if len(before) == 0 {
+		t.Fatal("no OpenLoco AI company on the title save")
+	}
+	taken := m.TakeOverOpenLocoAIs("test", AIOptions{}, om)
+	if len(taken) != len(before) {
+		t.Errorf("taken over %v, want %v", taken, before)
+	}
+	for id := range m.Companies {
+		switch {
+		case m.CompanyEmpty(id):
+		case m.IsPlayerCompany(id):
+			if m.CompanyAIName(id) != "" {
+				t.Errorf("the player's company %d got an AI", id)
+			}
+		case m.CompanyAIName(id) != "test":
+			t.Errorf("company %d runs %q", id, m.CompanyAIName(id))
+		}
+	}
+	if again := m.TakeOverOpenLocoAIs("test", AIOptions{}, om); len(again) != 0 || len(m.OpenLocoAICompanies()) != 0 {
+		t.Errorf("a second takeover took %v", again)
+	}
+}
+
+// The game's KeepOpenLocoAI goes into the AI chunk (version 3) and comes
+// back; a game with neither AIs nor the switch writes no chunk.
+func TestAIChunkKeepOpenLocoAI(t *testing.T) {
+	m := aiTestMap()
+	if m.EncodeAIChunk() != nil {
+		t.Fatal("a chunk without AIs or switches")
+	}
+	m.KeepOpenLocoAI = true
+	data := m.EncodeAIChunk()
+	if data == nil {
+		t.Fatal("no chunk for the switch")
+	}
+	back := aiTestMap()
+	if err := back.DecodeAIChunk(data); err != nil || !back.KeepOpenLocoAI || len(back.OpenLocoAICompanies()) != 1 {
+		t.Errorf("decoded: %v, keep %v, OpenLoco companies %v", err, back.KeepOpenLocoAI, back.OpenLocoAICompanies())
+	}
+	if err := m.SetCompanyAI(3, "test", AIOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	m.KeepOpenLocoAI = false
+	back = aiTestMap()
+	back.KeepOpenLocoAI = true
+	if err := back.DecodeAIChunk(m.EncodeAIChunk()); err != nil || back.KeepOpenLocoAI || back.CompanyAIName(3) != "test" {
+		t.Errorf("decoded: %v, keep %v, company 3 %q", err, back.KeepOpenLocoAI, back.CompanyAIName(3))
+	}
+}

@@ -119,6 +119,11 @@ type Map struct {
 	// Competitors is the goloco AI produceCompanies gives the competitors it
 	// starts (companyai.go); its zero value, no AI, starts none.
 	Competitors Competitors
+	// KeepOpenLocoAI is the game's override of goloco's loaded-games setting
+	// (cmd/goloco companyai.go): its OpenLoco AI companies stay OpenLoco's
+	// even when the setting takes them over on load. goloco's own, in the
+	// save's AI chunk (companyai_save.go).
+	KeepOpenLocoAI bool
 	DefaultLevelCrossingType                                uint8                   // GameState currentDefaultLevelCrossingType
 	ForbiddenVehiclesPlayers, ForbiddenVehiclesCompetitors  uint16
 	Objective                                               scenario.Objective // the scenario objective
@@ -288,6 +293,7 @@ func (m *Map) LoadScenario(sc *scenario.Scenario) {
 	m.PreferredAI = sc.PreferredAI
 	m.MaxCompetingCompanies, m.CompetitorStartDelay, m.ProduceAICompanyTimeout = sc.MaxCompetingCompanies, sc.CompetitorStartDelay, sc.ProduceAICompanyTimeout
 	m.companyAIs = [companyMaxCount]*companyAI{}
+	m.KeepOpenLocoAI = false // the chunk's game switches, if it has them
 	if err := m.DecodeAIChunk(sc.GolocoAI); err != nil {
 		log.Printf("[AI] the save's company AIs: %v", err)
 	}

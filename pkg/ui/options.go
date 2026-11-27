@@ -74,15 +74,27 @@ var (
 // and upstream's 4 px gap and 5 px margin): the AI the competitors run (a
 // dropdown) and two steppers in ScenarioOptions' style — maximum competing
 // companies and the delay before they start (StringIds 1682–1685) — each
-// "Scenario's" below 0. goloco's own settings (cmd/goloco companyai.go).
+// "Scenario's" below 0; then two dropdowns for the OpenLoco AI companies a
+// loaded game brings: the setting (keep them / take them over on load) and
+// the open game's own choice (as the setting / keep / take over now).
+// goloco's own settings (cmd/goloco companyai.go).
 const (
 	optCompY    = 265
 	optCompRow0 = optCompY + 15
-	optMiscH    = optCompY + 65 + 5
+	optCompH    = 95
+	optMiscH    = optCompY + optCompH + 5
 )
 
-// optCompRows are the group's rows' y: AI, competitors, delay.
-var optCompRows = [3]int{optCompRow0, optCompRow0 + 15, optCompRow0 + 30}
+// optCompRows are the group's rows' y: AI, competitors, delay, loaded
+// games, this game.
+var optCompRows = [5]int{optCompRow0, optCompRow0 + 15, optCompRow0 + 30, optCompRow0 + 45, optCompRow0 + 60}
+
+// The open game's choice for its OpenLoco AI companies (OnGameAIs).
+const (
+	GameAIsAsSetting = iota // follow the loaded-games setting at its next load
+	GameAIsKeep             // keep them, whatever the setting (saved with the game)
+	GameAIsTakeOver         // take them over now
+)
 
 // OptionsWindow is the window state.
 type OptionsWindow struct {
@@ -136,6 +148,15 @@ type OptionsWindow struct {
 	CompetitorAI            string
 	Competitors, StartDelay int
 	OnCompetitors           func()
+	// TakeOverLoaded is the loaded-games setting (told by OnCompetitors):
+	// a loaded game's OpenLoco AI companies taken over by CompetitorAI.
+	// GameKeepAIs is the open game's own "keep", GameOpenLocoAIs how many
+	// OpenLoco AI companies it still has; OnGameAIs is told a GameAIs*
+	// choice. The game row is disabled in TitleMode.
+	TakeOverLoaded  bool
+	GameKeepAIs     bool
+	GameOpenLocoAIs int
+	OnGameAIs       func(choice int)
 	// OnCustomiseKeys is the Customise Keys button (openKeyboardShortcuts).
 	OnCustomiseKeys func()
 	// RenderChecks are the Rendering tab's checkboxes — landscapeSmoothing,
@@ -371,7 +392,7 @@ func (w *OptionsWindow) handleClick(px, py int) {
 				return
 			}
 		}
-		if w.competitorsClick(px, py) {
+		if w.competitorsClick(px, py) || w.loadedClick(px, py) {
 			return
 		}
 		// autosave_frequency_btn: Dropdown::show at the widget, width() − 4 —
@@ -697,10 +718,12 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 				}
 				optDropdown(rt, &w.WinBase, 250, 211, 156, sec)
 				optStepper(rt, 250, 226, 156, sec)
-				groupBox(rt, 4, optCompY, 412, 65, sec, optCompGroup)
+				groupBox(rt, 4, optCompY, 412, optCompH, sec, optCompGroup)
 				optDropdown(rt, &w.WinBase, 250, optCompRows[0], 156, sec)
 				optStepper(rt, 250, optCompRows[1], 156, sec)
 				optStepper(rt, 250, optCompRows[2], 156, sec)
+				optDropdown(rt, &w.WinBase, 250, optCompRows[3], 156, sec)
+				optDropdown(rt, &w.WinBase, 250, optCompRows[4], 156, sec)
 				return
 			}
 			if w.Tab == OptTabRendering {
@@ -826,12 +849,20 @@ func (w *OptionsWindow) Draw(screen *ebiten.Image) {
 		DrawTextBold(screen, "-", w.X+250+156-26+(13-1)/2-mw/2, w.Y+227, black)
 		DrawTextBold(screen, "+", w.X+250+156-13+(12-1)/2-pw/2, w.Y+227, black)
 		DrawTextBold(screen, optCompGroup, w.X+4+5, w.Y+optCompY, text)
-		labels := [3]string{"Company AI:", i18n.Label(i18n.MaxCompetingCompanies), i18n.Label(i18n.DelayBeforeCompetingCompaniesStart)}
-		values := [3]string{w.competitorAIText(w.CompetitorAI), w.competitorsText(), w.startDelayText()}
+		labels := [5]string{"Company AI:", i18n.Label(i18n.MaxCompetingCompanies), i18n.Label(i18n.DelayBeforeCompetingCompaniesStart),
+			optLoadedLabel, optGameAIsLabel}
+		values := [5]string{w.competitorAIText(w.CompetitorAI), w.competitorsText(), w.startDelayText(),
+			optLoadedText(w.TakeOverLoaded), w.gameAIsText()}
 		for i, y := range optCompRows {
+			if i == 4 && w.TitleMode { // no game open: disabled, colour.inset()
+				inset(labels[i], w.X+10, w.Y+y)
+				inset(values[i], w.X+250+1, w.Y+y+1)
+				inset(arrow, w.X+250+156-12+(11-1)/2-aw/2, w.Y+y+1)
+				continue
+			}
 			DrawTextBold(screen, labels[i], w.X+10, w.Y+y, text)
 			DrawTextBold(screen, values[i], w.X+250+1, w.Y+y+1, black)
-			if i == 0 {
+			if i == 0 || i >= 3 {
 				DrawTextBold(screen, arrow, w.X+250+156-12+(11-1)/2-aw/2, w.Y+y+1, black)
 				continue
 			}
@@ -1101,6 +1132,81 @@ func optStepper(rt *gfx8.RenderTarget, x, y, w int, sec []uint8) {
 const optCompGroup = "Competing companies"
 
 const optScenarioValue = "Scenario's"
+
+// The loaded-games rows' texts.
+const (
+	optLoadedLabel  = "Loaded OpenLoco AIs:"
+	optGameAIsLabel = "This game's OpenLoco AIs:"
+)
+
+var optGameAIsChoices = [3]string{"As the setting", "Keep OpenLoco's", "Take over now"}
+
+func optLoadedText(takeOver bool) string {
+	if takeOver {
+		return "Take over"
+	}
+	return "Keep OpenLoco's"
+}
+
+func (w *OptionsWindow) gameAIsText() string {
+	if w.GameKeepAIs {
+		return optGameAIsChoices[GameAIsKeep]
+	}
+	return optGameAIsChoices[GameAIsAsSetting]
+}
+
+// loadedClick is the loaded-games rows' dropdowns: the setting (keep / take
+// over, told by OnCompetitors) and, with a game open, its own choice (take
+// over now only while it has OpenLoco AI companies and there is an AI).
+func (w *OptionsWindow) loadedClick(px, py int) bool {
+	if dropdownPress(&w.WinBase, [4]int{250, optCompRows[3], 156, 12}, px, py) {
+		if w.OpenDropdown == nil {
+			return true
+		}
+		items := []DropdownItem{{Text: optLoadedText(false), Selected: !w.TakeOverLoaded, MoveX10: true},
+			{Text: optLoadedText(true), Selected: w.TakeOverLoaded, MoveX10: true}}
+		d := NewDropdownShow(w.X+250, w.Y+optCompRows[3], 156-4, 11, w.Colour, items, w.screenW(), w.screenH())
+		d.OnSelect = func(i int) {
+			if (i == 0 || i == 1) && (i == 1) != w.TakeOverLoaded {
+				w.TakeOverLoaded = i == 1
+				if w.OnCompetitors != nil {
+					w.OnCompetitors()
+				}
+			}
+		}
+		w.OpenDropdown(d)
+		return true
+	}
+	if w.TitleMode || !dropdownPress(&w.WinBase, [4]int{250, optCompRows[4], 156, 12}, px, py) {
+		return false
+	}
+	if w.OpenDropdown == nil {
+		return true
+	}
+	items := make([]DropdownItem, len(optGameAIsChoices))
+	for i, t := range optGameAIsChoices {
+		items[i] = DropdownItem{Text: t, MoveX10: true}
+	}
+	items[GameAIsAsSetting].Selected, items[GameAIsKeep].Selected = !w.GameKeepAIs, w.GameKeepAIs
+	items[GameAIsTakeOver].Disabled = w.GameOpenLocoAIs == 0 || w.CompetitorAI == ""
+	d := NewDropdownShow(w.X+250, w.Y+optCompRows[4], 156-4, 11, w.Colour, items, w.screenW(), w.screenH())
+	d.OnSelect = func(i int) {
+		if i < 0 || i >= len(items) || items[i].Disabled {
+			return
+		}
+		switch i {
+		case GameAIsAsSetting, GameAIsKeep:
+			w.GameKeepAIs = i == GameAIsKeep
+		case GameAIsTakeOver:
+			w.GameKeepAIs = false
+		}
+		if w.OnGameAIs != nil {
+			w.OnGameAIs(i)
+		}
+	}
+	w.OpenDropdown(d)
+	return true
+}
 
 func (w *OptionsWindow) competitorAIText(name string) string {
 	if name == "" {

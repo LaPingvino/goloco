@@ -38,7 +38,7 @@ func main() {
 	rngTrace := flag.Int("rngtrace", 0, "print each main-rng (gPrng1) draw of this tick of the run (1-based) with its callers, as scripts/olref/rngtrace.patch does in OpenLoco")
 	aiName := flag.String("ai", "", "start AI companies running this goloco AI ("+strings.Join(sim.AINames(), ", ")+") before playing; their decision logs go to stderr at the end")
 	aiCount := flag.Int("ais", 1, "with -ai: how many AI companies to start at once (0: none)")
-	takeover := flag.Int("takeover", -1, "with -ai: first take over this loaded OpenLoco AI company (its plans removed, thoughts cleared: sim.TakeOverCompanyAI) to run the AI")
+	takeover := flag.Int("takeover", -1, "with -ai: first take over this loaded OpenLoco AI company (its plans removed, thoughts cleared: sim.TakeOverCompanyAI) to run the AI; -2: every one (sim.TakeOverOpenLocoAIs, the loaded-games setting's takeover)")
 	produce := flag.Bool("competitors", false, "with -ai: also let produceCompanies start competitors running it on schedule, as a game with the AI chosen in the options (draws the game's rng: not for simcmp)")
 	flag.Parse()
 	if flag.NArg() != 2 {
@@ -89,6 +89,9 @@ func main() {
 	}
 	if *produce && *aiName != "" {
 		s.Competitors = sim.Competitors{AI: *aiName}
+	}
+	if *takeover == -2 && *aiName != "" {
+		log.Printf("gosave: companies %v taken over", s.TakeOverOpenLocoAIs(*aiName, sim.AIOptions{}, om))
 	}
 	if *takeover >= 0 && *aiName != "" {
 		if err := s.TakeOverCompanyAI(*takeover, *aiName, sim.AIOptions{}, om); err != nil {

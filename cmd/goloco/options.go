@@ -151,14 +151,36 @@ func (g *Game) openOptionsWindow() {
 	// The competitors (goloco's group, companyai.go): kept in goloco.yml.
 	ai := loadAISettings()
 	w.CompetitorAIs, w.CompetitorAI, w.Competitors, w.StartDelay = sim.AINames(), ai.AI, ai.Competitors, ai.StartDelay
+	w.TakeOverLoaded = ai.TakeOverLoaded
+	if !g.inTitleScreen {
+		w.GameKeepAIs, w.GameOpenLocoAIs = g.w.Map.KeepOpenLocoAI, len(g.w.Map.OpenLocoAICompanies())
+	}
 	w.OnCompetitors = func() {
-		s := aiSettings{AI: w.CompetitorAI, Competitors: w.Competitors, StartDelay: w.StartDelay}
+		s := aiSettings{AI: w.CompetitorAI, Competitors: w.Competitors, StartDelay: w.StartDelay, TakeOverLoaded: w.TakeOverLoaded}
 		if err := s.save(); err != nil {
 			log.Printf("[Options] saving the competitors: %v", err)
 		}
 		if !g.inTitleScreen {
-			s.applyGame(&g.w.Map) // the AI at once; the count and delay wait for a new game
+			// the AI at once; the count and delay wait for a new game, the
+			// loaded-games setting for the next load (a takeover can't be undone)
+			s.applyGame(&g.w.Map)
 		}
+	}
+	// The open game's OpenLoco AI companies: its own "keep" (saved with it),
+	// or taken over now by the competitors' AI.
+	w.OnGameAIs = func(choice int) {
+		if g.inTitleScreen {
+			return
+		}
+		m := &g.w.Map
+		switch choice {
+		case ui.GameAIsAsSetting, ui.GameAIsKeep:
+			m.KeepOpenLocoAI = choice == ui.GameAIsKeep
+		case ui.GameAIsTakeOver:
+			m.KeepOpenLocoAI = false
+			takeOverOpenLocoAIs(m, m.Competitors.AI, g.r.ObjMgr)
+		}
+		w.GameKeepAIs, w.GameOpenLocoAIs = m.KeepOpenLocoAI, len(m.OpenLocoAICompanies())
 	}
 	w.OnAutosaveFrequency = func(v int) { setConfigValue("autosave_frequency", strconv.Itoa(v)) }
 	w.OnAutosaveAmount = func(v int) { setConfigValue("autosave_amount", strconv.Itoa(v)) }

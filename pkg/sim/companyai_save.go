@@ -23,13 +23,19 @@ import (
 // each), the dry runs made (u64), the AI's own state (u32 length, the bytes:
 // CompanyAI.Save); from version 2 the events waiting for its next think
 // (u8 count; each the message type (u8), the three subjects (u16) and the
-// day (u32)). Not kept: the decision log, which starts empty after a load.
-// Version 1 chunks still load (no events waiting).
+// day (u32)); from version 3, after the companies, the game's switches (u8:
+// bit 0 KeepOpenLocoAI, the game's override of the loaded-games setting).
+// Not kept: the decision log, which starts empty after a load. Version 1 and
+// 2 chunks still load (no events waiting, no switches).
 
-const aiChunkVersion = 2
+const aiChunkVersion = 3
 
-// EncodeAIChunk is the chunk for the companies with a goloco AI, nil when
-// there are none (the save is then exactly what it is without AIs).
+// aiChunkKeepOpenLocoAI is the game switches' bit 0: Map.KeepOpenLocoAI.
+const aiChunkKeepOpenLocoAI = 1 << 0
+
+// EncodeAIChunk is the chunk for the companies with a goloco AI and the
+// game's switches, nil when there are neither (the save is then exactly what
+// it is without AIs).
 func (m *Map) EncodeAIChunk() []byte {
 	var ids []int
 	for id, st := range m.companyAIs {
@@ -37,7 +43,7 @@ func (m *Map) EncodeAIChunk() []byte {
 			ids = append(ids, id)
 		}
 	}
-	if len(ids) == 0 {
+	if len(ids) == 0 && !m.KeepOpenLocoAI {
 		return nil
 	}
 	var b bytes.Buffer
@@ -68,6 +74,11 @@ func (m *Map) EncodeAIChunk() []byte {
 			w(e.Day)
 		}
 	}
+	var game uint8
+	if m.KeepOpenLocoAI {
+		game |= aiChunkKeepOpenLocoAI
+	}
+	w(game)
 	return b.Bytes()
 }
 
@@ -87,7 +98,7 @@ func (m *Map) DecodeAIChunk(data []byte) error {
 	if _, err := r.Read(magic); err != nil || string(magic) != scenario.GolocoAIMagic {
 		return fmt.Errorf("not a goloco AI chunk")
 	}
-	if err := rd(&version); err != nil || (version != 1 && version != aiChunkVersion) {
+	if err := rd(&version); err != nil || version < 1 || version > aiChunkVersion {
 		return fmt.Errorf("AI chunk version %d unknown", version)
 	}
 	if err := rd(&n); err != nil {
@@ -152,6 +163,13 @@ func (m *Map) DecodeAIChunk(data []byte) error {
 		}
 		m.companyAIs[id] = &companyAI{ai: ai, name: string(name), opts: AIOptions{AutoBorrow: flags&1 != 0},
 			rng: *core.NewPrngSeed(s0, s1), queries: queries, events: events}
+	}
+	if version >= 3 {
+		var game uint8
+		if err := rd(&game); err != nil {
+			return err
+		}
+		m.KeepOpenLocoAI = game&aiChunkKeepOpenLocoAI != 0
 	}
 	return nil
 }

@@ -94,6 +94,9 @@ func (g *Game) loadScenario(filePath string) error {
 	}
 	gameW.Map.AutosaveCheck = g.autosaveCheck
 	loadAISettings().applyGame(&gameW.Map) // the competitors' AI (companyai.go)
+	if !strings.EqualFold(filepath.Ext(filePath), ".sc5") {
+		loadAISettings().applyLoadedGame(&gameW.Map, g.r.ObjMgr) // its OpenLoco AI companies kept or taken over (companyai.go)
+	}
 	g.packedObjects = sc.PackedObjectsRaw
 	if strings.EqualFold(filepath.Ext(filePath), ".sc5") {
 		// Scenario::loadAndStart / start: the file's path, the options'

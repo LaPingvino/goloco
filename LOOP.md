@@ -1617,7 +1617,9 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   without g1.DAT)? And for the g1 gap: (a) draw open replacements for the ~85 g1 ids goloco uses, or (b)
   goloco-only UI art with TTF fonts in the public build?
 
-- (2026-11-27, G10) A loaded game's OpenLoco AI companies: should goloco's chosen AI (Options → Competing
+- (ANSWERED 2026-11-27, Joop: "make it configurable" — goloco.yml companyAI.loadedGames keep (default) /
+  takeover, in Options → Miscellaneous → Competing companies, plus a per-game keep / take over now; see the log)
+  (2026-11-27, G10) A loaded game's OpenLoco AI companies: should goloco's chosen AI (Options → Competing
   companies) take them over on load (TakeOverCompanyAI: their planned track and stations removed, thoughts
   cleared — they then run buslink), or leave them standing still as now (they keep earning with what they built)?
   Taking over changes every loaded save's competitors, so it waits for your word; gosave -takeover ID does it by hand.
@@ -2571,3 +2573,13 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   never fired. Checks: AI off, gosave title 20000 ticks byte-identical to main; a title save with company 12 taken
   over by buslink (4000 ticks) loads and plays on in OpenLoco 26.09 and reloads in goloco. Not wired into load:
   question under "Questions for Joop". Gate: see the commit.
+- 2026-11-27 (G10 configurable, Joop: "make it configurable") — goloco.yml companyAI.loadedGames: keep (default,
+  faithful) / takeover (a loaded .sv5's OpenLoco AI companies go to the competitors' AI on load:
+  Map.TakeOverOpenLocoAIs over Map.OpenLocoAICompanies — non-empty, non-player, no goloco AI —, each refusal
+  logged and left; nothing with AI "none" or companyAIDisabled; the orphan road stops stay). Options → Misc →
+  Competing companies grows two dropdown rows: "Loaded OpenLoco AIs" (the setting: from the next load on, never at
+  once — a takeover can't be undone) and "This game's OpenLoco AIs" (as the setting / keep / take over now;
+  disabled on the title screen). A game's keep is Map.KeepOpenLocoAI, saved in the AI chunk's new version 3 game
+  switches byte (no chunk still when there are neither AIs nor the switch; v1/v2 load). gosave -takeover -2: every
+  one. Tests: TestTakeOverOpenLocoAIsTitle, TestAIChunkKeepOpenLocoAI, TestAISettings, TestOptionsLoadedAIs.
+  Focus navigation (FocusTargets) isn't built yet: the rows are ordinary dropdowns, as the others.

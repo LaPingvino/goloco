@@ -38,6 +38,34 @@ func (m *Map) TakeOverCompanyAI(id int, name string, opts AIOptions, om *objects
 	return m.SetCompanyAI(id, name, opts)
 }
 
+// OpenLocoAICompanies are the loaded game's companies still in OpenLoco's
+// hands: every company that isn't empty, a player's or run by a goloco AI.
+func (m *Map) OpenLocoAICompanies() []int {
+	var ids []int
+	for id := range min(len(m.Companies), companyMaxCount) {
+		if !m.CompanyEmpty(id) && !m.IsPlayerCompany(id) && m.companyAIs[id] == nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// TakeOverOpenLocoAIs gives every OpenLocoAICompanies company to the AI name
+// (TakeOverCompanyAI each); a company it refuses is logged and left as it
+// was. Returns the companies taken over. The orphan AI-allocated road stops
+// no thought names stay on the map (as upstream's undo leaves them).
+func (m *Map) TakeOverOpenLocoAIs(name string, opts AIOptions, om *objects.ObjectManager) []int {
+	var taken []int
+	for _, id := range m.OpenLocoAICompanies() {
+		if err := m.TakeOverCompanyAI(id, name, opts, om); err != nil {
+			log.Printf("[AI] company %d not taken over: %v", id, err)
+			continue
+		}
+		taken = append(taken, id)
+	}
+	return taken
+}
+
 // TakeOverCompany clears company id's OpenLoco AI plans: its AI-allocated
 // track and road (removeAiAllocatedCompanyTracksRoadsOnTile on every tile,
 // the whole map in one go — upstream does 1500 tiles a think), each thought's
