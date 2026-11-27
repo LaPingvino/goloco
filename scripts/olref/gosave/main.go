@@ -4,7 +4,7 @@
 // (pkg/scenario S5File, sim.State.ExportScenario) — for loading goloco's
 // saves in the real OpenLoco (scripts/olref) and in goloco.
 //
-//	go run ./scripts/olref/gosave [-ticks N] [-seed S] [-ai NAME [-ais N] [-competitors]] ../locomotion/Data/title.dat $SCRATCH/title-goloco.SV5
+//	go run ./scripts/olref/gosave [-ticks N] [-seed S] [-ai NAME [-ais N] [-takeover ID] [-competitors]] ../locomotion/Data/title.dat $SCRATCH/title-goloco.SV5
 //
 // No preview image (the save details' 250×200 picture is blank: there is no
 // renderer here). The save is game
@@ -38,6 +38,7 @@ func main() {
 	rngTrace := flag.Int("rngtrace", 0, "print each main-rng (gPrng1) draw of this tick of the run (1-based) with its callers, as scripts/olref/rngtrace.patch does in OpenLoco")
 	aiName := flag.String("ai", "", "start AI companies running this goloco AI ("+strings.Join(sim.AINames(), ", ")+") before playing; their decision logs go to stderr at the end")
 	aiCount := flag.Int("ais", 1, "with -ai: how many AI companies to start at once (0: none)")
+	takeover := flag.Int("takeover", -1, "with -ai: first take over this loaded OpenLoco AI company (its plans removed, thoughts cleared: sim.TakeOverCompanyAI) to run the AI")
 	produce := flag.Bool("competitors", false, "with -ai: also let produceCompanies start competitors running it on schedule, as a game with the AI chosen in the options (draws the game's rng: not for simcmp)")
 	flag.Parse()
 	if flag.NArg() != 2 {
@@ -88,6 +89,11 @@ func main() {
 	}
 	if *produce && *aiName != "" {
 		s.Competitors = sim.Competitors{AI: *aiName}
+	}
+	if *takeover >= 0 && *aiName != "" {
+		if err := s.TakeOverCompanyAI(*takeover, *aiName, sim.AIOptions{}, om); err != nil {
+			log.Fatalf("gosave: %v", err)
+		}
 	}
 	for i := 0; *aiName != "" && i < *aiCount; i++ {
 		if s.CreateAICompany(*aiName, sim.AIOptions{}, om) == 0xFF {

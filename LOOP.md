@@ -1617,6 +1617,11 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   without g1.DAT)? And for the g1 gap: (a) draw open replacements for the ~85 g1 ids goloco uses, or (b)
   goloco-only UI art with TTF fonts in the public build?
 
+- (2026-11-27, G10) A loaded game's OpenLoco AI companies: should goloco's chosen AI (Options → Competing
+  companies) take them over on load (TakeOverCompanyAI: their planned track and stations removed, thoughts
+  cleared — they then run buslink), or leave them standing still as now (they keep earning with what they built)?
+  Taking over changes every loaded save's competitors, so it waits for your word; gosave -takeover ID does it by hand.
+
 ## Blocked
 - (resolved 2026-11-05 ~18:45) the silent exit 1: not silent — the "audio: audio error: oto: ALSA error …" line
   IS log.Fatal's output: this VPS has no sound device, ebiten's RunGame returns the audio error, goloco quits.
@@ -2551,3 +2556,18 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   427 track + 20 station elements), so a takeover must first remove them (removeCompanyTracksRoadsOnTile
   0x00488563's pattern, aiAllocated only, apply|noPayment|aiAllocated; the stations as removeAiAllocatedStations
   0x00483602), then null the thoughts (clearThought), think state 0, every head's 0x60 = 0xFF.
+- 2026-11-27 (item 4, G10) — Taking over a loaded OpenLoco AI company: Map.TakeOverCompanyAI / TakeOverCompany
+  (pkg/sim/companyai_takeover.go), upstream's own undo (aiThinkUndoPartialAction's sub-states 2–4) for every thought
+  at once: removeAiAllocatedCompanyTracksRoadsOnTile 0x00486224 over the whole map (skips station track and roads
+  under an AI-allocated stop), then each thought's removeAiAllocatedStations 0x00483602 (airport / port / road stop
+  0x0047B107 / train station 0x004A7CD2, its "real track" branch counted and logged), clearThought, think state 0,
+  heads' aiThoughtId (Raw 0x60) 0xFF. Thoughts' numStations / stationLength / stations / trackObjId now parsed
+  (pkg/scenario), the station flags written back; kThoughtTypeFlags generated (gen_aicompany.py), replacing the
+  hand table in companydaily.go. gosave -takeover ID. TestTakeOverCompanyTitle: companies 3, 6, 11, 12, 13 lose all
+  their planned pieces (12: 427 track + 20 stations; 13: 117 track + 19 signals), nothing real or of another company
+  touched, cash unchanged. FOUND: companies 2 and 4 keep 1 and 2 AI-allocated road stops that no thought names
+  (orphans in the save; upstream's undo leaves them too — only removeAllCompanyAssetsOnMapByChunk at the company's
+  end would take them; they count for companyOwnsAssets, so such a company can't EndCompany). The real-track branch
+  never fired. Checks: AI off, gosave title 20000 ticks byte-identical to main; a title save with company 12 taken
+  over by buslink (4000 ticks) loads and plays on in OpenLoco 26.09 and reloads in goloco. Not wired into load:
+  question under "Questions for Joop". Gate: see the commit.

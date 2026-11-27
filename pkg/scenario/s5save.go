@@ -325,6 +325,10 @@ func (sc *Scenario) putCompanies(gs []byte) {
 			put32(t, 0x7C, uint32(c.ThoughtRunningCost[k]))
 			put32(t, 0x84, uint32(c.ThoughtPrevIncome[k]))
 			t[0x88] = c.ThoughtAge[k]
+			for i, st := range c.ThoughtStations[k] { // the flags the takeover clears
+				s := t[0x06+0x0E*i:]
+				s[0x2], s[0xB], s[0xC] = st.Flags, st.ConnectionFlagsA, st.ConnectionFlagsB
+			}
 		}
 	}
 }

@@ -524,7 +524,19 @@ AI competitors now appear in a real game.
   full-load waits, landing refusals, cargo acceptance, bankruptcy warnings, industry closures and promotions
   arrive this way. Breakdowns don't: OpenLoco posts no news for one, and goloco never sets
   BreakdownFlags::brokenDown yet. When breakdowns are ported, a breakdown becomes an event of its own.
-- Still open: G10, the log in the save, breakdown events (after breakdowns), difficulty and cheat switches.
+- Still open: G10 (done 2026-11-27, below), the log in the save, breakdown events (after breakdowns), difficulty and cheat switches.
+
+### Status after G10 (2026-11-27)
+
+- **G10 done (callable, not automatic).** `Map.TakeOverCompanyAI(id, name, opts, om)` clears a loaded OpenLoco AI
+  company (option (a) of §4 question 1) and then runs `SetCompanyAI`, which still refuses a company with live
+  thoughts. The clearing is upstream's own undo (aiThinkUndoPartialAction, sub-states 2–4) for every thought:
+  the AI-allocated track and road over the whole map (0x00486224), each thought's AI-allocated stations
+  (removeAiAllocatedStations 0x00483602), the thoughts nulled, aiThinkState unk0, the heads' aiThoughtId 0xFF. The
+  company keeps its real network, vehicles and cash. AI-allocated road stops that no thought names (the title
+  save's companies 2 and 4 have three) stay, as upstream leaves them. Nothing calls it on load yet: whether a
+  loaded game's competitors get goloco's AI is Joop's call. `gosave -ai NAME -takeover ID` does it headless; such a
+  save loads and plays on in OpenLoco 26.09.
 
 ## 8. Notes and surprises
 

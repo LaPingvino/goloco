@@ -1580,6 +1580,24 @@ type CompanyEconomy struct {
 	ThoughtRunningCost [60]int32
 	ThoughtPrevIncome  [60]int32
 	ThoughtAge         [60]uint8
+	// and the takeover's (AI-INTERFACE.md G10; S5Company.h AiThought):
+	// numStations (0x03), stationLength (0x04), the stations (0x06, 0xE
+	// bytes each) and trackObjId (0x3E: bit 7 a road object).
+	ThoughtNumStations   [60]uint8
+	ThoughtStationLength [60]uint8
+	ThoughtStations      [60][4]AiThoughtStation
+	ThoughtTrackObjID    [60]uint8
+}
+
+// AiThoughtStation is the part of AiThought::Station (S5Company.h) goloco
+// reads: flags (0x2: aiAllocated bit 0, operational bit 1), rotation
+// (0x3), pos (0x4, world units), baseZ (0x8, SmallZ) and the connection
+// flags A / B (0xB, 0xC).
+type AiThoughtStation struct {
+	Flags, Rotation                    uint8
+	X, Y                               int16
+	BaseZ                              uint8
+	ConnectionFlagsA, ConnectionFlagsB uint8
 }
 
 // parseCompanyEconomy reads every company slot's CompanyEconomy.
@@ -1651,6 +1669,13 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 			}
 			c.ThoughtRunningCost[k] = int32(binary.LittleEndian.Uint32(t[0x7C:]))
 			c.ThoughtPrevIncome[k] = int32(binary.LittleEndian.Uint32(t[0x84:]))
+			c.ThoughtNumStations[k], c.ThoughtStationLength[k], c.ThoughtTrackObjID[k] = t[0x03], t[0x04], t[0x3E]
+			for i := range 4 {
+				st := t[0x06+0x0E*i:]
+				c.ThoughtStations[k][i] = AiThoughtStation{Flags: st[0x2], Rotation: st[0x3],
+					X: int16(binary.LittleEndian.Uint16(st[0x4:])), Y: int16(binary.LittleEndian.Uint16(st[0x6:])),
+					BaseZ: st[0x8], ConnectionFlagsA: st[0xB], ConnectionFlagsB: st[0xC]}
+			}
 		}
 	}
 	return out

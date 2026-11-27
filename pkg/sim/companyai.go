@@ -36,8 +36,9 @@ import (
 // companyai_end.go) and hears the news addressed to its company as events
 // (AIEventHandler, G12: companyai_events.go).
 //
-// Still open (AI-INTERFACE.md §7): taking over a loaded OpenLoco AI company
-// (G10: refused here, so such companies keep standing still), saving the
+// A loaded OpenLoco AI company is taken over with TakeOverCompanyAI (G10:
+// companyai_takeover.go), which drops its OpenLoco plans first; nothing
+// does so on its own yet. Still open (AI-INTERFACE.md §7): saving the
 // decision log (G11: the log starts empty after a load).
 
 // CompanyAI is one AI, run for one company, chosen when the company is
@@ -132,8 +133,9 @@ func (m *Map) aiSeed(id int) (uint32, uint32) {
 }
 
 // SetCompanyAI runs the registered AI name for company id from now on. Only
-// a non-player company created in this game may get one (AI-INTERFACE.md
-// G10: an OpenLoco AI company's thoughts would dangle).
+// a non-player company without OpenLoco AI thoughts may get one: one
+// created in this game, or one TakeOverCompanyAI has cleared
+// (AI-INTERFACE.md G10: the thoughts would dangle).
 func (m *Map) SetCompanyAI(id int, name string, opts AIOptions) error {
 	newAI, ok := aiRegistry[name]
 	if !ok {
@@ -144,7 +146,7 @@ func (m *Map) SetCompanyAI(id int, name string, opts AIOptions) error {
 	}
 	for k := range m.Companies[id].ThoughtType {
 		if m.Companies[id].ThoughtType[k] != 0xFF {
-			return fmt.Errorf("company %d has OpenLoco AI thoughts (taking over is G10)", id)
+			return fmt.Errorf("company %d has OpenLoco AI thoughts (TakeOverCompanyAI clears them)", id)
 		}
 	}
 	s0, s1 := m.aiSeed(id)

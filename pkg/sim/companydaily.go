@@ -40,10 +40,12 @@ func (m *Map) companyEmotionEvent(id int, emotion int) {
 	m.Companies[id].ActiveEmotions[emotion] = kEmotionDurations[emotion]
 }
 
-// thoughtDestinationAIsIndustry is kThoughtTypeFlags' destinationAIsIndustry
-// per AI thought type (CompanyAi.cpp 0x004FE720): destinationA is an
-// industry, else a town.
-var thoughtDestinationAIsIndustry = [20]bool{7: true, 8: true, 9: true, 10: true, 11: true, 12: true, 14: true, 16: true, 17: true, 18: true, 19: true}
+// thoughtTypeHasFlags is CompanyAi.cpp's: the thought type's
+// kThoughtTypeFlags (aicompany_gen.go) has one of flags (none for a type out
+// of the table, as AiThoughtType::null).
+func thoughtTypeHasFlags(typ uint8, flags uint32) bool {
+	return int(typ) < len(thoughtTypeFlags) && thoughtTypeFlags[typ]&flags != 0
+}
 
 func (m *Map) companyUpdateDaily(id int, om *objects.ObjectManager) {
 	c := &m.Companies[id]
@@ -118,7 +120,7 @@ func (m *Map) setAiObservation(id int) {
 			return
 		}
 		var x, y int16
-		if int(c.ThoughtType[t]) < len(thoughtDestinationAIsIndustry) && thoughtDestinationAIsIndustry[c.ThoughtType[t]] {
+		if thoughtTypeHasFlags(c.ThoughtType[t], thoughtTypeFlagDestinationAIsIndustry) {
 			if ind := m.industryByID(c.ThoughtDestinationA[t]); ind != nil {
 				x, y = ind.X, ind.Y
 			}
