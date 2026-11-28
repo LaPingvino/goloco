@@ -1167,6 +1167,9 @@ func (w *VehicleWindow) Tooltip() string {
 	return carTooltip(w.Cars[w.Hover])
 }
 
+// vehicleCarRowWidget + a row is a car row's tooltip widget (TooltipWidgetAt).
+const vehicleCarRowWidget = 1000
+
 // vehicleTabTooltips are makeCommonWidgets' tab tooltips (Vehicle.cpp 135–139),
 // by widget index from vwTabMain.
 var vehicleTabTooltips = [5]int{i18n.TooltipVehicleTabMain, i18n.TooltipVehicleTabDetails, i18n.TooltipVehicleTabCargo,
@@ -1180,8 +1183,23 @@ var vehicleTabTooltips = [5]int{i18n.TooltipVehicleTabMain, i18n.TooltipVehicleT
 // pick-up, sell, repaint and colours, Route's list and order buttons. Hidden
 // widgets have none.
 func (w *VehicleWindow) WidgetTooltip(px, py int) string {
+	_, tip := w.widgetTooltip(px, py)
+	return tip
+}
+
+// TooltipWidgetAt is the widget under a screen point for the tooltip's owner
+// (MouseInput's widgetIndex): a car row of the Details / Cargo list counts
+// as its own (scrollMouseOver's var_85C: another car closes and resets the
+// tooltip), else the widget's index in its tab's list, −1 for none.
+func (w *VehicleWindow) TooltipWidgetAt(px, py int) int {
+	i, _ := w.widgetTooltip(px, py)
+	return i
+}
+
+// widgetTooltip is WidgetTooltip with the widget it comes from.
+func (w *VehicleWindow) widgetTooltip(px, py int) (int, string) {
 	if t := w.Tooltip(); t != "" {
-		return t
+		return vehicleCarRowWidget + w.Hover, t
 	}
 	// every tab's tooltip event: args.skip(2), push getVehicleType — the
 	// {POP16}{STRINGID} ("Show view of train", "Stop/Start train").
@@ -1202,11 +1220,11 @@ func (w *VehicleWindow) WidgetTooltip(px, py int) string {
 		return !b.Hidden && rx >= b.L && rx <= b.R && ry >= b.T && ry <= b.B
 	}
 	if at(vwClose) {
-		return str(i18n.TooltipCloseWindow)
+		return vwClose, str(i18n.TooltipCloseWindow)
 	}
 	for i, tip := range vehicleTabTooltips {
 		if at(vwTabMain + i) {
-			return str(tip)
+			return vwTabMain + i, str(tip)
 		}
 	}
 	var tips map[int]int
@@ -1224,10 +1242,10 @@ func (w *VehicleWindow) WidgetTooltip(px, py int) string {
 	}
 	for i, tip := range tips {
 		if tip != 0 && at(i) {
-			return str(tip)
+			return i, str(tip)
 		}
 	}
-	return ""
+	return -1, ""
 }
 
 // buttonFrame is ImageButton::draw's frame: under the mouse (draw_3) a

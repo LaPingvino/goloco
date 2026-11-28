@@ -98,3 +98,10 @@ func (w *VehicleWindow) ViewportWidgetAt(x, y int) bool {
 	}
 	return found == vmViewport
 }
+
+// TooltipWidgets is a window that says which widget lies under a screen
+// point (findWidgetAt), for the tooltip's owner (MouseInput.cpp
+// stateNormalHover: ToolTip's windowType / widgetIndex): −1 for none.
+type TooltipWidgets interface {
+	TooltipWidgetAt(x, y int) int
+}

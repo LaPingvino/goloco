@@ -7,6 +7,9 @@
 # Jinty's row paints that car (pink 29 / grey 2 → 6 / 2), the last wagon
 # still pink; shift + click on the train on the map paints all of it; Escape
 # drops the tool; taken again, opening the Railway Track window drops it.
+# The brush's tooltip doesn't come back while the mouse rests on it after
+# the clicks (MouseInput.cpp: the pressed widget is the tooltip's owner);
+# the swatch's opens after 2 s.
 # Checked side by side with OpenLoco on this game's save
 # (window and map equal but the animated tab icon).
 wait 20
@@ -108,9 +111,12 @@ expect painttool == 0
 click 252 527
 wait 2
 expect painttool == 1
-expect carcolour == 7426
+wait 3
+expect tooltip == 0
 move 234 547
-wait 1
+wait 3
+expect tooltip == 1
+expect carcolour == 7426
 click 234 547
 wait 2
 move 332 480

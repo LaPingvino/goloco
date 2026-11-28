@@ -48,7 +48,7 @@ import (
 //	                    delivered, rotation or townwindows (the controlling company's cash, station
 //	                    and vehicle counts, its vehicles on the map, cargo units delivered — this month
 //	                    and the kept history; the view's rotation 0–3; 1 while a Town window is open; maptip: 1
-//	                    while the map tooltip shows, its text logged; conswindow, consbuilding, constab: the
+//	                    while the map tooltip shows, its text logged; tooltip: 1 while a window's tooltip shows; conswindow, consbuilding, constab: the
 //	                    construction window open, building on from a position, its tab; camx, camy: the view's
 //	                    position; townlist, stationlist, vehiclelist, industrylist, companywindow: 1 while one
 //	                    is open; terraformwindow, terraformtab, paused, speed, zoom, constype, conspiece,
@@ -477,6 +477,11 @@ func (g *Game) scriptExpect() {
 		if t := &g.mapTip; t.open && t.tip.Text != "" {
 			got = 1
 			log.Printf("[Script] map tooltip: %q", strings.NewReplacer("\x05", " / ", string(ui.MapTipColour3), "").Replace(t.tip.Text))
+		}
+	case "tooltip": // 1 while a window's tooltip shows (its text logged)
+		if g.tip.showing && g.tip.text != "" {
+			got = 1
+			log.Printf("[Script] tooltip: %q", g.tip.text)
 		}
 	case "saveprompt": // 1 while the Save prompt (PromptSaveWindow) is open
 		if g.savePrompt != nil {

@@ -195,7 +195,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >      DONE 2026-11-27 but the paint button: the Details tab's three lines (ui.VehicleDetailsStats), every tab's own
 >      caption ("Train 1 - Vehicle Details" / Cargo / Finances / Route; Main "Company - Train 1" for a competitor's),
 >      the captions in colourText's windowColour1 (shade 7, was 9) — side by side with OpenLoco equal but the
->      animated tab icon. DONE 2026-11-28: the paint brush and its tool (playthrough v-repaint; tick log).
+>      animated tab icon. DONE 2026-11-28: the paint brush and its tool (playthrough v-repaint; tick log);
+>      the tooltip's owner (no tooltip back after a click). Left: the car-row cursor (N47), the tooltip text 1 px high.
 >    - [x] Refusals were silent: a wagon added to a moving train did nothing but log "can't build vehicle" — now the
 >      error window "Can't add Wagon to Train 1… / Vehicle must be stopped first!" (BuildVehicle.cpp onScrollMouseDown's
 >      setErrorTitle; canBeModified's setErrorText, VehicleHead.cpp 0x004B6D1F; every command's caller passes its Cmd).
@@ -2624,3 +2625,21 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   v-repaint; TestCarBodyItems. PARTIAL: the window's own cursor over a car row (brush / openHand — N47's callCursor).
   Seen, not fixed: the tooltip text 1 px higher than OpenLoco's (SMALLFONT tooltips); a tooltip comes back after a
   click (OpenLoco's dropdownRegisterSelection keeps it away); the Jinty inline difference above.
+- 2026-11-28 (item 3 leftover, a tooltip came back after a click) — the window tooltip's timing is now MouseInput.cpp's
+  own: stateNormalHover's tooltip part (0x004C8098) with ToolTip's owner (windowType / number / widgetIndex). A left
+  press closes the tooltip (stateNormalLeft); the release after a widget press — or the dropdown's selection
+  (dropdownRegisterSelection) — makes the pressed widget the owner, and nothing opens while the mouse stays on it;
+  a viewport / scroll view press ends in State::reset (no owner). An open tooltip stays where it opened (common's
+  cursor) while the mouse moves inside its widget, closes after 8 s and stays closed on that widget; another widget
+  → closeAndReset. tooltipNotShownTicks is uint16 as upstream (it wraps after ~65 s without a tooltip: a moment of
+  quick tooltips then, as in OpenLoco). Why it came back: goloco keyed the tooltip on its text and mouse position,
+  so the dropdown's frames (no tooltip) and the closedAt quick-open reopened it at once. The owner key is window type
+  + number + widget: the Vehicle window says its widget (ui.TooltipWidgets; a car row counts as its own, as
+  scrollMouseOver's var_85C) — the other windows' text stands in for the widget (PARTIAL: two neighbouring widgets
+  with one text count as one). Checked side by side with OpenLoco on q-train-join's save, Details tab (rest on the
+  brush, move 3 px, click, rest, move inside, rest, to the swatch): all five frames equal to OpenLoco's but the
+  known 1 px of the tooltip text (~90 px) and the tab icon; before, the tooltip followed the 3 px move and came back
+  after the click. TestTooltipOwner / TestTooltipCarRows (fake clock); v-repaint checks `expect tooltip` (new).
+  Not ported: scrollMouseOver's setTooltipTimeout(2000) (car-row tooltips at once at rest, not after 2 s), Keyboard.cpp
+  144's closeAndReset, the scrollbar parts' tooltips (kScrollWidgetTooltips), updateDaily's time-tooltip close.
+  Unit 23 ok 0 FAIL, playthroughs 26/26.

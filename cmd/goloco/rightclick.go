@@ -164,7 +164,7 @@ func (g *Game) rightPressed(x, y int) {
 		return
 	}
 	if w := g.wins.FindAt(x, y); w != nil {
-		g.tip.close(gameNow()) // WindowManager::close(WindowType::tooltip)
+		g.tip.close() // WindowManager::close(WindowType::tooltip)
 		g.wins.BringToFront(w)
 		if g.wins.Modal != 0 || g.prompt != nil || g.inTitleScreen {
 			return
