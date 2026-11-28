@@ -105,6 +105,8 @@ func (g *Game) toolCursor() (cursor.Id, bool) {
 		}
 	case g.routeTool && g.vehicleWin(g.routeHead) != nil: // Vehicle.cpp Route tab's toolSet(…, widx::tool, crosshair)
 		return cursor.Crosshair, true
+	case g.paintTool && g.vehicleWin(g.paintHead) != nil: // Details' paintToolBegin: toolSet(…, paintBrush, brush)
+		return cursor.Brush, true
 	}
 	return 0, false
 }

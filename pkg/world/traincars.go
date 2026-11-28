@@ -50,7 +50,7 @@ func (w *World) TrainCars(headID uint16) []TrainCar {
 	}
 	part := func(e *scenario.VehicleEntity) objects.CarPart {
 		return objects.CarPart{SpriteType: e.ObjectSpriteType, Reversed: e.Flags38&(1<<1) != 0, Animation: e.Animation,
-			CargoFrame: e.CargoFrame, Colour: [2]uint8{e.ColourPrimary, e.ColourSecondary}}
+			CargoFrame: e.CargoFrame, Colour: [2]uint8{e.ColourPrimary, e.ColourSecondary}, ID: e.ID}
 	}
 	var cars []TrainCar
 	cur := byID[veh2.NextCarID]

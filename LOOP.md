@@ -195,7 +195,7 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >      DONE 2026-11-27 but the paint button: the Details tab's three lines (ui.VehicleDetailsStats), every tab's own
 >      caption ("Train 1 - Vehicle Details" / Cargo / Finances / Route; Main "Company - Train 1" for a competitor's),
 >      the captions in colourText's windowColour1 (shade 7, was 9) — side by side with OpenLoco equal but the
->      animated tab icon. Left: the paint brush and its tool (VehicleRepaint).
+>      animated tab icon. DONE 2026-11-28: the paint brush and its tool (playthrough v-repaint; tick log).
 >    - [x] Refusals were silent: a wagon added to a moving train did nothing but log "can't build vehicle" — now the
 >      error window "Can't add Wagon to Train 1… / Vehicle must be stopped first!" (BuildVehicle.cpp onScrollMouseDown's
 >      setErrorTitle; canBeModified's setErrorText, VehicleHead.cpp 0x004B6D1F; every command's caller passes its Cmd).
@@ -2606,3 +2606,21 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   Transport's Train 1 from the news, Details tab): the 265×177 window equal pixel for pixel but the animated tab
   icon (237 px); before, the caption alone differed in 428. Left: the paint brush and its tool. Unit 23 ok 0 FAIL,
   playthroughs 25/25.
+- 2026-11-28 (item 3 leftover, the Details tab's paint brush) — Vehicle.cpp Details: the paintBrush ImageButton
+  (activated while its tool is on; recolour in the secondary colour) and its dropdown (Repaint tool / entire vehicle;
+  opened by the press, so a plain click takes or drops the tool as OpenLoco's release does), the two ColourButton
+  swatches (switchTab to Details: the owner's main colours; Dropdown::showColour 0x7FFFFFFF; hovered +1, pressed
+  while their dropdown is up +2), the tool (Game.paintTool / paintHead beside pickupOn and routeTool: toolCancel,
+  vehicleToolHead, toolActive, the brush cursor on the map, terraform's checks, the window's close and tab
+  change, no cars; opening a construction window drops a Vehicle window's tool) — paintToolDown (getItemLeft's part id: LeftItem.Part, nearestVehicleAt too; ctrl ^ entire car,
+  shift entire train), paintToolDownScroll (the car's front bogie; ctrl a body: objects.CarBodyItems =
+  getBodyItemsForVehicle, its G1 right edge against x − carList.left as upstream), paintEntireTrain. The
+  vehicleRepaint command (already in pkg/sim) now invalidates each part's sprite. Tooltips: a string's {NEWLINE}
+  breaks the line (it printed "NEWLINE"), none while a dropdown is up (State::dropdownActive). xt.py: Left/Right
+  Ctrl. Checked side by side with OpenLoco on q-train-join's save (brush, swatches, both colour dropdowns, a row
+  click, shift-click and ctrl-click on the map, ctrl-click on a row — but every car there has one component, so
+  ctrl painted what a plain click does: CarBodyAt's body choice is unit-tested, not compared): window equal but the animated tab icon and
+  the Jinty's inline sprite (rows 85–97, ~140 px, already before any repaint), map equal. New playthrough
+  v-repaint; TestCarBodyItems. PARTIAL: the window's own cursor over a car row (brush / openHand — N47's callCursor).
+  Seen, not fixed: the tooltip text 1 px higher than OpenLoco's (SMALLFONT tooltips); a tooltip comes back after a
+  click (OpenLoco's dropdownRegisterSelection keeps it away); the Jinty inline difference above.

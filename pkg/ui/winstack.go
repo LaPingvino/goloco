@@ -367,6 +367,14 @@ func (s *WindowStack) SetDropdownActive(open bool) {
 	}
 }
 
+// dropdownPending makes the window's widget r (window coordinates) the
+// pressed widget of the dropdown its press opens (dropdownPress's).
+func (b *WinBase) dropdownPending(r [4]int) {
+	if b.stack != nil {
+		b.stack.dropdownBtn = stackDropdownBtn{owner: b.self, r: r, state: dropdownPending}
+	}
+}
+
 // dropdownPressed reports the window's dropdown button r as the pressed
 // widget of the dropdown that is up (Window::draw's pressedWidget).
 func (b *WinBase) dropdownPressed(r [4]int) bool {

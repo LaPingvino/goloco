@@ -50,7 +50,8 @@ OX, OY = (int(v) for v in os.environ.get("OLREF_ORIGIN", "112,84").split(","))
 
 KEYS = {"ESC": "Escape", "ESCAPE": "Escape", "ENTER": "Return", "SPACE": "space",
         "BACKSPACE": "BackSpace", "TAB": "Tab", "UP": "Up", "DOWN": "Down",
-        "LEFT": "Left", "RIGHT": "Right", "LEFT SHIFT": "Shift_L", "RIGHT SHIFT": "Shift_R"}
+        "LEFT": "Left", "RIGHT": "Right", "LEFT SHIFT": "Shift_L", "RIGHT SHIFT": "Shift_R",
+        "LEFT CTRL": "Control_L", "RIGHT CTRL": "Control_R"}
 CHARS = {" ": "space", ".": "period", ",": "comma", "-": "minus", "'": "apostrophe"}
 
 

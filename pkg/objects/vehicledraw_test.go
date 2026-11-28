@@ -236,3 +236,44 @@ func TestCarDrawItemsReversedAnimated(t *testing.T) {
 		}
 	}
 }
+
+// getBodyItemsForVehicle on the reversed two-component car above: the bodies
+// only, never animated (cargo frames kept), at their screen distances, each
+// with the component it came from (walked from the last object component).
+func TestCarBodyItems(t *testing.T) {
+	var v VehicleObject
+	v.Mode = TransportModeRail
+	v.NumCarComponents = 2
+	v.BodySprites[0] = VehicleBodySprite{Flags: BodyFlagHasSprites | BodyFlagHasBrakingLights, HalfLength: 10, FlatYawAccuracy: 3, NumFramesPerRotation: 4, FlatImageID: 100}
+	v.BodySprites[1] = VehicleBodySprite{Flags: BodyFlagHasSprites, HalfLength: 6, FlatYawAccuracy: 3, NumFramesPerRotation: 2, FlatImageID: 300}
+	v.CarComponents[0] = VehicleCarComponent{FrontBogiePosition: 2, BackBogiePosition: 3, BodySpriteIdx: 0}
+	v.CarComponents[1] = VehicleCarComponent{FrontBogiePosition: 4, BackBogiePosition: 5, BodySpriteIdx: 1}
+	comps := []CarComponent{
+		{Body: CarPart{SpriteType: 1, Reversed: true, Animation: 1, ID: 11}},
+		{Body: CarPart{SpriteType: 0, Animation: 2, CargoFrame: 1, ID: 12}},
+		{Body: CarPart{SpriteType: SpriteIndexNull, ID: 13}}, // past the object's components: not walked
+	}
+	got := v.CarBodyItems(8, comps, true)
+	// as TestCarDrawItemsReversedAnimated: 341 at 6, then 4*4+100+0+1 (no animation) = 117 at 22.
+	want := []BodyItem{{340, ScreenDistance(6, 8), 0}, {117, ScreenDistance(22, 8), 1}}
+	if len(got) != len(want) {
+		t.Fatalf("got %+v", got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("body %d: %+v, want %+v", i, got[i], want[i])
+		}
+	}
+	// each body item matches CarDrawItems' body (not animated) at its screen distance
+	items, _ := v.CarDrawItems(8, comps[:2], true, false, false)
+	n := 0
+	for _, it := range items {
+		if !it.IsBody {
+			continue
+		}
+		if n >= len(got) || it.Image != got[n].Image || ScreenDistance(it.Dist, 8) != got[n].Dist {
+			t.Errorf("draw item %+v vs body item %d %+v", it, n, got)
+		}
+		n++
+	}
+}

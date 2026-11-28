@@ -307,9 +307,9 @@ var vehicleRowHeights = [6]int{22, 22, 22, 22, 22, 22}
 
 // VehicleWindow is the Vehicle window on its Details tab (5P.g): the
 // caption (the vehicle's name), the tabs, the car list (drawScroll) and the
-// right bar, the three text lines (Stats); the other tabs are drawn by
-// drawMain / drawCargo / drawFinances / drawRoute. PARTIAL: Details' paint
-// brush and its tool (VehicleRepaint).
+// right bar with the paint brush and, while its tool is on, the two paint
+// colours, the three text lines (Stats); the other tabs are drawn by
+// drawMain / drawCargo / drawFinances / drawRoute.
 type VehicleWindow struct {
 	WinBase
 	TitleColour, Colour uint8
@@ -328,7 +328,17 @@ type VehicleWindow struct {
 	BuildNewImage       int           // Details' buildNew: skin + build_additional_<type> (0: none)
 	// OnBuildNew is Details::onMouseDown(buildNew): the button's screen rect,
 	// for its dropdown (Modify vehicle / Clone vehicle).
-	OnBuildNew     func(x, y, w, h int)
+	OnBuildNew func(x, y, w, h int)
+	// The paint tool (Details' paintBrush and its two ColourButtons):
+	// PaintColours the swatches' colours (getPaintToolColour: primary,
+	// secondary); OnPaintBrush and OnPaintColour (0 primary, 1 secondary)
+	// are onMouseDown with the button's screen rect, for their dropdowns;
+	// OnPaintCar is scrollMouseDown with the tool on: the car's row and the
+	// cursor's x in the scroll view (paintToolDownScroll).
+	PaintColours   [2]uint8
+	OnPaintBrush   func(x, y, w, h int)
+	OnPaintColour  func(which, x, y, w, h int)
+	OnPaintCar     func(row, scrollX int)
 	Tab            int // 0 Main, 1 Details (the other tabs are not ported yet)
 	Main           VehicleMainState
 	StopStartImage int                  // Main: the red / green / yellow flag
@@ -450,6 +460,35 @@ func (w *VehicleWindow) Draw(screen *ebiten.Image) {
 			w.buttonFrame(rt, b, false, sec)
 			if sp, err := gfx8.Decode(&g1.Elements[imgRubbishBin]); err == nil {
 				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, prim, nil)
+			}
+		}
+		// ImageButton paintbrush, activated while the paint tool is on
+		// (prepareDraw); its image recoloured in the widget's colour (drawImage:
+		// no colour set → Gfx::recolour(image, secondary)).
+		if b := lw[vdPaintBrush]; !b.Hidden && imgPaintbrush < len(g1.Elements) {
+			w.buttonFrame(rt, b, w.State.PaintTool, sec)
+			if sp, err := gfx8.Decode(&g1.Elements[imgPaintbrush]); err == nil {
+				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpTransparent|gfx8.OpSrc, sec, nil)
+			}
+		}
+		// ColourButton::draw: colour_swatch_recolourable in its colour; under
+		// the mouse the next image, or the one after while activated — the
+		// pressed widget of the colour dropdown it opened (Window::draw).
+		for i, wi := range [2]int{vdPaintPrimary, vdPaintSecondary} {
+			b := lw[wi]
+			if b.Hidden {
+				continue
+			}
+			img := imgColourSwatchRecolourable
+			if w.mouseX >= b.L && w.mouseX <= b.R && w.mouseY >= b.T && w.mouseY <= b.B {
+				img++
+				if w.dropdownPressed(b.rect()) {
+					img++
+				}
+			}
+			if sp, err := gfx8.Decode(&g1.Elements[img]); err == nil {
+				m, _ := g1.GetPaletteMap(int(w.PaintColours[i]))
+				gfx8.DrawSpriteNoise(rt, sp, b.L, b.T, gfx8.OpFor(sp, m != nil, false), m, nil)
 			}
 		}
 		cx, cy, cw, ch, _ := drawVScrollViewPressed(rt, list.L, list.T, list.R-list.L+1, list.B-list.T+1, gfx8.InsetColour{Map: sec}, len(w.Cars)*rowH, w.Scroll, w.hold.PressedPart())
@@ -820,8 +859,25 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 		w.OnBuildNew(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
 	case press(lw[vdRemove]) && w.OnSell != nil: // Details::onMouseUp remove: VehicleSell(head)
 		w.OnSell()
+	case press(lw[vdPaintBrush]) && w.OnPaintBrush != nil: // onMouseDown paintBrush: the Repaint tool / entire vehicle dropdown
+		b := lw[vdPaintBrush]
+		w.OnPaintBrush(w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
+	case press(lw[vdPaintPrimary]) && w.OnPaintColour != nil: // onMouseDown paintColour*: Dropdown::showColour
+		b := lw[vdPaintPrimary]
+		w.dropdownPending(b.rect())
+		w.OnPaintColour(0, w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
+	case press(lw[vdPaintSecondary]) && w.OnPaintColour != nil:
+		b := lw[vdPaintSecondary]
+		w.dropdownPending(b.rect())
+		w.OnPaintColour(1, w.X+b.L, w.Y+b.T, b.R-b.L+1, b.B-b.T+1)
 	case w.carBar(x, y): // scrollLeftBegin on the car list's bar
 		w.barBegin(y)
+	case in(lw[vdCarList]) && w.State.Own && w.State.PaintTool && w.OnPaintCar != nil: // scrollMouseDown with the paint tool: paintToolDownScroll
+		list := lw[vdCarList]
+		rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
+		if row := w.carRowAt(y-(w.Y+list.T+1)+w.Scroll, rowH); row >= 0 {
+			w.OnPaintCar(row, x-(w.X+list.L+1))
+		}
 	case in(lw[vdCarList]) && w.State.Own && w.OnDropMove != nil: // onScrollMouseDown: the car under it starts a drag
 		list := lw[vdCarList]
 		rowH := vehicleRowHeights[max(0, min(5, w.VehicleType))]
@@ -829,6 +885,32 @@ func (w *VehicleWindow) HandleClick(x, y int) {
 			w.Dragging, w.DragCar, w.DragX, w.DragY = true, row, x, y
 		}
 	}
+}
+
+// CarBodyAt is paintToolDownScroll's control branch: the body of the car on
+// row whose sprite reaches the cursor (getBodyItemsForVehicle at drawYaw 40,
+// the first whose right edge — its distance + the G1 element's xOffset +
+// width — is at or right of x less the car list's left, as upstream
+// subtracts it from the scroll x) — its entity id; false when none does.
+func (w *VehicleWindow) CarBodyAt(row, scrollX int) (uint16, bool) {
+	if row < 0 || row >= len(w.Cars) || w.Cars[row].Object == nil || globalG1Font == nil {
+		return 0, false
+	}
+	c := w.Cars[row]
+	lw, _ := VehicleDetailsLayout(w.W, w.H, w.State)
+	x := scrollX - lw[vdCarList].L
+	g1 := globalG1Font.g1
+	for _, b := range c.Object.CarBodyItems(40, c.Components, c.Reversed) {
+		id := int(c.Object.ImageOffset + b.Image)
+		if id <= 0 || id >= len(g1.Elements) || b.Comp >= len(c.Components) {
+			continue
+		}
+		e := &g1.Elements[id]
+		if x <= int(b.Dist)+int(e.XOffset)+int(e.Width) {
+			return c.Components[b.Comp].Body.ID, true
+		}
+	}
+	return 0, false
 }
 
 // carRowAt is getCarFromScrollView: the first car whose rows reach y (scroll

@@ -31,6 +31,7 @@ func (m *Map) paintComponent(comp CarComponent, a VehicleRepaint) {
 	set := func(i, k int) {
 		if i >= 0 && i < len(m.Entities) {
 			m.Entities[i].ColourPrimary, m.Entities[i].ColourSecondary = a.Colours[k].Primary, a.Colours[k].Secondary
+			m.invalidateSprite(&m.Entities[i])
 		}
 	}
 	if a.Flags&RepaintBody != 0 {
@@ -53,8 +54,8 @@ func (m *Map) paintEntireCar(car Car, a VehicleRepaint) {
 // VehicleRepaint is the vehicleRepaint game command: refused when the
 // vehicle isn't one or its owner isn't compatible; applying, every car of
 // the train (entire train), or the car holding the vehicle (entire car), or
-// just its component is painted. Costs nothing.
-// PARTIAL: invalidateSprite (goloco redraws).
+// just its component is painted, each part's sprite invalidated. Costs
+// nothing.
 func (m *Map) VehicleRepaint(c *Cmd, flags uint8, a VehicleRepaint) (int32, bool) {
 	v := m.entity(a.Vehicle)
 	if v == nil || !checkCompanyCompatibility(c, v.Owner) {

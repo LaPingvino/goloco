@@ -188,6 +188,8 @@ func (g *Game) vehicleToolHead() (uint16, bool) {
 		return g.pickupHead, true
 	case g.routeTool:
 		return g.routeHead, true
+	case g.paintTool:
+		return g.paintHead, true
 	}
 	return 0, false
 }
@@ -211,6 +213,8 @@ func (g *Game) toolCancel() {
 		g.refreshVehicleWindow(head, 1)
 	case g.routeTool:
 		g.routeTool = false
+	case g.paintTool:
+		g.paintToolAbort()
 	case g.industryToolOn():
 		g.industryToolAbort()
 	case g.tf.on:

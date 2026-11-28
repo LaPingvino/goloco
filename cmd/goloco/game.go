@@ -157,6 +157,8 @@ type Game struct {
 	cursor             cursorState   // the mouse cursor (cursor.go)
 	routeTool          bool          // the Route tab's tool (adding stops by clicking the map) is active
 	routeHead          uint16        // the vehicle (window) whose tool that is
+	paintTool          bool          // the Details tab's paint tool (Vehicle.cpp paintToolBegin) is active
+	paintHead          uint16        // the vehicle (window) whose paint tool that is
 	// The ghost's placement (_ghostLandTrackAndDirection, _ghostVehiclePos,
 	// _ghostTrackProgress; ghostProgress -1: none).
 	ghostPlace      sim.VehiclePlacement

@@ -11,6 +11,9 @@ import (
 type LeftItem struct {
 	Kind paint.InteractionItem // ItemEntity, ItemTownLabel, ItemStationLabel, ItemIndustry, ItemHeadquarterBuilding
 	ID   int                   // the head's entity id, the town, station, industry or company
+	// Part is the vehicle part's own entity id (interaction.object: the bogie,
+	// body or veh2 hit or nearest), for an entity.
+	Part int
 }
 
 // interaction is an InteractionArg as getMapCoordinatesFromPos returns it:
@@ -112,7 +115,7 @@ func (w *World) itemLeftAt(vps []Viewport, sx, sy int) (LeftItem, bool) {
 		case paint.ItemEntity:
 			it = LeftItem{Kind: paint.ItemEntity, ID: -1} // an effect: getVehicleArguments fails
 			if e, ok := ps.Item.(*scenario.VehicleEntity); ok {
-				it, found = LeftItem{Kind: paint.ItemEntity, ID: int(e.HeadID)}, true
+				it, found = LeftItem{Kind: paint.ItemEntity, ID: int(e.HeadID), Part: int(e.ID)}, true
 			}
 		case paint.ItemIndustry:
 			if el, ok := ps.Item.(*scenario.IndustryElement); ok && industries { // ghosts paint as noInteraction
@@ -173,7 +176,7 @@ func (w *World) nearestVehicleAt(vp Viewport, sx, sy int) (LeftItem, bool) {
 	if err != nil {
 		return LeftItem{}, false
 	}
-	best, head := uint32(1<<32-1), -1
+	best, head, part := uint32(1<<32-1), -1, -1
 	check := func(i, h int) { // checkAndSetNearestVehicle / vehicleDistanceFromLocation
 		e := &w.Map.Entities[i]
 		if e.SpriteLeft == -0x8000 { // Location::null
@@ -191,7 +194,7 @@ func (w *World) nearestVehicleAt(vp Viewport, sx, sy int) (LeftItem, bool) {
 			dy = -dy
 		}
 		if d := uint32(dx + dy); d < best {
-			best, head = d, h
+			best, head, part = d, h, i
 		}
 	}
 	for _, tr := range trains {
@@ -207,7 +210,7 @@ func (w *World) nearestVehicleAt(vp Viewport, sx, sy int) (LeftItem, bool) {
 	if best > 32 || head < 0 {
 		return LeftItem{}, false
 	}
-	return LeftItem{Kind: paint.ItemEntity, ID: int(w.Map.Entities[head].HeadID)}, true
+	return LeftItem{Kind: paint.ItemEntity, ID: int(w.Map.Entities[head].HeadID), Part: int(w.Map.Entities[part].ID)}, true
 }
 
 // stationOfElement is _track / _road / getStationArguments(interaction) for

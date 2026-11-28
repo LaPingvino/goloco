@@ -41,7 +41,7 @@ type mapTipState struct {
 
 // toolActive is Input::hasFlag(toolActive): some window's tool on the map.
 func (g *Game) toolActive() bool {
-	return g.tf.on || g.industryToolOn() || g.pickupOn || (g.routeTool && g.vehicleWin(g.routeHead) != nil) || g.consToolOn()
+	return g.tf.on || g.industryToolOn() || g.pickupOn || (g.routeTool && g.vehicleWin(g.routeHead) != nil) || (g.paintTool && g.vehicleWin(g.paintHead) != nil) || g.consToolOn()
 }
 
 // updateMapTip runs processMouseOver's map tooltip part and, a tick at a

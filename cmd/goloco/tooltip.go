@@ -72,7 +72,8 @@ func (t *tooltipState) close(now time.Time) {
 // updateTooltip runs the timing each update.
 func (g *Game) updateTooltip() {
 	t, now := &g.tip, gameNow()
-	if g.rightDragging() { // the tooltips' timing runs in State::normal only (stateNormalHover)
+	dropdown := g.dropdown != nil && g.dropdown.Visible || g.colourDropdown != nil && g.colourDropdown.Visible
+	if g.rightDragging() || dropdown { // the tooltips' timing runs in State::normal only (stateNormalHover; not dropdownActive)
 		t.close(now)
 		t.text, t.since = "", now
 		return

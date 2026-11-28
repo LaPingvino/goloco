@@ -211,6 +211,14 @@ func (g *Game) updateRouteTool() {
 		g.routeTool = false
 		return
 	}
+	// Details::onUpdate: with pickup disabled (no cars) the window's tool is
+	// cancelled (toolCancel(vehicle, number)); the paint tool also goes with
+	// its window or its tab.
+	if g.paintTool {
+		if w := g.vehicleWin(g.paintHead); w == nil || w.Tab != 1 || w.State.NoCars {
+			g.paintToolAbort()
+		}
+	}
 	for _, win := range g.wins.Windows {
 		w, ok := win.(*ui.VehicleWindow)
 		if !ok || w.Tab != 4 || !w.Main.Own || !g.wins.IsInFront(w) {

@@ -509,6 +509,8 @@ func (g *Game) hudOrMapClick() {
 		g.pickupToolDown(g.mouseX, g.mouseY) // the Vehicle window's placing tool
 	} else if g.routeTool && g.vehicleWin(g.routeHead) != nil && !g.inTitleScreen {
 		g.routeToolDown(g.mouseX, g.mouseY) // the Route tab's tool: a stop at the station clicked
+	} else if g.paintTool && g.vehicleWin(g.paintHead) != nil && !g.inTitleScreen {
+		g.paintToolDown(g.mouseX, g.mouseY) // the Details tab's paint tool: the part clicked repainted
 	} else if g.stationToolOn() {
 		g.stationToolDown(g.mouseX, g.mouseY) // the Station tab's tool: onToolDown (the build comes with the release, stationdrag.go)
 	} else if g.signalToolOn() {

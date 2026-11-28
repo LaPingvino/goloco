@@ -82,6 +82,12 @@ func (g *Game) newVehicleWindow(headID uint16, tab int) *ui.VehicleWindow {
 		return nil
 	}
 	routeSel := g.routeSelOf(headID)
+	// The paint swatches: switchTab to Details sets them to the owner's main
+	// colours; on the Details tab they stay as picked.
+	paintColours := g.companyMainColours(headID)
+	if old := g.vehicleWin(headID); old != nil && old.Tab == 1 && tab == 1 {
+		paintColours = old.PaintColours
+	}
 	h := m.Entities[tr.Head]
 	company, _ := g.w.ControllingCompany()
 	own := int(h.Owner) == company
@@ -142,10 +148,14 @@ func (g *Game) newVehicleWindow(headID uint16, tab int) *ui.VehicleWindow {
 	vw := &ui.VehicleWindow{WinBase: ui.WinBase{WinType: ui.WindowTypeVehicle, Number: int(headID), W: ui.VehicleWindowSize[0], H: ui.VehicleWindowSize[1],
 		MinW: lim[0], MinH: lim[1], MaxW: lim[2], MaxH: lim[3], WinFlags: ui.WindowFlagResizable}, TitleColour: tc, Colour: wc,
 		Title: title, VehicleType: int(h.VehicleType), Cars: cars, Names: names,
-		State:        ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0},
-		Stats:        g.vehicleDetailsStats(headID, tr),
-		OnPickup:     func() { g.onPickup(headID) },
-		PickupActive: g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h), PickupTooltip: pickupTooltip(&h), BuildNewImage: g.buildNewImage(&h),
+		State:         ui.VehicleDetailsState{Own: own, Placed: h.TileX != -1, NoCars: len(tr.Cars) == 0, PaintTool: g.paintToolOn(headID)},
+		PaintColours:  paintColours,
+		OnPaintBrush:  func(x, y, w, hh int) { g.paintBrushOpen(headID, x, y, w, hh) },
+		OnPaintColour: func(which, x, y, w, hh int) { g.paintColourOpen(headID, which, x, y, hh) },
+		OnPaintCar:    func(row, sx int) { g.paintToolDownScroll(headID, row, sx) },
+		Stats:         g.vehicleDetailsStats(headID, tr),
+		OnPickup:      func() { g.onPickup(headID) },
+		PickupActive:  g.pickupOn && g.pickupHead == headID, PickupImage: g.pickupImage(&h), PickupTooltip: pickupTooltip(&h), BuildNewImage: g.buildNewImage(&h),
 		OnBuildNew: func(x, y, w, hh int) { g.buildNewOpen(headID, x, y, w, hh) },
 		Route:      g.routeLines(&h), RouteSel: routeSel, Hover: -1, Finances: g.vehicleFinances(tr), Cargo: g.vehicleCargo(tr, cars),
 		OnRouteSelect: func(row int) { g.setRouteSel(headID, row); g.refreshVehicleWindow(headID, 4) },
@@ -156,7 +166,13 @@ func (g *Game) newVehicleWindow(headID uint16, tab int) *ui.VehicleWindow {
 			AirWaterMoving: (h.Mode == 2 || h.Mode == 3) && h.Status != sim.StatusStopped && h.Status != sim.StatusLoading && h.TileX != -1,
 			Unplaced:       h.TileX == -1, ToolActive: g.pickupOn && g.pickupHead == headID, WaitingAtSignal: h.Status == sim.StatusWaitingAtSignal},
 		StopStartImage: stopStartImage(h.VehicleFlags),
-		OnTab: func(t int) { // switchTab
+		OnTab: func(t int) { // switchTab: toolCancel(type, number) first — the paint tool goes
+			if g.paintToolOn(headID) {
+				g.paintTool = false
+			}
+			if w := g.vehicleWin(headID); w != nil && t == 1 { // the swatches to the owner's main colours
+				w.Tab = -1
+			}
 			g.refreshVehicleWindow(headID, t)
 			if w := g.vehicleWin(headID); w != nil {
 				g.wins.MoveInsideScreenEdges(w)
@@ -184,6 +200,9 @@ func (g *Game) newVehicleWindow(headID uint16, tab int) *ui.VehicleWindow {
 		}
 		if g.routeHead == headID {
 			g.routeTool = false
+		}
+		if g.paintToolOn(headID) {
+			g.paintTool = false
 		}
 	}
 	vw.OnSell = func() { g.sellVehicle(headID) }

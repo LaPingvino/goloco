@@ -196,6 +196,7 @@ func DrawTooltip(screen *ebiten.Image, text string, cursorX, cursorY int, toolti
 		return
 	}
 	text, font := tooltipFont(text)
+	text = strings.ReplaceAll(text, "{NEWLINE}", "\n") // a string's own line breaks (vehicleRepaintTooltip's)
 	lines := wrapTooltip(text, 196, font)
 	ww := 0
 	for _, l := range lines {

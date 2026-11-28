@@ -1,0 +1,152 @@
+# v-repaint: the Vehicle window's paint brush (Vehicle.cpp Details: paintBrush,
+# paintColourPrimary / Secondary, paintToolDown / paintToolDownScroll;
+# GameCommands vehicleRepaint). q-train-join's Train 1 placed, its Details
+# tab: a click on the brush takes the tool (the dropdown's release on its
+# button: Repaint tool), a second click drops it, a third takes it again; the
+# main-colour swatch's dropdown picks dark blue (colour 6), a click on the
+# Jinty's row paints that car (pink 29 / grey 2 → 6 / 2), the last wagon
+# still pink; shift + click on the train on the map paints all of it; Escape
+# drops the tool; taken again, opening the Railway Track window drops it.
+# Checked side by side with OpenLoco on this game's save
+# (window and map equal but the animated tab icon).
+wait 20
+seed 1950
+scenario Weatherworld
+wait 20
+camera 60 250
+wait 2
+move 592 14
+wait 1
+click 620 42
+wait 1
+move 400 300
+wait 2
+move 250 420
+wait 1
+click 250 420
+wait 2
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+click 67 225
+wait 1
+wait 1
+click 51 57
+wait 2
+move 302 395
+wait 1
+click 302 395
+wait 2
+move 497 302
+wait 1
+click 497 302
+wait 2
+move 700 500
+wait 2
+move 682 14
+wait 1
+click 720 42
+move 550 230
+wait 2
+move 550 230
+wait 2
+move 370 165
+wait 1
+click 370 165
+move 133 482
+wait 2
+move 360 341
+wait 1
+click 360 341
+wait 1
+click 360 341
+wait 1
+move 700 520
+wait 2
+expect vehicles == 1
+move 791 37
+wait 1
+click 791 37
+wait 1
+move 251 470
+wait 1
+click 251 470
+wait 1
+move 415 336
+wait 2
+click 415 336
+move 700 520
+wait 3
+expect placed == 1
+move 49 420
+wait 1
+click 49 420
+wait 2
+move 252 527
+wait 1
+click 252 527
+wait 2
+expect painttool == 1
+click 252 527
+wait 2
+expect painttool == 0
+click 252 527
+wait 2
+expect painttool == 1
+expect carcolour == 7426
+move 234 547
+wait 1
+click 234 547
+wait 2
+move 332 480
+wait 1
+click 332 480
+wait 2
+move 40 445
+wait 1
+click 40 445
+wait 2
+expect carcolour == 1538
+expect carcolourlast == 7426
+move 700 520
+wait 2
+shot /tmp/goloco-playthrough/pt-v-repaint1.png
+move 432 320
+wait 1
+keydown Left Shift
+click 432 320
+keyup Left Shift
+wait 2
+expect carcolourlast == 1538
+expect painttool == 1
+key Escape
+wait 2
+expect painttool == 0
+click 252 527
+wait 2
+expect painttool == 1
+move 592 14
+wait 1
+click 620 42
+wait 2
+expect conswindow == 1
+expect painttool == 0
+move 700 520
+wait 2
+shot /tmp/goloco-playthrough/pt-v-repaint2.png
+quit

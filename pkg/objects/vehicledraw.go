@@ -273,6 +273,7 @@ type CarPart struct {
 	Animation  uint8
 	CargoFrame uint8
 	Colour     [2]uint8
+	ID         uint16 // the entity's id (the Vehicle window's repaint)
 }
 
 // CarComponent is a car component's front bogie, back bogie and body.
@@ -352,4 +353,56 @@ func (v *VehicleObject) CarDrawItems(yaw uint8, comps []CarComponent, carReverse
 		}
 	}
 	return items, total
+}
+
+// BodyItem is one body of a car as the Vehicle window's Details tab finds it
+// under the cursor: its image (relative to the object's ImageOffset), its
+// screen distance along the car and the component it belongs to.
+type BodyItem struct {
+	Image uint32
+	Dist  int32
+	Comp  int
+}
+
+// CarBodyItems is Vehicle.cpp Details::getBodyItemsForVehicle ("copied and
+// modified from VehicleDraw::getDrawItemsForVehicle"): every component's body
+// with a sprite, not animated, its distance the body's centre on screen
+// (getScreenDistance: computeXYVector, gameToScreen, −x / 4).
+func (v *VehicleObject) CarBodyItems(yaw uint8, comps []CarComponent, carReversed bool) []BodyItem {
+	var items []BodyItem
+	total := int32(0)
+	ci := 0
+	if carReversed {
+		ci = int(v.NumCarComponents) - 1
+	}
+	for n, cc := range comps {
+		if ci < 0 || ci >= len(v.CarComponents) {
+			break
+		}
+		c := &v.CarComponents[ci]
+		front, back := int32(c.FrontBogiePosition), int32(c.BackBogiePosition)
+		if carReversed {
+			front, back = back, front
+		}
+		length := int32(0)
+		if c.BodySpriteIdx != SpriteIndexNull {
+			length = int32(v.BodySprites[c.BodySpriteIdx&^SpriteIndexIsReversed].HalfLength) * 2
+		}
+		bodyDist := total + (front+length-back)/2
+		if cc.Body.SpriteType != SpriteIndexNull && int(cc.Body.SpriteType) < len(v.BodySprites) {
+			b := &v.BodySprites[cc.Body.SpriteType]
+			y := yaw
+			if cc.Body.Reversed {
+				y ^= 1 << 5
+			}
+			items = append(items, BodyItem{b.BodyImageIndex(PitchFlat, y, 0, cc.Body.CargoFrame), ScreenDistance(bodyDist, yaw), n})
+		}
+		total += length
+		if carReversed {
+			ci--
+		} else {
+			ci++
+		}
+	}
+	return items
 }

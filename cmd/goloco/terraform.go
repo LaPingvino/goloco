@@ -155,6 +155,7 @@ func (g *Game) cancelOtherTools() {
 		g.refreshVehicleWindow(head, 1)
 	}
 	g.routeTool = false
+	g.paintToolAbort()
 	if g.consToolOn() {
 		g.wins.CloseType(ui.WindowTypeConstruction, ui.AnyNumber)
 	}
@@ -432,7 +433,7 @@ func (g *Game) updateTerraform() {
 		g.terraformEnd()
 		return
 	}
-	if g.consToolOn() || g.indTool.on || g.pickupOn || g.routeTool {
+	if g.consToolOn() || g.indTool.on || g.pickupOn || g.routeTool || g.paintTool {
 		g.closeTerraform()
 		return
 	}

@@ -592,6 +592,25 @@ func (g *Game) scriptExpect() {
 				break
 			}
 		}
+	case "painttool": // 1 while a Vehicle window's paint tool (Details' paint brush) is on
+		if g.paintTool && g.vehicleWin(g.paintHead) != nil {
+			got = 1
+		}
+	case "carcolour", "carcolourlast": // the front-most vehicle window's first / last car's body colours: primary × 256 + secondary (-1: none)
+		got = -1
+		for i := len(g.wins.Windows) - 1; i >= 0; i-- {
+			if vw, ok := g.wins.Windows[i].(*ui.VehicleWindow); ok {
+				if tr, err := g.w.Map.TrainOf(uint16(vw.Number)); err == nil && len(tr.Cars) > 0 && len(tr.Cars[0]) > 0 {
+					car := tr.Cars[0]
+					if req[0] == "carcolourlast" {
+						car = tr.Cars[len(tr.Cars)-1]
+					}
+					b := &g.w.Map.Entities[car[0].Body]
+					got = int64(b.ColourPrimary)<<8 | int64(b.ColourSecondary)
+				}
+				break
+			}
+		}
 	case "jailed": // the controlling company's days in jail (the FREECASH cheat: 30)
 		if company < len(g.w.Map.Companies) {
 			got = int64(g.w.Map.Companies[company].JailStatus)

@@ -199,6 +199,7 @@ func (g *Game) constructionMenu(btn *ui.ToolbarButton, rail bool) {
 // (setTrackOptions). PARTIAL: upstream's keep-the-window case (a road over
 // an any-road-type-compatible road keeps the open window and its head).
 func (g *Game) openConstructionWithFlags(flags uint8) {
+	g.cancelVehicleWindowTools() // its tool's toolSet: a Vehicle window's tool goes
 	if flags&(1<<7) != 0 {
 		g.buildMode, g.buildObjID = buildModeRoad, int(flags&^(1<<7))
 	} else {
@@ -256,6 +257,7 @@ func (g *Game) portMenu(btn *ui.ToolbarButton) {
 // openPortConstruction is Construction::openWithFlags(1 << 31: airport,
 // 1 << 30: dock). PARTIAL: the construction windows themselves.
 func (g *Game) openPortConstruction(option int) {
+	g.cancelVehicleWindowTools() // its tool's toolSet: a Vehicle window's tool goes
 	m := &g.w.Map
 	if option == 0 { // createAirportConstructionWindow: lastSelectedStationType = lastAirport; rotation 0
 		g.removeStationGhost()
