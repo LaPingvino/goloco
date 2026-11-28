@@ -80,6 +80,27 @@ func (h *ObjectHeader) IsCustom() bool {
 	return h.GetSourceGame() == SourceGameCustom
 }
 
+// vanillaKey is upstream's VanillaHeader: the 8-byte name as stored (not
+// trimmed: getName's string_view) and the type.
+type vanillaKey struct {
+	name string
+	typ  ObjectType
+}
+
+// IsVanilla is ObjectHeader::isVanilla (OpenLoco reference:
+// src/OpenLoco/src/Objects/Object.cpp): the object is one of the original
+// game's, by name and type — whatever its flags' source game says.
+func (h *ObjectHeader) IsVanilla() bool {
+	_, ok := vanillaObjects[vanillaKey{string(h.Name[:]), h.GetType()}]
+	return ok
+}
+
+// IsOpenLoco is ObjectHeader::isOpenLoco (Object.h, upstream a7aa65e /
+// #4033): the source game is OpenLoco (its own OpenGraphics objects).
+func (h *ObjectHeader) IsOpenLoco() bool {
+	return h.GetSourceGame() == SourceGameOpenLoco
+}
+
 // String returns a string representation of the header
 func (h *ObjectHeader) String() string {
 	return fmt.Sprintf("Object{Name: %q, Type: %s, Source: %d, Checksum: 0x%08X}",

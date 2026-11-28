@@ -1559,17 +1559,22 @@ type CompanyEconomy struct {
 	// x/y 0x8BBE, object 0x8BC2, timeout 0x8BC4), ownerStatus (0x8BC6), and
 	// of the AI: aiThinkState (0x4A4), activeThoughtId (0x2578) and each
 	// thought's type and destinationA (aiThoughts 0x4A8, 0x8C bytes each).
-	ActiveEmotions      [9]uint8
-	ObservationStatus   uint8
-	ObservationTownID   uint16
-	ObservationEntity   uint16
-	ObservationX        int16
-	ObservationY        int16
-	ObservationObject   uint16
-	ObservationTimeout  uint16
-	OwnerStatus         [2]int16
-	AiThinkState        uint8
-	ActiveThoughtID     uint8
+	ActiveEmotions     [9]uint8
+	ObservationStatus  uint8
+	ObservationTownID  uint16
+	ObservationEntity  uint16
+	ObservationX       int16
+	ObservationY       int16
+	ObservationObject  uint16
+	ObservationTimeout uint16
+	OwnerStatus        [2]int16
+	AiThinkState       uint8
+	ActiveThoughtID    uint8
+	// aiThinkSubState (0x4A5) and aiPathfindTargetPos (0x85C4, world units):
+	// where aiThinkEndCompany's removeAllCompanyAssetsOnMapByChunk goes on.
+	AiThinkSubState     uint8
+	AiPathfindTargetX   int16
+	AiPathfindTargetY   int16
 	ThoughtType         [60]uint8
 	ThoughtDestinationA [60]uint8
 	ThoughtIncome       [60]int32 // each thought's income (0x80 in it): its vehicles' cargo profit
@@ -1658,6 +1663,9 @@ func parseCompanyEconomy(gs []byte) []CompanyEconomy {
 		c.ObservationTimeout = binary.LittleEndian.Uint16(r[0x8BC4:])
 		c.OwnerStatus = [2]int16{int16(binary.LittleEndian.Uint16(r[0x8BC6:])), int16(binary.LittleEndian.Uint16(r[0x8BC8:]))}
 		c.AiThinkState = r[0x4A4]
+		c.AiThinkSubState = r[0x4A5]
+		c.AiPathfindTargetX = int16(binary.LittleEndian.Uint16(r[0x85C4:]))
+		c.AiPathfindTargetY = int16(binary.LittleEndian.Uint16(r[0x85C6:]))
 		c.ActiveThoughtID = r[0x2578]
 		for k := range c.ThoughtType {
 			c.ThoughtType[k], c.ThoughtDestinationA[k] = r[0x4A8+0x8C*k], r[0x4A8+0x8C*k+1]
@@ -1814,7 +1822,7 @@ func parseGeneralState(sc *Scenario, gs []byte) {
 	sc.DefaultTreeObjectId, sc.DefaultWallObjectId = gs[0x199], gs[0x1B2] // defaultTreeObjectId, defaultWallObjectId
 	sc.PreferredAI = [3]uint8{gs[0x3FD], gs[0x3FE], gs[0x3FF]}            // preferredAIIntelligence / Aggressiveness / Competitiveness
 	sc.MaxCompetingCompanies, sc.CompetitorStartDelay, sc.ProduceAICompanyTimeout = gs[0x19F], gs[0x3FC], gs[0x1B3]
-	sc.DefaultLevelCrossingType = gs[0x1AC]                               // currentDefaultLevelCrossingType
+	sc.DefaultLevelCrossingType = gs[0x1AC] // currentDefaultLevelCrossingType
 	sc.ForbiddenVehiclesPlayers = binary.LittleEndian.Uint16(gs[0x430:])
 	sc.ForbiddenVehiclesCompetitors = binary.LittleEndian.Uint16(gs[0x432:])
 	if len(gs) > 0x196 { // general.trafficHandedness (from the compiler)

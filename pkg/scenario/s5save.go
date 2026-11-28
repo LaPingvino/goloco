@@ -6,6 +6,7 @@ import (
 
 	"github.com/LaPingvino/goloco/pkg/assets"
 	"github.com/LaPingvino/goloco/pkg/i18n"
+	"github.com/LaPingvino/goloco/pkg/objects"
 )
 
 // s5save.go — the S5 writer (S5.cpp exportGameStateToFile / exportGameState):
@@ -79,6 +80,29 @@ func (f *S5File) Write(w io.Writer) error {
 		s.WriteChunk(assets.EncodingRunLengthSingle, f.GolocoText)
 	}
 	return s.Close()
+}
+
+// PackedObjectsToSave is exportGameStateToFile's choice of the objects to
+// pack (S5.cpp: required objects that are not empty, not vanilla and — since
+// upstream a7aa65e / #4033 — not OpenLoco's own), made from the objects the
+// loaded file packed: goloco keeps a packed object in memory only and finds
+// no object outside ObjData, so it packs again what it loaded. Dropped: the
+// empty and the vanilla ones (ObjData has every vanilla object). KEPT,
+// deliberately unlike upstream: OpenLoco-source objects — OpenLoco ships them
+// (its objects folder), goloco doesn't read that folder, so a save without
+// them would not load in goloco again.
+func PackedObjectsToSave(loaded []PackedObjectRaw) []PackedObjectRaw {
+	var out []PackedObjectRaw
+	for _, po := range loaded {
+		h := objects.ObjectHeader{Flags: binary.LittleEndian.Uint32(po.HeaderBytes[0:4]),
+			Checksum: binary.LittleEndian.Uint32(po.HeaderBytes[12:16])}
+		copy(h.Name[:], po.HeaderBytes[4:12])
+		if h.IsEmpty() || h.IsVanilla() {
+			continue
+		}
+		out = append(out, po)
+	}
+	return out
 }
 
 // SavedGameHeader is prepareHeader for a saved game: type savedGame, the
@@ -317,7 +341,9 @@ func (sc *Scenario) putCompanies(gs []byte) {
 		put16(r, 0x8BC4, c.ObservationTimeout)
 		put16(r, 0x8BC6, uint16(c.OwnerStatus[0]))
 		put16(r, 0x8BC8, uint16(c.OwnerStatus[1]))
-		r[0x4A4], r[0x2578] = c.AiThinkState, c.ActiveThoughtID
+		r[0x4A4], r[0x4A5], r[0x2578] = c.AiThinkState, c.AiThinkSubState, c.ActiveThoughtID
+		put16(r, 0x85C4, uint16(c.AiPathfindTargetX))
+		put16(r, 0x85C6, uint16(c.AiPathfindTargetY))
 		for k := range c.ThoughtType {
 			r[0x4A8+0x8C*k], r[0x4A8+0x8C*k+1] = c.ThoughtType[k], c.ThoughtDestinationA[k]
 			put32(r, 0x4A8+0x8C*k+0x80, uint32(c.ThoughtIncome[k]))

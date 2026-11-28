@@ -39,6 +39,7 @@ func main() {
 	aiName := flag.String("ai", "", "start AI companies running this goloco AI ("+strings.Join(sim.AINames(), ", ")+") before playing; their decision logs go to stderr at the end")
 	aiCount := flag.Int("ais", 1, "with -ai: how many AI companies to start at once (0: none)")
 	takeover := flag.Int("takeover", -1, "with -ai: first take over this loaded OpenLoco AI company (its plans removed, thoughts cleared: sim.TakeOverCompanyAI) to run the AI; -2: every one (sim.TakeOverOpenLocoAIs, the loaded-games setting's takeover)")
+	acquire := flag.Int("acquire", -1, "first apply the acquire-assets cheat (sim.CheatAcquireAssets) to this company for the controlling one: its assets ours, the company left in endCompany")
 	produce := flag.Bool("competitors", false, "with -ai: also let produceCompanies start competitors running it on schedule, as a game with the AI chosen in the options (draws the game's rng: not for simcmp)")
 	flag.Parse()
 	if flag.NArg() != 2 {
@@ -86,6 +87,9 @@ func main() {
 			name := strings.TrimSuffix(out, filepath.Ext(out)) + fmt.Sprintf("-%04d-%02d.SV5", s.CurrentYear, int(s.CurrentMonth)+1)
 			writeSave(s, sc, om, name, *ticks)
 		}
+	}
+	if *acquire >= 0 {
+		s.Cheat(&sim.Cmd{Company: s.ControllingCompany, Objects: om}, sim.CmdApply, sim.CheatAcquireAssets, int32(*acquire), 0, 0)
 	}
 	if *produce && *aiName != "" {
 		s.Competitors = sim.Competitors{AI: *aiName}
@@ -144,8 +148,9 @@ func writeSave(s *sim.State, sc *scenario.Scenario, om *objects.ObjectManager, o
 		perf, d.ChallengeFlags = uint16(s.CompanyFaces[id].Performance), s.CompanyFaces[id].ChallengeFlags
 		d.ChallengeProgress = s.Companies[id].ChallengeProgress
 	}
-	f := &scenario.S5File{Header: scenario.SavedGameHeader(len(sc.PackedObjectsRaw)), SaveDetails: scenario.EncodeSaveDetails(d, perf, s.ScenarioName),
-		PackedObjects: sc.PackedObjectsRaw, RequiredObjects: sim.RequiredObjects(sc.Raw.RequiredObjects, om),
+	packed := scenario.PackedObjectsToSave(sc.PackedObjectsRaw)
+	f := &scenario.S5File{Header: scenario.SavedGameHeader(len(packed)), SaveDetails: scenario.EncodeSaveDetails(d, perf, s.ScenarioName),
+		PackedObjects: packed, RequiredObjects: sim.RequiredObjects(sc.Raw.RequiredObjects, om),
 		GameState: ex.EncodeGameState(), TileElements: scenario.EncodeTileElements(ex.Tiles), GolocoAI: ex.GolocoAI}
 	var buf bytes.Buffer
 	must(f.Write(&buf))

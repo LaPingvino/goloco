@@ -113,7 +113,7 @@ func (g *Game) saveGameTo(path string, autosave bool) error {
 	sc.SavedViewX, sc.SavedViewY, sc.SavedViewZoom, sc.SavedViewRotation = g.w.SavedView()
 	var packed []scenario.PackedObjectRaw
 	if configValue("exportObjectsWithSaves") != "false" { // shouldPackObjects: Config exportObjectsWithSaves (default true)
-		packed = g.packedObjects
+		packed = scenario.PackedObjectsToSave(g.packedObjects)
 	}
 	f := &scenario.S5File{
 		Header:          scenario.SavedGameHeader(len(packed)),

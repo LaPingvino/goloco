@@ -1,6 +1,10 @@
 package sim
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/LaPingvino/goloco/pkg/scenario"
+)
 
 func TestCheats(t *testing.T) {
 	m, om := loadDataMap(t, "title.dat")
@@ -92,5 +96,91 @@ func TestShuntAndFreeCashCheats(t *testing.T) {
 	t.Logf("%q", m.Messages[n].Text)
 	if m.Messages[n].Text == "" {
 		t.Error("no scandal text")
+	}
+}
+
+// TestAcquireAssets4041 is upstream 6d7f5b1 (#4041): the target's
+// AI-allocated pieces stay its own, the trains take our colours, and the
+// target is left in endCompany, whose thinks remove the rest of its track
+// and road chunk by chunk and then the company (aiThinkEndCompany).
+func TestAcquireAssets4041(t *testing.T) {
+	m, om := loadDataMap(t, "title.dat")
+	c := &Cmd{Company: m.ControllingCompany, Objects: om}
+	other := -1
+	trains, _ := m.Trains()
+	for _, tr := range trains {
+		if o := int(m.Entities[tr.Head].Owner); o != int(c.Company) && o != CompanyNeutral {
+			other = o
+			break
+		}
+	}
+	if other < 0 {
+		t.Skip("no other company's train")
+	}
+	// one of the target's straight one-tile tracks marked AI-allocated (a planned piece)
+	px, py, pi := -1, -1, -1
+	for y := range m.Tiles {
+		for x := range m.Tiles[y] {
+			tl := &m.Tiles[y][x]
+			for j, r := range tl.Order {
+				if r.Kind == scenario.KindTrack && px < 0 {
+					if el := &tl.Tracks[r.Index]; int(el.Owner) == other && !el.HasStation && !el.HasSignal && el.TrackID == 0 && !el.HasBridge && el.Mods == 0 {
+						el.AiAllocated = true
+						tl.Order[j].Flags |= elemFlagAiAllocated
+						px, py, pi = x, y, int(r.Index)
+					}
+				}
+			}
+		}
+	}
+	if px < 0 {
+		t.Skip("no plain track of the other company")
+	}
+	m.Cheat(c, CmdApply, CheatAcquireAssets, int32(other), 0, 0)
+	if int(m.Tiles[py][px].Tracks[pi].Owner) != other {
+		t.Fatal("the AI-allocated track was acquired")
+	}
+	for _, tr := range trains {
+		if m.Entities[tr.Head].Owner != c.Company {
+			continue
+		}
+		for _, car := range tr.Cars {
+			for _, comp := range car {
+				for _, i := range []int{comp.Front, comp.Back, comp.Body} {
+					e := m.Entities[i]
+					want := m.vehicleColourScheme(c.Company, om.Vehicles[e.ObjectID].ColourType)
+					if [2]uint8{e.ColourPrimary, e.ColourSecondary} != want {
+						t.Fatalf("entity %d colours %d,%d, want %v", i, e.ColourPrimary, e.ColourSecondary, want)
+					}
+				}
+			}
+		}
+	}
+	co := m.Companies[other]
+	if co.AiThinkState != aiThinkStateEndCompany || co.AiThinkSubState != 0 || co.AiPathfindTargetX != 0 || co.AiPathfindTargetY != 0 {
+		t.Fatalf("think state %d/%d at %d,%d, want endCompany/0 at 0,0", co.AiThinkState, co.AiThinkSubState, co.AiPathfindTargetX, co.AiPathfindTargetY)
+	}
+	// the first think stops after 1500 tiles (a row's last tile counts twice)
+	if m.removeAllCompanyAssetsOnMapByChunk(uint8(other), om) {
+		t.Fatal("the whole map in one think")
+	}
+	// 3 rows of 385, then 345 tiles of row 3: tile 344,3
+	if x, y := m.Companies[other].AiPathfindTargetX, m.Companies[other].AiPathfindTargetY; x != 344*32 || y != 3*32 {
+		t.Fatalf("stopped at %d,%d, want %d,%d", x, y, 344*32, 3*32)
+	}
+	// the planned piece's tile: removed (apply | noPayment | aiAllocated)
+	cmd := &Cmd{Company: uint8(other), Objects: om, Players: func(o uint8) bool { return m.IsPlayerCompany(int(o)) }}
+	g1, _ := om.G1File.(G1Raw)
+	m.removeCompanyTracksRoadsOnTile(cmd, g1, px, py)
+	for _, el := range m.Tiles[py][px].Tracks {
+		if int(el.Owner) == other {
+			t.Fatalf("the planned piece at %d,%d is still there", px, py)
+		}
+	}
+	for i := 0; i < 400 && !m.CompanyEmpty(other); i++ {
+		m.aiThinkEndCompany(uint8(other), om)
+	}
+	if !m.CompanyEmpty(other) {
+		t.Fatal("the company wasn't removed")
 	}
 }

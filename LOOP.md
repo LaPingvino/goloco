@@ -2643,3 +2643,38 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
   Not ported: scrollMouseOver's setTooltipTimeout(2000) (car-row tooltips at once at rest, not after 2 s), Keyboard.cpp
   144's closeAndReset, the scrollbar parts' tooltips (kScrollWidgetTooltips), updateDaily's time-tooltip close.
   Unit 23 ok 0 FAIL, playthroughs 26/26.
+- 2026-11-28 (upstream v26.11 changes already in the reference 09d74ee — Joop: "Go for it!") — each checked against
+  goloco; no pre-fix switch: the reference binary has all three, so there is no pre-fix OpenLoco to compare with.
+  * #4041 (6d7f5b1) acquire-assets cheat — PORTED (sim/cheats.go cheatAcquireAssets): AI-allocated road / track /
+    station elements stay the target's; each bogie and body takes our colours (resetVehicleColour, its own object's
+    colour type); the target is left in AiThinkState endCompany, sub-state 0, aiPathfindTargetPos 0,0 (both now in
+    the company model and the save), and a goloco AI running it is dropped. New: aiThinkEndCompany for a company no
+    goloco AI runs (companyai_endthink.go, companiesTick): removeAllCompanyAssetsOnMapByChunk (1500 tiles a think,
+    a row's last tile twice; its TilePosRangeView restarts every row at the chunk's first x, so the columns left of
+    it go unvisited — upstream's, kept and tested), the HQ, then aiDestroy. A refused removal ends the tile's search
+    (upstream would loop for ever). Not ported: the station / vehicle windows' owner (no Cheats window calls the
+    cheat yet), aiThink's processVehiclePlaceStateMachine. G10's takeover is a different thing (the company stays,
+    under a goloco AI): it already drops the planned pieces; shutdown and recolouring don't apply. TestAcquireAssets4041.
+    Against the binary: gosave -acquire 8 (new flag) on the title save, then OpenLoco-rngtrace's simulate with
+    OPENLOCO_SIMSAVE (AI on) and gosave -ticks: after 40 ticks company 8 is mid-walk at 11744,1248 in both, after 200
+    it is gone (name 0, HQ removed) in both, the controlling company owning the same 72 track / 178 road / 24 station
+    elements. (The title's company 8 has no AI-allocated pieces: that branch is covered by the unit test only.)
+  * #4033 (a7aa65e) no OpenLoco objects packed — DELIBERATELY DIFFERENT, partly ported: ObjectHeader.IsVanilla
+    (generated: tools/gen-vanillaobjects → pkg/objects/vanilla_gen.go) and IsOpenLoco; scenario.PackedObjectsToSave
+    (save.go and gosave) drops empty and vanilla headers but KEEPS OpenLoco-source ones: goloco packs again what the
+    loaded file packed (not, as upstream, every non-vanilla required object), keeps packed objects in memory only
+    and doesn't read OpenLoco's objects folder, so without them its own save wouldn't load again. Same reason:
+    goloco's autosaves pack, OpenLoco's don't (isAutosave lacks packCustomObjects; its loads install packed objects
+    to disk). Switch both when goloco indexes OpenLoco's objects folder. None of the 46 local scenarios / saves packs
+    any object, so nothing changes for them. TestPackedObjectsToSave.
+  * #4063 (e71abfb) vanilla divergences — ALREADY MATCHING (ported 2026-11-13): createIndustry's seed and rolls,
+    the two-randNext srand, Vehicle1's speedFromDistanceInATick, the crossing whistle without its gPrng1 draw, road
+    pathing's road weighting, the town's early closest-town check and the dropped corners > 8, aiDestroy's ownerName.
+    Two stale "vanilla bug kept" comments fixed (vehicle1.go, industrycreate.go); pinned: TestSpeedFromDistanceInATick16,
+    TestCrossingWhistle's rng check. simcmp (title save, AI off; OLREF_HOME a scratch home after one ol.sh start/stop):
+    after 2000 ticks the divergence list is line for line the one from HEAD before this change; after 30000 the main
+    rng still matches, and the first diverging industry is still the known [45], no town or company diverges (simcmp
+    shows each array's first divergence only). Whether an industry was created in those 30000 ticks wasn't checked. N/A: the CompanyAi.cpp hunks (replaceAiAllocatedRoad's flags,
+    removeEntityFromThought's null) — OpenLoco's AI isn't ported; when the crashed-vehicle sell for OpenLoco AI
+    companies is (VehicleHead.cpp 364), its removeEntityFromThought fills EntityId::null.
+  New flag: gosave -acquire ID. test-all green, playthroughs 26/26.

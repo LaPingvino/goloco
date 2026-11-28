@@ -86,7 +86,7 @@ func (m *Map) Vehicle1RailMove(c *MotionComponent, veh2CurrentSpeed int32, unkDi
 // Vehicle1RoadTargetSpeed is updateRoad's targetSpeed (Speed16, mph): the
 // reserved route's curves and bridges, the road object Vehicle2 is on
 // (var_4F; none: 60 mph × curve fraction), Vehicle2 maxSpeed, rack rail,
-// var_3C (upstream's original bug kept) and command stop.
+// var_3C's speed + 5 mph (speedFromDistanceInATick16, as upstream e71abfb) and command stop.
 func (m *Map) Vehicle1RoadTargetSpeed(head, veh1, veh2 *scenario.VehicleEntity, om *objects.ObjectManager) int16 {
 	curve := uint16(0xFFFF)
 	target := speed16Max

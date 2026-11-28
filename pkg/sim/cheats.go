@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/LaPingvino/goloco/pkg/objects"
+	"github.com/LaPingvino/goloco/pkg/scenario"
 )
 
 // GameCommands/Cheats/Cheat.cpp: the cheat game command's subcommands, and
@@ -39,7 +40,7 @@ func (m *Map) Cheat(c *Cmd, flags uint8, sub CheatCommand, p1, p2, p3 int32) (in
 	}
 	switch sub {
 	case CheatAcquireAssets:
-		m.cheatAcquireAssets(c.Company, uint8(p1))
+		m.cheatAcquireAssets(c.Company, uint8(p1), c.Objects)
 	case CheatAddCash:
 		if pc := int(m.PlayerCompanies[0]); pc < len(m.Companies) {
 			m.Companies[pc].Cash += int64(p1)
@@ -75,32 +76,37 @@ func (m *Map) Cheat(c *Cmd, flags uint8, sub CheatCommand, p1, p2, p3 int32) (in
 	return 0, true
 }
 
-// cheatAcquireAssets: every road, track, station element, station and vehicle of the target
-// company becomes ours (the updating company's).
-func (m *Map) cheatAcquireAssets(ours, target uint8) {
-	for y := range m.Tiles {
+// cheatAcquireAssets is Cheats::acquireAssets (Cheat.cpp, as upstream
+// 6d7f5b1 / #4041 has it): every road, track and station element of the
+// target company becomes ours (the updating company's) unless it is
+// AI-allocated — the AI's plans aren't inherited —; then its stations, and
+// its vehicles, each bogie and body repainted in our colours (its own
+// vehicle object's colour type: resetVehicleColour); then the target AI is
+// shut down — aiThinkState endCompany, sub-state 0, aiPathfindTargetPos 0,0
+// — so its next think removes what is left (aiThinkEndCompany). A company
+// a goloco AI runs loses it: the company ends the same way. PARTIAL: the
+// station / vehicle windows' owner and Gfx::invalidateScreen (no Cheats
+// window calls this yet; a Station window takes its owner's colour when it
+// opens).
+func (m *Map) cheatAcquireAssets(ours, target uint8, om *objects.ObjectManager) {
+	for y := range m.Tiles { // acquireTiles<RoadElement>, <TrackElement>, <StationElement>
 		for x := range m.Tiles[y] {
 			t := &m.Tiles[y][x]
-			for i := range t.Roads {
-				if t.Roads[i].Owner == target {
-					t.Roads[i].Owner = ours
-				}
-			}
-			for i := range t.Tracks {
-				if t.Tracks[i].Owner == target {
-					t.Tracks[i].Owner = ours
-				}
-			}
-		}
-	}
-	// 91c200d: the station elements too (a station's new owner doesn't own its
-	// road station elements otherwise)
-	for y := range m.Tiles {
-		for x := range m.Tiles[y] {
-			t := &m.Tiles[y][x]
-			for i := range t.Stations {
-				if t.Stations[i].Owner == target {
-					t.Stations[i].Owner = ours
+			for _, r := range t.Order {
+				ai := r.Flags&elemFlagAiAllocated != 0
+				switch r.Kind {
+				case scenario.KindRoad:
+					if el := &t.Roads[r.Index]; el.Owner == target && !ai && !el.AiAllocated {
+						el.Owner = ours
+					}
+				case scenario.KindTrack:
+					if el := &t.Tracks[r.Index]; el.Owner == target && !ai && !el.AiAllocated {
+						el.Owner = ours
+					}
+				case scenario.KindStation:
+					if el := &t.Stations[r.Index]; el.Owner == target && !ai && !el.AiAllocated {
+						el.Owner = ours
+					}
 				}
 			}
 		}
@@ -118,7 +124,34 @@ func (m *Map) cheatAcquireAssets(ours, target uint8) {
 		for _, i := range trainComponents(tr) { // applyToComponents
 			m.Entities[i].Owner = ours
 		}
+		for _, car := range tr.Cars { // the bogies and bodies: resetVehicleColour
+			for _, comp := range car {
+				for _, i := range []int{comp.Front, comp.Back, comp.Body} {
+					m.resetVehicleColour(i, ours, om)
+				}
+			}
+		}
 	}
+	if int(target) < len(m.Companies) { // fourth phase: shut down the AI company
+		c := &m.Companies[target]
+		c.AiThinkState, c.AiThinkSubState = aiThinkStateEndCompany, 0
+		c.AiPathfindTargetX, c.AiPathfindTargetY = 0, 0
+	}
+	if int(target) < companyMaxCount {
+		m.companyAIs[target] = nil
+	}
+}
+
+// resetVehicleColour is Cheat.cpp's resetVehicleColour: the component takes
+// the company's main colours, or its scheme for the component's vehicle
+// object's colour type when that one is set.
+func (m *Map) resetVehicleColour(i int, company uint8, om *objects.ObjectManager) {
+	e := &m.Entities[i]
+	if om == nil || int(e.ObjectID) >= len(om.Vehicles) || om.Vehicles[e.ObjectID] == nil {
+		return
+	}
+	scheme := m.vehicleColourScheme(company, om.Vehicles[e.ObjectID].ColourType)
+	e.ColourPrimary, e.ColourSecondary = scheme[0], scheme[1]
 }
 
 // cheatCompanyRatings: in every town that rates the controlling company —

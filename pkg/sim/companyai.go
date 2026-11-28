@@ -22,8 +22,11 @@ import (
 //
 // Hooked in at CompanyManager::tick's place (CompanyManager.cpp 0x00430319,
 // after EffectsManager, before AnimationManager: Scenes/GameScene.cpp). With
-// no AI attached to any company the hook does nothing at all — the AI-off
-// game is the one the economy comparison with OpenLoco (simcmp) checks.
+// no AI attached to any company the hook does nothing — the AI-off game is
+// the one the economy comparison with OpenLoco (simcmp) checks — except for
+// a company in OpenLoco's endCompany think state (the acquire-assets cheat
+// leaves its target there), which aiThinkEndCompany ends
+// (companyai_endthink.go).
 //
 // Competitors appear as upstream's produceCompanies starts them (every 192
 // ticks, after the start delay, up to maxCompetingCompanies), each running
@@ -209,7 +212,8 @@ func (m *Map) aiPaysAsPlayer(id int) bool {
 
 // companiesTick is CompanyManager::tick (0x00430319) for goloco's AIs: not
 // with Config::companyAIDisabled, the company scenarioTicks & 0x0F thinks if
-// it isn't a player's, isn't empty and has an AI; then, every 192 ticks,
+// it isn't a player's, isn't empty and has an AI (one without, in
+// OpenLoco's endCompany state: aiThinkEndCompany); then, every 192 ticks,
 // produceCompanies. The timeout runs only while Map.Competitors names an AI
 // (goloco's "no competitors" is upstream's companyAIDisabled for it), so a
 // game without one is tick for tick the AI-off game. PARTIAL: the editor
@@ -234,6 +238,9 @@ func (m *Map) companiesTick(om *objects.ObjectManager) {
 		if st.ending {
 			m.AIDestroy(uint8(id), om)
 		}
+	} else if id < len(m.Companies) && !m.IsPlayerCompany(id) && !m.CompanyEmpty(id) &&
+		m.Companies[id].AiThinkState == aiThinkStateEndCompany {
+		m.aiThinkEndCompany(uint8(id), om) // aiThink: OpenLoco's endCompany state (companyai_endthink.go)
 	}
 	if m.Competitors.AI == "" {
 		return

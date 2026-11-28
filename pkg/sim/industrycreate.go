@@ -286,8 +286,8 @@ func (m *Map) placeIndustryBuilding(c *Cmd, id uint8, x, y int32, direction, bui
 }
 
 // IndustryPlacement is IndustryPlacementArgs: the industry object, where,
-// whether it is built at once, and the command's seed (srand1; upstream
-// takes srand0 as the command's number — a vanilla bug it keeps).
+// whether it is built at once, and the command's seed (srand0, srand1 —
+// since upstream e71abfb; vanilla seeded with the command's number and srand1).
 type IndustryPlacement struct {
 	Type             uint8
 	X, Y             int32

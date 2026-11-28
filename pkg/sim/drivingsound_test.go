@@ -302,7 +302,11 @@ func TestCrossingWhistle(t *testing.T) {
 	for _, c := range []struct{ z, volume int32 }{{30, 0}, {10, -1500}} {
 		m.Sounds = nil
 		m.Entities[tr.Veh2].PosZ = int16(c.z)
+		rng := m.Rng1
 		m.railProduceCrossingWhistle(tr, om)
+		if m.Rng1 != rng { // upstream e71abfb removed vanilla's gPrng1 draw here
+			t.Error("the whistle drew gPrng1")
+		}
 		if len(m.Sounds) != 1 || m.Sounds[0].Object != "whistle" || m.Sounds[0].Volume != c.volume || m.Sounds[0].Z != c.z+22 {
 			t.Errorf("z %d: %+v, want the whistle at %d", c.z, m.Sounds, c.volume)
 		}
