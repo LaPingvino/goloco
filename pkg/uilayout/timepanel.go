@@ -38,6 +38,44 @@ func TimePanelSpeedAt(px, py, sw, sh int) int {
 	return -1
 }
 
+// TimePanel's widget indices (Widx: outer_frame, inner_frame, map_chat_menu,
+// date_btn, pause_btn … extra_fast_forward_btn).
+const (
+	TimePanelWidxOuter   = 0
+	TimePanelWidxMapChat = 2
+	TimePanelWidxDate    = 3
+	TimePanelWidxPause   = 4 // + the speed (0–3)
+)
+
+// TimePanelWidgetAt is Window::findWidgetAt on the time panel: the last
+// widget holding the screen point (inner_frame is hidden: prepareDraw), or −1
+// off the window.
+func TimePanelWidgetAt(px, py, sw, sh int) int {
+	if !InTimePanel(px, py, sw, sh) {
+		return -1
+	}
+	wx, wy := TimePanelPos(sw, sh)
+	in := func(r [4]int) bool {
+		return px >= wx+r[0] && px < wx+r[0]+r[2] && py >= wy+r[1] && py < wy+r[1]+r[3]
+	}
+	found := -1
+	if in(TimePanelOuter) {
+		found = TimePanelWidxOuter
+	}
+	if in(TimePanelMapChat) {
+		found = TimePanelWidxMapChat
+	}
+	if in(TimePanelDate) {
+		found = TimePanelWidxDate
+	}
+	for i, r := range TimePanelSpeed {
+		if in(r) {
+			found = TimePanelWidxPause + i
+		}
+	}
+	return found
+}
+
 // InTimePanel reports whether the point is on the time panel window.
 func InTimePanel(px, py, sw, sh int) bool {
 	wx, wy := TimePanelPos(sw, sh)

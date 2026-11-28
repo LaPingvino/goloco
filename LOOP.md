@@ -196,7 +196,8 @@ verify it, commit, update this file (queue + one tick-log line), stop. Don't sta
 >      caption ("Train 1 - Vehicle Details" / Cargo / Finances / Route; Main "Company - Train 1" for a competitor's),
 >      the captions in colourText's windowColour1 (shade 7, was 9) — side by side with OpenLoco equal but the
 >      animated tab icon. DONE 2026-11-28: the paint brush and its tool (playthrough v-repaint; tick log);
->      the tooltip's owner (no tooltip back after a click). Left: the car-row cursor (N47), the tooltip text 1 px high.
+>      the tooltip's owner (no tooltip back after a click). Left: the car-row cursor (N47). (The "1 px high"
+>      tooltip text was its colour: RGB black, not palette black 0 — fixed 2026-11-28 with the time panel.)
 >    - [x] Refusals were silent: a wagon added to a moving train did nothing but log "can't build vehicle" — now the
 >      error window "Can't add Wagon to Train 1… / Vehicle must be stopped first!" (BuildVehicle.cpp onScrollMouseDown's
 >      setErrorTitle; canBeModified's setErrorText, VehicleHead.cpp 0x004B6D1F; every command's caller passes its Cmd).
@@ -2678,3 +2679,19 @@ annotate the windows already ported, then put the real figure in docs/STATUS.md.
     removeEntityFromThought's null) — OpenLoco's AI isn't ported; when the crashed-vehicle sell for OpenLoco AI
     companies is (VehicleHead.cpp 364), its removeEntityFromThought fills EntityId::null.
   New flag: gosave -acquire ID. test-all green, playthroughs 26/26.
+- 2026-11-28 (item 3 leftover: the tooltip text "1 px high"; the time panel's widgets) — measured against OpenLoco on
+  the title save (paused, hover the speed button and the date): the text's pixel mask is the SAME in both, at the
+  same rows; what differed was its colour — DrawTooltip drew RGB black, Colour::black's text_palette entry is
+  palette black 0 (23,35,35). Fixed (every window tooltip). On the way, the time panel joined the window tooltip
+  machine (tooltip.go): its speed buttons had no tooltips at all (tooltip_speed_pause … extra_fast_forward), the
+  date's tooltip was drawn by goloco's own path at once, in medium bold, from English literals and the "* Paused *"
+  text — now tooltip_daymonthyear_challenge (SMALLFONT) with formatChallenge's arguments (getCurrentDay,
+  challenge_completed / _failed / empty / _progress + _time_left) by StringIds, owner keyed on TimePanel's widget
+  index (uilayout.TimePanelWidgetAt = findWidgetAt), and its onCursor's setTooltipTimeout(2000) after the hover
+  (processMouseOver): opens as soon as the mouse rests, never times out. Inner {COLOUR …} codes in a tooltip are
+  dropped (drawn black; PARTIAL for other colours). DrawTimePanel: the hovered image button's draw_3 frame (speed
+  buttons, date, map/chat), and the inner_frame Wt3 no longer drawn (prepareDraw hides it: goloco drew its
+  highlight on x 662 / row 575). Side by side: the panel and both tooltips pixel-equal to OpenLoco but the date's
+  digits / the paused blink phase (the runs' timing) and one tooltip row over that text. TestTimePanelWidgetAt.
+  Not ported: a pressed button's borderInset, onMouseHover = onMouseDown (the map/chat menu opening on hover),
+  updateDaily's tooltip close. Unit 23 ok 0 FAIL, playthroughs 26/26.

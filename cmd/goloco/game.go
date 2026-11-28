@@ -105,7 +105,6 @@ type Game struct {
 
 	// The toolbar and the windows, each nil unless open.
 	toolbar          *ui.Toolbar
-	timePanelTip     string         // the time panel's date tooltip this frame (drawTimePanel)
 	lastPortOption   int            // ToolbarTop's _lastPortOption: 0 airport, 1 dock
 	wins             ui.WindowStack // the open windows, back to front (WindowManager)
 	dropdown         *ui.DropdownMenu

@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -196,7 +197,8 @@ func DrawTooltip(screen *ebiten.Image, text string, cursorX, cursorY int, toolti
 		return
 	}
 	text, font := tooltipFont(text)
-	text = strings.ReplaceAll(text, "{NEWLINE}", "\n") // a string's own line breaks (vehicleRepaintTooltip's)
+	text = strings.ReplaceAll(text, "{NEWLINE}", "\n")  // a string's own line breaks (vehicleRepaintTooltip's)
+	text = tooltipColourCode.ReplaceAllString(text, "") // e.g. challenge_time_left's {COLOUR BLACK}: drawn black (PARTIAL: another colour too)
 	lines := wrapTooltip(text, 196, font)
 	ww := 0
 	for _, l := range lines {
@@ -232,13 +234,18 @@ func DrawTooltip(screen *ebiten.Image, text string, cursorX, cursorY int, toolti
 		tr(1, height-2, 1, 1, m2e)
 		tr(width-2, height-2, 1, 1, m2e)
 	})
-	// drawStringCentredRaw at ((width+1)/2 + x - 1, y + 1), Colour::black.
+	// drawStringCentredRaw at ((width+1)/2 + x - 1, y + 1), Colour::black:
+	// setTextColour's text_palette entry, palette black 0 — not RGB black.
 	cx := (width+1)/2 + x - 1
+	black := g1.GetPalette()[paletteBlack0]
 	for i, l := range lines {
 		lw := MeasureTextFont(l, font)
-		DrawTextFont(screen, l, font, cx-lw/2, y+1+i*10, color.Black)
+		DrawTextFont(screen, l, font, cx-lw/2, y+1+i*10, black)
 	}
 }
+
+// tooltipColourCode is a colour code inside a tooltip's text.
+var tooltipColourCode = regexp.MustCompile(`\{COLOUR [A-Z_0-9]+\}`)
 
 func wrapTooltip(text string, maxW, font int) []string {
 	if i := strings.IndexByte(text, '\n'); i >= 0 { // {NEWLINE}

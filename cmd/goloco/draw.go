@@ -5,6 +5,8 @@ import (
 	"image/color"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/LaPingvino/goloco/pkg/i18n"
@@ -183,14 +185,6 @@ func (g *Game) drawTopmost(screen *ebiten.Image) {
 
 // drawOverlays draws what lies over the game's windows.
 func (g *Game) drawOverlays(screen *ebiten.Image) {
-	if g.timePanelTip != "" { // the date's challenge tooltip
-		var c uint8
-		if sk := g.skin(); sk != nil {
-			c = sk.TooltipColour
-		}
-		ui.DrawTooltip(screen, g.timePanelTip, g.mouseX, g.mouseY, c)
-		g.timePanelTip = ""
-	}
 	g.drawTopmost(screen)
 
 	g.drawInlineDiag(screen)
@@ -265,30 +259,48 @@ func (g *Game) drawTimePanel(screen *ebiten.Image) {
 		st.SkinColour = sk.TimeToolbarColour
 		st.SkinImage = int(sk.ImageOffset)
 	}
-	wx, wy := uilayout.TimePanelPos(g.sw, g.sh)
-	d := uilayout.TimePanelDate
-	st.HoverDate = g.barUnderMouse(ui.WindowTypeTimePanel) && inRect(g.mouseX, g.mouseY, wx+d[0], wy+d[1], d[2], d[3])
-	ui.DrawTimePanel(screen, st)
-	g.timePanelTip = ""
-	if st.HoverDate && g.hasObjective {
-		// formatChallenge (string 647: date, then 695 / 696 / 699 + 700).
-		tip := st.Date
-		completed, failed, beaten, progress := mp.ChallengeStatus()
-		switch {
-		case completed:
-			tip += "\nChallenge completed!"
-		case failed:
-			tip += "\nChallenge failed!"
-		case beaten:
-		default:
-			tip += fmt.Sprintf("\nChallenge progress: %d%%", progress)
-			if mp.Objective.Flags&(1<<2) != 0 { // withinTimeLimit
-				left := uint16(mp.Objective.TimeLimitYears)*12 - mp.ObjectiveMonthsInChallenge
-				tip += fmt.Sprintf("\nTime left: %d years %d months", left/12, left%12)
-			}
-		}
-		g.timePanelTip = tip // drawn over the windows (drawOverlays)
+	st.Hover = -1
+	if g.barUnderMouse(ui.WindowTypeTimePanel) { // Input::isHovering(timePanel, 0, widget)
+		st.Hover = uilayout.TimePanelWidgetAt(g.mouseX, g.mouseY, g.sw, g.sh)
 	}
+	ui.DrawTimePanel(screen, st)
+}
+
+// timePanelTooltip is TimePanel's tooltip text for a widget: the speed
+// buttons' tooltip_speed_*, and the date's tooltip_daymonthyear_challenge
+// with formatChallenge's arguments (TimePanel.cpp 0x0043995C): getCurrentDay,
+// then challenge_completed / challenge_failed / empty (beaten by an
+// opponent) / challenge_progress with challenge_time_left (or empty).
+func (g *Game) timePanelTooltip(widget int) string {
+	if sp := widget - uilayout.TimePanelWidxPause; sp >= 0 && sp < 4 {
+		return i18n.Str(i18n.TooltipSpeedPause + sp)
+	}
+	if widget != uilayout.TimePanelWidxDate {
+		return ""
+	}
+	mp := &g.w.Map
+	date := uilayout.DateDMY(int(mp.CurrentDayOfMonth)+1, i18n.Month(int(mp.CurrentMonth)+1), int(mp.CurrentYear))
+	var status string
+	completed, failed, beaten, progress := mp.ChallengeStatus()
+	switch {
+	case completed:
+		status = i18n.Str(i18n.ChallengeCompleted)
+	case failed:
+		status = i18n.Str(i18n.ChallengeFailed)
+	case beaten:
+	default:
+		var left string
+		if mp.Objective.Flags&(1<<2) != 0 { // withinTimeLimit
+			months := uint16(mp.Objective.TimeLimitYears)*12 - mp.ObjectiveMonthsInChallenge
+			left = i18n.Str(i18n.ChallengeTimeLeft)
+			left = strings.Replace(left, "{INT16}", strconv.Itoa(int(months/12)), 1)
+			left = strings.Replace(left, "{INT16}", strconv.Itoa(int(months%12)), 1)
+		}
+		status = strings.Replace(i18n.Str(i18n.ChallengeProgress), "{INT16}", strconv.Itoa(int(progress)), 1)
+		status = strings.Replace(status, "{STRINGID}", left, 1)
+	}
+	tip := strings.Replace(i18n.Str(i18n.TooltipDaymonthyearChallenge), "{DATE DMY}", date, 1)
+	return strings.Replace(tip, "{STRINGID}", status, 1)
 }
 
 // barUnderMouse reports the bar of that type as the window under the mouse

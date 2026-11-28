@@ -88,3 +88,24 @@ func TestCalcDate(t *testing.T) {
 		}
 	}
 }
+
+// TestTimePanelWidgetAt: findWidgetAt on TimePanel's widget list — the last
+// widget holding the point; inner_frame is hidden.
+func TestTimePanelWidgetAt(t *testing.T) {
+	const sw, sh = 800, 600 // the panel at 660,573
+	for _, c := range []struct{ x, y, want int }{
+		{717, 580, TimePanelWidxDate},
+		{688, 592, TimePanelWidxPause},
+		{708, 592, TimePanelWidxPause + 1},
+		{757, 599, TimePanelWidxPause + 3},
+		{786, 586, TimePanelWidxMapChat},
+		{661, 574, TimePanelWidxOuter}, // the frame (inner_frame would start at 662,575)
+		{665, 590, TimePanelWidxOuter},
+		{659, 590, -1},
+		{700, 572, -1},
+	} {
+		if got := TimePanelWidgetAt(c.x, c.y, sw, sh); got != c.want {
+			t.Errorf("TimePanelWidgetAt(%d,%d) = %d, want %d", c.x, c.y, got, c.want)
+		}
+	}
+}

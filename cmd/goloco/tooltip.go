@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/LaPingvino/goloco/pkg/ui"
+	"github.com/LaPingvino/goloco/pkg/uilayout"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -78,6 +79,9 @@ func (g *Game) tipAt() (tipKey, string) {
 	if b.WinType == 0 {
 		untyped = w
 	}
+	if b.WinType == ui.WindowTypeTimePanel {
+		return tipKey{winType: b.WinType, number: b.Number, widget: uilayout.TimePanelWidgetAt(mx, my, g.sw, g.sh)}, text
+	}
 	if tw, ok := w.(ui.TooltipWidgets); ok {
 		return tipKey{untyped: untyped, winType: b.WinType, number: b.Number, widget: tw.TooltipWidgetAt(mx, my)}, text
 	}
@@ -88,6 +92,10 @@ func (g *Game) tipAt() (tipKey, string) {
 // buttons have none upstream).
 func (g *Game) windowTooltip(w ui.Win, mx, my int) string {
 	switch w := w.(type) {
+	case *ui.BarWindow:
+		if w.WinType == ui.WindowTypeTimePanel {
+			return g.timePanelTooltip(uilayout.TimePanelWidgetAt(mx, my, g.sw, g.sh))
+		}
 	case *ui.ViewWindow:
 		return w.WidgetTooltip(mx, my)
 	case *ui.StationWindow:
@@ -149,6 +157,13 @@ func (g *Game) updateTooltip() {
 		dropdown: dropdown, rightDrag: g.rightDragging(),
 		resetPress: g.tipPressResets(),
 	})
+	// processMouseOver (after handleMouse): the window's cursor event —
+	// TimePanel's onCursor sets the timeout to 2000 over the date, so its
+	// tooltip opens as soon as the mouse rests there (and, open, never times
+	// out).
+	if key.winType == ui.WindowTypeTimePanel && key.widget == uilayout.TimePanelWidxDate {
+		t.timeout = tipDelay // Ui::ToolTip::setTooltipTimeout(2000)
+	}
 }
 
 // tipPressResets says a left press here ends in State::reset rather than in

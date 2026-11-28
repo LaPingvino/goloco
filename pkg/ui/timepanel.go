@@ -23,7 +23,7 @@ const (
 type TimePanelState struct {
 	Date       string // formatDateDMYFull of the current day
 	Speed      int    // 0 paused, 1 normal, 2 fast forward, 3 extra fast forward
-	HoverDate  bool   // the date button is hovered (text in white)
+	Hover      int    // the hovered widget (uilayout.TimePanelWidx*; −1 none): its draw_3 frame, the date in white
 	SkinColour uint8  // InterfaceSkinObject::timeToolbarColour
 	SkinImage  int    // InterfaceSkinObject image base (map globe); <=0: none
 	Rotation   uint8  // WindowManager::getCurrentRotation: which way the globe's arrow points
@@ -32,8 +32,9 @@ type TimePanelState struct {
 // DrawTimePanel is TimePanel.cpp draw for the window at the bottom-right: the
 // unk34 dim over the outer frame, the two Wt3 panels and the speed buttons
 // (translucent window colour), the inset border, the centred date and the map
-// globe. PARTIAL: the "* Paused *" blink, the map/chat dropdown widget, and
-// image-button hover states (draw_3) are not ported.
+// globe. The hovered image button (Input::isHovering → widgetState.hovered)
+// is drawn by ImageButton's draw_3: the translucent inset frame, then its
+// image. PARTIAL: a pressed button's borderInset (activated) is not drawn.
 func DrawTimePanel(screen *ebiten.Image, s TimePanelState) {
 	if globalG1Font == nil {
 		return
@@ -55,10 +56,21 @@ func DrawTimePanel(screen *ebiten.Image, s TimePanelState) {
 	draw8(screen, wx, wy, L.TimePanelW, L.TimePanelH, func(rt *gfx8.RenderTarget) {
 		o := L.TimePanelOuter
 		gfx8.FillRectTranslucent(rt, o[0], o[1], o[0]+o[2]-1, o[1]+o[3]-1, m34)
-		for _, r := range [][4]int{L.TimePanelOuter, L.TimePanelInner} {
+		// the outer_frame Wt3 (prepareDraw hides inner_frame)
+		gfx8.FillRectInset(rt, o[0], o[1], o[0]+o[2]-1, o[1]+o[3]-1, tc, 0)
+		hoverFrame := func(r [4]int) { // ImageButton draw_3: fillRectInset(size, colour.translucent(), flags)
 			gfx8.FillRectInset(rt, r[0], r[1], r[0]+r[2]-1, r[1]+r[3]-1, tc, 0)
 		}
+		switch s.Hover { // map_chat_menu and date_btn have no image (kContentNull)
+		case L.TimePanelWidxMapChat:
+			hoverFrame(L.TimePanelMapChat)
+		case L.TimePanelWidxDate:
+			hoverFrame(L.TimePanelDate)
+		}
 		for i, r := range L.TimePanelSpeed {
+			if s.Hover == L.TimePanelWidxPause+i {
+				hoverFrame(r)
+			}
 			img := images[i]
 			if i == s.Speed {
 				img++ // the active variant
@@ -79,7 +91,7 @@ func DrawTimePanel(screen *ebiten.Image, s TimePanelState) {
 	})
 	pal := g1.GetPalette()
 	c := pal[gfx8.Shade(cmap, 9)]
-	if s.HoverDate {
+	if s.Hover == L.TimePanelWidxDate {
 		if wm, err := g1.GetPaletteMap(colourWhite); err == nil {
 			c = pal[gfx8.Shade(wm, 9)]
 		}
